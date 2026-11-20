@@ -5,8 +5,6 @@ import { promotionsMetaKey } from "../../src/core/scheduler/promotions-row.js";
 import { publishedYieldRow, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
-import type { TestFileRef } from "../../src/core/types/keys.js";
-import type { RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { CrossingClock as ModelClock } from "../helpers/virtual-clock.js";
 import {
@@ -23,6 +21,7 @@ import {
   order,
   pause,
   ref,
+  reportsEnds,
   SETTLE_MS,
 } from "./tier-yields-fixture.js";
 
@@ -82,44 +81,6 @@ function published(side: CatchUpSide, stored: () => void = () => {}): string[] {
     }
   });
   return kinds;
-}
-
-/**
- * Reports `path`'s end to the run in flight that holds it, as Vitest's
- * `onTestModuleEnd` does (`RunOptions.fileEnded`), and lists it among the
- * run's completed files with a pass, as Vitest's report does, a cut run's
- * too; the fake runner names none.
- */
-function reportsEnds(side: CatchUpSide): (path: string) => void {
-  const ends = new Map<string, () => void>();
-  const run = side.runner.run.bind(side.runner);
-  side.runner.run = async (files, options) => {
-    const ended: TestFileRef[] = [];
-    for (const f of files)
-      ends.set(f.path, () => {
-        ended.push(f);
-        options.fileEnded?.(f);
-      });
-    const report = await run(files, options);
-    const more = ended.filter((f) => !report.completedFiles.some((c) => c.path === f.path));
-    return {
-      ...report,
-      completedFiles: [...report.completedFiles, ...more],
-      results: [...report.results, ...more.map(passOf)],
-    };
-  };
-  return (path) => ends.get(path)?.();
-}
-
-/** A pass of `file`'s one test, as the fake runner reports it. */
-function passOf(file: TestFileRef): RunReport["results"][number] {
-  const check = {
-    kind: "test" as const,
-    project: file.project,
-    testPath: file.path,
-    fullName: "runs",
-  };
-  return { check, outcome: "pass", durationMs: 1, location: null, errors: [] };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { setTimeout as turn } from "node:timers/promises";
 import { expect } from "vitest";
 import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { isBesideLane } from "../../src/core/types/runner.js";
 import type { Rest } from "../../src/core/types/scheduler.js";
 import { gatherAt } from "../helpers/quiet-point.js";
@@ -150,3 +151,41 @@ export function completions(side: CatchUpSide, path: string, after: number): num
 
 /** A pause of `ms`, after which the test reads what the scheduler did meanwhile. */
 export const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Reports `path`'s end to the run in flight that holds it, as Vitest's
+ * `onTestModuleEnd` does (`RunOptions.fileEnded`), and lists it among the
+ * run's completed files with a pass, as Vitest's report does, a cut run's
+ * too; the fake runner names none.
+ */
+export function reportsEnds(side: CatchUpSide): (path: string) => void {
+  const ends = new Map<string, () => void>();
+  const run = side.runner.run.bind(side.runner);
+  side.runner.run = async (files, options) => {
+    const ended: TestFileRef[] = [];
+    for (const f of files)
+      ends.set(f.path, () => {
+        ended.push(f);
+        options.fileEnded?.(f);
+      });
+    const report = await run(files, options);
+    const more = ended.filter((f) => !report.completedFiles.some((c) => c.path === f.path));
+    return {
+      ...report,
+      completedFiles: [...report.completedFiles, ...more],
+      results: [...report.results, ...more.map(passOf)],
+    };
+  };
+  return (path) => ends.get(path)?.();
+}
+
+/** A pass of `file`'s one test, as the fake runner reports it. */
+function passOf(file: TestFileRef): RunReport["results"][number] {
+  const check = {
+    kind: "test" as const,
+    project: file.project,
+    testPath: file.path,
+    fullName: "runs",
+  };
+  return { check, outcome: "pass", durationMs: 1, location: null, errors: [] };
+}
