@@ -207,7 +207,9 @@ interface Lease {
  *   C10 Size as amended 2026-10-21, row 011-98). Beside the tree it reads
  *   the host's busy cores over the same window; a backlog tier's cores
  *   start at what the host used beyond the tree, plus the tree's cores now,
- *   when that is more (row 011-182).
+ *   when that is more (row 011-182). A lease that ends or returns permits
+ *   starts a new window, and the held workers stand for the tree's cores
+ *   until it is measured (row 011-417).
  * - A backlog tier has no grants term (spec 021 D18, row 021-18): each
  *   permit needs those cores below the ceiling, `backgroundShare` of the
  *   CPUs, alone; the slots do not bound it (row 011-404, gh-225). When no daemon's mark states a
@@ -448,6 +450,8 @@ class LockFilePool implements PermitPool {
         const wanted = Math.max(1, Math.floor(workers));
         const returned = lease.permits.splice(wanted);
         for (const db of returned) db.close();
+        // The returned workers' CPU counts no more (row 011-417).
+        if (returned.length > 0) pool.#restartWindow();
         // A tier's tail calls this at each file's end (row 011-97): no change writes no mark.
         if (returned.length === 0 && lease.want === wanted) return;
         lease.want = wanted;
@@ -463,8 +467,24 @@ class LockFilePool implements PermitPool {
     if (!this.#leases.delete(lease)) return;
     for (const db of lease.permits.splice(0)) db.close();
     if (this.#leases.size === 0) this.#idleSince = this.#now();
-    if (this.#active()) this.#republish();
-    else this.#deactivate();
+    if (!this.#active()) {
+      this.#deactivate();
+      return;
+    }
+    // The ended tier's CPU counts no more, though another lease keeps the pool active (row 011-417).
+    this.#restartWindow();
+    this.#republish();
+  }
+
+  /**
+   * A lease ended or returned permits (011 C10 Size, row 011-417): the
+   * daemon's cores are the workers it still holds until a window that
+   * starts now is measured, not the last window's, which counted them.
+   */
+  #restartWindow(): void {
+    this.#measured = null;
+    this.#tree?.reset();
+    this.#read();
   }
 
   #active(): boolean {
@@ -589,16 +609,18 @@ class LockFilePool implements PermitPool {
   /**
    * A backlog tier's view of the host (row 011-182): its busy cores beyond
    * this daemon's tree over the last window, plus `cores`, what the tree's
-   * tiers use now, so a tier of its own that ended since counts no more. A
-   * window older than a mark's freshness is read again, over the time since
-   * the last read, once that is `HOST_WINDOW_MIN_MS`. `null` with none.
+   * tiers use now, so a tier of its own that ended since counts no more.
+   * The window is read again, over the time since the last read, once that
+   * is `HOST_WINDOW_MIN_MS` (row 011-417: a window up to 30 s old gave a
+   * waiting daemon the floor on an idle host). One older than a mark's
+   * freshness counts nothing. `null` with none.
    */
   #busy(cores: number): number | null {
     if (this.#host === null) return null;
     const now = this.#now();
     const fresh = (): boolean =>
       this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
-    if (!fresh() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
+    if (this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
     return fresh() && this.#beyond !== null ? this.#beyond.cores + cores : null;
   }
 

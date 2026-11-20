@@ -198,14 +198,14 @@ describe("the pool's gate on a busy host (row 011-182)", () => {
     expect(me.acquire(10, "fast", 1, "backlog")?.grant).toBe(10);
   });
 
-  test("a window older than a mark's freshness is read again, once the last read is a second old", () => {
+  test("a backlog gate reads the window again once the last read is a second old (row 011-417)", () => {
     let clock = Date.now();
     const host = fake(1);
     const me = daemon("me", host, { now: () => clock });
     expect(me.offer(10, "fast", "backlog")).toBe(10);
     host.cores = 23.9;
-    // Within the window's freshness the gate keeps the last window's cores.
-    clock += SLOT_WAITER_FRESH_MS - 1;
+    // Within a second the gate keeps the last window's cores; then it reads again.
+    clock += HOST_WINDOW_MIN_MS - 1;
     expect(me.offer(10, "fast", "backlog")).toBe(10);
     clock += 1;
     expect(me.offer(10, "fast", "backlog")).toBe(1);
