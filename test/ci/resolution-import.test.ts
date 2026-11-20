@@ -21,9 +21,12 @@ import { ci, cloneOf, committed, recordVitest, scratch } from "./fixture.js";
  * Reviews/wave-4.md B1 and B2 chains into workspace packages: Vite 8 reads
  * those manifests in its native resolver, so no shard's evidence holds them,
  * and the human dropped the CI step that read them (2026-11-17,
- * reviews/wave-4-rereview.md B1). The export leaves each chain test out as
- * uncertified, and no import takes a pass for it, at the export's commit or
- * at one that changes its chain.
+ * reviews/wave-4-rereview.md B1). Spec 018 D33 (row 018-59): nothing hooked
+ * read, listed or wrote them, and their hashes at the command's start and
+ * end are the commit's, so the export certifies the b1 and b2 chain tests
+ * by that rule. b2add's manifest is absent at the commit, so D33.3 leaves
+ * it out. No import takes a chain test's pass at a commit that changes a
+ * manifest on its chain; the other chains' passes are taken.
  */
 
 const REG = "test/reg.test.ts";
@@ -164,14 +167,20 @@ describe("a CI import and what decides an import's resolution (row 023-14)", () 
     const file = await exported(origin, (text) => {
       said += text;
     });
-    // The chain tests' manifests are in no shard's evidence: the export leaves each out.
-    for (const { path } of Object.values(CHAINS)) {
-      expect(said).toContain(`left out ${path}: its shard recorded other content, or none, for`);
-    }
+    // The chain tests' manifests are in no shard's evidence: D33 certifies b1's and b2's, which
+    // the commit holds, by their endpoint hashes, and leaves out b2add's, which it does not.
+    for (const { path } of [CHAINS.b1, CHAINS.b2]) expect(said).not.toContain(`left out ${path}`);
+    expect(said).toContain(
+      `left out ${CHAINS.b2add.path}: its shard recorded other content, or none, for packages/three/sub/package.json`,
+    );
+    expect(said).toContain("Exported 4 test files");
+    expect(said).toContain(
+      "2 of them rest on inputs that nothing in their shard's command read, listed or wrote",
+    );
     expect(said).not.toContain(`left out ${REG}`);
     const same = await imported(origin, file, "same", {});
     expect(same).toMatchObject({ reg: CURRENT_PASS, count: CURRENT_PASS });
-    expect([same.b1, same.b2, same.b2add]).toEqual([null, null, null]);
+    expect(same).toMatchObject({ b1: CURRENT_PASS, b2: CURRENT_PASS, b2add: null });
 
     const retargeted = await imported(origin, file, "retargeted", {
       "package.json": manifest("./src/reg-b.ts"),
@@ -181,13 +190,17 @@ describe("a CI import and what decides an import's resolution (row 023-14)", () 
   });
 
   it.each(Object.keys(CHANGES) as ChainName[])(
-    "reviews/wave-4.md: no import takes %s's pass at a commit that changes a manifest on its chain",
+    "reviews/wave-4.md: no import takes %s's pass at a commit that changes a manifest on its chain, and the other chains' are taken",
     { timeout: 300_000 },
     async (chain) => {
       const origin = committed(scratch(`resolution-${chain}`), FILES, links);
       const file = await exported(origin);
       const changed = await imported(origin, file, chain, CHANGES[chain]);
-      expect([changed.b1, changed.b2, changed.b2add]).toEqual([null, null, null]);
+      expect(changed[chain]).toBeNull();
+      // The chains this commit does not change keep their passes; b2add was never exported.
+      const kept = (["b1", "b2"] as const).filter((other) => other !== chain);
+      for (const other of kept) expect(changed[other], other).toMatchObject(CURRENT_PASS);
+      expect(changed.b2add).toBeNull();
       expect(changed).toMatchObject({ reg: CURRENT_PASS, count: CURRENT_PASS });
     },
   );
