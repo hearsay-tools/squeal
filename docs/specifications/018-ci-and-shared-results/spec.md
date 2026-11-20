@@ -242,3 +242,97 @@ D8 and D9 on a fixture with two shards: the union, a refused environment mismatc
 
 1. Decided 2026-11-09: fetch only when the project sets `shared.ref`; push access is the trust bound.
 2. The real CPU and wall cost of D8 in cezar's shards, and whether cezar's read sets vary between runs at equal content. Owner: the D17 measurement row.
+
+# Third slice: node:test results from CI
+
+Stage: proposed 2026-11-20 by the coordinator (fe95a218) for the human's review. Written from `research/ci-other-runners.md` and the human's answers there (2026-11-20, task 7eba4a3d). pytest is out of this slice.
+
+## Problem
+
+`squeal ci record` records Vitest only (D8). node:test files never come from CI, although their keys already travel: in cezar, 148 of 148 node:test keys were equal between a developer clone and a CI-shaped clone at one commit (`ci-other-runners.md` 4). They are about 148 of cezar's 1,956 test files, and every new worktree runs them again.
+
+## Goals
+
+1. `squeal ci record` records a node:test command: each test file's checks, outcomes and durations, the modules each file's processes loaded, read evidence (D9), the Node it ran on and its flags.
+2. `squeal ci export` keys node:test files as the daemon does, beside Vitest files in one export, and leaves out a project whose Node or flags differ from its `nodeTest` entry.
+3. An imported node:test pass counts where a developer runs with Squeal's coverage on, as D10 does for Vitest.
+4. The project changes one thing: it adds Squeal's reporter to its node:test command in the recorded step. Squeal adds no reporter through `NODE_OPTIONS` (the human, 2026-11-20).
+5. `KEY_FORMAT_VERSION`, `NODE_TEST_ADAPTER_VERSION` and the export format `squeal-results/1` stay as they are. Nothing fails the user's CI (D20.2).
+
+## Non-goals
+
+- pytest (its keys hold the interpreter's path; `ci-other-runners.md` 3).
+- Coverage records from node:test in CI, as 020 D13 makes them for Vitest: a later row (the human, 2026-11-20, answer 3).
+- Keying tools a test starts from `PATH` (npm, pnpm, git): not decided, for any runner (answer 4).
+- A node:test run in CI that differs from the daemon's run shape: `--test-isolation=none`, name filters, `--test-only`, `--watch`.
+
+## Design
+
+### D22. `ci record` for node:test
+
+`squeal ci record` adds the node:test recording when the project's `squeal.config.json` has at least one `nodeTest` entry, beside the Vitest recording when Vitest resolves (D8). One command may run both. With neither, it runs the command and records nothing, as today. It puts Squeal's node:test module recorder (`runtime/recorder.cjs`, in a CI mode) first in `NODE_OPTIONS` with the evidence hooks (D24), and adds no reporter there. The command, its output and its exit code stay the project's. Every rule of D8 holds: one part per recorded process, written after the command exits, into `--out` (default `squeal-parts/`); the condition that nothing changes the tests' inputs during the run; the cost line of row 018-29.
+
+### D23. The reporter the project names
+
+The project adds Squeal's reporter as a second reporter to its node:test command in the recorded step:
+
+```sh
+squeal ci record -- node --test \
+  --test-reporter=spec --test-reporter-destination=stdout \
+  --test-reporter="$SQUEAL_NODE_TEST_REPORTER" --test-reporter-destination=stderr \
+  test/*.test.mjs
+```
+
+1. **The file.** `SQUEAL_NODE_TEST_REPORTER` holds the absolute path of the reporter in the Squeal that runs: `dist/ci/node-test-reporter.mjs` beside the bundled CLI. The CI action (D20) writes it to `$GITHUB_ENV`, so every later step's shell has it; it writes it also when the setup cannot run, since the file is in the action's checkout (D20.2). `ci record` also sets it in the command's environment, for a command run through `npm run` or `sh -c` and for CI systems other than GitHub's.
+2. **The directory.** The project names none. The reporter writes the events of its `node --test` process into `ci record`'s private directory, which `ci record` names in its settings variable, one file per process; `--out` stays the only directory the project chooses. Two `node --test` processes in one command (`npm run a && npm run b`) each write their own file.
+3. **The destination.** The reporter yields nothing to its own stream, so its destination prints nothing; Node only requires one destination per reporter. The documented form uses `stderr`.
+4. **Outside `ci record`.** Without the settings variable the reporter does nothing, so the same command runs anywhere the variable is set.
+5. **A missing reporter.** When the recorder saw test files run in a `node --test` process that left no reporter events, that process's part holds no files and names why: "this node:test command names no Squeal reporter; add `--test-reporter="$SQUEAL_NODE_TEST_REPORTER" --test-reporter-destination=stderr`". `ci record` prints the same line to stderr once. The exit code stays the command's.
+6. **What it records.** Every event of the `node --test` process, encoded as the daemon's reporter encodes it (`runtime/reporter.mjs`, one encoding for both). The part builder turns them into checks with the daemon's own code (`run/report.ts`, `identity.ts`): full names joined with ` > `, `(line N)` on a repeated full name, skip and todo as `skip`, durations. Before the events, the reporter writes the process's header: `process.execArgv`, `process.argv`, its working directory, and the raw fields of the Node probe (`process.version`, `process.versions`, `process.config`, `platform`, `arch`).
+
+### D24. Which test file loaded a module
+
+The recorder runs in every Node process of the command and records module-load edges only in node:test's processes:
+
+1. **A test file's process**: `NODE_TEST_CONTEXT` is set and `SQUEAL_CI_NODE_TEST_FILE` is not. The test file is the absolute `argv[1]`. Before any test code runs, the recorder sets `SQUEAL_CI_NODE_TEST_FILE` to it, and writes its edges under that file and its pid.
+2. **A process a test spawned**: `SQUEAL_CI_NODE_TEST_FILE` is inherited. Its edges go to that file. A child or Worker started with an environment of its own that lacks the variable is the D8 case: its reads withhold evidence (row 018-23), so the file is left out, never keyed without its loads.
+3. **Any other process** (the `node --test` process itself, `npm`, a Vitest process): no node:test edges.
+
+The edges are rooted and split as the daemon's are (`run/observed.ts` `observedClosure`): loads before the test file's entry are the project's preloads, the rest is the file's observed set. Read evidence follows D9: each loaded module needs evidence taken at its read. The evidence hooks are the ones the Vitest recording uses today, moved out of `src/runners/vitest/ci-runtime/` into a shared folder under `src/runners/` that names no runner (spec 016 D1; `test/runners/boundaries.test.ts`), so both runners load one copy. Where Node's module loader reads a file without the `fs` calls the hooks wrap, the recorder's load step takes the evidence from the bytes Node loaded. A file with an input that has no evidence is left out, as D9 says.
+
+### D25. The part, format 5
+
+`PART_FORMAT` becomes `squeal-ci-part/5`. The header's `runner` is `"vitest"` or `"node-test"` (the runner's `runnerName`). A node:test part adds `nodeTest`: the `node --test` process's `execArgv` and working directory (relative to the root), its `--test-shard` as the part's `shard` (`1/1` without one), the probe's `version` and `nodeBuild` (hashed by `ci record` with the daemon's own function, 018 D12), and a hash of each variable an entry's `env` names, as the test file's process saw it. Vitest's fields (snapshot options, coverage) stay Vitest's; a node:test part has none. Readers accept formats 3, 4 and 5. A part of a command run with `--test-isolation=none` (`--experimental-test-isolation=none` on Node 22), `--test-name-pattern`, `--test-skip-pattern`, `--test-only` or `--watch` holds no files and names the flag: those runs either share one process for all files or run part of a file, a shape the daemon never runs.
+
+### D26. Export of node:test parts
+
+`squeal ci export --parts <dir>...` takes Vitest and node:test parts in one call and writes one export (D2). For node:test it builds the node:test adapter from the checkout's `squeal.config.json`, through the core `ciExport` as for Vitest; `src/cli/ci-export.ts` stops refusing a checkout where Vitest does not resolve when it has node:test parts. Per `nodeTest` entry:
+
+1. **Which entry.** A recorded process belongs to the entry whose `cwd` equals its working directory and whose `argv` equals its `execArgv` without the flags the daemon sets itself (`--test`, the reporter and destination pairs, `--test-shard`, `--test-concurrency`, `--enable-source-maps`). A test file belongs to it when the adapter lists the file for that entry in the export checkout. A file of no entry, or of two, is left out and named.
+2. **The Node.** The entry's probe in the export checkout (D18: the project's pinned Node) must give the part's `version` and `nodeBuild`. Otherwise the entry's files are left out, with one line: `node:test ran on Node v24.21.0; project "unit" runs v26.13.0 here: left out`.
+3. **The variables.** Each variable the entry's `env` names must have the value the entry gives it. Otherwise the entry's files are left out, named by variable, never by value.
+4. **Shards.** The complete-set rule of D9 applies to each command's own `--test-shard` count, apart from Vitest's.
+5. **Keys.** Closures from the static graph and the recorded observed sets, keys by the daemon's own code. No key part, adapter version or export format changes.
+
+A refusal leaves out that entry's files and keeps the rest of the export: the D2 rule of row 018-46. A Vitest export is unchanged by node:test parts beside it.
+
+### D27. Import: the coverage marker equal for node:test passes
+
+`importDifferences` (`src/core/keys/environment-descriptor.ts`) applies D10's coverage tolerance to node:test too: for an imported pass, the node:test config's coverage marker compares equal whether it is present on one side, both or neither, in either form (with or without children). Every other node:test field stays keyed. D11's re-key takes the field from the local environment, from the same list (one owner for both). Reason, as in D10: CI records without Squeal's coverage, a developer's daemon runs with it (coverage on by default), and a pass without coverage implies the same pass with it.
+
+### D28. The CI action and the README
+
+The action (`ci/action.yml`, `ci/setup.sh`) writes `SQUEAL_NODE_TEST_REPORTER` (D23.1). The README's CI section shows a node:test step: the reporter pair to add, that the step must run on the developers' Node (the same `.node-version` as the export job, D18), and that an unrecorded node:test run on another Node can stay beside it. `squeal ci record --help` names the reporter variable and the refused flags. D20.2 holds: a missing reporter, a refused flag or a crash of the recording is a note, never a failed step. `v0` keeps moving: the action's inputs and commands stay compatible (D20.1).
+
+### D29. Proof in cezar (proposal; the cezar change needs the human)
+
+cezar's `unit-tests` job runs node:test on Node 24.21.0, its engines minimum, and stays as it is. A new job, in merge groups only and outside the required checks, on Node 26.13.0 from `.node-version`: `uses` Squeal's action at cezar's pinned commit, then runs both node:test suites (`package`, `scripts`) under `squeal ci record` with the reporter pair and uploads the parts. The `squeal-export` job downloads these parts beside the Vitest shards' parts when they exist; a missing or failed node:test job leaves the Vitest export as it is today. Each cezar unit-test job takes about 2 minutes today (merge-group run 44748111052, 2026-11-20); the recorded run adds about that much runner time per merge group, and nothing to the merge's wait, since the export job already waits about 4 minutes longer for the Vitest shards. Then one measurement: node:test files exported from the next merge-group runs, and how many become current in a fresh developer clone.
+
+## Testing
+
+D22 to D24 on a node:test fixture shaped like cezar's commands: ESM and CJS tests, a `--import tsx` TypeScript test, a test that spawns a Node child, a repeated test name, a skip and a todo. `squeal ci record` with the reporter pair writes parts whose files, checks, outcomes and observed sets equal what the daemon records for the same content; the command's stdout equals the same command without `ci record` (durations and pids aside) on Node 22, 24 and 26; the exit code passes through. A command without the reporter writes a part with no files and the D23.5 line. Each refused flag of D25 gives a part with no files and its note. D26: a fixture export from a CI-shaped clone (other path, HOME and TMPDIR) equals a daemon-made export of the same content, and its import makes every node:test file current in a developer clone, also with coverage on there (D27); a part from another Node, other flags or another `env` value leaves out its entry and names why; Vitest and node:test parts export together, and the Vitest part of that export equals its export alone. D27: the coverage marker present on one side compares equal for a pass; any other node:test field still keyed; Vitest unchanged. D28: the action sets the variable also when setup fails, and the reporter is a no-op without `ci record`. The key-format alarm and `test/version-sensitive.test.ts` stay quiet: no key moves.
+
+## Open questions
+
+1. Whether module loads that Node reads outside the `fs` calls (ESM, a `--import tsx` loader) get evidence through the load step as D24 says. The record row proves it on the fixture; a file without evidence is left out, never keyed wrong.
+2. The recorded run's real CPU and wall cost in cezar's CI. Owner: the D29 measurement.
