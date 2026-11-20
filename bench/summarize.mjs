@@ -20,43 +20,204 @@ const meta = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
 
 /** lower is better unless `higher`. */
 export const METRICS = [
-  { id: "hook.preToolUse.p95", unit: "ms", healthy: 80, warn: 200, group: "Hooks" },
-  { id: "hook.postToolBatch.p95", unit: "ms", healthy: 80, warn: 200, group: "Hooks" },
-  { id: "hook.sessionStart.max", unit: "ms", healthy: 750, warn: 2000, group: "Hooks" },
-  { id: "hook.stop.max", unit: "ms", healthy: 1500, warn: 2000, group: "Hooks" },
-  { id: "cmd.status.p95", unit: "ms", healthy: 300, warn: 1000, group: "Commands" },
-  { id: "cmd.statusJson.p95", unit: "ms", healthy: 300, warn: 1000, group: "Commands" },
-  { id: "cmd.start.main", unit: "ms", healthy: 2000, warn: 5000, group: "Commands" },
-  { id: "cmd.start.others.max", unit: "ms", healthy: 2000, warn: 5000, group: "Commands" },
-  { id: "cmd.runAll.overhead", unit: "x", healthy: 1.3, warn: 2, group: "Commands" },
-  { id: "cmd.runAll", unit: "s", group: "Commands" },
-  { id: "session.pushFail.p50", unit: "ms", healthy: 3000, warn: 10000, group: "Verdicts" },
-  { id: "session.pushFail.missed", unit: "", gate: true, group: "Correctness" },
-  { id: "session.pushRecovery.missed", unit: "", gate: true, group: "Correctness" },
-  { id: "session.verdict.p50", unit: "ms", healthy: 3000, warn: 10000, group: "Verdicts" },
-  { id: "session.verdict.p95", unit: "ms", healthy: 10000, warn: 30000, group: "Verdicts" },
+  {
+    id: "hook.preToolUse.p95",
+    what: "Hook before each tool call (slowest 5%)",
+    unit: "ms",
+    healthy: 80,
+    warn: 200,
+    group: "Hooks",
+  },
+  {
+    id: "hook.postToolBatch.p95",
+    what: "Hook after each batch of tool calls (slowest 5%)",
+    unit: "ms",
+    healthy: 80,
+    warn: 200,
+    group: "Hooks",
+  },
+  {
+    id: "hook.sessionStart.max",
+    what: "Hook at session start (slowest)",
+    unit: "ms",
+    healthy: 750,
+    warn: 2000,
+    group: "Hooks",
+  },
+  {
+    id: "hook.stop.max",
+    what: "Hook when the agent stops (slowest)",
+    unit: "ms",
+    healthy: 1500,
+    warn: 2000,
+    group: "Hooks",
+  },
+  {
+    id: "cmd.status.p95",
+    what: "`squeal status` (slowest 5%)",
+    unit: "ms",
+    healthy: 300,
+    warn: 1000,
+    group: "Commands",
+  },
+  {
+    id: "cmd.statusJson.p95",
+    what: "`squeal status --json` (slowest 5%)",
+    unit: "ms",
+    healthy: 300,
+    warn: 1000,
+    group: "Commands",
+  },
+  {
+    id: "cmd.start.main",
+    what: "`squeal start` in the main worktree",
+    unit: "ms",
+    healthy: 2000,
+    warn: 5000,
+    group: "Commands",
+  },
+  {
+    id: "cmd.start.others.max",
+    what: "`squeal start` in another worktree on the shared store",
+    unit: "ms",
+    healthy: 2000,
+    warn: 5000,
+    group: "Commands",
+  },
+  {
+    id: "cmd.runAll.overhead",
+    what: "Full run with Squeal, as a multiple of plain Vitest",
+    unit: "x",
+    healthy: 1.3,
+    warn: 2,
+    group: "Commands",
+  },
+  { id: "cmd.runAll", what: "Full run with Squeal", unit: "s", group: "Commands" },
+  {
+    id: "session.pushFail.p50",
+    what: "Edit that breaks a test until the agent is told (median)",
+    unit: "ms",
+    healthy: 3000,
+    warn: 10000,
+    group: "Verdicts",
+  },
+  {
+    id: "session.pushFail.missed",
+    what: "Breaks the agent was never told about",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
+    id: "session.pushRecovery.missed",
+    what: "Fixes the agent was never told about",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
+    id: "session.verdict.p50",
+    what: "Edit until `status --wait` gives a verdict (median)",
+    unit: "ms",
+    healthy: 3000,
+    warn: 10000,
+    group: "Verdicts",
+  },
+  {
+    id: "session.verdict.p95",
+    what: "Edit until `status --wait` gives a verdict (slowest 5%)",
+    unit: "ms",
+    healthy: 10000,
+    warn: 30000,
+    group: "Verdicts",
+  },
   {
     id: "session.verdict.within60s",
+    what: "Edits with a verdict within the 60 s agents wait",
     unit: "%",
     healthy: 95,
     warn: 80,
     higher: true,
     group: "Verdicts",
   },
-  { id: "session.verdict.wrong", unit: "", gate: true, group: "Correctness" },
-  { id: "session.failed", unit: "", gate: true, group: "Correctness" },
-  { id: "session.broad.verdict", unit: "s", healthy: 180, warn: 300, group: "Verdicts" },
-  { id: "res.idleCpu.maxPct", unit: "% core", healthy: 1, warn: 5, group: "Resources" },
-  { id: "res.daemonRss.max", unit: "MiB", healthy: 300, warn: 600, group: "Resources" },
-  { id: "res.cpuPerEdit", unit: "s", group: "Resources" },
-  { id: "store.longWrites", unit: "", healthy: 0, warn: 3, group: "Store" },
-  { id: "store.lockFailures", unit: "", healthy: 0, warn: 3, group: "Store" },
-  { id: "store.size", unit: "MiB", group: "Store" },
-  { id: "store.results", unit: "rows", group: "Store" },
+  {
+    id: "session.verdict.wrong",
+    what: "Verdicts that disagree with the truth",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
+    id: "session.failed",
+    what: "Scripted sessions that crashed",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
+    id: "session.broad.verdict",
+    what: "Edit every test imports until the whole suite is current",
+    unit: "s",
+    healthy: 180,
+    warn: 300,
+    group: "Verdicts",
+  },
+  {
+    id: "res.idleCpu.maxPct",
+    what: "Daemon CPU with no edits",
+    unit: "% core",
+    healthy: 1,
+    warn: 5,
+    group: "Resources",
+  },
+  {
+    id: "res.daemonRss.max",
+    what: "Daemon memory, peak",
+    unit: "MiB",
+    healthy: 300,
+    warn: 600,
+    group: "Resources",
+  },
+  {
+    id: "res.cpuPerEdit",
+    what: "Daemon CPU per edit, test runs included",
+    unit: "s",
+    group: "Resources",
+  },
+  {
+    id: "store.longWrites",
+    what: "Store writes that held the lock over 250 ms",
+    unit: "",
+    healthy: 0,
+    warn: 3,
+    group: "Store",
+  },
+  {
+    id: "store.lockFailures",
+    what: "Store writes that failed on a held lock",
+    unit: "",
+    healthy: 0,
+    warn: 3,
+    group: "Store",
+  },
+  { id: "store.size", what: "Store files on disk", unit: "MiB", group: "Store" },
+  { id: "store.results", what: "Result rows in the store", unit: "rows", group: "Store" },
   // Churn cells only: from the daemon's restart on the aged store.
-  { id: "store.prune.doneMin", unit: "min", healthy: 12, warn: 20, group: "Store" },
-  { id: "store.prune.s", unit: "s", group: "Store" },
-  { id: "store.fullCheck.s", unit: "s", group: "Store" },
+  {
+    id: "store.prune.doneMin",
+    what: "Restart until a day of expired history is pruned",
+    unit: "min",
+    healthy: 12,
+    warn: 20,
+    group: "Store",
+  },
+  { id: "store.prune.s", what: "Time the prune spent deleting", unit: "s", group: "Store" },
+  {
+    id: "store.fullCheck.s",
+    what: "Restart until the integrity check passed",
+    unit: "s",
+    group: "Store",
+  },
 ];
 
 const INF = Number.POSITIVE_INFINITY;
@@ -235,6 +396,24 @@ for (const n of names) {
     `| ${n} | ${c.files} | ${c.worktrees} | ${c.load}% | ${c.ageRounds ?? 0}${c.churn ? " churn" : ""} | ${gateFails[n].length ? "❌" : "✅"} | ${scores[n]?.toFixed(0)} | ${AREAS.map(area).join(" | ")} |`,
   );
 }
+const unhealthy = METRICS.filter((m) => !m.gate && m.healthy !== undefined)
+  .map((m) => ({
+    m,
+    cells: names
+      .map((n) => ({ n, x: results[n].v[m.id], g: grade(m, results[n].v[m.id]) }))
+      .filter((c) => c.g !== null && c.g < 1),
+  }))
+  .filter((u) => u.cells.length > 0);
+lines.push("", "## What is not healthy", "");
+if (unhealthy.length === 0) lines.push("Every scored metric is within its healthy limit.");
+for (const { m, cells } of unhealthy) {
+  const limit = `healthy ${m.higher ? "≥" : "≤"} ${m.healthy} ${m.unit}`.trim();
+  const list = cells.map((c) => `${c.n} ${fmt(m, c.x)}${mark(c.g)}`).join(", ");
+  lines.push(
+    `- **${m.group} · ${m.what}** (${limit}): ${cells.length} of ${names.length} cells: ${list}`,
+  );
+}
+lines.push("", "## Every metric");
 lines.push(
   "",
   `| Metric | Healthy | Warn | ${names.join(" | ")} |`,
@@ -254,7 +433,7 @@ for (const m of METRICS) {
   };
   const healthy = m.gate ? "0 (gate)" : lim(m.healthy);
   const warn = m.gate || m.healthy === undefined ? "" : lim(m.warn);
-  lines.push(`| ${m.id} | ${healthy} | ${warn} | ${names.map(cell).join(" | ")} |`);
+  lines.push(`| ${m.what} (\`${m.id}\`) | ${healthy} | ${warn} | ${names.map(cell).join(" | ")} |`);
 }
 console.log(lines.join("\n"));
 writeFileSync(
