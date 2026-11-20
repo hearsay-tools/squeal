@@ -1,0 +1,67 @@
+Node v26.13.0; CPUs 24; load 14.72 14.05 16.93
+$ (cd <repo> && node <repo>/plugins/claude-code/dist/cli/squeal.mjs --version)
+0.1.578
+exit=0
+Before unread: one-minute load 14.72; CPUs 24
+$ (cd <scratch>/unread && git status --porcelain)
+
+exit=0
+$ (cd <scratch>/unread && node <repo>/plugins/claude-code/dist/cli/squeal.mjs ci record --out <scratch>/unread-parts -- node <repo>/node_modules/vitest/vitest.mjs run --maxWorkers=1)
+RUN  v5.0.3 <scratch>/unread
+      Coverage enabled with squeal
+
+
+ Test Files  3 passed (3)
+      Tests  3 passed (3)
+   Start at  16:54:53
+   Duration  643ms (worker 55%, import 22%, transform 15%, tests 7%)
+
+    Isolate  3 workers spawned · ~140ms startup each (spawn + environment, per file)
+             at least ~280ms faster with isolate: false — reuses workers across files instead of one per file
+
+squeal ci record: wrote 1 part with 3 test files to <scratch>/unread-parts
+squeal ci record: coverage records for 3 of 3 test files
+squeal ci record: Squeal's recording took 0.08 s in 5 processes and threads, 58.3% of the test time (0.14 s); 0.01 s more after the command
+exit=0
+{"header":{"format":"squeal-ci-part/4","dirty":false,"commit":"e99576855ae2042e0bf91dd5d95621c1d4606eaf"},"files":[{"path":"test/control.test.ts","outcome":"pass","checks":["pass"]},{"path":"test/declared.test.ts","outcome":"pass","checks":["pass"]},{"path":"test/lazy.test.ts","outcome":"pass","checks":["pass"]}],"evidence":{"docs/unused.md":"MISSING","src/lazy.ts":"MISSING"}}
+$ (cd <scratch>/unread-export && git status --porcelain)
+
+exit=0
+$ (cd <scratch>/unread-export && node <repo>/plugins/claude-code/dist/cli/squeal.mjs ci export --parts <scratch>/unread-parts --out <scratch>/unread.json.gz)
+Exported 1 test file, 2 results, to <scratch>/unread.json.gz.
+Left out: 2 test files whose inputs here are not what their shard read.
+squeal ci export: Squeal's recording took 0.08 s in 5 processes and threads, 58.3% of the test time (0.14 s); 0.01 s more after the command
+squeal ci export: left out test/declared.test.ts: its shard recorded other content, or none, for docs/unused.md
+squeal ci export: left out test/lazy.test.ts: its shard recorded other content, or none, for src/lazy.ts
+exit=0
+{"exported":[{"path":"test/control.test.ts","closure":["test/__snapshots__/control.test.ts.snap","test/control.test.ts"]}]}
+Before read-control: one-minute load 14.58; CPUs 24
+$ (cd <scratch>/read-control && git status --porcelain)
+
+exit=0
+$ (cd <scratch>/read-control && node <repo>/plugins/claude-code/dist/cli/squeal.mjs ci record --out <scratch>/read-control-parts -- node <repo>/node_modules/vitest/vitest.mjs run --maxWorkers=1)
+RUN  v5.0.3 <scratch>/read-control
+      Coverage enabled with squeal
+
+
+ Test Files  3 passed (3)
+      Tests  3 passed (3)
+   Start at  16:54:56
+   Duration  924ms (worker 58%, import 21%, transform 10%, tests 10%)
+
+    Isolate  3 workers spawned · ~184ms startup each (spawn + environment, per file)
+             at least ~369ms faster with isolate: false — reuses workers across files instead of one per file
+
+squeal ci record: wrote 1 part with 3 test files to <scratch>/read-control-parts
+squeal ci record: coverage records for 3 of 3 test files
+squeal ci record: Squeal's recording took 0.11 s in 5 processes and threads, 42.1% of the test time (0.26 s); 0.04 s more after the command
+exit=0
+{"header":{"format":"squeal-ci-part/4","dirty":false,"commit":"f6506f4001d3d7a4acf29936128b2df78585295a"},"files":[{"path":"test/control.test.ts","outcome":"pass","checks":["pass"]},{"path":"test/declared.test.ts","outcome":"pass","checks":["pass"]},{"path":"test/lazy.test.ts","outcome":"pass","checks":["pass"]}],"evidence":{"docs/unused.md":"8236b9a0323a81a5cc722c410cd42b5402f86f9e","src/lazy.ts":"24e545669f9a0ac4c4e77027f988b7b17f134b76"}}
+$ (cd <scratch>/read-control-export && git status --porcelain)
+
+exit=0
+$ (cd <scratch>/read-control-export && node <repo>/plugins/claude-code/dist/cli/squeal.mjs ci export --parts <scratch>/read-control-parts --out <scratch>/read-control.json.gz)
+Exported 3 test files, 6 results, to <scratch>/read-control.json.gz.
+squeal ci export: Squeal's recording took 0.11 s in 5 processes and threads, 42.1% of the test time (0.26 s); 0.04 s more after the command
+exit=0
+{"exported":[{"path":"test/control.test.ts","closure":["test/__snapshots__/control.test.ts.snap","test/control.test.ts"]},{"path":"test/declared.test.ts","closure":["docs/unused.md","test/__snapshots__/declared.test.ts.snap","test/declared.test.ts"]},{"path":"test/lazy.test.ts","closure":["src/lazy.ts","test/__snapshots__/lazy.test.ts.snap","test/lazy.test.ts"]}]}
