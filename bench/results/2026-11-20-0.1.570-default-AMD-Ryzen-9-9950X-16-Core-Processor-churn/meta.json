@@ -1,0 +1,40 @@
+{
+  "startedAt": "2026-11-20T09:15:33.842Z",
+  "squealVersion": "0.1.570",
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 9 9950X 16-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    1921.6666666666667,
+    1971.6666666666667,
+    1961
+  ],
+  "loadavgAtStart": "0.70 0.23 0.08 1/390 6934",
+  "cells": [
+    {
+      "name": "ref",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0
+    },
+    {
+      "name": "store-7g",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326
+    },
+    {
+      "name": "churn",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "spanDays": 8,
+      "churn": true
+    }
+  ],
+  "endedAt": "2026-11-20T10:15:13.311Z"
+}

@@ -1,0 +1,63 @@
+[2026-11-20T09:15:42.845Z] machine AMD Ryzen 9 9950X 16-Core Processor x4, sha256 1922/1972/1961 MiB/s
+[2026-11-20T09:15:42.846Z] template 500 files
+[2026-11-20T09:15:44.972Z] cell ref: 500 files, 1 worktrees, 0% load
+[2026-11-20T09:32:31.088Z] cell ref exit 0 in 16.8 min
+[2026-11-20T09:32:31.089Z] cell store-7g: 500 files, 1 worktrees, 0% load
+[2026-11-20T09:53:39.200Z] cell store-7g exit 0 in 21.1 min
+[2026-11-20T09:53:39.200Z] cell churn: 500 files, 1 worktrees, 0% load
+[2026-11-20T10:15:13.310Z] cell churn exit 0 in 21.6 min
+# Squeal performance scorecard
+
+Squeal 0.1.570 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU · 7.8 GiB · SHA-256 1972 MiB/s · 2026-11-20T09:15:33.842Z
+
+**Correctness: PASS** (no wrong verdict, missed push or failed session in any cell)
+
+**Overall score: 62 / 100** (mean of the cell scores; a cell is the mean of its 5 areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)
+
+| Cell | Files | Worktrees | Load | Aged rounds | Correct | Score | Hooks | Commands | Verdicts | Resources | Store |
+|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|
+| ref | 500 | 1 | 0% | 0 | ✅ | 76 | 63 | 100 | 40 | 75 | 100 |
+| store-7g | 500 | 1 | 0% | 326 | ✅ | 56 | 38 | 88 | 30 | 50 | 75 |
+| churn | 500 | 1 | 0% | 326 churn | ✅ | 55 | 63 | 100 | 30 | 50 | 33 |
+
+| Metric | Healthy | Warn | ref | store-7g | churn |
+|---|---:|---:|---:|---:|---:|
+| **Hooks** | | |  |  |  |
+| hook.preToolUse.p95 | ≤ 80 | ≤ 200 | 152 ms ⚠️ | 212 ms ❌ | 127 ms ⚠️ |
+| hook.postToolBatch.p95 | ≤ 80 | ≤ 200 | 202 ms ❌ | 259 ms ❌ | 199 ms ⚠️ |
+| hook.sessionStart.max | ≤ 750 | ≤ 2000 | 95 ms ✅ | 1133 ms ⚠️ | 1087 ms ⚠️ |
+| hook.stop.max | ≤ 1500 | ≤ 2000 | 94 ms ✅ | 165 ms ✅ | 125 ms ✅ |
+| **Commands** | | |  |  |  |
+| cmd.status.p95 | ≤ 300 | ≤ 1000 | 244 ms ✅ | 238 ms ✅ | 242 ms ✅ |
+| cmd.statusJson.p95 | ≤ 300 | ≤ 1000 | 244 ms ✅ | 266 ms ✅ | 257 ms ✅ |
+| cmd.start.main | ≤ 2000 | ≤ 5000 | 278 ms ✅ | 443 ms ✅ | 578 ms ✅ |
+| cmd.start.others.max | ≤ 2000 | ≤ 5000 | n/a | n/a | n/a |
+| cmd.runAll.overhead | ≤ 1.3 | ≤ 2 | 1.18 x ✅ | 1.30 x ⚠️ | 1.20 x ✅ |
+| cmd.runAll | report |  | 43 s | 42 s | 56 s |
+| **Verdicts** | | |  |  |  |
+| session.pushFail.p50 | ≤ 3000 | ≤ 10000 | 1284 ms ✅ | 1275 ms ✅ | 1214 ms ✅ |
+| **Correctness** | | |  |  |  |
+| session.pushFail.missed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| session.pushRecovery.missed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |
+| session.verdict.p50 | ≤ 3000 | ≤ 10000 | late ❌ | late ❌ | late ❌ |
+| session.verdict.p95 | ≤ 10000 | ≤ 30000 | late ❌ | late ❌ | late ❌ |
+| session.verdict.within60s | ≥ 95 | ≥ 80 | 50 % ❌ | 50 % ❌ | 50 % ❌ |
+| **Correctness** | | |  |  |  |
+| session.verdict.wrong | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| session.failed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |
+| session.broad.verdict | ≤ 180 | ≤ 300 | 159 s ✅ | 192 s ⚠️ | 181 s ⚠️ |
+| **Resources** | | |  |  |  |
+| res.idleCpu.maxPct | ≤ 1 | ≤ 5 | 0.4 % core ✅ | 2.3 % core ⚠️ | 2.8 % core ⚠️ |
+| res.daemonRss.max | ≤ 300 | ≤ 600 | 444 MiB ⚠️ | 420 MiB ⚠️ | 388 MiB ⚠️ |
+| res.cpuPerEdit | report |  | 1.2 s | 1.6 s | 3.8 s |
+| **Store** | | |  |  |  |
+| store.longWrites | ≤ 0 | ≤ 3 | 0 ✅ | 3 ⚠️ | 6 ❌ |
+| store.lockFailures | ≤ 0 | ≤ 3 | 0 ✅ | 0 ✅ | 0 ✅ |
+| store.size | report |  | 20 MiB | 9202 MiB | 8120 MiB |
+| store.results | report |  | 7728 | 1148280 | 1002120 |
+| store.prune.doneMin | ≤ 12 | ≤ 20 | n/a | n/a | late ❌ |
+| store.prune.s | report |  | n/a | n/a | n/a |
+| store.fullCheck.s | report |  | n/a | n/a | 77 s |
+

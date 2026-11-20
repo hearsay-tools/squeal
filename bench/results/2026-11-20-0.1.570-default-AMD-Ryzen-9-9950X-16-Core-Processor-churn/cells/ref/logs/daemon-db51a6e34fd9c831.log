@@ -1,0 +1,15 @@
+2026-11-20T09:16:29.527Z [11290] squeal daemon: serving /home/user/results/cells/ref/work/wt0 on /home/user/results/cells/ref/work/run/squeal-db51a6e34fd9c831.sock
+2026-11-20T09:16:29.560Z [11290] squeal daemon: full integrity check: ok
+2026-11-20T09:17:00.855Z [11290] squeal daemon: busy, heap in use 81 MiB over twice the last live size of 34 MiB: a last-resort GC took private memory from 287 to 171 MiB in a 65 ms pause; 44 MiB of heap in use after it
+2026-11-20T09:18:11.966Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 146 to 141 MiB in a 18 ms pause
+2026-11-20T09:19:41.969Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 146 to 141 MiB in a 17 ms pause
+2026-11-20T09:20:46.982Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 219 to 142 MiB in a 27 ms pause
+2026-11-20T09:21:51.993Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 204 to 142 MiB in a 29 ms pause
+2026-11-20T09:23:07.005Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 222 to 142 MiB in a 32 ms pause
+2026-11-20T09:24:27.030Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 231 to 142 MiB in a 51 ms pause
+2026-11-20T09:25:42.298Z [11290] squeal daemon: busy, heap in use 57 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 223 to 157 MiB in a 64 ms pause; 28 MiB of heap in use after it
+2026-11-20T09:27:02.065Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 205 to 143 MiB in a 53 ms pause
+2026-11-20T09:28:17.086Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 212 to 144 MiB in a 65 ms pause
+2026-11-20T09:29:22.054Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 207 to 144 MiB in a 24 ms pause
+2026-11-20T09:30:52.068Z [11290] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 221 to 143 MiB in a 27 ms pause
+2026-11-20T09:32:04.527Z [11290] squeal daemon: busy, heap in use 99 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 252 to 177 MiB in a 47 ms pause; 49 MiB of heap in use after it

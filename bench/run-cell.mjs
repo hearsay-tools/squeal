@@ -311,7 +311,10 @@ if (o.churn) {
   const start = cell.phases.startAged.at;
   const first = series[0]?.old ?? null;
   const firstDrop = series.find((x) => first !== null && x.old < first);
-  const zero = series.find((x) => x.old === 0);
+  // Done when under 1% of the backlog is left. Never 0: aged rows keep passing
+  // the 7-day line while the cell runs (about 110 a minute at 326 rounds), for
+  // the next hourly prune.
+  const zero = series.find((x) => first !== null && x.old !== undefined && x.old <= first / 100);
   cell.phases.churn = {
     oldResultsAtStart: first,
     oldResultsAtEnd: series.at(-1)?.old ?? null,

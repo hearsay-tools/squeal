@@ -246,7 +246,7 @@ function cellValues(cellDir) {
     ...commandValues(cell.phases, by),
     ...verdictValues(by),
     ...resourceValues(cell),
-    ...storeValues(cell),
+    ...storeValues(cell, cellDir),
     "session.failed": cell.phases.sessions.filter((x) => x.code !== 0).length,
   };
   return { cell, v };
@@ -311,9 +311,30 @@ function resourceValues(cell) {
   };
 }
 
-function storeValues(cell) {
+/**
+ * Churn numbers from prune-watch.json, when the cell wrote one: prune is done
+ * when under 1% of the expired backlog is left (aged rows keep expiring while
+ * the cell runs, so the count never stays at 0).
+ */
+function churnFromWatch(cellDir, cell) {
+  const file = join(cellDir, "prune-watch.json");
+  const start = cell.phases.startAged?.at;
+  if (!cell.phases.churn || !existsSync(file) || start === undefined) return cell.phases.churn;
+  const series = JSON.parse(readFileSync(file, "utf8")).filter((x) => x.old !== undefined);
+  const first = series[0]?.old ?? null;
+  const drop = series.find((x) => first !== null && x.old < first);
+  const done = series.find((x) => first !== null && x.old <= first / 100);
+  return {
+    ...cell.phases.churn,
+    pruneStartedAfterS: drop ? (drop.t - start) / 1000 : null,
+    pruneDoneAfterS: done ? (done.t - start) / 1000 : null,
+    pruneS: drop && done ? (done.t - drop.t) / 1000 : null,
+  };
+}
+
+function storeValues(cell, cellDir) {
   const st = cell.store;
-  const churn = cell.phases.churn;
+  const churn = churnFromWatch(cellDir, cell);
   const doneS = churn?.pruneDoneAfterS ?? null;
   return {
     "store.longWrites": st.longWrites,

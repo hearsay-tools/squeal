@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "startedAt": "2026-11-20T09:15:33.842Z",
+    "squealVersion": "0.1.570",
+    "node": "v24.22.1",
+    "cpuModel": "AMD Ryzen 9 9950X 16-Core Processor",
+    "vcpus": 4,
+    "memGiB": 7.8,
+    "freeMemGiB": 6.9,
+    "sha256MiBPerS": [
+      1921.6666666666667,
+      1971.6666666666667,
+      1961
+    ],
+    "loadavgAtStart": "0.70 0.23 0.08 1/390 6934",
+    "cells": [
+      {
+        "name": "ref",
+        "files": 500,
+        "worktrees": 1,
+        "load": 0
+      },
+      {
+        "name": "store-7g",
+        "files": 500,
+        "worktrees": 1,
+        "load": 0,
+        "ageRounds": 326
+      },
+      {
+        "name": "churn",
+        "files": 500,
+        "worktrees": 1,
+        "load": 0,
+        "ageRounds": 326,
+        "spanDays": 8,
+        "churn": true
+      }
+    ],
+    "endedAt": "2026-11-20T10:15:13.311Z"
+  },
+  "correctness": "pass",
+  "gateFails": {
+    "ref": [],
+    "store-7g": [],
+    "churn": []
+  },
+  "overall": 64.44444444444444,
+  "runAreas": {
+    "Hooks": 54.166666666666664,
+    "Commands": 95.83333333333333,
+    "Verdicts": 33.333333333333336,
+    "Resources": 58.333333333333336,
+    "Store": 80.55555555555556
+  },
+  "scores": {
+    "ref": 75.5,
+    "store-7g": 56,
+    "churn": 61.83333333333333
+  },
+  "areaScores": {
+    "ref": {
+      "Hooks": 0.625,
+      "Commands": 1,
+      "Verdicts": 0.4,
+      "Resources": 0.75,
+      "Store": 1
+    },
+    "store-7g": {
+      "Hooks": 0.375,
+      "Commands": 0.875,
+      "Verdicts": 0.3,
+      "Resources": 0.5,
+      "Store": 0.75
+    },
+    "churn": {
+      "Hooks": 0.625,
+      "Commands": 1,
+      "Verdicts": 0.3,
+      "Resources": 0.5,
+      "Store": 0.6666666666666666
+    }
+  },
+  "values": {
+    "ref": {
+      "hook.preToolUse.p95": 152.39212800000092,
+      "hook.postToolBatch.p95": 201.72357940000364,
+      "hook.sessionStart.max": 94.819118,
+      "hook.stop.max": 93.57646799995564,
+      "hook.overTimeout": 0,
+      "cmd.status.p95": 244.23260239994852,
+      "cmd.statusJson.p95": 244.14324599999236,
+      "cmd.start.main": 278.3454400000046,
+      "cmd.start.others.max": null,
+      "cmd.runAll.overhead": 1.1754442672040786,
+      "cmd.runAll": 42.938535406,
+      "session.pushFail.p50": 1284.0945165000448,
+      "session.pushFail.missed": 0,
+      "session.pushRecovery.missed": 0,
+      "session.verdict.p50": null,
+      "session.verdict.p95": null,
+      "session.verdict.within60s": 50,
+      "session.verdict.wrong": 0,
+      "session.broad.verdict": 159.25247759600006,
+      "res.idleCpu.maxPct": 0.41666666666666613,
+      "res.daemonRss.max": 443.5390625,
+      "res.cpuPerEdit": 1.1621052631578948,
+      "store.longWrites": 0,
+      "store.lockFailures": 0,
+      "store.size": 19.88238525390625,
+      "store.results": 7728,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
+    },
+    "store-7g": {
+      "hook.preToolUse.p95": 211.90991650000774,
+      "hook.postToolBatch.p95": 259.22554139999994,
+      "hook.sessionStart.max": 1133.381689,
+      "hook.stop.max": 165.26932999992277,
+      "hook.overTimeout": 0,
+      "cmd.status.p95": 238.45134479997213,
+      "cmd.statusJson.p95": 266.04749319999684,
+      "cmd.start.main": 443.2079960000119,
+      "cmd.start.others.max": null,
+      "cmd.runAll.overhead": 1.3010568556361861,
+      "cmd.runAll": 41.606876490000005,
+      "session.pushFail.p50": 1274.849400500023,
+      "session.pushFail.missed": 0,
+      "session.pushRecovery.missed": 0,
+      "session.verdict.p50": null,
+      "session.verdict.p95": null,
+      "session.verdict.within60s": 50,
+      "session.verdict.wrong": 0,
+      "session.broad.verdict": 192.04282068700005,
+      "res.idleCpu.maxPct": 2.2666666666666666,
+      "res.daemonRss.max": 419.98046875,
+      "res.cpuPerEdit": 1.595263157894737,
+      "store.longWrites": 3,
+      "store.lockFailures": 0,
+      "store.size": 9202.238830566406,
+      "store.results": 1148280,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
+    },
+    "churn": {
+      "hook.preToolUse.p95": 127.29172269998226,
+      "hook.postToolBatch.p95": 198.52516480000554,
+      "hook.sessionStart.max": 1087.238962,
+      "hook.stop.max": 125.28390899999067,
+      "hook.overTimeout": 0,
+      "cmd.status.p95": 242.1655797999818,
+      "cmd.statusJson.p95": 257.31286020001863,
+      "cmd.start.main": 578.1571230000118,
+      "cmd.start.others.max": null,
+      "cmd.runAll.overhead": 1.2007642258529376,
+      "cmd.runAll": 55.874679335,
+      "session.pushFail.p50": 1213.919160499965,
+      "session.pushFail.missed": 0,
+      "session.pushRecovery.missed": 0,
+      "session.verdict.p50": null,
+      "session.verdict.p95": null,
+      "session.verdict.within60s": 50,
+      "session.verdict.wrong": 0,
+      "session.broad.verdict": 180.59056689999997,
+      "res.idleCpu.maxPct": 2.7833333333333328,
+      "res.daemonRss.max": 387.65625,
+      "res.cpuPerEdit": 3.819473684210526,
+      "store.longWrites": 6,
+      "store.lockFailures": 0,
+      "store.size": 8120.16796875,
+      "store.results": 1002120,
+      "store.prune.doneMin": 1.4173666666666667,
+      "store.prune.s": 19.997,
+      "store.fullCheck.s": 76.657,
+      "session.failed": 0
+    }
+  }
+}
