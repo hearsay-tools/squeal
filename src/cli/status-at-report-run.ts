@@ -1,6 +1,7 @@
 import type { RunEstimate } from "../core/code/gate/estimate.js";
 import { changedText } from "../core/commit/at-keys-walk.js";
 import { maybeStoredText } from "./status-at-report-files.js";
+import { noFitText } from "./status-at-run-fit.js";
 
 /*
  * Spec 023 D1 (row 023-07): `--run`'s part of the `status --at` report:
@@ -50,6 +51,41 @@ export interface RunUse {
   readonly rerun: string | null;
   /** Row 023-19 (P3): each batch's paths and seconds, its child's start included. */
   readonly batches?: readonly { readonly paths: number; readonly seconds: number }[];
+  /** Row 023-29 (R3): each failed batch setup at the commit, with the files it left not run. */
+  readonly setupFailed?: readonly SetupCount[];
+  /** Files whose node:test `prepare` failed at the commit, not run. */
+  readonly notPrepared?: number;
+  /** Row 023-29 (R1): the working tree's side of the run; absent when it did not run. */
+  readonly now?: NowRunUse;
+  /**
+   * Row 023-29 (R4): with files the budget left and no `--timeout` up to
+   * the cap that fits, what they need in seconds (`null`: unknown) and from
+   * what; then `rerun` is `null`.
+   */
+  readonly rerunNeeds?: { readonly seconds: number | null; readonly from: "rate" | "durations" };
+}
+
+/** Row 023-29 (R3): one failed setup, `<group>: <failure>`, and the files it left not run. */
+export interface SetupCount {
+  readonly setup: string;
+  readonly files: number;
+}
+
+/** Row 023-29 (R1): what `--run` ran in the working tree. */
+export interface NowRunUse {
+  /** Through the worktree's daemon, or the gate in the worktree (no daemon serves it). */
+  readonly how: "daemon" | "gate";
+  /** The files the change selects that had no result in the working tree. */
+  readonly selected: number;
+  /** Of those, the ones with a pass or a fail now. */
+  readonly ran: number;
+  /** Of those, the ones the budget left not run (the gate only: the daemon goes on with its). */
+  readonly notRun: number;
+  /** Its time in ms; `null` when nothing ran. */
+  readonly gateMs: number | null;
+  readonly setupFailed: readonly SetupCount[];
+  /** Why the daemon or the gate gave no result for some files; `null` when none. */
+  readonly problem: string | null;
 }
 
 /** Row 023-18 (D2): one line per reason a ran file was not stored, with how many. */
@@ -89,7 +125,44 @@ export function runLines(run: RunUse, at: string): string[] {
   const needs = run.notComparable - (run.changed === null ? 0 : unstored);
   if (needs > 0)
     lines.push(`${needs} not run: their closure needs a path git does not hold at ${at}`);
-  if (run.rerun !== null)
-    lines.push(`${run.notRun} not run (budget). A rerun that fits: ${run.rerun}`);
+  lines.push(...setupLines(run.setupFailed ?? [], ""));
+  const notPrepared = run.notPrepared ?? 0;
+  if (notPrepared > 0) lines.push(`${notPrepared} not run: their node:test prepare failed`);
+  if (run.now !== undefined) lines.push(...nowLines(run.now));
+  lines.push(...budgetLines(run, at));
   return lines;
+}
+
+/** R3: one line per failed setup, never the budget. */
+function setupLines(failed: readonly SetupCount[], side: string): string[] {
+  return failed.map((f) => `${side}${f.files} not run: the batch's setup failed (${f.setup})`);
+}
+
+/** R1: the working tree's side. */
+function nowLines(now: NowRunUse): string[] {
+  if (now.selected === 0)
+    return ["--run, now: every test file the change selects has a result in the working tree"];
+  const how = now.how === "daemon" ? "through this worktree's daemon" : "by the gate in it";
+  const lines = [
+    `--run, now: ${now.ran} of ${now.selected} test files the change selects with no result in the working tree ran there, ${how}`,
+  ];
+  lines.push(...setupLines(now.setupFailed, "now: "));
+  const without = now.selected - now.ran - now.notRun;
+  const setup = now.setupFailed.reduce((n, f) => n + f.files, 0);
+  if (now.problem !== null && without - setup > 0)
+    lines.push(`now: ${without - setup} without a result: ${now.problem}`);
+  return lines;
+}
+
+/** R4: the files the budget left, both sides, with the rerun that fits or what they need. */
+function budgetLines(run: RunUse, at: string): string[] {
+  const now = run.now?.how === "gate" ? run.now.notRun : 0;
+  const left = run.notRun + now;
+  if (left === 0) return [];
+  const sides =
+    now === 0 ? "" : run.notRun === 0 ? ", now" : `: ${run.notRun} at ${at}, ${now} now`;
+  const base = `${left} not run (budget${sides})`;
+  if (run.rerun !== null) return [`${base}. A rerun that fits: ${run.rerun}`];
+  const needs = run.rerunNeeds ?? { seconds: null, from: "durations" as const };
+  return [noFitText(base, { needs: needs.seconds, from: needs.from })];
 }

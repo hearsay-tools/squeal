@@ -58,8 +58,16 @@ export type SideState =
     }
   | { readonly state: "absent" }
   | { readonly state: "not determined"; readonly reason: string }
-  /** Row 023-07, D4.6: `--run` selected it and did not start it, for want of budget or of its `prepare`. */
-  | { readonly state: "not run"; readonly reason: "budget" | "prepare" }
+  /**
+   * Row 023-07, D4.6: `--run` selected it and did not start it, for want of
+   * budget or of its `prepare`; row 023-29 (R3): or its batch's setup
+   * failed, `setup` naming the group and the failure.
+   */
+  | {
+      readonly state: "not run";
+      readonly reason: "budget" | "prepare" | "setup";
+      readonly setup?: string;
+    }
   /**
    * Row 023-07, D4.9: its closure at the commit reads a path git does not
    * hold there; or ("Whole-checkout check") the install changed the

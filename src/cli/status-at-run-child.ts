@@ -10,6 +10,7 @@ import type { HostLoad } from "../core/retry/load.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import { type GateFilesProgress, type GateFilesResult, runGateFiles } from "./code-gate-files.js";
 import { PARENT_PID_VARIABLE, takeParentPid, watchParent } from "./code-gate-parent.js";
+import { type SetupFailure, setupOf } from "./status-at-run-setup.js";
 
 /*
  * Spec 023 D4.4, D6 (row 023-07, review wave-7 B1 and B3): `--run` runs
@@ -67,7 +68,11 @@ export function noLoadRetry(): HostLoad {
  * child kept as it went: what completed, and what was kept at which key.
  */
 export type RunAnswer =
-  | { readonly result: GateFilesResult }
+  | {
+      readonly result: GateFilesResult;
+      /** Row 023-29 (R3): the runs that failed to start, as the gate's notes told them. */
+      readonly setup?: readonly SetupFailure[];
+    }
   | { readonly error: string; readonly stopped?: true; readonly record?: GateFilesProgress };
 
 /** The request file this process was given, taken out of `env` at once; `undefined` when none. */
@@ -84,6 +89,7 @@ export async function runChild(request: string): Promise<number> {
   if (parent !== undefined) watchParent(parent);
   const asked = JSON.parse(readFileSync(request, "utf8")) as RunRequest;
   let answer: RunAnswer;
+  const setup: SetupFailure[] = [];
   try {
     const result = await runGateFiles({
       root: asked.tree,
@@ -94,10 +100,14 @@ export async function runChild(request: string): Promise<number> {
       ...(asked.rerunFailures === true ? { rerunFailures: true } : {}),
       ...(asked.retry === false ? { hostLoad: noLoadRetry } : {}),
       ...(asked.progress === undefined ? {} : { progress: keeper(asked.progress) }),
-      note: (text) => process.stderr.write(`squeal: ${text}\n`),
+      note: (text) => {
+        const failed = setupOf(text);
+        if (failed !== null) setup.push(failed);
+        process.stderr.write(`squeal: ${text}\n`);
+      },
       output: () => {},
     });
-    answer = { result };
+    answer = setup.length === 0 ? { result } : { result, setup };
   } catch (error) {
     answer = { error: error instanceof Error ? error.message : String(error) };
   }

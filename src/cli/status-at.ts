@@ -1,23 +1,28 @@
-import { spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { type CheckoutHooks, resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
-import { selects } from "../core/commit/at-keys-narrow.js";
 import type { CheckoutOptions } from "../core/commit/at-keys-walk.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { readHead } from "../core/daemon-loop/head.js";
 import { runGit } from "../core/fs/git.js";
 import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
-import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
+import { fillNow, nowCount } from "./status-at-both.js";
 import { commitSide } from "./status-at-commit.js";
 import { headRefusal, nextOf, nextProbe } from "./status-at-next.js";
 import { listLate, nowSide } from "./status-at-now.js";
+import { unionRefs } from "./status-at-refs.js";
 import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
-import { type AtRun, atRun, RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
+import {
+  type AtRun,
+  type AtRunInput,
+  atRun,
+  RUN_TIMEOUT_SECONDS,
+  type RunArgs,
+} from "./status-at-run.js";
 import { runChild, takeRunRequest } from "./status-at-run-child.js";
 
 /*
@@ -109,7 +114,6 @@ function valuedOption(
 export function asksAt(args: readonly string[]): boolean {
   return args.some((arg) => arg === "--at" || arg.startsWith("--at="));
 }
-
 /** Where the command runs: the worktree, its store, the commit and the paths. */
 interface Located {
   readonly root: AbsolutePath;
@@ -183,25 +187,21 @@ export async function statusAtCommand(
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
   const runArgs = args.run ?? null;
   const { batchFiles, ...checkoutOptions } = options;
-  const ran: AtRun | null =
-    runArgs === null
-      ? null
-      : atRun({
-          args: runArgs,
-          root,
-          commonDir,
-          own: worktreeId,
-          commit,
-          given: args.commit,
-          paths: args.paths,
-          env,
-          relaunch: io.relaunch,
-          started: performance.now(),
-          // The estimate goes to stderr in both modes (D4.5); the run's own notes in text mode.
-          note,
-          forward: (text) => (args.json ? undefined : io.stderr(text)),
-          ...(batchFiles === undefined ? {} : { batchFiles }),
-        });
+  const forward = (text: string) => (args.json ? undefined : io.stderr(text));
+  const batch = batchFiles === undefined ? {} : { batchFiles };
+  const ran = startRun(args, runArgs, {
+    root,
+    commonDir,
+    own: worktreeId,
+    commit,
+    env,
+    relaunch: io.relaunch,
+    // The estimate goes to stderr in both modes (D4.5); the run's own notes in text mode.
+    note,
+    forward,
+    ...batch,
+    nowCount: nowCount(now),
+  });
   // Row 023-24 (Q1): without `--run`, what it would run, for the report's last line.
   const probe =
     ran === null ? nextProbe({ root, commit, given: args.commit, paths: args.paths }) : null;
@@ -219,7 +219,11 @@ export async function statusAtCommand(
   const sides = { now: now.sources, at: at.sources, failed: at.failure !== null };
   const { refs, unmatched } = unionRefs(now.refs, at.refs, paths, sides, root, commit);
   // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
-  const current = await listLate(input, now, refs);
+  const listed = await listLate(input, now, refs);
+  // Row 023-29 (R1): `--run` fills the working tree's side too, then reads it again.
+  const fill = { refs, current: listed, read: input, relaunch: io.relaunch, forward, ...batch };
+  const both = ran === null ? null : await fillNow({ ...fill, ran });
+  const current = both?.current ?? listed;
   const files = compareSides(refs, state, current.state);
   const head = await readHead(root);
   const report: AtReport = {
@@ -234,12 +238,23 @@ export async function statusAtCommand(
     failure: at.failure,
     files,
     ...(unmatched.length === 0 ? {} : { unmatched }),
-    ...(ran === null ? {} : { run: ran.use() }),
+    ...(ran === null ? {} : { run: ran.use(both?.part) }),
     ...nextOf(probe, at),
   };
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
   return at.failure === null && unmatched.length === 0 ? exitCode(files) : 3;
+}
+
+/** D4: `--run`'s hooks for the commit's checkout, its budget from now; `null` without `--run`. */
+function startRun(
+  args: AtArgs,
+  runArgs: RunArgs | null,
+  base: Omit<AtRunInput, "args" | "given" | "paths" | "started">,
+): AtRun | null {
+  if (runArgs === null) return null;
+  const started = performance.now();
+  return atRun({ ...base, args: runArgs, given: args.commit, paths: args.paths, started });
 }
 
 /** The checkout's hooks: `--run`'s, with its install inside the one budget (D4.6), or Q1's probe. */
@@ -254,46 +269,6 @@ function hooksOf(
     beforeRemove: ran.beforeRemove,
     installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, (runArgs?.timeoutSeconds ?? 0) * 1000),
   };
-}
-
-/**
- * Both sides' files, by `testFileId`. Row 023-19 (P4): a path that selects
- * no test file by path on a side selects there the files whose closure
- * holds it; one that selects nothing either way, and that the commit or
- * the working tree holds, is `unmatched`, as `squeal status <path>` says
- * it. A path that exists on neither side, or that a failed checkout could
- * not answer, is a file of its own in the default project, so it is
- * answered (absent, or not determined) and not dropped.
- */
-function unionRefs(
-  now: readonly TestFileRef[],
-  at: readonly TestFileRef[],
-  paths: readonly RelativePath[] | null,
-  sides: {
-    readonly now: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
-    readonly at: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
-    readonly failed: boolean;
-  },
-  root: AbsolutePath,
-  commit: string,
-): { refs: TestFileRef[]; unmatched: RelativePath[] } {
-  const all = new Map([...now, ...at].map((ref) => [testFileId(ref), ref]));
-  const unmatched: RelativePath[] = [];
-  for (const path of paths ?? []) {
-    if ([...all.values()].some((ref) => selects([path], ref.path))) continue;
-    const readers = [...(sides.now.get(path) ?? []), ...(sides.at.get(path) ?? [])];
-    if (readers.length > 0) continue;
-    if (!sides.failed && (existsSync(join(root, path)) || inCommit(root, commit, path)))
-      unmatched.push(path);
-    else all.set(testFileId({ project: "", path }), { project: "", path });
-  }
-  return { refs: [...all.values()], unmatched };
-}
-
-/** Whether `commit` holds `path`, a file or a folder. */
-function inCommit(root: AbsolutePath, commit: string, path: RelativePath): boolean {
-  const found = spawnSync("git", ["cat-file", "-e", `${commit}:${path}`], { cwd: root });
-  return found.status === 0;
 }
 
 /** `path`, given from `cwd`, relative to `root` in git's form; `null` outside it. */

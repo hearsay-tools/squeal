@@ -75,7 +75,10 @@ describe("squeal status --at --run (row 023-07, D4)", SLOW, () => {
       { commit: a, run: { allMissing: false, timeoutSeconds: 600 } },
       options,
     );
-    expect(third.out).toContain(`--run: no file with no result at ${a.slice(0, 9)} to run`);
+    // Row 023-29 (R8): the unselected file has no result there; the count says so.
+    expect(third.out).toContain(
+      `--run: no file with no result at ${a.slice(0, 9)} that the change selects to run`,
+    );
     clean(f);
   });
 
@@ -88,9 +91,11 @@ describe("squeal status --at --run (row 023-07, D4)", SLOW, () => {
     const cut = await run(f, { commit: a, run: { allMissing: false, timeoutSeconds: 3 } }, options);
     expect(cut.code).toBe(3);
     expect(cut.out).toContain(`${TEST.path}: not run (budget) -> no result`);
+    // Row 023-29 (R1, R4): each side took half the budget; no file ended, so no rate gives a fit.
     expect(cut.out).toContain(
-      `1 not run (budget). A rerun that fits: squeal status --at ${a} --run --timeout 60`,
+      `2 not run (budget: 1 at ${a.slice(0, 9)}, 1 now); no file ended in this run and none has a stored duration, so the time they need is unknown`,
     );
+    expect(cut.out).not.toContain("A rerun that fits");
     const json = await run(
       f,
       { commit: a, json: true, run: { allMissing: false, timeoutSeconds: 3 } },
@@ -157,8 +162,10 @@ describe("squeal status --at --run (row 023-07, D4)", SLOW, () => {
       `--run: 3 of 3 test files with no result at ${at} ran in its checkout, 3 stored at its keys`,
     );
     expect(all.out).toContain(`1 not run: their closure needs a path git does not hold at ${at}`);
+    // Row 023-29 (R1): the working tree's side ran too, so the run files compare.
+    expect(all.out).toContain("0 pass -> fail, 0 fail -> pass, 3 unchanged, 1 unknown");
     expect(all.out).toContain(
-      `${BAD.path}: fail -> no result (at ${at}: value; run by this command, stored)`,
+      "--run, now: 4 of 4 test files the change selects with no result in the working tree ran there, by the gate in it",
     );
     const json = await run(f, { commit: b, json: true }, options);
     expect(fileOf(json.out, BAD.path)?.at).toMatchObject({ state: "fail", failed: ["value"] });

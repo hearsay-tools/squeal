@@ -42,6 +42,9 @@ export function originText(origin: Origin): string {
 }
 
 function word(side: SideState): string {
+  // Row 023-29 (R3): the group and the failure, never the budget.
+  if (side.state === "not run" && side.reason === "setup")
+    return `not run (the batch's setup failed: ${side.setup ?? "no text"})`;
   if (side.state === "not comparable" && side.ran !== undefined)
     return `${side.ran} when run, not stored (${side.reason})`;
   if (

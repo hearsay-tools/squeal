@@ -7,19 +7,20 @@ import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
-import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
+import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { storedDurations } from "./code-gate-durations.js";
 import type { RunUse, SideState } from "./status-at-report.js";
+import type { NowRunUse } from "./status-at-report-run.js";
 import {
-  Batches,
   type BatchTime,
   estimateOf,
   estimateText,
-  stopMargin,
   tellsEstimate,
 } from "./status-at-run-batches.js";
 import { type RunAnswer, runInChild } from "./status-at-run-child.js";
+import { rerunFit, type SideFit, setupCounts } from "./status-at-run-fit.js";
+import { runBatches } from "./status-at-run-loop.js";
 import { outcomesOf } from "./status-at-run-outcome.js";
 import { noResult, type Selection, selector } from "./status-at-run-select.js";
 
@@ -54,9 +55,6 @@ export interface RunArgs {
  */
 export const RUN_TIMEOUT_SECONDS = 300;
 
-/** A rerun's `--timeout` gives the files left this many times their estimate (020 row 020-45). */
-const RERUN_FACTOR = 2;
-
 export interface AtRunInput {
   readonly args: RunArgs;
   /** The user's worktree, its git common dir, and this worktree's id. */
@@ -79,6 +77,18 @@ export interface AtRunInput {
   readonly forward: (text: string) => void;
   /** Row 023-19, for tests: each batch's paths; else sized from this machine (`Batches`). */
   readonly batchFiles?: number;
+  /**
+   * Row 023-29 (R1): how many files the working tree's side runs after
+   * this one, given the selection; this side takes its share of what is
+   * left of the budget by its own count. Absent: none.
+   */
+  readonly nowCount?: (selection: Selection) => number;
+}
+
+/** R1: the working tree's side, for the report and the rerun's fit. */
+export interface NowPart {
+  readonly use: NowRunUse;
+  readonly fit: SideFit;
 }
 
 export interface AtRun {
@@ -90,14 +100,19 @@ export interface AtRun {
    * the change did not select it.
    */
   state(ref: TestFileRef, keyed: SideState): SideState;
-  /** D1's budget use, for the report. */
-  use(): RunUse;
+  /** R1: what the change selects, for the working tree's side; `null` when no selection was made. */
+  selects(): NonNullable<Selection["selects"]> | null;
+  /** `performance.now()` at which the one budget ends, and the budget in seconds. */
+  readonly endMs: number;
+  readonly timeoutSeconds: number;
+  /** D1's budget use, for the report, with the working tree's side when it ran. */
+  use(now?: NowPart): RunUse;
 }
 
 /** D4: the run, as hooks the keying calls in its checkout. */
 export function atRun(input: AtRunInput): AtRun {
   const { args, commit, started } = input;
-  const budgetMs = args.timeoutSeconds * 1000;
+  const endMs = started + args.timeoutSeconds * 1000;
   const elapsed = () => performance.now() - started;
   const states = new Map<string, SideState>();
   let selection: Selection = { run: [], states: new Map() };
@@ -132,81 +147,58 @@ export function atRun(input: AtRunInput): AtRun {
         input.note(estimateText(estimate, commit, args.timeoutSeconds, call));
       }
       if (run.length > 0) await runFiles(checkout, run, keyed);
+      leftOut = run.filter((f) => {
+        const s = states.get(testFileId(f.ref));
+        return s?.state === "not run" && s.reason === "budget";
+      });
     } finally {
       durations?.close();
     }
   };
 
-  /**
-   * Row 023-19 (P3): the selection in batches of whole paths, one gate
-   * child each, until the budget ends. Each batch's gate gets the time
-   * left but a margin; its group is stopped at the budget's end. A batch
-   * that answered is read back and kept whatever a later one does; the
-   * files no batch started read `not run (budget)`.
-   */
+  /** P3 and R3 through `runBatches`, in this side's share of the budget (R1). */
   async function runFiles(
     checkout: Checkout,
     run: readonly KeyedFile[],
     keyed: readonly KeyedFile[],
   ): Promise<void> {
     overheadMs = elapsed();
-    const byPath = new Map<RelativePath, KeyedFile[]>();
-    for (const file of run) byPath.set(file.ref.path, [...(byPath.get(file.ref.path) ?? []), file]);
-    let paths = [...byPath.keys()].sort();
-    const batches = new Batches(args.timeoutSeconds, {
-      ...(input.batchFiles === undefined ? {} : { fixed: input.batchFiles }),
-    });
-    const seconds = (path: RelativePath) => {
-      const known = (byPath.get(path) ?? []).map((f) => durationsOf(f.ref));
-      return known.some((s) => s !== null) ? Math.max(...known.map((s) => s ?? 0)) : null;
-    };
-    let ended: { readonly error: string; readonly stopped?: true } | null = null;
-    while (paths.length > 0 && ended === null) {
-      const left = Math.floor((budgetMs - elapsed()) / 1000);
-      const gateSeconds = left - stopMargin(left);
-      if (gateSeconds < 1) break;
+    const now = input.nowCount?.(selection) ?? 0;
+    const share = (endMs - performance.now()) * (run.length / (run.length + now));
+    const end = await runBatches({
+      files: run,
+      refOf: (file) => file.ref,
+      policy: readPolicy(checkout.tree),
+      timeoutSeconds: args.timeoutSeconds,
+      ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
+      endMs: performance.now() + share,
+      secondsOf: (ref) => durationsOf(ref),
       // Review wave-13 B1: 023-07's whole-checkout check before every later batch. A test of an
       // earlier batch may have changed a tracked path; from then on nothing is the commit's.
-      if (changed === null && batchTimes.length > 0) {
+      beforeLater: async () => {
+        if (changed !== null) return;
         const path = await checkoutChange(input.root, checkout.tree, checkout.commit);
         if (path !== null) changed = { path, by: "run" };
-      }
-      const take = paths.slice(0, batches.next(paths, seconds));
-      paths = paths.slice(take.length);
-      const files = take.flatMap((path) => byPath.get(path) ?? []);
-      const started = performance.now();
-      const answer = await runInChild({
-        relaunch: input.relaunch,
-        checkout,
-        files: take,
-        budgetSeconds: gateSeconds,
-        stopAfterSeconds: left,
-        // "Whole-checkout check": a checkout the install or an earlier batch changed stores nothing.
-        store: changed === null,
-        env: input.env,
-        forward: input.forward,
-      });
-      const took = performance.now() - started;
-      gateMs = (gateMs ?? 0) + Math.round(took);
-      batches.took(take.length, took / 1000);
-      batchTimes = batches.ran();
-      if ("result" in answer && answer.result.timedOut) timedOut = true;
-      // A child that could not run or answer stops the batches: the next would end alike.
-      if ("error" in answer) {
-        ended = answer;
-        if (answer.stopped === true) timedOut = true;
-      }
-      await readBack(checkout, files, keyed, answer);
-    }
-    const unstarted = paths.flatMap((path) => byPath.get(path) ?? []);
-    if (unstarted.length > 0) {
-      // Not started for want of budget, unless a child failed for a reason of its own.
-      const answer: RunAnswer =
-        ended !== null && ended.stopped !== true ? ended : { error: "budget", stopped: true };
-      if (answer.stopped === true) timedOut = true;
-      await readBack(checkout, unstarted, keyed, answer);
-    }
-    leftOut = run.filter((f) => states.get(testFileId(f.ref))?.state === "not run");
+      },
+      run: (files, budgetSeconds, stopAfterSeconds) =>
+        runInChild({
+          relaunch: input.relaunch,
+          checkout,
+          files,
+          budgetSeconds,
+          stopAfterSeconds,
+          // "Whole-checkout check": a checkout the install or an earlier batch changed stores nothing.
+          store: changed === null,
+          env: input.env,
+          forward: input.forward,
+        }),
+      readBack: (files, answer) => readBack(checkout, files, keyed, answer),
+      stateOf: (file) => states.get(testFileId(file.ref)),
+      setState: (file, state) => states.set(testFileId(file.ref), state),
+    });
+    gateMs = end.gateMs;
+    timedOut = end.timedOut;
+    batchTimes = end.batches;
   }
 
   /** One batch's files read back (row 023-18, D1: at the key the gate kept each at). */
@@ -234,12 +226,23 @@ export function atRun(input: AtRunInput): AtRun {
     for (const [id, state] of outcomes) states.set(id, state);
   }
 
-  const use = (): RunUse => {
+  const use = (now?: NowPart): RunUse => {
     const all = [...states.values()];
     const ran = all.filter(
       (s) => s.state === "pass" || s.state === "fail" || (s.state === "not comparable" && s.ran),
     );
-    const notRun = all.filter((s) => s.state === "not run").length;
+    const notRun = all.filter((s) => s.state === "not run" && s.reason === "budget").length;
+    const notPrepared = all.filter((s) => s.state === "not run" && s.reason === "prepare").length;
+    const here: SideFit = {
+      left: notRun,
+      ran: ran.length,
+      gateMs,
+      estimate: estimateOf(leftOut, durationsOf).seconds,
+    };
+    // R4: the fit from this run's rate on each side, both sides in one rerun.
+    const left = notRun + (now?.use.how === "gate" ? now.use.notRun : 0);
+    const fit =
+      left === 0 ? null : rerunFit(overheadMs, now === undefined ? [here] : [here, now.fit]);
     return {
       timeoutSeconds: args.timeoutSeconds,
       usedMs: Math.round(elapsed()),
@@ -257,22 +260,18 @@ export function atRun(input: AtRunInput): AtRun {
       notComparable: all.filter((s) => s.state === "not comparable").length,
       timedOut,
       estimate,
-      rerun: notRun === 0 ? null : rerunCommand(input, rerunSeconds()),
+      rerun: fit !== null && "seconds" in fit ? rerunCommand(input, fit.seconds) : null,
+      ...(fit !== null && "needs" in fit
+        ? { rerunNeeds: { seconds: fit.needs, from: fit.from } }
+        : {}),
       batches: batchTimes.map((b) => ({
         paths: b.paths,
         seconds: Math.round(b.seconds * 10) / 10,
       })),
+      setupFailed: setupCounts(all),
+      ...(notPrepared === 0 ? {} : { notPrepared }),
+      ...(now === undefined ? {} : { now: now.use }),
     };
-  };
-
-  /** Row 020-45's rule: what was spent before the run, plus twice the files left's estimate. */
-  const rerunSeconds = (): number => {
-    const left = estimateOf(leftOut, durationsOf).seconds;
-    const seconds =
-      left === null
-        ? RERUN_FACTOR * args.timeoutSeconds
-        : overheadMs / 1000 + RERUN_FACTOR * Math.max(1, left);
-    return Math.max(60, Math.ceil(seconds / 60) * 60);
   };
 
   const state = (ref: TestFileRef, keyed: SideState): SideState => {
@@ -283,7 +282,9 @@ export function atRun(input: AtRunInput): AtRun {
     return unselected ? { ...keyed, notSelected: true } : keyed;
   };
 
-  return { whileOpen, beforeRemove, state, use };
+  const selects = () => selection.selects ?? null;
+  const { timeoutSeconds } = args;
+  return { whileOpen, beforeRemove, state, selects, endMs, timeoutSeconds, use };
 }
 
 /** 020's rerun line: this call's own arguments with `seconds` as its `--timeout`. */
