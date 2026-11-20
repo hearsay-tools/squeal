@@ -185,7 +185,7 @@ export async function withCheckout<T>(
   const { root, commonDir, commit } = input;
   const cacheRoot = options.cacheRoot ?? cacheCheckoutsRoot();
   const dirs = [cacheCheckoutsDir(cacheRoot, commonDir), gitCheckoutsDir(commonDir)];
-  await sweepCheckouts({ commonDir, dirs });
+  await sweepCheckouts({ commonDir, dirs, note: options.note });
   const command = await installCommand(root, await manifestOf(root));
   const store = await packageStore(root, command);
   const location = locateCheckouts({ commonDir, cacheRoot, store, root });
@@ -230,7 +230,7 @@ export async function withCheckout<T>(
     }
     return await body(checkout, install, { changed, ms: Math.round(checkMs) });
   } finally {
-    await removeCheckout(checkout);
+    await removeCheckout(checkout, { note: options.note });
   }
 }
 
