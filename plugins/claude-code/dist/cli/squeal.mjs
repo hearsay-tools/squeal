@@ -85917,14 +85917,18 @@ async function endpointsAfter(before5) {
   const head2 = await gitHead(root);
   if (head2 !== commit) return `HEAD moved during the command (${commit} to ${head2 ?? "none"})`;
   const after3 = await hashAll(root, format2, paths);
-  const stable = {};
+  const stable = [];
   const unstable = [];
   paths.forEach((path, index) => {
     const hash4 = hashes[index] ?? null;
     if (hash4 !== (after3[index] ?? null)) unstable.push(path);
-    else if (hash4 !== at2(path)) stable[path] = hash4;
+    else if (hash4 !== at2(path)) stable.push([path, hash4]);
   });
-  return { stable, unstable, ms: before5.ms + performance2.now() - start2 };
+  return {
+    stable: Object.fromEntries(stable),
+    unstable,
+    ms: before5.ms + performance2.now() - start2
+  };
 }
 function hashAll(root, format2, paths) {
   const here = hereOf2(root, (path) => hashFile(join49(root, path), format2));
