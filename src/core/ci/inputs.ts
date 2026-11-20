@@ -15,6 +15,7 @@ import {
 import { inputsOfReads, type ListingsBelow, type ObservedRead } from "../scheduler/observed.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
+import { ownMap, ownValue } from "./own-map.js";
 
 /*
  * Spec 018 D8 and D9 (2026-11-09, review of 0.1.421 second round B1, "one
@@ -245,7 +246,7 @@ export function readRecorded(dir: AbsolutePath): Recorded {
     ? "all"
     : [...new Set([...conflicting, ...written, ...trees])].sort(compare);
   return {
-    evidence: Object.fromEntries(kept.sort(([a], [b]) => compare(a, b))),
+    evidence: ownMap(kept.sort(([a], [b]) => compare(a, b))),
     hooks,
     touched,
   };
@@ -340,8 +341,9 @@ function whyUncertified(
   evidence: InputEvidence,
   here: (path: RelativePath) => FileHash | null | undefined,
 ): Uncertified | null {
-  if (!Object.hasOwn(evidence, path)) return "unrecorded";
+  const recorded = ownValue(evidence, path);
+  if (recorded === undefined) return "unrecorded";
   const now = here(path);
   if (now === undefined) return "unknown";
-  return evidence[path] === now ? null : "differs";
+  return recorded === now ? null : "differs";
 }

@@ -6,6 +6,7 @@ import { gitHead } from "../status/git-head.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
 import { committedInputs, hereOf, type InputEvidence } from "./inputs.js";
+import { ownMap } from "./own-map.js";
 
 /*
  * Spec 018 D30 and D32 (row 018-57): `squeal ci record` hashes the checkout
@@ -63,8 +64,6 @@ export async function endpointsAfter(before: EndpointsBefore): Promise<Endpoints
   const head = await gitHead(root);
   if (head !== commit) return `HEAD moved during the command (${commit} to ${head ?? "none"})`;
   const after = await hashAll(root, format, paths);
-  // Entries, not assignment: a tracked file named `__proto__` must stay an own
-  // entry, or the export reads it as the commit's (review 0.1.582 B1).
   const stable: [RelativePath, FileHash | null][] = [];
   const unstable: RelativePath[] = [];
   paths.forEach((path, index) => {
@@ -73,7 +72,7 @@ export async function endpointsAfter(before: EndpointsBefore): Promise<Endpoints
     else if (hash !== at(path)) stable.push([path, hash]);
   });
   return {
-    stable: Object.fromEntries(stable),
+    stable: ownMap(stable),
     unstable,
     ms: before.ms + performance.now() - start,
   };

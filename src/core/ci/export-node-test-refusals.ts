@@ -2,6 +2,7 @@ import { compare } from "../fs/compare.js";
 import { configFieldHash } from "../keys/environment-descriptor.js";
 import type { NamedPart } from "./export-check.js";
 import type { NodeTestEntryHere } from "./export-node-test.js";
+import { ownValue } from "./own-map.js";
 import type { PartNodeTest } from "./parts.js";
 
 /*
@@ -27,7 +28,9 @@ export function entryRefusal(entry: NodeTestEntryHere, parts: readonly NamedPart
   }
   const variables = Object.keys(entry.env)
     .sort(compare)
-    .filter((name) => runs.some((run) => run.env[name] !== configFieldHash(entry.env[name])));
+    .filter((name) =>
+      runs.some((run) => ownValue(run.env, name) !== configFieldHash(entry.env[name])),
+    );
   if (variables.length > 0) {
     return `node:test ran with another value of ${variables.join(", ")} than ${project} sets`;
   }
@@ -51,7 +54,7 @@ function allowlistRefusal(
     return `the node:test parts of ${project} do not say what ${unknown.join(", ")} held`;
   }
   const other = names.filter((name) =>
-    runs.some((run) => run.env[name] !== entry.allowlisted[name]),
+    runs.some((run) => ownValue(run.env, name) !== entry.allowlisted[name]),
   );
   if (other.length === 0) return null;
   return `node:test of ${project} ran with another value of ${other.join(", ")} than this job's environment`;

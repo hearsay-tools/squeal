@@ -17,10 +17,11 @@ import {
   RESULTS_FORMAT,
   type ResultsBundle,
 } from "../store/transfer-bundle.js";
-import type { ProjectName, RelativePath, WorktreeId } from "../types/common.js";
+import type { ProjectName, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
+import { ownMap, ownValue } from "./own-map.js";
 
 /*
  * Spec 018 D2 as `squeal ci export` writes it (row 018-17): the bundle
@@ -89,12 +90,15 @@ export function bundleOf(
 
 /** The file's entry in each observed map that has one. */
 function observedOf(store: Store, testFile: TestFileRef): ObservedEntries {
-  const observed: { -readonly [M in ObservedMap]?: readonly RelativePath[] } = {};
-  for (const map of OBSERVED_MAPS) {
-    const entry = readSharedEntries(store, MAP_KEY[map](testFile.project))[testFile.path];
-    if (entry !== undefined) observed[map] = entry;
-  }
-  return observed;
+  return ownMap(
+    OBSERVED_MAPS.flatMap((map) => {
+      const entry = ownValue(
+        readSharedEntries(store, MAP_KEY[map](testFile.project)),
+        testFile.path,
+      );
+      return entry === undefined ? [] : [[map, entry] as const];
+    }),
+  );
 }
 
 /** A store's order of one file's rows: by kind, then full name (`transfer-rows.ts`). */

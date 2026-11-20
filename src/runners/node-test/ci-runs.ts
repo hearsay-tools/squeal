@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
+import { ownMap } from "../../core/ci/own-map.js";
 import {
   NODE_TEST_UNASSIGNED,
   type PartEnd,
@@ -236,7 +237,7 @@ function emptyRun(
     cwd,
     version: header.version,
     nodeBuild: nodeBuildOf(header.build),
-    env: Object.fromEntries(
+    env: ownMap(
       Object.entries(header.env).map(([name, value]) => [
         name,
         value === null ? null : configFieldHash(value),

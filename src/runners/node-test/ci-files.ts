@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { ownMap } from "../../core/ci/own-map.js";
 import type { PartCheck, PartFile } from "../../core/ci/parts.js";
 import { compare } from "../../core/fs/compare.js";
 import type { AbsolutePath } from "../../core/types/common.js";
@@ -112,7 +113,7 @@ function sorted(value: unknown): unknown {
   if (value === null || typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map(sorted);
   const object = value as Record<string, unknown>;
-  return Object.fromEntries(
+  return ownMap(
     Object.keys(object)
       .sort()
       .map((key) => [key, sorted(object[key])]),
