@@ -134,3 +134,64 @@ export function cpuJiffies() {
   const total = line.reduce((a, b) => a + b, 0);
   return { busy: total - idle, total };
 }
+
+/** Store process pids (spec 021 D22): cmdline `... squeal.mjs store-process <commonDir> --store <name>`. */
+export function storeProcessPids() {
+  const out = new Map();
+  for (const pid of allPids()) {
+    const m = /squeal\.mjs store-process (\S+) --store (\S+)/.exec(cmdline(pid));
+    if (m) out.set(pid, `${m[1]}:${m[2]}`);
+  }
+  return out;
+}
+
+/**
+ * CPU seconds of every store process seen so far, as a running total: a store
+ * process exits a few minutes after its last client, so its CPU is read while
+ * it lives and kept after it ends. Call `sample()` often (the cell does every second).
+ */
+export function storeProcessMeter() {
+  const last = new Map();
+  return {
+    sample() {
+      let rss = 0;
+      for (const pid of storeProcessPids().keys()) {
+        const s = procStat(pid);
+        if (!s) continue;
+        last.set(pid, s.ownCpuS);
+        rss += s.rssBytes;
+      }
+      return rss;
+    },
+    cpuS: () => [...last.values()].reduce((a, b) => a + b, 0),
+    pids: () => [...last.keys()],
+  };
+}
+
+/** The store process's own numbers from its log (`logs/store-*.log`, spec 021 D22.6). */
+export function storeProcessLog(text) {
+  const stats = { written: 0, failed: 0, queueWaitMaxMs: 0, busyMs: 0, stops: 0, failedLines: 0 };
+  const re = /(\d+) written, (\d+) failed, queue wait p50 \d+ ms max (\d+) ms, busy (\d+) ms/g;
+  for (const m of text.matchAll(re)) {
+    stats.written += Number(m[1]);
+    stats.failed += Number(m[2]);
+    stats.queueWaitMaxMs = Math.max(stats.queueWaitMaxMs, Number(m[3]));
+    stats.busyMs += Number(m[4]);
+  }
+  stats.stops = (text.match(/store process: stopping/g) ?? []).length;
+  stats.failedLines = (text.match(/store process: a batch of \S+ failed/g) ?? []).length;
+  return stats;
+}
+
+/** The daemons' side (relay-counts.ts): `code store: last minute: N batches through the store process, D written here (...), F failed`. */
+export function relayLog(text) {
+  const stats = { sent: 0, direct: 0, failed: 0 };
+  const re =
+    /code store: last minute: (\d+) batches through the store process, (\d+) written here[^,]*(?:\([^)]*\))?, (\d+) failed/g;
+  for (const m of text.matchAll(re)) {
+    stats.sent += Number(m[1]);
+    stats.direct += Number(m[2]);
+    stats.failed += Number(m[3]);
+  }
+  return stats;
+}

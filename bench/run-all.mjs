@@ -35,7 +35,9 @@ export const CELLS = [
 
 const { values: o } = parseArgs({
   options: {
-    plugin: { type: "string" },
+    // Repeat --plugin to compare versions on one machine: every cell runs once per
+    // plugin, in alternating order (A B, then B A), so they share the CPU and its drift.
+    plugin: { type: "string", multiple: true },
     out: { type: "string" },
     cells: { type: "string" },
     steps: { type: "string", default: "24" },
@@ -44,7 +46,7 @@ const { values: o } = parseArgs({
 const HERE = import.meta.dirname;
 const out = o.out;
 mkdirSync(out, { recursive: true });
-const cells = o.cells ? CELLS.filter((c) => o.cells.split(",").includes(c.name)) : CELLS;
+const chosen = o.cells ? CELLS.filter((c) => o.cells.split(",").includes(c.name)) : CELLS;
 const log = (m) => console.log(`[${new Date().toISOString()}] ${m}`);
 
 // Machine facts and a single-thread calibration: SHA-256 over 1 MiB for 3 s.
@@ -58,10 +60,28 @@ function calibrate() {
   }
   return n / 3;
 }
-const plugin = JSON.parse(readFileSync(join(o.plugin, "package.json"), "utf8"));
+const plugins = o.plugin.map((dir) => {
+  const version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+  return { dir, version, label: version };
+});
+for (const [i, p] of plugins.entries()) {
+  if (plugins.some((q, j) => j !== i && q.version === p.version)) p.label = `${p.version}-${i + 1}`;
+}
+const paired = plugins.length > 1;
+// One run per cell and plugin. A paired run's name is `<cell>@<label>`.
+const cells = chosen.flatMap((c, i) => {
+  const order = i % 2 === 0 ? plugins : [...plugins].reverse();
+  return order.map((p) => ({
+    ...c,
+    name: paired ? `${c.name}@${p.label}` : c.name,
+    base: c.name,
+    plugin: p.label,
+  }));
+});
 const meta = {
   startedAt: new Date().toISOString(),
-  squealVersion: plugin.version,
+  squealVersion: plugins.map((p) => p.version).join(" vs "),
+  plugins: plugins.map(({ version, label }) => ({ version, label })),
   node: process.version,
   cpuModel: cpus()[0]?.model,
   vcpus: cpus().length,
@@ -120,7 +140,7 @@ for (const c of cells) {
       "--load",
       String(c.load),
       "--plugin",
-      o.plugin,
+      plugins.find((p) => p.label === c.plugin).dir,
       "--out",
       join(out, "cells", c.name),
       "--steps",

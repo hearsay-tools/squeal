@@ -25,7 +25,7 @@ Squeal 0.1.575 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU
 - **Verdicts · Edit until `status --wait` gives a verdict (slowest 5%)** (healthy ≤ 10000 ms): 3 of 3 cells: ref late ❌, wt-3 late ❌, load-50 late ❌
 - **Verdicts · Edits with a verdict within the 60 s agents wait** (healthy ≥ 95 %): 3 of 3 cells: ref 50 % ❌, wt-3 69 % ❌, load-50 50 % ❌
 - **Verdicts · Edit every test imports until the whole suite is current** (healthy ≤ 180 s): 1 of 3 cells: load-50 234 s ⚠️
-- **Resources · Daemon CPU with no edits** (healthy ≤ 1 % core): 2 of 3 cells: wt-3 2.5 % core ⚠️, load-50 2.4 % core ⚠️
+- **Resources · CPU with no edits: the busiest daemon, plus the store process** (healthy ≤ 1 % core): 2 of 3 cells: wt-3 2.5 % core ⚠️, load-50 2.4 % core ⚠️
 - **Resources · Daemon memory, peak** (healthy ≤ 300 MiB): 3 of 3 cells: ref 537 MiB ⚠️, wt-3 514 MiB ⚠️, load-50 525 MiB ⚠️
 - **Store · Store writes that held the lock over 250 ms** (healthy ≤ 0): 2 of 3 cells: wt-3 3 ⚠️, load-50 4 ❌
 
@@ -61,13 +61,16 @@ Squeal 0.1.575 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU
 | Failure notices that name neither the edited file nor a test it broke (`notice.unnamed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
 | FAIL lines for a test the session's break does not reach (`notice.wrongTest`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
 | FAIL lines for another worktree's break (`notice.wrongSession`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| Code-store batches reported failed, by the store process or a daemon (lost writes) (`store.failedBatches`) | 0 (gate) |  | n/a | n/a | n/a |
 | Scripted sessions that crashed (`session.failed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
 | **Verdicts** | | |  |  |  |
 | Edit every test imports until the whole suite is current (`session.broad.verdict`) | ≤ 180 | ≤ 300 | 156 s ✅ | 177 s ✅ | 234 s ⚠️ |
 | **Resources** | | |  |  |  |
-| Daemon CPU with no edits (`res.idleCpu.maxPct`) | ≤ 1 | ≤ 5 | 0.8 % core ✅ | 2.5 % core ⚠️ | 2.4 % core ⚠️ |
+| CPU with no edits: the busiest daemon, plus the store process (`res.idleCpu.maxPct`) | ≤ 1 | ≤ 5 | 0.8 % core ✅ | 2.5 % core ⚠️ | 2.4 % core ⚠️ |
 | Daemon memory, peak (`res.daemonRss.max`) | ≤ 300 | ≤ 600 | 537 MiB ⚠️ | 514 MiB ⚠️ | 525 MiB ⚠️ |
-| Daemon CPU per edit, test runs included (`res.cpuPerEdit`) | report |  | 0.9 s | 0.5 s | 1.5 s |
+| CPU per edit: daemons with their test runs, plus the store process (`res.cpuPerEdit`) | report |  | 0.9 s | 0.5 s | 1.5 s |
+| Store process CPU during the sessions (`res.storeProcess.cpuS`) | report |  | n/a | n/a | n/a |
+| Store process memory, peak (`res.storeProcess.rss`) | report |  | n/a | n/a | n/a |
 | **Store** | | |  |  |  |
 | Store writes that held the lock over 250 ms (`store.longWrites`) | ≤ 0 | ≤ 3 | 0 ✅ | 3 ⚠️ | 4 ❌ |
 | Store writes that failed on a held lock (`store.lockFailures`) | ≤ 0 | ≤ 3 | 0 ✅ | 0 ✅ | 0 ✅ |
@@ -76,3 +79,7 @@ Squeal 0.1.575 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU
 | Restart until a day of expired history is pruned (`store.prune.doneMin`) | ≤ 12 | ≤ 20 | n/a | n/a | n/a |
 | Time the prune spent deleting (`store.prune.s`) | report |  | n/a | n/a | n/a |
 | Restart until the integrity check passed (`store.fullCheck.s`) | report |  | n/a | n/a | n/a |
+| Store process: longest wait of a batch in its queue (`store.process.queueWaitMax`) | report |  | n/a | n/a | n/a |
+| Store process: time spent writing (`store.process.busy`) | report |  | n/a | n/a | n/a |
+| Code-store batches a daemon wrote itself because the store process was gone (`store.process.direct`) | report |  | n/a | n/a | n/a |
+| Store process: times it stopped (`store.process.stops`) | report |  | n/a | n/a | n/a |

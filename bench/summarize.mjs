@@ -183,6 +183,13 @@ export const METRICS = [
     group: "Correctness",
   },
   {
+    id: "store.failedBatches",
+    what: "Code-store batches reported failed, by the store process or a daemon (lost writes)",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
     id: "session.failed",
     what: "Scripted sessions that crashed",
     unit: "",
@@ -199,7 +206,7 @@ export const METRICS = [
   },
   {
     id: "res.idleCpu.maxPct",
-    what: "Daemon CPU with no edits",
+    what: "CPU with no edits: the busiest daemon, plus the store process",
     unit: "% core",
     healthy: 1,
     warn: 5,
@@ -215,8 +222,20 @@ export const METRICS = [
   },
   {
     id: "res.cpuPerEdit",
-    what: "Daemon CPU per edit, test runs included",
+    what: "CPU per edit: daemons with their test runs, plus the store process",
     unit: "s",
+    group: "Resources",
+  },
+  {
+    id: "res.storeProcess.cpuS",
+    what: "Store process CPU during the sessions",
+    unit: "s",
+    group: "Resources",
+  },
+  {
+    id: "res.storeProcess.rss",
+    what: "Store process memory, peak",
+    unit: "MiB",
     group: "Resources",
   },
   {
@@ -253,6 +272,25 @@ export const METRICS = [
     unit: "s",
     group: "Store",
   },
+  {
+    id: "store.process.queueWaitMax",
+    what: "Store process: longest wait of a batch in its queue",
+    unit: "ms",
+    group: "Store",
+  },
+  {
+    id: "store.process.busy",
+    what: "Store process: time spent writing",
+    unit: "s",
+    group: "Store",
+  },
+  {
+    id: "store.process.direct",
+    what: "Code-store batches a daemon wrote itself because the store process was gone",
+    unit: "",
+    group: "Store",
+  },
+  { id: "store.process.stops", what: "Store process: times it stopped", unit: "", group: "Store" },
 ];
 
 const INF = Number.POSITIVE_INFINITY;
@@ -412,10 +450,15 @@ function verdictValues(by) {
 function resourceValues(cell) {
   const p = cell.phases;
   const busy = (p.sessionDaemonCpuS ?? []).filter((x) => x !== null);
+  const storeCpu = p.sessionStoreProcessCpuS ?? 0;
+  const idle = maxOrNull((p.idle?.perDaemonCpuPct ?? []).filter((x) => x !== null));
+  const sp = cell.storeProcess;
   return {
-    "res.idleCpu.maxPct": maxOrNull((p.idle?.perDaemonCpuPct ?? []).filter((x) => x !== null)),
+    "res.idleCpu.maxPct": idle === null ? null : idle + (p.idle?.storeProcessCpuPct ?? 0),
     "res.daemonRss.max": cell.daemonRss.maxDaemonBytes / 2 ** 20,
-    "res.cpuPerEdit": p.edits ? busy.reduce((a, b) => a + b, 0) / p.edits : null,
+    "res.cpuPerEdit": p.edits ? (busy.reduce((a, b) => a + b, 0) + storeCpu) / p.edits : null,
+    "res.storeProcess.cpuS": sp?.seen ? storeCpu : null,
+    "res.storeProcess.rss": sp?.seen ? sp.maxRssBytes / 2 ** 20 : null,
   };
 }
 
@@ -452,6 +495,19 @@ function storeValues(cell, cellDir) {
     "store.prune.doneMin": churn ? (doneS === null ? INF : doneS / 60) : null,
     "store.prune.s": churn?.pruneS ?? null,
     "store.fullCheck.s": churn?.fullCheckS ?? null,
+    ...storeProcessValues(cell.storeProcess),
+  };
+}
+
+/** Spec 021 D22's numbers; null for a Squeal version with no store process. */
+function storeProcessValues(sp) {
+  const seen = Boolean(sp?.seen || sp?.written || sp?.relay?.sent);
+  return {
+    "store.failedBatches": sp ? sp.failed + sp.failedLines + (sp.relay?.failed ?? 0) : null,
+    "store.process.queueWaitMax": seen ? sp.queueWaitMaxMs : null,
+    "store.process.busy": seen ? sp.busyMs / 1000 : null,
+    "store.process.direct": seen ? (sp.relay?.direct ?? 0) : null,
+    "store.process.stops": seen ? sp.stops : null,
   };
 }
 
@@ -469,7 +525,12 @@ const fmt = (m, x) => {
 const mark = (g) => (g === null ? "" : g === 1 ? " ✅" : g === 0.5 ? " ⚠️" : " ❌");
 
 const cellsDir = join(dir, "cells");
-const names = meta.cells
+// A paired run (several plugins) lists each cell's versions side by side, in the plugins' order.
+const pluginOrder = (meta.plugins ?? []).map((p) => p.label);
+const names = [...meta.cells]
+  .sort((a, b) =>
+    a.base === b.base ? pluginOrder.indexOf(a.plugin) - pluginOrder.indexOf(b.plugin) : 0,
+  )
   .map((c) => c.name)
   .filter((n) => existsSync(join(cellsDir, n, "cell.json")));
 const results = Object.fromEntries(names.map((n) => [n, cellValues(join(cellsDir, n))]));
@@ -543,6 +604,7 @@ const unhealthy = METRICS.filter((m) => !m.gate && m.healthy !== undefined)
       .filter((c) => c.g !== null && c.g < 1),
   }))
   .filter((u) => u.cells.length > 0);
+if (pluginOrder.length > 1) lines.push(...comparison());
 lines.push("", "## What is not healthy", "");
 if (unhealthy.length === 0) lines.push("Every scored metric is within its healthy limit.");
 for (const { m, cells } of unhealthy) {
@@ -579,3 +641,36 @@ writeFileSync(
   join(dir, "scores.json"),
   `${JSON.stringify({ meta, correctness: failed.length === 0 ? "pass" : "failed", gateFails, overall, runAreas, scores, areaScores, values: Object.fromEntries(names.map((n) => [n, results[n].v])) }, null, 2)}\n`,
 );
+
+/** Paired runs: each cell's score and area scores per version, and the change from the first version. */
+function comparison() {
+  const [first, ...rest] = pluginOrder;
+  const bases = [...new Set(meta.cells.map((c) => c.base))];
+  const run = (base, label) => meta.cells.find((c) => c.base === base && c.plugin === label)?.name;
+  const delta = (a, b) =>
+    a === null || b === null ? "n/a" : `${b - a >= 0 ? "+" : ""}${(b - a).toFixed(0)}`;
+  const out = [
+    "",
+    `## ${first} compared with ${rest.join(", ")} (same machine, cells alternated)`,
+    "",
+  ];
+  out.push(`| Cell | Version | Correct | Score | Δ | ${AREAS.map((a) => `${a} Δ`).join(" | ")} |`);
+  out.push(`|---|---|---|---:|---:|${AREAS.map(() => "---:").join("|")}|`);
+  for (const base of bases) {
+    const a = run(base, first);
+    if (!a || !results[a]) continue;
+    for (const label of pluginOrder) {
+      const n = run(base, label);
+      if (!n || !results[n]) continue;
+      const area = (x) =>
+        areaScores[a][x] === null || areaScores[n][x] === null
+          ? "n/a"
+          : delta(100 * areaScores[a][x], 100 * areaScores[n][x]);
+      const d = label === first ? "" : delta(scores[a], scores[n]);
+      out.push(
+        `| ${base} | ${label} | ${gateFails[n].length ? "❌" : "✅"} | ${scores[n]?.toFixed(0)} | ${d} | ${AREAS.map((x) => (label === first ? "" : area(x))).join(" | ")} |`,
+      );
+    }
+  }
+  return out;
+}

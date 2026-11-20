@@ -34,7 +34,11 @@ import {
   daemonPids,
   procStat,
   quantile,
+  relayLog,
   sleep,
+  storeProcessLog,
+  storeProcessMeter,
+  storeProcessPids,
   timed,
   treeRss,
 } from "./lib.mjs";
@@ -97,6 +101,7 @@ for (let w = 1; w < cell.worktrees; w++) {
 // Whole-machine CPU and per-daemon RSS, sampled every second for the whole cell.
 const samples = [];
 let lastJ = cpuJiffies();
+const storeMeter = storeProcessMeter();
 const sampler = setInterval(() => {
   const j = cpuJiffies();
   const busy = (j.busy - lastJ.busy) / Math.max(1, j.total - lastJ.total);
@@ -109,7 +114,16 @@ const sampler = setInterval(() => {
     maxDaemonRss = Math.max(maxDaemonRss, own);
     rss += treeRss(pid);
   }
-  samples.push({ t: Date.now(), busy, daemons: daemons.size, treeRss: rss, maxDaemonRss });
+  const storeRss = storeMeter.sample();
+  samples.push({
+    t: Date.now(),
+    busy,
+    daemons: daemons.size,
+    treeRss: rss,
+    maxDaemonRss,
+    storeRss,
+    storeCpuS: storeMeter.cpuS(),
+  });
 }, 1000);
 
 // 2. Ambient load.
@@ -150,6 +164,13 @@ if (Number(o["age-rounds"]) > 0) {
   log(`age store: ${o["age-rounds"]} rounds`);
   await squeal(main, ["stop"], 60_000);
   for (let i = 0; i < 100 && daemonPids().size > 0; i++) await sleep(200);
+  // The code store's process (spec 021 D22) holds code.sqlite's write connection for minutes after its last client.
+  for (const pid of storeProcessPids().keys()) {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {}
+  }
+  for (let i = 0; i < 100 && storeProcessPids().size > 0; i++) await sleep(200);
   const aged = await timed(
     NODE,
     [
@@ -198,11 +219,14 @@ log("idle");
 const daemonsBeforeIdle = daemonPids();
 const cpuAt = () => new Map([...daemonPids()].map(([root, pid]) => [root, procStat(pid)]));
 const idle0 = cpuAt();
+const idleStore0 = storeMeter.cpuS();
 await sleep(Number(o.idle));
 const idle1 = cpuAt();
+const idleStoreCpuS = storeMeter.cpuS() - idleStore0;
 cell.phases.idle = {
   ms: Number(o.idle),
   daemons: daemonsBeforeIdle.size,
+  storeProcessCpuPct: (100 * idleStoreCpuS) / (Number(o.idle) / 1000),
   perDaemonCpuPct: [...idle1].map(([root, s]) => {
     const a = idle0.get(root);
     if (!a || !s) return null;
@@ -213,6 +237,7 @@ cell.phases.idle = {
 // 7. Sessions.
 log("sessions");
 const cpu0 = cpuAt();
+const sessionStore0 = storeMeter.cpuS();
 const sessionMark = mark("sessions");
 const sessions = roots.map(async (root, w) => {
   await sleep(w * 3000);
@@ -256,6 +281,7 @@ cell.phases.sessionDaemonCpuS = [...cpu1].map(([root, s]) => {
   return a && s ? s.ownCpuS + s.childCpuS - a.ownCpuS - a.childCpuS : null;
 });
 cell.phases.edits = edits.length;
+cell.phases.sessionStoreProcessCpuS = storeMeter.cpuS() - sessionStore0;
 
 // 8. Store, logs, stop.
 log("collect");
@@ -286,6 +312,8 @@ cell.store.rows = Object.fromEntries(
 );
 let longWrites = 0;
 let lockFailures = 0;
+let storeLog = "";
+let relay = "";
 const logDir = join(store, "logs");
 mkdirSync(join(out, "logs"), { recursive: true });
 if (existsSync(logDir)) {
@@ -293,11 +321,21 @@ if (existsSync(logDir)) {
     const text = readFileSync(join(logDir, f), "utf8");
     longWrites += (text.match(/long write/gi) ?? []).length;
     lockFailures += (text.match(/SQLITE_BUSY|database is locked/gi) ?? []).length;
+    if (f.startsWith("store-")) storeLog += text;
+    else relay += text;
     cpSync(join(logDir, f), join(out, "logs", f));
   }
 }
 cell.store.longWrites = longWrites;
 cell.store.lockFailures = lockFailures;
+// Spec 021 D22: the code store's process, when this Squeal version has one.
+cell.storeProcess = {
+  seen: storeMeter.pids().length,
+  cpuS: storeMeter.cpuS(),
+  maxRssBytes: Math.max(0, ...samples.map((s) => s.storeRss ?? 0)),
+  ...storeProcessLog(storeLog),
+  relay: relayLog(relay),
+};
 cell.daemonRss = {
   maxDaemonBytes: Math.max(0, ...samples.map((s) => s.maxDaemonRss)),
   maxTreeBytes: Math.max(0, ...samples.map((s) => s.treeRss)),
@@ -326,7 +364,8 @@ if (o.churn) {
   writeFileSync(join(out, "prune-watch.json"), JSON.stringify(series));
 }
 await sleep(3000);
-for (const pid of daemonPids().values()) {
+// A store process outlives its last client by minutes; it must not run into the next cell.
+for (const pid of [...daemonPids().values(), ...storeProcessPids().keys()]) {
   try {
     process.kill(pid, "SIGKILL");
   } catch {}

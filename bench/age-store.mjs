@@ -21,7 +21,8 @@
 // file, scaled to 500 test files.
 import { execFileSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // --span-days N (default 7): spread the history over N days. With N above the
@@ -92,6 +93,8 @@ const pool = Array.from({ length: 32 }, () => {
 });
 
 const runTemplate = db.prepare("SELECT * FROM runs LIMIT 1").get();
+/** Every key this run added, for the code store's coverage rows. */
+const aged = [];
 const resultCols = Object.keys(templates[0]).filter((c) => !c.startsWith("c_"));
 const insertResult = db.prepare(
   `INSERT INTO results (${resultCols.join(",")}) VALUES (${resultCols.map((c) => `:${c}`).join(",")})`,
@@ -146,6 +149,7 @@ for (let r = 0; r < rounds; r++) {
     }
     const [project, path] = file.split("\0");
     insertList.run(project, path, key, at, pool[Math.floor(Math.random() * pool.length)]);
+    aged.push({ file, key, at });
     listsAdded++;
   }
   db.exec("COMMIT");
@@ -156,6 +160,7 @@ if (churn)
   );
 db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
 db.close();
+const code = ageCodeStore(join(dirname(store), "code.sqlite"));
 console.log(
   JSON.stringify({
     rounds,
@@ -167,6 +172,73 @@ console.log(
     runsAdded,
     listBytes: pool[0].length,
     storeBytes: statSync(store).size,
+    code,
     ms: Math.round(performance.now() - t0),
   }),
 );
+
+/**
+ * The code store (`code.sqlite`, coverage and complexity) gets the same
+ * history: for every key above, a `coverage` row copied from that test file's
+ * real record, dated like its results, and one `coverage_parts` row of 8 KB
+ * of random bytes with the same date. Nothing lists that part, so nothing
+ * decodes it; it stands for the parts of a real repository's records, which
+ * are larger than this small project's. Shape measured on Squeal's own
+ * code.sqlite (1.5 GB, 2026-11-20): coverage 193k rows, 0.93 GB with its
+ * index; coverage_parts 72k rows; states 1.76M rows, 0.35 GB. `states` is per
+ * worktree and is left as it is.
+ */
+function ageCodeStore(file) {
+  if (!existsSync(file)) return { skipped: "no code.sqlite" };
+  const cdb = new DatabaseSync(file);
+  cdb.exec("PRAGMA busy_timeout = 10000; PRAGMA synchronous = NORMAL;");
+  const hasParts = cdb
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'coverage_parts'")
+    .get();
+  const newest = new Map();
+  for (const t of templates) newest.set(`${t.c_project}\0${t.c_path}`, t.key);
+  const coverageOf = cdb.prepare(
+    "SELECT provider_version, record FROM coverage WHERE result_key = ? ORDER BY recorded_at DESC LIMIT 1",
+  );
+  const records = new Map();
+  for (const [file, key] of newest) {
+    const row = coverageOf.get(key);
+    if (row) records.set(file, row);
+  }
+  if (records.size === 0) {
+    cdb.close();
+    return { skipped: "no coverage records to copy" };
+  }
+  const insertCoverage = cdb.prepare(
+    "INSERT OR IGNORE INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)",
+  );
+  const insertPart = hasParts
+    ? cdb.prepare("INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)")
+    : null;
+  let coverageAdded = 0;
+  let partsAdded = 0;
+  const BATCH = 2000;
+  for (let i = 0; i < aged.length; i += BATCH) {
+    cdb.exec("BEGIN");
+    for (const { file, key, at } of aged.slice(i, i + BATCH)) {
+      const rec = records.get(file);
+      if (!rec) continue;
+      insertCoverage.run(key, rec.provider_version, rec.record, at);
+      coverageAdded++;
+      if (insertPart) {
+        insertPart.run(hex(32), randomBytes(8192), at);
+        partsAdded++;
+      }
+    }
+    cdb.exec("COMMIT");
+  }
+  // No mark to clear: the code store is pruned right after a main-store prune that claimed its turn.
+  cdb.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  cdb.close();
+  return {
+    filesWithCoverage: records.size,
+    coverageAdded,
+    partsAdded,
+    codeBytes: statSync(file).size,
+  };
+}
