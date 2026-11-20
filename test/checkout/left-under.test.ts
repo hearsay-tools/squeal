@@ -132,6 +132,10 @@ describe.runIf(linux)("processes left under a removed checkout", () => {
     // Outside by cwd: a sibling whose name only starts with the folder's.
     mkdirSync(`${checkout.folder}2`);
     const sibling = await started(idle(`${checkout.folder}2`));
+    // Third look's witness: a live sibling whose name is the checkout's path plus
+    // " (deleted)", as the kernel reads a removed folder.
+    mkdirSync(`${checkout.folder} (deleted)`);
+    const named = await started(idle(`${checkout.folder} (deleted)`));
     // Re-review B1 witnesses. A: a link in the checkout that leads out, then `..`
     // to a missing leaf, as an argument, and as the cwd itself.
     mkdirSync(join(base, "external"));
@@ -157,7 +161,7 @@ describe.runIf(linux)("processes left under a removed checkout", () => {
     expect(existsSync(checkout.folder)).toBe(false);
     expect(alive(server)).toBe(false);
     expect(alive(aliased)).toBe(false);
-    const survivors = { browser, sibling, dotDot, linkedOut, withSpace, embedded };
+    const survivors = { browser, sibling, named, dotDot, linkedOut, withSpace, embedded };
     for (const [name, pid] of Object.entries(survivors)) expect(alive(pid), name).toBe(true);
     expect(notes).toEqual(["ended 2 processes left under the checkout (cezar serve, node)"]);
   });
@@ -179,6 +183,22 @@ describe.runIf(linux)("processes left under a removed checkout", () => {
       running: [],
     });
     expect(alive(inFolder)).toBe(false);
+  });
+
+  it("tell a deleted checkout from a live sibling named '<checkout> (deleted)' by inode", async () => {
+    const folder = join(base, "folder");
+    mkdirSync(folder);
+    mkdirSync(`${folder} (deleted)`);
+    const inside = await started(idle(folder));
+    const named = await started(idle(`${folder} (deleted)`));
+    rmSync(folder, { recursive: true });
+    // Both read "<folder> (deleted)"; only the inside one works in the removed folder.
+    expect(await endLeftUnder(folder, { graceMs: 200 })).toEqual({
+      ended: [{ pid: inside, name: "node" }],
+      running: [],
+    });
+    expect(alive(inside)).toBe(false);
+    expect(alive(named)).toBe(true);
   });
 
   it("are ended by the sweep of a dead owner's checkout", async () => {

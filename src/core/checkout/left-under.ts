@@ -1,4 +1,11 @@
-import { readdirSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import {
+  type BigIntStats,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { AbsolutePath } from "../types/common.js";
@@ -121,14 +128,10 @@ function realFolder(folder: AbsolutePath): string {
   }
 }
 
-/**
- * `cwd`, as `/proc/<pid>/cwd` reads (the kernel's resolved path, with
- * " (deleted)" once removed), is `folder` or below it, by whole components.
- */
+/** `cwd`, the folder a process works in, is `folder` or below it, by whole components. */
 function cwdUnder(folder: string, cwd: string | null): boolean {
   if (cwd === null) return false;
-  const bare = cwd.endsWith(" (deleted)") ? cwd.slice(0, -" (deleted)".length) : cwd;
-  return bare === folder || bare.startsWith(folder.endsWith("/") ? folder : `${folder}/`);
+  return cwd === folder || cwd.startsWith(folder.endsWith("/") ? folder : `${folder}/`);
 }
 
 let skipTold = false;
@@ -236,9 +239,35 @@ function ownerOf(proc: string, pid: number): number | null {
   }
 }
 
+const DELETED = " (deleted)";
+
+/**
+ * The folder `pid` works in. The kernel reads a removed folder as its old
+ * path plus " (deleted)", and a live folder can hold that text in its name
+ * (review wave-18, third look). So the suffix is stripped only when the
+ * path as read is not the process's folder: no folder there, or one with
+ * another device and inode than `/proc/<pid>/cwd`'s. `null` when the
+ * process's folder cannot be read at all.
+ */
 function cwdOf(proc: string, pid: number): string | null {
+  const link = join(proc, String(pid), "cwd");
+  let text: string;
+  let own: BigIntStats;
   try {
-    return readlinkSync(join(proc, String(pid), "cwd"));
+    text = readlinkSync(link);
+    own = statSync(link, { bigint: true });
+  } catch {
+    return null;
+  }
+  if (!text.endsWith(DELETED)) return text;
+  const named = statOrNull(text);
+  const same = named !== null && named.dev === own.dev && named.ino === own.ino;
+  return same ? text : text.slice(0, -DELETED.length);
+}
+
+function statOrNull(path: string): BigIntStats | null {
+  try {
+    return statSync(path, { bigint: true });
   } catch {
     return null;
   }
