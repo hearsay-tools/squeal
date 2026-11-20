@@ -11,6 +11,7 @@ const runs = readdirSync(RESULTS)
   .map((d) => ({ dir: d, ...JSON.parse(readFileSync(join(RESULTS, d, "scores.json"), "utf8")) }))
   .sort((a, b) => b.meta.startedAt.localeCompare(a.meta.startedAt));
 
+const AREAS = ["Hooks", "Commands", "Verdicts", "Resources", "Store"];
 const cells = [...new Set(runs.flatMap((r) => r.meta.cells.map((c) => c.name)))];
 const byCpu = new Map();
 for (const r of runs) {
@@ -29,15 +30,15 @@ for (const [cpu, list] of byCpu) {
   lines.push(
     `## ${cpu}`,
     "",
-    `| Started | Squeal | Correct | Overall | ${cells.join(" | ")} | Results |`,
+    `| Started | Squeal | Correct | Overall | ${AREAS.join(" | ")} | ${cells.join(" | ")} | Results |`,
   );
-  lines.push(`|---|---|---|---:|${cells.map(() => "---:").join("|")}|---|`);
+  lines.push(`|---|---|---|---:|${[...AREAS, ...cells].map(() => "---:").join("|")}|---|`);
   for (const r of list) {
     const score = (c) =>
       r.scores[c] === undefined || r.scores[c] === null ? "" : r.scores[c].toFixed(0);
     const correct = r.correctness === undefined ? "?" : r.correctness === "pass" ? "✅" : "❌";
     lines.push(
-      `| ${r.meta.startedAt.slice(0, 16).replace("T", " ")} | ${r.meta.squealVersion} | ${correct} | ${r.overall?.toFixed(0) ?? ""} | ${cells.map(score).join(" | ")} | [${r.dir}](${r.dir}/scorecard.md) |`,
+      `| ${r.meta.startedAt.slice(0, 16).replace("T", " ")} | ${r.meta.squealVersion} | ${correct} | ${r.overall?.toFixed(0) ?? ""} | ${AREAS.map((a) => r.runAreas?.[a]?.toFixed(0) ?? "").join(" | ")} | ${cells.map(score).join(" | ")} | [${r.dir}](${r.dir}/scorecard.md) |`,
     );
   }
   lines.push("");

@@ -77,6 +77,13 @@
     "stress": []
   },
   "overall": 56.0625,
+  "runAreas": {
+    "Hooks": 56.25,
+    "Commands": 73.4375,
+    "Verdicts": 35.00000000000001,
+    "Resources": 56.25,
+    "Store": 59.375
+  },
   "scores": {
     "ref": 65.5,
     "size-s": 86.5,

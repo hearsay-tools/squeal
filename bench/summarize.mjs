@@ -196,6 +196,13 @@ const overall = names.length
   ? names.reduce((a, n) => a + (scores[n] ?? 0), 0) / names.length
   : null;
 const failed = names.filter((n) => gateFails[n].length > 0);
+/** Per area, the mean over the cells that have it: the run's partial scores. */
+const runAreas = Object.fromEntries(
+  AREAS.map((a) => {
+    const xs = names.map((n) => areaScores[n][a]).filter((x) => x !== null);
+    return [a, xs.length ? (100 * xs.reduce((x, y) => x + y, 0)) / xs.length : null];
+  }),
+);
 
 const lines = [];
 lines.push(`# Squeal performance scorecard`, "");
@@ -209,6 +216,12 @@ lines.push(
     : `**Correctness: FAILED** in ${failed.map((n) => `${n} (${gateFails[n].join(", ")})`).join("; ")}`,
   "",
   `**Overall score: ${overall?.toFixed(0)} / 100** (mean of the cell scores; a cell is the mean of its ${AREAS.length} areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)`,
+  "",
+);
+lines.push(
+  `| Area | ${AREAS.join(" | ")} |`,
+  `|---|${AREAS.map(() => "---:").join("|")}|`,
+  `| All cells | ${AREAS.map((a) => runAreas[a]?.toFixed(0) ?? "n/a").join(" | ")} |`,
   "",
 );
 lines.push(
@@ -246,5 +259,5 @@ for (const m of METRICS) {
 console.log(lines.join("\n"));
 writeFileSync(
   join(dir, "scores.json"),
-  `${JSON.stringify({ meta, correctness: failed.length === 0 ? "pass" : "failed", gateFails, overall, scores, areaScores, values: Object.fromEntries(names.map((n) => [n, results[n].v])) }, null, 2)}\n`,
+  `${JSON.stringify({ meta, correctness: failed.length === 0 ? "pass" : "failed", gateFails, overall, runAreas, scores, areaScores, values: Object.fromEntries(names.map((n) => [n, results[n].v])) }, null, 2)}\n`,
 );

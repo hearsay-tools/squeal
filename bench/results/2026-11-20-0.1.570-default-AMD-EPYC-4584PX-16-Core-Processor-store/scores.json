@@ -44,6 +44,13 @@
     "store-7g": []
   },
   "overall": 64.66666666666667,
+  "runAreas": {
+    "Hooks": 62.5,
+    "Commands": 87.5,
+    "Verdicts": 40.00000000000001,
+    "Resources": 58.333333333333336,
+    "Store": 75
+  },
   "scores": {
     "ref": 73,
     "store-1.7g": 58,

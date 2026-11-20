@@ -6,6 +6,10 @@ Squeal 0.1.570 · Node v24.22.1 · AMD EPYC 4584PX 16-Core Processor · 4 vCPU �
 
 **Overall score: 65 / 100** (mean of the cell scores; a cell is the mean of its 5 areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)
 
+| Area | Hooks | Commands | Verdicts | Resources | Store |
+|---|---:|---:|---:|---:|---:|
+| All cells | 63 | 88 | 40 | 58 | 75 |
+
 | Cell | Files | Worktrees | Load | Aged rounds | Correct | Score | Hooks | Commands | Verdicts | Resources | Store |
 |---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|
 | ref | 500 | 1 | 0% | 0 | ✅ | 73 | 75 | 100 | 40 | 75 | 75 |
