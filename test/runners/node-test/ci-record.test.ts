@@ -58,6 +58,8 @@ describe("ci record of a node:test command", () => {
         nodeBuild: probe.build,
       });
       expect(part.header.runnerVersion).toBe(probe.version);
+      // Review of 0.1.579 B1: none of the preloads Squeal put in NODE_OPTIONS counts as the project's.
+      expect(part.header.nodeTest?.nodeOptions, recorded.stderr).toEqual([]);
       expect(
         part.testFiles.map((f) => f.path),
         recorded.stderr,
