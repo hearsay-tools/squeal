@@ -17,6 +17,9 @@ export function ownMap<K extends string, V>(entries: Iterable<readonly [K, V]>):
 }
 
 /** `map`'s own entry for `key`; `undefined` when it holds none. */
-export function ownValue<K extends string, V>(map: Readonly<Record<K, V>>, key: K): V | undefined {
+export function ownValue<K extends string, V>(
+  map: Readonly<Record<K, V>>,
+  key: NoInfer<K>,
+): V | undefined {
   return Object.hasOwn(map, key) ? map[key] : undefined;
 }
