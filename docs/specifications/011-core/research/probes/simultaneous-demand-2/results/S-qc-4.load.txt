@@ -1,0 +1,14 @@
+2026-11-20T19:06:36Z
+ 20:06:36 up  8:45,  1 user,  load average: 3.49, 6.68, 8.16
+    PID     ELAPSED %CPU COMMAND
+3544256       00:00  170 ~/.nvm/versions/node/v26.13.0/bin/node --import /tmp/squeal-1001/tmp/0fcad4f708029b61/squeal-oxlint-RKJbGC/preload.
+3544255       00:00  157 ~/.nvm/versions/node/v26.13.0/bin/node --import /tmp/squeal-1001/tmp/0e16620e195643da/squeal-oxlint-Feb75E/preload.
+3542156       00:40 70.5 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-qc/pl
+3541912       00:44 67.7 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-qc/pl
+3542038       00:41 66.5 squeal q4-2 daemon @5e44fa1f ~/work/0d5248b3/squeal-qc/plugins/claude-code/dist/cli/squeal.mjs daemon ~/w
+3541792       00:45 64.2 squeal q4-1 daemon @a60f4cbb ~/work/0d5248b3/squeal-qc/plugins/claude-code/dist/cli/squeal.mjs daemon ~/w
+3542306       00:29 24.4 squeal q4-2 store --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-qc/plugins/claude-code/dist/cli/sque
+arm=qc {}
+199ed42addf8590d36b7292f7d69117e3fa517a1bb71acba6a310fb7e329ef69  ~/work/0d5248b3/squeal-qc/plugins/claude-code/dist/cli/squeal.mjs
+2026-11-20T19:17:20Z
+ 20:17:20 up  8:56,  1 user,  load average: 5.17, 8.87, 8.74

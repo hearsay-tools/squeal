@@ -1,0 +1,10 @@
+idle at 2026-11-20T19:06:16Z
+idle at 2026-11-20T19:06:36Z
+started S-qc-4-sampler pid 3544322
+started S-qc-4-workers pid 3544330
+started S-qc-4-queue-1 pid 3544340
+started S-qc-4-queue-2 pid 3544351
+started S-qc-4-marks pid 3544362
+idle at 2026-11-20T19:16:56Z
+idle at 2026-11-20T19:17:16Z
+q4 S-qc-4 done 2026-11-20T19:17:21Z

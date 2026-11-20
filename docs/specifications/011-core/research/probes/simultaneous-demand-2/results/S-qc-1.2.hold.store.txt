@@ -1,0 +1,2 @@
+meta turn:5e44fa1fe7665b72 {"probe-011-423\nmain":{"turn":"in-turn"}}
+consumers [{"worktree_id":"5e44fa1fe7665b72","session_id":"probe-011-423","agent_id":"main","registered_at":1795195532115,"last_seen_at":1795195532621,"last_delivered_at":null}]

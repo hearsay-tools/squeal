@@ -1,0 +1,14 @@
+2026-11-20T18:21:16Z
+ 19:21:16 up  7:59,  1 user,  load average: 2.57, 5.97, 7.53
+    PID     ELAPSED %CPU COMMAND
+3330726       00:00  154 [node-MainThread] <defunct>
+3329464       00:40 77.4 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-base/
+3329220       00:45 75.0 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-base/
+3329346       00:41 64.1 squeal q4-2 daemon @5e44fa1f ~/work/0d5248b3/squeal-base/plugins/claude-code/dist/cli/squeal.mjs daemon ~
+3329100       00:46 62.8 squeal q4-1 daemon @a60f4cbb ~/work/0d5248b3/squeal-base/plugins/claude-code/dist/cli/squeal.mjs daemon ~
+3329614       00:26 31.6 squeal q4-2 store --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-base/plugins/claude-code/dist/cli/sq
+3329593       00:31 26.4 squeal q4-1 store --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-base/plugins/claude-code/dist/cli/sq
+arm=base {}
+000dfa9d971b0f3ec742e3a2b99bdd7ded1e1cd6d518caf09e951a85958598a0  ~/work/0d5248b3/squeal-base/plugins/claude-code/dist/cli/squeal.mjs
+2026-11-20T18:35:05Z
+ 19:35:05 up  8:13,  1 user,  load average: 3.93, 9.04, 9.16

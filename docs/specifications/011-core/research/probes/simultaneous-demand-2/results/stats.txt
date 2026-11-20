@@ -1,0 +1,23 @@
+base (n = 7): fileS 3860 [3301-5069], wall 690 [614-993], endGap 59 [20-221], lag 178 [90-307], minShared 3.2 [1.4-3.9], narrow 47 [0-62], peak 10 [10-11], over 0 [0-0], cpuS 5472 [4802-8028]
+q (n = 7): fileS 3650 [3194-4772], wall 700 [586-1073], endGap 79 [23-150], lag 1 [0-381], minShared 3.0 [2.2-3.8], narrow 47 [31-67], peak 10 [10-12], over 0 [0-1], cpuS 5413 [4477-9165]
+qc (n = 7): fileS 3361 [2881-4574], wall 672 [578-873], endGap 55 [1-68], lag 1 [0-111], minShared 3.2 [2.8-3.5], narrow 41 [33-43], peak 10 [10-12], over 0 [0-0], cpuS 5165 [4221-7040]
+q vs base wall: median diff 10 (1.4%), 95% bootstrap [-243, 221], permutation p 0.986
+q vs base endGap: median diff 20 (33.4%), 95% bootstrap [-158, 71], permutation p 0.625
+q vs base lag: median diff -177 (-99.5%), 95% bootstrap [-297, 115], permutation p 0.258
+q vs base cpuS: median diff -60 (-1.1%), 95% bootstrap [-2175, 1760], permutation p 0.997
+qc vs base wall: median diff -18 (-2.6%), 95% bootstrap [-351, 60], permutation p 0.210
+qc vs base endGap: median diff -5 (-7.8%), 95% bootstrap [-155, 34], permutation p 0.237
+qc vs base lag: median diff -177 (-99.4%), 95% bootstrap [-297, -91], permutation p 0.000
+qc vs base cpuS: median diff -307 (-5.6%), 95% bootstrap [-2998, 402], permutation p 0.158
+
+blocks with all three arms: 7
+q - base per block, wall: median 10 (1.4% of base's median), 95% bootstrap [-98, 92], sign-flip p 0.985, diffs 92 -88 -122 10 64 134 -98
+q - base per block, endGap: median -15 (-25.6% of base's median), 95% bootstrap [-123, 85], sign-flip p 0.675, diffs 75 -196 -123 -15 -57 103 85
+q - base per block, lag: median -93 (-52.0% of base's median), 95% bootstrap [-178, 115], sign-flip p 0.205, diffs -89 -298 -157 -93 -178 126 115
+q - base per block, cpuS: median -185 (-3.4% of base's median), 95% bootstrap [-927, 701], sign-flip p 0.984, diffs 701 -865 -1191 -185 610 1703 -927
+q - base per block, fileS: median -156 (-4.0% of base's median), 95% bootstrap [-628, 349], sign-flip p 0.305, diffs 428 -628 -975 -156 349 -17 -539
+qc - base per block, wall: median -86 (-12.5% of base's median), 95% bootstrap [-121, -36], sign-flip p 0.051, diffs -36 -86 -66 -110 40 -233 -121
+qc - base per block, endGap: median -33 (-55.1% of base's median), 95% bootstrap [-153, 34], sign-flip p 0.247, diffs 35 -153 -156 -58 -33 14 34
+qc - base per block, lag: median -176 (-98.7% of base's median), 95% bootstrap [-297, -90], sign-flip p 0.035, diffs -90 -297 -304 -93 -176 -254 8
+qc - base per block, cpuS: median -988 (-18.1% of base's median), 95% bootstrap [-1009, -478], sign-flip p 0.035, diffs -582 -1008 -478 -1009 363 -2257 -988
+qc - base per block, fileS: median -537 (-13.9% of base's median), 95% bootstrap [-852, -365], sign-flip p 0.035, diffs -537 -852 -365 -809 60 -1400 -496

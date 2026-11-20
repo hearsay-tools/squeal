@@ -1,0 +1,11 @@
+tr: read error: No such process
+idle at 2026-11-20T21:28:17Z
+idle at 2026-11-20T21:28:38Z
+started S-base-7-sampler pid 26631
+started S-base-7-workers pid 26643
+started S-base-7-queue-1 pid 26655
+started S-base-7-queue-2 pid 26666
+started S-base-7-marks pid 26678
+idle at 2026-11-20T21:45:56Z
+idle at 2026-11-20T21:46:16Z
+q4 S-base-7 done 2026-11-20T21:46:25Z

@@ -1,0 +1,10 @@
+idle at 2026-11-20T20:03:17Z
+idle at 2026-11-20T20:03:37Z
+started S-q-5-sampler pid 3825446
+started S-q-5-workers pid 3825454
+started S-q-5-queue-1 pid 3825464
+started S-q-5-queue-2 pid 3825475
+started S-q-5-marks pid 3825486
+idle at 2026-11-20T20:15:59Z
+idle at 2026-11-20T20:16:19Z
+q4 S-q-5 done 2026-11-20T20:16:24Z

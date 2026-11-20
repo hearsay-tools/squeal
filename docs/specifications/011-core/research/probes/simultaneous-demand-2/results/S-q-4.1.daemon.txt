@@ -1,0 +1,3 @@
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-S-q-4-1.scope
+pid=3611585 squeal q4-1 daemon @a60f4cbb ~/work/0d5248b3/squeal-q/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/0d5248b3/q4-1 
+pid=3611605 

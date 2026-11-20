@@ -1,0 +1,11 @@
+~/work/0d5248b3/probe/start-daemon.sh: line 23: /proc/3965356/cmdline: No such file or directory
+idle at 2026-11-20T20:33:08Z
+idle at 2026-11-20T20:33:29Z
+started S-qc-6-sampler pid 3967290
+started S-qc-6-workers pid 3967298
+started S-qc-6-queue-1 pid 3967309
+started S-qc-6-queue-2 pid 3967319
+started S-qc-6-marks pid 3967331
+idle at 2026-11-20T20:46:00Z
+idle at 2026-11-20T20:46:20Z
+q4 S-qc-6 done 2026-11-20T20:46:26Z

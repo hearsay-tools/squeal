@@ -1,0 +1,11 @@
+tr: read error: No such process
+idle at 2026-11-20T19:19:33Z
+idle at 2026-11-20T19:19:54Z
+started S-q-4-sampler pid 3614616
+started S-q-4-workers pid 3614625
+started S-q-4-queue-1 pid 3614634
+started S-q-4-queue-2 pid 3614645
+started S-q-4-marks pid 3614672
+idle at 2026-11-20T19:32:16Z
+idle at 2026-11-20T19:32:36Z
+q4 S-q-4 done 2026-11-20T19:32:41Z

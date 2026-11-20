@@ -1,0 +1,194 @@
+diff -ruN base/src/core/capacity/pool.ts qc/src/core/capacity/pool.ts
+--- base/src/core/capacity/pool.ts	2026-11-20 16:15:31.000000000 +0100
++++ qc/src/core/capacity/pool.ts	2026-11-20 17:31:30.721526321 +0100
+@@ -144,6 +144,12 @@
+    * hold. `null` before the first.
+    */
+   gate(): PoolGate | null;
++  /**
++   * PROBE 011-420 (q): a lane whose wait for quiet holds `want` workers of
++   * backlog states them in the mark with no grant, so the other daemons'
++   * fair shares count them; 0 ends it. Never throws.
++   */
++  expect(want: number): void;
+   /** Releases every lease and clears the mark. */
+   close(): void;
+ }
+@@ -258,6 +264,9 @@
+   /** The ceiling's refusals, logged once per episode (row 011-404); `null` without a log. */
+   readonly #refusals: RefusalEpisodes | null;
+   #closed = false;
++  /** PROBE 011-420: the demand a quiet lane holds, and when its mark was last written for it. */
++  #expected = 0;
++  #expectedAt = 0;
+ 
+   constructor(options: PermitPoolOptions) {
+     this.#options = options;
+@@ -288,6 +297,8 @@
+     const now = this.#now();
+     this.#forget(now);
+     this.#idleSince = null;
++    // PROBE 011-420: the tier that asks states its own demand from now on.
++    this.#expected = 0;
+     const wanted = Math.max(1, Math.floor(want));
+     const fewest = Math.min(wanted, Math.max(1, Math.floor(least)));
+     const { others, inUse, demand, shares, entitled, target } = this.#share(
+@@ -295,6 +306,7 @@
+       lane,
+       now,
+       fewest,
++      kind,
+     );
+     const slow = lane === "slow";
+     const rank = this.#since ?? now;
+@@ -344,7 +356,7 @@
+   offer(want: number, lane: PoolLane = "fast", kind: PoolTierKind = "checkpoint"): number {
+     if (this.#closed) return 0;
+     const now = this.#now();
+-    const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, now);
++    const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, now, 1, kind);
+     return Math.min(target, this.#gated(others, inUse, target, kind, lane, this.#since ?? now));
+   }
+ 
+@@ -371,6 +383,25 @@
+     return this.#gate;
+   }
+ 
++  expect(want: number): void {
++    if (this.#closed || this.#tree === null) return;
++    const wanted = Math.max(0, Math.floor(want));
++    const now = this.#now();
++    if (wanted === this.#expected && (wanted === 0 || now - this.#expectedAt < 5_000)) return;
++    this.#expected = wanted;
++    this.#expectedAt = now;
++    try {
++      if (wanted === 0 && !this.#active()) {
++        this.#clear();
++        return;
++      }
++      this.#prepareDir();
++      this.#publish(this.#demand() + this.#pending + wanted, this.#inUse());
++    } catch {
++      // A mark that cannot be written: the next look writes it again.
++    }
++  }
++
+   close(): void {
+     this.#closed = true;
+     for (const lease of this.#leases) for (const db of lease.permits.splice(0)) db.close();
+@@ -389,7 +420,13 @@
+   }
+ 
+   /** What a tier of `wanted` workers, `least` at the fewest, is entitled to now, and what it may take. */
+-  #share(wanted: number, lane: PoolLane, now: number, least = 1) {
++  #share(
++    wanted: number,
++    lane: PoolLane,
++    now: number,
++    least = 1,
++    kind: PoolTierKind = "checkpoint",
++  ) {
+     const { dir, owner, project } = this.#options;
+     const others = readMarks(dir, owner.worktreeId, now);
+     const inUse = this.#inUse();
+@@ -403,7 +440,12 @@
+       ...(project === undefined ? {} : { project }),
+     };
+     // An edit's mark, `want` 0, states CPU and no backlog demand (row 011-98).
+-    const shares = fairShares(this.#hostSlots, [me, ...others.filter((o) => o.want > 0)]);
++    // PROBE 011-420 (qc): a backlog tier's fair share divides the ceiling's CPUs, not the slots.
++    const total =
++      kind === "backlog"
++        ? Math.max(1, Math.min(this.#hostSlots, Math.floor(this.#ceiling)))
++        : this.#hostSlots;
++    const shares = fairShares(total, [me, ...others.filter((o) => o.want > 0)]);
+     const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 0) - inUse));
+     let target = entitled;
+     if (project !== undefined) {
+@@ -673,7 +715,7 @@
+   #republish(): void {
+     this.#forget(this.#now());
+     try {
+-      this.#publish(this.#demand() + this.#pending, this.#inUse());
++      this.#publish(this.#demand() + this.#pending + this.#expected, this.#inUse());
+     } catch {
+       // `#mark` is set before the write, so the refresh writes this one.
+     }
+diff -ruN base/src/core/scheduler/capacity.ts qc/src/core/scheduler/capacity.ts
+--- base/src/core/scheduler/capacity.ts	2026-11-20 16:15:31.000000000 +0100
++++ qc/src/core/scheduler/capacity.ts	2026-11-20 17:31:30.721526321 +0100
+@@ -179,6 +179,15 @@
+     }
+   }
+ 
++  /** PROBE 011-420 (q): a quiet lane's held backlog demand, in the mark; 0 ends it. */
++  expect(want: number): void {
++    try {
++      this.#pool.expect(want);
++    } catch {
++      // The pool failed: tiers run without a grant, and no mark counts.
++    }
++  }
++
+   close(): void {
+     this.#waits?.close();
+     this.#pool.close();
+diff -ruN base/src/core/scheduler/quiet.ts qc/src/core/scheduler/quiet.ts
+--- base/src/core/scheduler/quiet.ts	2026-11-20 16:15:31.000000000 +0100
++++ qc/src/core/scheduler/quiet.ts	2026-11-20 17:31:30.721526321 +0100
+@@ -322,3 +322,29 @@
+     ),
+   );
+ }
++
++/** PROBE 011-420 (q): publish a quiet lane's demand only this long before its wait ends. */
++export const QUIET_DEMAND_LEAD_MS = Number(process.env.SQUEAL_PROBE_QUIET_LEAD_MS ?? 30_000);
++
++/**
++ * PROBE 011-420 (q): the backlog files a wait for quiet holds whose end is
++ * within `QUIET_DEMAND_LEAD_MS`, at most 64: what the lane's first backlog
++ * tier will ask for once the wait ends. 0 when none.
++ */
++export function quietDemand(context: SchedulerContext, ledger: Ledger, now: EpochMs): number {
++  const { quiet } = context;
++  if (quiet === undefined) return 0;
++  const { queue } = ledger;
++  const soon = (ends: ReadonlyMap<string, EpochMs>) =>
++    new Set([...ends].filter(([, end]) => end - now <= QUIET_DEMAND_LEAD_MS).map(([lane]) => lane));
++  const backlog = soon(quiet.ends(now));
++  const catchUp = soon(quiet.catchUpEnds(now));
++  if (backlog.size === 0 && catchUp.size === 0) return 0;
++  let n = 0;
++  queue.hasFast((ref) => {
++    const lane = laneOf(context, ref);
++    if (backlog.has(lane) || (catchUp.has(lane) && queue.isCatchUp(ref))) n++;
++    return n >= 64;
++  });
++  return n;
++}
+diff -ruN base/src/core/scheduler/tier-live.ts qc/src/core/scheduler/tier-live.ts
+--- base/src/core/scheduler/tier-live.ts	2026-11-20 16:15:31.000000000 +0100
++++ qc/src/core/scheduler/tier-live.ts	2026-11-20 17:31:30.721526321 +0100
+@@ -5,7 +5,7 @@
+ import type { SchedulerContext } from "./context.js";
+ import { runnable } from "./focused.js";
+ import type { Ledger } from "./ledger.js";
+-import { quietHolds, quietSleepMs } from "./quiet.js";
++import { quietDemand, quietHolds, quietSleepMs } from "./quiet.js";
+ import type { CutFiles } from "./sharing.js";
+ import { backlogSlot } from "./slots.js";
+ import type { PlanAsks, QueueView } from "./tier-plan.js";
+@@ -77,7 +77,12 @@
+     fastSize: () => queue.fastSize,
+     batchTurn: () => queue.batchTurn(),
+     quietHolds: (ref, lane, tier, now) => quietHolds(context, ledger, ref, lane, tier, now),
+-    quietWakeMs: (now) => quietSleepMs(context, ledger, now),
++    quietWakeMs: (now) => {
++      const wake = quietSleepMs(context, ledger, now);
++      // PROBE 011-420 (q): while the wait holds backlog, its demand is in the mark.
++      context.capacity?.expect(wake === null ? 0 : quietDemand(context, ledger, now));
++      return wake;
++    },
+     focusedSize: () => queue.focused.size,
+     focusRunnable: (entry) => runnable(context, ledger, entry),
+   };
