@@ -129,6 +129,7 @@ Started: 2026-10-31
 - 2026-11-20, released 0.1.580 (tag squeal--v0.1.580 at 5be6df42b, hub a3126d8, tags v0.1.580 and v0 moved; GitHub latest with install.sh and both Codex runtime assets). Row 018-54 done; review `reviews/0.1.580.md` PASS at ed7dbc524; main CI 44813906077 green. Row 018-56 (`research/unread-inputs.md`): one rule, an input nothing touched is certified by equal hashes at command start, end and export checkout; cezar 66% to 99% of files; decision with the human.
 - 2026-11-20, the human: "Nothing-read: Yes, write the spec". The coordinator wrote the fourth slice, D30 to D34 (endpoint hashes in `ci record`, touched paths, part format 6, the export rule in `FileReuse.evidence`, the stated risk), and proposed rows 018-57 and 018-58 for the human's review.
 - 2026-11-20, the human: "Spec D30-34: Approve". Rows 018-57 and 018-58 planned, brief `tasks/wave-20.md`.
+- 2026-11-20, row 018-57's part format 6 (5d299bc9b) adds `unstable` beside D32's `stable` and `touched`; the coordinator accepted it and amended D32. Row 018-58 (worker d7d60bbf) started from that commit.
 
 ## Open questions
 

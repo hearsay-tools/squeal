@@ -381,6 +381,7 @@ A path is **touched** by the command when a hooked process wrote it, read it wit
 `PART_FORMAT` becomes `squeal-ci-part/6`. A part adds:
 - `stable`: the stable paths whose content differs from the commit's tree, each with its hash. Paths equal to the commit are implied by `commit`, so the part stays small.
 - `touched`: the command's touched paths, or `"all"`.
+- `unstable`: the hashed paths whose hash at the start differs from the hash at the end (2026-11-20, row 018-57: without it, a path a shell changed and did not restore would read as equal to the commit at both ends). D33 refuses a path in `unstable`. A part without `stable` and `unstable` had no endpoint hashing, and D9's rule alone applies.
 
 Every part of one command carries the same two fields. Readers accept formats 3 to 6. A part of format 3 to 5 keeps today's rule.
 
