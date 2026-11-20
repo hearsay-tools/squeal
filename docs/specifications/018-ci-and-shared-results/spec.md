@@ -370,7 +370,7 @@ In cezar's newest merge-group run (44808547913), 583 of 1,749 test files were le
 
 ### D30. Endpoint hashes in `ci record`
 
-`squeal ci record` hashes the checkout twice in its own process: before it starts the command, and after every process of the command has exited. It hashes every path git does not ignore, and the listing of each directory that holds one, as the key holds them (`hereOf`: a file by its blob id, a listing by its names hash). It runs no `git status` and starts no other program for this. A path whose two hashes are equal is **stable**. Cost measured: about 1 s per end for cezar's 4,967 tracked files (24 MB) at a host load of about 40. The time joins the cost line of row 018-29.
+`squeal ci record` hashes the checkout twice in its own process: before it starts the command, and after every process of the command has exited. It hashes every path the commit's tree holds, also when it is gone from disk, and the listing of each directory the tree holds (2026-11-20, row 018-57: untracked paths are not hashed; they are absent at the commit, so D33 never certifies them), as the key holds them (`hereOf`: a file by its blob id, a listing by its names hash). It runs no `git status` and starts no other program for this. A path whose two hashes are equal is **stable**. Cost measured: about 1 s per end for cezar's 4,967 tracked files (24 MB) at a host load of about 40. The time joins the cost line of row 018-29.
 
 ### D31. Touched paths
 
