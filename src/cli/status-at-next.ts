@@ -41,6 +41,8 @@ export interface NextInput {
   readonly commit: string;
   readonly given: string;
   readonly paths: readonly string[];
+  /** Row 023-29: the named paths relative to the root; `--run` runs a test file named so. */
+  readonly named?: readonly string[];
 }
 
 /** Q1: the selection `--run` would make, read while the keyer's adapters are open; then the step. */
@@ -56,7 +58,8 @@ export function nextProbe(input: NextInput): {
     if (missing.length === 0) return;
     all = (await refuse({ ...input, tree: open.tree }, keyed, missing)).run;
     const chosen = await diffSelected(input, open);
-    selected = all.filter((f) => chosen.has(testFileId(f.ref)));
+    const named = new Set(input.named ?? []);
+    selected = all.filter((f) => chosen.has(testFileId(f.ref)) || named.has(f.ref.path));
   };
   const next = (): AtNext | null => {
     if (all.length === 0) return null;

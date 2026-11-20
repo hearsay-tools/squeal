@@ -6,7 +6,7 @@ import { checkoutChange } from "../core/commit/at-keys-verify.js";
 import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
-import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { storedDurations } from "./code-gate-durations.js";
 import type { RunUse, SideState } from "./status-at-report.js";
@@ -65,6 +65,11 @@ export interface AtRunInput {
   readonly commit: string;
   readonly given: string;
   readonly paths: readonly string[];
+  /**
+   * Row 023-29 (row 023-32's finding): the paths the call names, relative to
+   * the root; a test file named so runs with no result, selected by the change or not.
+   */
+  readonly named?: readonly RelativePath[];
   /** The command's environment as it started: the run's (D4.4). */
   readonly env: NodeJS.ProcessEnv;
   /** The command that runs this CLI (`CliIo.relaunch`), for the run's child. */
@@ -136,7 +141,7 @@ export function atRun(input: AtRunInput): AtRun {
   let batchTimes: readonly BatchTime[] = [];
 
   const whileOpen = selector(
-    { root: input.root, commit, allMissing: args.allMissing },
+    { root: input.root, commit, allMissing: args.allMissing, named: new Set(input.named ?? []) },
     (chosen) => {
       selection = chosen;
     },

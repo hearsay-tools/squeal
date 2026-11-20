@@ -74,6 +74,7 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
           commit,
           given: input.given,
           paths: input.givenPaths,
+          ...(input.paths === null ? {} : { named: input.paths }),
           env: input.env,
           relaunch: input.relaunch,
           started: performance.now(),
@@ -83,7 +84,15 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
           ...(input.now === undefined ? {} : { now: input.now }),
         });
   const probe =
-    ran === null ? nextProbe({ root, commit, given: input.given, paths: input.givenPaths }) : null;
+    ran === null
+      ? nextProbe({
+          root,
+          commit,
+          given: input.given,
+          paths: input.givenPaths,
+          ...(input.paths === null ? {} : { named: input.paths }),
+        })
+      : null;
   const keying = { adapters: daemonAdapters, squealVersion: squealVersion(), env: input.env };
   const at = await commitSide({
     ...keying,

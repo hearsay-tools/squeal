@@ -53,17 +53,31 @@ export const noResult = (f: KeyedFile) => "key" in f.at && f.at.stored.length ==
  * git does not hold are refused, with the other projects of their path.
  */
 export function selector(
-  input: { readonly root: AbsolutePath; readonly commit: string; readonly allMissing: boolean },
+  input: {
+    readonly root: AbsolutePath;
+    readonly commit: string;
+    readonly allMissing: boolean;
+    /**
+     * Row 023-29 (row 023-32's finding): the test files the call names
+     * itself, relative to the root; each runs, selected by the change or not.
+     */
+    readonly named?: ReadonlySet<RelativePath>;
+  },
   into: (selection: Selection) => void,
 ): WhileOpen {
   return async (open, keyed) => {
     const missing = keyed.filter(noResult);
+    const named = input.named ?? new Set<RelativePath>();
     const chosen = input.allMissing ? null : await diffSelected(input, open);
-    const wanted = missing.filter((f) => chosen === null || chosen.has(testFileId(f.ref)));
+    const wanted = missing.filter(
+      (f) => chosen === null || chosen.has(testFileId(f.ref)) || named.has(f.ref.path),
+    );
     const unselected = new Set(
       missing.filter((f) => !wanted.includes(f)).map((f) => testFileId(f.ref)),
     );
-    const paths = new Set(input.allMissing ? [] : await changedSince(input.root, input.commit));
+    // The working tree's side runs what the change selects and what the call names (R1).
+    const changed = input.allMissing ? [] : await changedSince(input.root, input.commit);
+    const paths = new Set([...changed, ...named]);
     const selects = { ids: chosen, paths };
     into({ ...(await refuse({ ...input, tree: open.tree }, keyed, wanted)), unselected, selects });
   };
