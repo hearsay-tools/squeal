@@ -8,6 +8,7 @@ import {
   PART_FORMAT,
   type Part,
   type PartHeader,
+  type PartRecords,
   type RecordingCost,
   writePart,
 } from "../core/ci/parts.js";
@@ -21,7 +22,10 @@ import { WorktreePaths } from "../core/fs/worktree-paths.js";
 import { readObjectFormat } from "../core/hash/git-index.js";
 import { KEY_FORMAT_VERSION } from "../core/keys/key-format.js";
 import type { AbsolutePath } from "../core/types/common.js";
+import { type NodeTestRecording, startNodeTestRecording } from "../runners/node-test/ci-record.js";
+import type { NodeTestRecordedRun } from "../runners/node-test/ci-runs.js";
 import {
+  NO_VITEST_RUN,
   type RecordedRun,
   type RecordingCoverage,
   startRecording,
@@ -117,36 +121,47 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
     started = `Squeal could not start recording (${errorText(error)})`;
   }
   if (typeof started === "string") return unchanged(started);
-  const { root, recording } = started;
+  const { root } = started;
   try {
-    const exit = exitOf(await runCommand(args.command, cwd, recording.env), say);
+    const exit = exitOf(await runCommand(args.command, cwd, started.env), say);
     const commandEnd = performance.now();
     try {
-      const { runs, notes, evidence, hooks } = recording.finish();
+      const { bodies, notes, evidence, hooks } = finishAll(started);
       for (const note of notes) say(note);
-      if (runs.length > 0) {
+      if (bodies.length > 0) {
         const out = resolve(cwd, args.out ?? DEFAULT_PARTS_DIR);
-        say(await writeParts(runs, out, root, env, io, evidence, { hooks, commandEnd }));
+        say(await writeParts(bodies, out, root, env, io, evidence, { hooks, commandEnd }));
       }
     } catch (error) {
       say(`no part written: ${error instanceof Error ? (error.stack ?? error.message) : error}`);
     }
     return exit;
   } finally {
-    try {
-      recording.close();
-    } catch (error) {
-      say(`could not remove its temporary files: ${errorText(error)}`);
+    for (const recording of [started.vitest, started.nodeTest]) {
+      try {
+        recording?.close();
+      } catch (error) {
+        say(`could not remove its temporary files: ${errorText(error)}`);
+      }
     }
   }
 }
 
 interface Started {
   readonly root: AbsolutePath;
-  readonly recording: VitestRecording;
+  /** The env the command runs with. */
+  readonly env: NodeJS.ProcessEnv;
+  /** Vitest's recording, which takes the evidence for both when there. */
+  readonly vitest: VitestRecording | null;
+  /** Row 018-47: node:test's, when `squeal.config.json` has a `nodeTest` entry. */
+  readonly nodeTest: NodeTestRecording | null;
 }
 
-/** The recording for a Vitest command in `cwd`, or why the command runs unchanged. */
+/**
+ * The recordings for a command in `cwd` (D8, D22): Vitest's when Vitest
+ * resolves, node:test's when the project has a `nodeTest` entry, both when
+ * both; or why the command runs unchanged.
+ */
 async function startFor(
   cwd: string,
   env: NodeJS.ProcessEnv,
@@ -154,21 +169,100 @@ async function startFor(
 ): Promise<Started | string> {
   const root = findWorktreeRoot(cwd);
   if (root === null) return `${cwd} is not inside a git worktree`;
-  if (!vitestResolves(root)) {
-    return `only Vitest is supported, and vitest does not resolve from ${root}`;
-  }
   const policy = readPolicy(root);
+  const vitest = vitestResolves(root);
+  if (!vitest && policy.nodeTest.length === 0) {
+    return `Vitest does not resolve from ${root} and squeal.config.json has no nodeTest entry`;
+  }
+  const paths = new WorktreePaths(root);
+  const objectFormat = await readObjectFormat(root);
+  const tempDir = deps.tempDir === undefined ? {} : { tempDir: deps.tempDir };
+  let nodeTest: NodeTestRecording | null = null;
+  if (policy.nodeTest.length > 0) {
+    const entries = policy.nodeTest;
+    const started = startNodeTestRecording({ paths, env, entries, objectFormat, ...tempDir });
+    if (typeof started === "string") return started;
+    nodeTest = started;
+  }
+  if (!vitest && nodeTest !== null) {
+    return { root, env: nodeTest.alone(), vitest: null, nodeTest };
+  }
+  const { hooks, settings } = nodeTest?.addition ?? {};
   const recording = startRecording({
-    paths: new WorktreePaths(root),
+    paths,
     env,
     observe: policy.observe.runtimeInputs,
     allowlist: policy.env.allowlist,
     squealVersion: squealVersion(),
-    objectFormat: await readObjectFormat(root),
+    objectFormat,
     coverage: recordingCoverage(deps),
-    ...(deps.tempDir === undefined ? {} : { tempDir: deps.tempDir }),
+    ...(hooks === undefined || settings === undefined ? {} : { also: { hooks, settings } }),
+    ...tempDir,
   });
-  return typeof recording === "string" ? recording : { root, recording };
+  if (typeof recording === "string") {
+    nodeTest?.close();
+    return recording;
+  }
+  const commandEnv = { ...recording.env, ...nodeTest?.addition.env };
+  return { root, env: commandEnv, vitest: recording, nodeTest };
+}
+
+/** One part's header fields of its own recording, and its body. */
+interface Body {
+  readonly header: Pick<PartHeader, "runner" | "runnerVersion" | "shard" | "end" | "observing"> &
+    Pick<PartHeader, "coverage" | "nodeTest">;
+  readonly projects: Part["projects"];
+  readonly testFiles: Part["testFiles"];
+  readonly coverage?: PartRecords;
+}
+
+/** Each recording's part bodies, its notes, and the command's evidence and hooks' time. */
+function finishAll(started: Started): {
+  bodies: Body[];
+  notes: string[];
+  evidence: InputEvidence;
+  hooks: HooksTime;
+} {
+  const vitest = started.vitest?.finish();
+  const nodeTest = started.nodeTest?.finish();
+  const bodies = [
+    ...(vitest?.runs ?? []).map(vitestBody),
+    ...(nodeTest?.runs ?? []).map(nodeTestBody),
+  ];
+  const vitestNotes = vitest?.notes ?? [];
+  // A command of node:test alone is no missing Vitest run.
+  const quiet = (nodeTest?.runs.length ?? 0) > 0 && vitestNotes.join() === NO_VITEST_RUN;
+  const notes = [...(quiet ? [] : vitestNotes), ...(nodeTest?.notes ?? [])];
+  if (vitest === undefined && bodies.length === 0)
+    notes.push("no node --test process left a part: nothing recorded");
+  const read = vitest ?? nodeTest?.evidence ?? { evidence: {}, hooks: { ms: 0, threads: 0 } };
+  return { bodies, notes, evidence: read.evidence, hooks: read.hooks };
+}
+
+function vitestBody(run: RecordedRun): Body {
+  const { projects, testFiles, end, runnerVersion, shard, observing, coverage, records } = run;
+  return {
+    header: {
+      runner: "vitest",
+      runnerVersion,
+      shard,
+      end,
+      observing,
+      ...(coverage === undefined ? {} : { coverage }),
+    },
+    projects,
+    testFiles,
+    ...(records === undefined ? {} : { coverage: records }),
+  };
+}
+
+function nodeTestBody(run: NodeTestRecordedRun): Body {
+  const { testFiles, end, runnerVersion, shard, observing, nodeTest } = run;
+  return {
+    header: { runner: "node-test", runnerVersion, shard, end, observing, nodeTest },
+    projects: [],
+    testFiles,
+  };
 }
 
 function errorText(error: unknown): string {
@@ -199,7 +293,7 @@ interface Spent {
 }
 
 async function writeParts(
-  runs: readonly RecordedRun[],
+  bodies: readonly Body[],
   out: AbsolutePath,
   root: AbsolutePath,
   env: NodeJS.ProcessEnv,
@@ -217,34 +311,25 @@ async function writeParts(
   const base = {
     squealVersion: squealVersion(),
     keyFormat: KEY_FORMAT_VERSION,
-    runner: "vitest" as const,
     commit: head.head,
     dirty: head.dirty,
     createdAt: (io.now ?? Date.now)(),
     source: sourceOf(env),
   };
   let files = 0;
-  for (const run of runs) {
-    const { projects, testFiles, end, runnerVersion, shard, observing, coverage, records } = run;
-    const header: PartHeader = {
-      ...base,
-      runnerVersion,
-      shard,
-      end,
-      observing,
-      ...(coverage === undefined ? {} : { coverage }),
-      cost,
-    };
+  for (const body of bodies) {
+    const header: PartHeader = { ...base, ...body.header, cost };
+    const { projects, testFiles } = body;
     const part: Part = { format: PART_FORMAT, header, projects, testFiles, evidence };
-    writePart(out, records === undefined ? part : { ...part, coverage: records });
+    writePart(out, body.coverage === undefined ? part : { ...part, coverage: body.coverage });
     files += testFiles.length;
   }
-  const ended = runs.filter((run) => run.end !== "completed").map((run) => run.end);
+  const ended = bodies.filter((b) => b.header.end !== "completed").map((b) => b.header.end);
   const untrusted = ended.length === 0 ? "" : ` (no test file from a run that ${ended.join(", ")})`;
-  const parts = `${runs.length} part${runs.length === 1 ? "" : "s"}`;
+  const parts = `${bodies.length} part${bodies.length === 1 ? "" : "s"}`;
   const wrote = `wrote ${parts} with ${files} test file${files === 1 ? "" : "s"} to ${out}${untrusted}`;
-  const summary = costOf(runs.map((run) => ({ header: { cost }, testFiles: run.testFiles })));
-  const lines = [wrote, ...runs.flatMap(coverageLine)];
+  const summary = costOf(bodies.map((body) => ({ header: { cost }, testFiles: body.testFiles })));
+  const lines = [wrote, ...bodies.flatMap(coverageLine)];
   if (summary !== null) lines.push(costText(summary));
   return lines.join("\nsqueal ci record: ");
 }
@@ -254,7 +339,8 @@ async function writeParts(
  * have one, or why the provider was not in the run, and an error that cost
  * records.
  */
-function coverageLine({ coverage, testFiles }: RecordedRun): string[] {
+function coverageLine({ header, testFiles }: Body): string[] {
+  const { coverage } = header;
   if (coverage === undefined) return [];
   if ("off" in coverage) {
     const what = coverage.off === "failed" ? "failed" : "was not added";

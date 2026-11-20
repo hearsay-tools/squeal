@@ -38,6 +38,9 @@ import { readRawRuns, recordedRun } from "./ci-runs.js";
  * daemon, no store, no key.
  */
 
+/** `finish`'s only note when the command ran no Vitest process. */
+export const NO_VITEST_RUN = "no Vitest run in this command: nothing recorded";
+
 /** The env variable carrying the hook's settings (`vitest-ci.cjs`). */
 export const CI_RECORD_VARIABLE = "SQUEAL_CI_RECORD";
 
@@ -77,6 +80,16 @@ export interface RecordingOptions {
   /** The repository's object format: the evidence hashes files as git does. */
   readonly objectFormat: ObjectFormat;
   readonly coverage: RecordingCoverage;
+  /**
+   * Row 018-47: another recording of the same command (node:test's,
+   * `NodeTestAddition`): its hooks go after this one's in `NODE_OPTIONS`,
+   * ahead of the project's own, and into the children's (`hooks`); its
+   * settings join this one's, which then take the evidence for both.
+   */
+  readonly also?: {
+    readonly hooks: readonly AbsolutePath[];
+    readonly settings: Readonly<Record<string, unknown>>;
+  };
 }
 
 export interface VitestRecording {
@@ -137,8 +150,9 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
   const env = { ...options.env, ...commandVariables };
   const root = options.paths.root;
   env[CI_RECORD_VARIABLE] = JSON.stringify({
+    ...options.also?.settings,
     // The hooks a child started with an env of its own gets back (`children.cjs`).
-    hooks: [hook],
+    hooks: [hook, ...(options.also?.hooks ?? [])],
     raw,
     variables: [...options.allowlist],
     evidence: { out: evidence, root, skip, format: options.objectFormat },
@@ -154,7 +168,7 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
       const { evidence: read, hooks } = readRecorded(evidence);
       return {
         runs: runs.map((run) => recordedRun(run, context)),
-        notes: none ? ["no Vitest run in this command: nothing recorded"] : notes,
+        notes: none ? [NO_VITEST_RUN] : notes,
         evidence: read,
         hooks,
       };
@@ -194,13 +208,18 @@ function commandEnv(
   const root = options.paths.root;
   const system = tmpdir();
   const skip = `${root}${sep}`.startsWith(`${system}${sep}`) ? [temp] : [system, temp];
+  // Row 018-47: the other recording's hooks right after this one's, once `observeEnv` left out
+  // every Squeal recorder of the inherited options (node:test's module recorder is one).
+  const also = (options.also?.hooks ?? []).map((file) => recorderOption(file, own));
+  const withAlso = (value: string) =>
+    also.length === 0 ? value : value.replace(hookOption, `${hookOption} ${also.join(" ")}`);
   if (recorder === null) {
-    return { env: { ...unobservedEnv(options.env), NODE_OPTIONS: withHook }, skip };
+    return { env: { ...unobservedEnv(options.env), NODE_OPTIONS: withAlso(withHook) }, skip };
   }
   const env = observeEnv(recorder, { out: observed, root, skip }, withHook);
   return {
     env: {
-      NODE_OPTIONS: env.NODE_OPTIONS ?? withHook,
+      NODE_OPTIONS: withAlso(env.NODE_OPTIONS ?? withHook),
       [OBSERVE_VARIABLE]: env[OBSERVE_VARIABLE] ?? "",
     },
     skip,
