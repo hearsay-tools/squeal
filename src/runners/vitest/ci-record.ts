@@ -137,6 +137,8 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
   const env = { ...options.env, ...commandVariables };
   const root = options.paths.root;
   env[CI_RECORD_VARIABLE] = JSON.stringify({
+    // The hooks a child started with an env of its own gets back (`children.cjs`).
+    hooks: [hook],
     raw,
     variables: [...options.allowlist],
     evidence: { out: evidence, root, skip, format: options.objectFormat },

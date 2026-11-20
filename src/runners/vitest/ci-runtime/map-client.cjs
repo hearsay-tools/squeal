@@ -9,7 +9,7 @@
 // CommonJS with Node built-ins only.
 "use strict";
 const { Worker } = require("node:worker_threads");
-const clock = require("./clock.cjs");
+const clock = require("./shared.cjs").shared("clock.cjs");
 
 /**
  * The records' worker, `workerMapper`'s protocol: a job, the sources it

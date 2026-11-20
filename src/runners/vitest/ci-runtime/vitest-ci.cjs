@@ -48,7 +48,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createRequire } = require("node:module");
 const { isMainThread } = require("node:worker_threads");
-const clock = require("./clock.cjs");
+const clock = require("./shared.cjs").shared("clock.cjs");
 const { coveredModules, coveredReporter, startCoverage } = require("./coverage.cjs");
 const { installWatch, watchWorkers } = require("./inspector.cjs");
 
@@ -301,7 +301,7 @@ try {
 } catch {}
 
 try {
-  require("./evidence-hooks.cjs").installEvidence(readEvidence());
+  require("./shared.cjs").shared("evidence-hooks.cjs").installEvidence(readEvidence());
 } catch {}
 
 if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
@@ -309,7 +309,7 @@ if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
   try {
     const root = vitestPackage(process.argv[1]);
     if (root !== null) {
-      require("./children.cjs").markNested();
+      require("./shared.cjs").shared("children.cjs").markNested();
       if (!settings.nested) install(settings, root);
     }
   } catch {}
