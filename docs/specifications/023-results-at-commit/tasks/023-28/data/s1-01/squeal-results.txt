@@ -1,0 +1,88 @@
+## 4s +81s $ squeal checks | tail -20; squeal status --at 8be977ad6 --run 2>&1 | tail -40
+browser
+  Selects: Vitest test files of project "e2e" matching packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `squeal run browser --wait 60000` does
+  Run it now: `squeal run browser --wait 60000`
+
+lint
+  Selects: lint with oxlint
+  Runs: after each edit
+  Run it now: `squeal run lint --wait 60000`
+
+slow
+  Selects: test files marked slow: slow.include packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `squeal run slow --wait 60000`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+squeal: keying test files at 8be977ad6 in a temporary checkout
+squeal status --at 8be977ad6: 1920 test files at 8be977ad6 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+Keys at 8be977ad6 from a temporary checkout, 39.7 s (checked against the commit in 677 ms).
+1920 test files: no result -> no result: .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 1917 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown
+--run: no file with no result at 8be977ad6 to run (39.9 s of the 300 s budget)
+
+## 4s +204s $ squeal status --at 8be977ad6^ --run 2>&1 | tail -40
+[test-env] installing agent-browser (agent-browser-linux-x64)
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 17.5M  100 17.5M    0     0  26.3M      0 --:--:-- --:--:-- --:--:-- 26.3M
+[test-env] building (pnpm install --frozen-lockfile && sh .ai/scripts/build-e2e.sh)
+[test-env] cloning the served project into ~squeal-w17/runs/w17/home/.cache/squeal/checkouts/f51a269ccd7075e7/mwp30whk-703e9b5c/tree/.ai/qa/served/tree
+[test-env] starting Squawk on a port it picks itself (CEZ_DRY_RUN=1)
+[test-env] Squawk listens on http://127.0.0.1:46453
+[test-env] healthy after 2s
+squeal: vitest run: the run failed to start: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings
+squeal: node-test project "test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with tsx's rules
+squeal: node-test project "root:test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with Node's own rules
+squeal: node-test project "root:test:unit": 0 of 15 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 15 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 15 in incompleteClosures.
+squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one does not run for a changed path it loads only through a computed import() or require(). The --json report lists it in incompleteClosures.
+TEST_ENV_STATUS=running
+TEST_ENV_BASE_URL=http://127.0.0.1:46453
+TEST_ENV_DESCRIPTOR=.ai/qa/test-env.json
+TEST_ENV_REUSED=1
+BROWSER_PROVIDER=agent-browser
+BROWSER_INSTALLED=0
+[test-env] reusing the healthy instance at http://127.0.0.1:46453
+squeal: vitest run: the run failed to start: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings
+squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at d8abcfe46 from a temporary checkout, 123.4 s (checked against the commit in 663 ms).
+1808 test files: no result -> no result: .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 1805 more
+99 test files: not run (budget) -> no result: packages/cezar/src/lint/run-history-reader.test.ts, packages/cezar/src/pid-file.testkit.test.ts, packages/web/e2e/activity.e2e.ts and 96 more
+10 test files: pass -> no result (at d8abcfe46: run by this command, stored): .github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, packages/cezar/src/core/runner-closure.test.ts and 7 more
+packages/cezar/src/lint/lint-ast-grep-1.test.ts: pass -> no result (at d8abcfe46: run by this command, not stored)
+packages/cezar/src/lint/lint-ast-grep-2.test.ts: pass -> no result (at d8abcfe46: run by this command, not stored)
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> no result
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown
+--run: 12 of 111 test files with no result at d8abcfe46 ran in its checkout, 10 stored at its keys (123.5 s of the 300 s budget)
+1 not stored (the gate did not keep it: it read paths first seen during the run (.ai/ast-grep/rules/automations-capability-read-outside-owner.baseline.json, .ai/ast-grep/rules/subagent-children-outside-dock.baseline.json)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (.ai/ast-grep/rules/automations-capability-read-outside-owner-tsx.baseline.json, .ai/ast-grep/rules/subagent-children-outside-dock-tsx.baseline.json)); the next --at has no result for it
+99 not run (budget). A rerun that fits: squeal status --at '8be977ad6^' --run --timeout 600
+
+## 217s SAY
+I can't say yet. Squeal's comparison came back inconclusive, and I'd rather not claim "no change" from it.
+
+- **Summary line:** it reported 0 pass→fail, 0 fail→pass and 1920 unknown. The unknown count means no stored result exists at either commit to compare, not that nothing changed.
+- **At 8be977ad6:** none of the 1920 test files have a stored result. The `--run` pass had nothing to run, so it never executed them.
+- **At the parent (d8abcfe46):** the budgeted `--run` executed 12 of the 111 files that had no result. 10 of those passed and were stored: `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs`, `packages/cezar/src/core/runner-closure.test.ts` and 7 others. `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` also passed there, but Squeal didn't store those results because they read baseline files that first appeared during the run. The other 99 weren't run because the 300 s budget ran out.
+- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent, so it is new in this commit.
+- **Not run:** the browser group (97 files) and the run-loop group (319 files) didn't run. The browser setup failed because Chrome wouldn't launch here.
+
+From the commit title and the files involved, the change looks like a lint refactor. The `lint-ast-grep-*` tests and the new `active-run-write-index.test.ts` are the files most likely to behave differently, but I haven't measured that.
+
+To get a real answer I can:
+1. Run `squeal status --at '8be977ad6^' --run --timeout 600` to cover the 99 files that ran out of budget.
+2. Run `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` to check the new test on the parent's code.
+3. Run the lint-related test files directly through `squeal run tests <paths> --wait 60000`.
+
+Which do you want? I'd start with 1 and 3 together.

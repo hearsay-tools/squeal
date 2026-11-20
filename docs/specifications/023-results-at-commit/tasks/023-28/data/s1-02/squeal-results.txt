@@ -1,0 +1,69 @@
+## 4s +0s $ squeal checks 2>&1 | head -40; git show --stat --format=%H%n%P 8be977ad6 | head -40
+The checks Squeal runs in this repository (squeal.config.json):
+
+run-loop
+  Selects: Vitest test files matching packages/cezar/src/**/*parity*.test.ts, packages/cezar/src/**/worker-*.test.ts
+  Test files now: 0
+  Runs: between your turns: Squeal starts it when your turn ends, not after an edit
+  Run it now: `squeal run run-loop --wait 60000`
+
+browser
+  Selects: Vitest test files of project "e2e" matching packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `squeal run browser --wait 60000` does
+  Run it now: `squeal run browser --wait 60000`
+
+lint
+  Selects: lint with oxlint
+  Runs: after each edit
+  Run it now: `squeal run lint --wait 60000`
+
+slow
+  Selects: test files marked slow: slow.include packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `squeal run slow --wait 60000`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+8be977ad65ee8c46183e7dde9084b816215aa00c
+d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+
+ .../cezar/src/lint/active-run-write-index.test.ts  |  72 ++++++++++++++
+ packages/cezar/src/lint/active-run-write.ts        | 107 ++++++++++++++-------
+ 2 files changed, 143 insertions(+), 36 deletions(-)
+
+## 4s +120s $ squeal status --at 8be977ad6 2>&1 | head -40; echo ----; squeal status --at 8be977ad6^ 2>&1 | head -40
+squeal status --at: 8be977ad6 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1`
+----
+Command did not complete within its 120s timeout and was moved to the background (ID: bioplmicw). Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-02/8f8bc06b-83a3-4c6f-8bb3-feb627d6b2ea/tasks/bioplmicw.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. To check interim output, use Read on that file path.
+
+## 129s +0s $ sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-02/8f8bc06b-83a3-4c6f-8bb3-feb627d6b2ea/tasks/bioplmicw.output | head -60
+<tool_use_error>Blocked: sleep 100 followed by: cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-02/8f8bc06b-83a3-4c6f-8bb3-feb627d6b2ea/tasks/bioplmicw.output head -60. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+
+## 136s +0s (background) $ f=~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-02/8f8bc06b-83a3-4c6f-8bb3-feb627d6b2ea/tasks/bioplmicw.output; until [ "$(wc -l < $f)" -gt 2 ]; do sleep 3; done; head -60 $f
+Command running in background with ID: bii27rpgc. Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-02/8f8bc06b-83a3-4c6f-8bb3-feb627d6b2ea/tasks/bii27rpgc.output. You will be notified when it completes. To check interim output, use Read on that file path.
+
+## 137s SAY
+I'm waiting on the parent-commit comparison. When it finishes I'll report which test files, if any, pass or fail differently.
+
+## 165s +0s (background) $ squeal status --at 'HEAD~1' --run 2>&1 | tail -40
+Command running in background with ID: b8sd33m6o. Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-02/8f8bc06b-83a3-4c6f-8bb3-feb627d6b2ea/tasks/b8sd33m6o.output. You will be notified when it completes. To check interim output, use Read on that file path.
+
+## 166s SAY
+That notification is the earlier watcher finishing, so it adds nothing new. The run of the 111 selected files at the parent commit is still going, and I'll report when it finishes.
+
+## 374s SAY
+I can't say yet. Squeal reported 0 pass→fail and 0 fail→pass, but that means no comparison was made, not that nothing changed.
+
+**What the commit changed.** 8be977ad6 modifies `packages/cezar/src/lint/active-run-write.ts` (lint rule code) and adds `packages/cezar/src/lint/active-run-write-index.test.ts`. It touches no other files.
+
+**What the comparison produced.**
+- Squeal had no stored results at either commit, so all 1,920 test files came back unknown.
+- The `--run` pass at the parent (d8abcfe46) had a 300 s budget. It ran 12 of the 111 files the change selects, and the other 99 weren't run.
+- The 12 that ran at the parent passed, but none has a current-commit result to compare against.
+- Two of the 12 weren't stored because they read paths first seen during the run. They are `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, both in `packages/cezar/src/lint/`.
+- `active-run-write-index.test.ts` is new, so it has no parent result. Squeal can show whether it fails on the old code with `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46`.
+- The browser e2e files could not run here. Chrome failed to launch, which is an environment problem and not related to the commit.
+
+So the evidence so far shows no difference, but it covers only 12 of the 111 affected files. To finish, I'd run `squeal status --at 'HEAD~1' --run --timeout 600` to cover the rest, then run the same files at HEAD, and optionally run the `squeal proof` command for the new test. Do you want me to do that?

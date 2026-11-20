@@ -1,0 +1,42 @@
+{
+  "id": "s2-08",
+  "loadStart": "10.16",
+  "exit": 0,
+  "wallSeconds": 522.952,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "166s sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output | tail -20",
+    "462s squeal proof test/store/open.test.ts --base 20f03a4~1 2>&1 | tail -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "4s +121s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40"
+  ],
+  "long": [],
+  "results": 3,
+  "turns": 14,
+  "costUsd": 0.1139741,
+  "usage": {
+    "cache_creation_input_tokens": 23757,
+    "cache_read_input_tokens": 295016,
+    "output_tokens": 2502
+  },
+  "firstFinal": "I've started the comparison and I'm waiting for it to finish. The commit changed only `src/core/store/mark.ts` and added tests to `test/store/open.test.ts`. The comparison should show whether any test file's result moved.",
+  "final": "Only one test file's result changed that I can confirm: `test/store/open.test.ts`. I did not verify the other 1,961 test files.\n\n`squeal status --at` could not give me the whole comparison. It had no stored result for most of the 1,962 test files. Its 300-second budget ran out after it had run only 37 files at the earlier commit, and it left 1,301 unrun. Its summary was 0 pass→fail, 0 fail→pass and 1,962 unknown. That is not a finding of \"no change\".\n\nInstead I ran `squeal proof test/store/open.test.ts --base 20f03a4~1`:\n- **Earlier commit's code, with the new test:** fails. The new test is \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". It expects `found: \"unknown\"` and gets an object without that field.\n- **Commit `20f03a4`:** passes.\n\nThe commit touched only `src/core/store/mark.ts` and added that test, so no other test file contains new tests. Any other test file whose result changed would have to import `mark.ts` indirectly.\n\nTo rule that out, rerun the full comparison with a longer budget: `squeal status --at '20f03a4~1' --run --timeout 600`. It may need more than one pass, because several test files read paths first seen during the run, so Squeal does not store their results.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run"
+  ]
+}

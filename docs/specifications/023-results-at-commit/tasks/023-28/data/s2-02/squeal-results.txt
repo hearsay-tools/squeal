@@ -1,0 +1,77 @@
+## 4s +120s $ squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40
+squeal: keying test files at 20f03a431 in a temporary checkout
+squeal status --at 20f03a431: 1962 test files at 20f03a431 against the working tree (HEAD 20f03a431); one call is the whole comparison
+This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+Keys at 20f03a431 from a temporary checkout, 57.5 s (checked against the commit in 4849 ms).
+1962 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 1959 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown
+--run: no file with no result at 20f03a431 to run (57.7 s of the 300 s budget)
+----
+Command did not complete within its 120s timeout and was moved to the background (ID: b8l7lx8z3). Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-02/ede598fb-f453-49bf-bc29-b8fbf4576981/tasks/b8l7lx8z3.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. To check interim output, use Read on that file path.
+
+## 130s +300s $ squeal status --at 20f03a431~1 --run --json 2>&1 | tail -5 | cut -c1-600
+        "key": "1606f6c6daad830758e1ea806093db6463f6cf4a707a9779d7f928818462968e"
+      }
+    }
+  ]
+}
+
+## 434s +32s $ squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -25; echo ---; grep -rlE "store/mark|from ['\"]\./mark" src test --include=*.ts | head -20
+test/store/open.test.ts: proven
+  red: fail, run by this command, stored
+  a mark that a read or write left (row 011-391) > keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1) [assertion]
+            AssertionError: expected { at: 1, problem: 'p' } to deeply equal { at: 1, problem: 'p', …(1) }
+                at test/store/open.test.ts:445:38
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+                at new Promise (<anonymous>)
+                at runWithCancel (node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+                at new Promise (<anonymous>)
+                at runWithTimeout (node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+            - Expected
+            + Received
+            
+              {
+                "at": 1,
+            -   "found": "unknown",
+                "problem": "p",
+              }
+  red is the test at 20f03a431 over the code at a5c9b7223, not the file's own result at a5c9b7223; that is `squeal status --at a5c9b7223 test/store/open.test.ts`.
+  green: pass, run by this command, stored
+1 proven, 0 not red, 0 red for another reason, 0 not green, 0 not comparable; 2 runs (31.6 s of the 600 s budget)
+---
+src/core/checkout/sweep.ts
+src/core/capacity/pool.ts
+src/core/checkout/checkout.ts
+src/core/store/open.ts
+src/core/capacity/background.ts
+src/core/capacity/cores.ts
+src/core/daemon/store-fault.ts
+src/core/presence/facts.ts
+src/core/presence/wait.ts
+src/core/presence/findings.ts
+src/core/presence/decide.ts
+src/core/daemon/store-file.ts
+test/runners/vitest/client-environment.test.ts
+src/core/presence/lock-events.ts
+test/integration/setup-missing-import.test.ts
+src/core/daemon/full-check.ts
+test/harness/store-fault-hook.test.ts
+test/daemon/store-fault.test.ts
+test/daemon/full-check-daemon.test.ts
+test/store/open.test.ts
+
+## 469s SAY
+Partly answered. One test file changed result, and I could not confirm that nothing else did.
+
+**Changed:** `test/store/open.test.ts`. The commit added a test to it, "keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)". With the old `src/core/store/mark.ts` that test fails. It expects `found: "unknown"` and gets `{ at: 1, problem: 'p' }`. With the new code it passes. `squeal proof` gave this result.
+
+**Not confirmed:** the commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`. Many files import the store code, including `src/core/store/open.ts`, `src/core/presence/*` and `src/core/daemon/*`. Their tests, such as `test/daemon/store-fault.test.ts` and `test/daemon/full-check-daemon.test.ts`, could in principle be affected.
+
+I tried `squeal status --at` on both commits to compare all 1962 test files. It gave no result at either commit. The run budget ran out after 46 files, and many results could not be stored. I did not run the dependent test files individually.
+
+Do you want me to run those dependent tests at both commits?

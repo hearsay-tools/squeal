@@ -1,0 +1,61 @@
+    2.5 TOOL Skill: squeal:squeal
+    2.6 RES  Launching skill: squeal:squeal
+    2.8 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    4.1 TOOL Bash: squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40
+  124.6 RES  squeal: keying test files at 20f03a431 in a temporary checkout
+             squeal status --at 20f03a431: 1962 test files at 20f03a431 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+             Keys at 20f03a431 from a temporary checkout, 57.5 s (checked against the commit in 4849 ms).
+             1962 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 1959 more
+   …[1428 chars]
+  124.7 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · first results in this worktree; complexity counted at revision 0\nRevision 0: 0 of 1962 test files are current (run on the files as they are now), and `squeal status` counts the rest.\n\nComplexity counted: 72 functions over 20; squeal code lists them."}}
+  126.0 TOOL Bash: git show --stat --format=%s 20f03a431 | tail -15
+  126.2 RES  fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+             
+              src/core/store/mark.ts  |  7 ++++++-
+              test/store/open.test.ts | 27 +++++++++++++++++++++++++++
+              2 files changed, 33 insertions(+), 1 deletion(-)
+  127.6 TOOL Read: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-02/ede598fb-f453-49bf-bc29-b8fbf4576981/tasks/b8l7lx8z3.output
+  127.7 RES  1	squeal: keying test files at 20f03a431 in a temporary checkout
+             2	squeal status --at 20f03a431: 1962 test files at 20f03a431 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             3	This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+             4	Keys at 20f03a431 from a temporary checkout, 57.5 s (checked against the commit in 4849 ms).
+             5	1962 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 19 …[888 chars]
+  130.0 TOOL Bash: squeal status --at 20f03a431~1 --run --json 2>&1 | tail -5 | cut -c1-600
+  429.9 RES          "key": "1606f6c6daad830758e1ea806093db6463f6cf4a707a9779d7f928818462968e"
+                   }
+                 }
+               ]
+             }
+  431.7 TOOL Read: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-02/ede598fb-f453-49bf-bc29-b8fbf4576981/tasks/b8l7lx8z3.output
+  431.8 RES  1	squeal: keying test files at 20f03a431 in a temporary checkout
+             2	squeal status --at 20f03a431: 1962 test files at 20f03a431 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             3	This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+             4	Keys at 20f03a431 from a temporary checkout, 57.5 s (checked against the commit in 4849 ms).
+             5	1962 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 19 …[6306 chars]
+  433.8 TOOL Bash: squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -25; echo ---; grep -rlE "store/mark|from ['\"]\./mark" src test --include=*.ts | head -20
+  465.7 RES  test/store/open.test.ts: proven
+               red: fail, run by this command, stored
+               a mark that a read or write left (row 011-391) > keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1) [assertion]
+                         AssertionError: expected { at: 1, problem: 'p' } to deeply equal { at: 1, problem: 'p', …(1) }
+                             at test/store/open.test.ts:445:38
+                             at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/no …[3719 chars]
+  469.3 SAY  Partly answered. One test file changed result, and I could not confirm that nothing else did.
+
+**Changed:** `test/store/open.test.ts`. The commit added a test to it, "keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)". With the old `src/core/store/mark.ts` that test fails. It expects `found: "unknown"` and gets `{ at: 1, problem: 'p' }`. With the new code it passes. `squeal proof` gave this result.
+
+**Not confirmed:** the commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`. Many files import the store code, including `src/core/store/open.ts`, `src/core/presence/*` and `src/core/daemon/*`. Their tests, such as `test/daemon/store-fault.test.ts` and `test/daemon/full-check-daemon.test.ts`, could in principle be affected.
+
+I tried `squeal status --at` on both commits to compare all 1962 test files. It gave no result at either commit. The run budget ran out after 46 files, and many results could not be stored. I did not run the dependent test files individually.
+
+Do you want me to run those dependent tests at both commits?
+  469.5 END  success turns=9 duration=468566ms cost=$0.0745851 usage={"input_tokens":16,"cache_creation_input_tokens":17147,"cache_read_input_tokens":170956,"output_tokens":1459,"output_tokens_details":{"thinking_tokens":276},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":17147},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+  469.5 FINAL Partly answered. One test file changed result, and I could not confirm that nothing else did.
+
+**Changed:** `test/store/open.test.ts`. The commit added a test to it, "keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)". With the old `src/core/store/mark.ts` that test fails. It expects `found: "unknown"` and gets `{ at: 1, problem: 'p' }`. With the new code it passes. `squeal proof` gave this result.
+
+**Not confirmed:** the commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`. Many files import the store code, including `src/core/store/open.ts`, `src/core/presence/*` and `src/core/daemon/*`. Their tests, such as `test/daemon/store-fault.test.ts` and `test/daemon/full-check-daemon.test.ts`, could in principle be affected.
+
+I tried `squeal status --at` on both commits to compare all 1962 test files. It gave no result at either commit. The run budget ran out after 46 files, and many results could not be stored. I did not run the dependent test files individually.
+
+Do you want me to run those dependent tests at both commits?

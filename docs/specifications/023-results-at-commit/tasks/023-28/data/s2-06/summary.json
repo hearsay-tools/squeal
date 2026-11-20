@@ -1,0 +1,42 @@
+{
+  "id": "s2-06",
+  "loadStart": "9.19",
+  "exit": 0,
+  "wallSeconds": 545.393,
+  "squeal": [
+    "4s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ------; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "486s cd ~squeal-w17/runs/w17/s2-06; git show --stat --format=%s 20f03a431 | tail -15",
+    "488s cd ~squeal-w17/runs/w17/s2-06; squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -30; squeal status --wait 120000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "4s +479s Bash squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ------; squeal status --at 20f03a431~1 --run 2>&1 | tail -40"
+  ],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0851208,
+  "usage": {
+    "cache_creation_input_tokens": 26441,
+    "cache_read_input_tokens": 90583,
+    "output_tokens": 994
+  },
+  "firstFinal": "One test file changed result, but I couldn't check the whole suite, so other changes aren't ruled out.\n\n- **`test/store/open.test.ts`** went from fail to pass. The commit added a test there, \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". I ran the new test against the old `src/core/store/mark.ts` and it fails. The parsed mark came back as `{ at: 1, problem: 'p' }` without `found: \"unknown\"`. With the fix it passes.\n\nThe commit only changed `src/core/store/mark.ts` and `test/store/open.test.ts`. The other 1,337 test files that read `mark.ts` have no result at either commit. The full `squeal status --at` comparison reported 0 pass→fail, 0 fail→pass and 1,962 unknown, because most files had no stored result. The run on the earlier commit also stopped when its 300 s budget ran out, with 1,307 files not run.\n\nI can't say whether any of those 1,337 files changed. Checking would take a much longer comparison run (`squeal status --at '20f03a431~1' --run --timeout 600`) or a full-suite run. I haven't done either.",
+  "final": "One test file changed result, but I couldn't check the whole suite, so other changes aren't ruled out.\n\n- **`test/store/open.test.ts`** went from fail to pass. The commit added a test there, \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". I ran the new test against the old `src/core/store/mark.ts` and it fails. The parsed mark came back as `{ at: 1, problem: 'p' }` without `found: \"unknown\"`. With the fix it passes.\n\nThe commit only changed `src/core/store/mark.ts` and `test/store/open.test.ts`. The other 1,337 test files that read `mark.ts` have no result at either commit. The full `squeal status --at` comparison reported 0 pass→fail, 0 fail→pass and 1,962 unknown, because most files had no stored result. The run on the earlier commit also stopped when its 300 s budget ran out, with 1,307 files not run.\n\nI can't say whether any of those 1,337 files changed. Checking would take a much longer comparison run (`squeal status --at '20f03a431~1' --run --timeout 600`) or a full-suite run. I haven't done either.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run"
+  ]
+}

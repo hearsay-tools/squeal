@@ -1,0 +1,14 @@
+{
+  "id": "s1-02",
+  "group": "s1",
+  "clone": "~squeal-w17/runs/w17/s1-02",
+  "prompt": "Did the last commit (8be977ad6) change any test results compared with its parent commit? Tell me which test files, if any, now pass or fail differently.",
+  "start": "2026-11-20T14:40:09.539Z",
+  "loadStart": "2.94",
+  "cpus": 12,
+  "exit": 0,
+  "wallSeconds": 374.433,
+  "end": "2026-11-20T14:46:23.975Z",
+  "loadEnd": "23.68",
+  "transcript": "~squeal-w17/runs/w17/claude/projects/-home-squeal-w17-runs-w17-s1-02/8f8bc06b-83a3-4c6f-8bb3-feb627d6b2ea.jsonl"
+}

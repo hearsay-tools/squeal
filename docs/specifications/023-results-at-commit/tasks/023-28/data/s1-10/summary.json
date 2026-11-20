@@ -1,0 +1,46 @@
+{
+  "id": "s1-10",
+  "loadStart": "10.73",
+  "exit": 0,
+  "wallSeconds": 543.343,
+  "squeal": [
+    "4s squeal checks 2>&1 | tail -30; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40",
+    "378s squeal status --at 8be977ad6~1 --run --timeout 600 packages/cezar/src/lint 2>&1 | grep -v '^\\[' | tail -30",
+    "444s squeal run tests packages/cezar/src/lint --wait 600000 2>&1 | grep -v '^\\[' | tail -25; squeal status --at 8be977ad6~1 packages/cezar/src/lint 2>&1 | grep -v '^\\[' | tail -15",
+    "521s squeal status --wait 300000 packages/cezar/src/lint/active-run-write-index.test.ts packages/cezar/src/lint/ast-rules-active-run.test.ts packages/cezar/src/lint/ast-rules-owners-readers.test.ts packages/cezar/src/lint/lint-ast-grep-1.test.ts packages/cezar/src/lint/lint-ast-grep-2.test.ts 2>&1 | grep -v '^\\[' | tail -20",
+    "532s squeal status --at 8be977ad6~1 packages/cezar/src/lint/active-run-write-index.test.ts packages/cezar/src/lint/ast-rules-active-run.test.ts packages/cezar/src/lint/ast-rules-owners-readers.test.ts packages/cezar/src/lint/lint-ast-grep-1.test.ts packages/cezar/src/lint/lint-ast-grep-2.test.ts 2>&1 | grep -v '^\\[' | tail -12"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "4s +369s Bash squeal checks 2>&1 | tail -30; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40"
+  ],
+  "results": 1,
+  "turns": 9,
+  "costUsd": 0.1284372,
+  "usage": {
+    "cache_creation_input_tokens": 35962,
+    "cache_read_input_tokens": 197402,
+    "output_tokens": 1876
+  },
+  "firstFinal": "No test file passes or fails differently because of 8be977ad6. I only compared the five lint test files the commit could affect, not the whole suite. A whole-suite comparison didn't finish in Squeal's time budget.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` (the refactor) and a new `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\nResults, comparing the parent (`d8abcfe46`) with HEAD:\n\n| Test file | Parent | HEAD |\n|---|---|---|\n| `lint-ast-grep-1.test.ts` | pass | pass |\n| `lint-ast-grep-2.test.ts` | pass | pass |\n| `ast-rules-active-run.test.ts` | pass | pass |\n| `ast-rules-owners-readers.test.ts` | pass | pass |\n| `active-run-write-index.test.ts` | absent (new in this commit) | pass |\n\n- **Unchanged:** the four existing files pass on both sides.\n- **New file:** it only exists at HEAD, so there is nothing to compare it against. I didn't run `squeal proof` on it to see whether it fails against the old `active-run-write.ts`.\n- **Not covered:** Squeal reported 0 files going pass to fail or fail to pass in the lint directory. Other test files that import `active-run-write.ts` weren't checked, and the full-suite attempt left most files with no result on one side.",
+  "final": "No test file passes or fails differently because of 8be977ad6. I only compared the five lint test files the commit could affect, not the whole suite. A whole-suite comparison didn't finish in Squeal's time budget.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` (the refactor) and a new `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\nResults, comparing the parent (`d8abcfe46`) with HEAD:\n\n| Test file | Parent | HEAD |\n|---|---|---|\n| `lint-ast-grep-1.test.ts` | pass | pass |\n| `lint-ast-grep-2.test.ts` | pass | pass |\n| `ast-rules-active-run.test.ts` | pass | pass |\n| `ast-rules-owners-readers.test.ts` | pass | pass |\n| `active-run-write-index.test.ts` | absent (new in this commit) | pass |\n\n- **Unchanged:** the four existing files pass on both sides.\n- **New file:** it only exists at HEAD, so there is nothing to compare it against. I didn't run `squeal proof` on it to see whether it fails against the old `active-run-write.ts`.\n- **Not covered:** Squeal reported 0 files going pass to fail or fail to pass in the lint directory. Other test files that import `active-run-write.ts` weren't checked, and the full-suite attempt left most files with no result on one side.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "8be977ad6~1 --run",
+    "8be977ad6~1",
+    "8be977ad6~1"
+  ]
+}

@@ -1,0 +1,139 @@
+## 4s +369s $ squeal checks 2>&1 | tail -30; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40
+The checks Squeal runs in this repository (squeal.config.json):
+
+run-loop
+  Selects: Vitest test files matching packages/cezar/src/**/*parity*.test.ts, packages/cezar/src/**/worker-*.test.ts
+  Test files now: 0
+  Runs: between your turns: Squeal starts it when your turn ends, not after an edit
+  Run it now: `squeal run run-loop --wait 60000`
+
+browser
+  Selects: Vitest test files of project "e2e" matching packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `squeal run browser --wait 60000` does
+  Run it now: `squeal run browser --wait 60000`
+
+lint
+  Selects: lint with oxlint
+  Runs: after each edit
+  Run it now: `squeal run lint --wait 60000`
+
+slow
+  Selects: test files marked slow: slow.include packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `squeal run slow --wait 60000`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+TEST_ENV_DESCRIPTOR=.ai/qa/test-env.json
+TEST_ENV_REUSED=0
+BROWSER_PROVIDER=agent-browser
+BROWSER_INSTALLED=1
+[test-env] not reusing: no descriptor at ~squeal-w17/runs/w17/home/.cache/squeal/checkouts/15237de2cbad5f7a/mwp4kbmm-4987bf5c/tree/.ai/qa/test-env.json
+[test-env] building (pnpm install --frozen-lockfile && sh .ai/scripts/build-e2e.sh)
+[test-env] cloning the served project into ~squeal-w17/runs/w17/home/.cache/squeal/checkouts/15237de2cbad5f7a/mwp4kbmm-4987bf5c/tree/.ai/qa/served/tree
+[test-env] starting Squawk on a port it picks itself (CEZ_DRY_RUN=1)
+[test-env] Squawk listens on http://127.0.0.1:44597
+[test-env] healthy after 2s
+[hsq] Legacy environment names are set: CEZ_ARTIFACTS_DIR, CEZ_DRY_RUN, CEZ_HOME, CEZ_PROJECT_ID, CEZ_REMOTE, CEZ_TASK_ID. Use the matching HSQ_* names. CEZ_HOME remains supported.
+[cez] 'cez' is deprecated; use 'hsq' instead.
+[hsq] Legacy environment names are set: CEZ_ARTIFACTS_DIR, CEZ_DRY_RUN, CEZ_HOME, CEZ_PROJECT_ID, CEZ_REMOTE, CEZ_TASK_ID. Use the matching HSQ_* names. CEZ_HOME remains supported.
+[cez] 'cez' is deprecated; use 'hsq' instead.
+squeal: vitest run: run exceeded timeoutMs (132638 ms)
+squeal: 1 completed test file was not kept in the stores, because it read paths first seen during the run (packages/cezar/src/automations/package.json, packages/cezar/src/ci-wait/package.json, packages/cezar/src/core/package.json and 5 more): packages/web/e2e/agents-dock.e2e.ts; the next run will run it again
+squeal: 12 of 13 completed test files are kept in the stores (12 while the runs went on); the next run on the same bytes runs the other 1
+squeal: node-test project "test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with tsx's rules
+squeal: node-test project "root:test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with Node's own rules
+squeal: node-test project "root:test:unit": 0 of 15 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 15 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 15 in incompleteClosures.
+squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one does not run for a changed path it loads only through a computed import() or require(). The --json report lists it in incompleteClosures.
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+Keys at d8abcfe46 from a temporary checkout, 298.0 s (checked against the commit in 2880 ms).
+1808 test files: no result -> no result: .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 1805 more
+87 test files: not run (budget) -> no result: packages/web/e2e/commit-list.e2e.ts, packages/web/e2e/completion-controls.e2e.ts, packages/web/e2e/composer-defaults.e2e.ts and 84 more
+16 test files: pass -> no result (at d8abcfe46: run by this command, stored): .github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, packages/cezar/src/core/runner-closure.test.ts and 13 more
+5 test files: fail -> no result (at d8abcfe46: (file-level error); run by this command, stored): packages/web/e2e/assistant-line-breaks.e2e.ts, packages/web/e2e/assistant-reply-copy.e2e.ts, packages/web/e2e/automations-disabled.e2e.ts and 2 more
+packages/cezar/src/lint/lint-ast-grep-1.test.ts: pass -> no result (at d8abcfe46: run by this command, not stored)
+packages/cezar/src/lint/lint-ast-grep-2.test.ts: pass -> no result (at d8abcfe46: run by this command, not stored)
+packages/web/e2e/agents-dock.e2e.ts: pass -> no result (at d8abcfe46: run by this command, not stored)
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> no result
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown
+--run: 24 of 111 test files with no result at d8abcfe46 ran in its checkout, 21 stored at its keys (298.3 s of the 300 s budget)
+1 not stored (the gate did not keep it: it read paths first seen during the run (.ai/ast-grep/rules/automations-capability-read-outside-owner.baseline.json, .ai/ast-grep/rules/subagent-children-outside-dock.baseline.json)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (.ai/ast-grep/rules/automations-capability-read-outside-owner-tsx.baseline.json, .ai/ast-grep/rules/subagent-children-outside-dock-tsx.baseline.json)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (packages/cezar/src/automations/package.json, packages/cezar/src/ci-wait/package.json, packages/cezar/src/core/package.json and 5 more)); the next --at has no result for it
+87 not run (budget). A rerun that fits: squeal status --at '8be977ad6~1' --run --timeout 600
+
+## 378s +65s $ squeal status --at 8be977ad6~1 --run --timeout 600 packages/cezar/src/lint 2>&1 | grep -v '^\[' | tail -30
+squeal: keying test files at d8abcfe46 in a temporary checkout
+squeal: node-test project "test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with tsx's rules
+squeal: node-test project "root:test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with Node's own rules
+squeal: node-test project "root:test:unit": 0 of 15 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 15 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 15 in incompleteClosures.
+squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one does not run for a changed path it loads only through a computed import() or require(). The --json report lists it in incompleteClosures.
+squeal: all 2 completed test files are kept in the stores; the next run on the same bytes reads them from the stores
+squeal status --at d8abcfe46: 29 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at d8abcfe46 from a temporary checkout, 63.6 s (checked against the commit in 2590 ms).
+19 test files: no result -> no result: packages/cezar/src/lint/ast-rules-launch-read-regressions.test.ts, packages/cezar/src/lint/ast-rules-launch-read-scopes.test.ts, packages/cezar/src/lint/ast-rules-launch-read.test.ts and 16 more
+7 test files: pass -> no result (at d8abcfe46: run in worktree 1d6ecebb): packages/cezar/src/lint/ast-grep-groups.test.ts, packages/cezar/src/lint/ast-rules-active-run.test.ts, packages/cezar/src/lint/ast-rules-owners-readers.test.ts and 4 more
+packages/cezar/src/lint/lint-ast-grep-1.test.ts: pass -> no result (at d8abcfe46: run by this command, stored)
+packages/cezar/src/lint/lint-ast-grep-2.test.ts: pass -> no result (at d8abcfe46: run by this command, stored)
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> no result
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 29 unknown
+--run: 2 of 2 test files with no result at d8abcfe46 ran in its checkout, 2 stored at its keys (63.8 s of the 600 s budget)
+
+## 444s +75s $ squeal run tests packages/cezar/src/lint --wait 600000 2>&1 | grep -v '^\[' | tail -25; squeal status --at 8be977ad6~1 packages/cezar/src/lint 2>&1 | grep -v '^\[' | tail -15
+Selected test files of group tests have no verdict: these paths select none
+Group tests at revision 0: these paths select no test file of it.
+packages/cezar/src/lint selects no test file of any group.
+squeal: keying test files at d8abcfe46 in a temporary checkout
+squeal status --at d8abcfe46: 29 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at d8abcfe46 from a temporary checkout, 66.3 s (checked against the commit in 1167 ms).
+19 test files: no result -> no result (queued): packages/cezar/src/lint/ast-rules-launch-read-regressions.test.ts, packages/cezar/src/lint/ast-rules-launch-read-scopes.test.ts, packages/cezar/src/lint/ast-rules-launch-read.test.ts and 16 more
+7 test files: pass -> no result (running) (at d8abcfe46: run in worktree 1d6ecebb): packages/cezar/src/lint/ast-grep-groups.test.ts, packages/cezar/src/lint/ast-rules-active-run.test.ts, packages/cezar/src/lint/ast-rules-owners-readers.test.ts and 4 more
+packages/cezar/src/lint/lint-ast-grep-1.test.ts: pass -> no result (running) (at d8abcfe46: run in worktree ed598251)
+packages/cezar/src/lint/lint-ast-grep-2.test.ts: pass -> no result (running) (at d8abcfe46: run in worktree ed598251)
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> no result (queued)
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 29 unknown
+The change since d8abcfe46 selects no file with no result there; `squeal status --at '8be977ad6~1' packages/cezar/src/lint --run --all-missing` runs all 19 files.
+
+## 521s +9s $ squeal status --wait 300000 packages/cezar/src/lint/active-run-write-index.test.ts packages/cezar/src/lint/ast-rules-active-run.test.ts packages/cezar/src/lint/ast-rules-owners-readers.test.ts packages/cezar/src/lint/lint-ast-grep-1.test.ts packages/cezar/src/lint/lint-ast-grep-2.test.ts 2>&1 | grep -v '^\[' | tail -20
+Revision: 0
+Selected: packages/cezar/src/lint/active-run-write-index.test.ts, packages/cezar/src/lint/ast-rules-active-run.test.ts, packages/cezar/src/lint/ast-rules-owners-readers.test.ts, packages/cezar/src/lint/lint-ast-grep-1.test.ts, packages/cezar/src/lint/lint-ast-grep-2.test.ts
+Named test files at revision 0: no known failures; 5 test files, each with a current result, after 8.1 s. Worktree: known failures 0; not current: 1873 of 1920 test files (4 running, 1726 queued, 143 unknown)
+
+## 532s +6s $ squeal status --at 8be977ad6~1 packages/cezar/src/lint/active-run-write-index.test.ts packages/cezar/src/lint/ast-rules-active-run.test.ts packages/cezar/src/lint/ast-rules-owners-readers.test.ts packages/cezar/src/lint/lint-ast-grep-1.test.ts packages/cezar/src/lint/lint-ast-grep-2.test.ts 2>&1 | grep -v '^\[' | tail -12
+squeal: keying test files at d8abcfe46 in a temporary checkout
+squeal status --at d8abcfe46: 5 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at d8abcfe46 from a temporary checkout, 5.8 s (checked against the commit in 812 ms).
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 4 unchanged, 1 unknown
+
+## 543s SAY
+No test file passes or fails differently because of 8be977ad6. I only compared the five lint test files the commit could affect, not the whole suite. A whole-suite comparison didn't finish in Squeal's time budget.
+
+The commit changed two files: `packages/cezar/src/lint/active-run-write.ts` (the refactor) and a new `packages/cezar/src/lint/active-run-write-index.test.ts`.
+
+Results, comparing the parent (`d8abcfe46`) with HEAD:
+
+| Test file | Parent | HEAD |
+|---|---|---|
+| `lint-ast-grep-1.test.ts` | pass | pass |
+| `lint-ast-grep-2.test.ts` | pass | pass |
+| `ast-rules-active-run.test.ts` | pass | pass |
+| `ast-rules-owners-readers.test.ts` | pass | pass |
+| `active-run-write-index.test.ts` | absent (new in this commit) | pass |
+
+- **Unchanged:** the four existing files pass on both sides.
+- **New file:** it only exists at HEAD, so there is nothing to compare it against. I didn't run `squeal proof` on it to see whether it fails against the old `active-run-write.ts`.
+- **Not covered:** Squeal reported 0 files going pass to fail or fail to pass in the lint directory. Other test files that import `active-run-write.ts` weren't checked, and the full-suite attempt left most files with no result on one side.

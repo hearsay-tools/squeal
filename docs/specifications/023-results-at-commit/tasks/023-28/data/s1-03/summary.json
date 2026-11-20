@@ -1,0 +1,49 @@
+{
+  "id": "s1-03",
+  "loadStart": "9.48",
+  "exit": 0,
+  "wallSeconds": 296.196,
+  "squeal": [
+    "4s squeal checks 2>&1 | tail -20; git show --stat --format=%H%n%P 8be977ad6 | head -30",
+    "6s squeal status --at 8be977ad6 --run --wait 120000 2>&1 | tail -40; echo ======; squeal status --at d8abcfe4 --run --wait 120000 2>&1 | tail -40",
+    "8s squeal status --help 2>&1 | head -40; squeal status --at 8be977ad6 --run 2>&1 | head -8",
+    "134s for c in d8abcfe46 8be977ad6; do echo \"=== $c\"; timeout 110 squeal status --at $c packages/cezar/src/lint --run --timeout 90 2>&1 | tail -25; done",
+    "222s squeal run tests packages/cezar/src/lint --wait 100000 2>&1 | tail -25",
+    "229s squeal status --wait 100000 packages/cezar/src/lint/active-run-write-index.test.ts packages/cezar/src/lint/ast-rules-active-run.test.ts packages/cezar/src/lint/ast-grep-groups.test.ts packages/cezar/src/lint/ast-rules-owners-readers.test.ts 2>&1 | tail -25",
+    "238s timeout 100 squeal status --at d8abcfe46 packages/cezar/src/lint --full 2>&1 | grep -E \"pass|fail\" | head -40; echo ====; squeal status packages/cezar/src/lint --full 2>&1 | tail -40"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "8s +120s squeal status --help 2>&1 | head -40; squeal status --at 8be977ad6 --run 2>&1 | head -8"
+  ],
+  "long": [],
+  "results": 1,
+  "turns": 12,
+  "costUsd": 0.112236,
+  "usage": {
+    "cache_creation_input_tokens": 25196,
+    "cache_read_input_tokens": 267360,
+    "output_tokens": 2247
+  },
+  "firstFinal": "**No test file changed from pass to fail or from fail to pass, but I only compared the lint tests. I did not run the whole suite.**\n\nCommit 8be977ad6 changed two files, both under `packages/cezar/src/lint/`: `active-run-write.ts` (refactored) and a new `active-run-write-index.test.ts`. I compared that directory's 29 test files against the parent commit d8abcfe46.\n\n- **New file:** `active-run-write-index.test.ts` did not exist at the parent. It passes now. I did not run `squeal proof` to check that it would fail on the parent's code.\n- **No regressions:** Squeal reports 0 pass→fail and 0 fail→pass among the files it could compare.\n- **Unchanged:** Three files were compared directly and match: `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts` and `ast-rules-owners-readers.test.ts`. At the parent, those three passed, as did four others that don't depend on the changed code. At HEAD I ran `ast-rules-owners-readers.test.ts` and `ast-rules-active-run.test.ts` and both pass.\n- **Not compared:** The other 25 lint test files have no result at HEAD, and 19 of them also have none at the parent. Those 19 didn't run within the time budget. Two more (`lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`) passed at the parent but weren't stored, so they have no result to compare.\n\nIf you want certainty across the whole repo, `squeal run --all --wait` would cover all 1916 files that aren't current. I'd expect it to be slow, so say if you want it.",
+  "final": "**No test file changed from pass to fail or from fail to pass, but I only compared the lint tests. I did not run the whole suite.**\n\nCommit 8be977ad6 changed two files, both under `packages/cezar/src/lint/`: `active-run-write.ts` (refactored) and a new `active-run-write-index.test.ts`. I compared that directory's 29 test files against the parent commit d8abcfe46.\n\n- **New file:** `active-run-write-index.test.ts` did not exist at the parent. It passes now. I did not run `squeal proof` to check that it would fail on the parent's code.\n- **No regressions:** Squeal reports 0 pass→fail and 0 fail→pass among the files it could compare.\n- **Unchanged:** Three files were compared directly and match: `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts` and `ast-rules-owners-readers.test.ts`. At the parent, those three passed, as did four others that don't depend on the changed code. At HEAD I ran `ast-rules-owners-readers.test.ts` and `ast-rules-active-run.test.ts` and both pass.\n- **Not compared:** The other 25 lint test files have no result at HEAD, and 19 of them also have none at the parent. Those 19 didn't run within the time budget. Two more (`lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`) passed at the parent but weren't stored, so they have no result to compare.\n\nIf you want certainty across the whole repo, `squeal run --all --wait` would cover all 1916 files that aren't current. I'd expect it to be slow, so say if you want it.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 5,
+  "atHeadCalls": 2,
+  "atRevs": [
+    "8be977ad6 --run",
+    "d8abcfe4 --run",
+    "8be977ad6 --run",
+    "$c --run",
+    "d8abcfe46"
+  ]
+}

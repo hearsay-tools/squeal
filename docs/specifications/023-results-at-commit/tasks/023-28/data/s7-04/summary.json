@@ -1,0 +1,44 @@
+{
+  "id": "s7-04",
+  "loadStart": "2.14",
+  "exit": 0,
+  "wallSeconds": 169.607,
+  "squeal": [
+    "7s squeal status --at 8be977ad6^ --run --wait 60000 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6 --run --wait 60000 2>&1 | tail -40",
+    "10s squeal status --help 2>&1 | head -40; squeal status --at 8be977ad6^ --run --wait 60000 2>&1 | head -8",
+    "13s git show --stat --format='%h %s' 8be977ad6 | tail -20; echo ----; squeal status --at 8be977ad6^ --full 2>&1 | head -40",
+    "103s squeal status --at 8be977ad6^ --run --timeout 600 packages/cezar/src/lint 2>&1 | tail -40"
+  ],
+  "skill": [
+    "4s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0810666,
+  "usage": {
+    "cache_creation_input_tokens": 20430,
+    "cache_read_input_tokens": 156136,
+    "output_tokens": 1435
+  },
+  "firstFinal": "No test file changed from pass to fail or from fail to pass between `8be977ad6` and its parent `d8abcfe46`. I only compared the 29 test files under `packages/cezar/src/lint`, not all 1920, because the commit touches only that directory.\n\nThe commit changes `active-run-write.ts` and adds `active-run-write-index.test.ts`. Squeal's comparison over those lint tests gave:\n- **Pass to fail:** 0\n- **Fail to pass:** 0\n- **Unchanged:** 27\n- **Not comparable:** 2, both of which pass now:\n  - `active-run-write-index.test.ts` is new in this commit, so it has no result at the parent. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n  - `layer-import.test.ts` had no stored result at the parent. I ran it in the parent's checkout and it passes there too, so Squeal's \"no result\" at the parent was only a missing record, not a change.\n\nThe 2 failures in the session context are in `packages/web/src/test/poll.test.ts`, in the `settled probes close unread streamed bodies` tests. They aren't caused by this commit. The commit doesn't touch the web package, and I didn't check whether anything in the web tests depends on the lint code. Squeal has no earlier pass on record for them, so I can't say whether they were already failing before this commit.",
+  "final": "No test file changed from pass to fail or from fail to pass between `8be977ad6` and its parent `d8abcfe46`. I only compared the 29 test files under `packages/cezar/src/lint`, not all 1920, because the commit touches only that directory.\n\nThe commit changes `active-run-write.ts` and adds `active-run-write-index.test.ts`. Squeal's comparison over those lint tests gave:\n- **Pass to fail:** 0\n- **Fail to pass:** 0\n- **Unchanged:** 27\n- **Not comparable:** 2, both of which pass now:\n  - `active-run-write-index.test.ts` is new in this commit, so it has no result at the parent. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n  - `layer-import.test.ts` had no stored result at the parent. I ran it in the parent's checkout and it passes there too, so Squeal's \"no result\" at the parent was only a missing record, not a change.\n\nThe 2 failures in the session context are in `packages/web/src/test/poll.test.ts`, in the `settled probes close unread streamed bodies` tests. They aren't caused by this commit. The commit doesn't touch the web package, and I didn't check whether anything in the web tests depends on the lint code. Squeal has no earlier pass on record for them, so I can't say whether they were already failing before this commit.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 5,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6^ --run",
+    "8be977ad6 --run",
+    "8be977ad6^ --run",
+    "8be977ad6^",
+    "8be977ad6^ --run"
+  ]
+}

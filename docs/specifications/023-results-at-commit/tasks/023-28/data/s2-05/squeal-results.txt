@@ -1,0 +1,66 @@
+## 4s +120s $ squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 --run 2>&1 | tail -40
+Command did not complete within its 120s timeout and was moved to the background (ID: bgcykjxbv). Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-05/55efc9cd-8b24-4310-bd4f-06c694fdc720/tasks/bgcykjxbv.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. No output had been read from it when it was moved. A program that buffers its output, or a pipe into one such as tail, can keep the output file empty until the command finishes. To check interim output, use Read on that file path.
+
+## 126s +0s $ sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-05/55efc9cd-8b24-4310-bd4f-06c694fdc720/tasks/bgcykjxbv.output | tail -40
+<tool_use_error>Blocked: sleep 100 followed by: cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-05/55efc9cd-8b24-4310-bd4f-06c694fdc720/tasks/bgcykjxbv.output tail -40. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+
+## 129s SAY
+The comparison is still running in the background (`squeal status --at … --run` for both commits). I'll wait for its completion notification before answering.
+
+## 132s +0s (background) $ until [ -s ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-05/55efc9cd-8b24-4310-bd4f-06c694fdc720/tasks/bgcykjxbv.output ]; do sleep 5; done; echo ready
+Command running in background with ID: buge88mf3. Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-05/55efc9cd-8b24-4310-bd4f-06c694fdc720/tasks/buge88mf3.output. You will be notified when it completes. To check interim output, use Read on that file path.
+
+## 134s SAY
+The comparison hasn't finished yet. I'm waiting on `squeal status --at … --run`, which is still running the tests at both commits (there are 1962 test files). I'll report the changed test files once it completes.
+
+## 176s +0s $ cd ~squeal-w17/runs/w17/s2-05; git show --stat --format=%s 20f03a431 | tail -20
+fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+
+ src/core/store/mark.ts  |  7 ++++++-
+ test/store/open.test.ts | 27 +++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+), 1 deletion(-)
+
+## 178s +65s $ cd ~squeal-w17/runs/w17/s2-05; squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15; squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -20
+Revision: 0
+Selected: test/store/open.test.ts
+Run asked: test/store/open.test.ts was unknown with nothing queued, so this wait asked its one run at these inputs, as `squeal retry test/store/open.test.ts` does.
+Named test files at revision 0: no known failures; 1 test file, each with a current result, after 11.2 s. Worktree: known failures 0; not current: 1961 of 1962 test files (1961 unknown)
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+                at new Promise (<anonymous>)
+                at runWithCancel (node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+                at new Promise (<anonymous>)
+                at runWithTimeout (node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+            - Expected
+            + Received
+            
+              {
+                "at": 1,
+            -   "found": "unknown",
+                "problem": "p",
+              }
+  red is the test at 20f03a431 over the code at a5c9b7223, not the file's own result at a5c9b7223; that is `squeal status --at a5c9b7223 test/store/open.test.ts`.
+  green: pass, stored result
+1 proven, 0 not red, 0 red for another reason, 0 not green, 0 not comparable; 1 run (52.7 s of the 600 s budget)
+
+## 246s SAY
+Yes. One test file changed result: `test/store/open.test.ts`.
+
+- **Before 20f03a431:** the test file added in that commit fails against the old code (`a5c9b7223`). The failing assertion expects `"found": "unknown"` on a parsed mark, and the old code leaves it out.
+- **After 20f03a431:** the file passes.
+
+I checked this with `squeal proof test/store/open.test.ts --base 20f03a431~1`. It ran the new test against the old `mark.ts`, and Squeal reported red for the expected reason and green at the commit.
+
+The commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`. Squeal has no stored results yet for the other 1961 test files, so I didn't run them. Squeal's own comparison (`squeal status --at`) came back with "no result" for all 1962 files, so it couldn't show any other file changing. I can't rule out a changed result in a file that depends on `mark.ts`.
+
+## 484s SAY
+The background comparison finished, and it doesn't change my answer. The only test file I can show changing is `test/store/open.test.ts`: it fails at `a5c9b7223` (the commit before 20f03a431) and passes at 20f03a431.
+
+Neither whole-suite comparison produced a verdict:
+- **`--at 20f03a431`:** all 1962 test files came back "no result", so there was nothing to compare.
+- **`--at 20f03a431~1`:** the run hit its 300 s budget. It ran 0 of the 1338 files that had no result at `a5c9b7223`. It reported 0 pass→fail, 0 fail→pass, and 1962 unknown.
+
+I haven't run the other 1961 test files at either commit. The commit changed only `src/core/store/mark.ts` and the one test file, but I can't rule out a change in some other file that depends on `mark.ts`. A rerun that fits the budget is `squeal status --at '20f03a431~1' --run --timeout 600`. I haven't run it.

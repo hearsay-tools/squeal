@@ -1,0 +1,75 @@
+    2.3 TOOL Skill: squeal:squeal
+    2.5 RES  Launching skill: squeal:squeal
+    2.7 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    3.9 TOOL Bash: squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40
+  124.6 RES  Command did not complete within its 120s timeout and was moved to the background (ID: bmp8sxi76). Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. No output had been read from it when it was moved. A program that buffers its output, or a  …[739 chars]
+  124.7 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · first results in this worktree; complexity counted at revision 0\nRevision 0: 0 of 1962 test files are current (run on the files as they are now), and `squeal status` counts the rest.\n\nComplexity counted: 72 functions over 20; squeal code lists them."}}
+  125.7 TOOL Bash: git show --stat 20f03a4 | head -20
+  125.8 RES  commit 20f03a43139ea3e99e057b32dac3db3dffbb903d
+             Author: Wiktor Jarka <wjarka@users.noreply.github.com>
+             Date:   Wed Nov 18 01:56:09 2026 +0100
+             
+                 fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+                 
+                 A mark with no finder, or another, still reads as the full check's.
+                 
+                 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+             
+              src/core/store/mark.ts  |  7 ++++++-
+              test/store/open.test.ts | 27 ++ …[688 chars]
+  128.3 TOOL Monitor: until [ -s ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output ]; do sleep 5; done; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output | tail -40
+  128.5 RES  Monitor started (task br7wtt83q, expires in 10m unless the source ends first; you get one notice at expiry — re-arm if you still need the watch). You will be notified on each event. Keep working — do not poll or sleep. Events may arrive while you are waiting for the user — an event is not their reply.
+  128.5 TOOL ToolSearch: {"query":"select:Monitor","max_results":1}
+  128.7 RES  
+  130.4 SAY  I've started the comparison and I'm waiting for it to finish. The commit changed only `src/core/store/mark.ts` and added tests to `test/store/open.test.ts`. The comparison should show whether any test file's result moved.
+  130.6 END  success turns=7 duration=129569ms cost=$0.054840700000000006 usage={"input_tokens":12,"cache_creation_input_tokens":14900,"cache_read_input_tokens":96867,"output_tokens":788,"output_tokens_details":{"thinking_tokens":90},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":14900},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+  130.6 FINAL I've started the comparison and I'm waiting for it to finish. The commit changed only `src/core/store/mark.ts` and added tests to `test/store/open.test.ts`. The comparison should show whether any test file's result moved.
+  166.4 TOOL Bash: sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output | tail -20
+  166.4 RES  <tool_use_error>Blocked: sleep 100 followed by: cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output tail -20. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+  168.0 TOOL Read: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output
+  168.2 RES  1	squeal: keying test files at 20f03a431 in a temporary checkout
+             2	squeal status --at 20f03a431: 1962 test files at 20f03a431 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             3	This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+             4	Keys at 20f03a431 from a temporary checkout, 76.5 s (checked against the commit in 3670 ms).
+             5	1962 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 19 …[888 chars]
+  171.1 TOOL Monitor: until grep -q "pass -> fail" <(tail -n +10 ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output); do sleep 3; done; tail -n +10 ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output
+  171.3 RES  Monitor started (task bw5sj02wy, expires in 10m unless the source ends first; you get one notice at expiry — re-arm if you still need the watch). You will be notified on each event. Keep working — do not poll or sleep. Events may arrive while you are waiting for the user — an event is not their reply.
+  172.7 SAY  I'm waiting on the second half of the comparison, the one against the commit before `20f03a4`. The first half compared `20f03a4` with itself, so it can't answer your question. That half showed no result for any of the 1962 test files, so it tells us nothing yet.
+  172.9 END  success turns=4 duration=9347ms cost=$0.0794873 usage={"input_tokens":10,"cache_creation_input_tokens":2219,"cache_read_input_tokens":107991,"output_tokens":828,"output_tokens_details":{"thinking_tokens":142},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":2219},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+  172.9 FINAL I'm waiting on the second half of the comparison, the one against the commit before `20f03a4`. The first half compared `20f03a4` with itself, so it can't answer your question. That half showed no result for any of the 1962 test files, so it tells us nothing yet.
+  459.0 TOOL Read: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output
+  459.3 RES  1	squeal: keying test files at 20f03a431 in a temporary checkout
+             2	squeal status --at 20f03a431: 1962 test files at 20f03a431 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             3	This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+             4	Keys at 20f03a431 from a temporary checkout, 76.5 s (checked against the commit in 3670 ms).
+             5	1962 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 19 …[6515 chars]
+  462.2 TOOL Bash: squeal proof test/store/open.test.ts --base 20f03a4~1 2>&1 | tail -30
+  518.4 RES  squeal: proving 1 test file against a5c9b7223 in temporary checkouts
+             squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+             squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+             squeal proof (case source): base a5c9b7223, HEAD 20f03a431
+             Red: the test at 20f03a431 over the code at a5c9b7223. Green: the test and code at 20f03a431; checkouts: red 31.4 s, green 24.1 s.
+          …[3421 chars]
+  522.4 SAY  Only one test file's result changed that I can confirm: `test/store/open.test.ts`. I did not verify the other 1,961 test files.
+
+`squeal status --at` could not give me the whole comparison. It had no stored result for most of the 1,962 test files. Its 300-second budget ran out after it had run only 37 files at the earlier commit, and it left 1,301 unrun. Its summary was 0 pass→fail, 0 fail→pass and 1,962 unknown. That is not a finding of "no change".
+
+Instead I ran `squeal proof test/store/open.test.ts --base 20f03a4~1`:
+- **Earlier commit's code, with the new test:** fails. The new test is "keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)". It expects `found: "unknown"` and gets an object without that field.
+- **Commit `20f03a4`:** passes.
+
+The commit touched only `src/core/store/mark.ts` and added that test, so no other test file contains new tests. Any other test file whose result changed would have to import `mark.ts` indirectly.
+
+To rule that out, rerun the full comparison with a longer budget: `squeal status --at '20f03a4~1' --run --timeout 600`. It may need more than one pass, because several test files read paths first seen during the run, so Squeal does not store their results.
+  522.6 END  success turns=3 duration=65505ms cost=$0.1139741 usage={"input_tokens":8,"cache_creation_input_tokens":6638,"cache_read_input_tokens":90158,"output_tokens":886,"output_tokens_details":{"thinking_tokens":175},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":6638},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+  522.6 FINAL Only one test file's result changed that I can confirm: `test/store/open.test.ts`. I did not verify the other 1,961 test files.
+
+`squeal status --at` could not give me the whole comparison. It had no stored result for most of the 1,962 test files. Its 300-second budget ran out after it had run only 37 files at the earlier commit, and it left 1,301 unrun. Its summary was 0 pass→fail, 0 fail→pass and 1,962 unknown. That is not a finding of "no change".
+
+Instead I ran `squeal proof test/store/open.test.ts --base 20f03a4~1`:
+- **Earlier commit's code, with the new test:** fails. The new test is "keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)". It expects `found: "unknown"` and gets an object without that field.
+- **Commit `20f03a4`:** passes.
+
+The commit touched only `src/core/store/mark.ts` and added that test, so no other test file contains new tests. Any other test file whose result changed would have to import `mark.ts` indirectly.
+
+To rule that out, rerun the full comparison with a longer budget: `squeal status --at '20f03a4~1' --run --timeout 600`. It may need more than one pass, because several test files read paths first seen during the run, so Squeal does not store their results.

@@ -1,0 +1,45 @@
+{
+  "id": "s2-10",
+  "loadStart": "9.22",
+  "exit": 0,
+  "wallSeconds": 449.408,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "128s sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-10/a5ddf09f-1ee6-490d-85cb-7f864484346b/tasks/b7fcgdr8v.output | tail -40",
+    "133s squeal status --at 20f03a4 test/store/open.test.ts --run 2>&1 | tail -15; echo ----; squeal status --at 20f03a4~1 test/store/open.test.ts --run 2>&1 | tail -15",
+    "188s squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "4s +121s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40"
+  ],
+  "long": [],
+  "results": 2,
+  "turns": 11,
+  "costUsd": 0.08317440000000001,
+  "usage": {
+    "cache_creation_input_tokens": 16779,
+    "cache_read_input_tokens": 216329,
+    "output_tokens": 1955
+  },
+  "firstFinal": "Only one test file I could check has a known result, and it did not change. It passes both before and after the commit.\n\n- **`test/store/open.test.ts`:** it passes at `a5c9b72`, the commit before, and passes on the current tree, which is `20f03a4`. The commit added 27 lines of tests to this file, so the file now holds more passing tests than before. Its file-level result is the same.\n- **Source change:** the commit changed only `src/core/store/mark.ts` (7 lines) and that test file.\n\n**What I haven't verified:** other test files that import `mark.ts` could have changed. Squeal has results for only 1 of the 1962 test files in this worktree, so I haven't compared the rest. The full two-commit comparison (`squeal status --at … --run`) is still running in the background, and I'll report it if it finishes with a difference. So far I have no evidence of any other result change.",
+  "final": "The full comparison finished without an answer. Squeal found no result at either commit for almost every file, so it could not say whether any result changed.\n\n- **Reported counts:** 0 pass → fail, 0 fail → pass, 1962 unknown.\n- **Why:** it did no useful run at `20f03a4`. At the parent `a5c9b72` it ran only 56 of 1337 files before its 300 s budget ran out, and it did not keep many of those results (about 47 were not stored).\n- **The one file with an answer:** `test/store/open.test.ts` passes both before and after the commit. That is from my earlier targeted check, not from this full run.\n\nSo I have no evidence that any test result changed. I also can't confirm that none did for the other 1961 files.\n\nThe commit changed only `src/core/store/mark.ts` and `test/store/open.test.ts`. If you want a firmer answer, the narrower check is to run the test files that import `mark.ts` at both commits. Squeal's own suggestion is the full comparison with a longer budget: `squeal status --at '20f03a4~1' --run --timeout 600`. I haven't run either.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 2,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run",
+    "20f03a4 --run",
+    "20f03a4~1 --run"
+  ]
+}

@@ -1,0 +1,79 @@
+## 6s +197s $ squeal status --at 8be977ad6 --run 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40
+squeal: keying test files at 8be977ad6 in a temporary checkout
+squeal status --at 8be977ad6: 1920 test files at 8be977ad6 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+No daemon runs in this worktree: now is the stored results at the working tree's keys.
+Keys at 8be977ad6 from a temporary checkout, 41.0 s (checked against the commit in 709 ms).
+97 test files: no result -> no result: packages/web/e2e/activity.e2e.ts, packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts and 94 more
+packages/cezar/src/home/runtime-cli.test.ts: no result -> pass (now: run in this worktree)
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 1822 unchanged, 98 unknown
+--run: no file with no result at 8be977ad6 to run (41.2 s of the 300 s budget)
+----
+squeal: keying test files at d8abcfe46 in a temporary checkout
+squeal: node-test project "test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with tsx's rules
+squeal: node-test project "root:test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with Node's own rules
+squeal: node-test project "root:test:unit": 0 of 15 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 15 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 15 in incompleteClosures.
+squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one does not run for a changed path it loads only through a computed import() or require(). The --json report lists it in incompleteClosures.
+TEST_ENV_STATUS=running
+TEST_ENV_BASE_URL=http://127.0.0.1:37073
+TEST_ENV_DESCRIPTOR=.ai/qa/test-env.json
+TEST_ENV_REUSED=0
+BROWSER_PROVIDER=agent-browser
+BROWSER_INSTALLED=0
+[test-env] not reusing: no descriptor at ~squeal-w17/runs/w17/home/.cache/squeal/checkouts/1e5b4a2a4e14c797/mwp6a66l-c05ed66d/tree/.ai/qa/test-env.json
+[test-env] building (pnpm install --frozen-lockfile && sh .ai/scripts/build-e2e.sh)
+[test-env] cloning the served project into ~squeal-w17/runs/w17/home/.cache/squeal/checkouts/1e5b4a2a4e14c797/mwp6a66l-c05ed66d/tree/.ai/qa/served/tree
+[test-env] starting Squawk on a port it picks itself (CEZ_DRY_RUN=1)
+[test-env] Squawk listens on http://127.0.0.1:37073
+[test-env] healthy after 2s
+squeal: vitest run: the run failed to start: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings
+squeal: all 3 completed test files are kept in the stores (3 while the runs went on); the next run on the same bytes reads them from the stores
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+No daemon runs in this worktree: now is the stored results at the working tree's keys.
+Keys at d8abcfe46 from a temporary checkout, 81.6 s (checked against the commit in 647 ms).
+97 test files: not run (budget) -> no result: packages/web/e2e/activity.e2e.ts, packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts and 94 more
+11 test files: not run (budget) -> pass (now: run in this worktree): packages/cezar/src/core/runner-closure.test.ts, packages/cezar/src/lint/ast-grep-groups.test.ts, packages/cezar/src/lint/ast-rules-active-run.test.ts and 8 more
+9 test files: no result -> pass (now: run in this worktree): packages/cezar/src/core/ci-tools-definitions-validation.test.ts, packages/cezar/src/core/parity-rows.test.ts, packages/cezar/src/delegation/identity-store-entries.test.ts and 6 more
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 1802 unchanged, 118 unknown
+--run: 3 of 111 test files with no result at d8abcfe46 ran in its checkout, 3 stored at its keys (81.8 s of the 300 s budget)
+108 not run (budget). A rerun that fits: squeal status --at '8be977ad6~1' --run --timeout 600
+
+## 206s +0s $ squeal status --at ' 8be977ad6~1' --run --timeout 600 2>&1 | grep -v '^squeal: node-test\|^TEST_ENV\|^\[test-env\]\|^BROWSER' | tail -25
+squeal status --at: " 8be977ad6~1" names no commit here
+
+## 208s +104s $ squeal status --at '8be977ad6~1' --run --timeout 600 2>&1 | grep -v '^squeal: node-test\|^TEST_ENV\|^\[test-env\]\|^BROWSER' | tail -25
+squeal: keying test files at d8abcfe46 in a temporary checkout
+squeal: vitest run: the run failed to start: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+No daemon runs in this worktree: now is the stored results at the working tree's keys.
+Keys at d8abcfe46 from a temporary checkout, 68.4 s (checked against the commit in 716 ms).
+97 test files: not run (budget) -> no result: packages/web/e2e/activity.e2e.ts, packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts and 94 more
+11 test files: not run (budget) -> pass (now: run in this worktree): packages/cezar/src/core/runner-closure.test.ts, packages/cezar/src/lint/ast-grep-groups.test.ts, packages/cezar/src/lint/ast-rules-active-run.test.ts and 8 more
+9 test files: no result -> pass (now: run in this worktree): packages/cezar/src/core/ci-tools-definitions-validation.test.ts, packages/cezar/src/core/parity-rows.test.ts, packages/cezar/src/delegation/identity-store-entries.test.ts and 6 more
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 1802 unchanged, 118 unknown
+--run: 0 of 108 test files with no result at d8abcfe46 ran in its checkout, 0 stored at its keys (68.5 s of the 600 s budget)
+108 not run (budget). A rerun that fits: squeal status --at '8be977ad6~1' --run --timeout 1200
+
+## 318s SAY
+Not as far as Squeal can show, but the comparison is incomplete.
+
+**Result against the parent (d8abcfe46):** 0 files went pass → fail and 0 went fail → pass. 1802 of 1920 test files have the same stored result at both commits.
+
+**What I couldn't compare:**
+- 118 files have no result at the parent. I tried to run 108 of them in a temporary checkout of d8abcfe46, but the run failed to start. The browser E2E bootstrap fails there with "installed Chrome failed to launch". The same error is the known `[e2e] (global setup)` failure in this worktree, so it comes from the environment rather than the commit.
+- 97 of those are the browser `.e2e.ts` files. They have no result at either commit.
+- 11 files (e.g. `runner-closure.test.ts`, `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts`) and 9 more (e.g. `parity-rows.test.ts`) have no parent result either. They pass at 8be977ad6, but I can't say what they did at the parent.
+
+**One file is new in the commit's lineage:**
+- `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. That is an addition, not a changed result.
+
+**The two failing tests aren't from this commit:**
+- `packages/web/src/test/poll.test.ts` has 2 failing tests, both socket-close counts (expected 0, received 1).
+- The commit is a lint-index perf change under `packages/cezar`, and the failures are in `packages/web`. Nothing on record shows they passed earlier, so I can't tell whether they are new.
+- To check, `squeal proof packages/web/src/test/poll.test.ts --base 8be977ad6~1` would run that file at the parent. `squeal retry packages/web/src/test/poll.test.ts --reason load` would rerun it here. I haven't run either.

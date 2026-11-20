@@ -1,0 +1,45 @@
+{
+  "id": "s2-02",
+  "loadStart": "6.59",
+  "exit": 0,
+  "wallSeconds": 469.899,
+  "squeal": [
+    "4s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "130s squeal status --at 20f03a431~1 --run --json 2>&1 | tail -5 | cut -c1-600",
+    "434s squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -25; echo ---; grep -rlE \"store/mark|from ['\\\"]\\./mark\" src test --include=*.ts | head -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "4s +120s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40"
+  ],
+  "long": [
+    "130s +300s Bash squeal status --at 20f03a431~1 --run --json 2>&1 | tail -5 | cut -c1-600"
+  ],
+  "results": 1,
+  "turns": 9,
+  "costUsd": 0.0745851,
+  "usage": {
+    "cache_creation_input_tokens": 17147,
+    "cache_read_input_tokens": 170956,
+    "output_tokens": 1459
+  },
+  "firstFinal": "Partly answered. One test file changed result, and I could not confirm that nothing else did.\n\n**Changed:** `test/store/open.test.ts`. The commit added a test to it, \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". With the old `src/core/store/mark.ts` that test fails. It expects `found: \"unknown\"` and gets `{ at: 1, problem: 'p' }`. With the new code it passes. `squeal proof` gave this result.\n\n**Not confirmed:** the commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`. Many files import the store code, including `src/core/store/open.ts`, `src/core/presence/*` and `src/core/daemon/*`. Their tests, such as `test/daemon/store-fault.test.ts` and `test/daemon/full-check-daemon.test.ts`, could in principle be affected.\n\nI tried `squeal status --at` on both commits to compare all 1962 test files. It gave no result at either commit. The run budget ran out after 46 files, and many results could not be stored. I did not run the dependent test files individually.\n\nDo you want me to run those dependent tests at both commits?",
+  "final": "Partly answered. One test file changed result, and I could not confirm that nothing else did.\n\n**Changed:** `test/store/open.test.ts`. The commit added a test to it, \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". With the old `src/core/store/mark.ts` that test fails. It expects `found: \"unknown\"` and gets `{ at: 1, problem: 'p' }`. With the new code it passes. `squeal proof` gave this result.\n\n**Not confirmed:** the commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`. Many files import the store code, including `src/core/store/open.ts`, `src/core/presence/*` and `src/core/daemon/*`. Their tests, such as `test/daemon/store-fault.test.ts` and `test/daemon/full-check-daemon.test.ts`, could in principle be affected.\n\nI tried `squeal status --at` on both commits to compare all 1962 test files. It gave no result at either commit. The run budget ran out after 46 files, and many results could not be stored. I did not run the dependent test files individually.\n\nDo you want me to run those dependent tests at both commits?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

@@ -188,3 +188,85 @@ Not product defects, recorded for the coordinator:
 
 - After Q1 to Q3, s1 and s2 again with no hint: whether the report's next step brings in `--run` and a full answer fits the session's limit. Round 1's P3 (`--run` in Squeal's repository past its budget) stays untested: no session here passed `--run`.
 - These rounds used Claude Code and Sonnet only; the Codex, Pi and OpenCode copies of the skill text were not exercised.
+
+## Round 4 (023-28)
+
+Row 023-28, wave 17, worker 8b7173f6, 2026-11-20 14:34Z to 16:25Z, on the lab VM. Squeal 0.1.577 as released (hub entry `c126136`, tag `squeal--v0.1.577`), which carries Q1 (the report ends with the `--run` command and its size), Q2 ("one call is the whole comparison"; `--at HEAD` on a clean tree names `HEAD~1` and does not key), Q5, Q6 and Q7, and names `--run` in the skill's step 8. Claude Code 2.1.327, `--model sonnet`, prompts exactly as round 3, no hint. The brief is `tasks/wave-17.md`; scripts, per-session data and judgements are in `tasks/023-28/`.
+
+### Verdict
+
+- **No. `--run` is now found, but no session got a full answer.** 25 of 25 sessions passed `--run` with no hint (round 3: 0 of 25). 0 of 25 answered the whole question. 11 gave a partial answer that was right for the files they compared; 1 more (s7-04) gave a partial answer with one unsupported claim; 7 said honestly they could not tell; and 6 were wrong.
+- **On an empty store, `--run` fills only one side.** It runs the commit's files. The working tree side stays `no result`, and `--at HEAD --run` says "no file with no result at <HEAD> to run" even when every file has no result there. The 7 partial answers in s1 and s2 came from sessions that ran the current side themselves, with `squeal run tests` or a path-limited `--at HEAD~1 --run`.
+- **`--run` is blocked for reasons the report gets wrong.** In squawk, the browser group's setup fails on a host without Chrome and stops the whole batch: "0 of 108 ran" after 70 s, yet the report says "108 not run (budget)" and suggests `--timeout 600`, then `--timeout 1200`. 4 of 5 s7 sessions reran with the longer budget and got the same result. In Squeal's own repository, the parent's `--run` selects 1,338 files for a 7-line change, runs 0 to 56 of them in 300 s, and still offers "A rerun that fits: … --timeout 600".
+- **The red-proof misreading doubled.** In s2, 6 of 10 sessions gave the proof's red side as the file's change (round 3: 3 of 10). Each proof printed Q5's new line: "red is the test at <HEAD> over the code at <base>, not the file's own result at <base>". The 3 sessions that ran `--at HEAD~1 --run test/store/open.test.ts` got the right answer (pass at both commits) in under a minute.
+- **HEAD is still compared with itself.** 24 of 25 sessions called `--at` on HEAD (round 3: 25 of 25). 22 of them passed `--run` on that call at least once, which skips Q2's refusal, so the call keyed for up to 99 s and then compared HEAD with itself. The 5 sessions that made the call without `--run` got the refusal and went on with `HEAD~1`, as intended.
+- **New:** a `--run` checkout left a squawk e2e server and headless Chrome running after the session and the checkout had ended. Round 3's Q4 key difference showed again in 4 of 5 s7 sessions, s7-01's own store included.
+
+### Setup
+
+| Item | Value |
+|---|---|
+| Machine | The lab VM, 12 CPUs, used from 14:34Z, after the coordinator's steer (the previous runs ended 14:29Z, load 0.31). 1-minute load at session start 1.93 to 11.62. Sessions started only while the load was below 12, at most 3 at once (`bin/batch.mjs`). The load reached 20.75 at 14:54Z: `--run` now runs tests inside 3 sessions at once, which the start gate cannot see. |
+| Isolation | Throwaway OS user `squeal-w17`, case root `~squeal-w17/runs/w17`, `env -i`, cwd `/`; `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` passed by name only, as round 3. |
+| Squeal | The release's `install.sh` (`git show squeal--v0.1.577:install.sh`) with `SQUEAL_MARKETPLACE` at a clone of the hub at `c126136`; `squeal --version` and `claude plugin list` printed 0.1.577. |
+| Harness | Round 3's scripts with the changes in `tasks/023-28/notes.md`; `summarize.mjs` now also counts `--run`, each `--at` revision, HEAD calls and calls past 120 s. |
+| Repositories | As round 3: squawk at `8be977ad6` (s1, s7), Squeal at `20f03a431` (s2), one fresh clone and install per session. |
+| s7 store | s7-01: `squeal run --all --wait`, 34 min, exit 3. 1,823 of 1,920 files current, the 97 `browser` files only on request, and the 3 known failures of round 3 (e2e global setup without Chrome, 2 tests in `poll.test.ts`). s7-02 to s7-05: s7-01's store copied in (round 3's shortcut). Each copy read 1,822 or 1,823 current results "Inherited from other worktrees". |
+| Order | s1-01 alone as a trial, then s1-02..10 and s2-01..10 interleaved, 3 at once; then s7-01's warm-up and session alone; then the s7 copies, 3 at once (`bin/s7chain.sh`). |
+| Cost | 25 sessions, $2.36 (s1 $1.03, s2 $0.94, s7 $0.40). |
+| Cleanup | Each clone was removed after its session. At the end: every process of the user ended, the user and its home removed, `/opt/squeal-w17` and the user's 63 `/tmp` entries removed, and the work folder deleted, transcripts included. No uid-1002 file and no process left. |
+
+### Per group
+
+Round 3's counts are in brackets. "Past 120 s" counts sessions with at least one tool call longer than Claude Code's 120 s default limit, whether it was moved to the background or the agent had raised its own timeout to 600 s.
+
+| Group (n) | `--run` | Answer | `--at` on HEAD (refused) | Past 120 s (moved to background) | Swaps | Wall median (range) | Cost |
+|---|---|---|---|---|---|---|---|
+| s1 squawk before/after, empty store (10) | 10 [0] | full 0 [0]; partial, right 4 [3] (s1-03, 05, 09, 10: the lint folder at both sides); honest "cannot tell" 6 [5]; wrong 0 [2] | 9 [10] (4) | 9 (3) | 0 [0] | 327 s (214 to 543) [251 s] | $1.03 [$0.79] |
+| s2 Squeal before/after, empty store (10) | 10 [0] | full 0 [0]; partial, right 3 [0] (s2-01, 07, 10: `open.test.ts` passes at both commits); honest 1 [7]; wrong 6 [3] (s2-02, 04, 05, 06, 08, 09: red proof given as the file's change) | 10 [10] (1) | 10 (9) | 0 [0] | 478 s (215 to 545) [262 s] | $0.94 [$0.83] |
+| s7 squawk before/after, HEAD's results stored (5) | 5 [0] | partial, right 4 [5]: 0 flips, 1,802 unchanged, 118 unknown at the parent (97 browser, 20 that `--run` could not run, the new file); s7-04 limited itself to the lint folder (27 unchanged) and claimed a parent result for `layer-import.test.ts` that the report did not give | 5 [5] (0) | 4 (0) | 0 [0] | 308 s (170 to 389) [226 s] | $0.40 [$0.50] |
+
+Per session: `tasks/023-28/data/judgements.tsv` and `data/<id>/`, which holds the timeline, summary, the Squeal calls with their full output in `squeal-results.txt`, and the clone's state after `squeal stop`.
+
+The s7 unknowns did not shrink: round 3 left 120 files unknown (23 without a result at the parent and 97 browser files) without `--run`, and this round leaves 118 with it.
+
+### Squeal text read wrong or not acted on
+
+| Text | Sessions | What the agent did |
+|---|---|---|
+| `--run: no file with no result at 8be977ad6 to run`, after `1920 test files: no result -> no result` (`--at HEAD --run` on an empty store) | 17 of 20 in s1 and s2 called it | Read it correctly as nothing to compare. No session learned from it how to fill the current side, because the report does not say. |
+| `red is the test at <HEAD> over the code at <base>, not the file's own result at <base>; that is squeal status --at <base> <file>` (Q5's line in the proof report, under the red side's diff) | s2: 6 of 6 sessions that ran `proof` | Gave "fail -> pass" or "the only file shown to change result" anyway. s2-09 half-read it: "strictly, this file had no new failure to flip at the parent". |
+| `108 not run (budget). A rerun that fits: squeal status --at '8be977ad6~1' --run --timeout 600`, after `--run: 0 of 108 … ran … (70.4 s of the 300 s budget)` and `vitest run: the run failed to start: Browser E2E environment bootstrap failed` | s7: 5 of 5 (s7-04 avoided it by passing a path) | 4 reran with `--timeout 600`, got the same result, and then offered `--timeout 1200`. The cause was the failed browser setup, not the budget. |
+| `1307 not run (budget). A rerun that fits: … --timeout 600`, after 31 of 1,338 ran in 301 s | s2: 7 final answers name it as the next step (s2-04 to s2-10) | Offered the rerun as the way to a full answer; at that rate 600 s runs about 60 files, not 1,307. |
+| `--run: 9 of 9 test files with no result at d8abcfe46 ran`, beside `layer-import.test.ts: no result -> pass` | s7-04 | "I ran it in the parent's checkout and it passes there too". The file was not in the selection, and the report does not say so. |
+| `packages/cezar/src/lint selects no test file of any group` / `these paths select none` (a directory given to `squeal run`) | s1-05, s1-08, s1-09 | Retried with `squeal run tests <dir>` or file paths. Q8 is still open (row 023-27). |
+
+Read right this time: `squeal status --at: 8be977ad6 is HEAD, your working tree's commit, and the tree is clean: compare with its parent` (5 of 5 sessions that got it went on with `HEAD~1`); `pass -> no result (at d8abcfe46: run by this command, not stored)` (s1-07: "a measurement gap, not a regression"); the s7 `poll.test.ts` failures (5 of 5 named them as not settled, not as caused by the commit); `<file> is new since <commit>` (every s1 and s7 session named the new test as new, not as changed).
+
+### What went wrong, and the changes the evidence asks for
+
+Proposals, not code. The coordinator numbers rows.
+
+| # | Problem, with the evidence | Proposed change |
+|---|---|---|
+| R1 | **`--run` leaves the current side empty.** On an empty store, no s1 or s2 session could compare the suite. `--at <commit> --run` runs only the commit's side, and `--at HEAD --run` finds "no file with no result to run" although all 1,920 files have none. The 7 partial answers came from sessions that ran the current side themselves. | With `--run`, also run, through the worktree's daemon, the selected files that have no result now, within the same budget. If not, end the report with the step: "the working tree has no result for N of these files: `squeal run tests <files> --wait`". In step 8: "`--run` covers both sides". |
+| R2 | **Q2's refusal does not apply with `--run`.** 22 of 25 sessions called `--at <HEAD> --run` at least once. Each such call keyed for up to 99 s and then compared HEAD with itself. The 5 calls without `--run` got the refusal and did the right thing. | Ask `headRefusal` with `--run` too. With R1, the refusal can name `--at HEAD~1 --run`. |
+| R3 | **A failed batch setup is reported as the budget.** s7: "0 of 108 ran" after 70 s of 300 or 600 s, then "108 not run (budget)" and "a rerun that fits: --timeout 600", then 1200. The browser group's setup (no Chrome) stopped the whole batch, including the 20 other files. 4 of 5 sessions reran and failed the same way. | Report it as a setup failure: "108 not run: the batch's setup failed (Browser E2E … Chrome failed to launch)". Run groups that run only on request (here `browser`) in their own batch, or leave them out of `--run` unless they are named, so their setup cannot stop the rest. |
+| R4 | **"A rerun that fits" does not fit.** s2: 31 of 1,338 ran in 301 s, and the report offers `--timeout 600` for the 1,307 left. | Compute the fit from the rate measured in this run. When no budget up to the cap fits, say so: "1307 not run; at this run's rate they need about 3 h". |
+| R5 | **The red proof is still read as the file's change, now 6 of 10 s2 sessions.** Q5's line was printed in every one of those proofs, under the red side's stack trace and diff. The right command, `--at HEAD~1 --run <file>`, gave 3 sessions the right answer in under a minute. | Put the distinction in the proof's summary line ("proven: the new test fails on the old code. This is not the file's result at <base>"). In step 8: "to compare a changed test file with its old version: `squeal status --at <base> <file> --run`; `proof` answers a different question". |
+| R6 | **`--run` leaves processes behind.** s1-10's parent `--run` started squawk's e2e test environment in its checkout. A `cezar serve`, an `agent-browser` and 15 headless Chrome processes were still running 4 minutes after the session ended, after `squeal stop`, and after the checkout was removed (cwd "(deleted)"). The user's `/tmp` held 63 entries from the e2e harness. | When `--run` or `proof` removes a checkout, first end every process of the user whose cwd or command line lies under it, and name them in the report. The harness's own leak belongs to the project, but Squeal owns the checkout's lifetime. |
+| R7 | **Q4 shows again.** `packages/cezar/src/home/runtime-cli.test.ts: no result -> pass` in the HEAD comparison of 4 of 5 s7 sessions. In s7-01 the results were its own ("now: run in this worktree"), with no store copy. Row 023-25 could not reproduce it. | Give 023-25 this setup: a clone (`git clone --no-checkout` from a bare repository, then `checkout -B main 8be977ad6`), `pnpm install --frozen-lockfile`, `squeal run --all --wait`, then `status --at HEAD --run`. |
+| R8 | **A file outside the `--run` selection reads as if it ran.** s7-04: "9 of 9 … ran" beside a file still at `no result`. | Mark such files: "`layer-import.test.ts`: no result at d8abcfe46, not selected by the change; `--all-missing` runs it". The next-step line already names `--all-missing` without `--run`. |
+
+Not product defects, recorded for the coordinator:
+
+- **Longer sessions.** Wall medians rose from 251/262/226 s to 327/478/308 s, because `--run` now runs tests. s2's parent `--run` alone used the whole 300 s budget. No session reached the 1,200 s session limit.
+- **One agent cited the repository's rules.** s2-03 stopped its own background comparison because "the project's rules say not to" run a full suite. Squeal's own repository has that rule for its agents.
+- **The s7 store copy** is round 3's test shortcut. No agent mentioned inheritance.
+- **Empty folders stay behind.** 25 empty folders in the user's `~/.cache/squeal/checkouts`, one per clone, as round 3 noted.
+
+### Open for a later round
+
+- After R1 to R4: s1 and s2 again, to see whether a full answer fits a session on an empty store and within the 1,200 s session limit. In Squeal's own repository a 7-line change selects 1,338 files, so R1 may need a selection cap or a statement of what is left.
+- R5's step-8 wording with s2 only, at least 10 sessions, since s2 alone shows the proof misreading.
+- Codex, Pi and OpenCode are still not exercised.

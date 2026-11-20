@@ -1,0 +1,45 @@
+{
+  "id": "s1-06",
+  "loadStart": "8.33",
+  "exit": 0,
+  "wallSeconds": 506.085,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "128s squeal status --wait 60000 2>&1 | head -40; echo; git show --stat --format=%s 8be977ad6 | head -30",
+    "138s for i in $(seq 1 55); do [ -s ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-06/a53c25da-d280-4488-aad2-2e6fa91d2358/tasks/be2282xet.output ] && [ $(wc -l < ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-06/a53c25da-d280-4488-aad2-2e6fa91d2358/tasks/be2282xet.output) -gt 3 ] && break; sleep 10; done; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-06/a53c25da-d280-4488-aad2-2e6fa91d2358/tasks/be2282xet.output | head -50",
+    "213s squeal status --at 'HEAD~1' --run 2>&1 | tail -30",
+    "500s cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s1-06/a53c25da-d280-4488-aad2-2e6fa91d2358/tasks/bf6sxc3ok.output | tail -40"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "5s +120s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60"
+  ],
+  "long": [],
+  "results": 2,
+  "turns": 11,
+  "costUsd": 0.108622,
+  "usage": {
+    "cache_creation_input_tokens": 21694,
+    "cache_read_input_tokens": 256930,
+    "output_tokens": 2865
+  },
+  "firstFinal": "I can't tell you yet whether commit 8be977ad6 changed any test results. Squeal has no stored results at either the commit or its parent, so there is nothing to compare so far.\n\n**What the commit changed**\n- It rewrote `packages/cezar/src/lint/active-run-write.ts`, with 107 lines changed.\n- It added a new test file, `packages/cezar/src/lint/active-run-write-index.test.ts`, which doesn't exist in the parent.\n\n**Where the comparison stands**\n- Squeal compared the two commits, but the result was 0 pass→fail, 0 fail→pass and 1920 unknown.\n- The 1920 test files are all \"unknown\" because none of them has been run at either commit.\n- The comparison picked out 111 test files that the change affects. I've started a background run of those 111 files at the parent commit.\n- That run will only give the parent's side. I still need to run the same files at HEAD and diff the two. I'll report back once the parent run finishes.",
+  "final": "I still can't say whether the commit changed any test results. The run at the parent commit didn't finish, and I haven't run anything at HEAD.\n\n**What ran at the parent (d8abcfe46)**\n- Only 12 of the 111 affected test files ran before the 300 s budget ran out.\n- Those 12 all passed. They include `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, plus 10 others such as `.github/scripts/no-compat-policy.test.cjs`.\n- 99 files didn't run because of the budget, including `packages/cezar/src/lint/run-history-reader.test.ts`.\n- The browser e2e files can't run here: \"installed Chrome failed to launch\". Any e2e comparison is unavailable on this machine.\n\n**HEAD side**\n- Squeal has no results for the 12 files at HEAD, so there is no pass/fail difference to report. The tool's own tally is still 0 pass→fail, 0 fail→pass, 1920 unknown.\n- The new test file, `packages/cezar/src/lint/active-run-write-index.test.ts`, doesn't exist at the parent, so it has no \"before\" result. `squeal proof ... --base d8abcfe46` would show whether it fails on the old code.\n\n**Next steps**\n1. Re-run the parent with a bigger budget: `squeal status --at HEAD~1 --run --timeout 600`.\n2. Run the same affected files at HEAD with `squeal run`.\n\nSay if you want me to do both.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6",
+    "8be977ad6~1",
+    "'HEAD~1' --run"
+  ]
+}

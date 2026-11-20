@@ -1,0 +1,44 @@
+{
+  "id": "s7-02",
+  "loadStart": "2.77",
+  "exit": 0,
+  "wallSeconds": 389.184,
+  "squeal": [
+    "7s squeal status --at 8be977ad6 --run 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40",
+    "198s squeal status --at '8be977ad6~1' --run --timeout 600 2>&1 | grep -v '^squeal: node-test\\|^TEST_ENV\\|^BROWSER\\|^\\[test-env\\]' | tail -20; echo ---; squeal status --at '8be977ad6~1' --json 2>/dev/null | grep -i 'poll.test' | head"
+  ],
+  "skill": [
+    "5s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "7s +185s Bash squeal status --at 8be977ad6 --run 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40",
+    "198s +183s Bash squeal status --at '8be977ad6~1' --run --timeout 600 2>&1 | grep -v '^squeal: node-test\\|^TEST_ENV\\|^BROWSER\\|^\\[test-env\\]' | tail -20; echo ---; squeal status --at '8be977ad6~1' --json 2>/dev/null | grep -i 'poll.test' | head"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0709726,
+  "usage": {
+    "cache_creation_input_tokens": 18506,
+    "cache_read_input_tokens": 94476,
+    "output_tokens": 1524
+  },
+  "firstFinal": "**Short answer:** Squeal found no test that changed result between `8be977ad6` and its parent `d8abcfe46`. That comparison is incomplete, though.\n\n**What it found**\n- 0 files went pass → fail and 0 went fail → pass.\n- 1802 files are unchanged.\n- 118 files are unknown, because they have no result at the parent. I couldn't close that gap (see below).\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit and passes now. It doesn't exist at the parent, so it isn't a changed result.\n- Several other files had no stored result at the parent and pass now, for example `runner-closure.test.ts`, `ast-grep-groups.test.ts` and `ast-rules-active-run.test.ts`. That reflects missing history at the parent. It doesn't show the commit changed them.\n\n**What I couldn't compare**\n- 97 browser e2e files have no result on either side. Squeal's browser setup couldn't start, because Chrome failed to launch with the resolved settings.\n- The other 21 files with no result at the parent weren't run in the parent's checkout. I re-ran with a 600 s budget and got the same result. Squeal suggests `--timeout 1200` for another attempt.\n- Two `packages/web/src/test/poll.test.ts` tests fail on the current tree: \"closes the successful health response socket after accepting headers\" and \"closes every rejected non-2xx socket across repeated JSON probes\". There is no recorded result for that file at the parent. So I can't tell whether this commit caused them or they were already failing.\n- This commit only touches lint code, so a link to the web `poll.test.ts` looks unlikely. I haven't verified that.\n\nTo settle the `poll.test.ts` question, run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46`, or I can run it now.",
+  "final": "**Short answer:** Squeal found no test that changed result between `8be977ad6` and its parent `d8abcfe46`. That comparison is incomplete, though.\n\n**What it found**\n- 0 files went pass → fail and 0 went fail → pass.\n- 1802 files are unchanged.\n- 118 files are unknown, because they have no result at the parent. I couldn't close that gap (see below).\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit and passes now. It doesn't exist at the parent, so it isn't a changed result.\n- Several other files had no stored result at the parent and pass now, for example `runner-closure.test.ts`, `ast-grep-groups.test.ts` and `ast-rules-active-run.test.ts`. That reflects missing history at the parent. It doesn't show the commit changed them.\n\n**What I couldn't compare**\n- 97 browser e2e files have no result on either side. Squeal's browser setup couldn't start, because Chrome failed to launch with the resolved settings.\n- The other 21 files with no result at the parent weren't run in the parent's checkout. I re-ran with a 600 s budget and got the same result. Squeal suggests `--timeout 1200` for another attempt.\n- Two `packages/web/src/test/poll.test.ts` tests fail on the current tree: \"closes the successful health response socket after accepting headers\" and \"closes every rejected non-2xx socket across repeated JSON probes\". There is no recorded result for that file at the parent. So I can't tell whether this commit caused them or they were already failing.\n- This commit only touches lint code, so a link to the web `poll.test.ts` looks unlikely. I haven't verified that.\n\nTo settle the `poll.test.ts` question, run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46`, or I can run it now.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6~1 --run",
+    "'8be977ad6~1' --run",
+    "'8be977ad6~1'"
+  ]
+}

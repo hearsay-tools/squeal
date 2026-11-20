@@ -1,0 +1,42 @@
+{
+  "id": "s7-05",
+  "loadStart": "5.33",
+  "exit": 0,
+  "wallSeconds": 273.579,
+  "squeal": [
+    "6s squeal status --at 8be977ad6 --run 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40",
+    "177s squeal status --at 8be977ad6~1 --run --timeout 600 2>&1 | grep -v '^squeal: node-test\\|^TEST_ENV\\|^\\[test-env\\]\\|^BROWSER' | tail -30"
+  ],
+  "skill": [
+    "4s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "6s +167s Bash squeal status --at 8be977ad6 --run 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0683639,
+  "usage": {
+    "cache_creation_input_tokens": 18266,
+    "cache_read_input_tokens": 94489,
+    "output_tokens": 1323
+  },
+  "firstFinal": "**No test file is known to have changed result.** The comparison is incomplete, though, so I can't confirm that nothing changed.\n\n`squeal status --at 8be977ad6~1` compares the parent commit (`d8abcfe46`) with the current tree. The current tree is `8be977ad6`, because the working tree is clean.\n\n- **Pass to fail:** 0 files.\n- **Fail to pass:** 0 files.\n- **Unchanged:** 1802 files.\n- **Unknown:** 118 files. These have no result at the parent commit.\n\nThe 118 unknown files break down like this:\n- **97 browser e2e files:** they have no result at either commit. Chrome failed to launch (`installed Chrome failed to launch with resolved settings`), so they can't run here.\n- **20 non-browser files:** they pass now but have no result at the parent. 11 were not run because of the time budget. 9 had no result at all. Examples are `runner-closure.test.ts`, `ast-grep-groups.test.ts` and `ast-rules-active-run.test.ts`. I couldn't run them at the parent because the checkout run died on the same Chrome failure. Re-running with a longer timeout didn't help.\n- **1 new file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit and passes now. It has no parent result, so it can't have changed. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the old code.\n\nThe two `poll.test.ts` failures in the session header are in `packages/web/src/test/poll.test.ts`. They were recorded against the current tree, and no pass is on record at these inputs. This commit touched only lint code, and I haven't checked whether `poll.test.ts` reads any of it. To check whether the commit caused them, run `squeal status --at 8be977ad6~1 packages/web/src/test/poll.test.ts --run`, or `squeal retry` on that file.\n\nI can run either follow-up if you want.",
+  "final": "**No test file is known to have changed result.** The comparison is incomplete, though, so I can't confirm that nothing changed.\n\n`squeal status --at 8be977ad6~1` compares the parent commit (`d8abcfe46`) with the current tree. The current tree is `8be977ad6`, because the working tree is clean.\n\n- **Pass to fail:** 0 files.\n- **Fail to pass:** 0 files.\n- **Unchanged:** 1802 files.\n- **Unknown:** 118 files. These have no result at the parent commit.\n\nThe 118 unknown files break down like this:\n- **97 browser e2e files:** they have no result at either commit. Chrome failed to launch (`installed Chrome failed to launch with resolved settings`), so they can't run here.\n- **20 non-browser files:** they pass now but have no result at the parent. 11 were not run because of the time budget. 9 had no result at all. Examples are `runner-closure.test.ts`, `ast-grep-groups.test.ts` and `ast-rules-active-run.test.ts`. I couldn't run them at the parent because the checkout run died on the same Chrome failure. Re-running with a longer timeout didn't help.\n- **1 new file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit and passes now. It has no parent result, so it can't have changed. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the old code.\n\nThe two `poll.test.ts` failures in the session header are in `packages/web/src/test/poll.test.ts`. They were recorded against the current tree, and no pass is on record at these inputs. This commit touched only lint code, and I haven't checked whether `poll.test.ts` reads any of it. To check whether the commit caused them, run `squeal status --at 8be977ad6~1 packages/web/src/test/poll.test.ts --run`, or `squeal retry` on that file.\n\nI can run either follow-up if you want.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6~1 --run",
+    "8be977ad6~1 --run"
+  ]
+}

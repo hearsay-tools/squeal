@@ -1,0 +1,74 @@
+## 5s +120s $ squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40
+Command did not complete within its 120s timeout and was moved to the background (ID: bpoiov2ss). Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-01/3cb932e7-224a-4579-ab8a-6802e25d6739/tasks/bpoiov2ss.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. No output had been read from it when it was moved. A program that buffers its output, or a pipe into one such as tail, can keep the output file empty until the command finishes. To check interim output, use Read on that file path.
+
+## 132s +35s $ squeal status --at 20f03a431 test/store/open.test.ts 2>&1 | tail -15; echo ----; squeal status --at 20f03a431~1 test/store/open.test.ts 2>&1 | tail -15
+squeal status --at: 20f03a431 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 test/store/open.test.ts`
+----
+squeal: keying test files at a5c9b7223 in a temporary checkout
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at a5c9b7223 from a temporary checkout, 33.5 s (checked against the commit in 4960 ms).
+test/store/open.test.ts: no result -> no result
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown
+`squeal status --at '20f03a431~1' test/store/open.test.ts --run` runs the 1 file with no result there.
+
+## 171s +0s $ squeal status --at HEAD~1 --run --wait 100000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | tail -30
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, the fixed Codex plugin's runtime, and the
+                                launcher install.sh put on the PATH
+  squeal codex-runtime ensure --plugin-root <absolute> [--data <absolute>]
+                                Fixed Codex plugin: select a complete local runtime
+                                for new sessions, the current one or the plugin's
+                                seed, with no network; exit 0 only when ready
+  squeal codex-runtime update --plugin-root <absolute> [--data <absolute>]
+                              [--tag squeal--v<version>] [--background]
+                                Download, validate and select a newer runtime for new
+                                sessions within 120 s, never an older one; running
+                                sessions keep theirs; exit 1 when it failed, and the
+                                selected runtime stays; --background prints nothing
+                                and keeps the retry delays
+  squeal codex-runtime status --plugin-root <absolute> [--data <absolute>] [--json]
+                                Adapter and runtime versions, pinned sessions and the
+                                last update check; exit 0 when ready, 1 when not
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal runner-host <root> --runner vitest
+                                Host the project's runner for a daemon over stdin and
+                                stdout (the daemon starts it)
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+
+## 173s +31s $ squeal status --at HEAD~1 --run test/store/open.test.ts 2>&1 | head -20
+squeal: keying test files at a5c9b7223 in a temporary checkout
+squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at a5c9b7223 from a temporary checkout, 29.9 s (checked against the commit in 4216 ms).
+test/store/open.test.ts: pass -> no result (at a5c9b7223: run by this command, stored)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown
+--run: 1 of 1 test files with no result at a5c9b7223 ran in its checkout, 1 stored at its keys (30.1 s of the 300 s budget)
+
+## 206s +6s $ squeal status --wait 100000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | head -30
+Revision: 0
+Selected: test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts, test/ci/export-formats.test.ts, test/ci/export-keys.test.ts, test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts, test/ci/export-wrapper.test.ts, test/ci/export.test.ts, test/ci/glob-import.test.ts and 1328 more
+Not a listed test file: src/core/store/mark.ts; it selects the 1338 test files that read it
+Run asked: test/store/open.test.ts was unknown with nothing queued, so this wait asked its one run at these inputs, as `squeal retry test/store/open.test.ts` does.
+Current (1):
+  1 pass: test/store/open.test.ts
+Unknown (1337):
+  1337 never run at their inputs, nothing queued them (the baseline is lookup-only): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts, test/ci/export-formats.test.ts, test/ci/export-keys.test.ts, test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts, test/ci/export-wrapper.test.ts, test/ci/export.test.ts, test/ci/glob-import.test.ts and 1327 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 1961 test files not current here
+Named test files have no verdict: 1337 test files without a current result at revision 0 (1337 unknown): 1337 never run, nothing queued them: `squeal retry <test file>...`. Worktree: known failures 0; not current: 1961 of 1962 test files (1961 unknown)
+
+## 214s SAY
+I can only partly answer this. The one test file that changed in the commit passes both before and after. For the other 1337 test files that read `mark.ts`, I have no results, so I can't say whether they changed.
+
+- **`test/store/open.test.ts`**: it passed at the parent commit (`a5c9b72`) and passes at `20f03a4`. That commit adds 27 lines to this file, so the pass now covers the new tests. No `pass -> fail` or `fail -> pass`.
+- **Other test files**: `src/core/store/mark.ts` is read by 1338 test files, counting `open.test.ts`. The other 1337 have no result at either commit, because Squeal hasn't run them. I stopped the full-suite comparison because 1962 test files at two commits was too slow.
+
+I didn't find any test file whose result changed. The `mark.ts` change is 7 lines that only matter on a "found unknown" path, so regressions elsewhere seem unlikely. If you want proof, `squeal run --all --wait` runs all 1961 files.

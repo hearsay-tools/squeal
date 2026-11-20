@@ -1,0 +1,27 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-20 15:34:49 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w17/runs/w17/s1-01
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+
+## checkouts
+total 8
+drwxrwxr-x 2 squeal-w17 squeal-w17 4096 Nov 20 15:38 .
+drwxrwxr-x 3 squeal-w17 squeal-w17 4096 Nov 20 15:35 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+(none)

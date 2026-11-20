@@ -1,0 +1,140 @@
+## head
+20f03a43139ea3e99e057b32dac3db3dffbb903d
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+20f03a4 HEAD@{2026-11-20 16:21:10 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w17/runs/w17/s2-10
+HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
+branch refs/heads/main
+
+
+## checkouts
+home/.cache/squeal/checkouts/093eeb47114c5b2e:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:53 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/0b41069a390fe440:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:58 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/0dc0957a6c041f8a:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:12 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/14dda750ec57ea60:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:05 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/15237de2cbad5f7a:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:27 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/16a5914109687969:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:04 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/2401635581ed8e84:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:11 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/467d63664e5397c1:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:48 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/47913f3d726490a1:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:15 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/56c6a514ba18f844:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:17 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/5991d892813bbabe:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:46 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/5db44eef22319b53:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:42 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/5ec2db62657e2569:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:52 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/6a77888b75944634:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:07 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/75533de42a799f83:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:56 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/7b4411247e933d7b:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:48 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/859f264a99eaec4d:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:24 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/e89cc7b82605689c:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:20 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/f2ec36e91ee7f16e:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 16:28 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+home/.cache/squeal/checkouts/f51a269ccd7075e7:
+total 8
+drwxrwxr-x  2 squeal-w17 squeal-w17 4096 Nov 20 15:38 .
+drwxrwxr-x 22 squeal-w17 squeal-w17 4096 Nov 20 16:22 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+2193083       1       04:41 /opt/squeal-w17/node24/bin/node ~squeal-w17/runs/w17/home/.cache/squeal/checkouts/15237de2cbad5f7a/mwp4kbmm-4987bf5c/tree/.ai/qa/build/cezar/dist/index.js serve --repo /tmp/cez-e2e-irEhjN/cezar-e2e-commit-list-ELDIaY --port 0 --no-open
+2193362       1       04:39 ~squeal-w17/runs/w17/home/.cache/agent-tools/agent-browser/0.39.4/agent-browser-linux-x64
+2193376 2193362       04:39 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --remote-debugging-port=0 --no-first-run --no-default-browser-check --disable-background-networking --disable-backgrounding-occluded-windows --disable-component-update --disable-default-apps --disable-hang-monitor --disable-popup-blocking --disable-prompt-on-repost --disable-sync --disable-features=Translate --enable-features=NetworkService,NetworkServiceInProcess,WebMCPTesting,DevToolsWebMCPSupport --metrics-recording-only --password-store=basic --use-mock-keychain --headless=new --hide-scrollbars --enable-unsafe-swiftshader --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --window-size=1280,720 --no-sandbox
+2193378       1       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome_crashpad_handler --monitor-self --monitor-self-annotation=ptype=crashpad-handler --user-stream-region=4,65568 --database=/tmp/cez-browser-test-home-OsU1gy/.config/google-chrome-for-testing/Crash Reports --annotation=lsb-release=Ubuntu 24.04.5 LTS --annotation=plat=Linux --annotation=prod=Chrome_Linux --annotation=ver=158.0.8127.36 --initial-client-fd=7 --shared-client-connection
+2193380       1       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome_crashpad_handler --no-periodic-tasks --monitor-self-annotation=ptype=crashpad-handler --database=/tmp/cez-browser-test-home-OsU1gy/.config/google-chrome-for-testing/Crash Reports --annotation=lsb-release=Ubuntu 24.04.5 LTS --annotation=plat=Linux --annotation=prod=Chrome_Linux --annotation=ver=158.0.8127.36 --initial-client-fd=4 --shared-client-connection
+2193383 2193376       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=zygote --no-zygote-sandbox --no-sandbox --headless=new --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-first-run --ozone-platform=headless --ozone-override-screen-size=800,600 --use-angle=swiftshader-webgl
+2193384 2193376       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=zygote --no-sandbox --headless=new --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-first-run --ozone-platform=headless --ozone-override-screen-size=800,600 --use-angle=swiftshader-webgl
+2193440 2193376       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --no-sandbox --use-angle=swiftshader-webgl --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708989122997041
+2193443 2193384       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=utility --utility-sub-type=storage.mojom.StorageService --lang=en-US --service-sandbox-type=utility --no-sandbox --use-angle=swiftshader-webgl --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708990060038890
+2193482 2193384       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --top-chrome-webui --gpu-client-id=5 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --disallow-v8-feature-flag-overrides --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=5 --gpu-channel-request-start-time-ticks=18169332361 --launch-time-ticks=18169333480 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708990997080739
+2193520 2193384       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --gpu-client-id=7 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=7 --gpu-channel-request-start-time-ticks=18169373075 --launch-time-ticks=18169374280 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708992871164437
+2193522 2193384       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --gpu-client-id=6 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --ntp-process --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=6 --gpu-channel-request-start-time-ticks=18169378914 --launch-time-ticks=18169380512 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708991934122588
+2193560 2193383       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=gpu-process --gpu-recent-crash-count=0 --no-sandbox --headless=new --ozone-platform=headless --use-angle=swiftshader-webgl --enable-unsafe-swiftshader --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --gpu-preferences=YAAAAAAAAAAgAACBAAAAAAAAAAAAAGAASAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --use-gl=disabled --shared-files --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708994745248135
+2193565 2193384       04:38 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --gpu-client-id=10 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=10 --gpu-channel-request-start-time-ticks=18169478475 --launch-time-ticks=18169479320 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708995682289984
+2193739 2193384       04:36 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --gpu-client-id=14 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=14 --gpu-channel-request-start-time-ticks=18171370283 --launch-time-ticks=18171371691 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190708999430457380
+2193911 2193384       04:34 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --gpu-client-id=16 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=16 --gpu-channel-request-start-time-ticks=18173534833 --launch-time-ticks=18173535674 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190709001304541078
+2193913 2193384       04:34 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --gpu-client-id=17 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=17 --gpu-channel-request-start-time-ticks=18173542960 --launch-time-ticks=18173543608 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190709002241582927
+2194209 2193384       04:30 ~squeal-w17/runs/w17/home/.agent-browser/browsers/chrome-158.0.8127.36/chrome --type=renderer --gpu-client-id=18 --crashpad-handler-pid=2193378 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/cez-e2e-irEhjN/agent-browser-chrome-604f4c50-e62c-408b-b907-43fcf259b4df --change-stack-guard-on-fork=enable --no-sandbox --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=18 --gpu-channel-request-start-time-ticks=18177837238 --launch-time-ticks=18177838171 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,3469932396257481841,2972419761614082393,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,16207555550753839682,3839509895971212212,4 --trace-process-track-uuid=3190709003178624776

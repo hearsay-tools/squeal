@@ -1,0 +1,34 @@
+== prepare s7-01 2026-11-20T15:31:28Z load 0.31
+Checkpoint 5c1ea7ca-1440-4b24-8dd5-a68b0d04d19f has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped)
+Checkpoint 5c1ea7ca-1440-4b24-8dd5-a68b0d04d19f started at revision 0: 1920 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (2 tests, 1 global setup); not current: 97 of 1920 test files (97 queued)
+  FAIL  [e2e] (global setup)
+        setup failed: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings
+        observed at revision 0, current
+  FAIL  [web] packages/web/src/test/poll.test.ts > settled probes close unread streamed bodies (#764 review) > closes every rejected non-2xx socket across repeated JSON probes
+        expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+        at packages/web/src/test/poll.test.ts:257:36, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 10 min ago in this worktree at revision 0, load 0.65 per CPU when it ran; no retry asked at these inputs
+  FAIL  [web] packages/web/src/test/poll.test.ts > settled probes close unread streamed bodies (#764 review) > closes the successful health response socket after accepting headers
+        expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+        at packages/web/src/test/poll.test.ts:245:36, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 10 min ago in this worktree at revision 0, load 0.65 per CPU when it ran; no retry asked at these inputs
+Affected checks: 33873 passed (32050 tests, 1823 test files loaded), 0 running, 0 queued, 30 skipped (30 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+browser: 97 test files; 97 pending, waiting for `squeal run browser`. Squeal runs them only on request; `squeal run browser --wait 60000` runs them now and waits for their results.
+Queued: 97 test files: e2e: packages/web/e2e/activity.e2e.ts, e2e: packages/web/e2e/agent-browser-tabs.e2e.ts, e2e: packages/web/e2e/agents-dock.e2e.ts, e2e: packages/web/e2e/artifact-project-links.e2e.ts, e2e: packages/web/e2e/assistant-line-breaks.e2e.ts and 92 more
+Complexity: 5 functions over 20; squeal code lists them.
+Coverage: 86 functions over CRAP 30, 1493 untested; 2776 files wait for test runs, which squeal run --all makes; 602 files unknown (8 because no test Squeal runs loads them, 144 from a skipped test, 450 from a test file with no coverage record); squeal code lists them.
+Lint: 0 files with findings; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon and 9 notes
+warm-up exit 3
+Revision: 0
+Known failures: 3 (2 tests, 1 global setup); not current: 97 of 1920 test files (97 queued)
+  FAIL  [e2e] (global setup)
+        setup failed: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings
+        observed at revision 0, current
+Squeal daemon stopped for ~squeal-w17/runs/w17/s7-01; `squeal stop --until-start` keeps it stopped through edits and Git operations
+8be977ad perf(lint): share active-run owner syntax indexes (#3785)
+d8abcfe4 refactor(lint): port owner and reader rules from ast-grep to oxlint (#3778)

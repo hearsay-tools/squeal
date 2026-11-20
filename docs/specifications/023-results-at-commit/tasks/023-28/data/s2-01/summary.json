@@ -1,0 +1,48 @@
+{
+  "id": "s2-01",
+  "loadStart": "2.74",
+  "exit": 0,
+  "wallSeconds": 214.906,
+  "squeal": [
+    "5s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "132s squeal status --at 20f03a431 test/store/open.test.ts 2>&1 | tail -15; echo ----; squeal status --at 20f03a431~1 test/store/open.test.ts 2>&1 | tail -15",
+    "171s squeal status --at HEAD~1 --run --wait 100000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | tail -30",
+    "173s squeal status --at HEAD~1 --run test/store/open.test.ts 2>&1 | head -20",
+    "206s squeal status --wait 100000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | head -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "5s +120s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40"
+  ],
+  "long": [],
+  "results": 1,
+  "turns": 11,
+  "costUsd": 0.0757611,
+  "usage": {
+    "cache_creation_input_tokens": 14805,
+    "cache_read_input_tokens": 192826,
+    "output_tokens": 1943
+  },
+  "firstFinal": "I can only partly answer this. The one test file that changed in the commit passes both before and after. For the other 1337 test files that read `mark.ts`, I have no results, so I can't say whether they changed.\n\n- **`test/store/open.test.ts`**: it passed at the parent commit (`a5c9b72`) and passes at `20f03a4`. That commit adds 27 lines to this file, so the pass now covers the new tests. No `pass -> fail` or `fail -> pass`.\n- **Other test files**: `src/core/store/mark.ts` is read by 1338 test files, counting `open.test.ts`. The other 1337 have no result at either commit, because Squeal hasn't run them. I stopped the full-suite comparison because 1962 test files at two commits was too slow.\n\nI didn't find any test file whose result changed. The `mark.ts` change is 7 lines that only matter on a \"found unknown\" path, so regressions elsewhere seem unlikely. If you want proof, `squeal run --all --wait` runs all 1961 files.",
+  "final": "I can only partly answer this. The one test file that changed in the commit passes both before and after. For the other 1337 test files that read `mark.ts`, I have no results, so I can't say whether they changed.\n\n- **`test/store/open.test.ts`**: it passed at the parent commit (`a5c9b72`) and passes at `20f03a4`. That commit adds 27 lines to this file, so the pass now covers the new tests. No `pass -> fail` or `fail -> pass`.\n- **Other test files**: `src/core/store/mark.ts` is read by 1338 test files, counting `open.test.ts`. The other 1337 have no result at either commit, because Squeal hasn't run them. I stopped the full-suite comparison because 1962 test files at two commits was too slow.\n\nI didn't find any test file whose result changed. The `mark.ts` change is 7 lines that only matter on a \"found unknown\" path, so regressions elsewhere seem unlikely. If you want proof, `squeal run --all --wait` runs all 1961 files.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 6,
+  "atHeadCalls": 2,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "20f03a431",
+    "20f03a431~1",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

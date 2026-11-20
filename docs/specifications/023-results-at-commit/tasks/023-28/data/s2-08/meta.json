@@ -1,0 +1,14 @@
+{
+  "id": "s2-08",
+  "group": "s2",
+  "clone": "~squeal-w17/runs/w17/s2-08",
+  "prompt": "Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.",
+  "start": "2026-11-20T15:12:13.249Z",
+  "loadStart": "10.16",
+  "cpus": 12,
+  "exit": 0,
+  "wallSeconds": 522.952,
+  "end": "2026-11-20T15:20:56.202Z",
+  "loadEnd": "10.89",
+  "transcript": "~squeal-w17/runs/w17/claude/projects/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446.jsonl"
+}

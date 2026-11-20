@@ -1,0 +1,56 @@
+## 4s +121s $ squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40
+Command did not complete within its 120s timeout and was moved to the background (ID: bmp8sxi76). Output is being written to: ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. No output had been read from it when it was moved. A program that buffers its output, or a pipe into one such as tail, can keep the output file empty until the command finishes. To check interim output, use Read on that file path.
+
+## 130s SAY
+I've started the comparison and I'm waiting for it to finish. The commit changed only `src/core/store/mark.ts` and added tests to `test/store/open.test.ts`. The comparison should show whether any test file's result moved.
+
+## 166s +0s $ sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output | tail -20
+<tool_use_error>Blocked: sleep 100 followed by: cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-08/cce61a79-e10f-4288-9b4b-749e4e1f7446/tasks/bmp8sxi76.output tail -20. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+
+## 173s SAY
+I'm waiting on the second half of the comparison, the one against the commit before `20f03a4`. The first half compared `20f03a4` with itself, so it can't answer your question. That half showed no result for any of the 1962 test files, so it tells us nothing yet.
+
+## 462s +56s $ squeal proof test/store/open.test.ts --base 20f03a4~1 2>&1 | tail -30
+squeal: proving 1 test file against a5c9b7223 in temporary checkouts
+squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+squeal proof (case source): base a5c9b7223, HEAD 20f03a431
+Red: the test at 20f03a431 over the code at a5c9b7223. Green: the test and code at 20f03a431; checkouts: red 31.4 s, green 24.1 s.
+test/store/open.test.ts: proven
+  red: fail, run by this command, stored
+  a mark that a read or write left (row 011-391) > keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1) [assertion]
+            AssertionError: expected { at: 1, problem: 'p' } to deeply equal { at: 1, problem: 'p', …(1) }
+                at test/store/open.test.ts:445:38
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+                at new Promise (<anonymous>)
+                at runWithCancel (node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+                at new Promise (<anonymous>)
+                at runWithTimeout (node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+                at node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+            - Expected
+            + Received
+            
+              {
+                "at": 1,
+            -   "found": "unknown",
+                "problem": "p",
+              }
+  red is the test at 20f03a431 over the code at a5c9b7223, not the file's own result at a5c9b7223; that is `squeal status --at a5c9b7223 test/store/open.test.ts`.
+  green: pass, run by this command, stored
+1 proven, 0 not red, 0 red for another reason, 0 not green, 0 not comparable; 2 runs (55.7 s of the 600 s budget)
+
+## 522s SAY
+Only one test file's result changed that I can confirm: `test/store/open.test.ts`. I did not verify the other 1,961 test files.
+
+`squeal status --at` could not give me the whole comparison. It had no stored result for most of the 1,962 test files. Its 300-second budget ran out after it had run only 37 files at the earlier commit, and it left 1,301 unrun. Its summary was 0 pass→fail, 0 fail→pass and 1,962 unknown. That is not a finding of "no change".
+
+Instead I ran `squeal proof test/store/open.test.ts --base 20f03a4~1`:
+- **Earlier commit's code, with the new test:** fails. The new test is "keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)". It expects `found: "unknown"` and gets an object without that field.
+- **Commit `20f03a4`:** passes.
+
+The commit touched only `src/core/store/mark.ts` and added that test, so no other test file contains new tests. Any other test file whose result changed would have to import `mark.ts` indirectly.
+
+To rule that out, rerun the full comparison with a longer budget: `squeal status --at '20f03a4~1' --run --timeout 600`. It may need more than one pass, because several test files read paths first seen during the run, so Squeal does not store their results.

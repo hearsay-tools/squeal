@@ -1,0 +1,24 @@
+== prepare-copy s7-05 s7-01 2026-11-20T16:11:59Z load 2.40
+Revision: 0
+Known failures: 0; not current: 98 of 1920 test files (1 running, 97 unknown)
+Affected checks: 33854 passed (32032 tests, 1822 test files loaded), 0 running, 0 queued, 30 skipped (30 tests); 1 test file without checks yet: 1 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+browser: 97 test files; 97 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Running: 1 test file: web: packages/web/src/test/poll.test.ts
+Outstanding:
+  1 test file running since 17:12:11 in the vitest lane: web: packages/web/src/test/poll.test.ts
+Complexity: 0 functions over 20; squeal code lists them.
+Lint: linting has not started.
+
+Worktree: ~squeal-w17/runs/w17/s7-05 (HEAD 8be977a, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: 33884 current results (32062 tests, 1822 test files loaded)
+  33884 (32062 tests, 1822 test files loaded) from ~squeal-w17/runs/w17/s7-01 at 8be977a
+Test files without checks: 1 pending, 97 unknown
+Test files without a result: 97 (nothing current at their inputs, none queued)
+  e2e: packages/web/e2e/activity.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/agent-browser-tabs.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/agents-dock.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+Squeal daemon stopped for ~squeal-w17/runs/w17/s7-05; `squeal stop --until-start` keeps it stopped through edits and Git operations
+8be977ad perf(lint): share active-run owner syntax indexes (#3785)
+d8abcfe4 refactor(lint): port owner and reader rules from ast-grep to oxlint (#3778)

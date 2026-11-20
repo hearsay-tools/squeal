@@ -1,0 +1,44 @@
+{
+  "id": "s7-01",
+  "loadStart": "3.01",
+  "exit": 0,
+  "wallSeconds": 319.587,
+  "squeal": [
+    "6s squeal status --at 8be977ad6 --run 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40",
+    "206s squeal status --at ' 8be977ad6~1' --run --timeout 600 2>&1 | grep -v '^squeal: node-test\\|^TEST_ENV\\|^\\[test-env\\]\\|^BROWSER' | tail -25",
+    "208s squeal status --at '8be977ad6~1' --run --timeout 600 2>&1 | grep -v '^squeal: node-test\\|^TEST_ENV\\|^\\[test-env\\]\\|^BROWSER' | tail -25"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "6s +197s Bash squeal status --at 8be977ad6 --run 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6~1 --run 2>&1 | tail -40"
+  ],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.10370340000000002,
+  "usage": {
+    "cache_creation_input_tokens": 31031,
+    "cache_read_input_tokens": 112219,
+    "output_tokens": 1488
+  },
+  "firstFinal": "Not as far as Squeal can show, but the comparison is incomplete.\n\n**Result against the parent (d8abcfe46):** 0 files went pass → fail and 0 went fail → pass. 1802 of 1920 test files have the same stored result at both commits.\n\n**What I couldn't compare:**\n- 118 files have no result at the parent. I tried to run 108 of them in a temporary checkout of d8abcfe46, but the run failed to start. The browser E2E bootstrap fails there with \"installed Chrome failed to launch\". The same error is the known `[e2e] (global setup)` failure in this worktree, so it comes from the environment rather than the commit.\n- 97 of those are the browser `.e2e.ts` files. They have no result at either commit.\n- 11 files (e.g. `runner-closure.test.ts`, `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts`) and 9 more (e.g. `parity-rows.test.ts`) have no parent result either. They pass at 8be977ad6, but I can't say what they did at the parent.\n\n**One file is new in the commit's lineage:**\n- `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. That is an addition, not a changed result.\n\n**The two failing tests aren't from this commit:**\n- `packages/web/src/test/poll.test.ts` has 2 failing tests, both socket-close counts (expected 0, received 1).\n- The commit is a lint-index perf change under `packages/cezar`, and the failures are in `packages/web`. Nothing on record shows they passed earlier, so I can't tell whether they are new.\n- To check, `squeal proof packages/web/src/test/poll.test.ts --base 8be977ad6~1` would run that file at the parent. `squeal retry packages/web/src/test/poll.test.ts --reason load` would rerun it here. I haven't run either.",
+  "final": "Not as far as Squeal can show, but the comparison is incomplete.\n\n**Result against the parent (d8abcfe46):** 0 files went pass → fail and 0 went fail → pass. 1802 of 1920 test files have the same stored result at both commits.\n\n**What I couldn't compare:**\n- 118 files have no result at the parent. I tried to run 108 of them in a temporary checkout of d8abcfe46, but the run failed to start. The browser E2E bootstrap fails there with \"installed Chrome failed to launch\". The same error is the known `[e2e] (global setup)` failure in this worktree, so it comes from the environment rather than the commit.\n- 97 of those are the browser `.e2e.ts` files. They have no result at either commit.\n- 11 files (e.g. `runner-closure.test.ts`, `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts`) and 9 more (e.g. `parity-rows.test.ts`) have no parent result either. They pass at 8be977ad6, but I can't say what they did at the parent.\n\n**One file is new in the commit's lineage:**\n- `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. That is an addition, not a changed result.\n\n**The two failing tests aren't from this commit:**\n- `packages/web/src/test/poll.test.ts` has 2 failing tests, both socket-close counts (expected 0, received 1).\n- The commit is a lint-index perf change under `packages/cezar`, and the failures are in `packages/web`. Nothing on record shows they passed earlier, so I can't tell whether they are new.\n- To check, `squeal proof packages/web/src/test/poll.test.ts --base 8be977ad6~1` would run that file at the parent. `squeal retry packages/web/src/test/poll.test.ts --reason load` would rerun it here. I haven't run either.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6~1 --run",
+    "' --run",
+    "'8be977ad6~1' --run"
+  ]
+}

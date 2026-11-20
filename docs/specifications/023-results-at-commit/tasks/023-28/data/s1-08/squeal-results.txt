@@ -1,0 +1,46 @@
+## 6s +177s $ squeal status --at 8be977ad6 --run 2>&1 | tail -60; echo ---; git show --stat --format=%H 8be977ad6 | head -30
+squeal: keying test files at 8be977ad6 in a temporary checkout
+squeal status --at 8be977ad6: 1920 test files at 8be977ad6 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys.
+Keys at 8be977ad6 from a temporary checkout, 98.6 s (checked against the commit in 2926 ms).
+1920 test files: no result -> no result: .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 1917 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown
+--run: no file with no result at 8be977ad6 to run (98.9 s of the 300 s budget)
+---
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+ .../cezar/src/lint/active-run-write-index.test.ts  |  72 ++++++++++++++
+ packages/cezar/src/lint/active-run-write.ts        | 107 ++++++++++++++-------
+ 2 files changed, 143 insertions(+), 36 deletions(-)
+
+## 185s +0s $ squeal run packages/cezar/src/lint --wait 120000 2>&1 | tail -25
+squeal run: no group "packages/cezar/src/lint"; the groups are run-loop, browser, lint, tests and slow
+usage: squeal run --all|--fast [--force] [--wait [<ms>]]
+       squeal run --slow [--wait <ms>]
+       squeal run <group> [<path>...] [--wait [<ms>]]
+
+## 187s +13s $ squeal run tests packages/cezar/src/lint --wait 120000 2>&1 | tail -25
+Selected test files of group tests have no verdict: these paths select none
+Group tests at revision 0: these paths select no test file of it.
+packages/cezar/src/lint selects no test file of any group.
+
+## 202s +6s $ squeal run lint packages/cezar/src/lint/active-run-write-index.test.ts --wait 120000 2>&1 | tail -25; squeal status --wait 60000 packages/cezar/src/lint/active-run-write-index.test.ts 2>&1 | tail -15
+squeal run: group lint is a lint group, which takes no paths: squeal run lint
+usage: squeal run --all|--fast [--force] [--wait [<ms>]]
+       squeal run --slow [--wait <ms>]
+       squeal run <group> [<path>...] [--wait [<ms>]]
+Revision: 0
+Selected: packages/cezar/src/lint/active-run-write-index.test.ts
+Run asked: packages/cezar/src/lint/active-run-write-index.test.ts was unknown with nothing queued, so this wait asked its one run at these inputs, as `squeal retry packages/cezar/src/lint/active-run-write-index.test.ts` does.
+Named test files at revision 0: no known failures; 1 test file, each with a current result, after 5.3 s. Worktree: known failures 0; not current: 1919 of 1920 test files (1919 unknown)
+
+## 213s SAY
+I can't say from stored results whether any test file changed outcome, because Squeal had no stored results at either commit.
+
+- **Comparison:** `squeal status --at 8be977ad6 --run` covered 1920 test files. All 1920 came back as "no result", so it found 0 pass→fail, 0 fail→pass and 0 unchanged. This worktree's Squeal daemon had only just started and had run nothing.
+- **What the commit touched:** only two files, `packages/cezar/src/lint/active-run-write.ts` (a refactor, +107/−36) and a new test, `packages/cezar/src/lint/active-run-write-index.test.ts`.
+- **The new test:** it doesn't exist in the parent, so it can't have changed outcome. It passes at HEAD (ran once, no failures).
+- **The rest:** I haven't run the other test files that exercise the lint rules built on `active-run-write.ts`. The commit title says it is a performance change, so I'd expect no behavior change, but I haven't verified that.
+
+To settle it, I can run the full suite at HEAD and at its parent, `8be977ad6~1`, and diff the results. That means about 1920 test files twice, which will take a while. I could instead run only the lint-related test files at both commits, which is much faster. Which do you want?

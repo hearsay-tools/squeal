@@ -1,0 +1,41 @@
+{
+  "id": "s2-04",
+  "loadStart": "6.35",
+  "exit": 0,
+  "wallSeconds": 416.262,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40; git show --stat 20f03a4 | tail -10",
+    "128s squeal proof test/store/open.test.ts --base 20f03a4~1 2>&1 | tail -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "4s +120s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40; git show --stat 20f03a4 | tail -10"
+  ],
+  "long": [],
+  "results": 2,
+  "turns": 9,
+  "costUsd": 0.0725911,
+  "usage": {
+    "cache_creation_input_tokens": 17011,
+    "cache_read_input_tokens": 148416,
+    "output_tokens": 1519
+  },
+  "firstFinal": "Only one test file changed result, and the comparison isn't a full-suite one.\n\n**Changed result:** `test/store/open.test.ts`. The commit added a new test to it: \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". That test fails on the previous commit's code (`a5c9b72`) and passes at `20f03a4`. Without the fix in `src/core/store/mark.ts`, the parsed mark loses `found: \"unknown\"`.\n\n**How I checked:** `squeal proof test/store/open.test.ts --base 20f03a4~1` ran the test file twice. The red run used the new test over the old code, and the green run used the new test and new code. Squeal confirmed the file is proven.\n\n**Not checked:** I have no whole-suite before/after comparison. The `squeal status --at` run found no stored results at either commit for any of the 1,962 test files. I started a second `--at 20f03a4~1 --run` and stopped waiting for it once the targeted proof answered the question. The commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`. I didn't run the other test files that import `mark.ts`, so I can't say whether any of them changed.",
+  "final": "The background comparison finished, but it didn't produce a whole-suite answer. Squeal ran out of time budget, so it compared no test files at the previous commit.\n\n- **At `20f03a4`:** all 1,962 test files showed \"no result\", with 0 pass→fail and 0 fail→pass.\n- **At `20f03a4~1` (`a5c9b72`):** the run hit its 300 s budget after 305.6 s. 1,338 files were \"not run (budget)\", 624 had no result, and the run reported 0 changes and 1,962 unknown. Squeal suggests a rerun with a longer budget: `squeal status --at '20f03a4~1' --run --timeout 600`.\n\nSo my earlier answer stands. The only file shown to change result is `test/store/open.test.ts`, from the targeted `squeal proof`. That test fails on the old code and passes on the new code. I have no suite-wide before/after comparison, so I can't say whether any other test file changed. If you want that, I can run the longer-budget command above.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "s1-01",
+  "loadStart": "1.98",
+  "exit": 0,
+  "wallSeconds": 217.206,
+  "squeal": [
+    "4s squeal checks | tail -20; squeal status --at 8be977ad6 --run 2>&1 | tail -40",
+    "4s squeal status --at 8be977ad6^ --run 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "4s +204s Bash squeal status --at 8be977ad6^ --run 2>&1 | tail -40"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0906384,
+  "usage": {
+    "cache_creation_input_tokens": 28736,
+    "cache_read_input_tokens": 48164,
+    "output_tokens": 1397
+  },
+  "firstFinal": "I can't say yet. Squeal's comparison came back inconclusive, and I'd rather not claim \"no change\" from it.\n\n- **Summary line:** it reported 0 pass→fail, 0 fail→pass and 1920 unknown. The unknown count means no stored result exists at either commit to compare, not that nothing changed.\n- **At 8be977ad6:** none of the 1920 test files have a stored result. The `--run` pass had nothing to run, so it never executed them.\n- **At the parent (d8abcfe46):** the budgeted `--run` executed 12 of the 111 files that had no result. 10 of those passed and were stored: `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs`, `packages/cezar/src/core/runner-closure.test.ts` and 7 others. `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` also passed there, but Squeal didn't store those results because they read baseline files that first appeared during the run. The other 99 weren't run because the 300 s budget ran out.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent, so it is new in this commit.\n- **Not run:** the browser group (97 files) and the run-loop group (319 files) didn't run. The browser setup failed because Chrome wouldn't launch here.\n\nFrom the commit title and the files involved, the change looks like a lint refactor. The `lint-ast-grep-*` tests and the new `active-run-write-index.test.ts` are the files most likely to behave differently, but I haven't measured that.\n\nTo get a real answer I can:\n1. Run `squeal status --at '8be977ad6^' --run --timeout 600` to cover the 99 files that ran out of budget.\n2. Run `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` to check the new test on the parent's code.\n3. Run the lint-related test files directly through `squeal run tests <paths> --wait 60000`.\n\nWhich do you want? I'd start with 1 and 3 together.",
+  "final": "I can't say yet. Squeal's comparison came back inconclusive, and I'd rather not claim \"no change\" from it.\n\n- **Summary line:** it reported 0 pass→fail, 0 fail→pass and 1920 unknown. The unknown count means no stored result exists at either commit to compare, not that nothing changed.\n- **At 8be977ad6:** none of the 1920 test files have a stored result. The `--run` pass had nothing to run, so it never executed them.\n- **At the parent (d8abcfe46):** the budgeted `--run` executed 12 of the 111 files that had no result. 10 of those passed and were stored: `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs`, `packages/cezar/src/core/runner-closure.test.ts` and 7 others. `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` also passed there, but Squeal didn't store those results because they read baseline files that first appeared during the run. The other 99 weren't run because the 300 s budget ran out.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent, so it is new in this commit.\n- **Not run:** the browser group (97 files) and the run-loop group (319 files) didn't run. The browser setup failed because Chrome wouldn't launch here.\n\nFrom the commit title and the files involved, the change looks like a lint refactor. The `lint-ast-grep-*` tests and the new `active-run-write-index.test.ts` are the files most likely to behave differently, but I haven't measured that.\n\nTo get a real answer I can:\n1. Run `squeal status --at '8be977ad6^' --run --timeout 600` to cover the 99 files that ran out of budget.\n2. Run `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` to check the new test on the parent's code.\n3. Run the lint-related test files directly through `squeal run tests <paths> --wait 60000`.\n\nWhich do you want? I'd start with 1 and 3 together.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6^ --run"
+  ]
+}

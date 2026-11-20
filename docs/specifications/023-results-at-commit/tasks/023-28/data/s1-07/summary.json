@@ -1,0 +1,40 @@
+{
+  "id": "s1-07",
+  "loadStart": "11.62",
+  "exit": 0,
+  "wallSeconds": 393.856,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 --run 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "4s +384s Bash squeal status --at 8be977ad6 --run 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.09417049999999999,
+  "usage": {
+    "cache_creation_input_tokens": 32672,
+    "cache_read_input_tokens": 45085,
+    "output_tokens": 797
+  },
+  "firstFinal": "I can't say yet. Squeal produced no comparison, so I don't know whether any test now passes or fails differently.\n\n- **No verdict:** Squeal's own summary reads `0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown`. Almost every one of the 1920 test files has no recorded result at either commit, and I haven't run them.\n- **Parent commit:** I compared against `d8abcfe46`, and the run stopped partway. It ran 12 of 111 files that had no stored result there, and 99 weren't run because of the time budget. The browser group couldn't start because Chrome failed to launch here.\n- **Files that changed state:** Two lint tests, `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, show \"pass -> no result\". That is a measurement gap, not a regression. Squeal ran them at the parent, didn't store the results, and the commit has no result to compare.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It is new in this commit, so it has nothing to compare with.\n\nTo get a real answer I can do one of two things:\n1. Run the commit's affected tests through Squeal, starting with the lint tests, and then check the new file against the parent with `squeal proof`.\n2. Rerun the comparison with the larger budget Squeal suggested: `squeal status --at '8be977ad6~1' --run --timeout 600`.\n\nDo you want me to run either?",
+  "final": "I can't say yet. Squeal produced no comparison, so I don't know whether any test now passes or fails differently.\n\n- **No verdict:** Squeal's own summary reads `0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown`. Almost every one of the 1920 test files has no recorded result at either commit, and I haven't run them.\n- **Parent commit:** I compared against `d8abcfe46`, and the run stopped partway. It ran 12 of 111 files that had no stored result there, and 99 weren't run because of the time budget. The browser group couldn't start because Chrome failed to launch here.\n- **Files that changed state:** Two lint tests, `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, show \"pass -> no result\". That is a measurement gap, not a regression. Squeal ran them at the parent, didn't store the results, and the commit has no result to compare.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It is new in this commit, so it has nothing to compare with.\n\nTo get a real answer I can do one of two things:\n1. Run the commit's affected tests through Squeal, starting with the lint tests, and then check the new file against the parent with `squeal proof`.\n2. Rerun the comparison with the larger budget Squeal suggested: `squeal status --at '8be977ad6~1' --run --timeout 600`.\n\nDo you want me to run either?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6~1 --run"
+  ]
+}

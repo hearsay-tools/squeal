@@ -1,0 +1,41 @@
+{
+  "id": "s2-09",
+  "loadStart": "8.17",
+  "exit": 0,
+  "wallSeconds": 523.902,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "470s squeal proof test/store/open.test.ts --base 20f03a4~1 2>&1 | tail -30"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "4s +120s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40"
+  ],
+  "long": [],
+  "results": 2,
+  "turns": 11,
+  "costUsd": 0.1252851,
+  "usage": {
+    "cache_creation_input_tokens": 34237,
+    "cache_read_input_tokens": 217646,
+    "output_tokens": 1788
+  },
+  "firstFinal": "The comparison hasn't finished yet. It's a single background command that runs the tests at both commits, with 1962 test files in the repo, so it can take a while. The output file is still empty, and a completion notification will arrive when it ends. I haven't got any results yet, so I can't say whether commit 20f03a4 changed any test results.\n\nI'll read the output once it finishes and list the test files whose result differs between 20f03a4~1 and 20f03a4.",
+  "final": "I can confirm one test file changed result, but I couldn't compare the full suite. Treat the rest as not checked rather than unchanged.\n\n**What changed:** `test/store/open.test.ts` goes from fail to pass in the sense that matters. The commit added a test to that file, \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\", and a fix in `src/core/store/mark.ts`. The new test fails on the old `mark.ts` from `20f03a4~1` and passes with the fix. The old code returned `{at: 1, problem: 'p'}` and dropped `found: \"unknown\"`. Strictly, this file had no new failure to flip at the parent commit, because the test is new there. This was a `squeal proof` run, which pairs the new test file with the old code.\n\n**What I couldn't determine:** the whole-suite comparison (`squeal status --at`) returned nothing usable. At `20f03a4`, all 1962 files came back as \"no result\". At the parent commit, the run hit its 300 s budget, so 1301 files were never run. The files that did run showed no pass-to-fail or fail-to-pass change.\n\n**Why other files are unlikely to change:** the commit touches only `src/core/store/mark.ts` and `test/store/open.test.ts`. Other test files that read `mark.ts` could be affected in principle. I didn't check which ones do.\n\nIf you want a full answer, `squeal status --at '20f03a4~1' --run --timeout 600` is the suggested rerun. Tell me if you'd like me to run it.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run"
+  ]
+}

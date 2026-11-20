@@ -1,0 +1,212 @@
+## 7s +0s $ squeal status --at 8be977ad6^ --run --wait 60000 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6 --run --wait 60000 2>&1 | tail -40
+                                next edit. --until-start: no edit or Git operation
+                                starts one until squeal start
+  squeal hold [--max <duration>] -- <command> [args...]
+                                Run the command with this worktree's validation on hold:
+                                the daemon cancels the runs it can, starts none, and
+                                records and queues each edit; the queued work runs when
+                                the command exits, after --max (default 3h), or when
+                                start ends the hold; exits with the command's code
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, the fixed Codex plugin's runtime, and the
+                                launcher install.sh put on the PATH
+  squeal codex-runtime ensure --plugin-root <absolute> [--data <absolute>]
+                                Fixed Codex plugin: select a complete local runtime
+                                for new sessions, the current one or the plugin's
+                                seed, with no network; exit 0 only when ready
+  squeal codex-runtime update --plugin-root <absolute> [--data <absolute>]
+                              [--tag squeal--v<version>] [--background]
+                                Download, validate and select a newer runtime for new
+                                sessions within 120 s, never an older one; running
+                                sessions keep theirs; exit 1 when it failed, and the
+                                selected runtime stays; --background prints nothing
+                                and keeps the retry delays
+  squeal codex-runtime status --plugin-root <absolute> [--data <absolute>] [--json]
+                                Adapter and runtime versions, pinned sessions and the
+                                last update check; exit 0 when ready, 1 when not
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal runner-host <root> --runner vitest
+                                Host the project's runner for a daemon over stdin and
+                                stdout (the daemon starts it)
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+----
+                                next edit. --until-start: no edit or Git operation
+                                starts one until squeal start
+  squeal hold [--max <duration>] -- <command> [args...]
+                                Run the command with this worktree's validation on hold:
+                                the daemon cancels the runs it can, starts none, and
+                                records and queues each edit; the queued work runs when
+                                the command exits, after --max (default 3h), or when
+                                start ends the hold; exits with the command's code
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, the fixed Codex plugin's runtime, and the
+                                launcher install.sh put on the PATH
+  squeal codex-runtime ensure --plugin-root <absolute> [--data <absolute>]
+                                Fixed Codex plugin: select a complete local runtime
+                                for new sessions, the current one or the plugin's
+                                seed, with no network; exit 0 only when ready
+  squeal codex-runtime update --plugin-root <absolute> [--data <absolute>]
+                              [--tag squeal--v<version>] [--background]
+                                Download, validate and select a newer runtime for new
+                                sessions within 120 s, never an older one; running
+                                sessions keep theirs; exit 1 when it failed, and the
+                                selected runtime stays; --background prints nothing
+                                and keeps the retry delays
+  squeal codex-runtime status --plugin-root <absolute> [--data <absolute>] [--json]
+                                Adapter and runtime versions, pinned sessions and the
+                                last update check; exit 0 when ready, 1 when not
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal runner-host <root> --runner vitest
+                                Host the project's runner for a daemon over stdin and
+                                stdout (the daemon starts it)
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+
+## 10s +0s $ squeal status --help 2>&1 | head -40; squeal status --at 8be977ad6^ --run --wait 60000 2>&1 | head -8
+Usage:
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+                                advances it; --full adds the worktree, daemon,
+                                inheritance, each file without a result and the notes;
+                                --notes is --full with every note in full
+  squeal status <path>... [--check <text>]... [--full] [--json]
+                                The verdict of the test files the paths select (a test
+                                file; a folder: the listed test files under it; or a
+                                file in test files' closures) now, if the
+                                daemon stores its pass over your edits within 750 ms:
+                                exit 0, 1 on known failures, 3 without one; a path
+                                that selects nothing is named beside it, exit 3 unless
+                                a selected file fails; --full prints this worktree's
+                                status first; --json: the files and their verdicts in
+                                selection.testFiles, and selection.complete false while
+                                the list may still grow (the text says "at least");
+                                every field, result, reason and exit code: "Status
+                                JSON" in the squeal skill's references/commands.md;
+                                --check shows the focused outcome of the named test
+                                files' checks whose name holds the text, and asks for
+                                nothing
+  squeal status --wait <ms> [--full] [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status (--full:
+                                in full) and last the line saying why it returned
+  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]
+                                Wait up to <ms> for the test files the paths select,
+                                then give their verdict as status <path>... does,
+                                --json in selection.testFiles too; --check runs first,
+                                alone, the checks of each test file named by its own
+                                path whose name holds the text, and returns with their
+                                outcome, not the file's verdict: exit 1 when one
+                                failed, else 3 (--json: selection.focused)
+  squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--full] [--json]
+                                Each test file's stored result at the commit's key
+                                (keyed in a temporary checkout there; nothing runs)
+                                beside its state in the working tree: one call is
+                                the whole comparison: pass, fail, no result, absent
+squeal status: unknown option "--wait" with --at
+
+squeal: continuous validation for coding agents. Push transitions, pull state.
+
+Usage:
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+
+## 13s +88s $ git show --stat --format='%h %s' 8be977ad6 | tail -20; echo ----; squeal status --at 8be977ad6^ --full 2>&1 | head -40
+8be977ad perf(lint): share active-run owner syntax indexes (#3785)
+
+ .../cezar/src/lint/active-run-write-index.test.ts  |  72 ++++++++++++++
+ packages/cezar/src/lint/active-run-write.ts        | 107 ++++++++++++++-------
+ 2 files changed, 143 insertions(+), 36 deletions(-)
+----
+squeal: keying test files at d8abcfe46 in a temporary checkout
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+No daemon runs in this worktree: now is the stored results at the working tree's keys.
+Keys at d8abcfe46 from a temporary checkout, 51.0 s (checked against the commit in 758 ms).
+packages/web/e2e/activity.e2e.ts: no result -> no result
+packages/web/e2e/agent-browser-tabs.e2e.ts: no result -> no result
+packages/web/e2e/agents-dock.e2e.ts: no result -> no result
+packages/web/e2e/artifact-project-links.e2e.ts: no result -> no result
+packages/web/e2e/assistant-line-breaks.e2e.ts: no result -> no result
+packages/web/e2e/assistant-reply-copy.e2e.ts: no result -> no result
+packages/web/e2e/automations-disabled.e2e.ts: no result -> no result
+packages/web/e2e/automations-github.e2e.ts: no result -> no result
+packages/web/e2e/automations.e2e.ts: no result -> no result
+packages/web/e2e/chat-code-fence.e2e.ts: no result -> no result
+packages/web/e2e/command-palette.e2e.ts: no result -> no result
+packages/web/e2e/commit-list.e2e.ts: no result -> no result
+packages/web/e2e/completion-controls.e2e.ts: no result -> no result
+packages/web/e2e/composer-defaults.e2e.ts: no result -> no result
+packages/web/e2e/composer.e2e.ts: no result -> no result
+packages/web/e2e/create-project.e2e.ts: no result -> no result
+packages/web/e2e/diff-scroll.e2e.ts: no result -> no result
+packages/web/e2e/empty-states.e2e.ts: no result -> no result
+packages/web/e2e/fixture-home-isolation.e2e.ts: no result -> no result
+packages/web/e2e/git-sidebar.e2e.ts: no result -> no result
+packages/web/e2e/github-core.e2e.ts: no result -> no result
+packages/web/e2e/github-layout.e2e.ts: no result -> no result
+packages/web/e2e/github-paging.e2e.ts: no result -> no result
+packages/web/e2e/github-pr-review.e2e.ts: no result -> no result
+packages/web/e2e/github-sidebar.e2e.ts: no result -> no result
+packages/web/e2e/github-states.e2e.ts: no result -> no result
+packages/web/e2e/good-css.e2e.ts: no result -> no result
+packages/web/e2e/home-recovery.e2e.ts: no result -> no result
+packages/web/e2e/html-report-cards.e2e.ts: no result -> no result
+packages/web/e2e/html-report-reader.e2e.ts: no result -> no result
+packages/web/e2e/index-workload.e2e.ts: no result -> no result
+packages/web/e2e/ios-sweep.e2e.ts: no result -> no result
+packages/web/e2e/issue-linked-tasks.e2e.ts: no result -> no result
+packages/web/e2e/live-preview.e2e.ts: no result -> no result
+packages/web/e2e/markdown-preview.e2e.ts: no result -> no result
+packages/web/e2e/mobile-projects.e2e.ts: no result -> no result
+
+## 102s SAY
+Narrow to the files the commit could affect.
+
+## 103s +60s $ squeal status --at 8be977ad6^ --run --timeout 600 packages/cezar/src/lint 2>&1 | tail -40
+squeal: keying test files at d8abcfe46 in a temporary checkout
+squeal: node-test project "test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with tsx's rules
+squeal: node-test project "root:test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with Node's own rules
+squeal: node-test project "root:test:unit": 0 of 15 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 15 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 15 in incompleteClosures.
+squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one does not run for a changed path it loads only through a computed import() or require(). The --json report lists it in incompleteClosures.
+squeal: all 9 completed test files are kept in the stores (9 while the runs went on); the next run on the same bytes reads them from the stores
+squeal status --at d8abcfe46: 29 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+No daemon runs in this worktree: now is the stored results at the working tree's keys.
+Keys at d8abcfe46 from a temporary checkout, 56.4 s (checked against the commit in 693 ms).
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in worktree b4892d8d)
+packages/cezar/src/lint/layer-import.test.ts: no result -> pass (now: run in worktree b4892d8d)
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 27 unchanged, 2 unknown
+--run: 9 of 9 test files with no result at d8abcfe46 ran in its checkout, 9 stored at its keys (56.5 s of the 600 s budget)
+
+## 168s SAY
+No test file changed from pass to fail or from fail to pass between `8be977ad6` and its parent `d8abcfe46`. I only compared the 29 test files under `packages/cezar/src/lint`, not all 1920, because the commit touches only that directory.
+
+The commit changes `active-run-write.ts` and adds `active-run-write-index.test.ts`. Squeal's comparison over those lint tests gave:
+- **Pass to fail:** 0
+- **Fail to pass:** 0
+- **Unchanged:** 27
+- **Not comparable:** 2, both of which pass now:
+  - `active-run-write-index.test.ts` is new in this commit, so it has no result at the parent. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.
+  - `layer-import.test.ts` had no stored result at the parent. I ran it in the parent's checkout and it passes there too, so Squeal's "no result" at the parent was only a missing record, not a change.
+
+The 2 failures in the session context are in `packages/web/src/test/poll.test.ts`, in the `settled probes close unread streamed bodies` tests. They aren't caused by this commit. The commit doesn't touch the web package, and I didn't check whether anything in the web tests depends on the lint code. Squeal has no earlier pass on record for them, so I can't say whether they were already failing before this commit.

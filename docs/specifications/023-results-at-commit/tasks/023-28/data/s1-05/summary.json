@@ -1,0 +1,55 @@
+{
+  "id": "s1-05",
+  "loadStart": "10.64",
+  "exit": 0,
+  "wallSeconds": 346.004,
+  "squeal": [
+    "4s squeal checks 2>&1 | tail -30; git show --stat --format=%H%n%P%n%s 8be977ad6 | head -40",
+    "6s squeal status --at 8be977ad6 --run --wait 120000 2>&1 | tail -40; echo ------; squeal status --at d8abcfe4 --run --wait 120000 2>&1 | tail -40",
+    "8s squeal status --at 8be977ad6 --run --wait 120000 2>&1 | head -8; squeal status --help 2>&1 | head -40",
+    "11s cd ~squeal-w17/runs/w17/s1-05; P=packages/cezar/src/lint; ls $P | grep -i active-run; for c in 8be977ad6 d8abcfe4; do echo \"=== $c\"; squeal status --at $c $P --run --timeout 600 2>&1 | tail -30; done",
+    "179s cd ~squeal-w17/runs/w17/s1-05; squeal status --at 8be977ad6 packages/cezar/src/lint --run --timeout 900 2>&1 | grep -v '^squeal: node-test' | tail -15",
+    "198s cd ~squeal-w17/runs/w17/s1-05; squeal run packages/cezar/src/lint --wait 300000 2>&1 | grep -v '^squeal: node-test' | tail -25; squeal status --at 8be977ad6 packages/cezar/src/lint --full 2>&1 | grep -v '^squeal: node-test' | tail -40",
+    "201s cd ~squeal-w17/runs/w17/s1-05; squeal run tests packages/cezar/src/lint --wait 400000 2>&1 | grep -v '^squeal: node-test' | tail -25; squeal status --at HEAD~1 packages/cezar/src/lint --full 2>&1 | grep -v '^squeal: node-test' | tail -40",
+    "278s cd ~squeal-w17/runs/w17/s1-05; squeal status --wait 300000 packages/cezar/src/lint/active-run-write.ts 2>&1 | grep -v '^squeal: node-test' | tail -25",
+    "286s cd ~squeal-w17/runs/w17/s1-05; L=packages/cezar/src/lint; squeal retry $L/active-run-write-index.test.ts $L/ast-rules-active-run.test.ts $L/ast-rules-owners.test.ts $L/ast-rules-owners-readers.test.ts $L/ast-grep-groups.test.ts $L/plugin.test.ts $L/run-history-reader.test.ts $L/lint-runner.test.ts 2>&1 | tail -5; squeal status --wait 300000 $L/active-run-write-index.test.ts $L/ast-rules-active-run.test.ts $L/ast-rules-owners.test.ts $L/ast-rules-owners-readers.test.ts $L/ast-grep-groups.test.ts $L/plugin.test.ts $L/run-history-reader.test.ts $L/lint-runner.test.ts 2>&1 | grep -v '^squeal: node-test' | tail -15",
+    "326s cd ~squeal-w17/runs/w17/s1-05; L=packages/cezar/src/lint; squeal status --at HEAD~1 $L/active-run-write-index.test.ts $L/ast-rules-active-run.test.ts $L/ast-rules-owners.test.ts $L/ast-rules-owners-readers.test.ts $L/ast-grep-groups.test.ts $L/plugin.test.ts $L/run-history-reader.test.ts $L/lint-runner.test.ts --full 2>&1 | grep -v '^squeal: node-test' | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "11s +165s Bash cd ~squeal-w17/runs/w17/s1-05; P=packages/cezar/src/lint; ls $P | grep -i active-run; for c in 8be977ad6 d8abcfe4; do echo \"=== $c\"; squeal status --at $c $P --run --timeout 600 2>&1 | tail -30; done"
+  ],
+  "results": 1,
+  "turns": 13,
+  "costUsd": 0.1328034,
+  "usage": {
+    "cache_creation_input_tokens": 26311,
+    "cache_read_input_tokens": 343779,
+    "output_tokens": 3260
+  },
+  "firstFinal": "Based on what Squeal could compare, no existing test changed its result. One new test file now passes.\n\n8be977ad6 touched only two files, `active-run-write.ts` and a new `active-run-write-index.test.ts`, both under `packages/cezar/src/lint/`.\n\nI compared the commit against its parent (d8abcfe46) for the eight lint test files most likely to be affected:\n\n| Test file | Parent | Now |\n|---|---|---|\n| `active-run-write-index.test.ts` | absent (new in this commit) | pass |\n| `ast-rules-active-run.test.ts` | pass | pass |\n| `ast-rules-owners.test.ts` | pass | pass |\n| `ast-rules-owners-readers.test.ts` | pass | pass |\n| `ast-grep-groups.test.ts` | pass | pass |\n| `plugin.test.ts` | pass | pass |\n| `run-history-reader.test.ts` | pass | pass |\n| `lint-runner.test.ts` | pass | pass |\n\nSqueal reports 0 pass→fail, 0 fail→pass, 7 unchanged and 1 new.\n\n- **Coverage is partial.** `active-run-write.ts` is read by 111 test files, mostly the e2e specs, and none of them have results at either commit. I did not run the full suite. The only wider check was the 29-file lint folder, where I confirmed nothing flipped.\n- **Two files I did not re-run.** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent, but Squeal could not store their results. They read baseline files that only appear during the run, so I have no current result for them.\n- **New test not red-proofed.** I did not check whether the new test fails on the old code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n\nBecause 8be977ad6 is described as a perf refactor, I expect the e2e specs to be unchanged. I haven't verified that.",
+  "final": "Based on what Squeal could compare, no existing test changed its result. One new test file now passes.\n\n8be977ad6 touched only two files, `active-run-write.ts` and a new `active-run-write-index.test.ts`, both under `packages/cezar/src/lint/`.\n\nI compared the commit against its parent (d8abcfe46) for the eight lint test files most likely to be affected:\n\n| Test file | Parent | Now |\n|---|---|---|\n| `active-run-write-index.test.ts` | absent (new in this commit) | pass |\n| `ast-rules-active-run.test.ts` | pass | pass |\n| `ast-rules-owners.test.ts` | pass | pass |\n| `ast-rules-owners-readers.test.ts` | pass | pass |\n| `ast-grep-groups.test.ts` | pass | pass |\n| `plugin.test.ts` | pass | pass |\n| `run-history-reader.test.ts` | pass | pass |\n| `lint-runner.test.ts` | pass | pass |\n\nSqueal reports 0 pass→fail, 0 fail→pass, 7 unchanged and 1 new.\n\n- **Coverage is partial.** `active-run-write.ts` is read by 111 test files, mostly the e2e specs, and none of them have results at either commit. I did not run the full suite. The only wider check was the 29-file lint folder, where I confirmed nothing flipped.\n- **Two files I did not re-run.** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent, but Squeal could not store their results. They read baseline files that only appear during the run, so I have no current result for them.\n- **New test not red-proofed.** I did not check whether the new test fails on the old code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n\nBecause 8be977ad6 is described as a perf refactor, I expect the e2e specs to be unchanged. I haven't verified that.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 8,
+  "atHeadCalls": 4,
+  "atRevs": [
+    "8be977ad6 --run",
+    "d8abcfe4 --run",
+    "8be977ad6 --run",
+    "$c --run",
+    "8be977ad6 --run",
+    "8be977ad6",
+    "HEAD~1",
+    "HEAD~1"
+  ]
+}

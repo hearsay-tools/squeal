@@ -1,0 +1,44 @@
+{
+  "id": "s2-05",
+  "loadStart": "10.64",
+  "exit": 0,
+  "wallSeconds": 484.711,
+  "squeal": [
+    "4s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "126s sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-05/55efc9cd-8b24-4310-bd4f-06c694fdc720/tasks/bgcykjxbv.output | tail -40",
+    "132s until [ -s ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-05/55efc9cd-8b24-4310-bd4f-06c694fdc720/tasks/bgcykjxbv.output ]; do sleep 5; done; echo ready",
+    "176s cd ~squeal-w17/runs/w17/s2-05; git show --stat --format=%s 20f03a431 | tail -20",
+    "178s cd ~squeal-w17/runs/w17/s2-05; squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15; squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "4s +120s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 --run 2>&1 | tail -40"
+  ],
+  "long": [],
+  "results": 3,
+  "turns": 14,
+  "costUsd": 0.10732690000000002,
+  "usage": {
+    "cache_creation_input_tokens": 20962,
+    "cache_read_input_tokens": 312379,
+    "output_tokens": 2362
+  },
+  "firstFinal": "The comparison hasn't finished yet. I'm waiting on `squeal status --at … --run`, which is still running the tests at both commits (there are 1962 test files). I'll report the changed test files once it completes.",
+  "final": "The background comparison finished, and it doesn't change my answer. The only test file I can show changing is `test/store/open.test.ts`: it fails at `a5c9b7223` (the commit before 20f03a431) and passes at 20f03a431.\n\nNeither whole-suite comparison produced a verdict:\n- **`--at 20f03a431`:** all 1962 test files came back \"no result\", so there was nothing to compare.\n- **`--at 20f03a431~1`:** the run hit its 300 s budget. It ran 0 of the 1338 files that had no result at `a5c9b7223`. It reported 0 pass→fail, 0 fail→pass, and 1962 unknown.\n\nI haven't run the other 1961 test files at either commit. The commit changed only `src/core/store/mark.ts` and the one test file, but I can't rule out a change in some other file that depends on `mark.ts`. A rerun that fits the budget is `squeal status --at '20f03a431~1' --run --timeout 600`. I haven't run it.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run"
+  ]
+}

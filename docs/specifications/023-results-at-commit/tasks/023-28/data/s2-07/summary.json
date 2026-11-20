@@ -1,0 +1,45 @@
+{
+  "id": "s2-07",
+  "loadStart": "8.46",
+  "exit": 0,
+  "wallSeconds": 544.684,
+  "squeal": [
+    "5s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "130s sleep 100; cat ~squeal-w17/runs/w17/tmp/claude-1002/-home-squeal-w17-runs-w17-s2-07/dc6fbab2-46dd-4f14-8bdf-a5461c534488/tasks/b3tart5as.output | tail -40",
+    "457s squeal status --at 20f03a431~1 --run --timeout 300 test/store/open.test.ts 2>&1 | tail -15; echo ----; squeal status --at 20f03a431 --run --timeout 300 test/store/open.test.ts 2>&1 | tail -15",
+    "530s squeal run test/store/open.test.ts --wait 120000 2>&1 | tail -8; squeal status --wait 60000 test/store/open.test.ts src/core/store/mark.ts 2>&1 | tail -8"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "5s +120s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40"
+  ],
+  "long": [],
+  "results": 2,
+  "turns": 12,
+  "costUsd": 0.11843050000000001,
+  "usage": {
+    "cache_creation_input_tokens": 30005,
+    "cache_read_input_tokens": 237400,
+    "output_tokens": 1963
+  },
+  "firstFinal": "I haven't got an answer yet. I'm comparing results with `squeal status --at 20f03a431 --run`, then the same for its parent `20f03a431~1`. Squeal has to run about 1,962 test files in a temporary checkout of each commit, so it has gone to the background. It writes nothing until it finishes, so I have no interim results. I'll report which test files changed result once it completes.",
+  "final": "**I can't give a full answer.** Of the test files the commit could affect, only `test/store/open.test.ts` has results at both commits, and its result didn't change. It passed before and passes after.\n\nThe commit `20f03a431` touched two files: `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n\n- **`test/store/open.test.ts`:** it passed at the parent commit and passes at `20f03a431`. Because the new tests are in that file, it was the one place a change in outcome was most likely.\n- **Other test files:** `mark.ts` is read by 1,338 test files, and I only checked `test/store/open.test.ts`. The comparison runs hit their time limit, and several tests weren't kept in Squeal's stores. So the rest have no result at either commit, and I can't say whether any of them changed.\n- **Nothing red:** across everything I ran, Squeal reported 0 pass→fail and 0 fail→pass, with no failures known in the worktree. That only covers what ran.\n\nTo settle the remaining files, run `squeal status --at '20f03a431~1' --run --timeout 600`, or `squeal run --all --wait` for the whole suite. Either is long; the full run covers 1,961 test files.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 2,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1 --run",
+    "20f03a431 --run"
+  ]
+}

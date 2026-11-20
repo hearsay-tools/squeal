@@ -1,0 +1,46 @@
+{
+  "id": "s1-09",
+  "loadStart": "10.19",
+  "exit": 0,
+  "wallSeconds": 303.285,
+  "squeal": [
+    "4s squeal checks; squeal status --at 8be977ad6 --run --wait 60000 2>&1 | tail -60",
+    "7s squeal status --help 2>&1 | head -40; squeal status --at 8be977ad6 2>&1 | head -30",
+    "10s squeal status --at HEAD~1 packages/cezar/src/lint --run 2>&1 | tail -40; echo ----; squeal status --wait 120000 packages/cezar/src/lint 2>&1 | tail -40",
+    "118s squeal run --wait 280000 packages/cezar/src/lint 2>&1 | tail -30; echo ----; squeal status --at HEAD~1 packages/cezar/src/lint 2>&1 | tail -15",
+    "198s squeal run tests packages/cezar/src/lint --wait 280000 2>&1 | tail -30; echo ----; squeal status --at HEAD~1 packages/cezar/src/lint 2>&1 | tail -12",
+    "284s squeal retry packages/cezar/src/lint/active-run-write-index.test.ts packages/cezar/src/lint/ast-grep-groups.test.ts packages/cezar/src/lint/ast-rules-active-run.test.ts packages/cezar/src/lint/ast-rules-owners-readers.test.ts packages/cezar/src/lint/ast-rules-owners.test.ts packages/cezar/src/lint/ast-rules.test.ts 2>&1 | tail -15; squeal status --wait 200000 packages/cezar/src/lint 2>&1 | tail -25"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 10,
+  "costUsd": 0.10721520000000001,
+  "usage": {
+    "cache_creation_input_tokens": 24523,
+    "cache_read_input_tokens": 211757,
+    "output_tokens": 2470
+  },
+  "firstFinal": "No test file changed from pass to fail, or from fail to pass, between 8be977ad6 and its parent. The comparison is incomplete, though: only 6 of the 29 lint test files have results at HEAD.\n\nThe commit touched two files: `packages/cezar/src/lint/active-run-write.ts` (modified) and `packages/cezar/src/lint/active-run-write-index.test.ts` (new). I compared the 29 test files under `packages/cezar/src/lint` using `squeal status --at HEAD~1`.\n\n**At HEAD, 6 files pass.**\n- `active-run-write-index.test.ts` is new in this commit and passes. It has no counterpart at the parent, so it can't count as a change in outcome.\n- `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts`, `ast-rules-owners-readers.test.ts`, `ast-rules-owners.test.ts` and `ast-rules.test.ts` pass at HEAD. At the parent, 7 lint files ran and passed. The 3 files Squeal named in that output include `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts` and `ast-rules-owners-readers.test.ts`. I didn't confirm whether `ast-rules-owners.test.ts` and `ast-rules.test.ts` are among the other 4.\n\n**The rest I couldn't compare.**\n- 23 lint files have no result at HEAD, because I only ran 6 of them.\n- 21 files had no result at the parent, and I didn't run them.\n- `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent, but Squeal didn't keep those results. They read ast-grep baseline files it hadn't seen before, so they show as \"no result\" in the comparison.\n- I did not run the rest of the 1,920-file suite, so tests outside `lint/` are unchecked. The commit only touches lint code, so it is unlikely to affect them.\n\nTo close the gap, run `squeal status --at HEAD~1 packages/cezar/src/lint --run --all-missing`, then `squeal retry` on the remaining lint files.",
+  "final": "No test file changed from pass to fail, or from fail to pass, between 8be977ad6 and its parent. The comparison is incomplete, though: only 6 of the 29 lint test files have results at HEAD.\n\nThe commit touched two files: `packages/cezar/src/lint/active-run-write.ts` (modified) and `packages/cezar/src/lint/active-run-write-index.test.ts` (new). I compared the 29 test files under `packages/cezar/src/lint` using `squeal status --at HEAD~1`.\n\n**At HEAD, 6 files pass.**\n- `active-run-write-index.test.ts` is new in this commit and passes. It has no counterpart at the parent, so it can't count as a change in outcome.\n- `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts`, `ast-rules-owners-readers.test.ts`, `ast-rules-owners.test.ts` and `ast-rules.test.ts` pass at HEAD. At the parent, 7 lint files ran and passed. The 3 files Squeal named in that output include `ast-grep-groups.test.ts`, `ast-rules-active-run.test.ts` and `ast-rules-owners-readers.test.ts`. I didn't confirm whether `ast-rules-owners.test.ts` and `ast-rules.test.ts` are among the other 4.\n\n**The rest I couldn't compare.**\n- 23 lint files have no result at HEAD, because I only ran 6 of them.\n- 21 files had no result at the parent, and I didn't run them.\n- `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent, but Squeal didn't keep those results. They read ast-grep baseline files it hadn't seen before, so they show as \"no result\" in the comparison.\n- I did not run the rest of the 1,920-file suite, so tests outside `lint/` are unchecked. The commit only touches lint code, so it is unlikely to affect them.\n\nTo close the gap, run `squeal status --at HEAD~1 packages/cezar/src/lint --run --all-missing`, then `squeal retry` on the remaining lint files.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 5,
+  "atHeadCalls": 2,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6",
+    "HEAD~1 --run",
+    "HEAD~1",
+    "HEAD~1"
+  ]
+}
