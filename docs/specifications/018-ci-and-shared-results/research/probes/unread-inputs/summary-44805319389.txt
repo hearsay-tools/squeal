@@ -1,0 +1,62 @@
+left out: 568 files, 4163.1 s
+  node-test: 116 files, 270.6 s
+  vitest: 452 files, 3892.5 s
+
+pairs per runner and kind
+  92	node-test	C/tracked
+  7	node-test	D-missing (declared)
+  9	node-test	D-missing (graph)
+  1142	node-test	D-tracked (declared)
+  56	node-test	D-untracked (declared)
+  3494	vitest	C/tracked
+  172	vitest	D-missing (graph)
+  13	vitest	own-touched
+
+files (test s) each rule recovers: every uncertified input of the file is of the rule's kinds
+  C              node-test 4 (2.8 s)  vitest 435 (3853.5 s)
+  D              node-test 106 (128.4 s)  vitest 0 (0.0 s)
+  D+absent       node-test 109 (129.9 s)  vitest 7 (3.3 s)
+  C or D         node-test 112 (268.8 s)  vitest 435 (3853.5 s)
+  C or D+absent  node-test 115 (270.3 s)  vitest 443 (3858.1 s)
+  one rule, no absence node-test 113 (269.1 s)  vitest 435 (3853.5 s)
+  one rule, files only node-test 113 (269.1 s)  vitest 435 (3853.5 s)
+
+files per exact kind set
+  435	3853.5 s	vitest	C/tracked
+  106	128.4 s	node-test	D-tracked
+  7	3.3 s	vitest	D-missing
+  6	15.9 s	vitest	C/tracked + own-touched
+  4	2.8 s	node-test	C/tracked
+  3	18.5 s	vitest	own-touched
+  2	137.5 s	node-test	C/tracked + D-tracked
+  2	0.4 s	node-test	D-missing
+  1	1.1 s	node-test	D-missing + D-tracked
+  1	0.4 s	node-test	C/tracked + D-tracked + D-untracked
+  1	1.3 s	vitest	C/tracked + D-missing
+
+inputs in most left-out files, per kind (top 25)
+  314	C/tracked	packages/cezar/src/runners/claude/claude-model-catalog.ts
+  140	C/tracked	packages/cezar/src/runners/codex/codex-model-catalog.ts
+  131	C/tracked	packages/cezar/src/core/model-probe-spawn.ts
+  123	C/tracked	packages/cezar/src/runners/pi/pi-model-catalog.ts
+  111	C/tracked	packages/cezar/src/core/model-probe-teardown.ts
+  108	D-tracked (declared)	.github/scripts/cockpit-test-sequencer.d.mts
+  108	D-tracked (declared)	.github/scripts/fixtures/missing-patches/README.md
+  108	D-tracked (declared)	.github/scripts/node-floor-test-sequencer.mjs
+  108	D-tracked (declared)	.github/scripts/node-floor-vitest.config.mjs
+  108	D-tracked (declared)	.github/scripts/test-env-windows-probe.ps1
+  108	D-tracked (declared)	.github/scripts/test-env-windows.test.mjs
+  90	C/tracked	packages/cezar/src/runners/opencode/opencode-model-catalog.ts
+  87	C/tracked	packages/cezar/src/runners/login-output.ts
+  82	C/tracked	packages/cezar/src/runners/omp/omp-model-catalog.ts
+  81	C/tracked	packages/cezar/src/runners/claude/claude-skill-catalog.ts
+  81	C/tracked	packages/cezar/src/runners/claude/login-probe.ts
+  67	C/tracked	packages/cezar/src/runners/codex/codex-skill-catalog.ts
+  59	C/tracked	packages/cezar/src/runners/pi/pi-skill-catalog.ts
+  54	C/tracked	packages/cezar/src/runners/omp/omp-skill-catalog.ts
+  41	C/tracked	packages/cezar/src/core/skill-path-scope.ts
+  36	C/tracked	packages/cezar/src/runners/opencode/opencode-skill-catalog.ts
+  30	C/tracked	packages/cezar/src/runners/codex/login-probe.ts
+  25	C/tracked	packages/cezar/src/runners/pi/login-probe.ts
+  24	C/tracked	packages/cezar/src/runners/opencode/login-probe.ts
+  22	C/tracked	packages/web/src/routes/task-thread/preview/pane-overlay.tsx

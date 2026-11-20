@@ -1,0 +1,25 @@
+== shell-restore-import: truth fail
+squeal ci export: no test file to export; left out: 1 test file whose inputs here are not what their shard read; wrote nothing
+today: left out test/a.test.ts; rule: leaves it out
+  data/value.txt: unread; start f49b8164, end f49b8164, here f49b8164: CERTIFIED
+  src/value.ts: read by a hooked process (56b558a5), rule does not apply
+== shell-generate-import: truth fail
+squeal ci export: no test file to export; left out: 1 test file whose inputs here are not what their shard read; wrote nothing
+today: left out test/a.test.ts; rule: leaves it out
+  data/value.txt: unread; start f49b8164, end f49b8164, here f49b8164: CERTIFIED
+  src/generated.ts: read by a hooked process (56b558a5), rule does not apply
+== shell-restore-native-read: truth fail
+squeal ci export: no test file to export; left out: 1 test file whose inputs here are not what their shard read; wrote nothing
+today: left out test/a.test.ts; rule: EXPORTS it
+  data/value.txt: unread; start 7b3a7854, end 7b3a7854, here 7b3a7854: CERTIFIED
+== untouched-native-read: truth pass
+squeal ci export: no test file to export; left out: 1 test file whose inputs here are not what their shard read; wrote nothing
+today: left out test/a.test.ts; rule: EXPORTS it
+  data/value.txt: unread; start f49b8164, end f49b8164, here f49b8164: CERTIFIED
+== node-restore-native-read: truth fail
+squeal ci export: no test file to export; left out: 1 test file whose inputs here are not what their shard read; wrote nothing
+today: left out test/a.test.ts; rule: leaves it out
+  data/value.txt: written by a hooked process, rule does not apply
+== today-node-read-first: truth fail
+Exported 1 test file, 2 results, to /home/agent/projects/squeal/.ai/squawk/t/ff30bb95/r56/fx/today-node-read-first-out/export.json.gz.
+today: no file left out for inputs

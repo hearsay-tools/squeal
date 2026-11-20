@@ -1,0 +1,56 @@
+left out: 583 files, 5487.4 s
+  vitest: 583 files, 5487.4 s
+
+pairs per runner and kind
+  352	vitest	C/listing
+  3530	vitest	C/tracked
+  172	vitest	D-missing (graph)
+  1	vitest	own-differs
+  13	vitest	own-touched
+
+files (test s) each rule recovers: every uncertified input of the file is of the rule's kinds
+  C              vitest 565 (5452.0 s)
+  D              vitest 0 (0.0 s)
+  D+absent       vitest 7 (2.5 s)
+  C or D         vitest 565 (5452.0 s)
+  C or D+absent  vitest 573 (5456.7 s)
+  one rule, no absence vitest 565 (5452.0 s)
+  one rule, files only vitest 214 (1061.5 s)
+
+files per exact kind set
+  222	2989.3 s	vitest	C/listing + C/tracked
+  214	1061.5 s	vitest	C/tracked
+  129	1401.2 s	vitest	C/listing
+  7	2.5 s	vitest	D-missing
+  6	18.2 s	vitest	C/tracked + own-touched
+  2	3.2 s	vitest	own-touched
+  1	2.3 s	vitest	C/tracked + own-differs
+  1	2.2 s	vitest	C/tracked + D-missing
+  1	7.0 s	vitest	C/listing + own-touched
+
+inputs in most left-out files, per kind (top 25)
+  352	C/listing	packages/cezar/scripts/mock-skill-data/
+  316	C/tracked	packages/cezar/src/runners/claude/claude-model-catalog.ts
+  142	C/tracked	packages/cezar/src/runners/codex/codex-model-catalog.ts
+  133	C/tracked	packages/cezar/src/core/model-probe-spawn.ts
+  125	C/tracked	packages/cezar/src/runners/pi/pi-model-catalog.ts
+  112	C/tracked	packages/cezar/src/core/model-probe-teardown.ts
+  91	C/tracked	packages/cezar/src/runners/opencode/opencode-model-catalog.ts
+  88	C/tracked	packages/cezar/src/runners/login-output.ts
+  84	C/tracked	packages/cezar/src/runners/omp/omp-model-catalog.ts
+  82	C/tracked	packages/cezar/src/runners/claude/claude-skill-catalog.ts
+  82	C/tracked	packages/cezar/src/runners/claude/login-probe.ts
+  68	C/tracked	packages/cezar/src/runners/codex/codex-skill-catalog.ts
+  60	C/tracked	packages/cezar/src/runners/pi/pi-skill-catalog.ts
+  55	C/tracked	packages/cezar/src/runners/omp/omp-skill-catalog.ts
+  41	C/tracked	packages/cezar/src/core/skill-path-scope.ts
+  36	C/tracked	packages/cezar/src/runners/opencode/opencode-skill-catalog.ts
+  31	C/tracked	packages/cezar/src/runners/codex/login-probe.ts
+  26	C/tracked	packages/cezar/src/runners/pi/login-probe.ts
+  25	C/tracked	packages/cezar/src/runners/opencode/login-probe.ts
+  23	C/tracked	packages/cezar/src/runners/omp/login-probe.ts
+  22	C/tracked	packages/web/src/routes/task-thread/preview/pane-overlay.tsx
+  22	C/tracked	packages/web/src/routes/task-thread/preview/preview-input.tsx
+  22	C/tracked	packages/web/src/routes/task-thread/preview/preview-pane-connected.tsx
+  22	C/tracked	packages/web/src/routes/task-thread/preview/preview-pane.tsx
+  22	C/tracked	packages/web/src/routes/task-thread/preview/preview-toolbar.tsx
