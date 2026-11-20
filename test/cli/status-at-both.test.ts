@@ -101,3 +101,55 @@ describe("status --at --run reports a failed batch setup (row 023-29, R3)", SLOW
     clean(f);
   });
 });
+
+/** A test whose time is `src/a.ts`'s `delay`, in ms. */
+const WAITS = [
+  'import { expect, it } from "vitest";',
+  'import { delay } from "../src/a";',
+  'it("waits", async () => {',
+  "  await new Promise((done) => setTimeout(done, delay));",
+  "  expect(delay).toBeGreaterThanOrEqual(0);",
+  "}, 120_000);",
+  "",
+].join("\n");
+
+describe("one budget over two sides of different lengths (review wave-18 note 3)", SLOW, () => {
+  it("ends inside the budget: the quick side's result, the slow side cut, the time left given back", async () => {
+    // The test waits 60 s at the commit and not at all now; the one budget is 40 s.
+    const f = fixture({
+      "squeal.config.json": "{}\n",
+      "src/a.ts": "export const delay = 60_000;\n",
+      [TEST.path]: WAITS,
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "src/a.ts": "export const delay = 0;\n" });
+    const budget = 40;
+    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
+    const json = await run(
+      f,
+      { commit: a, json: true, run: { allMissing: false, timeoutSeconds: budget } },
+      options,
+    );
+    expect(json.code).toBe(3);
+    const value = JSON.parse(json.out);
+    expect(fileOf(json.out, TEST.path)).toMatchObject({
+      at: { state: "not run", reason: "budget" },
+      now: { state: "pass", origin: { kind: "own" } },
+      change: "unknown",
+    });
+    expect(value.run).toMatchObject({
+      selected: 1,
+      ran: 0,
+      notRun: 1,
+      timedOut: true,
+      rerun: null,
+      now: { how: "gate", selected: 1, ran: 1, notRun: 0 },
+    });
+    // The hard stop holds over both sides; the commit side took the working tree's unused time:
+    // a first pass at its share, and a second one after the working tree's turn.
+    expect(value.run.usedMs).toBeLessThan((budget + 10) * 1000);
+    expect(value.run.batches.length).toBe(2);
+    expect(value.run.gateMs).toBeGreaterThan(value.run.now.gateMs);
+    clean(f);
+  });
+});

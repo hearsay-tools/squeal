@@ -160,9 +160,10 @@ export function atRun(input: AtRunInput): AtRun {
       const now = input.now?.files(selection) ?? 0;
       if (run.length > 0) await runFiles(checkout, run, keyed, shareEnd(run.length, now));
       if (now > 0) await input.now?.run(shareEnd(now, budgetLeft(run).length));
+      // The first pass had only its share when the working tree had files: its leftovers take
+      // the rest, which the working tree's turn did not use.
       const again = budgetLeft(run);
-      if (again.length > 0 && again.length < run.length)
-        await runFiles(checkout, again, keyed, endMs);
+      if (again.length > 0 && now > 0) await runFiles(checkout, again, keyed, endMs);
       leftOut = budgetLeft(run);
       leftSeconds = estimateOf(leftOut, durationsOf).seconds;
     } finally {
