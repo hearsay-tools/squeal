@@ -92,6 +92,10 @@ describe("squeal ci", () => {
     expect(said).toContain(
       "With Istanbul, a custom provider, browser mode or another Vitest version, it records no coverage.",
     );
+    // Spec 018 D8's condition as D34 amends it (row 018-57): the endpoint hashes and the residual.
+    expect(said).toContain(
+      "Requires that no other program changes the tests' input files while the command runs. Squeal sees the reads and writes of the command's Node processes, and hashes the checkout before and after the command: an input that no Node process read, listed or wrote is exported when both hashes equal its content in the export's checkout. So a change another program makes, and restores before the command ends, can be exported at content the test did not see",
+    );
   });
 
   it("runs a command outside a git worktree unchanged, with its code", async () => {
