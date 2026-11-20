@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "startedAt": "2026-11-20T08:03:57.795Z",
+    "squealVersion": "0.1.570",
+    "node": "v24.22.1",
+    "cpuModel": "AMD EPYC 4584PX 16-Core Processor",
+    "vcpus": 4,
+    "memGiB": 7.8,
+    "freeMemGiB": 6.8,
+    "sha256MiBPerS": [
+      1988.6666666666667,
+      2128,
+      2085
+    ],
+    "loadavgAtStart": "0.97 0.50 0.19 1/397 7517",
+    "cells": [
+      {
+        "name": "ref",
+        "files": 500,
+        "worktrees": 1,
+        "load": 0
+      },
+      {
+        "name": "store-1.7g",
+        "files": 500,
+        "worktrees": 1,
+        "load": 0,
+        "ageRounds": 70
+      },
+      {
+        "name": "store-7g",
+        "files": 500,
+        "worktrees": 1,
+        "load": 0,
+        "ageRounds": 326
+      }
+    ],
+    "endedAt": "2026-11-20T09:00:01.306Z"
+  },
+  "overall": 68.33333333333333,
+  "scores": {
+    "ref": 75,
+    "store-1.7g": 62.5,
+    "store-7g": 67.5
+  },
+  "values": {
+    "ref": {
+      "hook.preToolUse.p95": 125.4908209999914,
+      "hook.postToolBatch.p95": 184.48936490000193,
+      "hook.sessionStart.max": 91.05696900000001,
+      "hook.stop.max": 227.9229279999854,
+      "cmd.status.p95": 218.80810799999162,
+      "cmd.statusJson.p95": 247.49870080000255,
+      "cmd.start.main": 425.69556799999555,
+      "cmd.start.others.max": null,
+      "cmd.runAll.overhead": 1.2622314591009072,
+      "cmd.runAll": 53.130790405,
+      "session.pushFail.p50": 1221.6159679999982,
+      "session.pushFail.missed": 0,
+      "session.pushRecovery.missed": 0,
+      "session.verdict.p50": null,
+      "session.verdict.p95": null,
+      "session.verdict.within60s": 50,
+      "session.verdict.wrong": 0,
+      "session.broad.verdict": 164.1857621259999,
+      "res.idleCpu.maxPct": 0.6166666666666669,
+      "res.daemonRss.max": 396.5625,
+      "res.cpuPerEdit": 1.181578947368421,
+      "store.longWrites": 2,
+      "store.lockFailures": 0,
+      "store.size": 19.721839904785156,
+      "store.results": 7728
+    },
+    "store-1.7g": {
+      "hook.preToolUse.p95": 157.01383829999247,
+      "hook.postToolBatch.p95": 231.82501200000988,
+      "hook.sessionStart.max": 99.782849,
+      "hook.stop.max": 98.36927300004754,
+      "cmd.status.p95": 337.37403780000164,
+      "cmd.statusJson.p95": 328.8167556000059,
+      "cmd.start.main": 411.7363919999916,
+      "cmd.start.others.max": null,
+      "cmd.runAll.overhead": 1.3379588532150746,
+      "cmd.runAll": 43.95713446,
+      "session.pushFail.p50": 1275.2461640000056,
+      "session.pushFail.missed": 0,
+      "session.pushRecovery.missed": 0,
+      "session.verdict.p50": null,
+      "session.verdict.p95": null,
+      "session.verdict.within60s": 50,
+      "session.verdict.wrong": 0,
+      "session.broad.verdict": 160.02036859300011,
+      "res.idleCpu.maxPct": 2.4833333333333334,
+      "res.daemonRss.max": 418.171875,
+      "res.cpuPerEdit": 1.2884210526315791,
+      "store.longWrites": 3,
+      "store.lockFailures": 0,
+      "store.size": 1999.2132568359375,
+      "store.results": 252616
+    },
+    "store-7g": {
+      "hook.preToolUse.p95": 229.82422469999392,
+      "hook.postToolBatch.p95": 140.3272026000777,
+      "hook.sessionStart.max": 1079.2283009999999,
+      "hook.stop.max": 157.63636500004213,
+      "cmd.status.p95": 267.8100907999993,
+      "cmd.statusJson.p95": 192.68416719998785,
+      "cmd.start.main": 429.97095600003377,
+      "cmd.start.others.max": null,
+      "cmd.runAll.overhead": 1.2720246184486412,
+      "cmd.runAll": 39.390678315,
+      "session.pushFail.p50": 1195.8141884999932,
+      "session.pushFail.missed": 0,
+      "session.pushRecovery.missed": 0,
+      "session.verdict.p50": null,
+      "session.verdict.p95": null,
+      "session.verdict.within60s": 50,
+      "session.verdict.wrong": 0,
+      "session.broad.verdict": 166.14764635400007,
+      "res.idleCpu.maxPct": 2.1,
+      "res.daemonRss.max": 390.9296875,
+      "res.cpuPerEdit": 1.16,
+      "store.longWrites": 3,
+      "store.lockFailures": 0,
+      "store.size": 9199.092094421387,
+      "store.results": 1147720
+    }
+  }
+}

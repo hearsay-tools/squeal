@@ -1,0 +1,38 @@
+{
+  "startedAt": "2026-11-20T08:03:57.795Z",
+  "squealVersion": "0.1.570",
+  "node": "v24.22.1",
+  "cpuModel": "AMD EPYC 4584PX 16-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.8,
+  "sha256MiBPerS": [
+    1988.6666666666667,
+    2128,
+    2085
+  ],
+  "loadavgAtStart": "0.97 0.50 0.19 1/397 7517",
+  "cells": [
+    {
+      "name": "ref",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0
+    },
+    {
+      "name": "store-1.7g",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 70
+    },
+    {
+      "name": "store-7g",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326
+    }
+  ],
+  "endedAt": "2026-11-20T09:00:01.306Z"
+}

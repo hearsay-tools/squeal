@@ -1,0 +1,17 @@
+2026-11-20T08:05:01.296Z [11854] squeal daemon: serving /home/user/results/cells/ref/work/wt0 on /home/user/results/cells/ref/work/run/squeal-db51a6e34fd9c831.sock
+2026-11-20T08:05:01.343Z [11854] squeal daemon: full integrity check: ok
+2026-11-20T08:05:19.919Z [11854] squeal daemon: busy, heap in use 71 MiB over twice the last live size of 33 MiB: a last-resort GC took private memory from 194 to 140 MiB in a 70 ms pause; 42 MiB of heap in use after it
+2026-11-20T08:05:39.418Z [11854] squeal daemon: long write: store.sqlite write lock held 288 ms by #write < #record; 9202 rows written
+2026-11-20T08:06:52.635Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 148 to 145 MiB in a 13 ms pause
+2026-11-20T08:08:22.671Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 231 to 145 MiB in a 37 ms pause
+2026-11-20T08:09:27.699Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 214 to 146 MiB in a 56 ms pause
+2026-11-20T08:10:37.671Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 212 to 147 MiB in a 27 ms pause
+2026-11-20T08:11:47.671Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 204 to 147 MiB in a 21 ms pause
+2026-11-20T08:13:07.677Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 213 to 146 MiB in a 19 ms pause
+2026-11-20T08:14:30.629Z [11854] squeal daemon: busy, heap in use 60 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 227 to 161 MiB in a 51 ms pause; 29 MiB of heap in use after it
+2026-11-20T08:15:42.685Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 213 to 147 MiB in a 19 ms pause
+2026-11-20T08:16:57.701Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 224 to 147 MiB in a 31 ms pause
+2026-11-20T08:18:02.700Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 217 to 147 MiB in a 29 ms pause
+2026-11-20T08:18:28.401Z [11854] squeal daemon: long write: store.sqlite write lock held 348 ms by reconcileBatch < #pass < withBusySlice; 7319 rows written
+2026-11-20T08:19:32.706Z [11854] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 246 to 147 MiB in a 26 ms pause
+2026-11-20T08:20:45.498Z [11854] squeal daemon: busy, heap in use 73 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 242 to 181 MiB in a 56 ms pause; 49 MiB of heap in use after it
