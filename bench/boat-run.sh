@@ -28,12 +28,25 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# The Boat API sometimes times out; retry each call a few times before giving up.
+retry() {
+  for _ in 1 2 3 4 5; do
+    "$@" && return 0
+    sleep 20
+  done
+  return 1
+}
+
 ID=""
 cleanup() { if [ -n "$ID" ] && [ "$KEEP" = 0 ]; then boat delete "$ID" --yes >/dev/null 2>&1 || true; fi; }
 trap cleanup EXIT
 
 for try in $(seq "$TRIES"); do
-  ID=$(boat new --type "$TYPE" --no-env --ttl 21600 --name squeal-bench --json | tail -1 | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).id')
+  if ! ID=$(retry boat new --type "$TYPE" --no-env --ttl 21600 --name squeal-bench --json | tail -1 | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).id'); then
+    echo "try $try: boat new failed"
+    ID=""
+    continue
+  fi
   MODEL=$(boat ssh "$ID" -- 'grep -m1 "model name" /proc/cpuinfo | cut -d: -f2' 2>/dev/null | tr -s ' ' | sed 's/^ //')
   echo "try $try: $ID has $MODEL"
   if [ -z "$CPU" ] || [[ "$MODEL" == *"$CPU"* ]]; then break; fi
@@ -42,11 +55,11 @@ for try in $(seq "$TRIES"); do
 done
 [ -n "$ID" ] || { echo "no sandbox with CPU '$CPU' after $TRIES tries" >&2; exit 1; }
 
-boat push "$ID" plugins/claude-code --to /home/user/claude-code >/dev/null
-boat push "$ID" bench --to /home/user/bench >/dev/null
+retry boat push "$ID" plugins/claude-code --to /home/user/claude-code >/dev/null
+retry boat push "$ID" bench --to /home/user/bench >/dev/null
 ARGS="--plugin /home/user/claude-code --out /home/user/results --steps $STEPS"
 [ -n "$CELLS" ] && ARGS="$ARGS --cells $CELLS"
-boat ssh "$ID" -- "cd /home/user && (setsid nohup node bench/run-all.mjs $ARGS > run.log 2>&1 < /dev/null &)"
+retry boat ssh "$ID" -- "cd /home/user && { pgrep -f bench/run-all.mjs >/dev/null || (setsid nohup node bench/run-all.mjs $ARGS > run.log 2>&1 < /dev/null &); }"
 echo "started on $ID; progress: boat ssh $ID -- tail -f /home/user/run.log"
 
 until boat ssh "$ID" -- 'test -f /home/user/results/scorecard.md' >/dev/null 2>&1; do
@@ -58,8 +71,8 @@ VERSION=$(node -p 'require("./plugins/claude-code/package.json").version')
 SLUG=$(echo "$MODEL" | tr -cs 'A-Za-z0-9' '-' | sed 's/-$//')
 DEST="bench/results/$(date -u +%Y-%m-%d)-$VERSION-$TYPE-$SLUG"
 mkdir -p "$DEST"
-boat ssh "$ID" -- 'cd /home/user && cp run.log results/ && tar czf /tmp/results.tgz results' >/dev/null
-boat scp "$ID:/tmp/results.tgz" "$DEST/results.tgz" >/dev/null
+retry boat ssh "$ID" -- 'cd /home/user && cp run.log results/ && tar czf /tmp/results.tgz results' >/dev/null
+retry boat scp "$ID:/tmp/results.tgz" "$DEST/results.tgz" >/dev/null
 tar xzf "$DEST/results.tgz" -C "$DEST" --strip-components=1 && rm "$DEST/results.tgz"
 echo "results in $DEST"
 cat "$DEST/scorecard.md"
