@@ -49,4 +49,4 @@ Replace, in C10 Size, "less what its tree used in that window, plus the cores it
 - The 20 test files outside `test/capacity/` that use the pool (`grep -rl "createPermitPool\|capacity/pool" test`), `timeout 600 ... --maxWorkers=2`: 20 files, 63 tests passed.
 - No `test/e2e/**` file names the changed paths.
 - `pnpm run lint`, `pnpm run typecheck`: pass.
-- Squeal: see the worker's final report for the `squeal status --wait` result.
+- Squeal, `squeal status --wait <ms> src/core/capacity/pool.ts` at revision 7 (`pool.ts` reaches 1,204 test files): 767 current and pass, 437 pending when the daemon's heartbeat stopped (a new daemon was starting). 2 fail, both expected bundle drift: `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts`, "cli/squeal.mjs differs from the build". The brief forbids `pnpm run build` in this worktree; the coordinator's build at the candidate clears them. The Claude Code bundle test will drift the same way.
