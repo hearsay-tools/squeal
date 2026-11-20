@@ -23,3 +23,18 @@ Shape: slice. Spec D33, D34, D8. Baseline: 018-57's part format commit. Starting
 - a replay of cezar run 44808547913's artifacts with the candidate's export exports at least 98% of files. The artifacts are kept until 2026-11-23. Use `research/probes/unread-inputs/` scripts, a clone under your `$TMPDIR`, and no daemon in another checkout.
 
 Use /worker.
+
+## 018-59 repair of reviews 0.1.582 and 0.1.582-r2: one owner for path-keyed maps, and an end-to-end guard
+
+The human, 2026-11-21: "0.1.582: A: guard + 3rd review". Shape: repair, on the candidate. Both reviews (`reviews/0.1.582.md` B1, `reviews/0.1.582-r2.md` B2) found a map keyed by path built by assignment into a plain object. A file named `__proto__` then lost its entry, and the D33 rule certified it: a wrong pass. Both places are fixed on this branch: `src/core/ci/endpoints.ts` (`Object.fromEntries`) and `src/runners/ci-runtime/evidence.cjs` (`Object.create(null)`, commit "read evidence stays own").
+1. **One owner.** Every map keyed by path or name in the CI record, part and export code is built through one helper. That code is `src/core/ci/`, `src/runners/ci-runtime/`, `src/runners/*/ci-runtime/`, `src/runners/*/ci-*.ts` and `src/cli/ci*.ts`. The `.cjs` runtime may need its own copy, kept equal by a test. Map the code for any other assignment-built map first, `children.cjs` and the env maps included, and list each one in your notes.
+2. **An end-to-end guard.** One test runs `ci record` and `ci export` through both runners on tracked files named `__proto__`, `constructor`, `toString` and `hasOwnProperty`. It covers each of these:
+   - read by Node;
+   - read by a shell only;
+   - changed before the step;
+   - changed and restored by a shell during the step (the r2 case).
+
+   It asserts the right outcome per case, as in the spec's Testing section. It must fail on the parent of each of the two fixes.
+3. Owns the files above and their tests. Keys, adapter versions and part format do not move.
+
+Use /worker.
