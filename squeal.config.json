@@ -6,7 +6,7 @@
     "onStart": "lookup-only"
   },
   "coverage": {
-    "enabled": true,
+    "enabled": false,
     "exclude": ["test/**", "src/runners/node-test/runtime/**", "src/runners/vitest/ci-runtime/**"]
   },
   "complexity": {
