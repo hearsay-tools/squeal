@@ -1,0 +1,74 @@
+[
+  {
+    "command": "squeal --version",
+    "load": "20.52 22.80 25.69 19/2738 1526107",
+    "cpus": 24,
+    "exit": 0,
+    "stdout": "0.1.572\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal checks",
+    "load": "20.52 22.80 25.69 17/2596 1526188",
+    "cpus": 24,
+    "exit": 0,
+    "stdout": "squeal.config.json has no checks key; these are the default checks.\n\ntests\n  Selects: the test files no other check selects\n  Runs: after each edit\n  Run it now: `node --disable-warning=ExperimentalWarning <checkout>/plugins/claude-code/dist/cli/squeal.mjs run tests --wait 60000`\n\nSqueal does not cover typecheck, build or any other test suite: run those yourself.\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal start",
+    "load": "20.52 22.80 25.69 12/2678 1526334",
+    "cpus": 24,
+    "exit": 0,
+    "stdout": "Squeal daemon spawned for <checkout>/docs/specifications/011-core/research/probes/issue-252/fixture\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `node --disable-warning=ExperimentalWarning <checkout>/plugins/claude-code/dist/cli/squeal.mjs status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `node --disable-warning=ExperimentalWarning <checkout>/plugins/claude-code/dist/cli/squeal.mjs run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `node --disable-warning=ExperimentalWarning <checkout>/plugins/claude-code/dist/cli/squeal.mjs status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `node --disable-warning=ExperimentalWarning <checkout>/plugins/claude-code/dist/cli/squeal.mjs status --full` adds the worktree and daemon and 1 note\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal retry workflows/input-receipt-setup.test.ts",
+    "load": "20.52 22.80 25.69 15/2682 1526649",
+    "cpus": 24,
+    "exit": 3,
+    "stdout": "Not listed yet: workflows/input-receipt-setup.test.ts has no key because the daemon has not listed this worktree's test files yet, so it has nothing to retry; a new test file is queued once its revision is listed, without a retry. squeal status --wait 60000 workflows/input-receipt-setup.test.ts waits for that listing and its result.\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal status --wait 60000 workflows/input-receipt-setup.test.ts",
+    "load": "20.52 22.80 25.69 19/2800 1526823",
+    "cpus": 24,
+    "exit": 0,
+    "stdout": "Revision: 0\nSelected: workflows/input-receipt-setup.test.ts\nRun asked: workflows/input-receipt-setup.test.ts was unknown with nothing queued, so this wait asked its one run at these inputs, as `node --disable-warning=ExperimentalWarning <checkout>/plugins/claude-code/dist/cli/squeal.mjs retry workflows/input-receipt-setup.test.ts` does.\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 1.8 s. Worktree: known failures 0; all 1 test file current\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal status --wait 60000 workflows/input-receipt-process-record.test.ts",
+    "load": "20.80 22.82 25.68 24/2776 1527665",
+    "cpus": 24,
+    "exit": 0,
+    "stdout": "Revision: 1\nSelected: workflows/input-receipt-process-record.test.ts\nNamed test files at revision 1: no known failures; 1 test file, each with a current result, after 1.3 s. Worktree: known failures 0; all 1 test file current\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal status --wait 60000 workflows/input-receipt-setup.test.ts",
+    "load": "20.80 22.82 25.68 33/2808 1528236",
+    "cpus": 24,
+    "exit": 0,
+    "stdout": "Revision: 2\nSelected: workflows/input-receipt-setup.test.ts\nNamed test files at revision 2: no known failures; 1 test file, each with a current result, after 1.3 s. Worktree: known failures 0; all 2 test files current\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal status --wait 60000 workflows/input-receipt-setup.test.ts",
+    "load": "20.80 22.82 25.68 38/3200 1529005",
+    "cpus": 24,
+    "exit": 3,
+    "stdout": "Revision: 3\nNo verdict: Squeal does not run workflows/input-receipt-setup.test.ts, which is not a test file any runner here lists. Worktree: known failures 0; all 1 test file current\n",
+    "stderr": ""
+  },
+  {
+    "command": "squeal stop --until-start",
+    "load": "20.80 22.82 25.68 29/2958 1529211",
+    "cpus": 24,
+    "exit": 0,
+    "stdout": "Squeal daemon stopped for <checkout>/docs/specifications/011-core/research/probes/issue-252/fixture; it stays stopped until `node --disable-warning=ExperimentalWarning <checkout>/plugins/claude-code/dist/cli/squeal.mjs start`: no edit or Git operation starts one\n",
+    "stderr": ""
+  }
+]
