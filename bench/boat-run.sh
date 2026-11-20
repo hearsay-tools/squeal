@@ -3,12 +3,17 @@
 # copies the results back to bench/results/<date>-<version>-<cpu>/.
 #
 # Usage: bench/boat-run.sh [--ref <git ref>]... [--type default] [--cpu "<model>"] [--cells ref,wt-3] [--steps 24] [--repeat N] [--keep]
+#        bench/boat-run.sh --attach <sandbox id>
 #
 # --ref: test the plugin as committed at that ref (for example squeal--v0.1.572);
 # `.` is this worktree's plugins/claude-code, the default without --ref. Give
 # --ref twice or more to compare versions: one sandbox runs every cell once per
 # version, alternating the order, so the versions always share the machine.
 # The harness is always this worktree's bench/.
+#
+# --attach <id>: wait for and fetch a run already started on that sandbox. If
+# this script is stopped after the run started (a signal, a closed session),
+# it leaves the sandbox running and prints the --attach command to finish it.
 #
 # The sandbox type fixes vCPUs and RAM but not the CPU model. --cpu makes the
 # script create sandboxes until one has that CPU (each try costs one start of
@@ -24,6 +29,7 @@ STEPS=24
 REPEAT=1
 KEEP=0
 REFS=()
+ATTACH=""
 TRIES=12
 while [ $# -gt 0 ]; do
   case $1 in
@@ -33,6 +39,7 @@ while [ $# -gt 0 ]; do
     --steps) STEPS=$2; shift 2 ;;
     --repeat) REPEAT=$2; shift 2 ;;
     --keep) KEEP=1; shift ;;
+    --attach) ATTACH=$2; shift 2 ;;
     --ref) REFS+=("$2"); shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
@@ -62,14 +69,31 @@ for ref in "${REFS[@]}"; do
 done
 
 ID=""
+STARTED=0
+DONE=0
 cleanup() {
-  if [ -n "$ID" ] && [ "$KEEP" = 0 ]; then boat delete "$ID" --yes >/dev/null 2>&1 || true; fi
+  if [ -n "$ID" ] && [ "$STARTED" = 1 ] && [ "$DONE" = 0 ]; then
+    echo "stopped before the results were fetched; the run goes on. Finish it with: bench/boat-run.sh --attach $ID" >&2
+  elif [ -n "$ID" ] && [ "$KEEP" = 0 ]; then
+    boat delete "$ID" --yes >/dev/null 2>&1 || true
+  fi
   for d in "${PLUGINS[@]}"; do
     case $d in /tmp/squeal-bench-plugin.*) rm -rf "$(dirname "$d")" ;; esac
   done
 }
 trap cleanup EXIT
+trap 'exit 143' TERM INT HUP
 
+if [ -n "$ATTACH" ]; then
+  ID=$ATTACH
+  STARTED=1
+  if ! RAW=$(boat ssh "$ID" -- 'grep -m1 "model name" /proc/cpuinfo | cut -d: -f2' 2>/dev/null); then
+    echo "cannot reach sandbox $ID" >&2
+    ID=""
+    exit 1
+  fi
+  MODEL=$(echo "$RAW" | tr -s ' ' | sed 's/^ //')
+else
 for try in $(seq "$TRIES"); do
   if ! ID=$(retry boat new --type "$TYPE" --no-env --ttl 21600 --name squeal-bench --json | tail -1 | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).id'); then
     echo "try $try: boat new failed"
@@ -105,14 +129,16 @@ pushed || { echo "push to $ID failed" >&2; exit 1; }
 retry boat ssh "$ID" -- "cd /home/user && { [ -e run.log ] || (setsid nohup node bench/run-all.mjs $ARGS > run.log 2>&1 < /dev/null &); }"
 sleep 10
 boat ssh "$ID" -- 'test -e /home/user/run.log' >/dev/null 2>&1 || { echo "run did not start on $ID" >&2; exit 1; }
+STARTED=1
 echo "started on $ID; progress: boat ssh $ID -- tail -f /home/user/run.log"
+fi
 
 until boat ssh "$ID" -- 'test -f /home/user/results/scorecard.md' >/dev/null 2>&1; do
   sleep 120
   boat ssh "$ID" -- 'tail -1 /home/user/run.log' 2>/dev/null || true
 done
 
-VERSION=$(for d in "${PLUGINS[@]}"; do node -p "require('$(realpath "$d")/package.json').version"; done | paste -sd_ | sed 's/_/-vs-/g')
+VERSION=$(boat ssh "$ID" -- 'cat /home/user/results/meta.json' 2>/dev/null | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8")); console.log(m.squealVersion.replace(/ vs /g,"-vs-"))')
 SLUG=$(echo "$MODEL" | tr -cs 'A-Za-z0-9' '-' | sed 's/-$//')
 DEST="bench/results/$(date -u +%Y-%m-%d)-$VERSION-$TYPE-$SLUG"
 n=2
@@ -121,6 +147,7 @@ mkdir -p "$DEST"
 retry boat ssh "$ID" -- 'cd /home/user && cp run.log results/ && tar czf /tmp/results.tgz results' >/dev/null
 retry boat scp "$ID:/tmp/results.tgz" "$DEST/results.tgz" >/dev/null
 tar xzf "$DEST/results.tgz" -C "$DEST" --strip-components=1 && rm "$DEST/results.tgz"
+DONE=1
 echo "results in $DEST"
 node bench/trend.mjs >/dev/null
 cat "$DEST/scorecard.md"
