@@ -83,6 +83,21 @@ export async function atCommit(
   root: AbsolutePath,
   commit: string,
 ): Promise<(path: RelativePath) => FileHash | null> {
+  return (await committedInputs(root, commit)).at;
+}
+
+/**
+ * `atCommit`, and every input path the commit's tree holds, sorted: each
+ * file (a blob, a symlink), and the listing path of each directory it holds,
+ * the root's `./` among them. `ci record` hashes these at both ends (D30).
+ */
+export async function committedInputs(
+  root: AbsolutePath,
+  commit: string,
+): Promise<{
+  readonly paths: readonly RelativePath[];
+  readonly at: (path: RelativePath) => FileHash | null;
+}> {
   const out = await runGit(root, lsTreeArgs(commit), { timeoutMs: LS_TREE_TIMEOUT_MS });
   const blobs = new Map<RelativePath, FileHash>();
   const names = new Map<RelativePath, Set<string>>();
@@ -108,7 +123,7 @@ export async function atCommit(
     add(path);
   }
   const listings = new Map<RelativePath, FileHash>();
-  return (path) => {
+  const at = (path: RelativePath): FileHash | null => {
     const directory = listedDirectory(path);
     if (directory === null) return blobs.get(path) ?? null;
     let hash = listings.get(directory);
@@ -119,6 +134,8 @@ export async function atCommit(
     }
     return hash;
   };
+  const paths = [...blobs.keys(), ...[...names.keys()].map(listingPath)].sort(compare);
+  return { paths, at };
 }
 
 /**

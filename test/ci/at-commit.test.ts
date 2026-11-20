@@ -1,7 +1,7 @@
 import { symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { atCommit, listingHash } from "../../src/core/ci/inputs.js";
+import { atCommit, committedInputs, listingHash } from "../../src/core/ci/inputs.js";
 import { ABSENT_LISTING, namesHash } from "../../src/core/keys/observed.js";
 import { git, gitHashObject, initRepo, tempDir } from "../hash/git-repo.js";
 
@@ -55,6 +55,20 @@ describe("atCommit", () => {
     expect(at("src/deep/")).toBe(namesHash(["c.ts"]));
     expect(at("nope/")).toBe(ABSENT_LISTING);
     expect(at("a.txt/")).toBe(ABSENT_LISTING);
+  });
+
+  it("lists every file and directory listing the commit holds, sorted, no submodule", async () => {
+    const root = repo();
+    const commit = git(root, ["rev-parse", "HEAD"]).trim();
+    expect((await committedInputs(root, commit)).paths).toEqual([
+      "./",
+      "a.txt",
+      "link",
+      "src/",
+      "src/b.ts",
+      "src/deep/",
+      "src/deep/c.ts",
+    ]);
   });
 
   it("is the commit's content, not the disk's: a changed or new file does not move it", async () => {
