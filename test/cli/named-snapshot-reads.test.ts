@@ -189,7 +189,7 @@ describe("a named wait's last read reads the worktree's states once (row 011-421
     expect(counter.whole).toBe(1);
   });
 
-  it("names a hold that ends at the deadline as of the deadline's last millisecond (review 0.1.578 B1)", () => {
+  it("names a hold that ends at the deadline as of the deadline's last millisecond (review 0.1.578 B3)", () => {
     const { repo, store } = repoWith([A]);
     const deadline = (NOW + 5_000) as EpochMs;
     addCommandHold(store, repo.mainId, {

@@ -200,7 +200,7 @@ export function namedPoll(
       // Row 011-63 (gh-51 3): a read at the deadline names what held each file as of
       // its last millisecond, while the promotion this wait sent still held it.
       const standingAt = Math.min(now, deadline - 1) as EpochMs;
-      // Review 0.1.578 B1: the snapshot read its holds and slow slot at `now`; a read
+      // Review 0.1.578 B3: the snapshot read its holds and slow slot at `now`; a read
       // at `standingAt` before it takes only the rows that do not depend on the time.
       const namedReads =
         standingAt === now
