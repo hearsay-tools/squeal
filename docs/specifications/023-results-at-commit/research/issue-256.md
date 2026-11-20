@@ -29,7 +29,7 @@ gh issue view 256 --repo hearsay-tools/squeal --json body
 cat /proc/loadavg
 nproc
 node --disable-warning=ExperimentalWarning "$SQUEAL_CLI" --version
-ssh agent@apptension-lab 'bash -lc "cat /proc/loadavg; nproc"'
+ssh <lab VM> 'bash -lc "cat /proc/loadavg; nproc"'
 ```
 
 `SQUEAL_CLI` selected `~/.claude/plugins/cache/hearsay/squeal/0.1.578/dist/cli/squeal.mjs`. Host load readings while preparing: 21.40, 23.20, 21.96, 21.49 and 21.41; CPU count 24. The final pre-launch reading was `30.01 20.09 17.91`, so the live run was skipped. Initial coordinator load was 15.89/24. Lab VM load was `11.61 8.49 8.68` on 12 CPUs. A copy of the shipped runtime and probe script was staged in the task-owned `~/work/issue-256/` on the VM, then removed without launching a test or proof. No daemon was started and existing holds were left alone.
