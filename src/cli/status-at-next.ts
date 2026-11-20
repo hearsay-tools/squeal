@@ -117,12 +117,13 @@ export function nextOf(
 /**
  * Q2: the refusal when `--at` names HEAD and the tree is clean, so the
  * call would compare HEAD with itself; `null` when the command goes on.
- * The caller asks only without `--run`.
+ * Row 023-29 (R2): with `--run` too, and then the parent's command keeps
+ * `--run`: 22 of 25 round-4 sessions keyed HEAD against itself with it.
  */
 export async function headRefusal(
   root: AbsolutePath,
   commit: string,
-  args: { readonly commit: string; readonly paths: readonly string[] },
+  args: { readonly commit: string; readonly paths: readonly string[]; readonly run?: boolean },
 ): Promise<string | null> {
   const head = await resolveCommit(root, "HEAD").catch(() => null);
   if (head !== commit || !(await isClean(root))) return null;
@@ -132,7 +133,11 @@ export async function headRefusal(
     () => false,
   );
   if (!hasParent) return `${what}; HEAD has no parent, so there is nothing to compare`;
-  const command = ["squeal status --at HEAD~1", ...args.paths.map(shellWord)].join(" ");
+  const command = [
+    "squeal status --at HEAD~1",
+    ...args.paths.map(shellWord),
+    ...(args.run === true ? ["--run"] : []),
+  ].join(" ");
   return `${what}: compare with its parent, \`${command}\``;
 }
 

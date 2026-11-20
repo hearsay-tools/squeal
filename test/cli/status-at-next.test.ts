@@ -102,6 +102,20 @@ describe("status --at HEAD (row 023-24, Q2)", SLOW, () => {
     clean(f);
   });
 
+  it("refuses with --run too, before any keying, and names the parent's --run (row 023-29, R2)", async () => {
+    const { f } = changedA();
+    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
+    const runArgs = { allMissing: false, timeoutSeconds: 60 };
+    const refused = await run(f, { commit: "HEAD", run: runArgs }, options);
+    expect(refused.code).toBe(2);
+    expect(refused.out).toBe("");
+    expect(refused.err).toBe(
+      "squeal status --at: HEAD is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`\n",
+    );
+    expect(f.checkouts()).toEqual([]);
+    clean(f);
+  });
+
   it("says there is no parent on a first commit", async () => {
     const f = fixture({
       "src/a.ts": "export const value = 1;\n",

@@ -131,7 +131,8 @@ async function locate(args: AtArgs, io: CliIo): Promise<Located | string> {
     return `"${args.commit}" names no commit here`;
   }
   // Row 023-24 (Q2): a clean tree at the commit compares HEAD with itself; nothing is keyed.
-  const refusal = args.run ? null : await headRefusal(root, commit, args);
+  // Row 023-29 (R2): with `--run` too, since `--run` ran both sides of HEAD against each other.
+  const refusal = await headRefusal(root, commit, { ...args, run: (args.run ?? null) !== null });
   if (refusal !== null) return refusal;
   if (args.paths.length === 0) return { root, commonDir, commit, paths: null };
   const paths: RelativePath[] = [];
