@@ -128,6 +128,7 @@ Started: 2026-10-31
 - 2026-11-20, row 018-55 (`research/node-test-left-out.md`): no recording fault; 37 of 153 cezar node:test files exportable; 110 left out for declared inputs no process reads, 8 for node:test graph keying; the Vitest shards leave out 445 files per run by cause C after cezar #3978. The human: "Unread input: A: research a rule change" (row 018-56, topic `unread-inputs`) and "cezar job: After the rule decision" (row 018-52 waits). Row 018-54 (nested runs write no part) is candidate 0.1.580, review `reviews/0.1.580.md` PASS with S1 (an inherited `SQUEAL_CI_NODE_TEST_FILE` in the CI job's own environment suppresses all recording; loses parts only).
 - 2026-11-20, released 0.1.580 (tag squeal--v0.1.580 at 5be6df42b, hub a3126d8, tags v0.1.580 and v0 moved; GitHub latest with install.sh and both Codex runtime assets). Row 018-54 done; review `reviews/0.1.580.md` PASS at ed7dbc524; main CI 44813906077 green. Row 018-56 (`research/unread-inputs.md`): one rule, an input nothing touched is certified by equal hashes at command start, end and export checkout; cezar 66% to 99% of files; decision with the human.
 - 2026-11-20, the human: "Nothing-read: Yes, write the spec". The coordinator wrote the fourth slice, D30 to D34 (endpoint hashes in `ci record`, touched paths, part format 6, the export rule in `FileReuse.evidence`, the stated risk), and proposed rows 018-57 and 018-58 for the human's review.
+- 2026-11-20, the human: "Spec D30-34: Approve". Rows 018-57 and 018-58 planned, brief `tasks/wave-20.md`.
 
 ## Open questions
 

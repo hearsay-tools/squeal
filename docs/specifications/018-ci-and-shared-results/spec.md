@@ -341,7 +341,7 @@ D22 to D24 on a node:test fixture shaped like cezar's commands: ESM and CJS test
 
 # Fourth slice: inputs nothing touched
 
-Stage: proposed 2026-11-20 by the coordinator (fe95a218) for the human's review (the human: "Nothing-read: Yes, write the spec"). Written from `research/unread-inputs.md` (row 018-56) and `research/node-test-left-out.md` (row 018-55).
+Stage: approved by the human 2026-11-20 ("Spec D30-34: Approve"); building in wave 20 (`tasks/wave-20.md`). Written from `research/unread-inputs.md` (row 018-56) and `research/node-test-left-out.md` (row 018-55).
 
 ## Problem
 
