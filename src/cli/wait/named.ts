@@ -2,7 +2,7 @@ import { worktreeIdFor } from "../../core/fs/git-layout.js";
 import { testFileId } from "../../core/keys/reverse-index.js";
 import { daemonLiveness } from "../../core/presence/heartbeat.js";
 import type { DownReason, WaitLiveness } from "../../core/presence/wait.js";
-import { buildSnapshot } from "../../core/status/snapshot.js";
+import { buildSnapshotWithReads } from "../../core/status/snapshot.js";
 import { pauseOnlyIds, readNamedFiles } from "../../core/status/standing.js";
 import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
@@ -193,12 +193,22 @@ export function namedPoll(
         }
         return null;
       }
-      const verdict = heldAsVerdict(readVerdict(store, id, held, fixed), untaken);
-      const result = buildSnapshot(store, root, options.now());
+      // Row 011-421 (011-411 follow-up): the verdict and the named files read the snapshot's rows.
+      const { snapshot: result, reads } = buildSnapshotWithReads(store, root, options.now());
+      const verdict = heldAsVerdict(readVerdict(store, id, held, fixed, reads), untaken);
       // Row 011-63 (gh-51 3): a read at the deadline names what held each file as of
       // its last millisecond, while the promotion this wait sent still held it.
       const standingAt = Math.min(options.now(), deadline - 1) as EpochMs;
-      const standings = readNamedFiles(store, id, root, selection.files, result.daemon, standingAt);
+      const standings = readNamedFiles(
+        store,
+        id,
+        root,
+        selection.files,
+        result.daemon,
+        standingAt,
+        undefined,
+        reads,
+      );
       const files = heldAsFiles(standings, untaken);
       const lapse = watch.lapse();
       const outcome = step.outcome as NamedWaitEnded["outcome"];
