@@ -180,7 +180,7 @@ console.log(
     runsAdded,
     listBytes: pool[0].length,
     storeBytes: statSync(store).size,
-    code,
+    codeStore: code,
     ms: Math.round(performance.now() - t0),
   }),
 );

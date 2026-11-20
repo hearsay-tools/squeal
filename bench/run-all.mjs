@@ -119,13 +119,14 @@ for (const [i, p] of plugins.entries()) {
 const paired = plugins.length > 1;
 // One run per cell and plugin. A paired run's name is `<cell>@<label>`.
 const repeat = Number(o.repeat);
-// Names: `<cell>`, `<cell>@<version>` when paired, `#<n>` added when repeated.
+// Names: `<cell>`, `<cell>@<version>` when paired, `-r<n>` added when repeated. Never `#`:
+// the name is a folder in the project's path, and Vite cuts a path at `#` (2026-11-20: every test failed to load).
 const cells = chosen.flatMap((c, i) =>
   Array.from({ length: repeat }, (_, k) => {
     const order = (i + k) % 2 === 0 ? plugins : [...plugins].reverse();
     return order.map((p) => ({
       ...c,
-      name: `${c.name}${paired ? `@${p.label}` : ""}${repeat > 1 ? `#${k + 1}` : ""}`,
+      name: `${c.name}${paired ? `@${p.label}` : ""}${repeat > 1 ? `-r${k + 1}` : ""}`,
       base: c.name,
       plugin: p.label,
       rep: k + 1,

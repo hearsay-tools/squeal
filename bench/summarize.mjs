@@ -190,6 +190,13 @@ export const METRICS = [
     group: "Correctness",
   },
   {
+    id: "cell.setupFailed",
+    what: "Cell setup failed: plain Vitest, the full run or the store aging did not succeed, so the cell measured nothing",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
     id: "session.failed",
     what: "Scripted sessions that crashed",
     unit: "",
@@ -329,9 +336,20 @@ function cellValues(cellDir) {
     ...resourceValues(cell),
     ...storeValues(cell, cellDir),
     "session.failed": cell.phases.sessions.filter((x) => x.code !== 0).length,
+    "cell.setupFailed": setupFailures(cell.phases),
     ...noticeValues(rows, cell.files),
   };
   return { cell, v };
+}
+
+/** Setup steps that failed: a cell whose project never ran its tests measured nothing. */
+function setupFailures(p) {
+  let n = 0;
+  if (p.plainVitest && p.plainVitest.code !== 0) n++;
+  if (p.runAll && p.runAll.code !== 0) n++;
+  // `age.code` was the code store's numbers in runs before 2026-11-21; only a number is an exit code.
+  if (p.age && (p.age.err || (typeof p.age.code === "number" && p.age.code !== 0))) n++;
+  return n;
 }
 
 const GROUP = 25;
