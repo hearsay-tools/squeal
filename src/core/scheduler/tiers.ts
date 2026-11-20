@@ -74,6 +74,13 @@ export interface Tier {
    */
   readonly ended?: Set<string>;
   /**
+   * Row 011-419: when a file of it last ended, on the scheduler's clock, and
+   * the calendar steps' total then (`CalendarSteps.since`, row 011-377): its
+   * last progress, from which the overrun rule counts (`overrunAt`). Absent
+   * before a file of it has ended.
+   */
+  lastEnded?: { readonly at: number; readonly step: number };
+  /**
    * Aborted to cancel the tier in flight (`TierYields`, spec 011 C4 step 5
    * as amended 2026-10-21, row 011-51): a backlog tier's always; any other
    * but a slow one when its runner cancels a run (`cancels`). `null` otherwise.
@@ -303,6 +310,8 @@ export async function executeTier(
   const permits = tierPermits(context, tier);
   const fileEnded = (ref: TestFileRef) => {
     tier.ended?.add(testFileId(ref));
+    // The steps read after the clock, as at a tier's start: that reading told them first.
+    tier.lastEnded = { at: context.now(), step: context.steps?.total ?? 0 };
     const left = tier.files.filter(({ file }) => tier.ended?.has(file.id) !== true).length;
     if (left > 0) (permits === null ? tier.lease : permits.lease)?.shrinkTo(left);
     onFileEnd?.();

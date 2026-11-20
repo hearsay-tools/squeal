@@ -15,7 +15,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { heldRun, ref, settle } from "./tier-yields-fixture.js";
+import { heldRun, ref, reportsEnds, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-399 (gh-233): a tier of 4 whose file H never ends, on a virtual
@@ -63,10 +63,11 @@ export function read(side: CatchUpSide, paths: readonly string[]) {
 
 /**
  * After a baseline, an edit of `src/a.ts` queues every file as the edit's
- * work; the first tier holds H and its three mates and stays in flight. Runs
- * beside it wait on `beside` while it holds.
+ * work; the first tier holds H and its three mates, or the first `tierSize`
+ * files, and stays in flight. Runs beside it wait on `beside` while it
+ * holds. `end` reports a file's end to its run in flight (row 011-419).
  */
-export async function hungTier(hMs: number, count: number) {
+export async function hungTier(hMs: number, count: number, tierSize = 4) {
   const all = files(hMs, count);
   const repo = catchUpRepo(all);
   const side = catchUpSide(repo, repo.main, {
@@ -74,6 +75,7 @@ export async function hungTier(hMs: number, count: number) {
     hostSlots: 8,
     policy: RUN_MISSING,
     clock: "virtual",
+    tierSize,
   });
   await side.scheduler.start();
   await settle(side);
@@ -83,10 +85,11 @@ export async function hungTier(hMs: number, count: number) {
     if (isBesideLane(run.lane ?? "")) return beside.wait();
     return pathsOf(run).includes(H) ? hung.wait() : undefined;
   };
+  const end = reportsEnds(side);
   const after = side.runner.runs.length;
   await side.edit("watch", "src/a.ts");
   const tier = await heldRun(side, H, after);
-  return { side, hung, beside, tier, after };
+  return { side, hung, beside, tier, after, end };
 }
 
 /**
