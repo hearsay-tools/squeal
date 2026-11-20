@@ -2686,7 +2686,7 @@ Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16,
 | 023-25 diagnose the key that differs between the temporary checkout and the worktree at the same commit (Q4) | done, not reproduced (`tasks/023-25-notes.md`: 7 setups gave equal keys; round 3's split was probably clone against clone; next experiment named there); Q4 stays open as a finding | D2, D4 | after 023-23 |
 | 023-26 named wait says only "still starting" before the daemon lists a file (Q7) | done in 0.1.577 (with 023-24; files handed over by spec 011's coordinator; amendment lines in 011 and 005 status); released in 0.1.577 | D3 | after 023-23 |
 | 023-27 keep a commit's keys once computed (Q3); directory paths for `squeal run` (Q8) | proposed (later, the human 2026-11-19) | D2 | after 023-24 |
-| 023-28 before/after dogfood rerun on released 0.1.577 (s1, s2 empty store x10 each, s7 warm store x5; Sonnet; lab VM, throwaway user) | running (wave 17, brief `specifications/023-results-at-commit/tasks/wave-17.md`; the human, 2026-11-20: "Release + rerun") | Testing (dogfood), step 7 | after 023-24, 023-26 |
+| 023-28 before/after dogfood rerun on released 0.1.577 (s1, s2 empty store x10 each, s7 warm store x5; Sonnet; lab VM, throwaway user) | done (lessons.md "Round 4 (023-28)", tasks/023-28; 25 sessions, $2.36: `--run` used 25/25 with no hint (round 3: 0/25); full answers 0/25; proposals R1 to R8) | Testing (dogfood), step 7 | after 023-24, 023-26 |
 
 ## Later
 
