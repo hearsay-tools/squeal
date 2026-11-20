@@ -15,7 +15,7 @@ import { cloneOf, committed, scratch } from "./fixture.js";
 
 /*
  * Spec 020 D13.3 (row 020-08a): exports do not change. Two shards recorded
- * with Squeal's provider write `squeal-ci-part/5` parts (format 4 and later) with records; the
+ * with Squeal's provider write `squeal-ci-part/6` parts (format 4 and later) with records; the
  * same shards recorded without it, read as format 3 parts, export to the
  * same bundle: the same files, keys, closures and results. Records travel
  * in parts only; D10 of 018 lets the shards' coverage options differ. Spec
@@ -107,7 +107,7 @@ describe("squeal ci export of format 3 and format 4 parts (spec 020 D13.3)", () 
     const four = join(dirname(origin), "parts-4");
     const three = join(dirname(origin), "parts-3");
     const recorded = await shards(origin, four, true);
-    expect(recorded.map((p) => p.format)).toEqual(["squeal-ci-part/5", "squeal-ci-part/5"]);
+    expect(recorded.map((p) => p.format)).toEqual(["squeal-ci-part/6", "squeal-ci-part/6"]);
     expect(recorded.flatMap((p) => p.testFiles.map((f) => f.record !== undefined))).toEqual([
       true,
       true,
