@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { LS_TREE_TIMEOUT_MS, lsTreeArgs } from "../commit/tree.js";
 import { compare } from "../fs/compare.js";
 import { runGit, splitNul } from "../fs/git.js";
 import {
@@ -63,6 +64,60 @@ export function hereOf<T>(
     if (directory !== null) return listingHash(root, directory);
     if (path === GIT_ENTRY) return gitEntryHash(root);
     return file(path);
+  };
+}
+
+/**
+ * Spec 018 D32 (row 018-57): an input path's content in `commit`'s tree,
+ * as its key holds it, the one owner of "equal to the commit" for `ci
+ * record`'s `stable` and `ci export`'s rule (D33). A file: its blob id in
+ * `git ls-tree -r -z --full-tree` (as `committedBlobs`), `null` when the
+ * tree holds no blob there (a submodule, a directory, no entry). A listing
+ * path: the names hash of the entries the tree holds directly in that
+ * directory (files, symlinks, submodules, subtrees), `ABSENT_LISTING` when
+ * it holds no such directory. Ignored and untracked names on disk are not
+ * in it, so a listing that holds them differs from the commit. `.git` is
+ * never in a tree: `null`.
+ */
+export async function atCommit(
+  root: AbsolutePath,
+  commit: string,
+): Promise<(path: RelativePath) => FileHash | null> {
+  const out = await runGit(root, lsTreeArgs(commit), { timeoutMs: LS_TREE_TIMEOUT_MS });
+  const blobs = new Map<RelativePath, FileHash>();
+  const names = new Map<RelativePath, Set<string>>();
+  const add = (path: RelativePath) => {
+    for (let child = path; ; ) {
+      const slash = child.lastIndexOf("/");
+      const directory = slash < 0 ? "" : child.slice(0, slash);
+      const known = names.get(directory);
+      if (known === undefined) names.set(directory, new Set([child.slice(slash + 1)]));
+      else known.add(child.slice(slash + 1));
+      // A directory seen before has its ancestors' names already.
+      if (directory === "" || known !== undefined) return;
+      child = directory;
+    }
+  };
+  for (const entry of splitNul(out)) {
+    // `<mode> SP <type> SP <object> TAB <path>`; `-r` lists blobs and submodules, no tree.
+    const tab = entry.indexOf("\t");
+    if (tab <= 0) continue;
+    const [, type, object] = entry.slice(0, tab).split(" ");
+    const path = entry.slice(tab + 1);
+    if (type === "blob" && object !== undefined) blobs.set(path, object);
+    add(path);
+  }
+  const listings = new Map<RelativePath, FileHash>();
+  return (path) => {
+    const directory = listedDirectory(path);
+    if (directory === null) return blobs.get(path) ?? null;
+    let hash = listings.get(directory);
+    if (hash === undefined) {
+      const held = names.get(directory);
+      hash = held === undefined ? ABSENT_LISTING : namesHash([...held]);
+      listings.set(directory, hash);
+    }
+    return hash;
   };
 }
 
