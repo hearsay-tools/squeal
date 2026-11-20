@@ -130,10 +130,22 @@ export function readEvidence(dir: AbsolutePath): InputEvidence {
   return readRecorded(dir).evidence;
 }
 
-/** `readEvidence`, and the time the hooks took (`HooksTime`), from one read of `dir`. */
+/**
+ * Spec 018 D31 (row 018-57): the paths a hooked process of the command
+ * wrote, read with two contents, or removed a tree at, sorted; a tree's
+ * path stands for everything below it. `"all"`: a process withheld its
+ * paths (row 018-23), so every path is touched.
+ */
+export type TouchedPaths = readonly RelativePath[] | "all";
+
+/**
+ * `readEvidence`, the time the hooks took (`HooksTime`) and the touched
+ * paths (`TouchedPaths`), from one read of `dir`.
+ */
 export function readRecorded(dir: AbsolutePath): {
   readonly evidence: InputEvidence;
   readonly hooks: HooksTime;
+  readonly touched: TouchedPaths;
 } {
   const values = new Map<RelativePath, FileHash | null>();
   const conflicting = new Set<RelativePath>();
@@ -154,7 +166,14 @@ export function readRecorded(dir: AbsolutePath): {
   const kept = [...values].filter(
     ([path]) => !conflicting.has(path) && !written.has(path) && !below(path),
   );
-  return { evidence: Object.fromEntries(kept.sort(([a], [b]) => compare(a, b))), hooks };
+  const touched: TouchedPaths = trees.has("")
+    ? "all"
+    : [...new Set([...conflicting, ...written, ...trees])].sort(compare);
+  return {
+    evidence: Object.fromEntries(kept.sort(([a], [b]) => compare(a, b))),
+    hooks,
+    touched,
+  };
 }
 
 /** Every line in `dir`'s files, and per file the latest time its clock wrote, summed. */
