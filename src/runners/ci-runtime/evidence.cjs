@@ -266,7 +266,8 @@ function outputOf(settings, original) {
     settings.out,
     `${process.pid}-${workerThreads.threadId}-${Date.now().toString(36)}.ndjson`,
   );
-  let pending = {};
+  // No prototype: a path named `__proto__` stays an own entry (review 0.1.582-r2).
+  let pending = Object.create(null);
   let any = false;
   let scheduled = false;
   const last = new Map();
@@ -286,7 +287,7 @@ function outputOf(settings, original) {
   const flushEvidence = () => {
     if (!any) return;
     const e = pending;
-    pending = {};
+    pending = Object.create(null);
     any = false;
     append({ e });
   };
