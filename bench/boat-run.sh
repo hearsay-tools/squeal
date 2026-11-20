@@ -68,7 +68,7 @@ ARGS="--plugin /home/user/claude-code --out /home/user/results --steps $STEPS"
 [ -n "$CELLS" ] && ARGS="$ARGS --cells $CELLS"
 retry boat ssh "$ID" -- "cd /home/user && { pgrep -f '[b]ench/run-all.mjs' >/dev/null || (setsid nohup node bench/run-all.mjs $ARGS > run.log 2>&1 < /dev/null &); }"
 sleep 10
-boat ssh "$ID" -- 'test -s /home/user/run.log' >/dev/null 2>&1 || { echo "run did not start on $ID" >&2; exit 1; }
+boat ssh "$ID" -- 'pgrep -f "[r]un-all.mjs"' >/dev/null 2>&1 || { echo "run did not start on $ID" >&2; exit 1; }
 echo "started on $ID; progress: boat ssh $ID -- tail -f /home/user/run.log"
 
 until boat ssh "$ID" -- 'test -f /home/user/results/scorecard.md' >/dev/null 2>&1; do
