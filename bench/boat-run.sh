@@ -51,7 +51,8 @@ for ref in "${REFS[@]}"; do
   if [ "$ref" = . ]; then
     PLUGINS+=(plugins/claude-code)
   else
-    dir=$(mktemp -d)/claude-code
+    # Outside any git checkout: `boat push` skips files git ignores, and this task's temp folder is ignored.
+    dir=$(mktemp -d /tmp/squeal-bench-plugin.XXXXXX)/claude-code
     mkdir -p "$dir"
     git archive "$ref" plugins/claude-code | tar x -C "$dir" --strip-components=2
     PLUGINS+=("$dir")
@@ -59,7 +60,12 @@ for ref in "${REFS[@]}"; do
 done
 
 ID=""
-cleanup() { if [ -n "$ID" ] && [ "$KEEP" = 0 ]; then boat delete "$ID" --yes >/dev/null 2>&1 || true; fi; }
+cleanup() {
+  if [ -n "$ID" ] && [ "$KEEP" = 0 ]; then boat delete "$ID" --yes >/dev/null 2>&1 || true; fi
+  for d in "${PLUGINS[@]}"; do
+    case $d in /tmp/squeal-bench-plugin.*) rm -rf "$(dirname "$d")" ;; esac
+  done
+}
 trap cleanup EXIT
 
 for try in $(seq "$TRIES"); do
