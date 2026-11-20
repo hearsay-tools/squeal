@@ -1,17 +1,18 @@
 import { compare } from "../fs/compare.js";
-import { configFieldHash } from "../keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
 import type { ProjectName, RelativePath } from "../types/common.js";
 import type { NamedPart } from "./export-check.js";
+import { entryRefusal } from "./export-node-test-refusals.js";
 import type { Part, PartFile, PartNodeTest } from "./parts.js";
 
 /*
  * Spec 018 D26 (row 018-48): which `nodeTest` entry of the export
  * checkout each recorded `node --test` process and test file belongs to,
- * and which entries' files the export leaves out. A process belongs to the
- * entries whose `cwd` is its working directory and whose `argv` is its
- * `execArgv` less the flags the daemon sets itself (D26.1); a file to the
- * one of them whose listing here holds it. An entry is left out whole when
+ * and which entries' files the export leaves out. A process has the shape
+ * of the entries whose `cwd` is its working directory and whose `argv` is
+ * its `execArgv` less the flags the daemon sets itself (D26.1); a file
+ * belongs to the one of them whose listing here holds it, and the process
+ * is the run of each entry it ran a file of (`owning`, review of 0.1.579 B4). An entry is left out whole when
  * a process of it ran on another Node (D26.2), saw another value of a
  * variable its `env` names (D26.3), or its own `--test-shard` set is not
  * complete (D26.4). Every such refusal leaves out files and names why,
@@ -96,7 +97,7 @@ export function assignNodeTest(
     leftOut += count;
     lines.push(line);
   };
-  const processes = parts.map((named) => processOf(named, entries, head));
+  const processes = owning(parts.map((named) => processOf(named, entries, head)));
   for (const { named, unusable, entries: matched } of processes) {
     const { file, part } = named;
     const count = part.testFiles.length;
@@ -108,7 +109,7 @@ export function assignNodeTest(
   }
   const refused = new Map<ProjectName, string>();
   for (const entry of entries) {
-    const of = processes.filter((p) => p.entries.includes(entry));
+    const of = processes.filter((p) => p.owners.includes(entry));
     const why =
       of.length === 0
         ? null
@@ -175,13 +176,46 @@ interface Process {
   readonly unusable: string | null;
   /** The entries whose `cwd` and `argv` are the process's (D26.1). */
   readonly entries: readonly NodeTestEntryHere[];
+  /**
+   * Review of 0.1.579 B4: those of `entries` whose run this process is,
+   * whose Node, variables and shard set it joins (`owning`).
+   */
+  readonly owners: readonly NodeTestEntryHere[];
+}
+
+/**
+ * Review of 0.1.579 B4: which entries each process ran for, before any
+ * entry is refused. A process with files is the run of each entry of its
+ * shape that lists one of them, so a process that ran only another
+ * entry's files is no shard of this one, and one command may run the files
+ * of two entries. A process without files says nothing of whose run it
+ * was: in a sharded run (`--test-shard` count above 1) it is a shard of
+ * each entry of its shape that has another process of that count with
+ * files, which keeps an empty shard in its set and leaves an ambiguous one
+ * in each; unsharded, it is no entry's.
+ */
+function owning(processes: readonly Omit<Process, "owners">[]): Process[] {
+  const filed = processes.map((p) => {
+    const paths = p.named.part.testFiles.map((f) => f.path);
+    return p.entries.filter((entry) => paths.some((path) => entry.files.has(path)));
+  });
+  const sharded = (entry: NodeTestEntryHere, count: number) =>
+    processes.some(
+      (p, at) => filed[at]?.includes(entry) && p.named.part.header.shard.count === count,
+    );
+  return processes.map((p, at) => {
+    if (p.named.part.testFiles.length > 0) return { ...p, owners: filed[at] ?? [] };
+    const { count } = p.named.part.header.shard;
+    const owners = count > 1 ? p.entries.filter((entry) => sharded(entry, count)) : [];
+    return { ...p, owners };
+  });
 }
 
 function processOf(
   named: NamedPart,
   entries: readonly NodeTestEntryHere[],
   head: string | null,
-): Process {
+): Omit<Process, "owners"> {
   const { nodeTest } = named.part.header;
   if (nodeTest === undefined) {
     return { named, unusable: "a node:test part without its nodeTest header", entries: [] };
@@ -208,68 +242,6 @@ function partUnusable(part: Part, head: string | null): string | null {
     return `of commit ${commit ?? "none"}, and this checkout is at ${head ?? "no commit"}`;
   }
   return null;
-}
-
-/** Why `entry`'s files are left out, by the processes that belong to it: Node, variables, shards. */
-function entryRefusal(entry: NodeTestEntryHere, parts: readonly NamedPart[]): string | null {
-  const project = `project ${JSON.stringify(entry.name)}`;
-  const runs = parts.map((p) => p.part.header.nodeTest as PartNodeTest);
-  if (entry.node === null) return `${project}: its Node does not run here`;
-  const { version, nodeBuild } = entry.node;
-  const other = runs.find((run) => run.version !== version);
-  if (other !== undefined) {
-    return `node:test ran on Node ${other.version}; ${project} runs ${version} here`;
-  }
-  if (runs.some((run) => run.nodeBuild !== nodeBuild)) {
-    return `node:test ran on another build of Node ${version} than ${project} runs here`;
-  }
-  const variables = Object.keys(entry.env)
-    .sort(compare)
-    .filter((name) => runs.some((run) => run.env[name] !== configFieldHash(entry.env[name])));
-  if (variables.length > 0) {
-    return `node:test ran with another value of ${variables.join(", ")} than ${project} sets`;
-  }
-  return allowlistRefusal(project, entry, runs) ?? shardsRefusal(project, parts);
-}
-
-/**
- * B2: the variables of `env.allowlist` the entry does not set must have
- * had, in every process, the value this job's environment gives the keys;
- * a part that does not say (made before, or by a checkout of another
- * allowlist) leaves the entry out. Named, never shown.
- */
-function allowlistRefusal(
-  project: string,
-  entry: NodeTestEntryHere,
-  runs: readonly PartNodeTest[],
-): string | null {
-  const names = Object.keys(entry.allowlisted).sort(compare);
-  const unknown = names.filter((name) => runs.some((run) => !Object.hasOwn(run.env, name)));
-  if (unknown.length > 0) {
-    return `the node:test parts of ${project} do not say what ${unknown.join(", ")} held`;
-  }
-  const other = names.filter((name) =>
-    runs.some((run) => run.env[name] !== entry.allowlisted[name]),
-  );
-  if (other.length === 0) return null;
-  return `node:test of ${project} ran with another value of ${other.join(", ")} than this job's environment`;
-}
-
-/** D26.4: the processes of one entry are each shard of one `--test-shard` count, once; `null` when so. */
-function shardsRefusal(project: string, parts: readonly NamedPart[]): string | null {
-  const counts = [...new Set(parts.map((p) => p.part.header.shard.count))].sort((a, b) => a - b);
-  if (counts.length > 1) return `${project} ran in runs of ${counts.join(", ")} shards`;
-  const count = counts[0] as number;
-  const indices = parts.map((p) => p.part.header.shard.index);
-  const outside = indices.find((index) => index < 1 || index > count);
-  if (outside !== undefined) return `${project} names shard ${outside}/${count}`;
-  const twice = indices.find((index, at) => indices.indexOf(index) !== at);
-  if (twice !== undefined) return `${project} has two parts of shard ${twice}/${count}`;
-  const missing = Array.from({ length: count }, (_, i) => i + 1).filter(
-    (i) => !indices.includes(i),
-  );
-  if (missing.length === 0) return null;
-  return `${project} has no part of shard ${missing.map((i) => `${i}/${count}`).join(", ")}`;
 }
 
 /** Each part with the files `kept` gives it, by entry, sorted as a part's files are. */

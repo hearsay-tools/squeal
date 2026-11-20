@@ -348,3 +348,74 @@ describe("assignNodeTest (spec 018 D26)", () => {
     expect(result.leftOut).toBe(0);
   });
 });
+
+describe("entries of one shape (review of 0.1.579 B4)", () => {
+  const alpha = entry("alpha", ["nt/a.test.mjs"]);
+  const beta = entry("beta", ["nt/b.test.cjs"]);
+  const run = (name: string, files: string[], more: Partial<PartOptions> = {}) =>
+    part({ name, files, ...more });
+
+  it("takes each entry's files from its own command, and from one command running both", () => {
+    const apart = assignNodeTest(
+      [run("a.json", ["nt/a.test.mjs"]), run("b.json", ["nt/b.test.cjs"])],
+      [alpha, beta],
+      COMMIT,
+    );
+    expect(apart.lines).toEqual([]);
+    expect(kept(apart).sort()).toEqual(["alpha:nt/a.test.mjs", "beta:nt/b.test.cjs"]);
+
+    const together = assignNodeTest(
+      [run("ab.json", ["nt/a.test.mjs", "nt/b.test.cjs"])],
+      [alpha, beta],
+      COMMIT,
+    );
+    expect(together.lines).toEqual([]);
+    expect(kept(together).sort()).toEqual(["alpha:nt/a.test.mjs", "beta:nt/b.test.cjs"]);
+  });
+
+  it("refuses one entry's Node, variable or shard set and keeps the other's", () => {
+    const old = run("a.json", ["nt/a.test.mjs"], { run: { version: "v24.21.0" } });
+    const node = assignNodeTest([old, run("b.json", ["nt/b.test.cjs"])], [alpha, beta], COMMIT);
+    expect(kept(node)).toEqual(["beta:nt/b.test.cjs"]);
+    expect(node.lines).toEqual([
+      'node:test ran on Node v24.21.0; project "alpha" runs v26.13.0 here: left out (1 test file)',
+    ]);
+
+    const modal = entry("alpha", ["nt/a.test.mjs"], { env: { MODE: "ci" } });
+    const env = assignNodeTest(
+      [
+        run("a.json", ["nt/a.test.mjs"], { run: { env: { MODE: configFieldHash("local") } } }),
+        run("b.json", ["nt/b.test.cjs"]),
+      ],
+      [modal, beta],
+      COMMIT,
+    );
+    expect(kept(env)).toEqual(["beta:nt/b.test.cjs"]);
+
+    const half = { index: 1, count: 2 };
+    const shard = assignNodeTest(
+      [run("a.json", ["nt/a.test.mjs"], { shard: half }), run("b.json", ["nt/b.test.cjs"])],
+      [alpha, beta],
+      COMMIT,
+    );
+    expect(kept(shard)).toEqual(["beta:nt/b.test.cjs"]);
+    expect(shard.lines).toEqual([
+      'project "alpha" has no part of shard 2/2: left out (1 test file)',
+    ]);
+  });
+
+  it("counts an empty shard in the sharded entry's set, and in no unsharded one", () => {
+    const result = assignNodeTest(
+      [
+        run("a1.json", ["nt/a.test.mjs"], { shard: { index: 1, count: 2 } }),
+        run("a2.json", [], { shard: { index: 2, count: 2 } }),
+        run("b.json", ["nt/b.test.cjs"]),
+        run("empty.json", []),
+      ],
+      [alpha, beta],
+      COMMIT,
+    );
+    expect(result.lines).toEqual([]);
+    expect(kept(result).sort()).toEqual(["alpha:nt/a.test.mjs", "beta:nt/b.test.cjs"]);
+  });
+});
