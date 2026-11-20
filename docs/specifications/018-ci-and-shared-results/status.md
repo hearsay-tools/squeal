@@ -130,6 +130,7 @@ Started: 2026-10-31
 - 2026-11-20, the human: "Nothing-read: Yes, write the spec". The coordinator wrote the fourth slice, D30 to D34 (endpoint hashes in `ci record`, touched paths, part format 6, the export rule in `FileReuse.evidence`, the stated risk), and proposed rows 018-57 and 018-58 for the human's review.
 - 2026-11-20, the human: "Spec D30-34: Approve". Rows 018-57 and 018-58 planned, brief `tasks/wave-20.md`.
 - 2026-11-20, row 018-57's part format 6 (5d299bc9b) adds `unstable` beside D32's `stable` and `touched`; the coordinator accepted it and amended D32. Row 018-58 (worker d7d60bbf) started from that commit.
+- 2026-11-20, wave 20 integrated as 0.1.582 (rows 018-57, worker 6100c30b; 018-58, worker d7d60bbf). Choices the spec did not make, accepted: only paths the commit's tree holds are hashed (D30 amended); no hashes, with a note, when there is no commit, HEAD moved during the command, or hashing threw; a single withheld test file marks its own path touched, not "all"; the gate keeps D9 alone (open question 2 stays open). Measured: cezar checkout of 4,714 files and 215 listings, both ends 2.7 s at load 52 to 57, format 6 adds 557 bytes; replay of cezar run 44808547913 rewritten as format 6 exports 1,714 to 1,736 of 1,749 files (66.5% today). Spec 023 takes 0.1.581.
 
 ## Open questions
 
