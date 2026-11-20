@@ -1,5 +1,7 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import {
+  chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -38,9 +40,9 @@ function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
-/** A detached process that idles until signalled; `ignoreTerm` makes it outlast SIGTERM. */
-function idle(cwd: string, args: readonly string[] = [], ignoreTerm = false): ChildProcess {
-  const code = `${ignoreTerm ? "process.on('SIGTERM', () => {});" : ""}setInterval(() => {}, 1000);`;
+/** A detached process that idles until signalled. */
+function idle(cwd: string, args: readonly string[] = []): ChildProcess {
+  const code = "setInterval(() => {}, 1000);";
   const script = args[0] !== undefined && existsSync(args[0]);
   const child = spawn(process.execPath, script ? args : ["-e", code, "--", ...args], {
     cwd,
@@ -67,15 +69,28 @@ function alive(pid: number): boolean {
  */
 async function started(child: ChildProcess): Promise<number> {
   const pid = child.pid as number;
-  const last = `\0${child.spawnargs.at(-1)}\0`;
+  const own = `${child.spawnargs.join("\0")}\0`;
   for (let i = 0; i < 100; i++) {
     try {
-      if (execFileSync("cat", [`/proc/${pid}/cmdline`], { encoding: "utf8" }).endsWith(last))
-        return pid;
+      if (execFileSync("cat", [`/proc/${pid}/cmdline`], { encoding: "utf8" }) === own) return pid;
     } catch {}
     await delay(20);
   }
   return pid;
+}
+
+/**
+ * A detached process that ignores SIGTERM, once its handler is in place: it
+ * writes a ready file after it installs the handler. (Node's native layer
+ * catches SIGTERM from its start, so `SigCgt` does not tell.)
+ */
+async function stubborn(cwd: string): Promise<number> {
+  const ready = join(base, `ready-${children.length}`);
+  const code = `process.on("SIGTERM", () => {}); require("node:fs").writeFileSync(${JSON.stringify(ready)}, ""); setInterval(() => {}, 1000);`;
+  const child = spawn(process.execPath, ["-e", code], { cwd, detached: true, stdio: "ignore" });
+  children.push(child);
+  for (let i = 0; i < 250 && !existsSync(ready); i++) await delay(20);
+  return child.pid as number;
 }
 
 beforeEach(() => {
@@ -109,28 +124,61 @@ describe.runIf(linux)("processes left under a removed checkout", () => {
     mkdirSync(join(base, "tools", "cezar", "dist"), { recursive: true });
     writeFileSync(script, "setInterval(() => {}, 1000);\n");
     const server = await started(idle(checkout.tree, [script, "serve"]));
-    // Outside by cwd, under by an argument (a browser's `--user-data-dir`).
-    const browser = await started(idle(base, [`--user-data-dir=${checkout.run}/profile`]));
-    // Outside by cwd and by a path that only shares the folder's prefix.
-    mkdirSync(`${checkout.folder}2`);
-    const outside = await started(idle(`${checkout.folder}2`, [`${checkout.folder}2/x`]));
-    // Review wave-18 B1: the checkout path embedded in another path, a punctuated
-    // sibling, and `..` out of it are not under it.
-    const embedded = await started(idle(base, [`/another-root${checkout.folder}/file.js`]));
-    const punctuated = await started(idle(base, [`${checkout.folder}:other`]));
-    const traversal = await started(idle(base, [`--dir=${checkout.folder}/../outside`]));
-    // Under through a symlink to the checkout.
+    // Its cwd in the checkout through a symlink: the kernel reports the real path.
     symlinkSync(checkout.folder, join(base, "alias"));
-    const aliased = await started(idle(base, [`${join(base, "alias")}/run/x`]));
+    const aliased = await started(idle(join(base, "alias", "run")));
+    // The human, 2026-11-21 ("A: working folder only"): no argument counts.
+    const browser = await started(idle(base, [`--user-data-dir=${checkout.run}/profile`]));
+    // Outside by cwd: a sibling whose name only starts with the folder's.
+    mkdirSync(`${checkout.folder}2`);
+    const sibling = await started(idle(`${checkout.folder}2`));
+    // Re-review B1 witnesses. A: a link in the checkout that leads out, then `..`
+    // to a missing leaf, as an argument, and as the cwd itself.
+    mkdirSync(join(base, "external"));
+    symlinkSync(join(base, "external"), join(checkout.run, "out"));
+    const dotDot = await started(idle(base, [`${checkout.run}/out/../missing`]));
+    const linkedOut = await started(idle(join(checkout.run, "out")));
+    // B: an executable whose path holds the checkout's path after a space.
+    const cat = join(base, `outside ${checkout.folder}`, "run", "cat");
+    mkdirSync(join(cat, ".."), { recursive: true });
+    copyFileSync("/bin/cat", cat);
+    chmodSync(cat, 0o755);
+    const spaced = spawn(cat, [], {
+      cwd: base,
+      detached: true,
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+    children.push(spaced);
+    const withSpace = await started(spaced);
+    // The checkout's path embedded in another path.
+    const embedded = await started(idle(base, [`/another-root${checkout.folder}/file.js`]));
     const notes: string[] = [];
     await removeCheckout(checkout, { note: (text) => notes.push(text) });
     expect(existsSync(checkout.folder)).toBe(false);
     expect(alive(server)).toBe(false);
-    expect(alive(browser)).toBe(false);
     expect(alive(aliased)).toBe(false);
-    const survivors = { outside, embedded, punctuated, traversal };
+    const survivors = { browser, sibling, dotDot, linkedOut, withSpace, embedded };
     for (const [name, pid] of Object.entries(survivors)) expect(alive(pid), name).toBe(true);
-    expect(notes).toEqual(["ended 3 processes left under the checkout (cezar serve, node ×2)"]);
+    expect(notes).toEqual(["ended 2 processes left under the checkout (cezar serve, node)"]);
+  });
+
+  it("are ended when their working folder, or the whole checkout, is already deleted", async () => {
+    const folder = join(base, "folder");
+    mkdirSync(join(folder, "gone"), { recursive: true });
+    const inGone = await started(idle(join(folder, "gone")));
+    rmSync(join(folder, "gone"), { recursive: true });
+    expect(await endLeftUnder(folder, { graceMs: 200 })).toEqual({
+      ended: [{ pid: inGone, name: "node" }],
+      running: [],
+    });
+    expect(alive(inGone)).toBe(false);
+    const inFolder = await started(idle(folder));
+    rmSync(folder, { recursive: true });
+    expect(await endLeftUnder(folder, { graceMs: 200 })).toEqual({
+      ended: [{ pid: inFolder, name: "node" }],
+      running: [],
+    });
+    expect(alive(inFolder)).toBe(false);
   });
 
   it("are ended by the sweep of a dead owner's checkout", async () => {
@@ -151,23 +199,23 @@ describe.runIf(linux)("processes left under a removed checkout", () => {
   it("kills one that outlasts SIGTERM, and leaves another user's and its own caller", async () => {
     const folder = join(base, "folder");
     mkdirSync(folder);
-    const stubborn = await started(idle(folder, [], true));
+    const term = await stubborn(folder);
     const uid = process.getuid?.() as number;
     // Seen as another user's: never signalled.
     expect(await endLeftUnder(folder, { uid: uid + 1, graceMs: 100 })).toEqual({
       ended: [],
       running: [],
     });
-    expect(alive(stubborn)).toBe(true);
+    expect(alive(term)).toBe(true);
     // The process given as the caller, and its ancestors, are spared.
-    expect(await endLeftUnder(folder, { self: stubborn, graceMs: 100 })).toEqual({
+    expect(await endLeftUnder(folder, { self: term, graceMs: 100 })).toEqual({
       ended: [],
       running: [],
     });
-    expect(alive(stubborn)).toBe(true);
+    expect(alive(term)).toBe(true);
     const left = await endLeftUnder(folder, { graceMs: 200 });
-    expect(left).toEqual({ ended: [{ pid: stubborn, name: "node" }], running: [] });
-    expect(alive(stubborn)).toBe(false);
+    expect(left).toEqual({ ended: [{ pid: term, name: "node" }], running: [] });
+    expect(alive(term)).toBe(false);
   });
 });
 
@@ -237,6 +285,22 @@ describe.runIf(linux)("the check before SIGTERM (review wave-18 note 1)", () => 
       ended: [],
       running: [],
     });
+    expect(alive(pid)).toBe(true);
+  });
+
+  it("checks again before SIGKILL: one that left the folder in the grace is not killed", async () => {
+    const folder = join(base, "folder");
+    mkdirSync(folder);
+    const pid = await stubborn(base);
+    fakeProc(base, pid, "100", folder);
+    const scanned = scanLeftUnder(folder, { root: base });
+    // It ignores SIGTERM; during the grace its working folder moves out.
+    setTimeout(() => fakeProc(base, pid, "100", base), 100);
+    const left = await endScanned(scanned as NonNullable<typeof scanned>, {
+      root: base,
+      graceMs: 400,
+    });
+    expect(left).toEqual({ ended: [], running: [{ pid, name: "node" }] });
     expect(alive(pid)).toBe(true);
   });
 });

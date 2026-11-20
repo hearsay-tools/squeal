@@ -1,19 +1,20 @@
-import { readdirSync, readFileSync, readlinkSync, statSync } from "node:fs";
-import { basename, dirname, extname, join } from "node:path";
+import { readdirSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { AbsolutePath } from "../types/common.js";
-import { canonical, underFolder } from "./under-path.js";
 
 /*
  * Spec 023 D6 (row 023-31, round 4 R6): before Squeal removes a checkout, it
- * ends every process of this user whose working folder, or one of whose
- * command-line arguments, lies under the checkout. A test harness's server
- * and 15 headless browsers outlived a removed checkout and `squeal stop`
- * (cwd "(deleted)"), since they had left the run's process group. Never
- * signalled: another user's process, this process and its ancestors, and any
- * process with no whole path under the checkout (`under-path.ts`). Each
- * process is checked again (start time, owner, path) just before its
- * SIGTERM (review wave-18 note 1). Linux only, through `/proc`; where there
+ * ends every process of this user whose working folder lies under the
+ * checkout. A test harness's server and 15 headless browsers outlived a
+ * removed checkout and `squeal stop` (cwd "(deleted)"), since they had left
+ * the run's process group. Only the working folder the kernel reports counts
+ * (the human, 2026-11-21, after review wave-18's re-review: "A: working
+ * folder only"); no command-line argument does, since an argument is no
+ * proof of where a process works. Never signalled: another user's process,
+ * this process and its ancestors. Each process is checked again (start
+ * time, owner, working folder) just before its SIGTERM and its SIGKILL
+ * (review wave-18 note 1). Linux only, through `/proc`; where there
  * is none (macOS), nothing is scanned, the note says so once, and the run's
  * process-group stop is all that ends its processes.
  */
@@ -74,20 +75,19 @@ export function scanLeftUnder(folder: AbsolutePath, options: EndLeftOptions = {}
   const pids = pidsIn(proc);
   if (uid === undefined || pids === null) return null;
   const spared = ancestors(proc, options.self ?? process.pid);
-  const real = canonical(folder);
+  const real = realFolder(folder);
   const found: Found[] = [];
   for (const pid of pids) {
     if (spared.has(pid) || ownerOf(proc, pid) !== uid) continue;
     const start = startOf(proc, pid);
     if (start === null) continue;
-    const argv = argvOf(proc, pid);
-    if (underFolder(real, cwdOf(proc, pid), argv))
-      found.push({ pid, start, name: nameOf(proc, pid, argv) });
+    if (cwdUnder(real, cwdOf(proc, pid)))
+      found.push({ pid, start, name: nameOf(proc, pid, argvOf(proc, pid)) });
   }
   return { proc, folder: real, uid, found };
 }
 
-/** SIGTERM to each found process still the same, still `uid`'s and still under; SIGKILL after the grace. */
+/** SIGTERM to each found process still the same, still `uid`'s and still under; SIGKILL after the grace, checked again. */
 export async function endScanned(
   scanned: Scanned,
   options: EndLeftOptions = {},
@@ -96,12 +96,12 @@ export async function endScanned(
   const same = (f: Found) =>
     startOf(proc, f.pid) === f.start &&
     ownerOf(proc, f.pid) === uid &&
-    underFolder(folder, cwdOf(proc, f.pid), argvOf(proc, f.pid));
+    cwdUnder(folder, cwdOf(proc, f.pid));
   const signalled = scanned.found.filter((f) => same(f) && signal(f.pid, "SIGTERM"));
   if (signalled.length === 0) return { ended: [], running: [] };
   let left = await waitGone(proc, signalled, options.graceMs ?? LEFT_GRACE_MS);
   if (left.length > 0) {
-    for (const f of left) if (startOf(proc, f.pid) === f.start) signal(f.pid, "SIGKILL");
+    for (const f of left) if (same(f)) signal(f.pid, "SIGKILL");
     left = await waitGone(proc, left, KILL_WAIT_MS);
   }
   const still = new Set(left.map((f) => f.pid));
@@ -110,6 +110,25 @@ export async function endScanned(
     ended: signalled.filter((f) => !still.has(f.pid)).map(plain),
     running: left.map(plain),
   };
+}
+
+/** The checkout folder's real path; resolved as given once it is gone. */
+function realFolder(folder: AbsolutePath): string {
+  try {
+    return realpathSync(folder);
+  } catch {
+    return resolve(folder);
+  }
+}
+
+/**
+ * `cwd`, as `/proc/<pid>/cwd` reads (the kernel's resolved path, with
+ * " (deleted)" once removed), is `folder` or below it, by whole components.
+ */
+function cwdUnder(folder: string, cwd: string | null): boolean {
+  if (cwd === null) return false;
+  const bare = cwd.endsWith(" (deleted)") ? cwd.slice(0, -" (deleted)".length) : cwd;
+  return bare === folder || bare.startsWith(folder.endsWith("/") ? folder : `${folder}/`);
 }
 
 let skipTold = false;
