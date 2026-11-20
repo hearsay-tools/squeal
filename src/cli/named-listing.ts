@@ -1,5 +1,5 @@
 import { statSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { lastScannedBy } from "../core/daemon/bootstrapped.js";
 import { readInstallWait } from "../core/scheduler/install-wait.js";
 import { covers, readRefined } from "../core/scheduler/refined.js";
@@ -94,11 +94,24 @@ export function newPaths(
   root: AbsolutePath,
   unmatched: readonly UnmatchedPath[],
 ): SelectionUnlisted | null {
-  const inside = (p: UnmatchedPath) => !isAbsolute(p.resolved) && !p.resolved.startsWith("..");
-  const files = unmatched.filter((p) => p.folder !== true && inside(p)).map((p) => p.resolved);
+  const files = unmatched
+    .filter((p) => p.folder !== true && insideRoot(root, p.resolved))
+    .map((p) => p.resolved);
   const paths = newToListing(store, worktreeId, root, files);
   if (paths.length === 0) return null;
   return { revision: store.revisions.latest(worktreeId)?.number ?? 0, paths };
+}
+
+/**
+ * Re-review wave-16 B2: whether `path`, as `UnmatchedPath.resolved` names it,
+ * is in the worktree: not absolute, no segment exactly `..` (`/` or `\\`
+ * separated), and it resolves under `root`. A name that only starts with two
+ * dots, such as `..new.test.ts`, is in it.
+ */
+export function insideRoot(root: AbsolutePath, path: string): boolean {
+  if (isAbsolute(path) || path.split(/[\\/]/).includes("..")) return false;
+  const rel = relative(root, resolve(root, path));
+  return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
 }
 
 /** What a named wait that returned with a daemon reads its time so far from (`withUnlisted`). */

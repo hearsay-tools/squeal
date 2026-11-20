@@ -1,12 +1,13 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { insideRoot } from "../../src/cli/named-listing.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { namedSnapshot } from "../../src/cli/wait/snapshot.js";
 import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
-import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 import { A, B, finish, NOW, repoWith } from "./status-wait-fixture.js";
@@ -176,33 +177,66 @@ describe("a named wait while the latest revision is not listed (row 023-26)", ()
 
 describe("a named file created after the last listed revision (review wave-16 B2)", () => {
   /** A listed worktree at revision 4, refined, and a new test file on disk no revision records yet. */
-  function newFileRepo() {
+  function newFileRepo(name = NEW) {
     const { repo, store } = repoWith([], [A]);
     recordRefinedApplied(store, repo.mainId, 4);
     mkdirSync(join(repo.main, "src"), { recursive: true });
-    writeFileSync(join(repo.main, NEW), "");
+    writeFileSync(join(repo.main, name), "");
     return { repo, store };
   }
   const NEW = "src/new.test.ts";
   const NOT_LISTED = `Squeal has not listed ${NEW} here yet`;
 
-  it.each([{ state: "pending" }, { state: "unsupported" }] as SyncState[])(
-    "says it is not listed yet and waits to the deadline, sync $state",
-    async (sync) => {
-      const { repo } = newFileRepo();
+  // Re-review wave-16 B2: `..new.test.ts` is a file in the root, not a parent step.
+  it.each([
+    [NEW, "pending"],
+    [NEW, "unsupported"],
+    ["..new.test.ts", "pending"],
+    ["..new.test.ts", "unsupported"],
+  ] as const)(
+    "says %s is not listed yet and waits to the deadline, sync %s",
+    async (name, state) => {
+      const { repo } = newFileRepo(name);
 
-      const got = await wait(repo.main, [NEW], () => sync);
+      const got = await wait(repo.main, [name], () => ({ state }));
 
       if (got.outcome === "unavailable") throw new Error("unavailable");
-      // Before the fix: pending said "no test file's closure holds src/new.test.ts" at the
-      // deadline; unsupported returned `unmatched` after the settle time.
+      // Before the fix: pending said "no test file's closure holds <name>" at the deadline;
+      // unsupported returned `unmatched` after the settle time.
       expect(got.outcome).toBe("timeout");
       const text = namedText(got, NOW);
-      expect(text).toContain(`${NOT_LISTED} (0 s); wait again with the same command`);
+      expect(text).toContain(
+        `Squeal has not listed ${name} here yet (0 s); wait again with the same command`,
+      );
       expect(text).not.toMatch(CLOSURE);
       expect(got.selection.partial).toEqual({ revision: null });
     },
   );
+
+  it("still refuses a real parent step: a new file outside the worktree keeps D2's text", async () => {
+    const { repo } = newFileRepo();
+    const outside = `${basename(repo.main)}-outside.test.ts`;
+    const file = join(repo.main, "..", outside);
+    writeFileSync(file, "");
+    try {
+      const got = await wait(repo.main, [`../${outside}`], () => synced(4));
+
+      if (got.outcome === "unavailable") throw new Error("unavailable");
+      expect(got.outcome).toBe("unmatched");
+      expect(got.selection.unlisted).toBeUndefined();
+      expect(namedText(got, NOW)).toContain(`no test file's closure holds ../${outside}`);
+    } finally {
+      rmSync(file, { force: true });
+    }
+  });
+
+  it("reads a parent step only from a segment that is exactly `..`", () => {
+    const root = "/w" as AbsolutePath;
+    const inside = ["..new.test.ts", "src/..a.test.ts", "a..b/c.ts", "...x"];
+    const outside = ["..", "../x.test.ts", "a/../../x", "a\\..\\x", "/w/x.ts"];
+    expect(inside.map((p) => insideRoot(root, p))).toEqual(inside.map(() => true));
+    expect(outside.map((p) => insideRoot(root, p))).toEqual(outside.map(() => false));
+  });
 
   it("keeps D2's text for another path that selects nothing beside it", async () => {
     const { repo } = newFileRepo();
