@@ -8,6 +8,7 @@ import { runNodeTest } from "../../../src/runners/node-test/run/run.js";
 import {
   FILES,
   nodeTestCommand,
+  type Packages,
   project,
   record,
   reporterPair,
