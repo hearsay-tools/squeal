@@ -92,6 +92,24 @@ describe("endpoint hashes", () => {
     }
   });
 
+  it("holds a tracked file named __proto__ gone before the command as its own null entry (review 0.1.582 B1)", async () => {
+    const { path: root, cleanup } = tempDir("squeal-endpoints-proto-gone-");
+    cleanups.push(cleanup);
+    initRepo(
+      root,
+      Object.fromEntries([
+        ["__proto__", "BAD\n"],
+        ["a.txt", "a\n"],
+      ]),
+    );
+    rmSync(join(root, "__proto__"));
+    const ends = await around(root, () => {});
+    if (typeof ends === "string") throw new Error(ends);
+    expect(Object.hasOwn(ends.stable, "__proto__")).toBe(true);
+    expect(ends.stable["__proto__"]).toBeNull();
+    expect(Object.hasOwn(JSON.parse(JSON.stringify(ends.stable)), "__proto__")).toBe(true);
+  });
+
   it("holds a file changed before the command and kept, with its hash", async () => {
     const root = repo();
     writeFileSync(join(root, "a.txt"), "changed\n");
