@@ -24,9 +24,26 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { statSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
-const [store, roundsArg, root] = process.argv.slice(2);
+// --span-days N (default 7): spread the history over N days. With N above the
+// 7-day retention, the oldest share is due for prune: 8 days leaves about one
+// day of history to delete, as after a day without a running daemon.
+// --churn: also clear the marks of the last prune and the last full integrity
+// check, so the next daemon prunes at its first chance and checks the whole file.
+const args = process.argv.slice(2);
+const flag = (name) => {
+  const i = args.indexOf(name);
+  if (i === -1) return null;
+  const [, value] = args.splice(i, 2);
+  return value;
+};
+const spanDays = Number(flag("--span-days") ?? 7);
+const churn = args.includes("--churn");
+if (churn) args.splice(args.indexOf("--churn"), 1);
+const [store, roundsArg, root] = args;
 if (!store || !roundsArg || !root) {
-  console.error("usage: age-store.mjs <store.sqlite> <rounds> <project root>");
+  console.error(
+    "usage: age-store.mjs <store.sqlite> <rounds> <project root> [--span-days N] [--churn]",
+  );
   process.exit(2);
 }
 const rounds = Number(roundsArg);
@@ -41,7 +58,8 @@ db.exec(`CREATE TABLE IF NOT EXISTS loaded_modules (
 
 const now = Date.now();
 const DAY = 86_400_000;
-const time = () => Math.floor(now - 2 * 3_600_000 - Math.random() * (7 * DAY - 2 * 3_600_000));
+const time = () =>
+  Math.floor(now - 2 * 3_600_000 - Math.random() * (spanDays * DAY - 2 * 3_600_000));
 const hex = (bytes) => randomBytes(bytes).toString("hex");
 const worktrees = Array.from({ length: 19 }, () => hex(8));
 
@@ -132,11 +150,17 @@ for (let r = 0; r < rounds; r++) {
   }
   db.exec("COMMIT");
 }
+if (churn)
+  db.exec(
+    "DELETE FROM meta WHERE key IN ('prune:last-at', 'store.full-check', 'store.full-check.holder')",
+  );
 db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
 db.close();
 console.log(
   JSON.stringify({
     rounds,
+    spanDays,
+    churn,
     testFiles: files.length,
     resultsAdded,
     listsAdded,

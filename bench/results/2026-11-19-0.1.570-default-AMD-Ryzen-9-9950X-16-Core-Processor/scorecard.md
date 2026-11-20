@@ -2,18 +2,20 @@
 
 Squeal 0.1.570 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU · 7.8 GiB · SHA-256 2487 MiB/s · 2026-11-19T20:23:01.205Z
 
-**Overall score: 61 / 100** (mean of the cell scores; healthy 1, warn 0.5, fail 0 per metric)
+**Correctness: PASS** (no wrong verdict, missed push or failed session in any cell)
 
-| Cell | Files | Worktrees | Load | Score | Sessions failed |
-|---|---:|---:|---:|---:|---:|
-| ref | 500 | 1 | 0% | 68 | 0 |
-| size-s | 100 | 1 | 0% | 85 | 0 |
-| size-l | 2000 | 1 | 0% | 55 | 0 |
-| wt-3 | 500 | 3 | 0% | 70 | 0 |
-| wt-6 | 500 | 6 | 0% | 58 | 0 |
-| load-50 | 500 | 1 | 50% | 58 | 0 |
-| load-100 | 500 | 1 | 100% | 48 | 0 |
-| stress | 500 | 6 | 100% | 50 | 0 |
+**Overall score: 56 / 100** (mean of the cell scores; a cell is the mean of its 5 areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)
+
+| Cell | Files | Worktrees | Load | Aged rounds | Correct | Score | Hooks | Commands | Verdicts | Resources | Store |
+|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|
+| ref | 500 | 1 | 0% | 0 | ✅ | 66 | 63 | 75 | 40 | 75 | 75 |
+| size-s | 100 | 1 | 0% | 0 | ✅ | 87 | 75 | 88 | 70 | 100 | 100 |
+| size-l | 2000 | 1 | 0% | 0 | ✅ | 46 | 50 | 75 | 30 | 25 | 50 |
+| wt-3 | 500 | 3 | 0% | 0 | ✅ | 63 | 63 | 100 | 50 | 50 | 50 |
+| wt-6 | 500 | 6 | 0% | 0 | ✅ | 48 | 50 | 75 | 40 | 25 | 50 |
+| load-50 | 500 | 1 | 50% | 0 | ✅ | 54 | 50 | 75 | 20 | 75 | 50 |
+| load-100 | 500 | 1 | 100% | 0 | ✅ | 42 | 50 | 50 | 10 | 50 | 50 |
+| stress | 500 | 6 | 100% | 0 | ✅ | 44 | 50 | 50 | 20 | 50 | 50 |
 
 | Metric | Healthy | Warn | ref | size-s | size-l | wt-3 | wt-6 | load-50 | load-100 | stress |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -29,14 +31,19 @@ Squeal 0.1.570 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU
 | cmd.start.others.max | ≤ 2000 | ≤ 5000 | n/a | n/a | n/a | 404 ms ✅ | 1135 ms ✅ | n/a | n/a | 1852 ms ✅ |
 | cmd.runAll.overhead | ≤ 1.3 | ≤ 2 | 1.31 x ⚠️ | 1.36 x ⚠️ | 1.29 x ✅ | n/a | n/a | 1.16 x ✅ | 3.61 x ❌ | n/a |
 | cmd.runAll | report |  | 38 s | 12 s | 168 s | 38 s | 75 s | 60 s | 295 s | 329 s |
-| **Session** | | |  |  |  |  |  |  |  |  |
+| **Verdicts** | | |  |  |  |  |  |  |  |  |
 | session.pushFail.p50 | ≤ 3000 | ≤ 10000 | 1284 ms ✅ | 1181 ms ✅ | 2201 ms ✅ | 1181 ms ✅ | 1287 ms ✅ | 3054 ms ⚠️ | 5384 ms ⚠️ | 7243 ms ⚠️ |
-| session.pushFail.missed | ≤ 0 | ≤ 0 | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
-| session.pushRecovery.missed | ≤ 0 | ≤ 0 | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Correctness** | | |  |  |  |  |  |  |  |  |
+| session.pushFail.missed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| session.pushRecovery.missed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |  |  |  |  |  |
 | session.verdict.p50 | ≤ 3000 | ≤ 10000 | late ❌ | 531 ms ✅ | late ❌ | 1661 ms ✅ | 1978 ms ✅ | late ❌ | late ❌ | 6591 ms ⚠️ |
 | session.verdict.p95 | ≤ 10000 | ≤ 30000 | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ |
 | session.verdict.within60s | ≥ 95 | ≥ 80 | 50 % ❌ | 94 % ⚠️ | 72 % ❌ | 69 % ❌ | 71 % ❌ | 50 % ❌ | 50 % ❌ | 72 % ❌ |
-| session.verdict.wrong | ≤ 0 | ≤ 0 | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Correctness** | | |  |  |  |  |  |  |  |  |
+| session.verdict.wrong | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| session.failed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |  |  |  |  |  |
 | session.broad.verdict | ≤ 180 | ≤ 300 | 175 s ✅ | 130 s ✅ | 290 s ⚠️ | 188 s ⚠️ | late ❌ | 267 s ⚠️ | late ❌ | late ❌ |
 | **Resources** | | |  |  |  |  |  |  |  |  |
 | res.idleCpu.maxPct | ≤ 1 | ≤ 5 | 0.4 % core ✅ | 0.4 % core ✅ | 1.1 % core ⚠️ | 3.1 % core ⚠️ | 5.5 % core ❌ | 0.8 % core ✅ | 2.6 % core ⚠️ | 4.8 % core ⚠️ |
@@ -47,3 +54,6 @@ Squeal 0.1.570 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU
 | store.lockFailures | ≤ 0 | ≤ 3 | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
 | store.size | report |  | 20 MiB | 7.0 MiB | 62 MiB | 36 MiB | 59 MiB | 21 MiB | 17 MiB | 45 MiB |
 | store.results | report |  | 7728 | 1722 | 28672 | 15890 | 26264 | 7728 | 5012 | 9086 |
+| store.prune.doneMin | ≤ 12 | ≤ 20 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| store.prune.s | report |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| store.fullCheck.s | report |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |

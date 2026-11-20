@@ -2,13 +2,15 @@
 
 Squeal 0.1.570 · Node v24.22.1 · AMD EPYC 4584PX 16-Core Processor · 4 vCPU · 7.8 GiB · SHA-256 2128 MiB/s · 2026-11-20T08:03:57.795Z
 
-**Overall score: 68 / 100** (mean of the cell scores; healthy 1, warn 0.5, fail 0 per metric)
+**Correctness: PASS** (no wrong verdict, missed push or failed session in any cell)
 
-| Cell | Files | Worktrees | Load | Aged rounds | Score | Sessions failed |
-|---|---:|---:|---:|---:|---:|---:|
-| ref | 500 | 1 | 0% | 0 | 75 | 0 |
-| store-1.7g | 500 | 1 | 0% | 70 | 63 | 0 |
-| store-7g | 500 | 1 | 0% | 326 | 68 | 0 |
+**Overall score: 65 / 100** (mean of the cell scores; a cell is the mean of its 5 areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)
+
+| Cell | Files | Worktrees | Load | Aged rounds | Correct | Score | Hooks | Commands | Verdicts | Resources | Store |
+|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|
+| ref | 500 | 1 | 0% | 0 | ✅ | 73 | 75 | 100 | 40 | 75 | 75 |
+| store-1.7g | 500 | 1 | 0% | 70 | ✅ | 58 | 63 | 63 | 40 | 50 | 75 |
+| store-7g | 500 | 1 | 0% | 326 | ✅ | 63 | 50 | 100 | 40 | 50 | 75 |
 
 | Metric | Healthy | Warn | ref | store-1.7g | store-7g |
 |---|---:|---:|---:|---:|---:|
@@ -24,14 +26,19 @@ Squeal 0.1.570 · Node v24.22.1 · AMD EPYC 4584PX 16-Core Processor · 4 vCPU �
 | cmd.start.others.max | ≤ 2000 | ≤ 5000 | n/a | n/a | n/a |
 | cmd.runAll.overhead | ≤ 1.3 | ≤ 2 | 1.26 x ✅ | 1.34 x ⚠️ | 1.27 x ✅ |
 | cmd.runAll | report |  | 53 s | 44 s | 39 s |
-| **Session** | | |  |  |  |
+| **Verdicts** | | |  |  |  |
 | session.pushFail.p50 | ≤ 3000 | ≤ 10000 | 1222 ms ✅ | 1275 ms ✅ | 1196 ms ✅ |
-| session.pushFail.missed | ≤ 0 | ≤ 0 | 0 ✅ | 0 ✅ | 0 ✅ |
-| session.pushRecovery.missed | ≤ 0 | ≤ 0 | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Correctness** | | |  |  |  |
+| session.pushFail.missed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| session.pushRecovery.missed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |
 | session.verdict.p50 | ≤ 3000 | ≤ 10000 | late ❌ | late ❌ | late ❌ |
 | session.verdict.p95 | ≤ 10000 | ≤ 30000 | late ❌ | late ❌ | late ❌ |
 | session.verdict.within60s | ≥ 95 | ≥ 80 | 50 % ❌ | 50 % ❌ | 50 % ❌ |
-| session.verdict.wrong | ≤ 0 | ≤ 0 | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Correctness** | | |  |  |  |
+| session.verdict.wrong | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| session.failed | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |
 | session.broad.verdict | ≤ 180 | ≤ 300 | 164 s ✅ | 160 s ✅ | 166 s ✅ |
 | **Resources** | | |  |  |  |
 | res.idleCpu.maxPct | ≤ 1 | ≤ 5 | 0.6 % core ✅ | 2.5 % core ⚠️ | 2.1 % core ⚠️ |
@@ -42,3 +49,6 @@ Squeal 0.1.570 · Node v24.22.1 · AMD EPYC 4584PX 16-Core Processor · 4 vCPU �
 | store.lockFailures | ≤ 0 | ≤ 3 | 0 ✅ | 0 ✅ | 0 ✅ |
 | store.size | report |  | 20 MiB | 1999 MiB | 9199 MiB |
 | store.results | report |  | 7728 | 252616 | 1147720 |
+| store.prune.doneMin | ≤ 12 | ≤ 20 | n/a | n/a | n/a |
+| store.prune.s | report |  | n/a | n/a | n/a |
+| store.fullCheck.s | report |  | n/a | n/a | n/a |

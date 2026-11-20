@@ -37,11 +37,40 @@
     ],
     "endedAt": "2026-11-20T09:00:01.306Z"
   },
-  "overall": 68.33333333333333,
+  "correctness": "pass",
+  "gateFails": {
+    "ref": [],
+    "store-1.7g": [],
+    "store-7g": []
+  },
+  "overall": 64.66666666666667,
   "scores": {
-    "ref": 75,
-    "store-1.7g": 62.5,
-    "store-7g": 67.5
+    "ref": 73,
+    "store-1.7g": 58,
+    "store-7g": 63
+  },
+  "areaScores": {
+    "ref": {
+      "Hooks": 0.75,
+      "Commands": 1,
+      "Verdicts": 0.4,
+      "Resources": 0.75,
+      "Store": 0.75
+    },
+    "store-1.7g": {
+      "Hooks": 0.625,
+      "Commands": 0.625,
+      "Verdicts": 0.4,
+      "Resources": 0.5,
+      "Store": 0.75
+    },
+    "store-7g": {
+      "Hooks": 0.5,
+      "Commands": 1,
+      "Verdicts": 0.4,
+      "Resources": 0.5,
+      "Store": 0.75
+    }
   },
   "values": {
     "ref": {
@@ -69,7 +98,11 @@
       "store.longWrites": 2,
       "store.lockFailures": 0,
       "store.size": 19.721839904785156,
-      "store.results": 7728
+      "store.results": 7728,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "store-1.7g": {
       "hook.preToolUse.p95": 157.01383829999247,
@@ -96,7 +129,11 @@
       "store.longWrites": 3,
       "store.lockFailures": 0,
       "store.size": 1999.2132568359375,
-      "store.results": 252616
+      "store.results": 252616,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "store-7g": {
       "hook.preToolUse.p95": 229.82422469999392,
@@ -123,7 +160,11 @@
       "store.longWrites": 3,
       "store.lockFailures": 0,
       "store.size": 9199.092094421387,
-      "store.results": 1147720
+      "store.results": 1147720,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     }
   }
 }

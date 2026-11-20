@@ -27,6 +27,10 @@ export const CELLS = [
   // 326 rounds: the loaded_modules row count of Squeal's own store, 7.2 GB on 2026-11-20.
   { name: "store-1.7g", files: 500, worktrees: 1, load: 0, ageRounds: 70 },
   { name: "store-7g", files: 500, worktrees: 1, load: 0, ageRounds: 326 },
+  // Churn: the 7g store with history over 8 days, so about one day is past retention,
+  // and the marks of the last prune and integrity check cleared: the restart checks
+  // the whole file and the first prune deletes a day of history, as after a day away.
+  { name: "churn", files: 500, worktrees: 1, load: 0, ageRounds: 326, spanDays: 8, churn: true },
 ];
 
 const { values: o } = parseArgs({
@@ -123,6 +127,9 @@ for (const c of cells) {
       o.steps,
       "--age-rounds",
       String(c.ageRounds ?? 0),
+      "--age-span-days",
+      String(c.spanDays ?? 7),
+      ...(c.churn ? ["--churn"] : []),
     ],
     { timeoutMs: 7_200_000 },
   );

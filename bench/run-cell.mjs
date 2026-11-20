@@ -26,6 +26,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
 import {
   background,
@@ -51,9 +52,12 @@ const { values: o } = parseArgs({
     idle: { type: "string", default: "60000" },
     seed: { type: "string", default: "1" },
     "age-rounds": { type: "string", default: "0" },
+    "age-span-days": { type: "string", default: "7" },
+    churn: { type: "boolean", default: false },
   },
 });
 const HERE = import.meta.dirname;
+const pruneWatch = { series: [], timer: null };
 const out = o.out;
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
@@ -75,6 +79,7 @@ const cell = {
   worktrees: Number(o.worktrees),
   load: Number(o.load),
   ageRounds: Number(o["age-rounds"]),
+  churn: o.churn,
   phases: {},
 };
 
@@ -147,7 +152,15 @@ if (Number(o["age-rounds"]) > 0) {
   for (let i = 0; i < 100 && daemonPids().size > 0; i++) await sleep(200);
   const aged = await timed(
     NODE,
-    [join(HERE, "age-store.mjs"), join(main, ".git/squeal/store.sqlite"), o["age-rounds"], main],
+    [
+      join(HERE, "age-store.mjs"),
+      join(main, ".git/squeal/store.sqlite"),
+      o["age-rounds"],
+      main,
+      "--span-days",
+      o["age-span-days"],
+      ...(o.churn ? ["--churn"] : []),
+    ],
     { env, timeoutMs: 3_600_000 },
   );
   cell.phases.age = {
@@ -162,7 +175,8 @@ if (Number(o["age-rounds"]) > 0) {
     })(),
   };
   const s1 = await squeal(main, ["start"], 120_000);
-  cell.phases.startAged = { ms: s1.ms, code: s1.code };
+  cell.phases.startAged = { ms: s1.ms, code: s1.code, at: Date.now() };
+  if (o.churn) watchPrune(join(main, ".git/squeal/store.sqlite"));
   const st = await squeal(main, ["status", "--json"], 120_000);
   cell.phases.firstStatusAged = { ms: st.ms, code: st.code };
 }
@@ -291,6 +305,23 @@ cell.daemonRss = {
 for (const root of roots) await squeal(root, ["stop"], 60_000);
 load.kill("SIGTERM");
 clearInterval(sampler);
+if (pruneWatch.timer) clearInterval(pruneWatch.timer);
+if (o.churn) {
+  const series = pruneWatch.series;
+  const start = cell.phases.startAged.at;
+  const first = series[0]?.old ?? null;
+  const firstDrop = series.find((x) => first !== null && x.old < first);
+  const zero = series.find((x) => x.old === 0);
+  cell.phases.churn = {
+    oldResultsAtStart: first,
+    oldResultsAtEnd: series.at(-1)?.old ?? null,
+    pruneStartedAfterS: firstDrop ? (firstDrop.t - start) / 1000 : null,
+    pruneDoneAfterS: zero ? (zero.t - start) / 1000 : null,
+    pruneS: firstDrop && zero ? (zero.t - firstDrop.t) / 1000 : null,
+    fullCheckS: fullCheckSeconds(join(out, "logs"), start),
+  };
+  writeFileSync(join(out, "prune-watch.json"), JSON.stringify(series));
+}
 await sleep(3000);
 for (const pid of daemonPids().values()) {
   try {
@@ -308,3 +339,39 @@ function meanBusy(fromSample) {
 }
 
 export { quantile };
+
+/**
+ * Churn cells: every 5 s, from a read-only connection, the results older than
+ * the 7-day retention (an indexed count), so the cell sees when prune starts
+ * and when it has deleted them all.
+ */
+function watchPrune(file) {
+  const cutoff = () => Date.now() - 7 * 86_400_000;
+  const read = () => {
+    try {
+      const db = new DatabaseSync(file, { readOnly: true });
+      db.exec("PRAGMA busy_timeout = 2000");
+      const old = Number(
+        db.prepare("SELECT COUNT(*) AS n FROM results WHERE recorded_at < ?").get(cutoff()).n,
+      );
+      db.close();
+      pruneWatch.series.push({ t: Date.now(), old });
+    } catch (error) {
+      pruneWatch.series.push({ t: Date.now(), error: String(error) });
+    }
+  };
+  read();
+  pruneWatch.timer = setInterval(read, 5000);
+}
+
+/** Seconds from the daemon start at `since` to its "full integrity check: ok" log line; null without one. */
+function fullCheckSeconds(logDir, since) {
+  if (!existsSync(logDir)) return null;
+  for (const f of readdirSync(logDir)) {
+    for (const line of readFileSync(join(logDir, f), "utf8").split("\n")) {
+      const m = /^(\S+Z) .*full integrity check: ok/.exec(line);
+      if (m && Date.parse(m[1]) >= since) return (Date.parse(m[1]) - since) / 1000;
+    }
+  }
+  return null;
+}

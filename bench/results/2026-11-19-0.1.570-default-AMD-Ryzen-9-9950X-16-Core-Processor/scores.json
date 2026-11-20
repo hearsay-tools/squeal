@@ -65,16 +65,85 @@
     ],
     "endedAt": "2026-11-19T22:54:19.518Z"
   },
-  "overall": 61.25,
+  "correctness": "pass",
+  "gateFails": {
+    "ref": [],
+    "size-s": [],
+    "size-l": [],
+    "wt-3": [],
+    "wt-6": [],
+    "load-50": [],
+    "load-100": [],
+    "stress": []
+  },
+  "overall": 56.0625,
   "scores": {
-    "ref": 67.5,
-    "size-s": 85,
-    "size-l": 55,
-    "wt-3": 70,
-    "wt-6": 57.5,
-    "load-50": 57.5,
-    "load-100": 47.5,
-    "stress": 50
+    "ref": 65.5,
+    "size-s": 86.5,
+    "size-l": 45.99999999999999,
+    "wt-3": 62.5,
+    "wt-6": 48,
+    "load-50": 54,
+    "load-100": 42,
+    "stress": 44.00000000000001
+  },
+  "areaScores": {
+    "ref": {
+      "Hooks": 0.625,
+      "Commands": 0.75,
+      "Verdicts": 0.4,
+      "Resources": 0.75,
+      "Store": 0.75
+    },
+    "size-s": {
+      "Hooks": 0.75,
+      "Commands": 0.875,
+      "Verdicts": 0.7,
+      "Resources": 1,
+      "Store": 1
+    },
+    "size-l": {
+      "Hooks": 0.5,
+      "Commands": 0.75,
+      "Verdicts": 0.3,
+      "Resources": 0.25,
+      "Store": 0.5
+    },
+    "wt-3": {
+      "Hooks": 0.625,
+      "Commands": 1,
+      "Verdicts": 0.5,
+      "Resources": 0.5,
+      "Store": 0.5
+    },
+    "wt-6": {
+      "Hooks": 0.5,
+      "Commands": 0.75,
+      "Verdicts": 0.4,
+      "Resources": 0.25,
+      "Store": 0.5
+    },
+    "load-50": {
+      "Hooks": 0.5,
+      "Commands": 0.75,
+      "Verdicts": 0.2,
+      "Resources": 0.75,
+      "Store": 0.5
+    },
+    "load-100": {
+      "Hooks": 0.5,
+      "Commands": 0.5,
+      "Verdicts": 0.1,
+      "Resources": 0.5,
+      "Store": 0.5
+    },
+    "stress": {
+      "Hooks": 0.5,
+      "Commands": 0.5,
+      "Verdicts": 0.2,
+      "Resources": 0.5,
+      "Store": 0.5
+    }
   },
   "values": {
     "ref": {
@@ -102,7 +171,11 @@
       "store.longWrites": 2,
       "store.lockFailures": 0,
       "store.size": 19.88249969482422,
-      "store.results": 7728
+      "store.results": 7728,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "size-s": {
       "hook.preToolUse.p95": 89.64523799999586,
@@ -129,7 +202,11 @@
       "store.longWrites": 0,
       "store.lockFailures": 0,
       "store.size": 6.981071472167969,
-      "store.results": 1722
+      "store.results": 1722,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "size-l": {
       "hook.preToolUse.p95": 242.89736930000362,
@@ -156,7 +233,11 @@
       "store.longWrites": 14,
       "store.lockFailures": 0,
       "store.size": 62.29737091064453,
-      "store.results": 28672
+      "store.results": 28672,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "wt-3": {
       "hook.preToolUse.p95": 177.41737340001848,
@@ -183,7 +264,11 @@
       "store.longWrites": 13,
       "store.lockFailures": 0,
       "store.size": 35.821563720703125,
-      "store.results": 15890
+      "store.results": 15890,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "wt-6": {
       "hook.preToolUse.p95": 253.15966414995046,
@@ -210,7 +295,11 @@
       "store.longWrites": 24,
       "store.lockFailures": 0,
       "store.size": 58.50225067138672,
-      "store.results": 26264
+      "store.results": 26264,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "load-50": {
       "hook.preToolUse.p95": 467.06167750004147,
@@ -237,7 +326,11 @@
       "store.longWrites": 5,
       "store.lockFailures": 0,
       "store.size": 21.350189208984375,
-      "store.results": 7728
+      "store.results": 7728,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "load-100": {
       "hook.preToolUse.p95": 651.2884542999437,
@@ -264,7 +357,11 @@
       "store.longWrites": 9,
       "store.lockFailures": 0,
       "store.size": 16.86553192138672,
-      "store.results": 5012
+      "store.results": 5012,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     },
     "stress": {
       "hook.preToolUse.p95": 787.5729263999965,
@@ -291,7 +388,11 @@
       "store.longWrites": 49,
       "store.lockFailures": 0,
       "store.size": 44.785179138183594,
-      "store.results": 9086
+      "store.results": 9086,
+      "store.prune.doneMin": null,
+      "store.prune.s": null,
+      "store.fullCheck.s": null,
+      "session.failed": 0
     }
   }
 }
