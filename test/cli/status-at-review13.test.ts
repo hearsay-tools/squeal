@@ -5,7 +5,7 @@ import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
 import { liveDaemon } from "./status-at-daemon.js";
-import { atHead, clean, run, testOf, withStore } from "./status-at-kit.js";
+import { clean, run, runCommit, testOf, withStore } from "./status-at-kit.js";
 import { alive, gone } from "./status-at-processes.js";
 
 /*
@@ -17,6 +17,8 @@ import { alive, gone } from "./status-at-processes.js";
  * test of an earlier batch started does not outlive its batch. B4: a file
  * only the commit's closure selects keeps its known current state. B5: a
  * source path runs only its readers.
+ * Row 023-29 (review wave-18 note 3): the runs at HEAD test the commit
+ * side's run alone, at its boundary (`runCommit`).
  */
 
 const SLOWER = { timeout: 180_000 } as const;
@@ -24,12 +26,10 @@ const ON = { "squeal.config.json": "{}\n" };
 const INCLUDE = {
   "vitest.config.mjs": 'export default { test: { include: ["test/*.test.ts"] } };\n',
 };
-// Row 023-29: these runs are at HEAD; the tree is made dirty and only the commit side runs.
 const options = (f: Fixture, batchFiles?: number) => ({
   cacheRoot: f.cacheRoot,
   install: linkInstall().install,
   ...(batchFiles === undefined ? {} : { batchFiles }),
-  ...atHead(f),
 });
 const all = (seconds: number) => ({ allMissing: true, timeoutSeconds: seconds });
 const diff = (seconds: number) => ({ allMissing: false, timeoutSeconds: seconds });
@@ -76,7 +76,7 @@ describe("review wave-13 B1: a batch after a changed checkout is not the commit'
         ].join("\n"),
       });
       const head = git(f.root, "rev-parse", "HEAD").trim();
-      const both = await run(f, { commit: head, json: true, run: all(90) }, options(f, 1));
+      const both = await runCommit(f, { commit: head, run: all(90) }, options(f, 1));
       const value = JSON.parse(both.out);
       expect(fileOf(both.out, "test/a.test.ts")?.at).toMatchObject({
         state: "pass",
@@ -91,7 +91,7 @@ describe("review wave-13 B1: a batch after a changed checkout is not the commit'
       clean(f);
       // The control: a.test.ts is stored now, so the next call runs z alone, in a checkout no
       // test changed: it fails at the commit, and is stored so.
-      const alone = await run(f, { commit: head, json: true, run: all(90) }, options(f, 1));
+      const alone = await runCommit(f, { commit: head, run: all(90) }, options(f, 1));
       expect(fileOf(alone.out, "test/z.test.ts")?.at).toMatchObject({
         state: "fail",
         origin: { kind: "run", stored: true },
@@ -134,7 +134,7 @@ describe("review wave-13 B2: a stopped batch is read where the gate kept it", SL
       ].join("\n"),
     });
     const head = git(f.root, "rev-parse", "HEAD").trim();
-    const stopped = await run(f, { commit: head, json: true, run: all(20) }, options(f));
+    const stopped = await runCommit(f, { commit: head, run: all(20) }, options(f));
     const at = fileOf(stopped.out, "test/a.test.ts")?.at;
     expect(at).toMatchObject({ state: "pass", origin: { kind: "run", stored: true } });
     expect(JSON.parse(stopped.out).run).toMatchObject({ ran: 1, stored: 1, notRun: 0 });
@@ -175,7 +175,7 @@ describe("review wave-13 B3: an earlier batch's processes end with it", SLOW, ()
     const head = git(f.root, "rev-parse", "HEAD").trim();
     let pid = 0;
     try {
-      const ran = await run(f, { commit: head, json: true, run: all(60) }, options(f, 1));
+      const ran = await runCommit(f, { commit: head, run: all(60) }, options(f, 1));
       expect(JSON.parse(ran.out).run).toMatchObject({ ran: 2, stored: 2 });
       expect(JSON.parse(ran.out).run.batches).toHaveLength(2);
       pid = Number(readFileSync(out, "utf8"));
@@ -209,7 +209,7 @@ describe(
       const { f, a } = moved();
       const head = git(f.root, "rev-parse", "HEAD").trim();
       // HEAD's pass stored by naming the test file.
-      await run(f, { commit: head, paths: ["test/a.test.ts"], run: all(60) }, options(f));
+      await runCommit(f, { commit: head, paths: ["test/a.test.ts"], run: all(60) }, options(f));
       const byName = await run(f, { commit: a, paths: ["test/a.test.ts"], json: true }, options(f));
       const bySource = await run(f, { commit: a, paths: ["src/a.ts"], json: true }, options(f));
       expect(fileOf(byName.out, "test/a.test.ts")?.now).toMatchObject({ state: "pass" });

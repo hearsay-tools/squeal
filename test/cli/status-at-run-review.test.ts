@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type Fixture, fixture, git, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { clean, run, testOf } from "./status-at-kit.js";
+import { clean, run, runCommit, testOf } from "./status-at-kit.js";
 
 /*
  * Row 023-07, review wave-7 (`reviews/wave-7.md`) B2, B4, B6, B7 (B5 is `status-at-run-inputs.test.ts`'s): each
@@ -113,16 +113,15 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
       "vitest.config.mjs":
         'export default { test: { include: ["test/*.test.ts"], globals: true } };\n',
     });
-    // Row 023-29: the commit side only. A working tree run here would store both files at the
-    // keys B has, and the second call would find results at B and select nothing.
-    const commitOnly = { ...options(f), workingTree: false } as const;
-    const config = await run(f, { commit: a, json: true, run: RUN }, commitOnly);
+    // Row 023-29 (review wave-18 note 3): the commit side's run at its boundary. A working tree
+    // run here would store both files at the keys B has, and B would select nothing.
+    const config = await runCommit(f, { commit: a, run: RUN }, options(f));
     expect(JSON.parse(config.out).run).toMatchObject({ selected: 2, ran: 2 });
     expect(atOf(config.out, TEST.path)?.state).toBe("pass");
 
     const b = head(f);
     f.commit({ "data/x.json": '{ "changed": true }\n' });
-    const input = await run(f, { commit: b, json: true, run: RUN }, commitOnly);
+    const input = await runCommit(f, { commit: b, run: RUN }, options(f));
     expect(JSON.parse(input.out).run).toMatchObject({ selected: 1, ran: 1 });
     expect(atOf(input.out, "test/data.test.ts")).toMatchObject({
       state: "pass",

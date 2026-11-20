@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { prove, resultRows } from "./proof-kit.js";
-import { atHead, clean, run } from "./status-at-kit.js";
+import { clean, run, runCommit } from "./status-at-kit.js";
 
 /*
  * Review wave-11 B1 (row 023-18): a run file's outcome is read at the key the
@@ -37,8 +37,7 @@ function mutating() {
   const a = git(f.root, "rev-parse", "HEAD").trim();
   f.commit({ "data/a.txt": "2\n" });
   const b = git(f.root, "rev-parse", "HEAD").trim();
-  // Row 023-29: B is HEAD; the tree is made dirty, and only the commit side runs.
-  const options = { cacheRoot: f.cacheRoot, install: linkInstall().install, ...atHead(f) };
+  const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
   return { f, a, b, options };
 }
 
@@ -57,7 +56,8 @@ describe(
   () => {
     it("status --at --run shows A's failure, not B's stored pass", async () => {
       const { f, a, b, options } = mutating();
-      const atB = await run(f, { commit: b, json: true, run: RUN }, options);
+      // Row 023-29 (review wave-18 note 3): B is HEAD; the commit side's run at its boundary.
+      const atB = await runCommit(f, { commit: b, run: RUN }, options);
       expect(JSON.parse(atB.out).run, atB.err).toMatchObject({ ran: 1, stored: 1 });
       expect(rowOf(atB.out)?.at.state).toBe("pass");
       const bKey = rowOf(atB.out)?.at.key;
@@ -87,7 +87,8 @@ describe(
     it("squeal proof: the red side's failure is not replaced by HEAD's stored pass", async () => {
       const { f, a, b, options } = mutating();
       // HEAD's pass is stored first, at the key the red checkout has after its run.
-      const atB = await run(f, { commit: b, json: true, run: RUN }, options);
+      // Row 023-29 (review wave-18 note 3): B is HEAD; the commit side's run at its boundary.
+      const atB = await runCommit(f, { commit: b, run: RUN }, options);
       expect(JSON.parse(atB.out).run, atB.err).toMatchObject({ stored: 1 });
       clean(f);
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
-import { check, clean, run, testOf, withStore } from "./status-at-kit.js";
+import { check, clean, run, runCommit, testOf, withStore } from "./status-at-kit.js";
 
 /*
  * Row 023-19 (lessons P3) on `$TMPDIR` git fixtures with the real Vitest
@@ -71,19 +71,13 @@ describe("status --at --run at its budget (row 023-19, P3)", SLOW, () => {
   it("keeps and reports a batch that completed, and ends at the budget when a later one cannot", async () => {
     const { f, a } = held();
     const budget = 45;
-    // Row 023-29: the commit side only, which this test holds at its budget.
-    const options = {
-      cacheRoot: f.cacheRoot,
-      install: linkInstall().install,
-      batchFiles: 1,
-      workingTree: false,
-    } as const;
-    const ran = await run(
+    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install, batchFiles: 1 };
+    // Row 023-29 (review wave-18 note 3): the commit side's run, held at its budget, at its boundary.
+    const ran = await runCommit(
       f,
-      { commit: a, json: true, run: { allMissing: false, timeoutSeconds: budget } },
+      { commit: a, run: { allMissing: false, timeoutSeconds: budget } },
       options,
     );
-    expect(ran.code).toBe(3);
     const value = JSON.parse(ran.out);
     // Z's run ended and was kept before its close held: read at its key, not lost to the stop.
     for (const path of [A1.path, A2.path, Z.path])

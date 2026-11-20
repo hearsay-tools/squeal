@@ -1,28 +1,20 @@
 import { existsSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { type CheckoutHooks, resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
+import { resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
 import type { CheckoutOptions } from "../core/commit/at-keys-walk.js";
 import { squealVersion } from "../core/daemon/version.js";
-import { readHead } from "../core/daemon-loop/head.js";
-import { runGit } from "../core/fs/git.js";
 import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
-import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
+import { assembleReport } from "./status-at-assemble.js";
 import { workingTree } from "./status-at-both.js";
-import { commitSide } from "./status-at-commit.js";
-import { headRefusal, nextOf, nextProbe } from "./status-at-next.js";
+import { commitRun } from "./status-at-commit-run.js";
+import { headRefusal } from "./status-at-next.js";
 import { listLate, nowSide } from "./status-at-now.js";
 import { unionRefs } from "./status-at-refs.js";
-import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
-import {
-  type AtRun,
-  type AtRunInput,
-  atRun,
-  RUN_TIMEOUT_SECONDS,
-  type RunArgs,
-} from "./status-at-run.js";
+import { exitCode, formatAt, jsonAt } from "./status-at-report.js";
+import { RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
 import { runChild, takeRunRequest } from "./status-at-run-child.js";
 
 /*
@@ -35,17 +27,12 @@ import { runChild, takeRunRequest } from "./status-at-run-child.js";
  * (`status-at-run.ts`), and are stored at the commit's keys.
  */
 
-/** The checkout's own install budget (row 023-16), when `--run`'s is longer. */
-const INSTALL_TIMEOUT_MS = 300_000;
-
 /**
  * What tests set beside the CLI's own: the checkout's place and install;
  * row 023-19, `--run`'s paths per batch (else sized from this machine).
  */
 export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install"> & {
   readonly batchFiles?: number;
-  /** Tests of the commit side's run only: `false` keeps `--run` off the working tree (R1). */
-  readonly workingTree?: false;
 };
 
 export interface AtArgs {
@@ -163,7 +150,13 @@ export function worktreeOf(
   return { cwd, root, commonDir };
 }
 
-/** D1: exit 0 when every file is known on both sides, 3 when one is not, 2 on a usage or setup error. */
+/**
+ * D1: exit 0 when every file is known on both sides, 3 when one is not, 2
+ * on a usage or setup error. The order: HEAD's refusal before any keying
+ * (`locate`), the current side, the commit side with `--run`'s run and the
+ * working tree's turn inside it (`commitRun`, whose run owns the one
+ * deadline), the working tree's last pass and its read again, the report.
+ */
 export async function statusAtCommand(
   args: AtArgs,
   io: CliIo,
@@ -182,103 +175,47 @@ export async function statusAtCommand(
   const nowMs = (io.now ?? Date.now)();
   const worktreeId = worktreeIdFor(root);
   const keying = { adapters: daemonAdapters, squealVersion: squealVersion(), env };
-  const input = { ...keying, root, commonDir, worktreeId, paths, now: nowMs };
-  const now = await withStores(commonDir, (main) => nowSide({ ...input, main }));
+  const read = { ...keying, root, commonDir, worktreeId, paths, now: nowMs };
+  const now = await withStores(commonDir, (main) => nowSide({ ...read, main }));
   if (!args.json)
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
+  const run = args.run ?? null;
+  // The estimate goes to stderr in both modes (D4.5); the run's own notes in text mode.
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
-  const runArgs = args.run ?? null;
-  const { batchFiles, workingTree: onTree, ...checkoutOptions } = options;
   const forward = (text: string) => (args.json ? undefined : io.stderr(text));
-  const batch = batchFiles === undefined ? {} : { batchFiles };
+  const batch = options.batchFiles === undefined ? {} : { batchFiles: options.batchFiles };
+  const relaunch = io.relaunch;
   // Row 023-29 (R1): the working tree's side, which takes its turn inside the commit side's run.
-  const tree = workingTree({
-    now,
-    read: input,
-    timeoutSeconds: runArgs?.timeoutSeconds ?? 0,
-    relaunch: io.relaunch,
-    forward,
-    ...batch,
-  });
-  const ran = startRun(args, runArgs, {
+  const timeoutSeconds = run?.timeoutSeconds ?? 0;
+  const tree = workingTree({ now, read, timeoutSeconds, relaunch, forward, ...batch });
+  const side = await commitRun({
     root,
     commonDir,
-    own: worktreeId,
+    worktreeId,
     commit,
+    given: args.commit,
+    givenPaths: args.paths,
+    paths,
+    run,
     env,
-    relaunch: io.relaunch,
-    // The estimate goes to stderr in both modes (D4.5); the run's own notes in text mode.
+    relaunch,
     note,
     forward,
-    ...batch,
-    ...(onTree === false ? {} : { now: tree }),
+    options,
+    now: tree,
   });
-  // Row 023-24 (Q1): without `--run`, what it would run, for the report's last line.
-  const probe =
-    ran === null ? nextProbe({ root, commit, given: args.commit, paths: args.paths }) : null;
-  const at = await commitSide({
-    ...keying,
-    ...checkoutOptions,
-    root,
-    commit,
-    paths,
-    worktreeId,
-    note,
-    ...hooksOf(ran, probe, runArgs),
-  });
-  const state = ran === null ? at.state : (ref: TestFileRef) => ran.state(ref, at.state(ref));
-  const sides = { now: now.sources, at: at.sources, failed: at.failure !== null };
-  const { refs, unmatched } = unionRefs(now.refs, at.refs, paths, sides, root, commit);
+  const sides = { now: now.sources, at: side.at.sources, failed: side.at.failure !== null };
+  const { refs, unmatched } = unionRefs(now.refs, side.at.refs, paths, sides, root, commit);
   // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
-  const listed = await listLate(input, now, refs);
-  // Row 023-29 (R1): `--run` fills the working tree's side too, then reads it again.
-  const both = ran === null || onTree === false ? null : await tree.finish(ran, refs, listed);
+  const listed = await listLate(read, now, refs);
+  // R1: the working tree's last pass, to the run's deadline, then its read again.
+  const both = side.ran === null ? null : await tree.finish(side.ran, refs, listed);
   const current = both?.current ?? listed;
-  const files = compareSides(refs, state, current.state);
-  const head = await readHead(root);
-  const report: AtReport = {
-    commit,
-    commitTimeMs: await commitTime(root, commit),
-    head: head.head,
-    dirty: head.dirty,
-    now: current.source,
-    checkoutMs: at.checkoutMs,
-    inputCheckMs: at.inputCheckMs,
-    changed: at.changed,
-    failure: at.failure,
-    files,
-    ...(unmatched.length === 0 ? {} : { unmatched }),
-    ...(ran === null ? {} : { run: ran.use(both?.part) }),
-    ...nextOf(probe, at),
-  };
+  const part = both?.part ?? null;
+  const report = await assembleReport({ root, commit, refs, unmatched, current, side, part });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
-  return at.failure === null && unmatched.length === 0 ? exitCode(files) : 3;
-}
-
-/** D4: `--run`'s hooks for the commit's checkout, its budget from now; `null` without `--run`. */
-function startRun(
-  args: AtArgs,
-  runArgs: RunArgs | null,
-  base: Omit<AtRunInput, "args" | "given" | "paths" | "started">,
-): AtRun | null {
-  if (runArgs === null) return null;
-  const started = performance.now();
-  return atRun({ ...base, args: runArgs, given: args.commit, paths: args.paths, started });
-}
-
-/** The checkout's hooks: `--run`'s, with its install inside the one budget (D4.6), or Q1's probe. */
-function hooksOf(
-  ran: AtRun | null,
-  probe: ReturnType<typeof nextProbe> | null,
-  runArgs: RunArgs | null,
-): Pick<CheckoutOptions, "installTimeoutMs"> & CheckoutHooks {
-  if (ran === null) return probe === null ? {} : { whileOpen: probe.whileOpen };
-  return {
-    whileOpen: ran.whileOpen,
-    beforeRemove: ran.beforeRemove,
-    installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, (runArgs?.timeoutSeconds ?? 0) * 1000),
-  };
+  return side.at.failure === null && unmatched.length === 0 ? exitCode(report.files) : 3;
 }
 
 /** `path`, given from `cwd`, relative to `root` in git's form; `null` outside it. */
@@ -286,9 +223,4 @@ export function inRoot(root: AbsolutePath, cwd: AbsolutePath, path: string): Rel
   const rel = relative(root, resolve(cwd, path));
   if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
   return rel.split(sep).join("/");
-}
-
-async function commitTime(root: AbsolutePath, commit: string): Promise<number> {
-  const out = await runGit(root, ["show", "-s", "--format=%ct", commit]);
-  return Number(out.trim()) * 1000;
 }

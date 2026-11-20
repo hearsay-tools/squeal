@@ -1,11 +1,10 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { statusAtCommand } from "../../src/cli/status-at.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, link, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { atHead, clean, RELAUNCH, run, withStore } from "./status-at-kit.js";
+import { clean, run, runCommit, withStore } from "./status-at-kit.js";
 import { waitFor } from "./status-at-processes.js";
 
 /*
@@ -96,29 +95,23 @@ describe(
       const install = linkInstall().install;
       try {
         // A runs from the main worktree; its gate keeps the pass, then its close holds.
-        const first = run(
+        // Row 023-29 (review wave-18 note 3): the commit side's run at its boundary.
+        const first = runCommit(
           f,
-          { commit: a, json: true, run: all(30) },
-          // Row 023-29: the commit side only; the hold is the commit's.
-          { cacheRoot: f.cacheRoot, install, workingTree: false },
+          { commit: a, run: all(30) },
+          { cacheRoot: f.cacheRoot, install },
         );
         await waitFor(held, 60_000);
         await storedOnce(f);
         // Meanwhile B, from the linked worktree, stores a newer failure at another key.
         delete process.env.SQUEAL_R13_HELD;
-        const out: string[] = [];
-        const io = {
-          stdout: (t: string) => out.push(t),
-          stderr: () => {},
-          cwd: realpathSync(linked),
-          relaunch: RELAUNCH,
-        };
-        await statusAtCommand({ commit: b, paths: [], json: true, run: all(60) }, io, {
-          cacheRoot: f.cacheRoot,
-          install,
-          ...atHead({ ...f, root: realpathSync(linked) as AbsolutePath }),
-        });
-        const atB = atOf(out.join(""));
+        const fromB = await runCommit(
+          f,
+          { commit: b, run: all(60) },
+          { cacheRoot: f.cacheRoot, install },
+          realpathSync(linked),
+        );
+        const atB = atOf(fromB.out);
         expect(atB).toMatchObject({ state: "fail", origin: { kind: "run", stored: true } });
 
         const stopped = await first;
@@ -148,11 +141,10 @@ describe(
         [TEST.path]: 'import { expect, it } from "vitest";\nit("one", () => expect(1).toBe(1));\n',
       });
       const a = git(f.root, "rev-parse", "HEAD").trim();
-      const stopped = await run(
+      const stopped = await runCommit(
         f,
-        { commit: a, json: true, run: all(20) },
-        // Row 023-29: A is HEAD; the tree is made dirty, and only the commit side runs.
-        { cacheRoot: f.cacheRoot, install: linkInstall().install, ...atHead(f) },
+        { commit: a, run: all(20) },
+        { cacheRoot: f.cacheRoot, install: linkInstall().install },
       );
       expect(atOf(stopped.out)).toMatchObject({
         state: "pass",

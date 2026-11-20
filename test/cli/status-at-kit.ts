@@ -1,11 +1,17 @@
+import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect } from "vitest";
 import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
+import { commitRun } from "../../src/cli/status-at-commit-run.js";
+import type { RunArgs } from "../../src/cli/status-at-run.js";
+import { resolveCommit } from "../../src/core/commit/at-keys-checkout.js";
+import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
-import { type Fixture, git, linkInstall, write } from "../commit/at-keys-fixture.js";
+import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
 
 /*
  * Row 023-06: what the `status --at` fixture tests share: a test file's
@@ -72,12 +78,39 @@ export function clean(f: Fixture): void {
 }
 
 /**
- * Row 023-29: for a test of the commit side's run at HEAD. An untracked
- * file makes the tree dirty, so `--at HEAD --run` compares instead of
- * refusing (R2), with the same selection (the diff HEAD..HEAD is empty);
- * the options keep `--run` off the working tree (R1).
+ * Row 023-29 (review wave-18 note 3): the commit side's run alone, at the
+ * commit-run boundary (`commitRun` with no working tree's turn), for tests
+ * of that run: its batches, stops, stores and records. `out` is JSON with
+ * the fields of the command's report those tests read: each file's commit
+ * side, `run` and `failure`. `root`: the worktree it runs from.
  */
-export function atHead(f: Fixture): { readonly workingTree: false } {
-  write(f.root, { "scratch.txt": "dirty\n" });
-  return { workingTree: false };
+export async function runCommit(
+  f: Fixture,
+  args: { readonly commit: string; readonly paths?: readonly string[]; readonly run: RunArgs },
+  options: AtOptions = { cacheRoot: f.cacheRoot, install: linkInstall().install },
+  root: string = f.root,
+): Promise<{ readonly out: string; readonly err: string }> {
+  const tree = realpathSync(root) as AbsolutePath;
+  const commonDir = resolveCommonDir(tree);
+  if (commonDir === null) throw new Error(`${tree} is not in a git worktree`);
+  const err: string[] = [];
+  const paths = args.paths ?? [];
+  const side = await commitRun({
+    root: tree,
+    commonDir,
+    worktreeId: worktreeIdFor(tree),
+    commit: await resolveCommit(tree, args.commit),
+    given: args.commit,
+    givenPaths: paths,
+    paths: paths.length === 0 ? null : paths,
+    run: args.run,
+    env: { ...process.env },
+    relaunch: RELAUNCH,
+    note: (text) => err.push(`squeal: ${text}\n`),
+    forward: (text) => err.push(text),
+    options,
+  });
+  const files = side.at.refs.map((ref) => ({ ...ref, at: side.state(ref) }));
+  const out = JSON.stringify({ files, run: side.ran?.use() ?? null, failure: side.at.failure });
+  return { out, err: err.join("") };
 }
