@@ -14,7 +14,7 @@ No type changes.
 ## Decisions
 
 - **Order.** The snapshot is built before the verdict now, because the verdict needs its rows. All three run in the poll's read transaction (`pollStatus` opens one per read, `withStatusStore`), so the order does not change what they see. The verdict's held/fixed logic (`held`, `fixed`, `heldAsVerdict`, `untaken`) and the 023-26 `withUnlisted` call are unchanged.
-- **Standing time.** `readNamedFiles` keeps `standingAt` (row 011-63) as its `now`; the `reads` are rows, not a time, so it still names what held each file at the deadline's last millisecond. It passes `undefined` for `load` to keep the default `hostLoad`, as before.
+- **Standing time.** `readNamedFiles` keeps `standingAt` (row 011-63) as its `now`. Correction after review 0.1.578 B3: not every read is time-free. The snapshot reads its holds and slow slot at its own `now`; when `standingAt` is the deadline's last millisecond, the wait passes only states, keys, header and runs, and `readNamedFiles` reads holds and the slow slot again at `standingAt` (fix `0e005e67e`; the source comment and test title call it B1 by mistake). It passes `undefined` for `load` to keep the default `hostLoad`, as before.
 - **The test settles at once.** It names B (current pass) and C (current fail), so the first decided read is the last one, and the count covers the whole wait. A pending file would add earlier poll reads, which read only the named files' states.
 
 ## Checks
