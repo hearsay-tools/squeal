@@ -114,6 +114,33 @@ describe("readRecorded (row 018-29)", () => {
   });
 });
 
+describe("readRecorded touched paths (spec 018 D31, row 018-57)", () => {
+  it("returns the paths written, read with two contents, and below a removed tree, sorted", () => {
+    const dir = evidenceDir({
+      "1-0.ndjson": [
+        { e: { "a.txt": "one", "b.txt": "same", "c.txt": "c", "data/": "names" } },
+        { w: ["./", "z.txt"], t: ["out"] },
+      ],
+      "2-0.ndjson": [{ e: { "a.txt": "two", "data/": "other" } }, { w: ["b.txt"], t: [] }],
+    });
+    const recorded = readRecorded(dir);
+    expect(recorded.touched).toEqual(["./", "a.txt", "b.txt", "data/", "out", "z.txt"]);
+    expect(recorded.evidence).toEqual({ "c.txt": "c" });
+  });
+
+  it("returns all when a process withheld its paths", () => {
+    const dir = evidenceDir({ "1-0.ndjson": [{ e: { "a.txt": "a" } }, { w: [], t: [""] }] });
+    expect(readRecorded(dir).touched).toBe("all");
+  });
+
+  it("returns none for a command that wrote and changed nothing, or left no evidence", () => {
+    expect(readRecorded(evidenceDir({ "1-0.ndjson": [{ e: { "a.txt": "a" } }] })).touched).toEqual(
+      [],
+    );
+    expect(readRecorded(join(temp(), "missing")).touched).toEqual([]);
+  });
+});
+
 describe("uncertified (spec 018 D9)", () => {
   const here = (hashes: Record<string, string | null>) => (path: string) => hashes[path];
 
