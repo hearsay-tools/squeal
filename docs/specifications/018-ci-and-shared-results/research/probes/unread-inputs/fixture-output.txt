@@ -21,5 +21,5 @@ squeal ci export: no test file to export; left out: 1 test file whose inputs her
 today: left out test/a.test.ts; rule: leaves it out
   data/value.txt: written by a hooked process, rule does not apply
 == today-node-read-first: truth fail
-Exported 1 test file, 2 results, to /home/agent/projects/squeal/.ai/squawk/t/ff30bb95/r56/fx/today-node-read-first-out/export.json.gz.
+Exported 1 test file, 2 results, to ~/projects/squeal/.ai/squawk/t/ff30bb95/r56/fx/today-node-read-first-out/export.json.gz.
 today: no file left out for inputs
