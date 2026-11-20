@@ -143,3 +143,19 @@ The human, 2026-11-16: an agent wants to compare test results before and after a
 6. Recommend: lookup by label, computed keys, a key history, or none; with the numbers.
 
 Findings to `research/results-at-commit.md`; probes under `research/probes/results-at-commit/`. Nothing written outside your `$TMPDIR` and this folder; no daemon started in another checkout; no product code.
+
+## Topic: unread-inputs (2026-11-20, row 018-56)
+
+The human, 2026-11-20: "Unread input: A: research a rule change". D9 certifies a test file only when every input in its key has read-time evidence from the file's own shard. Two kinds of input never get it, and they now cost cezar about 445 Vitest files and 110 node:test files per merge (`research/node-test-left-out.md`; `research/left-out-files.md` causes C and D):
+- **C. Read only in another shard.** The input is in the file's static closure, and another shard read it at the commit's content. Example: cezar #3978's lazy `runners/*/…-model-catalog.ts`.
+- **D. Read by no hooked process.** A declared `inputs` file, or one that only `git`, a shell or native code reads. Example: cezar's six unread `.github/scripts/` files.
+
+1. **Soundness.** For each kind, can the export certify the input without a wrong pass? Candidate rules:
+   - C: the file's own shard never read the input, another shard read it at the export commit's content, and no write in any shard cancelled it.
+   - D: the input's content hash at the start and at the end of the command both equal the commit's blob, and no hooked process wrote it.
+   Name each way the input could still differ from what the test saw: writes by non-hooked processes, a write followed by a revert, native readers, files the test generates, symlinks, `.gitignore`d inputs. Name what each existing evidence rule (D9, rows 018-23 and 018-43) already bounds. Say which residual risk equals the one the human accepted on 2026-11-09 (D8's condition) and which is new.
+2. **Alternatives in the key, not the evidence.** A closure that keys only what the run loaded, or a lazily imported module keyed apart from the closure. What each costs in local exactness (spec 011 C-rules, a re-run missed), and whether it moves keys (`KEY_FORMAT_VERSION`, adapter versions).
+3. **Gain, measured.** Count the files each rule recovers on cezar runs 44805319389 (artifacts until 2026-11-23) and the newest merge-group run, and on this repository's own CI parts if any exist. Report per kind, per runner and in test-seconds.
+4. **Recommend** a rule or none, with a design sketch the coordinator can turn into a spec section, and the tests that would prove it. Put the question for the human in plain words, with the risk in one example.
+
+Findings go to `research/unread-inputs.md`; probes go under `research/probes/unread-inputs/`. Read-only on GitHub. Clones go in your `$TMPDIR`; start no daemon in another checkout. Use the released 0.1.579 CLI, or 0.1.580 once released.
