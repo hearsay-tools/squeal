@@ -1,0 +1,18 @@
+files: A 3, B 3, equal key 3
+environment py: equal
+files: A 3, B 3, equal key 0
+  differs: ('py', 'tests/test_entry_plugin.py') fields: []
+  differs: ('py', 'tests/test_resources.py') fields: []
+  differs: ('py', 'tests/unit/test_core.py') fields: []
+environment py: 
+  descriptor.config.hash: A=dec5663c47e0c770c20290f7fd666cfdfcb694e950bc9ffaa1ac2cda3fb67d54 | B=2e338fd1f05f9c25031afe0f25cbc996686615b81399e7efef1857f66db504e4
+  descriptor.files: A=[['.venv/pyvenv.cfg', '50c3d3e019ed467663b9bc6347250807c17ca4f8'], ['other.py', None], ['o | B=[['.venv/pyvenv.cfg', '18efc0bbc6f9710134029c3b4566fc4b8a935060'], ['other.py', None], ['o
+  hash: A=55c5081dd73e58adc36c65af754bee4cc9123f229853b9523629addea65d8372 | B=93c5d031411fba00384c15a58cfe04e523899cf310e9d9b058011e0d2f939add
+files: A 3, B 3, equal key 0
+  differs: ('py', 'tests/test_entry_plugin.py') fields: []
+  differs: ('py', 'tests/test_resources.py') fields: []
+  differs: ('py', 'tests/unit/test_core.py') fields: []
+environment py: 
+  descriptor.config.hash: A=dec5663c47e0c770c20290f7fd666cfdfcb694e950bc9ffaa1ac2cda3fb67d54 | B=dbf0c79aedd8cfebe5971aba658a8b5cadb7efa26ba6bcebf91a3ba5fe240ac7
+  descriptor.files: A=[['.venv/pyvenv.cfg', '50c3d3e019ed467663b9bc6347250807c17ca4f8'], ['other.py', None], ['o | B=[['.venv/pyvenv.cfg', 'ddbc0c8dab27466fff284599cf4585f1bccf2961'], ['other.py', None], ['o
+  hash: A=55c5081dd73e58adc36c65af754bee4cc9123f229853b9523629addea65d8372 | B=139638ada04627f3b05805e45f6f1173c0eec6d761406df813fb2b4de7269b16

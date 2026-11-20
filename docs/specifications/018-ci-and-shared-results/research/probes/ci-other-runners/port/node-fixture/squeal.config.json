@@ -1,0 +1,3 @@
+{
+  "nodeTest": [{ "name": "unit", "argv": [], "include": ["test/*.test.mjs"] }]
+}

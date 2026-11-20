@@ -1,0 +1,5 @@
+files: A 3, B 3, equal key 3
+environment unit: equal
+files: A 3, B 3, equal key 3
+environment unit: 
+  descriptor.ci: A=False | B=True

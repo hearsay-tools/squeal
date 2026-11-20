@@ -1,0 +1,33 @@
+node:test files: 148
+== A:  14:55:25 up  3:33,  2 users,  load average: 12.01, 17.74, 20.66
+Revision: 0
+Known failures: 0; not current: 1956 of 1956 test files (1956 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Complexity: 5 functions over 20; squeal code lists them.
+Coverage: 81 functions over CRAP 30, 1367 untested; 3589 files wait for test runs, which squeal run --all makes; 8 files unknown (8 because no test Squeal runs loads them); squeal code lists them.
+Lint: 0 files with findings; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 1808 test files without a result one by one and 7 notes
+Exported 148 test files, 2127 results, to $TMPDIR/cz/a.json.gz.
+Left out: 1808 test files with no result at the key.
+== A done in 525 s;  15:04:10 up  3:42,  2 users,  load average: 19.11, 17.40, 19.45
+== B:  15:04:10 up  3:42,  2 users,  load average: 19.11, 17.40, 19.45
+Revision: 0
+Known failures: 0; not current: 1956 of 1956 test files (1956 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Dry run, nothing written: would import 2127 results of 148 test files from local export at cd415ac2.
+Added where the store had none: 23 observed entries.
+Re-keyed 147 of 148 test files to this worktree's closure lists and environment at cd415ac2.
+Environment of project "root:test:unit": equal to this worktree's
+Environment of project "test:unit": equal to this worktree's
+Complexity: 5 functions over 20; squeal code lists them.
+Coverage: 92 functions over CRAP 30, 1429 untested; 3589 files wait for test runs, which squeal run --all makes; 8 files unknown (8 because no test Squeal runs loads them); squeal code lists them.
+Lint: 0 files with findings; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 1808 test files without a result one by one and 7 notes
+Exported 143 test files, 1979 results, to $TMPDIR/cz/b.json.gz.
+Left out: 1808 test files with no result at the key, 5 test files with a failure at the key.
+== B done in 537 s;  15:13:07 up  3:51,  2 users,  load average: 16.19, 18.06, 19.43
+files: A 148, B 143, equal key 143
+environment root:test:unit: equal
+environment test:unit: equal

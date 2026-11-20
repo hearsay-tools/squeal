@@ -1,0 +1,7 @@
+files: A 3, B 3, equal key 0
+  differs: ('py', 'tests/test_entry_plugin.py') fields: []
+  differs: ('py', 'tests/test_resources.py') fields: []
+  differs: ('py', 'tests/unit/test_core.py') fields: []
+environment py: 
+  descriptor.files: A=[['.venv/pyvenv.cfg', 'ddbc0c8dab27466fff284599cf4585f1bccf2961'], ['other.py', None], ['o | B=[['.venv/pyvenv.cfg', 'ca3f217368a7de750e085a59b97df27d1bf33fb6'], ['other.py', None], ['o
+  hash: A=139638ada04627f3b05805e45f6f1173c0eec6d761406df813fb2b4de7269b16 | B=bb8675dd98b9e783f61ce78eac0e5d4493a7d53049a23ec1a83f1baafd381cff
