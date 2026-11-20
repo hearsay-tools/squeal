@@ -41,3 +41,13 @@ Owns: `src/core/scheduler/{overrun,yields,yield-waits,tiers}.ts` where the end t
 Done when: tests: a 60-file narrow tier whose files end every 5 s runs 120 s with no overrun and no beside tier; a tier with one hung file and the others ended overruns at the threshold after its last ended file; the 011-399 and 011-405 tests pass (adjust only an expected age that now counts from the last progress, and say so in notes).
 
 Benchmark (process step 6c): the coordinator runs `ref,wt-3,load-50` on squeal--v0.1.572 and on the candidate (W1 to W3 together) and compares them in `tasks/011-417/bench.md`; workers do not run it.
+
+## W4: 011-421 the named wait's last read reuses the snapshot's rows (011-411 follow-up)
+
+Use /worker. Shape: repair. Outcome: the named wait's last read (`src/cli/wait/named.ts`, about line 192) builds its snapshot once with `buildSnapshotWithReads` and passes the rows to `readVerdict` and `readNamedFiles`, as `src/cli/wait/snapshot.ts` (about line 153) does since row 011-411, all in the snapshot's one read transaction. Output (text and JSON) is unchanged; it reads every state once instead of three times. Mind the order: today `readVerdict` runs before `buildSnapshot`; keep the verdict's held/fixed logic and the 023-26 "still starting" text as they are.
+
+Read: `tasks/011-411/notes.md`, `reviews/0.1.572.md`, spec 011 C6 (the 011-411 amendment), row 023-26's change in `named.ts` (0.1.577).
+
+Owns: `src/cli/wait/named.ts`, its tests (`test/cli/named-snapshot-reads.test.ts` may gain a named-wait case). Leave alone: W1 to W3's files.
+
+Done when: a test shows the named wait's final read reads the states once (statement or row count, as in `test/cli/named-snapshot-reads.test.ts`) with identical text and JSON; the existing named-wait tests pass.
