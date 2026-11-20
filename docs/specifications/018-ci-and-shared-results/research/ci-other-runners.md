@@ -110,6 +110,14 @@ So, for cezar, the same Node and an equal install are enough for every node:test
 4. pytest: is there a project that wants it? Without one, the key change of recommendation 4 has no measurement.
 5. Tools a test starts from `PATH` (npm, pnpm, git) are not keyed, for any runner. In cezar, 5 of 148 node:test files pass or fail by their presence at an equal key (section 4). Is "CI had the tools" an acceptable assumption for imported passes, as it is today for Vitest?
 
+## Answers from the human (2026-11-20, this task)
+
+1. Results capture: **the project adds the reporter flags** to its node:test command (option A). No `NODE_OPTIONS` reporters.
+2. cezar: **an extra recorded node:test run on 26.13.0** (`.node-version`), in merge groups only, outside the required checks; the 24.21.0 run stays. The cezar CI change needs the human's approval as before.
+3. Coverage: **split**. First the import treats node:test's coverage marker as equal for passes, as D10 does for Vitest. Recording node:test coverage in CI, as 020 D13 does for Vitest, is a later, separate work item.
+4. pytest (question 4) and tools on `PATH` (question 5): not answered; not needed for node:test.
+5. The human starts the spec 018 coordinator session that writes the design and proposes rows.
+
 ## Sources
 
 - Squeal at `47bc78ce4`: `src/runners/node-test/{adapter.ts,adapter-environment.ts,adapter-project.ts,recorders.ts,identity.ts,version.ts,coverage.ts}`, `run/{run.ts,observed.ts,reads.ts,report.ts}`, `runtime/recorder.cjs`; `src/runners/pytest/**` (`run/command.ts`, `run/run.ts`, `environment/hash.ts`, `adapter-environment.ts`, `runtime/squeal_pytest.py`, `runtime/sitecustomize.py`, `version.ts`); `src/runners/vitest/{ci-record.ts,ci-runs.ts,ci-runtime/*.cjs}`; `src/runners/observe/recorder.cjs`; `src/cli/{ci.ts,ci-export.ts}`; `src/core/ci/{parts.ts,export.ts,export-check.ts,reuse.ts,command.ts}`; `src/core/store/{transfer-bundle.ts,transfer-rekey.ts,transfer-import.ts}`; `src/core/keys/{environment.ts,environment-descriptor.ts,key-format.ts}`; `src/core/lint/store/`. Spec 018 D8 to D12; `research/key-rules.md`, `ci-step.md`, `import-trial.md`.
