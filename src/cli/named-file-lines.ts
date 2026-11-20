@@ -25,7 +25,6 @@ import type {
 } from "../core/types/standing.js";
 import type { StatusSnapshot } from "../core/types/status.js";
 import { fileEndId, withFileEnd } from "./named-file-end.js";
-import { unlistedText } from "./named-listing.js";
 import type { NamedSelection } from "./named-selection.js";
 import { namedStep, retriedId } from "./named-step.js";
 
@@ -191,15 +190,9 @@ export function filesCounted(parts: readonly (readonly [number, string])[]): str
  * Spec 005 D2's text for paths that select nothing; row 011-27 (gh-39): with
  * the directory each was resolved against and, when the same path from the
  * worktree root is a listed test file, that file, which it never selects.
- * Row 023-26 (Q7): while the listing is not done, only that, for every path.
  */
 export function unmatchedText(selection: NamedSelection): string {
-  const { unlisted } = selection;
-  if (unlisted !== undefined && unlisted.paths === undefined) return unlistedText(unlisted);
-  // Review wave-16 B2: a path new to the listing says only that, after the others' text.
-  const fresh = new Set(unlisted?.paths ?? []);
-  const listed = selection.unmatchedPaths
-    .filter((p) => !fresh.has(p.resolved))
+  return selection.unmatchedPaths
     .map((p) => {
       const base =
         p.base === undefined || (p.base === "" && p.given === p.resolved)
@@ -214,8 +207,6 @@ export function unmatchedText(selection: NamedSelection): string {
       return `no test file's closure holds ${p.resolved}${base}${root}${startsText(p.startsWith)}`;
     })
     .join("; ");
-  const late = unlisted === undefined ? "" : unlistedText(unlisted);
-  return [listed, late].filter((t) => t !== "").join("; ");
 }
 
 /** Row 011-406: `; it is not a file or folder; 2 listed test files start with it: a, b; name them`. */

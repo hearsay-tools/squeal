@@ -6,9 +6,8 @@ import { readNamedSnapshot } from "../../src/cli/status-paths.js";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { type NamedWaitOptions, namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
-import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
-import type { AbsolutePath, EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { A, B, finish, NOW, ref, repoWith } from "./status-wait-fixture.js";
 
@@ -201,10 +200,8 @@ describe("a path that is neither a file nor a folder (011-406)", () => {
   });
 
   it("a source path on disk keeps its closure text, without a prefix hint", async () => {
-    const { repo, store } = current();
+    const { repo } = current();
     writeFileSync(join(repo.main, "src", "a"), "");
-    // Review wave-16 B2: the listing holds the file: a daemon's start scan after it was written.
-    markScanned(store, repo.mainId, (Date.now() + 1_000) as EpochMs);
 
     const read = await snapshot(repo.main, ["src/a"]);
 

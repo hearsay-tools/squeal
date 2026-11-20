@@ -96,13 +96,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
     clean(f);
     // Row 023-20 (lessons P7): the text says why green did not run, never "not read".
     const text = await prove(f, { files: [TEST.path], base: a, json: false });
-    // Row 023-24 (Q6): what the proof does not show; Q5: the changed test's red side is not its result at a.
-    expect(text.out).toContain(
-      "  green: not run. Red passed, so this proof says nothing about HEAD; `squeal status test/a.test.ts` gives its result now.\n",
-    );
-    expect(text.out).toContain(
-      `not the file's own result at ${a.slice(0, 9)}; that is \`squeal status --at ${a.slice(0, 9)} test/a.test.ts\`.\n`,
-    );
+    expect(text.out).toContain("  green: not run (red passed: nothing to prove)\n");
     expect(text.out).not.toContain("not read");
     clean(f);
   });
