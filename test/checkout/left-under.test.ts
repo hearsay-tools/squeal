@@ -185,7 +185,28 @@ describe.runIf(linux)("processes left under a removed checkout", () => {
     expect(alive(inFolder)).toBe(false);
   });
 
-  it("tell a deleted checkout from a live sibling named '<checkout> (deleted)' by inode", async () => {
+  it("keep a live '<checkout> (deleted)' sibling whose parent is unsearchable", async () => {
+    // Fourth look's witness: the written path cannot be stat'ed (EACCES).
+    const parent = join(base, "locked");
+    const folder = join(parent, "folder");
+    mkdirSync(folder, { recursive: true });
+    mkdirSync(`${folder} (deleted)`);
+    const inside = await started(idle(folder));
+    const named = await started(idle(`${folder} (deleted)`));
+    chmodSync(parent, 0o600);
+    try {
+      expect(await endLeftUnder(folder, { graceMs: 200 })).toEqual({
+        ended: [{ pid: inside, name: "node" }],
+        running: [],
+      });
+    } finally {
+      chmodSync(parent, 0o755);
+    }
+    expect(alive(inside)).toBe(false);
+    expect(alive(named)).toBe(true);
+  });
+
+  it("tell a deleted checkout from a live sibling named '<checkout> (deleted)' by its link count", async () => {
     const folder = join(base, "folder");
     mkdirSync(folder);
     mkdirSync(`${folder} (deleted)`);

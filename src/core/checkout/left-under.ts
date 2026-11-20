@@ -244,10 +244,13 @@ const DELETED = " (deleted)";
 /**
  * The folder `pid` works in. The kernel reads a removed folder as its old
  * path plus " (deleted)", and a live folder can hold that text in its name
- * (review wave-18, third look). So the suffix is stripped only when the
- * path as read is not the process's folder: no folder there, or one with
- * another device and inode than `/proc/<pid>/cwd`'s. `null` when the
- * process's folder cannot be read at all.
+ * (review wave-18, third and fourth looks). Which one it is comes from the
+ * kernel's own stat of `/proc/<pid>/cwd`, never from the path as written:
+ * a removed directory has no links left (`nlink` 0), so only then is the
+ * suffix stripped; with links, the text is a live folder's real name. The
+ * written path is never read, so no error there (a parent made
+ * unsearchable) can make an outside folder read as the checkout. `null`
+ * when the link or its stat cannot be read: never under, so never signalled.
  */
 function cwdOf(proc: string, pid: number): string | null {
   const link = join(proc, String(pid), "cwd");
@@ -260,17 +263,7 @@ function cwdOf(proc: string, pid: number): string | null {
     return null;
   }
   if (!text.endsWith(DELETED)) return text;
-  const named = statOrNull(text);
-  const same = named !== null && named.dev === own.dev && named.ino === own.ino;
-  return same ? text : text.slice(0, -DELETED.length);
-}
-
-function statOrNull(path: string): BigIntStats | null {
-  try {
-    return statSync(path, { bigint: true });
-  } catch {
-    return null;
-  }
+  return own.nlink === 0n ? text.slice(0, -DELETED.length) : text;
 }
 
 function argvOf(proc: string, pid: number): string[] {
