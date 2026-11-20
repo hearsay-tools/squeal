@@ -12,6 +12,7 @@ import { daemonSocket } from "./daemon-access.js";
 import { takenRequest } from "./run-group.js";
 import type { SideState } from "./status-at-report.js";
 import type { NowRunUse } from "./status-at-report-run.js";
+import { estimateOf } from "./status-at-run-batches.js";
 import { type RunAnswer, runInChild } from "./status-at-run-child.js";
 import { setupCounts } from "./status-at-run-fit.js";
 import { runBatches } from "./status-at-run-loop.js";
@@ -205,10 +206,12 @@ async function throughGate(input: NowRunInput): Promise<NowRunEnd> {
       const s = states.get(testFileId(ref));
       return s?.state === "not run" && s.reason === "budget";
     });
-    const known = left.map((ref) => durations?.of(ref) ?? null);
-    const leftEstimate = known.some((s) => s !== null)
-      ? Math.round(known.reduce<number>((sum, s) => sum + (s ?? 0), 0))
-      : null;
+    // D17.1, as the commit side estimates its left files: one Vitest-wide run.
+    const of = durations?.of ?? (() => null);
+    const leftEstimate = estimateOf(
+      left.map((ref) => ({ ref })),
+      of,
+    ).seconds;
     return { how: "gate", gateMs: end.gateMs, states, problem, leftEstimate };
   } finally {
     durations?.close();

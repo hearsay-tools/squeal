@@ -29,7 +29,7 @@ export const runWidth = () => Math.max(1, availableParallelism() - 1);
 
 /** D17.1: the files' estimate from their stored durations, as one Vitest-wide run. */
 export function estimateOf(
-  files: readonly KeyedFile[],
+  files: readonly Pick<KeyedFile, "ref">[],
   durationOf: (ref: TestFileRef) => number | null,
   width = runWidth(),
 ): RunEstimate {
