@@ -104,6 +104,13 @@ export interface CiExportCounts {
    * part holds no evidence of; `CiExport.nodeTestLines` says why.
    */
   readonly nodeTestLeftOut: number;
+  /**
+   * Of `testFiles`: the files with an input that no hooked process of
+   * their shard's command read, listed or wrote, certified by its hashes
+   * at the command's start and end (spec 018 D33). The rest of the export
+   * rests on read-time evidence alone (D9).
+   */
+  readonly endpoints: number;
 }
 
 /** A file left out because its shard's evidence does not certify these inputs' content here. */
@@ -200,6 +207,7 @@ async function exportWith(
   const parted = await keyPartsOf(input, keys, environments, closures);
   const certify = certifier(input.root, keys, parts);
   const uncertified: UncertifiedFile[] = [];
+  const onEnds = new Set<string>();
   const provenance: Provenance = {
     worktreeId,
     revision: 0,
@@ -215,11 +223,12 @@ async function exportWith(
     const keyParts = parted(ref);
     if (key === null || closure === undefined || keyParts === null) continue;
     const { paths, complete, method } = closure;
-    const inputs = await certify(ref, paths);
+    const { uncertified: inputs, endpoints: ends } = await certify(ref, paths);
     if (inputs.length > 0) {
       uncertified.push({ testFile: ref, inputs });
       continue;
     }
+    if (ends.length > 0) onEnds.add(testFileId(ref));
     const describe = describeFailure;
     const records = recordsForFile({ ref, key, report, previousChecks: [], provenance, describe });
     exported.push({
@@ -242,6 +251,7 @@ async function exportWith(
       unwatched,
       absolute: absolute.length,
       nodeTestLeftOut: assignment.leftOut,
+      endpoints: bundle.testFiles.filter((f) => onEnds.has(testFileId(f))).length,
     },
     uncertified,
     absolute,

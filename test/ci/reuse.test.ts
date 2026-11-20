@@ -120,10 +120,10 @@ describe("FileReuse.evidence: one input certification for both readers (row 020-
       uncertified: ["test/a.test.ts", "data/x.txt"],
     });
     const keys = { cache: { hashOf: here } } as unknown as WorktreeKeys;
-    expect(await certifier("/no-root", keys, parts)(REF, INPUTS)).toEqual([
-      "test/a.test.ts",
-      "data/x.txt",
-    ]);
+    expect(await certifier("/no-root", keys, parts)(REF, INPUTS)).toEqual({
+      uncertified: ["test/a.test.ts", "data/x.txt"],
+      endpoints: [],
+    });
   });
 
   it("reads content here through the reader's own reading, only for an input the part holds evidence of", async () => {

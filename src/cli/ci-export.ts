@@ -238,7 +238,17 @@ export function countsText(counts: CiExportCounts, file: string): string {
   const results = `${counts.results} result${counts.results === 1 ? "" : "s"}`;
   const left = leftOut(counts);
   const leftText = left.length === 0 ? "" : `\nLeft out: ${left}.`;
-  return `Exported ${files(counts.testFiles)}, ${results}, to ${file}.${leftText}`;
+  return `Exported ${files(counts.testFiles)}, ${results}, to ${file}.${endsText(counts)}${leftText}`;
+}
+
+/**
+ * Spec 018 D33: how much of the export rests on inputs nothing in their
+ * shard's command touched, certified by hashes at its start and end.
+ */
+function endsText({ endpoints }: CiExportCounts): string {
+  if (endpoints === 0) return "";
+  const verb = endpoints === 1 ? "rests" : "rest";
+  return `\n${endpoints} of them ${verb} on inputs that nothing in their shard's command read, listed or wrote, certified by equal hashes at the command's start and end.`;
 }
 
 const nameOf = (testFile: { readonly project: string; readonly path: string }): string =>
