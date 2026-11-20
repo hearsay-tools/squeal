@@ -33,7 +33,7 @@ The boat.dev $20 plan (`box_20`) offers three sizes:
 
 **Reference: `default`, 4 vCPU, 8 GB.** It is close to a developer laptop, which is where Squeal runs. With 4 vCPUs, extra worktrees and ambient load show their effect early. `large` is the second machine, used to show whether a problem comes from Squeal's design or from too few CPUs: `bench/boat-run.sh --type large`.
 
-**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike. `boat-run.sh` therefore retries until it gets a Ryzen 9 9950X (the most common). `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s). Only compare runs on the same CPU model.
+**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike. `boat-run.sh` therefore retries until it gets a Ryzen 9 9950X (`--cpu ""` takes any CPU). This is not always possible: on 2026-11-20, 12 tries in a row gave a Ryzen 7 9700X. `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s). Only compare runs on the same CPU model. A run that compares cells, such as store sizes, should include `ref`, so every cell it compares runs on one machine.
 
 ## The project
 
@@ -65,6 +65,10 @@ The benchmark varies one factor at a time from the reference cell, and adds one 
 | load-50 | 500 | 1 | 50% |
 | load-100 | 500 | 1 | 100% |
 | stress | 500 | 6 | 100% |
+| store-1.7g | 500 | 1 | 0% (store aged 70 rounds, 2.0 GB) |
+| store-7g | 500 | 1 | 0% (store aged 326 rounds, 9.2 GB) |
+
+The two store cells run the reference cell on a store that already holds a week of history. After the full run, `age-store.mjs` adds rounds of history: every test file gets a new content key, with its results, one `loaded_modules` list of real-store size (about 50 KB) and the runs that recorded them. All of it is dated within the last 7 days and is older than the real rows. The shape follows Squeal's own store on 2026-11-20: 7.2 GB, 82% of it in `loaded_modules` (163k rows, 46 KB each) and 1.74M `results` rows. 326 rounds gives that store's `loaded_modules` row count; 70 rounds gives its rows per test file, scaled to 500 test files.
 
 Ambient load (`load.mjs`) is busy-loop threads at normal priority on that share of the vCPUs. It stands for another agent's build or test run.
 
@@ -130,6 +134,7 @@ Each metric has a healthy limit and a warn limit. A metric within the healthy li
 | `run-cell.mjs` | One cell |
 | `session.mjs` | One scripted agent session |
 | `gen-project.mjs` | The synthetic project |
+| `age-store.mjs` | Adds a week of history to a store, for the store cells |
 | `load.mjs` | Ambient CPU load |
 | `summarize.mjs` | `scorecard.md` and `scores.json` from a results directory; the limits live here |
 | `lib.mjs` | Timing, `/proc` reading, the seeded random generator |
@@ -137,7 +142,7 @@ Each metric has a healthy limit and a warn limit. A metric within the healthy li
 
 ## What it does not cover yet
 
-- **Store age.** Every cell starts on a fresh store. A store that holds a week of history (retention is 7 days) is larger, and its reads and prunes cost more.
+- **Store churn.** The store cells measure a large store, not a week of churn. All aged rows are inside the 7-day window, so prune deletes nothing, and freshly inserted rows leave no free pages. A real store deletes about a day of history (about 1.5 GB for Squeal's own) every day, and the daily integrity check reads the whole file.
 - **Other runners and harnesses.** It tests only Vitest through the Claude Code plugin; not node:test, pytest, Codex, OpenCode or Pi.
 - **Disk and memory pressure.** The ambient load is CPU only.
 - **Real model sessions.** The edit rhythm is scripted. `evals/` has real sessions.
