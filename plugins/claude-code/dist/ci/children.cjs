@@ -46,6 +46,7 @@ const childProcess = require("node:child_process");
 const path = require("node:path");
 const workerThreads = require("node:worker_threads");
 const { pathToFileURL } = require("node:url");
+const { ownMap } = require("./own-map.cjs");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
 /** The prefix of the variables a child keeps from this process (D24.2). */
@@ -168,18 +169,20 @@ function wrapChildren(replace, evidence) {
     );
     const lacking = carriedNames().filter((name) => env[name] === undefined);
     if (missing.length === 0 && lacking.length === 0 && own === want) return env;
-    const out = inherited ? {} : { ...env };
-    if (inherited) for (const key in env) out[key] = env[key];
-    out[VARIABLE] = want;
-    for (const name of lacking) out[name] = process.env[name];
-    if (missing.length > 0) {
-      const require = REQUIRE.test(options);
-      const added = missing
-        .map(({ file, url }) => (require ? `--require ${quote(file)}` : `--import ${quote(url)}`))
-        .join(" ");
-      out.NODE_OPTIONS = options.trim() === "" ? added : `${added} ${options}`;
-    }
-    return out;
+    const read = [];
+    if (inherited) for (const key in env) read.push([key, env[key]]);
+    else read.push(...Object.entries(env));
+    const byRequire = REQUIRE.test(options);
+    const added = missing
+      .map(({ file, url }) => (byRequire ? `--require ${quote(file)}` : `--import ${quote(url)}`))
+      .join(" ");
+    const preload = options.trim() === "" ? added : `${added} ${options}`;
+    return ownMap([
+      ...read,
+      [VARIABLE, want],
+      ...lacking.map((name) => [name, process.env[name]]),
+      ...(missing.length > 0 ? [["NODE_OPTIONS", preload]] : []),
+    ]);
   };
 
   // Async spawns, fork and exec all reach this with Node's validated options.
@@ -190,11 +193,12 @@ function wrapChildren(replace, evidence) {
       function (options) {
         try {
           if (options && Array.isArray(options.envPairs)) {
-            const env = {};
-            for (const pair of options.envPairs) {
-              const at = pair.indexOf("=");
-              if (at > 0) env[pair.slice(0, at)] = pair.slice(at + 1);
-            }
+            const env = ownMap(
+              options.envPairs.flatMap((pair) => {
+                const at = pair.indexOf("=");
+                return at > 0 ? [[pair.slice(0, at), pair.slice(at + 1)]] : [];
+              }),
+            );
             const next = carried(env, true);
             if (next !== env) options.envPairs = Object.entries(next).map(([k, v]) => `${k}=${v}`);
           }
