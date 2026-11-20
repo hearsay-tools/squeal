@@ -1,5 +1,5 @@
 import { testFileId } from "../keys/reverse-index.js";
-import { type DaemonKeying, openDaemonKeying } from "../scheduler/daemon-keying.js";
+import { openDaemonKeying } from "../scheduler/daemon-keying.js";
 import { recordsForFile } from "../scheduler/records.js";
 import { describeFailure } from "../state/fingerprint.js";
 import { worktreeEnvironment } from "../store/environments.js";
@@ -14,12 +14,7 @@ import type {
 } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import type {
-  RunnerAdapter,
-  RunnerClosure,
-  RunnerEnvironment,
-  RunReport,
-} from "../types/runner.js";
+import type { RunnerAdapter, RunnerClosure, RunnerEnvironment } from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import type { Provenance } from "../types/store-records.js";
 import { bundleOf, type KeyedFile } from "./export-bundle.js";
@@ -32,8 +27,10 @@ import {
   reuseRefusal,
 } from "./export-check.js";
 import { certifier } from "./export-inputs.js";
+import { assignNodeTest } from "./export-node-test.js";
+import { nodeTestEntries, withStartup } from "./export-node-test-here.js";
 import { keyPartsOf } from "./export-parts.js";
-import { partsReport } from "./export-report.js";
+import { keyFiles } from "./export-report.js";
 import { type Part, type PartFile, type PartInspector, snapshotFields } from "./parts.js";
 
 /*
@@ -55,8 +52,12 @@ export interface CiExportInput {
   readonly worktreeId: WorktreeId;
   /** An empty store of the job's own, removed after the export. */
   readonly store: Store;
-  /** Opens the runner adapter the daemon builds for this checkout; called once the parts pass, closed at the end. */
-  readonly runner: () => Promise<RunnerAdapter>;
+  /**
+   * Opens the runner adapters the daemon builds for this checkout: Vitest's
+   * for Vitest parts, one per `nodeTest` entry for node:test parts (D26);
+   * called once the parts pass, closed at the end.
+   */
+  readonly runners: () => Promise<readonly RunnerAdapter[]>;
   readonly policy: Policy;
   readonly squealVersion: string;
   /** Allow-listed variables are read from here, as the daemon reads its own. */
@@ -96,6 +97,13 @@ export interface CiExportCounts {
   readonly unwatched: number;
   /** Files left out: one of their own entries is an absolute path, as a test that sets `process.platform` can observe (issue #228). */
   readonly absolute: number;
+  /**
+   * node:test files left out by D26: their process or file matches no one
+   * `nodeTest` entry here, or their entry ran on another Node, with another
+   * variable, with an incomplete shard set, or loaded a start-up path its
+   * part holds no evidence of; `CiExport.nodeTestLines` says why.
+   */
+  readonly nodeTestLeftOut: number;
 }
 
 /** A file left out because its shard's evidence does not certify these inputs' content here. */
@@ -112,6 +120,8 @@ export type CiExport =
       readonly uncertified: readonly UncertifiedFile[];
       /** The files left out for an absolute path, with the first such path of each. */
       readonly absolute: readonly AbsoluteFile[];
+      /** Why node:test files were left out or a node:test part holds none, one line each (D26). */
+      readonly nodeTestLines: readonly string[];
     };
 
 /**
@@ -121,14 +131,23 @@ export type CiExport =
  * Writes the observed entries and environments into `input.store` only.
  */
 export async function ciExport(input: CiExportInput): Promise<CiExport> {
-  const refused = partsRefusal(input.parts, input.header.commit);
+  const vitest = input.parts.filter((p) => !isNodeTest(p.part));
+  const nodeTest = input.parts.filter((p) => isNodeTest(p.part));
+  // D26: node:test parts never refuse the export; their refusals leave out their entries' files.
+  const refused =
+    vitest.length > 0 || nodeTest.length === 0 ? partsRefusal(vitest, input.header.commit) : null;
   if (refused !== null) return { refused };
-  const runner = await input.runner();
+  const runners = await input.runners();
   try {
-    return await exportWith(input, runner);
+    return await exportWith({ ...input, parts: vitest }, nodeTest, runners);
   } finally {
-    await runner.close();
+    await Promise.allSettled(runners.map((runner) => runner.close()));
   }
+}
+
+/** Whether `part` records a node:test process (format 5); formats 3 and 4 are Vitest's. */
+export function isNodeTest(part: Part): boolean {
+  return part.header.runner === "node-test";
 }
 
 /**
@@ -141,13 +160,25 @@ function namedAsDaemon(file: PartFile): boolean {
   return !shared || file.checks.every((check) => check.location !== null);
 }
 
-async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<CiExport> {
-  const { worktreeId, store, parts, header } = input;
+async function exportWith(
+  input: CiExportInput,
+  nodeTestParts: readonly NamedPart[],
+  runners: readonly RunnerAdapter[],
+): Promise<CiExport> {
+  const { worktreeId, store, header } = input;
   // Row 020-51: keyed by the one path the gate's stores lookup keys with.
-  const keying = await openDaemonKeying({ ...input, adapters: [runner] });
+  const keying = await openDaemonKeying({ ...input, adapters: runners });
   const { keys, environments } = keying;
   const environment = environmentRefusal(input, environments);
   if (environment !== null) return { refused: environment };
+  const entries = await nodeTestEntries(runners, input.policy);
+  const assignment = await withStartup(
+    input.root,
+    keys,
+    environments,
+    assignNodeTest(nodeTestParts, entries, header.commit),
+  );
+  const parts = [...input.parts, ...assignment.parts];
 
   const files = parts.flatMap((p) => p.part.testFiles);
   const passed = files.filter((file) => file.outcome !== "fail");
@@ -210,34 +241,12 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
       inspector: named.length - kept.length - unwatched + inspected,
       unwatched,
       absolute: absolute.length,
+      nodeTestLeftOut: assignment.leftOut,
     },
     uncertified,
     absolute,
+    nodeTestLines: assignment.lines,
   };
-}
-
-/**
- * Keys `passed` as a daemon's start and record do (`DaemonKeying`): each
- * file the runner lists by its closure, then with what its shard observed
- * beyond it, stored in the job's store. Returns the runner's closures and
- * the report of the files keyed; a file the runner does not list, or whose
- * closure fails, is in neither, and a file `leftOut` names by its closure
- * is only counted.
- */
-async function keyFiles(
-  keying: DaemonKeying,
-  passed: readonly PartFile[],
-  leftOut: (file: PartFile, closure: RunnerClosure) => boolean,
-): Promise<{ closures: ReadonlyMap<string, RunnerClosure>; report: RunReport; inspected: number }> {
-  const { closures, leftOut: inspected } = await keying.keyFiles(passed, { leftOut });
-  const { keys } = keying;
-  const environmentFiles = (project: ProjectName) => new Set(keys.environmentFiles(project));
-  const report = partsReport(
-    passed.filter((file) => closures.has(fileId(file))),
-    environmentFiles,
-  );
-  await keying.grow(report);
-  return { closures, report, inspected };
 }
 
 /**

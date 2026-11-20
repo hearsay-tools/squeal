@@ -6,10 +6,12 @@ import {
   type CiExport,
   type CiExportCounts,
   ciExport,
+  isNodeTest,
   type UncertifiedFile,
 } from "../core/ci/export.js";
+import type { NamedPart } from "../core/ci/export-check.js";
 import { readPartsIn } from "../core/ci/parts.js";
-import { coverageProvider } from "../core/code/coverage/runtime.js";
+import { coverageOn, coverageProvider } from "../core/code/coverage/runtime.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { daemonVitestOptions } from "../core/daemon/vitest-options.js";
@@ -22,6 +24,7 @@ import { encodeBundle } from "../core/store/transfer-bundle.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { Policy } from "../core/types/policy.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
+import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { vitestResolves } from "../runners/vitest/ci-record.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
 import { absoluteLines, sourceOf } from "./export.js";
@@ -64,9 +67,8 @@ export async function ciExportCommand(
   // Row 018-29: what recording cost the shards, whatever the export does with their parts.
   const cost = costOf(parts.map(({ part }) => part));
   if (cost !== null) io.stderr(`squeal ci export: ${costText(cost)}\n`);
-  if (!vitestResolves(root)) {
-    return fail(say, `only Vitest is supported, and vitest does not resolve from ${root}`);
-  }
+  const recorded = recordedRunners(root, parts);
+  if (typeof recorded === "string") return fail(say, recorded);
   const policy = readPolicy(root);
   const head = await readHead(root);
   const header = {
@@ -86,7 +88,7 @@ export async function ciExportCommand(
       root,
       worktreeId: worktreeIdFor(root),
       store,
-      runner: () => daemonVitest(root, policy, temp),
+      runners: () => daemonRunners(root, policy, temp, recorded),
       policy,
       squealVersion: header.squealVersion,
       env: { ...(io.env ?? process.env) },
@@ -114,6 +116,7 @@ function write(exported: Exported, file: AbsolutePath, io: CliIo): number {
   for (const line of [
     ...uncertifiedLines(exported.uncertified),
     ...absoluteLines(exported.absolute),
+    ...exported.nodeTestLines,
   ]) {
     io.stderr(`squeal ci export: ${line}\n`);
   }
@@ -124,6 +127,18 @@ function write(exported: Exported, file: AbsolutePath, io: CliIo): number {
   writeFileSync(file, encodeBundle(exported.bundle));
   io.stdout(`${countsText(exported.counts, file)}\n`);
   return 0;
+}
+
+/** Which runners `parts` record; why not when they record Vitest and it does not resolve here. */
+function recordedRunners(
+  root: AbsolutePath,
+  parts: readonly NamedPart[],
+): { readonly vitest: boolean; readonly nodeTest: boolean } | string {
+  const vitest = parts.some(({ part }) => !isNodeTest(part));
+  if (vitest && !vitestResolves(root)) {
+    return `the parts record Vitest, and vitest does not resolve from ${root}`;
+  }
+  return { vitest, nodeTest: parts.some(({ part }) => isNodeTest(part)) };
 }
 
 function fail(say: (text: string) => void, text: string): number {
@@ -154,6 +169,46 @@ function parseExport(args: readonly string[]): ExportArgs | { readonly error: st
   }
   if (parts.length === 0) return { error: "no --parts: name the directories the shards wrote" };
   return { parts, out };
+}
+
+/**
+ * The adapters a daemon builds here for the runners the parts record:
+ * Vitest's (`daemonVitest`), and one per `nodeTest` entry the daemon opens
+ * (spec 018 D26; an entry with a `prepare` it does not open, 020 D15.6),
+ * with coverage as the daemon keys it. Closes those it opened when one
+ * rejects.
+ */
+async function daemonRunners(
+  root: AbsolutePath,
+  policy: Policy,
+  temp: AbsolutePath,
+  recorded: { readonly vitest: boolean; readonly nodeTest: boolean },
+): Promise<RunnerAdapter[]> {
+  const adapters: RunnerAdapter[] = [];
+  try {
+    if (recorded.vitest) adapters.push(await daemonVitest(root, policy, temp));
+    if (!recorded.nodeTest) return adapters;
+    const coverage = {
+      enabled: () => coverageOn(policy),
+      children: () => policy.coverage.children,
+      collected: () => {},
+    };
+    for (const project of policy.nodeTest.filter((p) => p.prepare === undefined)) {
+      adapters.push(
+        await createNodeTestAdapter(project, {
+          root,
+          concurrency: () => policy.runner.tierSize,
+          inputs: () => policy.inputs,
+          tempDir: temp,
+          coverage,
+        }),
+      );
+    }
+    return adapters;
+  } catch (error) {
+    await Promise.allSettled(adapters.map((a) => a.close()));
+    throw error;
+  }
 }
 
 /**
@@ -225,6 +280,9 @@ function leftOut(counts: CiExportCounts): string {
       : null,
     counts.absolute > 0
       ? `${files(counts.absolute)} that ${counts.absolute === 1 ? "holds" : "hold"} an absolute path`
+      : null,
+    counts.nodeTestLeftOut > 0
+      ? `${files(counts.nodeTestLeftOut)} of node:test that no nodeTest entry here takes as its own run`
       : null,
   ]
     .filter((part) => part !== null)

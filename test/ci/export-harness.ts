@@ -110,7 +110,7 @@ export async function partsExport(
     root,
     worktreeId: worktreeIdFor(root),
     store,
-    runner: () => createVitestAdapter(adapterOptions(root, options)),
+    runners: async () => [await createVitestAdapter(adapterOptions(root, options))],
     policy: policyOf(options),
     squealVersion: SQUEAL,
     env: process.env,
