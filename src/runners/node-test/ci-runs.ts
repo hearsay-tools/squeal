@@ -76,29 +76,74 @@ export function readNodeTestRuns(
   context: RunsContext,
 ): { runs: NodeTestRecordedRun[]; notes: string[] } {
   const infos = readInfos(dirs.graph);
+  const failed = readFailed(dirs.graph);
   const runs: NodeTestRecordedRun[] = [];
   const notes: string[] = [];
   const reported = new Set<number>();
-  for (const name of readdirSync(dirs.events).sort(compare)) {
+  for (const name of listed(dirs.events).sort(compare)) {
     const text = readFileSync(join(dirs.events, name), "utf8");
     const header = headerOf(text);
     if (header === null) {
-      notes.push(`node --test process ${name}: its reporter wrote no header; no part`);
+      if (!failed.has(Number(name.split(".")[0]))) {
+        notes.push(`node --test process ${name}: its reporter wrote no header; no part`);
+      }
       continue;
     }
     reported.add(header.pid);
+    const why = failed.get(header.pid);
+    if (why !== undefined) {
+      notes.push(why);
+      runs.push(emptyRun(header, context.paths, "crashed", why));
+      continue;
+    }
     const mine = infos.filter((info) => info.ppid === header.pid);
     runs.push(processRun(header, parseEvents(text), mine, dirs.graph, context, notes));
   }
   const silent = new Map<number, RawInfo>();
   for (const info of infos) if (!reported.has(info.ppid)) silent.set(info.ppid, info);
-  if (silent.size > 0) notes.push(NO_REPORTER);
-  for (const info of silent.values()) {
+  if ([...silent.keys()].some((pid) => !failed.has(pid))) notes.push(NO_REPORTER);
+  for (const [pid, info] of silent) {
+    const why = failed.get(pid);
+    if (why !== undefined) notes.push(why);
+    const raw = { ...info, execArgv: [], env: {} };
     runs.push(
-      emptyRun({ ...info, execArgv: [], env: {} }, context.paths, "completed", NO_REPORTER),
+      emptyRun(raw, context.paths, why === undefined ? "completed" : "crashed", why ?? NO_REPORTER),
     );
   }
   return { runs, notes };
+}
+
+/** The names in `dir`; none when it is gone (a failure the reporter marks, B3). */
+function listed(dir: AbsolutePath): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
+}
+
+/** The suffix of the mark Squeal's reporter leaves when it could not record (`node-test-reporter.mjs`). */
+const FAILED = ".reporter-failed";
+
+/**
+ * Review of 0.1.579 B3: each `node --test` process whose reporter could not
+ * record, with the line that says so. Its part holds no file and is no
+ * complete run: what it wrote may stop anywhere.
+ */
+function readFailed(graph: AbsolutePath): Map<number, string> {
+  const failed = new Map<number, string>();
+  for (const name of readdirSync(graph).filter((n) => n.endsWith(FAILED))) {
+    const pid = Number(name.slice(0, -FAILED.length));
+    let why = "";
+    try {
+      why = readFileSync(join(graph, name), "utf8").split("\n")[0] ?? "";
+    } catch {}
+    failed.set(
+      pid,
+      `node --test process ${pid}: Squeal's reporter could not record it (${why}); no test file recorded`,
+    );
+  }
+  return failed;
 }
 
 function processRun(
