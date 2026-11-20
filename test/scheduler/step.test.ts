@@ -130,6 +130,7 @@ function ports(t: Table, log: string[], readings: string[] = []): StepPorts {
         thrown("yields");
         return t.named?.includes(x.runId) === true;
       },
+      overrunPublished: () => false,
     },
     startNext: (_admitted, at, fly) => {
       thrown("startNext");
@@ -564,7 +565,11 @@ describe("the scheduler step (row 011-356)", () => {
       const placed = (decision: Decision): DecisionPlace => placeOf(decision);
       // @ts-expect-error: a decision kind with no place in `DECISION_PLACE` is no decision
       expect(placed({ kind: "flush" })).toBeUndefined();
-      const reach = { tier: () => undefined, standsNamed: () => false };
+      const reach = {
+        tier: () => undefined,
+        standsNamed: () => false,
+        overrunPublished: () => false,
+      };
       // @ts-expect-error: an event kind `yieldReach` does not place is no event
       expect(() => yieldReach({ kind: "rumour" }, reach)).toThrow(/does not place/);
       const table: Record<StepDecisionKind, DecisionPlace> = DECISION_PLACE;
