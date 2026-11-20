@@ -79,6 +79,20 @@ describe("a backlog tier's budget scales with the offer's share of its full widt
     expect(at(9)).toHaveLength(200);
   });
 
+  it("a grant below the offer trims by its share also at a runner's capped width (review 0.1.576 B1)", () => {
+    // A runner capped at 2 workers, offer 3 of 9: the pick's 40 s at 2 workers holds 39 files of
+    // 2 s. The grant of 2 equals the width the tier asks, yet is below the offer: its budget,
+    // 120 s × 2/9 = 26.7 s at 2 workers, holds n × 2 s / 2 + 1 s ≤ 26.7 s, 25 files.
+    const t = tableOf({ rows: rows(250, 2_000), offer: 3, fullWidth: 9 });
+    t.view.tierWidth = (_, grant) => Math.min(2, Math.max(1, grant));
+    const step = planTiers(t.view, t.asks).first;
+    if (isIdle(step)) throw new Error("no candidate");
+    expect([step.width?.want, step.files.length]).toEqual([2, 39]);
+    expect(step.width?.atGrant(2).files).toHaveLength(25);
+    expect(step.width?.atGrant(3).files).toHaveLength(39);
+    expect(step.width?.atGrant(1).files).toHaveLength(6);
+  });
+
   it("a tier still takes one file per worker: a file longer than the budget, or of no known time", () => {
     const long = first({ rows: rows(10, 60_000), offer: 1, fullWidth: 9 });
     expect(long.files.map((f) => f.file.ref.path)).toEqual(["b1"]);
