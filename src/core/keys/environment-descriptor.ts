@@ -219,6 +219,9 @@ export function describeDifferences(
 /** Spec 018 D10: the resolved Vitest fields an imported pass may differ in either way, `allowOnly` and `browser` aside. */
 const CI_FIELDS: readonly string[] = ["watch", "coverage"];
 
+/** Spec 018 D27: the node:test config's one tolerated field: its coverage marker, present or not, with or without children. */
+const NODE_TEST_CI_FIELDS: readonly string[] = ["coverage"];
+
 /** `allowOnly` as a descriptor holds it: focused tests rejected (CI's value), and allowed. */
 const ONLY_REJECTED = configFieldHash(false);
 const ONLY_ALLOWED = configFieldHash(true);
@@ -236,22 +239,43 @@ const ONLY_ALLOWED = configFieldHash(true);
  * keep an inspector open, so it compares equal both ways; `headless` and
  * `ui` change a browser project's run (`research/ci-step.md` 3). Failures
  * never import, so only passes and skips are compared this way.
+ *
+ * Spec 018 D27: for node:test, the config's coverage marker compares equal
+ * whether it is present on one side, both or neither, in either form (with
+ * or without children): CI records node:test without Squeal's coverage, a
+ * developer's daemon runs with it, and a pass without coverage implies the
+ * same pass with it. Every other node:test field stays keyed. D11's re-key,
+ * status and the part comparison read this one function, so both rules have
+ * one owner.
  */
 export function importDifferences(
   exported: EnvironmentDescriptor,
   local: EnvironmentDescriptor,
 ): Difference[] {
+  if (exported.runnerName === "node-test" && local.runnerName === "node-test") {
+    return tolerating(exported, local, NODE_TEST_CI_FIELDS);
+  }
   if (exported.runnerName !== "vitest" || local.runnerName !== "vitest") {
     return describeDifferences(exported, local);
   }
-  const tolerated = new Set(CI_FIELDS);
+  const tolerated = new Set<string>(CI_FIELDS);
   if (exported.browser === false && local.browser === false) tolerated.add("browser");
   if (exported.config.allowOnly === ONLY_REJECTED && local.config.allowOnly === ONLY_ALLOWED) {
     tolerated.add("allowOnly");
   }
+  return tolerating(exported, local, tolerated);
+}
+
+/** `describeDifferences` with the `tolerated` config fields left out of both sides. */
+function tolerating(
+  exported: EnvironmentDescriptor,
+  local: EnvironmentDescriptor,
+  tolerated: Iterable<string>,
+): Difference[] {
+  const leftOut = new Set(tolerated);
   const keyed = (d: EnvironmentDescriptor): EnvironmentDescriptor => ({
     ...d,
-    config: Object.fromEntries(Object.entries(d.config).filter(([name]) => !tolerated.has(name))),
+    config: Object.fromEntries(Object.entries(d.config).filter(([name]) => !leftOut.has(name))),
   });
   return describeDifferences(keyed(exported), keyed(local));
 }
