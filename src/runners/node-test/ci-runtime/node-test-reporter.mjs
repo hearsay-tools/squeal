@@ -6,7 +6,8 @@
 // process: first the process's header (`execArgv`, `argv`, working directory, the Node probe's raw
 // fields, the variables `nodeTest.variables` names, its `NODE_OPTIONS` raw and the hooks `ci record`
 // put there, review of 0.1.579 B1), then every event, encoded by the daemon's own
-// reporter (`runtime/reporter.mjs`: one encoding for both). Without the settings it does nothing.
+// reporter (`runtime/reporter.mjs`: one encoding for both). Without the settings, and in a
+// `node --test` a test started (row 018-54), it does nothing.
 // Runs inside the project's Node: imports only Node built-ins and the daemon's reporter.
 //
 // Review of 0.1.579 B3 (D20.2, D28): a failure of its own (the encoder's import, opening, writing
@@ -32,6 +33,9 @@ function settings() {
     const record = JSON.parse(process.env.SQUEAL_CI_RECORD ?? "");
     const nodeTest = record?.nodeTest;
     if (typeof nodeTest?.events !== "string" || !isAbsolute(nodeTest.events)) return null;
+    // Row 018-54: a `node --test` that a test started, below a Vitest run (`nested`) or a node:test
+    // test (`SQUEAL_CI_NODE_TEST_FILE`), is the test's own run: it writes no part.
+    if (record.nested === true || process.env.SQUEAL_CI_NODE_TEST_FILE) return null;
     const graph = typeof nodeTest.graph === "string" ? nodeTest.graph : null;
     return {
       events: nodeTest.events,
