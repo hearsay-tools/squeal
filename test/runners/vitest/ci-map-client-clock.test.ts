@@ -14,7 +14,7 @@ import { fill, run, temp } from "./ci-evidence-kit.js";
  */
 
 const load = createRequire(import.meta.url);
-const clock = load("../../../src/runners/vitest/ci-runtime/clock.cjs") as {
+const clock = load("../../../src/runners/ci-runtime/clock.cjs") as {
   spent(): number;
 };
 const mapClient = load.resolve("../../../src/runners/vitest/ci-runtime/map-client.cjs");

@@ -44,12 +44,18 @@ export const OBSERVE_RUNTIME = "src/runners/observe";
 export const COVERAGE_RUNTIME = "src/core/code/coverage";
 
 /**
- * Spec 018 D8 (row 018-16): `squeal ci record`'s hook in the project's own
- * Vitest CLI process, a dependency-free `.cjs` the bundled CLI finds at
- * `<plugin>/dist/ci/` (`ciHook`). Apart from the recorder's directory: it
- * changes no key, so the recorder's version does not answer for it.
+ * Spec 018 D8 (row 018-16): `squeal ci record`'s hooks, dependency-free
+ * `.cjs` and `.mjs` files the bundled CLI finds at `<plugin>/dist/ci/`,
+ * from three folders in one: the evidence hooks both runners share (D24,
+ * row 018-47), Vitest's hook (`ciHook`), and node:test's hook and reporter
+ * (`nodeTestCiRuntime`, D23). Apart from the recorders' directories: they
+ * change no key, so no recorder's or adapter's version answers for them.
  */
-export const CI_RUNTIME = "src/runners/vitest/ci-runtime";
+export const CI_RUNTIME = [
+  "src/runners/ci-runtime",
+  "src/runners/vitest/ci-runtime",
+  "src/runners/node-test/ci-runtime",
+] as const;
 
 /**
  * Spec 007 D4 and D6: what the bundled CLI finds at `<plugin>/dist/pytest/`:
@@ -227,13 +233,31 @@ export function copyObserveRuntime(
   for (const file of files) copyFileSync(join(from, file), join(outdir, "observe", file));
 }
 
-/** Copies the `.cjs` files of `from`, by default `CI_RUNTIME`, into `<outdir>/ci/`, replaced as a whole. */
-export function copyCiRuntime(outdir: string, from: string = join(REPO_ROOT, CI_RUNTIME)): void {
-  const files = existsSync(from) ? readdirSync(from).filter((f) => f.endsWith(".cjs")) : [];
+/**
+ * Copies the `.cjs` and `.mjs` files of each of `from`, by default
+ * `CI_RUNTIME`, into `<outdir>/ci/`, replaced as a whole. Two folders
+ * holding one name is an error: one would overwrite the other.
+ */
+export function copyCiRuntime(
+  outdir: string,
+  from: readonly string[] = CI_RUNTIME.map((dir) => join(REPO_ROOT, dir)),
+): void {
+  const files = from.flatMap((dir) =>
+    existsSync(dir)
+      ? readdirSync(dir)
+          .filter((f) => f.endsWith(".cjs") || f.endsWith(".mjs"))
+          .map((name) => ({ dir, name }))
+      : [],
+  );
   if (files.length === 0) return;
+  const names = new Set<string>();
+  for (const { name } of files) {
+    if (names.has(name)) throw new Error(`two CI runtime folders hold ${name}`);
+    names.add(name);
+  }
   rmSync(join(outdir, "ci"), { recursive: true, force: true });
   mkdirSync(join(outdir, "ci"), { recursive: true });
-  for (const file of files) copyFileSync(join(from, file), join(outdir, "ci", file));
+  for (const { dir, name } of files) copyFileSync(join(dir, name), join(outdir, "ci", name));
 }
 
 /** Copies the `.mjs` files of `from`, by default `COVERAGE_RUNTIME`, into `<outdir>/coverage/`. */

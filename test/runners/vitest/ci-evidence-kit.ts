@@ -50,7 +50,7 @@ export function run(root: string, out: { evidence?: string; observed?: string })
   if (out.evidence !== undefined) {
     imports.push(preload(ciHook() as string));
     const evidence = { out: out.evidence, root, skip: [], format: "sha1" };
-    env[CI_RECORD_VARIABLE] = JSON.stringify({ evidence });
+    env[CI_RECORD_VARIABLE] = JSON.stringify({ evidence, hooks: [ciHook()] });
   }
   execFileSync(process.execPath, [...imports, "script.mjs"], { cwd: root, env, stdio: "pipe" });
 }

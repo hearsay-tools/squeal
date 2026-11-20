@@ -123,6 +123,7 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
       "ci/evidence.cjs",
       "ci/inspector.cjs",
       "ci/map-client.cjs",
+      "ci/shared.cjs",
       "ci/vitest-ci.cjs",
       "coverage/provider.mjs",
       "node-test/recorder.cjs",
