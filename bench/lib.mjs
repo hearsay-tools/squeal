@@ -195,3 +195,30 @@ export function relayLog(text) {
   }
   return stats;
 }
+
+/** Runs a command and samples its process tree's RSS every 100 ms: { ms, code, peakRssBytes, stdout }. */
+export function timedPeak(cmd, args, { env, cwd, timeoutMs = 600_000 } = {}) {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    let peak = 0;
+    let stdout = "";
+    const child = spawn(cmd, args, { env, cwd, stdio: ["ignore", "pipe", "ignore"] });
+    child.stdout.on("data", (d) => {
+      if (stdout.length < 1 << 20) stdout += d;
+    });
+    const tick = setInterval(() => {
+      peak = Math.max(peak, treeRss(child.pid));
+    }, 100);
+    const kill = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+    child.on("close", (code) => {
+      clearInterval(tick);
+      clearTimeout(kill);
+      resolve({ ms: performance.now() - t0, code, peakRssBytes: peak, stdout });
+    });
+  });
+}
+
+/** Lock holds the logs name (`... write lock held N ms ...`, only those over 250 ms are logged). */
+export function longWriteHolds(text) {
+  return [...text.matchAll(/write lock held (\d+) ms/g)].map((m) => Number(m[1]));
+}

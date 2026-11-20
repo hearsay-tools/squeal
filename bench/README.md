@@ -9,6 +9,7 @@ bench/boat-run.sh                                            # all cells on this
 bench/boat-run.sh --cells ref --steps 12                       # a quick check of the reference cell
 bench/boat-run.sh --ref squeal--v0.1.572                       # the plugin as released at that tag
 bench/boat-run.sh --ref squeal--v0.1.572 --ref origin/main --cells ref,wt-6   # two versions on one machine
+bench/boat-run.sh --ref squeal--v0.1.572 --ref origin/main --cells ref --repeat 3   # three runs of each, for noise
 ```
 
 `boat-run.sh` creates a boat.dev sandbox and pushes `plugins/claude-code` (the committed plugin bundle, which is what users install) and `bench/` to it. It runs `run-all.mjs` there and copies the results to `bench/results/<date>-<version>-<type>-<cpu>/`. The sandbox is created with `--no-env`, so it holds none of the account's secrets. It is deleted at the end unless `--keep` is given.
@@ -35,7 +36,7 @@ The boat.dev $20 plan (`box_20`) offers three sizes:
 
 **Reference: `default`, 4 vCPU, 8 GB.** It is close to a developer laptop, which is where Squeal runs. With 4 vCPUs, extra worktrees and ambient load show their effect early. `large` is the second machine, used to show whether a problem comes from Squeal's design or from too few CPUs: `bench/boat-run.sh --type large`.
 
-**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike, and on 2026-11-20 twelve starts in a row gave a Ryzen 7 9700X. Hunting for one model wastes the plan's start limits (12 a minute, 60 an hour, 200 a day), so **compare versions in one sandbox**: give `--ref` once per version. Every cell then runs once per version, alternating which goes first, and the scorecard adds a table of the differences. `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s); `TREND.md` groups runs by CPU model, and only runs on the same model compare across sandboxes. `--cpu "<model>"` still retries starts until that model comes up.
+**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike, and on 2026-11-20 twelve starts in a row gave a Ryzen 7 9700X. Hunting for one model wastes the plan's start limits (12 a minute, 60 an hour, 200 a day), so **compare versions in one sandbox**: give `--ref` once per version. Every cell then runs once per version, alternating which goes first, and the scorecard adds a table of the differences: mean scores, and the raw numbers behind them (hook and status times, lock holds, CPU, memory, `squeal reach`), since a change of a few hundred milliseconds rarely moves a score band. `--repeat N` runs each cell N times per version and shows each mean with its range, which is the run-to-run noise. `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s); `TREND.md` groups runs by CPU model, and only runs on the same model compare across sandboxes. `--cpu "<model>"` still retries starts until that model comes up.
 
 ## The project
 
@@ -70,10 +71,15 @@ The benchmark varies one factor at a time from the reference cell, and adds one 
 | store-1.7g | 500 | 1 | 0% (store aged 70 rounds, 2.0 GB) |
 | store-7g | 500 | 1 | 0% (store aged 326 rounds, 9.2 GB) |
 | churn | 500 | 1 | 0% (as store-7g, history over 8 days, prune and integrity check due) |
+| store-7g-wt3 | 500 | 3 | 0% (as store-7g) |
+| store-7g-wt3-nolists | 500 | 3 | 0% (as store-7g, no module lists) |
+| store-7g-lists1d | 500 | 1 | 0% (as store-7g, module lists for the newest day only) |
 
 The two store cells run the reference cell on a store that already holds a week of history. After the full run, `age-store.mjs` adds rounds of history: every test file gets a new content key, with its results, one `loaded_modules` list of real-store size (about 50 KB) and the runs that recorded them. All of it is dated within the last 7 days and is older than the real rows. The shape follows Squeal's own store on 2026-11-20: 7.2 GB, 82% of it in `loaded_modules` (163k rows, 46 KB each) and 1.74M `results` rows. 326 rounds gives that store's `loaded_modules` row count; 70 rounds gives its rows per test file, scaled to 500 test files. The code store (`code.sqlite`, coverage and complexity) gets the same history: for every new key, a copy of that test file's real coverage record, dated like its results, and an 8 KB part that no record lists, standing for the larger records of a real repository. At 326 rounds that is about 1.4 GB; Squeal's own `code.sqlite` was 1.5 GB (coverage 193k rows) on 2026-11-20.
 
 The churn cell measures the daily upkeep of a large store. Its history spans 8 days, so about one day of it is past the 7-day retention, as after a day with no daemon running. `age-store.mjs --churn` also clears the store's record of the last prune and the last full integrity check. The restart then checks the whole file, and the first prune (prune runs at most once an hour per repository and is asked every 6 minutes) has to delete that day. The cell records, from the restart, when old results start to go and when none is left (`prune-watch.json`), and when the daemon logs "full integrity check: ok".
+
+The last three cells separate a large store from its module lists (`loaded_modules`, 82% of Squeal's own store), after feedback of 2026-11-20: the lists' cost is lock time that other worktrees and their hooks wait for, so two of them run 3 worktrees. `age-store.mjs --lists 7d|1d|none` sets which aged keys get a list. Every cell also times `squeal reach`, which reads every stored list with no daemon, and records its peak memory.
 
 Ambient load (`load.mjs`) is busy-loop threads at normal priority on that share of the vCPUs. It stands for another agent's build or test run.
 
@@ -138,6 +144,8 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | `res.cpuPerEdit` | report | | CPU during the sessions (daemons with their children, plus the code store's process), divided by the edits |
 | `res.storeProcess.cpuS`, `res.storeProcess.rss` | report | | The code store's process (spec 021 D22, from 0.1.575): CPU during the sessions and peak memory. It is a separate process, not a daemon's child |
 | **Store** | | | |
+| `store.longWrite.maxMs`, `store.longWrite.totalS` | report | | The longest logged lock hold and the sum of all logged holds (Squeal logs only holds over 250 ms) |
+| `cmd.reach.s`, `res.reach.rss` | report | | `squeal reach --json` after the sessions: time and peak memory |
 | `store.longWrites` | 0 | ≤ 3 | Writes the daemon logs as held over 250 ms (`LONG_WRITE_MS`) |
 | `store.lockFailures` | 0 | ≤ 3 | `SQLITE_BUSY` or "database is locked" in the daemon logs |
 | `store.size`, `store.results` | report | | `store.sqlite` + WAL + `code.sqlite` in MiB, and rows in `results` |

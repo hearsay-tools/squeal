@@ -13,7 +13,7 @@
 // Usage: node summarize.mjs <results dir>
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { quantile } from "./lib.mjs";
+import { longWriteHolds, quantile } from "./lib.mjs";
 
 const dir = process.argv[2];
 const meta = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
@@ -291,6 +291,20 @@ export const METRICS = [
     group: "Store",
   },
   { id: "store.process.stops", what: "Store process: times it stopped", unit: "", group: "Store" },
+  {
+    id: "cmd.reach.s",
+    what: "`squeal reach` (reads every stored module list)",
+    unit: "s",
+    group: "Commands",
+  },
+  { id: "res.reach.rss", what: "`squeal reach` memory, peak", unit: "MiB", group: "Resources" },
+  {
+    id: "store.longWrite.maxMs",
+    what: "Longest logged lock hold (only holds over 250 ms are logged)",
+    unit: "ms",
+    group: "Store",
+  },
+  { id: "store.longWrite.totalS", what: "Logged lock holds, total", unit: "s", group: "Store" },
 ];
 
 const INF = Number.POSITIVE_INFINITY;
@@ -483,8 +497,17 @@ function churnFromWatch(cellDir, cell) {
   };
 }
 
+/** Logged lock holds: saved by the cell, or read from its copied logs for a run made before that. */
+function holdsOf(cell, cellDir) {
+  if (cell.store.longWriteHoldsMs) return cell.store.longWriteHoldsMs;
+  const dir = join(cellDir, "logs");
+  if (!existsSync(dir)) return null;
+  return readdirSync(dir).flatMap((f) => longWriteHolds(readFileSync(join(dir, f), "utf8")));
+}
+
 function storeValues(cell, cellDir) {
   const st = cell.store;
+  const holds = holdsOf(cell, cellDir);
   const churn = churnFromWatch(cellDir, cell);
   const doneS = churn?.pruneDoneAfterS ?? null;
   return {
@@ -495,6 +518,10 @@ function storeValues(cell, cellDir) {
     "store.prune.doneMin": churn ? (doneS === null ? INF : doneS / 60) : null,
     "store.prune.s": churn?.pruneS ?? null,
     "store.fullCheck.s": churn?.fullCheckS ?? null,
+    "store.longWrite.maxMs": holds ? maxOrNull(holds) : null,
+    "store.longWrite.totalS": holds ? holds.reduce((a, b) => a + b, 0) / 1000 : null,
+    "cmd.reach.s": cell.phases.reach ? cell.phases.reach.ms / 1000 : null,
+    "res.reach.rss": cell.phases.reach ? cell.phases.reach.peakRssBytes / 2 ** 20 : null,
     ...storeProcessValues(cell.storeProcess),
   };
 }
@@ -529,11 +556,32 @@ const cellsDir = join(dir, "cells");
 const pluginOrder = (meta.plugins ?? []).map((p) => p.label);
 const names = [...meta.cells]
   .sort((a, b) =>
-    a.base === b.base ? pluginOrder.indexOf(a.plugin) - pluginOrder.indexOf(b.plugin) : 0,
+    a.base === b.base
+      ? pluginOrder.indexOf(a.plugin) - pluginOrder.indexOf(b.plugin) || (a.rep ?? 1) - (b.rep ?? 1)
+      : 0,
   )
   .map((c) => c.name)
   .filter((n) => existsSync(join(cellsDir, n, "cell.json")));
 const results = Object.fromEntries(names.map((n) => [n, cellValues(join(cellsDir, n))]));
+/** Raw numbers the comparison shows for each cell: the ones a change to the store or the hooks moves. */
+const RAW = [
+  "hook.preToolUse.p95",
+  "hook.postToolBatch.p95",
+  "hook.sessionStart.max",
+  "cmd.status.p95",
+  "session.pushFail.p50",
+  "session.verdict.within60s",
+  "res.idleCpu.maxPct",
+  "res.cpuPerEdit",
+  "res.daemonRss.max",
+  "res.storeProcess.rss",
+  "store.longWrites",
+  "store.longWrite.maxMs",
+  "store.longWrite.totalS",
+  "cmd.reach.s",
+  "res.reach.rss",
+];
+
 const AREAS = ["Hooks", "Commands", "Verdicts", "Resources", "Store"];
 const scores = {};
 const areaScores = {};
@@ -604,7 +652,7 @@ const unhealthy = METRICS.filter((m) => !m.gate && m.healthy !== undefined)
       .filter((c) => c.g !== null && c.g < 1),
   }))
   .filter((u) => u.cells.length > 0);
-if (pluginOrder.length > 1) lines.push(...comparison());
+if (pluginOrder.length > 1 || (meta.repeat ?? 1) > 1) lines.push(...comparison());
 lines.push("", "## What is not healthy", "");
 if (unhealthy.length === 0) lines.push("Every scored metric is within its healthy limit.");
 for (const { m, cells } of unhealthy) {
@@ -642,35 +690,88 @@ writeFileSync(
   `${JSON.stringify({ meta, correctness: failed.length === 0 ? "pass" : "failed", gateFails, overall, runAreas, scores, areaScores, values: Object.fromEntries(names.map((n) => [n, results[n].v])) }, null, 2)}\n`,
 );
 
-/** Paired runs: each cell's score and area scores per version, and the change from the first version. */
+/**
+ * Paired or repeated runs: per cell and version, the mean score (with its
+ * range when repeated), the change of the mean against the first version, and
+ * the mean of the raw numbers in `RAW`, so a change too small to move a score
+ * band still shows.
+ */
 function comparison() {
-  const [first, ...rest] = pluginOrder;
-  const bases = [...new Set(meta.cells.map((c) => c.base))];
-  const run = (base, label) => meta.cells.find((c) => c.base === base && c.plugin === label)?.name;
-  const delta = (a, b) =>
-    a === null || b === null ? "n/a" : `${b - a >= 0 ? "+" : ""}${(b - a).toFixed(0)}`;
-  const out = [
-    "",
-    `## ${first} compared with ${rest.join(", ")} (same machine, cells alternated)`,
-    "",
-  ];
-  out.push(`| Cell | Version | Correct | Score | Δ | ${AREAS.map((a) => `${a} Δ`).join(" | ")} |`);
-  out.push(`|---|---|---|---:|---:|${AREAS.map(() => "---:").join("|")}|`);
+  const labels = pluginOrder.length ? pluginOrder : [undefined];
+  const bases = [...new Set(meta.cells.map((c) => c.base ?? c.name))];
+  const title =
+    labels.length > 1
+      ? `${labels[0]} compared with ${labels.slice(1).join(", ")} (same machine, cells alternated)`
+      : "Repeats";
+  const out = ["", `## ${title}`, ""];
+  out.push(
+    `| Cell | Version | Runs | Correct | Score (range) | Δ | ${AREAS.map((a) => `${a} Δ`).join(" | ")} |`,
+  );
+  out.push(`|---|---|---:|---|---:|---:|${AREAS.map(() => "---:").join("|")}|`);
+  const raw = ["", "Raw numbers, mean per cell and version (Δ% against the first version):", ""];
+  raw.push(
+    `| Cell | Metric | ${labels.map((l) => l ?? "value").join(" | ")}${labels.length > 1 ? " | Δ%" : ""} |`,
+  );
+  raw.push(`|---|---|${labels.map(() => "---:").join("|")}${labels.length > 1 ? "|---:" : ""}|`);
   for (const base of bases) {
-    const a = run(base, first);
-    if (!a || !results[a]) continue;
-    for (const label of pluginOrder) {
-      const n = run(base, label);
-      if (!n || !results[n]) continue;
-      const area = (x) =>
-        areaScores[a][x] === null || areaScores[n][x] === null
-          ? "n/a"
-          : delta(100 * areaScores[a][x], 100 * areaScores[n][x]);
-      const d = label === first ? "" : delta(scores[a], scores[n]);
-      out.push(
-        `| ${base} | ${label} | ${gateFails[n].length ? "❌" : "✅"} | ${scores[n]?.toFixed(0)} | ${d} | ${AREAS.map((x) => (label === first ? "" : area(x))).join(" | ")} |`,
-      );
+    if (runsOf(base, labels[0]).length === 0) continue;
+    for (const label of labels) {
+      const row = scoreRow(base, label, labels[0]);
+      if (row) out.push(row);
     }
+    raw.push(...rawRows(base, labels));
   }
-  return out;
+  return [...out, ...raw];
+}
+
+function runsOf(base, label) {
+  return meta.cells
+    .filter((c) => (c.base ?? c.name) === base && c.plugin === label && results[c.name])
+    .map((c) => c.name);
+}
+
+function meanOf(xs) {
+  const v = xs.filter((x) => typeof x === "number" && Number.isFinite(x));
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+function signed(d) {
+  return `${d >= 0 ? "+" : ""}${d.toFixed(0)}`;
+}
+
+function scoreRow(base, label, first) {
+  const ns = runsOf(base, label);
+  if (ns.length === 0) return null;
+  const firstRuns = runsOf(base, first);
+  const sc = ns.map((n) => scores[n]).filter((x) => x !== null);
+  const m = meanOf(sc);
+  const firstScore = meanOf(firstRuns.map((n) => scores[n]));
+  const range =
+    sc.length > 1 ? ` (${Math.min(...sc).toFixed(0)}–${Math.max(...sc).toFixed(0)})` : "";
+  const isFirst = label === first;
+  const d = isFirst || m === null || firstScore === null ? "" : signed(m - firstScore);
+  const areas = AREAS.map((a) => {
+    const x = meanOf(ns.map((n) => areaScores[n][a]));
+    const f = meanOf(firstRuns.map((n) => areaScores[n][a]));
+    return isFirst || x === null || f === null ? "" : signed(100 * (x - f));
+  });
+  const correct = ns.every((n) => gateFails[n].length === 0) ? "✅" : "❌";
+  return `| ${base} | ${label ?? ""} | ${ns.length} | ${correct} | ${m?.toFixed(0) ?? "n/a"}${range} | ${d} | ${areas.join(" | ")} |`;
+}
+
+function rawRows(base, labels) {
+  const rows = [];
+  for (const id of RAW) {
+    const m = METRICS.find((x) => x.id === id);
+    const vals = labels.map((l) => meanOf(runsOf(base, l).map((n) => results[n].v[id])));
+    if (vals.every((x) => x === null)) continue;
+    let pct = "";
+    if (labels.length > 1)
+      pct =
+        vals[0] && vals[1] !== null
+          ? ` | ${signed((100 * (vals[1] - vals[0])) / vals[0])}%`
+          : " | ";
+    rows.push(`| ${base} | ${m.what} | ${vals.map((x) => fmt(m, x)).join(" | ")}${pct} |`);
+  }
+  return rows;
 }

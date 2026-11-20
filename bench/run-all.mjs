@@ -31,6 +31,18 @@ export const CELLS = [
   // and the marks of the last prune and integrity check cleared: the restart checks
   // the whole file and the first prune deletes a day of history, as after a day away.
   { name: "churn", files: 500, worktrees: 1, load: 0, ageRounds: 326, spanDays: 8, churn: true },
+  // The lists' share (feedback of 2026-11-20): an aged store with 3 active worktrees, where lock
+  // time lands on the other worktrees, with and without module lists, and with one day of them.
+  { name: "store-7g-wt3", files: 500, worktrees: 3, load: 0, ageRounds: 326 },
+  {
+    name: "store-7g-wt3-nolists",
+    files: 500,
+    worktrees: 3,
+    load: 0,
+    ageRounds: 326,
+    lists: "none",
+  },
+  { name: "store-7g-lists1d", files: 500, worktrees: 1, load: 0, ageRounds: 326, lists: "1d" },
 ];
 
 const { values: o } = parseArgs({
@@ -41,6 +53,8 @@ const { values: o } = parseArgs({
     out: { type: "string" },
     cells: { type: "string" },
     steps: { type: "string", default: "24" },
+    // Run each cell (and each version of it) this many times, to see run-to-run noise.
+    repeat: { type: "string", default: "1" },
   },
 });
 const HERE = import.meta.dirname;
@@ -69,19 +83,25 @@ for (const [i, p] of plugins.entries()) {
 }
 const paired = plugins.length > 1;
 // One run per cell and plugin. A paired run's name is `<cell>@<label>`.
-const cells = chosen.flatMap((c, i) => {
-  const order = i % 2 === 0 ? plugins : [...plugins].reverse();
-  return order.map((p) => ({
-    ...c,
-    name: paired ? `${c.name}@${p.label}` : c.name,
-    base: c.name,
-    plugin: p.label,
-  }));
-});
+const repeat = Number(o.repeat);
+// Names: `<cell>`, `<cell>@<version>` when paired, `#<n>` added when repeated.
+const cells = chosen.flatMap((c, i) =>
+  Array.from({ length: repeat }, (_, k) => {
+    const order = (i + k) % 2 === 0 ? plugins : [...plugins].reverse();
+    return order.map((p) => ({
+      ...c,
+      name: `${c.name}${paired ? `@${p.label}` : ""}${repeat > 1 ? `#${k + 1}` : ""}`,
+      base: c.name,
+      plugin: p.label,
+      rep: k + 1,
+    }));
+  }).flat(),
+);
 const meta = {
   startedAt: new Date().toISOString(),
   squealVersion: plugins.map((p) => p.version).join(" vs "),
   plugins: plugins.map(({ version, label }) => ({ version, label })),
+  repeat,
   node: process.version,
   cpuModel: cpus()[0]?.model,
   vcpus: cpus().length,
@@ -149,6 +169,8 @@ for (const c of cells) {
       String(c.ageRounds ?? 0),
       "--age-span-days",
       String(c.spanDays ?? 7),
+      "--age-lists",
+      c.lists ?? "7d",
       ...(c.churn ? ["--churn"] : []),
     ],
     { timeoutMs: 7_200_000 },

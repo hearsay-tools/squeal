@@ -85,3 +85,10 @@ Squeal 0.1.570 · Node v24.22.1 · AMD EPYC 4584PX 16-Core Processor · 4 vCPU �
 | Store process: time spent writing (`store.process.busy`) | report |  | n/a | n/a | n/a |
 | Code-store batches a daemon wrote itself because the store process was gone (`store.process.direct`) | report |  | n/a | n/a | n/a |
 | Store process: times it stopped (`store.process.stops`) | report |  | n/a | n/a | n/a |
+| **Commands** | | |  |  |  |
+| `squeal reach` (reads every stored module list) (`cmd.reach.s`) | report |  | n/a | n/a | n/a |
+| **Resources** | | |  |  |  |
+| `squeal reach` memory, peak (`res.reach.rss`) | report |  | n/a | n/a | n/a |
+| **Store** | | |  |  |  |
+| Longest logged lock hold (only holds over 250 ms are logged) (`store.longWrite.maxMs`) | report |  | 348 ms | 468 ms | 1221 ms |
+| Logged lock holds, total (`store.longWrite.totalS`) | report |  | 0.6 s | 1.2 s | 2.9 s |

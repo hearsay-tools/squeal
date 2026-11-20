@@ -38,6 +38,11 @@ const flag = (name) => {
   return value;
 };
 const spanDays = Number(flag("--span-days") ?? 7);
+// --lists 7d (default) | 1d | none: which aged keys get a loaded_modules list. 1d keeps only the
+// newest day's, none adds no list, so a store's size and its lists' share can be told apart.
+const lists = flag("--lists") ?? "7d";
+if (!["7d", "1d", "none"].includes(lists))
+  throw new Error(`--lists must be 7d, 1d or none, not ${lists}`);
 const churn = args.includes("--churn");
 if (churn) args.splice(args.indexOf("--churn"), 1);
 const [store, roundsArg, root] = args;
@@ -148,9 +153,11 @@ for (let r = 0; r < rounds; r++) {
       resultsAdded++;
     }
     const [project, path] = file.split("\0");
-    insertList.run(project, path, key, at, pool[Math.floor(Math.random() * pool.length)]);
+    if (lists === "7d" || (lists === "1d" && now - at < DAY)) {
+      insertList.run(project, path, key, at, pool[Math.floor(Math.random() * pool.length)]);
+      listsAdded++;
+    }
     aged.push({ file, key, at });
-    listsAdded++;
   }
   db.exec("COMMIT");
 }
@@ -165,6 +172,7 @@ console.log(
   JSON.stringify({
     rounds,
     spanDays,
+    lists,
     churn,
     testFiles: files.length,
     resultsAdded,

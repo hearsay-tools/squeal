@@ -32,6 +32,7 @@ import {
   background,
   cpuJiffies,
   daemonPids,
+  longWriteHolds,
   procStat,
   quantile,
   relayLog,
@@ -40,6 +41,7 @@ import {
   storeProcessMeter,
   storeProcessPids,
   timed,
+  timedPeak,
   treeRss,
 } from "./lib.mjs";
 
@@ -57,6 +59,7 @@ const { values: o } = parseArgs({
     seed: { type: "string", default: "1" },
     "age-rounds": { type: "string", default: "0" },
     "age-span-days": { type: "string", default: "7" },
+    "age-lists": { type: "string", default: "7d" },
     churn: { type: "boolean", default: false },
   },
 });
@@ -83,6 +86,7 @@ const cell = {
   worktrees: Number(o.worktrees),
   load: Number(o.load),
   ageRounds: Number(o["age-rounds"]),
+  ageLists: o["age-lists"],
   churn: o.churn,
   phases: {},
 };
@@ -180,6 +184,8 @@ if (Number(o["age-rounds"]) > 0) {
       main,
       "--span-days",
       o["age-span-days"],
+      "--lists",
+      o["age-lists"],
       ...(o.churn ? ["--churn"] : []),
     ],
     { env, timeoutMs: 3_600_000 },
@@ -283,6 +289,16 @@ cell.phases.sessionDaemonCpuS = [...cpu1].map(([root, s]) => {
 cell.phases.edits = edits.length;
 cell.phases.sessionStoreProcessCpuS = storeMeter.cpuS() - sessionStore0;
 
+// 7b. `squeal reach`: reads every stored module list (loaded_modules) with no daemon; the store's worst size cost.
+{
+  const r = await timedPeak(NODE, [...cli, "reach", "--json"], {
+    env,
+    cwd: main,
+    timeoutMs: 600_000,
+  });
+  cell.phases.reach = { ms: r.ms, code: r.code, peakRssBytes: r.peakRssBytes };
+}
+
 // 8. Store, logs, stop.
 log("collect");
 const store = join(main, ".git/squeal");
@@ -311,6 +327,7 @@ cell.store.rows = Object.fromEntries(
     .map(([k, v]) => [k, Number(v)]),
 );
 let longWrites = 0;
+const holds = [];
 let lockFailures = 0;
 let storeLog = "";
 let relay = "";
@@ -320,6 +337,7 @@ if (existsSync(logDir)) {
   for (const f of readdirSync(logDir)) {
     const text = readFileSync(join(logDir, f), "utf8");
     longWrites += (text.match(/long write/gi) ?? []).length;
+    holds.push(...longWriteHolds(text));
     lockFailures += (text.match(/SQLITE_BUSY|database is locked/gi) ?? []).length;
     if (f.startsWith("store-")) storeLog += text;
     else relay += text;
@@ -328,6 +346,7 @@ if (existsSync(logDir)) {
 }
 cell.store.longWrites = longWrites;
 cell.store.lockFailures = lockFailures;
+cell.store.longWriteHoldsMs = holds;
 // Spec 021 D22: the code store's process, when this Squeal version has one.
 cell.storeProcess = {
   seen: storeMeter.pids().length,
