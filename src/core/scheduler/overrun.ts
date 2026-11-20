@@ -17,6 +17,13 @@ import { unfinished } from "./yield-waits.js";
  * knows only the tier's start and which files ended (`Tier.ended`), so the
  * rule is a multiple of the file's own time with a floor, and the file keeps
  * running to its deadline. Nothing about its result changes.
+ *
+ * Row 011-419 (`research/run-width-design.md` section 3): counted from the
+ * tier's start, a narrow tier's files not yet started looked hung 60 s in,
+ * and tiers opened beside backlog tiers in 9 of 10 runs. The rule counts
+ * from the tier's last progress instead, the later of its start and its
+ * last ended file (`Tier.lastEnded`): a tier whose files keep ending never
+ * overruns; a hung file still does once no file has ended for the threshold.
  */
 
 /** A file counts as overrunning once it has run this many times its last-known duration... */
@@ -40,21 +47,22 @@ export function overrunAfterMs(tier: Tier, durationMs: number | null): number {
 }
 
 /**
- * When `tier`'s files are reported as overrunning (row 011-399): when every
- * file of it that has not ended has run `OVERRUN_FACTOR` times its
- * last-known duration and at least `OVERRUN_FLOOR_MS` (with no known
- * duration, `OVERRUN_FLOOR_MS` past the tier's estimate), counted from the
- * tier's start, since the daemon does not know when a file of it started.
- * On the step's calendar: the start is moved by the calendar steps since
- * (`CalendarSteps.since`, row 011-377). `null` when it never does here: no
+ * When `tier`'s files are reported as overrunning (row 011-399): when no
+ * file of it has ended for `OVERRUN_FACTOR` times the last-known duration of
+ * each that has not, and at least `OVERRUN_FLOOR_MS` (with no known
+ * duration, `OVERRUN_FLOOR_MS` past the tier's estimate), counted from its
+ * last progress (`lastProgress`, row 011-419), since the daemon does not
+ * know when a file of it started. On the step's calendar: the start and the
+ * last end are moved by the calendar steps since (`CalendarSteps.since`,
+ * row 011-377). `null` when it never does here: no
  * file is left, it is slow, of a group's lane, it was cancelled, or its
  * runner does not cancel a run, so its lane has no second instance (C4
  * step 5, row 011-269). A tier beside another is reported too (row 011-405,
  * review 0.1.567 N1); whether its lane opens an instance is `overrunAt`'s.
  */
 export function reportedOverrunAt(context: SchedulerContext, tier: Tier): EpochMs | null {
-  const start = steppedStart(context, tier);
-  if (start === null || tier.kind === "slow") return null;
+  const progress = lastProgress(context, tier);
+  if (progress === null || tier.kind === "slow") return null;
   // A cancelled tier is ending: its cancel is forced after the runner's grace (D12).
   if (tier.cancel?.signal.aborted === true) return null;
   if (isGroupLane(tier.lane)) return null;
@@ -63,7 +71,7 @@ export function reportedOverrunAt(context: SchedulerContext, tier: Tier): EpochM
   const left = unfinished(tier);
   if (left.length === 0) return null;
   const after = Math.max(...left.map(({ file }) => overrunAfterMs(tier, file.durationMs)));
-  return (start + after) as EpochMs;
+  return (progress + after) as EpochMs;
 }
 
 /**
@@ -79,14 +87,29 @@ export function overrunAt(context: SchedulerContext, tier: Tier): EpochMs | null
  * `tier`'s start on the calendar now: its stored start moved by the calendar
  * steps since (`CalendarSteps.since`, row 011-377); `null` before it has one.
  * The overrun's threshold, age and deadline all count from it (review
- * 0.1.567 B2).
+ * 0.1.567 B2); the threshold from `lastProgress`, on the same calendar.
  */
 function steppedStart(context: SchedulerContext, tier: Tier): EpochMs | null {
   const { startedAt } = tier;
   if (startedAt === undefined) return null;
-  return (
-    context.steps?.since(startedAt as EpochMs, tier.startedStep ?? 0) ?? (startedAt as EpochMs)
-  );
+  return stepped(context, startedAt, tier.startedStep ?? 0);
+}
+
+/**
+ * `tier`'s last progress on the calendar now (row 011-419): the later of its
+ * start and its last ended file (`Tier.lastEnded`), each moved by the
+ * calendar steps since; `null` before it has a start.
+ */
+function lastProgress(context: SchedulerContext, tier: Tier): EpochMs | null {
+  const start = steppedStart(context, tier);
+  const { lastEnded } = tier;
+  if (start === null || lastEnded === undefined) return start;
+  return Math.max(start, stepped(context, lastEnded.at, lastEnded.step)) as EpochMs;
+}
+
+/** `at`, read when the calendar steps' total was `step`, moved by the steps since (row 011-377). */
+function stepped(context: SchedulerContext, at: number, step: number): EpochMs {
+  return context.steps?.since(at as EpochMs, step) ?? (at as EpochMs);
 }
 
 /** Whether `tier` overruns at `at` (`overrunAt`). */
