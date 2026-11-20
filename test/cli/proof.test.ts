@@ -60,7 +60,10 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
 
     const text = await prove(f, { files: [TEST.path], base: a, json: false }, options);
     expect(text.out).toContain(`squeal proof (case source): base ${a.slice(0, 9)}`);
-    expect(text.out).toContain("test/a.test.ts: proven");
+    // Row 023-30 (R5): the changed test's verdict line says it is not the file's result at a.
+    expect(text.out).toContain(
+      `test/a.test.ts: proven: the new test fails on the old code. This is not the file's result at ${a.slice(0, 9)}; that is \`squeal status --at ${a.slice(0, 9)} test/a.test.ts --run\`\n`,
+    );
     expect(text.out).toContain("AssertionError: expected 1 to be 2");
   });
 
@@ -101,7 +104,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
       "  green: not run. Red passed, so this proof says nothing about HEAD; `squeal status test/a.test.ts` gives its result now.\n",
     );
     expect(text.out).toContain(
-      `not the file's own result at ${a.slice(0, 9)}; that is \`squeal status --at ${a.slice(0, 9)} test/a.test.ts\`.\n`,
+      `not the file's own result at ${a.slice(0, 9)}; that is \`squeal status --at ${a.slice(0, 9)} test/a.test.ts --run\`.\n`,
     );
     expect(text.out).not.toContain("not read");
     clean(f);

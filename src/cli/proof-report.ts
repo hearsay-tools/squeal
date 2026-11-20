@@ -13,7 +13,7 @@ import { errorLines } from "../core/status/format-why-replaced.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { callLines, importLines, rerunLines } from "./proof-report-imports.js";
-import { greenNotRunLine, redSideNote } from "./proof-report-notes.js";
+import { greenNotRunLine, provenSummary, redSideNote } from "./proof-report-notes.js";
 import type { SideFile } from "./proof-side.js";
 
 /*
@@ -178,13 +178,14 @@ export function formatProof(report: ProofReport): string {
     );
   for (const file of report.files) {
     const why = file.reason === null ? "" : ` (${file.reason})`;
-    lines.push(`${file.ref.path}: ${file.verdict}${why}`);
+    const summary = provenSummary(file, report);
+    lines.push(`${file.ref.path}: ${file.verdict}${why}${summary === null ? "" : `: ${summary}`}`);
     lines.push(`  red: ${endText(file.red)}`);
     for (const failure of failuresOf(file.red.end)) {
       lines.push(`  ${failure.test} [${failureKind(failure, report.redErrors)}]`);
       lines.push(...errorLines(failure.errors).map((line) => `  ${line.replace(/^ {2}/, INDENT)}`));
     }
-    // Row 023-24 (Q5, Q6): what the red side is not, and what a green side not run does not show.
+    // Row 023-24 (Q5, Q6): what the red side is not (R5: in the verdict line when proven), and what a green side not run does not show.
     const note = redSideNote(file, report);
     if (note !== null) lines.push(`  ${note}`);
     lines.push(...importLines(file.imports, report));

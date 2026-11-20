@@ -174,7 +174,7 @@ describe("proof report: sides not run and the control run (row 023-20)", () => {
 
 describe("proof report: what a side does not show (row 023-24, Q5 and Q6)", () => {
   const base = BASE.slice(0, 9);
-  const redNote = `  red is the test at ${HEAD.slice(0, 9)} over the code at ${base}, not the file's own result at ${base}; that is \`squeal status --at ${base} test/a.test.ts\`.\n`;
+  const redNote = `  red is the test at ${HEAD.slice(0, 9)} over the code at ${base}, not the file's own result at ${base}; that is \`squeal status --at ${base} test/a.test.ts --run\`.\n`;
   const proven = file({
     verdict: "proven",
     red: ran(assertionFail),
@@ -183,11 +183,36 @@ describe("proof report: what a side does not show (row 023-24, Q5 and Q6)", () =
   });
 
   it("says a source-case red side of a changed test is not the file's result at the base (Q5)", () => {
-    const text = formatProof(report([proven]));
+    const failed = { ...proven, verdict: "red for another reason" as const, green: null };
+    const text = formatProof(report([failed]));
     expect(text).toContain(redNote);
     // After the red side and its failures, before the green side.
     expect(text.indexOf(redNote)).toBeGreaterThan(text.indexOf("[assertion]"));
-    expect(text.indexOf(redNote)).toBeLessThan(text.indexOf("  green: pass"));
+    expect(text.indexOf(redNote)).toBeLessThan(text.indexOf("  green: not run"));
+  });
+
+  it("puts it in a proven changed test's verdict line, not under the red side (R5)", () => {
+    const text = formatProof(report([proven]));
+    expect(text).toContain(
+      `test/a.test.ts: proven: the new test fails on the old code. This is not the file's result at ${base}; that is \`squeal status --at ${base} test/a.test.ts --run\`\n`,
+    );
+    expect(text).not.toContain("not the file's own result");
+    // The JSON keeps its fields: no summary field, the verdict word as it was.
+    const json = JSON.parse(jsonProof(report([proven])));
+    expect(json.files[0].verdict).toBe("proven");
+    expect(json).not.toHaveProperty("summary");
+    expect(JSON.stringify(json)).not.toContain("the new test fails");
+  });
+
+  it("keeps a proven verdict line plain for an unchanged test or the test case (R5)", () => {
+    const unchanged = { ...proven, imports: { unsettled: [], sources: ["src/a.ts"], read: [] } };
+    expect(formatProof(report([unchanged]))).toContain("test/a.test.ts: proven\n");
+    const testCase = {
+      ...report([proven]),
+      case: "test" as const,
+      red: { tests: BASE, code: HEAD },
+    };
+    expect(formatProof(testCase)).toContain("test/a.test.ts: proven\n");
   });
 
   it("says nothing of it for an unchanged test, the test case, or a red side with no outcome (Q5)", () => {
