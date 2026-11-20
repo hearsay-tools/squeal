@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,7 +7,9 @@ import {
   type Checkout,
   checkout,
   NODE_PATH,
+  NODE_TEST_REPORTER,
   REPO,
+  scratch,
   step,
   workflowFiles,
 } from "./checkout.js";
@@ -44,6 +46,24 @@ function runAction(at: Checkout, env: Record<string, string> = {}) {
 const PASS_THROUGH =
   "The squeal command passes through: squeal ci record runs the command without recording, and squeal ci export and squeal ci publish do nothing. Each squeal call checks again, so a Node that a later step puts on the PATH counts there.";
 
+/** Absolute path the action writes as `SQUEAL_NODE_TEST_REPORTER` (D23.1). */
+function nodeTestReporter(at: Checkout): string {
+  return join(at.root, NODE_TEST_REPORTER);
+}
+
+/** The `NAME=value` lines setup wrote to `$GITHUB_ENV`. */
+function envLines(env: string): Record<string, string> {
+  return Object.fromEntries(
+    env
+      .split("\n")
+      .filter((line) => line.includes("="))
+      .map((line) => {
+        const at = line.indexOf("=");
+        return [line.slice(0, at), line.slice(at + 1)] as const;
+      }),
+  );
+}
+
 describe("the action's setup", () => {
   it("puts ci/bin on the PATH and names the Squeal and the Node it runs", () => {
     const at = checkout();
@@ -53,7 +73,12 @@ describe("the action's setup", () => {
       `Squeal 9.9.9 on Node ${process.version}: squeal ci record, squeal ci export and squeal ci publish are on the PATH.\n`,
     );
     expect(ran.calls).toEqual([["--version"]]);
-    expect(workflowFiles(at)).toEqual({ path: `${at.action}/bin\n`, env: "" });
+    const files = workflowFiles(at);
+    expect(files.path).toBe(`${at.action}/bin\n`);
+    expect(envLines(files.env)).toEqual({
+      SQUEAL_NODE_TEST_REPORTER: nodeTestReporter(at),
+    });
+    expect(existsSync(nodeTestReporter(at))).toBe(true);
   });
 
   it("warns and exits 0 when node on the PATH is older than Squeal's floor", () => {
@@ -68,7 +93,12 @@ describe("the action's setup", () => {
       calls: [],
     });
     // The PATH still gets `squeal`, which checks node again at each call.
-    expect(workflowFiles(at)).toEqual({ path: `${at.action}/bin\n`, env: "" });
+    const files = workflowFiles(at);
+    expect(files.path).toBe(`${at.action}/bin\n`);
+    expect(envLines(files.env)).toEqual({
+      SQUEAL_NODE_TEST_REPORTER: nodeTestReporter(at),
+    });
+    expect(existsSync(nodeTestReporter(at))).toBe(true);
   });
 
   it("warns, exits 0 and makes squeal pass through when the CLI does not start", () => {
@@ -79,13 +109,42 @@ describe("the action's setup", () => {
       /^::warning title=Squeal::Squeal cannot run here: Squeal's CLI does not start on Node v\d+\.\d+\.\d+: .+\. The squeal command passes through:/,
     );
     const { env } = workflowFiles(at);
-    const failed = /^SQUEAL_CI_SETUP_FAILED=(Squeal's CLI does not start on Node .+)\n$/.exec(env);
-    expect(failed).not.toBeNull();
+    const lines = envLines(env);
+    expect(lines.SQUEAL_NODE_TEST_REPORTER).toBe(nodeTestReporter(at));
+    expect(existsSync(nodeTestReporter(at))).toBe(true);
+    expect(lines.SQUEAL_CI_SETUP_FAILED).toMatch(/^Squeal's CLI does not start on Node /);
     // A later step's environment holds what setup wrote to $GITHUB_ENV.
-    const later = { SQUEAL_CI_SETUP_FAILED: failed?.[1] ?? "" };
+    const later = { SQUEAL_CI_SETUP_FAILED: lines.SQUEAL_CI_SETUP_FAILED ?? "" };
     const record = step(at, join(at.action, "bin/squeal"), ["ci", "record", "--", "true"], later);
     expect(record).toMatchObject({ code: 0, stdout: "" });
     expect(record.stderr).toContain("Squeal cannot run here: Squeal's CLI does not start");
+  });
+
+  it("the named reporter is a no-op without ci record", () => {
+    const at = checkout();
+    runAction(at);
+    const reporter = envLines(workflowFiles(at).env).SQUEAL_NODE_TEST_REPORTER;
+    expect(reporter).toBe(nodeTestReporter(at));
+    const dir = scratch("reporter-noop");
+    writeFileSync(
+      join(dir, "a.test.mjs"),
+      'import { it } from "node:test";\nit("ok", () => {});\n',
+    );
+    const run = spawnSync(
+      process.execPath,
+      [
+        "--test",
+        "--test-reporter=spec",
+        "--test-reporter-destination=stdout",
+        `--test-reporter=${reporter}`,
+        "--test-reporter-destination=stderr",
+        "a.test.mjs",
+      ],
+      { cwd: dir, encoding: "utf8", env: { PATH: NODE_PATH } },
+    );
+    expect(run.status).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(readdirSync(dir)).toEqual(["a.test.mjs"]);
   });
 
   it("exits 0 even when its script fails", () => {

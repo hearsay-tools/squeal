@@ -204,7 +204,7 @@ No agent session is needed for any of these. Run the same command on your machin
 
 ## Results from CI
 
-Your CI already runs your tests. With Squeal's GitHub Action, the test step also records each test file's result, and a job after the tests publishes those results on a git ref of your repository. A developer's Squeal fetches the results of the main commit their branch starts from, so a test file that passed in CI at the same content does not run again on their machine. Vitest only, for now.
+Your CI already runs your tests. With Squeal's GitHub Action, the test step also records each test file's result, and a job after the tests publishes those results on a git ref of your repository. A developer's Squeal fetches the results of the main commit their branch starts from, so a test file that passed in CI at the same content does not run again on their machine. Vitest and node:test.
 
 Set it up once:
 
@@ -249,8 +249,25 @@ jobs:
           path: ${{ runner.temp }}/squeal-parts/
           retention-days: 3
 
+  node-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: npm ci
+      - uses: hearsay-tools/squeal/ci@v0
+      - run: squeal ci record --out "$RUNNER_TEMP/squeal-parts" -- node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter="$SQUEAL_NODE_TEST_REPORTER" --test-reporter-destination=stderr test/*.test.mjs
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: squeal-parts-node-test
+          path: ${{ runner.temp }}/squeal-parts/
+          retention-days: 3
+
   squeal-export:
-    needs: test
+    needs: [test, node-test]
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     permissions:
@@ -274,7 +291,8 @@ jobs:
 ```
 
 - `uses: hearsay-tools/squeal/ci@v0` puts `squeal` on the `PATH` for the later steps of its job. GitHub checks out Squeal's repository at the tag, with the released bundles in it, so the action downloads nothing else. Put it after `actions/setup-node`: Squeal needs Node 22.19 or later on the `PATH`.
-- `squeal ci record --out <dir> -- <command>` runs your own test command unchanged and exits with its code. It also writes one part file per Vitest process into `<dir>`. Recording adds time to the test step. Nothing may change the tests' input files while it runs; `squeal ci record --help` says why.
+- `squeal ci record --out <dir> -- <command>` runs your own test command unchanged and exits with its code. It also writes one part file per Vitest or node:test process into `<dir>`. Recording adds time to the test step. Nothing may change the tests' input files while it runs; `squeal ci record --help` says why.
+- A node:test step adds Squeal's reporter beside yours: `--test-reporter="$SQUEAL_NODE_TEST_REPORTER" --test-reporter-destination=stderr`. The action sets that variable to the reporter in its checkout. Run the recorded step on the developers' Node (the same `.node-version` as the export job). An unrecorded node:test run on another Node can stay beside it.
 - `squeal-export` runs only for pushes to main, and only after every shard has passed. In a checkout of the same commit, `squeal ci export` keys the parts as a developer's Squeal keys them, and `squeal ci publish` pushes them as `refs/squeal/<commit>`. In the same push it deletes the refs of main commits older than the newest 100; `fetch-depth: 0` lets it place them on main's history. It is the only job with `contents: write`, and no required check needs it.
 - With a merge queue, upload the parts and run the export on `merge_group` events instead of `push`, and check out `github.event.merge_group.head_sha` in the export job: that commit becomes the main commit.
 - The export job runs your install with a token that can push. To keep that token away from your dependencies' install scripts, split the job in two: the export, with `contents: read`, uploads `squeal-results.json.gz` as an artifact; a publish job with `contents: write` downloads it (by `pattern`, so a missing file is no error) and runs only `squeal ci publish`, which runs git and reads `squeal.config.json`, with no install.
