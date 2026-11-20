@@ -128,8 +128,7 @@ export function startNodeTestRecording(
     },
     finish: () => {
       const read = evidence === null ? undefined : readRecorded(evidence);
-      const context = { paths: options.paths, nodeOptions: options.env.NODE_OPTIONS ?? "" };
-      const { runs, notes } = readNodeTestRuns({ graph, events }, context);
+      const { runs, notes } = readNodeTestRuns({ graph, events }, { paths: options.paths });
       return { runs, notes, ...(read === undefined ? {} : { evidence: read }) };
     },
     close: () => rmSync(temp, { recursive: true, force: true }),

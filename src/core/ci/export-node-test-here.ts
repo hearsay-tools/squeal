@@ -1,3 +1,5 @@
+import { projectEnv } from "../../runners/node-test/recorders.js";
+import { tokenizeNodeOptions } from "../../runners/process/node-options.js";
 import { compare } from "../fs/compare.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import type { AbsolutePath, ProjectName, RelativePath } from "../types/common.js";
@@ -28,6 +30,7 @@ const UNAVAILABLE = "unavailable";
 export async function nodeTestEntries(
   adapters: readonly RunnerAdapter[],
   policy: Policy,
+  env: NodeJS.ProcessEnv,
 ): Promise<NodeTestEntryHere[]> {
   const entries: NodeTestEntryHere[] = [];
   for (const adapter of adapters) {
@@ -40,6 +43,8 @@ export async function nodeTestEntries(
       name: entry.name,
       cwd: environment.root ?? "",
       argv: entry.argv,
+      // B1: as the adapter reads them (`nodeOptionsOf`), from this job's env.
+      nodeOptions: tokenizeNodeOptions(projectEnv(entry, env).NODE_OPTIONS ?? "") ?? [],
       env: entry.env,
       node: nodeOf(environment),
       files: new Set(listed.filter((f) => f.project === entry.name).map((f) => f.path)),

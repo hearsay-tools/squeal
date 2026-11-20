@@ -136,6 +136,8 @@ export interface Recorded {
   readonly code: number;
   readonly stderr: string;
   readonly parts: Part[];
+  /** The directory the parts are in. */
+  readonly out: AbsolutePath;
 }
 
 /** `squeal ci record --out <dir> -- <command>` in `root`. */
@@ -167,5 +169,40 @@ export async function record(
     if (typeof part === "string") throw new Error(part);
     return part;
   });
-  return { code, stderr, parts };
+  return { code, stderr, parts, out };
+}
+
+export interface Exported {
+  readonly code: number;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+/** `squeal ci export --parts <out>` in `root`, with `env`, into a scratch file. */
+export async function exportParts(
+  root: AbsolutePath,
+  out: AbsolutePath,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<Exported> {
+  let stdout = "";
+  let stderr = "";
+  const io = {
+    stdout: (text: string) => {
+      stdout += text;
+    },
+    stderr: (text: string) => {
+      stderr += text;
+    },
+    cwd: root,
+    env,
+  };
+  const file = join(temp(), "export.json.gz");
+  const code = await ciCommand(["export", "--parts", out, "--out", file], io, { tempDir: temp() });
+  return { code, stdout, stderr };
+}
+
+/** `env` without `NODE_OPTIONS`. */
+export function withoutNodeOptions(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const { NODE_OPTIONS: _, ...rest } = env;
+  return rest;
 }

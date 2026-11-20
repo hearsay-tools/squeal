@@ -171,7 +171,7 @@ async function exportWith(
   const { keys, environments } = keying;
   const environment = environmentRefusal(input, environments);
   if (environment !== null) return { refused: environment };
-  const entries = await nodeTestEntries(runners, input.policy);
+  const entries = await nodeTestEntries(runners, input.policy, input.env);
   const assignment = await withStartup(
     input.root,
     keys,

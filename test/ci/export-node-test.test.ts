@@ -32,6 +32,7 @@ function entry(name: string, files: readonly string[], more: Partial<NodeTestEnt
     name,
     cwd: "",
     argv: ["--import", "tsx"],
+    nodeOptions: [],
     env: {},
     node: { version: "v26.13.0", nodeBuild: BUILD },
     files: new Set(files),
@@ -74,6 +75,7 @@ function part(options: PartOptions): NamedPart {
     version: "v26.13.0",
     nodeBuild: BUILD,
     env: {},
+    nodeOptions: [],
     ...options.run,
   };
   return {

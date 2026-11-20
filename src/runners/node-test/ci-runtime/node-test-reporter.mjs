@@ -4,7 +4,8 @@
 // It yields nothing, so its destination prints nothing. With `ci record`'s settings
 // (`SQUEAL_CI_RECORD`, `nodeTest.events`) it writes `<events>/<pid>.ndjson` for its `node --test`
 // process: first the process's header (`execArgv`, `argv`, working directory, the Node probe's raw
-// fields, the variables `nodeTest.variables` names), then every event, encoded by the daemon's own
+// fields, the variables `nodeTest.variables` names, its `NODE_OPTIONS` raw and the hooks `ci record`
+// put there, review of 0.1.579 B1), then every event, encoded by the daemon's own
 // reporter (`runtime/reporter.mjs`: one encoding for both). Without the settings it does nothing.
 // Runs inside the project's Node: imports only Node built-ins and the daemon's reporter.
 //
@@ -36,6 +37,7 @@ function settings() {
       events: nodeTest.events,
       graph,
       variables: strings(nodeTest.variables),
+      hooks: strings(record.hooks),
     };
   } catch {
     return null;
@@ -57,6 +59,8 @@ function header(found) {
         arch: process.arch,
       },
       env: Object.fromEntries(found.variables.map((name) => [name, process.env[name] ?? null])),
+      nodeOptions: process.env.NODE_OPTIONS ?? null,
+      hooks: found.hooks,
     },
   };
 }
