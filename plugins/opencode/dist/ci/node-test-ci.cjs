@@ -13,6 +13,10 @@
 // 2. A process a test spawned: `SQUEAL_CI_NODE_TEST_FILE` is inherited, or put back by
 //    `children.cjs` into an env of the caller's own. Its edges go to that file's process.
 // 3. Any other process (the `node --test` process itself, `npm`, a Vitest process): no edges.
+//    So is a test file's process of a `node --test` that a Vitest test started (the settings
+//    say `nested`, `children.cjs`): that run is a test's own, not the project's, and its
+//    process writes no `<pid>.json`, so it gives no part and no "names no Squeal reporter" line
+//    (row 018-54, as row 018-27 for Vitest). Its loads stay in the evidence.
 //
 // The recorder writes `<SQUEAL_NODE_TEST_GRAPH>-<pid>.ndjson`, so the graph prefix is
 // `<graph>/<test file's pid>`; its preload phase ends at the test file's entry, as in the
@@ -38,11 +42,13 @@ function shared(name) {
   );
 }
 
-/** The graph directory `squeal ci record` named, or `null`. */
+/** The settings' graph directory and whether a Vitest run is above this process, or `null`. */
 function graphDir() {
   try {
-    const graph = JSON.parse(process.env[VARIABLE] ?? "")?.nodeTest?.graph;
-    return typeof graph === "string" && path.isAbsolute(graph) ? graph : null;
+    const settings = JSON.parse(process.env[VARIABLE] ?? "");
+    const graph = settings?.nodeTest?.graph;
+    if (typeof graph !== "string" || !path.isAbsolute(graph)) return null;
+    return { graph, nested: settings.nested === true };
   } catch {
     return null;
   }
@@ -59,15 +65,17 @@ const probe = () => ({
   },
 });
 
-const graph = isInternalThread ? null : graphDir();
-if (graph !== null) {
+const found = isInternalThread ? null : graphDir();
+if (found !== null) {
+  const { graph, nested } = found;
   try {
     const hooks = shared("evidence-hooks.cjs");
     hooks.installEvidence(hooks.evidenceSettings());
   } catch {}
   try {
     const script = process.argv[1];
-    const testFile = isMainThread && process.env.NODE_TEST_CONTEXT && !process.env[FILE] && script;
+    const testFile =
+      isMainThread && process.env.NODE_TEST_CONTEXT && !process.env[FILE] && !nested && script;
     if (testFile) {
       process.env[FILE] = path.resolve(script);
       process.env[PROCESS] = String(process.pid);

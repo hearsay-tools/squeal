@@ -37,7 +37,9 @@
 // (`coverage.cjs`), `nested` when a Vitest run or one of its test workers
 // started this process. Such a run is a test's own, not the project's: it
 // takes the evidence and writes no file (row 018-27). Every child of a Vitest
-// CLI process gets `nested` (`children.cjs`). Before it can attach, the hook
+// CLI process gets `nested` (`children.cjs`). A Vitest run below a node:test
+// test (`SQUEAL_CI_NODE_TEST_FILE`, set by `node-test-ci.cjs` in that test's
+// process and carried to what it starts) is a test's own too (row 018-54). Before it can attach, the hook
 // writes the file with `state: "started"`, so a Vitest process that ends
 // without a run end is known. CommonJS with Node built-ins only; `require` of the project's
 // `vitest/node` (an ES module without top-level await) is synchronous, so the
@@ -299,7 +301,8 @@ if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
     const root = vitestPackage(process.argv[1]);
     if (root !== null) {
       require("./shared.cjs").shared("children.cjs").markNested();
-      if (!settings.nested) install(settings, root);
+      // Row 018-54: a node:test test's process and what it starts carry its file's name.
+      if (!settings.nested && !process.env.SQUEAL_CI_NODE_TEST_FILE) install(settings, root);
     }
   } catch {}
 }
