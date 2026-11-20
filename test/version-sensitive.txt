@@ -50,6 +50,7 @@
 # They read or write policy, setup, primer, report or eval-record text or a CI part,
 # drive timers or signals, or check only that the host is asked (no node:test
 # run). Node 22 only.
+#   test/ci-action/readme.test.ts
 #   test/ci/export-node-test.test.ts
 #   test/ci/parts-format.test.ts
 #   test/cli/code-gate-children.test.ts
@@ -85,6 +86,7 @@
 #   test/harness/skill.test.ts
 #   test/harness/stop-slow.test.ts
 #   test/harness/test-command.test.ts
+#   test/keys/import-tolerance.test.ts
 #   test/policy/check-coverage.test.ts
 #   test/policy/check-groups.test.ts
 #   test/policy/checks-after.test.ts
