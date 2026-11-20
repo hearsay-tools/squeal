@@ -63,6 +63,8 @@ beforeAll(async () => {
     execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
       cwd: REPO_ROOT,
       encoding: "utf8",
+      // The repository's file list passed the default 1 MiB (ENOBUFS, main CI 44831249955).
+      maxBuffer: 64 * 1024 * 1024,
     }),
   );
   for (const path of listed) {
