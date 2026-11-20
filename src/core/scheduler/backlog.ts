@@ -59,6 +59,19 @@ export function backlogBudget(timeoutMs: number | null): number {
 }
 
 /**
+ * A backlog tier's wall budget at `workers` (spec 011 C4 step 5 as amended,
+ * row 011-418, `research/run-width-design.md` arm (c+d)): `budget` times
+ * their share of `full`, the most workers a backlog tier may get
+ * (`TierCapacity.fullWidth`), at most 1. A tier offered few workers selects
+ * little, so it ends soon and its width is chosen again: 1 of 9 selects
+ * about 13 s of 120 s. Without a pool (`null`) the budget is whole.
+ */
+export function shareBudget(budget: number, workers: number, full: number | null): number {
+  if (full === null) return budget;
+  return budget * Math.min(1, Math.max(0, workers) / Math.max(1, full));
+}
+
+/**
  * List scheduling's bound on the wall time of files of `sum` and `longest`
  * last-known time over `width` workers, in any start order: `sum / W +
  * (1 − 1/W) × longest` (task 001-366: `max(longest, sum / W)` gave 93 s for

@@ -101,6 +101,8 @@ export interface PlanAsks {
   backlogSize(queued: number): number;
   /** The grant the pool would give now; the host's slots without a pool. */
   offer(want: number, kind: PoolTierKind): number;
+  /** `TierCapacity.fullWidth`: the most workers a backlog tier may get; `null` without a pool. */
+  fullWidth(): number | null;
   /** Where the former `selectTier` committed: `Ledger.commit`. */
   endPass(): void;
   /** `Claims.waiting`: a file waited on a claim since the last pass began. */

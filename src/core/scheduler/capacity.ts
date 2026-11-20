@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import {
   backgroundCeiling,
   DEFAULT_BACKGROUND_SHARE,
@@ -5,6 +6,7 @@ import {
 } from "../capacity/background.js";
 import {
   createPermitPool,
+  defaultHostSlots,
   type PermitPool,
   type PoolLane,
   type PoolLease,
@@ -38,6 +40,8 @@ export class TierCapacity {
   readonly #note: (message: string) => void;
   readonly #waits: PoolWaits | null;
   readonly #backgroundShare: number;
+  /** The most workers a backlog tier may get (`fullWidth`). */
+  readonly #fullWidth: number;
   #failed: string | null = null;
   #refused = false;
 
@@ -54,6 +58,9 @@ export class TierCapacity {
     this.#backgroundShare = isBackgroundShare(backgroundShare)
       ? backgroundShare
       : DEFAULT_BACKGROUND_SHARE;
+    const ceiling = backgroundCeiling(this.#backgroundShare, cpus ?? availableParallelism());
+    const slots = Math.max(1, Math.floor(hostSlots ?? defaultHostSlots()));
+    this.#fullWidth = Math.min(ceiling, slots, project?.slots ?? Infinity);
     this.#pool = createPermitPool({
       dir,
       owner: { pid: process.pid, worktreeId },
@@ -123,6 +130,16 @@ export class TierCapacity {
     const gate = this.#pool.gate();
     if (gate === null) return null;
     return { busy: gate.busyCores, limit: backgroundCeiling(this.#backgroundShare, gate.cpus) };
+  }
+
+  /**
+   * The most workers a backlog tier may get: the background ceiling's busy
+   * CPUs (spec 021 D18), or the slots, the host's or the project's, when
+   * fewer. A backlog tier's wall budget is scaled by its offer's share of
+   * it (row 011-418), so a tier offered all the slots is not cut.
+   */
+  fullWidth(): number {
+    return this.#fullWidth;
   }
 
   /**

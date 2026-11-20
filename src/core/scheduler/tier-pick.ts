@@ -1,6 +1,6 @@
 import { testFileId } from "../keys/reverse-index.js";
 import type { TestFileRef } from "../types/keys.js";
-import { BacklogWall, backlogBudget } from "./backlog.js";
+import { BacklogWall, backlogBudget, shareBudget } from "./backlog.js";
 import { poolKind } from "./capacity.js";
 import { batchBudget } from "./promoted-tier.js";
 import { joinSpan, type TierSpan } from "./sharing.js";
@@ -22,7 +22,13 @@ export interface Shape {
   readonly turn: boolean;
   readonly size: number;
   readonly offer: number;
+  /** The wall budget at the offer: `budgetAt(offer)`. */
   readonly budget: number;
+  /**
+   * The wall budget of a tier run `workers` wide: a backlog tier's scales with
+   * their share of its full width (row 011-418); a batch's is whole.
+   */
+  readonly budgetAt: (workers: number) => number;
 }
 
 export function shapeOf(
@@ -49,8 +55,12 @@ export function shapeOf(
   // Row 011-412: a named wait's batch is offered as it is granted, outside the ceiling (021 D18).
   const kind = poolKind(view.checkpointActive(), undefined, batch !== null);
   const offer = backlog && !asEdit ? asks.offer(size, kind) : 0;
-  const budget = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
-  return { free, batch, asEdit, backlog, turn, size, offer, budget };
+  const full = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
+  // Row 011-418: a backlog tier offered few workers selects little and is chosen again soon.
+  const widest = backlog && batch === null ? asks.fullWidth() : null;
+  const budgetAt = (workers: number) => shareBudget(full, workers, widest);
+  const budget = budgetAt(offer);
+  return { free, batch, asEdit, backlog, turn, size, offer, budget, budgetAt };
 }
 
 /** The files a pass picked and what the pick found on the way. */

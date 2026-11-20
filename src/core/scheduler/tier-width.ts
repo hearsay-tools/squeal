@@ -26,7 +26,8 @@ export function fewest(traits: WidthTraits, picked: readonly TierFile[]): number
 
 /** What `fit` needs of the pick: its wall budget, the offer, the width asked, slot and trim. */
 export interface PickWidth {
-  readonly budget: number;
+  /** The wall budget of a tier run that many workers wide (`Shape.budgetAt`, row 011-418). */
+  readonly budgetAt: (workers: number) => number;
   readonly offer: number;
   readonly width: number;
   readonly slot: number | null;
@@ -40,7 +41,8 @@ export interface PickWidth {
  * The prefix of `picked` that fits `grant` and whether a batch's tier of it
  * is narrower than an edit's tier (`GrantAsk.atGrant`): granted less than
  * offered (another daemon took permits meanwhile), a backlog tier keeps the
- * prefix its wall budget holds at the grant (task 001-366).
+ * prefix its wall budget holds at the grant (task 001-366), the budget of
+ * the grant's share of the ceiling (row 011-418).
  */
 export function grantFit(
   traits: WidthTraits,
@@ -51,7 +53,7 @@ export function grantFit(
     let files = picked;
     let { trimmed } = pick;
     if (pick.backlog && pick.slot === null && grant < Math.min(pick.width, pick.offer)) {
-      const fits = new BacklogWall(pick.budget);
+      const fits = new BacklogWall(pick.budgetAt(grant));
       const keep = picked.findIndex(
         (p) =>
           !fits.take(
