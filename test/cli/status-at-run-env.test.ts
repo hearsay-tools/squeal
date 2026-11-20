@@ -40,10 +40,10 @@ describe("status --at --run from a shell environment (row 023-07, review wave-7 
       encoding: "utf8",
       timeout: 300_000,
     });
-    // 3: now has no result for the file, so its comparison is unknown.
-    expect(child.status, child.stderr).toBe(3);
+    // 0, row 023-29 (R1): `--run` ran the working tree's side too, so both sides are known.
+    expect(child.status, child.stderr).toBe(0);
     const report = JSON.parse(child.stdout);
-    expect(report.run).toMatchObject({ selected: 1, ran: 1, stored: 1 });
+    expect(report.run).toMatchObject({ selected: 1, ran: 1, stored: 1, now: { ran: 1 } });
     const file = report.files.find((x: { path: string }) => x.path === TEST.path);
     expect(file.at).toMatchObject({ state: "pass", origin: { kind: "run", stored: true } });
 
