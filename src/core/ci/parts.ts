@@ -26,15 +26,22 @@ import type { InputEvidence } from "./inputs.js";
  * file's coverage record, or why it has none; format 5 (spec 018 D25, row
  * 018-47) the runner, `"vitest"` or `"node-test"`, and a node:test part's
  * `nodeTest` header. A format 3 part reads as a part with no records, and
- * a format 3 or 4 part as a Vitest part. A part may also hold what
- * recording cost (row 018-29, `RecordingCost`), which no key, export or
- * refusal reads.
+ * a format 3 or 4 part as a Vitest part; format 6 (spec 018 D32, row
+ * 018-57) the command's endpoint hashes and touched paths (`stable`,
+ * `unstable`, `touched`), which a part of format 3 to 5 lacks, so its
+ * export keeps D9's rule alone. A part may also hold what recording cost
+ * (row 018-29, `RecordingCost`), which no key, export or refusal reads.
  */
 
-export const PART_FORMAT = "squeal-ci-part/5";
+export const PART_FORMAT = "squeal-ci-part/6";
 
-/** The formats `readPart` reads: this one, format 4, and format 3, which holds no record. */
-export const PART_FORMATS = ["squeal-ci-part/3", "squeal-ci-part/4", PART_FORMAT] as const;
+/** The formats `readPart` reads: this one and formats 3 to 5; format 3 holds no record. */
+export const PART_FORMATS = [
+  "squeal-ci-part/3",
+  "squeal-ci-part/4",
+  "squeal-ci-part/5",
+  PART_FORMAT,
+] as const;
 
 export type PartFormat = (typeof PART_FORMATS)[number];
 
@@ -153,6 +160,11 @@ export interface RecordingCost {
   readonly threads: number;
   /** `ci record`'s own time after the command, reading what the hooks wrote, before writing the parts, in ms. */
   readonly afterMs: number;
+  /**
+   * Format 6 (spec 018 D30): `ci record`'s own time hashing the checkout
+   * before the command and after it, summed, in ms. Absent: no hashing.
+   */
+  readonly endpointsMs?: number;
 }
 
 /**
@@ -325,6 +337,35 @@ export interface Part {
   readonly evidence: InputEvidence;
   /** Format 4: the records `PartFile.record` names; absent when none was made. */
   readonly coverage?: PartRecords;
+  /**
+   * Format 6 (spec 018 D30, D32): each path whose hash, as a key holds it
+   * (`hereOf`), was equal before the command and after it, and differs
+   * from the tree of `header.commit` (all of them when `commit` is
+   * `null`), with that hash: a file's blob id, `null` for no file, a
+   * listing path's names hash. `ci record` hashed every path git does not
+   * ignore and the listing of each directory that holds one; such a path
+   * that is in none of `stable` and `unstable` had the commit's content at
+   * both ends. Absent, with `unstable`: no endpoint hash was taken, so D9's
+   * rule alone applies. Every part of one command holds the same.
+   */
+  readonly stable?: InputEvidence;
+  /**
+   * Format 6 (spec 018 D30, row 018-57): the hashed paths whose hash before
+   * the command differs from the one after it, sorted. D32 names only
+   * `stable`, which holds no path equal to the commit; without this list a
+   * path changed during the command would read as one with the commit's
+   * content at both ends.
+   */
+  readonly unstable?: readonly RelativePath[];
+  /**
+   * Format 6 (spec 018 D31): the paths a hooked process of the command
+   * wrote, read with two contents, removed a tree above, or listed with
+   * names that later changed, sorted; a tree a process removed is its
+   * path, everything below it touched. `"all"`: a child or Worker withheld
+   * its paths (row 018-23), so every path is touched. Absent: a part of
+   * format 3 to 5. Every part of one command holds the same.
+   */
+  readonly touched?: readonly RelativePath[] | "all";
 }
 
 /** The field of `snapshotOptions` D9 asks to be `none` and compares no further. */
@@ -383,7 +424,30 @@ export function readPart(file: AbsolutePath): Part | string {
   if (typeof part.evidence !== "object" || part.evidence === null) {
     return `${file}: a part without evidence`;
   }
+  const bad = badEndpoints(part);
+  if (bad !== null) return `${file}: a part with ${bad}`;
   return value as Part;
+}
+
+/** Which format 6 field of `part` does not have its type; `null` when none. */
+function badEndpoints(part: Partial<Part>): string | null {
+  const { stable, unstable, touched } = part;
+  if (
+    stable !== undefined &&
+    (typeof stable !== "object" ||
+      stable === null ||
+      Array.isArray(stable) ||
+      !Object.values(stable).every((hash) => typeof hash === "string" || hash === null))
+  ) {
+    return "a bad stable";
+  }
+  if (unstable !== undefined && !isPaths(unstable)) return "a bad unstable";
+  if (touched !== undefined && touched !== "all" && !isPaths(touched)) return "a bad touched";
+  return null;
+}
+
+function isPaths(value: unknown): boolean {
+  return Array.isArray(value) && value.every((path) => typeof path === "string");
 }
 
 /**
