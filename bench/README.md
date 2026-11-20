@@ -7,6 +7,7 @@ This benchmark measures what an agent feels when Squeal runs beside it: hook lat
 ```sh
 bench/boat-run.sh                       # all cells, default sandbox, Ryzen 9 9950X; about 2 h
 bench/boat-run.sh --cells ref --steps 12  # a quick check of the reference cell
+bench/boat-run.sh --ref squeal--v0.1.570  # the plugin as released at that tag
 ```
 
 `boat-run.sh` creates a boat.dev sandbox and pushes `plugins/claude-code` (the committed plugin bundle, which is what users install) and `bench/` to it. It runs `run-all.mjs` there and copies the results to `bench/results/<date>-<version>-<type>-<cpu>/`. The sandbox is created with `--no-env`, so it holds none of the account's secrets. It is deleted at the end unless `--keep` is given.
@@ -67,8 +68,11 @@ The benchmark varies one factor at a time from the reference cell, and adds one 
 | stress | 500 | 6 | 100% |
 | store-1.7g | 500 | 1 | 0% (store aged 70 rounds, 2.0 GB) |
 | store-7g | 500 | 1 | 0% (store aged 326 rounds, 9.2 GB) |
+| churn | 500 | 1 | 0% (as store-7g, history over 8 days, prune and integrity check due) |
 
 The two store cells run the reference cell on a store that already holds a week of history. After the full run, `age-store.mjs` adds rounds of history: every test file gets a new content key, with its results, one `loaded_modules` list of real-store size (about 50 KB) and the runs that recorded them. All of it is dated within the last 7 days and is older than the real rows. The shape follows Squeal's own store on 2026-11-20: 7.2 GB, 82% of it in `loaded_modules` (163k rows, 46 KB each) and 1.74M `results` rows. 326 rounds gives that store's `loaded_modules` row count; 70 rounds gives its rows per test file, scaled to 500 test files.
+
+The churn cell measures the daily upkeep of a large store. Its history spans 8 days, so about one day of it is past the 7-day retention, as after a day with no daemon running. `age-store.mjs --churn` also clears the store's record of the last prune and the last full integrity check. The restart then checks the whole file, and the first prune (prune runs at most once an hour per repository and is asked every 6 minutes) has to delete that day. The cell records, from the restart, when old results start to go and when none is left (`prune-watch.json`), and when the daemon logs "full integrity check: ok".
 
 Ambient load (`load.mjs`) is busy-loop threads at normal priority on that share of the vCPUs. It stands for another agent's build or test run.
 
@@ -94,7 +98,11 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 
 ## Metrics
 
-Each metric has a healthy limit and a warn limit. A metric within the healthy limit scores 1, one within the warn limit scores 0.5, and one beyond it scores 0. A cell's score is the mean over its scored metrics × 100. The overall score is the mean of the cell scores. "report" metrics have no limit: they are recorded so a change can be compared with an earlier run.
+### Score
+
+**Correctness is a gate.** A wrong verdict, a missed push (failure or recovery) or a session that crashed, in any cell, marks the whole run **FAILED**, whatever its points. These metrics have no partial credit: Squeal's promise is "PASS → FAIL: notify", and a fast wrong answer is worse than a slow right one.
+
+**Speed is scored in five areas of equal weight:** Hooks, Commands, Verdicts, Resources and Store. A metric within its healthy limit scores 1, within its warn limit 0.5, beyond it 0. An area's score is the mean of its scored metrics. A cell's score is the mean of its areas × 100, so an area with four metrics weighs the same as one with two. A metric that does not apply to a cell (starting other worktrees, with one worktree) is left out. The overall score is the mean of the cell scores, so it compares only between runs of the same cells; the cell scores always compare. "report" metrics have no limit: they are recorded so a change can be compared with an earlier run. `bench/results/TREND.md` lists every committed run.
 
 | Metric | Healthy | Warn | Why this limit |
 |---|---|---|---|
@@ -111,10 +119,11 @@ Each metric has a healthy limit and a warn limit. A metric within the healthy li
 | `cmd.runAll` | report | | Cold full run, seconds |
 | **Session** (what the agent sees) | | | |
 | `session.pushFail.p50` | ≤ 3 s | ≤ 10 s | From the edit that breaks a test to the hook that pushes the failure |
-| `session.pushFail.missed`, `session.pushRecovery.missed` | 0 | 0 | A missed push breaks the product promise: "PASS → FAIL: notify" |
+| `session.pushFail.missed`, `session.pushRecovery.missed` | 0 (gate) | | A missed push breaks the product promise: "PASS → FAIL: notify" |
 | `session.verdict.p50`, `.p95` | ≤ 3 s, ≤ 10 s | ≤ 10 s, ≤ 30 s | From a benign edit to `status --wait` settling; a wait timeout counts as infinite |
 | `session.verdict.within60s` | ≥ 95% | ≥ 80% | Edits whose `status --wait 60000` settled before its timeout |
-| `session.verdict.wrong` | 0 | 0 | A settled verdict that disagrees with the truth. This should never happen |
+| `session.verdict.wrong` | 0 (gate) | | A settled verdict that disagrees with the truth. This should never happen |
+| `session.failed` | 0 (gate) | | A scripted session that crashed or timed out |
 | `session.broad.verdict` | ≤ 180 s | ≤ 300 s | Edit to `src/core.ts` until the whole suite is current. Catch-up waits 120 s of quiet by design, so 180 s allows about 60 s of running |
 | **Resources** | | | |
 | `res.idleCpu.maxPct` | ≤ 1% | ≤ 5% | Daemon CPU, children included, over 60 s with no edits, as % of one core |
@@ -124,6 +133,8 @@ Each metric has a healthy limit and a warn limit. A metric within the healthy li
 | `store.longWrites` | 0 | ≤ 3 | Writes the daemon logs as held over 250 ms (`LONG_WRITE_MS`) |
 | `store.lockFailures` | 0 | ≤ 3 | `SQLITE_BUSY` or "database is locked" in the daemon logs |
 | `store.size`, `store.results` | report | | `store.sqlite` + WAL + `code.sqlite` in MiB, and rows in `results` |
+| `store.prune.doneMin` | ≤ 12 min | ≤ 20 min | Churn cell: from the restart until no result past retention is left. Prune is asked every 6 minutes, so 12 allows two asks |
+| `store.prune.s`, `store.fullCheck.s` | report | | Churn cell: how long the prune deleted for, and the restart until the integrity check passed |
 
 ## Files
 
@@ -136,13 +147,14 @@ Each metric has a healthy limit and a warn limit. A metric within the healthy li
 | `gen-project.mjs` | The synthetic project |
 | `age-store.mjs` | Adds a week of history to a store, for the store cells |
 | `load.mjs` | Ambient CPU load |
-| `summarize.mjs` | `scorecard.md` and `scores.json` from a results directory; the limits live here |
+| `summarize.mjs` | `scorecard.md` and `scores.json` from a results directory; the limits and the score live here |
+| `trend.mjs` | `results/TREND.md`, every committed run by CPU model; `boat-run.sh` runs it |
 | `lib.mjs` | Timing, `/proc` reading, the seeded random generator |
 | `results/` | Committed scorecards and raw data of past runs |
 
 ## What it does not cover yet
 
-- **Store churn.** The store cells measure a large store, not a week of churn. All aged rows are inside the 7-day window, so prune deletes nothing, and freshly inserted rows leave no free pages. A real store deletes about a day of history (about 1.5 GB for Squeal's own) every day, and the daily integrity check reads the whole file.
+- **Store fragmentation.** Aged rows are inserted in one go, so the file has few free pages and its pages are in order. A store that has lived for weeks is more scattered.
 - **Other runners and harnesses.** It tests only Vitest through the Claude Code plugin; not node:test, pytest, Codex, OpenCode or Pi.
 - **Disk and memory pressure.** The ambient load is CPU only.
 - **Real model sessions.** The edit rhythm is scripted. `evals/` has real sessions.

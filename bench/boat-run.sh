@@ -2,7 +2,10 @@
 # Runs the Squeal performance benchmark on a fresh boat.dev sandbox and
 # copies the results back to bench/results/<date>-<version>-<cpu>/.
 #
-# Usage: bench/boat-run.sh [--type default] [--cpu "Ryzen 9 9950X"] [--cells ref,wt-3] [--steps 24] [--keep]
+# Usage: bench/boat-run.sh [--ref <git ref>] [--type default] [--cpu "Ryzen 9 9950X"] [--cells ref,wt-3] [--steps 24] [--keep]
+#
+# --ref: test the plugin as committed at that ref (for example squeal--v0.1.570)
+# instead of this worktree's plugins/claude-code. The harness is always this worktree's bench/.
 #
 # The sandbox type fixes vCPUs and RAM but not the CPU model, so the script
 # creates sandboxes until one has the wanted CPU (each try costs one start
@@ -16,6 +19,7 @@ CPU="Ryzen 9 9950X"
 CELLS=""
 STEPS=24
 KEEP=0
+REF=""
 TRIES=12
 while [ $# -gt 0 ]; do
   case $1 in
@@ -24,6 +28,7 @@ while [ $# -gt 0 ]; do
     --cells) CELLS=$2; shift 2 ;;
     --steps) STEPS=$2; shift 2 ;;
     --keep) KEEP=1; shift ;;
+    --ref) REF=$2; shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
@@ -36,6 +41,13 @@ retry() {
   done
   return 1
 }
+
+PLUGIN=plugins/claude-code
+if [ -n "$REF" ]; then
+  PLUGIN=$(mktemp -d)/claude-code
+  mkdir -p "$PLUGIN"
+  git archive "$REF" plugins/claude-code | tar x -C "$PLUGIN" --strip-components=2
+fi
 
 ID=""
 cleanup() { if [ -n "$ID" ] && [ "$KEEP" = 0 ]; then boat delete "$ID" --yes >/dev/null 2>&1 || true; fi; }
@@ -60,7 +72,7 @@ pushed() { boat ssh "$ID" -- 'test -f /home/user/claude-code/dist/cli/squeal.mjs
 for _ in 1 2 3 4 5; do
   pushed && break
   sleep 10
-  boat push "$ID" plugins/claude-code --to /home/user/claude-code >/dev/null || true
+  boat push "$ID" "$PLUGIN" --to /home/user/claude-code >/dev/null || true
   boat push "$ID" bench --to /home/user/bench >/dev/null || true
 done
 pushed || { echo "push to $ID failed" >&2; exit 1; }
@@ -76,7 +88,7 @@ until boat ssh "$ID" -- 'test -f /home/user/results/scorecard.md' >/dev/null 2>&
   boat ssh "$ID" -- 'tail -1 /home/user/run.log' 2>/dev/null || true
 done
 
-VERSION=$(node -p 'require("./plugins/claude-code/package.json").version')
+VERSION=$(node -p "require('$PLUGIN/package.json').version")
 SLUG=$(echo "$MODEL" | tr -cs 'A-Za-z0-9' '-' | sed 's/-$//')
 DEST="bench/results/$(date -u +%Y-%m-%d)-$VERSION-$TYPE-$SLUG"
 mkdir -p "$DEST"
@@ -84,4 +96,5 @@ retry boat ssh "$ID" -- 'cd /home/user && cp run.log results/ && tar czf /tmp/re
 retry boat scp "$ID:/tmp/results.tgz" "$DEST/results.tgz" >/dev/null
 tar xzf "$DEST/results.tgz" -C "$DEST" --strip-components=1 && rm "$DEST/results.tgz"
 echo "results in $DEST"
+node bench/trend.mjs >/dev/null
 cat "$DEST/scorecard.md"
