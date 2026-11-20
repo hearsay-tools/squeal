@@ -89,7 +89,7 @@ describe(
       expect(fileOf(json.out, PLAIN.path)).toMatchObject({
         at: { state: "pass" },
         // Its key is the same at both commits: the newest result at it may be either side's.
-      now: { state: "pass" },
+        now: { state: "pass" },
       });
       clean(f);
     });
