@@ -56,4 +56,16 @@ describe("costText", () => {
       "Squeal's recording took 12.3 s in 1 process or thread of 2 commands, no test time recorded; 0.01 s more after the commands; 1 of 3 parts hold no cost (an older Squeal made them)",
     );
   });
+
+  it("adds the endpoint hashes' time of the commands that hashed (spec 018 D30)", () => {
+    const one = { ...cost("one", 1240, 9, 420), endpointsMs: 2100 };
+    const summary = costOf([part([10_000, 30_000], one), part([], one)]);
+    expect(summary?.endpointsMs).toBe(2100);
+    expect(summary && costText(summary)).toBe(
+      "Squeal's recording took 1.24 s in 9 processes and threads, 3.1% of the test time (40.0 s); 0.42 s more after the command; 2.10 s hashing the checkout before and after it",
+    );
+    const two = costOf([part([], one), part([], { ...cost("two", 0, 0, 0), endpointsMs: 900 })]);
+    expect(two && costText(two)).toContain("; 3.00 s hashing the checkout before and after them");
+    expect(costOf([part([], cost("old", 1, 1, 1))])).not.toHaveProperty("endpointsMs");
+  });
 });
