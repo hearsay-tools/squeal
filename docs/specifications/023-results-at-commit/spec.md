@@ -102,7 +102,7 @@ A red proof is two sides, red and green, run under identical conditions. A side 
 
 - The gate's child, if any remains, ends with its parent (process group); a SIGKILL of the command leaves nothing writing to the store.
 - At start, and in the daemon's prune, Squeal removes checkouts whose marker names a dead owner, with their run folders.
-- Before Squeal removes a checkout (D4 step 8, D5, the sweep), it ends every process of the user whose working folder or command line lies under it, and the report names them (amended 2026-11-20, R6: a test harness's server and 15 browser processes outlived a removed checkout).
+- Before Squeal removes a checkout (D4 step 8, D5, the sweep), it ends every process of the user whose working folder (as the kernel reports it, a deleted folder included) lies under it, and the report names them (amended 2026-11-20, R6: a test harness's server and 15 browser processes outlived a removed checkout; amended 2026-11-21, the human after `reviews/wave-18-rereview.md`, "A: working folder only": command-line paths are not read, because two reviews found outside processes killed by them).
 - `squeal ps` lists a live run: its checkout, pid and age.
 
 ## Testing
