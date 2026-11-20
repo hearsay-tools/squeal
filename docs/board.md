@@ -2691,6 +2691,10 @@ Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16,
 | 023-26 named wait says only "still starting" before the daemon lists a file (Q7) | done in 0.1.577 (with 023-24; files handed over by spec 011's coordinator; amendment lines in 011 and 005 status); released in 0.1.577 | D3 | after 023-23 |
 | 023-27 keep a commit's keys once computed (Q3); directory paths for `squeal run` (Q8) | proposed (later, the human 2026-11-19) | D2 | after 023-24 |
 | 023-28 before/after dogfood rerun on released 0.1.577 (s1, s2 empty store x10 each, s7 warm store x5; Sonnet; lab VM, throwaway user) | done (lessons.md "Round 4 (023-28)", tasks/023-28; 25 sessions, $2.36: `--run` used 25/25 with no hint (round 3: 0/25); full answers 0/25; proposals R1 to R8) | Testing (dogfood), step 7 | after 023-24, 023-26 |
+| 023-29 `status --at --run` answers both sides; HEAD refusal with `--run`; setup failure not budget; honest fit; not-selected mark (R1, R2, R3, R4, R8) | running (wave 18, brief `tasks/wave-18.md`; the human 2026-11-20, "All R1-R8") | D3, D4 | after 023-28 |
+| 023-30 proof summary says red is not the file's result; skill step 8 "`--run` fills both sides" (R5) | running (wave 18) | D5 | after 023-28 |
+| 023-31 end processes left under a removed checkout (R6) | running (wave 18) | D6 | after 023-28 |
+| 023-32 Q4 key difference with round 4's clone setup (R7) | running (wave 18; lab VM after the peer's turn) | D2, D4 | after 023-25 |
 
 ## Later
 

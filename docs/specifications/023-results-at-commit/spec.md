@@ -62,6 +62,8 @@ Keys are computed, never looked up by label (first finding, recommendation).
 - The current side is the daemon's current state for the worktree; with no daemon, the store lookup at the working tree's keys, as 020 D11.7 reads it.
 - Text output: one line per changed or unknown file, then counts. Unchanged known files are counted, not listed.
 - When most files are `no result` and the commit is older than 7 days, one line says results are kept 7 days.
+- When `<commit>` resolves to HEAD, the command refuses with or without `--run` and names `--at HEAD~1` (amended 2026-11-20, the human on round 4, "All R1-R8", R2: 22 of 25 sessions keyed HEAD against itself with `--run`).
+- A file with no result at the commit that `--run` did not select is marked so: "no result at <commit>, not selected by the change; `--all-missing` runs it" (R8).
 
 ### D4. `--run`: the temporary checkout
 
@@ -76,6 +78,7 @@ Flow (`temp-checkout.md`, recommendation 1):
 7. Completed files are written to the shared store at the commit's keys, as 020 D17.3 does; they stay 7 days.
 8. Stop the run's process group, `git worktree remove --force`, delete the run folder, `prune`.
 9. A file whose closure reads a path git does not hold reads `not comparable (needs <path>)` and is not run.
+10. Both sides (amended 2026-11-20, the human on round 4, "All R1-R8"; `lessons.md` Round 4). `--run` also runs the selected files that have no result in the working tree, in the worktree as the daemon runs them, within the same budget, so one call answers before and after (R1). A failed batch setup reads as a setup failure with its text, never as the budget (R3); groups that run only on request run in their own batch, so their setup cannot stop the other files. The rerun line's fit comes from the rate this run measured; when no budget up to the cap fits, the report says so with the estimate (R4).
 
 ### D5. `squeal proof`: red proofs
 
@@ -92,12 +95,14 @@ A red proof is two sides, red and green, run under identical conditions. A side 
 3. **Conditions.** `--env NAME=` unsets or sets a variable; `--without <path>` hides a file or folder (a path under `HOME` is hidden by giving the run its own empty `HOME`; `--home-keep <path under HOME>`, repeatable, copies a file or folder into it, links refused; nothing in it resolves into the real `HOME`. Amended 2026-11-18, the human, "B: empty + --home-keep": Squeal records no reads under `HOME`, and links into it let a test reach the hidden file, `reviews/wave-9.md` B1). A repository path is removed from the checkout; a path whose parent inside the checkout is a link is refused. The same conditions apply to both sides. A side under a condition always runs, and its result is never written to the store: the key does not record the condition.
 4. **Repeat.** `--repeat <n>` runs the red side up to n times and stops at the first failure. The green side runs n times and must pass every time. Default 1. Reproducing an original host load is out of scope.
 5. **Verdict per test file:** `proven` (red failed on an assertion, green passed), `not red` (red passed every time), `red for another reason` (import, setup, collection or timeout failure, with its text), `not green`, `not comparable`. The report carries the red side's failed tests and their failure text (as `squeal why` shows it), the commits, the conditions and the run count, so an agent can paste it into a pull request. Red evidence (amended 2026-11-19, the human on issue #244, "A: evidence rule"): an error carrying assertion evidence (expected/actual values, matcher result or diff) counts as an assertion whatever its name; an error thrown deliberately inside the test body (`Error` or a custom subclass) counts as red and the verdict reads `proven (red on a thrown error, not an assertion)` with its text; the engine's programming errors (`TypeError`, `ReferenceError`, `SyntaxError`) and failures in import, setup, hooks, collection or a runner timeout stay `red for another reason`; `--red-error '<text>'` (repeatable) accepts a failure whose message holds the text.
+5a. The summary line of a `source` proof whose named test changed says what red is not (amended 2026-11-20, R5): "proven: the new test fails on the old code. This is not the file's result at <base>; that is `squeal status --at <base> <file> --run`".
 6. Exit codes: `0` every named file `proven`, `1` some file `not red` or `not green`, `3` some file not comparable or red for another reason, `2` usage or setup error.
 
 ### D6. Cleanup and visibility
 
 - The gate's child, if any remains, ends with its parent (process group); a SIGKILL of the command leaves nothing writing to the store.
 - At start, and in the daemon's prune, Squeal removes checkouts whose marker names a dead owner, with their run folders.
+- Before Squeal removes a checkout (D4 step 8, D5, the sweep), it ends every process of the user whose working folder or command line lies under it, and the report names them (amended 2026-11-20, R6: a test harness's server and 15 browser processes outlived a removed checkout).
 - `squeal ps` lists a live run: its checkout, pid and age.
 
 ## Testing
