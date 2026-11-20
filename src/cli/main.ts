@@ -89,15 +89,18 @@ Usage:
                                 changed, the unknown ones by group (--full: each),
                                 then counts; exit 0 when every file is known on both
                                 sides, 3 when one is not, 2 on a usage or setup error.
-                                --run runs, in that checkout, the files with no result
-                                that the diff <commit>..HEAD selects (--all-missing:
-                                every one), in batches, and stores them at the
-                                commit's keys, within one --timeout (300 s, the
-                                checkout and install included); a large selection
-                                tells its estimate first; without --run, the report
-                                ends with the --run command for files with no result
-                                at the commit. A clean tree at HEAD without --run
-                                exits 2 and names HEAD~1: there is nothing to compare
+                                --run fills both sides: in that checkout, the files
+                                with no result that the diff <commit>..HEAD selects
+                                (--all-missing: every one), stored at the commit's
+                                keys; then, in the working tree, the selected files
+                                with no result there, through its daemon or the gate;
+                                in batches, within one --timeout (300 s, the checkout
+                                and install included); a large selection tells its
+                                estimate first; a batch whose setup failed says so;
+                                without --run, the report ends with the --run command
+                                for files with no result at the commit. A clean tree
+                                at HEAD exits 2 and names HEAD~1, with or without
+                                --run: there is nothing to compare
   squeal proof <test file>... --base <commit> [--case source|test|dependency]
                [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
                [--repeat <n>] [--with <path>]... [--source <path>]...
