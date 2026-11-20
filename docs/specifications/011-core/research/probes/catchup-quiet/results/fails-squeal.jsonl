@@ -1,0 +1,11 @@
+{"w":"72059d","start":"11-16T21:27:30","F":437,"wallS":973,"newFails":0,"firstFailS":null}
+{"w":"72059d","start":"11-16T22:42:37","F":364,"wallS":1859,"newFails":0,"firstFailS":null}
+{"w":"72059d","start":"11-17T00:10:19","F":216,"wallS":849,"newFails":0,"firstFailS":null}
+{"w":"db0382","start":"11-16T23:41:49","F":330,"wallS":1232,"newFails":1,"firstFailS":1161}
+{"w":"db0382","start":"11-17T08:11:30","F":297,"wallS":840,"newFails":0,"firstFailS":null}
+{"w":"db0382","start":"11-17T16:26:47","F":452,"wallS":501,"newFails":0,"firstFailS":null}
+{"w":"1d0e52","start":"11-19T12:26:37","F":1249,"wallS":7793,"newFails":1,"firstFailS":4985}
+{"w":"0b0db9","start":"11-19T14:10:00","F":404,"wallS":582,"newFails":0,"firstFailS":null}
+{"w":"0b0db9","start":"11-19T16:11:26","F":1083,"wallS":3937,"newFails":1,"firstFailS":3355}
+{"w":"aeca05","start":"11-19T15:54:37","F":768,"wallS":1256,"newFails":0,"firstFailS":null}
+{"w":"c21797","start":"11-19T16:23:46","F":679,"wallS":1549,"newFails":1,"firstFailS":130}

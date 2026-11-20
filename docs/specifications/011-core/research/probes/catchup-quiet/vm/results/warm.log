@@ -1,0 +1,7 @@
+~/work/8fdf8a51/probe/warm.sh: line 7: ~/work/8fdf8a51/home/.config/squeal/config.json: No such file or directory
+idle at 2026-11-20T03:01:48Z
+warm run rc=0
+idle at 2026-11-20T03:15:13Z
+898M	~/work/8fdf8a51/squawk
+/dev/vdb        240G   15G  226G   6% ~
+warm done 2026-11-20T03:15:19Z

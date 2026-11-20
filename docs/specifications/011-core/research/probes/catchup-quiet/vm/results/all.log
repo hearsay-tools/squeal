@@ -1,0 +1,73 @@
+Q120a daemon=331523
+idle at 2026-11-20T03:38:43Z
+started Q120a-sampler pid 332544
+started Q120a-queue pid 332552
+started Q120a-workers pid 332561
+started Q120a-permits pid 332582
+idle at 2026-11-20T03:53:13Z
+done Q120a
+arm Q120a done 2026-11-20T03:53:18Z
+Q60a daemon=520768
+idle at 2026-11-20T03:53:44Z
+started Q60a-sampler pid 527007
+started Q60a-queue pid 527015
+started Q60a-workers pid 527024
+started Q60a-permits pid 527035
+idle at 2026-11-20T04:11:35Z
+done Q60a
+arm Q60a done 2026-11-20T04:11:41Z
+Q30a daemon=711862
+idle at 2026-11-20T04:12:08Z
+started Q30a-sampler pid 718098
+started Q30a-queue pid 718106
+started Q30a-workers pid 718115
+started Q30a-permits pid 718126
+idle at 2026-11-20T04:28:26Z
+done Q30a
+arm Q30a done 2026-11-20T04:28:32Z
+Q30b daemon=901680
+idle at 2026-11-20T04:28:58Z
+started Q30b-sampler pid 907892
+started Q30b-queue pid 907900
+started Q30b-workers pid 907909
+started Q30b-permits pid 907920
+idle at 2026-11-20T04:44:36Z
+done Q30b
+arm Q30b done 2026-11-20T04:44:41Z
+Q60b daemon=1090676
+idle at 2026-11-20T04:45:07Z
+started Q60b-sampler pid 1096887
+started Q60b-queue pid 1096895
+started Q60b-workers pid 1096904
+started Q60b-permits pid 1096915
+idle at 2026-11-20T05:00:24Z
+done Q60b
+arm Q60b done 2026-11-20T05:00:29Z
+Q120b daemon=1279755
+idle at 2026-11-20T05:00:56Z
+started Q120b-sampler pid 1285938
+started Q120b-queue pid 1285946
+started Q120b-workers pid 1285955
+started Q120b-permits pid 1285966
+idle at 2026-11-20T05:17:35Z
+done Q120b
+arm Q120b done 2026-11-20T05:17:40Z
+F30 daemon=1469908
+idle at 2026-11-20T05:18:06Z
+started F30-sampler pid 1476120
+started F30-queue pid 1476128
+started F30-workers pid 1476137
+started F30-permits pid 1476148
+idle at 2026-11-20T05:36:26Z
+done F30
+arm F30 done 2026-11-20T05:36:31Z
+F120 daemon=1668547
+idle at 2026-11-20T05:36:57Z
+started F120-sampler pid 1674752
+started F120-queue pid 1674761
+started F120-workers pid 1674769
+started F120-permits pid 1674780
+idle at 2026-11-20T05:54:16Z
+done F120
+arm F120 done 2026-11-20T05:54:21Z
+all done 2026-11-20T05:54:21Z

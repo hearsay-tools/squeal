@@ -1,0 +1,10 @@
+cli=~/work/8fdf8a51/squeal/plugins/claude-code/dist/cli/squeal.mjs
+b082e0958cf6fa984a955ec29376a6b185d1b1605e0e73c64de84d2029ee4f7e  ~/work/8fdf8a51/squeal/plugins/claude-code/dist/cli/squeal.mjs
+runner={"tierSize":4,"timeoutMs":900000}
+user={} held=1 path=packages/contract/src/ci-wait.ts follow=150 packages/contract/src/report-title.test.ts
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-F120.scope
+pid=1668547 squeal squawk daemon @5a510150 ~/work/8fdf8a51/squeal/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/8fdf8a51/squawk 
+pid=1668594 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/8fdf8a51/squeal/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/8fdf8a51/squawk --runner vitest 
+pid=1668595 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/8fdf8a51/squeal/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/8fdf8a51/squawk --runner node-test 
+pid=1668601 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/8fdf8a51/squeal/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/8fdf8a51/squawk --runner node-test 
+pid=1668672 ~/.nvm/versions/node/v26.13.0/bin/node ~/work/8fdf8a51/squawk/packages/cezar/scripts/product-identity.mjs 

@@ -1,0 +1,20 @@
+{
+ "label": "Q60b",
+ "count": 1,
+ "busy": {
+  "min": 10,
+  "p50": 10,
+  "max": 10
+ },
+ "episodes": [
+  {
+   "atS": 122.2,
+   "heldS": 2,
+   "lines": 1
+  }
+ ],
+ "heldTotalS": 2,
+ "sample": [
+  "[1090676] squeal daemon: the background ceiling refused a backlog tier: 10 busy CPUs, ceiling 9 (0.75 of 12 CPUs)"
+ ]
+}

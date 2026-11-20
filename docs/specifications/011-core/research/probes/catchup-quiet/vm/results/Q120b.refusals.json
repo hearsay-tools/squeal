@@ -1,0 +1,20 @@
+{
+ "label": "Q120b",
+ "count": 1,
+ "busy": {
+  "min": 9.9,
+  "p50": 9.9,
+  "max": 9.9
+ },
+ "episodes": [
+  {
+   "atS": 182.6,
+   "heldS": 2,
+   "lines": 1
+  }
+ ],
+ "heldTotalS": 2,
+ "sample": [
+  "[1279755] squeal daemon: the background ceiling refused a backlog tier: 9.9 busy CPUs, ceiling 9 (0.75 of 12 CPUs)"
+ ]
+}
