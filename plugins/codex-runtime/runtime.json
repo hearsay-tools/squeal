@@ -12,7 +12,7 @@
       "mode": 493
     },
     "dist/ci/children.cjs": {
-      "sha256": "47dc5225dff7ac137e8436e88c9fb91edf1ba76a9db280364c55313c472e1d47",
+      "sha256": "0fa3b29e483b2b4ba119743a732be47ef3778b4a42ec8d68ed74c863e392e3f0",
       "mode": 420
     },
     "dist/ci/clock.cjs": {
@@ -44,7 +44,7 @@
       "mode": 420
     },
     "dist/ci/evidence.cjs": {
-      "sha256": "ea2e2bd583c7aadfb546972f867c7403f4aacb10044f4b6ec48109210ecfedca",
+      "sha256": "9e657614bd8416f64c70c97224e84c675800aa8f5aa846d8fc07df285646b943",
       "mode": 420
     },
     "dist/ci/inspector.cjs": {
@@ -63,12 +63,16 @@
       "sha256": "335622f228c3c6cc653c9fd3836745abbbc4fcf5b8ccb5eb2804546f9a15d200",
       "mode": 420
     },
+    "dist/ci/own-map.cjs": {
+      "sha256": "f6750cd065e15433c4fa782d8dc45197f88cda5cdf8062c313d2fd7afea36018",
+      "mode": 420
+    },
     "dist/ci/shared.cjs": {
       "sha256": "633dbe077b427e94850ae0fd996080d5f3d4bcc477cf71c273b3874c1b10ecff",
       "mode": 420
     },
     "dist/ci/vitest-ci.cjs": {
-      "sha256": "9bda3b3e860aa675ff971d15a0b770c910d3b34da43ec1a5792d0aeef30a65d6",
+      "sha256": "2e9dfd77811109a3f8dc1502ce3f4e0801fa1175e4d866d532972da99e862d3e",
       "mode": 420
     },
     "dist/cli/coverage-map.mjs": {
@@ -88,7 +92,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "fcfa7d70e3fd8498cc444928d6a109847a5b890fb45b9f08dbb628b38ca2f8bf",
+      "sha256": "c28955fc40668b15c5998a8425f731d244b001e485e04bce4c7d4b910aedff7a",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {

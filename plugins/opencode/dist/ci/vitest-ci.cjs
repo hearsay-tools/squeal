@@ -51,6 +51,7 @@ const path = require("node:path");
 const { createRequire } = require("node:module");
 const { isMainThread } = require("node:worker_threads");
 const clock = require("./shared.cjs").shared("clock.cjs");
+const { ownMap } = require("./shared.cjs").shared("own-map.cjs");
 const { coveredModules, coveredReporter, startCoverage } = require("./coverage.cjs");
 const { installWatch, watchWorkers } = require("./inspector.cjs");
 
@@ -158,10 +159,11 @@ function reporterFor(vitest, file, settings, fail, modules) {
     }),
     // `covered`: the coverage `coveredReporter` waited for (spec 020 D13).
     onTestRunEnd: safe((_modules, unhandledErrors, reason, covered) => {
-      const env = {};
-      for (const name of settings.variables) {
-        if (process.env[name] !== undefined) env[name] = process.env[name];
-      }
+      const env = ownMap(
+        settings.variables.flatMap((name) =>
+          process.env[name] === undefined ? [] : [[name, process.env[name]]],
+        ),
+      );
       const shard = vitest.config?.shard;
       writeRaw(file, {
         state: "ended",

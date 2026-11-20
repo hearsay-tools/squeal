@@ -25442,7 +25442,7 @@ var init_tree = __esm({
 });
 
 // src/core/code/coverage/own-map.ts
-function ownMap(cached, url) {
+function ownMap2(cached, url) {
   const map = mapData(cached.data ?? inlineMap(cached.url));
   if (map === null) return null;
   try {
@@ -25577,7 +25577,7 @@ function ownRecord(root, payload, format2, skip = () => false) {
 }
 function ownSource(path, rel2, url, cached) {
   if (cached === void 0) return asRun(path, rel2);
-  const map = ownMap(cached, url);
+  const map = ownMap2(cached, url);
   if (map === null) return null;
   const text3 = map.sourcesContent?.[0];
   if (typeof text3 !== "string") return null;
@@ -85742,6 +85742,16 @@ init_observed2();
 import { createHash as createHash19 } from "node:crypto";
 import { readdirSync as readdirSync19, readFileSync as readFileSync33, statSync as statSync16 } from "node:fs";
 import { join as join48 } from "node:path";
+
+// src/core/ci/own-map.ts
+function ownMap(entries3) {
+  return Object.fromEntries(entries3);
+}
+function ownValue(map, key3) {
+  return Object.hasOwn(map, key3) ? map[key3] : void 0;
+}
+
+// src/core/ci/inputs.ts
 function listingHash(root, directory) {
   try {
     return namesHash(readdirSync19(join48(root, directory)));
@@ -85842,7 +85852,7 @@ function readRecorded(dir2) {
   );
   const touched2 = trees.has("") ? "all" : [.../* @__PURE__ */ new Set([...conflicting, ...written2, ...trees])].sort(compare);
   return {
-    evidence: Object.fromEntries(kept6.sort(([a], [b]) => compare(a, b))),
+    evidence: ownMap(kept6.sort(([a], [b]) => compare(a, b))),
     hooks,
     touched: touched2
   };
@@ -85896,10 +85906,11 @@ function uncertifiedWhy(paths, evidence, here) {
   });
 }
 function whyUncertified(path, evidence, here) {
-  if (!Object.hasOwn(evidence, path)) return "unrecorded";
+  const recorded2 = ownValue(evidence, path);
+  if (recorded2 === void 0) return "unrecorded";
   const now = here(path);
   if (now === void 0) return "unknown";
-  return evidence[path] === now ? null : "differs";
+  return recorded2 === now ? null : "differs";
 }
 
 // src/core/ci/endpoints.ts
@@ -85925,7 +85936,7 @@ async function endpointsAfter(before5) {
     else if (hash4 !== at2(path)) stable.push([path, hash4]);
   });
   return {
-    stable: Object.fromEntries(stable),
+    stable: ownMap(stable),
     unstable,
     ms: before5.ms + performance2.now() - start2
   };
@@ -85986,7 +85997,7 @@ function snapshotFields(resolvedConfig) {
   if (typeof options !== "object" || options === null || Array.isArray(options)) {
     return { "(snapshotOptions)": configFieldHash(options ?? null) };
   }
-  return Object.fromEntries(
+  return ownMap(
     Object.entries(options).filter(([name3]) => name3 !== UPDATE_SNAPSHOT).map(([name3, value]) => [name3, configFieldHash(value)])
   );
 }
@@ -86066,9 +86077,9 @@ init_environment_descriptor();
 init_node_options();
 
 // src/runners/node-test/ci-files.ts
-init_compare();
 import { createHash as createHash20 } from "node:crypto";
 import { isAbsolute as isAbsolute15, relative as relative6, resolve as resolve13, sep as sep7 } from "node:path";
+init_compare();
 function partFile(testFile, results3, fileError, durationMs2, closure) {
   const checks = results3.map((result) => ({
     fullName: result.check.kind === "test" ? result.check.fullName : "",
@@ -86131,7 +86142,7 @@ function sorted2(value) {
   if (value === null || typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map(sorted2);
   const object2 = value;
-  return Object.fromEntries(
+  return ownMap(
     Object.keys(object2).sort().map((key3) => [key3, sorted2(object2[key3])])
   );
 }
@@ -86336,7 +86347,7 @@ function emptyRun(header2, paths, end, noFiles) {
     cwd,
     version: header2.version,
     nodeBuild: nodeBuildOf(header2.build),
-    env: Object.fromEntries(
+    env: ownMap(
       Object.entries(header2.env).map(([name3, value]) => [
         name3,
         value === null ? null : configFieldHash(value)
@@ -86723,9 +86734,8 @@ function startRecording(options) {
   const evidence = join59(temp, "evidence");
   for (const dir2 of [raw, observed2, evidence]) mkdirSync16(dir2);
   const { env: commandVariables, skip } = commandEnv(options, hook, recorder, temp, observed2);
-  const env = { ...options.env, ...commandVariables };
   const root = options.paths.root;
-  env[CI_RECORD_VARIABLE] = JSON.stringify({
+  const settings = JSON.stringify({
     ...options.also?.settings,
     // The hooks a child started with an env of its own gets back (`children.cjs`).
     hooks: [hook, ...options.also?.hooks ?? []],
@@ -86734,6 +86744,7 @@ function startRecording(options) {
     evidence: { out: evidence, root, skip, format: options.objectFormat },
     coverage: coverageSettings(options, join59(temp, "coverage"))
   });
+  const env = { ...options.env, ...commandVariables, [CI_RECORD_VARIABLE]: settings };
   return {
     env,
     finish: () => {
@@ -87103,12 +87114,15 @@ function bundleOf(store, worktreeId, header2, files5) {
   return { bundle, absolute };
 }
 function observedOf(store, testFile) {
-  const observed2 = {};
-  for (const map of OBSERVED_MAPS) {
-    const entry4 = readSharedEntries(store, MAP_KEY4[map](testFile.project))[testFile.path];
-    if (entry4 !== void 0) observed2[map] = entry4;
-  }
-  return observed2;
+  return ownMap(
+    OBSERVED_MAPS.flatMap((map) => {
+      const entry4 = ownValue(
+        readSharedEntries(store, MAP_KEY4[map](testFile.project)),
+        testFile.path
+      );
+      return entry4 === void 0 ? [] : [[map, entry4]];
+    })
+  );
 }
 function byCheck(a, b) {
   const name3 = (r) => r.check.kind === "test" ? r.check.fullName : "";
@@ -87147,7 +87161,8 @@ function endpointHash(part2, path, commit) {
   const committed = commit(path);
   if (absent2(committed)) return null;
   const { stable } = ends;
-  const hash4 = Object.hasOwn(stable, path) ? stable[path] : committed;
+  const held4 = ownValue(stable, path);
+  const hash4 = held4 === void 0 ? committed : held4;
   return hash4 === void 0 || absent2(hash4) ? null : hash4;
 }
 async function inputsHere(part2, inputs2, here, tree) {
@@ -87476,10 +87491,10 @@ function runDifferences(a, b) {
     installedDependencies: "",
     files: [],
     config: {
-      ...Object.fromEntries(
+      ...ownMap(
         Object.entries(descriptor.config).filter(([name3]) => !SQUEAL_FIELDS.includes(name3))
       ),
-      ...Object.fromEntries(
+      ...ownMap(
         Object.entries(snapshotOptions).map(([name3, hash4]) => [`snapshotOptions.${name3}`, hash4])
       )
     }
@@ -87528,7 +87543,9 @@ function entryRefusal(entry4, parts3) {
   if (runs2.some((run7) => run7.nodeBuild !== nodeBuild)) {
     return `node:test ran on another build of Node ${version2} than ${project} runs here`;
   }
-  const variables2 = Object.keys(entry4.env).sort(compare).filter((name3) => runs2.some((run7) => run7.env[name3] !== configFieldHash(entry4.env[name3])));
+  const variables2 = Object.keys(entry4.env).sort(compare).filter(
+    (name3) => runs2.some((run7) => ownValue(run7.env, name3) !== configFieldHash(entry4.env[name3]))
+  );
   if (variables2.length > 0) {
     return `node:test ran with another value of ${variables2.join(", ")} than ${project} sets`;
   }
@@ -87541,7 +87558,7 @@ function allowlistRefusal(project, entry4, runs2) {
     return `the node:test parts of ${project} do not say what ${unknown3.join(", ")} held`;
   }
   const other = names8.filter(
-    (name3) => runs2.some((run7) => run7.env[name3] !== entry4.allowlisted[name3])
+    (name3) => runs2.some((run7) => ownValue(run7.env, name3) !== entry4.allowlisted[name3])
   );
   if (other.length === 0) return null;
   return `node:test of ${project} ran with another value of ${other.join(", ")} than this job's environment`;
@@ -87752,9 +87769,9 @@ async function nodeTestEntries(adapters, policy, env) {
 }
 function allowlisted(allowlist, own, env) {
   const names8 = allowlist.filter((name3) => !Object.hasOwn(own, name3));
-  return Object.fromEntries(
+  return ownMap(
     names8.map((name3) => {
-      const value = env[name3];
+      const value = ownValue(env, name3);
       return [name3, value === void 0 ? null : configFieldHash(value)];
     })
   );
