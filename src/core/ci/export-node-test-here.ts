@@ -9,6 +9,7 @@ import type { RunnerAdapter, RunnerEnvironment } from "../types/runner.js";
 import type { NamedPart } from "./export-check.js";
 import type { NodeTestAssignment, NodeTestEntryHere } from "./export-node-test.js";
 import { hereOf, uncertifiedWhy } from "./inputs.js";
+import { ownMap, ownValue } from "./own-map.js";
 
 /*
  * Spec 018 D26 (row 018-48): what `ci export` reads of the node:test
@@ -62,9 +63,9 @@ function allowlisted(
   env: NodeJS.ProcessEnv,
 ): Record<string, string | null> {
   const names = allowlist.filter((name) => !Object.hasOwn(own, name));
-  return Object.fromEntries(
+  return ownMap(
     names.map((name) => {
-      const value = env[name];
+      const value = ownValue(env, name);
       return [name, value === undefined ? null : configFieldHash(value)];
     }),
   );

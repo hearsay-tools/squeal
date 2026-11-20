@@ -6,6 +6,7 @@ import {
 } from "../keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
 import type { ProjectName } from "../types/common.js";
+import { ownMap } from "./own-map.js";
 import type { Part, PartProject } from "./parts.js";
 import { firstShared } from "./reuse.js";
 
@@ -270,10 +271,10 @@ export function runDifferences(a: RunView, b: RunView): Difference[] {
     installedDependencies: "",
     files: [],
     config: {
-      ...Object.fromEntries(
+      ...ownMap(
         Object.entries(descriptor.config).filter(([name]) => !SQUEAL_FIELDS.includes(name)),
       ),
-      ...Object.fromEntries(
+      ...ownMap(
         Object.entries(snapshotOptions).map(([name, hash]) => [`snapshotOptions.${name}`, hash]),
       ),
     },

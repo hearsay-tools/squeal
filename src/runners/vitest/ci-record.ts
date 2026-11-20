@@ -146,9 +146,8 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
   const evidence = join(temp, "evidence");
   for (const dir of [raw, observed, evidence]) mkdirSync(dir);
   const { env: commandVariables, skip } = commandEnv(options, hook, recorder, temp, observed);
-  const env = { ...options.env, ...commandVariables };
   const root = options.paths.root;
-  env[CI_RECORD_VARIABLE] = JSON.stringify({
+  const settings = JSON.stringify({
     ...options.also?.settings,
     // The hooks a child started with an env of its own gets back (`children.cjs`).
     hooks: [hook, ...(options.also?.hooks ?? [])],
@@ -157,6 +156,7 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
     evidence: { out: evidence, root, skip, format: options.objectFormat },
     coverage: coverageSettings(options, join(temp, "coverage")),
   });
+  const env = { ...options.env, ...commandVariables, [CI_RECORD_VARIABLE]: settings };
   return {
     env,
     finish: () => {

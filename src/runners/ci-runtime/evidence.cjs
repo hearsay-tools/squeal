@@ -47,6 +47,7 @@ const crypto = require("node:crypto");
 const workerThreads = require("node:worker_threads");
 const { fileURLToPath } = require("node:url");
 const clock = require("./clock.cjs");
+const { ownMap } = require("./own-map.cjs");
 
 const OPEN_FLAGS =
   fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0);
@@ -266,9 +267,8 @@ function outputOf(settings, original) {
     settings.out,
     `${process.pid}-${workerThreads.threadId}-${Date.now().toString(36)}.ndjson`,
   );
-  // No prototype: a path named `__proto__` stays an own entry (review 0.1.582-r2).
-  let pending = Object.create(null);
-  let any = false;
+  /** This turn's evidence by path; a `Map`, so a path named `__proto__` stays one (review 0.1.582-r2). */
+  let pending = new Map();
   let scheduled = false;
   const last = new Map();
   /** Paths this process wrote, and trees: their evidence is cancelled for the run. */
@@ -285,16 +285,15 @@ function outputOf(settings, original) {
     } catch {}
   };
   const flushEvidence = () => {
-    if (!any) return;
-    const e = pending;
-    pending = Object.create(null);
-    any = false;
+    if (pending.size === 0) return;
+    const e = ownMap(pending);
+    pending = new Map();
     append({ e });
   };
   /** The evidence of this turn, or the clock alone when it moved since the last line. */
   const flush = clock.timed(() => {
     scheduled = false;
-    if (any) flushEvidence();
+    if (pending.size > 0) flushEvidence();
     else if (clock.spent() > told) append({});
   });
   const schedule = () => {
@@ -311,10 +310,9 @@ function outputOf(settings, original) {
     evidence: (rel, value) => {
       if (value === undefined || last.get(rel) === value) return;
       // Another value in the same turn goes out beside the first, not over it.
-      if (Object.hasOwn(pending, rel)) flushEvidence();
+      if (pending.has(rel)) flushEvidence();
       last.set(rel, value);
-      pending[rel] = value;
-      any = true;
+      pending.set(rel, value);
       schedule();
     },
     written: (exact, trees) => {

@@ -10,6 +10,7 @@ import type { TestFileRef } from "../types/keys.js";
 import type { ObservedInputs } from "../types/runner.js";
 import type { NamedPart } from "./export-check.js";
 import type { InputEvidence } from "./inputs.js";
+import { ownMap } from "./own-map.js";
 
 /*
  * Spec 018 D8 (row 018-16): what `squeal ci record` writes, one part file per
@@ -388,7 +389,7 @@ export function snapshotFields(resolvedConfig: string): Record<string, string> {
   if (typeof options !== "object" || options === null || Array.isArray(options)) {
     return { "(snapshotOptions)": configFieldHash(options ?? null) };
   }
-  return Object.fromEntries(
+  return ownMap(
     Object.entries(options)
       .filter(([name]) => name !== UPDATE_SNAPSHOT)
       .map(([name, value]) => [name, configFieldHash(value)]),
