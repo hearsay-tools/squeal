@@ -1,8 +1,8 @@
-import { copyFileSync, mkdirSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CiExport, ciExport } from "../../src/core/ci/export.js";
-import { readPart } from "../../src/core/ci/parts.js";
+import { type Part, readPart } from "../../src/core/ci/parts.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { exportResults } from "../../src/core/store/transfer.js";
 import type { ResultsBundle } from "../../src/core/store/transfer-bundle.js";
@@ -16,7 +16,7 @@ import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { openRepoStore } from "../scheduler/repo.js";
 import { openHarness } from "../scheduler/vitest-harness.js";
 import { headerOf, SQUEAL } from "./export-harness.js";
-import { cloneOf, committed, recordVitest, scratch } from "./fixture.js";
+import { ci, cloneOf, committed, recordVitest, scratch } from "./fixture.js";
 import { recordNodeTest } from "./node-test-parts.js";
 
 /*
@@ -33,7 +33,8 @@ import { recordNodeTest } from "./node-test-parts.js";
 
 const UNIT: NodeTestProject = {
   name: "unit",
-  argv: [],
+  // A preload that loads a module by a computed specifier: a start-up path only a run shows (016 D4).
+  argv: ["--import", "./nt/pre.mjs"],
   env: { FIXTURE_MODE: "ci" },
   include: ["nt/*.test.mjs"],
 };
@@ -45,6 +46,9 @@ function fixture(dir: string): string {
     "squeal.config.json": JSON.stringify({ nodeTest: [UNIT] }),
     "src/upper.mjs": "export const upper = (text) => text.toUpperCase();\n",
     "data/b.txt": "b\n",
+    "nt/pre.mjs":
+      'const target = new URL(["./hel", "per.mjs"].join(""), import.meta.url).href;\nawait import(target);\n',
+    "nt/helper.mjs": "globalThis.fixtureHelper = true;\n",
     "nt/a.test.mjs": `import { test } from "node:test";\nimport assert from "node:assert";\nimport { upper } from "../src/upper.mjs";\ntest("upper", () => assert.equal(upper("a"), "A"));\ntest.skip("waits", () => {});\n`,
     "nt/b.test.mjs": `import { test } from "node:test";\nimport assert from "node:assert";\nimport { readFileSync } from "node:fs";\ntest("reads", () => assert.equal(readFileSync(new URL("../data/b.txt", import.meta.url), "utf8"), "b\\n"));\ntest("sees the mode", () => assert.equal(process.env.FIXTURE_MODE, "ci"));\n`,
     "test/v.test.ts": `import { expect, it } from "vitest";\nimport { upper } from "../src/upper.mjs";\nit("upper", () => expect(upper("v")).toBe("V"));\n`,
@@ -138,19 +142,20 @@ describe("ci export of node:test parts (spec 018 D26)", () => {
     const origin = fixture(scratch("ci-export-node-test"));
     const base = dirname(origin);
     const out = join(base, "parts");
-    const ci = cloneOf(origin, "ci");
-    const recorded = await recordVitest(ci, out);
+    const ciRoot = cloneOf(origin, "ci");
+    const recorded = await recordVitest(ciRoot, out);
     expect(recorded.code, recorded.said).toBe(0);
     const vitestOnly = join(base, "vitest-parts");
     mkdirSync(vitestOnly);
     for (const name of readdirSync(out)) copyFileSync(join(out, name), join(vitestOnly, name));
-    await recordNodeTest(ci, UNIT, out, {});
+    await recordNodeTest(ciRoot, UNIT, out, {});
 
     const made = await daemon(origin, "daemon");
     await made.h.scheduler.start();
     await made.h.scheduler.requestFullSuite();
     await made.h.quiet();
-    expect(made.ran.sort()).toEqual(["nt/a.test.mjs", "nt/b.test.mjs"]);
+    // A run that loads a start-up path its key lacked runs again under the key that holds it.
+    expect([...new Set(made.ran)].sort()).toEqual(["nt/a.test.mjs", "nt/b.test.mjs"]);
     const header = await headerOf(made.root);
     const { bundle: daemonBundle } = exportResults(
       made.h.store,
@@ -168,6 +173,10 @@ describe("ci export of node:test parts (spec 018 D26)", () => {
     expect(files(mixed, "unit")).toEqual(files(daemonBundle, "unit"));
     expect(results(mixed, "unit")).toEqual(results(daemonBundle, "unit"));
     expect(environment(mixed, "unit")).toBe(environment(daemonBundle, "unit"));
+    const startup = (bundle: ResultsBundle) =>
+      bundle.observedStartup.find((s) => s.project === "unit");
+    expect(startup(daemonBundle)?.paths).toContain("nt/helper.mjs");
+    expect(startup(mixed)).toEqual(startup(daemonBundle));
     expect(files(mixed, "")).toEqual(files(daemonBundle, ""));
 
     // Vitest's part exports as it does with no node:test part beside it.
@@ -178,6 +187,15 @@ describe("ci export of node:test parts (spec 018 D26)", () => {
     expect(results(mixed, "")).toEqual(results(alone, ""));
     expect(environment(mixed, "")).toBe(environment(alone, ""));
 
+    // The command builds both runners and writes one export.
+    const commandRoot = cloneOf(origin, "command");
+    const written = join(base, "results.json.gz");
+    const command = await ci(["export", "--parts", out, "--out", written], commandRoot);
+    expect(command.code, command.said).toBe(0);
+    expect(command.said).toContain(
+      `Exported 3 test files, ${mixed.results.length} results, to ${written}.`,
+    );
+
     // A developer clone that imports the export runs none of the node:test files.
     const dev = await daemon(origin, "developer", mixed);
     await dev.h.scheduler.start();
@@ -187,10 +205,10 @@ describe("ci export of node:test parts (spec 018 D26)", () => {
     const plain = await daemon(origin, "plain");
     await plain.h.scheduler.start();
     await plain.h.quiet();
-    expect(plain.ran.sort()).toEqual(["nt/a.test.mjs", "nt/b.test.mjs"]);
+    expect([...new Set(plain.ran)].sort()).toEqual(["nt/a.test.mjs", "nt/b.test.mjs"]);
   });
 
-  it("leaves out an entry whose part ran on another Node, naming both versions", {
+  it("leaves out an entry whose part ran on another Node, naming both versions, also as the command", {
     timeout: 120_000,
   }, async () => {
     const origin = fixture(scratch("ci-export-node-test-other"));
@@ -199,8 +217,34 @@ describe("ci export of node:test parts (spec 018 D26)", () => {
     const job = await exported(origin, out, "export", { vitest: false, nodeTest: true });
     if (!("counts" in job)) throw new Error(job.refused.text);
     expect(job.counts).toMatchObject({ testFiles: 0, nodeTestLeftOut: 2 });
+    const line = `node:test ran on Node v1.0.0; project "unit" runs ${process.version} here: left out (2 test files)`;
+    expect(job.nodeTestLines).toEqual([line]);
+
+    // The command takes node:test parts alone, names the entry left out, and writes nothing.
+    const root = cloneOf(origin, "command");
+    const command = await ci(["export", "--parts", out, "--out", join(root, "r.json.gz")], root);
+    expect(command.code, command.said).toBe(1);
+    expect(command.said).toContain(`squeal ci export: ${line}\n`);
+    expect(command.said).toContain(
+      "no test file to export; left out: 2 test files of node:test that no nodeTest entry here takes as its own run; wrote nothing",
+    );
+  });
+
+  it("leaves out an entry whose start-up path its part holds no evidence of", {
+    timeout: 120_000,
+  }, async () => {
+    const origin = fixture(scratch("ci-export-node-test-startup"));
+    const out = join(dirname(origin), "parts");
+    const file = await recordNodeTest(cloneOf(origin, "ci"), UNIT, out);
+    const part = JSON.parse(readFileSync(file, "utf8")) as Part;
+    expect(part.header.nodeTest?.preloads).toContain("nt/helper.mjs");
+    const { "nt/helper.mjs": _helper, ...evidence } = part.evidence;
+    writeFileSync(file, JSON.stringify({ ...part, evidence }));
+    const job = await exported(origin, out, "export", { vitest: false, nodeTest: true });
+    if (!("counts" in job)) throw new Error(job.refused.text);
+    expect(job.counts).toMatchObject({ testFiles: 0, nodeTestLeftOut: 2 });
     expect(job.nodeTestLines).toEqual([
-      `node:test ran on Node v1.0.0; project "unit" runs ${process.version} here: left out (2 test files)`,
+      `project "unit": its node:test processes loaded nt/helper.mjs before their test files, and ${basename(file)} holds no evidence of its content here: left out (2 test files)`,
     ]);
   });
 });
