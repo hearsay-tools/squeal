@@ -5,8 +5,8 @@ import type { ProjectName, RelativePath } from "../types/common.js";
 import type { FileHash, TestFileRef } from "../types/keys.js";
 import type { RunnerClosure } from "../types/runner.js";
 import type { NamedPart } from "./export-check.js";
-import { type Uncertified, uncertifiedWhy } from "./inputs.js";
 import { knownCollector, type Part, type PartFile, partRecord } from "./parts.js";
+import { type AtCommit, type InputWhy, inputsHere } from "./reuse-endpoints.js";
 
 /*
  * Spec 020 D13.2 and 018 D9 (row 020-52): whether a part's evidence of one
@@ -21,6 +21,9 @@ import { knownCollector, type Part, type PartFile, partRecord } from "./parts.js
  * run rule both readers apply, `reuseRefusal` (`export-check.ts`). Where
  * the readers differ on purpose, a named option (`ReuseOptions`) or a
  * named question (`firstShared`) says so; the 020-52 notes list them.
+ * 018 D33 (row 018-58): an input a part of format 6 holds no read-time
+ * evidence of is certified by its endpoint hashes (`reuse-endpoints.ts`)
+ * when the reader passes the commit's tree (`ReuseOptions.atCommit`).
  */
 
 /**
@@ -101,6 +104,20 @@ export interface ReuseOptions {
    * D19.5): a part gives a file by its run and its inputs alone.
    */
   readonly records?: RecordsOption;
+  /**
+   * 018 D33: a commit's tree as its key holds it (`atCommit`), for a part
+   * of format 6 to certify an input it holds no read-time evidence of by
+   * its endpoint hashes (`endpointHash`); `null` when the tree cannot be
+   * read. Absent: D9's rule alone.
+   */
+  readonly atCommit?: (commit: string) => Promise<AtCommit | null>;
+}
+
+/** What `FileReuse.certify` gives: `evidence`'s refusal, and the inputs the endpoint rule certified. */
+export interface Certified {
+  readonly refused: EvidenceRefusal | null;
+  /** With no refusal: the inputs the endpoint rule certified (D33), in the order given. */
+  readonly endpoints: readonly RelativePath[];
 }
 
 export interface RecordsOption {
@@ -115,10 +132,11 @@ const CHILDREN =
   "coverage.children is on at the base, and ci record collects no child process's coverage";
 
 /** How an input differs, as an `input` refusal tells it. */
-const INPUT_DIFFERS: Readonly<Record<Uncertified, string>> = {
+const INPUT_DIFFERS: Readonly<Record<InputWhy, string>> = {
   unrecorded: "its part holds no evidence of it",
   unknown: "its content here is not known",
   differs: "its part read other content",
+  ends: "its content at both ends of the part's command is not its content here",
 };
 
 /** Whether parts give a selected test file, step by step (D13.2), under `options`. */
@@ -128,6 +146,8 @@ export class FileReuse {
   readonly #holders = new Map<string, Holder[]>();
   readonly #unusableBy: ReadonlyMap<string, string>;
   readonly #records: RecordsOption | undefined;
+  readonly #atCommit: ReuseOptions["atCommit"];
+  readonly #trees = new Map<string, Promise<AtCommit | null>>();
 
   constructor(parts: readonly NamedPart[], options: ReuseOptions = {}) {
     for (const { file: name, part } of parts) {
@@ -138,6 +158,7 @@ export class FileReuse {
     }
     const records = options.records;
     this.#records = records;
+    this.#atCommit = options.atCommit;
     this.unusable = parts.flatMap(({ file: name, part }) => {
       const why = records === undefined ? null : records.children ? CHILDREN : partUnusable(part);
       return why === null ? [] : [{ name, why }];
@@ -181,30 +202,51 @@ export class FileReuse {
    * why `holder`'s part does not give its file with `inputs`, the inputs of
    * its closure here and of what it read, at `here`; `null` when it does.
    * An input is certified when the part's read-time evidence holds it and
-   * equals its content here (018 D9); `here` is read only for an input the
-   * evidence holds, and for a record's sources.
+   * equals its content here (018 D9), or, with `atCommit` and no such
+   * evidence, when its endpoint hash equals it (D33, `endpointHash`);
+   * `here` is read only for an input one of them holds, and for a record's
+   * sources.
    */
   async evidence(
     holder: Holder,
     inputs: readonly RelativePath[],
     here: Content,
   ): Promise<EvidenceRefusal | null> {
+    return (await this.certify(holder, inputs, here)).refused;
+  }
+
+  /** `evidence`, and the inputs the endpoint rule certified (D33). */
+  async certify(
+    holder: Holder,
+    inputs: readonly RelativePath[],
+    here: Content,
+  ): Promise<Certified> {
     const { name, part } = holder;
-    const contents = new Map<RelativePath, FileHash | null | undefined>();
-    for (const path of inputs) {
-      if (Object.hasOwn(part.evidence, path)) contents.set(path, await here(path));
-    }
-    const differ = uncertifiedWhy(inputs, part.evidence, (path) => contents.get(path));
+    const { differ, endpoints } = await inputsHere(part, inputs, here, await this.#tree(part));
     const [first] = [...differ].sort((a, b) => compare(a.path, b.path));
     if (first !== undefined) {
       const more = differ.length > 1 ? `; ${differ.length - 1} more inputs` : "";
       const detail = `${INPUT_DIFFERS[first.why]}${more}`;
       const refusal: FileRefusal = { part: name, reason: "input", input: first.path, detail };
-      return { refusal, uncertified: differ.map((d) => d.path) };
+      return { refused: { refusal, uncertified: differ.map((d) => d.path) }, endpoints: [] };
     }
-    if (this.#records === undefined) return null;
+    if (this.#records === undefined) return { refused: null, endpoints };
     const refusal = await recordRefusal(holder, this.#records.changed, here);
-    return refusal === null ? null : { refusal, uncertified: [] };
+    return { refused: refusal === null ? null : { refusal, uncertified: [] }, endpoints };
+  }
+
+  /** The tree of `part`'s commit, read once per commit; `null` without `atCommit` or a commit. */
+  #tree(part: Part): Promise<AtCommit | null> {
+    const { commit } = part.header;
+    if (this.#atCommit === undefined || commit === null || part.touched === undefined) {
+      return Promise.resolve(null);
+    }
+    let tree = this.#trees.get(commit);
+    if (tree === undefined) {
+      tree = this.#atCommit(commit);
+      this.#trees.set(commit, tree);
+    }
+    return tree;
   }
 }
 
