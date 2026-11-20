@@ -102,12 +102,15 @@ describe("squeal ci", () => {
     execFileSync("git", ["init", "-q"], { cwd: plain });
     const noVitest = cli(["ci", "record", "--", ...exit(5)], plain);
     expect(noVitest.code).toBe(5);
-    expect(noVitest.text).toContain("only Vitest is supported, and vitest does not resolve from");
+    // Neither runner here: no Vitest resolves, and the config names no node:test entry.
+    expect(noVitest.text).toMatch(
+      /squeal\.config\.json has no \w+ entry; the command runs unchanged/,
+    );
     expect(readdirSync(plain)).toEqual([".git"]);
 
     const missing = cli(["ci", "record", "--", join(plain, "no-such-program")], plain);
     expect(missing.code).toBe(127);
-    expect(missing.text).toContain("only Vitest is supported");
+    expect(missing.text).toContain("Vitest does not resolve from");
     expect(missing.text).toContain("could not run");
     expect(readdirSync(plain)).toEqual([".git"]);
   });
