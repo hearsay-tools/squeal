@@ -3,17 +3,19 @@ import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { fixedSelection, readVerdict } from "../../src/cli/verdict.js";
+import { namedPoll } from "../../src/cli/wait/named.js";
 import { namedSnapshot } from "../../src/cli/wait/snapshot.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { addCommandHold } from "../../src/core/scheduler/hold-rows.js";
 import { buildSnapshot } from "../../src/core/status/snapshot.js";
 import { readNamedFiles } from "../../src/core/status/standing.js";
 import type { ResultsBundle } from "../../src/core/store/transfer-bundle.js";
 import { importResults } from "../../src/core/store/transfer-import.js";
-import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
 import { check } from "../status/helpers.js";
-import { A, B, C, fail, NOW, repoWith } from "./status-wait-fixture.js";
+import { A, B, C, fail, NOW, ref, repoWith } from "./status-wait-fixture.js";
 
 /*
  * Row 011-411 (gh-250, option A): a named snapshot's verdict and named files
@@ -185,5 +187,52 @@ describe("a named wait's last read reads the worktree's states once (row 011-421
     expect(got.outcome).toBe("settled");
     // Before row 011-421: three, the verdict's, the snapshot's and the named files'.
     expect(counter.whole).toBe(1);
+  });
+
+  it("names a hold that ends at the deadline as of the deadline's last millisecond (review 0.1.578 B1)", () => {
+    const { repo, store } = repoWith([A]);
+    const deadline = (NOW + 5_000) as EpochMs;
+    addCommandHold(store, repo.mainId, {
+      token: "deadline",
+      since: (NOW - 1_000) as EpochMs,
+      until: deadline,
+      command: "sleep 60",
+      wrapper: null,
+      child: null,
+    });
+    let now: EpochMs = NOW;
+    const poll = namedPoll(repo.main, [A], {
+      now: () => now,
+      timeoutMs: 5_000,
+      pollMs: 20,
+      settleMs: 0,
+      sync: () => ({
+        current: () => ({ state: "synced", revision: 4 as RevisionNumber, incarnation: null }),
+        stop: () => {},
+      }),
+      promote: () => {},
+    });
+    now = deadline;
+
+    const step = poll.read(
+      { store, root: repo.main, commonDir: repo.commonDir },
+      true,
+      () => 5_000,
+    );
+
+    if (step === null || !("end" in step)) throw new Error("the wait did not end");
+    const got = step.end;
+    // The separate read at the deadline's last millisecond, before row 011-421's shared rows.
+    const before = readNamedFiles(
+      store,
+      repo.mainId,
+      repo.main,
+      [ref(A)],
+      got.result.daemon,
+      (deadline - 1) as EpochMs,
+    );
+    expect(JSON.stringify(before)).toMatch(/"hold"/);
+    expect(JSON.stringify(before)).not.toMatch(/"expired"/);
+    expect(got.files).toEqual(before);
   });
 });

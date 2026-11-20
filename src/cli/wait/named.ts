@@ -194,11 +194,18 @@ export function namedPoll(
         return null;
       }
       // Row 011-421 (011-411 follow-up): the verdict and the named files read the snapshot's rows.
-      const { snapshot: result, reads } = buildSnapshotWithReads(store, root, options.now());
+      const now = options.now();
+      const { snapshot: result, reads } = buildSnapshotWithReads(store, root, now);
       const verdict = heldAsVerdict(readVerdict(store, id, held, fixed, reads), untaken);
       // Row 011-63 (gh-51 3): a read at the deadline names what held each file as of
       // its last millisecond, while the promotion this wait sent still held it.
-      const standingAt = Math.min(options.now(), deadline - 1) as EpochMs;
+      const standingAt = Math.min(now, deadline - 1) as EpochMs;
+      // Review 0.1.578 B1: the snapshot read its holds and slow slot at `now`; a read
+      // at `standingAt` before it takes only the rows that do not depend on the time.
+      const namedReads =
+        standingAt === now
+          ? reads
+          : { states: reads.states, keys: reads.keys, header: reads.header, runs: reads.runs };
       const standings = readNamedFiles(
         store,
         id,
@@ -207,7 +214,7 @@ export function namedPoll(
         result.daemon,
         standingAt,
         undefined,
-        reads,
+        namedReads,
       );
       const files = heldAsFiles(standings, untaken);
       const lapse = watch.lapse();
