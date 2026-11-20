@@ -100,7 +100,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 
 ### Score
 
-**Correctness is a gate.** A wrong verdict, a missed push (failure or recovery) or a session that crashed, in any cell, marks the whole run **FAILED**, whatever its points. These metrics have no partial credit: Squeal's promise is "PASS → FAIL: notify", and a fast wrong answer is worse than a slow right one.
+**Correctness is a gate.** A wrong verdict, a missed push (failure or recovery), a hook call over its 2 s timeout or a session that crashed, in any cell, marks the whole run **FAILED**, whatever its points. These metrics have no partial credit: Squeal's promise is "PASS → FAIL: notify", and a fast wrong answer is worse than a slow right one.
 
 **Speed is scored in five areas of equal weight:** Hooks, Commands, Verdicts, Resources and Store. A metric within its healthy limit scores 1, within its warn limit 0.5, beyond it 0. An area's score is the mean of its scored metrics. A cell's score is the mean of its areas × 100, so an area with four metrics weighs the same as one with two. A metric that does not apply to a cell (starting other worktrees, with one worktree) is left out. The overall score is the mean of the cell scores, so it compares only between runs of the same cells; the cell scores always compare. "report" metrics have no limit: they are recorded so a change can be compared with an earlier run. `bench/results/TREND.md` lists every committed run.
 
@@ -124,6 +124,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | `session.verdict.within60s` | ≥ 95% | ≥ 80% | Edits whose `status --wait 60000` settled before its timeout |
 | `session.verdict.wrong` | 0 (gate) | | A settled verdict that disagrees with the truth. This should never happen |
 | `session.failed` | 0 (gate) | | A scripted session that crashed or timed out |
+| `hook.overTimeout` | 0 (gate) | | Hook calls over 2 s. Every hook in `hooks.json` has `timeout: 2`; Claude Code kills a slower call and drops its output. The scripted session allows 30 s, so it records the time instead of losing the call |
 | `session.broad.verdict` | ≤ 180 s | ≤ 300 s | Edit to `src/core.ts` until the whole suite is current. Catch-up waits 120 s of quiet by design, so 180 s allows about 60 s of running |
 | **Resources** | | | |
 | `res.idleCpu.maxPct` | ≤ 1% | ≤ 5% | Daemon CPU, children included, over 60 s with no edits, as % of one core |

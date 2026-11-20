@@ -148,6 +148,13 @@ export const METRICS = [
     group: "Correctness",
   },
   {
+    id: "hook.overTimeout",
+    what: "Hook calls over the 2 s timeout, which Claude Code kills and whose output it drops",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
     id: "session.failed",
     what: "Scripted sessions that crashed",
     unit: "",
@@ -221,6 +228,8 @@ export const METRICS = [
 ];
 
 const INF = Number.POSITIVE_INFINITY;
+/** Every hook in plugins/claude-code/hooks/hooks.json has `timeout: 2`, except the waiters. */
+const HOOK_TIMEOUT_MS = 2000;
 const maxOrNull = (xs) => (xs.length ? Math.max(...xs) : null);
 
 function cellValues(cellDir) {
@@ -250,6 +259,7 @@ function hookValues(rows) {
     "hook.postToolBatch.p95": quantile(hooks("post-tool-batch"), 0.95),
     "hook.sessionStart.max": maxOrNull(hooks("session-start")),
     "hook.stop.max": maxOrNull(hooks("stop")),
+    "hook.overTimeout": rows.filter((r) => r.kind === "hook" && r.ms > HOOK_TIMEOUT_MS).length,
   };
 }
 
@@ -373,7 +383,7 @@ lines.push(
 );
 lines.push(
   failed.length === 0
-    ? "**Correctness: PASS** (no wrong verdict, missed push or failed session in any cell)"
+    ? "**Correctness: PASS** (no wrong verdict, missed push, hook over its 2 s timeout or failed session in any cell)"
     : `**Correctness: FAILED** in ${failed.map((n) => `${n} (${gateFails[n].join(", ")})`).join("; ")}`,
   "",
   `**Overall score: ${overall?.toFixed(0)} / 100** (mean of the cell scores; a cell is the mean of its ${AREAS.length} areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)`,

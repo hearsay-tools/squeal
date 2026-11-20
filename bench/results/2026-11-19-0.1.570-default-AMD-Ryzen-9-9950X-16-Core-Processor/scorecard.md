@@ -2,7 +2,7 @@
 
 Squeal 0.1.570 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU · 7.8 GiB · SHA-256 2487 MiB/s · 2026-11-19T20:23:01.205Z
 
-**Correctness: PASS** (no wrong verdict, missed push or failed session in any cell)
+**Correctness: FAILED** in stress (hook.overTimeout 8)
 
 **Overall score: 56 / 100** (mean of the cell scores; a cell is the mean of its 5 areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)
 
@@ -19,7 +19,7 @@ Squeal 0.1.570 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU
 | wt-6 | 500 | 6 | 0% | 0 | ✅ | 48 | 50 | 75 | 40 | 25 | 50 |
 | load-50 | 500 | 1 | 50% | 0 | ✅ | 54 | 50 | 75 | 20 | 75 | 50 |
 | load-100 | 500 | 1 | 100% | 0 | ✅ | 42 | 50 | 50 | 10 | 50 | 50 |
-| stress | 500 | 6 | 100% | 0 | ✅ | 44 | 50 | 50 | 20 | 50 | 50 |
+| stress | 500 | 6 | 100% | 0 | ❌ | 44 | 50 | 50 | 20 | 50 | 50 |
 
 ## What is not healthy
 
@@ -64,6 +64,7 @@ Squeal 0.1.570 · Node v24.22.1 · AMD Ryzen 9 9950X 16-Core Processor · 4 vCPU
 | Edits with a verdict within the 60 s agents wait (`session.verdict.within60s`) | ≥ 95 | ≥ 80 | 50 % ❌ | 94 % ⚠️ | 72 % ❌ | 69 % ❌ | 71 % ❌ | 50 % ❌ | 50 % ❌ | 72 % ❌ |
 | **Correctness** | | |  |  |  |  |  |  |  |  |
 | Verdicts that disagree with the truth (`session.verdict.wrong`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Hook calls over the 2 s timeout, which Claude Code kills and whose output it drops (`hook.overTimeout`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 8 ❌ |
 | Scripted sessions that crashed (`session.failed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
 | **Verdicts** | | |  |  |  |  |  |  |  |  |
 | Edit every test imports until the whole suite is current (`session.broad.verdict`) | ≤ 180 | ≤ 300 | 175 s ✅ | 130 s ✅ | 290 s ⚠️ | 188 s ⚠️ | late ❌ | 267 s ⚠️ | late ❌ | late ❌ |

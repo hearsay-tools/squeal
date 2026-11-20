@@ -65,7 +65,7 @@
     ],
     "endedAt": "2026-11-19T22:54:19.518Z"
   },
-  "correctness": "pass",
+  "correctness": "failed",
   "gateFails": {
     "ref": [],
     "size-s": [],
@@ -74,7 +74,9 @@
     "wt-6": [],
     "load-50": [],
     "load-100": [],
-    "stress": []
+    "stress": [
+      "hook.overTimeout 8"
+    ]
   },
   "overall": 56.0625,
   "runAreas": {
@@ -158,6 +160,7 @@
       "hook.postToolBatch.p95": 210.5706752999802,
       "hook.sessionStart.max": 77.491941,
       "hook.stop.max": 123.24432000005618,
+      "hook.overTimeout": 0,
       "cmd.status.p95": 275.9892830000026,
       "cmd.statusJson.p95": 303.6484848000575,
       "cmd.start.main": 257.89993200000026,
@@ -189,6 +192,7 @@
       "hook.postToolBatch.p95": 100.60799359999655,
       "hook.sessionStart.max": 86.778385,
       "hook.stop.max": 103.675922000024,
+      "hook.overTimeout": 0,
       "cmd.status.p95": 183.8218956000026,
       "cmd.statusJson.p95": 193.32850020000515,
       "cmd.start.main": 451.14354099999946,
@@ -220,6 +224,7 @@
       "hook.postToolBatch.p95": 485.9317602000022,
       "hook.sessionStart.max": 181.42687899999999,
       "hook.stop.max": 264.5843739999691,
+      "hook.overTimeout": 0,
       "cmd.status.p95": 347.6566046000051,
       "cmd.statusJson.p95": 355.93794280003056,
       "cmd.start.main": 256.7958450000151,
@@ -251,6 +256,7 @@
       "hook.postToolBatch.p95": 256.036239250003,
       "hook.sessionStart.max": 107.599355,
       "hook.stop.max": 324.004445000086,
+      "hook.overTimeout": 0,
       "cmd.status.p95": 281.41959339999005,
       "cmd.statusJson.p95": 252.08132869996473,
       "cmd.start.main": 304.9033040000004,
@@ -282,6 +288,7 @@
       "hook.postToolBatch.p95": 402.0427297999618,
       "hook.sessionStart.max": 280.76781000000005,
       "hook.stop.max": 907.1913059999933,
+      "hook.overTimeout": 0,
       "cmd.status.p95": 604.8405019000053,
       "cmd.statusJson.p95": 570.3832519500077,
       "cmd.start.main": 432.2733960000005,
@@ -313,6 +320,7 @@
       "hook.postToolBatch.p95": 699.3526195999743,
       "hook.sessionStart.max": 490.901662,
       "hook.stop.max": 185.27788800001144,
+      "hook.overTimeout": 0,
       "cmd.status.p95": 756.0827039999888,
       "cmd.statusJson.p95": 664.617793200002,
       "cmd.start.main": 286.81583500000124,
@@ -344,6 +352,7 @@
       "hook.postToolBatch.p95": 656.9656775000093,
       "hook.sessionStart.max": 261.829301,
       "hook.stop.max": 1073.3779410000425,
+      "hook.overTimeout": 0,
       "cmd.status.p95": 696.9305064000073,
       "cmd.statusJson.p95": 684.1638417999958,
       "cmd.start.main": 919.770107999997,
@@ -375,6 +384,7 @@
       "hook.postToolBatch.p95": 1219.0661420000251,
       "hook.sessionStart.max": 448.11268999999993,
       "hook.stop.max": 337.1438199999975,
+      "hook.overTimeout": 8,
       "cmd.status.p95": 1735.9633424500082,
       "cmd.statusJson.p95": 1537.735510300018,
       "cmd.start.main": 997.2777280000009,
