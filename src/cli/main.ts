@@ -297,10 +297,14 @@ Usage:
                                 coverage or beside node:inspector. The exit code stays
                                 the command's.
                                 Requires that no other program changes the tests' input
-                                files while the command runs: Squeal sees the reads and
-                                writes of the command's Node processes, not every change
-                                another program makes, so such a change can be exported
-                                at content the test did not see
+                                files while the command runs. Squeal sees the reads and
+                                writes of the command's Node processes, and hashes the
+                                checkout before and after the command: an input that no
+                                Node process read, listed or wrote is exported when both
+                                hashes equal its content in the export's checkout. So a
+                                change another program makes, and restores before the
+                                command ends, can be exported at content the test did
+                                not see
   squeal ci export --parts <dir>... [--out <file>]
                                 In CI, after the shards: write the parts as one export
                                 (default squeal-results-<commit8>.json.gz), keyed as a

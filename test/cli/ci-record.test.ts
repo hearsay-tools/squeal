@@ -159,7 +159,7 @@ describe("squeal ci record", () => {
       }
       expect(costs[0]?.command).not.toBe(costs[1]?.command);
       const said =
-        /Squeal's recording took \d+\.\d+ s in \d+ processes and threads, \d+\.\d% of the test time \(\d+\.\d+ s\); \d+\.\d+ s more after the command\n/;
+        /Squeal's recording took \d+\.\d+ s in \d+ processes and threads, \d+\.\d% of the test time \(\d+\.\d+ s\); \d+\.\d+ s more after the command; \d+\.\d+ s hashing the checkout before and after it\n/;
       expect(first.text).toMatch(said);
       expect(second.text).toMatch(said);
       const exported = io(root);
