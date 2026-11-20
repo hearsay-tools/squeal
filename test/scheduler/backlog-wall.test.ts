@@ -80,7 +80,7 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
   it("holds at most a node:test lane's width in permits, and the other lane runs beside it with the rest", async () => {
     // Files 0-8 are a node:test project's, run `runner.tierSize` (4) wide; 9-24 another lane's.
     const inNodeLane = (path: string) => Number(path.match(/f(\d+)/)?.[1]) < 9;
-    // 9 files of 5 to 20 s fit 4 wide: 28 s + 15 s estimated.
+    // 9 files of 5 to 20 s: 28 s + 15 s estimated at 4 wide.
     const durations = [...spread(9, 5_000, 20_000), ...heavy];
     const side = wallSide({
       durations,
@@ -97,7 +97,13 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     const tiers = side.runner.runs.slice(before);
     const nt = tiers.find((t) => t.files.every((f) => inNodeLane(f.path)));
     const vt = tiers.find((t) => t.files.every((f) => !inNodeLane(f.path)));
-    expect(nt?.files).toHaveLength(9);
+    // Review 0.1.576 B1 (row 011-418): the grant of 4, the lane's cap, is below the offer of 23,
+    // so the tier keeps what fits the grant's budget, 120 s × 4/23 = 20.9 s at 4 workers, not 9.
+    const byPath = new Map(durations.map((d, i) => [fileName(i), d]));
+    const kept = (nt?.files ?? []).map((f) => byPath.get(f.path) ?? 0);
+    expect(kept.length).toBeGreaterThanOrEqual(4);
+    expect(kept.length).toBeLessThan(9);
+    expect(wallOf(kept, 4)).toBeLessThanOrEqual((BUDGET_MS * 4) / 23);
     expect(nt?.workers).toBe(4);
     expect(vt?.files).toHaveLength(16);
     expect(vt?.workers).toBe(16);

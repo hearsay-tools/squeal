@@ -56,3 +56,19 @@ Replace "stays within 120 s, or half of `runner.timeoutMs` when that is less (am
 And replace "A grant below the offer trims the picked tail to the same rule at the grant." with:
 
 > A grant below the offer trims the picked tail to the same rule at the grant, its budget at the grant's share.
+
+## Repair of review 0.1.576 B1 (2026-11-20)
+
+Base: `cand/0.1.576` at `87c35a26f`. B1: the grant trim (`tier-width.ts` `grantFit`) required `grant < min(width, offer)`, so a runner capped below the offer kept the offer's budget. Example: offer 3 of 9, a cap of 2, a grant of 2 kept 39 files of 2 s (40 s) where the grant's budget, 26.7 s, holds 25.
+
+**Repair.** `trims(pick, grant, files)`: as before when `grant < min(width, offer)`. Also, for a backlog tier that is not a batch's, when the grant's budget is below the offer's (only a scaled tier) and the grant is below the picked files' count.
+
+**Why the files' count term.** Without it, a tier that asked fewer workers because it holds few files was trimmed as well. Example: a 2-file tier granted the 2 workers it asked, at an offer of 4. Its budget at 2 of 4 halved and cut it to 1 file. Three `backlog-wall.test.ts` cases failed this way: parts summed, re-review R1, and the node:test lane. With the term, a grant at least as large as the tier's file count trims nothing new.
+
+**A behaviour change the review implies.** Every runner capped below the pool's offer now gets the cap's share of the budget, at every grant below the offer. One example is the wall fixture's lane at width 4 with an offer of 23: 120 s × 4/23 = 20.9 s, so 5 of 9 files, not 9. `backlog-wall.test.ts` "holds at most a node:test lane's width in permits" now expects the rule: at least 4 files, fewer than 9, and a wall estimate within 20.9 s at 4 workers. It also checks that every file of both lanes runs in the end. Real node:test and pytest lanes run their backlog in slots, so this trim does not reach them. A Vitest project whose own `maxWorkers` is below the offer gets tiers of its cap's share. Example: `maxWorkers` 2 on 12 CPUs gives about 27 s tiers instead of 120 s, and each later tier is again at most 2 wide.
+
+**Remaining inconsistency (not in B1's scope).** A grant equal to the offer does not trim. So the same capped runner granted 3 of an offer of 3 still runs the offer's 40 s tier at 2 workers. Making that consistent would need the pick's budget at the runner's width at the offer (`tier-pick.ts`, per file and part). That changes what the pick selects, so I did not do it here.
+
+**Tests.** `tier-plan-share.test.ts`: the review's capped-runner case. It uses `tableOf`, 250 files of 2,000 ms, offer 3, full width 9, `tierWidth` capped at 2. The pick is 39 files at want 2. `atGrant(2)` keeps 25, `atGrant(3)` 39, `atGrant(1)` 6. On the old guard it failed: 39 kept, not 25. The 9-to-1 (6 files) and 9-to-3 (58) cases are kept.
+
+**Checks.** `pnpm run typecheck` and `pnpm run lint` pass. A direct run (`timeout 900 pnpm exec vitest run --maxWorkers=2`) of 103 test files in `test/scheduler`, `test/capacity` and `test/integration/capacity-project.test.ts`: 583 tests pass. Squeal at revision 21 reports 4 bundle-drift failures in `test/harness/{plugin,pi/package,opencode/package,codex/packaging/runtime}.test.ts` ("cli/squeal.mjs differs from the build"). They are expected: the candidate's committed bundles were built before this source change, and the brief forbids a build in this worktree. The coordinator's rebuild clears them.

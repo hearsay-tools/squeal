@@ -52,7 +52,7 @@ export function grantFit(
   return (grant) => {
     let files = picked;
     let { trimmed } = pick;
-    if (pick.backlog && pick.slot === null && grant < Math.min(pick.width, pick.offer)) {
+    if (pick.backlog && pick.slot === null && trims(pick, grant, picked.length)) {
       const fits = new BacklogWall(pick.budgetAt(grant));
       const keep = picked.findIndex(
         (p) =>
@@ -70,6 +70,18 @@ export function grantFit(
     const narrower = pick.batch && narrowerThanEdit(traits, pick.tierSize, files, grant, trimmed);
     return { files, narrower };
   };
+}
+
+/**
+ * Whether a grant trims the pick: one below the width it asks or the offer,
+ * whichever is less, or, for a backlog tier whose budget scales with its
+ * workers (row 011-418), any grant whose budget is below the offer's. A
+ * runner capped below the offer asks its cap: a grant of the cap still
+ * trims to the grant's share (review 0.1.576 B1).
+ */
+function trims(pick: PickWidth, grant: number, files: number): boolean {
+  if (grant < Math.min(pick.width, pick.offer)) return true;
+  return !pick.batch && grant < files && pick.budgetAt(grant) < pick.budgetAt(pick.offer);
 }
 
 /**
