@@ -12277,7 +12277,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.575";
+  if (true) return "0.1.576";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -14613,7 +14613,7 @@ function userConfigPath(env = process.env) {
   const base = xdg !== void 0 && xdg !== "" && isAbsolute11(xdg) ? xdg : join28(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2(), ".config");
   return join28(base, "squeal", "config.json");
 }
-function defaultHostSlots(cpus = availableParallelism2()) {
+function defaultHostSlots2(cpus = availableParallelism2()) {
   return Math.max(1, cpus - 1);
 }
 function loadUserConfig(options = {}) {
@@ -14621,7 +14621,7 @@ function loadUserConfig(options = {}) {
   const cpus = options.cpus ?? availableParallelism2();
   const defaults = {
     capacity: {
-      hostSlots: defaultHostSlots(cpus),
+      hostSlots: defaultHostSlots2(cpus),
       projects: {},
       groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
       backgroundShare: DEFAULT_BACKGROUND_SHARE

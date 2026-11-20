@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.575";
+  if (true) return "0.1.576";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -13988,6 +13988,7 @@ var init_pool = __esm({
             const wanted = Math.max(1, Math.floor(workers));
             const returned = lease.permits.splice(wanted);
             for (const db of returned) db.close();
+            if (returned.length > 0) pool.#restartWindow();
             if (returned.length === 0 && lease.want === wanted) return;
             lease.want = wanted;
             pool.#republish();
@@ -14001,8 +14002,22 @@ var init_pool = __esm({
         if (!this.#leases.delete(lease)) return;
         for (const db of lease.permits.splice(0)) db.close();
         if (this.#leases.size === 0) this.#idleSince = this.#now();
-        if (this.#active()) this.#republish();
-        else this.#deactivate();
+        if (!this.#active()) {
+          this.#deactivate();
+          return;
+        }
+        this.#restartWindow();
+        this.#republish();
+      }
+      /**
+       * A lease ended or returned permits (011 C10 Size, row 011-417): the
+       * daemon's cores are the workers it still holds until a window that
+       * starts now is measured, not the last window's, which counted them.
+       */
+      #restartWindow() {
+        this.#measured = null;
+        this.#tree?.reset();
+        this.#read();
       }
       #active() {
         return this.#leases.size > 0 || this.#edits.size > 0;
@@ -14106,15 +14121,17 @@ var init_pool = __esm({
       /**
        * A backlog tier's view of the host (row 011-182): its busy cores beyond
        * this daemon's tree over the last window, plus `cores`, what the tree's
-       * tiers use now, so a tier of its own that ended since counts no more. A
-       * window older than a mark's freshness is read again, over the time since
-       * the last read, once that is `HOST_WINDOW_MIN_MS`. `null` with none.
+       * tiers use now, so a tier of its own that ended since counts no more.
+       * The window is read again, over the time since the last read, once that
+       * is `HOST_WINDOW_MIN_MS` (row 011-417: a window up to 30 s old gave a
+       * waiting daemon the floor on an idle host). One older than a mark's
+       * freshness counts nothing. `null` with none.
        */
       #busy(cores) {
         if (this.#host === null) return null;
         const now = this.#now();
         const fresh2 = () => this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
-        if (!fresh2() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
+        if (this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
         return fresh2() && this.#beyond !== null ? this.#beyond.cores + cores : null;
       }
       /** Reads the tree and the host over one window; the tree's cores, as `TreeCpu.read` gives them. */
@@ -14200,6 +14217,7 @@ var init_pool = __esm({
 });
 
 // src/core/scheduler/capacity.ts
+import { availableParallelism as availableParallelism4 } from "node:os";
 function poolKind(open7, picked, batch = false) {
   if (batch) return "checkpoint";
   if (open7?.explicit !== true) return "backlog";
@@ -14244,6 +14262,8 @@ var init_capacity = __esm({
       #note;
       #waits;
       #backgroundShare;
+      /** The most workers a backlog tier may get (`fullWidth`). */
+      #fullWidth;
       #failed = null;
       #refused = false;
       constructor(options, worktreeId, note, waits2 = null) {
@@ -14252,6 +14272,9 @@ var init_capacity = __esm({
         this.#note = note;
         this.#waits = waits2;
         this.#backgroundShare = isBackgroundShare(backgroundShare2) ? backgroundShare2 : DEFAULT_BACKGROUND_SHARE;
+        const ceiling = backgroundCeiling(this.#backgroundShare, cpus3 ?? availableParallelism4());
+        const slots = Math.max(1, Math.floor(hostSlots ?? defaultHostSlots()));
+        this.#fullWidth = Math.min(ceiling, slots, project?.slots ?? Infinity);
         this.#pool = createPermitPool({
           dir: dir2,
           owner: { pid: process.pid, worktreeId },
@@ -14311,6 +14334,15 @@ var init_capacity = __esm({
         const gate2 = this.#pool.gate();
         if (gate2 === null) return null;
         return { busy: gate2.busyCores, limit: backgroundCeiling(this.#backgroundShare, gate2.cpus) };
+      }
+      /**
+       * The most workers a backlog tier may get: the background ceiling's busy
+       * CPUs (spec 021 D18), or the slots, the host's or the project's, when
+       * fewer. A backlog tier's wall budget is scaled by its offer's share of
+       * it (row 011-418), so a tier offered all the slots is not cut.
+       */
+      fullWidth() {
+        return this.#fullWidth;
       }
       /**
        * A tier was refused since the last call: its daemon is a waiter, and the
@@ -15612,7 +15644,7 @@ function grantFit(traits, picked, pick) {
     let files5 = picked;
     let { trimmed } = pick;
     if (pick.backlog && pick.slot === null && grant < Math.min(pick.width, pick.offer)) {
-      const fits = new BacklogWall(pick.budget);
+      const fits = new BacklogWall(pick.budgetAt(grant));
       const keep = picked.findIndex(
         (p) => !fits.take(
           p.file.durationMs,
@@ -15751,6 +15783,7 @@ async function executeTier(context, tier, observeIgnored = false, stop2, onFileE
   const permits = tierPermits(context, tier);
   const fileEnded = (ref3) => {
     tier.ended?.add(testFileId(ref3));
+    tier.lastEnded = { at: context.now(), step: context.steps?.total ?? 0 };
     const left = tier.files.filter(({ file }) => tier.ended?.has(file.id) !== true).length;
     if (left > 0) (permits === null ? tier.lease : permits.lease)?.shrinkTo(left);
     onFileEnd?.();
@@ -15857,6 +15890,10 @@ function queuesEdit(context, ledger, tier) {
 }
 function backlogBudget(timeoutMs) {
   return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
+}
+function shareBudget(budget2, workers, full) {
+  if (full === null) return budget2;
+  return budget2 * Math.min(1, Math.max(0, workers) / Math.max(1, full));
 }
 function wallEstimate(sum2, longest2, width) {
   return sum2 / width + (1 - 1 / width) * longest2;
@@ -15998,8 +16035,11 @@ function shapeOf(view, asks, p, free) {
   const size = batch !== null ? asEdit ? runner.tierSize : runner.backlogTierSize : backlog ? asks.backlogSize(view.fastSize()) : runner.tierSize;
   const kind = poolKind(view.checkpointActive(), void 0, batch !== null);
   const offer = backlog && !asEdit ? asks.offer(size, kind) : 0;
-  const budget2 = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
-  return { free, batch, asEdit, backlog, turn, size, offer, budget: budget2 };
+  const full = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
+  const widest3 = backlog && batch === null ? asks.fullWidth() : null;
+  const budgetAt = (workers) => shareBudget(full, workers, widest3);
+  const budget2 = budgetAt(offer);
+  return { free, batch, asEdit, backlog, turn, size, offer, budget: budget2, budgetAt };
 }
 function pickFiles(view, asks, p, shape) {
   const { batch, backlog, turn, offer } = shape;
@@ -16146,7 +16186,7 @@ function candidateOf(view, p, shape, pick) {
   const kind = backlog || turnTier && slot2 !== null ? "backlog" : turnTier ? "turn" : "edit";
   const width = slot2 !== null ? 1 : granted ? widest(view, files5) : 0;
   const atGrant = grantFit(view, [...files5], {
-    ...{ budget: shape.budget, offer, width, slot: slot2, trimmed: pick.trimmed, backlog, batch },
+    ...{ budgetAt: shape.budgetAt, offer, width, slot: slot2, trimmed: pick.trimmed, backlog, batch },
     tierSize: view.runner.tierSize
   });
   return {
@@ -16397,6 +16437,7 @@ var init_yield_view = __esm({
       held: () => false,
       backlogSize: (queued) => queued,
       offer: (want) => want,
+      fullWidth: () => null,
       endPass: () => {
       },
       claimsWaiting: () => false
@@ -16603,8 +16644,8 @@ function overrunAfterMs(tier, durationMs2) {
   return Math.max(OVERRUN_FACTOR * durationMs2, OVERRUN_FLOOR_MS);
 }
 function reportedOverrunAt(context, tier) {
-  const start2 = steppedStart(context, tier);
-  if (start2 === null || tier.kind === "slow") return null;
+  const progress2 = lastProgress(context, tier);
+  if (progress2 === null || tier.kind === "slow") return null;
   if (tier.cancel?.signal.aborted === true) return null;
   if (isGroupLane(tier.lane)) return null;
   const first2 = tier.files[0]?.file.ref;
@@ -16612,7 +16653,7 @@ function reportedOverrunAt(context, tier) {
   const left = unfinished(tier);
   if (left.length === 0) return null;
   const after3 = Math.max(...left.map(({ file }) => overrunAfterMs(tier, file.durationMs)));
-  return start2 + after3;
+  return progress2 + after3;
 }
 function overrunAt(context, tier) {
   return tier.beside === true ? null : reportedOverrunAt(context, tier);
@@ -16620,7 +16661,16 @@ function overrunAt(context, tier) {
 function steppedStart(context, tier) {
   const { startedAt } = tier;
   if (startedAt === void 0) return null;
-  return context.steps?.since(startedAt, tier.startedStep ?? 0) ?? startedAt;
+  return stepped(context, startedAt, tier.startedStep ?? 0);
+}
+function lastProgress(context, tier) {
+  const start2 = steppedStart(context, tier);
+  const { lastEnded } = tier;
+  if (start2 === null || lastEnded === void 0) return start2;
+  return Math.max(start2, stepped(context, lastEnded.at, lastEnded.step));
+}
+function stepped(context, at2, step2) {
+  return context.steps?.since(at2, step2) ?? at2;
 }
 function overruns2(context, tier, at2) {
   const when = overrunAt(context, tier);
@@ -18022,15 +18072,15 @@ function groupRequests(requestGroup2, max, step2 = () => null, now = Date.now) {
     const at2 = now();
     const since = (from) => Math.max(0, at2 - from);
     const running2 = step2();
-    const stepped = {
+    const stepped2 = {
       step: running2 === null ? null : { operation: running2.operation, heldMs: since(running2.since) }
     };
-    if (held4 === void 0) return { kind: "unanswered", heldMs: since(request.at), ...stepped };
-    if (held4 === null) return { kind: "unknown", ...stepped };
-    if (held4.kind === "startup") return { kind: "startup", heldMs: since(held4.since), ...stepped };
-    if (held4.kind === "listing") return { kind: "listing", revision: held4.revision, ...stepped };
+    if (held4 === void 0) return { kind: "unanswered", heldMs: since(request.at), ...stepped2 };
+    if (held4 === null) return { kind: "unknown", ...stepped2 };
+    if (held4.kind === "startup") return { kind: "startup", heldMs: since(held4.since), ...stepped2 };
+    if (held4.kind === "listing") return { kind: "listing", revision: held4.revision, ...stepped2 };
     const { operation } = held4;
-    return { kind: "scheduler", operation, heldMs: since(held4.since), ...stepped };
+    return { kind: "scheduler", operation, heldMs: since(held4.since), ...stepped2 };
   };
   const answer4 = (requestId, request) => {
     const { requested } = request;
@@ -23318,19 +23368,19 @@ var init_pool_wait = __esm({
 
 // src/core/daemon/user-config.ts
 import { readFileSync as readFileSync21, realpathSync as realpathSync4 } from "node:fs";
-import { availableParallelism as availableParallelism4, homedir } from "node:os";
+import { availableParallelism as availableParallelism5, homedir } from "node:os";
 import { dirname as dirname13, isAbsolute as isAbsolute9, join as join31, resolve as resolve8 } from "node:path";
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
   const base = xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? xdg : join31(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
   return join31(base, "squeal", "config.json");
 }
-function defaultHostSlots2(cpus3 = availableParallelism4()) {
+function defaultHostSlots2(cpus3 = availableParallelism5()) {
   return Math.max(1, cpus3 - 1);
 }
 function loadUserConfig(options = {}) {
   const path = userConfigPath(options.env);
-  const cpus3 = options.cpus ?? availableParallelism4();
+  const cpus3 = options.cpus ?? availableParallelism5();
   const defaults = {
     capacity: {
       hostSlots: defaultHostSlots2(cpus3),
@@ -60257,10 +60307,10 @@ var init_request_intake = __esm({
 });
 
 // src/core/slow/guard.ts
-import { availableParallelism as availableParallelism7, loadavg as loadavg3 } from "node:os";
+import { availableParallelism as availableParallelism8, loadavg as loadavg3 } from "node:os";
 function loadPerCpu(wait = {}) {
   const load = wait.load ?? loadavg3;
-  const cpus3 = wait.cpus ?? availableParallelism7;
+  const cpus3 = wait.cpus ?? availableParallelism8;
   return (load()[0] ?? 0) / Math.max(1, cpus3());
 }
 var init_guard2 = __esm({
@@ -61908,6 +61958,7 @@ function liveAsks(context, ledger, now) {
     backlogSize: (queued) => claims2.backlogSize(queued, now),
     // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
     offer: (want, kind) => context.capacity?.offer(want, kind) ?? defaultHostSlots(),
+    fullWidth: () => context.capacity?.fullWidth() ?? null,
     endPass: () => ledger.commit(),
     claimsWaiting: () => claims2.waiting
   };
@@ -92796,10 +92847,10 @@ import {
   readdirSync as readdirSync24,
   readFileSync as readFileSync46
 } from "node:fs";
-import { availableParallelism as availableParallelism5 } from "node:os";
+import { availableParallelism as availableParallelism6 } from "node:os";
 import { extname as extname5, join as join69 } from "node:path";
 var CHUNK_SECONDS = 300;
-var vitestWidth = () => Math.max(1, availableParallelism5() - 1);
+var vitestWidth = () => Math.max(1, availableParallelism6() - 1);
 function chunksFor(pick, files5, at2) {
   if (at2.chunkFiles !== void 0) return chunksOf(files5, Math.max(1, Math.floor(at2.chunkFiles)));
   const bound = at2.seconds ?? CHUNK_SECONDS;
@@ -92880,7 +92931,7 @@ function joinedReport(reports) {
 init_compare();
 init_reverse_index();
 init_text();
-import { availableParallelism as availableParallelism6 } from "node:os";
+import { availableParallelism as availableParallelism7 } from "node:os";
 
 // src/core/code/gate/estimate.ts
 init_load();
@@ -93006,7 +93057,7 @@ function runnerOrder(runners2) {
 }
 
 // src/core/code/gate/plan.ts
-var vitestWidth2 = () => Math.max(1, availableParallelism6() - 1);
+var vitestWidth2 = () => Math.max(1, availableParallelism7() - 1);
 function orderRuns(picked, known4, context) {
   const seconds5 = context.durations ?? (() => null);
   const runs2 = picked.map((pick, index) => {
@@ -109710,11 +109761,11 @@ init_reverse_index();
 init_text();
 
 // src/cli/status-at-run-batches.ts
-import { availableParallelism as availableParallelism8 } from "node:os";
+import { availableParallelism as availableParallelism9 } from "node:os";
 init_text();
 var BATCH_SHARE = 0.2;
 var MIN_BATCH_SECONDS = 20;
-var runWidth = () => Math.max(1, availableParallelism8() - 1);
+var runWidth = () => Math.max(1, availableParallelism9() - 1);
 function estimateOf(files5, durationOf2, width = runWidth()) {
   return estimateRun("vitest", [{ width, seconds: files5.map((f) => durationOf2(f.ref)) }]);
 }
@@ -109798,7 +109849,7 @@ function stopMargin(leftSeconds) {
 // src/cli/status-at-run-child.ts
 import { spawn as spawn16 } from "node:child_process";
 import { existsSync as existsSync66, readFileSync as readFileSync79, renameSync as renameSync11, rmSync as rmSync37, writeFileSync as writeFileSync27 } from "node:fs";
-import { availableParallelism as availableParallelism9 } from "node:os";
+import { availableParallelism as availableParallelism10 } from "node:os";
 import { join as join177 } from "node:path";
 
 // src/cli/code-gate-files.ts
@@ -109970,7 +110021,7 @@ function progressHooks(tell) {
 var RUN_REQUEST_VARIABLE = "SQUEAL_STATUS_AT_RUN_REQUEST";
 var GRACE_SECONDS = 60;
 function noLoadRetry() {
-  return { oneMinute: null, cpus: availableParallelism9() };
+  return { oneMinute: null, cpus: availableParallelism10() };
 }
 function takeRunRequest(env = process.env) {
   const value = env[RUN_REQUEST_VARIABLE];
@@ -111521,7 +111572,7 @@ import { setTimeout as sleep21 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
 init_source();
-import { availableParallelism as availableParallelism10, cpus, loadavg as loadavg4, totalmem as totalmem2, uptime } from "node:os";
+import { availableParallelism as availableParallelism11, cpus, loadavg as loadavg4, totalmem as totalmem2, uptime } from "node:os";
 import { basename as basename37 } from "node:path";
 var CLOCK_TICKS = 100;
 var PS2 = [
@@ -111550,7 +111601,7 @@ var DarwinSource = class {
   #last = /* @__PURE__ */ new Map();
   constructor(options) {
     this.#run = options.run ?? runCommand;
-    this.#os = options.os ?? { loadavg: loadavg4, totalmem: totalmem2, cpus, availableParallelism: availableParallelism10, uptime };
+    this.#os = options.os ?? { loadavg: loadavg4, totalmem: totalmem2, cpus, availableParallelism: availableParallelism11, uptime };
     const boot = (options.now ?? Date.now)() - this.#os.uptime() * 1e3;
     this.#boot = Number.isFinite(boot) ? Math.floor(boot / 1e3) * 1e3 : null;
   }
