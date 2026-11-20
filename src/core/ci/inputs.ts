@@ -210,15 +210,18 @@ export function readEvidence(dir: AbsolutePath): InputEvidence {
  */
 export type TouchedPaths = readonly RelativePath[] | "all";
 
+/** What the hooks of one command recorded. */
+export interface Recorded {
+  readonly evidence: InputEvidence;
+  readonly hooks: HooksTime;
+  readonly touched: TouchedPaths;
+}
+
 /**
  * `readEvidence`, the time the hooks took (`HooksTime`) and the touched
  * paths (`TouchedPaths`), from one read of `dir`.
  */
-export function readRecorded(dir: AbsolutePath): {
-  readonly evidence: InputEvidence;
-  readonly hooks: HooksTime;
-  readonly touched: TouchedPaths;
-} {
+export function readRecorded(dir: AbsolutePath): Recorded {
   const values = new Map<RelativePath, FileHash | null>();
   const conflicting = new Set<RelativePath>();
   const written = new Set<RelativePath>();

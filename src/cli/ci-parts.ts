@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { costOf, costText } from "../core/ci/cost.js";
-import type { HooksTime, InputEvidence } from "../core/ci/inputs.js";
+import type { Endpoints } from "../core/ci/endpoints.js";
+import type { Recorded } from "../core/ci/inputs.js";
 import {
   PART_FORMAT,
   type Part,
@@ -60,9 +61,14 @@ export function nodeTestBody(run: NodeTestRecordedRun): Body {
   };
 }
 
-/** Row 018-29: the hooks' time, and when the command ended (`performance.now`). */
-export interface Spent {
-  readonly hooks: HooksTime;
+/**
+ * What the command left beside the bodies: what its hooks recorded, the
+ * endpoint hashes (spec 018 D30; `null`: none taken), and when the command
+ * ended, after its second hashes (`performance.now`, row 018-29).
+ */
+export interface CommandRecord {
+  readonly recorded: Recorded;
+  readonly endpoints: Endpoints | null;
   readonly commandEnd: number;
 }
 
@@ -72,16 +78,20 @@ export async function writeParts(
   root: AbsolutePath,
   env: NodeJS.ProcessEnv,
   io: CliIo,
-  evidence: InputEvidence,
-  spent: Spent,
+  command: CommandRecord,
 ): Promise<string> {
   const head = await readHead(root);
+  const { recorded, endpoints } = command;
   const cost: RecordingCost = {
     command: randomUUID(),
-    hooksMs: Math.round(spent.hooks.ms),
-    threads: spent.hooks.threads,
-    afterMs: Math.round(performance.now() - spent.commandEnd),
+    hooksMs: Math.round(recorded.hooks.ms),
+    threads: recorded.hooks.threads,
+    afterMs: Math.round(performance.now() - command.commandEnd),
+    ...(endpoints === null ? {} : { endpointsMs: Math.round(endpoints.ms) }),
   };
+  // Spec 018 D32: every part of the command holds the same touched paths and endpoint hashes.
+  const { evidence, touched } = recorded;
+  const ends = endpoints === null ? {} : { stable: endpoints.stable, unstable: endpoints.unstable };
   const base = {
     squealVersion: squealVersion(),
     keyFormat: KEY_FORMAT_VERSION,
@@ -94,7 +104,15 @@ export async function writeParts(
   for (const body of bodies) {
     const header: PartHeader = { ...base, ...body.header, cost };
     const { projects, testFiles } = body;
-    const part: Part = { format: PART_FORMAT, header, projects, testFiles, evidence };
+    const part: Part = {
+      format: PART_FORMAT,
+      header,
+      projects,
+      testFiles,
+      evidence,
+      touched,
+      ...ends,
+    };
     writePart(out, body.coverage === undefined ? part : { ...part, coverage: body.coverage });
     files += testFiles.length;
   }

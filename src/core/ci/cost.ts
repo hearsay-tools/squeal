@@ -17,6 +17,11 @@ export interface CostSummary {
   readonly afterMs: number;
   /** The test files' durations in the parts with a cost, summed. */
   readonly testMs: number;
+  /**
+   * Spec 018 D30: the commands' time hashing the checkout at both ends,
+   * summed over those that hashed it. Absent: none did.
+   */
+  readonly endpointsMs?: number;
   /** Parts without a cost: an older Squeal made them. */
   readonly without: number;
   readonly parts: number;
@@ -45,11 +50,14 @@ export function costOf(parts: readonly CostOfPart[]): CostSummary | null {
   if (commands.size === 0) return null;
   const sum = (field: "hooksMs" | "threads" | "afterMs") =>
     [...commands.values()].reduce((total, cost) => total + cost[field], 0);
+  const hashed = [...commands.values()].flatMap((cost) => cost.endpointsMs ?? []);
+  const endpointsMs = hashed.reduce((total, ms) => total + ms, 0);
   return {
     commands: commands.size,
     hooksMs: sum("hooksMs"),
     threads: sum("threads"),
     afterMs: sum("afterMs"),
+    ...(hashed.length === 0 ? {} : { endpointsMs }),
     testMs,
     without,
     parts: parts.length,
@@ -60,8 +68,10 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)} s`;
 
 /**
  * One line: "Squeal's recording took 1.24 s in 9 processes and threads,
- * 3.5% of the test time (35.1 s); 0.42 s more after the command", with the
- * commands counted when more than one, and the parts that hold no cost.
+ * 3.5% of the test time (35.1 s); 0.42 s more after the command; 2.10 s
+ * hashing the checkout before and after it", with the commands counted
+ * when more than one, the hashing when any command hashed, and the parts
+ * that hold no cost.
  */
 export function costText(cost: CostSummary): string {
   const threads =
@@ -72,9 +82,13 @@ export function costText(cost: CostSummary): string {
       ? `${((100 * cost.hooksMs) / cost.testMs).toFixed(1)}% of the test time (${seconds(cost.testMs)})`
       : "no test time recorded";
   const after = `${seconds(cost.afterMs)} more after the command${cost.commands === 1 ? "" : "s"}`;
+  const hashing =
+    cost.endpointsMs === undefined
+      ? ""
+      : `; ${seconds(cost.endpointsMs)} hashing the checkout before and after ${cost.commands === 1 ? "it" : "them"}`;
   const older =
     cost.without === 0
       ? ""
       : `; ${cost.without} of ${cost.parts} parts hold no cost (an older Squeal made them)`;
-  return `Squeal's recording took ${seconds(cost.hooksMs)} in ${threads}${of}, ${share}; ${after}${older}`;
+  return `Squeal's recording took ${seconds(cost.hooksMs)} in ${threads}${of}, ${share}; ${after}${hashing}${older}`;
 }

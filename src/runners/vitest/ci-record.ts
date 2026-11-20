@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type HooksTime, type InputEvidence, readRecorded } from "../../core/ci/inputs.js";
+import { type Recorded, readRecorded } from "../../core/ci/inputs.js";
 import type {
   PartCoverage,
   PartEnd,
@@ -98,13 +98,12 @@ export interface VitestRecording {
   /**
    * After the command exited: each Vitest process's run, a note for each
    * process that left none, the command's read-time evidence
-   * (`readEvidence`) and the time its hooks took (row 018-29).
+   * (`readEvidence`), the time its hooks took (row 018-29) and its touched
+   * paths (spec 018 D31).
    */
-  finish(): {
+  finish(): Recorded & {
     readonly runs: RecordedRun[];
     readonly notes: string[];
-    readonly evidence: InputEvidence;
-    readonly hooks: HooksTime;
   };
   /** Removes the private directory. */
   close(): void;
@@ -165,12 +164,10 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
       const { runs, notes } = readRawRuns(raw);
       const context = { ...options, observing: recorder !== null, recorded };
       const none = runs.length === 0 && notes.length === 0;
-      const { evidence: read, hooks } = readRecorded(evidence);
       return {
         runs: runs.map((run) => recordedRun(run, context)),
         notes: none ? [NO_VITEST_RUN] : notes,
-        evidence: read,
-        hooks,
+        ...readRecorded(evidence),
       };
     },
     close: () => rmSync(temp, { recursive: true, force: true }),

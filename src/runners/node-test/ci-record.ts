@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type HooksTime, type InputEvidence, readRecorded } from "../../core/ci/inputs.js";
+import { type Recorded, readRecorded } from "../../core/ci/inputs.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { ObjectFormat } from "../../core/hash/blob.js";
 import type { AbsolutePath } from "../../core/types/common.js";
@@ -97,12 +97,12 @@ export interface NodeTestRecording {
   alone(): NodeJS.ProcessEnv;
   /**
    * After the command exited: each `node --test` process's part body and a
-   * note per problem; with `alone`, the command's evidence and the hooks' time.
+   * note per problem; with `alone`, what the hooks recorded (`Recorded`).
    */
   finish(): {
     readonly runs: NodeTestRecordedRun[];
     readonly notes: string[];
-    readonly evidence?: { readonly evidence: InputEvidence; readonly hooks: HooksTime };
+    readonly evidence?: Recorded;
   };
   /** Removes the private directory. */
   close(): void;

@@ -1,13 +1,20 @@
 import { resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { type NotStarted, runCommand } from "../core/ci/command.js";
-import type { HooksTime, InputEvidence } from "../core/ci/inputs.js";
+import {
+  type Endpoints,
+  type EndpointsBefore,
+  endpointsAfter,
+  endpointsBefore,
+} from "../core/ci/endpoints.js";
+import type { Recorded } from "../core/ci/inputs.js";
 import { type MapWorker, mapWorkerScript } from "../core/code/coverage/mapper.js";
 import { coverageProvider } from "../core/code/coverage/runtime.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { findWorktreeRoot } from "../core/fs/git-layout.js";
 import { WorktreePaths } from "../core/fs/worktree-paths.js";
+import type { ObjectFormat } from "../core/hash/blob.js";
 import { readObjectFormat } from "../core/hash/git-index.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import { type NodeTestRecording, startNodeTestRecording } from "../runners/node-test/ci-record.js";
@@ -109,14 +116,22 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
   if (typeof started === "string") return unchanged(started);
   const { root } = started;
   try {
+    const before = await hashing(() => endpointsBefore(root, started.objectFormat));
     const exit = exitOf(await runCommand(args.command, cwd, started.env), say);
+    // Spec 018 D30: the second hashes, once the command's processes exited.
+    const endpoints =
+      typeof before === "string" ? before : await hashing(() => endpointsAfter(before));
     const commandEnd = performance.now();
     try {
-      const { bodies, notes, evidence, hooks } = finishAll(started);
+      const { bodies, notes, recorded } = finishAll(started);
       for (const note of notes) say(note);
       if (bodies.length > 0) {
+        if (typeof endpoints === "string") say(`no endpoint hashes: ${endpoints}`);
         const out = resolve(cwd, args.out ?? DEFAULT_PARTS_DIR);
-        say(await writeParts(bodies, out, root, env, io, evidence, { hooks, commandEnd }));
+        const ends = typeof endpoints === "string" ? null : endpoints;
+        say(
+          await writeParts(bodies, out, root, env, io, { recorded, endpoints: ends, commandEnd }),
+        );
       }
     } catch (error) {
       say(`no part written: ${error instanceof Error ? (error.stack ?? error.message) : error}`);
@@ -133,8 +148,23 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
   }
 }
 
+/**
+ * Spec 018 D30: an error of the endpoint hashes is a note, never a failed
+ * command: without them, an input no hooked process read stays left out.
+ */
+async function hashing<T extends EndpointsBefore | Endpoints>(
+  take: () => Promise<T | string>,
+): Promise<T | string> {
+  try {
+    return await take();
+  } catch (error) {
+    return `hashing the checkout failed (${errorText(error)})`;
+  }
+}
+
 interface Started {
   readonly root: AbsolutePath;
+  readonly objectFormat: ObjectFormat;
   /** The env the command runs with. */
   readonly env: NodeJS.ProcessEnv;
   /** Vitest's recording, which takes the evidence for both when there. */
@@ -179,7 +209,7 @@ async function startFor(
     nodeTest = started;
   }
   if (!vitest && nodeTest !== null) {
-    return { root, env: nodeTest.alone(), vitest: null, nodeTest };
+    return { root, objectFormat, env: nodeTest.alone(), vitest: null, nodeTest };
   }
   const { hooks, settings } = nodeTest?.addition ?? {};
   const recording = startRecording({
@@ -198,16 +228,11 @@ async function startFor(
     return recording;
   }
   const commandEnv = { ...recording.env, ...nodeTest?.addition.env };
-  return { root, env: commandEnv, vitest: recording, nodeTest };
+  return { root, objectFormat, env: commandEnv, vitest: recording, nodeTest };
 }
 
-/** Each recording's part bodies, its notes, and the command's evidence and hooks' time. */
-function finishAll(started: Started): {
-  bodies: Body[];
-  notes: string[];
-  evidence: InputEvidence;
-  hooks: HooksTime;
-} {
+/** Each recording's part bodies, its notes, and what the command's hooks recorded. */
+function finishAll(started: Started): { bodies: Body[]; notes: string[]; recorded: Recorded } {
   const vitest = started.vitest?.finish();
   const nodeTest = started.nodeTest?.finish();
   const bodies = [
@@ -220,8 +245,10 @@ function finishAll(started: Started): {
   const notes = [...(quiet ? [] : vitestNotes), ...(nodeTest?.notes ?? [])];
   if (vitest === undefined && bodies.length === 0)
     notes.push("no node --test process left a part: nothing recorded");
-  const read = vitest ?? nodeTest?.evidence ?? { evidence: {}, hooks: { ms: 0, threads: 0 } };
-  return { bodies, notes, evidence: read.evidence, hooks: read.hooks };
+  // No hook recorded: nothing is known untouched.
+  const none: Recorded = { evidence: {}, hooks: { ms: 0, threads: 0 }, touched: "all" };
+  const { evidence, hooks, touched } = vitest ?? nodeTest?.evidence ?? none;
+  return { bodies, notes, recorded: { evidence, hooks, touched } };
 }
 
 function errorText(error: unknown): string {
