@@ -81,7 +81,8 @@ Usage:
   squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--full] [--json]
                                 Each test file's stored result at the commit's key
                                 (keyed in a temporary checkout there; nothing runs)
-                                beside its state now: pass, fail, no result, absent
+                                beside its state in the working tree: one call is
+                                the whole comparison: pass, fail, no result, absent
                                 or not determined, with where the result came from;
                                 a source path selects the test files whose closure
                                 holds it, as status <path> does; lists the files that
@@ -93,7 +94,10 @@ Usage:
                                 every one), in batches, and stores them at the
                                 commit's keys, within one --timeout (300 s, the
                                 checkout and install included); a large selection
-                                tells its estimate first
+                                tells its estimate first; without --run, the report
+                                ends with the --run command for files with no result
+                                at the commit. A clean tree at HEAD without --run
+                                exits 2 and names HEAD~1: there is nothing to compare
   squeal proof <test file>... --base <commit> [--case source|test|dependency]
                [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
                [--repeat <n>] [--with <path>]... [--source <path>]...

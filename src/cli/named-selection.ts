@@ -13,6 +13,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
+import { listingOf, newPaths, type SelectionUnlisted } from "./named-listing.js";
 import { notRunTestFile } from "./retry-unlisted.js";
 import { StoredClosures, storedReaders } from "./stored-closures.js";
 
@@ -40,6 +41,8 @@ export interface NamedSelection {
    * catches up with, `null` when its pass has not said which.
    */
   readonly partial?: { readonly revision: RevisionNumber | null };
+  /** Row 023-26 (Q7): with a path that selects nothing, the listing not done (`listingOf`). */
+  readonly unlisted?: SelectionUnlisted;
 }
 
 /**
@@ -125,6 +128,8 @@ export function selectNamedFiles(
   const unmatched: UnmatchedPath[] = [];
   const named: NamedPath[] = [];
   let policy: Policy | undefined;
+  // Row 023-26: the listing not done, whose paths that select nothing get no hint from it.
+  const listing = listingOf(store, worktreeId, rows);
   const notRun = (rel: RelativePath) => {
     policy ??= readPolicy(root);
     return notRunTestFile(store, worktreeId, root, rel, rows, policy);
@@ -145,7 +150,7 @@ export function selectNamedFiles(
     const rel = worktreePath(root, cwd, path);
     const own = rows.filter((row) => row.testFile.path === rel);
     const hits = rel === null ? [] : own.length > 0 ? own : readersOf(rel);
-    if (hits.length === 0) unmatched.push(unmatchedOf(root, cwd, path, rel, rows));
+    if (hits.length === 0) unmatched.push(unmatchedOf(root, cwd, path, rel, listing ? null : rows));
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
     const kind =
       own.length > 0
@@ -158,12 +163,14 @@ export function selectNamedFiles(
     named.push({ path: rel ?? path, kind, selects: hits.length });
   }
   const resolved = unmatched.map((p) => p.resolved);
+  const unlisted = listing ?? newPaths(store, worktreeId, root, unmatched);
   return {
     files: [...selected.values()],
     unmatched: resolved,
     unmatchedPaths: unmatched,
     base: baseOf(root, cwd),
     paths: named,
+    ...(unmatched.length === 0 || unlisted === null ? {} : { unlisted }),
   };
 }
 
@@ -195,16 +202,17 @@ export function sourcePaths(
  * below the root, the listed test file the same path names from the root.
  * Row 011-406 (gh-169): for a path that is not on disk, the listed test
  * files whose path starts with it, as a runner's filename filter reads it.
+ * Row 023-26: neither while the listing is not done (`rows` `null`).
  */
 function unmatchedOf(
   root: AbsolutePath,
   cwd: AbsolutePath,
   path: string,
   rel: RelativePath | null,
-  rows: readonly TestFileKeyRecord[],
+  rows: readonly TestFileKeyRecord[] | null,
 ): UnmatchedPath {
   const starts =
-    rel === null || existsAt(root, rel)
+    rows === null || rel === null || existsAt(root, rel)
       ? []
       : rows.map((row) => row.testFile.path).filter((p) => p.startsWith(rel));
   const own = {
@@ -213,7 +221,7 @@ function unmatchedOf(
     base: baseOf(root, cwd),
     ...(starts.length > 0 ? { startsWith: [...new Set(starts)] } : {}),
   };
-  if (isAbsolute(path) || own.base === "") return own;
+  if (rows === null || isAbsolute(path) || own.base === "") return own;
   const fromRoot = worktreePath(root, root, path);
   const listed = fromRoot !== null && rows.some((row) => row.testFile.path === fromRoot);
   return listed ? { ...own, fromRoot } : own;

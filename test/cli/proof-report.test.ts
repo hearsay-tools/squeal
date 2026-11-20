@@ -92,7 +92,10 @@ function report(files: readonly ProofFile[], conditions: Conditions = NO_CONDITI
 describe("proof report: sides not run and the control run (row 023-20)", () => {
   it("says why the green side did not run, never 'not read' (P7)", () => {
     const text = formatProof(report([file({})]));
-    expect(text).toContain("  green: not run (red passed: nothing to prove)\n");
+    // Row 023-24 (Q6): what the proof does not show, and where the result now is.
+    expect(text).toContain(
+      "  green: not run. Red passed, so this proof says nothing about HEAD; `squeal status test/a.test.ts` gives its result now.\n",
+    );
     expect(text).not.toContain("not read");
     const json = JSON.parse(jsonProof(report([file({})])));
     expect(json.files[0]).toMatchObject({
@@ -166,5 +169,63 @@ describe("proof report: sides not run and the control run (row 023-20)", () => {
       "  without the conditions: not run (red passed: nothing to prove)\n",
     );
     expect(formatProof(report([file({})]))).not.toContain("without the conditions");
+  });
+});
+
+describe("proof report: what a side does not show (row 023-24, Q5 and Q6)", () => {
+  const base = BASE.slice(0, 9);
+  const redNote = `  red is the test at ${HEAD.slice(0, 9)} over the code at ${base}, not the file's own result at ${base}; that is \`squeal status --at ${base} test/a.test.ts\`.\n`;
+  const proven = file({
+    verdict: "proven",
+    red: ran(assertionFail),
+    green: ran({ end: "pass" }),
+    greenNotRun: null,
+  });
+
+  it("says a source-case red side of a changed test is not the file's result at the base (Q5)", () => {
+    const text = formatProof(report([proven]));
+    expect(text).toContain(redNote);
+    // After the red side and its failures, before the green side.
+    expect(text.indexOf(redNote)).toBeGreaterThan(text.indexOf("[assertion]"));
+    expect(text.indexOf(redNote)).toBeLessThan(text.indexOf("  green: pass"));
+  });
+
+  it("says nothing of it for an unchanged test, the test case, or a red side with no outcome (Q5)", () => {
+    const unchanged = { ...proven, imports: { unsettled: [], sources: ["src/a.ts"], read: [] } };
+    expect(formatProof(report([unchanged]))).not.toContain("not the file's own result");
+    const testCase = {
+      ...report([proven]),
+      case: "test" as const,
+      red: { tests: BASE, code: HEAD },
+    };
+    expect(formatProof(testCase)).not.toContain("not the file's own result");
+    const unknown = file({
+      verdict: "not comparable",
+      red: {
+        end: { end: "unknown", reason: NOT_RUN_BUDGET },
+        from: null,
+        stored: false,
+        notStored: null,
+        runs: 0,
+      },
+      greenNotRun: "red not run (budget): nothing to compare",
+    });
+    expect(formatProof(report([unknown]))).not.toContain("not the file's own result");
+  });
+
+  it("says what a red side that failed for another reason does not show (Q6), JSON unchanged", () => {
+    const other = file({
+      verdict: "red for another reason",
+      reason: "the budget stopped the red side",
+      red: ran({ end: "timeout" }),
+      greenNotRun: "red failed for another reason: nothing to prove",
+    });
+    const text = formatProof(report([other]));
+    expect(text).toContain(
+      "  green: not run. Red failed for another reason, so this proof shows neither that the test catches the change nor its result at HEAD; `squeal status test/a.test.ts` gives its result now.\n",
+    );
+    expect(JSON.parse(jsonProof(report([other]))).files[0].greenNotRun).toBe(
+      "red failed for another reason: nothing to prove",
+    );
   });
 });

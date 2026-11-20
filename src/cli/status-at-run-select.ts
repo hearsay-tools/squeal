@@ -41,32 +41,40 @@ export function selector(
   input: { readonly root: AbsolutePath; readonly commit: string; readonly allMissing: boolean },
   into: (selection: Selection) => void,
 ): WhileOpen {
-  return async ({ adapters, policy, tree }, keyed) => {
+  return async (open, keyed) => {
     const missing = keyed.filter(noResult);
-    let chosen: ReadonlySet<string> | null = null;
-    if (!input.allMissing) {
-      const changed = await changedSince(input.root, input.commit);
-      const ids = new Set<string>();
-      if (changed.length > 0) {
-        const named = new Set(changed);
-        const declared = createDeclaredInputs(policy.inputs, changed);
-        for (const adapter of adapters) {
-          for (const ref of await adapter.testFiles()) {
-            if (named.has(ref.path) || declared.for(ref.path).length > 0) ids.add(testFileId(ref));
-          }
-          const affected = await adapter.affected(changed);
-          for (const ref of [...affected.direct, ...affected.transitive]) ids.add(testFileId(ref));
-        }
-      }
-      chosen = ids;
-    }
+    const chosen = input.allMissing ? null : await diffSelected(input, open);
     const wanted = missing.filter((f) => chosen === null || chosen.has(testFileId(f.ref)));
-    into(await refuse({ ...input, tree }, keyed, wanted));
+    into(await refuse({ ...input, tree: open.tree }, keyed, wanted));
   };
 }
 
+/**
+ * D4.5 (020 D3.1): the test files, by `testFileId`, the diff
+ * `<commit>..HEAD` selects through the open adapters: a changed test file,
+ * one a changed declared input names, one the runner's `affected` names.
+ */
+export async function diffSelected(
+  input: { readonly root: AbsolutePath; readonly commit: string },
+  { adapters, policy }: Parameters<WhileOpen>[0],
+): Promise<ReadonlySet<string>> {
+  const changed = await changedSince(input.root, input.commit);
+  const ids = new Set<string>();
+  if (changed.length === 0) return ids;
+  const named = new Set(changed);
+  const declared = createDeclaredInputs(policy.inputs, changed);
+  for (const adapter of adapters) {
+    for (const ref of await adapter.testFiles()) {
+      if (named.has(ref.path) || declared.for(ref.path).length > 0) ids.add(testFileId(ref));
+    }
+    const affected = await adapter.affected(changed);
+    for (const ref of [...affected.direct, ...affected.transitive]) ids.add(testFileId(ref));
+  }
+  return ids;
+}
+
 /** D4.9 over `wanted`, and B2: a path runs only when none of its projects is refused. */
-async function refuse(
+export async function refuse(
   input: { readonly root: AbsolutePath; readonly commit: string; readonly tree: AbsolutePath },
   keyed: readonly KeyedFile[],
   wanted: readonly KeyedFile[],

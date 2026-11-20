@@ -62,7 +62,7 @@ describe("status --at with a source path (row 023-19, P4)", SLOW, () => {
     const text = await run(f, { commit: before, paths: ["src/lonely.ts"] });
     expect(text.code).toBe(3);
     expect(text.out).toContain(`no test file's closure holds src/lonely.ts, at ${at} or now\n`);
-    expect(text.out).toContain(": 0 test files,");
+    expect(text.out).toContain(`: 0 test files at ${at} against the working tree`);
     const json = await run(f, { commit: before, paths: ["src/lonely.ts"], json: true });
     expect(JSON.parse(json.out).files).toEqual([]);
     expect(JSON.parse(json.out).unmatched).toEqual(["src/lonely.ts"]);

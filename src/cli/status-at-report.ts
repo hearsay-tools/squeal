@@ -6,6 +6,7 @@ import type { CommitSha, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { importIdOf } from "../core/types/state.js";
 import type { ResultRecord } from "../core/types/store-records.js";
+import { type AtNext, nextLine } from "./status-at-next.js";
 import { fileLines, isNew, newFileLines, proofCommand } from "./status-at-report-files.js";
 import { type RunUse, runLines } from "./status-at-report-run.js";
 
@@ -200,6 +201,8 @@ export interface AtReport {
   readonly unmatched?: readonly string[];
   /** Row 023-07: `--run`'s budget use; absent without `--run`. */
   readonly run?: RunUse;
+  /** Row 023-24 (Q1): without `--run`, the command that runs the files with no result; absent when none. */
+  readonly next?: AtNext;
 }
 
 const short = (sha: string | null) => (sha === null ? "none" : sha.slice(0, 9));
@@ -231,7 +234,8 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
   const at = short(report.commit);
   const head = `HEAD ${short(report.head)}${report.dirty ? ", dirty" : ""}`;
   const lines = [
-    `squeal status --at ${at}: ${report.files.length} test files, against the working tree (${head})`,
+    // Row 023-24 (Q2): agents ran `--at HEAD` as the "after" side.
+    `squeal status --at ${at}: ${report.files.length} test files at ${at} against the working tree (${head}); one call is the whole comparison`,
   ];
   lines.push(nowText(report.now));
   if (report.checkoutMs !== null) {
@@ -269,6 +273,8 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
       `Results are kept ${KEPT_DAYS} days; ${at} is ${days} days old, so most of its files have no result.`,
     );
   }
+  const next = nextLine(report.next, at);
+  if (next !== null) lines.push(next);
   return `${lines.join("\n")}\n`;
 }
 
@@ -291,6 +297,7 @@ export function jsonAt(report: AtReport): string {
     counts: countsOf(report.files),
     unmatched: report.unmatched ?? [],
     run: report.run ?? null,
+    next: report.next ?? null,
     files: report.files.map((f) => ({
       project: f.ref.project,
       path: f.ref.path,

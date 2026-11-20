@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
@@ -137,6 +137,8 @@ describe("review wave-13 B2: a stopped batch is read where the gate kept it", SL
     expect(at).toMatchObject({ state: "pass", origin: { kind: "run", stored: true } });
     expect(JSON.parse(stopped.out).run).toMatchObject({ ran: 1, stored: 1, notRun: 0 });
     clean(f);
+    // Row 023-24 (Q2): a clean HEAD without --run is refused; an untracked file makes it compare.
+    writeFileSync(join(f.root, "notes.txt"), "draft\n");
     const next = await run(f, { commit: head, json: true }, options(f));
     const looked = fileOf(next.out, "test/a.test.ts")?.at;
     expect(looked).toMatchObject({ state: "pass" });

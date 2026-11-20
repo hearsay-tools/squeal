@@ -6,6 +6,7 @@ import { buildSnapshot } from "../../core/status/snapshot.js";
 import { pauseOnlyIds, readNamedFiles } from "../../core/status/standing.js";
 import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
+import { withUnlisted } from "../named-listing.js";
 import {
   type NamedSelection,
   selectNamedFiles,
@@ -111,7 +112,10 @@ export function namedPoll(
       watch ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, worktree, at: readAt } = judgeWait(watch, store, id, options.now);
       const record = worktree?.daemon ?? null;
-      const { ready, covered } = readiness(daemon, current, all, settled, checks.length > 0);
+      const judged = readiness(daemon, current, all, settled, checks.length > 0);
+      // Row 023-26 (Q7): a path that selects nothing before the listing is done decides nothing.
+      const ready = judged.ready && selection.unlisted === undefined;
+      const { covered } = judged;
       if (ready) {
         const open = selection.files.filter((f) => !paused.has(testFileId(f)));
         const liveness = daemonLiveness(record, options.now());
@@ -201,8 +205,13 @@ export function namedPoll(
       return {
         end: {
           outcome,
-          // Row 011-401 (gh-242): whether the list may still grow.
-          selection: withPartial(selection, verdict, current),
+          // Row 011-401 (gh-242): whether the list may still grow; row 023-26, how long it is unlisted.
+          selection: withUnlisted(
+            withPartial(selection, verdict, current),
+            daemon.state === "down"
+              ? undefined
+              : { store, worktreeId: id, record, now: options.now(), elapsed },
+          ),
           leftForPause,
           ...leftGroupsOf(root, leftForPause),
           verdict,
