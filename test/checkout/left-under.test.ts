@@ -1,11 +1,25 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createCheckout, removeCheckout } from "../../src/core/checkout/checkout.js";
-import { endLeftUnder, leftUnderText } from "../../src/core/checkout/left-under.js";
+import {
+  endLeftUnder,
+  endScanned,
+  leftUnderNote,
+  leftUnderText,
+  scanLeftUnder,
+} from "../../src/core/checkout/left-under.js";
 import { sweepCheckouts } from "../../src/core/checkout/sweep.js";
 
 /*
@@ -27,7 +41,7 @@ function git(cwd: string, ...args: string[]): string {
 /** A detached process that idles until signalled; `ignoreTerm` makes it outlast SIGTERM. */
 function idle(cwd: string, args: readonly string[] = [], ignoreTerm = false): ChildProcess {
   const code = `${ignoreTerm ? "process.on('SIGTERM', () => {});" : ""}setInterval(() => {}, 1000);`;
-  const script = args.length > 0 && args[0]?.endsWith(".js") === true;
+  const script = args[0] !== undefined && existsSync(args[0]);
   const child = spawn(process.execPath, script ? args : ["-e", code, "--", ...args], {
     cwd,
     detached: true,
@@ -100,13 +114,23 @@ describe.runIf(linux)("processes left under a removed checkout", () => {
     // Outside by cwd and by a path that only shares the folder's prefix.
     mkdirSync(`${checkout.folder}2`);
     const outside = await started(idle(`${checkout.folder}2`, [`${checkout.folder}2/x`]));
+    // Review wave-18 B1: the checkout path embedded in another path, a punctuated
+    // sibling, and `..` out of it are not under it.
+    const embedded = await started(idle(base, [`/another-root${checkout.folder}/file.js`]));
+    const punctuated = await started(idle(base, [`${checkout.folder}:other`]));
+    const traversal = await started(idle(base, [`--dir=${checkout.folder}/../outside`]));
+    // Under through a symlink to the checkout.
+    symlinkSync(checkout.folder, join(base, "alias"));
+    const aliased = await started(idle(base, [`${join(base, "alias")}/run/x`]));
     const notes: string[] = [];
     await removeCheckout(checkout, { note: (text) => notes.push(text) });
     expect(existsSync(checkout.folder)).toBe(false);
     expect(alive(server)).toBe(false);
     expect(alive(browser)).toBe(false);
-    expect(alive(outside)).toBe(true);
-    expect(notes).toEqual(["ended 2 processes left under the checkout (cezar serve, node)"]);
+    expect(alive(aliased)).toBe(false);
+    const survivors = { outside, embedded, punctuated, traversal };
+    for (const [name, pid] of Object.entries(survivors)) expect(alive(pid), name).toBe(true);
+    expect(notes).toEqual(["ended 3 processes left under the checkout (cezar serve, node ×2)"]);
   });
 
   it("are ended by the sweep of a dead owner's checkout", async () => {
@@ -155,9 +179,64 @@ describe("the report line", () => {
       "ended 17 processes left under the checkout (cezar serve, chrome ×15, agent-browser)",
     );
     expect(leftUnderText({ ended: [], running: [] })).toBeNull();
-    expect(leftUnderText(null)).toBeNull();
     expect(leftUnderText({ ended: [], running: [{ pid: 3, name: "chrome" }] })).toBe(
       "1 process under the checkout still running after SIGKILL (chrome)",
     );
+  });
+});
+
+describe("a skipped or failed scan", () => {
+  it("is told once when no /proc can be read, and a failure each time", async () => {
+    const empty = mkdtempSync(join(tmpdir(), "squeal-noproc-"));
+    try {
+      expect(await endLeftUnder(empty, { root: empty })).toBeNull();
+    } finally {
+      rmSync(empty, { recursive: true, force: true });
+    }
+    expect(leftUnderNote(null)).toMatch(
+      /^did not look for processes left under the checkout: \w+ has no \/proc to read/,
+    );
+    expect(leftUnderNote(null)).toBeNull();
+    expect(leftUnderNote(new Error("EACCES"))).toBe(
+      "could not look for processes left under the checkout: EACCES",
+    );
+    expect(leftUnderNote({ ended: [], running: [] })).toBeNull();
+  });
+});
+
+/** A `/proc` entry for `pid` under `root`: its stat with `start`, its cwd and its arguments. */
+function fakeProc(root: string, pid: number, start: string, cwd: string): void {
+  const dir = join(root, "proc", String(pid));
+  mkdirSync(dir, { recursive: true });
+  const fields = ["S", "1", ...Array(17).fill("0"), start, "0"];
+  writeFileSync(join(dir, "stat"), `${pid} (node) ${fields.join(" ")}\n`);
+  writeFileSync(join(dir, "cmdline"), "node\0-e\0x\0");
+  writeFileSync(join(dir, "comm"), "node\n");
+  rmSync(join(dir, "cwd"), { force: true });
+  symlinkSync(cwd, join(dir, "cwd"));
+}
+
+describe.runIf(linux)("the check before SIGTERM (review wave-18 note 1)", () => {
+  it("skips a process whose start time, or path, changed since the scan", async () => {
+    const folder = join(base, "folder");
+    mkdirSync(folder);
+    const pid = await started(idle(base));
+    fakeProc(base, pid, "100", folder);
+    const scanned = scanLeftUnder(folder, { root: base });
+    expect(scanned?.found.map((f) => f.pid)).toEqual([pid]);
+    // Another process took the pid: another start time.
+    fakeProc(base, pid, "200", folder);
+    expect(await endScanned(scanned as NonNullable<typeof scanned>, { root: base })).toEqual({
+      ended: [],
+      running: [],
+    });
+    expect(alive(pid)).toBe(true);
+    // The same process, no longer under the folder.
+    fakeProc(base, pid, "100", base);
+    expect(await endScanned(scanned as NonNullable<typeof scanned>, { root: base })).toEqual({
+      ended: [],
+      running: [],
+    });
+    expect(alive(pid)).toBe(true);
   });
 });

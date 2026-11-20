@@ -1,7 +1,8 @@
-import { readdirSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { AbsolutePath } from "../types/common.js";
+import { canonical, underFolder } from "./under-path.js";
 
 /*
  * Spec 023 D6 (row 023-31, round 4 R6): before Squeal removes a checkout, it
@@ -10,9 +11,11 @@ import type { AbsolutePath } from "../types/common.js";
  * and 15 headless browsers outlived a removed checkout and `squeal stop`
  * (cwd "(deleted)"), since they had left the run's process group. Never
  * signalled: another user's process, this process and its ancestors, and any
- * process whose path only shares a prefix with the checkout's. Linux only,
- * through `/proc`; where there is none (macOS), nothing is scanned and the
- * run's process-group stop is all that ends its processes.
+ * process with no whole path under the checkout (`under-path.ts`). Each
+ * process is checked again (start time, owner, path) just before its
+ * SIGTERM (review wave-18 note 1). Linux only, through `/proc`; where there
+ * is none (macOS), nothing is scanned, the note says so once, and the run's
+ * process-group stop is all that ends its processes.
  */
 
 /** How long the processes get between SIGTERM and SIGKILL. */
@@ -52,13 +55,51 @@ export async function endLeftUnder(
   folder: AbsolutePath,
   options: EndLeftOptions = {},
 ): Promise<LeftUnder | null> {
+  const scanned = scanLeftUnder(folder, options);
+  return scanned === null ? null : endScanned(scanned, options);
+}
+
+/** What a scan found, and what each process is checked against again before its signal. */
+export interface Scanned {
+  readonly proc: string;
+  readonly folder: string;
+  readonly uid: number;
+  readonly found: readonly Found[];
+}
+
+/** `uid`'s processes under `folder`, but `self` and its ancestors; `null` with no `/proc`. */
+export function scanLeftUnder(folder: AbsolutePath, options: EndLeftOptions = {}): Scanned | null {
   const proc = join(options.root ?? "/", "proc");
   const uid = options.uid ?? process.getuid?.();
-  const found = uid === undefined ? null : scan(proc, folder, uid, options.self ?? process.pid);
-  if (found === null) return null;
-  if (found.length === 0) return { ended: [], running: [] };
-  for (const f of found) signal(f.pid, "SIGTERM");
-  let left = await waitGone(proc, found, options.graceMs ?? LEFT_GRACE_MS);
+  const pids = pidsIn(proc);
+  if (uid === undefined || pids === null) return null;
+  const spared = ancestors(proc, options.self ?? process.pid);
+  const real = canonical(folder);
+  const found: Found[] = [];
+  for (const pid of pids) {
+    if (spared.has(pid) || ownerOf(proc, pid) !== uid) continue;
+    const start = startOf(proc, pid);
+    if (start === null) continue;
+    const argv = argvOf(proc, pid);
+    if (underFolder(real, cwdOf(proc, pid), argv))
+      found.push({ pid, start, name: nameOf(proc, pid, argv) });
+  }
+  return { proc, folder: real, uid, found };
+}
+
+/** SIGTERM to each found process still the same, still `uid`'s and still under; SIGKILL after the grace. */
+export async function endScanned(
+  scanned: Scanned,
+  options: EndLeftOptions = {},
+): Promise<LeftUnder> {
+  const { proc, folder, uid } = scanned;
+  const same = (f: Found) =>
+    startOf(proc, f.pid) === f.start &&
+    ownerOf(proc, f.pid) === uid &&
+    underFolder(folder, cwdOf(proc, f.pid), argvOf(proc, f.pid));
+  const signalled = scanned.found.filter((f) => same(f) && signal(f.pid, "SIGTERM"));
+  if (signalled.length === 0) return { ended: [], running: [] };
+  let left = await waitGone(proc, signalled, options.graceMs ?? LEFT_GRACE_MS);
   if (left.length > 0) {
     for (const f of left) if (startOf(proc, f.pid) === f.start) signal(f.pid, "SIGKILL");
     left = await waitGone(proc, left, KILL_WAIT_MS);
@@ -66,35 +107,29 @@ export async function endLeftUnder(
   const still = new Set(left.map((f) => f.pid));
   const plain = ({ pid, name }: Found): LeftProcess => ({ pid, name });
   return {
-    ended: found.filter((f) => !still.has(f.pid)).map(plain),
+    ended: signalled.filter((f) => !still.has(f.pid)).map(plain),
     running: left.map(plain),
   };
 }
 
-/** `uid`'s processes under `folder`, but `self` and its ancestors; `null` with no `/proc`. */
-function scan(proc: string, folder: AbsolutePath, uid: number, self: number): Found[] | null {
-  const pids = pidsIn(proc);
-  if (pids === null) return null;
-  const spared = ancestors(proc, self);
-  const paths = pathsOf(folder);
-  const found: Found[] = [];
-  for (const pid of pids) {
-    if (spared.has(pid) || ownerOf(proc, pid) !== uid) continue;
-    const start = startOf(proc, pid);
-    if (start === null) continue;
-    const argv = argvOf(proc, pid);
-    const cwd = cwdOf(proc, pid);
-    const under =
-      (cwd !== null && paths.some((p) => within(cwd, p))) ||
-      argv.some((arg) => paths.some((p) => mentions(arg, p)));
-    if (under) found.push({ pid, start, name: nameOf(proc, pid, argv) });
-  }
-  return found;
+let skipTold = false;
+
+/**
+ * The note for `removeTree`: the processes ended, or, once per process,
+ * that no scan could run (review wave-18 note 2); `null` when there is
+ * nothing to tell.
+ */
+export function leftUnderNote(left: LeftUnder | null | Error): string | null {
+  if (left instanceof Error)
+    return `could not look for processes left under the checkout: ${left.message}`;
+  if (left !== null) return leftUnderText(left);
+  if (skipTold) return null;
+  skipTold = true;
+  return `did not look for processes left under the checkout: ${process.platform} has no /proc to read; only the run's process group was stopped`;
 }
 
 /** The report's line:"ended 17 processes left under the checkout (cezar serve, chrome ×15)". */
-export function leftUnderText(left: LeftUnder | null): string | null {
-  if (left === null) return null;
+export function leftUnderText(left: LeftUnder): string | null {
   const parts: string[] = [];
   if (left.ended.length > 0)
     parts.push(`ended ${count(left.ended)} left under the checkout (${names(left.ended)})`);
@@ -116,33 +151,6 @@ function names(processes: readonly LeftProcess[]): string {
   return [...counts].map(([name, n]) => (n === 1 ? name : `${name} ×${n}`)).join(", ");
 }
 
-/** The folder as given and as `/proc` shows it, its real path. */
-function pathsOf(folder: AbsolutePath): string[] {
-  const paths = [folder.replace(/\/+$/, "")];
-  try {
-    const real = realpathSync(folder);
-    if (real !== paths[0]) paths.push(real);
-  } catch {
-    // A folder already gone has no real path; the given one is all there is.
-  }
-  return paths;
-}
-
-/** `path` is `folder` or below it; a cwd removed since reads with " (deleted)". */
-function within(path: string, folder: string): boolean {
-  const bare = path.endsWith(" (deleted)") ? path.slice(0, -" (deleted)".length) : path;
-  return bare === folder || bare.startsWith(`${folder}/`);
-}
-
-/** `arg` holds `folder` as a whole path or the start of one (`--user-data-dir=<folder>/x`). */
-function mentions(arg: string, folder: string): boolean {
-  for (let at = arg.indexOf(folder); at >= 0; at = arg.indexOf(folder, at + 1)) {
-    const next = arg[at + folder.length];
-    if (next === undefined || !/[\w.-]/.test(next)) return true;
-  }
-  return false;
-}
-
 async function waitGone(proc: string, found: readonly Found[], ms: number): Promise<Found[]> {
   const deadline = performance.now() + ms;
   let left = found.filter((f) => alive(proc, f));
@@ -161,11 +169,13 @@ function alive(proc: string, f: Found): boolean {
   return fields[19] === f.start && fields[0] !== "Z";
 }
 
-function signal(pid: number, name: NodeJS.Signals): void {
+/** False when the process is gone since the scan. */
+function signal(pid: number, name: NodeJS.Signals): boolean {
   try {
     process.kill(pid, name);
+    return true;
   } catch {
-    // Gone since the scan.
+    return false;
   }
 }
 

@@ -8,7 +8,7 @@ import { runGit } from "../fs/git.js";
 import { lstatOrNull } from "../fs/git-layout.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { LeaseProcess } from "../types/daemon-writes.js";
-import { endLeftUnder, leftUnderText } from "./left-under.js";
+import { endLeftUnder, leftUnderNote } from "./left-under.js";
 import { readMarker, runPath, treePath, writeMarker } from "./marker.js";
 
 /*
@@ -196,7 +196,11 @@ export async function removeTree(
   const { commonDir, tree } = checkout;
   const group = readMarker(checkout.folder)?.group;
   if (group !== undefined) await stopRecordedGroup(group).catch(() => {});
-  const left = leftUnderText(await endLeftUnder(checkout.folder).catch(() => null));
+  const left = leftUnderNote(
+    await endLeftUnder(checkout.folder).catch((error: unknown) =>
+      error instanceof Error ? error : new Error(String(error)),
+    ),
+  );
   if (left !== null) note?.(left);
   const lenient = { okCodes: [0, 1, 128], timeoutMs: GIT_TIMEOUT_MS };
   await runGit(commonDir, ["worktree", "unlock", tree], lenient).catch(() => "");
