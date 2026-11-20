@@ -1,0 +1,16 @@
+2026-11-20T12:13:14.101Z [32073] store process: serving /home/user/results/cells/wt-3/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/wt-3/work/run/squeal-code-17773970e3fd0d9a.sock
+2026-11-20T12:14:14.102Z [32073] store process: last minute: edit: 119 written, 0 failed, queue wait p50 0 ms max 53 ms, busy 431 ms; record: 1093 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 1339 ms
+2026-11-20T12:15:14.101Z [32073] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 13 ms; record: 30 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 26 ms
+2026-11-20T12:16:14.101Z [32073] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 11 ms; record: 44 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 39 ms
+2026-11-20T12:17:14.102Z [32073] store process: last minute: edit: 27 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 27 ms; record: 88 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 108 ms
+2026-11-20T12:18:14.102Z [32073] store process: last minute: edit: 24 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 21 ms; record: 86 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 113 ms
+2026-11-20T12:19:14.102Z [32073] store process: last minute: edit: 12 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 12 ms; record: 32 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 44 ms
+2026-11-20T12:20:14.102Z [32073] store process: last minute: edit: 30 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 37 ms; record: 98 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 109 ms
+2026-11-20T12:21:14.101Z [32073] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 6 ms; record: 25 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 24 ms
+2026-11-20T12:22:14.104Z [32073] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 13 ms; record: 248 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 337 ms
+2026-11-20T12:23:14.103Z [32073] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 19 ms; record: 380 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 558 ms
+2026-11-20T12:24:14.107Z [32073] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 5 ms; record: 14 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 21 ms
+2026-11-20T12:25:14.115Z [32073] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 3 ms; record: 19 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 70 ms
+2026-11-20T12:26:14.116Z [32073] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 5 ms; record: 592 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1337 ms
+2026-11-20T12:27:14.127Z [32073] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 9 ms; record: 21 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 27 ms
+2026-11-20T12:29:14.137Z [32073] store process: last minute: record: 104 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 401 ms

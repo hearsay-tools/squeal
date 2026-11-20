@@ -1,0 +1,6 @@
+[2026-11-20T11:56:42.927Z] ref: plain vitest run
+[2026-11-20T11:57:13.444Z] ref: squeal start + run --all
+[2026-11-20T11:57:53.025Z] ref: idle
+[2026-11-20T11:58:53.029Z] ref: sessions
+[2026-11-20T12:13:02.909Z] ref: collect
+[2026-11-20T12:13:06.197Z] ref: done
