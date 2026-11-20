@@ -15,6 +15,10 @@ import { project, record, reporterPair, temp } from "./ci-record-kit.js";
  */
 
 const SLOW = { timeout: 120_000 } as const;
+/** Node 22 before `--test-isolation` names it `--experimental-test-isolation` (spec 018 D25). */
+const ISOLATION = process.allowedNodeEnvironmentFlags.has("--test-isolation")
+  ? "--test-isolation"
+  : "--experimental-test-isolation";
 const FILES = {
   "squeal.config.json": '{"nodeTest":[{"name":"u","include":["*.test.mjs"]}]}\n',
   "a.test.mjs": 'import { test } from "node:test";\ntest("a", () => {});\ntest("b", () => {});\n',
@@ -22,7 +26,7 @@ const FILES = {
 
 describe("refused node:test runs", () => {
   it.each([
-    [["--test-isolation=none"], "--test-isolation=none"],
+    [[`${ISOLATION}=none`], `${ISOLATION}=none`],
     [["--test-name-pattern=a"], "--test-name-pattern"],
     [["--test-skip-pattern", "b"], "--test-skip-pattern"],
     [["--test-only"], "--test-only"],
