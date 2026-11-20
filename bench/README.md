@@ -5,9 +5,10 @@ This benchmark measures what an agent feels when Squeal runs beside it: hook lat
 ## Run it
 
 ```sh
-bench/boat-run.sh                       # all cells, default sandbox, Ryzen 9 9950X; about 2 h
-bench/boat-run.sh --cells ref --steps 12  # a quick check of the reference cell
-bench/boat-run.sh --ref squeal--v0.1.570  # the plugin as released at that tag
+bench/boat-run.sh                                            # all cells on this worktree's plugin; about 4 h
+bench/boat-run.sh --cells ref --steps 12                       # a quick check of the reference cell
+bench/boat-run.sh --ref squeal--v0.1.572                       # the plugin as released at that tag
+bench/boat-run.sh --ref squeal--v0.1.572 --ref origin/main --cells ref,wt-6   # two versions on one machine
 ```
 
 `boat-run.sh` creates a boat.dev sandbox and pushes `plugins/claude-code` (the committed plugin bundle, which is what users install) and `bench/` to it. It runs `run-all.mjs` there and copies the results to `bench/results/<date>-<version>-<type>-<cpu>/`. The sandbox is created with `--no-env`, so it holds none of the account's secrets. It is deleted at the end unless `--keep` is given.
@@ -34,7 +35,7 @@ The boat.dev $20 plan (`box_20`) offers three sizes:
 
 **Reference: `default`, 4 vCPU, 8 GB.** It is close to a developer laptop, which is where Squeal runs. With 4 vCPUs, extra worktrees and ambient load show their effect early. `large` is the second machine, used to show whether a problem comes from Squeal's design or from too few CPUs: `bench/boat-run.sh --type large`.
 
-**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike. `boat-run.sh` therefore retries until it gets a Ryzen 9 9950X (`--cpu ""` takes any CPU). This is not always possible: on 2026-11-20, 12 tries in a row gave a Ryzen 7 9700X. `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s). Only compare runs on the same CPU model. A run that compares cells, such as store sizes, should include `ref`, so every cell it compares runs on one machine.
+**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike, and on 2026-11-20 twelve starts in a row gave a Ryzen 7 9700X. Hunting for one model wastes the plan's start limits (12 a minute, 60 an hour, 200 a day), so **compare versions in one sandbox**: give `--ref` once per version. Every cell then runs once per version, alternating which goes first, and the scorecard adds a table of the differences. `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s); `TREND.md` groups runs by CPU model, and only runs on the same model compare across sandboxes. `--cpu "<model>"` still retries starts until that model comes up.
 
 ## The project
 
@@ -70,7 +71,7 @@ The benchmark varies one factor at a time from the reference cell, and adds one 
 | store-7g | 500 | 1 | 0% (store aged 326 rounds, 9.2 GB) |
 | churn | 500 | 1 | 0% (as store-7g, history over 8 days, prune and integrity check due) |
 
-The two store cells run the reference cell on a store that already holds a week of history. After the full run, `age-store.mjs` adds rounds of history: every test file gets a new content key, with its results, one `loaded_modules` list of real-store size (about 50 KB) and the runs that recorded them. All of it is dated within the last 7 days and is older than the real rows. The shape follows Squeal's own store on 2026-11-20: 7.2 GB, 82% of it in `loaded_modules` (163k rows, 46 KB each) and 1.74M `results` rows. 326 rounds gives that store's `loaded_modules` row count; 70 rounds gives its rows per test file, scaled to 500 test files.
+The two store cells run the reference cell on a store that already holds a week of history. After the full run, `age-store.mjs` adds rounds of history: every test file gets a new content key, with its results, one `loaded_modules` list of real-store size (about 50 KB) and the runs that recorded them. All of it is dated within the last 7 days and is older than the real rows. The shape follows Squeal's own store on 2026-11-20: 7.2 GB, 82% of it in `loaded_modules` (163k rows, 46 KB each) and 1.74M `results` rows. 326 rounds gives that store's `loaded_modules` row count; 70 rounds gives its rows per test file, scaled to 500 test files. The code store (`code.sqlite`, coverage and complexity) gets the same history: for every new key, a copy of that test file's real coverage record, dated like its results, and an 8 KB part that no record lists, standing for the larger records of a real repository. At 326 rounds that is about 1.4 GB; Squeal's own `code.sqlite` was 1.5 GB (coverage 193k rows) on 2026-11-20.
 
 The churn cell measures the daily upkeep of a large store. Its history spans 8 days, so about one day of it is past the 7-day retention, as after a day with no daemon running. `age-store.mjs --churn` also clears the store's record of the last prune and the last full integrity check. The restart then checks the whole file, and the first prune (prune runs at most once an hour per repository and is asked every 6 minutes) has to delete that day. The cell records, from the restart, when old results start to go and when none is left (`prune-watch.json`), and when the daemon logs "full integrity check: ok".
 
@@ -125,30 +126,33 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | `session.verdict.wrong` | 0 (gate) | | A settled verdict that disagrees with the truth. This should never happen |
 | `session.failed` | 0 (gate) | | A scripted session that crashed or timed out |
 | `hook.overTimeout` | 0 (gate) | | Hook calls over 2 s. Every hook in `hooks.json` has `timeout: 2`; Claude Code kills a slower call and drops its output. The scripted session allows 30 s, so it records the time instead of losing the call |
+| `store.failedBatches` | 0 (gate) | | Code-store batches the store process or a daemon logged as failed: lost writes |
 | `notice.falseAlarm` | 0 (gate) | | A FAIL line pushed while the session has broken nothing (after a benign edit, a status check or the broad edit). "Silence is a feature" |
 | `notice.unnamed` | 0 (gate) | | A failure notice after a break that names neither the edited file nor a test the break reaches |
 | `notice.wrongTest` | 0 (gate) | | A FAIL line for a test file the session's break does not reach (the module and the modules that import it) |
 | `notice.wrongSession` | 0 (gate) | | A FAIL line for a test another worktree's open break reaches: a notice delivered to the wrong session |
 | `session.broad.verdict` | ≤ 180 s | ≤ 300 s | Edit to `src/core.ts` until the whole suite is current. Catch-up waits 120 s of quiet by design, so 180 s allows about 60 s of running |
 | **Resources** | | | |
-| `res.idleCpu.maxPct` | ≤ 1% | ≤ 5% | Daemon CPU, children included, over 60 s with no edits, as % of one core |
+| `res.idleCpu.maxPct` | ≤ 1% | ≤ 5% | CPU over 60 s with no edits, as % of one core: the busiest daemon with its children, plus the code store's process |
 | `res.daemonRss.max` | ≤ 300 MiB | ≤ 600 MiB | Peak RSS of one daemon process; spec 021 measured 281 MiB idle on a large project |
-| `res.cpuPerEdit` | report | | Daemon CPU, children included, during the sessions, divided by the edits |
+| `res.cpuPerEdit` | report | | CPU during the sessions (daemons with their children, plus the code store's process), divided by the edits |
+| `res.storeProcess.cpuS`, `res.storeProcess.rss` | report | | The code store's process (spec 021 D22, from 0.1.575): CPU during the sessions and peak memory. It is a separate process, not a daemon's child |
 | **Store** | | | |
 | `store.longWrites` | 0 | ≤ 3 | Writes the daemon logs as held over 250 ms (`LONG_WRITE_MS`) |
 | `store.lockFailures` | 0 | ≤ 3 | `SQLITE_BUSY` or "database is locked" in the daemon logs |
 | `store.size`, `store.results` | report | | `store.sqlite` + WAL + `code.sqlite` in MiB, and rows in `results` |
 | `store.prune.doneMin` | ≤ 12 min | ≤ 20 min | Churn cell: from the restart until no result past retention is left. Prune is asked every 6 minutes, so 12 allows two asks |
 | `store.prune.s`, `store.fullCheck.s` | report | | Churn cell: how long the prune deleted for, and the restart until the integrity check passed |
+| `store.process.queueWaitMax`, `.busy`, `.direct`, `.stops` | report | | From the store process's per-minute log and the daemons' matching lines: the longest wait of a batch in its queue, time spent writing, batches a daemon wrote itself because the process was gone, and its stops |
 
 ## When to run
 
-Agreed with the human on 2026-11-20; `docs/process.md` step 6c holds the same rule.
+Agreed with the human on 2026-11-20 (paired runs the same day); `docs/process.md` step 6c holds the same rule.
 
-1. **Weekly.** A full run (every cell) on the latest release tag: `bench/boat-run.sh --ref squeal--v<version>`, about 4 hours of sandbox time. A cockpit automation starts it on Mondays at 06:00 Europe/Warsaw. The task commits the results directory and `results/TREND.md` as a docs commit and reports to the human.
-2. **On demand, for performance work.** A row that changes the store, the daemon, the scheduler, the hooks or delivery runs `ref` and the cells it targets, on the release it starts from and on its candidate, on the same CPU model. The comparison goes into the row's notes before review. It is evidence for the review, not a gate.
+1. **Weekly.** A full run (every cell) of the latest release tag paired with the release before it, in one sandbox: `bench/boat-run.sh --ref squeal--v<previous> --ref squeal--v<latest>`, about 8 hours of sandbox time. A cockpit automation starts it on Mondays at 06:00 Europe/Warsaw. The task commits the results directory and `results/TREND.md` as a docs commit and reports to the human.
+2. **On demand, for performance work.** A row that changes the store, the daemon, the scheduler, the hooks or delivery runs `ref` and the cells it targets as one paired run: `--ref <the release it starts from> --ref <its candidate>`. The comparison goes into the row's notes before review. It is evidence for the review, not a gate.
 3. **Never a release gate.** As with the evals (human, 2026-10-19).
-4. **What a result triggers.** A correctness failure goes to the human at once. A cell that drops 15 points or more against the last run on the same CPU model is re-run on the previous release on that CPU model; if the drop holds, it goes to the human, who decides whether it becomes a row. The first weekly run repeats `ref` three times to measure run-to-run noise; the 15-point threshold is set again from that.
+4. **What a result triggers.** A correctness failure goes to the human at once. A cell where the newer version scores 15 points or more below the older one in the same paired run is run again as a pair (`--cells <that cell>`); if the drop holds, it goes to the human, who decides whether it becomes a row. Until run-to-run noise is measured (the first weekly run repeats `ref` three times as a pair), 15 points is a first guess.
 5. **Where.** Only on boat.dev sandboxes, never on the shared development host or the lab VM.
 
 ## Files
