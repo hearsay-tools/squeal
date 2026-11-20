@@ -69,6 +69,29 @@ describe("endpoint hashes", () => {
     });
   });
 
+  it("holds a changed tracked file named like an Object property as its own entry (review 0.1.582 B1)", async () => {
+    const { path: root, cleanup } = tempDir("squeal-endpoints-proto-");
+    cleanups.push(cleanup);
+    initRepo(
+      root,
+      Object.fromEntries([
+        ["__proto__", "BAD\n"],
+        ["constructor", "c\n"],
+        ["src/toString", "t\n"],
+      ]),
+    );
+    for (const name of ["__proto__", "constructor", "src/toString"])
+      writeFileSync(join(root, name), "GOOD\n");
+    const ends = await around(root, () => {});
+    if (typeof ends === "string") throw new Error(ends);
+    const read = JSON.parse(JSON.stringify(ends.stable)) as Record<string, unknown>;
+    for (const name of ["__proto__", "constructor", "src/toString"]) {
+      expect(Object.hasOwn(ends.stable, name), name).toBe(true);
+      expect(ends.stable[name], name).toBe(gitHashObject(root, name));
+      expect(Object.hasOwn(read, name), `${name} after a JSON round trip`).toBe(true);
+    }
+  });
+
   it("holds a file changed before the command and kept, with its hash", async () => {
     const root = repo();
     writeFileSync(join(root, "a.txt"), "changed\n");

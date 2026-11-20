@@ -63,14 +63,20 @@ export async function endpointsAfter(before: EndpointsBefore): Promise<Endpoints
   const head = await gitHead(root);
   if (head !== commit) return `HEAD moved during the command (${commit} to ${head ?? "none"})`;
   const after = await hashAll(root, format, paths);
-  const stable: Record<RelativePath, FileHash | null> = {};
+  // Entries, not assignment: a tracked file named `__proto__` must stay an own
+  // entry, or the export reads it as the commit's (review 0.1.582 B1).
+  const stable: [RelativePath, FileHash | null][] = [];
   const unstable: RelativePath[] = [];
   paths.forEach((path, index) => {
     const hash = hashes[index] ?? null;
     if (hash !== (after[index] ?? null)) unstable.push(path);
-    else if (hash !== at(path)) stable[path] = hash;
+    else if (hash !== at(path)) stable.push([path, hash]);
   });
-  return { stable, unstable, ms: before.ms + performance.now() - start };
+  return {
+    stable: Object.fromEntries(stable),
+    unstable,
+    ms: before.ms + performance.now() - start,
+  };
 }
 
 function hashAll(
