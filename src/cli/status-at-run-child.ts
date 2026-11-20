@@ -8,8 +8,11 @@ import { recordGroup } from "../core/checkout/marker.js";
 import { leaseProcess } from "../core/daemon/lease-process.js";
 import type { HostLoad } from "../core/retry/load.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import { ADAPTERS } from "./code-gate.js";
 import { type GateFilesProgress, type GateFilesResult, runGateFiles } from "./code-gate-files.js";
 import { PARENT_PID_VARIABLE, takeParentPid, watchParent } from "./code-gate-parent.js";
+import { onlyThese } from "./status-at-run-only.js";
 import { type SetupFailure, setupOf } from "./status-at-run-setup.js";
 
 /*
@@ -33,6 +36,12 @@ const GRACE_SECONDS = 60;
 interface RunRequest {
   readonly tree: AbsolutePath;
   readonly files: readonly RelativePath[];
+  /**
+   * Row 023-29 (review wave-18 B3): the batch's own files by project and
+   * path; the gate lists no other (`onlyThese`). Absent: every project
+   * that lists a path runs it (`squeal proof`).
+   */
+  readonly refs?: readonly TestFileRef[];
   readonly budgetSeconds: number;
   readonly tempDir: AbsolutePath;
   readonly answer: string;
@@ -105,6 +114,7 @@ export async function runChild(request: string): Promise<number> {
     const result = await runGateFiles({
       root: asked.tree,
       files: asked.files,
+      ...(asked.refs === undefined ? {} : { adapters: onlyThese(ADAPTERS, asked.refs) }),
       budgetSeconds: asked.budgetSeconds,
       tempDir: asked.tempDir,
       store: asked.store,
@@ -159,6 +169,8 @@ export interface ChildRun {
   readonly relaunch: readonly string[] | undefined;
   readonly checkout: Checkout;
   readonly files: readonly RelativePath[];
+  /** Review wave-18 B3: the batch's own files by project and path; absent: every project. */
+  readonly refs?: readonly TestFileRef[];
   readonly budgetSeconds: number;
   /** Row 023-07: `false` when the install changed the checkout: the gate stores nothing. */
   readonly store: boolean;
@@ -192,6 +204,7 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
   const asked: RunRequest = {
     tree: checkout.tree,
     files: run.files,
+    ...(run.refs === undefined ? {} : { refs: run.refs }),
     budgetSeconds: run.budgetSeconds,
     tempDir: checkout.run,
     answer,

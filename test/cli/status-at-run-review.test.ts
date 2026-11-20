@@ -86,15 +86,16 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
     const { f, a } = projects();
     f.commit({ "setup/f.ts": "export const changed = true;\n" });
     const ran = await run(f, { commit: a, json: true, run: RUN }, options(f));
-    expect(JSON.parse(ran.out).run).toMatchObject({ selected: 1, ran: 2, stored: 2 });
+    expect(JSON.parse(ran.out).run).toMatchObject({ selected: 1, ran: 1, stored: 1 });
     expect(atOf(ran.out, TEST.path, "fails")).toMatchObject({
       state: "fail",
       origin: { kind: "run" },
     });
-    // Not selected, but the gate ran its path too and stored it: it reads from the store.
+    // Review wave-18 B3: a batch runs its own projects only; the other project of the path,
+    // which the change did not select, did not run.
     expect(atOf(ran.out, TEST.path, "passes")).toMatchObject({
-      state: "pass",
-      origin: { kind: "run", stored: true },
+      state: "no result",
+      notSelected: true,
     });
     clean(f);
   });

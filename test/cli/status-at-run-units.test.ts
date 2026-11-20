@@ -69,7 +69,7 @@ describe("runBatches (R3)", () => {
       batchFiles: 2,
       endMs: performance.now() + 300_000,
       secondsOf: () => null,
-      run: async (paths): Promise<RunAnswer> => {
+      run: async ({ paths }): Promise<RunAnswer> => {
         batches.push(paths);
         const browser = paths.some((p) => p.includes("browser"));
         const runs = paths.map((path) => ({
@@ -124,7 +124,7 @@ describe("runBatches (R3)", () => {
       batchFiles: 1,
       endMs: performance.now() + 300_000,
       secondsOf: () => null,
-      run: async (paths): Promise<RunAnswer> => {
+      run: async ({ paths }): Promise<RunAnswer> => {
         calls++;
         const runs = paths.map((path) => ({
           runner: "vitest" as const,

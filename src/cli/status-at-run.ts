@@ -206,11 +206,13 @@ export function atRun(input: AtRunInput): AtRun {
         const path = await checkoutChange(input.root, checkout.tree, checkout.commit);
         if (path !== null) changed = { path, by: "run" };
       },
-      run: (files, budgetSeconds, stopAfterSeconds) =>
+      run: (batch, budgetSeconds, stopAfterSeconds) =>
         runInChild({
           relaunch: input.relaunch,
           checkout,
-          files,
+          files: batch.paths,
+          // Review wave-18 B3: the batch's own projects only.
+          refs: batch.refs,
           budgetSeconds,
           stopAfterSeconds,
           // "Whole-checkout check": a checkout the install or an earlier batch changed stores nothing.

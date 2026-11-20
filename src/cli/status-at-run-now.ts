@@ -184,11 +184,13 @@ async function throughGate(input: NowRunInput): Promise<NowRunEnd> {
       ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
       endMs: input.endMs,
       secondsOf: durations?.of ?? (() => null),
-      run: (files, budgetSeconds, stopAfterSeconds) =>
+      run: (batch, budgetSeconds, stopAfterSeconds) =>
         runInChild({
           relaunch: input.relaunch,
           checkout: place,
-          files,
+          files: batch.paths,
+          // Review wave-18 B3: the batch's own projects only.
+          refs: batch.refs,
           budgetSeconds,
           stopAfterSeconds,
           store: true,

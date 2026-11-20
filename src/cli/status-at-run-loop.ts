@@ -36,12 +36,22 @@ export interface BatchLoop<F> {
   readonly secondsOf: (ref: TestFileRef) => number | null;
   /** Before each batch after the first (the commit side's whole-checkout check). */
   readonly beforeLater?: () => Promise<void>;
-  /** One batch in a gate child: its paths, the gate's budget and the hard stop, in seconds. */
-  readonly run: (paths: readonly RelativePath[], gate: number, stop: number) => Promise<RunAnswer>;
+  /**
+   * One batch in a gate child: its paths and (review wave-18 B3) its own
+   * files by project and path, which alone it may run; the gate's budget
+   * and the hard stop, in seconds.
+   */
+  readonly run: (batch: Batch, gate: number, stop: number) => Promise<RunAnswer>;
   /** A batch's files read back after its answer, or the unstarted files after the last. */
   readonly readBack: (files: readonly F[], answer: RunAnswer) => Promise<void>;
   readonly stateOf: (file: F) => SideState | undefined;
   readonly setState: (file: F, state: SideState) => void;
+}
+
+/** One batch: whole paths of one lot, and the files of that lot under them. */
+export interface Batch {
+  readonly paths: readonly RelativePath[];
+  readonly refs: readonly TestFileRef[];
 }
 
 export interface LoopEnd {
@@ -53,29 +63,31 @@ export interface LoopEnd {
   readonly batches: readonly BatchTime[];
 }
 
-/** The loop over `loop.files`, to the side's end. */
+/**
+ * The loop over `loop.files`, to the side's end. Review wave-18 B3: a
+ * slot is one path within one lot, so a path an ordinary project and a
+ * manual one share is two slots, run in two batches, each with its own
+ * projects only.
+ */
 export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
   const { refOf } = loop;
-  const byPath = new Map<RelativePath, F[]>();
-  for (const file of loop.files) {
-    const path = refOf(file).path;
-    byPath.set(path, [...(byPath.get(path) ?? []), file]);
-  }
   const lot = lotOf(loop.policy);
-  const lotOfPath = (path: RelativePath) => {
-    const first = byPath.get(path)?.[0];
-    return first === undefined ? "" : lot(refOf(first));
-  };
-  // R3: the lot of every other file first, then each on-request group's, by name.
-  let paths = [...byPath.keys()].sort((a, b) => {
-    const [x, y] = [lotOfPath(a), lotOfPath(b)];
-    return x === y ? (a < b ? -1 : a > b ? 1 : 0) : x < y ? -1 : 1;
-  });
+  const bySlot = new Map<string, F[]>();
+  const lots = new Map<string, string>();
+  for (const file of loop.files) {
+    const ref = refOf(file);
+    const slot = `${lot(ref)}\0${ref.path}`;
+    bySlot.set(slot, [...(bySlot.get(slot) ?? []), file]);
+    lots.set(slot, lot(ref));
+  }
+  const lotOfSlot = (slot: string) => lots.get(slot) ?? "";
+  // R3: the lot of every other file first, then each on-request group's, by name; by path within.
+  let slots = [...bySlot.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const batches = new Batches(loop.timeoutSeconds, {
     ...(loop.batchFiles === undefined ? {} : { fixed: loop.batchFiles }),
   });
-  const seconds = (path: RelativePath) => {
-    const known = (byPath.get(path) ?? []).map((f) => loop.secondsOf(refOf(f)));
+  const seconds = (slot: string) => {
+    const known = (bySlot.get(slot) ?? []).map((f) => loop.secondsOf(refOf(f)));
     return known.some((s) => s !== null) ? Math.max(...known.map((s) => s ?? 0)) : null;
   };
   const stops: ((file: F) => SideState | null)[] = [];
@@ -83,19 +95,21 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
   let timedOut = false;
   let cut = false;
   let ended: { readonly error: string; readonly stopped?: true } | null = null;
-  while (paths.length > 0 && ended === null) {
+  while (slots.length > 0 && ended === null) {
     const left = Math.floor((loop.endMs - performance.now()) / 1000);
     const gateSeconds = left - stopMargin(left);
     if (gateSeconds < 1) break;
     if (batches.ran().length > 0) await loop.beforeLater?.();
-    const first = lotOfPath(paths[0] as RelativePath);
-    const same = paths.filter((path) => lotOfPath(path) === first);
+    const first = lotOfSlot(slots[0] as string);
+    const same = slots.filter((slot) => lotOfSlot(slot) === first);
     const take = same.slice(0, batches.next(same, seconds));
     const taken = new Set(take);
-    paths = paths.filter((path) => !taken.has(path));
-    const files = take.flatMap((path) => byPath.get(path) ?? []);
+    slots = slots.filter((slot) => !taken.has(slot));
+    const files = take.flatMap((slot) => bySlot.get(slot) ?? []);
+    const refs = files.map(refOf);
+    const batch = { paths: [...new Set(refs.map((ref) => ref.path))], refs };
     const started = performance.now();
-    const answer = await loop.run(take, gateSeconds, left);
+    const answer = await loop.run(batch, gateSeconds, left);
     const took = performance.now() - started;
     gateMs = (gateMs ?? 0) + Math.round(took);
     batches.took(take.length, took / 1000);
@@ -109,10 +123,10 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
     const stop = afterSetup(loop, files, answer);
     if (stop !== null) {
       stops.push(stop);
-      paths = paths.filter((path) => !stoppedPath(byPath.get(path) ?? [], stops, loop));
+      slots = slots.filter((slot) => !stoppedPath(bySlot.get(slot) ?? [], stops, loop));
     }
   }
-  const unstarted = paths.flatMap((path) => byPath.get(path) ?? []);
+  const unstarted = slots.flatMap((slot) => bySlot.get(slot) ?? []);
   if (unstarted.length > 0) {
     // Not started for want of budget, unless a child failed for a reason of its own.
     const answer: RunAnswer =
