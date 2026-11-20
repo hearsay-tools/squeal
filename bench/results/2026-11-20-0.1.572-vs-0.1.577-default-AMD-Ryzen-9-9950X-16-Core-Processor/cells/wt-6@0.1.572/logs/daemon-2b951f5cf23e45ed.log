@@ -1,0 +1,13 @@
+2026-11-20T14:57:53.695Z [124921] squeal daemon: long write: store.sqlite write lock held 753 ms by #write < Ledger.commit < retryWhileBusy; 15001 rows written
+2026-11-20T14:57:55.518Z [124921] squeal daemon: serving /home/user/results/cells/wt-6@0.1.572/work/wt1 on /home/user/results/cells/wt-6@0.1.572/work/run/squeal-2b951f5cf23e45ed.sock
+2026-11-20T14:59:46.846Z [124921] squeal daemon: busy, heap in use 77 MiB over twice the last live size of 37 MiB: a last-resort GC took private memory from 277 to 141 MiB in a 117 ms pause; 26 MiB of heap in use after it
+2026-11-20T15:01:56.179Z [124921] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 133 to 129 MiB in a 63 ms pause
+2026-11-20T15:03:01.199Z [124921] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 177 to 129 MiB in a 75 ms pause
+2026-11-20T15:04:41.232Z [124921] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 284 to 131 MiB in a 95 ms pause
+2026-11-20T15:06:01.192Z [124921] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 221 to 131 MiB in a 45 ms pause
+2026-11-20T15:07:06.303Z [124921] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 195 to 132 MiB in a 142 ms pause
+2026-11-20T15:07:26.927Z [124921] squeal daemon: long write: store.sqlite write lock held 301 ms by reconcileBatch < #pass < withBusySlice; 7319 rows written
+2026-11-20T15:08:31.296Z [124921] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 216 to 134 MiB in a 122 ms pause
+2026-11-20T15:10:07.913Z [124921] squeal daemon: busy, heap in use 100 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 266 to 169 MiB in a 66 ms pause; 50 MiB of heap in use after it
+2026-11-20T15:10:39.146Z [124921] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-20T15:10:39.218Z [124921] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

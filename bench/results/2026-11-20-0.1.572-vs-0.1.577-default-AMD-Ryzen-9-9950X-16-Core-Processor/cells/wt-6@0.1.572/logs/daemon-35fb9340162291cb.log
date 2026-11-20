@@ -1,0 +1,28 @@
+2026-11-20T14:57:50.692Z [124970] squeal daemon: long write: store.sqlite write lock held 866 ms by #write < Ledger.commit < retryWhileBusy; 15001 rows written
+2026-11-20T14:57:52.323Z [124970] squeal daemon: serving /home/user/results/cells/wt-6@0.1.572/work/wt2 on /home/user/results/cells/wt-6@0.1.572/work/run/squeal-35fb9340162291cb.sock
+2026-11-20T14:58:56.711Z [124970] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 172 to 91 MiB in a 53 ms pause
+2026-11-20T15:00:01.695Z [124970] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 113 to 109 MiB in a 32 ms pause
+2026-11-20T15:01:05.801Z [124970] squeal daemon: busy, heap in use 45 MiB over twice the last live size of 22 MiB: a last-resort GC took private memory from 185 to 133 MiB in a 113 ms pause; 26 MiB of heap in use after it
+2026-11-20T15:02:06.869Z [124970] squeal daemon: busy, heap in use 78 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 323 to 155 MiB in a 92 ms pause; 27 MiB of heap in use after it
+2026-11-20T15:03:26.957Z [124970] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 213 to 141 MiB in a 65 ms pause
+2026-11-20T15:04:10.091Z [124970] squeal daemon: long write: store.sqlite write lock held 298 ms by reconcileBatch < process.processTicksAndRejections < #pass; 7851 rows written
+2026-11-20T15:05:11.967Z [124970] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 249 to 144 MiB in a 57 ms pause
+2026-11-20T15:06:10.572Z [124970] squeal daemon: the background ceiling refused a backlog tier: 3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-20T15:06:10.572Z [124970] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-20T15:06:28.820Z [124970] squeal daemon: the background ceiling let a backlog tier start after 18 s and 6 refused looks
+2026-11-20T15:06:28.822Z [124970] squeal daemon: the pool granted the vitest lane's tier after 18 s of waiting for CPU
+2026-11-20T15:07:31.456Z [124970] squeal daemon: long write: store.sqlite write lock held 314 ms by #write < #record; 6204 rows written
+2026-11-20T15:07:31.618Z [124970] squeal daemon: busy, heap in use 64 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 252 to 167 MiB in a 80 ms pause; 37 MiB of heap in use after it
+2026-11-20T15:07:31.723Z [124970] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-20T15:07:33.275Z [124970] squeal daemon: coverage: test/m389.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/55ffec295d0fcfa7/coverage-LGJ5XN/.tmp/coverage-4e10b583-ae64-4f65-977d-b6e0044968f9.json'
+2026-11-20T15:07:33.276Z [124970] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 map-error (its payload did not map); the last: test/m389.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/55ffec295d0fcfa7/coverage-LGJ5XN/.tmp/coverage-4e10b583-ae64-4f65-977d-b6e0044968f9.json'
+2026-11-20T15:07:33.278Z [124970] squeal daemon: coverage: test/m182.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/55ffec295d0fcfa7/coverage-LGJ5XN/.tmp/coverage-610d5aeb-b1eb-44f7-b6d4-2b3e79d1cf02.json'
+2026-11-20T15:07:33.278Z [124970] squeal daemon: coverage: 2 completed test files got no record since this daemon started: 2 map-error (its payload did not map); the last: test/m182.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/55ffec295d0fcfa7/coverage-LGJ5XN/.tmp/coverage-610d5aeb-b1eb-44f7-b6d4-2b3e79d1cf02.json'
+2026-11-20T15:07:33.280Z [124970] squeal daemon: coverage: test/m209.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/55ffec295d0fcfa7/coverage-LGJ5XN/.tmp/coverage-b98b0a6a-e8bb-4b0b-9b58-afad020aa71e.json'
+2026-11-20T15:07:33.281Z [124970] squeal daemon: coverage: test/m307.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/55ffec295d0fcfa7/coverage-LGJ5XN/.tmp/coverage-2d00e478-4cbe-4e28-8830-85ca13d6838b.json'
+2026-11-20T15:07:33.281Z [124970] squeal daemon: coverage: 4 completed test files got no record since this daemon started: 4 map-error (its payload did not map); the last: test/m307.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/55ffec295d0fcfa7/coverage-LGJ5XN/.tmp/coverage-2d00e478-4cbe-4e28-8830-85ca13d6838b.json'
+2026-11-20T15:07:43.074Z [124970] squeal daemon: the pool granted the vitest lane's tier after 11 s of waiting for CPU
+2026-11-20T15:08:34.686Z [124970] squeal daemon: busy, heap in use 90 MiB over twice the last live size of 37 MiB: a last-resort GC took private memory from 248 to 179 MiB in a 113 ms pause; 47 MiB of heap in use after it
+2026-11-20T15:08:35.020Z [124970] squeal daemon: long write: store.sqlite write lock held 312 ms by #write < #record; 6203 rows written
+2026-11-20T15:08:54.909Z [124970] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-20T15:08:54.967Z [124970] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

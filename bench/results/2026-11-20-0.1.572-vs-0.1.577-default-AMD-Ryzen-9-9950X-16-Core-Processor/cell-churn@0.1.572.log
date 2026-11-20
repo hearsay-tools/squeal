@@ -1,0 +1,7 @@
+[2026-11-20T17:26:46.937Z] churn@0.1.572: plain vitest run
+[2026-11-20T17:27:27.943Z] churn@0.1.572: squeal start + run --all
+[2026-11-20T17:28:26.628Z] churn@0.1.572: age store: 326 rounds
+[2026-11-20T17:35:04.226Z] churn@0.1.572: idle
+[2026-11-20T17:36:04.237Z] churn@0.1.572: sessions
+[2026-11-20T17:50:53.629Z] churn@0.1.572: collect
+[2026-11-20T17:50:58.420Z] churn@0.1.572: done

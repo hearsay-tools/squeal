@@ -1,0 +1,5 @@
+[2026-11-20T15:32:09.345Z] stress@0.1.577: squeal start + run --all
+[2026-11-20T15:35:26.928Z] stress@0.1.577: idle
+[2026-11-20T15:36:26.941Z] stress@0.1.577: sessions
+[2026-11-20T15:55:05.426Z] stress@0.1.577: collect
+[2026-11-20T15:55:14.192Z] stress@0.1.577: done

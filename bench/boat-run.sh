@@ -2,7 +2,7 @@
 # Runs the Squeal performance benchmark on a fresh boat.dev sandbox and
 # copies the results back to bench/results/<date>-<version>-<cpu>/.
 #
-# Usage: bench/boat-run.sh [--ref <git ref>]... [--type default] [--cpu "<model>"] [--cells ref,wt-3] [--steps 24] [--keep]
+# Usage: bench/boat-run.sh [--ref <git ref>]... [--type default] [--cpu "<model>"] [--cells ref,wt-3] [--steps 24] [--repeat N] [--keep]
 #
 # --ref: test the plugin as committed at that ref (for example squeal--v0.1.572);
 # `.` is this worktree's plugins/claude-code, the default without --ref. Give
@@ -21,6 +21,7 @@ TYPE=default
 CPU=""
 CELLS=""
 STEPS=24
+REPEAT=1
 KEEP=0
 REFS=()
 TRIES=12
@@ -30,6 +31,7 @@ while [ $# -gt 0 ]; do
     --cpu) CPU=$2; shift 2 ;;
     --cells) CELLS=$2; shift 2 ;;
     --steps) STEPS=$2; shift 2 ;;
+    --repeat) REPEAT=$2; shift 2 ;;
     --keep) KEEP=1; shift ;;
     --ref) REFS+=("$2"); shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
@@ -84,7 +86,7 @@ done
 
 # A push right after `boat new` has been lost once (2026-11-20), so push until the files are there.
 CHECK="test -f /home/user/bench/run-all.mjs"
-ARGS="--out /home/user/results --steps $STEPS"
+ARGS="--out /home/user/results --steps $STEPS --repeat $REPEAT"
 for i in "${!PLUGINS[@]}"; do
   CHECK="$CHECK && test -f /home/user/plugin-$i/dist/cli/squeal.mjs"
   ARGS="$ARGS --plugin /home/user/plugin-$i"

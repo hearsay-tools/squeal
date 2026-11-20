@@ -1,0 +1,132 @@
+{
+  "startedAt": "2026-11-20T13:48:49.938Z",
+  "squealVersion": "0.1.572 vs 0.1.577",
+  "plugins": [
+    {
+      "version": "0.1.572",
+      "label": "0.1.572"
+    },
+    {
+      "version": "0.1.577",
+      "label": "0.1.577"
+    }
+  ],
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 9 9950X 16-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    2364.6666666666665,
+    2355.3333333333335,
+    2362.6666666666665
+  ],
+  "loadavgAtStart": "0.20 0.11 0.04 1/393 7270",
+  "cells": [
+    {
+      "name": "ref@0.1.572",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.572"
+    },
+    {
+      "name": "ref@0.1.577",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.577"
+    },
+    {
+      "name": "wt-3@0.1.577",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.577"
+    },
+    {
+      "name": "wt-3@0.1.572",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.572"
+    },
+    {
+      "name": "wt-6@0.1.572",
+      "files": 500,
+      "worktrees": 6,
+      "load": 0,
+      "base": "wt-6",
+      "plugin": "0.1.572"
+    },
+    {
+      "name": "wt-6@0.1.577",
+      "files": 500,
+      "worktrees": 6,
+      "load": 0,
+      "base": "wt-6",
+      "plugin": "0.1.577"
+    },
+    {
+      "name": "stress@0.1.577",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.577"
+    },
+    {
+      "name": "stress@0.1.572",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.572"
+    },
+    {
+      "name": "store-7g@0.1.572",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.572"
+    },
+    {
+      "name": "store-7g@0.1.577",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.577"
+    },
+    {
+      "name": "churn@0.1.577",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "spanDays": 8,
+      "churn": true,
+      "base": "churn",
+      "plugin": "0.1.577"
+    },
+    {
+      "name": "churn@0.1.572",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "spanDays": 8,
+      "churn": true,
+      "base": "churn",
+      "plugin": "0.1.572"
+    }
+  ],
+  "endedAt": "2026-11-20T17:50:58.453Z"
+}
