@@ -125,6 +125,31 @@ describe("ci record of a node:test command's variables and children", () => {
     });
   });
 
+  it(
+    "keeps read evidence for a file named like an Object property (review 0.1.582-r2)",
+    SLOW,
+    async () => {
+      const reads = [
+        'import { readFileSync } from "node:fs";',
+        'import { test } from "node:test";',
+        'test("reads", () => { for (const name of ["__proto__", "constructor"]) readFileSync(name); });',
+      ].join("\n");
+      const named = Object.fromEntries([
+        ["__proto__", "p\n"],
+        ["constructor", "c\n"],
+      ]);
+      const root = project({ ...FILES, ...named, "test/reads.test.mjs": `${reads}\n` });
+      const command = [process.execPath, "--test", ...reporterPair(), "test/reads.test.mjs"];
+      const recorded = await record(root, command);
+      expect(recorded.code, recorded.stderr).toBe(0);
+      const evidence = recorded.parts[0]?.evidence ?? {};
+      for (const name of ["__proto__", "constructor"]) {
+        expect(Object.hasOwn(evidence, name), name).toBe(true);
+        expect(evidence[name], name).toMatch(/^[0-9a-f]{40}$/);
+      }
+    },
+  );
+
   it("keeps a child's loads when the test starts it with an env of its own", SLOW, async () => {
     const spawns = [
       'import { execFileSync } from "node:child_process";',
