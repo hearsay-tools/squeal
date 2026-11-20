@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 import { type MessagePort, parentPort, workerData } from "node:worker_threads";
@@ -23,6 +23,7 @@ import {
   type Settled,
 } from "./owner.js";
 import { storeProcessLockPath } from "./paths.js";
+import { release } from "./release.js";
 import { type StoreProcessLaunch, spawnStoreProcess } from "./spawn.js";
 
 /*
@@ -191,18 +192,6 @@ function serve(data: RelayData): void {
 
 function timingOf(timing: Partial<OwnerTiming> | undefined): OwnerTiming {
   return { ...OWNER_TIMING, ...timing };
-}
-
-/** The daemon leaves: its lease ends, and with `leaving` the store process hears it was stopped on purpose. */
-async function release(data: RelayData, token: string | null, leaving: boolean): Promise<void> {
-  if (token === null && !(leaving && existsSync(data.socketPath))) return;
-  const request = {
-    type: "release",
-    worktreeId: data.worktreeId,
-    token: token ?? "-",
-    ...(leaving ? { leaving } : {}),
-  } as const;
-  await requestDaemon(data.socketPath, request, SMALL_REQUEST_TIMEOUT_MS).catch(() => null);
 }
 
 /** This thread's own write connection, used only while no store process lives. */

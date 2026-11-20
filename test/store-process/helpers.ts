@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -247,4 +247,32 @@ export async function holdLock(
     child.on("exit", () => resolve());
   });
   return { done };
+}
+
+/**
+ * A store writer thread that answers `ready` only once `open()` was called
+ * (review of the rebuild, B1): till then its store process holds its lock
+ * and serves no socket. Its files go with `dir`.
+ */
+export function gatedWriter(dir: string): { readonly script: string; open(): void } {
+  const gate = join(dir, "writer-gate");
+  const script = join(dir, "gated-writer.mjs");
+  writeFileSync(
+    script,
+    `import { existsSync } from "node:fs";
+import { parentPort } from "node:worker_threads";
+const timer = setInterval(() => {
+  if (!existsSync(${JSON.stringify(gate)})) return;
+  clearInterval(timer);
+  parentPort.postMessage({ type: "ready", ready: { schema: ${CODE_SCHEMA_VERSION} } });
+}, 10);
+parentPort.on("message", (message) => {
+  if (message.close === true) {
+    clearInterval(timer);
+    parentPort.close();
+  }
+});
+`,
+  );
+  return { script, open: () => writeFileSync(gate, "") };
 }

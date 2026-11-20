@@ -238,7 +238,8 @@ type HeldLocks =
  * On a timeout every lock taken is released and the one still held named.
  * Spec 021 D22 (review of 0.1.571): then the lock of each store process
  * (`locks/store-<file>.sqlite`), which outlives its daemons by minutes: it is
- * asked to stop once every daemon let go, so no daemon starts another.
+ * asked to stop once every daemon let go, so no daemon starts another, and
+ * asked again at each try while its lock is held.
  */
 async function holdDaemonLocks(commonDir: AbsolutePath, waitMs: number): Promise<HeldLocks> {
   const { locksDir } = storePaths(commonDir);
@@ -255,8 +256,10 @@ async function holdDaemonLocks(commonDir: AbsolutePath, waitMs: number): Promise
   for (const name of ordered) {
     const lockPath = join(locksDir, name);
     const store = storeProcessLockFile(name);
-    if (store !== null) await askStoreProcessToStop(commonDir, store);
     for (;;) {
+      // Asked at each try, not once (review of the rebuild, B1): a store process
+      // holds its lock before it serves, and one still starting missed the last ask.
+      if (store !== null) await askStoreProcessToStop(commonDir, store, deadline);
       const lock = acquireDaemonLock(lockPath);
       if (lock !== null) {
         held.push(lock);
@@ -285,10 +288,18 @@ function notStopped(
   );
 }
 
-/** Asks the store process of `file` to stop; nothing when none answers. */
-async function askStoreProcessToStop(commonDir: AbsolutePath, file: StoreFile): Promise<void> {
+/**
+ * Asks the store process of `file` to stop, waiting for its answer no later
+ * than `deadline` (at least 50 ms); nothing when none answers.
+ */
+async function askStoreProcessToStop(
+  commonDir: AbsolutePath,
+  file: StoreFile,
+  deadline: number,
+): Promise<void> {
   const socketPath = storeProcessSocketPath(commonDir, file);
-  await askDaemon(socketPath, { type: "stop" }).catch(() => null);
+  const timeoutMs = Math.min(CLI_SOCKET_TIMEOUT_MS, Math.max(50, deadline - Date.now()));
+  await askDaemon(socketPath, { type: "stop" }, timeoutMs).catch(() => null);
 }
 
 /**

@@ -17,12 +17,19 @@ import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
-import { storeProcessLockPath } from "../../src/core/store-process/paths.js";
+import {
+  storeProcessLockPath,
+  storeProcessSocketPath,
+} from "../../src/core/store-process/paths.js";
+import {
+  type RunningStoreProcess,
+  startStoreProcess,
+} from "../../src/core/store-process/server.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { daemonSuite, SLOW, spawnCli, waitFor, waitReady } from "../daemon/helpers.js";
 import { recorded } from "../harness/helpers.js";
 import { git } from "../hash/git-repo.js";
-import { storeProcess } from "../store-process/helpers.js";
+import { gatedWriter, storeProcess } from "../store-process/helpers.js";
 
 /*
  * Task 001-90: `squeal remove` takes Squeal out of a repository. Every
@@ -179,6 +186,51 @@ describe("squeal remove", () => {
       for (const cleanup of later.reverse()) await cleanup();
     }
   });
+
+  // Review of the rebuild, B1: a store process takes its lock before it serves; one asked
+  // to stop while it starts serves later, and is asked again. Control: one serving already.
+  it.each([
+    ["serving already", false],
+    ["still starting", true],
+  ])(
+    "stops a store process %s, then removes the store",
+    {
+      timeout: 30_000,
+    },
+    async (_name, starting) => {
+      const repo = storedRepo();
+      const writer = gatedWriter(repo.root);
+      const started = startStoreProcess({
+        commonDir: repo.commonDir,
+        log: () => {},
+        writer: { script: writer.script },
+        checkMs: 60_000,
+      });
+      let running: RunningStoreProcess | null = null;
+      try {
+        if (!starting) {
+          writer.open();
+          running = (await started) as RunningStoreProcess;
+        }
+        expect(acquireDaemonLock(storeProcessLockPath(repo.commonDir, "code"))).toBeNull();
+        expect(existsSync(storeProcessSocketPath(repo.commonDir, "code"))).toBe(!starting);
+        const { io, out } = capture(repo.root);
+        const removed = removeCommand([], io, { stopWaitMs: 5_000 });
+        if (starting) {
+          setTimeout(writer.open, 100);
+          running = (await started) as RunningStoreProcess;
+        }
+        expect(typeof running).toBe("object");
+        expect(await removed, out.stderr).toBe(0);
+        expect(await running?.ended).toBe("stopped");
+        expect(existsSync(repo.storeDir)).toBe(false);
+      } finally {
+        writer.open();
+        const end = await started;
+        if (typeof end !== "string") await end.stop();
+      }
+    },
+  );
 
   it("deletes nothing and exits 1 while a store process will not let go of its lock", {
     timeout: 30_000,
