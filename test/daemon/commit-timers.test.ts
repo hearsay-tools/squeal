@@ -8,7 +8,7 @@ import type { EpochMs } from "../../src/core/types/common.js";
 import type { DaemonExitReason } from "../../src/core/types/daemon.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
-import { delay, waitFor } from "./helpers.js";
+import { waitFor } from "./helpers.js";
 
 /*
  * Spec 023 D7.2 (row 023-39): a commit daemon's idle exit and cap, driven
@@ -33,6 +33,8 @@ function timed() {
   const startedAt = clock as EpochMs;
   let lastActive = clock;
   let ended = 0;
+  /** Timer checks seen: each check reads the request progress once (`lifecycle.ts`). */
+  let checks = 0;
   let work: CommitWork = { queued: 0, running: 0 };
   const shutdowns: { reason: DaemonExitReason; text: string }[] = [];
   const presence: Presence = { since: clock, lastPresentAt: null };
@@ -54,7 +56,10 @@ function timed() {
     active: (at) => {
       lastActive = at;
     },
-    requestProgress: () => ended,
+    requestProgress: () => {
+      checks += 1;
+      return ended;
+    },
     note: () => {},
     log: () => {},
     shutdown: (reason, text) => {
@@ -66,6 +71,15 @@ function timed() {
   stops.push(stop);
   return {
     shutdowns,
+    /**
+     * Review wave-22 N1: resolves after a whole timer check that began after
+     * this call. A check reads the clock, then the progress, then decides,
+     * in one synchronous turn, so the clock it read is the current one.
+     */
+    checked: async () => {
+      const seen = checks;
+      await waitFor(() => checks > seen, 2_000, "a timer check");
+    },
     advance: (ms: number) => {
       clock += ms;
     },
@@ -87,7 +101,7 @@ describe("a commit daemon's lifetime through the timers (D7.2)", () => {
     t.advance(5 * MINUTE);
     t.request();
     t.advance(10 * MINUTE - 1);
-    await delay(60);
+    await t.checked();
     expect(t.shutdowns).toEqual([]);
     t.advance(1);
     await waitFor(() => t.shutdowns.length > 0, 2_000, "the idle exit");
@@ -99,9 +113,9 @@ describe("a commit daemon's lifetime through the timers (D7.2)", () => {
     const t = timed();
     t.advance(9 * MINUTE);
     t.end();
-    await delay(60);
+    await t.checked();
     t.advance(9 * MINUTE);
-    await delay(60);
+    await t.checked();
     expect(t.shutdowns).toEqual([]);
   });
 
@@ -110,16 +124,16 @@ describe("a commit daemon's lifetime through the timers (D7.2)", () => {
     t.setWork({ queued: 4, running: 0 });
     for (let step = 0; step < 4; step += 1) {
       t.advance(5 * MINUTE);
-      await delay(60);
+      await t.checked();
     }
     expect(t.shutdowns).toEqual([]);
     t.setWork({ queued: 0, running: 1 });
     t.advance(15 * MINUTE);
-    await delay(60);
+    await t.checked();
     expect(t.shutdowns).toEqual([]);
     t.setWork({ queued: 0, running: 0 });
     t.advance(10 * MINUTE - 1);
-    await delay(60);
+    await t.checked();
     expect(t.shutdowns).toEqual([]);
     t.advance(1);
     await waitFor(() => t.shutdowns.length > 0, 2_000, "the idle exit");
@@ -131,7 +145,7 @@ describe("a commit daemon's lifetime through the timers (D7.2)", () => {
     t.setWork({ queued: 2, running: 1 });
     for (let hour = 0; hour < 3; hour += 1) {
       t.advance(60 * MINUTE - (hour === 2 ? 1 : 0));
-      await delay(40);
+      await t.checked();
     }
     expect(t.shutdowns).toEqual([]);
     t.advance(1);
