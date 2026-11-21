@@ -23,3 +23,11 @@ Shape: slice. Review `reviews/0.1.585.md` S1. Past the D30 limit, a file read st
 ## 018-68 an inner `ci record` inside a node:test test writes no empty node:test part
 
 Shape: repair, small. `tasks/018-60/notes.md`: Node skips an inner `node --test` started by a node:test test, because `NODE_TEST_CONTEXT` is inherited. The inner recording still writes one empty node:test part. Write no part for a `node --test` process that ran no test file, and print no "names no Squeal reporter" line for it. A real empty run, a `node --test` with no matching files, keeps today's behaviour; tell the two apart by `NODE_TEST_CONTEXT` in that process. Starting seam: `src/runners/node-test/ci-runtime/node-test-ci.cjs` and `src/runners/node-test/ci-runs.ts`. Owns `src/runners/node-test/ci-runtime/**`, `src/runners/node-test/ci-*.ts` and their tests. Done when the 018-60 inner-recording test sees no node:test part from the skipped inner run, and the 018-54 and 018-60 tests still pass. Use /worker.
+
+## 018-73 repair of review 0.1.587 (B1, S1)
+
+Shape: repair, on the candidate. Read `reviews/0.1.587.md` whole.
+1. **B1.** An exact tsconfig alias with a query (`@dep?q=1`) loads `dep.ts` under tsx, but the closure omits it. Strip `?query` and `#hash` from the specifier before alias matching (and before any other lookup that reads the specifier text), as tsx does. Add the review's case and its wildcard twin to `graph-differential.test.ts` as real-run cases; each fails on the candidate. Re-run the key-format alarm.
+2. **S1.** Past the hashing limit, `ci record` kills its hashing child but the child's `git ls-tree` keeps running. Start the child in its own process group, and end the whole group past the limit; on a platform without groups, kill the grandchildren the child started. The review's fake-stalled-git test proves no process is left; the command's exit code stays the test's.
+
+Owns `src/runners/node-test/graph/**`, `src/core/ci/endpoints*.ts`, `src/cli/ci.ts` and their tests. Do not run `pnpm run build`. Any direct vitest run gets `timeout 600`. Use /worker.
