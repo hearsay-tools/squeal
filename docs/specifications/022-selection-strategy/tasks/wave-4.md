@@ -27,3 +27,17 @@ Approved by the human, 2026-11-21, on the 022-05 benchmark card: "Shrink: A: Sho
 - Key-format and version-sensitive tests pass; lint, typecheck, `squeal status --wait 60000 <changed paths>` clean. `tasks/022-08/notes.md` with the measured step cost.
 
 Use /worker.
+
+## 022-09 review of `cand/0.1.593` (row 022-08)
+
+Pinned to `cand/0.1.593` at `93524ae1c9bdc7bcee076233d6a55a8b28700774`; base main 0.1.591. Commits: the row's change and notes (cherry-picked from worker 53a099a3's `70d4e3b6a`, `cbb197515`) and the bundles with the version. Read the brief above, `tasks/022-08/notes.md` (with the benchmark comparison), and `tasks/022-05/notes.md` "Benchmark".
+
+Check:
+1. Each vacuum slice is one write transaction bounded by `VACUUM_SLICE_MS` plus one step; the prune still reaches an empty freelist and still stops at once on a store without `auto_vacuum`; both stores use the one shared rule.
+2. Nothing else in prune changed: what is deleted, when prune runs, the slice driver.
+3. `emptyLoadedModules` with `LIST_DELETE_BATCH` still empties the table; the extra read steps stay outside the write lock.
+4. The benchmark pair in the notes supports the claim (no vacuum hold far over the budget).
+
+Write `reviews/0.1.593.md` with PASS or FAIL; a FAIL names a proven break. Run tests through `squeal status --wait` or explicit vitest paths; no full suite.
+
+Use /reviewer.
