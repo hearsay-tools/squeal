@@ -73,6 +73,11 @@ export class ReverseIndex {
     return this.sorted(ids);
   }
 
+  /** Row 023-40c (spec 023 D4.9): every path some test file's closure holds. */
+  paths(): RelativePath[] {
+    return [...this.byPath.keys()];
+  }
+
   /** Test files with a closure path directly in `dir` (`""` is the root). */
   inDirectory(dir: string): TestFileRef[] {
     return this.referencing(this.byDirectory.get(dir) ?? []);

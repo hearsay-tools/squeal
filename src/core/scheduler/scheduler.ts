@@ -961,6 +961,29 @@ class TierScheduler implements Scheduler {
   }
 
   /**
+   * Spec 023 D4.9 (row 023-40c; spec 011 file, coordinator-approved): per
+   * test file whose closure holds a path `picks` picks, that path (the first
+   * in sort order), read from the key index under the lock. Before the
+   * start, none.
+   */
+  async closureReads(
+    picks: (path: RelativePath) => boolean,
+  ): Promise<ReadonlyMap<string, RelativePath>> {
+    return this.#lock.run(() => {
+      const out = new Map<string, RelativePath>();
+      if (this.#context === null) return out;
+      const { reverse } = this.#context.keys.index;
+      for (const path of reverse.paths().filter(picks).sort()) {
+        for (const ref of reverse.referencing([path])) {
+          const id = testFileId(ref);
+          if (!out.has(id)) out.set(id, path);
+        }
+      }
+      return out;
+    }, "finding the test files that read paths the commit does not hold");
+  }
+
+  /**
    * Use is the work an edit, a request or a wait caused (011 C9 as amended
    * 2026-10-21, row 011-92): an edit's work and a promoted file
    * (`Admission.editPending`), what is owed (`owedWork`), an open `run --slow`
