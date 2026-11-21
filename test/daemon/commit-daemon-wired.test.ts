@@ -27,7 +27,6 @@ describe("a commit worktree's daemon, wired (spec 023 D7)", SLOW, () => {
     const made = await ensureCommitWorktree({
       root: repo.root as AbsolutePath,
       commit: "HEAD",
-      dir: join(base, "checkouts") as AbsolutePath,
       cacheRoot: join(base, "cache") as AbsolutePath,
       install: countingInstall(installs),
       limit: 4,
