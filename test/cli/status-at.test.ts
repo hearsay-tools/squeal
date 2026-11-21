@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
-import { parseAt } from "../../src/cli/status-at.js";
+import { AT_NO_TIMEOUT, parseAt } from "../../src/cli/status-at.js";
 import { select } from "../../src/cli/status-at-now.js";
 import {
   type AtReport,
@@ -50,28 +50,41 @@ describe("status --at arguments (rows 023-06, 023-07)", () => {
     expect(parseAt(["--at=", "--json"])).toBe("--at needs a commit");
   });
 
-  it("takes --run with --all-missing and one --timeout, 300 s by default (rows 023-07, 023-19)", () => {
-    // Row 023-19 (P3): well inside a 600 s tool call, the keying and the removal included.
-    expect(parseAt(["--at", "a", "--run"])).toMatchObject({
-      run: { allMissing: false, timeoutSeconds: 300 },
+  it("takes --run with --all-missing and --wait: <ms>, bare, or none (row 023-40, D7.3)", () => {
+    expect(parseAt(["--at", "a", "--run"])).toEqual({
+      commit: "a",
+      paths: [],
+      json: false,
+      run: { allMissing: false },
     });
-    expect(parseAt(["--run", "--all-missing", "--timeout", "90", "--at", "a", "x"])).toEqual({
+    expect(parseAt(["--run", "--all-missing", "--wait", "90000", "--at", "a", "x"])).toEqual({
       commit: "a",
       paths: ["x"],
       json: false,
-      run: { allMissing: true, timeoutSeconds: 90 },
+      run: { allMissing: true },
+      waitMs: 90_000,
     });
-    expect(parseAt(["--at", "a", "--run", "--timeout=30"])).toMatchObject({
-      run: { timeoutSeconds: 30 },
+    expect(parseAt(["--at", "a", "--run", "--wait=30"])).toMatchObject({ waitMs: 30 });
+    // A bare --wait waits until done; a word after it that is no number is a path.
+    expect(parseAt(["--at", "a", "--run", "--wait", "test/x.test.ts"])).toMatchObject({
+      paths: ["test/x.test.ts"],
+      waitMs: Number.POSITIVE_INFINITY,
     });
+    // --wait without --run joins what is queued (it replaces T5's refusal).
+    expect(parseAt(["--at", "a", "--wait"])).toMatchObject({ run: null, waitMs: Infinity });
     expect(parseAt(["--at", "a", "--all-missing"])).toBe("--all-missing needs --run");
-    expect(parseAt(["--at", "a", "--timeout", "5"])).toBe("--timeout needs --run");
-    expect(parseAt(["--at", "a", "--run", "--timeout", "0"])).toBe(
-      "--timeout takes whole seconds above 0",
-    );
-    expect(parseAt(["--at", "a", "--run", "--timeout"])).toBe("--timeout needs whole seconds");
-    expect(parseAt(["--at", "a", "--run", "--timeout=1", "--timeout=2"])).toBe(
-      "--timeout is given twice",
+    expect(parseAt(["--at", "a", "--wait=x"])).toBe("--wait takes a whole number of milliseconds");
+    expect(parseAt(["--at", "a", "--wait", "1", "--wait", "2"])).toBe("--wait is given twice");
+  });
+
+  it("refuses --timeout in one line that names --wait, exit 2 (row 023-40, D7.3)", async () => {
+    expect(parseAt(["--at", "a", "--run", "--timeout", "90"])).toBe(AT_NO_TIMEOUT);
+    expect(parseAt(["--at", "a", "--timeout=90"])).toBe(AT_NO_TIMEOUT);
+    const err: string[] = [];
+    const io = { stdout: () => {}, stderr: (t: string) => err.push(t) };
+    expect(await main(["status", "--at", "HEAD~1", "--run", "--timeout", "300"], io)).toBe(2);
+    expect(err.join("")).toBe(
+      "squeal status: --at takes no --timeout; --run waits up to --wait <ms> (100000 by default) and its runs go on in the daemons after it\n",
     );
   });
 
@@ -83,22 +96,8 @@ describe("status --at arguments (rows 023-06, 023-07)", () => {
     const out: string[] = [];
     expect(main(["status", "--help"], { stdout: (t) => out.push(t), stderr: () => {} })).toBe(0);
     expect(out.join("")).toContain(
-      "squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--full] [--json]",
+      "squeal status --at <commit> [<path>...] [--run [--all-missing]] [--wait [<ms>]] [--full] [--json]",
     );
-  });
-});
-
-describe("status --at with --wait (row 023-34, T5)", () => {
-  it("prints one line, not the help, and exits 2", async () => {
-    const err: string[] = [];
-    const io = { stdout: () => {}, stderr: (t: string) => err.push(t) };
-    for (const wait of [["--wait"], ["--wait", "60000"], ["--wait=60000"]]) {
-      err.length = 0;
-      expect(await main(["status", "--at", "HEAD~1", "--run", ...wait], io)).toBe(2);
-      expect(err.join("")).toBe(
-        "squeal status: --at takes no --wait; --run waits up to --timeout (300 s)\n",
-      );
-    }
   });
 });
 
@@ -263,7 +262,7 @@ describe("status --at text and JSON (D1, D3)", () => {
   it("writes a versioned JSON report with the commit, HEAD, dirty flag, both sides and the checkout time", () => {
     const value = JSON.parse(jsonAt(report()));
     expect(value).toMatchObject({
-      version: "squeal-status-at/1",
+      version: "squeal-status-at/2",
       commit: "1234567890abcdef",
       head: "fedcba0987654321",
       dirty: true,
