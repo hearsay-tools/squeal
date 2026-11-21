@@ -16,7 +16,14 @@
 //    So is a test file's process of a `node --test` that a Vitest test started (the settings
 //    say `nested`, `children.cjs`): that run is a test's own, not the project's, and its
 //    process writes no `<pid>.json`, so it gives no part and no "names no Squeal reporter" line
-//    (row 018-54, as row 018-27 for Vitest). Its loads stay in the evidence.
+//    (row 018-54, as row 018-27 for Vitest). Its loads stay in the evidence. So is every
+//    process of a command whose own env carries `NODE_TEST_CONTEXT` (the settings say
+//    `skipped`, row 018-68): that recording runs inside a node:test test, Node itself skips
+//    its every `node --test` ("run() is being called recursively within a test file"), and a
+//    process that merely inherited the variable is no test file's process either — it writes
+//    no `<pid>.json`, so no empty part and no "names no Squeal reporter" line stands in for a
+//    `node --test` that never ran. A real empty run (no matching files) has no
+//    `NODE_TEST_CONTEXT` in the command's env, so it keeps its part.
 //
 // The recorder writes `<SQUEAL_NODE_TEST_GRAPH>-<pid>.ndjson`, so the graph prefix is
 // `<graph>/<test file's pid>`; its preload phase ends at the test file's entry, as in the
@@ -42,13 +49,15 @@ function shared(name) {
   );
 }
 
-/** The settings' graph directory and whether a Vitest run is above this process, or `null`. */
+/** The settings' graph directory, whether a Vitest run is above this process, and whether
+ * the command's env carries `NODE_TEST_CONTEXT`, or `null`. */
 function graphDir() {
   try {
     const settings = JSON.parse(process.env[VARIABLE] ?? "");
-    const graph = settings?.nodeTest?.graph;
+    const nodeTest = settings?.nodeTest;
+    const graph = nodeTest?.graph;
     if (typeof graph !== "string" || !path.isAbsolute(graph)) return null;
-    return { graph, nested: settings.nested === true };
+    return { graph, nested: settings.nested === true, skipped: nodeTest.skipped === true };
   } catch {
     return null;
   }
@@ -67,7 +76,7 @@ const probe = () => ({
 
 const found = isInternalThread ? null : graphDir();
 if (found !== null) {
-  const { graph, nested } = found;
+  const { graph, nested, skipped } = found;
   try {
     const hooks = shared("evidence-hooks.cjs");
     hooks.installEvidence(hooks.evidenceSettings());
@@ -75,7 +84,12 @@ if (found !== null) {
   try {
     const script = process.argv[1];
     const testFile =
-      isMainThread && process.env.NODE_TEST_CONTEXT && !process.env[FILE] && !nested && script;
+      isMainThread &&
+      process.env.NODE_TEST_CONTEXT &&
+      !process.env[FILE] &&
+      !nested &&
+      !skipped &&
+      script;
     if (testFile) {
       process.env[FILE] = path.resolve(script);
       process.env[PROCESS] = String(process.pid);
