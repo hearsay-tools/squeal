@@ -265,6 +265,45 @@ const GATED: Readonly<Record<string, string>> = {
   "test/removes-logs.test.mjs": LOGS_REMOVED["test/removes-logs.test.mjs"] ?? "",
 };
 
+/**
+ * Row 018-66: a tsx project whose keys move with the graph's two fixes.
+ * The fixture's `tsx` loads the repository's own, so the runs are tsx's.
+ * One tsconfig serves the process: `lib/x.ts` sits under a tsconfig of its
+ * own, which tsx never reads, and the project's `tsconfig.json` extends the
+ * one that holds `paths`; under `TSX_TSCONFIG_PATH` the aliases of
+ * `run/tsconfig.json` map `lib/x.ts` too, outside that folder, through
+ * their second target, the first naming no file. `import()`
+ * carries a query, and the closure keys the file without it.
+ */
+const TSX_LOADER = new URL("../../../../../node_modules/tsx/dist/loader.mjs", import.meta.url).href;
+const tsconfig = (options: object) => `${JSON.stringify(options)}\n`;
+const TSX_KEYED: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "node_modules/tsx/package.json": `${JSON.stringify({ name: "tsx", type: "module", exports: "./index.mjs" })}\n`,
+  "node_modules/tsx/index.mjs": `import ${JSON.stringify(TSX_LOADER)};\n`,
+  "tsconfig.json": tsconfig({ extends: "./tsconfig.base.json" }),
+  "tsconfig.base.json": tsconfig({ compilerOptions: { paths: { "~/*": ["./src/*"] } } }),
+  "run/tsconfig.json": tsconfig({
+    compilerOptions: { paths: { "~/*": ["./absent/*", "./mapped/*"] } },
+  }),
+  "lib/tsconfig.json": tsconfig({ compilerOptions: { paths: { "~/*": ["./other/*"] } } }),
+  "lib/x.ts": lines('import { y } from "~/y";', "export const x = y;"),
+  "lib/other/y.ts": "export const y = 2;\n",
+  "src/y.ts": "export const y = 1;\n",
+  "run/mapped/y.ts": "export const y = 1;\n",
+  "src/query.mjs": "export const q = 2;\n",
+  "test/keyed.test.ts": lines(
+    'import assert from "node:assert/strict";',
+    'import { test } from "node:test";',
+    'import { x } from "../lib/x.ts";',
+    "",
+    'test("loads what tsx loads", async () => {',
+    '  const { q } = await import("../src/query.mjs?case");',
+    "  assert.equal(x + q, 3);",
+    "});",
+  ),
+};
+
 export const NODE_TEST_RUNS: readonly Case[] = [
   {
     kind: "adapter:node-test",
@@ -400,6 +439,29 @@ export const NODE_TEST_RUNS: readonly Case[] = [
         { files: ["test/waits.test.mjs", "test/waits-too.test.mjs"], timeoutMs: 2_000 },
         { files: ["test/removes-logs.test.mjs", "test/pass.test.mjs"] },
       ],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a tsx project's keys follow what tsx loads (row 018-66)",
+    why: "018-66: the graph keys the one tsconfig tsx reads for the process and maps every importer with its aliases, as tsx 4 does, and keys the file a query names without the query. The closure moves to what the run loads, so keys move and every node:test result runs once more, which the human accepted on 2026-11-21; the run stores what the last release stored",
+    input: {
+      files: TSX_KEYED,
+      argv: ["--import", "tsx"],
+      include: ["test/*.test.ts"],
+      runs: [{ files: ["test/keyed.test.ts"] }],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a tsx project's TSX_TSCONFIG_PATH keys its tsconfig for every importer (row 018-66)",
+    why: "018-66, review 0.1.585-r2 B4: tsx reads TSX_TSCONFIG_PATH from the project's env in place of the tsconfig found from cwd and maps an importer outside that config's folder with it; the graph keys that config and what it maps; the run stores what the last release stored",
+    input: {
+      files: TSX_KEYED,
+      argv: ["--import", "tsx"],
+      env: { TSX_TSCONFIG_PATH: "run/tsconfig.json" },
+      include: ["test/*.test.ts"],
+      runs: [{ files: ["test/keyed.test.ts"] }],
     },
   },
 ];

@@ -1,10 +1,17 @@
 import * as fs from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname, extname, join, sep } from "node:path";
+import { dirname, extname, join, resolve as resolvePath, sep } from "node:path";
 import enhanced from "enhanced-resolve";
 import type { AbsolutePath } from "../../../core/types/common.js";
 import type { LoaderChain } from "./loader-chain.js";
-import { parseJsonc, readTsconfigPaths, type TsconfigPaths } from "./tsconfig.js";
+import {
+  aliasCandidates,
+  compileAliases,
+  type PathAliases,
+  parseJsonc,
+  readTsconfigPaths,
+  type TsconfigPaths,
+} from "./tsconfig.js";
 
 export type EdgeKind = "import" | "require";
 
@@ -57,21 +64,47 @@ const NODE_MODULES_DIR = `${sep}node_modules`;
 const COMMONJS = /\.c[jt]s$/;
 const MODULE = /\.m[jt]s$/;
 
+type ResolveContext = Parameters<
+  ReturnType<typeof enhanced.ResolverFactory.createResolver>["resolve"]
+>[3];
+
 const BUILTIN: Resolution = { path: null, builtin: true, reads: [], candidates: [], pair: null };
 
+/** Where tsx finds its tsconfig: the process's directory, or `TSX_TSCONFIG_PATH`. */
+export interface TsconfigSource {
+  /** The project's `cwd`; the worktree root when not given. */
+  readonly cwd?: AbsolutePath;
+  /** The project's `TSX_TSCONFIG_PATH`, relative to `cwd` when not absolute. */
+  readonly tsconfigPath?: string | undefined;
+}
+
+/** The one tsconfig tsx reads for the process: its chain, and its aliases. */
+interface ProjectTsconfig {
+  readonly chain: TsconfigPaths;
+  readonly aliases: PathAliases | null;
+}
+
 /**
- * One enhanced-resolve resolver per `(tsconfig, import|require)`, configured
- * from the project's loader chain (spec 003 D3), over one
- * `CachedInputFileSystem`. The tsconfig of an importer is found by upward
- * lookup, stopping at the worktree root; Node's own rules ignore it.
+ * One enhanced-resolve resolver per `import|require`, configured from the
+ * project's loader chain (spec 003 D3), over one `CachedInputFileSystem`.
+ * Row 018-66: as tsx 4 does, one tsconfig serves the process,
+ * `TSX_TSCONFIG_PATH` or else the nearest `tsconfig.json` from `cwd` up
+ * (stopping at the worktree root), and its `paths` and `baseUrl` map the
+ * specifiers of every importer outside `node_modules`, wherever it sits.
+ * Node's own rules read no tsconfig.
  */
-export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver {
+export function createResolver(
+  chain: LoaderChain,
+  root: AbsolutePath,
+  source: TsconfigSource = {},
+): Resolver {
   let fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
   let resolvers = new Map<string, ReturnType<typeof enhanced.ResolverFactory.createResolver>>();
   let tsconfigs = new Map<string, AbsolutePath | null>();
   let realpaths = new Map<string, AbsolutePath | null>();
   let resolutions = new Map<string, Resolution>();
   let tsconfigPaths = new Map<AbsolutePath, TsconfigPaths>();
+  const aliasesOf = new WeakMap<TsconfigPaths, PathAliases | null>();
   let scopes = new Map<string, ModuleFormat>();
   const tsx = chain.rules === "tsx";
 
@@ -108,14 +141,6 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
       return null;
     }
   };
-  const chainOf = (tsconfig: AbsolutePath) => {
-    let found = tsconfigPaths.get(tsconfig);
-    if (found === undefined) {
-      found = readTsconfigPaths(tsconfig, readText);
-      tsconfigPaths.set(tsconfig, found);
-    }
-    return found;
-  };
   /** The nearest `package.json` type above `dir`, cached per directory. */
   const scopeOf = (dir: string): ModuleFormat => {
     let found = scopes.get(dir);
@@ -146,22 +171,24 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     }
     return found;
   };
+  const cwd = source.cwd ?? root;
   /**
-   * S1: enhanced-resolve reads inherited `paths` relative to the config it
-   * was given, so it is given the config that defines them and the chain's
-   * effective `baseUrl` explicitly; a chain with neither needs no tsconfig.
+   * The process's tsconfig under tsx, `null` under Node's rules or with none.
+   * Its chain is read once per `clear`, which drops `tsconfigPaths`.
    */
-  const tsconfigOption = (paths: TsconfigPaths | null) => {
-    if (paths === null || (paths.pathsFile === null && paths.baseUrl === null)) return {};
-    const configFile = paths.pathsFile ?? paths.files[0];
-    return {
-      tsconfig: { configFile, ...(paths.baseUrl === null ? {} : { baseUrl: paths.baseUrl }) },
-    };
+  const projectTsconfig = (): ProjectTsconfig | null => {
+    const file = source.tsconfigPath ? resolvePath(cwd, source.tsconfigPath) : tsconfigFor(cwd);
+    if (!tsx || file === null) return null;
+    let read = tsconfigPaths.get(file);
+    if (read === undefined) {
+      read = readTsconfigPaths(file, readText);
+      tsconfigPaths.set(file, read);
+      aliasesOf.set(read, compileAliases(read, readText));
+    }
+    return { chain: read, aliases: aliasesOf.get(read) ?? null };
   };
-  const resolverFor = (paths: TsconfigPaths | null, kind: EdgeKind) => {
-    const option = tsconfigOption(paths);
-    const key = `${JSON.stringify(option)}\0${kind}`;
-    let resolver = resolvers.get(key);
+  const resolverFor = (kind: EdgeKind) => {
+    let resolver = resolvers.get(kind);
     if (resolver === undefined) {
       resolver = enhanced.ResolverFactory.createResolver({
         fileSystem,
@@ -169,19 +196,17 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
         conditionNames: ["node", kind, ...chain.conditions],
         symlinks: true,
         ...(tsx
-          ? {
-              extensions: TSX_EXTENSIONS,
-              extensionAlias: TSX_ALIAS,
-              ...option,
-            }
+          ? { extensions: TSX_EXTENSIONS, extensionAlias: TSX_ALIAS }
           : kind === "import"
             ? { extensions: [], fullySpecified: true }
             : { extensions: NODE_REQUIRE_EXTENSIONS }),
       });
-      resolvers.set(key, resolver);
+      resolvers.set(kind, resolver);
     }
     return resolver;
   };
+  /** tsx maps no alias for an importer under `node_modules`. */
+  const inDependency = (dir: string) => `${dir}${sep}`.includes(NODE_MODULES);
   // An absent `node_modules` directory probed on the way up is no candidate either (N3).
   function inWorktree(path: string): boolean {
     return (
@@ -193,7 +218,6 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
 
   return {
     resolve(specifier, importer, kind) {
-      if (isBuiltin(specifier)) return BUILTIN;
       const from = dirname(importer);
       // One directory resolves a specifier one way: modules beside each other share it.
       const key = `${from}\0${kind}\0${specifier}`;
@@ -225,23 +249,17 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
   };
 
   function resolveFrom(specifier: string, from: AbsolutePath, kind: EdgeKind): Resolution {
-    const tsconfig = tsx ? tsconfigFor(from) : null;
-    const paths = tsconfig === null ? null : chainOf(tsconfig);
-    const resolver = resolverFor(paths, kind);
+    const config = projectTsconfig();
     const context = {
       fileDependencies: new Set<string>(),
       missingDependencies: new Set<string>(),
       contextDependencies: new Set<string>(),
     };
-    let target: string | false;
-    try {
-      target = resolver.resolveSync({}, from, specifier, context);
-    } catch {
-      target = false;
-    }
+    const target = targetOf(specifier, from, kind, config?.aliases ?? null, context);
+    if (target === null) return BUILTIN;
     // `symlinks: true` already gives the target's real path.
     const path = target === false ? null : target;
-    const reads = new Set<AbsolutePath>((paths?.files ?? []).filter(inWorktree));
+    const reads = new Set<AbsolutePath>((config?.chain.files ?? []).filter(inWorktree));
     for (const dependency of context.fileDependencies) {
       if (!dependency.endsWith(".json") || dependency === target) continue;
       // A manifest read through a workspace symlink counts at its real path.
@@ -254,6 +272,44 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
         ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory(p))
         : [];
     return { path, builtin: false, reads: [...reads], candidates, pair: pairOf(specifier, path) };
+  }
+
+  /**
+   * As tsx resolves: each alias target first, then the specifier as written;
+   * `null` for a builtin no alias target shadows.
+   */
+  function targetOf(
+    specifier: string,
+    from: AbsolutePath,
+    kind: EdgeKind,
+    aliases: PathAliases | null,
+    context: ResolveContext,
+  ): string | false | null {
+    const mapped =
+      aliases === null || inDependency(from) ? [] : aliasCandidates(aliases, specifier);
+    for (const candidate of mapped) {
+      const found = resolveOne(kind, from, candidate, context);
+      if (found !== false) return found;
+    }
+    return isBuiltin(specifier) ? null : resolveOne(kind, from, specifier, context);
+  }
+
+  /**
+   * The file Node loads for `specifier`, or `false`. Row 018-66: the path
+   * without the `?query#hash` enhanced-resolve appends; with
+   * `useSyncFileSystemCalls` it calls back before `resolve` returns.
+   */
+  function resolveOne(
+    kind: EdgeKind,
+    from: AbsolutePath,
+    specifier: string,
+    context: ResolveContext,
+  ): string | false {
+    let found: string | false = false;
+    resolverFor(kind).resolve({}, from, specifier, context, (error, _result, request) => {
+      found = error || !request?.path ? false : request.path;
+    });
+    return found;
   }
 
   function pairOf(specifier: string, path: AbsolutePath | null) {

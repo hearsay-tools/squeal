@@ -58,7 +58,13 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   // Node reads `NODE_OPTIONS` before argv: its preloads and loaders are the chain's too (003-22).
   const argv = [...nodeOptionsOf(project), ...project.argv];
   const [graph, firstProbe] = await Promise.all([
-    createNodeTestGraph({ root, cwd, argv, testFiles: files }),
+    createNodeTestGraph({
+      root,
+      cwd,
+      argv,
+      testFiles: files,
+      tsconfigPath: projectEnv(project, process.env).TSX_TSCONFIG_PATH,
+    }),
     probeNode(project, cwd),
   ]);
   let probe: NodeProbe = firstProbe;

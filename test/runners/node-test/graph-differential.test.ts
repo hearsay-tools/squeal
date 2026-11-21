@@ -350,25 +350,37 @@ B4["the importer's nearest tsconfig is not the one tsx reads"] = {
   loads: ["lib/x.ts", "src/dep.ts"],
 };
 
-/**
- * Cases today's graph keys short, before row 018-66's second step: it maps
- * an importer with its nearest tsconfig, not the process's, and keeps the
- * `?query` or `#hash` enhanced-resolve appends, so a change to the file
- * selects nothing.
- */
-const SHORT_TODAY = new Set<string>([
-  "a `?query` and a `#hash` on a static and a dynamic import",
-  "a wildcard path, an importer outside its folder, the tsconfig from the cwd",
-  "a wildcard path, an importer outside its folder, the tsconfig by TSX_TSCONFIG_PATH",
-  "an exact path, an importer outside its folder, the tsconfig from the cwd",
-  "an exact path, an importer outside its folder, the tsconfig by TSX_TSCONFIG_PATH",
-  "a baseUrl name, an importer outside its folder, the tsconfig from the cwd",
-  "a baseUrl name, an importer outside its folder, the tsconfig by TSX_TSCONFIG_PATH",
-  "the importer's nearest tsconfig is not the one tsx reads",
-]);
+B4["an alias whose first target names no file, from outside the tsconfig's folder"] = {
+  files: {
+    "run/tsconfig.json": json({ compilerOptions: { paths: { "~/*": ["./absent/*", "./*"] } } }),
+    "run/dep.ts": DEP,
+    "lib/use.ts": lines('import { Value } from "~/dep";', "export { Value };"),
+    "test/a.test.ts": valueTest("../lib/use.ts", "const result = Value;", usesValue),
+  },
+  test: "test/a.test.ts",
+  loads: ["lib/use.ts", "run/dep.ts"],
+  cwd: "run",
+};
+
+B4["a CommonJS require through an alias, from outside the tsconfig's folder"] = {
+  files: {
+    "run/tsconfig.json": json({ compilerOptions: { paths: { "~/*": ["./*"] } } }),
+    "run/dep.cjs": lines('console.log("LOADED_DEP");', "module.exports = { Value: 2 };"),
+    "lib/use.cts": lines('const { Value } = require("~/dep.cjs");', "module.exports = { Value };"),
+    "test/a.test.ts": lines(
+      ASSERT,
+      TEST,
+      'import use from "../lib/use.cts";',
+      'test("v", () => assert.equal(use.Value, 2));',
+    ),
+  },
+  test: "test/a.test.ts",
+  loads: ["lib/use.cts", "run/dep.cjs"],
+  tsconfigPath: "run/tsconfig.json",
+};
 
 describe("row 018-66: the closure holds every module a real run loads", () => {
   for (const [name, c] of Object.entries({ ...FORMS, ...B4 })) {
-    (SHORT_TODAY.has(name) ? it.fails : it)(name, SLOW, () => differential(c));
+    it(name, SLOW, () => differential(c));
   }
 });

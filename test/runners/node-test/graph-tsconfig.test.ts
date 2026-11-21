@@ -5,7 +5,12 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createNodeTestGraph } from "../../../src/runners/node-test/graph/index.js";
 import { readLoaderChain } from "../../../src/runners/node-test/graph/loader-chain.js";
 import { createResolver } from "../../../src/runners/node-test/graph/resolver.js";
-import { parseJsonc, readTsconfigPaths } from "../../../src/runners/node-test/graph/tsconfig.js";
+import {
+  aliasCandidates,
+  compileAliases,
+  parseJsonc,
+  readTsconfigPaths,
+} from "../../../src/runners/node-test/graph/tsconfig.js";
 
 /**
  * Spec 003 D3 as amended: the tsconfig `extends` chain (S1) and the module
@@ -111,6 +116,54 @@ describe("node-test graph: the tsconfig extends chain (S1)", () => {
       testFiles: ["test/a.test.ts"],
     });
     expect(graph.closure("test/a.test.ts").paths).toContain("src/util/x.ts");
+  });
+});
+
+describe("node-test graph: the alias targets tsx tries (row 018-66)", () => {
+  const aliasesOf = (files: Record<string, string>) => {
+    const root = tree(files);
+    const chain = readTsconfigPaths(join(root, "tsconfig.json"), read);
+    const aliases = compileAliases(chain, read);
+    if (aliases === null) throw new Error("no aliases");
+    return { root, aliases };
+  };
+
+  it("takes an exact pattern first, then the wildcard with the longest prefix", () => {
+    const { root, aliases } = aliasesOf({
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: {
+          paths: {
+            "*": ["./any/*"],
+            "@a/*": ["./a/*", "./b/*"],
+            "@a/x/*": ["./x/*.ts"],
+            "@a/z": ["./z.ts"],
+          },
+        },
+      }),
+    });
+    expect(aliasCandidates(aliases, "@a/z")).toEqual([join(root, "z.ts")]);
+    expect(aliasCandidates(aliases, "@a/x/y")).toEqual([join(root, "x/y.ts")]);
+    expect(aliasCandidates(aliases, "@a/q")).toEqual([join(root, "a/q"), join(root, "b/q")]);
+    expect(aliasCandidates(aliases, "fs")).toEqual([join(root, "any/fs")]);
+  });
+
+  it("maps no relative, absolute or URL specifier, and a baseUrl only what no pattern matches", () => {
+    const { root, aliases } = aliasesOf({
+      "base.json": JSON.stringify({
+        compilerOptions: { baseUrl: "./src", paths: { "~/*": ["*"] } },
+      }),
+      "tsconfig.json": JSON.stringify({ extends: "./base.json" }),
+    });
+    for (const specifier of ["./a", "../a", ".", "..", "/a", "node:fs", "file:///a", "data:x"]) {
+      expect(aliasCandidates(aliases, specifier), specifier).toEqual([]);
+    }
+    expect(aliasCandidates(aliases, "~/util")).toEqual([join(root, "src/util")]);
+    expect(aliasCandidates(aliases, "util/x")).toEqual([join(root, "src/util/x")]);
+  });
+
+  it("is null for a chain with neither paths nor baseUrl", () => {
+    const root = tree({ "tsconfig.json": "{}" });
+    expect(compileAliases(readTsconfigPaths(join(root, "tsconfig.json"), read), read)).toBeNull();
   });
 });
 
