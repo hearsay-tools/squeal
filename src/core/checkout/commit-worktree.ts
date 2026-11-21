@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { leaseProcess, leaseProcessAlive } from "../daemon/lease-process.js";
 import { awaitDaemonLock } from "../daemon/lock.js";
@@ -18,10 +18,16 @@ import {
 } from "./checkout.js";
 import {
   commitFolderName,
+  commitIdentity,
+  isCheckoutLocation,
+  removeCommitFolder,
+} from "./commit-identity.js";
+import {
   commitWorktreeCeiling,
   environmentFingerprint,
   liveCommitWorktrees,
   placesLockPath,
+  registerPlace,
   waitsLine,
 } from "./commit-places.js";
 import { type InstallResult, installCheckout, manifestOf } from "./install.js";
@@ -41,7 +47,6 @@ import {
   treePath,
   writeMarker,
 } from "./marker.js";
-import { cacheRepositoryDirs } from "./sweep.js";
 
 /*
  * Spec 023 D7.1, D7.4 (row 023-38): the commit worktree. One per
@@ -117,6 +122,9 @@ export async function ensureCommitWorktree(
   const fingerprint = environmentFingerprint(options.environment);
   const cacheRoot = options.cacheRoot ?? cacheCheckoutsRoot();
   const dir = options.dir ?? (await locatedDir(options.root, commonDir, cacheRoot, options.note));
+  // Review wave-22 B1: a commit worktree lies only where `commitIdentity` looks for one.
+  if (!isCheckoutLocation(dir, commonDir))
+    throw new Error(`squeal: ${dir} is not a checkout location of ${commonDir} (D4.2)`);
   const located = { ...options, cacheRoot, dir, commonDir, commit, fingerprint };
   const checkout = await placeFor(located);
   const worktree = { tree: checkout.tree, folder: checkout.folder, commit, fingerprint, commonDir };
@@ -159,13 +167,19 @@ async function placeFor(
       commonDir,
       async (): Promise<Place | string> => {
         const found = await foundPlace(dirs, name, commonDir, options.note);
-        if (found !== null) return found;
+        if (found !== null) {
+          // Review wave-22 B3: a worktree made before a lost registration is counted again.
+          registerPlace(cacheRoot, found.folder);
+          return found;
+        }
         return withFileLock(placesLockPath(cacheRoot), "the commit worktrees' lock", async () => {
-          const live = liveCommitWorktrees([...cacheRepositoryDirs(cacheRoot), ...dirs]);
+          // Review wave-22 B3: every repository's worktrees, the git-folder ones included.
+          const live = liveCommitWorktrees(cacheRoot, dirs);
           const configured = options.limit;
           const freeBytes = options.freeBytes?.();
           const ceiling = commitWorktreeCeiling({ configured, freeBytes });
           if (live.length >= ceiling) return waitsLine(live, ceiling);
+          registerPlace(cacheRoot, join(options.dir, name));
           const extra = { fingerprint };
           return addCheckout({ root, commonDir, commit, dir: options.dir, name, extra });
         });
@@ -187,7 +201,8 @@ async function placeFor(
  * The worktree named `name` in one of `dirs`, under the checkout lock. One
  * whose owner is gone is taken over: this process owns it until a daemon
  * claims it. A folder without a whole tree or marker is removed, to be made
- * anew.
+ * anew. A whole tree that is not one Squeal made stays, and the call fails
+ * (review wave-22 B1).
  */
 async function foundPlace(
   dirs: readonly AbsolutePath[],
@@ -204,6 +219,8 @@ async function foundPlace(
       await removeTree({ folder, tree, commonDir }, note);
       continue;
     }
+    if (commitIdentity(tree) === null)
+      throw new Error(`squeal: ${tree} is in the way: it is not a commit worktree Squeal made`);
     if (ownerState(marker) === "dead") writeMarker(folder, takenOver(marker));
     return { folder, tree };
   }
@@ -253,12 +270,14 @@ async function installOnce(
   throw new Error(failed);
 }
 
-/** Row 023-39: the marker when `root` is a commit worktree's tree, else `null`. */
+/**
+ * Row 023-39: the marker when `root` is the tree of a commit worktree Squeal
+ * made (`commitIdentity`, review wave-22 B1), else `null`.
+ */
 export function readCommitWorktree(root: AbsolutePath): CommitWorktreeMarker | null {
-  if (basename(root) !== "tree") return null;
-  const marker = readMarker(dirname(root));
-  if (marker?.fingerprint === undefined) return null;
-  const { commit, fingerprint, commonDir, createdAt, daemon } = marker;
+  const identity = commitIdentity(root);
+  if (identity === null) return null;
+  const { commit, fingerprint, commonDir, createdAt, daemon } = identity.marker;
   return { commit, fingerprint, commonDir, createdAt, ...(daemon === undefined ? {} : { daemon }) };
 }
 
@@ -267,11 +286,9 @@ export function readCommitWorktree(root: AbsolutePath): CommitWorktreeMarker | n
  * its daemon lock. The sweep removes the worktree when that daemon is gone.
  */
 export function claimCommitWorktree(tree: AbsolutePath): void {
-  const folder = dirname(tree);
-  const marker = readMarker(folder);
-  if (marker?.fingerprint === undefined || basename(tree) !== "tree")
-    throw new Error(`squeal: ${tree} is not a commit worktree`);
-  writeMarker(folder, { ...marker, daemon: leaseProcess() });
+  const identity = commitIdentity(tree);
+  if (identity === null) throw new Error(`squeal: ${tree} is not a commit worktree`);
+  writeMarker(identity.folder, { ...identity.marker, daemon: leaseProcess() });
 }
 
 export interface RemoveCommitWorktreeOptions {
@@ -282,31 +299,32 @@ export interface RemoveCommitWorktreeOptions {
 /**
  * D7.2, D6: removes the commit worktree at `tree` under the checkout lock:
  * the processes left under it end (the caller and its ancestors are
- * spared), then the tree and its folder go. Its daemon calls it at exit; a
- * worktree another live process owns now (a caller took it over) stays.
- * Nothing when `tree` is not a commit worktree or is gone; it never throws:
- * a failure goes to `note`, and the sweep removes the rest once the owner
- * is gone.
+ * spared), then git removes the tree and the folder's own files go; a file
+ * Squeal did not make stays (`removeCommitFolder`). Its daemon calls it at
+ * exit; a worktree another live process owns now (a caller took it over)
+ * stays. Nothing when `tree` is not a commit worktree Squeal made, checked
+ * again under the lock (review wave-22 B1), or is gone; it never throws: a
+ * failure goes to `note`, and the sweep removes the rest once the owner is
+ * gone.
  */
 export async function removeCommitWorktree(
   tree: AbsolutePath,
   options: RemoveCommitWorktreeOptions = {},
 ): Promise<void> {
-  const first = readCommitWorktree(tree);
+  const first = commitIdentity(tree);
   if (first === null) return;
-  const folder = dirname(tree);
   try {
     await withCheckoutLock(
-      first.commonDir,
+      first.marker.commonDir,
       async () => {
-        const marker = readMarker(folder);
-        if (marker?.fingerprint === undefined) return;
-        const owner = ownerOf(marker);
+        const identity = commitIdentity(tree);
+        if (identity === null || identity.folder !== first.folder) return;
+        const owner = ownerOf(identity.marker);
         if (owner.pid !== process.pid && leaseProcessAlive(owner) === true) {
           options.note?.(`squeal: kept ${tree}: pid ${owner.pid} owns it now`);
           return;
         }
-        await removeTree({ folder, tree, commonDir: marker.commonDir }, options.note);
+        await removeCommitFolder(identity, options.note);
       },
       options.lockWaitMs,
     );

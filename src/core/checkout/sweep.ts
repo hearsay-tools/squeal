@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { isMissing } from "../fs/errors.js";
 import type { AbsolutePath } from "../types/common.js";
 import { removeTree, withCheckoutLock } from "./checkout.js";
+import { commitIdentity, removeCommitFolder } from "./commit-identity.js";
 import {
   type CheckoutMarker,
   type OwnerState,
@@ -75,7 +76,10 @@ export async function sweepCheckouts(options: SweepOptions): Promise<ListedCheck
         if (marker !== null && owner !== "dead") continue;
         // A marker of another repository's checkout is left to that repository's sweep.
         if (marker !== null && marker.commonDir !== options.commonDir) continue;
-        await removeTree({ ...listed, commonDir: options.commonDir }, options.note);
+        // Review wave-22 B1: a commit worktree loses only what Squeal made in its folder.
+        const commit = marker?.fingerprint === undefined ? null : commitIdentity(listed.tree);
+        if (commit !== null) await removeCommitFolder(commit, options.note);
+        else await removeTree({ ...listed, commonDir: options.commonDir }, options.note);
         swept.push(listed);
       }
       return swept;

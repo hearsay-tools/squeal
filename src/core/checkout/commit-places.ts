@@ -1,9 +1,22 @@
 import { createHash } from "node:crypto";
+import {
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { freemem } from "node:os";
 import { join } from "node:path";
 import { compare } from "../fs/compare.js";
+import { isMissing } from "../fs/errors.js";
+import { isRecord } from "../fs/json.js";
 import type { AbsolutePath } from "../types/common.js";
-import { type ListedCheckout, listCheckouts } from "./sweep.js";
+import { commitIdentity } from "./commit-identity.js";
+import { ownerState } from "./marker.js";
+import { cacheRepositoryDirs, type ListedCheckout, listCheckouts } from "./sweep.js";
 
 /*
  * Spec 023 D7.1, D7.4 (row 023-38): what names a commit worktree, and how
@@ -14,6 +27,13 @@ import { type ListedCheckout, listCheckouts } from "./sweep.js";
  * memory, 1 GB per commit daemon (the coordinator, 2026-11-21: the research
  * measured 0.7 to 1.8 GB idle), at least 1, unless the caller passes the
  * configured number.
+ *
+ * Review wave-22 B3: the count is machine-wide. A worktree in a
+ * repository's git folder (D4.2's fallback) lies where no other repository
+ * looks, so each one is registered under the shared cache root: one file
+ * per worktree, naming its folder. A count reads the registrations, drops
+ * those whose folder is gone or is no commit worktree Squeal made, and
+ * counts those whose owner lives, beside the worktrees under the cache root.
  */
 
 /** The memory one commit daemon is counted at. */
@@ -26,11 +46,6 @@ export function environmentFingerprint(variables: Readonly<Record<string, string
     .map((name) => [name, variables[name]]);
   const inputs = { node: process.version, platform: process.platform, arch: process.arch, env };
   return createHash("sha256").update(JSON.stringify(inputs)).digest("hex").slice(0, 16);
-}
-
-/** The folder name of the commit worktree at `commit` for `fingerprint`, in its repository's dir. */
-export function commitFolderName(commit: string, fingerprint: string): string {
-  return `commit-${commit}-${fingerprint}`;
 }
 
 export interface CeilingInputs {
@@ -50,11 +65,86 @@ export function commitWorktreeCeiling(inputs: CeilingInputs = {}): number {
   return Math.max(1, Math.floor(free / (inputs.perDaemonBytes ?? COMMIT_DAEMON_BYTES)));
 }
 
-/** The commit worktrees in `dirs` whose owner is not surely gone; a dir named twice counts once. */
-export function liveCommitWorktrees(dirs: readonly AbsolutePath[]): ListedCheckout[] {
-  return listCheckouts([...new Set(dirs)]).filter(
-    (listed) => listed.marker?.fingerprint !== undefined && listed.owner !== "dead",
+/**
+ * The live commit worktrees of every repository: those under `cacheRoot`,
+ * in `dirs`, and those registered under `cacheRoot`. A worktree counts once.
+ */
+export function liveCommitWorktrees(
+  cacheRoot: AbsolutePath,
+  dirs: readonly AbsolutePath[] = [],
+): ListedCheckout[] {
+  const listed = listCheckouts([...new Set([...cacheRepositoryDirs(cacheRoot), ...dirs])]).filter(
+    (one) => one.marker?.fingerprint !== undefined,
   );
+  const byFolder = new Map(listed.map((one) => [realOrSelf(one.folder), one]));
+  for (const one of registered(cacheRoot)) byFolder.set(one.folder, one);
+  return [...byFolder.values()]
+    .filter((one) => one.owner !== "dead")
+    .sort((a, b) => compare(a.folder, b.folder));
+}
+
+/** The registrations' dir under the cache root. */
+export function placesDir(cacheRoot: AbsolutePath): AbsolutePath {
+  return join(cacheRoot, "commit-places");
+}
+
+/** Registers the commit worktree folder `folder` under `cacheRoot`, so every count sees it. */
+export function registerPlace(cacheRoot: AbsolutePath, folder: AbsolutePath): void {
+  const dir = placesDir(cacheRoot);
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, `${createHash("sha256").update(folder).digest("hex").slice(0, 16)}.json`);
+  const temp = `${path}.${process.pid}`;
+  writeFileSync(temp, `${JSON.stringify({ v: 1, folder })}\n`);
+  renameSync(temp, path);
+}
+
+/** The registered worktrees that are whole; a registration of anything else is removed. */
+function registered(cacheRoot: AbsolutePath): ListedCheckout[] {
+  const dir = placesDir(cacheRoot);
+  const listed: ListedCheckout[] = [];
+  for (const name of registrations(dir)) {
+    const path = join(dir, name);
+    const folder = folderOf(path);
+    const identity = folder === null ? null : commitIdentity(join(folder, "tree"));
+    if (identity === null) {
+      rmSync(path, { force: true });
+      continue;
+    }
+    const { marker } = identity;
+    listed.push({
+      folder: identity.folder,
+      tree: identity.tree,
+      marker,
+      owner: ownerState(marker),
+    });
+  }
+  return listed;
+}
+
+function registrations(dir: AbsolutePath): string[] {
+  try {
+    return readdirSync(dir).filter((name) => name.endsWith(".json"));
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+}
+
+function folderOf(path: AbsolutePath): AbsolutePath | null {
+  try {
+    const value: unknown = JSON.parse(readFileSync(path, "utf8"));
+    return isRecord(value) && typeof value.folder === "string" ? value.folder : null;
+  } catch {
+    return null;
+  }
+}
+
+function realOrSelf(path: AbsolutePath): AbsolutePath {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
 }
 
 /** The machine's lock over counting and making commit worktrees, under the cache root. */

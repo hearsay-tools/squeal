@@ -156,6 +156,33 @@ describe("the ceiling (D7.4)", () => {
     );
   });
 
+  it("counts the git-folder worktrees of every repository (review wave-22 B3)", async () => {
+    const other = commitFixture();
+    try {
+      const inGitFolder = (repo: CommitFixture, commit: string, placeWaitMs: number) =>
+        ensureCommitWorktree({
+          root: repo.repo,
+          commit,
+          dir: gitCheckoutsDir(repo.commonDir),
+          cacheRoot: fx.cacheRoot,
+          install: countingInstall(calls),
+          limit: 1,
+          placeWaitMs,
+          pollMs: 20,
+        });
+      const a = await inGitFolder(fx, fx.first, 0);
+      await expect(inGitFolder(other, other.first, 0)).rejects.toThrow(
+        /waiting for a place: 1 of 1 commit worktrees live.*gave up/,
+      );
+
+      await removeCommitWorktree(a.tree);
+      const b = await inGitFolder(other, other.first, 0);
+      expect(git(b.tree, "rev-parse", "HEAD").trim()).toBe(other.first);
+    } finally {
+      rmSync(other.base, { recursive: true, force: true });
+    }
+  });
+
   it("does not count a worktree whose owner is gone", async () => {
     const a = await ensure(fx.first, { limit: 1 });
     const marker = readMarker(a.folder);
