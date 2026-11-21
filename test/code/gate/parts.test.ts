@@ -1,11 +1,11 @@
 import { readdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readPartsIn } from "../../../src/core/ci/parts.js";
+import { PART_FORMAT, type Part, readPartsIn } from "../../../src/core/ci/parts.js";
 import { FILE_ERROR } from "../../../src/core/code/gate/evidence.js";
 import { partsEvidence } from "../../../src/core/code/gate/parts.js";
 import { namesHash } from "../../../src/core/keys/observed.js";
-import { writeFile } from "../../hash/git-repo.js";
+import { git, writeFile } from "../../hash/git-repo.js";
 import { ENVIRONMENT, GATE } from "./parts-fixture.js";
 import { blob, CLOSURE, EVIDENCE, file, part, REF, repos, taken, unrecorded } from "./parts-kit.js";
 
@@ -111,6 +111,46 @@ describe("partsEvidence: the inputs a part certifies (spec 020 D13.2, 016 D4)", 
 
     writeFile(root, "fixtures/new/b.txt", "b\n");
     expect((await taken(root, [listed])).evidence).toBeNull();
+  });
+});
+
+describe("partsEvidence: an input nothing touched (spec 018 D33, row 018-64)", () => {
+  /** A format 6 part of the repo's commit that read its closure and nothing else, and hashed both ends. */
+  const hashed = (root: string): Part => {
+    const commit = git(root, ["rev-parse", "HEAD"]).trim();
+    const { ["data/x.txt"]: _unread, ...evidence } = EVIDENCE;
+    return part([file()], {
+      format: PART_FORMAT,
+      header: { ...part().header, commit },
+      evidence,
+      stable: {},
+      touched: [],
+    });
+  };
+
+  it("certifies the file by the part's endpoint hashes, as ci export does", async () => {
+    // `data/x.txt` is an input of what the file read that no hooked process
+    // read: only its endpoint hashes certify it, equal at both ends and here.
+    const root = repo();
+    expect((await taken(root, [hashed(root)])).evidence).not.toBeNull();
+  });
+
+  it("refuses the file when the input's content here differs from its ends", async () => {
+    const root = repo();
+    const part0 = hashed(root);
+    writeFile(root, "data/x.txt", "changed\n");
+    const { evidence, refused } = await taken(root, [part0]);
+    expect(evidence).toBeNull();
+    expect(refused).toEqual([
+      {
+        runner: "vitest",
+        path: "test/a.test.ts",
+        part: "part-0.json",
+        reason: "input",
+        input: "data/x.txt",
+        detail: "its content at both ends of the part's command is not its content here",
+      },
+    ]);
   });
 });
 

@@ -1,8 +1,9 @@
 import { join } from "node:path";
 import type { NamedPart } from "../../ci/export-check.js";
-import { hereOf, inputsOfReadsHere } from "../../ci/inputs.js";
+import { atCommit, hereOf, inputsOfReadsHere } from "../../ci/inputs.js";
 import { type PartFile, partRecord } from "../../ci/parts.js";
 import { FileReuse, type Holder } from "../../ci/reuse.js";
+import type { AtCommit } from "../../ci/reuse-endpoints.js";
 import { compare } from "../../fs/compare.js";
 import { hashFile, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
@@ -30,11 +31,15 @@ import type { TestFileEvidence } from "./types.js";
  * read-time evidence certifies the content here of every input of the
  * file's closure and of what it read, as the daemon's record keys them
  * (`inputsOfReads`, row 020-20; 018 D9); and its record's sources are the
- * bytes here. A file with no record is taken only when it failed: its
- * failure makes the verdict incomplete whatever a run would add (D5).
- * Every other file runs. This file reads what the steps need, in batches:
- * the runner's environments, each file's closure, the inputs of what it
- * read, the bytes on disk. The parts are only read.
+ * bytes here. 018 D33 (row 018-64): an input the part holds no read-time
+ * evidence of is certified by a format 6 part's endpoint hashes at its
+ * commit, as `ci export` certifies it, the commit's tree read through
+ * `ReuseOptions.atCommit` (`atCommit`; `null` when git cannot read it, so
+ * D9's rule alone applies). A file with no record is taken only when it
+ * failed: its failure makes the verdict incomplete whatever a run would
+ * add (D5). Every other file runs. This file reads what the steps need, in
+ * batches: the runner's environments, each file's closure, the inputs of
+ * what it read, the bytes on disk. The parts are only read.
  */
 
 export interface PartsOptions {
@@ -58,7 +63,13 @@ export interface PartsOptions {
 /** `CollectOptions.stored` over `options.parts`: Vitest files only, since `ci record` records Vitest alone. */
 export function partsEvidence(options: PartsOptions): StoredEvidence {
   const records = { changed: options.changed, children: options.children };
-  const reuse = new FileReuse(options.parts, { records });
+  // 018 D33 (row 018-64): the parts' commit tree, as `ci export` passes it
+  // (`export-inputs.ts`), so the endpoint rule certifies an input nothing
+  // touched instead of leaving the file to run.
+  const reuse = new FileReuse(options.parts, {
+    records,
+    atCommit: (commit) => treeAt(options.root, commit),
+  });
   const why = new Map<string, string[]>();
   for (const { name, why: reason } of reuse.unusable) {
     why.set(reason, [...(why.get(reason) ?? []), name]);
@@ -124,6 +135,15 @@ interface Candidate {
 
 /** The content of a path here, as a key holds it: `null` none, `undefined` unknown. */
 type Here = (path: RelativePath) => Promise<FileHash | null | undefined>;
+
+/** `atCommit` (018 D33); `null` when git cannot read the commit's tree, so D9's rule alone applies. */
+async function treeAt(root: AbsolutePath, commit: string): Promise<AtCommit | null> {
+  try {
+    return await atCommit(root, commit);
+  } catch {
+    return null;
+  }
+}
 
 /** `hereOf` with a file's blob id from its bytes on disk, each path read once. */
 function contentHere(root: AbsolutePath, format: ObjectFormat): Here {
