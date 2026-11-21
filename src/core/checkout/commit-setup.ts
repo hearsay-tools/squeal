@@ -1,7 +1,8 @@
 import { join } from "node:path";
+import { checkoutChange } from "../commit/at-keys-verify.js";
 import { leaseProcess } from "../daemon/lease-process.js";
 import { awaitDaemonLock } from "../daemon/lock.js";
-import type { AbsolutePath } from "../types/common.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { CHECKOUT_LOCK_WAIT_MS } from "./checkout.js";
 import { commitIdentity } from "./commit-identity.js";
 import { type InstallResult, installCheckout } from "./install.js";
@@ -88,4 +89,17 @@ export function ownedByStart(tree: AbsolutePath, pid: number): boolean {
   if (identity === null || identity.marker.daemon !== undefined) return false;
   writeMarker(identity.folder, { ...identity.marker, owner: leaseProcess(pid) });
   return true;
+}
+
+/**
+ * Row 023-07's whole-checkout check (the human, 2026-11-17) in the commit
+ * worktree at `tree`, as its daemon makes it before and after its install
+ * (row 023-40c): the first path the commit tracks that the tree does not
+ * hold as the commit does (bytes, mode, link target; git's own checkout
+ * rules included), `null` when none or when `tree` is no commit worktree.
+ */
+export async function commitTreeChange(tree: AbsolutePath): Promise<RelativePath | null> {
+  const identity = commitIdentity(tree);
+  if (identity === null) return null;
+  return checkoutChange(identity.tree, identity.tree, identity.marker.commit);
 }
