@@ -1,0 +1,88 @@
+profile 41.5 s wall, window 41.5 s
+
+by area
+  21.81 s  (idle)
+   5.97 s  squeal.mjs
+   3.06 s  node.js
+   2.85 s  parse-Bgfg7ZwM.mjs
+   1.19 s  native:existsSync
+   1.05 s  resolve-tsconfig-AhZdsp4x.mjs
+   1.04 s  (gc)
+   1.04 s  node:path
+   1.03 s  (program)
+   0.53 s  normalize-string-or-regex-B8U5_Ikr.mjs
+   0.14 s  native:readFileUtf8
+   0.13 s  native:writeUtf8String
+   0.10 s  node:modules/esm
+   0.10 s  native:lstat
+   0.09 s  index.DpLw24bj.js
+
+by nearest named squeal function (busy only)
+   6.21 s  (none)
+   3.06 s  visit2
+   1.96 s  jsonParseAst
+   1.05 s  depToPath
+   1.05 s  transformSync
+   0.81 s  importTargets
+   0.57 s  walk
+   0.56 s  parseSync
+   0.53 s  invokeBuiltinHook
+   0.51 s  fileImports
+   0.48 s  resolutionInputs
+   0.41 s  encodeLine
+   0.29 s  moduleGlobs
+   0.22 s  isProjectFile
+   0.19 s  get program
+   0.15 s  send
+   0.14 s  packageRoot
+   0.14 s  readHash
+   0.13 s  toRelative
+   0.13 s  moduleLoads
+   0.10 s  readSource
+   0.08 s  readStamp
+   0.08 s  loadVitest
+   0.08 s  sourceLoads
+   0.08 s  parse
+   0.06 s  statOrNull2
+   0.06 s  builtinOf
+   0.05 s  manifestOf2
+   0.03 s  applyFix
+   0.03 s  nearestManifests
+
+by self function
+  21.81 s  (idle) :-1
+   1.96 s  jsonParseAst parse-Bgfg7ZwM.mjs:25
+   1.81 s  visit2 squeal.mjs:26589
+   1.19 s  existsSync :-1
+   1.05 s  transformSync resolve-tsconfig-AhZdsp4x.mjs:101
+   1.04 s  (garbage collector) :-1
+   1.03 s  (program) :-1
+   0.63 s  importTargets squeal.mjs:26625
+   0.63 s  normalize node:path:1291
+   0.56 s  parseSync parse-Bgfg7ZwM.mjs:69
+   0.55 s  walk squeal.mjs:48244
+   0.53 s  invokeBuiltinHook normalize-string-or-regex-B8U5_Ikr.mjs:42
+   0.51 s  fileImports squeal.mjs:26676
+   0.41 s  (anon) squeal.mjs:49385
+   0.41 s  encodeLine squeal.mjs:69257
+   0.33 s  join node:path:1328
+   0.28 s  getModuleById node.js:36420
+   0.27 s  resolutionInputs squeal.mjs:48709
+   0.26 s  visit node.js:15935
+   0.22 s  isProjectFile squeal.mjs:25948
+   0.21 s  traceMappings node.js:1544
+   0.19 s  get program parse-Bgfg7ZwM.mjs:7
+   0.18 s  enter node.js:16571
+   0.18 s  moduleGlobs squeal.mjs:48157
+   0.16 s  i node.js:7243
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 2.5 | (none) 1.1 | jsonParseAst 0.3 | transformSync 0.2
+   5 s: (none) 1.2 | visit2 0.8 | (idle) 0.8 | jsonParseAst 0.4
+  10 s: (none) 1.1 | (idle) 1.0 | visit2 0.8 | jsonParseAst 0.3
+  15 s: (idle) 1.1 | (none) 1.0 | visit2 0.7 | jsonParseAst 0.4
+  20 s: (none) 1.1 | (idle) 1.1 | visit2 0.6 | jsonParseAst 0.4
+  25 s: (idle) 4.0 | (none) 0.5 | visit2 0.1 | jsonParseAst 0.1
+  30 s: (idle) 5.0 | (none) 0.0 | invalidateStale 0.0 | stale 0.0
+  35 s: (idle) 4.9 | (none) 0.1
+  40 s: (idle) 1.5 | (none) 0.0 | exclusive 0.0
