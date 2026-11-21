@@ -84,6 +84,12 @@ export interface HandlerContext {
    */
   readonly mainStep?: () => MainStep | null;
   /**
+   * Row 023-36 (spec 023 D4 step 11, T3): a `status --at --run` asked for
+   * `paths`; the groups their runs start are stopped when each run ends.
+   * Absent: they are not.
+   */
+  readonly onAtRun?: (paths: readonly RelativePath[]) => void;
+  /**
    * Runs a reconciliation pass for `status --wait` (lessons, defect 30) and
    * resolves with the worktree's revision once the pass is stored, like
    * `requestFullSuite`. Absent: this daemon answers that it cannot sync.
@@ -348,6 +354,8 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         // Row 019-49: a narrow run; a daemon before it answers "unknown request type".
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
+        // Row 023-36 (T3): told before the request, so its runs are flagged from the first.
+        if (request.at === true) context.onAtRun?.(request.paths);
         return groups.start(request.group, request.paths);
       case "run-group-status":
         return (

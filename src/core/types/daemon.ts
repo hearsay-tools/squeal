@@ -127,6 +127,12 @@ export interface RunGroupPathsRequest {
   readonly type: "run-group-paths";
   readonly group: string;
   readonly paths: readonly RelativePath[];
+  /**
+   * Spec 023 D4 step 11 (row 023-36, T3): sent by `status --at --run`, so
+   * the process groups the runs of `paths` start are stopped when each run
+   * ends. A daemon before it ignores it.
+   */
+  readonly at?: true;
 }
 
 /**

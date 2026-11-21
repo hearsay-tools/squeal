@@ -82,7 +82,7 @@ export function parseRequest(line: string): DaemonRequest | string {
       if (!isText(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
     case "run-group-paths":
-      return parseGroupPaths(request.group, request.paths);
+      return parseGroupPaths(request.group, request.paths, request.at);
     case "run-group-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-group-status", requestId: request.requestId };
@@ -148,12 +148,17 @@ function parseSync(paths: unknown): SyncRequest | string {
 }
 
 /** Row 019-49: a narrow run names its group and at least one path. */
-function parseGroupPaths(group: unknown, paths: unknown): RunGroupPathsRequest | string {
+function parseGroupPaths(
+  group: unknown,
+  paths: unknown,
+  at: unknown,
+): RunGroupPathsRequest | string {
   if (!isText(group)) return '"group" must be a non-empty string';
   if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
-  return { type: "run-group-paths", group, paths: [...paths] };
+  if (at !== undefined && at !== true) return '"at" must be true when given';
+  return { type: "run-group-paths", group, paths: [...paths], ...(at === true ? { at } : {}) };
 }
 
 function isTestFileRef(value: unknown): value is TestFileRef {
