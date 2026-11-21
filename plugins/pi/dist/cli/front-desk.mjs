@@ -5,11 +5,64 @@ const require = __squealCreateRequire(import.meta.url);
 import { randomUUID as randomUUID6 } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 
-// src/core/daemon/handlers.ts
-import { randomUUID as randomUUID5 } from "node:crypto";
-
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/daemon/commit-desk.ts
+var FIRST = { setup: { phase: "install" }, asks: [] };
+var CommitDesk = class {
+  #snapshot = FIRST;
+  #forwarded = /* @__PURE__ */ new Set();
+  /** The worker loads this file with types stripped: no parameter properties. */
+  #forward;
+  constructor(forward) {
+    this.#forward = forward;
+  }
+  /** The main thread's snapshot, at each change. */
+  set(snapshot) {
+    this.#snapshot = snapshot;
+    for (const ask of snapshot.asks) this.#forwarded.delete(ask.owner);
+  }
+  ask(request) {
+    const known = this.#snapshot.asks.some((ask) => ask.owner === request.owner);
+    if (!known && !this.#forwarded.has(request.owner)) {
+      this.#forwarded.add(request.owner);
+      this.#forward(request);
+    }
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "commit-ask",
+      owner: request.owner
+    };
+  }
+  read(request) {
+    const waiting2 = [...this.#forwarded].map(
+      (owner) => ({
+        owner,
+        phase: "waiting",
+        files: [],
+        readers: {},
+        problems: []
+      })
+    );
+    const { owners } = request;
+    const asks = [...this.#snapshot.asks, ...waiting2].filter(
+      (ask) => owners === void 0 || owners.includes(ask.owner)
+    );
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "commit-read",
+      setup: this.#snapshot.setup,
+      asks,
+      ...this.#snapshot.incomplete === void 0 ? {} : { incomplete: this.#snapshot.incomplete }
+    };
+  }
+};
+
+// src/core/daemon/handlers.ts
+import { randomUUID as randomUUID5 } from "node:crypto";
 
 // src/core/types/daemon.ts
 function daemonIncarnation(daemon) {
@@ -570,7 +623,12 @@ function isText2(value) {
 // src/core/daemon/protocol.ts
 var MAX_LINE_BYTES = 64 * 1024;
 var MAX_WRITE_LINE_BYTES = 32 * 1024 * 1024;
-var LONG_LINE_STARTS = ['{"type":"write",', '{"type":"keep",'];
+var LONG_LINE_STARTS = [
+  '{"type":"write",',
+  '{"type":"keep",',
+  // Row 023-40c: an ask carries every path a change names.
+  '{"type":"commit-ask",'
+];
 function lineLimit(start) {
   return LONG_LINE_STARTS.some((head) => start.startsWith(head)) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
 }
@@ -637,6 +695,9 @@ function parseRequest(line) {
     case "take-back":
     case "take-back-status":
       return parseTakeBack(request);
+    case "commit-ask":
+    case "commit-read":
+      return parseCommitAsk(request);
     case "promote": {
       const { testFiles, withinMs } = request;
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
@@ -665,6 +726,31 @@ function parseRequest(line) {
     default:
       return parseWriteRequest(request) ?? `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+function parseCommitAsk(request) {
+  if (request.type === "commit-read") {
+    const { owners } = request;
+    if (owners === void 0) return { type: "commit-read" };
+    if (!Array.isArray(owners) || !owners.every(isText3))
+      return '"owners" must be a list of non-empty strings';
+    return { type: "commit-read", owners: [...owners] };
+  }
+  const { owner, changed, named, allMissing, root } = request;
+  if (root !== void 0 && !isText3(root)) return '"root" must be a non-empty string';
+  if (!isText3(owner)) return '"owner" must be a non-empty string';
+  if (!Array.isArray(changed) || !changed.every(isText3))
+    return '"changed" must be a list of non-empty strings';
+  if (!Array.isArray(named) || !named.every(isText3))
+    return '"named" must be a list of non-empty strings';
+  if (typeof allMissing !== "boolean") return '"allMissing" must be true or false';
+  return {
+    type: "commit-ask",
+    owner,
+    changed,
+    named,
+    allMissing,
+    ...root === void 0 ? {} : { root }
+  };
 }
 function parseTakeBack(request) {
   if (request.type === "take-back-status") {
@@ -1181,6 +1267,13 @@ function pingAnswer(context, recorded) {
     ...recorded.length === 0 ? {} : { recorded }
   };
 }
+function atAnswer(context, request) {
+  const desk = context.commitDesk;
+  if (desk === void 0) return errorResponse("this daemon serves no commit worktree");
+  if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+  context.onActivity();
+  return request.type === "commit-ask" ? desk.ask(request) : desk.read(request);
+}
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
@@ -1317,6 +1410,9 @@ function createHandlers(context) {
       case "run-group-status":
         return groups.status(request.requestId) ?? errorResponse(`unknown request id ${request.requestId}`);
       // Row 023-34 (T1): it only takes queued files out, so a stopping daemon takes it too.
+      case "commit-ask":
+      case "commit-read":
+        return atAnswer(context, request);
       case "take-back":
         return takeBacks.take(request.owners);
       case "take-back-status":
@@ -1532,7 +1628,9 @@ var waitingWrite = /* @__PURE__ */ new Map();
 var waitingImport = /* @__PURE__ */ new Map();
 var waitingKeep = /* @__PURE__ */ new Map();
 var server = null;
+var commitDesk = null;
 function bind(identity) {
+  commitDesk = identity.commit === true ? new CommitDesk((request) => post({ type: "commit-ask", request })) : null;
   const handle = createHandlers({
     worktreeId: identity.worktreeId,
     root: identity.root,
@@ -1583,6 +1681,8 @@ function bind(identity) {
     requestFocus: async (testFiles, texts, withinMs) => post({ type: "focus", testFiles, texts, withinMs }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),
+    // Row 023-40c: a commit daemon's asks, answered here from the main thread's last snapshot.
+    ...commitDesk === null ? {} : { commitDesk },
     ...identity.storeSchema === void 0 ? {} : {
       storeSchema: identity.storeSchema,
       requestWrite: (batch) => new Promise((resolve, reject) => {
@@ -1624,6 +1724,9 @@ function receive(message) {
       return;
     case "phase":
       phase = message.phase;
+      return;
+    case "commit-state":
+      commitDesk?.set(message.snapshot);
       return;
     case "run-all-result": {
       const entry = waiting.get(message.id);
