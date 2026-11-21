@@ -178,7 +178,8 @@ export function daemonPorts(root: AbsolutePath): DaemonPorts {
   return {
     async ask(group, paths, deadline) {
       const socketPath = await socketOf(deadline);
-      const request = { type: "run-group-paths", group, paths } as const;
+      // Row 023-36 (T3): `at`, so the daemon stops the groups these runs start.
+      const request = { type: "run-group-paths", group, paths, at: true } as const;
       const first = await askWithin(socketPath, request, deadline);
       if (first === null) return null;
       if ("unanswered" in first) return `the daemon did not answer${first.unanswered}`;
