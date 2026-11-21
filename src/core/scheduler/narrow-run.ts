@@ -179,7 +179,9 @@ export function narrowRequest(
         // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
         const narrow = narrowAnswer(context, ledger, group, selection, null);
         const covered = selectedOf(ledger, group, selection);
-        return { answer: { revision, queued, narrow, coveredId: id }, covered };
+        // Row 023-36 (T3): exactly what it queued itself, which a `--run` request flags.
+        const newlyQueued = newly.flatMap((one) => ledger.files.get(one)?.ref ?? []);
+        return { answer: { revision, queued, narrow, coveredId: id, newlyQueued }, covered };
       },
     },
     wake: { lane: group, checkYields: true },

@@ -6,6 +6,7 @@ import {
   type RelativePath,
 } from "../types/common.js";
 import type { DaemonResponse, GroupHolder, RunGroupResponse } from "../types/daemon.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { LockHolder, NarrowRun, NarrowRunOptions, Scheduler } from "../types/scheduler.js";
 import { requestDaemon } from "./client.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -27,7 +28,11 @@ export const NARROW_NOT_SUPPORTED =
   "squeal run <group> <path>... is not supported by this daemon, which predates narrow runs, and it ran nothing; `squeal stop`, then `squeal start`, starts the installed version";
 
 /** What a group request queued; for a narrow run (row 019-49), what its paths selected. */
-export type GroupRequested = SlowSuiteRequested & { readonly narrow?: NarrowRun };
+export type GroupRequested = SlowSuiteRequested & {
+  readonly narrow?: NarrowRun;
+  /** Row 023-36: what a narrow run queued itself (`NarrowRunRequest.newlyQueued`); never sent. */
+  readonly newlyQueued?: readonly TestFileRef[];
+};
 
 /**
  * Row 011-397: how often a request that waits with the scheduler's lock

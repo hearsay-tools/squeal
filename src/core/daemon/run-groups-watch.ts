@@ -100,22 +100,23 @@ export class AtRunRequests {
 
 /**
  * After the scheduler answered a `status --at --run` request
- * (`options.at`): the selected files it accepted are flagged under its
- * call's owner (row 023-34), else its covered-files id, which a take-back
- * names. Accepted work only: an answer that queued nothing (a request
- * taken back before the scheduler took it, an install wait, every file
- * current) flags nothing, nor does a file the answer says will not run.
- * A refused or unknown request, one without `at`, or one whose owner was
- * already taken back (`AtRunRequests.accepted`), flags nothing.
+ * (`options.at`): exactly the files it put in the queue itself
+ * (`newlyQueued`) are flagged under its call's owner (row 023-34), else its
+ * covered-files id, which a take-back names. A selected file that was
+ * current, already queued by another or running is not this request's
+ * work and is never flagged, so a later ordinary run of it is left alone
+ * (review wave-20 third look). A refused or unknown request, one taken
+ * back before the scheduler took it, one without `at`, an answer from a
+ * scheduler that does not say what it queued, or a request whose owner
+ * was already taken back (`AtRunRequests.accepted`), flags nothing.
  */
 export function flagAccepted(
   requests: Pick<AtRunRequests, "accepted">,
-  requested: Pick<GroupRequested, "narrow" | "coveredId" | "queued"> | null,
+  requested: Pick<GroupRequested, "newlyQueued" | "coveredId"> | null,
   options: NarrowRunOptions | undefined,
 ): void {
-  if (options?.at !== true || requested?.narrow === undefined || requested.queued === 0) return;
-  const notRun = new Set(requested.narrow.notRun.map(({ testFile }) => testFileId(testFile)));
-  const files = requested.narrow.selected.filter((file) => !notRun.has(testFileId(file)));
+  const files = requested?.newlyQueued ?? [];
+  if (options?.at !== true || requested === null || files.length === 0) return;
   requests.accepted(options.owner ?? requested.coveredId ?? randomUUID(), files);
 }
 

@@ -109,32 +109,19 @@ describe("run-group-paths with at (023-36)", () => {
 const A: TestFileRef = { project: "unit", path: "a.test.ts" };
 const A_ELSEWHERE: TestFileRef = { project: "e2e", path: "a.test.ts" };
 const B: TestFileRef = { project: "unit", path: "b.test.ts" };
-const narrow = (selected: readonly TestFileRef[], notRun: readonly TestFileRef[] = []) => ({
-  selected,
-  reached: 0,
-  others: [],
-  unmatched: [],
-  current: 0,
-  notRun: notRun.map((testFile) => ({ testFile, reason: "taken back" })),
-});
-
 describe("which runs an at request flags (023-36, B8)", () => {
   it("flags nothing for a refused, unknown or plain request", () => {
     const requests = new AtRunRequests();
     flagAccepted(requests, null, { at: true, owner: "call-1" });
-    flagAccepted(requests, { queued: 1, coveredId: "c1" }, { at: true, owner: "call-1" });
-    flagAccepted(
-      requests,
-      { queued: 1, narrow: narrow([A]), coveredId: "c3" },
-      { owner: "call-1" },
-    );
-    flagAccepted(requests, { queued: 1, narrow: narrow([A]), coveredId: "c2" }, undefined);
+    flagAccepted(requests, { coveredId: "c1" }, { at: true, owner: "call-1" });
+    flagAccepted(requests, { newlyQueued: [A], coveredId: "c3" }, { owner: "call-1" });
+    flagAccepted(requests, { newlyQueued: [A], coveredId: "c2" }, undefined);
     expect(requests.flagged([A])).toBe(false);
   });
 
   it("flags an accepted request's files by project and path, a mixed batch included", () => {
     const requests = new AtRunRequests();
-    flagAccepted(requests, { queued: 1, narrow: narrow([A]), coveredId: "c1" }, { at: true });
+    flagAccepted(requests, { newlyQueued: [A], coveredId: "c1" }, { at: true });
     expect(requests.flagged([A])).toBe(true);
     expect(requests.flagged([A_ELSEWHERE])).toBe(false);
     expect(requests.flagged([B, A])).toBe(true);
@@ -143,16 +130,8 @@ describe("which runs an at request flags (023-36, B8)", () => {
 
   it("keys a call's requests by its owner, which one take-back ends", () => {
     const requests = new AtRunRequests();
-    flagAccepted(
-      requests,
-      { queued: 1, narrow: narrow([A]), coveredId: "c1" },
-      { at: true, owner: "call-1" },
-    );
-    flagAccepted(
-      requests,
-      { queued: 1, narrow: narrow([B]), coveredId: "c2" },
-      { at: true, owner: "call-1" },
-    );
+    flagAccepted(requests, { newlyQueued: [A], coveredId: "c1" }, { at: true, owner: "call-1" });
+    flagAccepted(requests, { newlyQueued: [B], coveredId: "c2" }, { at: true, owner: "call-1" });
     requests.takenBack(["c1"]);
     expect(requests.flagged([A])).toBe(true);
     requests.takenBack(["call-1"]);
@@ -160,28 +139,22 @@ describe("which runs an at request flags (023-36, B8)", () => {
     expect(requests.flagged([B])).toBe(false);
   });
 
-  it("flags only accepted work: nothing when the answer queued none, never a file it will not run", () => {
+  it("flags exactly what the request queued itself: not a file current, queued by another or running", () => {
     const requests = new AtRunRequests();
-    flagAccepted(requests, { queued: 0, narrow: narrow([A]), coveredId: "c1" }, { at: true });
+    flagAccepted(requests, { newlyQueued: [], coveredId: "c1" }, { at: true });
+    flagAccepted(requests, { coveredId: "c2" }, { at: true });
     expect(requests.flagged([A])).toBe(false);
-    flagAccepted(
-      requests,
-      { queued: 1, narrow: narrow([A, B], [B]), coveredId: "c2" },
-      { at: true },
-    );
-    expect(requests.flagged([A])).toBe(true);
-    expect(requests.flagged([B])).toBe(false);
+    // Selected [A, B]; A was current, so the request queued only B.
+    flagAccepted(requests, { newlyQueued: [B], coveredId: "c3" }, { at: true });
+    expect(requests.flagged([A])).toBe(false);
+    expect(requests.flagged([B])).toBe(true);
   });
 
   it("never flags a request whose owner was taken back before its answer, for the hour", () => {
     let now = 0;
     const requests = new AtRunRequests(() => now);
     requests.takenBack(["late"]);
-    flagAccepted(
-      requests,
-      { queued: 1, narrow: narrow([A]), coveredId: "c1" },
-      { at: true, owner: "late" },
-    );
+    flagAccepted(requests, { newlyQueued: [A], coveredId: "c1" }, { at: true, owner: "late" });
     expect(requests.flagged([A])).toBe(false);
     now = AT_RUN_TTL_MS;
     expect(requests.wasTakenBack("late")).toBe(false);
