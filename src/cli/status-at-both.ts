@@ -99,6 +99,8 @@ export function workingTree(input: TurnInput): WorkingTree {
     async finish(ran, refs, current) {
       const selects = ran.selects();
       if (selects === null) return null;
+      // T1: the selection could not fit; the working tree runs nothing either.
+      if (ran.refused()) return { current, part: refusedPart(files, current) };
       const ids = new Set(files.map(testFileId));
       // A listing daemon's late files, which the turn's list could not hold, and the leftovers.
       const late = nowFiles(refs, current.state, selects).filter(
@@ -154,4 +156,18 @@ export function workingTree(input: TurnInput): WorkingTree {
 function budgetLeft(end: NowRunEnd | null, ref: TestFileRef): boolean {
   const state = end?.states.get(testFileId(ref));
   return state?.state === "not run" && state.reason === "budget";
+}
+
+/** T1: the working tree's part when the selection could not fit: its files, none run. */
+function refusedPart(files: readonly TestFileRef[], current: NowSide): NowPart {
+  const how = servedByDaemon(current) ? "daemon" : "gate";
+  const end: NowRunEnd = {
+    how,
+    gateMs: null,
+    states: new Map(),
+    problem: null,
+    leftEstimate: null,
+  };
+  const use = nowUse({ files }, end, current.state);
+  return { use, fit: { left: 0, ran: 0, gateMs: null, estimate: null } };
 }

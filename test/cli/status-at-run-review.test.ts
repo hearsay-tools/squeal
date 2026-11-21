@@ -165,8 +165,8 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
     f.commit({ "src/a.ts": "export const value = 1; // b\n" });
     const text = await run(f, { commit: a, run: RUN }, options(f));
     const at = a.slice(0, 9);
-    expect(text.out).toContain(`${TEST.path}: pass -> `);
-    expect(text.out).toContain("run by this command, not stored");
+    // Row 023-34 (T4): kept on neither side, it compares from this run's outcomes.
+    expect(text.out).toContain(`${TEST.path}: pass -> pass (this run, not stored)`);
     expect(text.out).toContain(
       `--run: 1 of 1 test files with no result at ${at} ran in its checkout, 0 stored at its keys`,
     );

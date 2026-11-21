@@ -77,17 +77,26 @@ export function parseAt(args: readonly string[]): AtArgs | string {
   }
   const commit = values.get("--at");
   if (commit === undefined || commit === "") return "--at needs a commit";
+  const run = runOf(flags, values.get("--timeout"));
+  if (typeof run === "string") return run;
+  const json = flags.has("--json");
+  const full = flags.has("--full") ? { full: true } : {};
+  return { commit, paths, json, ...full, run };
+}
+
+/** `--run` and its flags, `null` without it; a usage problem as a string. */
+function runOf(flags: ReadonlySet<string>, timeout: string | undefined): RunArgs | null | string {
   const run = flags.has("--run");
   const allMissing = flags.has("--all-missing");
-  const timeout = values.get("--timeout");
   if (!run && allMissing) return "--all-missing needs --run";
   if (!run && timeout !== undefined) return "--timeout needs --run";
   if (timeout !== undefined && !/^[1-9][0-9]*$/.test(timeout))
     return "--timeout takes whole seconds above 0";
+  if (!run) return null;
   const timeoutSeconds = timeout === undefined ? RUN_TIMEOUT_SECONDS : Number(timeout);
-  const json = flags.has("--json");
-  const full = flags.has("--full") ? { full: true } : {};
-  return { commit, paths, json, ...full, run: run ? { allMissing, timeoutSeconds } : null };
+  // Row 023-34 (T1): with neither `--timeout` nor `--all-missing`, a selection that cannot fit runs nothing.
+  const fitCheck = !allMissing && timeout === undefined ? { fitCheck: true as const } : {};
+  return { allMissing, timeoutSeconds, ...fitCheck };
 }
 
 /** The valued option at `args[i]`, with how many more words it took; `null` when it is none. */
