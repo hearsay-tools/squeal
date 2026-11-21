@@ -77,10 +77,13 @@ import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
 import { COMMANDS_TOPIC, commandsLine } from "./required-commands.js";
 import { type GroupRequested, type Held, keyingStep, requestGroup } from "./run-group.js";
+import { GroupRecord, runGroupsFile, STOPPED_WHAT, stopGroups } from "./run-groups.js";
+import { AtRunPaths, withRunGroups } from "./run-groups-watch.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
 import { storeFaults, watched } from "./store-fault.js";
+import { describe } from "./terminate.js";
 import { pauseAt } from "./test-pause.js";
 import { capacityReader, loadUserConfig, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
@@ -263,6 +266,10 @@ class Daemon {
    * wait for them (task 001-367).
    */
   readonly #children = new EscapedChildren(this.#token);
+  /** Row 023-36 (spec 023 D4 step 11, T3): the paths `status --at --run` asked this daemon to run. */
+  readonly #atRun = new AtRunPaths();
+  /** Row 023-36: the process groups runs of those paths started, stopped as each run ends. */
+  readonly #runGroups: GroupRecord;
   /**
    * A `squeal stop` or a step-down was accepted: no tier starts, and those in
    * flight are cancelled (D10; row 011-31).
@@ -303,6 +310,7 @@ class Daemon {
     this.#log = options.log ?? (() => {});
     this.#now = options.now ?? Date.now;
     this.#socketPath = socketPathFor(opened.worktreeId, options.env);
+    this.#runGroups = new GroupRecord(runGroupsFile(opened.commonDir, opened.root));
     this.#startedAt = this.#now();
     this.#lastActive = this.#startedAt;
     this.#lastUsed = this.#startedAt;
@@ -829,10 +837,17 @@ class Daemon {
       // row 021-29, after whose end the busy GC looks at the heap.
       const runner = this.#idleGc.track(
         afterEachRun(
-          createCompositeRunner(vitestLanes === null ? [] : [vitestLanes], [
-            nodeTestRunners,
-            pytestRunners,
-          ]),
+          withRunGroups(
+            createCompositeRunner(vitestLanes === null ? [] : [vitestLanes], [
+              nodeTestRunners,
+              pytestRunners,
+            ]),
+            {
+              paths: this.#atRun,
+              record: this.#runGroups,
+              note: ({ text, stopped }) => this.#note(text, stopped),
+            },
+          ),
           this.#children,
           ({ text, stopped }) => this.#note(text, stopped),
         ),
@@ -1082,6 +1097,7 @@ class Daemon {
           this.#lastUsed = this.#lastActive;
         },
         onNudge: () => this.#loop?.scheduler.nudge(),
+        onAtRun: (paths) => this.#atRun.add(paths),
         requestRetries: () => this.#requestRetries(),
         requestPromotion: (testFiles, withinMs) => this.#requestPromotion(testFiles, withinMs),
         requestFocus: (testFiles, texts, withinMs) =>
@@ -1363,6 +1379,11 @@ class Daemon {
       await this.#step("escaped children", async () => {
         const stop = await this.#children.atExit();
         if (stop !== null) this.#note(stop.text, stop.stopped);
+        // Row 023-36: a group a `--run` run started that its own stop did not end.
+        const left = this.#runGroups.list();
+        const groups = describe(await stopGroups(left), STOPPED_WHAT);
+        this.#runGroups.remove(left);
+        if (groups !== null) this.#note(groups.text, groups.stopped);
       });
       await this.#step("temp dir removal", async () => {
         await this.opened.leftovers;
