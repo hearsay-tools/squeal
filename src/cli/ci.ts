@@ -4,6 +4,7 @@ import { type NotStarted, runCommand } from "../core/ci/command.js";
 import {
   type Endpoints,
   type EndpointsBefore,
+  type EndpointsOptions,
   endpointsAfter,
   endpointsBefore,
 } from "../core/ci/endpoints.js";
@@ -41,6 +42,8 @@ export interface CiDeps {
   readonly tempDir?: AbsolutePath;
   /** The records' worker; default `coverage-map.mjs` beside the bundled CLI (`mapWorkerScript`). */
   readonly mapWorker?: MapWorker;
+  /** The endpoint hashes' limit and reads (row 018-61); default `HASHING_LIMIT` and the disk. */
+  readonly endpoints?: EndpointsOptions;
 }
 
 /**
@@ -116,7 +119,8 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
   if (typeof started === "string") return unchanged(started);
   const { root } = started;
   try {
-    const before = await hashing(() => endpointsBefore(root, started.objectFormat));
+    // Row 018-61: past its limit, an end gives up and the command starts (D20.2).
+    const before = await hashing(() => endpointsBefore(root, started.objectFormat, deps.endpoints));
     const exit = exitOf(await runCommand(args.command, cwd, started.env), say);
     // Spec 018 D30: the second hashes, once the command's processes exited.
     const endpoints =
@@ -149,8 +153,9 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
 }
 
 /**
- * Spec 018 D30: an error of the endpoint hashes is a note, never a failed
- * command: without them, an input no hooked process read stays left out.
+ * Spec 018 D30: an error of the endpoint hashes, or an end past its limit
+ * (row 018-61), is a note, never a failed command: without them, an input
+ * no hooked process read stays left out.
  */
 async function hashing<T extends EndpointsBefore | Endpoints>(
   take: () => Promise<T | string>,
