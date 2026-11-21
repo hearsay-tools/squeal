@@ -110,8 +110,6 @@ export type FromDesk =
   | { readonly type: "failed"; readonly error: string }
   | { readonly type: "activity" }
   | { readonly type: "nudge" }
-  /** Row 023-36 (T3): a `status --at --run` asked for `paths`, posted before its `run-group`. */
-  | { readonly type: "at-run"; readonly paths: readonly RelativePath[] }
   | { readonly type: "retry" }
   | { readonly type: "run-all"; readonly id: string; readonly request: FullSuiteRequest }
   | { readonly type: "run-slow"; readonly id: string }

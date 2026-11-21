@@ -174,6 +174,8 @@ export function narrowOptionsOf(request: RunGroupPathsRequest): NarrowRunOptions
   return {
     ...(request.owner === undefined ? {} : { owner: request.owner }),
     ...(request.lead === true ? { lead: true } : {}),
+    // Row 023-36 (T3): beside the owner, so the daemon flags the accepted request's files.
+    ...(request.at === true ? { at: true } : {}),
   };
 }
 

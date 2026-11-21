@@ -252,6 +252,12 @@ export interface NarrowRunRequest extends SlowSuiteRequest {
 export interface NarrowRunOptions {
   readonly owner?: string;
   readonly lead?: boolean;
+  /**
+   * Row 023-36 (T3): a `status --at --run` request; the daemon flags its
+   * accepted files, keyed by `owner`, so what their runs start is stopped.
+   * The scheduler reads nothing of it.
+   */
+  readonly at?: true;
 }
 
 /**
