@@ -468,6 +468,8 @@ var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results
 // src/core/store/prune-rules.ts
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var DELETE_BATCH = 256;
+var VACUUM_PAGES = 16;
+var VACUUM_SLICE_MS = 100;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
   WHERE k.key IS NOT NULL`;
 var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
@@ -525,6 +527,31 @@ function worktreeIdList(conn, table) {
 function hasIndexes(conn, ...names) {
   const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?";
   return names.every((name) => conn.get(sql, name) !== null);
+}
+
+// src/core/store/prune-vacuum.ts
+function* vacuum(conn, clock = () => performance.now()) {
+  let free = freePages(conn);
+  while (free > 0) {
+    yield () => conn.transaction(() => vacuumFor(conn, clock));
+    const left = freePages(conn);
+    if (left >= free) return;
+    free = left;
+  }
+}
+function vacuumFor(conn, clock) {
+  const start = clock();
+  let free = freePages(conn);
+  while (free > 0) {
+    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
+    const left = freePages(conn);
+    if (left >= free) return;
+    free = left;
+    if (clock() - start >= VACUUM_SLICE_MS) return;
+  }
+}
+function freePages(conn) {
+  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
 }
 
 // src/core/store/repos/results.ts
@@ -1494,7 +1521,6 @@ var isStagedId = (id) => id.endsWith(SUFFIX);
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 var DELETE_BATCH2 = 256;
-var VACUUM_PAGES2 = 512;
 var COVERAGE_BATCH = 64;
 var COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
@@ -1615,18 +1641,6 @@ function* pruneCoverage(conn, resultKeys, cutoff, removed) {
     batch: COVERAGE_BATCH,
     removed
   });
-}
-function* vacuum(conn) {
-  let free = freePages(conn);
-  while (free > 0) {
-    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES2})`));
-    const left = freePages(conn);
-    if (left >= free) return;
-    free = left;
-  }
-}
-function freePages(conn) {
-  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
 }
 
 // src/core/code/store/states.ts

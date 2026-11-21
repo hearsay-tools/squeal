@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.591";
+  if (true) return "0.1.593";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4913,7 +4913,7 @@ var init_unknown_runs = __esm({
 function keptRuns(conn) {
   return JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
 }
-var DAY_MS, EVICTION_BATCH, DELETE_BATCH, VACUUM_PAGES, LIVE_KEYS, MAIN, UNPROTECTED, PRUNABLE, UNREFERENCED_RUN, LAST_COMPLETED_CHECKPOINTS;
+var DAY_MS, EVICTION_BATCH, DELETE_BATCH, VACUUM_PAGES, VACUUM_SLICE_MS, LIST_DELETE_BATCH, LIVE_KEYS, MAIN, UNPROTECTED, PRUNABLE, UNREFERENCED_RUN, LAST_COMPLETED_CHECKPOINTS;
 var init_prune_rules = __esm({
   "src/core/store/prune-rules.ts"() {
     "use strict";
@@ -4922,7 +4922,9 @@ var init_prune_rules = __esm({
     DAY_MS = 24 * 60 * 60 * 1e3;
     EVICTION_BATCH = 32;
     DELETE_BATCH = 256;
-    VACUUM_PAGES = 512;
+    VACUUM_PAGES = 16;
+    VACUUM_SLICE_MS = 100;
+    LIST_DELETE_BATCH = 32;
     LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
   WHERE k.key IS NOT NULL`;
     MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
@@ -5006,7 +5008,8 @@ function* emptyLoadedModules(conn) {
   yield* deleteByKey(conn, {
     table: LOADED_MODULES_TABLE,
     key: ["project", "path", "key"],
-    search: "1"
+    search: "1",
+    batch: LIST_DELETE_BATCH
   });
 }
 function hasLoadedModulesTable(conn) {
@@ -5018,6 +5021,7 @@ var init_loaded_modules = __esm({
   "src/core/store/loaded-modules.ts"() {
     "use strict";
     init_prune_keyed();
+    init_prune_rules();
     LOADED_MODULES_TABLE = "loaded_modules";
   }
 });
@@ -5098,6 +5102,37 @@ var init_prune_unused = __esm({
         AND (n.recorded_at > results.recorded_at
              OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))
   AND recorded_at < ?`;
+  }
+});
+
+// src/core/store/prune-vacuum.ts
+function* vacuum(conn, clock = () => performance.now()) {
+  let free = freePages(conn);
+  while (free > 0) {
+    yield () => conn.transaction(() => vacuumFor(conn, clock));
+    const left = freePages(conn);
+    if (left >= free) return;
+    free = left;
+  }
+}
+function vacuumFor(conn, clock) {
+  const start2 = clock();
+  let free = freePages(conn);
+  while (free > 0) {
+    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
+    const left = freePages(conn);
+    if (left >= free) return;
+    free = left;
+    if (clock() - start2 >= VACUUM_SLICE_MS) return;
+  }
+}
+function freePages(conn) {
+  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
+}
+var init_prune_vacuum = __esm({
+  "src/core/store/prune-vacuum.ts"() {
+    "use strict";
+    init_prune_rules();
   }
 });
 
@@ -5373,15 +5408,6 @@ function* dropPrunable(conn, cutoff, counts) {
   }
   yield* dropOrphanTexts(conn);
 }
-function* vacuum(conn) {
-  let free = pragmaNumber(conn, "freelist_count");
-  while (free > 0) {
-    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`));
-    const left = pragmaNumber(conn, "freelist_count");
-    if (left >= free) return;
-    free = left;
-  }
-}
 function* evictToCap(conn, capBytes, counts) {
   const tiers = [UNPROTECTED, `key NOT IN (${LIVE_KEYS})`];
   for (const tier of tiers) {
@@ -5433,6 +5459,7 @@ var init_prune = __esm({
     init_loaded_modules();
     init_prune_rules();
     init_prune_unused();
+    init_prune_vacuum();
     init_replaced();
     init_unknown_runs();
     init_worktrees();
@@ -21707,7 +21734,7 @@ function* pruneCodeSlices(conn, options, counts) {
       }
     });
   }
-  yield* vacuum2(conn);
+  yield* vacuum(conn);
 }
 function deadWorktrees(conn, live) {
   const kept6 = /* @__PURE__ */ new Set([...live, ...live.map((id) => stagedId(id))]);
@@ -21740,30 +21767,18 @@ function* pruneCoverage(conn, resultKeys, cutoff, removed) {
     removed
   });
 }
-function* vacuum2(conn) {
-  let free = freePages(conn);
-  while (free > 0) {
-    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES2})`));
-    const left = freePages(conn);
-    if (left >= free) return;
-    free = left;
-  }
-}
-function freePages(conn) {
-  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
-}
-var DAY_MS2, DELETE_BATCH2, VACUUM_PAGES2, COVERAGE_BATCH, COVERAGE_META_OF_DEAD, OLDER_RECORD, PER_WORKTREE, UNUSED_COUNT, UNUSED_CHECK;
+var DAY_MS2, DELETE_BATCH2, COVERAGE_BATCH, COVERAGE_META_OF_DEAD, OLDER_RECORD, PER_WORKTREE, UNUSED_COUNT, UNUSED_CHECK;
 var init_prune2 = __esm({
   "src/core/code/store/prune.ts"() {
     "use strict";
     init_codec();
     init_prune_keyed();
+    init_prune_vacuum();
     init_record();
     init_parts2();
     init_staged();
     DAY_MS2 = 24 * 60 * 60 * 1e3;
     DELETE_BATCH2 = 256;
-    VACUUM_PAGES2 = 512;
     COVERAGE_BATCH = 64;
     COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
