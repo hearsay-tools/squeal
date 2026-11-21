@@ -47,7 +47,14 @@ export type CommitSetup =
   | { readonly phase: "install" }
   | { readonly phase: "starting" }
   | { readonly phase: "ready" }
-  | { readonly phase: "failed"; readonly text: string };
+  | { readonly phase: "failed"; readonly text: string }
+  /**
+   * Row 023-40c (row 023-07's whole-checkout check): the tree does not
+   * hold `path` as the commit does, made so by git's own checkout rules
+   * (found before the install) or by the install. Nothing runs there: no
+   * result of it would be the commit's.
+   */
+  | { readonly phase: "changed"; readonly path: RelativePath; readonly by: "git" | "install" };
 
 /** One kept ask. */
 export interface CommitAskState {

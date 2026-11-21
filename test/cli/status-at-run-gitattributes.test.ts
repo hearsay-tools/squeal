@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { clean, run, testOf } from "./status-at-kit.js";
+import { realCommitDaemon } from "./status-at-real-daemon.js";
+
+/** The production commit worktree functions; a red control drops `check`. */
+const worktrees = {};
 
 /*
  * Row 023-18 D3 (`tasks/023-09-notes.md`): squawk's `packages/mobile` held
@@ -17,7 +21,9 @@ describe(
   "a checkout git's own rules change is not blamed on the install (row 023-18 D3)",
   SLOW,
   () => {
-    it("names the path and git's checkout rules, in text and JSON", async () => {
+    it("names the path and git's checkout rules, in text and JSON", {
+      timeout: 120_000,
+    }, async () => {
       const f = fixture({
         "squeal.config.json": "{}\n",
         ".gitattributes": "*.bat text eol=crlf\n",
@@ -36,8 +42,24 @@ describe(
       expect(text.out).toContain("not comparable (git's checkout rules changed tools/run.bat)");
       expect(text.out).not.toContain("install changed");
       clean(f);
-      // Row 023-40c: `--run` keys nothing in a checkout; the commit daemon owns its tree
-      // (`tasks/023-40-notes.md`, "Wave 24", what is not checked there).
+
+      // Row 023-40 and 023-40c: the commit daemon checks its tree against the commit before its
+      // install; git's rules changed it, so it runs nothing and the file stays not comparable.
+      const real = realCommitDaemon(f.root, worktrees);
+      const json = await run(
+        f,
+        { commit: a, json: true, run: { allMissing: false }, waitMs: 60_000 },
+        { cacheRoot: f.cacheRoot, daemons: real.daemons },
+      );
+      const report = JSON.parse(json.out);
+      expect(report, json.err).toMatchObject({ changed: "tools/run.bat", changedBy: "git" });
+      expect(real.started).toHaveLength(1);
+      expect(report.run).toMatchObject({ commit: { files: 0 } });
+      const [row] = report.files;
+      expect(row.at).toEqual({
+        state: "not comparable",
+        reason: "git's checkout rules changed tools/run.bat",
+      });
     });
   },
 );

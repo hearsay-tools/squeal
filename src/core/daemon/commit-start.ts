@@ -96,6 +96,23 @@ export class CommitStart {
     }
   }
 
+  /** Whether the tree differs from the commit; then the setup says where and why, and nothing runs. */
+  async #changed(by: "git" | "install"): Promise<boolean> {
+    const { mode, root, log } = this.ports;
+    let path: RelativePath | null;
+    try {
+      path = (await mode.worktrees.check?.(root)) ?? null;
+    } catch (error) {
+      const text = error instanceof Error ? error.message : String(error);
+      this.#set({ phase: "failed", text: `the check against the commit failed: ${text}` });
+      return true;
+    }
+    if (path === null) return false;
+    log(`the commit worktree does not hold ${path} as the commit does (${by}); nothing runs here`);
+    this.#set({ phase: "changed", path, by });
+    return true;
+  }
+
   #set(setup: CommitSetup): void {
     this.#setup = setup;
     this.ports.changed();
@@ -103,6 +120,8 @@ export class CommitStart {
 
   async #start(): Promise<void> {
     const { mode, root, log } = this.ports;
+    // Row 023-40c (row 023-07's whole-checkout check): git's own checkout rules, before the install.
+    if (await this.#changed("git")) return;
     let failed: string | null;
     try {
       failed = (await mode.worktrees.install?.(root)) ?? null;
@@ -114,6 +133,7 @@ export class CommitStart {
       this.#set({ phase: "failed", text: `install: ${failed}` });
       return;
     }
+    if (await this.#changed("install")) return;
     this.#set({ phase: "starting" });
     try {
       await this.ports.run();

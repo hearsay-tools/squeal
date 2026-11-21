@@ -1,5 +1,6 @@
 import { resultsAt } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
+import { changedText } from "../core/commit/at-keys-walk.js";
 import { committedBlobs } from "../core/commit/tree.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
@@ -59,7 +60,10 @@ export async function rowsSide(
   const treeId = tree === null ? null : idOf(tree);
   const queued = new Set(asked.files.map(testFileId));
   const chose = input.selection && asked.asks.some((a) => a.phase === "queued");
+  // Row 023-40c (row 023-07's whole-checkout check): a tree that is not the commit's runs nothing.
+  const changed = asked.setup?.phase === "changed" ? asked.setup : null;
   const state = (ref: TestFileRef): SideState => {
+    if (changed !== null) return { state: "not comparable", reason: changedText(changed) };
     const row = byId.get(testFileId(ref));
     if (row === undefined) return unlisted(asked, committed.has(ref.path), input.commit);
     if (row.key === null)
@@ -82,7 +86,7 @@ export async function rowsSide(
     state,
     checkoutMs: null,
     inputCheckMs: null,
-    changed: null,
+    changed: changed === null ? null : { path: changed.path, by: changed.by },
     failure: null,
     sources,
   };
