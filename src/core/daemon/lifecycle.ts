@@ -16,6 +16,7 @@ import type { Policy } from "../types/policy.js";
 import type { SlowWaiting } from "../types/scheduler.js";
 import type { Store } from "../types/store.js";
 import { oncePerClone } from "./clone-prune.js";
+import { type CommitLife, commitCheck } from "./commit-mode.js";
 import { CHECKPOINT_BUSY_MS, IdleCheckpoint, truncateWal } from "./idle-checkpoint.js";
 import { recordDaemonUsed } from "./last-use.js";
 import { SlicedPrune } from "./sliced-prune.js";
@@ -198,6 +199,12 @@ export interface TimerContext {
    */
   readonly storeFault?: (error: unknown) => boolean;
   readonly shutdown: (reason: DaemonExitReason, text: string) => void;
+  /**
+   * Spec 023 D7.2 (row 023-39): a commit worktree's daemon, whose idle
+   * period and cap replace `daemon.idleExitMinutes` (`commitCheck`). Absent:
+   * the worktree's own daemon.
+   */
+  readonly commit?: CommitLife;
 }
 
 /**
@@ -310,6 +317,11 @@ export function startTimers(context: TimerContext): () => void {
     }
     attempt("request progress", () => progress(at));
     attempt("idle check", () => {
+      if (context.commit !== undefined) {
+        const exit = commitCheck(context.commit, at, context.lastActive, context.active);
+        if (exit !== null) context.shutdown(exit.reason, exit.text);
+        return;
+      }
       if (presence.lastPresentAt !== null || !countPresence(at)) return;
       if (at - context.lastActive() >= idleMs) {
         context.shutdown(

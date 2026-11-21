@@ -48,6 +48,16 @@ import type {
 } from "../types/scheduler.js";
 import { markScanned } from "./bootstrapped.js";
 import { DaemonWrites, SHUTDOWN_WRITE_MS, within } from "./busy-writes.js";
+import {
+  COMMIT_FEED_TIMINGS,
+  type CommitMode,
+  type CommitModeOptions,
+  commitModeOf,
+  commitPolicy,
+  NO_CODE_PASS,
+  NO_WATCH,
+  removesAtExit,
+} from "./commit-mode.js";
 import { describeProblems } from "./config-file.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
@@ -107,7 +117,11 @@ const RUNTIME_DIR = dirname(fileURLToPath(import.meta.url));
  */
 const CANCEL_GRACE_MS = 2_000;
 
-export interface DaemonOptions {
+/**
+ * Spec 023 D7.2 (row 023-39): `commitMode`, `commitWorktrees` and
+ * `commitTimes` (`CommitModeOptions`) make a commit worktree's daemon.
+ */
+export interface DaemonOptions extends CommitModeOptions {
   /** The worktree root; resolved with realpath. */
   readonly root: string;
   /** For the runtime dir of the socket (D1). Default `process.env` as it was before `ownsProcess`. */
@@ -200,8 +214,12 @@ export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon
   try {
     // The socket's runtime dir comes from the environment hooks share, read before it changes.
     const env = options.env ?? { ...process.env };
+    // Spec 023 D7.2: a commit worktree's daemon starts no lint pass.
+    const commit = commitModeOf(options, opened.root);
+    const { lintProviders, ...rest } = options;
+    const served = commit === null && lintProviders !== undefined ? { lintProviders } : {};
     if (options.ownsProcess) adoptScratch(opened.scratch);
-    daemon = new Daemon(opened, { ...options, env });
+    daemon = new Daemon(opened, { ...rest, ...served, env }, commit);
   } catch (error) {
     desk.discard();
     return abandon(opened, now, options.log, `daemon exited: could not start: ${message(error)}`);
@@ -307,6 +325,8 @@ class Daemon {
   constructor(
     private readonly opened: OpenedDaemon,
     private readonly options: DaemonOptions,
+    /** Spec 023 D7.2 (row 023-39): its commit mode; `null` for a worktree's own daemon. */
+    private readonly commit: CommitMode | null = null,
   ) {
     this.#log = options.log ?? (() => {});
     this.#now = options.now ?? Date.now;
@@ -412,9 +432,10 @@ class Daemon {
     } catch (error) {
       return this.#startFailed(error, `could not start serving: ${message(error)}`);
     }
+    this.#claimCommitWorktree();
     try {
       const { policy, problems } = loadPolicy(root);
-      this.#policy = policy;
+      this.#policy = this.#modePolicy(policy);
       this.#notePolicyProblems(problems);
       this.#noteCommands();
       // Its problems are noted at start, as the policy's are, not at the first backlog tier.
@@ -433,6 +454,30 @@ class Daemon {
       exited: this.#exited,
       stop: (reason, note) => this.#shutdown(reason, 0, note ?? `daemon stopped: ${reason}`),
     };
+  }
+
+  /** Spec 023 D7.2: a commit daemon's lock is held; its marker names it, for the sweep. */
+  #claimCommitWorktree(): void {
+    try {
+      this.commit?.worktrees.claim(this.opened.root);
+    } catch (error) {
+      this.#log(`could not claim the commit worktree: ${message(error)}`);
+    }
+  }
+
+  /** The policy this daemon runs: a commit daemon's start is lookup-only (spec 023 D7.2). */
+  #modePolicy(policy: Policy): Policy {
+    return this.commit === null ? policy : commitPolicy(policy);
+  }
+
+  /** Spec 023 D7.2: a commit daemon counts no complexity. */
+  #codePass(make: () => CodePass): CodePass {
+    return this.commit === null ? make() : NO_CODE_PASS;
+  }
+
+  /** Spec 023 D7.2: a commit worktree has no edits to watch. */
+  #feedOptions() {
+    return this.commit === null ? {} : { backend: NO_WATCH, timings: COMMIT_FEED_TIMINGS };
   }
 
   /** A start's failure; row 011-391: the store's corruption stops it as `store-unusable` instead. */
@@ -503,6 +548,19 @@ class Daemon {
       busyWaits: this.#busyWaits,
       storeFault: this.#storeFault,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
+      // Spec 023 D7.2 (row 023-39): a commit daemon's idle period and cap.
+      ...(this.commit === null
+        ? {}
+        : {
+            commit: {
+              mode: this.commit,
+              startedAt: this.#startedAt,
+              work: () =>
+                this.#loop === null || this.#phase === "stopping"
+                  ? null
+                  : { queued: this.#loop.scheduler.queued(), running: this.#idleGc.running() },
+            },
+          }),
     });
   }
 
@@ -548,8 +606,9 @@ class Daemon {
   #reloadPolicy(): Policy {
     const { policy: loaded, problems, unparsed } = loadPolicy(this.opened.root);
     const { nodeTest, pytest, complexity, coverage, crap } = this.#policy;
-    const policy =
-      unparsed === true ? { ...loaded, nodeTest, pytest, complexity, coverage, crap } : loaded;
+    const policy = this.#modePolicy(
+      unparsed === true ? { ...loaded, nodeTest, pytest, complexity, coverage, crap } : loaded,
+    );
     this.#policy = policy;
     if (this.#phase !== "stopping") this.#startTimers();
     const found = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
@@ -886,31 +945,38 @@ class Daemon {
         pace,
       });
       // Spec 015 D4: outside the scheduler's lanes, with no test permit, nudged after each batch.
-      const code = createCodePass({
-        worktreeId,
-        codeStore,
-        root,
-        commonDir,
-        format,
-        source: mainStoreSource(store, worktreeId, () => this.#loop?.scheduler.extraFiles() ?? []),
-        policy: () => this.#policy,
-        // The grammars load only once complexity is on (goal 1).
-        counter: async () => (await import("../code/pass/counter.js")).treeSitterCounter,
-        now: this.#now,
-        log: this.#log,
-        onError: (error) =>
-          isBusy(error)
-            ? this.#log(`complexity: ${error.message}`)
-            : this.#note(`complexity: ${error.message}`),
-        // Spec 015 D9 (row 015-12): the loaders, this worktree's own closures (review 0.1.297 B3)
-        // and the records' writer the coverage step reads.
-        coverage: {
-          main: store,
-          closures: () => this.#loop?.scheduler.keyIndex() ?? null,
-          writing: () => this.#coverage?.busy() ?? false,
-          pace,
-        },
-      });
+      // Spec 023 D7.2: a commit daemon counts no complexity.
+      const code = this.#codePass(() =>
+        createCodePass({
+          worktreeId,
+          codeStore,
+          root,
+          commonDir,
+          format,
+          source: mainStoreSource(
+            store,
+            worktreeId,
+            () => this.#loop?.scheduler.extraFiles() ?? [],
+          ),
+          policy: () => this.#policy,
+          // The grammars load only once complexity is on (goal 1).
+          counter: async () => (await import("../code/pass/counter.js")).treeSitterCounter,
+          now: this.#now,
+          log: this.#log,
+          onError: (error) =>
+            isBusy(error)
+              ? this.#log(`complexity: ${error.message}`)
+              : this.#note(`complexity: ${error.message}`),
+          // Spec 015 D9 (row 015-12): the loaders, this worktree's own closures (review 0.1.297 B3)
+          // and the records' writer the coverage step reads.
+          coverage: {
+            main: store,
+            closures: () => this.#loop?.scheduler.keyIndex() ?? null,
+            writing: () => this.#coverage?.busy() ?? false,
+            pace,
+          },
+        }),
+      );
       this.#code = code;
       // Spec 017 D7, D11: beside the code pass, one per tool with a provider, only with
       // `lint.enabled` (goal 1). A pass whose tool `lint.tools` leaves out opens no provider; it
@@ -1001,6 +1067,8 @@ class Daemon {
         runtimeDir: RUNTIME_DIR,
         onDropped: (reason) =>
           this.#note(`watcher dropped events (${reason}); a full reconciliation follows`),
+        // Spec 023 D7.2: a commit worktree has no edits to watch.
+        ...this.#feedOptions(),
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
         // user's pool, sized from the user's config as read when the loop starts.
         // Spec 021 D18 (row 021-18): each refusal by the background ceiling is a line in its log.
@@ -1407,6 +1475,11 @@ class Daemon {
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
       pauseAt("stop-gap");
+      // Spec 023 D7.2: under its lock still, so no new daemon takes a tree about to go.
+      if (this.commit !== null && removesAtExit(reason)) {
+        const { worktrees } = this.commit;
+        await this.#step("commit worktree removal", () => worktrees.remove(this.opened.root));
+      }
       await this.#step("lock release", () => lock.release());
       const result = exit(reason, code, text);
       this.#resolveExit(result);
