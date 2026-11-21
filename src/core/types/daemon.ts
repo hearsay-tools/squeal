@@ -657,7 +657,9 @@ export type DaemonExitReason =
   /** A hook newer than this daemon asked it to step down; the hook spawned its successor (defect 26, task 001-130). */
   | "superseded"
   /** A successor (`squeal daemon --await-lock`) found the lock still held when its wait ended (task 001-130). */
-  | "lock-wait-timed-out";
+  | "lock-wait-timed-out"
+  /** A commit worktree's daemon reached its cap after its start (spec 023 D7.2, row 023-39). */
+  | "lifetime-cap";
 
 export interface DaemonExit {
   readonly reason: DaemonExitReason;
