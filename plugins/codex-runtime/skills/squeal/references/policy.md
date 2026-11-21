@@ -50,6 +50,7 @@ Stop also waits for the checks of the groups at `"stop"` in `checks`, and for th
 | `slow.quietMs` | `3000` | Under `"continuous"`, how long after the latest edit the slow tier waits before it starts a slow file. |
 | `delivery.uncoveredEdits` | `true` | After an edit, the next delivery names the changed code files (`.js`, `.ts`, `.py` and their variants, outside `dist/`) that no test Squeal runs reads, once per file per session or subagent. `false` turns the line off. |
 | `daemon.idleExitMinutes` | `60` | The daemon exits after this long with no registered session. |
+| `daemon.maxCommitDaemons` | none | How many commit worktrees, each with the daemon that `squeal status --at <commit> --run` starts there, live at once on this machine (a whole number, at least 1). With none, one per GB of free memory. When they are all live, a new commit's call waits for a place and says so. |
 | `store.retentionDays` | `7` | Results for file contents no worktree has any more are dropped after this many days. |
 | `store.maxSizeMb` | `null` | Size cap of the store; `null` for none. |
 | `remote.allowed` | `true` | Whether a user may send this repository's background test runs to a remote host over SSH, which each user names in their own `~/.config/squeal/remote.json`. `false` forbids it: every run stays on the user's machine, and `squeal status` says the repository forbids remote runs. |
