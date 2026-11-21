@@ -3263,7 +3263,12 @@ var SHAPE = {
     quietMs: atLeastZero2
   },
   delivery: { uncoveredEdits: boolean5 },
-  daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
+  daemon: {
+    idleExitMinutes: aboveZero3,
+    unusedExitMinutes: aboveZero3,
+    // Spec 023 D7.4 (row 023-40).
+    maxCommitDaemons: orNull(positiveInteger)
+  },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
@@ -3296,7 +3301,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.591";
+  if (true) return "0.1.592";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

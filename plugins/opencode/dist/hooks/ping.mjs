@@ -578,7 +578,12 @@ var SHAPE = {
     quietMs: atLeastZero2
   },
   delivery: { uncoveredEdits: boolean5 },
-  daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
+  daemon: {
+    idleExitMinutes: aboveZero3,
+    unusedExitMinutes: aboveZero3,
+    // Spec 023 D7.4 (row 023-40).
+    maxCommitDaemons: orNull(positiveInteger)
+  },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
