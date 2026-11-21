@@ -88,7 +88,8 @@ export async function installCheckout(
   });
 }
 
-async function manifestOf(tree: AbsolutePath): Promise<unknown> {
+/** `tree`'s `package.json`, `null` when it is missing or not JSON. */
+export async function manifestOf(tree: AbsolutePath): Promise<unknown> {
   try {
     return JSON.parse(await readFile(join(tree, "package.json"), "utf8"));
   } catch {
