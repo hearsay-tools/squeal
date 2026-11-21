@@ -17,7 +17,7 @@ import {
   RESULTS_FORMAT,
   type ResultsBundle,
 } from "../store/transfer-bundle.js";
-import type { ProjectName, WorktreeId } from "../types/common.js";
+import type { ProjectName, RelativePath, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
@@ -59,10 +59,11 @@ export function bundleOf(
   files: readonly KeyedFile[],
 ): { readonly bundle: ResultsBundle; readonly absolute: readonly AbsoluteFile[] } {
   const absolute: AbsoluteFile[] = [];
+  const entries = entriesOnce(store);
   const sorted = [...files]
     .sort((a, b) => compare(a.file.project, b.file.project) || compare(a.file.path, b.file.path))
     .flatMap(({ file, records }) => {
-      const testFile = { ...file, observed: observedOf(store, file) };
+      const testFile = { ...file, observed: observedOf(entries, file) };
       const results = [...records].sort(byCheck).map(exported);
       const path = absolutePathOfFile(testFile, results);
       if (path === null) return [{ testFile, results }];
@@ -88,14 +89,32 @@ export function bundleOf(
   return { bundle, absolute };
 }
 
+/** A project's entries of one observed map, by its `meta` key. */
+type Entries = (key: string) => Record<string, readonly RelativePath[]>;
+
+/**
+ * `readSharedEntries` of `store`, each key read and parsed once (row
+ * 018-71). Read per file, a project's maps were parsed once for each of
+ * its files: in squawk's run of 2026-11-21, 1948 files took 37 s of the
+ * export's 83 s. The store does not change while the bundle is built.
+ */
+function entriesOnce(store: Store): Entries {
+  const read = new Map<string, Record<string, readonly RelativePath[]>>();
+  return (key) => {
+    let entries = read.get(key);
+    if (entries === undefined) {
+      entries = readSharedEntries(store, key);
+      read.set(key, entries);
+    }
+    return entries;
+  };
+}
+
 /** The file's entry in each observed map that has one. */
-function observedOf(store: Store, testFile: TestFileRef): ObservedEntries {
+function observedOf(entries: Entries, testFile: TestFileRef): ObservedEntries {
   return ownMap(
     OBSERVED_MAPS.flatMap((map) => {
-      const entry = ownValue(
-        readSharedEntries(store, MAP_KEY[map](testFile.project)),
-        testFile.path,
-      );
+      const entry = ownValue(entries(MAP_KEY[map](testFile.project)), testFile.path);
       return entry === undefined ? [] : [[map, entry] as const];
     }),
   );
