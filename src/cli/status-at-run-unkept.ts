@@ -50,8 +50,11 @@ export function unkeptNow(
     const key = keyOf(ref);
     if (key === null || kept.has(testFileId(ref))) continue;
     const runs = result.runs.filter((r) => r.path === ref.path);
-    if (runs.length === 0 || runs.some((r) => r.outcome !== "passed" && r.outcome !== "failed"))
-      continue;
+    // Review wave-20 N1: only an outcome this call ran is this run's; a stored or parts
+    // answer is someone else's result, which the side's own read finds.
+    const ended = (r: (typeof runs)[number]) =>
+      r.from === "run" && (r.outcome === "passed" || r.outcome === "failed");
+    if (runs.length === 0 || !runs.every(ended)) continue;
     const why = notKeptWhy(result.notKept, ref, coverage);
     states.set(testFileId(ref), fromGate(key, runs, null, why));
   }
