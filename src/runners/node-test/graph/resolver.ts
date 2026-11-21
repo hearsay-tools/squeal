@@ -86,10 +86,10 @@ export function createResolver(
 ): Resolver {
   let fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
   let resolvers = new Map<string, ReturnType<typeof enhanced.ResolverFactory.createResolver>>();
+  let tsconfigs = new Map<string, AbsolutePath | null>();
   let realpaths = new Map<string, AbsolutePath | null>();
   let resolutions = new Map<string, Resolution>();
   let tsconfigPaths = new Map<AbsolutePath, TsconfigPaths>();
-  let project: { tsconfig: TsconfigPaths | null } | null = null;
   let scopes = new Map<string, ModuleFormat>();
   const tsx = chain.rules === "tsx";
 
@@ -154,20 +154,20 @@ export function createResolver(
     }
     return found;
   };
-  const projectTsconfig = (): TsconfigPaths | null => {
-    if (project === null) {
-      const cwd = source.cwd ?? root;
-      const file = source.tsconfigPath ? resolvePath(cwd, source.tsconfigPath) : tsconfigFor(cwd);
-      project = { tsconfig: tsx && file !== null ? chainOf(file) : null };
-    }
-    return project.tsconfig;
-  };
   const tsconfigFor = (dir: string): AbsolutePath | null => {
-    for (let at = dir; ; at = dirname(at)) {
-      const here = join(at, "tsconfig.json");
-      if (exists(here)) return here;
-      if (at === root || dirname(at) === at) return null;
+    let found = tsconfigs.get(dir);
+    if (found === undefined) {
+      const here = join(dir, "tsconfig.json");
+      const parent = dirname(dir);
+      found = exists(here) ? here : dir === root || parent === dir ? null : tsconfigFor(parent);
+      tsconfigs.set(dir, found);
     }
+    return found;
+  };
+  const cwd = source.cwd ?? root;
+  const projectTsconfig = (): TsconfigPaths | null => {
+    const file = source.tsconfigPath ? resolvePath(cwd, source.tsconfigPath) : tsconfigFor(cwd);
+    return tsx && file !== null ? chainOf(file) : null;
   };
   /**
    * S1: enhanced-resolve reads inherited `paths` relative to the config it
@@ -240,10 +240,10 @@ export function createResolver(
     clear() {
       fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
       resolvers = new Map();
+      tsconfigs = new Map();
       realpaths = new Map();
       resolutions = new Map();
       tsconfigPaths = new Map();
-      project = null;
       scopes = new Map();
     },
   };
@@ -259,13 +259,9 @@ export function createResolver(
     // Row 018-62, b4: the file, not the `?query#hash` enhanced-resolve appends, as Node loads it.
     // `useSyncFileSystemCalls` calls back before `resolve` returns.
     const found: { path: string | false } = { path: false };
-    try {
-      resolver.resolve({}, from, specifier, context, (error, _result, request) => {
-        found.path = error || request === undefined ? false : request.path;
-      });
-    } catch {
-      found.path = false;
-    }
+    resolver.resolve({}, from, specifier, context, (error, _result, request) => {
+      found.path = error || request === undefined ? false : request.path;
+    });
     const target = found.path;
     // `symlinks: true` already gives the target's real path.
     const path = target === false ? null : target;
