@@ -2683,7 +2683,7 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 022-07 research: select by the functions a test file entered; a narrow skip rule and an order-only rule | running (researcher, claude opus high; coordinator c57d5feb, 2026-11-21) | Topic `function-selection`: savings of the skip rule on stored edit revisions here and in cezar, its misses on fixtures, how often reflection, line-number assertions and unstable paths occur, record carry-over, the order-only rule against today's edit cut, cost. Research only. | `research/function-selection.md` committed; every question has a tagged answer |
+| 022-07 research: select by the functions a test file entered; a narrow skip rule and an order-only rule | done (researcher f5fd6e82, `research/function-selection.md`, 2026-11-21: do not build either. The skip rule saves 0.07 to 0.15% of re-run seconds per edit here, 0.004 to 0.07% in cezar, 0.68% and 0.17% per commit; 5 of 12 fixture skips change the result (function text, line numbers); 26 to 36% of sampled test files enter other functions on identical sources. The order-only rule holds 5 of 15 new failures here against the edit cut's 2, at 2.2 times its seconds, and 5 of 13 in cezar against 11. No product change; coordinator c57d5feb) | Topic `function-selection`: savings of the skip rule on stored edit revisions here and in cezar, its misses on fixtures, how often reflection, line-number assertions and unstable paths occur, record carry-over, the order-only rule against today's edit cut, cost. Research only. | `research/function-selection.md` committed; every question has a tagged answer |
 
 ## Feature 023: results at a commit
 
