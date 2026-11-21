@@ -516,6 +516,12 @@ export interface Scheduler {
    */
   changedSelects?(paths: readonly RelativePath[]): Promise<readonly TestFileRef[]>;
   /**
+   * Spec 023 D4.9 (row 023-40c): per test file whose closure holds a path
+   * `picks` picks, by `testFileId`, the first such path (sorted), from the
+   * key index under the lock. Absent: a scheduler before it.
+   */
+  closureReads?(picks: (path: RelativePath) => boolean): Promise<ReadonlyMap<string, RelativePath>>;
+  /**
    * Row 011-352: resolves once the scheduler rests (`GLOSSARY.md`, "Rest"):
    * no wake pass runs, none of its own async work is open, its lock has
    * nothing queued or running, no wake is due, and this still holds after

@@ -63,7 +63,14 @@ export async function askCommit(input: AskInput): Promise<CommitAsked> {
   const { daemons, askBy, deadline, owner } = input;
   const tree = await daemons.commit({ ...input.commit, deadline: askBy });
   if (typeof tree !== "string") return notReached(tree.problem, Date.now() >= askBy);
-  const ask = { owner, changed: input.changed, named: input.named, allMissing: input.allMissing };
+  const ask = {
+    owner,
+    changed: input.changed,
+    named: input.named,
+    allMissing: input.allMissing,
+    // D4.9: an input generated in the caller's worktree counts as one git does not hold.
+    root: input.commit.root,
+  };
   const refused = await daemons.commitAsk(tree, ask, askBy).catch((error) => String(error));
   if (refused !== null) return { ...notReached(refused, false), root: tree };
   const read = await readUntilQueued(daemons, tree, [owner], askBy, deadline);

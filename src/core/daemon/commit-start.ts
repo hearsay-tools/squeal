@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { committedBlobs } from "../commit/tree.js";
 import { groupView } from "../scheduler/slow.js";
 import type { CommitSetup } from "../types/commit-ask.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../types/common.js";
@@ -68,6 +71,25 @@ export class CommitStart {
           key: row.key,
           pending: row.pending ?? null,
         })),
+      // D4.9: what the closures read that git does not hold at the commit (the tree's HEAD).
+      needs: async (request) => {
+        const scheduler = ports.scheduler();
+        if (scheduler?.closureReads === undefined) return new Map();
+        const atCommit = await committedBlobs(ports.root, "HEAD");
+        const caller = request.root;
+        const atHead =
+          caller === undefined ? null : await committedBlobs(caller, "HEAD").catch(() => null);
+        return scheduler.closureReads((path) => {
+          if (atCommit.has(path)) return false;
+          if (existsSync(join(ports.root, path))) return true;
+          return (
+            caller !== undefined &&
+            atHead !== null &&
+            !atHead.has(path) &&
+            existsSync(join(caller, path))
+          );
+        });
+      },
       stored: (ref, key) =>
         store.results
           .byKey(key)

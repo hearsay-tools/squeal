@@ -62,8 +62,14 @@ export async function rowsSide(
   const chose = input.selection && asked.asks.some((a) => a.phase === "queued");
   // Row 023-40c (row 023-07's whole-checkout check): a tree that is not the commit's runs nothing.
   const changed = asked.setup?.phase === "changed" ? asked.setup : null;
+  // D4.9: the files the commit daemon would not run, their closure reading a path git does not hold.
+  const refused = new Map(
+    asked.asks.flatMap((ask) => ask.refused ?? []).map((r) => [testFileId(r.ref), r.reason]),
+  );
   const state = (ref: TestFileRef): SideState => {
     if (changed !== null) return { state: "not comparable", reason: changedText(changed) };
+    const no = refused.get(testFileId(ref));
+    if (no !== undefined) return { state: "not comparable", reason: no };
     const row = byId.get(testFileId(ref));
     if (row === undefined) return unlisted(asked, committed.has(ref.path), input.commit);
     if (row.key === null)
