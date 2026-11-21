@@ -43,7 +43,8 @@ describe(
       // A folder selects both files; it names neither of them itself.
       const text = await run(f, { commit: a, paths: ["test"], run: RUN }, options);
       expect(text.out).toContain(
-        `${PLAIN.path}: no result at ${at}, not selected by the change; \`--all-missing\` runs it; now `,
+        // Row 023-35 (T2): Vitest tells no incomplete closures, so Squeal does not vouch for it.
+        `${PLAIN.path}: no result at ${at}, not selected by the change, and its runner does not tell whether the static closure is complete; \`--all-missing\` runs it; now `,
       );
       expect(text.out).toContain(
         `--run: 1 of 1 test files with no result at ${at} that the change selects ran in its checkout`,
@@ -57,6 +58,11 @@ describe(
       expect(fileOf(json.out, PLAIN.path)?.at).toMatchObject({
         state: "no result",
         notSelected: true,
+        closure: "unchecked",
+      });
+      expect(JSON.parse(json.out).notSelected).toEqual({
+        files: 0,
+        excepted: [{ project: "", path: PLAIN.path, closure: "unchecked" }],
       });
       expect(JSON.parse(json.out).run).toMatchObject({ selected: 0, notSelected: 1 });
       clean(f);
