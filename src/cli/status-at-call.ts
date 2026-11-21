@@ -123,6 +123,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
       root,
       commonDir,
       deadline: queue.deadline,
+      askBy: queue.askBy,
     });
   }
   // Review wave-23 B3: a run that observed new inputs stored at their key; key those files again (D2).
