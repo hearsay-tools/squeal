@@ -99,15 +99,21 @@ export interface AtDaemons {
   wait(root: AbsolutePath, files: readonly TestFileRef[], deadline: number): Promise<string | null>;
 }
 
-/**
- * The real daemons: `start` spawns the commit daemon (`spawnCommitDaemon`)
- * unless a test gives its own; the working tree's is `squeal start`'s,
- * quiet, its warnings to `note`.
- */
-export function realDaemons(
-  start: StartCommit = spawnCommitDaemon,
-  note: (text: string) => void = () => undefined,
-): AtDaemons {
+/** How the real daemons start; tests give their own. */
+export interface DaemonStarts {
+  /** The commit daemon's: `spawnCommitDaemon` by default. */
+  readonly start?: StartCommit;
+  /** The working tree's: `squeal start`'s, quiet (`quietStart`), by default. */
+  readonly startWorktree?: (root: AbsolutePath) => Promise<string | null>;
+  /** Where a start's warnings go. */
+  readonly note?: (text: string) => void;
+}
+
+/** The real daemons, started as `starts` says. */
+export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
+  const start = starts.start ?? spawnCommitDaemon;
+  const note = starts.note ?? (() => undefined);
+  const startWorktree = starts.startWorktree ?? ((root: AbsolutePath) => quietStart(root, note));
   const sockets = new Map<string, AbsolutePath>();
   const socketOf = async (root: AbsolutePath, deadline: number) => {
     const known = sockets.get(root);
@@ -139,7 +145,7 @@ export function realDaemons(
       // Review wave-23 S1: the user's stop and command holds stay; nothing is started over them.
       const stopped = await worktreeStops(root);
       if (stopped !== null) return stopped;
-      const failed = await quietStart(root, note);
+      const failed = await startWorktree(root);
       return failed === null ? null : `this worktree's daemon did not start: ${failed}`;
     },
     async ask(root, group, paths, bound, call) {

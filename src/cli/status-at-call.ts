@@ -23,6 +23,7 @@ import {
   worktreeQueue,
 } from "./status-at-queue.js";
 import { unionRefs } from "./status-at-refs.js";
+import { rekeyGrown } from "./status-at-rekey.js";
 import { exitCode, formatAt, jsonAt, type SideState } from "./status-at-report.js";
 import {
   type QueuedRun,
@@ -95,7 +96,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
       install: options.install,
     }),
   };
-  const daemons = options.daemons ?? realDaemons(undefined, note);
+  const daemons = options.daemons ?? realDaemons({ note });
   // Review wave-23 B1: one deadline for the whole call, counted from its start.
   const deadline = input.startedMs + waitMs;
   const queue = {
@@ -125,14 +126,19 @@ export async function daemonCall(input: CallInput): Promise<number> {
         : queueSide({ ...queue, files: found.files, root: found.tree });
   }
   const queues = await Promise.all([atQueue, worktreeQueue({ ...queue, files: nowFiles }, root)]);
-  const after = await readAfter(input, refs, side.state, ...queues);
+  // Review wave-23 B3: a run that observed new inputs stored at their key; key those files again (D2).
+  const checkout = defined({ cacheRoot: options.cacheRoot, install: options.install });
+  const rekey = { ...place, env: input.env, note, options: checkout };
+  const keyed = await rekeyGrown(rekey, side.state, queues[0]);
+  const after = await readAfter(input, refs, keyed, ...queues);
   const report = await assembleReport({
     root,
     commit,
     refs,
     unmatched,
     current: after.current,
-    side: { ...side, state: after.at },
+    // Review wave-23 S2: Q1's step was read before the wait; the call's own lines say what is next.
+    side: { ...side, probe: null, state: after.at },
     part: null,
     queued: queuedRun(input, waitMs, queues, after, chosen),
   });
