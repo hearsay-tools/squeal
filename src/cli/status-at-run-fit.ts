@@ -1,4 +1,3 @@
-import type { RunEstimate } from "../core/code/gate/estimate.js";
 import type { SideState } from "./status-at-report.js";
 
 /*
@@ -65,38 +64,6 @@ export function rerunFit(
   const minutes = Math.max(60, Math.ceil(total / 60) * 60);
   if (minutes <= cap) return { seconds: minutes };
   return { needs: Math.round(overheadMs / 1000 + needs), from };
-}
-
-/**
- * Row 023-34 (T1, lessons round 5; spec 023 D4.11): whether `estimate`'s
- * selection clearly cannot fit before it runs, `overheadMs` spent: R4's
- * estimate from stored durations is above the cap. With no stored
- * duration nothing is known before a run (review wave-20 B4: a fixed time
- * per round refused 16 files that ran in 10 s), so `measuredOver` judges
- * after the first batch.
- */
-export function clearlyOver(estimate: RunEstimate, overheadMs: number): boolean {
-  if (estimate.files === 0 || estimate.seconds === null) return false;
-  const side = { left: estimate.files, ran: 0, gateMs: null, estimate: estimate.seconds };
-  return "needs" in rerunFit(overheadMs, [side]);
-}
-
-/**
- * T1, review wave-20 B4: after a measured first batch, whether the files
- * still to run on both sides (`left`) clearly cannot fit: at the rate the
- * batch measured (`ran` files ended in `gateMs`), with `overheadMs` spent
- * before it, they need more than the cap. No file ended: nothing is known,
- * and the run goes on.
- */
-export function measuredOver(
-  overheadMs: number,
-  ran: number,
-  gateMs: number | null,
-  left: number,
-  cap = RERUN_CAP_SECONDS,
-): boolean {
-  if (ran === 0 || gateMs === null || gateMs <= 0 || left === 0) return false;
-  return overheadMs / 1000 + left / (ran / (gateMs / 1000)) > cap;
 }
 
 /** About `seconds` in words: seconds, minutes or hours. */

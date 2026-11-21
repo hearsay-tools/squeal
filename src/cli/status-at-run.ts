@@ -18,7 +18,7 @@ import {
   tellsEstimate,
 } from "./status-at-run-batches.js";
 import { type RunAnswer, runInChild } from "./status-at-run-child.js";
-import { clearlyOver, measuredOver, ranCount, type SideFit } from "./status-at-run-fit.js";
+import type { SideFit } from "./status-at-run-fit.js";
 import { runBatches } from "./status-at-run-loop.js";
 import { outcomesOf } from "./status-at-run-outcome.js";
 import { noResult, type Selection, selector } from "./status-at-run-select.js";
@@ -45,12 +45,6 @@ export interface RunArgs {
   readonly allMissing: boolean;
   /** D4.6: the one budget, the checkout and install included. */
   readonly timeoutSeconds: number;
-  /**
-   * Row 023-34 (T1, spec 023 D4.11): the call gave neither `--timeout`
-   * nor `--all-missing`, so a selection that clearly cannot fit runs
-   * nothing (`clearlyOver`); either flag runs what fits.
-   */
-  readonly fitCheck?: true;
 }
 
 /**
@@ -130,8 +124,6 @@ export interface AtRun {
   readonly timeoutSeconds: number;
   /** D1's budget use, for the report, with the working tree's side when it ran. */
   use(now?: NowPart): RunUse;
-  /** T1: the selection clearly could not fit, so neither side ran. */
-  refused(): boolean;
 }
 
 /** D4: the run, as hooks the keying calls in its checkout. */
@@ -153,13 +145,6 @@ export function atRun(input: AtRunInput): AtRun {
   let batchTimes: readonly BatchTime[] = [];
   /** The gate children started in the checkout, over every pass. */
   let children = 0;
-  /**
-   * T1: the selection clearly could not fit: from stored durations before
-   * it ran, or (review wave-20 B4) at the rate its first batch measured.
-   */
-  let refused: "estimate" | "measured" | null = null;
-  /** B4: while the first batch is measured, the working tree's file count; else `null`. */
-  let measuring: number | null = null;
 
   const whileOpen = selector(
     { root: input.root, commit, allMissing: args.allMissing, named: new Set(input.named ?? []) },
@@ -182,24 +167,12 @@ export function atRun(input: AtRunInput): AtRun {
         const call = { given: input.given, paths: input.paths, allMissing: args.allMissing };
         input.note(estimateText(estimate, commit, args.timeoutSeconds, call));
       }
-      // T1: a selection that clearly cannot fit runs on neither side, unless the call forces it.
-      if (args.fitCheck === true && clearlyOver(estimate, elapsed())) {
-        refused = "estimate";
-        for (const f of run) states.set(testFileId(f.ref), { state: "not run", reason: "budget" });
-        leftOut = run;
-        leftSeconds = estimate.seconds;
-        return;
-      }
       // R1: each side a share of what is left by its count; what one leaves unused goes on.
+      // Row 023-34 (the human, 2026-11-21, after the wave-20 re-review): no call is refused
+      // before or while it runs; it runs to its budget, gives back what did not start, and the
+      // report gives R4's estimate and how to narrow.
       const now = input.now?.files(selection) ?? 0;
-      // B4: with no stored duration, the first batch measures the rate before the rest runs.
-      if (args.fitCheck === true && estimate.seconds === null) measuring = now;
       if (run.length > 0) await runFiles(checkout, run, keyed, shareEnd(run.length, now));
-      measuring = null;
-      if (refused !== null) {
-        leftOut = budgetLeft(run);
-        return;
-      }
       if (now > 0) await input.now?.run(shareEnd(now, budgetLeft(run).length), unkeptIds());
       // The first pass had only its share when the working tree had files: its leftovers take
       // the rest, which the working tree's turn did not use.
@@ -273,28 +246,11 @@ export function atRun(input: AtRunInput): AtRun {
       readBack: (files, answer) => readBack(checkout, files, keyed, answer),
       stateOf: (file) => states.get(testFileId(file.ref)),
       setState: (file, state) => states.set(testFileId(file.ref), state),
-      goOn: (ms) => measured(run, ms),
     });
     if (end.gateMs !== null) gateMs = (gateMs ?? 0) + end.gateMs;
     // A file stopped mid-run, or one the last pass left: the budget cut the run.
     timedOut = timedOut || end.cut;
     batchTimes = [...batchTimes, ...end.batches];
-  }
-
-  /**
-   * B4: after the first batch of a selection with no stored duration,
-   * whether the run goes on: not when, at the rate it measured, the files
-   * left on both sides clearly cannot fit (`measuredOver`).
-   */
-  function measured(run: readonly KeyedFile[], ms: number): boolean {
-    if (measuring === null) return true;
-    const now = measuring;
-    measuring = null;
-    const done = run.flatMap((f) => states.get(testFileId(f.ref)) ?? []);
-    const left = run.length - done.length + now;
-    if (!measuredOver(overheadMs, ranCount(done), ms, left)) return true;
-    refused = "measured";
-    return false;
   }
 
   /** One batch's files read back (row 023-18, D1: at the key the gate kept each at). */
@@ -338,7 +294,6 @@ export function atRun(input: AtRunInput): AtRun {
         estimate,
         leftSeconds,
         batches: batchTimes,
-        ...(refused === null ? {} : { refused: { measured: refused === "measured" } }),
       },
       now,
     );
@@ -353,14 +308,5 @@ export function atRun(input: AtRunInput): AtRun {
 
   const selects = () => selection.selects ?? null;
   const { timeoutSeconds } = args;
-  return {
-    whileOpen,
-    beforeRemove,
-    state,
-    selects,
-    endMs,
-    timeoutSeconds,
-    use,
-    refused: () => refused !== null,
-  };
+  return { whileOpen, beforeRemove, state, selects, endMs, timeoutSeconds, use };
 }

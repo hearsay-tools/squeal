@@ -49,13 +49,6 @@ export interface BatchLoop<F> {
   readonly readBack: (files: readonly F[], answer: RunAnswer) => Promise<void>;
   readonly stateOf: (file: F) => SideState | undefined;
   readonly setState: (file: F, state: SideState) => void;
-  /**
-   * Row 023-34 (review wave-20 B4): after each batch's read back, whether
-   * the loop goes on, told the children's time so far in ms; `false`
-   * leaves the files not started `not run (budget)`. Absent: it goes on
-   * until the side's end.
-   */
-  readonly goOn?: (gateMs: number) => boolean;
 }
 
 /** One batch: whole paths of one lot, and the files of that lot under them. */
@@ -131,7 +124,6 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
     }
     await loop.readBack(files, answer);
     slots = afterBatch(loop, { files, answer, slots, bySlot, stops });
-    if (loop.goOn?.(gateMs) === false) break;
   }
   const unstarted = slots.flatMap((slot) => bySlot.get(slot) ?? []);
   if (unstarted.length > 0) {
