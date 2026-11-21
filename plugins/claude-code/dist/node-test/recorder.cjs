@@ -194,3 +194,47 @@ function recordDirectories(file) {
   // so `import { mkdirSync } from "node:fs"` reaches the wrappers too
   module_.syncBuiltinESMExports();
 }
+
+// A `--run` run's token (spec 023 D4 step 11, row 023-36; `RUN_GROUP_VARIABLE` in
+// `src/core/daemon/run-groups.ts`). When the run's processes carry it, every child this process
+// starts carries it too, an env the caller passed of its own (`env: {}`) included, so what a test
+// starts stays the run's wherever it is reparented: added to the pairs `ChildProcess#spawn` gets,
+// which every async form (spawn, exec, execFile, fork) reaches, and to the own `env` of the sync
+// forms' options. Vitest's processes get the same from their recorder (`observe/spawn.cjs`).
+const RUN_GROUP = "SQUEAL_RUN_GROUP";
+const runGroup = process.env[RUN_GROUP];
+if (runGroup && !isInternalThread) {
+  const childProcess = require("node:child_process");
+  const pair = `${RUN_GROUP}=${runGroup}`;
+  const own = childProcess.ChildProcess.prototype.spawn;
+  childProcess.ChildProcess.prototype.spawn = function (options) {
+    const pairs = options?.envPairs;
+    if (
+      Array.isArray(pairs) &&
+      !pairs.some((p) => typeof p === "string" && p.startsWith(`${RUN_GROUP}=`))
+    )
+      options.envPairs = [...pairs, pair];
+    return own.call(this, options);
+  };
+  for (const name of ["spawnSync", "execFileSync", "execSync"]) {
+    const original = childProcess[name];
+    childProcess[name] = function (...args) {
+      for (let at = 1; at < Math.min(args.length, 3); at++) {
+        const options = args[at];
+        if (options === null || typeof options !== "object" || Array.isArray(options)) continue;
+        const env = Object.prototype.propertyIsEnumerable.call(options, "env") ? options.env : null;
+        if (env !== null && typeof env === "object" && !(RUN_GROUP in env)) {
+          const next = Object.create(
+            Object.getPrototypeOf(options),
+            Object.getOwnPropertyDescriptors(options),
+          );
+          next.env = { ...env, [RUN_GROUP]: runGroup };
+          args[at] = next;
+        }
+        break;
+      }
+      return original.apply(this, args);
+    };
+  }
+  module_.syncBuiltinESMExports();
+}
