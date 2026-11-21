@@ -28,3 +28,17 @@ Approved by the human, 2026-11-21: "Lists: Stop storing, keep keys". Evidence: `
 - Lint, typecheck, and `squeal status --wait 60000 <changed paths>` clean. A short `tasks/022-05/notes.md` lists what was removed and anything left.
 
 Use /worker.
+
+## 022-06 review of `cand/0.1.589` (row 022-05)
+
+Pinned to `cand/0.1.589` at `ef13b02823bd906a8c58f59a92f97d9660d92032`; base main `9cc0d1c9d` (0.1.587). Commits: the row's change (cherry-picked from worker 2ece4b73's `d5e2a9e0b`) and the bundles with the version. Read `../spec.md` D2 and D3 (amended 2026-11-21), the brief above, and `tasks/022-05/notes.md`.
+
+Check:
+1. No path still writes or reads `loaded_modules` apart from the prune that empties it; `squeal reach` text and JSON have no narrowing section and no dangling type or field.
+2. Keys do not move: a run's loaded list still joins its key and its CI part (`#withLoaded`, `ci/loaded-inputs.ts`, `PartFile.loaded`); `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts` pass with no raise.
+3. The prune: slices stay bounded under the write lock on a large table (about 160k rows of 46 KB); a store without the table is untouched; an older daemon recreating the table is handled.
+4. Removed tests left no rule untested that still ships.
+
+Write `reviews/0.1.589.md` with PASS or FAIL; a FAIL names a proven break. Run tests through `squeal status --wait` or explicit vitest paths; no full suite.
+
+Use /reviewer.

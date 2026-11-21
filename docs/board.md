@@ -2676,7 +2676,8 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 022-05 stop storing loaded lists; remove the reach estimate (D3, D4 amended) | running (coordinator da243dbd, 2026-11-21) | No `loaded_modules` writes; prune empties the table in slices; `squeal reach` loses its narrowing section; a run's list still joins its key and CI part (D2). Evidence: reach 1.9% (squeal, upper bound) and 0.12% (cezar); lists 82% of the store; bench `@lists` lock holds 13 s vs 2.5 s with 3 worktrees. | Brief's done-when; no key format raise |
+| 022-05 stop storing loaded lists; remove the reach estimate (D3, D4 amended) | in review (`cand/0.1.589` at `ef13b0282`, CI 44925909051; worker 2ece4b73 `d5e2a9e0b`; coordinator da243dbd, 2026-11-21) | No `loaded_modules` writes; prune empties the table in slices; `squeal reach` loses its narrowing section; a run's list still joins its key and CI part (D2). Evidence: reach 1.9% (squeal, upper bound) and 0.12% (cezar); lists 82% of the store; bench `@lists` lock holds 13 s vs 2.5 s with 3 worktrees. | Brief's done-when; no key format raise |
+| 022-06 review of candidate 0.1.589 (row 022-05) | running (codex gpt-6.1-sol high; brief `tasks/wave-2.md`) | The brief's four checks on `cand/0.1.589`. | `reviews/0.1.589.md` committed with PASS or FAIL |
 
 ## Feature 023: results at a commit
 
