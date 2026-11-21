@@ -24,7 +24,7 @@ import type {
   WriteStatusRequest,
 } from "./daemon-writes.js";
 import type { TestFileRef } from "./keys.js";
-import type { NarrowRun } from "./scheduler.js";
+import type { NarrowRun, TakeBackResult } from "./scheduler.js";
 import type { CheckpointLane, CheckpointRecord, DaemonRecord } from "./store-records.js";
 
 /*
@@ -127,6 +127,26 @@ export interface RunGroupPathsRequest {
   readonly type: "run-group-paths";
   readonly group: string;
   readonly paths: readonly RelativePath[];
+}
+
+/**
+ * Spec 023 D4.11 (row 023-34, T1): `status --at --run` gives back what it
+ * queued. Of the narrow runs whose covered-files ids
+ * (`RunGroupResponse.requested.coveredId`) are `coveredIds`, the files
+ * each queued itself that have not started leave the queue. Answered at
+ * once with a request id, like `sync`; ask what it did with
+ * `TakeBackStatusRequest`. A daemon from before it answers "unknown
+ * request type", and nothing is taken back.
+ */
+export interface TakeBackRequest {
+  readonly type: "take-back";
+  readonly coveredIds: readonly string[];
+}
+
+/** What a `take-back` request did, once the scheduler took it. */
+export interface TakeBackStatusRequest {
+  readonly type: "take-back-status";
+  readonly requestId: string;
 }
 
 /** What a `run-group` request queued, once the scheduler took it. */
@@ -262,7 +282,9 @@ export type DaemonRequest =
   | ImportRequest
   | ImportStatusRequest
   | KeepRequest
-  | KeepStatusRequest;
+  | KeepStatusRequest
+  | TakeBackRequest
+  | TakeBackStatusRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -408,6 +430,16 @@ export type GroupHolder = (
  * is ignored: with no `rekeyed` in the answer it takes its path for a
  * daemon before task 001-186 (task 001-258).
  */
+/** Row 023-34 (T1): a `take-back`'s answer; `result` `null` until the scheduler took it. */
+export interface TakeBackResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "take-back";
+  readonly requestId: string;
+  readonly result: TakeBackResult | null;
+  readonly error: string | null;
+}
+
 export interface SyncResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
@@ -564,6 +596,7 @@ export type DaemonResponse =
   | WriteCancelResponse
   | ImportResponse
   | KeepResponse
+  | TakeBackResponse
   | DaemonErrorResponse;
 
 /**

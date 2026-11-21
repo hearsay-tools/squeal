@@ -27,12 +27,13 @@ import type {
   SentBatch,
 } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
+import type { FullSuiteCheckpoint, FullSuiteRequest, TakeBackResult } from "../types/scheduler.js";
 import { errorResponse } from "./protocol.js";
 import { RequestDesk } from "./request-desk.js";
 import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
+import { takeBackRequests } from "./take-back-requests.js";
 import { isNewerVersion } from "./version.js";
 import { WriteDesk } from "./write-desk.js";
 import {
@@ -159,6 +160,12 @@ export interface HandlerContext {
    * this daemon answers that it takes no kept files.
    */
   readonly requestKeep?: (request: KeepRequest) => Promise<KeepOutcome>;
+  /**
+   * Row 023-34 (T1): `status --at --run` gives back what its narrow runs
+   * queued (`Scheduler.takeBack`), never awaited. Absent: this daemon
+   * answers that it cannot take back.
+   */
+  readonly requestTakeBack?: (coveredIds: readonly string[]) => Promise<TakeBackResult>;
 }
 
 interface RunAllState {
@@ -191,6 +198,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
   const slowRequests = new Map<string, RunSlowState>();
   const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
+  const takeBacks = takeBackRequests(context.requestTakeBack, MAX_REQUESTS);
   const syncRequests = new Map<string, SyncState>();
   const holdRequests = new Map<string, HoldState>();
   const { requestWrite, storeSchema } = context;
@@ -346,6 +354,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
           groups.status(request.requestId) ??
           errorResponse(`unknown request id ${request.requestId}`)
         );
+      // Row 023-34 (T1): it only takes queued files out, so a stopping daemon takes it too.
+      case "take-back":
+        return takeBacks.take(request.coveredIds);
+      case "take-back-status":
+        return takeBacks.status(request.requestId);
       case "sync": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === undefined) return errorResponse("this daemon cannot sync");
