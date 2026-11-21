@@ -137,10 +137,11 @@ describe("removal deletes only what Squeal made (review wave-22 B1)", () => {
     await removeCommitWorktree(made.tree, { note: (text) => notes.push(text) });
 
     expect(existsSync(made.tree)).toBe(false);
-    expect(readdirSync(made.folder)).toEqual(["user-file.txt"]);
+    // Review wave-22 N2: the marker stays beside the kept file (commit-kept.test.ts).
+    expect(readdirSync(made.folder)).toEqual(["marker.json", "user-file.txt"]);
     expect(notes).toEqual([
       `squeal: kept ${made.folder}: it holds files Squeal did not make: user-file.txt`,
     ]);
-    expect(readMarker(made.folder)).toBeNull();
+    expect(readMarker(made.folder)?.installed).toBeUndefined();
   });
 });
