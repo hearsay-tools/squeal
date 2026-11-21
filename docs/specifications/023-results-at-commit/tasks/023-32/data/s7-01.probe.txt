@@ -1,0 +1,10 @@
+key 26984580200091d3418cf2f3ca6b29c151450ab09ad13fe6de08362edfe950aa 2afef86eb4ec972d426742c0ead03b0c12b5ec908a2ae117d0e60c7dfce4bd14
+environment same
+dependencies same
+runtime same
+hash differs .git 695e580ff2a64008c6300d67c9942c469259f886 c268b68c8004e5e15c47c1b450ece732d462ff5f
+paths 639 639 observed 9 9
+daemon keys [
+(keys.mjs and meta.mjs output follow in the full file; the observed entry of the file:)
+observed.server 1585221 entry: [".ai/cezar",".ai/squawk",".ai/squawk-migration.json",".ai/squawk-migration.lock",".git","package.json","packages/api-client/package.json","packages/cezar/package.json","packages/web/package.json"]
+runtime-cli.test.ts observed (both sides): [".ai/cezar",".ai/squawk",".ai/squawk-migration.json",".ai/squawk-migration.lock",".git","package.json","packages/api-client/package.json","packages/cezar/package.json","packages/web/package.json"] [".ai/cezar",".ai/squawk",".ai/squawk-migration.json",".ai/squawk-migration.lock",".git","package.json","packages/api-client/package.json","packages/cezar/package.json","packages/web/package.json"]

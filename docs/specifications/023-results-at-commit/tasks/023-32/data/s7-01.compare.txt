@@ -1,0 +1,18 @@
+squeal: keying test files at 8be977ad6 in a temporary checkout
+squeal status --at 8be977ad6: 1920 test files at 8be977ad6 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+No daemon runs in this worktree: now is the stored results at the working tree's keys.
+Keys at 8be977ad6 from a temporary checkout, 26.2 s (checked against the commit in 442 ms).
+5 test files: no result -> pass (now: run in this worktree): packages/cezar/src/home/runtime-cli.test.ts, packages/web/e2e/settings-agents.e2e.ts, packages/web/e2e/settings-appearance.e2e.ts and 2 more
+packages/web/e2e/completion-controls.e2e.ts: no result -> fail (now: (file-level error); run in this worktree)
+packages/web/e2e/run-header-ci-wait.e2e.ts: no result -> no result
+packages/web/e2e/settings-skills.e2e.ts: no result -> fail (now: settings → skills against the live dry-run server > keeps selected and hovered skill descriptions AA-readable with visible keyboard focus; run in this worktree)
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 1912 unchanged, 8 unknown
+--run: no file with no result at 8be977ad6 to run (26.4 s of the 300 s budget)
+exit 3
+----
+squeal status --at: 8be977ad6 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 packages/cezar/src/home/runtime-cli.test.ts`
+exit 2
+----
+squeal status --at: 8be977ad6 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 packages/cezar/src/home/runtime-cli.test.ts`
+exit 2

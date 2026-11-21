@@ -1,0 +1,51 @@
+0.1.577
+warm-up exit 128
+Revision: 0
+Known failures: 74 (66 tests, 8 test files that did not load); not current: 1 of 1920 test files (1 queued), 13 tests (13 queued)
+Earlier failures: 1 pending rerun, 0 stale (not counted until a rerun fails)
+  FAIL  [e2e] packages/web/e2e/assistant-line-breaks.e2e.ts (file-level)
+        error after its tests ran: cezar e2e: agent-browser set viewport 1440 900 failed; cause: Command failed: ~squeal-w18/runs/w18/home/.cache/agent-tools/agent-browser/0.39.4/agent-browser-linux-x64 --namespace cez-e2e --session e2e-assistant-line-breaks-140188 set viewport 1440 900 -...
+Squeal daemon stopped for ~squeal-w18/runs/w18/s7-01; `squeal stop --until-start` keeps it stopped through edits and Git operations
+8be977ad perf(lint): share active-run owner syntax indexes (#3785)
+d8abcfe4 refactor(lint): port owner and reader rules from ast-grep to oxlint (#3778)
+-- git status (untracked and ignored, outside node_modules)
+!! .ai/qa/.build-cache
+!! .ai/qa/artifacts/
+!! .ai/qa/artifacts_e2e/
+!! .ai/qa/artifacts_issue-2400/
+!! .ai/qa/artifacts_issue-2401/
+!! .ai/qa/artifacts_issue-522/
+!! .ai/qa/artifacts_issue-776/
+!! .ai/qa/browser-doctor.json
+!! .ai/qa/browser-launch.json
+!! .ai/qa/build/
+!! .ai/qa/cez-home/
+!! .ai/qa/failures/
+!! .ai/qa/gitconfig
+!! .ai/qa/issue-735/
+!! .ai/qa/issue-922/
+!! .ai/qa/served/
+!! .ai/qa/server-home/
+!! .ai/qa/test-env-app.log
+!! .ai/qa/test-env-build.log
+!! .ai/qa/test-env-lease.sqlite
+!! .ai/qa/test-env-watch.log
+!! .ai/qa/test-env.json
+-- store keys of packages/cezar/src/home/runtime-cli.test.ts
+daemon keys [
+  [Object: null prototype] {
+    worktree_id: '9074d22379c73d64',
+    project: 'server',
+    key: '7c1dfd3434d2518c9a15568d8e1178bdb1aeed163e711f088270a180c08316ad',
+    revision: 0
+  }
+]
+result keys [
+  [Object: null prototype] {
+    key: '7c1dfd3434d2518c9a15568d8e1178bdb1aeed163e711f088270a180c08316ad',
+    outcome: 'pass',
+    revision: 0,
+    worktree_id: '9074d22379c73d64',
+    n: 4
+  }
+]
