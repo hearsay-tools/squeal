@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { isMissing } from "../fs/errors.js";
 import type { AbsolutePath } from "../types/common.js";
 import { removeTree, withCheckoutLock } from "./checkout.js";
-import { commitIdentity, removeCommitFolder, treelessCommitFolder } from "./commit-identity.js";
+import {
+  commitIdentity,
+  identityFailedNote,
+  removeCommitFolder,
+  treelessCommitFolder,
+} from "./commit-identity.js";
 import {
   type CheckoutMarker,
   type OwnerState,
@@ -65,7 +70,13 @@ export interface SweepOptions {
   readonly note?: ((text: string) => void) | undefined;
 }
 
-/** D6: removes the checkouts of `dirs` whose owner is dead, and folders with no marker. */
+/**
+ * D6: removes the checkouts of `dirs` whose owner is dead, and folders with
+ * no marker. Review wave-23 N1: a folder with a commit worktree's marker
+ * whose tree is there but is not one Squeal made (git no longer holds it
+ * locked, or a removal left part of it) is kept whole, and `note` names it
+ * on every sweep; it is not in the result.
+ */
 export async function sweepCheckouts(options: SweepOptions): Promise<ListedCheckout[]> {
   return withCheckoutLock(
     options.commonDir,
@@ -76,14 +87,20 @@ export async function sweepCheckouts(options: SweepOptions): Promise<ListedCheck
         if (marker !== null && owner !== "dead") continue;
         // A marker of another repository's checkout is left to that repository's sweep.
         if (marker !== null && marker.commonDir !== options.commonDir) continue;
+        if (marker?.fingerprint === undefined) {
+          await removeTree({ ...listed, commonDir: options.commonDir }, options.note);
+          swept.push(listed);
+          continue;
+        }
         // Review wave-22 B1: a commit worktree loses only what Squeal made in its folder.
         // Review wave-22 N2: so does one whose tree a removal took, keeping what Squeal did not make.
-        const commit =
-          marker?.fingerprint === undefined
-            ? null
-            : (commitIdentity(listed.tree) ?? treelessCommitFolder(listed.folder, marker));
-        if (commit !== null) await removeCommitFolder(commit, options.note);
-        else await removeTree({ ...listed, commonDir: options.commonDir }, options.note);
+        const commit = commitIdentity(listed.tree) ?? treelessCommitFolder(listed.folder, marker);
+        // Review wave-23 N1: a tree that fails the identity check is never removed: it stays whole.
+        if (commit === null) {
+          options.note?.(identityFailedNote(listed.folder));
+          continue;
+        }
+        await removeCommitFolder(commit, options.note);
         swept.push(listed);
       }
       return swept;
