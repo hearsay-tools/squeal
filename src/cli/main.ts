@@ -30,7 +30,7 @@ import { runCommand } from "./run.js";
 import { runnerHostCommand } from "./runner-host.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
-import { AT_NO_WAIT, asksAt, parseAt, statusAtCommand } from "./status-at.js";
+import { AT_NO_TIMEOUT, asksAt, parseAt, statusAtCommand } from "./status-at.js";
 import { statusCommand } from "./status-command.js";
 import { namedSnapshotCommand } from "./status-paths.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
@@ -78,7 +78,7 @@ Usage:
                                 path whose name holds the text, and returns with their
                                 outcome, not the file's verdict: exit 1 when one
                                 failed, else 3 (--json: selection.focused)
-  squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--full] [--json]
+  squeal status --at <commit> [<path>...] [--run [--all-missing]] [--wait [<ms>]] [--full] [--json]
                                 Each test file's stored result at the commit's key
                                 (keyed in a temporary checkout there; nothing runs)
                                 beside its state in the working tree: one call is
@@ -88,18 +88,25 @@ Usage:
                                 holds it, as status <path> does; lists the files that
                                 changed, the unknown ones by group (--full: each),
                                 then counts; exit 0 when every file is known on both
-                                sides, 3 when one is not, 2 on a usage or setup error.
-                                --run fills both sides: in that checkout, the files
-                                with no result that the diff <commit>..HEAD selects
-                                (--all-missing: every one), stored at the commit's
-                                keys; then, in the working tree, the selected files
-                                with no result there, through its daemon or the gate;
-                                in batches, within one --timeout (300 s, the checkout
-                                and install included); a large selection tells its
-                                estimate first; a batch whose setup failed says so;
-                                without --run, the report ends with the --run command
-                                for files with no result at the commit. A clean tree
-                                at HEAD exits 2 and names HEAD~1, with or without
+                                sides, 3 when one is not or still runs, 2 on a usage
+                                or setup error.
+                                --run fills both sides: it queues the files with no
+                                result that the diff <commit>..HEAD selects
+                                (--all-missing: every one) in the commit's own
+                                daemon (a worktree at the commit, shared by every
+                                call; daemon.maxCommitDaemons of them at once), and
+                                the selected files with no result in the working
+                                tree in this worktree's daemon, started if none
+                                runs; the named files first. It waits up to --wait
+                                <ms> (100000 by default; a bare --wait waits until
+                                done), then reports; what still runs goes on in the
+                                daemons, and the last line names the call that waits
+                                for it. --wait without --run joins what is queued
+                                and starts nothing. A large selection tells its
+                                estimate first; a failed setup says so; without
+                                --run, the report ends with the --run command for
+                                files with no result at the commit. A clean tree at
+                                HEAD exits 2 and names HEAD~1, with or without
                                 --run: there is nothing to compare
   squeal proof <test file>... --base <commit> [--case source|test|dependency]
                [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
@@ -527,8 +534,8 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
 /** Spec 023 D1 (row 023-06): `status --at <commit>`, which takes no other status option. */
 function statusAt(args: readonly string[], io: CliIo): number | Promise<number> {
   const at = parseAt(args);
-  // Row 023-34 (T5): one line, exit 2; the help hid that `--run` is the wait.
-  if (at === AT_NO_WAIT) {
+  // Row 023-40 (D7.3): one line, exit 2, naming `--wait`; the help hid it (T5).
+  if (at === AT_NO_TIMEOUT) {
     io.stderr(`squeal status: ${at}\n`);
     return 2;
   }

@@ -8,13 +8,14 @@ import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { assembleReport } from "./status-at-assemble.js";
-import { workingTree } from "./status-at-both.js";
+import { daemonCall } from "./status-at-call.js";
 import { commitRun } from "./status-at-commit-run.js";
+import type { AtDaemons } from "./status-at-daemons.js";
 import { headRefusal } from "./status-at-next.js";
 import { listLate, nowSide } from "./status-at-now.js";
 import { unionRefs } from "./status-at-refs.js";
 import { exitCode, formatAt, jsonAt } from "./status-at-report.js";
-import { RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
+import { RUN_WAIT_MS } from "./status-at-report-queued.js";
 import { runChild, takeRunRequest } from "./status-at-run-child.js";
 
 /*
@@ -22,18 +23,27 @@ import { runChild, takeRunRequest } from "./status-at-run-child.js";
  * [--json]`. Each test file's result at the commit's key, the keys from the
  * gate's keyer in a temporary checkout there (`keysAtCommit`, D2 as
  * amended), beside its current state, and the comparison. It runs no test
- * and writes nothing shared. Row 023-07 (D4): with `--run`, the files with
- * no result run in that same checkout before it is removed
- * (`status-at-run.ts`), and are stored at the commit's keys.
+ * and writes nothing shared. Row 023-40 (D7.3): with `--run`, the files
+ * the change selects run in the commit daemon and in this worktree's
+ * daemon, and the call waits for them up to `--wait` (`status-at-call.ts`).
  */
 
 /**
  * What tests set beside the CLI's own: the checkout's place and install;
  * row 023-19, `--run`'s paths per batch (else sized from this machine).
+ * Row 023-40: the daemons the call talks to, and how long a new commit
+ * waits for a place under the ceiling.
  */
 export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install"> & {
   readonly batchFiles?: number;
+  readonly daemons?: AtDaemons;
+  readonly placeWaitMs?: number;
 };
+
+/** Row 023-40 (D7.3): `--run [--all-missing]`. */
+export interface AtRunArgs {
+  readonly allMissing: boolean;
+}
 
 export interface AtArgs {
   readonly commit: string;
@@ -41,31 +51,39 @@ export interface AtArgs {
   readonly json: boolean;
   /** Row 023-19 (P6): list every unknown file in the text, not by group; absent when not given. */
   readonly full?: boolean;
-  /** Row 023-07: `--run [--all-missing] [--timeout <seconds>]`; absent or `null` without `--run`. */
-  readonly run?: RunArgs | null;
+  /** Row 023-40: `--run [--all-missing]`; absent or `null` without `--run`. */
+  readonly run?: AtRunArgs | null;
+  /**
+   * Row 023-40 (D7.3): `--wait <ms>`; `Infinity` for a bare `--wait`;
+   * absent or `null` without it (`--run` then waits `RUN_WAIT_MS`).
+   */
+  readonly waitMs?: number | null;
 }
 
 /** The options that take a value, and what their value is. */
-const VALUED = { "--at": "a commit", "--timeout": "whole seconds" } as const;
+const VALUED = { "--at": "a commit" } as const;
 type Valued = keyof typeof VALUED;
 const FLAGS = new Set(["--json", "--full", "--run", "--all-missing"]);
 
 /**
- * Row 023-34 (T5, lessons round 5): `--wait` with `--at`, a problem `main`
- * prints as this one line, not with the whole help. Three round-5 sessions
- * read the help to find that `--run` is the wait.
+ * Row 023-40 (D7.3, replacing row 023-34's T5 line): `--timeout` with
+ * `--at`, a problem `main` prints as this one line: the call waits, and
+ * the work goes on in the daemons after it.
  */
-export const AT_NO_WAIT = `--at takes no --wait; --run waits up to --timeout (${RUN_TIMEOUT_SECONDS} s)`;
+export const AT_NO_TIMEOUT = `--at takes no --timeout; --run waits up to --wait <ms> (${RUN_WAIT_MS} by default) and its runs go on in the daemons after it`;
 
 /** `--at <commit>` and what may follow it; a usage problem as a string. */
 export function parseAt(args: readonly string[]): AtArgs | string {
-  if (args.some((arg) => arg === "--wait" || arg.startsWith("--wait="))) return AT_NO_WAIT;
+  if (args.some((arg) => arg === "--timeout" || arg.startsWith("--timeout="))) return AT_NO_TIMEOUT;
+  const wait = takeAtWait(args);
+  if (typeof wait === "string") return wait;
   const values = new Map<Valued, string>();
   const flags = new Set<string>();
   const paths: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i] ?? "";
-    const option = valuedOption(args, i);
+  const rest = wait.rest;
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i] ?? "";
+    const option = valuedOption(rest, i);
     if (typeof option === "string") return option;
     if (option !== null) {
       if (values.has(option.name)) return `${option.name} is given twice`;
@@ -77,24 +95,43 @@ export function parseAt(args: readonly string[]): AtArgs | string {
   }
   const commit = values.get("--at");
   if (commit === undefined || commit === "") return "--at needs a commit";
-  const run = runOf(flags, values.get("--timeout"));
+  const run = runOf(flags);
   if (typeof run === "string") return run;
   const json = flags.has("--json");
   const full = flags.has("--full") ? { full: true } : {};
-  return { commit, paths, json, ...full, run };
+  const waitMs = wait.waitMs === null ? {} : { waitMs: wait.waitMs };
+  return { commit, paths, json, ...full, run, ...waitMs };
+}
+
+/**
+ * `--wait <ms>`, `--wait=<ms>`, or a bare `--wait` (`Infinity`), as `run
+ * <group> --wait` takes it: a word after it that is not a whole number is a path.
+ */
+function takeAtWait(
+  args: readonly string[],
+): { readonly waitMs: number | null; readonly rest: readonly string[] } | string {
+  const at = args.findIndex((a) => a === "--wait" || a.startsWith("--wait="));
+  if (at === -1) return { waitMs: null, rest: args };
+  if (args.slice(at + 1).some((a) => a === "--wait" || a.startsWith("--wait=")))
+    return "--wait is given twice";
+  const arg = args[at] as string;
+  if (arg.startsWith("--wait=")) {
+    const value = arg.slice("--wait=".length);
+    if (!/^\d+$/.test(value)) return "--wait takes a whole number of milliseconds";
+    return { waitMs: Number(value), rest: args.filter((_, i) => i !== at) };
+  }
+  const next = args[at + 1] ?? "";
+  if (/^\d+$/.test(next))
+    return { waitMs: Number(next), rest: args.filter((_, i) => i !== at && i !== at + 1) };
+  return { waitMs: Number.POSITIVE_INFINITY, rest: args.filter((_, i) => i !== at) };
 }
 
 /** `--run` and its flags, `null` without it; a usage problem as a string. */
-function runOf(flags: ReadonlySet<string>, timeout: string | undefined): RunArgs | null | string {
+function runOf(flags: ReadonlySet<string>): AtRunArgs | null | string {
   const run = flags.has("--run");
   const allMissing = flags.has("--all-missing");
   if (!run && allMissing) return "--all-missing needs --run";
-  if (!run && timeout !== undefined) return "--timeout needs --run";
-  if (timeout !== undefined && !/^[1-9][0-9]*$/.test(timeout))
-    return "--timeout takes whole seconds above 0";
-  if (!run) return null;
-  const timeoutSeconds = timeout === undefined ? RUN_TIMEOUT_SECONDS : Number(timeout);
-  return { allMissing, timeoutSeconds };
+  return run ? { allMissing } : null;
 }
 
 /** The valued option at `args[i]`, with how many more words it took; `null` when it is none. */
@@ -168,18 +205,18 @@ export function worktreeOf(
 /**
  * D1: exit 0 when every file is known on both sides, 3 when one is not, 2
  * on a usage or setup error. The order: HEAD's refusal before any keying
- * (`locate`), the current side, the commit side with `--run`'s run and the
- * working tree's turn inside it (`commitRun`, whose run owns the one
- * deadline), the working tree's last pass and its read again, the report.
+ * (`locate`), the current side, the commit side's keys, then, with `--run`
+ * or `--wait`, the daemons' part (`daemonCall`, row 023-40), else the report.
  */
 export async function statusAtCommand(
   args: AtArgs,
   io: CliIo,
   options: AtOptions = {},
 ): Promise<number> {
-  // Row 023-07 (B3): this process is `--run`'s child, which runs the gate and nothing else.
+  // Row 023-07 (B3): `proof`'s gate child runs through this command (`status-at-run-child.ts`).
   const request = takeRunRequest(io.env ?? process.env);
   if (request !== undefined) return runChild(request);
+  const startedMs = Date.now();
   const located = await locate(args, io);
   if (typeof located === "string") {
     io.stderr(`squeal status --at: ${located}\n`);
@@ -194,15 +231,11 @@ export async function statusAtCommand(
   const now = await withStores(commonDir, (main) => nowSide({ ...read, main }));
   if (!args.json)
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
-  const run = args.run ?? null;
-  // The estimate goes to stderr in both modes (D4.5); the run's own notes in text mode.
+  if ((args.run ?? null) !== null || (args.waitMs ?? null) !== null) {
+    const place = { root, commonDir, worktreeId, commit, paths };
+    return daemonCall({ args, place, read, now, env, startedMs, io, options });
+  }
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
-  const forward = (text: string) => (args.json ? undefined : io.stderr(text));
-  const batch = options.batchFiles === undefined ? {} : { batchFiles: options.batchFiles };
-  const relaunch = io.relaunch;
-  // Row 023-29 (R1): the working tree's side, which takes its turn inside the commit side's run.
-  const timeoutSeconds = run?.timeoutSeconds ?? 0;
-  const tree = workingTree({ now, read, timeoutSeconds, relaunch, forward, ...batch });
   const side = await commitRun({
     root,
     commonDir,
@@ -211,23 +244,18 @@ export async function statusAtCommand(
     given: args.commit,
     givenPaths: args.paths,
     paths,
-    run,
+    run: null,
     env,
-    relaunch,
+    relaunch: io.relaunch,
     note,
-    forward,
+    forward: () => undefined,
     options,
-    now: tree,
   });
   const sides = { now: now.sources, at: side.at.sources, failed: side.at.failure !== null };
   const { refs, unmatched } = unionRefs(now.refs, side.at.refs, paths, sides, root, commit);
   // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
-  const listed = await listLate(read, now, refs);
-  // R1: the working tree's last pass, to the run's deadline, then its read again.
-  const both = side.ran === null ? null : await tree.finish(side.ran, refs, listed);
-  const current = both?.current ?? listed;
-  const part = both?.part ?? null;
-  const report = await assembleReport({ root, commit, refs, unmatched, current, side, part });
+  const current = await listLate(read, now, refs);
+  const report = await assembleReport({ root, commit, refs, unmatched, current, side, part: null });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
   return side.at.failure === null && unmatched.length === 0 ? exitCode(report.files) : 3;

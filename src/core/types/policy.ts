@@ -153,6 +153,15 @@ export interface Policy {
      * next hook starts it again. Default `30`.
      */
     readonly unusedExitMinutes: number;
+    /**
+     * Spec 023 D7.4 (row 023-40): the most commit worktrees, each with its
+     * commit daemon, that live at once on this machine before a new
+     * commit's `status --at --run` waits for a place. A whole number of at
+     * least 1. Absent (the default) or `null` derives it from free memory,
+     * one per GB (`commitWorktreeCeiling`). Optional, so `DEFAULT_POLICY`
+     * and every policy written before it stay as they were.
+     */
+    readonly maxCommitDaemons?: number | null;
   };
   readonly store: {
     /** Spec 001 D8: "drop other keys after 7 days". Default `7`. */
