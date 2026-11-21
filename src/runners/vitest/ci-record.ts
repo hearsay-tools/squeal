@@ -44,6 +44,29 @@ export const NO_VITEST_RUN = "no Vitest run in this command: nothing recorded";
 /** The env variable carrying the hook's settings (`vitest-ci.cjs`). */
 export const CI_RECORD_VARIABLE = "SQUEAL_CI_RECORD";
 
+/**
+ * Row 018-60 (review of 0.1.580 S1): the markers node:test's CI hook
+ * (`node-test-ci.cjs`) sets in a node:test test's process, which make every
+ * process below it that test's own. The same names as that hook's, in its
+ * folder (`src/runners/node-test/`), which this one cannot import
+ * (`test/runners/boundaries.test.ts`).
+ */
+const NESTED_FILE = "SQUEAL_CI_NODE_TEST_FILE";
+const NESTED_PROCESS = "SQUEAL_CI_NODE_TEST_PROCESS";
+
+/**
+ * `env` with neither marker: the command starts with none. Only a process
+ * inside a node:test test carries them, so one inherited from the CI job's
+ * own environment would read every process of this command as nested, and
+ * no part would be written.
+ */
+const withoutNestedRun = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
+  const next = { ...env };
+  delete next[NESTED_FILE];
+  delete next[NESTED_PROCESS];
+  return next;
+};
+
 /** One Vitest process's run, as a part holds it below its header. */
 export interface RecordedRun {
   readonly end: PartEnd;
@@ -93,7 +116,10 @@ export interface RecordingOptions {
 }
 
 export interface VitestRecording {
-  /** The env the command runs with: the recorder and the hook in `NODE_OPTIONS`. */
+  /**
+   * The env the command runs with: the recorder and the hook in
+   * `NODE_OPTIONS`, and no node:test nested-run marker (row 018-60).
+   */
   readonly env: NodeJS.ProcessEnv;
   /**
    * After the command exited: each Vitest process's run, a note for each
@@ -156,7 +182,11 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
     evidence: { out: evidence, root, skip, format: options.objectFormat },
     coverage: coverageSettings(options, join(temp, "coverage")),
   });
-  const env = { ...options.env, ...commandVariables, [CI_RECORD_VARIABLE]: settings };
+  const env = withoutNestedRun({
+    ...options.env,
+    ...commandVariables,
+    [CI_RECORD_VARIABLE]: settings,
+  });
   return {
     env,
     finish: () => {

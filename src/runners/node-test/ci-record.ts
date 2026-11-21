@@ -27,6 +27,24 @@ import { nodeTestRuntime } from "./runtime.js";
 /** The variable holding the reporter's absolute path (D23.1). */
 export const NODE_TEST_REPORTER_VARIABLE = "SQUEAL_NODE_TEST_REPORTER";
 
+/**
+ * Row 018-60 (review of 0.1.580 S1): the markers the CI hook
+ * (`node-test-ci.cjs`) sets in a node:test test's process, which make every
+ * process below it that test's own. Neither survives a recording's boundary:
+ * one in the CI job's own environment would read every process of the
+ * recorded command as nested, and no part would be written.
+ */
+export const NODE_TEST_FILE_VARIABLE = "SQUEAL_CI_NODE_TEST_FILE";
+export const NODE_TEST_PROCESS_VARIABLE = "SQUEAL_CI_NODE_TEST_PROCESS";
+
+/** `env` with neither marker in it. */
+const withoutNestedRun = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
+  const next = { ...env };
+  delete next[NODE_TEST_FILE_VARIABLE];
+  delete next[NODE_TEST_PROCESS_VARIABLE];
+  return next;
+};
+
 /** The CI hook and the reporter `ci record` gives a node:test command. */
 export interface NodeTestCiRuntime {
   readonly hook: AbsolutePath;
@@ -92,7 +110,8 @@ export interface NodeTestRecording {
   readonly addition: NodeTestAddition;
   /**
    * The env of a command no other recording wraps: the hooks first in
-   * `NODE_OPTIONS`, the settings with the evidence's own directory.
+   * `NODE_OPTIONS`, the settings with the evidence's own directory, and no
+   * node:test nested-run marker (row 018-60).
    */
   alone(): NodeJS.ProcessEnv;
   /**
@@ -164,10 +183,10 @@ function aloneEnv(
     evidence: { out: evidence, root, skip, format: options.objectFormat },
     ...addition.settings,
   };
-  return {
+  return withoutNestedRun({
     ...options.env,
     ...addition.env,
     NODE_OPTIONS: own === "" ? hooks : `${hooks} ${own}`,
     SQUEAL_CI_RECORD: JSON.stringify(settings),
-  };
+  });
 }
