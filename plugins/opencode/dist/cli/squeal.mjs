@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.583";
+  if (true) return "0.1.584";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -11666,6 +11666,9 @@ function isBackgroundShare(value) {
 function backgroundCeiling(share2, cpus3) {
   return Math.round(share2 * cpus3 * 100) / 100;
 }
+function backlogShareSlots(ceiling, hostSlots, least = 1) {
+  return Math.max(1, Math.min(hostSlots, Math.max(Math.ceil(ceiling), least)));
+}
 function backgroundOf(mark) {
   return mark.background ?? mark.grant;
 }
@@ -13670,6 +13673,43 @@ var init_marks = __esm({
   }
 });
 
+// src/core/capacity/quiet-demand.ts
+var QUIET_DEMAND_WRITE_MS, QuietDemand;
+var init_quiet_demand = __esm({
+  "src/core/capacity/quiet-demand.ts"() {
+    "use strict";
+    QUIET_DEMAND_WRITE_MS = 5e3;
+    QuietDemand = class {
+      #want = 0;
+      #writtenAt = null;
+      /** The workers the wait states now; 0 states none. */
+      get want() {
+        return this.#want;
+      }
+      /**
+       * The wait states `want` at `now`: true when the mark must be written for
+       * it, because it changed or `QUIET_DEMAND_WRITE_MS` passed since the
+       * last write of a demand above 0.
+       */
+      state(want, now) {
+        const wanted = Math.max(0, Math.floor(want));
+        const unchanged2 = wanted === this.#want;
+        if (unchanged2 && wanted === 0) return false;
+        if (unchanged2 && this.#writtenAt !== null && now - this.#writtenAt < QUIET_DEMAND_WRITE_MS)
+          return false;
+        this.#want = wanted;
+        this.#writtenAt = now;
+        return true;
+      }
+      /** A tier asks: it states its own demand from now on (`PermitPool.acquire`). */
+      end() {
+        this.#want = 0;
+        this.#writtenAt = null;
+      }
+    };
+  }
+});
+
 // src/core/capacity/share.ts
 function fairShares(hostSlots, demands) {
   const senior = [...demands].sort(bySeniority);
@@ -13783,6 +13823,7 @@ var init_pool = __esm({
     init_background();
     init_cores();
     init_marks();
+    init_quiet_demand();
     init_share();
     MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
     HOST_WINDOW_MIN_MS = 1e3;
@@ -13817,6 +13858,8 @@ var init_pool = __esm({
       #backgroundShare;
       /** The busy CPUs below which a background tier takes a permit (D18). */
       #ceiling;
+      /** What a lane's wait for quiet states in the mark (row 011-424). */
+      #quiet = new QuietDemand();
       /** The last look's grant was the floor's (D18). */
       #floored = false;
       /** The last look read the host's busy cores. */
@@ -13842,12 +13885,14 @@ var init_pool = __esm({
         const now = this.#now();
         this.#forget(now);
         this.#idleSince = null;
+        this.#quiet.end();
         const wanted = Math.max(1, Math.floor(want));
         const fewest2 = Math.min(wanted, Math.max(1, Math.floor(least)));
         const { others, inUse, demand, shares, entitled, target } = this.#share(
           wanted,
           lane,
           now,
+          kind,
           fewest2
         );
         const slow = lane === "slow";
@@ -13892,7 +13937,7 @@ var init_pool = __esm({
       offer(want, lane = "fast", kind = "checkpoint") {
         if (this.#closed) return 0;
         const now = this.#now();
-        const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, now);
+        const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, now, kind);
         return Math.min(target, this.#gated(others, inUse, target, kind, lane, this.#since ?? now));
       }
       running(workers) {
@@ -13915,6 +13960,19 @@ var init_pool = __esm({
       gate() {
         return this.#gate;
       }
+      expectBacklog(files5) {
+        if (this.#closed) return;
+        const now = this.#now();
+        if (!this.#quiet.state(files5, now)) return;
+        this.#forget(now);
+        try {
+          if (this.#marked()) {
+            this.#prepareDir();
+            this.#publish(this.#demand() + this.#pending + this.#quiet.want, this.#inUse());
+          } else this.#clear();
+        } catch {
+        }
+      }
       close() {
         this.#closed = true;
         for (const lease of this.#leases) for (const db of lease.permits.splice(0)) db.close();
@@ -13930,8 +13988,11 @@ var init_pool = __esm({
           "capacity pool directory"
         );
       }
-      /** What a tier of `wanted` workers, `least` at the fewest, is entitled to now, and what it may take. */
-      #share(wanted, lane, now, least = 1) {
+      /**
+       * What a tier of `kind` of `wanted` workers, `least` at the fewest, is
+       * entitled to now, and what it may take.
+       */
+      #share(wanted, lane, now, kind, least = 1) {
         const { dir: dir2, owner: owner2, project } = this.#options;
         const others = readMarks(dir2, owner2.worktreeId, now);
         const inUse = this.#inUse();
@@ -13944,7 +14005,8 @@ var init_pool = __esm({
           ...least > 1 ? { least } : {},
           ...project === void 0 ? {} : { project }
         };
-        const shares = fairShares(this.#hostSlots, [me, ...others.filter((o) => o.want > 0)]);
+        const demands = [me, ...others.filter((o) => o.want > 0)];
+        const shares = fairShares(this.#shareTotal(kind, demands), demands);
         const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 0) - inUse));
         let target = entitled;
         if (project !== void 0) {
@@ -13953,6 +14015,17 @@ var init_pool = __esm({
           target = Math.min(target, Math.max(0, project.slots - held4 - inUse));
         }
         return { others, inUse, demand, shares, entitled, target };
+      }
+      /**
+       * The workers the fair shares of a tier of `kind` divide: a checkpoint's
+       * the slots; a backlog tier's those the ceiling admits, raised to the
+       * most fewest workers of `demands` (`backlogShareSlots`, row 011-424,
+       * review 0.1.584 B1).
+       */
+      #shareTotal(kind, demands) {
+        if (kind !== "backlog") return this.#hostSlots;
+        const least = Math.max(...demands.map((d) => d.least ?? 1));
+        return backlogShareSlots(this.#ceiling, this.#hostSlots, least);
       }
       /**
        * Up to `count` free permits, after leaving `reserve` for older waiters.
@@ -14022,6 +14095,10 @@ var init_pool = __esm({
       #active() {
         return this.#leases.size > 0 || this.#edits.size > 0;
       }
+      /** The daemon has a mark to keep: a tier runs, it waits, or a wait for quiet states demand. */
+      #marked() {
+        return this.#active() || this.#pending > 0 || this.#since !== null || this.#quiet.want > 0;
+      }
       /** A tier starts: the mark is refreshed from now on, and if none ran, the tree's window begins. */
       #activate() {
         if (this.#timer !== null) return;
@@ -14030,11 +14107,15 @@ var init_pool = __esm({
         this.#read();
         this.#startRefresh();
       }
-      /** The last tier ended: no refresh and no mark until the next. */
+      /**
+       * The last tier ended: no refresh, and no mark until the next unless a
+       * wait for quiet states demand, which its look keeps writing.
+       */
       #deactivate() {
         this.#stopRefresh();
         this.#measured = null;
-        this.#clear();
+        if (!this.#closed && this.#quiet.want > 0) this.#republish();
+        else this.#clear();
       }
       /** A waiter that has neither held a lease nor looked for 30 s is no longer one. True when one was. */
       #forget(now) {
@@ -14179,7 +14260,7 @@ var init_pool = __esm({
       #republish() {
         this.#forget(this.#now());
         try {
-          this.#publish(this.#demand() + this.#pending, this.#inUse());
+          this.#publish(this.#demand() + this.#pending + this.#quiet.want, this.#inUse());
         } catch {
         }
       }
@@ -14274,7 +14355,7 @@ var init_capacity = __esm({
         this.#backgroundShare = isBackgroundShare(backgroundShare2) ? backgroundShare2 : DEFAULT_BACKGROUND_SHARE;
         const ceiling = backgroundCeiling(this.#backgroundShare, cpus3 ?? availableParallelism4());
         const slots = Math.max(1, Math.floor(hostSlots ?? defaultHostSlots()));
-        this.#fullWidth = Math.min(ceiling, slots, project?.slots ?? Infinity);
+        this.#fullWidth = Math.min(backlogShareSlots(ceiling, slots), project?.slots ?? Infinity);
         this.#pool = createPermitPool({
           dir: dir2,
           owner: { pid: process.pid, worktreeId },
@@ -14336,10 +14417,12 @@ var init_capacity = __esm({
         return { busy: gate2.busyCores, limit: backgroundCeiling(this.#backgroundShare, gate2.cpus) };
       }
       /**
-       * The most workers a backlog tier may get: the background ceiling's busy
-       * CPUs (spec 021 D18), or the slots, the host's or the project's, when
-       * fewer. A backlog tier's wall budget is scaled by its offer's share of
-       * it (row 011-418), so a tier offered all the slots is not cut.
+       * The most workers a backlog tier may get: the workers the background
+       * ceiling admits (spec 021 D18), its busy CPUs rounded up, which a
+       * backlog tier's fair shares divide (row 011-424), or the slots, the
+       * host's or the project's, when fewer. A backlog tier's wall budget is
+       * scaled by its offer's share of it (row 011-418), so a tier offered all
+       * of them is not cut.
        */
       fullWidth() {
         return this.#fullWidth;
@@ -14378,6 +14461,14 @@ var init_capacity = __esm({
         } catch {
           return want;
         }
+      }
+      /**
+       * A lane's wait for quiet holds `files` backlog files and ends soon (row
+       * 011-424): the pool mark states them as demand, with no grant; 0 ends
+       * it. It never throws: a mark that cannot be written states nothing.
+       */
+      expectBacklog(files5) {
+        this.#pool.expectBacklog(files5);
       }
       close() {
         this.#waits?.close();
@@ -14924,6 +15015,21 @@ function quietSleepMs(context, ledger, now = context.now()) {
   if (until.length === 0) return null;
   return Math.min(QUIET_RECHECK_MS, Math.max(0, Math.min(...until) - now));
 }
+function quietDemand(context, ledger, now) {
+  const { quiet } = context;
+  if (quiet === void 0) return 0;
+  const soon = /* @__PURE__ */ new Set();
+  for (const [lane, end] of quiet.catchUpEnds(now))
+    if (end - now <= QUIET_DEMAND_LEAD_MS) soon.add(lane);
+  if (soon.size === 0) return 0;
+  const { queue } = ledger;
+  let files5 = 0;
+  queue.hasFast((ref3) => {
+    if (soon.has(laneOf(context, ref3)) && queue.isCatchUp(ref3)) files5++;
+    return files5 >= QUIET_DEMAND_FILES;
+  });
+  return files5;
+}
 function quietMetaKey(worktreeId) {
   return worktreeMetaKey("quiet", worktreeId);
 }
@@ -14959,7 +15065,7 @@ function endsAfter(lanes, now) {
     )
   );
 }
-var BACKLOG_QUIET_MS, CATCHUP_QUIET_MS, QUIET_RECHECK_MS, BacklogQuiet, NO_ENDS;
+var BACKLOG_QUIET_MS, CATCHUP_QUIET_MS, QUIET_RECHECK_MS, BacklogQuiet, QUIET_DEMAND_LEAD_MS, QUIET_DEMAND_FILES, NO_ENDS;
 var init_quiet = __esm({
   "src/core/scheduler/quiet.ts"() {
     "use strict";
@@ -15036,6 +15142,8 @@ var init_quiet = __esm({
         this.publish(this.ends(now), now, this.catchUpEnds(now));
       }
     };
+    QUIET_DEMAND_LEAD_MS = 3e4;
+    QUIET_DEMAND_FILES = 64;
     NO_ENDS = /* @__PURE__ */ new Map();
   }
 });
@@ -62096,6 +62204,7 @@ var init_step_live = __esm({
     init_install();
     init_install_stamp();
     init_overrun();
+    init_quiet();
     init_step();
     init_step_events();
     init_tier_live();
@@ -62133,6 +62242,7 @@ var init_step_live = __esm({
        */
       step(events, reads2) {
         const turn = { at: this.host.now(), events, reads: reads2, ports: this.#ports };
+        this.#stateQuietDemand(turn.at);
         const mark = this.host.stepsTotal();
         const decided = { ...step(turn), mark };
         if (decided.laneAnswered) this.host.slowRelease.arm();
@@ -62145,6 +62255,17 @@ var init_step_live = __esm({
         for (const decision of decided.decisions)
           if (!inTurn(decision)) reads2 = { ...reads2, ...await this.#carryAfter(decision) };
         return reads2;
+      }
+      /**
+       * Row 011-424 (review 0.1.584 B2): the catch-up each wait for quiet holds
+       * in its last 30 s goes in the pool mark at each step, before the step
+       * chooses between a start, a wait on claims and a wait for quiet; 0, as
+       * after an edit that starts the wait again, withdraws it. The quiet's
+       * wake (`quietSleepMs`) keeps its place after the claims in that choice.
+       */
+      #stateQuietDemand(at2) {
+        const { context, ledger } = this.host.started();
+        context.capacity?.expectBacklog(quietDemand(context, ledger, at2));
       }
       /** Tells each listener the step `decided` with `reads`. */
       #told(reads2, decided) {
