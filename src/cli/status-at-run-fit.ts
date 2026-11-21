@@ -90,8 +90,12 @@ export function clearlyOver(estimate: RunEstimate, overheadMs: number, budgetSec
     const side = { left: estimate.files, ran: 0, gateMs: null, estimate: estimate.seconds };
     return "needs" in rerunFit(overheadMs, [side]);
   }
-  const rounds = Math.max(1, Math.floor(budgetSeconds / ROUND_SECONDS));
-  return estimate.files > estimate.width * rounds;
+  return estimate.files > roundsHold(estimate.width, budgetSeconds);
+}
+
+/** T1: with no stored duration, the most files a budget of `budgetSeconds` holds at `width` at once. */
+export function roundsHold(width: number, budgetSeconds: number): number {
+  return width * Math.max(1, Math.floor(budgetSeconds / ROUND_SECONDS));
 }
 
 /** About `seconds` in words: seconds, minutes or hours. */

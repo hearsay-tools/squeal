@@ -68,7 +68,11 @@ export interface RunUse {
    * Row 023-34 (T1): the selection clearly could not fit, so nothing ran
    * on either side; `force` is the call that runs what fits anyway.
    */
-  readonly refused?: { readonly force: string };
+  readonly refused?: {
+    readonly force: string;
+    /** With no stored duration: about how many files fit in the budget here; `null` with durations. */
+    readonly fits: number | null;
+  };
 }
 
 /** Row 023-29 (R3): one failed setup, `<group>: <failure>`, and the files it left not run. */
@@ -116,12 +120,18 @@ export function runLines(run: RunUse, at: string): string[] {
   // R8: with files the change did not select, the count says it is of the selected ones only.
   const which = unselected === 0 ? "" : " that the change selects";
   // T1: nothing ran, R4's line says why, and the call that forces it.
-  if (run.refused !== undefined)
+  if (run.refused !== undefined) {
+    const { fits } = run.refused;
+    const rule =
+      fits === null
+        ? ""
+        : ` (with no stored duration, about ${fits} fit in ${run.timeoutSeconds} s here)`;
     return [
-      `--run ran nothing: the ${run.selected} test files with no result at ${at}${which} clearly do not fit the ${run.timeoutSeconds} s budget`,
+      `--run ran nothing: the ${run.selected} test files with no result at ${at}${which} clearly do not fit the ${run.timeoutSeconds} s budget${rule}`,
       ...budgetLines(run, at),
       `To run what fits anyway: ${run.refused.force}; \`--all-missing\` runs every file with no result`,
     ];
+  }
   const lines = [
     run.selected === 0
       ? `--run: no file with no result at ${at}${which} to run (${used})`

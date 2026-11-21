@@ -18,7 +18,7 @@ import {
   tellsEstimate,
 } from "./status-at-run-batches.js";
 import { type RunAnswer, runInChild } from "./status-at-run-child.js";
-import { clearlyOver, type SideFit } from "./status-at-run-fit.js";
+import { clearlyOver, roundsHold, type SideFit } from "./status-at-run-fit.js";
 import { runBatches } from "./status-at-run-loop.js";
 import { outcomesOf } from "./status-at-run-outcome.js";
 import { noResult, type Selection, selector } from "./status-at-run-select.js";
@@ -309,7 +309,17 @@ export function atRun(input: AtRunInput): AtRun {
         estimate,
         leftSeconds,
         batches: batchTimes,
-        ...(refused ? { refused: true as const } : {}),
+        // T1: with no stored duration, the rule's count goes in the refusal's words.
+        ...(refused
+          ? {
+              refused: {
+                fits:
+                  estimate === null || estimate.seconds !== null
+                    ? null
+                    : roundsHold(estimate.width, args.timeoutSeconds),
+              },
+            }
+          : {}),
       },
       now,
     );
