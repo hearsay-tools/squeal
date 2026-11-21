@@ -2651,7 +2651,7 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 
 ## Feature 022: selection strategy
 
-Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14, phase 1 released in 0.1.496; phase 2 waits for the human's reading of `squeal reach`; the human, 2026-11-14: an option to choose the selection strategy, adding selection by the modules a test loads beside today's import closure). Coordinator 3d192245.
+Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14, phase 1 released in 0.1.496; phase 2 closed and stored lists dropped by the human 2026-11-21, row 022-05; the human, 2026-11-14: an option to choose the selection strategy, adding selection by the modules a test loads beside today's import closure). Coordinator 3d192245.
 
 ### Wave 0: research (parallel; brief `specifications/022-selection-strategy/research/README.md`)
 
@@ -2666,6 +2666,12 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 |---|---|---|---|
 | 022-03 recorder, union and the loaded-list table (D1, D2, D3) | done (released 0.1.496: tag `squeal--v0.1.496` at `e4a8d981a`, hub `51b6638`, GitHub latest with `install.sh` and both Codex runtime assets, main CI 43621729125 green on attempt 2 (attempt 1: `test/cli/wait-stale-start.test.ts` 5 s timeout, Node 26 3/3); landed 2026-11-14; reviews `reviews/0.1.493.md` FAIL, `reviews/0.1.496-r2.md` PASS; repair 022-03r; candidate CI 43617670473 green on attempt 2 (attempt 1: the known `handover-batches.test.ts` test 4 flake); workers 29ad9cc0, 274df67e; notes `tasks/022-03/notes.md`; no key format change) | The coverage provider reads `evaluatedModules` per test file; loaded paths outside the closure and environment join the key through observed inputs; lists stored per result key in `loaded_modules` (contract `src/core/store/loaded-modules.ts`), pruned with results. Vitest only. | Spec Testing cases for recorder, union, no-loss and store pass; key-format alarm passes or is explained |
 | 022-04 `squeal reach` estimate of narrowing by loaded modules (D4) | done (released 0.1.496: tag `squeal--v0.1.496` at `e4a8d981a`, hub `51b6638`, GitHub latest with `install.sh` and both Codex runtime assets, main CI 43621729125 green on attempt 2 (attempt 1: `test/cli/wait-stale-start.test.ts` 5 s timeout, Node 26 3/3); landed 2026-11-14; reviews `reviews/0.1.493.md` FAIL, `reviews/0.1.496-r2.md` PASS; repair 022-04r; workers 4d985a36, 81025666) | Per project: avoidable re-run seconds and share, top source files (imported by vs loaded by), files without a list by reason; text and JSON; store reads only. | Spec Testing cases for reach pass on a fixture store; D11 rules hold |
+
+### Wave 2: stop storing loaded lists (the human, 2026-11-21: "Lists: Stop storing, keep keys"; brief `specifications/022-selection-strategy/tasks/wave-2.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 022-05 stop storing loaded lists; remove the reach estimate (D3, D4 amended) | running (coordinator da243dbd, 2026-11-21) | No `loaded_modules` writes; prune empties the table in slices; `squeal reach` loses its narrowing section; a run's list still joins its key and CI part (D2). Evidence: reach 1.9% (squeal, upper bound) and 0.12% (cezar); lists 82% of the store; bench `@lists` lock holds 13 s vs 2.5 s with 3 worktrees. | Brief's done-when; no key format raise |
 
 ## Feature 023: results at a commit
 

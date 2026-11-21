@@ -15,10 +15,10 @@ Phase 1 (the human, 2026-11-14):
 
 1. Squeal records, for each Vitest test file run with coverage on, the repository modules its worker evaluated. Recording costs under 1 ms per test file (D1).
 2. A loaded module outside the test file's closure and environment joins its key. After that, an edit to it re-runs the test file. No key format raise; files whose loaded modules are all in their closure keep their keys (D2).
-3. The loaded list is stored per result key and shared by every worktree (D3).
-4. `squeal reach` estimates, per project, the share of re-run seconds that narrowing by loaded modules would save. It also names the files it cannot estimate and why (D4).
+3. ~~The loaded list is stored per result key and shared by every worktree (D3).~~ Withdrawn 2026-11-21 (the human: "Stop storing, keep keys"): lists are not stored (D3).
+4. ~~`squeal reach` estimates, per project, the share of re-run seconds that narrowing by loaded modules would save.~~ Shipped in 0.1.496, read once on both stores, removed with the stored lists (D4).
 
-Phase 2, built only when the human sees a project's estimate and asks for it (the human, 2026-11-14):
+Phase 2, closed (the human, 2026-11-21, after reading the estimate: 1.9% here as an upper bound, 0.12% in cezar):
 
 5. A repository setting, off by default, narrows the import part of each test file's closure to the modules it loaded. Every other input stays in the key. A test file with no usable list keeps today's closure. Each narrowed file runs once at the switch (D5).
 
@@ -64,15 +64,20 @@ Effect: a test file that reaches a module only at runtime re-keys when that modu
 
 **Key format.** Keys only gain paths. A result stored by an older release under a key without the new path is not found: the file runs once. It is never read as current under the wrong inputs. No `KEY_FORMAT_VERSION` raise follows (`docs/process.md`, key format). The key-format alarm (`test/keys/key-format.test.ts`) still runs over the changed validity path and decides by its corpus.
 
-### D3. The loaded list in the store
+### D3. The loaded list is not stored (amended 2026-11-21)
 
-Lists are kept apart from the closure. Reach needs to know which closure paths the file did not load, and phase 2 needs the same. A new table in the shared store is created by its first write, with no schema version raise, as `request_covered_files` is (amended 2026-11-14, review 0.1.493 S1). A reader of a store without it reads no lists. It holds one list per result key: the project, the test path, the key, and the loaded paths with their blob ids.
+A run's list is used once, in that run: it joins the key (D2) and the CI part (`PartFile.loaded`, 022-03r). Nothing else reads it, so it is not kept (the human, 2026-11-21: "Stop storing, keep keys").
 
-- Prune removes a list with its result. A daemon from before 0.1.493 does not, so in a store shared with one, a list can outlive its result until a newer daemon prunes. Such a list is still a true record of one run; reach reads it as a list of that time (accepted 2026-11-14, review 0.1.493 compatibility note).
-- `test_files.method` keeps its one value. A new value there makes older daemons that share the store throw (`store/codec.ts` `oneOf`; `selection-option.md` 1).
-- CI export and import carry no lists (non-goal).
+The 0.1.496 to 0.1.586 releases kept one list per result key in the shared store's `loaded_modules` table. It reached 82% of Squeal's 7.2 GB store, and its writes held the store lock: with 3 worktrees the bench's `@lists` cells logged 13 s of lock holds against 2.5 s without lists, and a session-start hook of 1,106 ms against 116 ms (`bench/results/2026-11-21-0.1.579-*`). Its one reader was the D4 estimate.
 
-### D4. The reach estimate
+- A release from 022-05 writes no list. Its prune deletes the table's rows in slices, as it pruned orphan lists before (row 021-33), and nothing else reads them. A store shared with an older daemon gets lists again from that daemon until it is upgraded; the newer one deletes them (accepted).
+- The freed pages are reused by later writes. The file does not shrink without a compaction, which Squeal does not run.
+- `test_files.method` keeps its one value. CI export and import carry no stored lists.
+
+### D4. The reach estimate (removed 2026-11-21)
+
+Shipped in 0.1.496 and removed by row 022-05 with the stored lists. The reading of 2026-11-21 (`status.md`) closed phase 2. The text below records what it measured.
+
 
 `squeal reach` (015 D11) gains one section per project, in text and JSON: **narrowing by loaded modules**. It keeps D11's rules: pull only, store reads only, no test, no daemon, no write.
 
@@ -82,7 +87,10 @@ Lists are kept apart from the closure. Reach needs to know which closure paths t
 
 For scale, the research's replay gives what the estimate should show: about 0.0% here, 0.8% for cezar, 57% for Kody's node-unit project (`loaded-modules.md` 4).
 
-### D5. Phase 2: the narrowing setting (not built until the human asks)
+### D5. Phase 2: the narrowing setting (closed 2026-11-21)
+
+Not built. The human closed it after the reading of 2026-11-21. Building it later would need lists stored again. The text below is kept for that case.
+
 
 A key in `squeal.config.json`, repository level. Its name and values are decided with the phase 2 rows; the default is today's rule. A project with no per-file record (pytest, single-process projects) keeps today's rule (`selection-option.md` 2).
 
@@ -112,8 +120,8 @@ A key in `squeal.config.json`, repository level. Its name and values are decided
   - A file whose list is inside its closure keeps its key.
   - With `observe.runtimeInputs` off, nothing joins.
 - **No-loss checks:** the 20 escape cases of `loaded-modules.md` 3 still re-key under today's closure. Phase 1 removes nothing.
-- **Store:** an older-build reader opens a store that holds the new table. Prune removes a list with its result.
-- **Reach:** a fixture store with an avoidable pair, a pair through a declared input, a file without a list for each reason, and a project with no lists. Text and JSON.
+- **Store (022-05):** a run writes no list; prune empties a `loaded_modules` table an older release left, in slices; a store without the table is untouched.
+- **Reach (022-05):** no narrowing section in text or JSON.
 - **Key format:** `pnpm exec vitest run test/keys/key-format.test.ts test/version-sensitive.test.ts`.
 - **Dogfood:** after release, `squeal reach` on this repository and cezar. The estimates are set beside the research's replay (about 0% and 1%).
 
@@ -124,11 +132,13 @@ A key in `squeal.config.json`, repository level. Its name and values are decided
 
 The two run in parallel. Phase 2 (D5) gets rows only when the human asks, on reading an estimate (the human, 2026-11-14).
 
+Wave 2 (`tasks/wave-2.md`): **022-05** stop storing lists, remove the reach estimate, prune empties the table (D3, D4 amended 2026-11-21).
+
 ## Open questions
 
 1. Answered (the human, 2026-11-14): no threshold; the human decides on each reading of the estimate whether phase 2 is built.
 2. **Coverage off** (coordinator, in the phase 1 wave). A project with coverage off gets no lists. If a project asks for lists without coverage, a runner hook (Vitest's `onAfterRunFiles`, which also runs after a failed load) is the candidate. That needs its own research, since the hook must not move the environment hash.
-3. **node:test lists** (later row). The node:test recorder already records the modules each process loads. Feeding them into D3 and D4 is the next runner.
+3. Closed (2026-11-21): with no stored lists and no reach estimate, a stored node:test list would have no reader.
 
 ## References
 
