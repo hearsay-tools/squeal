@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { clean, run } from "./status-at-kit.js";
+import { clean, run, runCommit } from "./status-at-kit.js";
 
 /*
  * Row 023-18 D1 (`tasks/023-09-notes.md`): a file whose run reads a path its
@@ -46,16 +46,17 @@ describe(
       f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: reading(2) });
       const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
 
-      const first = await run(
+      // Row 023-40: the in-call run at its boundary, until row 023-41 removes it.
+      const first = await runCommit(
         f,
-        { commit: a, json: true, run: { allMissing: false, timeoutSeconds: 600 } },
+        { commit: a, run: { allMissing: false, timeoutSeconds: 600 } },
         options,
       );
       const report = JSON.parse(first.out);
       expect(report.run, first.err).toMatchObject({ selected: 1, ran: 1, stored: 1 });
       const ran = rowOf(first.out);
       expect(ran?.at).toMatchObject({ state: "pass", origin: { kind: "run", stored: true } });
-      expect(first.out).not.toContain("not stored");
+      expect(ran?.at).not.toHaveProperty("origin.notStored");
       clean(f);
 
       const second = await run(f, { commit: a, json: true }, options);

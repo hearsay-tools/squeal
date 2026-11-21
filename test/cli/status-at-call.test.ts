@@ -1,15 +1,12 @@
-import { mkdirSync, realpathSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { AtDaemons, NarrowCall } from "../../src/cli/status-at-daemons.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
-import type { AbsolutePath, RelativePath } from "../../src/core/types/common.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { result } from "../store/helpers.js";
+import { knownState, result } from "../store/helpers.js";
 import { liveDaemon } from "./status-at-daemon.js";
-import { check, run, testOf, withStore } from "./status-at-kit.js";
+import { check, run, standIn, standInTree, testOf, withStore } from "./status-at-kit.js";
 
 /*
  * Row 023-40a (spec 023 D7.3, research `run-wait-model.md` Q7) on a `$TMPDIR`
@@ -23,45 +20,6 @@ import { check, run, testOf, withStore } from "./status-at-kit.js";
 
 const TEST = ref("test/a.test.ts");
 
-interface Ask {
-  readonly root: string;
-  readonly group: string;
-  readonly paths: readonly RelativePath[];
-  readonly call: NarrowCall;
-}
-
-/** Stand-in daemons: each records what it is asked; `onWait` plays what the daemon did meanwhile. */
-function daemons(
-  tree: AbsolutePath,
-  onWait: (root: string, files: readonly TestFileRef[]) => void,
-) {
-  const asks: Ask[] = [];
-  const commits: string[] = [];
-  const started: string[] = [];
-  const waits: string[] = [];
-  const ports: AtDaemons = {
-    async commit(input) {
-      commits.push(input.commit);
-      return tree;
-    },
-    find: () => tree,
-    async worktree(root) {
-      started.push(root);
-      return null;
-    },
-    async ask(root, group, paths, _deadline, call) {
-      asks.push({ root, group, paths, call });
-      return "taken";
-    },
-    async wait(root, files) {
-      waits.push(root);
-      onWait(root, files);
-      return null;
-    },
-  };
-  return { ports, asks, commits, started, waits };
-}
-
 /** Commit A, then HEAD changes `src/a.ts` and the test; a live daemon in the worktree lists the test. */
 function changed() {
   const f = fixture({
@@ -72,9 +30,7 @@ function changed() {
   const a = git(f.root, "rev-parse", "HEAD").trim();
   f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: testOf("a", 2) });
   withStore(f, (store) => liveDaemon(f, store, [TEST]));
-  const tree = join(f.dir, "commit-tree");
-  mkdirSync(tree);
-  return { f, a, tree: realpathSync(tree) as AbsolutePath };
+  return { f, a, tree: standInTree(f) };
 }
 
 /** Marks `files` in the daemon of `root` as queued, running, or done (`null`). */
@@ -106,7 +62,7 @@ const fileOf = (out: string) =>
 describe("status --at --run on the daemons (row 023-40, D7.3)", SLOW, () => {
   it("exits 3 with Q7's line while work runs; --wait joins it, queues nothing, and reads what was stored", async () => {
     const { f, a, tree } = changed();
-    const running = daemons(tree, (root, files) =>
+    const running = standIn(tree, (root, files) =>
       pending(f, root, files, root === tree ? "running" : "queued"),
     );
     const install = linkInstall().install;
@@ -149,7 +105,7 @@ describe("status --at --run on the daemons (row 023-40, D7.3)", SLOW, () => {
 
     // The runs end while a later call waits: it joins them and asks nothing.
     const asked = running.asks.length;
-    const ending = daemons(tree, (root, files) => {
+    const ending = standIn(tree, (root, files) => {
       const own = worktreeIdFor(f.root);
       withStore(f, (store) =>
         store.results.putMany(
@@ -185,7 +141,7 @@ describe("status --at --run on the daemons (row 023-40, D7.3)", SLOW, () => {
 
   it("queues nothing when the selected file has a result on both sides", async () => {
     const { f, a, tree } = changed();
-    const none = daemons(tree, () => undefined);
+    const none = standIn(tree, () => undefined);
     const install = linkInstall().install;
     const options = { cacheRoot: f.cacheRoot, install, daemons: none.ports };
     const first = await run(f, { commit: a, json: true }, options);
@@ -204,5 +160,25 @@ describe("status --at --run on the daemons (row 023-40, D7.3)", SLOW, () => {
       `--run: no file with no result at ${a.slice(0, 9)} that the change selects to run`,
     );
     expect(again.out).not.toContain("still running");
+  });
+
+  it("reads a failed setup in the commit daemon as R3's setup line, never as still running", async () => {
+    const { f, a, tree } = changed();
+    const failing = standIn(tree, (root) => {
+      if (root !== tree) return;
+      const setup = { kind: "setup", project: "", testPath: "test/setup.ts" as never } as const;
+      withStore(f, (store) =>
+        store.knownStates.upsertMany([knownState(worktreeIdFor(tree), setup)]),
+      );
+    });
+    const install = linkInstall().install;
+    const options = { cacheRoot: f.cacheRoot, install, daemons: failing.ports };
+    const text = await run(f, { commit: a, run: { allMissing: false }, waitMs: 5000 }, options);
+    expect(text.code).toBe(3);
+    const at = a.slice(0, 9);
+    // The group's name, then the setup's own text, as the in-call run said it (row 023-29, R3).
+    expect(text.out).toContain(`${TEST.path}: not run (the batch's setup failed: tests: boom)`);
+    expect(text.out).toContain("1 not run: the batch's setup failed (tests: boom)");
+    expect(text.out).not.toContain(`still running at ${at}`);
   });
 });

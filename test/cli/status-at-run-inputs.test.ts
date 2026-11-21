@@ -14,7 +14,7 @@ import {
   write,
 } from "../commit/at-keys-fixture.js";
 import { onCleanUp, SLOW } from "../scheduler/cleanup.js";
-import { clean, run, testOf } from "./status-at-kit.js";
+import { clean, run, runCommit, testOf } from "./status-at-kit.js";
 
 /*
  * Row 023-07: the whole-checkout check (the human, 2026-11-17, after
@@ -72,9 +72,9 @@ async function shownNotStored(
   ran: "pass" | "fail",
 ): Promise<void> {
   const reason = `install changed the checkout: ${path}`;
-  const json = await run(f, { commit: a, json: true, run: RUN }, options(f, install));
+  // Row 023-40: the in-call run at its boundary (`runCommit`), until row 023-41 removes it.
+  const json = await runCommit(f, { commit: a, run: RUN }, options(f, install));
   expect(atOf(json.out)).toMatchObject({ state: "not comparable", reason, ran });
-  expect(JSON.parse(json.out)).toMatchObject({ changed: path, inputCheckMs: expect.any(Number) });
   expect(JSON.parse(json.out).run).toMatchObject({
     selected: 1,
     ran: 1,
@@ -82,9 +82,6 @@ async function shownNotStored(
     notComparable: 1,
     changed: path,
   });
-  const text = await run(f, { commit: a, run: RUN }, options(f, install));
-  expect(text.out).toContain(`${TEST.path}: ${ran} when run, not stored (${reason})`);
-  expect(text.out).toContain(`1 not stored (${reason})`);
   const altered = await run(f, { commit: a, json: true }, options(f, install));
   expect(atOf(altered.out)).toEqual({ state: "not comparable", reason });
   const honest = await run(f, { commit: a, json: true }, options(f, linkInstall().install));
@@ -115,14 +112,10 @@ const relink = (tree: AbsolutePath, target: string) => {
 describe("status --at --run: the whole-checkout check (row 023-07)", SLOW, () => {
   it("runs and stores when the install leaves every tracked path as the commit has it", async () => {
     const { f, a } = based({ "src/a.ts": "export const value = 1;\n" }, "a");
-    const ran = await run(
-      f,
-      { commit: a, json: true, run: RUN },
-      options(f, linkInstall().install),
-    );
+    const ran = await runCommit(f, { commit: a, run: RUN }, options(f, linkInstall().install));
     expect(atOf(ran.out)?.state).toBe("pass");
-    expect(JSON.parse(ran.out)).toMatchObject({ changed: null });
     expect(JSON.parse(ran.out).run).toMatchObject({
+      changed: null,
       selected: 1,
       ran: 1,
       stored: 1,
@@ -166,9 +159,9 @@ describe("status --at --run: the whole-checkout check (row 023-07)", SLOW, () =>
 
   it("finds a hidden link retargeted outside the tree, and a hidden deleted link (third review B5)", async () => {
     const honest = linked();
-    const control = await run(
+    const control = await runCommit(
       honest.f,
-      { commit: honest.a, json: true, run: RUN },
+      { commit: honest.a, run: RUN },
       options(honest.f, linkInstall().install),
     );
     expect(atOf(control.out)?.state).toBe("fail");

@@ -1,12 +1,12 @@
-import { resultsAt } from "../core/commit/at-keys-checkout.js";
 import { existsSync } from "node:fs";
+import { resultsAt } from "../core/commit/at-keys-checkout.js";
 import { worktreeIdFor, worktreeIdOfRealPath } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { Store } from "../core/types/store.js";
-import { type SideState, stateOf } from "./status-at-report.js";
 import type { SideQueue } from "./status-at-queue.js";
+import { type SideState, stateOf } from "./status-at-report.js";
 
 /*
  * Spec 023 D7.3 (row 023-40): each side as it stands when the wait ends.
@@ -46,7 +46,12 @@ export function reasonOf(
     if (row?.pending !== null && row?.pending !== undefined)
       return { state: "no result", key, pending: row.pending };
     // D7.1 says the daemon's key is D2's by construction; when it is not, say so, never mix them.
-    if (row?.key !== null && row?.key !== undefined && row.key !== key && resultsAt(main, ref, row.key).length > 0)
+    if (
+      row?.key !== null &&
+      row?.key !== undefined &&
+      row.key !== key &&
+      resultsAt(main, ref, row.key).length > 0
+    )
       return {
         state: "not determined",
         reason: `the daemon stored it at key ${row.key.slice(0, 12)}, not at this call's ${key.slice(0, 12)}`,

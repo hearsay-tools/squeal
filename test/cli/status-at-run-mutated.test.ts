@@ -64,7 +64,9 @@ describe(
       const rows = resultRows(f);
       clean(f);
 
-      const atA = await run(f, { commit: a, json: true, run: RUN }, options);
+      // Row 023-40: `status --at --run` queues in the commit daemon; the in-call run at its
+      // boundary, until row 023-41 removes it.
+      const atA = await runCommit(f, { commit: a, run: RUN }, options);
       const report = JSON.parse(atA.out);
       expect(report.run, atA.err).toMatchObject({ ran: 1, stored: 0 });
       const row = rowOf(atA.out);
