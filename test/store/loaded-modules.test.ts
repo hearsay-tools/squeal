@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyLoadedModules, hasLoadedModulesTable } from "../../src/core/store/loaded-modules.js";
-import { DELETE_BATCH } from "../../src/core/store/prune-rules.js";
+import { LIST_DELETE_BATCH } from "../../src/core/store/prune-rules.js";
 import { connectionOf } from "../../src/core/store/store.js";
 import { DAY_MS, fakeCommonDir, open, result, testCheck } from "./helpers.js";
 import { oldListCount, putOldList } from "./loaded-lists.js";
@@ -16,7 +16,7 @@ describe("the loaded_modules table an older release left (spec 022 D3, row 022-0
   it("is emptied over several slices, with no result kept for its keys", () => {
     const store = open(fakeCommonDir());
     const conn = connectionOf(store);
-    const rows = 3 * DELETE_BATCH;
+    const rows = 3 * LIST_DELETE_BATCH;
     conn.transaction(() => {
       for (let i = 0; i < rows; i++) putOldList(conn, `k${i}`, `t${i}.test.ts`);
     });
@@ -27,7 +27,7 @@ describe("the loaded_modules table an older release left (spec 022 D3, row 022-0
       slice();
       if (oldListCount(conn) < before) {
         deletes++;
-        expect(before - oldListCount(conn)).toBeLessThanOrEqual(DELETE_BATCH);
+        expect(before - oldListCount(conn)).toBeLessThanOrEqual(LIST_DELETE_BATCH);
       }
     }
     expect(deletes).toBe(3);

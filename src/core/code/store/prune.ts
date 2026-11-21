@@ -8,6 +8,7 @@ import {
   worktreeIdList,
   worktreeIdsOf,
 } from "../../store/prune-keyed.js";
+import { vacuum } from "../../store/prune-vacuum.js";
 import type { EpochMs, WorktreeId } from "../../types/common.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { pruneParts } from "./parts.js";
@@ -17,12 +18,11 @@ import type { CodePruneCounts, CodePruneOptions, CodePruneReport } from "./types
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Rows deleted per write transaction and pages freed per
- * `incremental_vacuum`, as in the main store's prune (task 001-141): many
- * short write transactions, never one long one.
+ * Rows deleted per write transaction, as in the main store's prune (task
+ * 001-141): many short write transactions, never one long one. The vacuum
+ * is the main store's (`prune-vacuum.ts`, row 022-08).
  */
 const DELETE_BATCH = 256;
-const VACUUM_PAGES = 512;
 
 /**
  * Coverage records per delete: each holds its record as a blob, and a batch
@@ -109,7 +109,7 @@ const UNUSED_CHECK = `NOT EXISTS (SELECT 1 FROM states s
 
 /**
  * Row 011-350 (#220): `pruneCodeStore` as slices, each one write transaction
- * of at most `DELETE_BATCH` rows or `VACUUM_PAGES` pages, so its driver can
+ * of at most `DELETE_BATCH` rows or about `VACUUM_SLICE_MS` of vacuum, so its driver can
  * leave the lock free between them (the daemon's `SlicedPrune`, as
  * `pruneSlices` is for the main store). Row 021-33: each rule's rows are
  * found by a read outside the write lock and deleted by key, tested again
@@ -238,22 +238,4 @@ function* pruneCoverage(
     batch: COVERAGE_BATCH,
     removed,
   });
-}
-
-/**
- * Frees pages `VACUUM_PAGES` per slice, each its own write transaction, so
- * no step holds the write lock for long; stops when a step frees nothing.
- */
-function* vacuum(conn: Connection): Generator<PruneSlice, void, undefined> {
-  let free = freePages(conn);
-  while (free > 0) {
-    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`));
-    const left = freePages(conn);
-    if (left >= free) return;
-    free = left;
-  }
-}
-
-function freePages(conn: Connection): number {
-  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
 }

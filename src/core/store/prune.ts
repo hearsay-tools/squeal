@@ -14,7 +14,6 @@ import {
   PRUNABLE,
   UNPROTECTED,
   UNREFERENCED_RUN,
-  VACUUM_PAGES,
 } from "./prune-rules.js";
 import {
   dropEndedCheckpoints,
@@ -23,6 +22,7 @@ import {
   keptTexts,
   PRUNABLE_BY_KEY,
 } from "./prune-unused.js";
+import { vacuum } from "./prune-vacuum.js";
 import { expireReplaced } from "./repos/replaced.js";
 import { dropFallenUnknownRuns } from "./repos/unknown-runs.js";
 import { WORKTREE_SCOPED_TABLES } from "./repos/worktrees.js";
@@ -72,7 +72,7 @@ export function pruneReport(conn: Connection, counts: PruneCounts): PruneReport 
 
 /**
  * Spec 021 D3 (row 021-09): the prune as slices, each one write transaction
- * of at most `DELETE_BATCH` rows or `VACUUM_PAGES` pages, so its driver can
+ * of at most `DELETE_BATCH` rows or about `VACUUM_SLICE_MS` of vacuum, so its driver can
  * leave the lock free between them (the daemon's `SlicedPrune`). Each slice
  * is yielded before it runs, and what follows is read once it ran, so its
  * driver asks for the next only after it succeeded. Rows a slice deletes
@@ -231,21 +231,6 @@ function* dropPrunable(
     };
   }
   yield* dropOrphanTexts(conn);
-}
-
-/**
- * Frees the pages deletes left, `VACUUM_PAGES` per write transaction; a bare
- * `incremental_vacuum` frees them all in one. Stops when a step frees
- * nothing, as on a store created without `auto_vacuum`.
- */
-function* vacuum(conn: Connection): Generator<PruneSlice, void, undefined> {
-  let free = pragmaNumber(conn, "freelist_count");
-  while (free > 0) {
-    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`));
-    const left = pragmaNumber(conn, "freelist_count");
-    if (left >= free) return;
-    free = left;
-  }
 }
 
 /**

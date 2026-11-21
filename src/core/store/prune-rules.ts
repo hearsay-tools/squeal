@@ -14,7 +14,24 @@ export const EVICTION_BATCH = 32;
  * busy timeout; a step this size holds it for well under a hook's 1 s.
  */
 export const DELETE_BATCH = 256;
-export const VACUUM_PAGES = 512;
+
+/**
+ * Row 022-08: pages freed per `incremental_vacuum` step, and the time one
+ * vacuum slice (one write transaction) runs steps for. Once 0.1.591 emptied
+ * the lists, a step of 512 pages held a 7 GB store's lock 0.76 s on average,
+ * up to 2.4 s (about 1.5 ms a page, 4.7 ms at worst); a step of 16 costs
+ * about 0.1 ms beside its pages, so a slice ends within about 75 ms past
+ * the budget on that store (`tasks/022-08/notes.md`).
+ */
+export const VACUUM_PAGES = 16;
+export const VACUUM_SLICE_MS = 100;
+
+/**
+ * Row 022-08: stored lists per delete. A batch of 256 held the lock up to
+ * 1.1 s on that store (about 2 to 4 ms a list); 32 stays near
+ * `VACUUM_SLICE_MS`.
+ */
+export const LIST_DELETE_BATCH = 32;
 
 /*
  * Spec 001 D8 as amended 2026-10-23 (row 011-160): "keep every result whose

@@ -1,5 +1,6 @@
 import type { Connection } from "./connection.js";
 import { deleteByKey } from "./prune-keyed.js";
+import { LIST_DELETE_BATCH } from "./prune-rules.js";
 
 /*
  * Spec 022 D3 (amended 2026-11-21, row 022-05): no release stores loaded
@@ -13,7 +14,7 @@ import { deleteByKey } from "./prune-keyed.js";
 export const LOADED_MODULES_TABLE = "loaded_modules";
 
 /**
- * The prune: every stored list, `DELETE_BATCH` per slice. Row 021-33 shape:
+ * The prune: every stored list, `LIST_DELETE_BATCH` per slice (row 022-08). Row 021-33 shape:
  * the keys are read outside the write lock, and each slice deletes them in
  * one write transaction. Nothing on a store without the table.
  */
@@ -23,6 +24,7 @@ export function* emptyLoadedModules(conn: Connection): Generator<() => void, voi
     table: LOADED_MODULES_TABLE,
     key: ["project", "path", "key"],
     search: "1",
+    batch: LIST_DELETE_BATCH,
   });
 }
 
