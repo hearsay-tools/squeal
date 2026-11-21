@@ -80,7 +80,7 @@
       "mode": 420
     },
     "dist/cli/front-desk.mjs": {
-      "sha256": "5be5df3b0aa2b70845d2be3230378ec069272b648f8065e7b8a64f62c8905ff0",
+      "sha256": "35370d23bc4dd6120e06e39c7f5de443d044d45e10013b0ef90e708026bfaf9f",
       "mode": 420
     },
     "dist/cli/lint-worker.mjs": {
@@ -92,7 +92,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "13fc40d1de52deab8c5101f43c17d2b5f6bac5fc45e985705eac24f7cd1fd2a4",
+      "sha256": "a8db2e00ce7b29ed7cd6c2d550937e129b546c6fec61a64399307bd2b095ae4e",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {
@@ -116,7 +116,7 @@
       "mode": 420
     },
     "dist/node-test/recorder.cjs": {
-      "sha256": "04dedefb28a291f376a82987acbfa94f88b2282b53636ed8b61de3ac4f14b541",
+      "sha256": "92a2f3d2a1067ace08427f438b4385c6785840aef7636921cc69b61c32ba5ce0",
       "mode": 420
     },
     "dist/node-test/reporter.mjs": {
@@ -136,7 +136,7 @@
       "mode": 420
     },
     "dist/observe/spawn.cjs": {
-      "sha256": "64cee0e5028f9ca66c993c3b78e1945429b91ddef4d2c5a5fa58f0b69197d738",
+      "sha256": "4dd00cbcd182990cc461a8e0e0afce668028fb550bbdc9efda1f7be06f43a16e",
       "mode": 420
     },
     "dist/post-tool-use.mjs": {

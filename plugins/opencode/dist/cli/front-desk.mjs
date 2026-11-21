@@ -624,7 +624,7 @@ function parseRequest(line) {
       if (!isText3(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
     case "run-group-paths":
-      return parseGroupPaths(request.group, request.paths, request.at);
+      return parseGroupPaths(request);
     case "run-group-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-group-status", requestId: request.requestId };
@@ -671,11 +671,11 @@ function parseTakeBack(request) {
     if (typeof request.requestId !== "string") return '"requestId" must be a string';
     return { type: "take-back-status", requestId: request.requestId };
   }
-  const { coveredIds } = request;
-  if (!Array.isArray(coveredIds) || !coveredIds.every(isText3)) {
-    return '"coveredIds" must be a list of non-empty strings';
+  const { owners } = request;
+  if (!Array.isArray(owners) || !owners.every(isText3)) {
+    return '"owners" must be a list of non-empty strings';
   }
-  return { type: "take-back", coveredIds: [...coveredIds] };
+  return { type: "take-back", owners: [...owners] };
 }
 function parseSync(paths) {
   if (paths === void 0) return { type: "sync" };
@@ -684,13 +684,31 @@ function parseSync(paths) {
   }
   return { type: "sync", paths: [...paths] };
 }
-function parseGroupPaths(group, paths, at) {
+function parseGroupPaths(request) {
+  const { group, paths, at, owner, lead } = request;
   if (!isText3(group)) return '"group" must be a non-empty string';
   if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText3)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
   if (at !== void 0 && at !== true) return '"at" must be true when given';
-  return { type: "run-group-paths", group, paths: [...paths], ...at === true ? { at } : {} };
+  if (owner !== void 0 && !isText3(owner)) return '"owner" must be a non-empty string';
+  if (lead !== void 0 && lead !== true) return '"lead" must be true when given';
+  return {
+    type: "run-group-paths",
+    group,
+    paths: [...paths],
+    ...at === true ? { at } : {},
+    ...owner === void 0 ? {} : { owner },
+    ...lead === true ? { lead } : {}
+  };
+}
+function narrowOptionsOf(request) {
+  return {
+    ...request.owner === void 0 ? {} : { owner: request.owner },
+    ...request.lead === true ? { lead: true } : {},
+    // Row 023-36 (T3): beside the owner, so the daemon flags the accepted request's files.
+    ...request.at === true ? { at: true } : {}
+  };
 }
 function isTestFileRef(value) {
   if (typeof value !== "object" || value === null) return false;
@@ -816,7 +834,7 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
     };
   };
   return {
-    start(group, paths) {
+    start(group, paths, options) {
       const requestId = randomUUID2();
       const request = {
         group,
@@ -835,7 +853,7 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
         request.held = holder;
       };
       const missing = new Error(paths === void 0 ? GROUP_NOT_SUPPORTED : NARROW_NOT_SUPPORTED);
-      (requestGroup?.(group, held, paths) ?? Promise.reject(missing)).then(
+      (requestGroup?.(group, held, paths, options) ?? Promise.reject(missing)).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;
@@ -869,7 +887,7 @@ function takeBackRequests(takeBack, max) {
     error: state.error
   });
   return {
-    take(coveredIds) {
+    take(owners) {
       if (takeBack === void 0) return errorResponse("this daemon cannot take back");
       const requestId = randomUUID3();
       const state = { result: null, error: null };
@@ -878,7 +896,7 @@ function takeBackRequests(takeBack, max) {
         if (requests.size <= max) break;
         requests.delete(old);
       }
-      takeBack(coveredIds).then(
+      takeBack(owners).then(
         (result) => {
           state.result = result;
         },
@@ -1283,13 +1301,12 @@ function createHandlers(context) {
       case "run-group-paths":
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        if (request.at === true) context.onAtRun?.(request.paths);
-        return groups.start(request.group, request.paths);
+        return groups.start(request.group, request.paths, narrowOptionsOf(request));
       case "run-group-status":
         return groups.status(request.requestId) ?? errorResponse(`unknown request id ${request.requestId}`);
       // Row 023-34 (T1): it only takes queued files out, so a stopping daemon takes it too.
       case "take-back":
-        return takeBacks.take(request.coveredIds);
+        return takeBacks.take(request.owners);
       case "take-back-status":
         return takeBacks.status(request.requestId);
       case "sync": {
@@ -1521,10 +1538,14 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    requestGroup: (group, held, paths) => new Promise((resolve, reject) => {
+    requestGroup: (group, held, paths, options) => new Promise((resolve, reject) => {
       const id = randomUUID6();
       waitingGroup.set(id, { resolve, reject, held });
-      post({ type: "run-group", id, group, ...paths === void 0 ? {} : { paths } });
+      const narrow = {
+        ...paths === void 0 ? {} : { paths },
+        ...options === void 0 ? {} : { options }
+      };
+      post({ type: "run-group", id, group, ...narrow });
     }),
     mainStep: () => steps.current(),
     requestSync: (paths) => new Promise((resolve, reject) => {
@@ -1538,14 +1559,13 @@ function bind(identity) {
       post({ type: "hold", id });
     }),
     requestResume: async () => post({ type: "resume" }),
-    requestTakeBack: (coveredIds) => new Promise((resolve, reject) => {
+    requestTakeBack: (owners) => new Promise((resolve, reject) => {
       const id = randomUUID6();
       waitingTakeBack.set(id, { resolve, reject });
-      post({ type: "take-back", id, coveredIds });
+      post({ type: "take-back", id, owners });
     }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
-    onAtRun: (paths) => post({ type: "at-run", paths: [...paths] }),
     requestRetries: async () => post({ type: "retry" }),
     requestPromotion: async (testFiles, withinMs) => post({ type: "promote", testFiles, withinMs }),
     requestFocus: async (testFiles, texts, withinMs) => post({ type: "focus", testFiles, texts, withinMs }),

@@ -31,6 +31,14 @@ const {
   tokenizeNodeOptions,
 } = require("./preloads.cjs");
 
+/**
+ * The variable carrying a `--run` run's token (`RUN_GROUP_VARIABLE`,
+ * `src/core/daemon/run-groups.ts`; spec 023 D4 step 11, row 023-36): set in
+ * every child's env from this process's, the caller's own env too, so what
+ * a test starts stays the run's wherever it is reparented.
+ */
+const RUN_GROUP = "SQUEAL_RUN_GROUP";
+
 /** The environment-data key carrying the test file into a thread. */
 const FILE_KEY = "squeal.observe.file";
 
@@ -117,6 +125,8 @@ function wrapChildren(api) {
   const injected = (env, inherited, require, spawned) => {
     const out = inherited ? {} : { ...env };
     if (inherited) for (const key in env) out[key] = env[key];
+    const runGroup = process.env[RUN_GROUP];
+    if (typeof runGroup === "string" && runGroup !== "") out[RUN_GROUP] = runGroup;
     // Another Squeal's settings (a test starting its own Squeal): that subtree is its.
     if (foreign(out[variable], settings.out)) return out;
     const options = typeof out.NODE_OPTIONS === "string" ? out.NODE_OPTIONS : "";
