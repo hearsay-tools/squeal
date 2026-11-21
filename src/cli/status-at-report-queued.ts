@@ -30,6 +30,8 @@ export interface QueuedSide {
   readonly setupFailed: readonly { readonly setup: string; readonly files: number }[];
   /** Why the daemon gave no answer for some files; `null` when none. */
   readonly problem: string | null;
+  /** Review wave-23 B1: not queued because the call's wait ended first (waiting for a place, starting). */
+  readonly late: boolean;
 }
 
 /** D7.3: the call's part of the report, `run` in JSON. */
@@ -48,6 +50,8 @@ export interface QueuedRun {
   readonly now: QueuedSide;
   /** Q7: the call that waits for what still runs; `null` when nothing does. */
   readonly again: string | null;
+  /** Review wave-23 B1: the call that queues what the wait's end left not queued; `null` when none. */
+  readonly retry: string | null;
 }
 
 /** One side's counts, from its queue and its states after the wait. */
@@ -64,6 +68,7 @@ export function queuedSide(queue: SideQueue, state: (ref: TestFileRef) => SideSt
     running: states.filter((s) => s.state === "no result" && s.pending !== undefined).length,
     setupFailed: [...setups].map(([setup, files]) => ({ setup, files })),
     problem: queue.problems.length === 0 ? null : queue.problems.join("; "),
+    late: queue.late === true,
   };
 }
 
@@ -78,6 +83,15 @@ export function waitAgain(given: string, paths: readonly string[]): string {
   ].join(" ");
 }
 
+/** Review wave-23 B1: the call that queues them again, the same commit and paths. */
+export function runAgain(given: string, paths: readonly string[]): string {
+  return ["squeal status --at", shellWord(given), ...paths.map(shellWord), "--run"].join(" ");
+}
+
+/** `; <retry> queues them again` after a side the wait's end left not queued. */
+const retryText = (side: QueuedSide, retry: string | null) =>
+  side.late && retry !== null ? `; ${retry} queues them again` : "";
+
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 
 /** The report's lines for the call's part, ending with Q7's line while work runs. */
@@ -90,7 +104,7 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
     lines.push(`--run: no file with no result at ${at} that the change selects to run`);
   else if (commit.files > 0 && !commit.reached)
     lines.push(
-      `--run: ${commit.files} test files with no result at ${at} not queued: ${commit.problem ?? "no commit daemon"}`,
+      `--run: ${commit.files} test files with no result at ${at} not queued: ${commit.problem ?? "no commit daemon"}${retryText(commit, run.retry)}`,
     );
   else if (commit.files > 0)
     lines.push(
@@ -103,7 +117,7 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
   lines.push(...sideLines(commit, ""));
   if (now.files > 0 && !now.reached)
     lines.push(
-      `--run, now: ${now.files} test files the change selects with no result in the working tree not queued: ${now.problem ?? "no daemon"}`,
+      `--run, now: ${now.files} test files the change selects with no result in the working tree not queued: ${now.problem ?? "no daemon"}${retryText(now, run.retry)}`,
     );
   else if (now.files > 0)
     lines.push(
