@@ -1,12 +1,14 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -141,6 +143,26 @@ describe("squeal ci export", () => {
     expect(bad.text()).toBe(
       `squeal ci export: ${other}: format undefined, not "squeal-ci-part/3" or "squeal-ci-part/4" or "squeal-ci-part/5" or "squeal-ci-part/6"\n${EXPORT_USAGE}`,
     );
+  });
+
+  it("exits 2 with one line when --parts cannot be read, as a symlink loop (review 0.1.585 B3)", async () => {
+    const root = repository();
+    const loop = join(root, "loop");
+    symlinkSync("loop", loop);
+    const looped = capture(root);
+    expect(await ciCommand(["export", "--parts", "loop"], looped.io)).toBe(2);
+    expect(looped.text()).toBe(`squeal ci export: cannot read ${loop} (ELOOP)\n${EXPORT_USAGE}`);
+    expect(readPartsIn([join(loop, "squeal-part-a.json")])).toBe(
+      `cannot read ${join(loop, "squeal-part-a.json")} (ELOOP)`,
+    );
+    if (process.getuid?.() === 0) return;
+    const shut = join(root, "shut");
+    mkdirSync(shut, { mode: 0o000 });
+    try {
+      expect(readPartsIn([shut])).toBe(`cannot read ${shut} (EACCES)`);
+    } finally {
+      chmodSync(shut, 0o700);
+    }
   });
 
   it("refuses parts of another commit than the checkout's, before Vitest starts", async () => {
