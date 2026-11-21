@@ -7,7 +7,14 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { importIdOf } from "../core/types/state.js";
 import type { ResultRecord } from "../core/types/store-records.js";
 import { type AtNext, nextLine } from "./status-at-next.js";
-import { fileLines, isNew, newFileLines, proofCommand } from "./status-at-report-files.js";
+import {
+  fileLines,
+  isNew,
+  newFileLines,
+  notSelectedJson,
+  proofCommand,
+  unchangeable,
+} from "./status-at-report-files.js";
 import { type RunUse, runLines } from "./status-at-report-run.js";
 
 export type { RunUse };
@@ -55,6 +62,12 @@ export type SideState =
       readonly pending?: "queued" | "running";
       /** Row 023-29 (R8): with `--run`, at the commit: the change did not select it, so it did not run. */
       readonly notSelected?: true;
+      /**
+       * Row 023-35 (T2): with `notSelected`, what its runner told of its
+       * static closure. Only `complete` lets the report say the commit
+       * cannot change its result; absent counts as `unchecked`.
+       */
+      readonly closure?: "complete" | "incomplete" | "unchecked";
     }
   | { readonly state: "absent" }
   | { readonly state: "not determined"; readonly reason: string }
@@ -272,8 +285,11 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
   if (files.folded) lines.push("`--full` lists every file; `--json` gives each file's states.");
   lines.push(...newFileLines(report.files, report.commit, full));
   const c = countsOf(report.files);
+  // T2: the files the commit cannot change are counted apart from "unknown".
+  const fixed = report.files.filter(unchangeable).length;
+  const apart = fixed === 0 ? "" : `, ${fixed} not selected`;
   lines.push(
-    `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown} unknown`,
+    `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown - fixed} unknown${apart}`,
   );
   // A failed checkout ran nothing; its line above says why.
   if (report.run !== undefined && report.failure === null) lines.push(...runLines(report.run, at));
@@ -305,6 +321,8 @@ export function jsonAt(report: AtReport): string {
     changedBy: report.changed?.by ?? null,
     failure: report.failure,
     counts: countsOf(report.files),
+    // Row 023-35 (T2): `counts.unknown` keeps them; this splits them out.
+    notSelected: notSelectedJson(report.files),
     unmatched: report.unmatched ?? [],
     run: report.run ?? null,
     next: report.next ?? null,

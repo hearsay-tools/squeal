@@ -142,3 +142,51 @@ describe("status --at points a new test file at squeal proof (row 023-19, P8)", 
     expect(formatAt(report(gone), NOW)).not.toContain("is new since");
   });
 });
+
+describe("status --at says what not selected means (row 023-35, T2)", () => {
+  const unselected = (closure: "complete" | "unchecked"): SideState => ({
+    state: "no result",
+    key: "a",
+    notSelected: true,
+    closure,
+  });
+  const files = () =>
+    report(
+      compareSides(
+        [...[0, 1, 2, 3, 4].map((i) => ref(`c${i}.test.ts`)), ref("u0.test.ts"), ref("u1.test.ts")],
+        (r) => unselected(r.path.startsWith("c") ? "complete" : "unchecked"),
+        () => pass,
+      ),
+    );
+
+  it("folds the files the commit cannot change into one line, apart from unknown", () => {
+    const text = formatAt(files(), NOW);
+    expect(text).toContain(
+      "5 test files not selected: none of their inputs differs between 123456789 and the working tree, so this commit cannot change their result (the 2 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notSelected.excepted): c0.test.ts, c1.test.ts, c2.test.ts and 2 more\n",
+    );
+    expect(text).toContain(
+      "u0.test.ts: no result at 123456789, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)\n",
+    );
+    expect(text).toContain(
+      "0 pass -> fail, 0 fail -> pass, 0 unchanged, 2 unknown, 5 not selected\n",
+    );
+    expect(text).toContain("`--full` lists every file");
+  });
+
+  it("lists each path with --full, and the JSON keeps counts and adds notSelected", () => {
+    expect(formatAt(files(), NOW, true)).toContain("their result (the 2 whose runner");
+    expect(formatAt(files(), NOW, true)).toContain("\n  c4.test.ts\n");
+    const value = JSON.parse(jsonAt(files()));
+    expect(value.counts.unknown).toBe(7);
+    expect(value.notSelected.files).toBe(5);
+    expect(value.notSelected.excepted).toEqual([
+      { project: "", path: "u0.test.ts", closure: "unchecked" },
+      { project: "", path: "u1.test.ts", closure: "unchecked" },
+    ]);
+  });
+
+  it("adds no not-selected field to the summary when there is none", () => {
+    expect(formatAt(cold(4), NOW)).toMatch(/, 4 unknown\n/);
+    expect(JSON.parse(jsonAt(cold(4))).notSelected).toEqual({ files: 0, excepted: [] });
+  });
+});
