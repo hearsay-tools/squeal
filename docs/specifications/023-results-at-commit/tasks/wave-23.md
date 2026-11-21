@@ -1,0 +1,28 @@
+# Wave 23 (row 023-40): `status --at --run` on the commit daemon. Use /worker.
+
+The human chose (2026-11-21) to release 0.1.590 and start row 023-40 ("Release + 023-40"). 0.1.590 shipped the commit worktree (023-38) and the daemon's commit mode (023-39). This wave puts `status --at <commit> --run` on them.
+
+Read `../spec.md` D1, D3, D4, D7 (all of it), `research/run-wait-model.md` (Q3, Q6, Q7 and the recommendation), `tasks/023-38-notes.md` and `tasks/023-39-notes.md` (both, with their repair sections), `tasks/023-36-notes.md` (per-run process mark), `lessons.md` rounds 4 and 5, and `reviews/wave-22-rereview.md` (N2, N3). Never write the lab VM host name, the company name, sandbox ids or home paths in committed files (`pnpm run check:private` unpiped, with `set -o pipefail`; also grep your diff). Host is shared: direct vitest only with `timeout 600 pnpm exec vitest run --maxWorkers=2 <paths>`; no full suite; no version, no build; nothing left running (kill what you start; `squeal stop` in any tree you made before you finish).
+
+## Row 023-40a: the call on daemons (D7.3, D7.4)
+
+- **Commit side.** `status --at <commit> --run` calls `ensureCommitWorktree` (pass the allow-listed environment inputs D2 uses and the configured ceiling as `limit`; forward its "waiting for a place" note to stderr), starts a daemon in the returned `tree` as `squeal start` starts one (`src/core/daemon/ensure.ts`), keeps the calling process alive until the marker shows the daemon's claim (023-38 notes: the gap before the claim), and sends one narrow `run-group-paths` request per group with the selected files (D4.5 selection unchanged; `--all-missing` unchanged), files the call names first (`lead`).
+- **Working-tree side.** One narrow request per group to the user's worktree daemon, started if none runs (as `squeal start` does), with the `at` flag and per-run token of 023-36 kept. Files named first.
+- **Wait.** `--run` waits 100,000 ms by default; `--wait <ms>` sets it; a bare `--wait` waits until done; `--at … --wait` without `--run` joins work already queued and starts none (replaces T5's refusal); `--timeout` is a usage error that names `--wait`. Wait on both daemons as `run <group> --wait` does (`src/cli/run-group-wait.ts`).
+- **Report.** The comparison of what is known when the wait ends (D3 text unchanged, including T2's "cannot change" and the not-selected line), then, while work runs, research Q7's line: `N still running at <short commit> (its worktree), M in the working tree; their runs go on in the daemons. squeal status --at <c> --wait 100000 waits for them; squeal ps shows them.` R3 setup failures and R4 estimates as research Q7 says. Exit codes: 0 every selected file known on both sides, 3 some file still running, unknown or not comparable, 2 usage or setup error.
+- **Config.** One `squeal.config.json` key for the commit daemon ceiling (a whole number of at least 1; absent means the memory-derived default), in the schema, `squeal setup`'s docs if it lists keys, and the README's config table if there is one. Pick the name to fit the existing keys and say why in the notes.
+- **Old path.** The in-call run (`status-at-run*.ts`, take-back, give-back) is no longer used by `status --at`; leave the dead files for row 023-41 to delete unless a file is trivially unused and in your ownership; do not edit the scheduler, protocol or daemon files.
+- **Skill text.** If the squeal skill (`plugins/*/skills/squeal/SKILL.md` or its source) documents `--timeout` for `status --at --run`, update it to `--wait`.
+- **Ownership.** `src/cli/status-at*.ts`, `src/cli/main.ts` help lines for `status --at`, the config schema and its loader for the new key, the squeal skill source, new files under `src/cli/` or `src/core/at/` if needed, tests beside them. Do not edit `src/core/checkout/**` (023-40b owns it), `src/core/daemon/**` or `src/core/scheduler/**`; if you need a change there, send the coordinator a request first.
+- **Done when:** tests prove a call that ends with work still running returns exit 3 with the Q7 line and a later call reads the stored results; a second caller reuses the commit worktree and daemon; the ceiling wait note reaches stderr; `--wait` without `--run` queues nothing; `--timeout` is refused; the commit side's keys equal D2's (the existing at-keys tests stay green); lint, typecheck, check:private, boundaries; `squeal status --wait 60000 <changed paths>`; run `test/cli/status-at*.test.ts` and `test/e2e/*status-at*` that exist, directly. Notes in `tasks/023-40-notes.md`: decisions, the config key, what 023-41 deletes, measured times from your own runs (start of a commit daemon, warm and cold install) as a first estimate.
+
+## Row 023-40b: re-review notes N2 and N3 (checkout side)
+
+- **N2.** A removal that keeps an unknown file in the commit folder must leave the folder recognisable as Squeal's, so the next sweep does not delete the kept file: keep the marker (or a reduced marker) whenever anything is left, and make the sweep keep such a folder and report it. Test in both checkout locations.
+- **N3.** Removal must not report a tree as removed when it cannot read it (EACCES and similar): use `lstat` with error codes, not `existsSync`. Test with an unreadable directory where the host allows (skip with a reason under root or capabilities that bypass permissions).
+- **Ownership.** `src/core/checkout/**`, `test/checkout/*`.
+- **Done when:** tests fail without the fix; lint, typecheck, check:private; `squeal status --wait 60000 <changed paths>`. Notes: a short section in `tasks/023-38-notes.md`.
+
+## After both
+
+The coordinator builds one candidate, measures a commit daemon's start and memory on boat.dev (`bench/README.md`; D7.4's 1 GB estimate), and gets a Codex review.
