@@ -30,7 +30,7 @@ import { runCommand } from "./run.js";
 import { runnerHostCommand } from "./runner-host.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
-import { asksAt, parseAt, statusAtCommand } from "./status-at.js";
+import { AT_NO_WAIT, asksAt, parseAt, statusAtCommand } from "./status-at.js";
 import { statusCommand } from "./status-command.js";
 import { namedSnapshotCommand } from "./status-paths.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
@@ -525,6 +525,11 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
 /** Spec 023 D1 (row 023-06): `status --at <commit>`, which takes no other status option. */
 function statusAt(args: readonly string[], io: CliIo): number | Promise<number> {
   const at = parseAt(args);
+  // Row 023-34 (T5): one line, exit 2; the help hid that `--run` is the wait.
+  if (at === AT_NO_WAIT) {
+    io.stderr(`squeal status: ${at}\n`);
+    return 2;
+  }
   return typeof at === "string" ? usage("status", at, io) : statusAtCommand(at, io);
 }
 

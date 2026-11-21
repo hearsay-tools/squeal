@@ -50,8 +50,16 @@ const VALUED = { "--at": "a commit", "--timeout": "whole seconds" } as const;
 type Valued = keyof typeof VALUED;
 const FLAGS = new Set(["--json", "--full", "--run", "--all-missing"]);
 
+/**
+ * Row 023-34 (T5, lessons round 5): `--wait` with `--at`, a problem `main`
+ * prints as this one line, not with the whole help. Three round-5 sessions
+ * read the help to find that `--run` is the wait.
+ */
+export const AT_NO_WAIT = `--at takes no --wait; --run waits up to --timeout (${RUN_TIMEOUT_SECONDS} s)`;
+
 /** `--at <commit>` and what may follow it; a usage problem as a string. */
 export function parseAt(args: readonly string[]): AtArgs | string {
+  if (args.some((arg) => arg === "--wait" || arg.startsWith("--wait="))) return AT_NO_WAIT;
   const values = new Map<Valued, string>();
   const flags = new Set<string>();
   const paths: string[] = [];
