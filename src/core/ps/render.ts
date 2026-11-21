@@ -263,14 +263,20 @@ function fileLines(f: PsFileFlag): string[] {
   return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
 }
 
-/** Spec 023 D6: `<path>  pid <pid>  age <age>  at <commit>`, a dead one flagged. */
+/**
+ * Spec 023 D6: `<path>  pid <pid>  age <age>  at <commit>`, a dead one
+ * flagged; D7.7 (row 023-38): a commit worktree says so, and names its
+ * daemon's pid once the daemon claimed it.
+ */
 function checkoutLines(c: PsCheckout, at: number): string[] {
   const mark = c.flags.length > 0 ? "!" : " ";
   const commit = c.commit === null ? UNKNOWN : c.commit.slice(0, 12);
   const pid = c.pid === null ? UNKNOWN : String(c.pid);
   const owner = c.owner === "live" ? "" : `  owner ${c.owner}`;
+  const kind = c.kind === "commit" ? "commit worktree  " : "";
+  const who = c.daemon === true ? "daemon pid" : "pid";
   return [
-    `  ${mark} ${c.path}  pid ${pid}  age ${age(c.createdAt, at)}  at ${commit}${owner}`,
+    `  ${mark} ${kind}${c.path}  ${who} ${pid}  age ${age(c.createdAt, at)}  at ${commit}${owner}`,
     ...flagLines(c.flags),
   ];
 }

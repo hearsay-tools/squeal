@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -117,6 +117,51 @@ describe("squeal ps and the temporary checkouts", () => {
       });
     } finally {
       chmodSync(cacheRoot, 0o700);
+    }
+  });
+
+  it("names a commit worktree and its daemon's pid, and flags one whose daemon is gone (row 023-38)", async () => {
+    const dir = cacheCheckoutsDir(cacheRoot, commonDir);
+    const claimed = checkout(dir, "commit-a", deadOwner());
+    const fresh = checkout(dir, "commit-b", leaseProcess());
+    const orphan = checkout(dir, "commit-c", leaseProcess());
+    const daemon = spawn("sleep", ["60"], { stdio: "ignore" });
+    const exited = new Promise((resolve) => daemon.on("exit", resolve));
+    try {
+      const fingerprint = "0011223344556677";
+      const marker = (owner: CheckoutMarker["owner"], extra: Partial<CheckoutMarker>) => ({
+        v: 1 as const,
+        owner,
+        commit: COMMIT,
+        commonDir,
+        createdAt: NOW - 90_000,
+        fingerprint,
+        ...extra,
+      });
+      writeMarker(claimed, marker(deadOwner(), { daemon: leaseProcess(daemon.pid as number) }));
+      writeMarker(fresh, marker(leaseProcess(), {}));
+      writeMarker(orphan, marker(leaseProcess(), { daemon: deadOwner() }));
+
+      const shape = await snap();
+      expect(shape.checkouts).toEqual([
+        expect.objectContaining({ kind: "commit", daemon: true, pid: daemon.pid, owner: "live" }),
+        expect.objectContaining({ kind: "commit", daemon: false, pid: process.pid, owner: "live" }),
+        expect.objectContaining({
+          kind: "commit",
+          daemon: true,
+          owner: "dead",
+          flags: [expect.objectContaining({ flag: "dead-checkout" })],
+        }),
+      ]);
+      const text = render(shape, { full: false });
+      expect(text).toContain(
+        `    commit worktree  ${treePath(claimed)}  daemon pid ${daemon.pid}  age 1m  at 0123456789ab`,
+      );
+      expect(text).toContain(`    commit worktree  ${treePath(fresh)}  pid ${process.pid}  age 1m`);
+      expect(text).toContain(`  ! commit worktree  ${treePath(orphan)}  daemon pid `);
+    } finally {
+      daemon.kill("SIGKILL");
+      await exited;
     }
   });
 
