@@ -99,7 +99,9 @@ export class GroupRecord {
   }
 
   remove(groups: readonly RecordedGroup[]): void {
-    this.#groups = this.#groups.filter((known) => !groups.some((group) => same(known, group)));
+    const kept = this.#groups.filter((known) => !groups.some((group) => same(known, group)));
+    if (kept.length === this.#groups.length) return;
+    this.#groups = kept;
     this.#write();
   }
 
