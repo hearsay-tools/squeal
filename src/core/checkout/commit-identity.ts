@@ -1,12 +1,13 @@
-import { readdirSync, readFileSync, realpathSync, rmdirSync, rmSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { isMissing } from "../fs/errors.js";
 import { runGit } from "../fs/git.js";
 import { lstatOrNull, worktreeIdOfRealPath } from "../fs/git-layout.js";
 import type { AbsolutePath } from "../types/common.js";
 import { stopRecordedGroup } from "./checkout.js";
 import { endLeftUnder, leftUnderNote } from "./left-under.js";
 import { gitCheckoutsDir } from "./location.js";
-import { type CheckoutMarker, readMarker } from "./marker.js";
+import { type CheckoutMarker, readMarker, treePath, writeMarker } from "./marker.js";
 
 /*
  * Review wave-22 B1 (spec 023 D4.2, D7.1, D7.2): what makes a folder a
@@ -80,18 +81,57 @@ function isSqueals(tree: AbsolutePath, commonDir: AbsolutePath): boolean {
 
 const GIT = { okCodes: [0, 1, 128], timeoutMs: 120_000 };
 
+/** What a removal left: the tree gone, the tree still there, or a tree it could not read. */
+export type CommitRemoval = "removed" | "kept" | "unknown";
+
+/**
+ * Review wave-22 N3: whether `path` is gone, by `lstat`'s error code, not
+ * `existsSync`: a path whose parent cannot be searched (EACCES and the like)
+ * is `unknown`, never gone.
+ */
+export function pathState(path: AbsolutePath): CommitRemoval {
+  try {
+    lstatSync(path);
+    return "kept";
+  } catch (error) {
+    return isMissing(error) ? "removed" : "unknown";
+  }
+}
+
+/** The parts of a commit worktree's folder that removal reads. */
+export interface CommitFolder {
+  readonly tree: AbsolutePath;
+  readonly folder: AbsolutePath;
+  readonly marker: CheckoutMarker;
+}
+
 /**
  * D7.2, D6: removes a commit worktree that passed `commitIdentity`, for a
  * caller that holds the checkout lock. The install group and the processes
  * left under the folder end first, then git removes the tree, then the
  * folder's own files go. Anything else in the folder stays, and `note`
- * names it.
+ * names it. Review wave-22 N2: the marker then stays too, so the folder
+ * stays recognisably Squeal's and a later sweep keeps what it kept. The
+ * same call clears such a folder once its tree is gone. It never throws:
+ * an error goes to `note`, and the result says what is left of the tree.
  */
 export async function removeCommitFolder(
-  identity: CommitIdentity,
+  identity: CommitFolder,
   note?: (text: string) => void,
-): Promise<void> {
-  const { tree, folder, marker } = identity;
+): Promise<CommitRemoval> {
+  try {
+    return await clearFolder(identity, note);
+  } catch (error) {
+    const text = error instanceof Error ? error.message : String(error);
+    note?.(`squeal: could not remove ${identity.tree}: ${text}`);
+    return pathState(identity.tree);
+  }
+}
+
+async function clearFolder(
+  { tree, folder, marker }: CommitFolder,
+  note?: (text: string) => void,
+): Promise<CommitRemoval> {
   const { commonDir } = marker;
   if (marker.group !== undefined) await stopRecordedGroup(marker.group).catch(() => {});
   const left = leftUnderNote(
@@ -100,34 +140,54 @@ export async function removeCommitFolder(
     ),
   );
   if (left !== null) note?.(left);
-  await runGit(commonDir, ["worktree", "unlock", tree], GIT).catch(() => "");
-  await runGit(commonDir, ["worktree", "remove", "--force", tree], GIT).catch(() => "");
-  await runGit(commonDir, ["worktree", "prune"], GIT).catch(() => "");
   if (lstatOrNull(tree) !== null) {
-    note?.(`squeal: kept ${tree}: git did not remove the worktree`);
-    return;
+    await runGit(commonDir, ["worktree", "unlock", tree], GIT).catch(() => "");
+    await runGit(commonDir, ["worktree", "remove", "--force", tree], GIT).catch(() => "");
+    await runGit(commonDir, ["worktree", "prune"], GIT).catch(() => "");
+    if (lstatOrNull(tree) !== null) {
+      note?.(`squeal: kept ${tree}: git did not remove the worktree`);
+      return "kept";
+    }
   }
-  for (const name of entries(folder).filter(ownFile))
+  const names = readdirSync(folder);
+  const rest = names.filter((name) => !ownFile(name));
+  for (const name of names.filter(
+    (name) => ownFile(name) && (rest.length === 0 || !isMarker(name)),
+  ))
     rmSync(join(folder, name), { recursive: true, force: true, maxRetries: 3 });
-  const rest = entries(folder);
-  if (rest.length === 0) rmdirSync(folder);
-  else note?.(`squeal: kept ${folder}: it holds files Squeal did not make: ${rest.join(", ")}`);
+  if (rest.length === 0) {
+    rmdirSync(folder);
+    return "removed";
+  }
+  // Review wave-22 N2: the marker stays beside what Squeal did not make, without the ended group.
+  const { group: _ended, installed: _gone, ...kept } = marker;
+  writeMarker(folder, kept);
+  note?.(`squeal: kept ${folder}: it holds files Squeal did not make: ${rest.sort().join(", ")}`);
+  return "removed";
 }
 
 /** The files a commit worktree's folder holds beside its tree: marker, run folder, install lock. */
 function ownFile(name: string): boolean {
-  return (
-    name === "marker.json" ||
-    /^marker\.json\.\d+$/.test(name) ||
-    name === "run" ||
-    /^install\.lock(-journal|-wal|-shm)?$/.test(name)
-  );
+  return isMarker(name) || name === "run" || /^install\.lock(-journal|-wal|-shm)?$/.test(name);
 }
 
-function entries(folder: AbsolutePath): string[] {
-  try {
-    return readdirSync(folder).sort();
-  } catch {
-    return [];
-  }
+function isMarker(name: string): boolean {
+  return name === "marker.json" || /^marker\.json\.\d+$/.test(name);
+}
+
+/**
+ * Review wave-22 N2: a commit worktree's folder of `commonDir` whose tree
+ * is gone: a removal kept files Squeal did not make, or a create stopped
+ * before git added the tree. `removeCommitFolder` clears it and keeps
+ * what Squeal did not make; a recursive removal would delete that.
+ */
+export function treelessCommitFolder(
+  folder: AbsolutePath,
+  marker: CheckoutMarker,
+): CommitFolder | null {
+  if (marker.fingerprint === undefined) return null;
+  if (basename(folder) !== commitFolderName(marker.commit, marker.fingerprint)) return null;
+  if (!isCheckoutLocation(dirname(folder), marker.commonDir)) return null;
+  const tree = treePath(folder);
+  return pathState(tree) === "removed" ? { tree, folder, marker } : null;
 }
