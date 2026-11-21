@@ -1,0 +1,7 @@
+[2026-11-20T23:12:12.682Z] store-7g-r2: plain vitest run
+[2026-11-20T23:12:51.830Z] store-7g-r2: squeal start + run --all
+[2026-11-20T23:13:34.362Z] store-7g-r2: age store: 326 rounds
+[2026-11-20T23:18:02.358Z] store-7g-r2: idle
+[2026-11-20T23:19:02.363Z] store-7g-r2: sessions
+[2026-11-20T23:35:12.109Z] store-7g-r2: collect
+[2026-11-20T23:35:16.452Z] store-7g-r2: done

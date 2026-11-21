@@ -1,0 +1,151 @@
+{
+  "startedAt": "2026-11-20T22:48:09.958Z",
+  "squealVersion": "0.1.579",
+  "plugins": [
+    {
+      "version": "0.1.579",
+      "label": "0.1.579"
+    }
+  ],
+  "repeat": 3,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    2441.6666666666665,
+    2430.6666666666665,
+    2501
+  ],
+  "loadavgAtStart": "0.77 0.26 0.09 1/390 7926",
+  "cells": [
+    {
+      "name": "store-7g-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.579",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.579",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.579",
+      "rep": 3
+    },
+    {
+      "name": "store-7g-wt3-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.579",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.579",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-wt3-r3",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.579",
+      "rep": 3
+    },
+    {
+      "name": "store-7g-wt3-nolists-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "none",
+      "base": "store-7g-wt3-nolists",
+      "plugin": "0.1.579",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3-nolists-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "none",
+      "base": "store-7g-wt3-nolists",
+      "plugin": "0.1.579",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-wt3-nolists-r3",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "none",
+      "base": "store-7g-wt3-nolists",
+      "plugin": "0.1.579",
+      "rep": 3
+    },
+    {
+      "name": "store-7g-lists1d-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "1d",
+      "base": "store-7g-lists1d",
+      "plugin": "0.1.579",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-lists1d-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "1d",
+      "base": "store-7g-lists1d",
+      "plugin": "0.1.579",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-lists1d-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "1d",
+      "base": "store-7g-lists1d",
+      "plugin": "0.1.579",
+      "rep": 3
+    }
+  ],
+  "endedAt": "2026-11-21T02:55:36.794Z"
+}

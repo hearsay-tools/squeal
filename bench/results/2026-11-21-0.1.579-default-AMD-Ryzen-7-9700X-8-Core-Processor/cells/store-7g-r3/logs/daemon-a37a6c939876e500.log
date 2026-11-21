@@ -1,0 +1,37 @@
+2026-11-20T23:35:54.070Z [80778] squeal daemon: serving /home/user/results/cells/store-7g-r3/work/wt0 on /home/user/results/cells/store-7g-r3/work/run/squeal-a37a6c939876e500.sock
+2026-11-20T23:35:54.089Z [80778] squeal daemon: full integrity check: ok
+2026-11-20T23:36:08.315Z [80778] squeal daemon: busy, heap in use 83 MiB over twice the last live size of 30 MiB: a last-resort GC took private memory from 286 to 215 MiB in a 31 ms pause; 42 MiB of heap in use after it
+2026-11-20T23:36:30.385Z [80778] squeal daemon: daemon stopped: squeal stop
+2026-11-20T23:36:30.393Z [80778] squeal daemon: coverage: 50 completed test files got no record since this daemon started: 50 closed (the writer closed first); the last: test/m77.test.ts: the writer closed first
+2026-11-20T23:36:30.395Z [80778] squeal daemon: code store: last minute: 1013 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:36:30.519Z [80778] squeal daemon: daemon stopped: squeal stop
+2026-11-20T23:40:45.371Z [87696] squeal daemon: serving /home/user/results/cells/store-7g-r3/work/wt0 on /home/user/results/cells/store-7g-r3/work/run/squeal-a37a6c939876e500.sock
+2026-11-20T23:41:43.124Z [87696] squeal daemon: code store: last minute: 0 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:41:49.814Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 160 to 90 MiB in a 22 ms pause
+2026-11-20T23:42:43.125Z [87696] squeal daemon: code store: last minute: 44 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:43:19.843Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 133 to 128 MiB in a 32 ms pause
+2026-11-20T23:43:43.124Z [87696] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:44:24.829Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 131 to 127 MiB in a 18 ms pause
+2026-11-20T23:44:26.613Z [87696] squeal daemon: long write: store.sqlite write lock held 454 ms by #write < #record; 127 rows written
+2026-11-20T23:44:43.124Z [87696] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:45:29.838Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 171 to 129 MiB in a 25 ms pause
+2026-11-20T23:45:43.123Z [87696] squeal daemon: code store: last minute: 15 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:46:44.751Z [87696] squeal daemon: long write: store.sqlite write lock held 358 ms by #write < #record; 169 rows written
+2026-11-20T23:47:43.124Z [87696] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:48:05.766Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 211 to 132 MiB in a 29 ms pause
+2026-11-20T23:48:43.125Z [87696] squeal daemon: code store: last minute: 17 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:49:43.125Z [87696] squeal daemon: code store: last minute: 40 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:50:35.786Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 202 to 129 MiB in a 32 ms pause
+2026-11-20T23:51:43.125Z [87696] squeal daemon: code store: last minute: 33 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:51:55.789Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 200 to 133 MiB in a 33 ms pause
+2026-11-20T23:52:43.125Z [87696] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:53:00.786Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 208 to 135 MiB in a 28 ms pause
+2026-11-20T23:53:43.127Z [87696] squeal daemon: code store: last minute: 32 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:54:30.801Z [87696] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 212 to 142 MiB in a 41 ms pause
+2026-11-20T23:56:05.803Z [87696] squeal daemon: busy, heap in use 100 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 274 to 179 MiB in a 32 ms pause; 49 MiB of heap in use after it
+2026-11-20T23:56:06.782Z [87696] squeal daemon: long write: store.sqlite write lock held 970 ms by #write < #record; 6203 rows written
+2026-11-20T23:56:27.224Z [87696] squeal daemon: long write: store.sqlite write lock held 885 ms by #write < #record; 6203 rows written
+2026-11-20T23:56:34.641Z [87696] squeal daemon: long write: store.sqlite write lock held 428 ms by #write < #record; 2979 rows written
+2026-11-20T23:56:38.909Z [87696] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-20T23:56:38.929Z [87696] squeal daemon: code store: last minute: 601 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-20T23:56:39.387Z [87696] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
