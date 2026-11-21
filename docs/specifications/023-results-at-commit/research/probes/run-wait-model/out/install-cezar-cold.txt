@@ -1,0 +1,19 @@
+label=cezar-cold commit=c11e4edf0 pm=pnpm cache=cold
+bg_rx_15s_bytes=134974
+load_before=16.65
+worktree_add_s=.448541684
+checkout_files=4714
+checkout_kb=64632
+install_rc=0
+install_s=4.654447542
+load_after=16.44
+install_rx_bytes=153698765
+node_modules_dirs=5
+nm_unique_bytes=1144897
+nm_hardlinked_bytes=450828507
+nm_entries=36603
+cold_cache_kb 510212	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/store-cold-cezar-cold
+cold_cache_kb 126868	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/cache-cold-cezar-cold
+Packages: +700
+Progress: resolved 700, reused 0, downloaded 700, added 700, done
+wt=/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-cold

@@ -1,0 +1,17 @@
+label=cezar-warm commit=c11e4edf0 pm=pnpm cache=warm
+bg_rx_15s_bytes=658097
+load_before=16.36
+worktree_add_s=.489564462
+checkout_files=4714
+checkout_kb=64632
+install_rc=0
+install_s=.616405705
+load_after=16.42
+install_rx_bytes=13864
+node_modules_dirs=5
+nm_unique_bytes=1014027
+nm_hardlinked_bytes=450959338
+nm_entries=36603
+Packages: +700
+Progress: resolved 700, reused 700, downloaded 0, added 700, done
+wt=/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-warm
