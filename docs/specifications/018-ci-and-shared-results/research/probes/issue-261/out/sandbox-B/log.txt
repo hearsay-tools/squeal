@@ -1,0 +1,16 @@
+2026-11-21T10:23:35.285Z load=2.69 install
+2026-11-21T10:23:35.567Z load=2.69 install exit 0
+2026-11-21T10:23:35.569Z load=2.69 squeal start at 6c43132
+2026-11-21T10:23:35.843Z load=2.69 start exit 0
+2026-11-21T10:23:59.870Z load=2.41 imported 6c43132d: 2026-11-21T10:23:58.096Z [142168] squeal daemon: CI results: imported 34084 results from CI run 44881338139 on hearsay-tools/squawk at 6c43132d
+2026-11-21T10:24:35.143Z load=2.64 ff to e8db12e (revision 0)
+2026-11-21T10:24:35.152Z load=2.64 ff done
+2026-11-21T10:24:37.883Z load=2.64 revision passed 0
+2026-11-21T10:26:14.887Z load=7.90 published refs/squeal/e8db12ef9227c0284a9a42b4c416fdc494c81d28
+2026-11-21T10:28:14.890Z load=8.11 edit README.md
+2026-11-21T10:28:34.909Z load=7.16 restore README.md
+2026-11-21T10:41:47.352Z load=0.13 restart
+2026-11-21T10:41:57.261Z load=0.56 imported e8db12ef: 2026-11-21T10:41:55.687Z [338659] squeal daemon: CI results: imported 20 results from CI run 44885453045 on hearsay-tools/squawk at e8db12ef
+2026-11-21T10:42:29.648Z load=1.43 stop
+2026-11-21T10:42:30.061Z load=1.43 stop exit 0
+2026-11-21T10:42:30.106Z load=1.43 done

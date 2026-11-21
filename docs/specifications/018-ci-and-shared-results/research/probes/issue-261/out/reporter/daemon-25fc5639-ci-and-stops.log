@@ -1,0 +1,14 @@
+2026-11-20T23:23:00.600Z [692178] squeal daemon: daemon stopped: squeal stop
+2026-11-20T23:23:00.865Z [692178] squeal daemon: daemon stopped: squeal stop
+2026-11-20T23:25:36.167Z [811628] squeal daemon: CI results: imported 24412 results from CI run 44829091251 on hearsay-tools/squawk at b4820bb0
+2026-11-21T02:33:12.742Z [811628] squeal daemon: daemon stopped: hooks at Squeal 0.1.582 are newer than this daemon (0.1.580); their daemon starts once this one exits
+2026-11-21T02:33:14.657Z [811628] squeal daemon: daemon stopped: hooks at Squeal 0.1.582 are newer than this daemon (0.1.580); their daemon starts once this one exits
+2026-11-21T02:33:34.049Z [1206702] squeal daemon: CI results: imported 194 results from CI run 44846152347 on hearsay-tools/squawk at 86a8fd71
+2026-11-21T03:50:21.841Z [1206702] squeal daemon: CI results: imported 1526 results from CI run 44847561223 on hearsay-tools/squawk at cf77ce2d
+2026-11-21T05:31:33.754Z [1206702] squeal daemon: CI results: imported 244 results from CI run 44862370425 on hearsay-tools/squawk at 686bc2f0
+2026-11-21T06:53:42.427Z [1206702] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-21T06:53:42.471Z [1206702] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-21T06:58:43.905Z [126694] squeal daemon: CI results: imported 244 results from CI run 44870604242 on hearsay-tools/squawk at 27faff7e
+2026-11-21T09:08:28.488Z [126694] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-21T09:08:28.523Z [126694] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-21T10:00:16.428Z [3276998] squeal daemon: CI results: imported 21 results from CI run 44885453045 on hearsay-tools/squawk at e8db12ef

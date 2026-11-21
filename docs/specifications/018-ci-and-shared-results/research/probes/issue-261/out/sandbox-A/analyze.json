@@ -1,0 +1,39 @@
+{
+ "worktree": "7ab224c7ce167262",
+ "revisions": [
+  {
+   "number": 1,
+   "created_at": 1795256269015,
+   "head": "27faff7e3e9163122dd059f29ac382784af051bd",
+   "trigger": "watch",
+   "n": 53,
+   "at": "2026-11-21T10:17:49.015Z"
+  }
+ ],
+ "imports": [
+  {
+   "commit": "686bc2f0",
+   "at": "2026-11-21T10:17:09.746Z"
+  },
+  {
+   "commit": "27faff7e",
+   "at": "2026-11-21T10:17:51.032Z"
+  }
+ ],
+ "importOfTo": {
+  "at": "2026-11-21T10:17:51.032Z",
+  "secondsAfterFf": 2.176
+ },
+ "testFiles": 1946,
+ "filesByOrigin": {
+  "import 686bc2f0": 513,
+  "import 27faff7e": 1195,
+  "none": 238
+ },
+ "localRunsAfterFf": 45,
+ "filesRunAfterFf": 238,
+ "runsStartedBeforeImportOfTo": 0,
+ "filesRunBeforeImportOfTo": 0,
+ "lastRunEnd": "2026-11-21T10:22:50.951Z",
+ "minutesOfLocalRunsAfterFf": 5.034916666666667
+}

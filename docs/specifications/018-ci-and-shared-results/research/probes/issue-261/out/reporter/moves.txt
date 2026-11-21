@@ -1,0 +1,48 @@
+{
+ "moves": 20,
+ "worktrees": 10,
+ "ontoCommitWithoutRef": 0,
+ "withRef": 20,
+ "beforePublish": 12,
+ "afterMainSecondsP50": 63.329,
+ "afterMainUnder300s": 13,
+ "firstImportAfterMoveSeconds": {
+  "p50": 70.121,
+  "p90": 5794.92,
+  "never": 0
+ },
+ "beforePublishFirstImportAfter": [
+  59.075,
+  130.057,
+  5794.92,
+  6079.141,
+  5237.014,
+  712.622,
+  4609.783,
+  380.058,
+  70.121,
+  818.809,
+  720.265,
+  57.968
+ ]
+}
+{"worktree":"25fc5639a9bd0aaf","revision":2,"at":1795217287929,"head":"86dcd0433e19b118c77bcc001de3248bee01cd0d","start":"86dcd0433e19b118c77bcc001de3248bee01cd0d","onMain":true,"afterMain":43.929,"refAt":-39.071,"firstImportAfter":59.075}
+{"worktree":"25fc5639a9bd0aaf","revision":3,"at":1795219646747,"head":"9cb1aeb663f4d89ae917b7d1cd173e7c919cf097","start":"9cb1aeb663f4d89ae917b7d1cd173e7c919cf097","onMain":true,"afterMain":33.747,"refAt":-76.253,"firstImportAfter":130.057}
+{"worktree":"25fc5639a9bd0aaf","revision":4,"at":1795222554787,"head":"86a8fd71a42d1f961e2a7c773ea2a979a9fb78fa","start":"86a8fd71a42d1f961e2a7c773ea2a979a9fb78fa","onMain":true,"afterMain":24.787,"refAt":-69.213,"firstImportAfter":5794.92}
+{"worktree":"25fc5639a9bd0aaf","revision":6,"at":1795233012413,"head":"686bc2f01b3fc9b1ac56bdb767bea9789d8fd293","start":"686bc2f01b3fc9b1ac56bdb767bea9789d8fd293","onMain":true,"afterMain":12.413,"refAt":-115.587,"firstImportAfter":6079.141}
+{"worktree":"25fc5639a9bd0aaf","revision":8,"at":1795239084434,"head":"27faff7e3e9163122dd059f29ac382784af051bd","start":"27faff7e3e9163122dd059f29ac382784af051bd","onMain":true,"afterMain":39.434,"refAt":-62.566,"firstImportAfter":5237.014}
+{"worktree":"25fc5639a9bd0aaf","revision":10,"at":1795247417611,"head":"6c43132db742838d46fc051fe1d3c2cc140fc6c1","start":"6c43132db742838d46fc051fe1d3c2cc140fc6c1","onMain":true,"afterMain":29.611,"refAt":-74.389,"firstImportAfter":712.622}
+{"worktree":"25fc5639a9bd0aaf","revision":12,"at":1795250603986,"head":"e8db12ef9227c0284a9a42b4c416fdc494c81d28","start":"e8db12ef9227c0284a9a42b4c416fdc494c81d28","onMain":true,"afterMain":18.986,"refAt":-103.014,"firstImportAfter":4609.783}
+{"worktree":"2afbd6efc2cc5181","revision":18,"at":1795193679329,"head":"cd01e331cc0f04124f01b6fca10f466f347f2e79","start":"e82f89acc528b5110efab3339570a5ba9091512f","onMain":false,"afterMain":63.329,"refAt":-59.671,"firstImportAfter":380.058}
+{"worktree":"2dc24d8025854050","revision":55,"at":1795202802788,"head":"877639f6d9965287f27b01238cd29e33f62b8398","start":"af4992f2117d1ed08ff6727c918613461369b9ed","onMain":false,"afterMain":442.788,"refAt":411.788,"firstImportAfter":-326.273}
+{"worktree":"2dc24d8025854050","revision":60,"at":1795208004878,"head":"9b88d5677f60742aae5fe6e9883322cfa2ded683","start":"aeb27bb43f7d9d3ef17988d88b55a4d28f272319","onMain":false,"afterMain":48.878,"refAt":-24.122,"firstImportAfter":70.121}
+{"worktree":"2dc24d8025854050","revision":61,"at":1795210868476,"head":"f545574962ddff847e38618db0178e057307f3f9","start":"f545574962ddff847e38618db0178e057307f3f9","onMain":true,"afterMain":31.476,"refAt":-65.524,"firstImportAfter":818.809}
+{"worktree":"2dc24d8025854050","revision":65,"at":1795213993253,"head":"444e9ae485832d3a933fe41ed6ea90d74a010de5","start":"444e9ae485832d3a933fe41ed6ea90d74a010de5","onMain":true,"afterMain":27963.253,"refAt":27847.253,"firstImportAfter":-27607.121}
+{"worktree":"5bc718b03322b3b5","revision":2,"at":1795218847094,"head":"17715ea6c9202ec774ad76bbb100704eb134149d","start":"17715ea6c9202ec774ad76bbb100704eb134149d","onMain":true,"afterMain":832.094,"refAt":767.094,"firstImportAfter":10.02}
+{"worktree":"84efca2de7592d89","revision":10,"at":1795186763899,"head":"14b771edb3c8b216642cf72c57aee7e2686c4f44","start":"444e9ae485832d3a933fe41ed6ea90d74a010de5","onMain":false,"afterMain":733.899,"refAt":617.899,"firstImportAfter":-377.767}
+{"worktree":"9a47591b465dd3ce","revision":12,"at":1795247409968,"head":"9bdd59aba4f371004ccb3a10d2f586d4739bfb75","start":"6c43132db742838d46fc051fe1d3c2cc140fc6c1","onMain":false,"afterMain":21.968,"refAt":-82.032,"firstImportAfter":720.265}
+{"worktree":"b7555ac0d0f19f40","revision":1739,"at":1795096494509,"head":"c11e4edf06b8368d633b4ec8a0f7a4f325678e00","start":"c11e4edf06b8368d633b4ec8a0f7a4f325678e00","onMain":true,"afterMain":57299.509,"refAt":57215.509,"firstImportAfter":-57191.061}
+{"worktree":"cc3559cfd008dd06","revision":2,"at":1795120643651,"head":"9b5394c4ab8db8e52c2ab90538486cad2b1d3b8c","start":"9b5394c4ab8db8e52c2ab90538486cad2b1d3b8c","onMain":true,"afterMain":291.651,"refAt":208.651,"firstImportAfter":7.816}
+{"worktree":"cc3559cfd008dd06","revision":6,"at":1795187027833,"head":"444e9ae485832d3a933fe41ed6ea90d74a010de5","start":"444e9ae485832d3a933fe41ed6ea90d74a010de5","onMain":true,"afterMain":997.833,"refAt":881.833,"firstImportAfter":-641.701}
+{"worktree":"e6e9b01c628e60a7","revision":27,"at":1795248109372,"head":"6994ecfb82aad35add8709ff786231734bf15bb2","start":"6c43132db742838d46fc051fe1d3c2cc140fc6c1","onMain":false,"afterMain":721.372,"refAt":617.372,"firstImportAfter":20.861}
+{"worktree":"f3fd4371980d9bbc","revision":3,"at":1795177965841,"head":"18ea24e8926d65489a91d6ff90ce3c6b2b5df6c7","start":"18ea24e8926d65489a91d6ff90ce3c6b2b5df6c7","onMain":true,"afterMain":64.841,"refAt":-24.159,"firstImportAfter":57.968}

@@ -1,0 +1,15 @@
+2026-11-21T10:23:54.682Z [142168] squeal daemon: long write: store.sqlite write lock held 1168 ms by storeClosures < resolveClosures < process.processTicksAndRejections; 6030 rows written
+2026-11-21T10:23:58.096Z [142168] squeal daemon: CI results: imported 34084 results from CI run 44881338139 on hearsay-tools/squawk at 6c43132d
+2026-11-21T10:24:41.263Z [142168] squeal daemon: long write: store.sqlite write lock held 399 ms by storeClosures < applyRunnerPart < process.processTicksAndRejections; 1518 rows written
+2026-11-21T10:24:41.782Z [142168] squeal daemon: long write: store.sqlite write lock held 265 ms by startTier < act < startNext; 7260 rows written
+2026-11-21T10:28:21.526Z [142168] squeal daemon: long write: store.sqlite write lock held 367 ms by startTier < act < startNext; 12 rows written
+2026-11-21T10:29:08.413Z [142168] squeal daemon: long write: store.sqlite write lock held 281 ms by startTier < act < startNext; 277 rows written
+2026-11-21T10:29:34.774Z [142168] squeal daemon: long write: store.sqlite write lock held 273 ms by startTier < act < startNext; 199 rows written
+2026-11-21T10:30:01.201Z [142168] squeal daemon: long write: store.sqlite write lock held 414 ms by startTier < act < startNext; 467 rows written
+2026-11-21T10:30:31.131Z [142168] squeal daemon: long write: store.sqlite write lock held 341 ms by startTier < act < startNext; 55 rows written
+2026-11-21T10:30:54.565Z [142168] squeal daemon: long write: store.sqlite write lock held 341 ms by startTier < act < startNext; 43 rows written
+2026-11-21T10:41:47.452Z [142168] squeal daemon: daemon stopped: squeal stop
+2026-11-21T10:41:47.475Z [142168] squeal daemon: daemon stopped: squeal stop
+2026-11-21T10:41:55.687Z [338659] squeal daemon: CI results: imported 20 results from CI run 44885453045 on hearsay-tools/squawk at e8db12ef
+2026-11-21T10:42:29.748Z [338659] squeal daemon: daemon stopped: squeal stop
+2026-11-21T10:42:30.004Z [338659] squeal daemon: daemon stopped: squeal stop

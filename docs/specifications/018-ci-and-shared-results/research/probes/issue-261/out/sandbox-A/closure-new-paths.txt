@@ -1,0 +1,6 @@
+{
+  testFilesWithANewPathInClosure: 335,
+  ranAfterFf: 238,
+  ranInStore: 238,
+  ranWithNewPath: 233
+}

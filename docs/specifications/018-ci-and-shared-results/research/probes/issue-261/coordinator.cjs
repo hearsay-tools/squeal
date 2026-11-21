@@ -1,0 +1,4 @@
+// Throwaway probe (row 018-69): the coordinator worktree's revisions and the store's imports since 2026-11-20 20:00 UTC, from a COPY of the reporter's store. Usage: node coordinator.cjs <store-copy.sqlite>
+const {DatabaseSync}=require("node:sqlite"); const db=new DatabaseSync(process.argv[2],{readOnly:true});
+for (const r of db.prepare("select number, datetime(created_at/1000,'unixepoch') at, head, dirty, trigger, json_array_length(changes) changes from revisions where worktree_id='25fc5639a9bd0aaf' order by number").all()) console.log(JSON.stringify({revision: r.number, ...r}));
+for (const r of db.prepare("select id, datetime(imported_at/1000,'unixepoch') at, json_extract(header,'$.commit') c, json_extract(header,'$.squealVersion') v from imports where imported_at > strftime('%s','2026-11-20 20:00')*1000 order by imported_at").all()) console.log(JSON.stringify({import: r.id, at: r.at, commit: r.c, ciSqueal: r.v}));

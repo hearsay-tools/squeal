@@ -1,0 +1,54 @@
+{
+ "worktree": "2bf2880f978f2575",
+ "revisions": [
+  {
+   "number": 1,
+   "created_at": 1795256675293,
+   "head": "e8db12ef9227c0284a9a42b4c416fdc494c81d28",
+   "trigger": "watch",
+   "n": 17,
+   "at": "2026-11-21T10:24:35.293Z"
+  },
+  {
+   "number": 2,
+   "created_at": 1795256895040,
+   "head": "e8db12ef9227c0284a9a42b4c416fdc494c81d28",
+   "trigger": "watch",
+   "n": 1,
+   "at": "2026-11-21T10:28:15.040Z"
+  },
+  {
+   "number": 3,
+   "created_at": 1795256915041,
+   "head": "e8db12ef9227c0284a9a42b4c416fdc494c81d28",
+   "trigger": "watch",
+   "n": 1,
+   "at": "2026-11-21T10:28:35.041Z"
+  }
+ ],
+ "imports": [
+  {
+   "commit": "6c43132d",
+   "at": "2026-11-21T10:23:55.938Z"
+  },
+  {
+   "commit": "e8db12ef",
+   "at": "2026-11-21T10:41:54.705Z"
+  }
+ ],
+ "importOfTo": {
+  "at": "2026-11-21T10:41:54.705Z",
+  "secondsAfterFf": 1039.553
+ },
+ "testFiles": 1949,
+ "filesByOrigin": {
+  "import 6c43132d": 1415,
+  "none": 534
+ },
+ "localRunsAfterFf": 111,
+ "filesRunAfterFf": 534,
+ "runsStartedBeforeImportOfTo": 111,
+ "filesRunBeforeImportOfTo": 534,
+ "lastRunEnd": "2026-11-21T10:35:43.069Z",
+ "minutesOfLocalRunsAfterFf": 11.13195
+}

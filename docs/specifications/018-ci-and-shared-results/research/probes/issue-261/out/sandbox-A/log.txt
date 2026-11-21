@@ -1,0 +1,9 @@
+2026-11-21T10:16:48.762Z load=5.45 install
+2026-11-21T10:16:49.035Z load=5.26 install exit 0
+2026-11-21T10:16:49.037Z load=5.26 squeal start at 686bc2f
+2026-11-21T10:16:49.258Z load=5.26 start exit 0
+2026-11-21T10:17:13.287Z load=4.24 imported 686bc2f0: 2026-11-21T10:17:11.989Z [41427] squeal daemon: CI results: imported 34019 results from CI run 44862370425 on hearsay-tools/squawk at 686bc2f0
+2026-11-21T10:17:48.837Z load=3.18 ff to 27faff7 (revision 0)
+2026-11-21T10:17:48.856Z load=3.18 ff done
+2026-11-21T10:17:51.835Z load=3.18 revision passed 0
+2026-11-21T10:23:34.745Z stopped by hand after the settle (97 manual browser files left queued)

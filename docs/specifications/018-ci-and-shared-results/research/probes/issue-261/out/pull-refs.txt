@@ -1,0 +1,7 @@
+git version: git version 2.43.0
+refspec: +refs/heads/*:refs/remotes/origin/*
+after fetch: 0 refs/squeal, origin/main moved: f0b6687
+after pull: 0 refs/squeal
+after fetch --all: 0 refs/squeal
+has the results object locally: no
+ls-remote sees: 1 refs/squeal
