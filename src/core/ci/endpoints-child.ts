@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { hashFile } from "../hash/blob.js";
 import { type Clock, type EndHashes, type EndWork, hashEnd } from "./endpoints-hash.js";
 
@@ -15,6 +15,12 @@ import { type Clock, type EndHashes, type EndWork, hashEnd } from "./endpoints-h
  * The parent sends the end's work as one IPC message; the child sends
  * `begin` once it knows the paths, `hashed` counts as paths finish, and
  * then its result or its error.
+ *
+ * Row 018-73 (review 0.1.587 S1): the child starts `git`, whose own timer
+ * dies with the child. So the child leads a process group of its own, and
+ * ending it ends the group: past the limit the parent kills the group, and
+ * a child whose parent is gone kills its own. Without groups (Windows),
+ * `taskkill /T` ends the child and every process it started.
  */
 
 /** The hidden `squeal ci` subcommand of the child. */
@@ -43,6 +49,7 @@ export function hashInChild(
   const [command = process.execPath, ...flags] = relaunch;
   const child = spawn(command, [...flags, "ci", ENDPOINTS_CHILD], {
     cwd: work.root,
+    detached: !WINDOWS,
     stdio: ["ignore", "ignore", "pipe", "ipc"],
   });
   let stderr = "";
@@ -64,6 +71,7 @@ export function hashInChild(
       end();
     };
     const abandon = () => {
+      endTree(child.pid);
       child.kill("SIGKILL");
       release();
     };
@@ -76,6 +84,8 @@ export function hashInChild(
     });
     child.once("error", (error) => settle(() => reject(error)));
     child.once("exit", (code, signal) => {
+      // A child that ended without a result may leave its git behind.
+      if (!settled && !WINDOWS) endTree(child.pid);
       const how = signal === null ? `with exit code ${code}` : `on ${signal}`;
       const why = stderr.trim() === "" ? "" : `: ${stderr.trim()}`;
       settle(() => reject(new Error(`its process ended ${how} without a result${why}`)));
@@ -96,8 +106,11 @@ export function hashInChild(
 export function serveEnd(): Promise<number> {
   const send = process.send?.bind(process);
   if (send === undefined) return Promise.resolve(2);
-  // The parent is gone: nothing waits for the hashes.
-  const gone = () => process.exit(0);
+  // The parent is gone: nothing waits for the hashes, nor for the git they started.
+  const gone = () => {
+    endTree(process.pid);
+    process.exit(0);
+  };
   process.once("disconnect", gone);
   let pending = 0;
   const flush = () => {
@@ -130,4 +143,27 @@ export function serveEnd(): Promise<number> {
       );
     });
   });
+}
+
+const WINDOWS = process.platform === "win32";
+
+/**
+ * Ends the hashing child `pid` and every process it started, at once: its
+ * process group with SIGKILL, or `taskkill /T /F` on Windows. A process
+ * stuck in a read the operating system never ends dies when the read does;
+ * nothing here waits for that.
+ */
+function endTree(pid: number | undefined): void {
+  if (pid === undefined) return;
+  try {
+    if (WINDOWS) {
+      execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+        timeout: 5000,
+      });
+    } else process.kill(-pid, "SIGKILL");
+  } catch {
+    // The group or the tree has ended, or this process leads no group.
+  }
 }
