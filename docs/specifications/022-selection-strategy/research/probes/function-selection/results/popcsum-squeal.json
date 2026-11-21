@@ -1,0 +1,390 @@
+{
+ "edits": 2501,
+ "timing": {
+  "judged": 28406,
+  "ms": 9489.112907000585
+ },
+ "sameAsRecord": 0,
+ "all": {
+  "pairs": 582168,
+  "seconds": 3636634,
+  "revisions": 1088,
+  "rows": [
+   [
+    "c1:noRunInWorktree",
+    582168,
+    3636634,
+    100,
+    100
+   ]
+  ],
+  "unknown": []
+ },
+ "span1": {
+  "pairs": 0,
+  "seconds": 0,
+  "revisions": 0,
+  "rows": [],
+  "unknown": []
+ },
+ "relaxed": {
+  "pairs": 582168,
+  "seconds": 3636634,
+  "revisions": 1088,
+  "rows": [
+   [
+    "c1:noCompatibleRecord",
+    312453,
+    2171278,
+    53.67,
+    59.71
+   ],
+   [
+    "c2:testFileChanged",
+    989,
+    4596,
+    0.17,
+    0.13
+   ],
+   [
+    "c2:nonScriptPath",
+    63093,
+    359729,
+    10.84,
+    9.89
+   ],
+   [
+    "c2:scriptNotLoaded",
+    111878,
+    737602,
+    19.22,
+    20.28
+   ],
+   [
+    "c2:deleted",
+    861,
+    4223,
+    0.15,
+    0.12
+   ],
+   [
+    "c2:enteredBodyChanged",
+    23792,
+    110184,
+    4.09,
+    3.03
+   ],
+   [
+    "c2:unmappedBody",
+    50,
+    184,
+    0.01,
+    0.01
+   ],
+   [
+    "c3:skeletonChanged",
+    61252,
+    221307,
+    10.52,
+    6.09
+   ],
+   [
+    "c5:childProcess",
+    255,
+    2701,
+    0.04,
+    0.07
+   ],
+   [
+    "c5:readAsData",
+    74,
+    260,
+    0.01,
+    0.01
+   ],
+   [
+    "left",
+    7471,
+    24571,
+    1.28,
+    0.68
+   ]
+  ],
+  "unknown": []
+ },
+ "relaxedOnly": {
+  "pairs": 582168,
+  "seconds": 3636634,
+  "revisions": 1088,
+  "rows": [
+   [
+    "c1:noCompatibleRecord",
+    312453,
+    2171278,
+    53.67,
+    59.71
+   ],
+   [
+    "c2:testFileChanged",
+    989,
+    4596,
+    0.17,
+    0.13
+   ],
+   [
+    "c2:nonScriptPath",
+    63093,
+    359729,
+    10.84,
+    9.89
+   ],
+   [
+    "c2:scriptNotLoaded",
+    111878,
+    737602,
+    19.22,
+    20.28
+   ],
+   [
+    "c2:deleted",
+    861,
+    4223,
+    0.15,
+    0.12
+   ],
+   [
+    "c2:enteredBodyChanged",
+    23792,
+    110184,
+    4.09,
+    3.03
+   ],
+   [
+    "c2:unmappedBody",
+    50,
+    184,
+    0.01,
+    0.01
+   ],
+   [
+    "c3:skeletonChanged",
+    61252,
+    221307,
+    10.52,
+    6.09
+   ],
+   [
+    "c5:childProcess",
+    255,
+    2701,
+    0.04,
+    0.07
+   ],
+   [
+    "c5:readAsData",
+    74,
+    260,
+    0.01,
+    0.01
+   ],
+   [
+    "left",
+    7471,
+    24571,
+    1.28,
+    0.68
+   ]
+  ],
+  "unknown": []
+ },
+ "relaxedLeft": [
+  [
+   "commit:f",
+   79,
+   "test/code/gate/parts-environment.test.ts",
+   134
+  ],
+  [
+   "commit:f",
+   79,
+   "test/code/gate/parts.test.ts",
+   611
+  ],
+  [
+   "commit:f",
+   79,
+   "test/runners/vitest/ci-runs.test.ts",
+   79
+  ],
+  [
+   "commit:f",
+   79,
+   "test/ci/export-check.test.ts",
+   78
+  ],
+  [
+   "commit:f",
+   79,
+   "test/ci/parts-format.test.ts",
+   66
+  ],
+  [
+   "commit:f",
+   79,
+   "test/ci/reuse.test.ts",
+   96
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/gate/parts-environment.test.ts",
+   134
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/gate/parts-refused.test.ts",
+   588
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/gate/parts.test.ts",
+   611
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-check.test.ts",
+   78
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/inputs-here.test.ts",
+   230
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/inputs.test.ts",
+   141
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/reuse.test.ts",
+   96
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci-action/record-squeal-fails.test.ts",
+   1030
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-absolute.test.ts",
+   1752
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-evidence.test.ts",
+   2951
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-formats.test.ts",
+   3851
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-keys.test.ts",
+   1121
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-loaded.test.ts",
+   4037
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-node-test-parity.test.ts",
+   5922
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-snapshot.test.ts",
+   2015
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export-wrapper.test.ts",
+   22071
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/export.test.ts",
+   3069
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/glob-import.test.ts",
+   2369
+  ],
+  [
+   "commit:0",
+   95,
+   "test/ci/resolution-import.test.ts",
+   8064
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/crap/code-command.test.ts",
+   609
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/crap/no-loader.test.ts",
+   582
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/crap/not-measured.test.ts",
+   722
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/crap/pending-reason.test.ts",
+   789
+  ],
+  [
+   "commit:0",
+   95,
+   "test/code/crap/told.test.ts",
+   618
+  ]
+ ],
+ "pathVerdicts": [],
+ "left": [],
+ "ruleB": {
+  "judgedPairs": 0,
+  "judgedSeconds": 0,
+  "entered": 0,
+  "enteredSeconds": 0
+ }
+}

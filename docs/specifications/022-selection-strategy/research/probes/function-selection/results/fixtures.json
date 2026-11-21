@@ -1,0 +1,887 @@
+{
+ "node": "v26.13.0",
+ "vitest": "5.0.3",
+ "load": [
+  16.69,
+  14.37,
+  14.27
+ ],
+ "results": [
+  {
+   "name": "L1 reflection: toString of an uncalled function",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /hidden#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": true,
+     "afterErrors": [
+      "expected 'function hidden() {\\n\\treturn \"bad\";\\…' to contain 'ok'"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L2 data read",
+   "steps": [
+    {
+     "changed": [
+      "data.txt"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:nonScript"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 'bad' to be 'ok' // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L3 arity of an uncalled hoisted function",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 2 to be 1 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L4 top-level throw added",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "added"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L5 deleted declaration read by typeof",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [
+      "(fn /visible#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected false to be true // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L6 changed import",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 2 to be 1 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L7 another dependency flips a branch, then the branch body changes",
+   "steps": [
+    {
+     "changed": [
+      "flag.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    },
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /answer#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 2 to be 1 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L8 code run only by a child process",
+   "steps": [
+    {
+     "changed": [
+      "child.mjs"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:scriptNotLoaded"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 'bad' to be 'ok' // Object.is equality"
+     ],
+     "childSeen": 1,
+     "processRows": 2
+    }
+   ]
+  },
+  {
+   "name": "L9 syntax error inside an uncalled body",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c4:parse"
+     ],
+     "notes": [
+      "(fn /unused#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "Transform failed with 1 error:\n\n\u001b[31m[PARSE_ERROR] \u001b[0mUnexpected token\n   \u001b[38;5;246m╭\u001b[0m\u001b[38;5;246m─\u001b[0m\u001b[38;5;246m[\u001b[0m fsel-8RUtic/subject.ts:2:10 \u001b[38;5;246m]\u001b[0m\n   \u001b[38;5;246m│\u001b[0m\n \u001b[38;5;246"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "L10 control: uncalled body changes, no effect",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /unused#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "S1 refactor of a called body",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /shipping#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "S2 regression in a called body",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /shipping#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 8 to be 6 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "S3 branch inserted in a called body",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /shipping#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected +0 to be 6 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "S4 module value changes",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 30 to be 20 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "S5 raw source read as text",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c5:readAsData"
+     ],
+     "notes": [
+      "(fn /unused#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 'export function unused() {\\n  return …' to contain 'old'"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "S6 child imports the module and calls the uncalled function",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c5:childProcess"
+     ],
+     "notes": [
+      "(fn /unused#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 'new' to be 'old' // Object.is equality"
+     ],
+     "childSeen": 1,
+     "processRows": 2
+    }
+   ]
+  },
+  {
+   "name": "N1 toString of an uncalled function, inside a worker built from its text",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /task#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": true,
+     "afterErrors": [
+      "expected 'bad' to be 'ok' // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N2 stack line of code below an edit that adds lines",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /unused#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": true,
+     "afterErrors": [
+      "expected '    at where (~/projects/sq…' to match /subject\\.ts:5:/"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N3 snapshot of a stack line below an edit that adds lines",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /unused#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": true,
+     "afterErrors": [
+      "Snapshot `t 1` mismatched"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N4 getter never read",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /A/get v#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N5 getter read",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /A/get v#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 3 to be 1 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N6 decorator argument changes",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected [ 'm:y' ] to deeply equal [ 'm:x' ]"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N7 decorator body changes",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /tag#0/<anon>#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected [ 'm=x' ] to deeply equal [ 'm:x' ]"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N8 decorated method never called, body changes",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /A/m#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N9 default parameter of an uncalled function",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N10 default parameter of a called function",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 5 to be 1 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N11 class field initializer, class never constructed",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N12 class field initializer, class constructed",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c3:skeleton"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 2 to be 1 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N13 arrow class field never called, class constructed",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /A/h#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N14 nested function edited, only the outer ran",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /outer#0/inner#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N15 nested arrow edited, only the outer ran",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /outer#0/xs.map()#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N16 nested arrow edited, outer ran, inner text read",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /outer#0/<anon>#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": true,
+     "afterErrors": [
+      "expected '() => {\\n\\t\\treturn 2;\\n\\t}' to contain '1'"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "N17 nested function edited, inner ran",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /outer#0/inner#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 2 to be 1 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "Q4 chain: two skipped edits of an uncalled body, then a call site",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /helper#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    },
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /helper#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    },
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /helper#0 entered=false)",
+      "(fn /api#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 1 to be +0 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  }
+ ]
+}

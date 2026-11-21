@@ -1,0 +1,390 @@
+{
+ "edits": 462,
+ "timing": {
+  "judged": 33784,
+  "ms": 18123.762890000275
+ },
+ "sameAsRecord": 0,
+ "all": {
+  "pairs": 302909,
+  "seconds": 3381595,
+  "revisions": 462,
+  "rows": [
+   [
+    "c1:noRunInWorktree",
+    302909,
+    3381595,
+    100,
+    100
+   ]
+  ],
+  "unknown": []
+ },
+ "span1": {
+  "pairs": 0,
+  "seconds": 0,
+  "revisions": 0,
+  "rows": [],
+  "unknown": []
+ },
+ "relaxed": {
+  "pairs": 302909,
+  "seconds": 3381595,
+  "revisions": 462,
+  "rows": [
+   [
+    "c1:noCompatibleRecord",
+    194569,
+    2571244,
+    64.23,
+    76.04
+   ],
+   [
+    "c2:testFileChanged",
+    1385,
+    8269,
+    0.46,
+    0.24
+   ],
+   [
+    "c2:nonScriptPath",
+    16119,
+    105148,
+    5.32,
+    3.11
+   ],
+   [
+    "c2:scriptNotLoaded",
+    53558,
+    464658,
+    17.68,
+    13.74
+   ],
+   [
+    "c2:deleted",
+    1663,
+    9856,
+    0.55,
+    0.29
+   ],
+   [
+    "c2:enteredBodyChanged",
+    9411,
+    78946,
+    3.11,
+    2.33
+   ],
+   [
+    "c2:unmappedBody",
+    357,
+    1305,
+    0.12,
+    0.04
+   ],
+   [
+    "c3:skeletonChanged",
+    20692,
+    107093,
+    6.83,
+    3.17
+   ],
+   [
+    "c5:childProcess",
+    2719,
+    29077,
+    0.9,
+    0.86
+   ],
+   [
+    "c5:readAsData",
+    272,
+    206,
+    0.09,
+    0.01
+   ],
+   [
+    "left",
+    2164,
+    5794,
+    0.71,
+    0.17
+   ]
+  ],
+  "unknown": []
+ },
+ "relaxedOnly": {
+  "pairs": 302909,
+  "seconds": 3381595,
+  "revisions": 462,
+  "rows": [
+   [
+    "c1:noCompatibleRecord",
+    194569,
+    2571244,
+    64.23,
+    76.04
+   ],
+   [
+    "c2:testFileChanged",
+    1385,
+    8269,
+    0.46,
+    0.24
+   ],
+   [
+    "c2:nonScriptPath",
+    16119,
+    105148,
+    5.32,
+    3.11
+   ],
+   [
+    "c2:scriptNotLoaded",
+    53558,
+    464658,
+    17.68,
+    13.74
+   ],
+   [
+    "c2:deleted",
+    1663,
+    9856,
+    0.55,
+    0.29
+   ],
+   [
+    "c2:enteredBodyChanged",
+    9411,
+    78946,
+    3.11,
+    2.33
+   ],
+   [
+    "c2:unmappedBody",
+    357,
+    1305,
+    0.12,
+    0.04
+   ],
+   [
+    "c3:skeletonChanged",
+    20692,
+    107093,
+    6.83,
+    3.17
+   ],
+   [
+    "c5:childProcess",
+    2719,
+    29077,
+    0.9,
+    0.86
+   ],
+   [
+    "c5:readAsData",
+    272,
+    206,
+    0.09,
+    0.01
+   ],
+   [
+    "left",
+    2164,
+    5794,
+    0.71,
+    0.17
+   ]
+  ],
+  "unknown": []
+ },
+ "relaxedLeft": [
+  [
+   "commit:5",
+   15,
+   "packages/cezar/src/core/mock-scenario.test.ts",
+   5599
+  ],
+  [
+   "commit:f",
+   50,
+   "packages/cezar/src/core/product-env-cli.test.ts",
+   1354
+  ],
+  [
+   "commit:f",
+   50,
+   "packages/cezar/src/home/runtime-cli.test.ts",
+   2079
+  ],
+  [
+   "commit:f",
+   50,
+   "packages/cezar/src/server-install/cli.test.ts",
+   7165
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/workflows/waits-omp-subagents-parity.test.ts",
+   1344
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/workflows/waits-opencode-subagents-parity.test.ts",
+   1372
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/workflows/waits-pi-subagents-parity.test.ts",
+   1328
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+   4148
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/workflows/context-completion-registration-parity.test.ts",
+   3058
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/workflows/resume-diagnostics-registration-parity.test.ts",
+   993
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/workflows/worker-wait-fixture-cleanup.test.ts",
+   1058
+  ],
+  [
+   "commit:9",
+   70,
+   "packages/cezar/src/core/parity-classes.test.ts",
+   1651
+  ],
+  [
+   "commit:7",
+   77,
+   "packages/web/src/test/visual-ready.test.ts",
+   1418
+  ],
+  [
+   "commit:7",
+   77,
+   "packages/web/src/lib/prompt-templates.test.ts",
+   269
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/server/voice-api.test.ts",
+   4835
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/voice/decide.test.ts",
+   584
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/voice/fake-engine.test.ts",
+   488
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/voice/pending-ask.test.ts",
+   449
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/voice/replay-set.test.ts",
+   375
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/web/src/components/command-palette-voice.test.tsx",
+   5183
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/web/src/components/voice/use-voice-command.test.tsx",
+   1683
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/web/src/lib/voice/resolve-open.test.ts",
+   585
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/web/src/lib/voice/status-map.test.ts",
+   611
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/contract/src/session-transport.test.ts",
+   323
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/core/harness-cursor-startup-parity.test.ts",
+   511
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/runs/session-transport.test.ts",
+   540
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/workflows/cursor-acp-continue.test.ts",
+   1780
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts",
+   2049
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/workflows/waits-cursor-subagents-parity.test.ts",
+   1803
+  ],
+  [
+   "commit:4",
+   84,
+   "packages/cezar/src/home/skills-isolation.test.ts",
+   1441
+  ]
+ ],
+ "pathVerdicts": [],
+ "left": [],
+ "ruleB": {
+  "judgedPairs": 0,
+  "judgedSeconds": 0,
+  "entered": 0,
+  "enteredSeconds": 0
+ }
+}

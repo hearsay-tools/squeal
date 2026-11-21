@@ -1,0 +1,559 @@
+{
+ "counts": {
+  "files": 106282,
+  "firstRuns": 0,
+  "sameRevision": 1,
+  "gap": 66897,
+  "sameKey": 0,
+  "noKey": 2,
+  "considered": 50333,
+  "keyMovedOutsideClosure": 840
+ },
+ "subsets": {
+  "all": {
+   "pairs": 51173,
+   "seconds": 293723,
+   "revisions": 272,
+   "funnel": {
+    "c1:noRecord": {
+     "n": 14203,
+     "s": 97121,
+     "pctN": 27.75,
+     "pctS": 33.07
+    },
+    "c1:recordNotAtOldBytes": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:keyMovedOutsideKnownClosure": {
+     "n": 832,
+     "s": 1693,
+     "pctN": 1.63,
+     "pctS": 0.58
+    },
+    "c2:testFileChanged": {
+     "n": 354,
+     "s": 2986,
+     "pctN": 0.69,
+     "pctS": 1.02
+    },
+    "c2:nonScriptPath": {
+     "n": 20805,
+     "s": 124323,
+     "pctN": 40.66,
+     "pctS": 42.33
+    },
+    "c2:scriptNotLoaded": {
+     "n": 8401,
+     "s": 40778,
+     "pctN": 16.42,
+     "pctS": 13.88
+    },
+    "c2:deleted": {
+     "n": 123,
+     "s": 381,
+     "pctN": 0.24,
+     "pctS": 0.13
+    },
+    "c2:enteredBodyChanged": {
+     "n": 1845,
+     "s": 8690,
+     "pctN": 3.61,
+     "pctS": 2.96
+    },
+    "notJudged:noOldBlob": {
+     "n": 1,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:noNewBlob": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:judgeError": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:unmappedBody": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c3:skeletonChanged": {
+     "n": 4517,
+     "s": 17498,
+     "pctN": 8.83,
+     "pctS": 5.96
+    },
+    "c4:parse": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:childProcess": {
+     "n": 4,
+     "s": 20,
+     "pctN": 0.01,
+     "pctS": 0.01
+    },
+    "c5:readAsData": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "left": {
+     "n": 88,
+     "s": 234,
+     "pctN": 0.17,
+     "pctS": 0.08
+    }
+   }
+  },
+  "single": {
+   "pairs": 671,
+   "seconds": 4503,
+   "revisions": 22,
+   "funnel": {
+    "c1:noRecord": {
+     "n": 50,
+     "s": 147,
+     "pctN": 7.45,
+     "pctS": 3.26
+    },
+    "c1:recordNotAtOldBytes": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:keyMovedOutsideKnownClosure": {
+     "n": 1,
+     "s": 5,
+     "pctN": 0.15,
+     "pctS": 0.12
+    },
+    "c2:testFileChanged": {
+     "n": 16,
+     "s": 94,
+     "pctN": 2.38,
+     "pctS": 2.09
+    },
+    "c2:nonScriptPath": {
+     "n": 338,
+     "s": 2654,
+     "pctN": 50.37,
+     "pctS": 58.93
+    },
+    "c2:scriptNotLoaded": {
+     "n": 131,
+     "s": 859,
+     "pctN": 19.52,
+     "pctS": 19.07
+    },
+    "c2:deleted": {
+     "n": 19,
+     "s": 115,
+     "pctN": 2.83,
+     "pctS": 2.56
+    },
+    "c2:enteredBodyChanged": {
+     "n": 41,
+     "s": 169,
+     "pctN": 6.11,
+     "pctS": 3.75
+    },
+    "notJudged:noOldBlob": {
+     "n": 1,
+     "s": 0,
+     "pctN": 0.15,
+     "pctS": 0
+    },
+    "notJudged:noNewBlob": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:judgeError": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:unmappedBody": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c3:skeletonChanged": {
+     "n": 74,
+     "s": 460,
+     "pctN": 11.03,
+     "pctS": 10.21
+    },
+    "c4:parse": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:childProcess": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:readAsData": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "left": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    }
+   }
+  },
+  "singleNoHead": {
+   "pairs": 27,
+   "seconds": 48,
+   "revisions": 13,
+   "funnel": {
+    "c1:noRecord": {
+     "n": 23,
+     "s": 46,
+     "pctN": 85.19,
+     "pctS": 97.53
+    },
+    "c1:recordNotAtOldBytes": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:keyMovedOutsideKnownClosure": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:testFileChanged": {
+     "n": 1,
+     "s": 1,
+     "pctN": 3.7,
+     "pctS": 1.09
+    },
+    "c2:nonScriptPath": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:scriptNotLoaded": {
+     "n": 2,
+     "s": 1,
+     "pctN": 7.41,
+     "pctS": 1.25
+    },
+    "c2:deleted": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:enteredBodyChanged": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:noOldBlob": {
+     "n": 1,
+     "s": 0,
+     "pctN": 3.7,
+     "pctS": 0.12
+    },
+    "notJudged:noNewBlob": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:judgeError": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:unmappedBody": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c3:skeletonChanged": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c4:parse": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:childProcess": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:readAsData": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "left": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    }
+   }
+  },
+  "small": {
+   "pairs": 65,
+   "seconds": 129,
+   "revisions": 30,
+   "funnel": {
+    "c1:noRecord": {
+     "n": 57,
+     "s": 125,
+     "pctN": 87.69,
+     "pctS": 97.4
+    },
+    "c1:recordNotAtOldBytes": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:keyMovedOutsideKnownClosure": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:testFileChanged": {
+     "n": 2,
+     "s": 1,
+     "pctN": 3.08,
+     "pctS": 1.16
+    },
+    "c2:nonScriptPath": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:scriptNotLoaded": {
+     "n": 5,
+     "s": 2,
+     "pctN": 7.69,
+     "pctS": 1.39
+    },
+    "c2:deleted": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:enteredBodyChanged": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:noOldBlob": {
+     "n": 1,
+     "s": 0,
+     "pctN": 1.54,
+     "pctS": 0.05
+    },
+    "notJudged:noNewBlob": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:judgeError": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:unmappedBody": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c3:skeletonChanged": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c4:parse": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:childProcess": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:readAsData": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "left": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    }
+   }
+  },
+  "headMoved": {
+   "pairs": 51057,
+   "seconds": 293460,
+   "revisions": 251,
+   "funnel": {
+    "c1:noRecord": {
+     "n": 14130,
+     "s": 96928,
+     "pctN": 27.67,
+     "pctS": 33.03
+    },
+    "c1:recordNotAtOldBytes": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:keyMovedOutsideKnownClosure": {
+     "n": 832,
+     "s": 1693,
+     "pctN": 1.63,
+     "pctS": 0.58
+    },
+    "c2:testFileChanged": {
+     "n": 350,
+     "s": 2979,
+     "pctN": 0.69,
+     "pctS": 1.02
+    },
+    "c2:nonScriptPath": {
+     "n": 20785,
+     "s": 124283,
+     "pctN": 40.71,
+     "pctS": 42.35
+    },
+    "c2:scriptNotLoaded": {
+     "n": 8383,
+     "s": 40753,
+     "pctN": 16.42,
+     "pctS": 13.89
+    },
+    "c2:deleted": {
+     "n": 123,
+     "s": 381,
+     "pctN": 0.24,
+     "pctS": 0.13
+    },
+    "c2:enteredBodyChanged": {
+     "n": 1845,
+     "s": 8690,
+     "pctN": 3.61,
+     "pctS": 2.96
+    },
+    "notJudged:noOldBlob": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:noNewBlob": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "notJudged:judgeError": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c2:unmappedBody": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c3:skeletonChanged": {
+     "n": 4517,
+     "s": 17498,
+     "pctN": 8.85,
+     "pctS": 5.96
+    },
+    "c4:parse": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "c5:childProcess": {
+     "n": 4,
+     "s": 20,
+     "pctN": 0.01,
+     "pctS": 0.01
+    },
+    "c5:readAsData": {
+     "n": 0,
+     "s": 0,
+     "pctN": 0,
+     "pctS": 0
+    },
+    "left": {
+     "n": 88,
+     "s": 234,
+     "pctN": 0.17,
+     "pctS": 0.08
+    }
+   }
+  }
+ }
+}

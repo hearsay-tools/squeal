@@ -1,0 +1,393 @@
+{
+ "newFailures": 300,
+ "inEditRevisions": 13,
+ "edits": [
+  {
+   "wt": "58bd4d48",
+   "from": 169,
+   "to": 170,
+   "editOnly": false,
+   "changedPaths": 2,
+   "changedSample": [
+    "packages/cezar/src/workflows/removed-runner-continue.test.ts",
+    "packages/cezar/src/runs/store.test.ts"
+   ],
+   "reached": 128,
+   "reachedS": 3023,
+   "cut": 6,
+   "cutS": 8,
+   "B": 2,
+   "BS": 6,
+   "noRecord": 39,
+   "noRecordS": 1850,
+   "failing": [
+    {
+     "test": "packages/cezar/src/runs/store.test.ts",
+     "inCut": true,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "b7555ac0",
+   "from": 390,
+   "to": 551,
+   "editOnly": false,
+   "changedPaths": 1711,
+   "changedSample": [
+    ".ai/squawk/runs.db",
+    ".ai/WORKLIST.md",
+    ".ai/analysis/.gitkeep",
+    ".ai/analysis/2026-10-18-resumed-worker-requests.md",
+    ".ai/analysis/2026-10-21-voice-mode-jev-research.md"
+   ],
+   "reached": 2621,
+   "reachedS": 19481,
+   "cut": 1233,
+   "cutS": 10322,
+   "B": 996,
+   "BS": 6788,
+   "noRecord": 1145,
+   "noRecordS": 12001,
+   "failing": [
+    {
+     "test": "packages/cezar/src/session-signal-cli.test.ts",
+     "inCut": false,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "b7555ac0",
+   "from": 361,
+   "to": 451,
+   "editOnly": false,
+   "changedPaths": 1,
+   "changedSample": [
+    ".ai/squawk/runs.db"
+   ],
+   "reached": 2,
+   "reachedS": 1,
+   "cut": 2,
+   "cutS": 1,
+   "B": 0,
+   "BS": 0,
+   "noRecord": 0,
+   "noRecordS": 0,
+   "failing": [
+    {
+     "test": "packages/cezar/src/webhooks/cli.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": false
+    }
+   ]
+  },
+  {
+   "wt": "2dc24d80",
+   "from": 4,
+   "to": 7,
+   "editOnly": false,
+   "changedPaths": 7,
+   "changedSample": [
+    ".ai/specs/2026-11-20-e2e-selection-evidence-plan.md",
+    "packages/web/e2e/README.md",
+    "packages/web/e2e/spec-map/build-map.ts",
+    "packages/web/e2e/spec-map/node-evidence.ts",
+    "packages/web/e2e/spec-map/spec-map.ts"
+   ],
+   "reached": 123,
+   "reachedS": 2955,
+   "cut": 8,
+   "cutS": 9,
+   "B": 3,
+   "BS": 2,
+   "noRecord": 9,
+   "noRecordS": 325,
+   "failing": [
+    {
+     "test": "scripts/e2e-affected.test.mjs",
+     "inCut": true,
+     "inB": false,
+     "noRecord": true,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "2dc24d80",
+   "from": 36,
+   "to": 37,
+   "editOnly": false,
+   "changedPaths": 3,
+   "changedSample": [
+    ".ai/specs/2026-11-20-e2e-selection-evidence-plan.md",
+    "packages/web/e2e/README.md",
+    "scripts/e2e-affected.mjs"
+   ],
+   "reached": 10,
+   "reachedS": 68,
+   "cut": 5,
+   "cutS": 6,
+   "B": 1,
+   "BS": 3,
+   "noRecord": 1,
+   "noRecordS": 0,
+   "failing": [
+    {
+     "test": "scripts/e2e-affected.test.mjs",
+     "inCut": true,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "2dc24d80",
+   "from": 55,
+   "to": 56,
+   "editOnly": false,
+   "changedPaths": 316,
+   "changedSample": [
+    ".agents/skills/auto-merge/SKILL.md",
+    ".agents/skills/auto-merge/arm-check.mjs",
+    ".agents/skills/auto-merge/check.mjs",
+    ".agents/skills/auto-merge/references/follow.md",
+    ".agents/skills/campaign/SKILL.md"
+   ],
+   "reached": 2539,
+   "reachedS": 19320,
+   "cut": 655,
+   "cutS": 6408,
+   "B": 376,
+   "BS": 3731,
+   "noRecord": 371,
+   "noRecordS": 7260,
+   "failing": [
+    {
+     "test": "scripts/e2e-affected.test.mjs",
+     "inCut": true,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "58bd4d48",
+   "from": 147,
+   "to": 157,
+   "editOnly": false,
+   "changedPaths": 30,
+   "changedSample": [
+    "packages/cezar/src/core/parity-classes.testkit.ts",
+    ".ai/specs/2026-11-16-runner-native-skills.md",
+    "packages/cezar/src/core/agent-runner.ts",
+    "packages/cezar/src/core/claude-cli-runner.test.ts",
+    "packages/cezar/src/core/claude-cli-runner.ts"
+   ],
+   "reached": 2003,
+   "reachedS": 17937,
+   "cut": 91,
+   "cutS": 835,
+   "B": 25,
+   "BS": 141,
+   "noRecord": 1658,
+   "noRecordS": 16129,
+   "failing": [
+    {
+     "test": "packages/cezar/src/workflows/removed-runner-continue.test.ts",
+     "inCut": true,
+     "inB": false,
+     "noRecord": true,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "58bd4d48",
+   "from": 170,
+   "to": 170,
+   "editOnly": false,
+   "changedPaths": 2,
+   "changedSample": [
+    "packages/cezar/src/runs/store.test.ts",
+    "packages/cezar/src/workflows/removed-runner-continue.test.ts"
+   ],
+   "reached": 128,
+   "reachedS": 3023,
+   "cut": 6,
+   "cutS": 8,
+   "B": 2,
+   "BS": 6,
+   "noRecord": 39,
+   "noRecordS": 1850,
+   "failing": [
+    {
+     "test": "packages/cezar/src/workflows/removed-runner-continue.test.ts",
+     "inCut": true,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "58bd4d48",
+   "from": 182,
+   "to": 188,
+   "editOnly": false,
+   "changedPaths": 111,
+   "changedSample": [
+    ".ai/ast-grep/rules/runner-class-outside-factory.yml",
+    "packages/cezar/src/vitest-setup-closure.test.ts",
+    ".ai/ast-grep/rule-tests/runner-class-outside-factory-test.yml",
+    "packages/cezar/src/core/skill-provision-registration-parity.test.ts",
+    "packages/cezar/src/core/skill-resume-registration-parity.test.ts"
+   ],
+   "reached": 2022,
+   "reachedS": 18045,
+   "cut": 41,
+   "cutS": 303,
+   "B": 466,
+   "BS": 1341,
+   "noRecord": 1243,
+   "noRecordS": 16194,
+   "failing": [
+    {
+     "test": "packages/cezar/src/runs/removed-runner-saved-data.test.ts",
+     "inCut": true,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "84efca2d",
+   "from": 14,
+   "to": 15,
+   "editOnly": false,
+   "changedPaths": 2,
+   "changedSample": [
+    "scripts/restack-after-squash.mjs",
+    "scripts/restack-after-squash.test.mjs"
+   ],
+   "reached": 4,
+   "reachedS": 15,
+   "cut": 4,
+   "cutS": 15,
+   "B": 0,
+   "BS": 0,
+   "noRecord": 1,
+   "noRecordS": 11,
+   "failing": [
+    {
+     "test": "scripts/restack-after-squash.test.mjs",
+     "inCut": true,
+     "inB": false,
+     "noRecord": true,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "2dc24d80",
+   "from": 26,
+   "to": 29,
+   "editOnly": false,
+   "changedPaths": 6,
+   "changedSample": [
+    ".ai/specs/2026-11-20-e2e-selection-evidence-plan.md",
+    "packages/web/e2e/README.md",
+    ".github/workflows/e2e-spec-map.yml",
+    "packages/web/e2e/spec-map/flush-processes.mjs",
+    "packages/web/e2e/spec-map/flush-processes.ts"
+   ],
+   "reached": 238,
+   "reachedS": 3079,
+   "cut": 5,
+   "cutS": 2,
+   "B": 0,
+   "BS": 0,
+   "noRecord": 11,
+   "noRecordS": 316,
+   "failing": [
+    {
+     "test": "packages/web/src/test/e2e-spec-map-loaded.test.ts",
+     "inCut": true,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "2dc24d80",
+   "from": 32,
+   "to": 43,
+   "editOnly": false,
+   "changedPaths": 13,
+   "changedSample": [
+    ".github/workflows/e2e-spec-map.yml",
+    "scripts/e2e-affected.mjs",
+    "packages/web/e2e/spec-map/build-map.ts",
+    "packages/web/e2e/spec-map/node-evidence.ts",
+    "packages/web/e2e/spec-map/spec-map.ts"
+   ],
+   "reached": 255,
+   "reachedS": 3136,
+   "cut": 10,
+   "cutS": 11,
+   "B": 4,
+   "BS": 4,
+   "noRecord": 14,
+   "noRecordS": 326,
+   "failing": [
+    {
+     "test": "packages/web/src/test/e2e-spec-map-loaded.test.ts",
+     "inCut": true,
+     "inB": false,
+     "noRecord": true,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "148a99ec",
+   "from": 14,
+   "to": 16,
+   "editOnly": false,
+   "changedPaths": 4,
+   "changedSample": [
+    "packages/cezar/src/runs/store.ts",
+    "packages/cezar/src/workflows/run/usage-accounting.ts",
+    "packages/cezar/src/workflows/run/usage-cost-report.test.ts",
+    "packages/cezar/src/runs/store-lifecycle.test.ts"
+   ],
+   "reached": 1220,
+   "reachedS": 15369,
+   "cut": 11,
+   "cutS": 31,
+   "B": 0,
+   "BS": 0,
+   "noRecord": 990,
+   "noRecordS": 12172,
+   "failing": [
+    {
+     "test": "packages/cezar/src/runs/store-lifecycle.test.ts",
+     "inCut": true,
+     "inB": false,
+     "noRecord": true,
+     "reached": true
+    }
+   ]
+  }
+ ]
+}

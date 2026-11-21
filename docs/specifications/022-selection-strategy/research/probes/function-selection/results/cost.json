@@ -1,0 +1,45 @@
+{
+ "node": "v26.13.0",
+ "files": 1277,
+ "kbTotal": 8200,
+ "loadBefore": 6.16,
+ "loadAfter": 6.57,
+ "structureMs": {
+  "p50": 0.865,
+  "p90": 2.314,
+  "p99": 4.929,
+  "max": 12.63
+ },
+ "firstParseMs": {
+  "p50": 0.975,
+  "p90": 2.808,
+  "max": 23.956
+ },
+ "compareTwoVersionsMs": {
+  "p50": 2.037,
+  "p90": 6.28,
+  "p99": 18.366,
+  "max": 34.571
+ },
+ "msPerKb": 0.178,
+ "largest": [
+  [
+   "src/core/scheduler/scheduler.ts",
+   69.2,
+   12.63,
+   34.57
+  ],
+  [
+   "src/core/daemon/daemon.ts",
+   67.1,
+   11.5,
+   32.74
+  ],
+  [
+   "src/core/types/status.ts",
+   64.7,
+   4.22,
+   null
+  ]
+ ]
+}

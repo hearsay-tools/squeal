@@ -1,0 +1,327 @@
+{
+ "testsWithTwoOrMore": 2333,
+ "sampled": 300,
+ "comparedGroups": 1618,
+ "testsWithAGroup": 283,
+ "testsDiffering": 246,
+ "examples": [
+  {
+   "test": "packages/cezar/src/runners/pi/harness-pi-owned-input-parity.test.ts",
+   "records": 4,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "packages/cezar/src/core/process-usage.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    },
+    {
+     "path": "packages/cezar/src/core/workflow-parity-core.testkit.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    },
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 3,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/runners/pi/harness-pi-owned-input-parity.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "packages/cezar/src/runs/agent-tmpdir-removal.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    },
+    {
+     "path": "packages/cezar/src/runs/agent-tmpdir.ts",
+     "onlyA": 0,
+     "onlyB": 3
+    },
+    {
+     "path": "packages/cezar/src/runs/store.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    },
+    {
+     "path": "packages/cezar/src/worker-scope/cgroup.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    },
+    {
+     "path": "packages/cezar/src/worker-scope/groups.ts",
+     "onlyA": 1,
+     "onlyB": 3
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/runners/pi/harness-pi-owned-input-parity.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/web/e2e/plan-mode.e2e.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 3,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": ".github/scripts/mutants-functions.test.cjs",
+   "records": 28,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 3,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": ".github/scripts/mutants-functions.test.cjs",
+   "records": 34,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 3,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/session-process-reuse.test.ts",
+   "records": 8,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 3,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/session-process-reuse.test.ts",
+   "records": 10,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/session-process-reuse.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/session-process-reuse.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/harness-omp-provider-parity.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "packages/cezar/src/runs/run-database.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    },
+    {
+     "path": "packages/cezar/src/workflows/fixture-manager.testkit.ts",
+     "onlyA": 5,
+     "onlyB": 0
+    },
+    {
+     "path": "packages/cezar/src/workflows/run/tracked-work.ts",
+     "onlyA": 2,
+     "onlyB": 0
+    },
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/harness-omp-provider-parity.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "packages/cezar/src/runs/run-database.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    },
+    {
+     "path": "packages/cezar/src/workflows/fixture-manager.testkit.ts",
+     "onlyA": 0,
+     "onlyB": 5
+    },
+    {
+     "path": "packages/cezar/src/workflows/run/tracked-work.ts",
+     "onlyA": 0,
+     "onlyB": 2
+    },
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/harness-omp-provider-parity.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/core/harness-omp-provider-parity.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "scripts/test-sandbox.mjs",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "packages/cezar/src/workflows/worker-park-notice.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "packages/cezar/src/runs/run-database.ts",
+     "onlyA": 2,
+     "onlyB": 0
+    },
+    {
+     "path": "packages/cezar/src/workflows/run.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    },
+    {
+     "path": "packages/cezar/src/workflows/run/compose.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    },
+    {
+     "path": "packages/cezar/src/workflows/run/wait-kinds.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  }
+ ],
+ "topDifferingPaths": [
+  [
+   "scripts/test-sandbox.mjs",
+   237
+  ],
+  [
+   "packages/cezar/src/runs/store.ts",
+   35
+  ],
+  [
+   "packages/cezar/src/core/process-usage.ts",
+   32
+  ],
+  [
+   "packages/cezar/src/workflows/run/compose.ts",
+   23
+  ],
+  [
+   "packages/cezar/src/delegation/process-liveness.ts",
+   18
+  ],
+  [
+   "packages/cezar/src/autosave-git.ts",
+   15
+  ],
+  [
+   "packages/cezar/src/workflows/run/input-delivery.ts",
+   14
+  ],
+  [
+   "packages/cezar/src/workflows/run/wake-retries.ts",
+   12
+  ],
+  [
+   "packages/cezar/src/runs/run-database.ts",
+   11
+  ],
+  [
+   "packages/cezar/src/workflows/run/wake-admission.ts",
+   11
+  ],
+  [
+   "packages/cezar/src/core/opencode-server-runner.ts",
+   11
+  ],
+  [
+   "packages/cezar/src/runners/opencode/opencode-server-runner.ts",
+   10
+  ],
+  [
+   "packages/cezar/src/worker-scope/cgroup.ts",
+   9
+  ],
+  [
+   "packages/cezar/src/worker-scope/groups.ts",
+   9
+  ],
+  [
+   "packages/cezar/src/worker-scope/worker-scopes.ts",
+   9
+  ]
+ ],
+ "testsDifferingOutsideSetup": 75
+}

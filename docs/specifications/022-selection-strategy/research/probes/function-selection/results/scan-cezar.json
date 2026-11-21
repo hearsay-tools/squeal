@@ -1,0 +1,123 @@
+{
+ "root": "$TMPDIR/cezar-src",
+ "testFiles": 1711,
+ "sourceFiles": 1496,
+ "snapshotFiles": 0,
+ "counts": {
+  "a:any .toString() (broad)": 23,
+  "a3:${imported name} in a template (mostly constants)": 40,
+  "b:line/column number literal": 12,
+  "b:string holds file:line": 9,
+  "b:asserts a line/location": 7,
+  "b:reads .stack": 15,
+  "a2:String(imported name)": 6,
+  "a:new Function / worker eval": 2
+ },
+ "snapshotsWithFileLineOrFrames": 0,
+ "sourcesReadingStacks": [
+  "packages/cezar/src/core/harness-parity-run-tier.testkit.ts",
+  "packages/cezar/src/core/harness-parity-run.cells.testkit.ts",
+  "packages/cezar/src/core/harness-parity-settlement.cells.testkit.ts",
+  "packages/cezar/src/core/observation-clock.testkit.ts",
+  "packages/cezar/src/core/skill-resume-parity.testkit.ts",
+  "packages/cezar/src/core/workflow-ask-cells.testkit.ts",
+  "packages/cezar/src/core/workflow-autonomous-ack-bound.testkit.ts",
+  "packages/cezar/src/core/workflow-autonomous-answer-bound.testkit.ts",
+  "packages/cezar/src/core/workflow-autonomous-idle-close.testkit.ts",
+  "packages/cezar/src/core/workflow-final-message-cells.testkit.ts",
+  "packages/cezar/src/core/workflow-parity-core.testkit.ts",
+  "packages/cezar/src/core/workflow-step-completion-parity.testkit.ts",
+  "packages/cezar/src/workflows/ci-wait-failure-parity.testkit.ts",
+  "packages/cezar/src/workflows/monitoring-turn-rows.testkit.ts",
+  "packages/cezar/src/workflows/waits-parity-deadlines-cells.testkit.ts",
+  "packages/cezar/src/workflows/waits-parity-fixture.testkit.ts",
+  "packages/cezar/src/workflows/waits-subagents-parity-cells.testkit.ts",
+  "packages/cezar/src/workflows/waits-wake.testkit.ts",
+  "packages/cezar/src/workflows/worker-wait-readiness.testkit.ts"
+ ],
+ "samples": {
+  "a:any .toString() (broad)": [
+   "packages/cezar/src/artifacts/cli.test.ts",
+   "packages/cezar/src/artifacts/store.test.ts",
+   "packages/cezar/src/core/codex-startup.test.ts",
+   "packages/cezar/src/core/harness-parity.testkit.test.ts",
+   "packages/cezar/src/core/mock-wire-recorder.test.ts",
+   "packages/cezar/src/core/native-delivery-control.test.ts",
+   "packages/cezar/src/core/opencode-server-runner.test.ts",
+   "packages/cezar/src/core/pi-model-catalog.test.ts"
+  ],
+  "a3:${imported name} in a template (mostly constants)": [
+   "packages/cezar/src/autosave-holders.test.ts",
+   "packages/cezar/src/core/opencode-minimal.test.ts",
+   "packages/cezar/src/core/parity-classes.test.ts",
+   "packages/cezar/src/handoff.test.ts",
+   "packages/cezar/src/home/migration-cli.test.ts",
+   "packages/cezar/src/lint/layer-import.test.ts",
+   "packages/cezar/src/lint/run-history-reader.test.ts",
+   "packages/cezar/src/lint/runner-id-branch.test.ts"
+  ],
+  "b:line/column number literal": [
+   "packages/cezar/src/contract-import-boundaries.test.ts",
+   "packages/cezar/src/lint/design-guardian.test.ts",
+   "packages/cezar/src/lint/parity-runner-subset.test.ts",
+   "packages/cezar/src/lint/runner-fact-combination.test.ts",
+   "packages/cezar/src/lint/runner-id-branch.test.ts",
+   "packages/cezar/src/lint/runner-roster-literal.test.ts",
+   "packages/cezar/src/lint/unit-wait-discipline.test.ts",
+   "packages/cezar/src/mock-lifecycle-boundary.test.ts"
+  ],
+  "b:string holds file:line": [
+   "packages/cezar/src/core/codex-startup.test.ts",
+   "packages/cezar/src/core/opencode-server-runner.test.ts",
+   "packages/cezar/src/core/runner-stderr.test.ts",
+   "packages/cezar/src/file-length.test.ts",
+   "packages/cezar/src/inline-contract-check.test.ts",
+   "packages/cezar/src/lint/layer-import.test.ts",
+   "packages/cezar/src/mock-source-boundary.test.ts",
+   "packages/cezar/src/server/contract-parity.github.test.ts"
+  ],
+  "b:asserts a line/location": [
+   "packages/cezar/src/index-project-paths.test.ts",
+   "packages/cezar/src/mock-lifecycle-boundary.test.ts",
+   "packages/cezar/src/mock-scenario-boundary.test.ts",
+   "packages/cezar/src/server-install/group-migrate.test.ts",
+   "packages/cezar/src/server-install/macosx-server-migrate.test.ts",
+   "packages/web/src/components/diff/parse-patch.test.ts",
+   "packages/web/src/lib/use-task-list-folds.test.tsx"
+  ],
+  "b:reads .stack": [
+   "packages/cezar/src/server/automations-api.test.ts",
+   "packages/cezar/src/server/queued-messages.test.ts",
+   "packages/cezar/src/workflows/ci-wait-delivery.test.ts",
+   "packages/cezar/src/workflows/ci-wait.test.ts",
+   "packages/cezar/src/workflows/peer-waits.test.ts",
+   "packages/cezar/src/workflows/run/turn-boundary-input-order.test.ts",
+   "packages/cezar/src/workflows/run/turn-boundary-timer-order.test.ts",
+   "packages/cezar/src/workflows/run/turn-boundary-worker-order.test.ts"
+  ],
+  "a2:String(imported name)": [
+   "packages/cezar/src/server/forge/github.test.ts",
+   "packages/cezar/src/workflows/native-skill-input.test.ts",
+   "packages/web/src/lib/github-list-width.test.ts",
+   "packages/web/src/lib/sidebar-width.test.ts",
+   "packages/web/src/routes/github/github.test.tsx",
+   "packages/web/src/routes/settings/worktree-setup-input.test.ts"
+  ],
+  "a:new Function / worker eval": [
+   "packages/web/src/lib/github-nav-contract.test.ts",
+   "packages/web/src/lib/report-libraries.test.ts"
+  ]
+ },
+ "snapshotSamples": [],
+ "matches": {
+  "a2": [
+   "packages/cezar/src/server/forge/github.test.ts: String(GH_SEARCH_MAX)",
+   "packages/cezar/src/workflows/native-skill-input.test.ts: String(RUNNER_FACTS.pi.skillTriggerMidTurn)",
+   "packages/web/src/lib/github-list-width.test.ts: String(MAX_GITHUB_LIST_WIDTH)",
+   "packages/web/src/lib/sidebar-width.test.ts: String(MAX_SIDEBAR_WIDTH)",
+   "packages/web/src/routes/github/github.test.tsx: String(MAX_GITHUB_LIST_WIDTH)",
+   "packages/web/src/routes/github/github.test.tsx: String(MIN_GITHUB_LIST_WIDTH)",
+   "packages/web/src/routes/settings/worktree-setup-input.test.ts: String(WORKTREE_SETUP_MAX_TIMEOUT_SECONDS)"
+  ]
+ }
+}

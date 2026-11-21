@@ -1,0 +1,421 @@
+{
+ "newFailures": 201,
+ "inEditRevisions": 15,
+ "edits": [
+  {
+   "wt": "0b0db96a",
+   "from": 68,
+   "to": 74,
+   "editOnly": false,
+   "changedPaths": 355,
+   "changedSample": [
+    "docs/board.md",
+    "docs/specifications/011-core/status.md",
+    "docs/specifications/023-results-at-commit/reviews/wave-16-rereview.md",
+    "docs/specifications/023-results-at-commit/reviews/wave-16.md",
+    "docs/specifications/011-core/research/issue-251.md"
+   ],
+   "reached": 1305,
+   "reachedS": 6880,
+   "cut": 7,
+   "cutS": 3,
+   "B": 171,
+   "BS": 820,
+   "noRecord": 93,
+   "noRecordS": 609,
+   "failing": [
+    {
+     "test": "test/harness/plugin.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    },
+    {
+     "test": "test/harness/codex/packaging/runtime.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "db0382bd",
+   "from": 77,
+   "to": 98,
+   "editOnly": false,
+   "changedPaths": 2363,
+   "changedSample": [
+    "docs/board.md",
+    "docs/specifications/001-core-loop/spec.md",
+    "docs/specifications/005-agent-adoption/research/daemon-restart-per-turn-brief.md",
+    "docs/specifications/005-agent-adoption/reviews/0.1.534-r2.md",
+    "docs/specifications/005-agent-adoption/reviews/0.1.534.md"
+   ],
+   "reached": 1938,
+   "reachedS": 7721,
+   "cut": 384,
+   "cutS": 815,
+   "B": 674,
+   "BS": 3658,
+   "noRecord": 498,
+   "noRecordS": 1764,
+   "failing": [
+    {
+     "test": "test/runners/vitest/reresolution.test.ts",
+     "inCut": false,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "9cf0eee5",
+   "from": 69,
+   "to": 84,
+   "editOnly": false,
+   "changedPaths": 47,
+   "changedSample": [
+    "src/core/ci/endpoints.ts",
+    "test/ci/endpoints.test.ts",
+    "docs/specifications/018-ci-and-shared-results/reviews/0.1.582.md",
+    "plugins/claude-code/dist/cli/squeal.mjs",
+    "plugins/codex-runtime/dist/cli/squeal.mjs"
+   ],
+   "reached": 411,
+   "reachedS": 3486,
+   "cut": 6,
+   "cutS": 6,
+   "B": 20,
+   "BS": 74,
+   "noRecord": 28,
+   "noRecordS": 373,
+   "failing": [
+    {
+     "test": "test/integration/node-test-packages.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "db0382bd",
+   "from": 47,
+   "to": 59,
+   "editOnly": false,
+   "changedPaths": 84,
+   "changedSample": [
+    "docs/board.md",
+    "docs/specifications/023-results-at-commit/research/glob-membership.md",
+    "docs/specifications/023-results-at-commit/research/probes/glob-membership/README.md",
+    "docs/specifications/023-results-at-commit/research/probes/glob-membership/adds.mjs",
+    "docs/specifications/023-results-at-commit/research/probes/glob-membership/copy.mjs"
+   ],
+   "reached": 1677,
+   "reachedS": 7716,
+   "cut": 104,
+   "cutS": 445,
+   "B": 384,
+   "BS": 1794,
+   "noRecord": 300,
+   "noRecordS": 2499,
+   "failing": [
+    {
+     "test": "test/store/worktree-meta.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "0b0db96a",
+   "from": 63,
+   "to": 74,
+   "editOnly": false,
+   "changedPaths": 362,
+   "changedSample": [
+    "docs/specifications/011-core/tasks/011-414/notes.md",
+    "test/keys/validity/case.ts",
+    "test/keys/validity/cases/index.ts",
+    "test/keys/validity/harness/vitest.ts",
+    "test/keys/validity/cases/adapter/vitest-reclosure.ts"
+   ],
+   "reached": 1310,
+   "reachedS": 6965,
+   "cut": 10,
+   "cutS": 80,
+   "B": 171,
+   "BS": 820,
+   "noRecord": 93,
+   "noRecordS": 609,
+   "failing": [
+    {
+     "test": "test/harness/opencode/package.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    },
+    {
+     "test": "test/harness/pi/package.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "db0382bd",
+   "from": 413,
+   "to": 428,
+   "editOnly": false,
+   "changedPaths": 385,
+   "changedSample": [
+    ".agents/skills/worker/SKILL.md",
+    ".claude/skills/worker/SKILL.md",
+    "README.md",
+    "bench/README.md",
+    "bench/age-store.mjs"
+   ],
+   "reached": 1344,
+   "reachedS": 7089,
+   "cut": 172,
+   "cutS": 1503,
+   "B": 123,
+   "BS": 1113,
+   "noRecord": 101,
+   "noRecordS": 603,
+   "failing": [
+    {
+     "test": "test/harness/opencode-dispose.test.ts",
+     "inCut": false,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "9cf0eee5",
+   "from": 85,
+   "to": 92,
+   "editOnly": false,
+   "changedPaths": 623,
+   "changedSample": [
+    "docs/specifications/018-ci-and-shared-results/tasks/018-59/notes.md",
+    "src/core/ci/endpoints.ts",
+    "src/core/ci/export-bundle.ts",
+    "src/core/ci/export-check.ts",
+    "src/core/ci/export-node-test-here.ts"
+   ],
+   "reached": 511,
+   "reachedS": 4056,
+   "cut": 45,
+   "cutS": 114,
+   "B": 33,
+   "BS": 53,
+   "noRecord": 65,
+   "noRecordS": 729,
+   "failing": [
+    {
+     "test": "test/harness/codex/packaging/runtime.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "9cf0eee5",
+   "from": 102,
+   "to": 113,
+   "editOnly": false,
+   "changedPaths": 299,
+   "changedSample": [
+    "docs/board.md",
+    "docs/specifications/011-core/research/issue-258.md",
+    "docs/specifications/018-ci-and-shared-results/status.md",
+    "docs/specifications/023-results-at-commit/research/issue-257.md",
+    "docs/specifications/023-results-at-commit/reviews/wave-18-fifth.md"
+   ],
+   "reached": 1500,
+   "reachedS": 7322,
+   "cut": 160,
+   "cutS": 1503,
+   "B": 424,
+   "BS": 2584,
+   "noRecord": 321,
+   "noRecordS": 1902,
+   "failing": [
+    {
+     "test": "test/cli/ci-export.test.ts",
+     "inCut": true,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "db0382bd",
+   "from": 191,
+   "to": 197,
+   "editOnly": false,
+   "changedPaths": 123,
+   "changedSample": [
+    "docs/specifications/023-results-at-commit/tasks/023-07-notes.md",
+    "plugins/claude-code/dist/cli/squeal.mjs",
+    "plugins/codex-runtime/dist/cli/squeal.mjs",
+    "plugins/codex-runtime/runtime.json",
+    "plugins/opencode/dist/cli/squeal.mjs"
+   ],
+   "reached": 1293,
+   "reachedS": 6843,
+   "cut": 83,
+   "cutS": 1299,
+   "B": 194,
+   "BS": 921,
+   "noRecord": 151,
+   "noRecordS": 1443,
+   "failing": [
+    {
+     "test": "test/cli/status-paths-paused.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "9cf0eee5",
+   "from": 56,
+   "to": 84,
+   "editOnly": false,
+   "changedPaths": 110,
+   "changedSample": [
+    "docs/board.md",
+    "docs/specifications/018-ci-and-shared-results/research/probes/unread-inputs/README.md",
+    "docs/specifications/018-ci-and-shared-results/research/probes/unread-inputs/files-44805319389.tsv",
+    "docs/specifications/018-ci-and-shared-results/research/probes/unread-inputs/files-44808547913.tsv",
+    "docs/specifications/018-ci-and-shared-results/research/probes/unread-inputs/fixture-output.txt"
+   ],
+   "reached": 1090,
+   "reachedS": 6474,
+   "cut": 57,
+   "cutS": 129,
+   "B": 50,
+   "BS": 145,
+   "noRecord": 60,
+   "noRecordS": 490,
+   "failing": [
+    {
+     "test": "test/ci/resolution-import.test.ts",
+     "inCut": false,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "d03ce4b4",
+   "from": 8,
+   "to": 10,
+   "editOnly": true,
+   "changedPaths": 3,
+   "changedSample": [
+    "src/cli/status-at-report-queued.ts",
+    "src/cli/status-at-report.ts",
+    "src/cli/status-at-assemble.ts"
+   ],
+   "reached": 355,
+   "reachedS": 3377,
+   "cut": 6,
+   "cutS": 13,
+   "B": 0,
+   "BS": 0,
+   "noRecord": 175,
+   "noRecordS": 1679,
+   "failing": [
+    {
+     "test": "test/cli/status-at.test.ts",
+     "inCut": true,
+     "inB": false,
+     "noRecord": true,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "db0382bd",
+   "from": 345,
+   "to": 356,
+   "editOnly": false,
+   "changedPaths": 27,
+   "changedSample": [
+    "docs/specifications/023-results-at-commit/tasks/023-21-notes.md",
+    "src/cli/proof-imports.ts",
+    "src/core/proof/import-graph.ts",
+    "src/core/proof/imports.ts",
+    "test/cli/proof-with.test.ts"
+   ],
+   "reached": 366,
+   "reachedS": 3373,
+   "cut": 14,
+   "cutS": 176,
+   "B": 16,
+   "BS": 312,
+   "noRecord": 35,
+   "noRecordS": 647,
+   "failing": [
+    {
+     "test": "test/cli/status-at-run-mutated.test.ts",
+     "inCut": false,
+     "inB": true,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  },
+  {
+   "wt": "0b0db96a",
+   "from": 138,
+   "to": 171,
+   "editOnly": false,
+   "changedPaths": 1404,
+   "changedSample": [
+    "docs/specifications/011-core/reviews/0.1.578.md",
+    "docs/specifications/011-core/tasks/011-421/notes.md",
+    "docs/board.md",
+    "docs/specifications/011-core/status.md",
+    ".agents/skills/worker/SKILL.md"
+   ],
+   "reached": 1507,
+   "reachedS": 7379,
+   "cut": 149,
+   "cutS": 440,
+   "B": 366,
+   "BS": 1894,
+   "noRecord": 411,
+   "noRecordS": 2235,
+   "failing": [
+    {
+     "test": "test/store-process/logs.test.ts",
+     "inCut": false,
+     "inB": false,
+     "noRecord": false,
+     "reached": true
+    }
+   ]
+  }
+ ]
+}

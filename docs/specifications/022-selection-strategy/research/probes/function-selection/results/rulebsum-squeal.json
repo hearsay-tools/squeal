@@ -1,0 +1,158 @@
+{
+ "newFailures": 201,
+ "withEveryRevisionStored": 15,
+ "editOnly": 1,
+ "edits": 13,
+ "failing": {
+  "reached": 15,
+  "inCut": 2,
+  "inB": 5,
+  "inEither": 6,
+  "noRecord": 1,
+  "recordButNotB": 9
+ },
+ "setsPerEdit": {
+  "reachedFiles": {
+   "median": 1305,
+   "sum": 14607
+  },
+  "reachedS": 78681,
+  "cutFiles": {
+   "median": 57,
+   "sum": 1197
+  },
+  "cutS": 6526,
+  "BFiles": {
+   "median": 171,
+   "sum": 2626
+  },
+  "BS": 14188,
+  "noRecordFiles": {
+   "median": 101,
+   "sum": 2331
+  },
+  "noRecordS": 15582
+ },
+ "rows": [
+  [
+   "test/harness/plugin.test.ts",
+   355,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/harness/codex/packaging/runtime.test.ts",
+   355,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/runners/vitest/reresolution.test.ts",
+   2363,
+   1,
+   0,
+   1,
+   0
+  ],
+  [
+   "test/integration/node-test-packages.test.ts",
+   47,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/store/worktree-meta.test.ts",
+   84,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/harness/opencode/package.test.ts",
+   362,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/harness/pi/package.test.ts",
+   362,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/harness/opencode-dispose.test.ts",
+   385,
+   1,
+   0,
+   1,
+   0
+  ],
+  [
+   "test/harness/codex/packaging/runtime.test.ts",
+   623,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/cli/ci-export.test.ts",
+   299,
+   1,
+   1,
+   1,
+   0
+  ],
+  [
+   "test/cli/status-paths-paused.test.ts",
+   123,
+   1,
+   0,
+   0,
+   0
+  ],
+  [
+   "test/ci/resolution-import.test.ts",
+   110,
+   1,
+   0,
+   1,
+   0
+  ],
+  [
+   "test/cli/status-at.test.ts",
+   3,
+   1,
+   1,
+   0,
+   1
+  ],
+  [
+   "test/cli/status-at-run-mutated.test.ts",
+   27,
+   1,
+   0,
+   1,
+   0
+  ],
+  [
+   "test/store-process/logs.test.ts",
+   1404,
+   1,
+   0,
+   0,
+   0
+  ]
+ ]
+}

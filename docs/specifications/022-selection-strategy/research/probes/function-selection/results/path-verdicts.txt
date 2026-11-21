@@ -1,0 +1,8 @@
+popc-squeal.json path-pairs 767505 loaded-judged 336241 bodiesOnly 44173 5.76% of all 13.14% of loaded
+   [["scriptNotLoaded",359466],["skeleton",220728],["nonScript",70809],["entered+skeleton",52560],["bodiesOnly",44173],["entered",14961],["deleted",1508],["entered+unmapped+skeleton",1193],["unmapped+skeleton",1060],["testFile",989]]
+popc-cezar.json path-pairs 655413 loaded-judged 239115 bodiesOnly 30734 4.69% of all 12.85% of loaded
+   [["scriptNotLoaded",390604],["skeleton",149213],["entered+skeleton",44365],["bodiesOnly",30734],["nonScript",24290],["entered",7979],["deleted",5500],["testFile",1385],["unmapped+skeleton",698],["unmapped",335]]
+pop-squeal.json path-pairs 906305 loaded-judged 333814 bodiesOnly 40420 4.46% of all 12.11% of loaded
+   [["scriptNotLoaded",495628],["skeleton",238078],["nonScript",75987],["entered+skeleton",42506],["bodiesOnly",40420],["entered",8871],["deleted",1834],["entered+unmapped+skeleton",947],["testFile",748],["unmapped+skeleton",673]]
+pop-cezar.json path-pairs 510793 loaded-judged 85407 bodiesOnly 4823 0.94% of all 5.65% of loaded
+   [["scriptNotLoaded",400703],["skeleton",61994],["nonScript",18809],["entered+skeleton",12654],["noNewBlob",5106],["bodiesOnly",4823],["entered",3421],["deleted",2303],["testFile",537],["noOldBlob",231]]

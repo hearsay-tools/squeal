@@ -1,0 +1,252 @@
+{
+ "testsWithTwoOrMore": 1981,
+ "sampled": 300,
+ "comparedGroups": 2400,
+ "testsWithAGroup": 160,
+ "testsDiffering": 58,
+ "examples": [
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 4,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 3,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "test/cli/code-gate-prepare.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "test/scheduler/backlog.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "test/scheduler/runner-part-bound.test.ts",
+   "records": 6,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "test/scheduler/runner-part-bound.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "test/scheduler/runner-part-bound.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  },
+  {
+   "test": "test/scheduler/runner-part-bound.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "test/scheduler/runner-part-bound.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 1,
+     "onlyB": 0
+    }
+   ]
+  },
+  {
+   "test": "test/scheduler/runner-part-bound.test.ts",
+   "records": 2,
+   "variants": 2,
+   "diffPaths": [
+    {
+     "path": "src/core/fs/git.ts",
+     "onlyA": 0,
+     "onlyB": 1
+    }
+   ]
+  }
+ ],
+ "topDifferingPaths": [
+  [
+   "src/core/fs/git.ts",
+   42
+  ],
+  [
+   "src/core/daemon/escaped.ts",
+   7
+  ],
+  [
+   "src/core/scheduler/scheduler.ts",
+   7
+  ],
+  [
+   "src/core/scheduler/import-rewalk.ts",
+   6
+  ],
+  [
+   "src/core/ps/measure.ts",
+   6
+  ],
+  [
+   "src/core/store/repos/consumers.ts",
+   6
+  ],
+  [
+   "test/daemon/helpers.ts",
+   6
+  ],
+  [
+   "src/runners/vitest/sources.ts",
+   5
+  ],
+  [
+   "src/core/ps/proc.ts",
+   5
+  ],
+  [
+   "src/core/daemon/client.ts",
+   5
+  ],
+  [
+   "src/core/store/repos/worktrees.ts",
+   5
+  ],
+  [
+   "src/core/store/repos/workspace.ts",
+   4
+  ],
+  [
+   "src/core/daemon/terminate.ts",
+   4
+  ],
+  [
+   "src/core/store/open.ts",
+   4
+  ],
+  [
+   "src/core/store/repos/results.ts",
+   4
+  ]
+ ],
+ "testsDifferingOutsideSetup": 58
+}

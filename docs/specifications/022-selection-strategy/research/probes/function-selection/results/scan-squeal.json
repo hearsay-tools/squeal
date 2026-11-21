@@ -1,0 +1,128 @@
+{
+ "root": "<squeal>",
+ "testFiles": 2105,
+ "sourceFiles": 1300,
+ "snapshotFiles": 3,
+ "counts": {
+  "a3:${imported name} in a template (mostly constants)": 172,
+  "a:any .toString() (broad)": 26,
+  "b:line/column number literal": 62,
+  "b:asserts a line/location": 24,
+  "b:uses snapshots": 4,
+  "b:string holds file:line": 95,
+  "a2:String(imported name)": 8,
+  "a:new Function / worker eval": 7,
+  "b:reads .stack": 14,
+  "a:Function.prototype.toString": 1
+ },
+ "snapshotsWithFileLineOrFrames": 0,
+ "sourcesReadingStacks": [
+  "src/core/lint/provider/oxlint/preload.ts",
+  "src/core/lint/provider/wraps.ts",
+  "src/core/store/long-write.ts",
+  "src/runners/vitest/ci-runtime/inspector.cjs"
+ ],
+ "samples": {
+  "a3:${imported name} in a template (mostly constants)": [
+   "test/ci-action/readme.test.ts",
+   "test/ci/publish.test.ts",
+   "test/cli/ci-export.test.ts",
+   "test/cli/ci-record-limit.test.ts",
+   "test/cli/code-gate-estimate.test.ts",
+   "test/cli/code-gate-exceptions.test.ts",
+   "test/cli/code-gate-relaunch.test.ts",
+   "test/cli/code-gate-setup.test.ts"
+  ],
+  "a:any .toString() (broad)": [
+   "test/ci/export-evidence.test.ts",
+   "test/ci/export-object-names.test.ts",
+   "test/ci/export-unread.test.ts",
+   "test/ci/export-wrapper.test.ts",
+   "test/cli/daemon-socket.test.ts",
+   "test/cli/run-group-stall.test.ts",
+   "test/cli/run-lint-group.test.ts",
+   "test/cli/stop-at.test.ts"
+  ],
+  "b:line/column number literal": [
+   "test/ci/export-keys.test.ts",
+   "test/ci/parts-format.test.ts",
+   "test/cli/code-gate-args.test.ts",
+   "test/cli/code-gate-text-failed.test.ts",
+   "test/cli/code-gate-text-omitted.test.ts",
+   "test/cli/code-gate-text-prepare.test.ts",
+   "test/cli/code-gate-text.test.ts",
+   "test/cli/failures-replaced.test.ts"
+  ],
+  "b:asserts a line/location": [
+   "test/ci/export-node-test.test.ts",
+   "test/cli/code-gate-estimate.test.ts",
+   "test/cli/code-gate-prerun.test.ts",
+   "test/cli/code-gate-stored-rerun.test.ts",
+   "test/cli/next-step-pending.test.ts",
+   "test/code/crap/status.test.ts",
+   "test/code/delivery/status.test.ts",
+   "test/code/gate/keep-stall.test.ts"
+  ],
+  "b:uses snapshots": [
+   "test/ci/export-snapshot.test.ts",
+   "test/status/group-texts-golden.test.ts",
+   "test/status/status.test.ts",
+   "test/status/why.test.ts"
+  ],
+  "b:string holds file:line": [
+   "test/cli/code-gate-closures.test.ts",
+   "test/cli/code-gate-exceptions.test.ts",
+   "test/cli/code-gate-prerun.test.ts",
+   "test/cli/code-gate-text-failed.test.ts",
+   "test/cli/code-gate-text-prepare.test.ts",
+   "test/cli/code-gate-text-reruns.test.ts",
+   "test/cli/code-gate-text.test.ts",
+   "test/cli/code-gate.test.ts"
+  ],
+  "a2:String(imported name)": [
+   "test/cli/proof-evidence.test.ts",
+   "test/daemon/start-short.test.ts",
+   "test/delivery/late.test.ts",
+   "test/harness/pi/host-exit.test.ts",
+   "test/keys/key-format.test.ts",
+   "test/runners/node-test/adapter-attribution.test.ts",
+   "test/scheduler/observed-direct.test.ts",
+   "test/store/contention.test.ts"
+  ],
+  "a:new Function / worker eval": [
+   "test/harness/pi/host-exit.test.ts",
+   "test/harness/pi/host.test.ts",
+   "test/runners/node-test/adapter-attribution.test.ts",
+   "test/runners/observe/messages.test.ts",
+   "test/runners/observe/reach.test.ts",
+   "test/runners/vitest/ci-inspector-watch.test.ts",
+   "test/store/busy-slice.test.ts"
+  ],
+  "b:reads .stack": [
+   "test/harness/rowless-start-readers.test.ts",
+   "test/keys/validity/adapters.test.ts",
+   "test/runners/node-test/run-streams.test.ts",
+   "test/runners/pytest/run/report.test.ts",
+   "test/runners/vitest/run.test.ts",
+   "test/scheduler/adoption.test.ts",
+   "test/scheduler/busy-record.test.ts",
+   "test/scheduler/busy-released.test.ts"
+  ],
+  "a:Function.prototype.toString": [
+   "test/lint/provider/rooted.test.ts"
+  ]
+ },
+ "snapshotSamples": [],
+ "matches": {
+  "a2": [
+   "test/cli/proof-evidence.test.ts: String(value)",
+   "test/daemon/start-short.test.ts: String(SUCCESSOR_LOCK_WAIT_MS)",
+   "test/delivery/late.test.ts: String(revision)",
+   "test/harness/pi/host-exit.test.ts: String(DEFAULT_BUSY_TIMEOUT_MS)",
+   "test/keys/key-format.test.ts: String(KEY_FORMAT_VERSION)",
+   "test/runners/node-test/adapter-attribution.test.ts: String(b)",
+   "test/scheduler/observed-direct.test.ts: String(b)",
+   "test/store/contention.test.ts: String(DAEMON_BUSY_TIMEOUT_MS)"
+  ]
+ }
+}

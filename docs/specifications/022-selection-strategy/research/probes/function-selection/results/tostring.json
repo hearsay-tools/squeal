@@ -1,0 +1,72 @@
+{
+ "node": "v26.13.0",
+ "load": 7.89,
+ "result": {
+  "fn.toString()": {
+   "sawText": true,
+   "wrapperSaw": true
+  },
+  "String(fn)": {
+   "sawText": false,
+   "wrapperSaw": true
+  },
+  "template `${fn}`": {
+   "sawText": true,
+   "wrapperSaw": true
+  },
+  "fn + \"\"": {
+   "sawText": true,
+   "wrapperSaw": true
+  },
+  "Function.prototype.toString.call(fn)": {
+   "sawText": true,
+   "wrapperSaw": true
+  },
+  "original kept before the wrapper": {
+   "sawText": false,
+   "wrapperSaw": false
+  },
+  "other realm (vm) toString": {
+   "sawText": true,
+   "wrapperSaw": false
+  },
+  "util.inspect(fn)": {
+   "sawText": false,
+   "wrapperSaw": false
+  },
+  "worker eval of the text": {
+   "sawText": false,
+   "wrapperSaw": true
+  }
+ },
+ "located": [
+  "subject.mjs:1",
+  "subject.mjs:4",
+  "subject.mjs:5",
+  "subject.mjs:1",
+  "subject.mjs:1",
+  "subject.mjs:1"
+ ],
+ "lookupMs": 3.52,
+ "seenCount": 7,
+ "bench": [
+  [
+   "original",
+   57.6,
+   7000000
+  ],
+  [
+   "wrapper (list full)",
+   83.6,
+   7000000
+  ],
+  [
+   "wrapper (pushing), 1e4 calls",
+   1.2
+  ]
+ ],
+ "visible": {
+  "wrapper.name": "toString",
+  "toString of toString": "toString() { if (typeof this === \"functi"
+ }
+}

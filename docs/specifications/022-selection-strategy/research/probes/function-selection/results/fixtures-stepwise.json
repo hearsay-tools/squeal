@@ -1,0 +1,93 @@
+{
+ "node": "v26.13.0",
+ "vitest": "5.0.3",
+ "load": [
+  15.33,
+  14.16,
+  14.2
+ ],
+ "results": [
+  {
+   "name": "L10 control: uncalled body changes, no effect",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /unused#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  },
+  {
+   "name": "Q4 chain: two skipped edits of an uncalled body, then a call site",
+   "steps": [
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "skip",
+     "reasons": [],
+     "notes": [
+      "(fn /helper#0 entered=false)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    },
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c1:recordNotAtOldBytes"
+     ],
+     "notes": [],
+     "resultBefore": "pass",
+     "resultAfter": "pass",
+     "resultChanged": false,
+     "miss": false,
+     "afterErrors": [],
+     "childSeen": 0,
+     "processRows": 1
+    },
+    {
+     "changed": [
+      "subject.ts"
+     ],
+     "decision": "run",
+     "reasons": [
+      "c2:entered"
+     ],
+     "notes": [
+      "(fn /api#0 entered=true)"
+     ],
+     "resultBefore": "pass",
+     "resultAfter": "fail",
+     "resultChanged": true,
+     "miss": false,
+     "afterErrors": [
+      "expected 1 to be +0 // Object.is equality"
+     ],
+     "childSeen": 0,
+     "processRows": 1
+    }
+   ]
+  }
+ ]
+}
