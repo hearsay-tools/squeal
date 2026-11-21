@@ -510,6 +510,12 @@ export interface Scheduler {
    */
   readers?(paths: readonly RelativePath[]): Promise<SyncAnswer>;
   /**
+   * Spec 023 D4.5, D7.3 as amended (row 023-40c): the test files `paths`
+   * select, from the key index alone (closures, environment files,
+   * declared inputs), with no runner call. Absent: a scheduler before it.
+   */
+  changedSelects?(paths: readonly RelativePath[]): Promise<readonly TestFileRef[]>;
+  /**
    * Row 011-352: resolves once the scheduler rests (`GLOSSARY.md`, "Rest"):
    * no wake pass runs, none of its own async work is open, its lock has
    * nothing queued or running, no wake is due, and this still holds after

@@ -1,3 +1,4 @@
+import type { CommitAskRequest, CommitSnapshot } from "../types/commit-ask.js";
 import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
 import type {
@@ -28,12 +29,16 @@ export interface DeskIdentity {
   readonly token: string;
   /** Spec 021 D15: the store's `user_version`, which a sent write must match; absent: no writes taken. */
   readonly storeSchema?: number;
+  /** Spec 023 D7.3 as amended (row 023-40c): a commit daemon, which answers `status --at --run` asks. */
+  readonly commit?: true;
 }
 
 /** Main thread to front desk. */
 export type ToDesk =
   | { readonly type: "bind"; readonly identity: DeskIdentity }
   | { readonly type: "phase"; readonly phase: DaemonPhase }
+  /** Row 023-40c: a commit daemon's setup and asks, at each change. */
+  | { readonly type: "commit-state"; readonly snapshot: CommitSnapshot }
   | {
       readonly type: "run-all-result";
       readonly id: string;
@@ -125,6 +130,8 @@ export type FromDesk =
   | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
   | { readonly type: "take-back"; readonly id: string; readonly owners: readonly string[] }
+  /** Row 023-40c: a `status --at --run` call's ask of a commit daemon. */
+  | { readonly type: "commit-ask"; readonly request: CommitAskRequest }
   | { readonly type: "resume" }
   | { readonly type: "write"; readonly id: string; readonly batch: SentBatch }
   | { readonly type: "import"; readonly id: string; readonly request: ImportRequest }
