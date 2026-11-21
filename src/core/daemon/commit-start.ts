@@ -44,6 +44,7 @@ export interface CommitStartPorts {
 /** A commit daemon's setup: its phase, its asks, and the start that moves them. */
 export class CommitStart {
   #setup: CommitSetup = { phase: "install" };
+  readonly #closures = new Map<string, readonly RelativePath[]>();
   /** Settles once `start` did; an ask kept before `start` waits for it too. */
   readonly #started: Promise<void>;
   #settle: () => void = () => {};
@@ -100,11 +101,27 @@ export class CommitStart {
         if (requested === null) throw new Error(`no group ${group} in this commit's policy`);
       },
       changed: ports.changed,
+      incomplete: () => this.incomplete(),
     });
   }
 
   get setup(): CommitSetup {
     return this.#setup;
+  }
+
+  /**
+   * Row 023-35 (T2), row 023-40c: node:test project `project`'s test files
+   * whose static closure is incomplete, as its adapter tells them; the
+   * asks' reads carry them.
+   */
+  closures(project: string, files: readonly RelativePath[]): void {
+    this.#closures.set(project, [...files]);
+    this.ports.changed();
+  }
+
+  /** Per node:test project that told them, its files with an incomplete static closure. */
+  incomplete(): Record<string, readonly RelativePath[]> {
+    return Object.fromEntries(this.#closures);
   }
 
   /** Installs, then runs the daemon's start; settles once both did, whether they served or failed. */
