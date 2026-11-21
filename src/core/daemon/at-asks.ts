@@ -1,4 +1,5 @@
 import { selects } from "../commit/at-keys-narrow.js";
+import { changedText } from "../commit/at-keys-walk.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type {
   CommitAskRequest,
@@ -106,9 +107,9 @@ export class AtAsks {
   async #take(request: CommitAskRequest, kept: Kept): Promise<void> {
     await this.ports.started();
     const setup = this.ports.setup();
-    if (setup.phase === "failed") {
+    if (setup.phase === "failed" || setup.phase === "changed") {
       kept.phase = "failed";
-      kept.text = setup.text;
+      kept.text = setup.phase === "failed" ? setup.text : changedText(setup);
       return;
     }
     kept.phase = "selecting";

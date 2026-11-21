@@ -149,7 +149,7 @@ function queuedRun(
 /** Row 023-40c: what the commit daemon still sets up when the wait ends; `null` when none. */
 function setupOf(queue: CommitAsked): "install" | "starting" | "selecting" | null {
   const { setup } = queue;
-  if (setup === null || setup.phase === "failed") return null;
+  if (setup === null || setup.phase === "failed" || setup.phase === "changed") return null;
   if (setup.phase !== "ready") return setup.phase;
   return queue.asks.some((a) => a.phase === "waiting" || a.phase === "selecting")
     ? "selecting"

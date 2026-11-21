@@ -110,7 +110,8 @@ async function readUntilQueued(
     const answer = await daemons.commitRead(tree, owners, askBy).catch((error) => String(error));
     if (typeof answer === "string") return { setup: null, asks: [], problem: answer };
     const settled = answer.asks.every((a) => a.phase === "queued" || a.phase === "failed");
-    if (settled || answer.setup.phase === "failed" || Date.now() >= deadline)
+    const over = answer.setup.phase === "failed" || answer.setup.phase === "changed";
+    if (settled || over || Date.now() >= deadline)
       return { setup: answer.setup, asks: answer.asks, problem: null };
     await sleep(Math.min(READ_EVERY_MS, Math.max(0, deadline - Date.now())));
   }

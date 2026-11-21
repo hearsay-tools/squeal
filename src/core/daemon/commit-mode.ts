@@ -1,12 +1,12 @@
 import { type CommitRemoval, pathState } from "../checkout/commit-identity.js";
-import { installCommitWorktree } from "../checkout/commit-setup.js";
+import { commitTreeChange, installCommitWorktree } from "../checkout/commit-setup.js";
 import {
   claimCommitWorktree,
   readCommitWorktree,
   removeCommitWorktree,
 } from "../checkout/commit-worktree.js";
 import type { CodePass } from "../code/pass/index.js";
-import type { AbsolutePath, EpochMs } from "../types/common.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "../types/common.js";
 import type { DaemonExitReason } from "../types/daemon.js";
 import type { Policy } from "../types/policy.js";
 import type { WatcherBackend } from "../types/watcher.js";
@@ -60,6 +60,12 @@ export interface CommitWorktrees {
    * to install (tests).
    */
   install?(root: AbsolutePath): Promise<string | null>;
+  /**
+   * Row 023-40c: the whole-checkout check (row 023-07): the first tracked
+   * path the tree does not hold as the commit does; `null` when none.
+   * Absent: not checked (tests).
+   */
+  check?(root: AbsolutePath): Promise<RelativePath | null>;
 }
 
 /** 023-38's functions: the marker decides, the owning daemon claims and removes its worktree. */
@@ -69,6 +75,7 @@ export const COMMIT_WORKTREES: CommitWorktrees = {
   remove: (root, note) => removeCommitWorktree(root, { note }),
   // A daemon in commit mode by option in a tree Squeal did not make has nothing to install.
   install: async (root) => (readCommitWorktree(root) === null ? null : installCommitWorktree(root)),
+  check: commitTreeChange,
 };
 
 /** No commit worktrees: no marker is read and nothing is removed. */
