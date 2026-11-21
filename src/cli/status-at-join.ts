@@ -1,8 +1,8 @@
 import { withStores } from "../core/commit/at-keys-checkout.js";
-import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import { idOf } from "./status-at-after.js";
 import type { AtDaemons, CommitDaemonInput } from "./status-at-daemons.js";
 import type { SideState } from "./status-at-report.js";
 
@@ -29,7 +29,7 @@ export async function joinCommit(
 ): Promise<Joined> {
   const tree = daemons.find(input);
   if (tree === null) return { tree, files: [] };
-  const id = worktreeIdFor(tree);
+  const id = idOf(tree);
   const pending = await withStores(commonDir, async (main) => {
     const rows = main?.testFileKeys.list(id) ?? [];
     return new Set(rows.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile)));

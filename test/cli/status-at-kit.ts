@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { expect } from "vitest";
 import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
 import { commitRun } from "../../src/cli/status-at-commit-run.js";
+import type { AtDaemons } from "../../src/cli/status-at-daemons.js";
 import type { RunArgs } from "../../src/cli/status-at-run.js";
 import { resolveCommit } from "../../src/core/commit/at-keys-checkout.js";
 import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
@@ -57,6 +58,18 @@ export function withStore(f: Fixture, body: (store: Store) => void): void {
   }
 }
 
+/**
+ * Row 023-40: no daemon in a fixture test unless the test gives its own:
+ * `--run` and `--wait` then reach none, and say so.
+ */
+export const NO_DAEMONS: AtDaemons = {
+  commit: async () => ({ problem: "no daemon in this test" }),
+  find: () => null,
+  worktree: async () => "no daemon in this test",
+  ask: async () => ({ problem: "no daemon in this test" }),
+  wait: async () => null,
+};
+
 export async function run(
   f: Fixture,
   args: Partial<AtArgs> & Pick<AtArgs, "commit">,
@@ -72,7 +85,10 @@ export async function run(
     relaunch: RELAUNCH,
     ...(now === undefined ? {} : { now: () => now }),
   };
-  const code = await statusAtCommand({ paths: [], json: false, ...args }, io, options);
+  const code = await statusAtCommand({ paths: [], json: false, ...args }, io, {
+    daemons: NO_DAEMONS,
+    ...options,
+  });
   return { code, out: out.join(""), err: err.join("") };
 }
 
