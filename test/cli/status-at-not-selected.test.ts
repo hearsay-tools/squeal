@@ -44,7 +44,7 @@ function changedA() {
   return { f, a };
 }
 
-const RUN = { allMissing: false, timeoutSeconds: 600 };
+const RUN = { allMissing: false };
 
 describe("status --at --run: what not selected means (row 023-35, T2)", SLOW, () => {
   it("says the commit cannot change a file with a complete closure, and excepts the incomplete one", async () => {
@@ -59,10 +59,9 @@ describe("status --at --run: what not selected means (row 023-35, T2)", SLOW, ()
       `${DYN}: no result at ${at}, not selected by the change, but the static closure is incomplete; \`--all-missing\` runs it; now `,
     );
     expect(text.out).not.toContain(`${PLAIN}: no result at ${at}`);
-    // `a.test.mjs` ran on both sides in this call and compares from this run
-    // (row 023-34, T4); `dyn.test.mjs` is excepted.
-    expect(text.out).toContain("test/a.test.mjs: pass -> pass (this run, not stored)");
-    expect(text.out).toContain("1 unchanged, 1 unknown, 1 not selected\n");
+    // Row 023-40: no daemon in this test, so `a.test.mjs` has no result on either side;
+    // `dyn.test.mjs` is excepted.
+    expect(text.out).toContain("0 unchanged, 2 unknown, 1 not selected\n");
 
     const json = JSON.parse((await run(f, { commit: a, json: true, run: RUN })).out);
     // The old fields keep their meaning: both files are in `counts.unknown`.

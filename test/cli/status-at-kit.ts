@@ -1,16 +1,17 @@
-import { realpathSync } from "node:fs";
+import { mkdirSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect } from "vitest";
 import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
 import { commitRun } from "../../src/cli/status-at-commit-run.js";
-import type { AtDaemons } from "../../src/cli/status-at-daemons.js";
+import type { AtDaemons, NarrowCall } from "../../src/cli/status-at-daemons.js";
 import type { RunArgs } from "../../src/cli/status-at-run.js";
 import { resolveCommit } from "../../src/core/commit/at-keys-checkout.js";
 import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { AbsolutePath, RelativePath } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { Store } from "../../src/core/types/store.js";
 import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
 
@@ -129,4 +130,54 @@ export async function runCommit(
   const files = side.at.refs.map((ref) => ({ ...ref, at: side.state(ref) }));
   const out = JSON.stringify({ files, run: side.ran?.use() ?? null, failure: side.at.failure });
   return { out, err: err.join("") };
+}
+
+/*
+ * Row 023-40: stand-in daemons for `--run` and `--wait` on a fixture.
+ */
+
+export interface Ask {
+  readonly root: string;
+  readonly group: string;
+  readonly paths: readonly RelativePath[];
+  readonly call: NarrowCall;
+}
+
+/** Stand-in daemons: each records what it is asked; `onWait` plays what the daemon did meanwhile. */
+export function standIn(
+  tree: AbsolutePath,
+  onWait: (root: string, files: readonly TestFileRef[]) => void,
+) {
+  const asks: Ask[] = [];
+  const commits: string[] = [];
+  const started: string[] = [];
+  const waits: string[] = [];
+  const ports: AtDaemons = {
+    async commit(input) {
+      commits.push(input.commit);
+      return tree;
+    },
+    find: () => tree,
+    async worktree(root) {
+      started.push(root);
+      return null;
+    },
+    async ask(root, group, paths, _deadline, call) {
+      asks.push({ root, group, paths, call });
+      return "taken";
+    },
+    async wait(root, files) {
+      waits.push(root);
+      onWait(root, files);
+      return null;
+    },
+  };
+  return { ports, asks, commits, started, waits };
+}
+
+/** A folder that stands for the commit worktree's tree. */
+export function standInTree(f: Fixture): AbsolutePath {
+  const tree = join(f.dir, "commit-tree");
+  mkdirSync(tree, { recursive: true });
+  return realpathSync(tree) as AbsolutePath;
 }

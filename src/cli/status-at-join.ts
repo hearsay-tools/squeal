@@ -32,7 +32,9 @@ export async function joinCommit(
   const id = idOf(tree);
   const pending = await withStores(commonDir, async (main) => {
     const rows = main?.testFileKeys.list(id) ?? [];
-    return new Set(rows.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile)));
+    return new Set(
+      rows.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile)),
+    );
   });
   const files = refs.filter(
     (ref) => keyed(ref).state === "no result" && pending.has(testFileId(ref)),

@@ -62,11 +62,12 @@ function projects(): { f: Fixture; a: string } {
 
 const options = (f: Fixture) => ({ cacheRoot: f.cacheRoot, install: linkInstall().install });
 
+// Row 023-40: the in-call run at its boundary (`runCommit`), until row 023-41 removes it.
 describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () => {
   it("B2: reports each project's own outcome for a shared path, and stores each at its own key", async () => {
     const { f, a } = projects();
     f.commit({ "src/a.ts": "export const value = 1; // b\n" });
-    const ran = await run(f, { commit: a, json: true, run: RUN }, options(f));
+    const ran = await runCommit(f, { commit: a, run: RUN }, options(f));
     expect(atOf(ran.out, TEST.path, "passes")).toMatchObject({
       state: "pass",
       origin: { kind: "run", stored: true },
@@ -85,7 +86,7 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
   it("B2, B4: a setup-only diff selects only its project's file; the other project is told only from the store", async () => {
     const { f, a } = projects();
     f.commit({ "setup/f.ts": "export const changed = true;\n" });
-    const ran = await run(f, { commit: a, json: true, run: RUN }, options(f));
+    const ran = await runCommit(f, { commit: a, run: RUN }, options(f));
     expect(JSON.parse(ran.out).run).toMatchObject({ selected: 1, ran: 1, stored: 1 });
     expect(atOf(ran.out, TEST.path, "fails")).toMatchObject({
       state: "fail",
@@ -144,7 +145,7 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
     const a = head(f);
     f.commit({ [MISSING.path]: testOf("missing", 1).replace("it(", "it.skip(") });
     f.commit({ [TEST.path]: testOf("a", 1).replace("value", "value ") });
-    const ran = await run(f, { commit: a, json: true, run: RUN }, options(f));
+    const ran = await runCommit(f, { commit: a, run: RUN }, options(f));
     expect(atOf(ran.out, MISSING.path)).toEqual({
       state: "not comparable",
       reason: "needs src/missing.ts",
@@ -163,17 +164,16 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
     });
     const a = head(f);
     f.commit({ "src/a.ts": "export const value = 1; // b\n" });
-    const text = await run(f, { commit: a, run: RUN }, options(f));
-    const at = a.slice(0, 9);
-    // Row 023-34 (T4): kept on neither side, it compares from this run's outcomes.
-    expect(text.out).toContain(`${TEST.path}: pass -> pass (this run, not stored)`);
-    expect(text.out).toContain(
-      `--run: 1 of 1 test files with no result at ${at} ran in its checkout, 0 stored at its keys`,
-    );
-    expect(text.out).toContain(
-      "1 not stored (the gate keeps a result only with coverage on); the next --at has no result for it",
-    );
-    expect(text.out).not.toContain("1 stored");
+    const ran = await runCommit(f, { commit: a, run: RUN }, options(f));
+    expect(atOf(ran.out, TEST.path)).toMatchObject({
+      state: "pass",
+      origin: {
+        kind: "run",
+        stored: false,
+        notStored: "the gate keeps a result only with coverage on",
+      },
+    });
+    expect(JSON.parse(ran.out).run).toMatchObject({ ran: 1, stored: 0 });
     const json = await run(f, { commit: a, json: true }, options(f));
     expect(atOf(json.out, TEST.path)?.state).toBe("no result");
     clean(f);

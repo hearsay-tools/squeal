@@ -277,11 +277,8 @@ describe("review wave-13 B5: a source path runs only its readers", SLOW, () => {
     it(`keys every file but runs only test/a.test.ts, ${name}`, async () => {
       const mark = join(process.env.TMPDIR ?? "/tmp", `r13-mark-${process.pid}-${Date.now()}`);
       const { f, a } = disjoint(mark);
-      const ran = await run(
-        f,
-        { commit: a, paths: ["src/a.ts"], json: true, run: runArgs },
-        options(f),
-      );
+      // Row 023-40: the in-call run at its boundary (`runCommit`), until row 023-41 removes it.
+      const ran = await runCommit(f, { commit: a, paths: ["src/a.ts"], run: runArgs }, options(f));
       expect(filesOf(ran.out).map((x) => x.path)).toEqual(["test/a.test.ts"]);
       expect(JSON.parse(ran.out).run).toMatchObject({ selected: 1, ran: 1, stored: 1 });
       expect(existsSync(mark)).toBe(false);

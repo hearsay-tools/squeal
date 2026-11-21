@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
-import { check, clean, run, testOf, withStore } from "./status-at-kit.js";
+import { check, clean, run, standIn, standInTree, testOf, withStore } from "./status-at-kit.js";
 
 /*
  * Row 023-24 (lessons round 3, Q1 and Q2) on `$TMPDIR` git fixtures with
@@ -55,12 +55,23 @@ describe(
         allMissing: { command: `squeal status --at ${a} --run --all-missing`, files: 2 },
       });
       expect(json.next.allMissing.seconds).toBeGreaterThan(0);
-      // The count is the one `--run` selects.
+      // The count is the one `--run` queues in the commit daemon (row 023-40).
+      const tree = standInTree(f);
+      const daemons = standIn(tree, () => undefined);
+      const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
       const ran = JSON.parse(
-        (await run(f, { commit: a, json: true, run: { allMissing: false, timeoutSeconds: 120 } }))
-          .out,
+        (
+          await run(
+            f,
+            { commit: a, json: true, run: { allMissing: false } },
+            { ...options, daemons: daemons.ports },
+          )
+        ).out,
       );
-      expect(ran.run.selected).toBe(json.next.run.files);
+      expect(ran.run.commit.files).toBe(json.next.run.files);
+      expect(daemons.asks.filter((ask) => ask.root === tree).flatMap((ask) => ask.paths)).toEqual([
+        "test/a.test.ts",
+      ]);
       expect(ran.next).toBeNull();
       clean(f);
     });
@@ -71,12 +82,15 @@ describe(
       expect(named.out.trimEnd().split("\n").at(-1)).toBe(
         `\`squeal status --at ${a} test/a.test.ts --run\` runs the 1 file with no result there.`,
       );
-      // Only b is left with no result there, and the change does not select it.
-      await run(f, {
-        commit: a,
-        paths: ["test/a.test.ts"],
-        run: { allMissing: false, timeoutSeconds: 120 },
-      });
+      // Only b is left with no result there, and the change does not select it: a's result is
+      // stored at its key, as the commit daemon stores what `--run` queued.
+      const key = (
+        JSON.parse((await run(f, { commit: a, json: true })).out).files as {
+          path: string;
+          at: { key: string };
+        }[]
+      ).find((file) => file.path === "test/a.test.ts")?.at.key as string;
+      withStore(f, (store) => store.results.putMany([result(check("test/a.test.ts"), key)]));
       const left = await run(f, { commit: a });
       expect(left.out.trimEnd().split("\n").at(-1)).toBe(
         `The change since ${a.slice(0, 9)} selects no file with no result there; \`squeal status --at ${a} --run --all-missing\` runs the 1 file.`,
@@ -105,7 +119,7 @@ describe("status --at HEAD (row 023-24, Q2)", SLOW, () => {
   it("refuses with --run too, before any keying, and names the parent's --run (row 023-29, R2)", async () => {
     const { f } = changedA();
     const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
-    const runArgs = { allMissing: false, timeoutSeconds: 60 };
+    const runArgs = { allMissing: false };
     const refused = await run(f, { commit: "HEAD", run: runArgs }, options);
     expect(refused.code).toBe(2);
     expect(refused.out).toBe("");

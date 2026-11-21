@@ -23,12 +23,7 @@ import {
 } from "./status-at-queue.js";
 import { unionRefs } from "./status-at-refs.js";
 import { exitCode, formatAt, jsonAt, type SideState } from "./status-at-report.js";
-import {
-  type QueuedRun,
-  queuedSide,
-  RUN_WAIT_MS,
-  waitAgain,
-} from "./status-at-report-queued.js";
+import { type QueuedRun, queuedSide, RUN_WAIT_MS, waitAgain } from "./status-at-report-queued.js";
 import { estimateOf, tellsEstimate } from "./status-at-run-batches.js";
 import { commitSelect, type Selected } from "./status-at-select.js";
 
@@ -103,7 +98,10 @@ export async function daemonCall(input: CallInput): Promise<number> {
   let atQueue: Promise<SideQueue>;
   let nowFiles: readonly TestFileRef[];
   if (chosen !== null) {
-    const atFiles = chosen.selection?.run.map((file) => file.ref) ?? [];
+    // A checkout whose files git's rules or the install changed gives no key of the commit's
+    // (row 023-07): nothing from it is queued, and its files stay not comparable.
+    const comparable = chosen.at.changed === null;
+    const atFiles = comparable ? (chosen.selection?.run.map((file) => file.ref) ?? []) : [];
     const selects = chosen.selection?.selects;
     nowFiles = selects === undefined ? [] : selectedNow(refs, listed.state, selects);
     tellEstimate(atFiles, args, waitMs, root, commit, note);
