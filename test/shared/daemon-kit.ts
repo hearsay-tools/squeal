@@ -20,7 +20,7 @@ export const INPUT = "data/input.txt";
 const LOOKUP_ONLY = { baseline: { onStart: "lookup-only" as const } };
 
 /** Each completed file's run read `INPUT` beyond its closure, as a test that opens a fixture does. */
-function readsInput(s: Side): void {
+export function readsInput(s: Side): void {
   const run = s.runner.run.bind(s.runner);
   s.runner.run = async (files) => {
     const report = await run(files);
