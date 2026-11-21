@@ -12,16 +12,9 @@ import { commitAfter, nowAfter } from "./status-at-after.js";
 import { assembleReport } from "./status-at-assemble.js";
 import { type CommitRun, commitRun } from "./status-at-commit-run.js";
 import { type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
-import { joinCommit } from "./status-at-join.js";
+import { joinBoth } from "./status-at-join.js";
 import { listLate, type NowInput, type NowSide, nowSide } from "./status-at-now.js";
-import {
-  askBound,
-  commitQueue,
-  NOTHING,
-  queueSide,
-  type SideQueue,
-  worktreeQueue,
-} from "./status-at-queue.js";
+import { askBound, commitQueue, type SideQueue, worktreeQueue } from "./status-at-queue.js";
 import { unionRefs } from "./status-at-refs.js";
 import { rekeyGrown } from "./status-at-rekey.js";
 import { exitCode, formatAt, jsonAt, type SideState } from "./status-at-report.js";
@@ -106,26 +99,32 @@ export async function daemonCall(input: CallInput): Promise<number> {
     call: { owner: randomUUID(), lead: paths !== null },
     ask: run !== null,
   };
-  let atQueue: Promise<SideQueue>;
-  let nowFiles: readonly TestFileRef[];
+  let queues: [SideQueue, SideQueue];
   if (chosen !== null) {
     // A checkout whose files git's rules or the install changed gives no key of the commit's
     // (row 023-07): nothing from it is queued, and its files stay not comparable.
     const comparable = chosen.at.changed === null;
     const atFiles = comparable ? (chosen.selection?.run.map((file) => file.ref) ?? []) : [];
     const selects = chosen.selection?.selects;
-    nowFiles = selects === undefined ? [] : selectedNow(refs, listed.state, selects);
+    const nowFiles = selects === undefined ? [] : selectedNow(refs, listed.state, selects);
     tellEstimate(atFiles, args, waitMs, root, commit, note);
-    atQueue = commitQueue({ ...queue, files: atFiles }, commitInput);
+    queues = await Promise.all([
+      commitQueue({ ...queue, files: atFiles }, commitInput),
+      worktreeQueue({ ...queue, files: nowFiles }, root),
+    ]);
   } else {
-    const found = await joinCommit(daemons, commitInput, refs, side.state, commonDir);
-    nowFiles = refs.filter((ref) => pendingOf(listed.state(ref)));
-    atQueue =
-      found.tree === null || found.files.length === 0
-        ? Promise.resolve(NOTHING)
-        : queueSide({ ...queue, files: found.files, root: found.tree });
+    // Review wave-23 B2: also the requests the daemons recorded and have not taken yet.
+    queues = await joinBoth({
+      daemons,
+      commit: commitInput,
+      refs,
+      at: side.state,
+      now: listed.state,
+      root,
+      commonDir,
+      deadline: queue.deadline,
+    });
   }
-  const queues = await Promise.all([atQueue, worktreeQueue({ ...queue, files: nowFiles }, root)]);
   // Review wave-23 B3: a run that observed new inputs stored at their key; key those files again (D2).
   const checkout = defined({ cacheRoot: options.cacheRoot, install: options.install });
   const rekey = { ...place, env: input.env, note, options: checkout };
@@ -228,8 +227,6 @@ function selectedNow(
     return selects.ids === null || selects.ids.has(testFileId(ref)) || selects.paths.has(ref.path);
   });
 }
-
-const pendingOf = (s: SideState) => s.state === "no result" && s.pending !== undefined;
 
 /**
  * D4.5, Q7: a large selection tells its estimate once, as it is queued,
