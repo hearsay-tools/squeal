@@ -120,6 +120,8 @@ export interface DaemonStarts {
   readonly startWorktree?: (root: AbsolutePath, bound: number) => Promise<string | null>;
   /** Where a start's warnings go. */
   readonly note?: (text: string) => void;
+  /** Tests: the socket of the daemon of `root`; `daemonSocket` by default. */
+  readonly socket?: (root: AbsolutePath, timeoutMs: number) => Promise<AbsolutePath>;
 }
 
 /** The real daemons, started as `starts` says. */
@@ -132,7 +134,7 @@ export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
   const socketOf = async (root: AbsolutePath, deadline: number) => {
     const known = sockets.get(root);
     if (known !== undefined) return known;
-    const socket = await daemonSocket(root, socketBound(deadline));
+    const socket = await (starts.socket ?? daemonSocket)(root, socketBound(deadline));
     sockets.set(root, socket);
     return socket;
   };

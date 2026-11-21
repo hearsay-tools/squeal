@@ -27,7 +27,7 @@ import { type AtDaemons, type CommitDaemonInput, realDaemons } from "./status-at
 import { uncommitted } from "./status-at-dirty.js";
 import { joinNow } from "./status-at-join.js";
 import { listLate, type NowInput, type NowSide, nowSide } from "./status-at-now.js";
-import { type SideQueue, worktreeTwice } from "./status-at-queue.js";
+import { RECORD_WAIT_MS, type SideQueue, worktreeTwice } from "./status-at-queue.js";
 import { unionRefs } from "./status-at-refs.js";
 import { exitCode, formatAt, jsonAt } from "./status-at-report.js";
 import {
@@ -91,8 +91,11 @@ export async function daemonCall(input: CallInput): Promise<number> {
   const waitMs = args.waitMs ?? (run === null ? 0 : RUN_WAIT_MS);
   const note = (text: string) =>
     io.stderr(text.startsWith("squeal: ") ? `${text}\n` : `squeal: ${text}\n`);
-  // Review wave-23 B1, row 023-40c: one bound for every step, counted from the call's start.
+  // Review wave-23 B1, row 023-40c: one bound for every step, counted from the call's start. The
+  // waits end by `bound`; the worktree, the starts and the asks by `askBy`, at least
+  // `RECORD_WAIT_MS` after the start, so even `--wait 0` queues its files.
   const bound = Math.max(input.startedMs, input.startedMs + waitMs - REPORT_RESERVE_MS);
+  const askBy = Math.max(bound, input.startedMs + RECORD_WAIT_MS);
   const commitInput: CommitDaemonInput = {
     root,
     commit,
@@ -112,7 +115,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
           joinedCommit(daemons, commitInput, commonDir, place.paths, bound),
           joinNow({ daemons, root, refs: listed.refs, now: listed.state, deadline: bound }),
         ])
-      : await queueBoth(input, { daemons, commit: commitInput, now: listed, bound, run });
+      : await queueBoth(input, { daemons, commit: commitInput, now: listed, bound, askBy, run });
   if (run !== null) tellEstimate(atQueue.files, args, waitMs, root, commit, note);
   const after = await readAfter(input, atQueue, nowQueue, run !== null);
   const report = await assembleReport({
@@ -143,11 +146,12 @@ async function queueBoth(
     readonly commit: CommitDaemonInput;
     readonly now: NowSide;
     readonly bound: number;
+    readonly askBy: number;
     readonly run: NonNullable<AtArgs["run"]>;
   },
 ): Promise<[CommitAsked, SideQueue]> {
   const { root, commit, paths } = input.place;
-  const { daemons, bound, now } = side;
+  const { daemons, bound, askBy, now } = side;
   const changed = await changedPaths(root, commit);
   const owner = randomUUID();
   const withoutNow = now.refs.filter((ref) => now.state(ref).state === "no result");
@@ -163,7 +167,7 @@ async function queueBoth(
   const queue = {
     daemons,
     deadline: bound,
-    askBy: () => bound,
+    askBy: () => askBy,
     call: { owner, lead: paths !== null },
     ask: true,
     files: first,
@@ -176,7 +180,8 @@ async function queueBoth(
       changed,
       named: paths ?? [],
       allMissing: side.run.allMissing,
-      bound,
+      askBy,
+      deadline: bound,
       queued: (files) => {
         for (const ref of files) atPaths.add(ref.path);
         selected(withoutNow.filter((ref) => atPaths.has(ref.path)));
