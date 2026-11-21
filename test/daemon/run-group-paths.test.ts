@@ -115,6 +115,44 @@ describe("the run-group-paths request (019-49)", () => {
   });
 });
 
+describe("ping lists narrow requests not taken yet (review wave-23 B2)", () => {
+  it("names each recorded run-group-paths request until the scheduler takes or fails it", async () => {
+    const takes: ((requested: GroupRequested) => void)[] = [];
+    const fails: ((error: Error) => void)[] = [];
+    const handle = handler(
+      (_group, _held, paths) =>
+        new Promise((resolve, reject) => {
+          if (paths === undefined) return;
+          takes.push(resolve);
+          fails.push(reject);
+        }),
+    );
+    expect(handle({ type: "ping" })).not.toHaveProperty("recorded");
+    const a = requestId(
+      handle({ type: "run-group-paths", group: "unit", paths: ["test/a.test.ts"] }),
+    );
+    // A whole group's request has no paths to join: not listed.
+    requestId(handle({ type: "run-group", group: "unit" }));
+    const b = requestId(handle({ type: "run-group-paths", group: "e2e", paths: ["test/e2e"] }));
+    expect(takes).toHaveLength(2);
+    expect(handle({ type: "ping" })).toMatchObject({
+      type: "ping",
+      recorded: [
+        { requestId: a, group: "unit", paths: ["test/a.test.ts"] },
+        { requestId: b, group: "e2e", paths: ["test/e2e"] },
+      ],
+    });
+    takes[0]?.(TAKEN);
+    await settle();
+    expect(handle({ type: "ping" })).toMatchObject({
+      recorded: [{ requestId: b, group: "e2e", paths: ["test/e2e"] }],
+    });
+    fails[1]?.(new Error("startup failed"));
+    await settle();
+    expect(handle({ type: "ping" })).not.toHaveProperty("recorded");
+  });
+});
+
 describe("requestGroup with paths on the daemon's scheduler (019-49)", () => {
   it("calls requestGroupPaths, never requestGroup", async () => {
     const calls: string[] = [];
