@@ -1,7 +1,9 @@
 import { existsSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type AtDaemons, realDaemons } from "../../src/cli/status-at-daemons.js";
+import { installCommitWorktree } from "../../src/core/checkout/commit-setup.js";
 import { readCommitWorktree } from "../../src/core/checkout/commit-worktree.js";
+import { COMMIT_WORKTREES } from "../../src/core/daemon/commit-mode.js";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
@@ -9,11 +11,11 @@ import { childEnv, SLOW } from "../daemon/helpers.js";
 import { run, testOf } from "./status-at-kit.js";
 
 /*
- * Row 023-40a (spec 023 D7.1 to D7.4) with a real commit daemon, started
- * in this process in the commit worktree `ensureCommitWorktree` made: the
- * call keeps it alive until the daemon claims the worktree, queues the
- * named file there, and reads the result the daemon stored at D2's keys,
- * the keys the call computed in its temporary checkout. A second caller
+ * Row 023-40a (spec 023 D7.1 to D7.4; row 023-40c, D7.3 as amended) with a
+ * real commit daemon, started in this process in the commit worktree
+ * `ensureCommitWorktree` made with no install: the daemon installs it,
+ * keys, selects and runs the named file, and the call reads the result it
+ * stored at the daemon's live key, with no keying of its own. A second caller
  * reuses the worktree and its daemon. With the ceiling full, a new commit
  * waits for a place and says so on stderr. The working tree's side is a
  * stand-in here: this file is about the commit daemon.
@@ -29,7 +31,14 @@ function commitOnly(root: string, started: AbsolutePath[], daemons: RunningDaemo
   const real = realDaemons({
     start: async (tree) => {
       started.push(tree);
-      const daemon = await startDaemon({ root: tree, env: childEnv(runtime) });
+      // Row 023-40c: the commit daemon installs its worktree; here with the fixture's linked install.
+      const install = (root: AbsolutePath) =>
+        installCommitWorktree(root, { install: linkInstall().install });
+      const daemon = await startDaemon({
+        root: tree,
+        env: childEnv(runtime),
+        commitWorktrees: { ...COMMIT_WORKTREES, install },
+      });
       if ("reason" in daemon) return daemon.message;
       daemons.push(daemon);
       let exited = false;
@@ -108,7 +117,7 @@ describe("status --at --run on a real commit daemon (row 023-40, D7)", SLOW, () 
     const third = await run(f, { commit: b, paths: [A.path], run: run1, waitMs: 5000 }, options);
     expect(third.err).toContain("squeal: waiting for a place: 1 of 1 commit worktrees live");
     expect(third.out).toContain(
-      `--run: 1 test files with no result at ${b.slice(0, 9)} not queued: the commit worktree could not be made`,
+      `--run: nothing queued at ${b.slice(0, 9)}: the commit worktree could not be made: waiting for a place: 1 of 1`,
     );
     expect(started).toEqual([tree]);
 

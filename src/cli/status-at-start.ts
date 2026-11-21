@@ -1,7 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { readCommitWorktree } from "../core/checkout/commit-worktree.js";
 import { withStores } from "../core/commit/at-keys-checkout.js";
-import { ensureDaemonProcess } from "../core/daemon/ensure.js";
+import { ensureDaemonProcess, probeDaemon } from "../core/daemon/ensure.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { pidNamespace } from "../core/delivery/harness-process.js";
 import { TREE_PRINT_TIMEOUT_MS, treePrint } from "../core/delivery/stopped.js";
@@ -14,37 +13,39 @@ import type { Store } from "../core/types/store.js";
 import { keptCacheCli } from "../harness/shared/version-copies.js";
 import type { CliIo } from "./main.js";
 import { startCommand } from "./start.js";
-import { lockFreed } from "./stop.js";
+import { SPAWN_WAIT_MS } from "./start-ready.js";
+import { lockFreed, STOP_BOUNDS } from "./stop.js";
+import { BUSY_BOUND_MS } from "./store-writes.js";
 
 /*
- * Spec 023 D7.3 (row 023-40; review wave-23 B1 and S1): how a `status --at`
- * call starts the two daemons. The commit daemon is spawned in its tree,
- * and the call, its worktree's creator, stays until the daemon claims the
- * worktree (023-38 notes: before the claim the creator owns it, and a
- * sweep in that gap would remove it); it stops waiting at once when the
- * daemon exits first, and past the call's wait it waits at most
- * `CLAIM_GRACE_MS` more, while the daemon lives. The working tree's daemon
- * is started as `squeal start` starts one, but never while the user
- * stopped it (`squeal stop`, `--until-start` too) or a command holds it
- * (`squeal hold`): the call leaves both as they are (the coordinator's
- * decision of 2026-11-21).
+ * Spec 023 D7.3 (row 023-40; review wave-23 B1 and S1; row 023-40c, D7.3
+ * as amended 2026-11-21): how a `status --at` call starts the two daemons.
+ * The commit daemon is spawned in its tree (as `squeal start` spawns one)
+ * and owns the worktree from its spawn (`ownedByStart`, written by the
+ * caller), so the call waits only until it answers on its socket, at most
+ * until the call's bound; one that exits first ends the wait at once. The
+ * working tree's daemon is started as `squeal start` starts one, its waits
+ * cut to what is left of the call's, but never while the user stopped it
+ * (`squeal stop`, `--until-start` too) or a command holds it (`squeal
+ * hold`): the call leaves both as they are (the coordinator's decision of
+ * 2026-11-21).
  */
 
-/** How long the call waits for a started commit daemon to claim its worktree. */
-export const CLAIM_WAIT_MS = 60_000;
-/** Past the call's wait, how much longer it waits for a live daemon's claim. */
-export const CLAIM_GRACE_MS = 10_000;
-const CLAIM_POLL_MS = 200;
+/** At most this long the call waits for a spawned commit daemon to answer, even with a bare `--wait`. */
+export const SERVE_WAIT_MS = 60_000;
+const SERVE_POLL_MS = 100;
 
-/** A daemon a start left serving, or starting: whether its process still lives. */
+/** A daemon a start left serving, or starting: whether its process still lives, and its pid when spawned. */
 export interface Started {
   readonly lives: () => Promise<boolean>;
+  /** The spawned process; absent: one already served. */
+  readonly pid?: number;
 }
 
 /** Starts the commit daemon in `tree`; why not, when it could not. */
 export type StartCommit = (tree: AbsolutePath) => Promise<Started | string>;
 
-/** Spawns the commit daemon as `squeal start` spawns one; returns at the spawn, not at its claim. */
+/** Spawns the commit daemon as `squeal start` spawns one; returns at the spawn, not when it serves. */
 export async function spawnCommitDaemon(tree: AbsolutePath): Promise<Started | string> {
   const script = process.argv[1];
   let cli: string | undefined;
@@ -53,10 +54,10 @@ export async function spawnCommitDaemon(tree: AbsolutePath): Promise<Started | s
   } catch (error) {
     return `could not retain the seed runtime: ${String(error)}`;
   }
-  const { result, ended } = await ensureDaemonProcess(tree, cli === undefined ? {} : { cli });
+  const { result, pid, ended } = await ensureDaemonProcess(tree, cli === undefined ? {} : { cli });
   if (result === "unavailable") return `no daemon could be reached or started for ${tree}`;
   if (result === "alive") return lockHolder(tree);
-  return { lives: async () => !ended() };
+  return { lives: async () => !ended(), ...(pid === null ? {} : { pid }) };
 }
 
 /** A daemon that already answers: it lives while its lock is held. */
@@ -65,28 +66,28 @@ export function lockHolder(root: AbsolutePath): Started {
 }
 
 /**
- * Waits until the daemon `started` claimed `tree`: `null` then, else why
- * not. Review wave-23 B1: a daemon that exits first ends the wait at once;
- * the wait ends `CLAIM_GRACE_MS` past `deadline` (the call's) at the
- * latest, and never later than `CLAIM_WAIT_MS` after it began.
+ * Row 023-40c: waits until the commit daemon `started` answers on the
+ * socket of `tree`: `null` then, else why not. One that exits first ends
+ * the wait at once; the wait ends at `bound` (the call's), and never later
+ * than `SERVE_WAIT_MS` after it began. The daemon owns the worktree from
+ * its spawn, so ending the wait leaves nothing unowned.
  */
-export async function claimWait(
+export async function serveWait(
   tree: AbsolutePath,
   started: Started,
-  deadline: number,
+  bound: number,
 ): Promise<string | null> {
-  const until = Math.min(Date.now() + CLAIM_WAIT_MS, deadline + CLAIM_GRACE_MS);
+  const until = Math.min(Date.now() + SERVE_WAIT_MS, bound);
   for (;;) {
-    if (readCommitWorktree(tree)?.daemon !== undefined) return null;
-    if (!(await started.lives()))
-      return readCommitWorktree(tree)?.daemon !== undefined
-        ? null
-        : `the commit daemon exited before it claimed ${tree}`;
+    const left = until - Date.now();
+    const probe = await probeDaemon(tree, Math.max(50, Math.min(1_000, left)));
+    if (probe.state === "alive") return null;
+    if (!(await started.lives())) return `the commit daemon exited before it served ${tree}`;
     if (Date.now() >= until)
-      return Date.now() >= deadline
-        ? `the call's wait ended before the commit daemon claimed ${tree} (starting)`
-        : `the commit daemon did not claim ${tree} in ${CLAIM_WAIT_MS / 1000} s`;
-    await sleep(CLAIM_POLL_MS);
+      return Date.now() >= bound
+        ? `the call's wait ended before the commit daemon in ${tree} answered (starting)`
+        : `the commit daemon in ${tree} did not answer in ${SERVE_WAIT_MS / 1000} s`;
+    await sleep(Math.min(SERVE_POLL_MS, Math.max(0, until - Date.now())));
   }
 }
 
@@ -122,16 +123,25 @@ async function stopsOf(main: Store, root: AbsolutePath): Promise<string | null> 
 }
 
 /**
- * `squeal start <root>`, its status output dropped: its error lines are
+ * `squeal start <root>`, its status output dropped, each of its waits
+ * ending by `bound` (row 023-40c): its error lines are
  * the answer, and on success its stderr lines (a warning) go to `note`.
  */
 export async function quietStart(
   root: AbsolutePath,
   note: (text: string) => void,
+  bound: number = Number.POSITIVE_INFINITY,
 ): Promise<string | null> {
   const errors: string[] = [];
   const io: CliIo = { stdout: () => undefined, stderr: (text) => errors.push(text) };
-  const code = await startCommand([root], io);
+  // Row 023-40c (D7.3 as amended): every wait of the start gets what is left of the call's.
+  const left = (ms: number) => Math.max(0, Math.min(ms, bound - Date.now()));
+  const bounds = {
+    socketMs: left(STOP_BOUNDS.socketMs),
+    lockMs: left(STOP_BOUNDS.lockMs),
+    leftoversMs: left(STOP_BOUNDS.leftoversMs),
+  };
+  const code = await startCommand([root], io, bounds, left(BUSY_BOUND_MS), left(SPAWN_WAIT_MS));
   const text = errors.join("").trim().replace(/\s+/g, " ");
   if (code === 0) {
     for (const line of errors.join("").split("\n")) if (line.trim() !== "") note(line);

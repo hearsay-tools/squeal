@@ -1,4 +1,3 @@
-import { withStores } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
@@ -8,8 +7,7 @@ import type { AbsolutePath } from "../core/types/common.js";
 import type { DaemonResponse, RecordedRequest } from "../core/types/daemon.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { takenRequest } from "./run-group.js";
-import { idOf } from "./status-at-after.js";
-import type { Asked, AtDaemons, CommitDaemonInput } from "./status-at-daemons.js";
+import type { Asked, AtDaemons } from "./status-at-daemons.js";
 import { NOTHING, type SideQueue } from "./status-at-queue.js";
 import type { SideState } from "./status-at-report.js";
 import { askWithin } from "./wait/socket.js";
@@ -42,43 +40,23 @@ export interface RecordedJoins {
   joinRequest?(root: AbsolutePath, request: RecordedRequest, deadline: number): Promise<Asked>;
 }
 
-export interface JoinInput {
+/** Row 023-40c: the working tree's side of `--wait` alone; the commit side joins its daemon's asks. */
+export async function joinNow(input: {
   readonly daemons: AtDaemons;
-  readonly commit: CommitDaemonInput;
+  readonly root: AbsolutePath;
   readonly refs: readonly TestFileRef[];
-  /** The commit side as the call keyed it. */
-  readonly at: (ref: TestFileRef) => SideState;
   /** The working tree's side as listed at the call's start. */
   readonly now: (ref: TestFileRef) => SideState;
-  /** The user's worktree: its daemon is the working tree's side. */
-  readonly root: AbsolutePath;
-  readonly commonDir: AbsolutePath;
-  /** Epoch ms; `Infinity` for a bare `--wait`. The call's one deadline (B1). */
+  /** Epoch ms; `Infinity` for a bare `--wait`: the call's bound (B1). */
   readonly deadline: number;
-  /**
-   * Review wave-23 B1: the bound of the join's daemon reads, as of `--run`'s
-   * requests (`askBound`): the deadline, or a few seconds after the first.
-   */
-  readonly askBy: () => number;
-}
-
-/** Both sides joined, commit side first. */
-export async function joinBoth(input: JoinInput): Promise<[SideQueue, SideQueue]> {
-  const { daemons, refs } = input;
-  const bounds = { deadline: input.deadline, askBy: input.askBy };
-  const atSide = async (): Promise<SideQueue> => {
-    const tree = daemons.find(input.commit);
-    if (tree === null) return NOTHING;
-    const listed = await pendingRows(input.commonDir, tree);
-    const without = refs.filter((ref) => input.at(ref).state === "no result");
-    return joinSide(daemons, tree, without, (ref) => listed.has(testFileId(ref)), bounds);
-  };
-  const without = refs.filter((ref) => input.now(ref).state === "no result");
+}): Promise<SideQueue> {
+  const without = input.refs.filter((ref) => input.now(ref).state === "no result");
   const pendingNow = (ref: TestFileRef) => {
     const s = input.now(ref);
     return s.state === "no result" && s.pending !== undefined;
   };
-  return Promise.all([atSide(), joinSide(daemons, input.root, without, pendingNow, bounds)]);
+  const bounds = { deadline: input.deadline, askBy: () => input.deadline };
+  return joinSide(input.daemons, input.root, without, pendingNow, bounds);
 }
 
 /**
@@ -91,7 +69,7 @@ async function joinSide(
   root: AbsolutePath,
   without: readonly TestFileRef[],
   listed: (ref: TestFileRef) => boolean,
-  { deadline, askBy }: Pick<JoinInput, "deadline" | "askBy">,
+  { deadline, askBy }: { readonly deadline: number; readonly askBy: () => number },
 ): Promise<SideQueue> {
   if (without.length === 0) return NOTHING;
   // Review wave-23 B1: the ping and the requests' joins end with the call's requests, as `--run`'s.
@@ -127,17 +105,6 @@ async function joinSide(
     if (ended !== null) problems.push(ended);
   }
   return { root, files, pending, problems, groupOf };
-}
-
-/** The files the daemon of `tree` lists pending in the store. */
-async function pendingRows(commonDir: AbsolutePath, tree: AbsolutePath): Promise<Set<string>> {
-  const id = idOf(tree);
-  return withStores(commonDir, async (main) => {
-    const rows = main?.testFileKeys.list(id) ?? [];
-    return new Set(
-      rows.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile)),
-    );
-  });
 }
 
 const problemOf = (error: unknown): Asked => ({ problem: String(error) });
