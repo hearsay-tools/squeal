@@ -272,8 +272,9 @@ const GATED: Readonly<Record<string, string>> = {
  * own, which tsx never reads, and the project's `tsconfig.json` extends the
  * one that holds `paths`; under `TSX_TSCONFIG_PATH` the aliases of
  * `run/tsconfig.json` map `lib/x.ts` too, outside that folder, through
- * their second target, the first naming no file. `import()`
- * carries a query, and the closure keys the file without it.
+ * their second target, the first naming no file. `import()` and the alias
+ * import carry a query, and the closure keys the file without it; tsx cuts
+ * the alias's query before it matches `paths` (row 018-73, review 0.1.587 B1).
  */
 const TSX_LOADER = new URL("../../../../../node_modules/tsx/dist/loader.mjs", import.meta.url).href;
 const tsconfig = (options: object) => `${JSON.stringify(options)}\n`;
@@ -287,7 +288,7 @@ const TSX_KEYED: Readonly<Record<string, string>> = {
     compilerOptions: { paths: { "~/*": ["./absent/*", "./mapped/*"] } },
   }),
   "lib/tsconfig.json": tsconfig({ compilerOptions: { paths: { "~/*": ["./other/*"] } } }),
-  "lib/x.ts": lines('import { y } from "~/y";', "export const x = y;"),
+  "lib/x.ts": lines('import { y } from "~/y?alias";', "export const x = y;"),
   "lib/other/y.ts": "export const y = 2;\n",
   "src/y.ts": "export const y = 1;\n",
   "run/mapped/y.ts": "export const y = 1;\n",
@@ -444,7 +445,7 @@ export const NODE_TEST_RUNS: readonly Case[] = [
   {
     kind: "adapter:node-test",
     name: "a tsx project's keys follow what tsx loads (row 018-66)",
-    why: "018-66: the graph keys the one tsconfig tsx reads for the process and maps every importer with its aliases, as tsx 4 does, and keys the file a query names without the query. The closure moves to what the run loads, so keys move and every node:test result runs once more, which the human accepted on 2026-11-21; the run stores what the last release stored",
+    why: "018-66: the graph keys the one tsconfig tsx reads for the process and maps every importer with its aliases, as tsx 4 does, and keys the file a query names without the query (018-73: a bare specifier loses its query before alias matching). The closure moves to what the run loads, so keys move and every node:test result runs once more, which the human accepted on 2026-11-21; the run stores what the last release stored",
     input: {
       files: TSX_KEYED,
       argv: ["--import", "tsx"],

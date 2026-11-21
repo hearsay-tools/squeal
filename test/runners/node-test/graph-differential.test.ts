@@ -379,8 +379,63 @@ B4["a CommonJS require through an alias, from outside the tsconfig's folder"] = 
   tsconfigPath: "run/tsconfig.json",
 };
 
+/**
+ * Review `0.1.587.md` B1: tsx cuts a bare specifier at its `?` before it
+ * matches aliases (`getSpecifierMetadataIndex`, and `preserveQuery` for
+ * `require`), so `@dep?q=1` loads the alias's `dep.ts`.
+ */
+const QUERY: Record<string, Case> = {
+  "B1: an exact alias with a `?query`": {
+    files: {
+      "tsconfig.json": json({ compilerOptions: { paths: { "@dep": ["./dep.ts"] } } }),
+      "dep.ts": DEP,
+      "a.test.ts": valueTest("@dep?q=1", "const result = Value;", usesValue),
+    },
+    test: "a.test.ts",
+    loads: ["dep.ts"],
+  },
+  "B1: a wildcard alias with a suffix, and a `?query` after it": {
+    files: {
+      "tsconfig.json": json({ compilerOptions: { paths: { "@lib/*.js": ["./lib/*.ts"] } } }),
+      "lib/dep.ts": DEP,
+      "a.test.ts": valueTest("@lib/dep.js?q=1", "const result = Value;", usesValue),
+    },
+    test: "a.test.ts",
+    loads: ["lib/dep.ts"],
+  },
+  "B1: a CommonJS require of an exact alias with a `?query`": {
+    files: {
+      "tsconfig.json": json({ compilerOptions: { paths: { "@dep": ["./dep.cjs"] } } }),
+      "dep.cjs": lines('console.log("LOADED_DEP");', "module.exports = { Value: 2 };"),
+      "use.cts": lines('const { Value } = require("@dep?q=1");', "module.exports = { Value };"),
+      "a.test.ts": lines(
+        ASSERT,
+        TEST,
+        'import use from "./use.cts";',
+        'test("v", () => assert.equal(use.Value, 2));',
+      ),
+    },
+    test: "a.test.ts",
+    loads: ["use.cts", "dep.cjs"],
+  },
+  "a package import with a `?query`": {
+    files: {
+      "package.json": json({
+        name: "q",
+        private: true,
+        type: "module",
+        imports: { "#dep": "./dep.ts" },
+      }),
+      "dep.ts": DEP,
+      "a.test.ts": valueTest("#dep?q=1", "const result = Value;", usesValue),
+    },
+    test: "a.test.ts",
+    loads: ["dep.ts"],
+  },
+};
+
 describe("row 018-66: the closure holds every module a real run loads", () => {
-  for (const [name, c] of Object.entries({ ...FORMS, ...B4 })) {
+  for (const [name, c] of Object.entries({ ...FORMS, ...B4, ...QUERY })) {
     it(name, SLOW, () => differential(c));
   }
 });

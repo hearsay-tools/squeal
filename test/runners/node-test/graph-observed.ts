@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +25,14 @@ registerHooks({
   },
 });
 `;
+
+/**
+ * tsx's CommonJS loader names a module required as `./dep.cjs?q=1` by the
+ * path `dep.cjs?q=1` and reads `dep.cjs` (`preserveQuery`): the file is the
+ * path without its query when the path names no file.
+ */
+const loadedFile = (path: string) =>
+  path.includes("?") && !existsSync(path) ? path.slice(0, path.indexOf("?")) : path;
 
 /**
  * Runs one test file under the recorder, first in the loader chain, and
@@ -65,7 +73,7 @@ export function observedClosure(
   }
   rmSync(dir, { recursive: true, force: true });
   return [...seen]
-    .map((url) => relative(root, fileURLToPath(url)))
+    .map((url) => relative(root, loadedFile(fileURLToPath(url))))
     .filter((p) => !p.startsWith("..") && !p.split("/").includes("node_modules"))
     .sort();
 }
