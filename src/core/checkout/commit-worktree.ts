@@ -1,14 +1,12 @@
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { leaseProcess, leaseProcessAlive } from "../daemon/lease-process.js";
-import { awaitDaemonLock } from "../daemon/lock.js";
 import { lstatOrNull, resolveCommonDir } from "../fs/git-layout.js";
 import { installCommand } from "../scheduler/install-command.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { LeaseProcess } from "../types/daemon-writes.js";
 import {
   addCheckout,
-  CHECKOUT_LOCK_WAIT_MS,
   type Checkout,
   removeTree,
   resolveCommit,
@@ -32,7 +30,8 @@ import {
   registerPlace,
   waitsLine,
 } from "./commit-places.js";
-import { type InstallResult, installCheckout, manifestOf } from "./install.js";
+import { COMMIT_INSTALL_TIMEOUT_MS, installCommitWorktree } from "./commit-setup.js";
+import { type InstallResult, manifestOf } from "./install.js";
 import {
   cacheCheckoutsDir,
   cacheCheckoutsRoot,
@@ -45,7 +44,6 @@ import {
   ownerOf,
   ownerState,
   readMarker,
-  recordGroup,
   treePath,
   writeMarker,
 } from "./marker.js";
@@ -65,8 +63,8 @@ import {
 /** How long a creator waits for a place under the ceiling before it gives up. */
 export const PLACE_WAIT_MS = 10 * 60_000;
 const PLACE_POLL_MS = 1_000;
-/** The frozen install's budget (D4.3). */
-export const COMMIT_INSTALL_TIMEOUT_MS = 300_000;
+
+export { COMMIT_INSTALL_TIMEOUT_MS };
 
 /** What a commit worktree's marker says, for its daemon (row 023-39). */
 export interface CommitWorktreeMarker {
@@ -107,6 +105,11 @@ export interface EnsureCommitWorktreeOptions {
     tree: AbsolutePath,
     started: (group: number) => void,
   ) => Promise<InstallResult>;
+  /**
+   * Row 023-40c (D7.3 as amended 2026-11-21): `false` makes the worktree
+   * with no install; its daemon installs it (`installCommitWorktree`).
+   */
+  readonly installs?: boolean;
   readonly placeWaitMs?: number;
   readonly pollMs?: number;
   readonly lockWaitMs?: number;
@@ -130,7 +133,8 @@ export async function ensureCommitWorktree(
   const located = { ...options, cacheRoot, dir, commonDir, commit, fingerprint };
   const checkout = await placeFor(located);
   const worktree = { tree: checkout.tree, folder: checkout.folder, commit, fingerprint, commonDir };
-  await installOnce(worktree, options);
+  // Row 023-40c (D7.3 as amended): with `installs: false` the commit daemon installs it.
+  if (options.installs !== false) await installOnce(worktree, options);
   return worktree;
 }
 
@@ -249,42 +253,19 @@ function takenOver(marker: CheckoutMarker): CheckoutMarker {
   return { ...rest, owner: leaseProcess() };
 }
 
-/** D7.1: the frozen install, once: under the folder's lock, skipped when the marker says done. */
+/** D7.1: the frozen install, once (`installCommitWorktree`); a failed one removes the worktree. */
 async function installOnce(
   worktree: CommitWorktree,
   options: EnsureCommitWorktreeOptions,
 ): Promise<void> {
-  const { folder, tree } = worktree;
-  const timeoutMs = COMMIT_INSTALL_TIMEOUT_MS;
-  const lock = await awaitDaemonLock(join(folder, "install.lock"), {
-    timeoutMs: timeoutMs + CHECKOUT_LOCK_WAIT_MS,
-    giveUp: () => false,
-  });
-  if (typeof lock === "string")
-    throw new Error(`squeal: the install of ${tree} did not end within ${timeoutMs} ms`);
-  let failed: string | null = null;
-  try {
-    if (readMarker(folder)?.installed === true) return;
-    const started = (group: number) => {
-      try {
-        recordGroup(folder, leaseProcess(group));
-      } catch {
-        // No marker to record in: the sweep removes such a folder without its group.
-      }
-    };
-    const install = options.install ?? ((t, s) => installCheckout(t, { timeoutMs, started: s }));
-    const result = await install(tree, started);
-    if (result.ok) {
-      const marker = readMarker(folder);
-      if (marker !== null) writeMarker(folder, { ...marker, installed: true });
-    } else failed = `squeal: the install in ${tree} failed: ${result.command}: ${result.reason}`;
-  } finally {
-    lock.release();
-  }
+  const failed = await installCommitWorktree(
+    worktree.tree,
+    options.install === undefined ? {} : { install: options.install },
+  );
   if (failed === null) return;
   // A failed frozen install fails again: the next call starts from a new checkout.
-  await removeCommitWorktree(tree, options);
-  throw new Error(failed);
+  await removeCommitWorktree(worktree.tree, options);
+  throw new Error(`squeal: ${failed}`);
 }
 
 /**
