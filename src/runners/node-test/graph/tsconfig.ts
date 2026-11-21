@@ -53,6 +53,75 @@ export function readTsconfigPaths(file: AbsolutePath, read: ReadText): TsconfigP
   return { ...load(file, new Set([file])), files };
 }
 
+/** One config chain's `paths` and `baseUrl`, compiled as tsx 4 compiles them. */
+export interface PathAliases {
+  readonly exact: ReadonlyMap<string, readonly string[]>;
+  readonly patterns: readonly {
+    readonly prefix: string;
+    readonly suffix: string;
+    readonly substitutions: readonly string[];
+  }[];
+  /** The effective `baseUrl`; only it maps a bare name no pattern matches. */
+  readonly baseUrl: AbsolutePath | null;
+}
+
+/**
+ * Row 018-66: tsx 4's `compilePaths`. Substitutions resolve against the
+ * effective `baseUrl`, else the directory of the config whose `paths` win.
+ * `null` when the chain sets neither.
+ */
+export function compileAliases(chain: TsconfigPaths, read: ReadText): PathAliases | null {
+  if (chain.pathsFile === null && chain.baseUrl === null) return null;
+  const base = chain.baseUrl ?? dirname(chain.pathsFile ?? "");
+  const options = chain.pathsFile === null ? null : parseJsonc(read(chain.pathsFile));
+  const raw = isObject(options?.compilerOptions) ? options.compilerOptions.paths : null;
+  const exact = new Map<string, string[]>();
+  const patterns: { prefix: string; suffix: string; substitutions: string[] }[] = [];
+  for (const [pattern, targets] of Object.entries(isObject(raw) ? raw : {})) {
+    if (!Array.isArray(targets)) continue;
+    const substitutions = targets
+      .filter((t): t is string => typeof t === "string")
+      .map((t) => resolve(base, t));
+    const star = pattern.indexOf("*");
+    if (star === -1) exact.set(pattern, substitutions);
+    else
+      patterns.push({
+        prefix: pattern.slice(0, star),
+        suffix: pattern.slice(star + 1),
+        substitutions,
+      });
+  }
+  return { exact, patterns, baseUrl: chain.baseUrl };
+}
+
+/** tsx 4: a URL or a scheme names no alias, nor does `.`, `..` or a path under them. */
+const URL_LIKE = /^(?:[a-z][\d+.a-z-]*:\/\/|data:|file:|node:)/i;
+const DOTS = /^\.{1,2}(\/.*)?$/;
+
+/**
+ * Row 018-66: tsx 4's `resolvePathAlias`, the absolute paths tsx tries for
+ * `specifier`, in order, before it resolves the specifier as written. An
+ * exact pattern wins, then the wildcard with the longest prefix; with no
+ * match, only a `baseUrl` maps the name.
+ */
+export function aliasCandidates(aliases: PathAliases, specifier: string): string[] {
+  const path = isAbsolute(specifier) || isRelative(specifier) || DOTS.test(specifier);
+  if (path || URL_LIKE.test(specifier)) return [];
+  const exact = aliases.exact.get(specifier);
+  if (exact !== undefined) return [...exact];
+  let best: PathAliases["patterns"][number] | null = null;
+  for (const pattern of aliases.patterns) {
+    const matches = specifier.startsWith(pattern.prefix) && specifier.endsWith(pattern.suffix);
+    if (matches && pattern.prefix.length > (best?.prefix.length ?? -1)) best = pattern;
+  }
+  if (best === null) return aliases.baseUrl === null ? [] : [join(aliases.baseUrl, specifier)];
+  const star = specifier.slice(best.prefix.length, specifier.length - best.suffix.length);
+  return best.substitutions.map((s) => s.replace("*", star));
+}
+
+/** tsx 4's `isRelativePath`: `./`, `../`, or any `..` start. */
+const isRelative = (s: string) => s[0] === "." && (s[1] === "/" || s[1] === "." || s[2] === "/");
+
 function locate(specifier: string, dir: string, read: ReadText): AbsolutePath | null {
   const exists = (path: string) => read(path) !== null;
   if (specifier.startsWith(".") || isAbsolute(specifier)) {
