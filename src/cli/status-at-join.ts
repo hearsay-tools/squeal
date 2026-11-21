@@ -41,7 +41,7 @@ export interface RecordedJoins {
 }
 
 export interface JoinInput {
-  readonly daemons: AtDaemons & RecordedJoins;
+  readonly daemons: AtDaemons;
   readonly commit: CommitDaemonInput;
   readonly refs: readonly TestFileRef[];
   /** The commit side as the call keyed it. */
@@ -79,7 +79,7 @@ export async function joinBoth(input: JoinInput): Promise<[SideQueue, SideQueue]
  * such request joined until taken, then the wait over the files.
  */
 async function joinSide(
-  daemons: AtDaemons & RecordedJoins,
+  daemons: AtDaemons,
   root: AbsolutePath,
   without: readonly TestFileRef[],
   listed: (ref: TestFileRef) => boolean,
@@ -168,33 +168,4 @@ export async function joinRequestAt(
   );
   if (typeof taken === "string") return { problem: taken };
   return "pending" in taken ? "pending" : "taken";
-}
-
-/** The call site's join before review wave-23 B2; `joinBoth` replaces it. */
-export interface Joined {
-  /** The commit worktree whose daemon runs them; `null` when there is none. */
-  readonly tree: AbsolutePath | null;
-  readonly files: readonly TestFileRef[];
-}
-
-export async function joinCommit(
-  daemons: AtDaemons,
-  input: CommitDaemonInput,
-  refs: readonly TestFileRef[],
-  keyed: (ref: TestFileRef) => SideState,
-  commonDir: AbsolutePath,
-): Promise<Joined> {
-  const tree = daemons.find(input);
-  if (tree === null) return { tree, files: [] };
-  const id = idOf(tree);
-  const pending = await withStores(commonDir, async (main) => {
-    const rows = main?.testFileKeys.list(id) ?? [];
-    return new Set(
-      rows.filter((row) => row.pending !== null).map((row) => testFileId(row.testFile)),
-    );
-  });
-  const files = refs.filter(
-    (ref) => keyed(ref).state === "no result" && pending.has(testFileId(ref)),
-  );
-  return { tree, files };
 }
