@@ -227,6 +227,15 @@ export interface Policy {
      * nothing is fetched (decision filter 5: the project opts in).
      */
     readonly ref: string | null;
+    /**
+     * Row 018-70 (gh-261): while the export of the worktree's start point is
+     * not on the remote yet, the daemon lists the remote again every
+     * `everySeconds`, for up to `forSeconds` after the start point moved, and
+     * stops when the start point moves again or the daemon stops. CI
+     * publishes about 1 to 2 min after main moves. `forSeconds: 0`: one look
+     * per start point. Defaults 30 and 600.
+     */
+    readonly lookAgain: { readonly everySeconds: number; readonly forSeconds: number };
   };
   /**
    * Spec 018 D18: which Node the daemon runs on. `"project"`: the exact
@@ -468,7 +477,7 @@ export const DEFAULT_POLICY: Policy = {
     tools: ["eslint", "oxlint"],
   },
   gate: { groups: null },
-  shared: { ref: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
   remote: { allowed: true, needsRepository: [] },

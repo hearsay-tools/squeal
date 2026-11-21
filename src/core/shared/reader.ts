@@ -23,6 +23,14 @@ import {
 import { fetchExport } from "./fetch.js";
 import { failureOf, networkEnv } from "./git.js";
 import { blobsAt, HEAD_TIMEOUT_MS, headOf } from "./local.js";
+import {
+  closuresStored,
+  gaveUpNote,
+  LookAgain,
+  REFINED_POLL_MS,
+  type Timer,
+  unrefTimer,
+} from "./look-again.js";
 import { refOf, remoteExports } from "./refs.js";
 import { readSquealMismatch, writeSquealMismatch } from "./refused.js";
 import { importIdHere, triedHere } from "./served.js";
@@ -44,7 +52,10 @@ import { importIdHere, triedHere } from "./served.js";
  * of another key format leaves one record for status (`refused.ts`), which
  * the next import clears, not a note per refused ref. Row 018-44: a held
  * export whose imports do not serve this worktree is imported again for it
- * (`served.ts`); one that serves it reaches no remote.
+ * (`served.ts`); one that serves it reaches no remote. Row 018-70
+ * (`look-again.ts`): while the start point's own export is missing, the
+ * reader lists again on a timer, and an import waits for the closure lists
+ * of the revision it lands in.
  */
 
 /** The kill timer of the listing (`transport.md` Q3: 0.45 to 0.6 s to GitHub). */
@@ -73,12 +84,16 @@ export interface SharedReaderOptions {
   readonly fetchTimeoutMs?: number;
   /** The kill timer of `HEAD` read through git (`HEAD_TIMEOUT_MS`). */
   readonly headTimeoutMs?: number;
+  /** Row 018-70: the timer of each look again (`unrefTimer`). */
+  readonly timer?: Timer;
+  /** Row 018-70: how often an import looks whether its revision is refined (`REFINED_POLL_MS`). */
+  readonly refinedPollMs?: number;
 }
 
 export interface SharedReader {
   /** Looks again, in the background: at start and after each stored batch. */
   nudge(): void;
-  /** Resolves once no pass runs or is due; for tests and shutdown. */
+  /** Resolves once no pass runs or is asked for; a look again on its timer is not waited for. */
   idle(): Promise<void>;
   /** Kills every git in flight; no git, fetch or import starts after. */
   close(): void;
@@ -86,6 +101,14 @@ export interface SharedReader {
 
 export function createSharedReader(options: SharedReaderOptions): SharedReader {
   return new Reader(options);
+}
+
+/** One pass's start point: `key` is `shared.ref` and the start point; `again`, a look again's pass. */
+interface Look {
+  readonly prefix: string;
+  readonly start: string;
+  readonly key: string;
+  readonly again: boolean;
 }
 
 /** Thrown by a step of a pass once the reader is closed; the loop ends quietly. */
@@ -100,8 +123,12 @@ class Reader implements SharedReader {
   #asked: Upstream | { readonly missedAt: string } | null = null;
   /** The reader's one stop: each step checks it, and each git call it starts is killed by it. */
   readonly #stop = new AbortController();
+  /** Row 018-70: the looks again while the start point's own export is missing. */
+  readonly #looks: LookAgain;
 
-  constructor(private readonly o: SharedReaderOptions) {}
+  constructor(private readonly o: SharedReaderOptions) {
+    this.#looks = new LookAgain(o.timer ?? unrefTimer, () => this.nudge());
+  }
 
   nudge(): void {
     if (this.#stop.signal.aborted || this.o.policy().shared.ref === null) return;
@@ -120,6 +147,7 @@ class Reader implements SharedReader {
 
   close(): void {
     this.#stop.abort();
+    this.#looks.stop();
   }
 
   async #loop(): Promise<void> {
@@ -163,8 +191,12 @@ class Reader implements SharedReader {
     }
     // The start point, not HEAD, decides: `git fetch` moves it while HEAD stays.
     const start = await this.#live((signal) => startPoint(root, head, upstream, signal));
-    if (start === null || `${prefix} ${start}` === this.#start) return;
-    this.#start = `${prefix} ${start}`;
+    if (start === null) return;
+    const key = `${prefix} ${start}`;
+    const again = this.#looks.takeDue(key);
+    if (key === this.#start && !again) return;
+    if (key !== this.#start) this.#looks.stop();
+    this.#start = key;
 
     const candidates = await this.#live((signal) => firstParents(root, start, signal));
     const imports = listImports(this.o.store);
@@ -180,20 +212,31 @@ class Reader implements SharedReader {
     }
     // Row 018-44: the nearest held export too, when its imports do not serve this worktree.
     const last = triedHere(this.o.store, this.o.worktreeId, imports, candidates, nearestHeld);
-    const tried = candidates.slice(0, last);
-    if (tried.length === 0) return;
+    // Row 018-70: a look again asks only for the start point's own export.
+    const tried = candidates.slice(0, again ? Math.min(last, 1) : last);
+    if (tried.length > 0) await this.#fromRemote({ prefix, start, key, again }, upstream, tried);
+  }
 
+  /** Lists the remote, then takes the nearest export of `tried` it lists. */
+  async #fromRemote(look: Look, upstream: Upstream, tried: readonly string[]): Promise<void> {
+    const { root } = this.o;
+    const { prefix, start } = look;
     const env = await this.#live((signal) => networkEnv(root, signal));
     const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
     const listed = await this.#live((signal) =>
       remoteExports(root, upstream.remote, prefix, { timeoutMs: listMs, env, signal }),
     );
     if ("timedOut" in listed) {
-      this.o.note(
-        `CI results: could not list ${prefix} on ${upstream.remote} (${failureOf(listed, listMs)}); tests run here as before`,
-      );
+      if (!look.again) {
+        this.o.note(
+          `CI results: could not list ${prefix} on ${upstream.remote} (${failureOf(listed, listMs)}); tests run here as before`,
+        );
+      }
+      this.#missed(look, upstream.remote);
       return;
     }
+    // Row 018-70: an older export may stand in until the start point's own one is listed.
+    if (!listed.has(start)) this.#missed(look, upstream.remote);
     for (const commit of tried) {
       const oid = listed.get(commit);
       if (oid === undefined) continue;
@@ -209,6 +252,14 @@ class Reader implements SharedReader {
       }
       await this.#take(upstream.remote, ref, commit, oid, env);
       return;
+    }
+  }
+
+  /** Row 018-70: the start point's own export was not listed; one note when the window ends. */
+  #missed(look: Look, remote: string): void {
+    const { lookAgain } = this.o.policy().shared;
+    if (this.#looks.missed(look.key, this.o.now(), !look.again, lookAgain) === "gave up") {
+      this.o.note(gaveUpNote(refOf(look.prefix, look.start), remote, lookAgain.forSeconds));
     }
   }
 
@@ -265,6 +316,11 @@ class Reader implements SharedReader {
     }
     const fileHash = createHash("sha256").update(bytes).digest("hex");
     const blobs = await this.#live((signal) => blobsAt(this.o.root, commit, signal));
+    // Row 018-70: the import re-keys over the closure lists of the revision that moved the start point.
+    const { store, worktreeId } = this.o;
+    const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+    const pollMs = this.o.refinedPollMs ?? REFINED_POLL_MS;
+    await this.#live((signal) => closuresStored(store, worktreeId, revision, { pollMs, signal }));
     this.o.step?.(IMPORT_STEP, true);
     let added: number;
     try {

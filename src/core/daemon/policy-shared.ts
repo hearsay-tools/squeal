@@ -1,10 +1,11 @@
-import type { Leaf, Shape } from "./config-file.js";
+import { type Leaf, positiveInteger, type Shape } from "./config-file.js";
 
 /*
  * Spec 018 D14: the `shared` key of the policy loader. A project opts in to
  * fetching CI's results by naming the ref prefix its CI publishes under
  * (decision filter 5); a wrong value is one problem and the default, `null`,
- * applies (001 D11).
+ * applies (001 D11). Row 018-70: `lookAgain`, how often and how long the
+ * reader lists the remote again while the start point's export is missing.
  */
 
 /** Prefixes a clone fetches or shows by default: an export there would reach every developer. */
@@ -28,5 +29,10 @@ const ref: Leaf = (v) =>
     ? null
     : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
 
+const atLeastZero: Leaf = (v) =>
+  Number.isInteger(v) && (v as number) >= 0 ? null : "a whole number >= 0";
+
 /** The section's keys, spread into the loader's shape. */
-export const SHARED_SHAPE: Shape = { shared: { ref } };
+export const SHARED_SHAPE: Shape = {
+  shared: { ref, lookAgain: { everySeconds: positiveInteger, forSeconds: atLeastZero } },
+};

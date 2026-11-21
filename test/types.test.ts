@@ -60,7 +60,7 @@ describe("core types", () => {
       // Spec 020 D14; its key's own tests are test/code/gate/policy.test.ts.
       gate: { groups: null },
       // Spec 018 D14; its key's own tests are test/shared/policy.test.ts.
-      shared: { ref: null },
+      shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
       // Spec 018 D18; its key's own tests are test/node-pin/policy.test.ts.
       node: "project",
       // Spec 021 D9, D19 (rows 021-13, 021-23); the keys' own tests are test/runner-host/remote/policy.test.ts.
