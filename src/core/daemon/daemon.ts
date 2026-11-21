@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
 import { dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import type { PoolCapacity } from "../capacity/pool.js";
+import type { CommitRemoval } from "../checkout/commit-identity.js";
 import type { CoverageWriter } from "../code/coverage/writer.js";
 import type { CodePass } from "../code/pass/index.js";
 import type { OpenCodeStoreOptions } from "../code/store/open.js";
@@ -1488,8 +1488,11 @@ class Daemon {
         const { worktrees } = this.commit;
         const { root } = this.opened;
         // Review wave-22 S1: its report goes to the log, which outlives the store closed above.
-        await this.#step("commit worktree removal", () => worktrees.remove(root, this.#log));
-        said = removalText(text, root, !existsSync(root));
+        const removal: { outcome?: CommitRemoval | undefined } = {};
+        await this.#step("commit worktree removal", async () => {
+          removal.outcome = await worktrees.remove(root, this.#log);
+        });
+        said = removalText(text, root, removal.outcome);
       }
       await this.#step("lock release", () => lock.release());
       const result = exit(reason, code, said);
