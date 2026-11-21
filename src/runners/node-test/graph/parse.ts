@@ -57,17 +57,43 @@ const GET_BUILTIN = /\bgetBuiltinModule\s*\(\s*(?:(["'])([^"'\n]+)\1\s*\))?/g;
  * used in the reasons.
  */
 export function parseModule(source: string, name: string): ParsedModule {
-  const lexed = lexImports(source, name);
-  const { specifiers, incomplete } = lexed;
-  let unnamed = lexed.unnamed;
+  const specifiers: ParsedSpecifier[] = [];
+  const incomplete: string[] = [];
+  let unnamed = false;
+  try {
+    const [imports] = parse(source, name);
+    for (const record of imports) {
+      if (record.type === "import-meta") continue;
+      if (record.type === "dynamic") {
+        if (record.probablyTypeOnly) continue;
+        if (record.specifier === undefined) {
+          incomplete.push(
+            `import() with a computed specifier at ${name}:${position(source, record.importStart)}`,
+          );
+          unnamed = true;
+          continue;
+        }
+        specifiers.push(
+          record.glob
+            ? { specifier: record.specifier, kind: "glob" }
+            : { specifier: record.specifier, kind: "import", dynamic: true },
+        );
+        continue;
+      }
+      if (!record.typeOnly) specifiers.push({ specifier: record.specifier, kind: "import" });
+    }
+  } catch (error) {
+    incomplete.push(`${name} does not parse as a module: ${(error as Error).message}`);
+    unnamed = true;
+  }
   const literal = new Set<number>();
   for (const match of source.matchAll(REQUIRE)) {
     if (match[2] !== undefined) specifiers.push({ specifier: match[2], kind: "require" });
     literal.add(match.index);
   }
   // N6: a computed `require(x)` hides its target as a computed `import(p)` does.
-  // Wave 2 N3: in code only; a literal `require` in a comment or a string above stays a
-  // specifier, since a closure one path too wide only costs a re-run (row 018-65 kept it so).
+  // Wave 2 N3: in code only; a literal `require` in a comment above stays a specifier,
+  // since a closure one path too wide only costs a re-run.
   let code: ((offset: number) => boolean) | null = null;
   for (const match of source.matchAll(REQUIRE_CALL)) {
     if (literal.has(match.index)) continue;
@@ -95,46 +121,6 @@ export function parseModule(source: string, name: string): ParsedModule {
     if (unnamed) break;
     code ??= codeAt(source);
     unnamed = code(match.index);
-  }
-  return { specifiers, incomplete, unnamed };
-}
-
-/**
- * es-module-lexer's records of one module, as {@link parseModule}'s first
- * part. Every value import stays: row 018-65 (review 0.1.585 B1, B2) removed
- * the elision of imports used only as types, since a read of code text that
- * drops an import can key less than Node loads.
- */
-function lexImports(
-  source: string,
-  name: string,
-): { specifiers: ParsedSpecifier[]; incomplete: string[]; unnamed: boolean } {
-  const specifiers: ParsedSpecifier[] = [];
-  const incomplete: string[] = [];
-  let unnamed = false;
-  try {
-    const [imports] = parse(source, name);
-    for (const record of imports) {
-      if (record.type === "import-meta") continue;
-      if (record.type !== "dynamic") {
-        if (!record.typeOnly) specifiers.push({ specifier: record.specifier, kind: "import" });
-      } else if (record.probablyTypeOnly) {
-      } else if (record.specifier === undefined) {
-        incomplete.push(
-          `import() with a computed specifier at ${name}:${position(source, record.importStart)}`,
-        );
-        unnamed = true;
-      } else {
-        specifiers.push(
-          record.glob
-            ? { specifier: record.specifier, kind: "glob" }
-            : { specifier: record.specifier, kind: "import", dynamic: true },
-        );
-      }
-    }
-  } catch (error) {
-    incomplete.push(`${name} does not parse as a module: ${(error as Error).message}`);
-    unnamed = true;
   }
   return { specifiers, incomplete, unnamed };
 }

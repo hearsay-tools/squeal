@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname, extname, join, resolve as resolvePath, sep } from "node:path";
+import { dirname, extname, join, sep } from "node:path";
 import enhanced from "enhanced-resolve";
 import type { AbsolutePath } from "../../../core/types/common.js";
 import type { LoaderChain } from "./loader-chain.js";
@@ -59,26 +59,13 @@ const MODULE = /\.m[jt]s$/;
 
 const BUILTIN: Resolution = { path: null, builtin: true, reads: [], candidates: [], pair: null };
 
-/** Where tsx finds its tsconfig: the process's directory, or `TSX_TSCONFIG_PATH`. */
-export interface TsconfigSource {
-  /** The project's `cwd`; the worktree root when not given. */
-  readonly cwd?: AbsolutePath;
-  /** The project's `TSX_TSCONFIG_PATH`, relative to `cwd` when not absolute. */
-  readonly tsconfigPath?: string | undefined;
-}
-
 /**
- * One enhanced-resolve resolver per `import|require`, configured from the
- * project's loader chain (spec 003 D3), over one `CachedInputFileSystem`.
- * Row 018-62, b1: as tsx 4 does, one tsconfig serves every importer:
- * `TSX_TSCONFIG_PATH`, else the nearest `tsconfig.json` from `cwd` up,
- * stopping at the worktree root. Node's own rules ignore it.
+ * One enhanced-resolve resolver per `(tsconfig, import|require)`, configured
+ * from the project's loader chain (spec 003 D3), over one
+ * `CachedInputFileSystem`. The tsconfig of an importer is found by upward
+ * lookup, stopping at the worktree root; Node's own rules ignore it.
  */
-export function createResolver(
-  chain: LoaderChain,
-  root: AbsolutePath,
-  source: TsconfigSource = {},
-): Resolver {
+export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver {
   let fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
   let resolvers = new Map<string, ReturnType<typeof enhanced.ResolverFactory.createResolver>>();
   let tsconfigs = new Map<string, AbsolutePath | null>();
@@ -159,15 +146,6 @@ export function createResolver(
     }
     return found;
   };
-  const cwd = source.cwd ?? root;
-  /**
-   * Row 018-62, b1: the one tsconfig tsx loads for the process, with its
-   * `extends` chain; `null` under Node's own rules or when there is none.
-   */
-  const projectTsconfig = (): TsconfigPaths | null => {
-    const file = source.tsconfigPath ? resolvePath(cwd, source.tsconfigPath) : tsconfigFor(cwd);
-    return tsx && file !== null ? chainOf(file) : null;
-  };
   /**
    * S1: enhanced-resolve reads inherited `paths` relative to the config it
    * was given, so it is given the config that defines them and the chain's
@@ -247,20 +225,20 @@ export function createResolver(
   };
 
   function resolveFrom(specifier: string, from: AbsolutePath, kind: EdgeKind): Resolution {
-    const paths = projectTsconfig();
+    const tsconfig = tsx ? tsconfigFor(from) : null;
+    const paths = tsconfig === null ? null : chainOf(tsconfig);
     const resolver = resolverFor(paths, kind);
     const context = {
       fileDependencies: new Set<string>(),
       missingDependencies: new Set<string>(),
       contextDependencies: new Set<string>(),
     };
-    // Row 018-62, b4: the file, not the `?query#hash` enhanced-resolve appends, as Node loads it.
-    // `useSyncFileSystemCalls` calls back before `resolve` returns.
-    const found: { path: string | false } = { path: false };
-    resolver.resolve({}, from, specifier, context, (error, _result, request) => {
-      found.path = error || request === undefined ? false : request.path;
-    });
-    const target = found.path;
+    let target: string | false;
+    try {
+      target = resolver.resolveSync({}, from, specifier, context);
+    } catch {
+      target = false;
+    }
     // `symlinks: true` already gives the target's real path.
     const path = target === false ? null : target;
     const reads = new Set<AbsolutePath>((paths?.files ?? []).filter(inWorktree));
