@@ -224,12 +224,14 @@ describe("the squeal skill", () => {
     }
   });
 
-  // Row 023-35 (round 5, T6): 8 of 10 agents set a 300 s tool timeout, which ended with the budget.
-  it("asks for a tool timeout above `--timeout` in step 8; the copies say the same", () => {
+  // Row 023-40 (spec 023 D7.3): `--run` waits 100 s, under a 120 s tool limit (round 5, T6), and
+  // its runs go on in the daemons; `--timeout` is gone.
+  it("says in step 8 that --run waits 100 s, --wait sets it, and the runs go on", () => {
     const step = body.slice(body.indexOf("8. **"), body.indexOf("## Reading a header"));
     expect(step).toContain(
-      "give the call a tool timeout above `--timeout`, for example 360 s for the default 300 s",
+      "it queues the runs in the daemons and waits up to 100 s (`--wait <ms>`); what still runs goes on",
     );
+    expect(step).not.toContain("--timeout");
   });
 
   it("names the squeal why line a FAIL report ends with", () => {
