@@ -57,7 +57,10 @@ describe(
       expect(json.next.allMissing.seconds).toBeGreaterThan(0);
       // The count is the one `--run` queues in the commit daemon (row 023-40).
       const tree = standInTree(f);
-      const daemons = standIn(tree, () => undefined);
+      // Row 023-40c: the commit daemon selects what the change selects there.
+      const daemons = standIn(tree, () => undefined, {
+        select: () => [{ project: "", path: "test/a.test.ts" }],
+      });
       const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
       const ran = JSON.parse(
         (
@@ -69,9 +72,7 @@ describe(
         ).out,
       );
       expect(ran.run.commit.files).toBe(json.next.run.files);
-      expect(daemons.asks.filter((ask) => ask.root === tree).flatMap((ask) => ask.paths)).toEqual([
-        "test/a.test.ts",
-      ]);
+      expect(daemons.commitAsks).toHaveLength(1);
       expect(ran.next).toBeNull();
       clean(f);
     });

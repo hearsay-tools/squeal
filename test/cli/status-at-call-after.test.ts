@@ -9,13 +9,13 @@ import { liveDaemon } from "./status-at-daemon.js";
 import { check, run, standIn, standInTree, testOf, withStore } from "./status-at-kit.js";
 
 /*
- * Review wave-23 S2 and B3 on a `$TMPDIR` fixture with the real keying and
- * stand-in daemons. S2: a joined call reports from the states its wait
- * ended with, never with Q1's `--run` step read before the wait, in text
- * and JSON, when the join completes and when part of it still runs. B3's
- * negative control: a result the commit daemon stored at a key the call's
- * keying, done again after the wait, does not give is never read as the
- * commit's; the refusal to mix keys stays.
+ * Review wave-23 S2 and B3 on a `$TMPDIR` fixture with stand-in daemons.
+ * S2: a joined call reports from the states its wait ended with, never
+ * with Q1's `--run` step read before the wait, in text and JSON, when the
+ * join completes and when part of it still runs. B3's negative control,
+ * row 023-40c: the call keys nothing at the commit, so the commit is read
+ * only at the key its daemon's row holds; a result at another key is never
+ * read as the commit's.
  */
 
 const A = ref("test/a.test.ts");
@@ -62,16 +62,11 @@ const sideOf = (out: string, file: TestFileRef) =>
     (x) => x.path === file.path,
   );
 
-/** Each file's key at the commit, as a plain `status --at` keys it. */
-async function keysAt(f: Fixture, a: string): Promise<(file: TestFileRef) => string> {
-  const plain = await run(f, { commit: a, json: true });
-  expect(JSON.parse(plain.out).next?.run).not.toBeNull();
-  return (file) => sideOf(plain.out, file)?.at.key as string;
-}
+/** Each file's key at the commit, as the stand-in commit daemon's rows hold it. */
+const key = (file: TestFileRef) => `commit-${file.path}`;
 
 /** A join whose wait ends `done` on both sides; the rest still runs. */
 async function join(f: Fixture, a: string, tree: AbsolutePath, done: readonly TestFileRef[]) {
-  const key = await keysAt(f, a);
   const own = (file: TestFileRef) => `daemon-${file.path}`;
   rows(f, tree, [A, B], key, "running");
   rows(f, f.root, [A, B], own, "running");
@@ -124,18 +119,23 @@ describe("status --at after the wait (review wave-23 S2, B3)", SLOW, () => {
     );
   });
 
-  it("keeps refusing a result the commit daemon stored at a key the call's keying does not give", async () => {
+  it("reads the commit only at its daemon's live key: a result at another key is not the commit's", async () => {
     const { f, a, tree } = changed();
-    const key = await keysAt(f, a);
     const wrong = "0123456789abcdef-not-the-commits";
-    // The commit daemon ran A and stored its pass at a key no keying of the commit gives.
-    const stored = standIn(tree, (root) => {
-      if (root !== tree) return;
-      withStore(f, (store) =>
-        store.results.putMany([result(check(A.path), wrong, { worktreeId: worktreeIdFor(tree) })]),
-      );
-      rows(f, tree, [A], () => wrong, null);
-    });
+    // The commit daemon lists A at its own key; a pass of A sits at a key its row does not hold.
+    const stored = standIn(
+      tree,
+      (root) => {
+        if (root !== tree) return;
+        withStore(f, (store) =>
+          store.results.putMany([
+            result(check(A.path), wrong, { worktreeId: worktreeIdFor(tree) }),
+          ]),
+        );
+        rows(f, tree, [A], key, null);
+      },
+      { rows: (at, files) => rows(f, at, files, key, "running") },
+    );
     const options = {
       cacheRoot: f.cacheRoot,
       install: linkInstall().install,
@@ -147,9 +147,6 @@ describe("status --at after the wait (review wave-23 S2, B3)", SLOW, () => {
       options,
     );
     expect(called.code).toBe(3);
-    expect(sideOf(called.out, A)?.at).toEqual({
-      state: "not determined",
-      reason: `the daemon stored it at key ${wrong.slice(0, 12)}, not at this call's ${key(A).slice(0, 12)}`,
-    });
+    expect(sideOf(called.out, A)?.at).toEqual({ state: "no result", key: key(A) });
   });
 });

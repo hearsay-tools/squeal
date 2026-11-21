@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
-import { fixture, git, link, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
+import { PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
 import { check, clean, run, standIn, standInTree, testOf, withStore } from "./status-at-kit.js";
@@ -11,7 +13,8 @@ import { check, clean, run, standIn, standInTree, testOf, withStore } from "./st
  * on `$TMPDIR` git fixtures with the real Vitest adapter. Coverage is on,
  * as by default, so the gate keeps what it runs in the shared stores
  * (020 D17.3) at the keys the keying gives at the commit. Row 023-40:
- * the files run in the commit daemon, here a stand-in.
+ * the files run in the commit daemon, here a stand-in; row 023-40c: the
+ * daemon selects them, and the call reads its rows.
  */
 
 const TEST = ref("test/a.test.ts");
@@ -40,112 +43,115 @@ const fileOf = (out: string, path: string) =>
     }[]
   ).find((file) => file.path === path);
 
-describe("squeal status --at --run (row 023-07, D4; row 023-40, D7.3)", SLOW, () => {
-  it("queues the file the diff selects in the commit daemon; the next --at reads what it stored", async () => {
+/** The stand-in commit daemon's rows: each file at `commit-<path>`, queued or done. */
+function rows(f: Fixture, tree: string, files: readonly TestFileRef[], queued: boolean): void {
+  withStore(f, (store) =>
+    store.testFileKeys.upsertMany(
+      files.map((testFile) => ({
+        worktreeId: worktreeIdFor(tree as AbsolutePath),
+        testFile,
+        key: `commit-${testFile.path}`,
+        revision: 2,
+        pending: queued ? ("queued" as const) : null,
+      })),
+    ),
+  );
+}
+
+describe("squeal status --at --run (row 023-07, D4; row 023-40, D7.3; row 023-40c)", SLOW, () => {
+  it("asks the commit daemon, which queues what the change selects; the call installs and keys nothing", async () => {
     const { f, a } = changed();
     const install = linkInstall();
-    const options = { cacheRoot: f.cacheRoot, install: install.install };
-    const key = fileOf((await run(f, { commit: a, json: true }, options)).out, TEST.path)?.at
-      .key as string;
     const tree = standInTree(f);
-    // The commit daemon runs it and stores it at the commit's key while the call waits.
-    const daemons = standIn(tree, (root, files) => {
-      if (root !== tree) return;
-      withStore(f, (store) =>
-        store.results.putMany(
-          files.map((file) => result(check(file.path), key, { worktreeId: worktreeIdFor(tree) })),
-        ),
-      );
-    });
-
-    const first = await run(
-      f,
-      { commit: a, json: true, run: { allMissing: false } },
-      { ...options, daemons: daemons.ports },
+    // The commit daemon lists both files; the change selects TEST, which it runs while the call waits.
+    rows(f, tree, [TEST, PLAIN], false);
+    const daemons = standIn(
+      tree,
+      (root, files) => {
+        if (root !== tree) return;
+        withStore(f, (store) =>
+          store.results.putMany(
+            files.map((file) =>
+              result(check(file.path), `commit-${file.path}`, { worktreeId: worktreeIdFor(tree) }),
+            ),
+          ),
+        );
+        rows(f, tree, files, false);
+      },
+      { select: () => [TEST], rows: (at, files) => rows(f, at, files, true) },
     );
+    const options = { cacheRoot: f.cacheRoot, install: install.install, daemons: daemons.ports };
+
+    const first = await run(f, { commit: a, json: true, run: { allMissing: false } }, options);
     expect(fileOf(first.out, TEST.path)?.at).toMatchObject({
       state: "pass",
       origin: { kind: "commit" },
     });
     // Not selected: the diff A..HEAD touches nothing it loads; nothing queued it.
     expect(fileOf(first.out, PLAIN.path)?.at).toMatchObject({ state: "no result" });
-    expect(daemons.asks.filter((ask) => ask.root === tree).map((ask) => ask.paths)).toEqual([
-      [TEST.path],
+    expect(daemons.commitAsks).toEqual([
+      expect.objectContaining({ named: [], changed: expect.arrayContaining(["src/a.ts"]) }),
     ]);
     expect(JSON.parse(first.out).run).toMatchObject({
       mode: "queue",
       commit: { files: 1, known: 1, running: 0 },
       notSelected: 1,
     });
-    // Two checkouts, two installs: the keying's, once per call; nothing ran in them.
-    expect(install.calls()).toBe(2);
-    clean(f);
-
-    const second = await run(f, { commit: a, json: true }, options);
-    expect(fileOf(second.out, TEST.path)?.at).toMatchObject({ state: "pass" });
-    expect(JSON.parse(second.out).run).toBeNull();
-
-    const third = await run(f, { commit: a, run: { allMissing: false } }, options);
-    // Row 023-29 (R8): the unselected file has no result there; the count says so.
-    expect(third.out).toContain(
-      `--run: no file with no result at ${a.slice(0, 9)} that the change selects to run`,
-    );
+    // D7.3 as amended: no checkout, no install, no keying in the call.
+    expect(install.calls()).toBe(0);
     clean(f);
   });
 
-  it("queues nothing when the checkout gives no keys, and says why", async () => {
+  it("reads a failed commit setup as its text, not as running", async () => {
     const { f, a } = changed();
-    const daemons = standIn(standInTree(f), () => undefined);
+    const tree = standInTree(f);
+    const stand = standIn(tree, () => undefined);
+    const text = "install: npm ci: exit 1";
+    const daemons = {
+      ...stand.ports,
+      commitRead: async () => ({
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        ok: true as const,
+        type: "commit-read" as const,
+        setup: { phase: "failed" as const, text },
+        asks: [],
+      }),
+    };
     const failed = await run(
       f,
-      { commit: a, run: { allMissing: false } },
-      {
-        cacheRoot: f.cacheRoot,
-        install: async () => ({ ok: false, command: "npm ci", ms: 1, reason: "exit 1", log: "" }),
-        daemons: daemons.ports,
-      },
+      { commit: a, paths: [TEST.path], run: { allMissing: false }, waitMs: 5000 },
+      { cacheRoot: f.cacheRoot, install: linkInstall().install, daemons },
     );
     expect(failed.code).toBe(3);
-    expect(failed.out).toContain("The checkout gave no keys: install: npm ci: exit 1");
-    expect(failed.out).not.toContain("--run:");
-    expect(daemons.commits).toEqual([]);
-    expect(daemons.asks.filter((ask) => ask.root !== f.root)).toEqual([]);
+    expect(failed.out).toContain(`${TEST.path}: not run (the batch's setup failed: ${text})`);
+    expect(failed.out).not.toContain("still running");
+    expect(failed.out).not.toContain("still setting up");
     clean(f);
   });
 
-  it("--all-missing prints the estimate first, queues every file with no result, and refuses one that needs an untracked path", async () => {
-    const GEN = ref("test/gen.test.ts");
-    const BAD = ref("test/bad.test.ts");
-    const { f } = changed();
-    f.commit({
-      ".gitignore": "node_modules/\nsrc/gen.ts\n",
-      [GEN.path]: testOf("gen", 1),
-      [BAD.path]: testOf("plain", 2),
-    });
-    const b = git(f.root, "rev-parse", "HEAD").trim();
-    f.commit({ "src/plain.ts": "export const value = 1; // c\n" });
-    // The install writes a source git does not hold, which `gen.test.ts` loads (D4.9).
-    const install = async (tree: AbsolutePath) => {
-      link(tree);
-      write(tree, { "src/gen.ts": "export const value = 1;\n" });
-      return { ok: true, command: "link", ms: 0 } as const;
-    };
+  it("--all-missing asks for every file with no result and tells the estimate of what it queued", async () => {
+    const { f, a } = changed();
     const tree = standInTree(f);
-    const daemons = standIn(tree, () => undefined);
-    const options = { cacheRoot: f.cacheRoot, install, daemons: daemons.ports };
+    const daemons = standIn(tree, () => undefined, {
+      select: (ask) => (ask.allMissing ? [TEST, PLAIN] : []),
+      rows: (at, files) => rows(f, at, files, true),
+    });
+    const options = {
+      cacheRoot: f.cacheRoot,
+      install: linkInstall().install,
+      daemons: daemons.ports,
+    };
 
-    const all = await run(f, { commit: b, run: { allMissing: true } }, options);
-    const at = b.slice(0, 9);
+    const all = await run(f, { commit: a, run: { allMissing: true }, waitMs: 3000 }, options);
+    const at = a.slice(0, 9);
+    expect(daemons.commitAsks).toEqual([expect.objectContaining({ allMissing: true })]);
     expect(all.err).toMatch(
       new RegExp(
-        `squeal: --all-missing: 3 test files with no result at ${at} queued in its commit daemon, up to \\d+ at once: no stored duration, so the time is unknown; they run on after the wait\n`,
+        `squeal: --all-missing: 2 test files with no result at ${at} queued in its commit daemon, up to \\d+ at once: no stored duration, so the time is unknown; they run on after the wait\n`,
       ),
     );
-    expect(all.out).toContain(`${GEN.path}: not comparable (needs src/gen.ts) -> `);
-    const queued = daemons.asks.filter((ask) => ask.root === tree).flatMap((ask) => ask.paths);
-    expect([...queued].sort()).toEqual([BAD.path, TEST.path, PLAIN.path].sort());
     expect(all.out).toContain(
-      `--run: queued 3 test files with no result at ${at} in its commit daemon`,
+      `--run: queued 2 test files with no result at ${at} in its commit daemon`,
     );
     clean(f);
   });
