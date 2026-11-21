@@ -2679,6 +2679,12 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 | 022-05 stop storing loaded lists; remove the reach estimate (D3, D4 amended) | in review (`cand/0.1.589` at `ef13b0282`, CI 44925909051; worker 2ece4b73 `d5e2a9e0b`; coordinator da243dbd, 2026-11-21) | No `loaded_modules` writes; prune empties the table in slices; `squeal reach` loses its narrowing section; a run's list still joins its key and CI part (D2). Evidence: reach 1.9% (squeal, upper bound) and 0.12% (cezar); lists 82% of the store; bench `@lists` lock holds 13 s vs 2.5 s with 3 worktrees. | Brief's done-when; no key format raise |
 | 022-06 review of candidate 0.1.589 (row 022-05) | running (codex gpt-6.1-sol high; brief `tasks/wave-2.md`) | The brief's four checks on `cand/0.1.589`. | `reviews/0.1.589.md` committed with PASS or FAIL |
 
+### Wave 3: research, selection by executed functions (the human, 2026-11-21: "Run that research"; brief `specifications/022-selection-strategy/research/function-selection-brief.md`; coordinator c57d5feb)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 022-07 research: select by the functions a test file entered; a narrow skip rule and an order-only rule | running (researcher, claude opus high; coordinator c57d5feb, 2026-11-21) | Topic `function-selection`: savings of the skip rule on stored edit revisions here and in cezar, its misses on fixtures, how often reflection, line-number assertions and unstable paths occur, record carry-over, the order-only rule against today's edit cut, cost. Research only. | `research/function-selection.md` committed; every question has a tagged answer |
+
 ## Feature 023: results at a commit
 
 Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16, wave 1 running; the human, 2026-11-16: an agent asks Squeal for the results at a commit, the checks with no result there, and has Squeal run those; chose one slice with auto-run, retention stays 7 days). First finding `specifications/018-ci-and-shared-results/research/results-at-commit.md`. Coordinator d36c4d53.
