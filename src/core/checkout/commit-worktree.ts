@@ -202,9 +202,10 @@ async function placeFor(
 /**
  * The worktree named `name` in one of `dirs`, under the checkout lock. One
  * whose owner is gone is taken over: this process owns it until a daemon
- * claims it. A folder without a whole tree or marker is removed, to be made
- * anew. A whole tree that is not one Squeal made stays, and the call fails
- * (review wave-22 B1).
+ * claims it. A folder without a commit worktree's marker and a whole tree
+ * is removed, to be made anew. A tree that is not one Squeal made stays,
+ * and the call fails (review wave-22 B1); so does every file beside it when
+ * the folder has a commit worktree's marker (review wave-23 N1).
  */
 async function foundPlace(
   dirs: readonly AbsolutePath[],
@@ -225,10 +226,12 @@ async function foundPlace(
         throw new Error(`squeal: could not clear ${folder} for a new commit worktree`);
       continue;
     }
+    // Review wave-23 N1: a folder with a commit worktree's marker is never removed whole.
     if (
-      marker === null ||
-      marker.commonDir !== commonDir ||
-      lstatOrNull(join(tree, ".git")) === null
+      marker?.fingerprint === undefined &&
+      (marker === null ||
+        marker.commonDir !== commonDir ||
+        lstatOrNull(join(tree, ".git")) === null)
     ) {
       await removeTree({ folder, tree, commonDir }, note);
       continue;

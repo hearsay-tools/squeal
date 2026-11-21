@@ -166,6 +166,14 @@ async function clearFolder(
   return "removed";
 }
 
+/**
+ * Review wave-23 N1: what the sweep says of a commit worktree's folder it
+ * keeps whole, since its tree failed the identity check.
+ */
+export function identityFailedNote(folder: AbsolutePath): string {
+  return `squeal: kept ${folder}: its tree is not a commit worktree Squeal made; check it and remove it by hand`;
+}
+
 /** The files a commit worktree's folder holds beside its tree: marker, run folder, install lock. */
 function ownFile(name: string): boolean {
   return isMarker(name) || name === "run" || /^install\.lock(-journal|-wal|-shm)?$/.test(name);
