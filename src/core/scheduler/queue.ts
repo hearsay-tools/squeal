@@ -169,8 +169,18 @@ export class RunQueue {
    * Nothing joins a running tier; the tier may yield to it (`TierYields`, C4
    * step 5 as amended 2026-10-21, row 011-51).
    */
-  promote(refs: readonly TestFileRef[], until: number, facts?: SelectedFacts): void {
-    this.#promotions.add(refs, until, this.#queued, facts);
+  promote(refs: readonly TestFileRef[], until: number, facts?: SelectedFacts): number | null {
+    return this.#promotions.add(refs, until, this.#queued, facts);
+  }
+
+  /** Row 023-34 (T1): whether a promotion other than `own` holds `ref` at `now` (`heldElsewhere`). */
+  promotedElsewhere(ref: TestFileRef, own: number | null, now: number): boolean {
+    return this.#promotions.heldElsewhere(testFileId(ref), own, now);
+  }
+
+  /** A reading of the promotions' clock. */
+  promotionsNow(): number {
+    return this.#promotions.now();
   }
 
   /** Row 011-283: a starting daemon takes over its predecessor's batches (`Promotions.takeOver`). */

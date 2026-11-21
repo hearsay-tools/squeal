@@ -14,6 +14,7 @@ import { answeredOf } from "./promoted-tier.js";
 import type { Request } from "./request-intake-types.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 import { groupView } from "./slow.js";
+import type { TakeBacks } from "./take-back.js";
 
 /*
  * Spec 019 D6 "Narrow run" (row 019-49): `squeal run <group> <path>...`
@@ -115,6 +116,7 @@ export function narrowRequest(
   group: string,
   paths: readonly RelativePath[],
   groups: GroupTiers,
+  takeBacks?: TakeBacks,
 ): Request<NarrowRunRequest | null, NarrowPlan> {
   return {
     operation: `taking a squeal run ${group} <path>... request`,
@@ -148,11 +150,13 @@ export function narrowRequest(
     store: {
       stage: (context, ledger, { revision, selection }, id) => {
         const selected = selection.selected.get(group) ?? new Set<string>();
-        const { queued, asks } = queueNarrow(ledger, selected);
+        const { queued, asks, newly } = queueNarrow(ledger, selected);
         groups.lanes(context.policy);
         groups.get(group)?.narrow.add(asks, ledger);
         // Row 011-397 (gh-181): its queued files form a batch as a named wait's do (C15).
-        promoteNarrow(context, ledger, selected);
+        const promotion = promoteNarrow(context, ledger, selected);
+        // Row 023-34 (T1): what it queued itself, which a `take-back` of its id may take out.
+        takeBacks?.record(id, { ids: newly, promotion });
         // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
         const narrow = narrowAnswer(context, ledger, group, selection, null);
         const covered = selectedOf(ledger, group, selection);
@@ -178,10 +182,15 @@ export const NARROW_PROMOTION_MS = 10_000;
  * a file that was already queued. A current file is not queued, so it
  * joins none and does not run again.
  */
-function promoteNarrow(context: SchedulerContext, ledger: Ledger, ids: ReadonlySet<string>): void {
+function promoteNarrow(
+  context: SchedulerContext,
+  ledger: Ledger,
+  ids: ReadonlySet<string>,
+): number | null {
   const refs = [...ids].flatMap((id) => ledger.files.get(id)?.ref ?? []);
-  if (refs.length === 0) return;
-  ledger.queue.promote(refs, context.now() + NARROW_PROMOTION_MS, answeredOf(context, ledger));
+  if (refs.length === 0) return null;
+  const until = context.now() + NARROW_PROMOTION_MS;
+  return ledger.queue.promote(refs, until, answeredOf(context, ledger));
 }
 
 /** Group `group`'s selected files, a narrow run's covered files. */
@@ -194,12 +203,18 @@ function selectedOf(ledger: Ledger, group: string, selection: Selection): FileSt
  * Queues group `group`'s selected files that are not current, as `squeal
  * run <group>` queues the whole group (`queueGroup`): a `lookup-only` miss
  * or an `unknown` file is queued. Returns the asks for the group's lane, at
- * each file's key, and how many files are queued or running for it.
+ * each file's key, and how many files are queued or running for it. Row
+ * 023-34 (T1): `newly`, the `testFileId`s it queued itself, not found
+ * queued or running.
  */
 export function queueNarrow(
   ledger: Ledger,
   ids: ReadonlySet<string>,
-): { readonly queued: number; readonly asks: readonly CommitAsk[] } {
+): {
+  readonly queued: number;
+  readonly asks: readonly CommitAsk[];
+  readonly newly: readonly string[];
+} {
   const open = [...ids]
     .flatMap((id) => ledger.files.get(id) ?? [])
     .filter((file) => file.key !== null && file.blocked === null && classify(file) !== "current");
@@ -213,7 +228,7 @@ export function queueNarrow(
   const asks = open.flatMap((file) =>
     file.key === null ? [] : [{ ref: file.ref, key: file.key }],
   );
-  return { queued: pending.length + misses.length, asks };
+  return { queued: pending.length + misses.length, asks, newly: misses.map((file) => file.id) };
 }
 
 /**

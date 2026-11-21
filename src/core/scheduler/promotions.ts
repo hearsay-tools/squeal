@@ -121,7 +121,7 @@ export class Promotions {
     until: number,
     queued: (id: string) => boolean,
     facts: SelectedFacts = NO_FACTS,
-  ): void {
+  ): number | null {
     let changed = this.#settle(queued);
     const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
     const taken = this.#members();
@@ -132,12 +132,26 @@ export class Promotions {
       [...files].filter(([id]) => !seen.has(id)).map(([id, ref]) => [id, facts(ref).key]),
     );
     const awaits = [...keys.keys()].some((id) => awaitsRun({ files, facts, keys }, id));
+    let formed: number | null = null;
     if (until > this.#now() && (open.length > 0 || awaits)) {
       const seq = this.#seq++;
       this.#promotions.push({ files, until, seq, members, estimatedEnd: null, seen, facts, keys });
       changed = true;
+      formed = seq;
     }
     if (changed) this.#told();
+    return formed;
+  }
+
+  /**
+   * Row 023-34 (T1): whether a promotion other than `own` holds `id` at
+   * `now`: as a member of its batch, or as a selected file of a wait open
+   * then. A take-back leaves such a file queued.
+   */
+  heldElsewhere(id: string, own: number | null, now: number): boolean {
+    return this.#promotions.some(
+      (p) => p.seq !== own && (p.members.has(id) || (p.until > now && p.files.has(id))),
+    );
   }
 
   /**
