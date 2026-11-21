@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.586";
+  if (true) return "0.1.587";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -45674,6 +45674,49 @@ function readTsconfigPaths(file, read7) {
   };
   return { ...load(file, /* @__PURE__ */ new Set([file])), files: files5 };
 }
+function compileAliases(chain, read7) {
+  if (chain.pathsFile === null && chain.baseUrl === null) return null;
+  const base = chain.baseUrl ?? dirname31(chain.pathsFile ?? "");
+  const options = chain.pathsFile === null ? null : parseJsonc(read7(chain.pathsFile));
+  const raw = isObject5(options?.compilerOptions) ? options.compilerOptions.paths : null;
+  const exact = /* @__PURE__ */ new Map();
+  const patterns = [];
+  for (const [pattern2, targets2] of Object.entries(isObject5(raw) ? raw : {})) {
+    if (!Array.isArray(targets2)) continue;
+    const substitutions = targets2.filter((t) => typeof t === "string").map((t) => resolve18(base, t));
+    const star = pattern2.indexOf("*");
+    if (star === -1) exact.set(pattern2, substitutions);
+    else
+      patterns.push({
+        prefix: pattern2.slice(0, star),
+        suffix: pattern2.slice(star + 1),
+        substitutions
+      });
+  }
+  return { exact, patterns, baseUrl: chain.baseUrl };
+}
+function aliasCandidates(aliases, specifier) {
+  const path = isAbsolute16(specifier) || isRelative2(specifier) || DOTS.test(specifier);
+  if (path || URL_LIKE.test(specifier)) return [];
+  const exact = aliases.exact.get(specifier);
+  if (exact !== void 0) return [...exact];
+  let best = null;
+  for (const pattern2 of aliases.patterns) {
+    const matches5 = specifier.startsWith(pattern2.prefix) && specifier.endsWith(pattern2.suffix);
+    if (matches5 && pattern2.prefix.length > (best?.prefix.length ?? -1)) best = pattern2;
+  }
+  if (best === null) return aliases.baseUrl === null ? [] : [join65(aliases.baseUrl, specifier)];
+  const star = specifier.slice(best.prefix.length, specifier.length - best.suffix.length);
+  return best.substitutions.map((s) => s.replace("*", star));
+}
+function tsxSpecifier(specifier, kind) {
+  if (/^data:/i.test(specifier)) return specifier;
+  const query = specifier.indexOf("?");
+  const fragment = specifier.indexOf("#");
+  const path = isAbsolute16(specifier) || isRelative2(specifier) || URL_LIKE.test(specifier);
+  const cut = kind === "import" && path && fragment !== -1 && (query === -1 || fragment < query) ? fragment : query;
+  return cut === -1 ? specifier : specifier.slice(0, cut);
+}
 function locate(specifier, dir2, read7) {
   const exists3 = (path) => read7(path) !== null;
   if (specifier.startsWith(".") || isAbsolute16(specifier)) {
@@ -45714,10 +45757,13 @@ function parseJsonc(text3) {
     return null;
   }
 }
-var isObject5;
+var URL_LIKE, DOTS, isRelative2, isObject5;
 var init_tsconfig = __esm({
   "src/runners/node-test/graph/tsconfig.ts"() {
     "use strict";
+    URL_LIKE = /^(?:[a-z][\d+.a-z-]*:\/\/|data:|file:|node:)/i;
+    DOTS = /^\.{1,2}(\/.*)?$/;
+    isRelative2 = (s) => s[0] === "." && (s[1] === "/" || s[1] === "." || s[2] === "/");
     isObject5 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
   }
 });
@@ -45725,14 +45771,15 @@ var init_tsconfig = __esm({
 // src/runners/node-test/graph/resolver.ts
 import * as fs2 from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname as dirname32, extname as extname3, join as join66, sep as sep16 } from "node:path";
-function createResolver(chain, root) {
+import { dirname as dirname32, extname as extname3, join as join66, resolve as resolvePath, sep as sep16 } from "node:path";
+function createResolver(chain, root, source2 = {}) {
   let fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs2, Number.POSITIVE_INFINITY);
   let resolvers = /* @__PURE__ */ new Map();
   let tsconfigs = /* @__PURE__ */ new Map();
   let realpaths = /* @__PURE__ */ new Map();
   let resolutions = /* @__PURE__ */ new Map();
   let tsconfigPaths = /* @__PURE__ */ new Map();
+  const aliasesOf = /* @__PURE__ */ new WeakMap();
   let scopes2 = /* @__PURE__ */ new Map();
   const tsx2 = chain.rules === "tsx";
   const exists3 = (path) => {
@@ -45768,14 +45815,6 @@ function createResolver(chain, root) {
       return null;
     }
   };
-  const chainOf2 = (tsconfig) => {
-    let found4 = tsconfigPaths.get(tsconfig);
-    if (found4 === void 0) {
-      found4 = readTsconfigPaths(tsconfig, readText2);
-      tsconfigPaths.set(tsconfig, found4);
-    }
-    return found4;
-  };
   const scopeOf = (dir2) => {
     let found4 = scopes2.get(dir2);
     if (found4 === void 0) {
@@ -45805,39 +45844,38 @@ function createResolver(chain, root) {
     }
     return found4;
   };
-  const tsconfigOption = (paths) => {
-    if (paths === null || paths.pathsFile === null && paths.baseUrl === null) return {};
-    const configFile = paths.pathsFile ?? paths.files[0];
-    return {
-      tsconfig: { configFile, ...paths.baseUrl === null ? {} : { baseUrl: paths.baseUrl } }
-    };
+  const cwd = source2.cwd ?? root;
+  const projectTsconfig = () => {
+    const file = source2.tsconfigPath ? resolvePath(cwd, source2.tsconfigPath) : tsconfigFor(cwd);
+    if (!tsx2 || file === null) return null;
+    let read7 = tsconfigPaths.get(file);
+    if (read7 === void 0) {
+      read7 = readTsconfigPaths(file, readText2);
+      tsconfigPaths.set(file, read7);
+      aliasesOf.set(read7, compileAliases(read7, readText2));
+    }
+    return { chain: read7, aliases: aliasesOf.get(read7) ?? null };
   };
-  const resolverFor = (paths, kind) => {
-    const option = tsconfigOption(paths);
-    const key3 = `${JSON.stringify(option)}\0${kind}`;
-    let resolver = resolvers.get(key3);
+  const resolverFor = (kind) => {
+    let resolver = resolvers.get(kind);
     if (resolver === void 0) {
       resolver = import_enhanced_resolve.default.ResolverFactory.createResolver({
         fileSystem,
         useSyncFileSystemCalls: true,
         conditionNames: ["node", kind, ...chain.conditions],
         symlinks: true,
-        ...tsx2 ? {
-          extensions: TSX_EXTENSIONS,
-          extensionAlias: TSX_ALIAS,
-          ...option
-        } : kind === "import" ? { extensions: [], fullySpecified: true } : { extensions: NODE_REQUIRE_EXTENSIONS }
+        ...tsx2 ? { extensions: TSX_EXTENSIONS, extensionAlias: TSX_ALIAS } : kind === "import" ? { extensions: [], fullySpecified: true } : { extensions: NODE_REQUIRE_EXTENSIONS }
       });
-      resolvers.set(key3, resolver);
+      resolvers.set(kind, resolver);
     }
     return resolver;
   };
+  const inDependency = (dir2) => `${dir2}${sep16}`.includes(NODE_MODULES2);
   function inWorktree2(path) {
     return path.startsWith(root + sep16) && !path.includes(NODE_MODULES2) && !path.endsWith(NODE_MODULES_DIR);
   }
   return {
     resolve(specifier, importer, kind) {
-      if (isBuiltin(specifier)) return BUILTIN;
       const from = dirname32(importer);
       const key3 = `${from}\0${kind}\0${specifier}`;
       let resolution = resolutions.get(key3);
@@ -45867,29 +45905,39 @@ function createResolver(chain, root) {
     }
   };
   function resolveFrom(specifier, from, kind) {
-    const tsconfig = tsx2 ? tsconfigFor(from) : null;
-    const paths = tsconfig === null ? null : chainOf2(tsconfig);
-    const resolver = resolverFor(paths, kind);
+    const config = projectTsconfig();
     const context = {
       fileDependencies: /* @__PURE__ */ new Set(),
       missingDependencies: /* @__PURE__ */ new Set(),
       contextDependencies: /* @__PURE__ */ new Set()
     };
-    let target;
-    try {
-      target = resolver.resolveSync({}, from, specifier, context);
-    } catch {
-      target = false;
-    }
+    const asked = tsx2 ? tsxSpecifier(specifier, kind) : specifier;
+    const target = targetOf2(asked, from, kind, config?.aliases ?? null, context);
+    if (target === null) return BUILTIN;
     const path = target === false ? null : target;
-    const reads2 = new Set((paths?.files ?? []).filter(inWorktree2));
+    const reads2 = new Set((config?.chain.files ?? []).filter(inWorktree2));
     for (const dependency of context.fileDependencies) {
       if (!dependency.endsWith(".json") || dependency === target) continue;
       const read7 = dependency.includes(NODE_MODULES2) ? real3(dependency) : dependency;
       if (read7 !== null && read7 !== path && inWorktree2(read7)) reads2.add(read7);
     }
     const candidates = path === null ? [...context.missingDependencies].filter((p) => inWorktree2(p) && !isDirectory5(p)) : [];
-    return { path, builtin: false, reads: [...reads2], candidates, pair: pairOf2(specifier, path) };
+    return { path, builtin: false, reads: [...reads2], candidates, pair: pairOf2(asked, path) };
+  }
+  function targetOf2(specifier, from, kind, aliases, context) {
+    const mapped = aliases === null || inDependency(from) ? [] : aliasCandidates(aliases, specifier);
+    for (const candidate of mapped) {
+      const found4 = resolveOne(kind, from, candidate, context);
+      if (found4 !== false) return found4;
+    }
+    return isBuiltin(specifier) ? null : resolveOne(kind, from, specifier, context);
+  }
+  function resolveOne(kind, from, specifier, context) {
+    let found4 = false;
+    resolverFor(kind).resolve({}, from, specifier, context, (error, _result, request) => {
+      found4 = error || !request?.path ? false : request.path;
+    });
+    return found4;
   }
   function pairOf2(specifier, path) {
     if (!tsx2 || path === null) return null;
@@ -45928,7 +45976,8 @@ async function createNodeTestGraph(options) {
   const root = realpathSync9(options.root);
   const cwd = realpathSync9(options.cwd);
   const chain = readLoaderChain(options.argv);
-  const graph = new Graph(root, cwd, chain, createResolver(chain, root));
+  const resolver = createResolver(chain, root, { cwd, tsconfigPath: options.tsconfigPath });
+  const graph = new Graph(root, cwd, chain, resolver);
   graph.build(options.testFiles);
   const loaderNotes = () => [
     ...chain.unrecognized.map(
@@ -46120,12 +46169,12 @@ var init_signature = __esm({
 });
 
 // src/runners/process/group.ts
-import { spawn as spawn4 } from "node:child_process";
+import { spawn as spawn5 } from "node:child_process";
 import { closeSync as closeSync3, openSync as openSync2 } from "node:fs";
 function startGroup(options) {
   const out2 = openSync2(options.stdout, "a");
   const err2 = openSync2(options.stderr, "a");
-  const child = spawn4(options.command, options.args, {
+  const child = spawn5(options.command, options.args, {
     argv0: options.argv0,
     cwd: options.cwd,
     env: options.env,
@@ -46472,7 +46521,13 @@ async function openProject(context) {
   let files5 = listTestFiles(root, project);
   const argv = [...nodeOptionsOf(project), ...project.argv];
   const [graph, firstProbe] = await Promise.all([
-    createNodeTestGraph({ root, cwd, argv, testFiles: files5 }),
+    createNodeTestGraph({
+      root,
+      cwd,
+      argv,
+      testFiles: files5,
+      tsconfigPath: projectEnv(project, process.env).TSX_TSCONFIG_PATH
+    }),
     probeNode(project, cwd)
   ]);
   let probe2 = firstProbe;
@@ -50568,7 +50623,7 @@ var init_delta = __esm({
 });
 
 // src/core/shared/git.ts
-import { spawn as spawn5 } from "node:child_process";
+import { spawn as spawn6 } from "node:child_process";
 function gitCall(cwd, args2, call2) {
   const { signal: signal3 } = call2;
   if (signal3?.aborted) {
@@ -50582,7 +50637,7 @@ function gitCall(cwd, args2, call2) {
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0", ...call2.env };
   for (const name3 of REPOSITORY_VARIABLES2) delete env[name3];
   return new Promise((resolve52) => {
-    const child = spawn5("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn6("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
     let timedOut = false;
@@ -67419,11 +67474,11 @@ var init_daemon_loop = __esm({
 });
 
 // src/core/runner-host/channel.ts
-import { spawn as spawn10 } from "node:child_process";
+import { spawn as spawn11 } from "node:child_process";
 function spawnRunnerHost(launch, root, runner, env = process.env) {
   const quiet = launch.execArgv.some((arg) => arg.startsWith("--disable-warning")) ? [] : ["--disable-warning=ExperimentalWarning"];
   const args2 = [...quiet, ...launch.execArgv, launch.cli, "runner-host", root, "--runner", runner];
-  return channelOf(spawn10(launch.execPath, args2, { env, stdio: ["pipe", "pipe", "pipe"] }));
+  return channelOf(spawn11(launch.execPath, args2, { env, stdio: ["pipe", "pipe", "pipe"] }));
 }
 function channelOf(child) {
   let tail = "";
@@ -77116,7 +77171,7 @@ var init_vitest_host = __esm({
 });
 
 // src/core/runner-host/remote/ssh.ts
-import { spawn as spawn11 } from "node:child_process";
+import { spawn as spawn12 } from "node:child_process";
 function shellQuote(word2) {
   return /^[A-Za-z0-9_./:=@%+,-]+$/.test(word2) ? word2 : `'${word2.replaceAll("'", `'\\''`)}'`;
 }
@@ -77124,7 +77179,7 @@ function sshArgs(destination, command) {
   return ["-T", "-o", "BatchMode=yes", destination, command];
 }
 function spawnSsh(target, command) {
-  return spawn11(target.ssh ?? "ssh", sshArgs(target.destination, command), {
+  return spawn12(target.ssh ?? "ssh", sshArgs(target.destination, command), {
     env: target.env ?? process.env,
     stdio: ["pipe", "pipe", "pipe"]
   });
@@ -77478,7 +77533,7 @@ var init_tree2 = __esm({
 });
 
 // src/core/runner-host/remote/tree-install.ts
-import { spawn as spawn12 } from "node:child_process";
+import { spawn as spawn13 } from "node:child_process";
 import { existsSync as existsSync55, readFileSync as readFileSync68 } from "node:fs";
 import { rename, rm as rm3, writeFile } from "node:fs/promises";
 import { join as join152 } from "node:path";
@@ -77520,7 +77575,7 @@ function readJson2(path) {
 }
 function runInstall(command, root, output, env) {
   return new Promise((resolve52, reject) => {
-    const child = spawn12("sh", ["-c", command], {
+    const child = spawn13("sh", ["-c", command], {
       cwd: root,
       env,
       stdio: ["ignore", "pipe", "pipe"]
@@ -86070,11 +86125,18 @@ function runCommand2(command, cwd, env) {
 // src/core/ci/endpoints.ts
 init_concurrency();
 init_blob();
+import { performance as performance2 } from "node:perf_hooks";
+
+// src/core/ci/endpoints-child.ts
+init_blob();
+import { execFileSync as execFileSync3, spawn as spawn4 } from "node:child_process";
+
+// src/core/ci/endpoints-hash.ts
+init_concurrency();
 init_observed();
 init_git_head();
 import { readdir as readdir3 } from "node:fs/promises";
 import { join as join49 } from "node:path";
-import { performance as performance2 } from "node:perf_hooks";
 
 // src/core/ci/inputs.ts
 init_tree();
@@ -86256,34 +86318,167 @@ function whyUncertified(path, evidence, here) {
   return recorded2 === now ? null : "differs";
 }
 
-// src/core/ci/endpoints.ts
-var HASHING_LIMIT = { floorMs: 1e4, multiple: 4 };
-function endpointsBefore(root, format2, options = {}) {
-  return limited(options.limit ?? HASHING_LIMIT, async (clock) => {
-    const start2 = performance2.now();
-    const commit = await gitHead(root);
-    if (commit === null)
-      return "the checkout has no commit, so no input is certified by its hashes";
-    const { paths, at: at2 } = await committedInputs(root, commit);
-    const hashes = await hashAll(root, format2, paths, options, clock);
-    return { root, format: format2, commit, paths, at: at2, hashes, ms: performance2.now() - start2, options };
+// src/core/ci/endpoints-hash.ts
+async function hashEnd(work, read7, clock) {
+  const { root, format: format2 } = work;
+  const head2 = await gitHead(root);
+  if (work.commit === null) {
+    if (head2 === null) return "the checkout has no commit, so no input is certified by its hashes";
+    const { paths: paths2, at: at2 } = await committedInputs(root, head2);
+    const hashes = await hashAll(root, format2, paths2, read7, clock);
+    return { commit: head2, paths: paths2, committed: paths2.map(at2), hashes };
+  }
+  const { commit, paths } = work;
+  if (head2 !== commit) return `HEAD moved during the command (${commit} to ${head2 ?? "none"})`;
+  return { commit, paths, hashes: await hashAll(root, format2, paths, read7, clock) };
+}
+async function hashAll(root, format2, paths, read7, clock) {
+  const here = hereOf2(root, (path) => read7(join49(root, path), format2));
+  clock.begin(paths.length);
+  return mapConcurrent(paths, async (path) => {
+    if (clock.over) return null;
+    const directory = listedDirectory(path);
+    const hash4 = directory === null ? await here(path) : await listingOf(root, directory);
+    clock.hashed(1);
+    return hash4;
   });
 }
-function endpointsAfter(before5) {
-  return limited(before5.options.limit ?? HASHING_LIMIT, (clock) => compareEnds(before5, clock));
+async function listingOf(root, directory) {
+  try {
+    return namesHash(await readdir3(join49(root, directory)));
+  } catch {
+    return ABSENT_LISTING;
+  }
 }
-async function compareEnds(before5, clock) {
+
+// src/core/ci/endpoints-child.ts
+var ENDPOINTS_CHILD = "endpoints-child";
+var STDERR_TAIL = 2e3;
+function hashInChild(relaunch, work, clock, stop2) {
+  const [command = process.execPath, ...flags3] = relaunch;
+  const child = spawn4(command, [...flags3, "ci", ENDPOINTS_CHILD], {
+    cwd: work.root,
+    detached: !WINDOWS,
+    stdio: ["ignore", "ignore", "pipe", "ipc"]
+  });
+  let stderr = "";
+  child.stderr?.on("data", (chunk) => {
+    stderr = (stderr + chunk.toString("utf8")).slice(-STDERR_TAIL);
+  });
+  const release3 = () => {
+    if (child.connected) child.disconnect();
+    child.stderr?.destroy();
+    child.unref();
+  };
+  return new Promise((resolve52, reject) => {
+    let settled2 = false;
+    const settle3 = (end) => {
+      if (settled2 || stop2.aborted) return;
+      settled2 = true;
+      stop2.removeEventListener("abort", abandon4);
+      release3();
+      end();
+    };
+    const abandon4 = () => {
+      endTree(child.pid);
+      child.kill("SIGKILL");
+      release3();
+    };
+    stop2.addEventListener("abort", abandon4, { once: true });
+    child.on("message", (message3) => {
+      if ("begin" in message3) clock.begin(message3.begin);
+      else if ("hashed" in message3) clock.hashed(message3.hashed);
+      else if ("result" in message3) settle3(() => resolve52(message3.result));
+      else settle3(() => reject(new Error(message3.error)));
+    });
+    child.once("error", (error) => settle3(() => reject(error)));
+    child.once("exit", (code, signal3) => {
+      if (!settled2 && !WINDOWS) endTree(child.pid);
+      const how2 = signal3 === null ? `with exit code ${code}` : `on ${signal3}`;
+      const why2 = stderr.trim() === "" ? "" : `: ${stderr.trim()}`;
+      settle3(() => reject(new Error(`its process ended ${how2} without a result${why2}`)));
+    });
+    try {
+      child.send(work);
+    } catch (error) {
+      settle3(() => reject(error));
+    }
+  });
+}
+function serveEnd() {
+  const send = process.send?.bind(process);
+  if (send === void 0) return Promise.resolve(2);
+  const gone5 = () => {
+    endTree(process.pid);
+    process.exit(0);
+  };
+  process.once("disconnect", gone5);
+  let pending = 0;
+  const flush = () => {
+    if (pending === 0) return;
+    send({ hashed: pending });
+    pending = 0;
+  };
+  const clock = {
+    over: false,
+    begin: (total) => send({ begin: total }),
+    hashed: (count5) => {
+      if (pending === 0) setImmediate(flush);
+      pending += count5;
+    }
+  };
+  return new Promise((resolve52) => {
+    process.once("message", (work) => {
+      const done = (message3) => {
+        flush();
+        process.off("disconnect", gone5);
+        send(message3, () => {
+          process.disconnect();
+          resolve52(0);
+        });
+      };
+      hashEnd(work, hashFile, clock).then(
+        (result) => done({ result }),
+        (error) => done({ error: error instanceof Error ? error.message : String(error) })
+      );
+    });
+  });
+}
+var WINDOWS = process.platform === "win32";
+function endTree(pid) {
+  if (pid === void 0) return;
+  try {
+    if (WINDOWS) {
+      execFileSync3("taskkill", ["/PID", String(pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+        timeout: 5e3
+      });
+    } else process.kill(-pid, "SIGKILL");
+  } catch {
+  }
+}
+
+// src/core/ci/endpoints.ts
+var HASHING_LIMIT = { floorMs: 1e4, multiple: 4 };
+async function endpointsBefore(root, format2, options = {}) {
   const start2 = performance2.now();
-  const { root, format: format2, commit, paths, at: at2, hashes, options } = before5;
-  const head2 = await gitHead(root);
-  if (head2 !== commit) return `HEAD moved during the command (${commit} to ${head2 ?? "none"})`;
-  const after3 = await hashAll(root, format2, paths, options, clock);
+  const end = await endOf2({ root, format: format2, commit: null }, options);
+  if (typeof end === "string") return end;
+  const { commit, paths, committed = [], hashes } = end;
+  return { root, format: format2, commit, paths, committed, hashes, ms: performance2.now() - start2, options };
+}
+async function endpointsAfter(before5) {
+  const start2 = performance2.now();
+  const { root, format: format2, commit, paths, committed, hashes, options } = before5;
+  const end = await endOf2({ root, format: format2, commit, paths }, options);
+  if (typeof end === "string") return end;
   const stable = [];
   const unstable = [];
   paths.forEach((path, index) => {
     const hash4 = hashes[index] ?? null;
-    if (hash4 !== (after3[index] ?? null)) unstable.push(path);
-    else if (hash4 !== at2(path)) stable.push([path, hash4]);
+    if (hash4 !== (end.hashes[index] ?? null)) unstable.push(path);
+    else if (hash4 !== (committed[index] ?? null)) stable.push([path, hash4]);
   });
   return {
     stable: ownMap(stable),
@@ -86291,8 +86486,17 @@ async function compareEnds(before5, clock) {
     ms: before5.ms + performance2.now() - start2
   };
 }
+function endOf2(work, options) {
+  const { relaunch } = options;
+  const read7 = options.hashFile ?? hashFile;
+  return limited(
+    options.limit ?? HASHING_LIMIT,
+    (clock, stop2) => relaunch === void 0 ? hashEnd(work, read7, clock) : hashInChild(relaunch, work, clock, stop2)
+  );
+}
 function limited(limit, work) {
   const start2 = performance2.now();
+  const stop2 = new AbortController();
   let total = 0;
   let begun = 0;
   let done = 0;
@@ -86308,8 +86512,8 @@ function limited(limit, work) {
       total = count5;
       begun = performance2.now();
     },
-    hashed() {
-      done++;
+    hashed(count5) {
+      done += count5;
       lastDone = performance2.now();
     }
   };
@@ -86325,9 +86529,10 @@ function limited(limit, work) {
       const seconds5 = (allowed() / 1e3).toFixed(1);
       const progress2 = begun === 0 ? "before it listed the paths" : `${done} of ${total} paths`;
       resolve52(`hashing the checkout passed its limit of ${seconds5} s (${progress2})`);
+      stop2.abort();
     };
     timer = setTimeout(check3, limit.floorMs);
-    work(clock).then(
+    work(clock, stop2.signal).then(
       (value) => {
         clearTimeout(timer);
         resolve52(value);
@@ -86338,25 +86543,6 @@ function limited(limit, work) {
       }
     );
   });
-}
-async function hashAll(root, format2, paths, options, clock) {
-  const read7 = options.hashFile ?? hashFile;
-  const here = hereOf2(root, (path) => read7(join49(root, path), format2));
-  clock.begin(paths.length);
-  return mapConcurrent(paths, async (path) => {
-    if (clock.over) return null;
-    const directory = listedDirectory(path);
-    const hash4 = directory === null ? await here(path) : await listingOf(root, directory);
-    clock.hashed();
-    return hash4;
-  });
-}
-async function listingOf(root, directory) {
-  try {
-    return namesHash(await readdir3(join49(root, directory)));
-  } catch {
-    return ABSENT_LISTING;
-  }
 }
 
 // src/cli/ci.ts
@@ -86859,7 +87045,14 @@ function startNodeTestRecording(options) {
   for (const dir2 of [graph, events]) mkdirSync15(dir2);
   const named4 = options.entries.flatMap((entry4) => Object.keys(entry4.env));
   const variables2 = [.../* @__PURE__ */ new Set([...named4, ...options.allowlist])];
-  const settings = { nodeTest: { graph, events, variables: variables2.sort() } };
+  const settings = {
+    nodeTest: {
+      graph,
+      events,
+      variables: variables2.sort(),
+      skipped: options.env.NODE_TEST_CONTEXT !== void 0
+    }
+  };
   const hooks = [runtime.hook, recorder];
   const addition = { hooks, settings, env: { [NODE_TEST_REPORTER_VARIABLE]: runtime.reporter } };
   let evidence = null;
@@ -87023,7 +87216,7 @@ function revive(_key, value) {
   return new RegExp(text3.slice(1, end), text3.slice(end + 1));
 }
 function recordedRun(run7, context) {
-  const end = endOf2(run7);
+  const end = endOf3(run7);
   const coverage = partCoverage(run7.coverage, context.paths);
   const table = coverage !== void 0 && "provider" in coverage ? new PartRecordTable() : null;
   const files5 = end === "completed" ? testFiles(run7, context, table) : [];
@@ -87039,7 +87232,7 @@ function recordedRun(run7, context) {
     ...records === void 0 ? {} : { records }
   };
 }
-function endOf2(run7) {
+function endOf3(run7) {
   if (run7.unhandled.some((path) => path === null)) return "crashed";
   return run7.reason === "interrupted" ? "interrupted" : "completed";
 }
@@ -92459,11 +92652,11 @@ function editPoll(options) {
       if (step2.kind !== "end") return null;
       const outcome2 = step2.outcome;
       const ended2 = { outcome: outcome2, view, window: window2, seen, held: held4, slowLeft, news, daemon, hold };
-      return { end: endOf3({ store, root }, id, ended2, watch2, now) };
+      return { end: endOf4({ store, root }, id, ended2, watch2, now) };
     }
   };
 }
-function endOf3({ store, root }, id, { outcome: outcome2, view, window: window2, seen, held: held4, slowLeft, news, daemon, hold }, watch2, now) {
+function endOf4({ store, root }, id, { outcome: outcome2, view, window: window2, seen, held: held4, slowLeft, news, daemon, hold }, watch2, now) {
   const edit = window2 === void 0 ? void 0 : {
     since: window2.since,
     testFiles: window2.ids.size,
@@ -93738,6 +93931,13 @@ async function ciCommand(args2, io, deps = {}) {
   const [sub, ...rest2] = args2;
   if (sub === "export") return ciExportCommand(rest2, io, deps.tempDir);
   if (sub === "publish") return ciPublishCommand(rest2, io);
+  if (sub === ENDPOINTS_CHILD) {
+    const served2 = await serveEnd();
+    if (served2 !== 0)
+      io.stderr(`squeal ci: ${ENDPOINTS_CHILD} runs only when ci record starts it
+`);
+    return served2;
+  }
   if (sub !== "record") {
     io.stderr(`squeal ci: ${sub === void 0 ? "no subcommand" : `unknown "${sub}"`}
 ${USAGE2}`);
@@ -93785,8 +93985,10 @@ async function record(args2, io, deps) {
   }
   if (typeof started2 === "string") return unchanged2(started2);
   const { root } = started2;
+  const relaunch = deps.endpoints?.relaunch ?? io.relaunch;
+  const options = { ...deps.endpoints, ...relaunch === void 0 ? {} : { relaunch } };
   try {
-    const before5 = await hashing(() => endpointsBefore(root, started2.objectFormat, deps.endpoints));
+    const before5 = await hashing(() => endpointsBefore(root, started2.objectFormat, options));
     const exit2 = exitOf(await runCommand2(args2.command, cwd, started2.env), say);
     const endpoints = typeof before5 === "string" ? before5 : await hashing(() => endpointsAfter(before5));
     const commandEnd = performance4.now();
@@ -94979,7 +95181,7 @@ function storedRerunText(runs2) {
 import { join as join83 } from "node:path";
 
 // src/core/code/gate/command.ts
-import { spawn as spawn6 } from "node:child_process";
+import { spawn as spawn7 } from "node:child_process";
 var PROCESS_SIGNALS = {
   on: (signal3, listener) => process.on(signal3, listener),
   off: (signal3, listener) => process.off(signal3, listener),
@@ -95000,7 +95202,7 @@ function runCommand3(command, options) {
   const started2 = performance.now();
   const [file = "", ...args2] = command;
   return new Promise((resolve52) => {
-    const child = spawn6(file, args2, {
+    const child = spawn7(file, args2, {
       cwd: options.cwd,
       env: options.env,
       detached: true,
@@ -96716,7 +96918,7 @@ function messageOf2(error) {
 }
 
 // src/cli/code-gate-parent.ts
-import { execFileSync as execFileSync3 } from "node:child_process";
+import { execFileSync as execFileSync4 } from "node:child_process";
 var PARENT_PID_VARIABLE = "SQUEAL_CODE_GATE_PARENT";
 var PARENT_POLL_MS = 250;
 function takeParentPid(env = process.env) {
@@ -96759,7 +96961,7 @@ function endGroup() {
 }
 function processTable() {
   try {
-    const text3 = execFileSync3("ps", ["-A", "-o", "pid=,ppid=,pgid="], {
+    const text3 = execFileSync4("ps", ["-A", "-o", "pid=,ppid=,pgid="], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       timeout: 2e3
@@ -97029,7 +97231,7 @@ function timed(adapters, durations2) {
 }
 
 // src/cli/code-gate-relaunch.ts
-import { spawn as spawn7 } from "node:child_process";
+import { spawn as spawn8 } from "node:child_process";
 import { closeSync as closeSync4, writeSync as writeSync2 } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 var REPORT_FD_VARIABLE = "SQUEAL_CODE_GATE_REPORT_FD";
@@ -97096,7 +97298,7 @@ async function relaunchGate(relaunch, args2, io, signals = process) {
     [REPORT_FD_VARIABLE]: String(REPORT_FD),
     [PARENT_PID_VARIABLE]: String(process.pid)
   };
-  const child = spawn7(command, [...flags3, "code", ...args2], {
+  const child = spawn8(command, [...flags3, "code", ...args2], {
     cwd: io.cwd ?? process.cwd(),
     env: { ...io.env ?? process.env, ...marks2 },
     stdio: ["inherit", 2, "inherit", "pipe"],
@@ -101303,7 +101505,7 @@ function launcherConfig(pluginRoot, hooks, data2 = codexPluginData()) {
 
 // src/cli/codex/trust.ts
 init_json();
-import { spawn as spawn8 } from "node:child_process";
+import { spawn as spawn9 } from "node:child_process";
 import { createInterface } from "node:readline";
 var CODEX_APP_SERVER_TIMEOUT_MS = 1e4;
 var AppServerError = class extends Error {
@@ -101482,7 +101684,7 @@ async function listHooks(server, root, pluginIds) {
 var AppServer = class {
   constructor(cwd, env, timeoutMs) {
     this.timeoutMs = timeoutMs;
-    this.child = spawn8("codex", ["app-server"], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    this.child = spawn9("codex", ["app-server"], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     let fail3 = () => {
     };
     this.failed = new Promise((_, reject) => {
@@ -102788,7 +102990,7 @@ init_process_label();
 init_open();
 init_paths();
 init_sliced_write();
-import { spawn as spawn9 } from "node:child_process";
+import { spawn as spawn10 } from "node:child_process";
 import { setPriority as setPriority2 } from "node:os";
 
 // src/core/daemon/full-check-claim.ts
@@ -103222,7 +103424,7 @@ process.stdout.write(JSON.stringify(out));
 `;
 function runFullCheck(database, label2) {
   const { NODE_OPTIONS: _, ...env } = process.env;
-  const child = spawn9(process.execPath, ["-e", SCRIPT, database, String(MAX_PROBLEMS)], {
+  const child = spawn10(process.execPath, ["-e", SCRIPT, database, String(MAX_PROBLEMS)], {
     argv0: argv0For(label2 ?? null),
     env,
     stdio: ["ignore", "pipe", "ignore"]
@@ -106451,10 +106653,10 @@ function utf16Column(line, byteColumn) {
 }
 
 // src/core/lint/provider/oxlint/spawn.ts
-import { spawn as spawn13 } from "node:child_process";
+import { spawn as spawn14 } from "node:child_process";
 function runInGroup(command, args2, options) {
   return new Promise((resolve52) => {
-    const child = spawn13(command, args2, {
+    const child = spawn14(command, args2, {
       cwd: options.cwd,
       env: options.env,
       detached: true,
@@ -107423,7 +107625,7 @@ init_harness_process();
 init_git_layout();
 init_command_hold();
 init_hold_rows();
-import { spawn as spawn14 } from "node:child_process";
+import { spawn as spawn15 } from "node:child_process";
 import { randomUUID as randomUUID21 } from "node:crypto";
 import { constants as constants11 } from "node:os";
 import { setTimeout as sleep19 } from "node:timers/promises";
@@ -107569,7 +107771,7 @@ function run5(command, cwd, spawned) {
   return new Promise((resolve52) => {
     let started2 = false;
     let settled2 = false;
-    const child = spawn14(program, args2, { cwd, stdio: "inherit" });
+    const child = spawn15(program, args2, { cwd, stdio: "inherit" });
     const forward = (signal3) => child.kill(signal3);
     for (const signal3 of FORWARDED3) process.on(signal3, forward);
     const done = (result) => {
@@ -110481,10 +110683,10 @@ function provedFiles(green, red, control, conditions, imports2, base, redErrors 
   };
 }
 function fileOf5(ref3, green, red, control, conditioned, stopped, redErrors) {
-  const greenFile = endOf4(green, ref3);
-  const redFile = stopped ?? (red?.has(testFileId(ref3)) === true ? endOf4(red, ref3) : greenFile);
+  const greenFile = endOf5(green, ref3);
+  const redFile = stopped ?? (red?.has(testFileId(ref3)) === true ? endOf5(red, ref3) : greenFile);
   const decides = redCounts(redFile.end, redErrors);
-  const controlFile = control?.has(testFileId(ref3)) === true ? endOf4(control, ref3) : null;
+  const controlFile = control?.has(testFileId(ref3)) === true ? endOf5(control, ref3) : null;
   const { verdict, reason: reason2 } = withControl(
     verdictOf3(redFile.end, decides ? greenFile.end : null, redErrors),
     controlFile?.end ?? null,
@@ -110517,7 +110719,7 @@ function stoppedSide(imports2, base) {
     runs: 0
   };
 }
-function endOf4(files5, ref3) {
+function endOf5(files5, ref3) {
   return files5.get(testFileId(ref3)) ?? {
     end: { end: "unknown", reason: "not keyed" },
     from: null,
@@ -110949,7 +111151,7 @@ function signalGroup(group, signal3) {
 
 // src/core/checkout/install.ts
 init_install_command();
-import { spawn as spawn15 } from "node:child_process";
+import { spawn as spawn16 } from "node:child_process";
 import { readFile as readFile16 } from "node:fs/promises";
 import { join as join176 } from "node:path";
 var LOG_CHARS = 64 * 1024;
@@ -110963,7 +111165,7 @@ async function installCheckout(tree, options) {
     const keep = (chunk) => {
       log = (log + chunk.toString("utf8")).slice(-LOG_CHARS);
     };
-    const child = spawn15(program, args2, {
+    const child = spawn16(program, args2, {
       cwd: tree,
       env: options.env ?? process.env,
       detached: true,
@@ -112809,7 +113011,7 @@ import { tmpdir as tmpdir14 } from "node:os";
 import { join as join184 } from "node:path";
 
 // src/cli/status-at-run-child.ts
-import { spawn as spawn16 } from "node:child_process";
+import { spawn as spawn17 } from "node:child_process";
 import { existsSync as existsSync67, readFileSync as readFileSync83, renameSync as renameSync12, rmSync as rmSync38, writeFileSync as writeFileSync27 } from "node:fs";
 import { availableParallelism as availableParallelism10 } from "node:os";
 import { join as join183 } from "node:path";
@@ -113123,7 +113325,7 @@ async function runInChild(run7) {
   writeFileSync27(request, JSON.stringify(asked));
   rmSync38(answer4, { force: true });
   rmSync38(progress2, { force: true });
-  const child = spawn16(command, [...flags3, "status", "--at", checkout.commit], {
+  const child = spawn17(command, [...flags3, "status", "--at", checkout.commit], {
     cwd: checkout.tree,
     env: {
       ...run7.env,
@@ -114881,7 +115083,7 @@ function stopReruns(files5, args2, conditions, fromCwd) {
 }
 
 // src/core/commit/at-keys-side.ts
-import { execFileSync as execFileSync4 } from "node:child_process";
+import { execFileSync as execFileSync5 } from "node:child_process";
 import {
   chmodSync as chmodSync6,
   existsSync as existsSync70,
@@ -114984,7 +115186,7 @@ async function testSource(root, tests2, paths) {
       absentAt.add(path);
       continue;
     }
-    const bytes2 = execFileSync4("git", ["cat-file", "blob", entry4.blob], {
+    const bytes2 = execFileSync5("git", ["cat-file", "blob", entry4.blob], {
       cwd: root,
       maxBuffer: MAX_BLOB_BYTES,
       timeout: LS_TREE_TIMEOUT_MS
@@ -115383,7 +115585,7 @@ async function prove(common, args2, base, head2, named4, given2) {
       if (typeof kind2 === "object") return kind2;
       const sides2 = sidesOf2(kind2, base, head2);
       const red = proving.length === 0 ? null : await sideOf(common, sides2.red, proving, testSide, source2);
-      const decided = red === null ? [] : proving.filter((ref3) => redCounts(endOf4(red.files, ref3).end, args2.redErrors));
+      const decided = red === null ? [] : proving.filter((ref3) => redCounts(endOf5(red.files, ref3).end, args2.redErrors));
       await open7.run(decided);
       const control = hasConditions(common.conditions) && decided.length > 0 ? await sideOf(
         { ...common, conditions: NO_CONDITIONS },
