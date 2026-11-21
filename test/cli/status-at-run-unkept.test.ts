@@ -1,6 +1,10 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { RunAnswer } from "../../src/cli/status-at-run-child.js";
 import { type DaemonPorts, runNow } from "../../src/cli/status-at-run-now.js";
+import { unkeptNow } from "../../src/cli/status-at-run-unkept.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
@@ -113,5 +117,41 @@ describe("the working tree's unkept files go through the gate, not the daemon (T
       origin: { kind: "run", stored: false },
     });
     expect(end.states.has(testFileId(OTHER))).toBe(false);
+  });
+});
+
+describe("unkeptNow reads only what this call ran (review wave-20 N1)", () => {
+  it("gives a stored or parts answer no this-run state", () => {
+    const root = mkdtempSync(join(tmpdir(), "squeal-n1-")) as AbsolutePath;
+    try {
+      const answer = (from: "run" | "store" | "parts") =>
+        ({
+          result: {
+            runs: [
+              {
+                runner: "vitest",
+                path: TEST.path,
+                outcome: "passed",
+                from,
+                failed: [],
+                skipped: false,
+              },
+            ],
+            timedOut: false,
+            budgetSeconds: 60,
+            notKept: [{ path: TEST.path, reason: "it read paths first seen during the run" }],
+            kept: [],
+          },
+        }) as RunAnswer;
+      const keyOf = () => "k-now";
+      expect(unkeptNow(root, [TEST], answer("parts"), keyOf).size).toBe(0);
+      expect(unkeptNow(root, [TEST], answer("store"), keyOf).size).toBe(0);
+      expect(unkeptNow(root, [TEST], answer("run"), keyOf).get(testFileId(TEST))).toMatchObject({
+        state: "pass",
+        origin: { kind: "run", stored: false },
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
