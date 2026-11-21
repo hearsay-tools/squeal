@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type AtAskPorts, AtAsks, type AtRow, choose } from "../../src/core/daemon/at-asks.js";
 import { CommitDesk } from "../../src/core/daemon/commit-desk.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import type { CommitAskRequest, CommitSetup } from "../../src/core/types/commit-ask.js";
 import type { RelativePath } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
@@ -32,8 +33,16 @@ const ask = (over: Partial<CommitAskRequest> = {}): CommitAskRequest => ({
   ...over,
 });
 
-/** Ports over `rows`; `src/a.ts` is read by A, `src/c.ts` by C; `stored` keys have a result. */
-function ports(rows: readonly AtRow[], stored: ReadonlySet<string> = new Set()) {
+/**
+ * Ports over `rows`; `src/a.ts` is read by A, `src/c.ts` by C; `stored`
+ * keys have a result; `needs` names the files whose closure reads a path git
+ * does not hold at the commit (D4.9).
+ */
+function ports(
+  rows: readonly AtRow[],
+  stored: ReadonlySet<string> = new Set(),
+  needs: ReadonlyMap<string, RelativePath> = new Map(),
+) {
   const requests: { group: string; paths: readonly RelativePath[]; lead?: boolean }[] = [];
   let setup: CommitSetup = { phase: "install" };
   let settle: () => void = () => {};
@@ -51,6 +60,7 @@ function ports(rows: readonly AtRow[], stored: ReadonlySet<string> = new Set()) 
       ),
     rows: () => rows,
     stored: (_ref, key) => stored.has(key),
+    needs: async () => needs,
     groupOf: (r) => (r.path.startsWith("test/c/") ? "slow" : "tests"),
     request: async (group, paths, options) => {
       requests.push({
@@ -110,6 +120,21 @@ describe("D4.5 at the commit daemon (row 023-40c)", () => {
     expect(paths(folder?.rest ?? [])).toEqual([]);
     const folderChanged = await choose(ask({ named: ["test/c"], changed: ["src/c.ts"] }), p.value);
     expect(paths(folderChanged?.rest ?? [])).toEqual([C.path]);
+  });
+
+  it("refuses a chosen file whose closure reads a path git does not hold, and its path's other projects (D4.9)", async () => {
+    const other: TestFileRef = { project: "other", path: A.path };
+    const p = ports(
+      [row(A), row(other), row(B)],
+      new Set(),
+      new Map([[testFileId(A), "src/gen.ts"]]),
+    );
+    const chosen = await choose(ask({ allMissing: true, changed: [] }), p.value);
+    expect(paths(chosen?.rest ?? [])).toEqual([B.path]);
+    expect(chosen?.refused).toEqual([
+      { ref: A, reason: "needs src/gen.ts" },
+      { ref: other, reason: `it runs with the default project's ${A.path}: needs src/gen.ts` },
+    ]);
   });
 
   it("names the readers of a named path that is no test file", async () => {

@@ -1,4 +1,4 @@
-import type { PayloadSchemaVersion, RelativePath } from "./common.js";
+import type { AbsolutePath, PayloadSchemaVersion, RelativePath } from "./common.js";
 import type { TestFileRef } from "./keys.js";
 
 /*
@@ -27,6 +27,11 @@ export interface CommitAskRequest {
   readonly named: readonly RelativePath[];
   /** `--all-missing`: every file with no result at the commit runs. */
   readonly allMissing: boolean;
+  /**
+   * D4.9: the caller's worktree, where an input generated there and not
+   * tracked at its HEAD counts as one git does not hold. Absent: none.
+   */
+  readonly root?: AbsolutePath;
 }
 
 export interface CommitAskResponse {
@@ -69,6 +74,14 @@ export interface CommitAskState {
   readonly readers: Readonly<Record<RelativePath, readonly TestFileRef[]>>;
   /** Per group whose request failed: why. */
   readonly problems: readonly string[];
+  /** D4.9: chosen files that do not run, with why (`needs <path>`); absent when none. */
+  readonly refused?: readonly CommitRefusal[];
+}
+
+/** D4.9: a file the commit daemon does not run: its closure reads a path git does not hold there. */
+export interface CommitRefusal {
+  readonly ref: TestFileRef;
+  readonly reason: string;
 }
 
 /** What the main thread tells the socket thread, at each change. */

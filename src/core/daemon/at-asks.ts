@@ -4,6 +4,7 @@ import { testFileId } from "../keys/reverse-index.js";
 import type {
   CommitAskRequest,
   CommitAskState,
+  CommitRefusal,
   CommitSetup,
   CommitSnapshot,
 } from "../types/commit-ask.js";
@@ -37,6 +38,12 @@ export interface AtAskPorts {
   ) => Promise<readonly TestFileRef[] | null>;
   /** The daemon's rows: each test file with its live key and pending mark; with `files`, theirs. */
   readonly rows: (files?: readonly TestFileRef[]) => readonly AtRow[];
+  /**
+   * D4.9: per test file whose closure reads a path git does not hold at the
+   * commit and that is there to read (in the tree, or generated in the
+   * caller's worktree), that path, by `testFileId`.
+   */
+  readonly needs: (request: CommitAskRequest) => Promise<ReadonlyMap<string, RelativePath>>;
   /** Whether a result of `ref` is stored at `key`. */
   readonly stored: (ref: TestFileRef, key: CheckKey) => boolean;
   /** The group `ref` runs in, by the policy in force. */
@@ -65,6 +72,7 @@ interface Kept {
   files: TestFileRef[];
   readers: Record<RelativePath, readonly TestFileRef[]>;
   problems: string[];
+  refused: readonly CommitRefusal[];
 }
 
 /** The asks of one commit daemon. */
@@ -86,6 +94,7 @@ export class AtAsks {
       files: [],
       readers: {},
       problems: [],
+      refused: [],
     };
     this.#asks.set(request.owner, kept);
     while (this.#asks.size > MAX_ASKS) this.#asks.delete(this.#asks.keys().next().value as string);
@@ -121,6 +130,7 @@ export class AtAsks {
       return;
     }
     kept.readers = chosen.readers;
+    kept.refused = chosen.refused;
     kept.files = [...chosen.named, ...chosen.rest];
     const options = { owner: request.owner, at: true } as const;
     await this.#queue(chosen.named, { ...options, lead: true }, kept);
@@ -156,6 +166,7 @@ function stateOf(ask: Kept, setup: CommitSetup): CommitAskState {
     files: [...ask.files],
     readers: { ...ask.readers },
     problems: [...ask.problems],
+    ...(ask.refused.length === 0 ? {} : { refused: [...ask.refused] }),
   };
 }
 
@@ -164,6 +175,8 @@ interface Chosen {
   readonly named: readonly TestFileRef[];
   readonly rest: readonly TestFileRef[];
   readonly readers: Record<RelativePath, readonly TestFileRef[]>;
+  /** D4.9: the chosen files that do not run, and why. */
+  readonly refused: readonly CommitRefusal[];
 }
 
 /**
@@ -199,5 +212,44 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
     // 023-46's seam: a file with no key is in no closure index, so it is selected, never unaffected.
     else if (request.allMissing || selected.has(id) || key === null) rest.push(testFile);
   }
-  return { named: first, rest, readers };
+  const needs = await ports.needs(request);
+  const refused = refusals([...first, ...rest], needs);
+  const runs = (ref: TestFileRef) => !refused.has(testFileId(ref));
+  return {
+    named: first.filter(runs),
+    rest: rest.filter(runs),
+    readers,
+    refused: [...refused.values()],
+  };
+}
+
+/**
+ * D4.9 (review wave-7 B2, B6) over the chosen files: one whose closure reads
+ * a path git does not hold at the commit (`needs`) is refused, and so is
+ * every other project's file at its path, which runs with it.
+ */
+function refusals(
+  chosen: readonly TestFileRef[],
+  needs: ReadonlyMap<string, RelativePath>,
+): Map<string, CommitRefusal> {
+  const out = new Map<string, CommitRefusal>();
+  const byPath = new Map<RelativePath, { ref: TestFileRef; why: string }>();
+  for (const ref of chosen) {
+    const path = needs.get(testFileId(ref));
+    if (path === undefined) continue;
+    const reason = `needs ${path}`;
+    out.set(testFileId(ref), { ref, reason });
+    if (!byPath.has(ref.path)) byPath.set(ref.path, { ref, why: reason });
+  }
+  for (const ref of chosen) {
+    const sibling = byPath.get(ref.path);
+    if (sibling === undefined || out.has(testFileId(ref))) continue;
+    const project =
+      sibling.ref.project === "" ? "the default project" : `project ${sibling.ref.project}`;
+    out.set(testFileId(ref), {
+      ref,
+      reason: `it runs with ${project}'s ${ref.path}: ${sibling.why}`,
+    });
+  }
+  return out;
 }

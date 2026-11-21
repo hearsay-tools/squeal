@@ -1,4 +1,4 @@
-import { PAYLOAD_SCHEMA_VERSION, type RelativePath } from "../types/common.js";
+import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION, type RelativePath } from "../types/common.js";
 import type {
   DaemonErrorResponse,
   DaemonRequest,
@@ -143,7 +143,8 @@ function parseCommitAsk(request: Record<string, unknown>): DaemonRequest | strin
       return '"owners" must be a list of non-empty strings';
     return { type: "commit-read", owners: [...owners] };
   }
-  const { owner, changed, named, allMissing } = request;
+  const { owner, changed, named, allMissing, root } = request;
+  if (root !== undefined && !isText(root)) return '"root" must be a non-empty string';
   if (!isText(owner)) return '"owner" must be a non-empty string';
   if (!Array.isArray(changed) || !changed.every(isText))
     return '"changed" must be a list of non-empty strings';
@@ -156,6 +157,7 @@ function parseCommitAsk(request: Record<string, unknown>): DaemonRequest | strin
     changed: changed as RelativePath[],
     named: named as RelativePath[],
     allMissing,
+    ...(root === undefined ? {} : { root: root as AbsolutePath }),
   };
 }
 
