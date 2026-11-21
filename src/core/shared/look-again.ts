@@ -36,6 +36,14 @@ export const unrefTimer: Timer = (ms, fire) => {
   return () => clearTimeout(timer);
 };
 
+/**
+ * Review 0.1.588 B1: how late a look may start and still count as within
+ * its window. A timer never fires early, so the last look, due at the
+ * window's end, starts a little after it; a look later than this lists
+ * nothing.
+ */
+export const LATE_LOOK_MS = 1_000;
+
 /** What a missing export of the start point leads to. */
 export type Missed = "once" | "again" | "gave up";
 
@@ -56,6 +64,18 @@ export class LookAgain {
     const due = this.#due && this.#key === key;
     this.#due = false;
     return due;
+  }
+
+  /**
+   * Review 0.1.588 B1: whether `key`'s window ended before `now`, a look's
+   * lateness (`LATE_LOOK_MS`) allowed. The reader asks before any listing of
+   * a look again: when the timer fired late, and again after its local git
+   * steps. An ended window stops here, and the caller gives its one note.
+   */
+  expired(key: string, now: number): boolean {
+    if (this.#key !== key || now <= this.#until + LATE_LOOK_MS) return false;
+    this.stop();
+    return true;
   }
 
   /**
