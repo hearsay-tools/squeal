@@ -224,6 +224,14 @@ describe("the squeal skill", () => {
     }
   });
 
+  // Row 023-35 (round 5, T6): 8 of 10 agents set a 300 s tool timeout, which ended with the budget.
+  it("asks for a tool timeout above `--timeout` in step 8; the copies say the same", () => {
+    const step = body.slice(body.indexOf("8. **"), body.indexOf("## Reading a header"));
+    expect(step).toContain(
+      "give the call a tool timeout above `--timeout`, for example 360 s for the default 300 s",
+    );
+  });
+
   it("names the squeal why line a FAIL report ends with", () => {
     expect(body).toContain("`Full output: squeal why '<name>'`");
   });
@@ -300,8 +308,9 @@ describe("the squeal skill", () => {
   // Row 005-94 raised it from 5,100: the human's texts (texts.md 6) add about 160 characters.
   // Row 005-128 raised it from 5,300: the human's steps 1, 4 and 8 and the new description, which
   // carry what the short start message no longer says, add about 1,500 characters.
+  // Row 023-35 raised it from 7,000: step 8's tool timeout above `--timeout` (round 5, T6) adds 88.
   it("stays within its budget", () => {
-    expect(body.length).toBeLessThan(7_000);
+    expect(body.length).toBeLessThan(7_100);
   });
 
   // Row 005-128: the start message no longer defines a revision; the glossary does, once.
