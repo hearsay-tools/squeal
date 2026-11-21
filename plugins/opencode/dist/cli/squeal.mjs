@@ -779,10 +779,6 @@ var init_reverse_index = __esm({
         }
         return this.sorted(ids);
       }
-      /** Row 023-40c (spec 023 D4.9): every path some test file's closure holds. */
-      paths() {
-        return [...this.byPath.keys()];
-      }
       /** Test files with a closure path directly in `dir` (`""` is the root). */
       inDirectory(dir2) {
         return this.referencing(this.byDirectory.get(dir2) ?? []);
@@ -63957,12 +63953,18 @@ var init_scheduler2 = __esm({
         return this.#lock.run(() => {
           const out2 = /* @__PURE__ */ new Map();
           if (this.#context === null) return out2;
-          const { reverse } = this.#context.keys.index;
-          for (const path of reverse.paths().filter(picks).sort()) {
-            for (const ref3 of reverse.referencing([path])) {
-              const id = testFileId(ref3);
-              if (!out2.has(id)) out2.set(id, path);
-            }
+          const { index } = this.#context.keys;
+          const picked = /* @__PURE__ */ new Map();
+          const pick = (path) => {
+            const known4 = picked.get(path);
+            if (known4 !== void 0) return known4;
+            const yes = picks(path);
+            picked.set(path, yes);
+            return yes;
+          };
+          for (const ref3 of index.reverse.testFiles()) {
+            const path = index.closure(ref3)?.paths.find(pick);
+            if (path !== void 0) out2.set(testFileId(ref3), path);
           }
           return out2;
         }, "finding the test files that read paths the commit does not hold");
