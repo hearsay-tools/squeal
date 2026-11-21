@@ -118,11 +118,12 @@ describe("the commit worktree's identity and reuse", () => {
 });
 
 describe("the ceiling (D7.4)", () => {
-  it("follows free memory at 1 GB a daemon, at least 1, unless configured", () => {
-    expect(commitWorktreeCeiling({ freeBytes: 6.5 * 1024 ** 3 })).toBe(6);
+  it("follows free memory at 2 GB a daemon, at least 1, unless configured", () => {
+    // D7.4 as amended: 2 GB per commit daemon.
+    expect(commitWorktreeCeiling({ freeBytes: 6.5 * 1024 ** 3 })).toBe(3);
     expect(commitWorktreeCeiling({ freeBytes: 100 })).toBe(1);
     expect(commitWorktreeCeiling({ configured: 3, freeBytes: 100 })).toBe(3);
-    expect(commitWorktreeCeiling({ configured: 0, freeBytes: 2 * 1024 ** 3 })).toBe(2);
+    expect(commitWorktreeCeiling({ configured: 0, freeBytes: 4 * 1024 ** 3 })).toBe(2);
   });
 
   it("makes a new commit's creator wait, say so, and go on once a place frees", async () => {
