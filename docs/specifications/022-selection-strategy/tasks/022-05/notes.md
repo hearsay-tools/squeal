@@ -48,3 +48,20 @@ gave without history.
 - `bench/` `@lists` cells, `docs/` (spec, board), dist rebuild.
 - The scheduler test file keeps its name `loaded-modules.test.ts`; it now
   holds only key cases.
+
+## Benchmark (coordinator, 2026-11-21)
+
+Paired `@lists` run, 0.1.587 vs 0.1.589 (the reviewed source of 0.1.591), 2 repeats, one Ryzen 7 9700X sandbox: `bench/results/2026-11-21-0.1.587-vs-0.1.589-default-AMD-Ryzen-7-9700X-8-Core-Processor/`. 15 of 16 cells ran; the run stopped at the start of `store-7g-lists1d@0.1.589-r2` (no cause in its log) and the scorecard was built from the 15 cells with `bench/summarize.mjs`. Correctness PASS in every cell. Cell scores: no drop (store-7g 55 vs 55, store-7g-wt3 57 vs 59, nolists 60 vs 63, lists1d 64 vs 66).
+
+| Cell | Metric | 0.1.587 | 0.1.589 |
+|---|---|---:|---:|
+| store-7g | `squeal reach` | 75 s, 2,244 MiB | 0.4 s, 117 MiB |
+| store-7g | Hook at session start (slowest) | 599 ms | 185 ms |
+| store-7g | Hook after each batch (slowest 5%) | 214 ms | 860 ms |
+| store-7g | Lock holds over 250 ms, total | 5.2 s (5) | 386 s (540) |
+| store-7g-wt3 | Hook at session start (slowest) | 1,107 ms | 367 ms |
+| store-7g-wt3 | Hook after each batch (slowest 5%) | 215 ms | 951 ms |
+| store-7g-wt3 | Lock holds over 250 ms, total | 15 s (19) | 371 s (593) |
+| store-7g-lists1d | Lock holds over 250 ms, total | 1.9 s | 0.8 s |
+
+**Cause of the lock time.** Not the row deletes: 14 delete slices of 256 lists each held the lock over 250 ms (max 1.1 s). The rest is the prune's `incremental_vacuum` after them (`src/core/store/prune.ts` `vacuum`, `VACUUM_PAGES` 512 per slice): 493 to 554 slices per cell, 0.76 s average, up to 2.4 s, about 340 to 365 s in all, still running when each 13-minute cell ended. The store is `auto_vacuum = INCREMENTAL`, so emptying the lists does shrink the file (D3 said it does not; corrected). On a 7 GB store with 82% in lists that is about 1.5 million free pages, about 2,900 slices: on this machine roughly an hour, once per store, with the lock held about half the time in slices up to 2.4 s. Cells with 1 day of lists or none show no such cost.

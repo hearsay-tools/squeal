@@ -1,0 +1,33 @@
+[2026-11-21T16:45:50.889Z] machine AMD Ryzen 7 9700X 8-Core Processor x4, sha256 2535/2502/2500 MiB/s
+[2026-11-21T16:45:50.889Z] template 500 files
+[2026-11-21T16:45:52.486Z] cell store-7g@0.1.587-r1: 500 files, 1 worktrees, 0% load
+[2026-11-21T17:09:31.596Z] cell store-7g@0.1.587-r1 exit 0 in 23.7 min
+[2026-11-21T17:09:31.596Z] cell store-7g@0.1.589-r1: 500 files, 1 worktrees, 0% load
+[2026-11-21T17:32:13.911Z] cell store-7g@0.1.589-r1 exit 0 in 22.7 min
+[2026-11-21T17:32:13.911Z] cell store-7g@0.1.589-r2: 500 files, 1 worktrees, 0% load
+[2026-11-21T17:55:02.778Z] cell store-7g@0.1.589-r2 exit 0 in 22.8 min
+[2026-11-21T17:55:02.778Z] cell store-7g@0.1.587-r2: 500 files, 1 worktrees, 0% load
+[2026-11-21T18:20:40.375Z] cell store-7g@0.1.587-r2 exit 0 in 25.6 min
+[2026-11-21T18:20:40.376Z] cell store-7g-wt3@0.1.589-r1: 500 files, 3 worktrees, 0% load
+[2026-11-21T18:42:47.898Z] cell store-7g-wt3@0.1.589-r1 exit 0 in 22.1 min
+[2026-11-21T18:42:47.898Z] cell store-7g-wt3@0.1.587-r1: 500 files, 3 worktrees, 0% load
+[2026-11-21T19:04:04.767Z] cell store-7g-wt3@0.1.587-r1 exit 0 in 21.3 min
+[2026-11-21T19:04:04.768Z] cell store-7g-wt3@0.1.587-r2: 500 files, 3 worktrees, 0% load
+[2026-11-21T19:25:16.076Z] cell store-7g-wt3@0.1.587-r2 exit 0 in 21.2 min
+[2026-11-21T19:25:16.077Z] cell store-7g-wt3@0.1.589-r2: 500 files, 3 worktrees, 0% load
+[2026-11-21T19:46:19.286Z] cell store-7g-wt3@0.1.589-r2 exit 0 in 21.1 min
+[2026-11-21T19:46:19.286Z] cell store-7g-wt3-nolists@0.1.587-r1: 500 files, 3 worktrees, 0% load
+[2026-11-21T20:05:17.212Z] cell store-7g-wt3-nolists@0.1.587-r1 exit 0 in 19.0 min
+[2026-11-21T20:05:17.212Z] cell store-7g-wt3-nolists@0.1.589-r1: 500 files, 3 worktrees, 0% load
+[2026-11-21T20:23:36.246Z] cell store-7g-wt3-nolists@0.1.589-r1 exit 0 in 18.3 min
+[2026-11-21T20:23:36.247Z] cell store-7g-wt3-nolists@0.1.589-r2: 500 files, 3 worktrees, 0% load
+[2026-11-21T20:42:09.688Z] cell store-7g-wt3-nolists@0.1.589-r2 exit 0 in 18.6 min
+[2026-11-21T20:42:09.688Z] cell store-7g-wt3-nolists@0.1.587-r2: 500 files, 3 worktrees, 0% load
+[2026-11-21T21:01:08.350Z] cell store-7g-wt3-nolists@0.1.587-r2 exit 0 in 19.0 min
+[2026-11-21T21:01:08.356Z] cell store-7g-lists1d@0.1.589-r1: 500 files, 1 worktrees, 0% load
+[2026-11-21T21:20:26.364Z] cell store-7g-lists1d@0.1.589-r1 exit 0 in 19.3 min
+[2026-11-21T21:20:26.365Z] cell store-7g-lists1d@0.1.587-r1: 500 files, 1 worktrees, 0% load
+[2026-11-21T21:40:17.744Z] cell store-7g-lists1d@0.1.587-r1 exit 0 in 19.9 min
+[2026-11-21T21:40:17.744Z] cell store-7g-lists1d@0.1.587-r2: 500 files, 1 worktrees, 0% load
+[2026-11-21T21:59:31.898Z] cell store-7g-lists1d@0.1.587-r2 exit 0 in 19.2 min
+[2026-11-21T21:59:31.898Z] cell store-7g-lists1d@0.1.589-r2: 500 files, 1 worktrees, 0% load

@@ -1,0 +1,167 @@
+{
+  "name": "store-7g-wt3@0.1.587-r2",
+  "files": 500,
+  "worktrees": 3,
+  "load": 0,
+  "ageRounds": 326,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "phases": {
+    "startMain": {
+      "ms": 462.1881000000003,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/store-7g-wt3@0.1.587-r2/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nM"
+    },
+    "runAll": {
+      "ms": 37511.121388,
+      "code": 0,
+      "tail": "w\nCheckpoint db6e7a31-a248-4f04-a8de-27c474d4f182 started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 153 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.7511813273156032
+    },
+    "age": {
+      "ms": 243917,
+      "code": 0,
+      "rounds": 326,
+      "spanDays": 7,
+      "lists": "7d",
+      "churn": false,
+      "testFiles": 500,
+      "resultsAdded": 1141000,
+      "listsAdded": 163000,
+      "runsAdded": 20538,
+      "listBytes": 53013,
+      "storeBytes": 9611034624,
+      "codeStore": {
+        "filesWithCoverage": 447,
+        "coverageAdded": 145722,
+        "partsAdded": 145722,
+        "codeBytes": 1354752000
+      }
+    },
+    "startAged": {
+      "ms": 548.6329069999629,
+      "code": 0,
+      "at": 1795288133379
+    },
+    "firstStatusAged": {
+      "ms": 119.86343799997121,
+      "code": 0
+    },
+    "startOthers": [
+      {
+        "ms": 257.89426099997945,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        }
+      },
+      {
+        "ms": 299.0794359999709,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        }
+      }
+    ],
+    "idle": {
+      "ms": 60000,
+      "daemons": 3,
+      "storeProcessCpuPct": 1.8500000000000003,
+      "perDaemonCpuPct": [
+        2.433333333333334,
+        3.3166666666666655,
+        3.1499999999999995
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 866488.617212,
+        "code": 0
+      },
+      {
+        "worktree": 1,
+        "ms": 677741.655607,
+        "code": 0
+      },
+      {
+        "worktree": 2,
+        "ms": 488818.04721499997,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.34556681684604096,
+    "sessionDaemonCpuS": [
+      24.38
+    ],
+    "edits": 57,
+    "sessionStoreProcessCpuS": 3.96,
+    "reach": {
+      "ms": 50452.55875399988,
+      "code": null,
+      "peakRssBytes": 2239873024
+    }
+  },
+  "store": {
+    "storeBytes": 9617207296,
+    "walBytes": 32659272,
+    "codeBytes": 1361494016,
+    "runsDirs": 104,
+    "rows": {
+      "results": 1156106,
+      "runs": 20628,
+      "revisions": 57,
+      "transitions": 660
+    },
+    "longWrites": 19,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      413,
+      1038,
+      1175,
+      1364,
+      570,
+      290,
+      998,
+      985,
+      507,
+      281,
+      308,
+      268,
+      2983,
+      1617,
+      1306,
+      336,
+      748,
+      406,
+      343
+    ]
+  },
+  "storeProcess": {
+    "seen": 2,
+    "cpuS": 6.17,
+    "maxRssBytes": 185503744,
+    "written": 3603,
+    "failed": 0,
+    "queueWaitMaxMs": 169,
+    "busyMs": 13931,
+    "stops": 1,
+    "failedLines": 0,
+    "relay": {
+      "sent": 3603,
+      "direct": 2,
+      "failed": 0
+    }
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 521752576,
+    "maxTreeBytes": 1983623168
+  }
+}

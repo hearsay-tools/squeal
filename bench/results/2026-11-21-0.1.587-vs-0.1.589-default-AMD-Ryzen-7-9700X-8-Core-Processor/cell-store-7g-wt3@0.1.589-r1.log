@@ -1,0 +1,6 @@
+[2026-11-21T18:20:47.611Z] store-7g-wt3@0.1.589-r1: squeal start + run --all
+[2026-11-21T18:21:47.234Z] store-7g-wt3@0.1.589-r1: age store: 326 rounds
+[2026-11-21T18:26:53.148Z] store-7g-wt3@0.1.589-r1: idle
+[2026-11-21T18:27:53.153Z] store-7g-wt3@0.1.589-r1: sessions
+[2026-11-21T18:42:42.443Z] store-7g-wt3@0.1.589-r1: collect
+[2026-11-21T18:42:47.881Z] store-7g-wt3@0.1.589-r1: done

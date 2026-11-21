@@ -71,7 +71,7 @@ A run's list is used once, in that run: it joins the key (D2) and the CI part (`
 The 0.1.496 to 0.1.586 releases kept one list per result key in the shared store's `loaded_modules` table. It reached 82% of Squeal's 7.2 GB store, and its writes held the store lock: with 3 worktrees the bench's `@lists` cells logged 13 s of lock holds against 2.5 s without lists, and a session-start hook of 1,106 ms against 116 ms (`bench/results/2026-11-21-0.1.579-*`). Its one reader was the D4 estimate.
 
 - A release from 022-05 writes no list. Its prune deletes the table's rows in slices, as it pruned orphan lists before (row 021-33), and nothing else reads them. A store shared with an older daemon gets lists again from that daemon until it is upgraded; the newer one deletes them (accepted).
-- The freed pages are reused by later writes. The file does not shrink without a compaction, which Squeal does not run.
+- The store uses `auto_vacuum = INCREMENTAL`, so the prune's vacuum slices then shrink the file (corrected 2026-11-21 from the bench of row 022-05: on a 7 GB store with 82% in lists the shrink takes about an hour once, with the lock held in slices of up to 2.4 s; `tasks/022-05/notes.md`).
 - `test_files.method` keeps its one value. CI export and import carry no stored lists.
 
 ### D4. The reach estimate (removed 2026-11-21)

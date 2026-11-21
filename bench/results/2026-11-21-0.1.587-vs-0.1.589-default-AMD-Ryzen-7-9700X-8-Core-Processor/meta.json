@@ -1,0 +1,196 @@
+{
+  "startedAt": "2026-11-21T16:45:41.886Z",
+  "squealVersion": "0.1.587 vs 0.1.589",
+  "plugins": [
+    {
+      "version": "0.1.587",
+      "label": "0.1.587"
+    },
+    {
+      "version": "0.1.589",
+      "label": "0.1.589"
+    }
+  ],
+  "repeat": 2,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    2535,
+    2502,
+    2500.3333333333335
+  ],
+  "loadavgAtStart": "0.81 0.31 0.11 1/389 8061",
+  "cells": [
+    {
+      "name": "store-7g@0.1.587-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.587",
+      "rep": 1
+    },
+    {
+      "name": "store-7g@0.1.589-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.589",
+      "rep": 1
+    },
+    {
+      "name": "store-7g@0.1.589-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.589",
+      "rep": 2
+    },
+    {
+      "name": "store-7g@0.1.587-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.587",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-wt3@0.1.589-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.589",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3@0.1.587-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.587",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3@0.1.587-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.587",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-wt3@0.1.589-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.589",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-wt3-nolists@0.1.587-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "none",
+      "base": "store-7g-wt3-nolists",
+      "plugin": "0.1.587",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3-nolists@0.1.589-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "none",
+      "base": "store-7g-wt3-nolists",
+      "plugin": "0.1.589",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3-nolists@0.1.589-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "none",
+      "base": "store-7g-wt3-nolists",
+      "plugin": "0.1.589",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-wt3-nolists@0.1.587-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "none",
+      "base": "store-7g-wt3-nolists",
+      "plugin": "0.1.587",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-lists1d@0.1.589-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "1d",
+      "base": "store-7g-lists1d",
+      "plugin": "0.1.589",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-lists1d@0.1.587-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "1d",
+      "base": "store-7g-lists1d",
+      "plugin": "0.1.587",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-lists1d@0.1.587-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "1d",
+      "base": "store-7g-lists1d",
+      "plugin": "0.1.587",
+      "rep": 2
+    },
+    {
+      "name": "store-7g-lists1d@0.1.589-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "1d",
+      "base": "store-7g-lists1d",
+      "plugin": "0.1.589",
+      "rep": 2
+    }
+  ]
+}

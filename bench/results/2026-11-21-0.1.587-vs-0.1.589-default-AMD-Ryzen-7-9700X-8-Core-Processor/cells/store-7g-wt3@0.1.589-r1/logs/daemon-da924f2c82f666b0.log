@@ -1,0 +1,54 @@
+2026-11-21T18:26:57.195Z [154824] squeal daemon: long write: store.sqlite write lock held 409 ms by #write < Ledger.commit < retryWhileBusy; 15001 rows written
+2026-11-21T18:26:57.439Z [154824] squeal daemon: serving /home/user/results/cells/store-7g-wt3@0.1.589-r1/work/wt2 on /home/user/results/cells/store-7g-wt3@0.1.589-r1/work/run/squeal-da924f2c82f666b0.sock
+2026-11-21T18:27:52.993Z [154824] squeal daemon: code store: last minute: 0 batches through the store process, 42 written here (none running 42, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:27:58.055Z [154824] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 204 to 123 MiB in a 50 ms pause
+2026-11-21T18:28:52.993Z [154824] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:29:08.093Z [154824] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 115 to 112 MiB in a 16 ms pause
+2026-11-21T18:29:52.708Z [154824] squeal daemon: long write: store.sqlite write lock held 594 ms by #write < #record; 123 rows written
+2026-11-21T18:29:52.993Z [154824] squeal daemon: code store: last minute: 65 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:30:08.499Z [154824] squeal daemon: busy, heap in use 93 MiB over twice the last live size of 23 MiB: a last-resort GC took private memory from 231 to 138 MiB in a 45 ms pause; 26 MiB of heap in use after it
+2026-11-21T18:30:29.720Z [154824] squeal daemon: long write: store.sqlite write lock held 766 ms by reconcileBatch < #pass < withBusySlice; 1 row written
+2026-11-21T18:30:35.453Z [154824] squeal daemon: the store was busy for 0.1 s (another connection held its write lock); ran once it was free: a hook's or command's writes
+2026-11-21T18:30:49.482Z [154824] squeal daemon: the store was busy for 0.2 s (another connection held its write lock); ran once it was free: the results of 1 file
+2026-11-21T18:30:52.993Z [154824] squeal daemon: code store: last minute: 48 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:30:57.135Z [154824] squeal daemon: the store was busy for 0 s (another connection held its write lock); ran once it was free: a hook's or command's writes
+2026-11-21T18:31:01.222Z [154824] squeal daemon: the store was busy for 2.3 s (another connection held its write lock); ran once it was free: the next tier, a reconciliation pass
+2026-11-21T18:31:03.551Z [154824] squeal daemon: the store was busy for 0 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:31:08.843Z [154824] squeal daemon: busy, heap in use 83 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 262 to 142 MiB in a 62 ms pause; 27 MiB of heap in use after it
+2026-11-21T18:31:14.293Z [154824] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the results of 3 files, a reconciliation pass
+2026-11-21T18:31:34.299Z [154824] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:31:52.993Z [154824] squeal daemon: code store: last minute: 64 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:31:53.902Z [154824] squeal daemon: the store was busy for 0 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:32:19.144Z [154824] squeal daemon: the store was busy for 0.3 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:32:34.333Z [154824] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:32:35.765Z [154824] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the results of 3 files
+2026-11-21T18:32:44.044Z [154824] squeal daemon: the store was busy for 0.2 s (another connection held its write lock); ran once it was free: the results of 4 files
+2026-11-21T18:32:52.993Z [154824] squeal daemon: code store: last minute: 37 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:32:59.758Z [154824] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: consumer expiry
+2026-11-21T18:33:05.272Z [154824] squeal daemon: the store was busy for 0 s (another connection held its write lock); ran once it was free: a hook's or command's writes
+2026-11-21T18:33:15.248Z [154824] squeal daemon: long write: store.sqlite write lock held 292 ms by reconcileBatch < #pass < withBusySlice; 7851 rows written
+2026-11-21T18:33:46.161Z [154824] squeal daemon: the store was busy for 0.2 s (another connection held its write lock); ran once it was free: a reconciliation pass
+2026-11-21T18:33:52.994Z [154824] squeal daemon: code store: last minute: 22 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:33:59.158Z [154824] squeal daemon: the store was busy for 0 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:34:09.530Z [154824] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:34:19.439Z [154824] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 230 to 127 MiB in a 61 ms pause
+2026-11-21T18:34:44.305Z [154824] squeal daemon: the store was busy for 0.2 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:34:49.233Z [154824] squeal daemon: the store was busy for 0.1 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:35:04.363Z [154824] squeal daemon: the store was busy for 0.2 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:35:16.323Z [154824] squeal daemon: the store was busy for 0.5 s (another connection held its write lock); ran once it was free: the next tier
+2026-11-21T18:35:33.674Z [154824] squeal daemon: busy, heap in use 116 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 245 to 156 MiB in a 67 ms pause; 52 MiB of heap in use after it
+2026-11-21T18:35:34.871Z [154824] squeal daemon: long write: store.sqlite write lock held 1076 ms by #write < #record; 6003 rows written
+2026-11-21T18:35:36.134Z [154824] squeal daemon: the store was busy for 0.3 s (another connection held its write lock); ran once it was free: the next tier
+2026-11-21T18:35:46.034Z [154824] squeal daemon: the store was busy for 0.9 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:35:50.670Z [154824] squeal daemon: the store was busy for 0.5 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:35:53.008Z [154824] squeal daemon: code store: last minute: 257 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:35:55.167Z [154824] squeal daemon: the store was busy for 0 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:36:02.811Z [154824] squeal daemon: long write: store.sqlite write lock held 658 ms by #write < #record; 6003 rows written
+2026-11-21T18:36:04.000Z [154824] squeal daemon: the store was busy for 0.9 s (another connection held its write lock); ran once it was free: the next tier
+2026-11-21T18:36:06.025Z [154824] squeal daemon: the store was busy for 0.9 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T18:36:15.104Z [154824] squeal daemon: long write: store.sqlite write lock held 314 ms by #write < #record < squeal.mjs:60119; 2883 rows written
+2026-11-21T18:36:15.104Z [154824] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the results of 96 files
+2026-11-21T18:36:15.744Z [154824] squeal daemon: the store was busy for 0.1 s (another connection held its write lock); ran once it was free: a hook's or command's writes
+2026-11-21T18:36:23.151Z [154824] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-21T18:36:23.159Z [154824] squeal daemon: code store: last minute: 338 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:36:23.249Z [154824] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

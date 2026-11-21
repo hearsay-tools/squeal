@@ -1,0 +1,24 @@
+2026-11-21T18:48:03.018Z [194658] squeal daemon: long write: store.sqlite write lock held 482 ms by #write < Ledger.commit < retryWhileBusy; 15001 rows written
+2026-11-21T18:48:03.603Z [194658] squeal daemon: serving /home/user/results/cells/store-7g-wt3@0.1.587-r1/work/wt2 on /home/user/results/cells/store-7g-wt3@0.1.587-r1/work/run/squeal-9d43869de6cfe5c1.sock
+2026-11-21T18:48:55.610Z [194658] squeal daemon: code store: last minute: 45 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:49:05.634Z [194658] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 247 to 165 MiB in a 25 ms pause
+2026-11-21T18:49:21.026Z [194658] squeal daemon: long write: store.sqlite write lock held 413 ms by beat < squeal.mjs:104612 < AsyncLocalStorage.run; 2 rows written
+2026-11-21T18:49:55.610Z [194658] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:50:11.077Z [194658] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 117 to 113 MiB in a 17 ms pause
+2026-11-21T18:50:55.612Z [194658] squeal daemon: code store: last minute: 64 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:51:12.932Z [194658] squeal daemon: busy, heap in use 50 MiB over twice the last live size of 23 MiB: a last-resort GC took private memory from 210 to 146 MiB in a 35 ms pause; 27 MiB of heap in use after it
+2026-11-21T18:51:55.612Z [194658] squeal daemon: code store: last minute: 68 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:52:19.043Z [194658] squeal daemon: busy, heap in use 59 MiB over twice the last live size of 27 MiB: a last-resort GC took private memory from 273 to 147 MiB in a 34 ms pause; 27 MiB of heap in use after it
+2026-11-21T18:52:55.612Z [194658] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:53:21.188Z [194658] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 175 to 135 MiB in a 19 ms pause
+2026-11-21T18:53:55.612Z [194658] squeal daemon: code store: last minute: 47 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:54:55.612Z [194658] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:55:06.355Z [194658] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 264 to 135 MiB in a 38 ms pause
+2026-11-21T18:56:22.099Z [194658] squeal daemon: busy, heap in use 104 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 271 to 172 MiB in a 62 ms pause; 52 MiB of heap in use after it
+2026-11-21T18:56:24.262Z [194658] squeal daemon: long write: store.sqlite write lock held 2150 ms by #write < #record; 6203 rows written
+2026-11-21T18:56:51.077Z [194658] squeal daemon: long write: store.sqlite write lock held 1849 ms by #write < #record; 6203 rows written
+2026-11-21T18:56:55.614Z [194658] squeal daemon: code store: last minute: 478 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:56:59.808Z [194658] squeal daemon: long write: store.sqlite write lock held 527 ms by #write < #record; 2979 rows written
+2026-11-21T18:57:04.826Z [194658] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-21T18:57:04.832Z [194658] squeal daemon: code store: last minute: 114 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T18:57:04.954Z [194658] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
