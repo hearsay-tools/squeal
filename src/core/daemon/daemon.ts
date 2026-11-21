@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -56,6 +57,7 @@ import {
   commitPolicy,
   NO_CODE_PASS,
   NO_WATCH,
+  removalText,
   removesAtExit,
 } from "./commit-mode.js";
 import { describeProblems } from "./config-file.js";
@@ -1481,12 +1483,16 @@ class Daemon {
       await this.#step("socket close", () => this.#desk?.close());
       pauseAt("stop-gap");
       // Spec 023 D7.2: under its lock still, so no new daemon takes a tree about to go.
+      let said = text;
       if (this.commit !== null && removesAtExit(reason)) {
         const { worktrees } = this.commit;
-        await this.#step("commit worktree removal", () => worktrees.remove(this.opened.root));
+        const { root } = this.opened;
+        // Review wave-22 S1: its report goes to the log, which outlives the store closed above.
+        await this.#step("commit worktree removal", () => worktrees.remove(root, this.#log));
+        said = removalText(text, root, !existsSync(root));
       }
       await this.#step("lock release", () => lock.release());
-      const result = exit(reason, code, text);
+      const result = exit(reason, code, said);
       this.#resolveExit(result);
       return result;
     })();
