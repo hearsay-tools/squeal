@@ -2419,12 +2419,12 @@ function hasIndexes(conn, ...names3) {
 
 // src/core/store/loaded-modules.ts
 var LOADED_MODULES_TABLE = "loaded_modules";
-function* dropOrphanLoadedModules(conn) {
+function* emptyLoadedModules(conn) {
   if (!conn.read(() => hasLoadedModulesTable(conn))) return;
   yield* deleteByKey(conn, {
     table: LOADED_MODULES_TABLE,
     key: ["project", "path", "key"],
-    search: `NOT EXISTS (SELECT 1 FROM results r WHERE r.key = ${LOADED_MODULES_TABLE}.key)`
+    search: "1"
   });
 }
 function hasLoadedModulesTable(conn) {
@@ -2690,7 +2690,7 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
   if (options.maxSizeMb !== null) {
     yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
   }
-  yield* dropOrphanLoadedModules(conn);
+  yield* emptyLoadedModules(conn);
   yield* dropRuns(conn, paths, cutoff, counts);
   yield* dropEndedCheckpoints(conn, cutoff, counts);
   yield* dropUnusedChecks(conn, counts);
@@ -13230,7 +13230,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.590";
+  if (true) return "0.1.591";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
