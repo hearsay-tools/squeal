@@ -1,0 +1,95 @@
+profile 75.6 s wall, window 75.6 s
+
+by area
+  65.53 s  (idle)
+   5.13 s  squeal.mjs
+   1.07 s  (gc)
+   0.92 s  node:zlib
+   0.78 s  native:lstat
+   0.47 s  (program)
+   0.37 s  node:child_process
+   0.15 s  node:fs/promises
+   0.13 s  node:path
+   0.11 s  node:timers
+   0.09 s  node:modules/esm
+   0.08 s  native:writeUtf8String
+   0.07 s  node:buffer
+   0.06 s  node:process/task_queues
+   0.05 s  node:streams/readable
+
+by nearest named squeal function (busy only)
+   2.27 s  (none)
+   1.38 s  encodeImports
+   0.92 s  set
+   0.53 s  push
+   0.46 s  runGit
+   0.43 s  stat
+   0.39 s  changes
+   0.35 s  acquire
+   0.28 s  lstatOrNull2
+   0.25 s  hashOf
+   0.25 s  setClosure
+   0.22 s  transaction
+   0.19 s  isLinkedDir
+   0.12 s  toAbsolute
+   0.11 s  write
+   0.08 s  readCleanIndexHashes
+   0.08 s  assembleClosure
+   0.07 s  #withinSlice
+   0.06 s  put
+   0.06 s  for
+   0.06 s  #receive
+   0.05 s  keyFromSegments
+   0.05 s  of
+   0.05 s  splitNul
+   0.05 s  isInside
+   0.05 s  arm
+   0.04 s  all
+   0.04 s  hasGitEntry
+   0.04 s  encodeSegment
+   0.04 s  resolveClosures
+
+by self function
+  65.53 s  (idle) :-1
+   1.07 s  (garbage collector) :-1
+   0.90 s  set squeal.mjs:744
+   0.89 s  processChunkSync node:zlib:420
+   0.78 s  lstat :-1
+   0.53 s  push squeal.mjs:69279
+   0.47 s  (program) :-1
+   0.42 s  encodeImports squeal.mjs:14690
+   0.39 s  changes squeal.mjs:1082
+   0.35 s  acquire squeal.mjs:27993
+   0.34 s  spawn child_process:384
+   0.25 s  hashOf squeal.mjs:10629
+   0.18 s  transaction squeal.mjs:1099
+   0.13 s  join node:path:1328
+   0.10 s  setClosure squeal.mjs:27894
+   0.10 s  (anon) squeal.mjs:27898
+   0.09 s  compileSourceTextModule utils:316
+   0.08 s  writeUtf8String :-1
+   0.08 s  readCleanIndexHashes squeal.mjs:25981
+   0.08 s  assembleClosure squeal.mjs:2946
+   0.07 s  lstat promises:1734
+   0.07 s  (anon) squeal.mjs:1103
+   0.06 s  put squeal.mjs:6143
+   0.06 s  handleErrorFromBinding promises:178
+   0.05 s  toAbsolute squeal.mjs:10205
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 3.4 | (none) 0.5 | stat 0.4 | isLinkedDir 0.2
+   5 s: (idle) 4.8 | (none) 0.0 | push 0.0 | acquire 0.0
+  10 s: (idle) 4.5 | (none) 0.1 | push 0.1 | #withinSlice 0.1
+  15 s: (idle) 4.5 | (none) 0.1 | set 0.1 | push 0.1
+  20 s: (idle) 4.6 | (none) 0.2 | set 0.1 | acquire 0.0
+  25 s: (idle) 4.7 | set 0.1 | (none) 0.1 | push 0.0
+  30 s: (idle) 4.4 | set 0.2 | (none) 0.1 | acquire 0.1
+  35 s: (idle) 4.5 | (none) 0.1 | set 0.1 | push 0.1
+  40 s: (idle) 4.5 | set 0.1 | (none) 0.1 | push 0.1
+  45 s: (idle) 4.5 | (none) 0.1 | set 0.1 | push 0.1
+  50 s: (idle) 3.0 | encodeImports 1.0 | (none) 0.3 | changes 0.3
+  55 s: (idle) 3.1 | encodeImports 0.4 | (none) 0.3 | lstatOrNull2 0.3
+  60 s: (idle) 4.6 | (none) 0.1 | runGit 0.1 | stat 0.0
+  65 s: (idle) 5.0 | truncateWal 0.0 | (none) 0.0 | groupView 0.0
+  70 s: (idle) 4.9 | (none) 0.0 | runGit 0.0 | lifeOf 0.0
+  75 s: (idle) 0.6 | clearFolder 0.0 | (none) 0.0 | runGit 0.0

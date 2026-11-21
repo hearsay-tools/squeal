@@ -1,0 +1,89 @@
+profile 46.2 s wall, window 46.2 s
+
+by area
+  37.75 s  (idle)
+   2.14 s  node.js
+   1.22 s  parse-Bgfg7ZwM.mjs
+   0.66 s  resolve-tsconfig-AhZdsp4x.mjs
+   0.56 s  squeal.mjs
+   0.54 s  (program)
+   0.53 s  (gc)
+   0.31 s  native:lstat
+   0.31 s  normalize-string-or-regex-B8U5_Ikr.mjs
+   0.29 s  node:crypto/hash
+   0.21 s  node:child_process
+   0.18 s  native:read
+   0.15 s  native:openFileHandle
+   0.15 s  native:close
+   0.15 s  native:fstat
+
+by nearest named squeal function (busy only)
+   4.45 s  (none)
+   0.99 s  jsonParseAst
+   0.66 s  transformSync
+   0.31 s  invokeBuiltinHook
+   0.28 s  matches4
+   0.25 s  blobHash
+   0.20 s  runGit
+   0.12 s  stat
+   0.11 s  walk
+   0.08 s  loadVitest
+   0.07 s  isLinkedDir
+   0.07 s  parseSync
+   0.07 s  get program
+   0.06 s  parse
+   0.06 s  readStamp
+   0.04 s  statOrNull2
+   0.02 s  toAbsolute
+   0.02 s  applyFix
+   0.02 s  splitNul
+   0.02 s  settle3
+   0.02 s  readCleanIndexHashes
+   0.02 s  blobsOfTree
+   0.02 s  checkoutChange
+   0.02 s  close
+   0.02 s  changes
+   0.02 s  select3
+   0.02 s  toRelative
+   0.02 s  compile
+   0.01 s  requestDaemon
+   0.01 s  commitEntries
+
+by self function
+  37.75 s  (idle) :-1
+   0.99 s  jsonParseAst parse-Bgfg7ZwM.mjs:25
+   0.66 s  transformSync resolve-tsconfig-AhZdsp4x.mjs:101
+   0.54 s  (program) :-1
+   0.53 s  (garbage collector) :-1
+   0.31 s  lstat :-1
+   0.31 s  invokeBuiltinHook normalize-string-or-regex-B8U5_Ikr.mjs:42
+   0.24 s  update hash:185
+   0.23 s  visit node.js:15935
+   0.21 s  spawn child_process:384
+   0.18 s  read :-1
+   0.17 s  enter node.js:16571
+   0.15 s  openFileHandle :-1
+   0.15 s  close :-1
+   0.15 s  fstat :-1
+   0.13 s  addUneditedChunk node.js:3875
+   0.12 s  i node.js:7243
+   0.11 s  walk squeal.mjs:48244
+   0.10 s  traceMappings node.js:1544
+   0.10 s  compileSourceTextModule utils:316
+   0.08 s  traceSegment node.js:1339
+   0.07 s  resolveId node.js:8416
+   0.07 s  parseSync parse-Bgfg7ZwM.mjs:69
+   0.07 s  get program parse-Bgfg7ZwM.mjs:7
+   0.06 s  (anon) node.js:16555
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 1.9 | (none) 1.4 | matches4 0.3 | blobHash 0.2
+   5 s: (none) 2.8 | jsonParseAst 0.7 | transformSync 0.5 | (idle) 0.4
+  10 s: (idle) 4.6 | (none) 0.1 | runGit 0.1 | transformSync 0.0
+  15 s: (idle) 4.9 | (none) 0.1 | get 0.0 | str 0.0
+  20 s: (idle) 5.0 | (none) 0.0 | requestDaemon 0.0 | settle3 0.0
+  25 s: (idle) 5.0 | (none) 0.0 | socketBound 0.0
+  30 s: (idle) 5.0 | (none) 0.0 | settle3 0.0
+  35 s: (idle) 5.0 | (none) 0.0 | requestDaemon 0.0
+  40 s: (idle) 5.0 | (none) 0.0 | all 0.0 | pragmaNumber2 0.0
+  45 s: (idle) 1.2 | runGit 0.0 | toKnownState 0.0 | (none) 0.0
