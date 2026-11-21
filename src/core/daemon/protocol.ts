@@ -92,6 +92,9 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "hold-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "hold-status", requestId: request.requestId };
+    case "take-back":
+    case "take-back-status":
+      return parseTakeBack(request);
     case "promote": {
       const { testFiles, withinMs } = request;
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
@@ -120,6 +123,19 @@ export function parseRequest(line: string): DaemonRequest | string {
     default:
       return parseWriteRequest(request) ?? `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+
+/** Row 023-34 (T1): `take-back` with its covered-files ids, or its status by request id. */
+function parseTakeBack(request: Record<string, unknown>): DaemonRequest | string {
+  if (request.type === "take-back-status") {
+    if (typeof request.requestId !== "string") return '"requestId" must be a string';
+    return { type: "take-back-status", requestId: request.requestId };
+  }
+  const { coveredIds } = request;
+  if (!Array.isArray(coveredIds) || !coveredIds.every(isText)) {
+    return '"coveredIds" must be a list of non-empty strings';
+  }
+  return { type: "take-back", coveredIds: [...coveredIds] };
 }
 
 /** Row 011-234: a sync with a named wait's source paths, whose readers its answer names. */

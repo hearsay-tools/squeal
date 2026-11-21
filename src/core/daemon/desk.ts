@@ -12,7 +12,7 @@ import type {
   SentBatch,
 } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
+import type { FullSuiteCheckpoint, FullSuiteRequest, TakeBackResult } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import { GROUP_NOT_SUPPORTED, type GroupRequested, type Held, MainSteps } from "./run-group.js";
@@ -74,6 +74,8 @@ export interface DeskEvents {
   readonly requestHold?: () => Promise<boolean>;
   /** `squeal hold` ended, or `squeal start`: the command holds read again. */
   readonly requestResume?: () => Promise<void>;
+  /** Row 023-34 (T1): `Scheduler.takeBack`; absent: the daemon answers it cannot take back. */
+  readonly requestTakeBack?: (coveredIds: readonly string[]) => Promise<TakeBackResult>;
   /**
    * Spec 021 D15 (row 021-16): writes a batch a hook or command sent, in
    * the retried path; rejects with why not. Absent, or without
@@ -207,6 +209,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestGroup,
     requestHold,
     requestResume,
+    requestTakeBack,
     requestWrite,
     requestImport,
     requestKeep,
@@ -223,6 +226,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestSync: asked(events.requestSync),
     ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
+    ...(requestTakeBack === undefined ? {} : { requestTakeBack: asked(requestTakeBack) }),
     ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
     ...(requestImport === undefined ? {} : { requestImport: asked(requestImport) }),
     ...(requestKeep === undefined ? {} : { requestKeep: asked(requestKeep) }),
@@ -357,6 +361,21 @@ async function inWorker(
         case "resume":
           events.requestResume?.().catch(() => {});
           return;
+        case "take-back":
+          (
+            events.requestTakeBack?.(message.coveredIds) ??
+            Promise.reject(new Error("this daemon cannot take back"))
+          ).then(
+            (result) => post({ type: "take-back-result", id: message.id, result, error: null }),
+            (error: unknown) =>
+              post({
+                type: "take-back-result",
+                id: message.id,
+                result: null,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+          );
+          return;
         case "write":
           (events.requestWrite?.(message.batch) ?? Promise.reject(new Error(NO_WRITES))).then(
             () => post({ type: "write-result", id: message.id, error: null }),
@@ -439,6 +458,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestSync: events.requestSync,
       ...(events.requestHold === undefined ? {} : { requestHold: events.requestHold }),
       ...(events.requestResume === undefined ? {} : { requestResume: events.requestResume }),
+      ...(events.requestTakeBack === undefined ? {} : { requestTakeBack: events.requestTakeBack }),
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),
       ...(events.requestRetries === undefined ? {} : { requestRetries: events.requestRetries }),

@@ -43,6 +43,7 @@ import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
   StoppedProcesses,
+  TakeBackResult,
 } from "../types/scheduler.js";
 import { markScanned } from "./bootstrapped.js";
 import { DaemonWrites, SHUTDOWN_WRITE_MS, within } from "./busy-writes.js";
@@ -1087,6 +1088,7 @@ class Daemon {
           this.#requestFocus(testFiles, texts, withinMs),
         requestHold: watch(() => this.#requestHold()),
         requestResume: watch(async () => void (await this.#requestHold())),
+        requestTakeBack: watch((coveredIds) => this.#requestTakeBack(coveredIds)),
         // Spec 021 D15 (row 021-16): a hook's or a command's writes, in the retried path of D2.
         requestWrite: watch((batch) =>
           this.#writes.write(
@@ -1169,6 +1171,17 @@ class Daemon {
     // Row 018-28: an import's observed entries key this worktree's files now, as a start would.
     await this.#imports?.take((projects, imports) => scheduler.requestImports(projects, imports));
     await scheduler.requestRetries();
+  }
+
+  /**
+   * Row 023-34 (T1): `status --at --run` gives back what its narrow runs
+   * queued; a scheduler before it, or one not started, takes nothing.
+   */
+  async #requestTakeBack(coveredIds: readonly string[]): Promise<TakeBackResult> {
+    await this.#starting;
+    const takeBack = this.#loop?.scheduler.takeBack;
+    if (this.#loop === null || takeBack === undefined) return { takenBack: 0, running: 0, kept: 0 };
+    return takeBack.call(this.#loop.scheduler, coveredIds);
   }
 
   /** Spec 011 C15: a named wait promotes its test files for `withinMs`. */
