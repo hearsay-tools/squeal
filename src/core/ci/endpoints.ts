@@ -1,13 +1,17 @@
-import { readdir } from "node:fs/promises";
-import { join } from "node:path";
 import { performance } from "node:perf_hooks";
-import { FILE_CONCURRENCY, mapConcurrent } from "../fs/concurrency.js";
+import { FILE_CONCURRENCY } from "../fs/concurrency.js";
 import { hashFile, type ObjectFormat } from "../hash/blob.js";
-import { ABSENT_LISTING, listedDirectory, namesHash } from "../keys/observed.js";
-import { gitHead } from "../status/git-head.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
-import { committedInputs, hereOf, type InputEvidence } from "./inputs.js";
+import { hashInChild } from "./endpoints-child.js";
+import {
+  type Clock,
+  type EndHashes,
+  type EndWork,
+  hashEnd,
+  type ReadFile,
+} from "./endpoints-hash.js";
+import type { InputEvidence } from "./inputs.js";
 import { ownMap } from "./own-map.js";
 
 /*
@@ -33,6 +37,10 @@ import { ownMap } from "./own-map.js";
  * read stops the count, so the projection, and with it the limit, stops
  * growing. Past the limit the end reads no further path and gives its
  * reason: the part has no endpoint hashes, and the export keeps D9 alone.
+ *
+ * Row 018-67 (review 0.1.585 S1): in `ci record`, each end runs in a child
+ * process (`endpoints-child.ts`), killed past the limit, so a read that
+ * never ends holds that child and not `ci record`'s process.
  */
 
 /** When one end's hashing gives up (row 018-61): `max(floorMs, multiple × projected)`. */
@@ -51,8 +59,15 @@ export const HASHING_LIMIT: HashingLimit = { floorMs: 10_000, multiple: 4 };
 /** How `endpointsBefore` and `endpointsAfter` read; tests give a small limit and a stalled read. */
 export interface EndpointsOptions {
   readonly limit?: HashingLimit;
-  /** A file's blob id (`null`: no file); default `hashFile`. */
-  readonly hashFile?: (path: AbsolutePath, format: ObjectFormat) => Promise<FileHash | null>;
+  /**
+   * The command that starts this CLI again (`CliIo.relaunch`). Row 018-67:
+   * each end then hashes in a child process of it, killed past the limit,
+   * so a read the operating system never ends cannot hold this process
+   * open. Without it, each end hashes in this process.
+   */
+  readonly relaunch?: readonly string[];
+  /** A file's blob id (`null`: no file), in this process only; default `hashFile`. */
+  readonly hashFile?: ReadFile;
 }
 
 /** What the hashes before the command hold, for `endpointsAfter`. */
@@ -61,7 +76,8 @@ export interface EndpointsBefore {
   readonly format: ObjectFormat;
   readonly commit: string;
   readonly paths: readonly RelativePath[];
-  readonly at: (path: RelativePath) => FileHash | null;
+  /** Each path's hash at the commit (`atCommit`), by `paths`' index. */
+  readonly committed: readonly (FileHash | null)[];
   readonly hashes: readonly (FileHash | null)[];
   readonly ms: number;
   readonly options: EndpointsOptions;
@@ -75,20 +91,16 @@ export interface Endpoints {
 }
 
 /** The hashes of `root` before the command; why none when it has no commit or passed its limit. */
-export function endpointsBefore(
+export async function endpointsBefore(
   root: AbsolutePath,
   format: ObjectFormat,
   options: EndpointsOptions = {},
 ): Promise<EndpointsBefore | string> {
-  return limited(options.limit ?? HASHING_LIMIT, async (clock) => {
-    const start = performance.now();
-    const commit = await gitHead(root);
-    if (commit === null)
-      return "the checkout has no commit, so no input is certified by its hashes";
-    const { paths, at } = await committedInputs(root, commit);
-    const hashes = await hashAll(root, format, paths, options, clock);
-    return { root, format, commit, paths, at, hashes, ms: performance.now() - start, options };
-  });
+  const start = performance.now();
+  const end = await endOf({ root, format, commit: null }, options);
+  if (typeof end === "string") return end;
+  const { commit, paths, committed = [], hashes } = end;
+  return { root, format, commit, paths, committed, hashes, ms: performance.now() - start, options };
 }
 
 /**
@@ -97,22 +109,17 @@ export function endpointsBefore(
  * that hash; `unstable` each path whose two hashes differ. Why none when
  * `HEAD` moved during the command: the part names another commit.
  */
-export function endpointsAfter(before: EndpointsBefore): Promise<Endpoints | string> {
-  return limited(before.options.limit ?? HASHING_LIMIT, (clock) => compareEnds(before, clock));
-}
-
-async function compareEnds(before: EndpointsBefore, clock: Clock): Promise<Endpoints | string> {
+export async function endpointsAfter(before: EndpointsBefore): Promise<Endpoints | string> {
   const start = performance.now();
-  const { root, format, commit, paths, at, hashes, options } = before;
-  const head = await gitHead(root);
-  if (head !== commit) return `HEAD moved during the command (${commit} to ${head ?? "none"})`;
-  const after = await hashAll(root, format, paths, options, clock);
+  const { root, format, commit, paths, committed, hashes, options } = before;
+  const end = await endOf({ root, format, commit, paths }, options);
+  if (typeof end === "string") return end;
   const stable: [RelativePath, FileHash | null][] = [];
   const unstable: RelativePath[] = [];
   paths.forEach((path, index) => {
     const hash = hashes[index] ?? null;
-    if (hash !== (after[index] ?? null)) unstable.push(path);
-    else if (hash !== at(path)) stable.push([path, hash]);
+    if (hash !== (end.hashes[index] ?? null)) unstable.push(path);
+    else if (hash !== (committed[index] ?? null)) stable.push([path, hash]);
   });
   return {
     stable: ownMap(stable),
@@ -121,22 +128,27 @@ async function compareEnds(before: EndpointsBefore, clock: Clock): Promise<Endpo
   };
 }
 
-/** What one end's hashing tells its limit, and whether the limit passed. */
-interface Clock {
-  /** The hashing of `total` paths begins. */
-  begin(total: number): void;
-  /** One more path is hashed. */
-  hashed(): void;
-  readonly over: boolean;
+/** One end under its limit, in a child of `options.relaunch` or in this process. */
+function endOf(work: EndWork, options: EndpointsOptions): Promise<EndHashes | string> {
+  const { relaunch } = options;
+  const read = options.hashFile ?? hashFile;
+  return limited(options.limit ?? HASHING_LIMIT, (clock, stop) =>
+    relaunch === undefined ? hashEnd(work, read, clock) : hashInChild(relaunch, work, clock, stop),
+  );
 }
 
 /**
  * `work` under `limit` (row 018-61): its result, or why it gave up once the
  * time since it began passed the limit. Past the limit, `work` reads no
- * further path; a read already started is left to end on its own.
+ * further path, and `stop` aborts: a child doing it is killed (row 018-67).
+ * In this process, a read already started is left to end on its own.
  */
-function limited<T>(limit: HashingLimit, work: (clock: Clock) => Promise<T>): Promise<T | string> {
+function limited<T>(
+  limit: HashingLimit,
+  work: (clock: Clock, stop: AbortSignal) => Promise<T>,
+): Promise<T | string> {
   const start = performance.now();
+  const stop = new AbortController();
   let total = 0;
   let begun = 0;
   let done = 0;
@@ -152,8 +164,8 @@ function limited<T>(limit: HashingLimit, work: (clock: Clock) => Promise<T>): Pr
       total = count;
       begun = performance.now();
     },
-    hashed() {
-      done++;
+    hashed(count: number) {
+      done += count;
       lastDone = performance.now();
     },
   };
@@ -169,9 +181,10 @@ function limited<T>(limit: HashingLimit, work: (clock: Clock) => Promise<T>): Pr
       const seconds = (allowed() / 1000).toFixed(1);
       const progress = begun === 0 ? "before it listed the paths" : `${done} of ${total} paths`;
       resolve(`hashing the checkout passed its limit of ${seconds} s (${progress})`);
+      stop.abort();
     };
     timer = setTimeout(check, limit.floorMs);
-    work(clock).then(
+    work(clock, stop.signal).then(
       (value) => {
         clearTimeout(timer);
         resolve(value);
@@ -182,33 +195,4 @@ function limited<T>(limit: HashingLimit, work: (clock: Clock) => Promise<T>): Pr
       },
     );
   });
-}
-
-async function hashAll(
-  root: AbsolutePath,
-  format: ObjectFormat,
-  paths: readonly RelativePath[],
-  options: EndpointsOptions,
-  clock: Clock,
-): Promise<(FileHash | null)[]> {
-  const read = options.hashFile ?? hashFile;
-  const here = hereOf(root, (path) => read(join(root, path), format));
-  clock.begin(paths.length);
-  return mapConcurrent(paths, async (path) => {
-    if (clock.over) return null;
-    const directory = listedDirectory(path);
-    // A listing is read like a file, without blocking the limit's timer (`listingHash`'s rule).
-    const hash = directory === null ? await here(path) : await listingOf(root, directory);
-    clock.hashed();
-    return hash;
-  });
-}
-
-/** `listingHash`, read asynchronously. */
-async function listingOf(root: AbsolutePath, directory: RelativePath): Promise<FileHash> {
-  try {
-    return namesHash(await readdir(join(root, directory)));
-  } catch {
-    return ABSENT_LISTING;
-  }
 }

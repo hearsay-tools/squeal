@@ -249,3 +249,5 @@ test/ci/export-node-test-parity
 # node:test runs on inputs named like Object members.
 test/ci/export-object-names
 test/cli/status-at-not-selected.test.ts
+# Row 018-67 (review 0.1.585 S1): ci record of a real node:test run exits past a stalled read.
+test/ci/record-exit
