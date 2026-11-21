@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname, extname, join, sep } from "node:path";
+import { dirname, extname, join, resolve as resolvePath, sep } from "node:path";
 import enhanced from "enhanced-resolve";
 import type { AbsolutePath } from "../../../core/types/common.js";
 import type { LoaderChain } from "./loader-chain.js";
@@ -36,6 +36,11 @@ export interface Resolver {
    * CommonJS, so its static imports resolve with the `require` conditions.
    */
   moduleFormat(file: AbsolutePath): ModuleFormat;
+  /**
+   * Row 018-62, b1: the one tsconfig tsx loads for the process, with its
+   * `extends` chain; `null` under Node's own rules or when there is none.
+   */
+  projectTsconfig(): TsconfigPaths | null;
   /** Releases build-only filesystem and resolver caches; keeps compact lookup summaries for edits. */
   release(): void;
   /** Drops every cached stat, read and resolver (D4: on add, delete, manifest change). */
@@ -59,19 +64,32 @@ const MODULE = /\.m[jt]s$/;
 
 const BUILTIN: Resolution = { path: null, builtin: true, reads: [], candidates: [], pair: null };
 
+/** Where tsx finds its tsconfig: the process's directory, or `TSX_TSCONFIG_PATH`. */
+export interface TsconfigSource {
+  /** The project's `cwd`; the worktree root when not given. */
+  readonly cwd?: AbsolutePath;
+  /** The project's `TSX_TSCONFIG_PATH`, relative to `cwd` when not absolute. */
+  readonly tsconfigPath?: string | undefined;
+}
+
 /**
- * One enhanced-resolve resolver per `(tsconfig, import|require)`, configured
- * from the project's loader chain (spec 003 D3), over one
- * `CachedInputFileSystem`. The tsconfig of an importer is found by upward
- * lookup, stopping at the worktree root; Node's own rules ignore it.
+ * One enhanced-resolve resolver per `import|require`, configured from the
+ * project's loader chain (spec 003 D3), over one `CachedInputFileSystem`.
+ * Row 018-62, b1: as tsx 4 does, one tsconfig serves every importer:
+ * `TSX_TSCONFIG_PATH`, else the nearest `tsconfig.json` from `cwd` up,
+ * stopping at the worktree root. Node's own rules ignore it.
  */
-export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver {
+export function createResolver(
+  chain: LoaderChain,
+  root: AbsolutePath,
+  source: TsconfigSource = {},
+): Resolver {
   let fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
   let resolvers = new Map<string, ReturnType<typeof enhanced.ResolverFactory.createResolver>>();
-  let tsconfigs = new Map<string, AbsolutePath | null>();
   let realpaths = new Map<string, AbsolutePath | null>();
   let resolutions = new Map<string, Resolution>();
   let tsconfigPaths = new Map<AbsolutePath, TsconfigPaths>();
+  let project: { tsconfig: TsconfigPaths | null } | null = null;
   let scopes = new Map<string, ModuleFormat>();
   const tsx = chain.rules === "tsx";
 
@@ -136,15 +154,20 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     }
     return found;
   };
-  const tsconfigFor = (dir: string): AbsolutePath | null => {
-    let found = tsconfigs.get(dir);
-    if (found === undefined) {
-      const here = join(dir, "tsconfig.json");
-      const parent = dirname(dir);
-      found = exists(here) ? here : dir === root || parent === dir ? null : tsconfigFor(parent);
-      tsconfigs.set(dir, found);
+  const projectTsconfig = (): TsconfigPaths | null => {
+    if (project === null) {
+      const cwd = source.cwd ?? root;
+      const file = source.tsconfigPath ? resolvePath(cwd, source.tsconfigPath) : tsconfigFor(cwd);
+      project = { tsconfig: tsx && file !== null ? chainOf(file) : null };
     }
-    return found;
+    return project.tsconfig;
+  };
+  const tsconfigFor = (dir: string): AbsolutePath | null => {
+    for (let at = dir; ; at = dirname(at)) {
+      const here = join(at, "tsconfig.json");
+      if (exists(here)) return here;
+      if (at === root || dirname(at) === at) return null;
+    }
   };
   /**
    * S1: enhanced-resolve reads inherited `paths` relative to the config it
@@ -209,6 +232,7 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
       if (MODULE.test(file)) return { format: "module", manifest: null };
       return scopeOf(dirname(file));
     },
+    projectTsconfig,
     release() {
       fileSystem.purge();
       resolvers.clear();
@@ -216,29 +240,33 @@ export function createResolver(chain: LoaderChain, root: AbsolutePath): Resolver
     clear() {
       fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
       resolvers = new Map();
-      tsconfigs = new Map();
       realpaths = new Map();
       resolutions = new Map();
       tsconfigPaths = new Map();
+      project = null;
       scopes = new Map();
     },
   };
 
   function resolveFrom(specifier: string, from: AbsolutePath, kind: EdgeKind): Resolution {
-    const tsconfig = tsx ? tsconfigFor(from) : null;
-    const paths = tsconfig === null ? null : chainOf(tsconfig);
+    const paths = projectTsconfig();
     const resolver = resolverFor(paths, kind);
     const context = {
       fileDependencies: new Set<string>(),
       missingDependencies: new Set<string>(),
       contextDependencies: new Set<string>(),
     };
-    let target: string | false;
+    // Row 018-62, b4: the file, not the `?query#hash` enhanced-resolve appends, as Node loads it.
+    // `useSyncFileSystemCalls` calls back before `resolve` returns.
+    const found: { path: string | false } = { path: false };
     try {
-      target = resolver.resolveSync({}, from, specifier, context);
+      resolver.resolve({}, from, specifier, context, (error, _result, request) => {
+        found.path = error || request === undefined ? false : request.path;
+      });
     } catch {
-      target = false;
+      found.path = false;
     }
+    const target = found.path;
     // `symlinks: true` already gives the target's real path.
     const path = target === false ? null : target;
     const reads = new Set<AbsolutePath>((paths?.files ?? []).filter(inWorktree));

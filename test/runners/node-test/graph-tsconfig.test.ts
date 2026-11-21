@@ -44,6 +44,7 @@ describe("node-test graph: the tsconfig extends chain (S1)", () => {
       pathsFile: join(root, "tsconfig.base.json"),
       baseUrl: null,
       files: [join(root, "app/tsconfig.json"), join(root, "tsconfig.base.json")],
+      keepsValueImports: false,
     });
   });
 
@@ -74,6 +75,7 @@ describe("node-test graph: the tsconfig extends chain (S1)", () => {
         join(root, "first.json"),
         join(root, "second.json"),
       ],
+      keepsValueImports: false,
     });
   });
 
@@ -102,7 +104,7 @@ describe("node-test graph: the tsconfig extends chain (S1)", () => {
       "tsconfig.base.json": '{ "compilerOptions": { "baseUrl": "./src" } }',
       "tsconfig.json": '{ "extends": "./tsconfig.base.json" }',
       "src/util/x.ts": "export const x = 1;\n",
-      "test/a.test.ts": 'import { x } from "util/x";\n',
+      "test/a.test.ts": 'import { x } from "util/x";\nexport const y = x;\n',
     });
     const graph = await createNodeTestGraph({
       root,

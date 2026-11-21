@@ -17,6 +17,8 @@ export interface NodeTestGraphOptions {
   readonly argv: readonly string[];
   /** The project's test files, relative to `root`. */
   readonly testFiles: readonly RelativePath[];
+  /** Row 018-62, b1: the project's `TSX_TSCONFIG_PATH`, the tsconfig tsx loads in place of the one found from `cwd`. */
+  readonly tsconfigPath?: string | undefined;
 }
 
 /**
@@ -66,7 +68,8 @@ export async function createNodeTestGraph(options: NodeTestGraphOptions): Promis
   const root = realpathSync(options.root);
   const cwd = realpathSync(options.cwd);
   const chain = readLoaderChain(options.argv);
-  const graph = new Graph(root, cwd, chain, createResolver(chain, root));
+  const resolver = createResolver(chain, root, { cwd, tsconfigPath: options.tsconfigPath });
+  const graph = new Graph(root, cwd, chain, resolver);
   graph.build(options.testFiles);
   const loaderNotes = () => [
     ...chain.unrecognized.map(

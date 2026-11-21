@@ -39,7 +39,8 @@ const FILES: Readonly<Record<string, string>> = {
   "packages/ws/index.js": "export const ws = 1;\n",
   "lib/helper.ts": `import { deep } from "deep";\nexport const helper = deep;\n`,
   "lib/alias.ts": "export const alias = 1;\n",
-  "test/plain.test.ts": `import { test } from "node:test";\nimport { helper } from "../lib/helper.ts";\n`,
+  // Row 018-62, b2: each binding is used, or tsx's esbuild drops its import.
+  "test/plain.test.ts": `import { test } from "node:test";\nimport { helper } from "../lib/helper.ts";\nexport { test, helper };\n`,
   "test/forms.test.ts": [
     `import { readFile } from "node:fs/promises";`,
     `import path from "path";`,
@@ -51,6 +52,7 @@ const FILES: Readonly<Record<string, string>> = {
     `import { ws } from "ws";`,
     `import { alias } from "@app/alias.ts";`,
     `import { missing } from "not-installed";`,
+    "export { readFile, path, ext, sub, x, manifest, ws, alias, missing };",
     "",
   ].join("\n"),
   "test/installed.test.ts": [
@@ -58,13 +60,14 @@ const FILES: Readonly<Record<string, string>> = {
     `import { q } from "../node_modules/@s/p/node_modules/q/index.js";`,
     `import { tool } from "../node_modules/.bin/tool.js";`,
     `import manifest from "../node_modules/ext/package.json" with { type: "json" };`,
+    "export { ext, q, tool, manifest };",
     "",
   ].join("\n"),
   "test/computed.test.ts": "const name = 'ext';\nawait import(name);\n",
   "test/resolve.test.ts": 'import.meta.resolve("ext");\n',
   "test/relative.test.ts": 'require.resolve("./data.json");\n',
   "test/required.test.ts": 'require.resolve("ext");\n',
-  "scripts/setup.ts": `import { setup } from "setup-pkg";\nimport "node:assert";\n`,
+  "scripts/setup.ts": `import { setup } from "setup-pkg";\nimport "node:assert";\nexport { setup };\n`,
 };
 
 function repo(): string {
