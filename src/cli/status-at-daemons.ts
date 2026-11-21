@@ -16,6 +16,7 @@ import { DAEMON_SOCKET_TIMEOUT_MS, type RunGroupPathsRequest } from "../core/typ
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonSocket } from "./daemon-access.js";
 import { takenRequest } from "./run-group.js";
+import { joinRequestAt, type RecordedJoins, recordedAt } from "./status-at-join.js";
 import {
   claimWait,
   lockHolder,
@@ -24,7 +25,6 @@ import {
   spawnCommitDaemon,
   worktreeStops,
 } from "./status-at-start.js";
-import { joinRequestAt, type RecordedJoins, recordedAt } from "./status-at-join.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 import { runWait } from "./wait/wait.js";
 
