@@ -8,6 +8,7 @@ import {
   endpointsAfter,
   endpointsBefore,
 } from "../core/ci/endpoints.js";
+import { ENDPOINTS_CHILD, serveEnd } from "../core/ci/endpoints-child.js";
 import type { Recorded } from "../core/ci/inputs.js";
 import { type MapWorker, mapWorkerScript } from "../core/code/coverage/mapper.js";
 import { coverageProvider } from "../core/code/coverage/runtime.js";
@@ -66,6 +67,13 @@ export async function ciCommand(
   const [sub, ...rest] = args;
   if (sub === "export") return ciExportCommand(rest, io, deps.tempDir);
   if (sub === "publish") return ciPublishCommand(rest, io);
+  // Row 018-67: hidden; `record` starts it to hash one end of the checkout.
+  if (sub === ENDPOINTS_CHILD) {
+    const served = await serveEnd();
+    if (served !== 0)
+      io.stderr(`squeal ci: ${ENDPOINTS_CHILD} runs only when ci record starts it\n`);
+    return served;
+  }
   if (sub !== "record") {
     io.stderr(`squeal ci: ${sub === undefined ? "no subcommand" : `unknown "${sub}"`}\n${USAGE}`);
     return 2;
@@ -118,9 +126,12 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
   }
   if (typeof started === "string") return unchanged(started);
   const { root } = started;
+  // Row 018-67: each end hashes in a child of this CLI, so a stalled read cannot hold this process.
+  const relaunch = deps.endpoints?.relaunch ?? io.relaunch;
+  const options = { ...deps.endpoints, ...(relaunch === undefined ? {} : { relaunch }) };
   try {
     // Row 018-61: past its limit, an end gives up and the command starts (D20.2).
-    const before = await hashing(() => endpointsBefore(root, started.objectFormat, deps.endpoints));
+    const before = await hashing(() => endpointsBefore(root, started.objectFormat, options));
     const exit = exitOf(await runCommand(args.command, cwd, started.env), say);
     // Spec 018 D30: the second hashes, once the command's processes exited.
     const endpoints =
