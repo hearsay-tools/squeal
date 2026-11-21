@@ -1,10 +1,14 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseAt } from "../../src/cli/status-at.js";
+import type { SideState } from "../../src/cli/status-at-report.js";
 import { runLines } from "../../src/cli/status-at-report-run.js";
-import { clearlyOver, roundsHold } from "../../src/cli/status-at-run-fit.js";
+import type { RunAnswer } from "../../src/cli/status-at-run-child.js";
+import { clearlyOver, measuredOver } from "../../src/cli/status-at-run-fit.js";
+import { runBatches } from "../../src/cli/status-at-run-loop.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { fixture, git, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
@@ -12,8 +16,9 @@ import { check, clean, run, withStore } from "./status-at-kit.js";
 
 /*
  * Row 023-34 (T1, lessons round 5; spec 023 D4.11): when the selection
- * clearly cannot fit, `--run` runs nothing on either side and says how to
- * narrow or force it. In round 5, 1,338 files ran on neither side in
+ * clearly cannot fit, `--run` stops and says how to narrow or force it:
+ * before it runs from stored durations, or (review wave-20 B4) after a
+ * measured first batch when none is stored. In round 5, 1,338 files ran on neither side in
  * time and about 1,300 stayed queued in the agent's daemon. `--timeout`
  * or `--all-missing` runs what fits, as before.
  */
@@ -21,20 +26,27 @@ import { check, clean, run, withStore } from "./status-at-kit.js";
 const estimate = (files: number, seconds: number | null, width = 11) =>
   ({ runner: "vitest", files, seconds, known: seconds === null ? 0 : files, width }) as const;
 
-describe("clearlyOver (T1)", () => {
-  it("is R4's estimate above the cap, or more files with no duration than the budget's rounds hold", () => {
-    // Round 5, s2: 1,338 files, no stored duration, width 11, 300 s: 15 rounds hold 165.
-    expect(clearlyOver(estimate(1338, null), 20_000, 300)).toBe(true);
-    expect(clearlyOver(estimate(165, null), 20_000, 300)).toBe(false);
-    expect(clearlyOver(estimate(166, null), 20_000, 300)).toBe(true);
-    // Round 5, s1: 111 files in squawk ran and answered.
-    expect(clearlyOver(estimate(111, null), 20_000, 300)).toBe(false);
-    // A budget under one round still holds one round.
-    expect(clearlyOver(estimate(11, null), 0, 5)).toBe(false);
+describe("clearlyOver and measuredOver (T1, review wave-20 B4)", () => {
+  it("before a run: only R4's estimate from stored durations above the cap", () => {
     // Stored durations: 79 min is over the 600 s cap; 200 s fits it.
-    expect(clearlyOver(estimate(1338, 79 * 60), 20_000, 300)).toBe(true);
-    expect(clearlyOver(estimate(40, 200), 20_000, 300)).toBe(false);
-    expect(clearlyOver(estimate(0, null), 0, 300)).toBe(false);
+    expect(clearlyOver(estimate(1338, 79 * 60), 20_000)).toBe(true);
+    expect(clearlyOver(estimate(40, 200), 20_000)).toBe(false);
+    // B4: no stored duration tells nothing before a run, however many files.
+    expect(clearlyOver(estimate(1338, null), 20_000)).toBe(false);
+    expect(clearlyOver(estimate(16, null, 1), 0)).toBe(false);
+    expect(clearlyOver(estimate(0, null), 0)).toBe(false);
+  });
+
+  it("after the first batch: the files left at its rate, over the cap", () => {
+    // Round 5, s2: about 11 files in 20 s, 2,665 left on both sides: hours.
+    expect(measuredOver(20_000, 11, 20_000, 2665)).toBe(true);
+    // Round 5, s1: 111 at the commit, 112 now; 14 s overhead and 11 in 20 s: 400 s.
+    expect(measuredOver(14_000, 11, 20_000, 212)).toBe(false);
+    // The B4 witness: one file a batch in about 0.6 s, 31 left.
+    expect(measuredOver(2_000, 1, 600, 31)).toBe(false);
+    // No file ended (a setup failed): nothing is known, the run goes on.
+    expect(measuredOver(20_000, 0, 20_000, 2665)).toBe(false);
+    expect(measuredOver(20_000, 11, null, 2665)).toBe(false);
   });
 
   it("applies only when the call gave neither --timeout nor --all-missing", () => {
@@ -46,35 +58,72 @@ describe("clearlyOver (T1)", () => {
   });
 });
 
-describe("the refusal's words with no stored duration (T1)", () => {
-  it("say about how many files fit here, then R4's line and the forcing call", () => {
-    expect(roundsHold(11, 300)).toBe(165);
-    const lines = runLines(
-      {
-        timeoutSeconds: 300,
-        usedMs: 20_000,
-        gateMs: null,
-        selected: 1338,
-        ran: 0,
-        stored: 0,
-        notStored: [],
-        changed: null,
-        changedBy: null,
-        notRun: 1338,
-        notComparable: 0,
-        timedOut: true,
-        estimate: null,
-        rerun: null,
-        rerunNeeds: { seconds: null, from: "durations" },
-        refused: { force: "squeal status --at HEAD~1 --run --timeout 300", fits: 165 },
+describe("runBatches' goOn (B4)", () => {
+  it("stops after the batch it says no to; the files not started read not run (budget)", async () => {
+    const files = Array.from({ length: 5 }, (_, i) => ref(`test/f${i}.test.ts`));
+    const states = new Map<string, SideState>();
+    const ran: string[][] = [];
+    const told: number[] = [];
+    await runBatches({
+      files,
+      refOf: (f) => f,
+      policy: DEFAULT_POLICY,
+      timeoutSeconds: 300,
+      batchFiles: 2,
+      endMs: performance.now() + 60_000,
+      secondsOf: () => null,
+      run: async (batch) => {
+        ran.push([...batch.paths]);
+        return { error: "unused" } as RunAnswer;
       },
-      "d8abcfe46",
-    );
-    expect(lines).toEqual([
-      "--run ran nothing: the 1338 test files with no result at d8abcfe46 clearly do not fit the 300 s budget (with no stored duration, about 165 fit in 300 s here)",
-      "1338 not run (budget); no file ended in this run and none has a stored duration, so the time they need is unknown; name test files or folders to narrow it",
+      readBack: async () => {},
+      stateOf: (f) => states.get(f.path),
+      setState: (f, state) => states.set(f.path, state),
+      goOn: (ms) => {
+        told.push(ms);
+        return false;
+      },
+    });
+    expect(ran).toEqual([["test/f0.test.ts", "test/f1.test.ts"]]);
+    expect(told).toHaveLength(1);
+  });
+});
+
+describe("the refusal's words (T1)", () => {
+  const use = (refused: { measured: boolean }, ran: number) => ({
+    timeoutSeconds: 300,
+    usedMs: 40_000,
+    gateMs: ran === 0 ? null : 20_000,
+    selected: 1338,
+    ran,
+    stored: ran,
+    notStored: [],
+    changed: null,
+    changedBy: null,
+    notRun: 1338 - ran,
+    notComparable: 0,
+    timedOut: true,
+    estimate: null,
+    rerun: null,
+    rerunNeeds: {
+      seconds: 6000,
+      from: refused.measured ? ("rate" as const) : ("durations" as const),
+    },
+    refused: { force: "squeal status --at HEAD~1 --run --timeout 300", ...refused },
+  });
+
+  it("after a measured first batch: what ran, R4's rate line and the forcing call", () => {
+    expect(runLines(use({ measured: true }, 11), "d8abcfe46")).toEqual([
+      "--run stopped after its first batch: 11 of the 1338 test files with no result at d8abcfe46 ran in its checkout, 11 stored; at the rate it measured, the rest clearly do not fit the 300 s budget",
+      "1327 not run (budget); at this run's rate they need about 100 min; name test files or folders to narrow it",
       "To run what fits anyway: squeal status --at HEAD~1 --run --timeout 300; `--all-missing` runs every file with no result",
     ]);
+  });
+
+  it("from stored durations: nothing ran", () => {
+    expect(runLines(use({ measured: false }, 0), "d8abcfe46")[0]).toBe(
+      "--run ran nothing: the 1338 test files with no result at d8abcfe46 clearly do not fit the 300 s budget",
+    );
   });
 });
 

@@ -49,6 +49,13 @@ export interface BatchLoop<F> {
   readonly readBack: (files: readonly F[], answer: RunAnswer) => Promise<void>;
   readonly stateOf: (file: F) => SideState | undefined;
   readonly setState: (file: F, state: SideState) => void;
+  /**
+   * Row 023-34 (review wave-20 B4): after each batch's read back, whether
+   * the loop goes on, told the children's time so far in ms; `false`
+   * leaves the files not started `not run (budget)`. Absent: it goes on
+   * until the side's end.
+   */
+  readonly goOn?: (gateMs: number) => boolean;
 }
 
 /** One batch: whole paths of one lot, and the files of that lot under them. */
@@ -123,11 +130,8 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
       if (answer.stopped === true) cut = true;
     }
     await loop.readBack(files, answer);
-    const stop = afterSetup(loop, files, answer);
-    if (stop !== null) {
-      stops.push(stop);
-      slots = slots.filter((slot) => !stoppedPath(bySlot.get(slot) ?? [], stops, loop));
-    }
+    slots = afterBatch(loop, { files, answer, slots, bySlot, stops });
+    if (loop.goOn?.(gateMs) === false) break;
   }
   const unstarted = slots.flatMap((slot) => bySlot.get(slot) ?? []);
   if (unstarted.length > 0) {
@@ -139,6 +143,23 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
     afterSetup(loop, unstarted, answer);
   }
   return { gateMs, timedOut: timedOut || cut, cut, batches: batches.ran() };
+}
+
+/** R3 after a batch: its failed setups stop later files of their group; the slots left. */
+function afterBatch<F>(
+  loop: BatchLoop<F>,
+  at: {
+    readonly files: readonly F[];
+    readonly answer: RunAnswer;
+    readonly slots: readonly string[];
+    readonly bySlot: ReadonlyMap<string, readonly F[]>;
+    readonly stops: ((file: F) => SideState | null)[];
+  },
+): string[] {
+  const stop = afterSetup(loop, at.files, at.answer);
+  if (stop === null) return [...at.slots];
+  at.stops.push(stop);
+  return at.slots.filter((slot) => !stoppedPath(at.bySlot.get(slot) ?? [], at.stops, loop));
 }
 
 /** R3: a batch's failed setups: its files' states set; what stops later files; `null` when none. */

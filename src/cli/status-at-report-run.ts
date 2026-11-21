@@ -70,8 +70,8 @@ export interface RunUse {
    */
   readonly refused?: {
     readonly force: string;
-    /** With no stored duration: about how many files fit in the budget here; `null` with durations. */
-    readonly fits: number | null;
+    /** Review wave-20 B4: judged at the rate the first batch measured, not from stored durations. */
+    readonly measured: boolean;
   };
 }
 
@@ -121,13 +121,12 @@ export function runLines(run: RunUse, at: string): string[] {
   const which = unselected === 0 ? "" : " that the change selects";
   // T1: nothing ran, R4's line says why, and the call that forces it.
   if (run.refused !== undefined) {
-    const { fits } = run.refused;
-    const rule =
-      fits === null
-        ? ""
-        : ` (with no stored duration, about ${fits} fit in ${run.timeoutSeconds} s here)`;
+    const files = `${run.selected} test files with no result at ${at}${which}`;
+    const head = run.refused.measured
+      ? `--run stopped after its first batch: ${run.ran} of the ${files} ran in its checkout, ${run.stored} stored; at the rate it measured, the rest clearly do not fit the ${run.timeoutSeconds} s budget`
+      : `--run ran nothing: the ${files} clearly do not fit the ${run.timeoutSeconds} s budget`;
     return [
-      `--run ran nothing: the ${run.selected} test files with no result at ${at}${which} clearly do not fit the ${run.timeoutSeconds} s budget${rule}`,
+      head,
       ...budgetLines(run, at),
       `To run what fits anyway: ${run.refused.force}; \`--all-missing\` runs every file with no result`,
     ];
