@@ -43,7 +43,7 @@ export const CELLS = [
     lists: "none",
   },
   { name: "store-7g-lists1d", files: 500, worktrees: 1, load: 0, ageRounds: 326, lists: "1d" },
-  // Issue 261: mid-session, the worktree brings in a commit that changes 150 of 500 modules.
+  // Issue 261: mid-session, the worktree brings in a commit that changes 125 of 500 modules.
   // ff: nobody ran that commit; ff-known: another worktree ran it first (as a base branch's CI
   // would), so the shared store holds its results; ff-load50: cold on a half-busy machine;
   // ff-rebase: the agent commits its own edits and rebases onto it.

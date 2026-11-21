@@ -37,7 +37,6 @@ import {
   procStat,
   quantile,
   relayLog,
-  rng,
   sleep,
   storeProcessLog,
   storeProcessMeter,
@@ -66,7 +65,7 @@ const { values: o } = parseArgs({
     // worktree ran it first, so the shared store holds its results). --ff-mode merge | rebase.
     ff: { type: "string", default: "none" },
     "ff-mode": { type: "string", default: "merge" },
-    "ff-modules": { type: "string", default: "150" },
+    "ff-modules": { type: "string", default: "125" },
     "ff-at": { type: "string", default: "6" },
     churn: { type: "boolean", default: false },
   },
@@ -456,7 +455,7 @@ function fullCheckSeconds(logDir, since) {
 }
 
 /**
- * Commits a change to `count` modules (seeded, so every run picks the same) on a branch
+ * Commits a change to `count` modules (those with i % 4 === 3, which the session never edits) on a branch
  * `upstream` in a worktree of its own: each gets a comment line at its end, which changes its
  * content and its tests' keys but no result. With `known`, that worktree's own daemon then runs
  * every test file, as a base branch's CI would, and stops; the shared store keeps the results.
@@ -471,9 +470,12 @@ async function makeUpstream(count, known) {
     GIT_COMMITTER_EMAIL: "upstream@example.invalid",
   };
   await timed("git", ["worktree", "add", "-q", "-b", "upstream", up], { cwd: main, env: gitEnv });
-  const random = rng(4261);
-  const chosen = new Set();
-  while (chosen.size < Math.min(count, cell.files)) chosen.add(Math.floor(random() * cell.files));
+  // Every module with i % 4 === 3 (session.mjs leaves those to upstream), at most `count`.
+  const chosen = new Set(
+    Array.from({ length: cell.files }, (_, i) => i)
+      .filter((i) => i % 4 === 3)
+      .slice(0, count),
+  );
   for (const i of chosen) appendFileSync(join(up, `src/m${i}.ts`), `// upstream change ${i}\n`);
   await timed("git", ["add", "-A"], { cwd: up, env: gitEnv });
   await timed("git", ["commit", "-qm", `upstream: ${chosen.size} modules`], {

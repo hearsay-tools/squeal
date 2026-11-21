@@ -201,12 +201,22 @@ async function verdict(path, waitMs) {
 
 const think = () =>
   sleep(Number(o["think-min"]) + random() * (Number(o["think-max"]) - Number(o["think-min"])));
-const pickModule = () => {
+const pickOne = () => {
   // 80% leaves or mid-tree modules, 20% group roots (which fan out to 25 test files).
   if (random() < 0.2) return Math.floor(random() * Math.ceil(files / GROUP)) * GROUP;
   let i;
   do i = Math.floor(random() * files);
   while (i % GROUP === 0);
+  return i;
+};
+// In a fast-forward cell the incoming commit owns every module with i % 4 === 3 (run-cell.mjs,
+// makeUpstream); the agent edits none of them, so its uncommitted edits never block the merge
+// and a rebase never conflicts (2026-11-21: git refused a merge over three such edits).
+const upstreamOwns = (i) => o["ff-at"] !== undefined && i % 4 === 3;
+const pickModule = () => {
+  let i;
+  do i = pickOne();
+  while (upstreamOwns(i));
   return i;
 };
 

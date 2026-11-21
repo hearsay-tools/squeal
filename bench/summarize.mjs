@@ -218,7 +218,7 @@ export const METRICS = [
     warn: 300,
     group: "Verdicts",
   },
-  // Issue 261 (ff cells): the agent brings in a commit that changes 150 of 500 modules.
+  // Issue 261 (ff cells): the agent brings in a commit that changes 125 of 500 modules.
   {
     id: "ff.queued",
     what: "Fast-forward: test files queued 3 s after it",
