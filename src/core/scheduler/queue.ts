@@ -80,6 +80,13 @@ interface Entry {
   catchUp: boolean;
   /** Tokens that ranked a slow entry (004 D2's evidence), gathered until it leaves the queue. */
   evidence: ReadonlySet<string>;
+  /**
+   * Row 023-34 (review wave-20 B1): the `status --at --run` requests the
+   * entry is queued for and nothing else, which a take-back may remove it
+   * for; `null` once anything else queued it (an edit, catch-up, a forced
+   * or ordinary request), so no take-back removes it.
+   */
+  owners: Set<string> | null;
 }
 
 const NO_EVIDENCE: ReadonlySet<string> = new Set();
@@ -169,12 +176,41 @@ export class RunQueue {
    * Nothing joins a running tier; the tier may yield to it (`TierYields`, C4
    * step 5 as amended 2026-10-21, row 011-51).
    */
-  promote(refs: readonly TestFileRef[], until: number, facts?: SelectedFacts): number | null {
-    return this.#promotions.add(refs, until, this.#queued, facts);
+  promote(
+    refs: readonly TestFileRef[],
+    until: number,
+    facts?: SelectedFacts,
+    lead = false,
+  ): number | null {
+    return this.#promotions.add(refs, until, this.#queued, facts, lead);
+  }
+
+  /**
+   * B1: request `owner` queued `ref` (`fresh`: it queued it itself, so the
+   * entry is its own) or found it queued for take-back-able requests only
+   * (it shares it). An entry anything else queued stays nobody's.
+   */
+  claim(ref: TestFileRef, owner: string, fresh: boolean): void {
+    const entry = this.#entries.get(testFileId(ref));
+    if (entry === undefined) return;
+    if (fresh) entry.owners = new Set([owner]);
+    else entry.owners?.add(owner);
+  }
+
+  /**
+   * B1: `owner` gives up `ref`: `"free"` when no request and nothing else
+   * needs its entry any more (the caller dequeues it), `"kept"` when
+   * something does, `"absent"` when it is not queued.
+   */
+  release(ref: TestFileRef, owner: string): "free" | "kept" | "absent" {
+    const entry = this.#entries.get(testFileId(ref));
+    if (entry === undefined) return "absent";
+    if (entry.owners === null || !entry.owners.delete(owner)) return "kept";
+    return entry.owners.size === 0 ? "free" : "kept";
   }
 
   /** Row 023-34 (T1): whether a promotion other than `own` holds `ref` at `now` (`heldElsewhere`). */
-  promotedElsewhere(ref: TestFileRef, own: number | null, now: number): boolean {
+  promotedElsewhere(ref: TestFileRef, own: readonly number[], now: number): boolean {
     return this.#promotions.heldElsewhere(testFileId(ref), own, now);
   }
 
@@ -273,6 +309,8 @@ export class RunQueue {
     const id = testFileId(ref);
     const entry = this.#entries.get(id);
     if (entry) {
+      // B1: queued again for another cause, it is needed whatever its requests do.
+      entry.owners = null;
       entry.priority = Math.min(entry.priority, priority) as Priority;
       entry.forced ||= forced;
       entry.recent ||= recent;
@@ -289,6 +327,7 @@ export class RunQueue {
       recentBy: new Set(recent ? [by] : []),
       catchUp,
       evidence: NO_EVIDENCE,
+      owners: null,
     });
   }
 
@@ -320,13 +359,13 @@ export class RunQueue {
     for (const ref of refs) {
       const id = testFileId(ref);
       const entry = this.#entries.get(id);
-      entries.set(id, entry === undefined ? null : { ...entry });
+      entries.set(id, entry === undefined ? null : copyOf(entry));
     }
     const promotions = this.#promotions.hold();
     return () => {
       for (const [id, entry] of entries) {
         if (entry === null) this.#entries.delete(id);
-        else this.#entries.set(id, { ...entry });
+        else this.#entries.set(id, copyOf(entry));
       }
       promotions();
     };
@@ -601,6 +640,11 @@ export class RunQueue {
     }
     return ranks;
   }
+}
+
+/** An entry with sets of its own, so a rolled-back transaction gets its owners back as they were. */
+function copyOf(entry: Entry): Entry {
+  return { ...entry, owners: entry.owners === null ? null : new Set(entry.owners) };
 }
 
 /** Each group's place in the order, the second group's turn (`backlogTurn`) or not. */

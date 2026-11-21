@@ -244,6 +244,17 @@ export interface NarrowRunRequest extends SlowSuiteRequest {
 }
 
 /**
+ * Row 023-34 (review wave-20 B1-B3): a narrow run of `status --at --run`.
+ * `owner`, the call's own identity, lets its take-back remove what it
+ * queued and cancel what the scheduler has not taken yet; `lead`, the
+ * call named its files, puts them ahead of every earlier batch.
+ */
+export interface NarrowRunOptions {
+  readonly owner?: string;
+  readonly lead?: boolean;
+}
+
+/**
  * Spec 023 D4.11 (row 023-34, T1): what a `take-back` did with the files
  * its narrow runs queued themselves: taken out of the queue, left running,
  * or kept queued (forced, queued again by an edit, or held by another
@@ -387,14 +398,15 @@ export interface Scheduler {
   requestGroupPaths?(
     group: string,
     paths: readonly RelativePath[],
+    options?: NarrowRunOptions,
   ): Promise<NarrowRunRequest | null>;
   /**
-   * Spec 023 D4.11 (row 023-34, T1): takes out of the queue the files the
-   * narrow runs whose covered-files ids are `coveredIds` queued themselves
-   * and that have not started (`takeBackRequest`). Absent: a scheduler
-   * before it.
+   * Spec 023 D4.11 (row 023-34, T1; review wave-20 B3): cancels `owners`
+   * at once, so a narrow run of theirs not taken yet queues nothing, then
+   * takes out of the queue what their narrow runs queued and no one else
+   * needs (`takeBackRequest`). Absent: a scheduler before it.
    */
-  takeBack?(coveredIds: readonly string[]): Promise<TakeBackResult>;
+  takeBack?(owners: readonly string[]): Promise<TakeBackResult>;
   /**
    * Row 011-302: tells `listener` what holds the scheduler's lock at once,
    * then at each change, `null` while nothing does, until the returned
