@@ -46,6 +46,8 @@ export async function startCommand(
   io: CliIo,
   bounds: StopBounds = STOP_BOUNDS,
   busyBoundMs?: number,
+  /** Spec 023 D7.3 as amended (row 023-40c): a spawned daemon's answer wait; 30 s by default. */
+  spawnWaitMs?: number,
 ): Promise<number> {
   if (args.length > 1 || args[0]?.startsWith("-")) {
     io.stderr("usage: squeal start [root]\n");
@@ -84,7 +86,7 @@ export async function startCommand(
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
   if (result === "spawned") {
-    const failed = await spawnedFailed(root, { pid, ended }, io);
+    const failed = await spawnedFailed(root, { pid, ended }, io, spawnWaitMs);
     if (failed !== null) return failed;
   }
   const status = readStatus(root, { now });
