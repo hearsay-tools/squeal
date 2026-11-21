@@ -65,9 +65,11 @@ export type SideState =
       /**
        * Row 023-35 (T2): with `notSelected`, what its runner told of its
        * static closure. Only `complete` lets the report say the commit
-       * cannot change its result; absent counts as `unchecked`.
+       * cannot change its result; absent counts as `unchecked`. Review
+       * wave-20 B5: `dirty`, complete, but the working tree's uncommitted
+       * paths reach it, or git could not list them.
        */
-      readonly closure?: "complete" | "incomplete" | "unchecked";
+      readonly closure?: "complete" | "incomplete" | "unchecked" | "dirty";
     }
   | { readonly state: "absent" }
   | { readonly state: "not determined"; readonly reason: string }

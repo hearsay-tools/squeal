@@ -67,6 +67,14 @@ function detail(name: string, side: SideState): string | null {
   return null;
 }
 
+/** Why a not-selected file is not vouched for, after "not selected by the change". */
+const EXCEPTED_TEXT = {
+  incomplete: ", but the static closure is incomplete",
+  unchecked: ", and its runner does not tell whether the static closure is complete",
+  // Review wave-20 B5: the selection read `<commit>..HEAD`, not the working tree.
+  dirty: ", but uncommitted changes in the working tree may reach it",
+} as const;
+
 /**
  * What a file's line says after its path: both sides, then their details.
  * Row 023-29 (R8): a file `--run` did not select says so at its commit
@@ -84,10 +92,7 @@ function changeText(f: FileReport, at: string, many = false): string {
   if (f.at.state === "no result" && f.at.notSelected === true) {
     const runs = `\`--all-missing\` runs ${many ? "them" : "it"}`;
     // Row 023-35 (T2): not selected, yet its closure may hold a changed input.
-    const why =
-      excepted(f) === "incomplete"
-        ? ", but the static closure is incomplete"
-        : ", and its runner does not tell whether the static closure is complete";
+    const why = EXCEPTED_TEXT[excepted(f) ?? "unchecked"];
     return `no result at ${at}, not selected by the change${why}; ${runs}; now ${word(f.now)}${more}`;
   }
   return `${word(f.at)} -> ${word(f.now)}${more}`;
@@ -162,6 +167,7 @@ function notSelectedLines(
   const reasons = files.map(excepted);
   const incomplete = reasons.filter((r) => r === "incomplete").length;
   const unchecked = reasons.filter((r) => r === "unchecked").length;
+  const dirty = reasons.filter((r) => r === "dirty").length;
   const the = (n: number) => (n === 1 ? "the one" : `the ${n}`);
   const parts = [
     ...(incomplete === 0 ? [] : [`${the(incomplete)} with an incomplete static closure`]),
@@ -170,6 +176,9 @@ function notSelectedLines(
       : [
           `${the(unchecked)} whose runner does not tell whether ${unchecked === 1 ? "its" : "their"} static closure is complete`,
         ]),
+    ...(dirty === 0
+      ? []
+      : [`${the(dirty)} that uncommitted changes in the working tree may reach`]),
   ];
   const except =
     parts.length === 0
@@ -190,7 +199,7 @@ export const unchangeable = (f: FileReport) =>
   f.at.state === "no result" && f.at.notSelected === true && f.at.closure === "complete";
 
 /** T2: a file the change did not select that the report cannot vouch for, with why. */
-export function excepted(f: FileReport): "incomplete" | "unchecked" | null {
+export function excepted(f: FileReport): "incomplete" | "unchecked" | "dirty" | null {
   if (f.at.state !== "no result" || f.at.notSelected !== true) return null;
   return f.at.closure === "complete" ? null : (f.at.closure ?? "unchecked");
 }

@@ -1,11 +1,13 @@
-import type { CheckoutHooks } from "../core/commit/at-keys-checkout.js";
+import type { CheckoutHooks, WhileOpen } from "../core/commit/at-keys-checkout.js";
 import type { CheckoutOptions } from "../core/commit/at-keys-walk.js";
 import { squealVersion } from "../core/daemon/version.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { AtOptions } from "./status-at.js";
 import { type CommitSide, commitSide } from "./status-at-commit.js";
+import { type Reached, reachedBy, uncommitted } from "./status-at-dirty.js";
 import { nextProbe } from "./status-at-next.js";
 import type { SideState } from "./status-at-report.js";
 import { type AtRun, atRun, type NowTurn, type RunArgs } from "./status-at-run.js";
@@ -100,6 +102,13 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
       lists.set(project, new Set(files.map(([path]) => path))),
     );
   const keying = { adapters, squealVersion: squealVersion(), env: input.env };
+  // Review wave-20 B5: the test files the working tree's uncommitted paths reach.
+  let reached: Reached = "all";
+  const dirty = ran === null ? null : await uncommitted(root);
+  const reach: WhileOpen = async (open, files) => {
+    await ran?.whileOpen(open, files);
+    reached = await reachedBy(dirty, open);
+  };
   const at = await commitSide({
     ...keying,
     ...checkoutOptions,
@@ -108,12 +117,12 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
     paths: input.paths,
     worktreeId: input.worktreeId,
     note: input.note,
-    ...hooksOf(ran, probe, run),
+    ...hooksOf(ran, probe, run, reach),
   });
   const state =
     ran === null
       ? at.state
-      : (ref: TestFileRef) => closureOf(lists, ref, ran.state(ref, at.state(ref)));
+      : (ref: TestFileRef) => closureOf(lists, reached, ref, ran.state(ref, at.state(ref)));
   return { at, ran, probe, state };
 }
 
@@ -121,16 +130,21 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
  * Row 023-35 (T2): a file the change did not select, with what its runner
  * told of its static closure: `unchecked` when it told nothing (Vitest, or
  * a project whose list never came), so the report never vouches for it.
+ * Review wave-20 B5: `dirty` when the working tree's uncommitted paths
+ * reach it, or git could not list them; only `complete` is vouched for.
  */
 function closureOf(
   lists: ReadonlyMap<string, ReadonlySet<RelativePath>>,
+  reached: Reached,
   ref: TestFileRef,
   side: SideState,
 ): SideState {
   if (side.state !== "no result" || side.notSelected !== true) return side;
   const list = lists.get(ref.project);
-  const closure = list === undefined ? "unchecked" : list.has(ref.path) ? "incomplete" : "complete";
-  return { ...side, closure };
+  if (list === undefined) return { ...side, closure: "unchecked" };
+  if (list.has(ref.path)) return { ...side, closure: "incomplete" };
+  const dirty = reached === "all" || reached.has(testFileId(ref));
+  return { ...side, closure: dirty ? "dirty" : "complete" };
 }
 
 /** The checkout's hooks: `--run`'s, with its install inside the one budget (D4.6), or Q1's probe. */
@@ -138,10 +152,11 @@ function hooksOf(
   ran: AtRun | null,
   probe: ReturnType<typeof nextProbe> | null,
   run: RunArgs | null,
+  reach: WhileOpen,
 ): Pick<CheckoutOptions, "installTimeoutMs"> & CheckoutHooks {
   if (ran === null) return probe === null ? {} : { whileOpen: probe.whileOpen };
   return {
-    whileOpen: ran.whileOpen,
+    whileOpen: reach,
     beforeRemove: ran.beforeRemove,
     installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, (run?.timeoutSeconds ?? 0) * 1000),
   };
