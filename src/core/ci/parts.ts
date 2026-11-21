@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CoverageRecord, CoverageSource } from "../code/coverage/types.js";
 import { compare } from "../fs/compare.js";
@@ -452,19 +452,29 @@ function isPaths(value: unknown): boolean {
 }
 
 /**
- * The parts in each of `dirs`, by file name; or why they cannot be read: a
+ * The parts in each of `paths`, by file name; or why they cannot be read: a
  * directory that is missing or holds no part (a shard's missing upload,
- * review of 0.1.421 B3), or a part that does not read. `ci export` and
- * `squeal code --parts` (spec 020 D13.2) read them alike.
+ * review of 0.1.421 B3), a path that is neither a directory nor a part file
+ * (row 018-63), or a part that does not read. `ci export` and `squeal code
+ * --parts` (spec 020 D13.2) read them alike. A part file is that file, even
+ * when its name is not `squeal-part-*.json`.
  */
-export function readPartsIn(dirs: readonly AbsolutePath[]): NamedPart[] | string {
+export function readPartsIn(paths: readonly AbsolutePath[]): NamedPart[] | string {
   const parts: NamedPart[] = [];
-  for (const dir of dirs) {
-    if (!existsSync(dir)) return `no directory ${dir}`;
-    const names = readdirSync(dir).filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
-    if (names.length === 0) return `no part (${PART_PREFIX}*.json) in ${dir}`;
+  for (const path of paths) {
+    const kind = statSync(path, { throwIfNoEntry: false });
+    if (kind === undefined) return `no directory ${path}`;
+    if (kind.isFile()) {
+      const part = readPart(path);
+      if (typeof part === "string") return part;
+      parts.push({ file: path, part });
+      continue;
+    }
+    if (!kind.isDirectory()) return `no directory ${path}`;
+    const names = readdirSync(path).filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
+    if (names.length === 0) return `no part (${PART_PREFIX}*.json) in ${path}`;
     for (const name of names.sort(compare)) {
-      const file = join(dir, name);
+      const file = join(path, name);
       const part = readPart(file);
       if (typeof part === "string") return part;
       parts.push({ file, part });

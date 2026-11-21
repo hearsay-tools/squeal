@@ -1,20 +1,32 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ciCommand } from "../../src/cli/ci.js";
+import { EXPORT_USAGE } from "../../src/cli/ci-export.js";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { PART_FORMAT, type Part, writePart } from "../../src/core/ci/parts.js";
+import { PART_FORMAT, type Part, readPartsIn, writePart } from "../../src/core/ci/parts.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
+import { recordVitest } from "../ci/fixture.js";
 
 /*
  * Spec 018 D9 (row 018-17): `squeal ci export --parts <dir>... [--out
  * <file>]`'s usage, and what it refuses before it starts Vitest: nothing is
- * written, exit 1, the reason named. `test/ci/export.test.ts` exports real
- * shards. `/tmp` where there is one: this host's temp directory can lie in a
- * checkout whose `node_modules` holds Vitest.
+ * written, exit 1, the reason named. Row 018-63: `--parts` also takes a part
+ * file; a path that is neither a directory nor a part file is one line and
+ * exit 2. `test/ci/export.test.ts` exports real shards. `/tmp` where there
+ * is one: this host's temp directory can lie in a checkout whose
+ * `node_modules` holds Vitest.
  */
 
 const BASE = existsSync("/tmp") ? "/tmp" : tmpdir();
@@ -100,7 +112,7 @@ describe("squeal ci export", () => {
     expect(text()).toContain("usage: squeal ci export");
   });
 
-  it("exits 1 and writes nothing outside a worktree, without a directory or without a part", async () => {
+  it("exits 1 and writes nothing outside a worktree, or without a part in a directory", async () => {
     const plain = mkdtempSync(join(BASE, "squeal-ci-export-"));
     dirs.push(plain);
     const outside = capture(plain);
@@ -108,15 +120,27 @@ describe("squeal ci export", () => {
     expect(outside.text()).toContain("is not inside a git worktree; wrote nothing");
 
     execFileSync("git", ["init", "-q"], { cwd: plain });
-    const missing = capture(plain);
-    expect(await ciCommand(["export", "--parts", "p"], missing.io)).toBe(1);
-    expect(missing.text()).toContain(`no directory ${join(plain, "p")}`);
-
     mkdirSync(join(plain, "p"));
     const empty = capture(plain);
     expect(await ciCommand(["export", "--parts", "p"], empty.io)).toBe(1);
     expect(empty.text()).toContain("no part (squeal-part-*.json) in");
     expect(readdirSync(plain).sort()).toEqual([".git", "p"]);
+  });
+
+  it("exits 2 with one line when --parts is missing, or is a file that is not a part (row 018-63)", async () => {
+    const root = repository();
+    const missing = join(root, "p.json");
+    const gone = capture(root);
+    expect(await ciCommand(["export", "--parts", "p.json"], gone.io)).toBe(2);
+    expect(gone.text()).toBe(`squeal ci export: no directory ${missing}\n${EXPORT_USAGE}`);
+
+    const other = join(root, "other.json");
+    writeFileSync(other, "{}\n");
+    const bad = capture(root);
+    expect(await ciCommand(["export", "--parts", other], bad.io)).toBe(2);
+    expect(bad.text()).toBe(
+      `squeal ci export: ${other}: format undefined, not "squeal-ci-part/3" or "squeal-ci-part/4" or "squeal-ci-part/5" or "squeal-ci-part/6"\n${EXPORT_USAGE}`,
+    );
   });
 
   it("refuses parts of another commit than the checkout's, before Vitest starts", async () => {
@@ -130,6 +154,61 @@ describe("squeal ci export", () => {
     expect(existsSync(out)).toBe(false);
     // Row 018-29: a part of an older Squeal holds no cost, and the export says none.
     expect(text()).not.toContain("Squeal's recording took");
+  });
+
+  it("reads a part file as itself, and names a missing path (row 018-63)", () => {
+    const root = repository();
+    const named = writePart(join(root, "parts"), part("a".repeat(40)));
+    const alias = join(root, "one.json");
+    copyFileSync(named, alias);
+    expect(readPartsIn([named])).toEqual([{ file: named, part: part("a".repeat(40)) }]);
+    expect(readPartsIn([alias])).toEqual([{ file: alias, part: part("a".repeat(40)) }]);
+    const gone = join(root, "gone.json");
+    expect(readPartsIn([gone])).toBe(`no directory ${gone}`);
+    const other = join(root, "other.json");
+    writeFileSync(other, "{}\n");
+    expect(readPartsIn([other])).toBe(
+      `${other}: format undefined, not "squeal-ci-part/3" or "squeal-ci-part/4" or "squeal-ci-part/5" or "squeal-ci-part/6"`,
+    );
+  });
+
+  it("exports from a part file path (row 018-63)", { timeout: 180_000 }, async () => {
+    const origin = join(SCRATCH, `ci-export-file-${randomUUID()}`);
+    mkdirSync(origin, { recursive: true });
+    dirs.push(origin);
+    writeFileSync(
+      join(origin, "package.json"),
+      JSON.stringify({ name: "ci-export-file", private: true, type: "module" }),
+    );
+    writeFileSync(
+      join(origin, "vitest.config.ts"),
+      'import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { include: ["test/**/*.test.ts"] } });\n',
+    );
+    mkdirSync(join(origin, "test"));
+    writeFileSync(
+      join(origin, "test/a.test.ts"),
+      'import { expect, it } from "vitest";\nit("adds", () => expect(1 + 1).toBe(2));\n',
+    );
+    execFileSync("git", ["init", "-q"], { cwd: origin });
+    execFileSync("git", ["add", "."], { cwd: origin });
+    execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "f"], {
+      cwd: origin,
+    });
+    const out = join(dirname(origin), `parts-${randomUUID()}`);
+    dirs.push(out);
+    const recorded = await recordVitest(origin, out, ["test/a.test.ts"]);
+    expect(recorded.code, recorded.said).toBe(0);
+    const names = readdirSync(out).filter(
+      (n) => n.startsWith("squeal-part-") && n.endsWith(".json"),
+    );
+    expect(names).toHaveLength(1);
+    const file = join(out, names[0] as string);
+    const written = join(origin, "results.json.gz");
+    const { io, text } = capture(origin);
+    expect(await ciCommand(["export", "--parts", file, "--out", written], io)).toBe(0);
+    expect(existsSync(written)).toBe(true);
+    expect(text()).toContain(`Exported 1 test file`);
+    expect(text()).toContain(written);
   });
 
   it("names what recording cost the shards, whatever it does with their parts (row 018-29)", async () => {

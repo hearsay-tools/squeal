@@ -41,12 +41,8 @@ interface ExportArgs {
 }
 
 /**
- * `squeal ci export --parts <dir>... [--out <file>]` (spec 018 D9): in a
- * fresh checkout of the shards' commit, after every shard passed, writes the
- * D2 export of the parts in each `<dir>` (`squeal ci record`'s), keyed as a
- * daemon in this checkout keys, to `--out` (default
- * `squeal-results-<commit8>.json.gz`). Exit 0 when it wrote the file, 1 when
- * it refused the parts or had nothing to write, 2 on a usage error.
+ * `squeal ci export --parts <dir>... [--out <file>]` (spec 018 D9). A `<dir>`
+ * may also be one part file (row 018-63). Exit 0, 1, or 2 as before.
  */
 export async function ciExportCommand(
   args: readonly string[],
@@ -63,7 +59,11 @@ export async function ciExportCommand(
   const root = findWorktreeRoot(cwd);
   if (root === null) return fail(say, `${cwd} is not inside a git worktree`);
   const parts = readPartsIn(parsed.parts.map((dir) => resolve(cwd, dir)));
-  if (typeof parts === "string") return fail(say, parts);
+  if (typeof parts === "string") {
+    if (parts.startsWith("no part (")) return fail(say, parts);
+    io.stderr(`squeal ci export: ${parts}\n${EXPORT_USAGE}`);
+    return 2;
+  }
   // Row 018-29: what recording cost the shards, whatever the export does with their parts.
   const cost = costOf(parts.map(({ part }) => part));
   if (cost !== null) io.stderr(`squeal ci export: ${costText(cost)}\n`);
