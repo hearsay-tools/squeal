@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
+import type { CommitAskRequest, CommitSnapshot } from "../types/commit-ask.js";
 import type { RelativePath } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
 import type {
@@ -18,6 +19,7 @@ import type {
   NarrowRunOptions,
   TakeBackResult,
 } from "../types/scheduler.js";
+import { CommitDesk } from "./commit-desk.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import { GROUP_NOT_SUPPORTED, type GroupRequested, type Held, MainSteps } from "./run-group.js";
@@ -27,6 +29,8 @@ import { createDaemonServer } from "./server.js";
 /** The daemon's socket, answering for the main thread. */
 export interface FrontDesk {
   setPhase(phase: DaemonPhase): void;
+  /** Row 023-40c: a commit daemon's setup and asks, for its reads. */
+  setCommit(snapshot: CommitSnapshot): void;
   /**
    * Row 011-302: a step that may block the main thread starts (`running`)
    * or ends, so a pending `run-group` request's answer names it. Told
@@ -82,6 +86,8 @@ export interface DeskEvents {
   readonly requestResume?: () => Promise<void>;
   /** Row 023-34 (T1): `Scheduler.takeBack`; absent: the daemon answers it cannot take back. */
   readonly requestTakeBack?: (owners: readonly string[]) => Promise<TakeBackResult>;
+  /** Row 023-40c (spec 023 D7.3 as amended): a commit daemon's ask; absent: no commit daemon. */
+  readonly commitAsk?: (request: CommitAskRequest) => void;
   /**
    * Spec 021 D15 (row 021-16): writes a batch a hook or command sent, in
    * the retried path; rejects with why not. Absent, or without
@@ -216,6 +222,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestHold,
     requestResume,
     requestTakeBack,
+    commitAsk,
     requestWrite,
     requestImport,
     requestKeep,
@@ -233,6 +240,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
     ...(requestTakeBack === undefined ? {} : { requestTakeBack: asked(requestTakeBack) }),
+    ...(commitAsk === undefined ? {} : { commitAsk: safe(commitAsk) }),
     ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
     ...(requestImport === undefined ? {} : { requestImport: asked(requestImport) }),
     ...(requestKeep === undefined ? {} : { requestKeep: asked(requestKeep) }),
@@ -382,6 +390,9 @@ async function inWorker(
               }),
           );
           return;
+        case "commit-ask":
+          events.commitAsk?.(message.request);
+          return;
         case "write":
           (events.requestWrite?.(message.batch) ?? Promise.reject(new Error(NO_WRITES))).then(
             () => post({ type: "write-result", id: message.id, error: null }),
@@ -432,6 +443,7 @@ async function inWorker(
   }
   return {
     setPhase: (phase) => post({ type: "phase", phase }),
+    setCommit: (snapshot) => post({ type: "commit-state", snapshot }),
     step: (operation, running) =>
       post({ type: "main-step", operation, since: running ? Date.now() : null }),
     async close() {
@@ -448,6 +460,9 @@ async function inWorker(
 async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<FrontDesk> {
   let phase: DaemonPhase = "starting";
   const steps = new MainSteps();
+  const { commitAsk } = events;
+  const commitDesk =
+    identity.commit === true && commitAsk !== undefined ? new CommitDesk(commitAsk) : null;
   const server = await createDaemonServer(
     identity.socketPath,
     createHandlers({
@@ -465,6 +480,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       ...(events.requestHold === undefined ? {} : { requestHold: events.requestHold }),
       ...(events.requestResume === undefined ? {} : { requestResume: events.requestResume }),
       ...(events.requestTakeBack === undefined ? {} : { requestTakeBack: events.requestTakeBack }),
+      ...(commitDesk === null ? {} : { commitDesk }),
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),
       ...(events.requestRetries === undefined ? {} : { requestRetries: events.requestRetries }),
@@ -489,6 +505,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
     setPhase: (next) => {
       phase = next;
     },
+    setCommit: (snapshot) => commitDesk?.set(snapshot),
     step: (operation, running) => steps.set(operation, running ? Date.now() : null),
     close: () => server.close(),
   };

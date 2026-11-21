@@ -1,4 +1,5 @@
 import { type CommitRemoval, pathState } from "../checkout/commit-identity.js";
+import { installCommitWorktree } from "../checkout/commit-setup.js";
 import {
   claimCommitWorktree,
   readCommitWorktree,
@@ -53,6 +54,12 @@ export interface CommitWorktrees {
    * without an answer, the daemon reads the tree itself.
    */
   remove(root: AbsolutePath, note: (text: string) => void): Promise<CommitRemoval | undefined>;
+  /**
+   * Row 023-40c (D7.3 as amended 2026-11-21): the frozen install, once,
+   * after the claim; `null` once installed, else why not. Absent: nothing
+   * to install (tests).
+   */
+  install?(root: AbsolutePath): Promise<string | null>;
 }
 
 /** 023-38's functions: the marker decides, the owning daemon claims and removes its worktree. */
@@ -60,6 +67,8 @@ export const COMMIT_WORKTREES: CommitWorktrees = {
   read: readCommitWorktree,
   claim: claimCommitWorktree,
   remove: (root, note) => removeCommitWorktree(root, { note }),
+  // A daemon in commit mode by option in a tree Squeal did not make has nothing to install.
+  install: async (root) => (readCommitWorktree(root) === null ? null : installCommitWorktree(root)),
 };
 
 /** No commit worktrees: no marker is read and nothing is removed. */

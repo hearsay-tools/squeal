@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { CommitAskRequest, CommitReadRequest } from "../types/commit-ask.js";
 import {
   type AbsolutePath,
   type EpochMs,
@@ -35,6 +36,7 @@ import type {
   NarrowRunOptions,
   TakeBackResult,
 } from "../types/scheduler.js";
+import type { CommitDesk } from "./commit-desk.js";
 import { errorResponse, narrowOptionsOf } from "./protocol.js";
 import { RequestDesk } from "./request-desk.js";
 import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
@@ -174,6 +176,12 @@ export interface HandlerContext {
    * answers that it cannot take back.
    */
   readonly requestTakeBack?: (owners: readonly string[]) => Promise<TakeBackResult>;
+  /**
+   * Spec 023 D7.3 as amended (row 023-40c): a commit daemon's asks of
+   * `status --at --run`, answered from memory. Absent: this daemon serves
+   * no commit worktree.
+   */
+  readonly commitDesk?: Pick<CommitDesk, "ask" | "read">;
 }
 
 interface RunAllState {
@@ -214,6 +222,19 @@ function pingAnswer(context: HandlerContext, recorded: readonly RecordedRequest[
     startedAt: context.startedAt,
     ...(recorded.length === 0 ? {} : { recorded }),
   };
+}
+
+/** Row 023-40c: a commit daemon's ask or read; another daemon says it serves no commit worktree. */
+function atAnswer(
+  context: HandlerContext,
+  request: CommitAskRequest | CommitReadRequest,
+): DaemonResponse {
+  const desk = context.commitDesk;
+  if (desk === undefined) return errorResponse("this daemon serves no commit worktree");
+  if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+  // D7.2: an ask and a read are activity: the commit daemon does not exit under a waiting call.
+  context.onActivity();
+  return request.type === "commit-ask" ? desk.ask(request) : desk.read(request);
 }
 
 /**
@@ -373,6 +394,9 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
           errorResponse(`unknown request id ${request.requestId}`)
         );
       // Row 023-34 (T1): it only takes queued files out, so a stopping daemon takes it too.
+      case "commit-ask":
+      case "commit-read":
+        return atAnswer(context, request);
       case "take-back":
         return takeBacks.take(request.owners);
       case "take-back-status":

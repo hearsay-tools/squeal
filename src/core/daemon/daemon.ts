@@ -31,6 +31,7 @@ import { ensureBirthMarks } from "../store/state-born.js";
 import { ensureWriteMarkers } from "../store/write-markers.js";
 import { CodeRelay } from "../store-process/relay.js";
 import type { Capacity } from "../types/capacity.js";
+import type { CommitAskRequest } from "../types/commit-ask.js";
 import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonExit, DaemonExitReason, DaemonPhase, SyncAnswer } from "../types/daemon.js";
 import { daemonIncarnation, predecessorIncarnation } from "../types/daemon.js";
@@ -60,6 +61,7 @@ import {
   removalText,
   removesAtExit,
 } from "./commit-mode.js";
+import { CommitStart } from "./commit-start.js";
 import { describeProblems } from "./config-file.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
@@ -299,6 +301,8 @@ class Daemon {
   /** The cancel of the tiers in flight a stop or a step-down began (`#cancelTiers`). */
   #cancelling: Promise<void> = Promise.resolve();
   #starting: Promise<void> = Promise.resolve();
+  /** Spec 023 D7.3 as amended (row 023-40c): a commit daemon's setup and asks; `null` otherwise. */
+  readonly #commitStart: CommitStart | null;
   #stopTimers: () => void = () => {};
   /** Row 011-226: stops the full check it claimed once ready, and gives its claim back. */
   #stopFullCheck: () => Promise<void> = async () => {};
@@ -332,6 +336,7 @@ class Daemon {
   ) {
     this.#log = options.log ?? (() => {});
     this.#now = options.now ?? Date.now;
+    this.#commitStart = commit === null ? null : this.#makeCommitStart(commit);
     this.#socketPath = socketPathFor(opened.worktreeId, options.env);
     this.#runGroups = new RunRecord(runGroupsFile(opened.commonDir, opened.root));
     this.#startedAt = this.#now();
@@ -446,7 +451,8 @@ class Daemon {
     } catch (error) {
       return this.#startFailed(error, `daemon exited: could not start: ${message(error)}`);
     }
-    this.#starting = this.#run();
+    // Spec 023 D7.3 as amended (row 023-40c): a commit daemon installs its worktree first.
+    this.#starting = this.#commitStart === null ? this.#run() : this.#commitStart.start();
     const ready = this.#starting.catch(() => {});
     return {
       root,
@@ -456,6 +462,24 @@ class Daemon {
       exited: this.#exited,
       stop: (reason, note) => this.#shutdown(reason, 0, note ?? `daemon stopped: ${reason}`),
     };
+  }
+
+  /** Spec 023 D7.3 as amended (row 023-40c): a commit daemon's install, start and asks. */
+  #makeCommitStart(mode: CommitMode): CommitStart {
+    return new CommitStart({
+      mode,
+      root: this.opened.root,
+      worktreeId: this.opened.worktreeId,
+      store: this.opened.store,
+      policy: () => this.#policy,
+      scheduler: () => (this.#phase === "stopping" ? null : (this.#loop?.scheduler ?? null)),
+      run: () => this.#run(),
+      request: (group, paths, options) => this.#requestGroup(group, undefined, paths, options),
+      changed: () => {
+        if (this.#commitStart !== null) this.#desk?.setCommit(this.#commitStart.asks.snapshot());
+      },
+      log: this.#log,
+    });
   }
 
   /** Spec 023 D7.2: a commit daemon's lock is held; its marker names it, for the sweep. */
@@ -1161,6 +1185,7 @@ class Daemon {
         startedAt: this.#startedAt,
         token: this.#token,
         storeSchema: this.opened.store.schemaVersion,
+        ...(this.#commitStart === null ? {} : { commit: true as const }),
       },
       {
         requestFullSuite: watch((request) => this.#requestFullSuite(request)),
@@ -1181,6 +1206,9 @@ class Daemon {
         requestHold: watch(() => this.#requestHold()),
         requestResume: watch(async () => void (await this.#requestHold())),
         requestTakeBack: watch((owners) => this.#requestTakeBack(owners)),
+        ...(this.#commitStart === null
+          ? {}
+          : { commitAsk: (request: CommitAskRequest) => this.#commitStart?.asks.ask(request) }),
         // Spec 021 D15 (row 021-16): a hook's or a command's writes, in the retried path of D2.
         requestWrite: watch((batch) =>
           this.#writes.write(
