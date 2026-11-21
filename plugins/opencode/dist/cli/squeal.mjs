@@ -104768,8 +104768,11 @@ var PROC_RUNS = process.platform === "linux" ? {
 init_reverse_index();
 import { randomUUID as randomUUID16 } from "node:crypto";
 var AT_RUN_TTL_MS = 60 * 60 * 1e3;
+var TAKEN_BACK_MAX = 1024;
 var AtRunRequests = class {
   #requests = /* @__PURE__ */ new Map();
+  /** Ids taken back, until when: a later acceptance of one flags nothing. */
+  #takenBack = /* @__PURE__ */ new Map();
   #now;
   constructor(now = Date.now) {
     this.#now = now;
@@ -104779,14 +104782,35 @@ var AtRunRequests = class {
    * covered-files id, selecting `files`; an owner's requests add up.
    */
   accepted(id, files5) {
-    if (files5.length === 0) return;
+    if (files5.length === 0 || this.wasTakenBack(id)) return;
     const known4 = this.#requests.get(id)?.files ?? /* @__PURE__ */ new Set();
     for (const file of files5) known4.add(testFileId(file));
     this.#requests.set(id, { until: this.#now() + AT_RUN_TTL_MS, files: known4 });
   }
-  /** The requests of `ids` (owners or covered-files ids) were taken back: they flag nothing more. */
+  /**
+   * The requests of `ids` (owners or covered-files ids) were taken back:
+   * they flag nothing more, and a request of theirs the scheduler answers
+   * later flags nothing either. A run already started keeps its token.
+   */
   takenBack(ids) {
-    for (const id of ids) this.#requests.delete(id);
+    const until = this.#now() + AT_RUN_TTL_MS;
+    for (const id of ids) {
+      this.#requests.delete(id);
+      this.#takenBack.delete(id);
+      this.#takenBack.set(id, until);
+    }
+    for (const id of this.#takenBack.keys()) {
+      if (this.#takenBack.size <= TAKEN_BACK_MAX) break;
+      this.#takenBack.delete(id);
+    }
+  }
+  /** Whether `id` was taken back within the hour. */
+  wasTakenBack(id) {
+    const until = this.#takenBack.get(id);
+    if (until === void 0) return false;
+    if (until > this.#now()) return true;
+    this.#takenBack.delete(id);
+    return false;
   }
   flagged(testFiles3) {
     const now = this.#now();
@@ -104807,9 +104831,10 @@ var AtRunRequests = class {
   }
 };
 function flagAccepted(requests, requested, options) {
-  if (options?.at !== true || requested?.narrow === void 0) return;
-  const id = options.owner ?? requested.coveredId ?? randomUUID16();
-  requests.accepted(id, requested.narrow.selected);
+  if (options?.at !== true || requested?.narrow === void 0 || requested.queued === 0) return;
+  const notRun = new Set(requested.narrow.notRun.map(({ testFile }) => testFileId(testFile)));
+  const files5 = requested.narrow.selected.filter((file) => !notRun.has(testFileId(file)));
+  requests.accepted(options.owner ?? requested.coveredId ?? randomUUID16(), files5);
 }
 function withRunGroups(runner, options) {
   const stop2 = options.stop ?? stopRuns;
@@ -111798,15 +111823,6 @@ function rerunFit(overheadMs, sides, cap2 = RERUN_CAP_SECONDS) {
   if (minutes <= cap2) return { seconds: minutes };
   return { needs: Math.round(overheadMs / 1e3 + needs), from };
 }
-function clearlyOver(estimate2, overheadMs) {
-  if (estimate2.files === 0 || estimate2.seconds === null) return false;
-  const side = { left: estimate2.files, ran: 0, gateMs: null, estimate: estimate2.seconds };
-  return "needs" in rerunFit(overheadMs, [side]);
-}
-function measuredOver(overheadMs, ran, gateMs, left, cap2 = RERUN_CAP_SECONDS) {
-  if (ran === 0 || gateMs === null || gateMs <= 0 || left === 0) return false;
-  return overheadMs / 1e3 + left / (ran / (gateMs / 1e3)) > cap2;
-}
 function aboutText(seconds5) {
   if (seconds5 < 120) return `${Math.max(1, Math.round(seconds5))} s`;
   if (seconds5 < 120 * 60) return `${Math.round(seconds5 / 60)} min`;
@@ -111818,12 +111834,6 @@ function noFitText(notRun, fit) {
     return `${notRun}; no file ended in this run and none has a stored duration, so the time they need is unknown; ${narrow2}`;
   const how2 = fit.from === "rate" ? "at this run's rate" : "from their stored durations";
   return `${notRun}; ${how2} they need about ${aboutText(fit.needs)}; ${narrow2}`;
-}
-function ranCount(states) {
-  let n = 0;
-  for (const s of states)
-    if (s.state === "pass" || s.state === "fail" || s.state === "not comparable" && s.ran) n++;
-  return n;
 }
 function setupCounts(states) {
   const counts = /* @__PURE__ */ new Map();
@@ -111849,15 +111859,6 @@ function runLines2(run7, at2) {
   const used = `${(run7.usedMs / 1e3).toFixed(1)} s of the ${run7.timeoutSeconds} s budget`;
   const unselected2 = run7.notSelected ?? 0;
   const which = unselected2 === 0 ? "" : " that the change selects";
-  if (run7.refused !== void 0) {
-    const files5 = `${run7.selected} test files with no result at ${at2}${which}`;
-    const head2 = run7.refused.measured ? `--run stopped after its first batch: ${run7.ran} of the ${files5} ran in its checkout, ${run7.stored} stored; at the rate it measured, the rest clearly do not fit the ${run7.timeoutSeconds} s budget` : `--run ran nothing: the ${files5} clearly do not fit the ${run7.timeoutSeconds} s budget`;
-    return [
-      head2,
-      ...budgetLines(run7, at2),
-      `To run what fits anyway: ${run7.refused.force}; \`--all-missing\` runs every file with no result`
-    ];
-  }
   const lines = [
     run7.selected === 0 ? `--run: no file with no result at ${at2}${which} to run (${used})` : `--run: ${run7.ran} of ${run7.selected} test files with no result at ${at2}${which} ran in its checkout, ${run7.stored} stored at its keys (${used})`
   ];
@@ -113228,7 +113229,6 @@ async function runBatches(loop) {
     }
     await loop.readBack(files5, answer4);
     slots = afterBatch(loop, { files: files5, answer: answer4, slots, bySlot, stops: stops3 });
-    if (loop.goOn?.(gateMs) === false) break;
   }
   const unstarted = slots.flatMap((slot2) => bySlot.get(slot2) ?? []);
   if (unstarted.length > 0) {
@@ -113673,7 +113673,6 @@ function workingTree(input) {
     async finish(ran, refs2, current2) {
       const selects5 = ran.selects();
       if (selects5 === null) return null;
-      if (ran.refused()) return { current: current2, part: refusedPart(files5, current2) };
       const ids = new Set(files5.map(testFileId));
       const late = nowFiles(refs2, current2.state, selects5).filter(
         (ref3) => !ids.has(testFileId(ref3))
@@ -113715,18 +113714,6 @@ function workingTree(input) {
 function budgetLeft(end, ref3) {
   const state = end?.states.get(testFileId(ref3));
   return state?.state === "not run" && state.reason === "budget";
-}
-function refusedPart(files5, current2) {
-  const how2 = servedByDaemon(current2) ? "daemon" : "gate";
-  const end = {
-    how: how2,
-    gateMs: null,
-    states: /* @__PURE__ */ new Map(),
-    problem: null,
-    leftEstimate: null
-  };
-  const use = nowUse({ files: files5 }, end, current2.state);
-  return { use, fit: { left: 0, ran: 0, gateMs: null, estimate: null } };
 }
 
 // src/cli/status-at-commit-run.ts
@@ -114120,13 +114107,6 @@ function runUse(record2, now) {
     })),
     setupFailed: setupCounts(all2),
     ...notPrepared === 0 ? {} : { notPrepared },
-    // T1: the same call, forced with its own budget, runs what fits.
-    ...record2.refused !== void 0 ? {
-      refused: {
-        force: rerunCommand2(record2.call, record2.timeoutSeconds),
-        measured: record2.refused.measured
-      }
-    } : {},
     ...now === void 0 ? {} : { now: now.use }
   };
 }
@@ -114161,8 +114141,6 @@ function atRun(input) {
   let changed2 = null;
   let batchTimes = [];
   let children = 0;
-  let refused = null;
-  let measuring = null;
   const whileOpen = selector(
     { root: input.root, commit, allMissing: args2.allMissing, named: new Set(input.named ?? []) },
     (chosen) => {
@@ -114182,21 +114160,8 @@ function atRun(input) {
         const call2 = { given: input.given, paths: input.paths, allMissing: args2.allMissing };
         input.note(estimateText2(estimate2, commit, args2.timeoutSeconds, call2));
       }
-      if (args2.fitCheck === true && clearlyOver(estimate2, elapsed())) {
-        refused = "estimate";
-        for (const f of run7) states.set(testFileId(f.ref), { state: "not run", reason: "budget" });
-        leftOut3 = run7;
-        leftSeconds = estimate2.seconds;
-        return;
-      }
       const now = input.now?.files(selection) ?? 0;
-      if (args2.fitCheck === true && estimate2.seconds === null) measuring = now;
       if (run7.length > 0) await runFiles2(checkout, run7, keyed, shareEnd(run7.length, now));
-      measuring = null;
-      if (refused !== null) {
-        leftOut3 = budgetLeft2(run7);
-        return;
-      }
       if (now > 0) await input.now?.run(shareEnd(now, budgetLeft2(run7).length), unkeptIds());
       const again2 = budgetLeft2(run7);
       if (again2.length > 0 && now > 0) await runFiles2(checkout, again2, keyed, endMs);
@@ -114252,22 +114217,11 @@ function atRun(input) {
       },
       readBack: (files5, answer4) => readBack(checkout, files5, keyed, answer4),
       stateOf: (file) => states.get(testFileId(file.ref)),
-      setState: (file, state2) => states.set(testFileId(file.ref), state2),
-      goOn: (ms2) => measured3(run7, ms2)
+      setState: (file, state2) => states.set(testFileId(file.ref), state2)
     });
     if (end.gateMs !== null) gateMs = (gateMs ?? 0) + end.gateMs;
     timedOut = timedOut || end.cut;
     batchTimes = [...batchTimes, ...end.batches];
-  }
-  function measured3(run7, ms2) {
-    if (measuring === null) return true;
-    const now = measuring;
-    measuring = null;
-    const done = run7.flatMap((f) => states.get(testFileId(f.ref)) ?? []);
-    const left = run7.length - done.length + now;
-    if (!measuredOver(overheadMs, ranCount(done), ms2, left)) return true;
-    refused = "measured";
-    return false;
   }
   async function readBack(checkout, run7, keyed, answer4) {
     const chosen = new Set(selection.run.map((f) => testFileId(f.ref)));
@@ -114301,8 +114255,7 @@ function atRun(input) {
       timedOut: timedOut || leftOut3.length > 0,
       estimate: estimate2,
       leftSeconds,
-      batches: batchTimes,
-      ...refused === null ? {} : { refused: { measured: refused === "measured" } }
+      batches: batchTimes
     },
     now
   );
@@ -114315,16 +114268,7 @@ function atRun(input) {
   };
   const selects5 = () => selection.selects ?? null;
   const { timeoutSeconds } = args2;
-  return {
-    whileOpen,
-    beforeRemove,
-    state,
-    selects: selects5,
-    endMs,
-    timeoutSeconds,
-    use,
-    refused: () => refused !== null
-  };
+  return { whileOpen, beforeRemove, state, selects: selects5, endMs, timeoutSeconds, use };
 }
 
 // src/cli/status-at-commit-run.ts
@@ -114461,8 +114405,7 @@ function runOf3(flags3, timeout) {
     return "--timeout takes whole seconds above 0";
   if (!run7) return null;
   const timeoutSeconds = timeout === void 0 ? RUN_TIMEOUT_SECONDS : Number(timeout);
-  const fitCheck = !allMissing && timeout === void 0 ? { fitCheck: true } : {};
-  return { allMissing, timeoutSeconds, ...fitCheck };
+  return { allMissing, timeoutSeconds };
 }
 function valuedOption(args2, i3) {
   const arg = args2[i3] ?? "";
