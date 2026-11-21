@@ -47,7 +47,6 @@ describe("status --at arguments (rows 023-06, 023-07)", () => {
     expect(parseAt(["--at"])).toBe("--at needs a commit");
     expect(parseAt(["--at", "--json"])).toBe("--at needs a commit");
     expect(parseAt(["--at", "a", "--at", "b"])).toBe("--at is given twice");
-    expect(parseAt(["--at", "a", "--wait", "10"])).toBe('unknown option "--wait" with --at');
     expect(parseAt(["--at=", "--json"])).toBe("--at needs a commit");
   });
 
@@ -86,6 +85,20 @@ describe("status --at arguments (rows 023-06, 023-07)", () => {
     expect(out.join("")).toContain(
       "squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--full] [--json]",
     );
+  });
+});
+
+describe("status --at with --wait (row 023-34, T5)", () => {
+  it("prints one line, not the help, and exits 2", async () => {
+    const err: string[] = [];
+    const io = { stdout: () => {}, stderr: (t: string) => err.push(t) };
+    for (const wait of [["--wait"], ["--wait", "60000"], ["--wait=60000"]]) {
+      err.length = 0;
+      expect(await main(["status", "--at", "HEAD~1", "--run", ...wait], io)).toBe(2);
+      expect(err.join("")).toBe(
+        "squeal status: --at takes no --wait; --run waits up to --timeout (300 s)\n",
+      );
+    }
   });
 });
 
