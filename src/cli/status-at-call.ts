@@ -15,6 +15,7 @@ import { type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
 import { joinCommit } from "./status-at-join.js";
 import { listLate, type NowInput, type NowSide, nowSide } from "./status-at-now.js";
 import {
+  askBound,
   commitQueue,
   NOTHING,
   queueSide,
@@ -23,7 +24,13 @@ import {
 } from "./status-at-queue.js";
 import { unionRefs } from "./status-at-refs.js";
 import { exitCode, formatAt, jsonAt, type SideState } from "./status-at-report.js";
-import { type QueuedRun, queuedSide, RUN_WAIT_MS, waitAgain } from "./status-at-report-queued.js";
+import {
+  type QueuedRun,
+  queuedSide,
+  RUN_WAIT_MS,
+  runAgain,
+  waitAgain,
+} from "./status-at-report-queued.js";
 import { estimateOf, tellsEstimate } from "./status-at-run-batches.js";
 import { commitSelect, type Selected } from "./status-at-select.js";
 
@@ -88,10 +95,13 @@ export async function daemonCall(input: CallInput): Promise<number> {
       install: options.install,
     }),
   };
-  const daemons = options.daemons ?? realDaemons();
+  const daemons = options.daemons ?? realDaemons(undefined, note);
+  // Review wave-23 B1: one deadline for the whole call, counted from its start.
+  const deadline = input.startedMs + waitMs;
   const queue = {
     daemons,
-    deadline: input.startedMs + waitMs,
+    deadline,
+    askBy: askBound(deadline),
     call: { owner: randomUUID(), lead: paths !== null },
     ask: run !== null,
   };
@@ -177,6 +187,10 @@ function queuedRun(
     notSelected: chosen?.selection?.unselected?.size ?? 0,
     now: queuedSide(nowQueue, after.current.state),
     again: finite ? waitAgain(input.args.commit, input.args.paths) : null,
+    retry:
+      atQueue.late === true || nowQueue.late === true
+        ? runAgain(input.args.commit, input.args.paths)
+        : null,
   };
 }
 
