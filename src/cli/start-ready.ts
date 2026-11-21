@@ -15,10 +15,12 @@ import { statusCommand } from "./status-command.js";
  * A spawned daemon binds its socket in about 100 ms; a loaded machine gets
  * more: at load 40 on 24 CPUs one took longer than 10 s (gh-94, row 011-214).
  */
-const SPAWN_WAIT_MS = 30_000;
+export const SPAWN_WAIT_MS = 30_000;
 
 /**
- * Row 011-214 (C9): waits up to `SPAWN_WAIT_MS` for the daemon `start`
+ * Row 011-214 (C9): waits up to `waitMs` (`SPAWN_WAIT_MS` by default; spec
+ * 023 D7.3 as amended: a `status --at --run` call gives what is left of
+ * its wait) for the daemon `start`
  * spawned as `pid` (`null` when the spawn failed) to answer and be
  * recorded, then `null`. Otherwise the exit code, said on stderr: 1 once its
  * process ended without an answer; 3 past the bound while it lives, since it
@@ -30,9 +32,10 @@ export async function spawnedFailed(
   root: AbsolutePath,
   { pid, ended }: Pick<EnsuredDaemon, "pid" | "ended">,
   io: CliIo,
+  waitMs: number = SPAWN_WAIT_MS,
 ): Promise<number | null> {
   const lives = () => !ended();
-  const ready = await served(root, Date.now() + SPAWN_WAIT_MS, () => true, lives);
+  const ready = await served(root, Date.now() + waitMs, () => true, lives);
   if (ready === "served") return null;
   if (ready === "ended") {
     io.stderr(`squeal: spawned a daemon for ${root}, but it exited without answering\n`);
@@ -40,7 +43,7 @@ export async function spawnedFailed(
   }
   const command = statusCommand(io.env ?? process.env);
   io.stderr(
-    `squeal: the daemon spawned for ${root} (pid ${pid}) is still starting: it has not answered after ${SPAWN_WAIT_MS / 1_000} s; \`${command} status\` says when it serves\n`,
+    `squeal: the daemon spawned for ${root} (pid ${pid}) is still starting: it has not answered after ${Math.round(waitMs / 1_000)} s; \`${command} status\` says when it serves\n`,
   );
   return 3;
 }
