@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "version": "0.1.585",
+  "version": "0.1.586",
   "nodeFloor": "22.19.0",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "04862bd1b0ecadd9ed845797471bb34d497667363d0b5a67e85f095fe666f86f",
+      "sha256": "7feaa79c63a2af71afc5b58ef5e33d788aa51a48888bfbe6f18057caa3d80850",
       "mode": 420
     },
     "bin/squeal-launcher": {
@@ -80,7 +80,7 @@
       "mode": 420
     },
     "dist/cli/front-desk.mjs": {
-      "sha256": "7f9d1f99a6a52eb05dda3073e8611f9d7a8ed82c0a94d25ddbdd9cbd89f91103",
+      "sha256": "5be5df3b0aa2b70845d2be3230378ec069272b648f8065e7b8a64f62c8905ff0",
       "mode": 420
     },
     "dist/cli/lint-worker.mjs": {
@@ -92,7 +92,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "cfdcbc8e96f0f970dd1f558a9e9ea7a7a74fe0330bbb54d4d35691cfce2dac98",
+      "sha256": "13fc40d1de52deab8c5101f43c17d2b5f6bac5fc45e985705eac24f7cd1fd2a4",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {
@@ -112,7 +112,7 @@
       "mode": 420
     },
     "dist/interrupt.mjs": {
-      "sha256": "b65317325c4ef03e8bcc06f2df4accdd2c70de62bdcef9723984b70a0a8a0e54",
+      "sha256": "1920b399bdfe29dbf77f8af4decea08d17878813a379d6449b87ae06a7f3eafb",
       "mode": 420
     },
     "dist/node-test/recorder.cjs": {
@@ -140,11 +140,11 @@
       "mode": 420
     },
     "dist/post-tool-use.mjs": {
-      "sha256": "cc3f4b460eb6d33f97c4fb4a7ce628f922e300e62d54d72bb94c66819517c076",
+      "sha256": "dcd50b350d637fab771f72a19bb250792b4a0820622755c0ef0e7795111e6bd9",
       "mode": 420
     },
     "dist/pre-tool-use.mjs": {
-      "sha256": "465f270ba11b6d2353fa12c990aec3a2abdcc7611f2ccf82485970c5f6e5ef2f",
+      "sha256": "d436c832dbd9a343413802788b2073e4943faf7f3d63b7e05d0ed7fa92c2863a",
       "mode": 420
     },
     "dist/pytest/sitecustomize.py": {
@@ -164,35 +164,35 @@
       "mode": 493
     },
     "dist/runtime.mjs": {
-      "sha256": "47c4691218da4b4b6ba3c83424454dd9f3e9b5e2c2dbec2aeea85c336ca01781",
+      "sha256": "baac5afcac5a2716f2862e8a06c32067cdadd7d5f754c1f4d9ba1ffe22718c97",
       "mode": 420
     },
     "dist/session-end.mjs": {
-      "sha256": "7ceb1008b6a4fdc13bc4c8eec5dc3aa79e8dca8ec95b48581e032aabf1670375",
+      "sha256": "47adddb6a058c37b65f5bfce8926e18e039d6b27e828d4e0f525ecfc05d8d0e0",
       "mode": 420
     },
     "dist/session-start.mjs": {
-      "sha256": "73def519e607e6860bc73350cdcdcb500163f61ecc7d5dd344cf2128ada7062d",
+      "sha256": "69d5f5b55e55fd6d00f278b4bbfb0911494538bae6a5e5a826fba2dfb4f58b51",
       "mode": 420
     },
     "dist/stop-slow.mjs": {
-      "sha256": "af6970232fc34cf40a04e8d7b43b85bca5f8e15163ed67aea8715af45374607d",
+      "sha256": "0096a67b006e09ea8538ebda29da13631bee75aa54d1327022b40636b593884b",
       "mode": 420
     },
     "dist/stop.mjs": {
-      "sha256": "e99f52b57be132508d787721bf0ee14b49026b0eebb841c5267f296c25ba6db0",
+      "sha256": "f3f2e96b8aed76ec708a31041732a1c98e44fe846daabb7c0c05b53b32bc5594",
       "mode": 420
     },
     "dist/subagent-start.mjs": {
-      "sha256": "425b22c5d34187814a92ce0f1c2b7e30a07845e85adb233bb8672ce8acf480b1",
+      "sha256": "be659f2653d64a86f753fc89615821710420c6af8a1040ee766e00a8810f146b",
       "mode": 420
     },
     "dist/subagent-stop.mjs": {
-      "sha256": "3eb3b50b4624e275878880ce755b78262bf9a05309471c84ee2040ee81a8a353",
+      "sha256": "49a11169f146c62cf624cfd37d5c0560f30d02cda67b3bb1cc3d4f91bbe6e707",
       "mode": 420
     },
     "dist/user-prompt-submit.mjs": {
-      "sha256": "e1a611ed7d142a1730ef8771482145da0114483c058e1a4afa057e8dfad7f8af",
+      "sha256": "b12d46fb9f088a4f53da0528a24f3a7a87ceb2cc64e234ae7cbeb5a4cea4a8c3",
       "mode": 420
     },
     "skills/setup/SKILL.md": {
@@ -200,7 +200,7 @@
       "mode": 420
     },
     "skills/squeal/SKILL.md": {
-      "sha256": "9729f42bf9f80271ed89e6cfa9105af8da22df3a88150ca3098210c0bd98df9f",
+      "sha256": "07481edae88975cd05b7853908ea148cf1f0336a02bb6ca95584eca9c5d2e60d",
       "mode": 420
     },
     "skills/squeal/references/commands.md": {
