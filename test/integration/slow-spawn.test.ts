@@ -9,6 +9,7 @@ import { readStatus } from "../../src/core/status/snapshot.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { readRuns, until } from "../e2e/support.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 
 /*
@@ -68,7 +69,7 @@ function createRepo(): string {
 /** `squeal daemon <root>` from the sources, as the hooks would spawn it from a plugin. */
 async function startDaemon(root: string): Promise<void> {
   const env = childEnv(join(scratch, "run"));
-  const child = spawn(process.execPath, ["--import", TSX, CLI, "daemon", root], {
+  const child = spawn(process.execPath, [...VERSION_ARGS, "--import", TSX, CLI, "daemon", root], {
     cwd: root,
     env,
     stdio: "ignore",

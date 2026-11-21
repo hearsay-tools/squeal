@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { syncDaemon } from "../../src/cli/status-sync.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { A, repoWith } from "./status-wait-fixture.js";
 
 /*
@@ -66,7 +67,7 @@ describe("squeal status <path> against a paused daemon (row 011-49)", () => {
     const daemon = pausedDaemon(socket);
     await daemon.listening;
 
-    const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+    const flags = ["--disable-warning=ExperimentalWarning", ...VERSION_ARGS, "--import", TSX, CLI];
     const child = spawn(process.execPath, [...flags, "status", A], {
       cwd: repo.main,
       env,

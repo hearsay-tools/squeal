@@ -7,7 +7,7 @@ import { resolveCommonDir } from "../../src/core/fs/git-layout.js";
 import { daemonLogFor, storePaths } from "../../src/core/store/paths.js";
 import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
-import { rootVersion } from "../../src/harness/build.js";
+import { TEST_VERSION } from "../fixed-version.js";
 import {
   daemonSuite,
   delay,
@@ -143,7 +143,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
       root: repo.root,
       commonDir: repo.commonDir,
       isMain: true,
-      daemon: { socketPath: repo.socketPath, squealVersion: rootVersion() },
+      daemon: { socketPath: repo.socketPath, squealVersion: TEST_VERSION },
     });
     expect(record?.daemon?.heartbeatAt).toBeGreaterThan(0);
 

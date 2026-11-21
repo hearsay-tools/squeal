@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { storedFiles } from "../../src/cli/code-gate-stored.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { type FixtureRepo, waitFor } from "../daemon/helpers.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { featureRepo, hasRecord, keepPolicy, runIdsAt } from "./code-gate-keep-kit.js";
 
 /*
@@ -56,7 +57,7 @@ describe("squeal code --base stopped mid-run (spec 020 D17.3)", () => {
     const temp = join(scratch, "tmp");
     mkdirSync(marks);
     mkdirSync(temp);
-    const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+    const flags = ["--disable-warning=ExperimentalWarning", ...VERSION_ARGS, "--import", TSX, CLI];
     const args = ["code", "--base", "main", "src/keep.ts", "--json"];
     const child = spawn(process.execPath, [...flags, ...args], {
       cwd: repo.root,

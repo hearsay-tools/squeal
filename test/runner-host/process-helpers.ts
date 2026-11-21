@@ -6,6 +6,7 @@ import { childrenOf } from "../../src/core/daemon/terminate.js";
 import type { RunnerHostLaunch } from "../../src/core/runner-host/channel.js";
 import type { ProcessHost } from "../../src/core/runner-host/process-host.js";
 import type { RunReport } from "../../src/core/types/runner.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 
 /*
  * Row 021-12: what the node:test and pytest host tests share. Their hosts
@@ -17,10 +18,10 @@ import type { RunReport } from "../../src/core/types/runner.js";
 const REPO = resolve(import.meta.dirname, "../..");
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 
-/** The launch of a host from the sources. */
+/** The launch of a host from the sources, at the worker's version (row 011-425). */
 export const SOURCE_LAUNCH: RunnerHostLaunch = {
   execPath: process.execPath,
-  execArgv: ["--import", TSX],
+  execArgv: [...VERSION_ARGS, "--import", TSX],
   cli: join(REPO, "src/cli/index.ts"),
 };
 

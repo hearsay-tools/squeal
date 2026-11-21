@@ -19,6 +19,7 @@ import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { freshOutcomes, NEW, OLD } from "./stamps-repo.js";
 import { OPTIMIZED } from "./touched-repo.js";
@@ -113,7 +114,7 @@ function gitShim(root: string, planted: string): string {
 
 async function startDaemon(root: string, shim: string): Promise<void> {
   const env = { ...childEnv(runtime), PATH: `${shim}:${process.env.PATH ?? ""}` };
-  const child = spawn(process.execPath, ["--import", TSX, CLI, "daemon", root], {
+  const child = spawn(process.execPath, [...VERSION_ARGS, "--import", TSX, CLI, "daemon", root], {
     cwd: root,
     env,
     stdio: "ignore",

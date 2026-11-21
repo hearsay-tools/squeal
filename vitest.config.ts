@@ -1,6 +1,9 @@
 import { defineConfig } from "vitest/config";
+import { TEST_VERSION } from "./test/fixed-version.js";
 
 export default defineConfig({
+  // Row 011-425: workers report a fixed version and read no `package.json` for it.
+  define: { __SQUEAL_VERSION__: JSON.stringify(TEST_VERSION) },
   test: {
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
     exclude: ["test/fixtures/**", "node_modules/**"],

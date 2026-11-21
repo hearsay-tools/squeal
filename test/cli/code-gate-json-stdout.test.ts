@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import type { GateReport } from "../../src/core/code/gate/report.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { BASE, edit, repo } from "./code-gate-fixture.js";
 
 /*
@@ -40,7 +41,7 @@ function cli(args: readonly string[], cwd: string) {
   const home = mkdtempSync(join(tmpdir(), "squeal-gate-home-"));
   homes.push(home);
   const env = { PATH: process.env.PATH ?? "", HOME: home };
-  const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+  const flags = ["--disable-warning=ExperimentalWarning", ...VERSION_ARGS, "--import", TSX, CLI];
   const child = spawn(process.execPath, [...flags, ...args], { cwd, env });
   let stdout = "";
   let stderr = "";

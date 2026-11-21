@@ -9,6 +9,7 @@ import { readMarks } from "../../src/core/capacity/marks.js";
 import { slowSlotDir } from "../../src/core/slow/slot.js";
 import { childEnv } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 
 /*
@@ -91,7 +92,7 @@ describe("a --separate-git-dir repository's capacity.projects cap (review 001-38
       config,
       JSON.stringify({ capacity: { hostSlots: 8, projects: { [root]: { slots: 2 } } } }),
     );
-    const child = spawn(process.execPath, ["--import", TSX, CLI, "daemon", root], {
+    const child = spawn(process.execPath, [...VERSION_ARGS, "--import", TSX, CLI, "daemon", root], {
       cwd: root,
       env,
       stdio: "ignore",

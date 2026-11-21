@@ -1,0 +1,45 @@
+R 0    1.4 test/runners/node-test/child-daemon.test.ts  worker: Vite PostCSS search; worker: squealVersion
+R 0    2.1 test/harness/codex/version-copies-start.test.ts  worker: build.ts nodeFloor
+R 0    1.6 test/harness/stop-slow-untold.test.ts  worker: squealVersion
+R 0    0.9 test/cli/status-wait-ask-race.test.ts  worker: squealVersion
+R 0    0.4 test/runners/vitest/coverage-default.test.ts  worker: Vite PostCSS search
+R 1    1.9 test/cli/code-gate-prerun.test.ts  worker: Vite PostCSS search; worker: squealVersion
+R 0    0.8 test/harness/codex/subagent-stop.test.ts  worker: squealVersion
+R 0    2.2 test/lint/pass/daemon.test.ts  worker: Vite PostCSS search; worker: squealVersion
+R 0    0.4 test/code/crap/early-bound.test.ts  worker: squealVersion
+R 0    0.4 test/code/delivery/pulled-coverage.test.ts  worker: squealVersion
+R 0    0.9 test/runners/vitest/related.test.ts  worker: Vite PostCSS search
+R 0    1.8 test/runners/vitest/client-environment.test.ts  worker: Vite PostCSS search
+R 0    1.7 test/daemon/mark-binding.test.ts  worker: squealVersion
+R 0    0.3 test/delivery/expiry.test.ts  worker: squealVersion
+R 0    0.4 test/status/group-lines.test.ts  worker: squealVersion
+R 0    0.3 test/state/unknown-origin.test.ts  worker: squealVersion
+R 0    1.4 test/cli/code-gate-stored-adapters.test.ts  worker: Vite PostCSS search; worker: squealVersion
+R 0    0.3 test/delivery/liveness.test.ts  worker: squealVersion
+R 0    0.8 test/runners/vitest/project-config.test.ts  worker: Vite PostCSS search
+R 0    0.2 test/evals/slow-start-evidence.test.ts  worker: squealVersion
+R 0    2.3 test/scheduler/loaded-modules.test.ts  worker: Vite PostCSS search
+R 0    0.9 test/cli/status-wait-deadline.test.ts  worker: squealVersion
+R 0    1.2 test/cli/status-wait-pool.test.ts  worker: squealVersion
+R 0    1.2 test/runners/node-test/ci-record-entries.test.ts  worker: squealVersion
+R 0    1.8 test/scheduler/environment-recheck.test.ts  worker: Vite PostCSS search
+R 0    6.2 test/daemon/repeated-notes.test.ts  worker: buildCli copy; worker: squealVersion
+R 0    4.8 test/cli/code-gate-setup-early.test.ts  worker: Vite PostCSS search; worker: squealVersion
+R 0    4.5 test/daemon/start-register.test.ts  worker: buildCli copy; worker: squealVersion
+R 0    3.5 test/scheduler/load-retry-bound.test.ts  worker: Vite PostCSS search
+R 0    6.5 test/integration/revert-restore.test.ts  worker: squealVersion
+R 0    7.4 test/scheduler/later-discharge-wait.test.ts  worker: Vite PostCSS search; worker: squealVersion
+R 0    4.5 test/cli/status-at-run-kept-key.test.ts  child: squealVersion; worker: squealVersion
+R 0    3.1 test/cli/code-gate-json-stdout.test.ts  
+R 0    6.1 test/integration/touched-caches.test.ts  worker: Vite PostCSS search
+R 0    6.6 test/cli/wait-mixed-read.test.ts  worker: squealVersion
+R 0    4.2 test/scheduler/flaky-inputs.test.ts  worker: Vite PostCSS search
+R 0   10.1 test/integration/optimizer-start.test.ts  worker: Vite PostCSS search; worker: squealVersion
+R 0    3.6 test/scheduler/declared-inputs.test.ts  worker: Vite PostCSS search
+R 0   13.4 test/daemon/handover-tier.test.ts  worker: buildCli copy; worker: squealVersion
+R 0   16.0 test/cli/run-group-daemon.test.ts  worker: buildCli copy; worker: squealVersion
+R 0   39.4 test/cli/status-at-review13.test.ts  child: squealVersion; worker: squealVersion
+R 0   34.2 test/cli/status-at-both-changed.test.ts  child: squealVersion; worker: squealVersion
+R 0   98.7 test/scheduler/backlog-slots-overhead.test.ts  worker: Vite PostCSS search
+R 0   38.1 test/scheduler/ordering.test.ts  worker: Vite PostCSS search
+R 0   25.4 test/code/gate/collect-crash.test.ts  worker: Vite PostCSS search

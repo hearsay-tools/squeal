@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { build } from "esbuild";
 import { copyObserveRuntime } from "../../../src/harness/build.js";
 import { bundleOptions } from "../../../src/harness/claude-code/build.js";
+import { TEST_VERSION } from "../../fixed-version.js";
 
 /*
  * Spec 021 rows 021-13, 021-14: what the remote tests share. A lean bundle
@@ -19,8 +20,11 @@ export const scratchDir = join(fixturesDir, ".tmp");
 
 /** Builds `cli/squeal.mjs` and the observe runtime into `outdir`; returns the CLI's path. */
 export async function buildBundle(outdir: string): Promise<string> {
+  const options = bundleOptions(outdir);
   await build({
-    ...bundleOptions(outdir),
+    ...options,
+    // Row 011-425: the bundle reports the worker's version.
+    define: { ...options.define, __SQUEAL_VERSION__: JSON.stringify(TEST_VERSION) },
     entryPoints: [{ in: "src/cli/index.ts", out: "cli/squeal" }],
     metafile: false,
   });

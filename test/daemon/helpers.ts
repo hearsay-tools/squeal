@@ -21,6 +21,7 @@ import type { PingResponse } from "../../src/core/types/daemon.js";
 import type { DaemonNote } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
+import { TEST_VERSION } from "../fixed-version.js";
 import { git } from "../hash/git-repo.js";
 import { compileObserved } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";
@@ -83,7 +84,9 @@ export function buildCli(options: BuildOptions = {}): BuiltCli {
     "--sourceMap",
     "false",
   ]);
-  copyFileSync(join(repoRoot, "package.json"), join(dir, "package.json"));
+  // Row 011-425: the version every test process reports, not the root manifest's.
+  const manifest = { name: "squeal", version: TEST_VERSION, type: "module" };
+  writeFileSync(join(dir, "package.json"), `${JSON.stringify(manifest)}\n`);
   if (options.observe === true) {
     for (const file of OBSERVE_FILES) {
       copyFileSync(

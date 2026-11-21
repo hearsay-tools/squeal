@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { createHostedVitest } from "../../src/core/runner-host/vitest-host.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { ALL_TEST_FILES, openFixture, SLOW } from "../runners/vitest/helpers.js";
 
 /*
@@ -24,7 +25,8 @@ describe("a runner host started from the sources", SLOW, () => {
       createHostedVitest(
         {
           execPath: process.execPath,
-          execArgv: ["--import", TSX],
+          // Row 011-425: the host reports the worker's version.
+          execArgv: [...VERSION_ARGS, "--import", TSX],
           cli: join(REPO, "src/cli/index.ts"),
         },
         squealVersion(),

@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { A, repoWith } from "./status-wait-fixture.js";
 
 /*
@@ -76,7 +77,7 @@ async function statusAgainstPaused(args: readonly string[]): Promise<Run> {
   const closes: number[] = [];
   await pausedDaemon(socket, closes);
 
-  const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+  const flags = ["--disable-warning=ExperimentalWarning", ...VERSION_ARGS, "--import", TSX, CLI];
   const spawnedAt = performance.now();
   const child = spawn(process.execPath, [...flags, "status", ...args], {
     cwd: repo.main,

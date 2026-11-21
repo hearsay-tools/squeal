@@ -7,6 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { alive, beats, PREPARE_SCRIPT, pidsOf } from "../code/gate/prepare-cancel-kit.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { edit, repo } from "./code-gate-fixture.js";
 
 /*
@@ -59,7 +60,7 @@ async function cancelled(root: string, args: readonly string[], signal: NodeJS.S
     HOME: own("squeal-gate-home-"),
     TMPDIR: own("squeal-gate-tmp-"),
   };
-  const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+  const flags = ["--disable-warning=ExperimentalWarning", ...VERSION_ARGS, "--import", TSX, CLI];
   const child = spawn(process.execPath, [...flags, "code", "--base", "main", ...args], {
     cwd: root,
     env,

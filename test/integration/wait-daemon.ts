@@ -11,6 +11,7 @@ import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 
 /*
  * Real daemons run from the sources over small Vitest repositories, for the
@@ -71,11 +72,15 @@ export function waitDaemons(prefix: string): WaitDaemons {
     },
     async startDaemon(root) {
       const env = childEnv(runtime);
-      const child = spawn(process.execPath, ["--import", TSX, CLI, "daemon", root], {
-        cwd: root,
-        env,
-        stdio: "ignore",
-      });
+      const child = spawn(
+        process.execPath,
+        [...VERSION_ARGS, "--import", TSX, CLI, "daemon", root],
+        {
+          cwd: root,
+          env,
+          stdio: "ignore",
+        },
+      );
       daemons.push(child);
       const { socketPathFor } = await import("../../src/core/daemon/paths.js");
       const socket = socketPathFor(worktreeIdFor(root), env);

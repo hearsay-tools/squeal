@@ -10,6 +10,7 @@ import { readStatus } from "../../src/core/status/snapshot.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { readRuns, until } from "../e2e/support.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { type FixturePackage, writeInstall } from "../keys/install.js";
 
@@ -97,7 +98,7 @@ function createRepo(): string {
 
 async function startDaemon(root: string): Promise<void> {
   const env = childEnv(runtime);
-  const child = spawn(process.execPath, ["--import", TSX, CLI, "daemon", root], {
+  const child = spawn(process.execPath, [...VERSION_ARGS, "--import", TSX, CLI, "daemon", root], {
     cwd: root,
     env,
     stdio: "ignore",

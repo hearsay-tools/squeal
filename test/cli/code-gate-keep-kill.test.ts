@@ -10,6 +10,7 @@ import type { GateReport } from "../../src/core/code/gate/report.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { type FixtureRepo, waitFor } from "../daemon/helpers.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { result } from "../store/helpers.js";
 import { featureRepo, keepPolicy } from "./code-gate-keep-kit.js";
 
@@ -98,7 +99,13 @@ describe("squeal code --base killed mid-run (row 020-59, #216)", () => {
       const temp = join(scratch, "tmp");
       mkdirSync(marks);
       mkdirSync(temp);
-      const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+      const flags = [
+        "--disable-warning=ExperimentalWarning",
+        ...VERSION_ARGS,
+        "--import",
+        TSX,
+        CLI,
+      ];
       const args = ["code", "--base", "main", "--json"];
       const env = { ...repo.env, GATE_MARKS: marks, TMPDIR: temp };
       const child = spawn(process.execPath, [...flags, ...args], {

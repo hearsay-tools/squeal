@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { BASE, repo } from "./code-gate-fixture.js";
 
 /*
@@ -104,7 +105,7 @@ describe("squeal code --base --json: a SIGKILL'd CLI process leaves no child (sp
     const marks = mkdtempSync(join(tmpdir(), "squeal-gate-marks-"));
     dirs.push(home, marks);
     const env = { PATH: process.env.PATH ?? "", HOME: home, GATE_MARKS: marks };
-    const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+    const flags = ["--disable-warning=ExperimentalWarning", ...VERSION_ARGS, "--import", TSX, CLI];
     const tests = ["--test", "test/slow.test.ts", "--test", "test/slow-node.test.mjs"];
     const args = ["code", "--base", "main", "--json", ...tests];
     const cli = spawn(process.execPath, [...flags, ...args, "--timeout", "300"], {

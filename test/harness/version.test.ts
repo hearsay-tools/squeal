@@ -11,6 +11,7 @@ import {
   UNKNOWN_VERSION,
 } from "../../src/core/daemon/version.js";
 import { REPO_ROOT } from "../../src/harness/build.js";
+import { TEST_VERSION } from "../fixed-version.js";
 import { runtimeDir } from "./bundle-helpers.js";
 
 const ROOT_VERSION = (
@@ -25,7 +26,13 @@ const ROOT_VERSION = (
  */
 describe("squealVersion", () => {
   it("is the root package version when run from the sources", () => {
-    expect(squealVersion()).toBe(ROOT_VERSION);
+    const sources = new URL("../../src/core/daemon/version.ts", import.meta.url);
+    expect(manifestVersion(sources)).toBe(ROOT_VERSION);
+  });
+
+  // Row 011-425: the test run defines it as a build does (`test/fixed-version.ts`).
+  it("is the defined version where one is defined", () => {
+    expect(squealVersion()).toBe(TEST_VERSION);
   });
 
   it("walks up past manifests of other packages to the one named squeal", () => {

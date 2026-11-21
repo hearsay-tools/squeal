@@ -12,6 +12,7 @@ import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
 import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 
 /*
  * Row 023-06: what the `status --at` fixture tests share: a test file's
@@ -21,9 +22,13 @@ import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
 
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 
-/** Row 023-07: this repository's CLI from source through tsx, so `--run`'s child is a real one. */
+/**
+ * Row 023-07: this repository's CLI from source through tsx, so `--run`'s child is a real one;
+ * row 011-425: at the worker's version, so it reads no `package.json` for one.
+ */
 export const RELAUNCH: readonly string[] = [
   process.execPath,
+  ...VERSION_ARGS,
   "--import",
   TSX,
   resolve(import.meta.dirname, "../../src/cli/index.ts"),

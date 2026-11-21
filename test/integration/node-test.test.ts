@@ -12,6 +12,7 @@ import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { readRuns, until } from "../e2e/support.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { hookText as contextOf, recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 
@@ -139,7 +140,7 @@ function addWorktree(main: string, name: string): string {
 /** `squeal daemon <root>` from the sources, as the hooks would spawn it from a plugin. */
 async function startDaemon(root: string): Promise<void> {
   const env = childEnv(runtime);
-  const child = spawn(process.execPath, ["--import", TSX, CLI, "daemon", root], {
+  const child = spawn(process.execPath, [...VERSION_ARGS, "--import", TSX, CLI, "daemon", root], {
     cwd: root,
     env,
     stdio: "ignore",
