@@ -22,6 +22,7 @@ import type { SideFit } from "./status-at-run-fit.js";
 import { runBatches } from "./status-at-run-loop.js";
 import { outcomesOf } from "./status-at-run-outcome.js";
 import { noResult, type Selection, selector } from "./status-at-run-select.js";
+import { unkept } from "./status-at-run-unkept.js";
 import { runUse } from "./status-at-run-use.js";
 
 /*
@@ -94,8 +95,11 @@ export interface AtRunInput {
 export interface NowTurn {
   /** Chooses the working tree's files from the commit side's selection; their count. */
   files(selection: Selection): number;
-  /** Runs them (or what is left of them) until `endMs` (`performance.now()`). */
-  run(endMs: number): Promise<void>;
+  /**
+   * Runs them (or what is left of them) until `endMs` (`performance.now()`).
+   * Row 023-34 (T4): `alone`, the `testFileId`s this side ran and did not keep.
+   */
+  run(endMs: number, alone: ReadonlySet<string>): Promise<void>;
 }
 
 /** R1: the working tree's side, for the report and the rerun's fit. */
@@ -166,7 +170,7 @@ export function atRun(input: AtRunInput): AtRun {
       // R1: each side a share of what is left by its count; what one leaves unused goes on.
       const now = input.now?.files(selection) ?? 0;
       if (run.length > 0) await runFiles(checkout, run, keyed, shareEnd(run.length, now));
-      if (now > 0) await input.now?.run(shareEnd(now, budgetLeft(run).length));
+      if (now > 0) await input.now?.run(shareEnd(now, budgetLeft(run).length), unkeptIds());
       // The first pass had only its share when the working tree had files: its leftovers take
       // the rest, which the working tree's turn did not use.
       const again = budgetLeft(run);
@@ -183,6 +187,10 @@ export function atRun(input: AtRunInput): AtRun {
     const now = performance.now();
     return now + Math.max(0, endMs - now) * (mine / (mine + other));
   };
+
+  /** Row 023-34 (T4): the files this side ran and did not keep. */
+  const unkeptIds = () =>
+    new Set([...states].filter(([, state]) => unkept(state)).map(([id]) => id));
 
   /** The files of `run` the budget left not run. */
   const budgetLeft = (run: readonly KeyedFile[]) =>

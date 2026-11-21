@@ -3,7 +3,8 @@ import { testFileId } from "../core/keys/reverse-index.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { listLate, type NowInput, type NowSide, nowSide } from "./status-at-now.js";
 import type { AtRun, NowPart, NowTurn } from "./status-at-run.js";
-import { type NowRunEnd, nowFiles, nowUse, runNow } from "./status-at-run-now.js";
+import { mergedEnd, type NowRunEnd, nowFiles, nowUse, runNow } from "./status-at-run-now.js";
+import { unkept, withUnkept } from "./status-at-run-unkept.js";
 
 /*
  * Row 023-29 (lessons round 4, R1; spec 023 D4.10): `--run` answers both
@@ -57,8 +58,22 @@ export function workingTree(input: TurnInput): WorkingTree {
   let files: TestFileRef[] = [];
   let end: NowRunEnd | null = null;
   const { timeoutSeconds } = input;
-  const pass = async (list: readonly TestFileRef[], endMs: number, current: NowSide) => {
+  /** T4: the files sent through the gate for the commit side's unkept ones, by `testFileId`. */
+  const gated = new Set<string>();
+  const keyOf = (ref: TestFileRef) => {
+    const state = input.now.state(ref);
+    return "key" in state ? state.key : null;
+  };
+  const pass = async (
+    list: readonly TestFileRef[],
+    endMs: number,
+    current: NowSide,
+    alone: ReadonlySet<string>,
+  ) => {
+    for (const ref of list) if (alone.has(testFileId(ref))) gated.add(testFileId(ref));
     const next = await runNow({
+      alone,
+      keyOf,
       root: read.root,
       commonDir: read.commonDir,
       files: list,
@@ -70,7 +85,7 @@ export function workingTree(input: TurnInput): WorkingTree {
       forward: input.forward,
       ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
     });
-    end = merged(end, next, list);
+    end = mergedEnd(end, next, list);
   };
   return {
     files(selection) {
@@ -80,7 +95,7 @@ export function workingTree(input: TurnInput): WorkingTree {
           : nowFiles(input.now.refs, input.now.state, selection.selects);
       return files.length;
     },
-    run: (endMs) => pass(files, endMs, input.now),
+    run: (endMs, alone) => pass(files, endMs, input.now, alone),
     async finish(ran, refs, current) {
       const selects = ran.selects();
       if (selects === null) return null;
@@ -89,10 +104,22 @@ export function workingTree(input: TurnInput): WorkingTree {
       const late = nowFiles(refs, current.state, selects).filter(
         (ref) => !ids.has(testFileId(ref)),
       );
-      const left = [...files.filter((ref) => budgetLeft(end, ref)), ...late];
+      // T4: the commit side's files it ran and did not keep, its second pass's included.
+      const alone = new Set(
+        [...files, ...late]
+          .filter((ref) => unkept(ran.state(ref, { state: "absent" })))
+          .map(testFileId),
+      );
+      // T4: one the daemon ran here and did not keep (no result yet) runs once through the gate.
+      const unkeptLeft = (ref: TestFileRef) =>
+        alone.has(testFileId(ref)) &&
+        !gated.has(testFileId(ref)) &&
+        current.state(ref).state === "no result" &&
+        !budgetLeft(end, ref);
+      const left = [...files.filter((ref) => budgetLeft(end, ref) || unkeptLeft(ref)), ...late];
       files = [...files, ...late];
       if (left.length > 0 && ran.endMs - performance.now() > LAST_PASS_MS)
-        await pass(left, ran.endMs, current);
+        await pass(left, ran.endMs, current, alone);
       const again =
         end === null
           ? current
@@ -108,7 +135,9 @@ export function workingTree(input: TurnInput): WorkingTree {
         problem: null,
         leftEstimate: null,
       };
-      const use = nowUse({ files }, last, again.state);
+      // T4: a file run here and not kept reads this run's outcome, never stored.
+      const side = { ...again, state: withUnkept(again.state, last.states) };
+      const use = nowUse({ files }, last, side.state);
       const leftCount = use.how === "gate" ? use.notRun : 0;
       const fit = {
         left: leftCount,
@@ -116,7 +145,7 @@ export function workingTree(input: TurnInput): WorkingTree {
         gateMs: last.gateMs,
         estimate: last.leftEstimate,
       };
-      return { current: again, part: { use, fit } };
+      return { current: side, part: { use, fit } };
     },
   };
 }
@@ -125,24 +154,4 @@ export function workingTree(input: TurnInput): WorkingTree {
 function budgetLeft(end: NowRunEnd | null, ref: TestFileRef): boolean {
   const state = end?.states.get(testFileId(ref));
   return state?.state === "not run" && state.reason === "budget";
-}
-
-/** Two passes as one: the later pass's files take its states, the times add up. */
-function merged(
-  earlier: NowRunEnd | null,
-  later: NowRunEnd,
-  list: readonly TestFileRef[],
-): NowRunEnd {
-  if (earlier === null) return later;
-  const again = new Set(list.map(testFileId));
-  const states = new Map([...earlier.states].filter(([id]) => !again.has(id)));
-  for (const [id, state] of later.states) states.set(id, state);
-  const times = [earlier.gateMs, later.gateMs].filter((ms): ms is number => ms !== null);
-  return {
-    how: later.how,
-    gateMs: times.length === 0 ? null : times.reduce((a, b) => a + b, 0),
-    states,
-    problem: earlier.problem ?? later.problem,
-    leftEstimate: later.leftEstimate,
-  };
 }
