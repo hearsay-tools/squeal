@@ -49,6 +49,9 @@ export const CELLS = [
   // ff-rebase: the agent commits its own edits and rebases onto it.
   { name: "ff", files: 500, worktrees: 1, load: 0, ff: "cold" },
   { name: "ff-known", files: 500, worktrees: 1, load: 0, ff: "known" },
+  // ff-ci: the incoming commit's results come from CI through spec 018 (ci record, ci export,
+  // squeal import), not from a sibling worktree.
+  { name: "ff-ci", files: 500, worktrees: 1, load: 0, ff: "ci" },
   { name: "ff-load50", files: 500, worktrees: 1, load: 50, ff: "cold" },
   { name: "ff-rebase", files: 500, worktrees: 1, load: 0, ff: "cold", ffMode: "rebase" },
 ];
@@ -81,7 +84,7 @@ export const GROUPS = {
   load: ["ref", "load-50", "load-100"],
   store: ["ref", "store-1.7g", "store-7g", "churn"],
   lists: ["store-7g", "store-7g-wt3", "store-7g-wt3-nolists", "store-7g-lists1d"],
-  ff: ["ff", "ff-known", "ff-load50", "ff-rebase"],
+  ff: ["ff", "ff-known", "ff-ci", "ff-load50", "ff-rebase"],
   // Areas: where a change of that kind shows first.
   quick: ["ref", "wt-3"],
   hooks: ["ref", "wt-3", "stress"],

@@ -226,6 +226,12 @@ export const METRICS = [
     group: "Verdicts",
   },
   {
+    id: "ff.import.s",
+    what: "Fast-forward from CI: `squeal import` of the export",
+    unit: "s",
+    group: "Verdicts",
+  },
+  {
     id: "ff.drainS",
     what: "Fast-forward: until no test file waits (polled before each later step)",
     unit: "s",
@@ -377,6 +383,7 @@ function cellValues(cellDir) {
     "cell.setupFailed": setupFailures(cell.phases),
     ...noticeValues(rows, cell.files),
     ...ffValues(rows),
+    "ff.import.s": cell.phases.upstream?.ci ? cell.phases.upstream.ci.import.ms / 1000 : null,
   };
   return { cell, v };
 }
@@ -388,6 +395,9 @@ function setupFailures(p) {
   if (p.runAll && p.runAll.code !== 0) n++;
   // `age.code` was the code store's numbers in runs before 2026-11-21; only a number is an exit code.
   if (p.age && (p.age.err || (typeof p.age.code === "number" && p.age.code !== 0))) n++;
+  // ff-ci: a CI record (the tests' own exit code), export or import that failed.
+  const ci = p.upstream?.ci;
+  if (ci) n += [ci.record, ci.export, ci.import].filter((x) => x.code !== 0).length;
   return n;
 }
 

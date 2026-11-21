@@ -39,7 +39,7 @@ bench/boat-run.sh --ref squeal--v0.1.579 --ref .                       # stage 2
 | `@scheduler` | ref, wt-3, load-50, size-l | scheduling, catch-up, the edit cut |
 | `@store` | ref, store-1.7g, store-7g, churn | store size, prune, the integrity check |
 | `@lists` | store-7g, store-7g-wt3, store-7g-wt3-nolists, store-7g-lists1d | module lists (`loaded_modules`) |
-| `@ff` | ff, ff-known, ff-load50, ff-rebase | fast-forwards, pulls and rebases from the base branch (issue 261) |
+| `@ff` | ff, ff-known, ff-ci, ff-load50, ff-rebase | fast-forwards, pulls and rebases from the base branch (issue 261) |
 | `@size`, `@worktrees`, `@load` | one axis each, with ref | how one factor scales |
 | `@all` | every cell | the default |
 
@@ -99,6 +99,7 @@ The benchmark varies one factor at a time from the reference cell, and adds one 
 | store-7g-lists1d | 500 | 1 | 0% (as store-7g, module lists for the newest day only) |
 | ff | 500 | 1 | 0% (a fast-forward mid-session, issue 261) |
 | ff-known | 500 | 1 | 0% (the same, its commit already run by another worktree) |
+| ff-ci | 500 | 1 | 0% (the same, its commit's results imported from a CI export) |
 | ff-load50 | 500 | 1 | 50% (the cold fast-forward on a half-busy machine) |
 | ff-rebase | 500 | 1 | 0% (the agent commits its edits and rebases instead) |
 
@@ -108,7 +109,7 @@ The churn cell measures the daily upkeep of a large store. Its history spans 8 d
 
 The last three cells separate a large store from its module lists (`loaded_modules`, 82% of Squeal's own store), after feedback of 2026-11-20: the lists' cost is lock time that other worktrees and their hooks wait for, so two of them run 3 worktrees. `age-store.mjs --lists 7d|1d|none` sets which aged keys get a list. Every cell also times `squeal reach`, which reads every stored list with no daemon, and records its peak memory.
 
-The `ff` cells measure issue 261: an agent's worktree brings in a large commit from its base branch (`git merge --ff-only`, a pull, or a rebase), and Squeal queues every test file it affects while the agent keeps working. After the full run, the cell commits a change to 125 of the 500 modules (every module with i % 4 == 3, five of them group roots) on a branch `upstream` in a worktree of its own. At step 6 the session in the main worktree brings it in; the session never edits those 125 modules, so its uncommitted edits never block the merge and a rebase never conflicts. In `ff-known`, the upstream worktree's own daemon runs every test file first, as the base branch's CI would, so the shared store holds the incoming commit's results and the fast-forward should cost almost nothing. Before each later step the session reads how many test files still wait.
+The `ff` cells measure issue 261: an agent's worktree brings in a large commit from its base branch (`git merge --ff-only`, a pull, or a rebase), and Squeal queues every test file it affects while the agent keeps working. After the full run, the cell commits a change to 125 of the 500 modules (every module with i % 4 == 3, five of them group roots) on a branch `upstream` in a worktree of its own. At step 6 the session in the main worktree brings it in; the session never edits those 125 modules, so its uncommitted edits never block the merge and a rebase never conflicts. In `ff-known`, the upstream worktree's own daemon runs every test file first, as the base branch's CI would, so the shared store holds the incoming commit's results and the fast-forward should cost almost nothing. `ff-ci` takes spec 018's path instead: in the upstream checkout the tests run under `squeal ci record`, `squeal ci export` writes one export, and the main worktree runs `squeal import` on it before the fast-forward; the cell keeps each step's time and exit code and the import's report, and a failed step fails the cell's setup. Before each later step the session reads how many test files still wait.
 
 Ambient load (`load.mjs`) is busy-loop threads at normal priority on that share of the vCPUs. It stands for another agent's build or test run.
 
@@ -176,6 +177,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | `store.longWrite.maxMs`, `store.longWrite.totalS` | report | | The longest logged lock hold and the sum of all logged holds (Squeal logs only holds over 250 ms) |
 | `cmd.reach.s`, `res.reach.rss` | report | | `squeal reach --json` after the sessions: time and peak memory |
 | `ff.queued` | report | | Fast-forward cells: test files queued 3 s after it |
+| `ff.import.s` | report | | `ff-ci`: the `squeal import` of the CI export |
 | `ff.drainS` | ≤ 120 s | ≤ 600 s | Fast-forward cells: until no test file waits, read before each later step (so to within one step, 5–10 s) |
 | `ff.lateNotices` | 0 | ≤ 3 | Fast-forward cells: hook outputs after it that report its files as not run yet ("N of the M test files your edits affect have not run", with M at least 90% of what it queued); issue 261's agent saw one almost every turn for 9 hours |
 | `ff.editVerdict.p50` | ≤ 3 s | ≤ 10 s | Fast-forward cells: the agent's own edits after it until their verdict; incoming files must not push the agent's work back |

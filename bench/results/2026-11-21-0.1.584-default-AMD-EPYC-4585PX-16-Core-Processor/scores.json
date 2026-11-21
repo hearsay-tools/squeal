@@ -168,7 +168,8 @@
       "ff.drainS": 59.727296626999994,
       "ff.lateNotices": 1,
       "ff.editVerdict.p50": 1548.5255889999971,
-      "ff.gitFailed": 0
+      "ff.gitFailed": 0,
+      "ff.import.s": null
     },
     "ff-known": {
       "hook.preToolUse.p95": 110.62000899999288,
@@ -221,7 +222,8 @@
       "ff.drainS": 9.426715628999998,
       "ff.lateNotices": 0,
       "ff.editVerdict.p50": 1543.3303679999954,
-      "ff.gitFailed": 0
+      "ff.gitFailed": 0,
+      "ff.import.s": null
     },
     "ff-load50": {
       "hook.preToolUse.p95": 146.05528110000665,
@@ -274,7 +276,8 @@
       "ff.drainS": null,
       "ff.lateNotices": 9,
       "ff.editVerdict.p50": 1689.3712310000556,
-      "ff.gitFailed": 0
+      "ff.gitFailed": 0,
+      "ff.import.s": null
     },
     "ff-rebase": {
       "hook.preToolUse.p95": 142.2005083999862,
@@ -327,7 +330,8 @@
       "ff.drainS": 66.406105833,
       "ff.lateNotices": 1,
       "ff.editVerdict.p50": 1645.497749000002,
-      "ff.gitFailed": 0
+      "ff.gitFailed": 0,
+      "ff.import.s": null
     }
   }
 }

@@ -133,7 +133,8 @@
       "ff.drainS": null,
       "ff.lateNotices": null,
       "ff.editVerdict.p50": null,
-      "ff.gitFailed": null
+      "ff.gitFailed": null,
+      "ff.import.s": null
     },
     "store-7g": {
       "hook.preToolUse.p95": 211.90991650000774,
@@ -186,7 +187,8 @@
       "ff.drainS": null,
       "ff.lateNotices": null,
       "ff.editVerdict.p50": null,
-      "ff.gitFailed": null
+      "ff.gitFailed": null,
+      "ff.import.s": null
     },
     "churn": {
       "hook.preToolUse.p95": 127.29172269998226,
@@ -239,7 +241,8 @@
       "ff.drainS": null,
       "ff.lateNotices": null,
       "ff.editVerdict.p50": null,
-      "ff.gitFailed": null
+      "ff.gitFailed": null,
+      "ff.import.s": null
     }
   }
 }

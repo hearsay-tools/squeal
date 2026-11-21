@@ -72,6 +72,7 @@ Squeal 0.1.584 · Node v24.22.1 · AMD EPYC 4585PX 16-Core Processor · 4 vCPU �
 | **Verdicts** | | |  |  |  |  |
 | Edit every test imports until the whole suite is current (`session.broad.verdict`) | ≤ 180 | ≤ 300 | 164 s ✅ | 166 s ✅ | 238 s ⚠️ | 162 s ✅ |
 | Fast-forward: test files queued 3 s after it (`ff.queued`) | report |  | 350 | 0 | 350 | 350 |
+| Fast-forward from CI: `squeal import` of the export (`ff.import.s`) | report |  | n/a | n/a | n/a | n/a |
 | Fast-forward: until no test file waits (polled before each later step) (`ff.drainS`) | ≤ 120 | ≤ 600 | 60 s ✅ | 9.4 s ✅ | late ❌ | 66 s ✅ |
 | Fast-forward: hook outputs after it that report its files as not run yet (`ff.lateNotices`) | ≤ 0 | ≤ 3 | 1 ⚠️ | 0 ✅ | 9 ❌ | 1 ⚠️ |
 | Fast-forward: the agent's own edits after it until their verdict (median) (`ff.editVerdict.p50`) | ≤ 3000 | ≤ 10000 | 1549 ms ✅ | 1543 ms ✅ | 1689 ms ✅ | 1645 ms ✅ |

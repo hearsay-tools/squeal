@@ -62,7 +62,8 @@ const { values: o } = parseArgs({
     "age-span-days": { type: "string", default: "7" },
     "age-lists": { type: "string", default: "7d" },
     // Issue 261, a big fast-forward: none | cold (nobody ran the incoming commit) | known (another
-    // worktree ran it first, so the shared store holds its results). --ff-mode merge | rebase.
+    // worktree ran it first, so the shared store holds its results) | ci (CI ran it: `squeal ci
+    // record` and `ci export` in the upstream checkout, then `squeal import` here). --ff-mode merge | rebase.
     ff: { type: "string", default: "none" },
     "ff-mode": { type: "string", default: "merge" },
     "ff-modules": { type: "string", default: "125" },
@@ -219,7 +220,7 @@ if (Number(o["age-rounds"]) > 0) {
 // 4c. Issue 261: an `upstream` branch one commit ahead, which the session in wt0 brings in mid-session.
 if (o.ff !== "none") {
   log(`upstream commit: ${o["ff-modules"]} modules, ${o.ff}`);
-  cell.phases.upstream = await makeUpstream(Number(o["ff-modules"]), o.ff === "known");
+  cell.phases.upstream = await makeUpstream(Number(o["ff-modules"]), o.ff);
 }
 
 // 5. Start in the other worktrees.
@@ -460,7 +461,8 @@ function fullCheckSeconds(logDir, since) {
  * content and its tests' keys but no result. With `known`, that worktree's own daemon then runs
  * every test file, as a base branch's CI would, and stops; the shared store keeps the results.
  */
-async function makeUpstream(count, known) {
+async function makeUpstream(count, kind) {
+  const known = kind === "known";
   const up = join(work, "upstream");
   const gitEnv = {
     ...env,
@@ -482,7 +484,7 @@ async function makeUpstream(count, known) {
     cwd: up,
     env: gitEnv,
   });
-  const result = { modules: chosen.size, known };
+  const result = { modules: chosen.size, kind };
   if (known) {
     await timed("cp", ["-a", join(main, "node_modules"), join(up, "node_modules")]);
     await squeal(up, ["start"], 120_000);
@@ -490,5 +492,34 @@ async function makeUpstream(count, known) {
     await squeal(up, ["stop"], 60_000);
     result.runAll = { ms: r.ms, code: r.code };
   }
+  if (kind === "ci") result.ci = await ciImport(up);
   return result;
+}
+
+/**
+ * Spec 018's path for a base branch's results: in the upstream checkout, as CI would, run the
+ * tests under `squeal ci record` and write one export with `squeal ci export`; then
+ * `squeal import` the export into the shared store from the main worktree, before the
+ * fast-forward. Each step's time, exit code and the import's own report are kept.
+ */
+async function ciImport(up) {
+  await timed("cp", ["-a", join(main, "node_modules"), join(up, "node_modules")]);
+  const parts = join(work, "ci-parts");
+  const file = join(work, "ci-export.json.gz");
+  const rec = await timed(
+    NODE,
+    [...cli, "ci", "record", "--out", parts, "--", join(up, "node_modules/.bin/vitest"), "run"],
+    { env, cwd: up, timeoutMs: 3_600_000 },
+  );
+  const exp = await timed(NODE, [...cli, "ci", "export", "--parts", parts, "--out", file], {
+    env,
+    cwd: up,
+    timeoutMs: 600_000,
+  });
+  const imp = await timed(NODE, [...cli, "import", file], { env, cwd: main, timeoutMs: 600_000 });
+  return {
+    record: { ms: rec.ms, code: rec.code, tail: (rec.stdout + rec.stderr).slice(-400) },
+    export: { ms: exp.ms, code: exp.code, tail: (exp.stdout + exp.stderr).slice(-600) },
+    import: { ms: imp.ms, code: imp.code, out: (imp.stdout + imp.stderr).slice(-1500) },
+  };
 }
