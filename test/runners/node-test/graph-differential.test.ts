@@ -40,7 +40,16 @@ interface Case {
   /** `TSX_TSCONFIG_PATH` for the run and the project's env in `squeal.config.json`. */
   readonly tsconfigPath?: string;
   readonly argv?: readonly string[];
+  /**
+   * The oldest Node major whose real run loads the case at all. Below it
+   * there is no run to compare with: on Node 22.19, tsx resolves
+   * `require("@dep?q=1")` to the file `dep.cjs?q=1` and the run fails with
+   * ERR_MODULE_NOT_FOUND (candidate CI 44918225236).
+   */
+  readonly minNode?: number;
 }
+
+const NODE_MAJOR = Number(process.versions.node.split(".")[0]);
 
 let count = 0;
 function tree(files: Readonly<Record<string, string>>): string {
@@ -417,6 +426,7 @@ const QUERY: Record<string, Case> = {
     },
     test: "a.test.ts",
     loads: ["use.cts", "dep.cjs"],
+    minNode: 24,
   },
   "a package import with a `?query`": {
     files: {
@@ -436,6 +446,6 @@ const QUERY: Record<string, Case> = {
 
 describe("row 018-66: the closure holds every module a real run loads", () => {
   for (const [name, c] of Object.entries({ ...FORMS, ...B4, ...QUERY })) {
-    it(name, SLOW, () => differential(c));
+    it.skipIf(NODE_MAJOR < (c.minNode ?? 0))(name, SLOW, () => differential(c));
   }
 });
