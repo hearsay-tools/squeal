@@ -31,8 +31,11 @@ function commitOnly(root: string, started: AbsolutePath[], daemons: RunningDaemo
     const daemon = await startDaemon({ root: tree, env: childEnv(runtime) });
     if ("reason" in daemon) return daemon.message;
     daemons.push(daemon);
-    await daemon.ready;
-    return null;
+    let exited = false;
+    void daemon.exited.then(() => {
+      exited = true;
+    });
+    return { lives: async () => !exited };
   });
   return {
     ...real,

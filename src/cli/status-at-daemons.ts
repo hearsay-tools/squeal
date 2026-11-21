@@ -1,7 +1,11 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { environmentFingerprint } from "../core/checkout/commit-places.js";
-import { ensureCommitWorktree, readCommitWorktree } from "../core/checkout/commit-worktree.js";
-import type { InstallResult } from "../core/checkout/install.js";
+import {
+  COMMIT_INSTALL_TIMEOUT_MS,
+  ensureCommitWorktree,
+  PLACE_WAIT_MS,
+  readCommitWorktree,
+} from "../core/checkout/commit-worktree.js";
+import { type InstallResult, installCheckout } from "../core/checkout/install.js";
 import { cacheCheckoutsRoot, gitCheckoutsDir } from "../core/checkout/location.js";
 import { cacheRepositoryDirs, listCheckouts } from "../core/checkout/sweep.js";
 import { probeDaemon } from "../core/daemon/ensure.js";
@@ -11,9 +15,15 @@ import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import { DAEMON_SOCKET_TIMEOUT_MS, type RunGroupPathsRequest } from "../core/types/daemon.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonSocket } from "./daemon-access.js";
-import type { CliIo } from "./main.js";
 import { takenRequest } from "./run-group.js";
-import { startCommand } from "./start.js";
+import {
+  claimWait,
+  lockHolder,
+  quietStart,
+  type StartCommit,
+  spawnCommitDaemon,
+  worktreeStops,
+} from "./status-at-start.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 import { runWait } from "./wait/wait.js";
 
@@ -29,11 +39,11 @@ import { runWait } from "./wait/wait.js";
  * --wait`. Tests pass their own (`AtDaemons`).
  */
 
-/** How long the call waits for a started commit daemon to claim its worktree. */
-export const CLAIM_WAIT_MS = 60_000;
-const CLAIM_POLL_MS = 200;
-/** A request is asked at least this long, so it is recorded even after the wait's deadline. */
-const RECORD_WAIT_MS = 10_000;
+/** The install's bound: the call's time left, at most D4.3's. */
+export interface InstallBound {
+  readonly timeoutMs: number;
+  readonly started: (group: number) => void;
+}
 
 export interface CommitDaemonInput {
   /** The user's worktree: git resolves the commit there. */
@@ -48,7 +58,13 @@ export interface CommitDaemonInput {
   /** Tests: how long a new commit waits for a place under the ceiling (10 min by default). */
   readonly placeWaitMs?: number;
   /** Tests: the commit worktree's install; a frozen install by default (D4.3). */
-  readonly install?: (tree: AbsolutePath) => Promise<InstallResult>;
+  readonly install?: (tree: AbsolutePath, bound: InstallBound) => Promise<InstallResult>;
+  /**
+   * Review wave-23 B1: epoch ms when the call's wait ends; absent or
+   * `Infinity` for a bare `--wait`. The place wait, the install and the
+   * claim end by it (the claim `CLAIM_GRACE_MS` later at most).
+   */
+  readonly deadline?: number;
   /** One line to stderr: the "waiting for a place" note, and removal notes. */
   readonly note: (text: string) => void;
 }
@@ -83,11 +99,15 @@ export interface AtDaemons {
   wait(root: AbsolutePath, files: readonly TestFileRef[], deadline: number): Promise<string | null>;
 }
 
-/** Starts a daemon in `root`; `null` once one serves it, else why not. */
-export type StartDaemon = (root: AbsolutePath) => Promise<string | null>;
-
-/** The real daemons; `start` is `squeal start`'s, quiet, unless a test gives its own. */
-export function realDaemons(start: StartDaemon = quietStart): AtDaemons {
+/**
+ * The real daemons: `start` spawns the commit daemon (`spawnCommitDaemon`)
+ * unless a test gives its own; the working tree's is `squeal start`'s,
+ * quiet, its warnings to `note`.
+ */
+export function realDaemons(
+  start: StartCommit = spawnCommitDaemon,
+  note: (text: string) => void = () => undefined,
+): AtDaemons {
   const sockets = new Map<string, AbsolutePath>();
   const socketOf = async (root: AbsolutePath, deadline: number) => {
     const known = sockets.get(root);
@@ -96,38 +116,34 @@ export function realDaemons(start: StartDaemon = quietStart): AtDaemons {
     sockets.set(root, socket);
     return socket;
   };
-  const serve = async (root: AbsolutePath) => {
-    const probe = await probeDaemon(root, DAEMON_SOCKET_TIMEOUT_MS);
-    return probe.state === "alive" ? null : start(root);
-  };
+  const alive = async (root: AbsolutePath) =>
+    (await probeDaemon(root, DAEMON_SOCKET_TIMEOUT_MS)).state === "alive";
   return {
     async commit(input) {
+      const deadline = input.deadline ?? Number.POSITIVE_INFINITY;
       let tree: AbsolutePath;
       try {
-        ({ tree } = await ensureCommitWorktree({
-          root: input.root,
-          commit: input.commit,
-          environment: input.environment,
-          note: input.note,
-          ...(input.limit === undefined ? {} : { limit: input.limit }),
-          ...(input.cacheRoot === undefined ? {} : { cacheRoot: input.cacheRoot }),
-          ...(input.placeWaitMs === undefined ? {} : { placeWaitMs: input.placeWaitMs }),
-          ...(input.install === undefined ? {} : { install: input.install }),
-        }));
+        ({ tree } = await ensureCommitWorktree(withinCall(input, deadline)));
       } catch (error) {
-        return { problem: `the commit worktree could not be made: ${messageOf(error)}` };
+        return { problem: notMade(messageOf(error), deadline) };
       }
-      const started = await serve(tree);
-      if (started !== null) return { problem: `the commit daemon did not start: ${started}` };
-      const claimed = await claimedWithin(tree, CLAIM_WAIT_MS);
-      if (!claimed)
-        return { problem: `the commit daemon did not claim ${tree} in ${CLAIM_WAIT_MS / 1000} s` };
-      return tree;
+      const started = (await alive(tree)) ? lockHolder(tree) : await start(tree);
+      if (typeof started === "string")
+        return { problem: `the commit daemon did not start: ${started}` };
+      const claimed = await claimWait(tree, started, deadline);
+      return claimed === null ? tree : { problem: claimed };
     },
     find: findCommitWorktree,
-    worktree: serve,
-    async ask(root, group, paths, deadline, call) {
-      const bound = Math.max(deadline, Date.now() + RECORD_WAIT_MS);
+    async worktree(root) {
+      if (await alive(root)) return null;
+      // Review wave-23 S1: the user's stop and command holds stay; nothing is started over them.
+      const stopped = await worktreeStops(root);
+      if (stopped !== null) return stopped;
+      const failed = await quietStart(root, note);
+      return failed === null ? null : `this worktree's daemon did not start: ${failed}`;
+    },
+    async ask(root, group, paths, bound, call) {
+      // Review wave-23 B1: `bound` is the call's, shared by every request; none gets its own.
       const socketPath = await socketOf(root, bound);
       // Row 023-36 (T3): `at`, so the daemon stops the groups these runs start.
       const request: RunGroupPathsRequest = {
@@ -173,24 +189,40 @@ export function findCommitWorktree(input: CommitDaemonInput): AbsolutePath | nul
   return found?.tree ?? null;
 }
 
-/** Whether the commit daemon claimed `tree` within `ms` (row 023-38's marker). */
-export async function claimedWithin(tree: AbsolutePath, ms: number): Promise<boolean> {
-  const until = Date.now() + ms;
-  for (;;) {
-    if (readCommitWorktree(tree)?.daemon !== undefined) return true;
-    if (Date.now() >= until) return false;
-    await sleep(CLAIM_POLL_MS);
-  }
+/**
+ * Review wave-23 B1: `ensureCommitWorktree`'s options within the call's
+ * wait. A place not free by `deadline` is given up with no worktree made;
+ * the install's bound is the time left (at most D4.3's), and an install it
+ * cuts fails, which removes the worktree (`installOnce`), so none is left
+ * without its creator.
+ */
+function withinCall(input: CommitDaemonInput, deadline: number) {
+  const left = () => Math.max(0, deadline - Date.now());
+  const install = (tree: AbsolutePath, started: (group: number) => void) => {
+    const bound = { timeoutMs: Math.min(COMMIT_INSTALL_TIMEOUT_MS, left()), started };
+    return input.install === undefined ? installCheckout(tree, bound) : input.install(tree, bound);
+  };
+  return {
+    root: input.root,
+    commit: input.commit,
+    environment: input.environment,
+    note: input.note,
+    placeWaitMs: Math.min(input.placeWaitMs ?? PLACE_WAIT_MS, left()),
+    install,
+    ...(input.limit === undefined ? {} : { limit: input.limit }),
+    ...(input.cacheRoot === undefined ? {} : { cacheRoot: input.cacheRoot }),
+  };
 }
 
-/** `squeal start <root>`, its status output dropped; its error lines are the answer. */
-async function quietStart(root: AbsolutePath): Promise<string | null> {
-  const errors: string[] = [];
-  const io: CliIo = { stdout: () => undefined, stderr: (text) => errors.push(text) };
-  const code = await startCommand([root], io);
-  if (code === 0) return null;
-  const text = errors.join("").trim().replace(/\s+/g, " ");
-  return text === "" ? `squeal start exited ${code}` : text;
+/** Why no commit worktree serves: with the call's wait over, while it waited for what. */
+function notMade(message: string, deadline: number): string {
+  if (Date.now() < deadline) return `the commit worktree could not be made: ${message}`;
+  const place = /^(waiting for a place: [^;]*?)(?:; one frees[^;]*)?; gave up after \d+ s$/.exec(
+    message,
+  );
+  if (place !== null)
+    return `the call's wait ended before a commit worktree was free (${place[1]})`;
+  return `the call's wait ended while its commit worktree was made: ${message} (starting)`;
 }
 
 function messageOf(error: unknown): string {
