@@ -190,7 +190,8 @@ describe("the quiet's demand in the mark (row 011-424)", () => {
     utimesSync(path, old, old);
     later(QUIET_DEMAND_WRITE_MS - 1_000);
     quiet.expectBacklog(64);
-    expect(statSync(path).mtimeMs).toBe(old.getTime());
+    // The file system may give the time back a fraction of a millisecond off (CI 44850562751).
+    expect(Math.abs(statSync(path).mtimeMs - old.getTime())).toBeLessThan(1);
     later(1_000);
     quiet.expectBacklog(64);
     expect(statSync(path).mtimeMs).toBeGreaterThan(old.getTime());
