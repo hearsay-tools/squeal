@@ -59855,7 +59855,8 @@ function narrowRequest(group, paths, groups3, takeBacks, options = {}) {
         }
         const narrow2 = narrowAnswer(context, ledger, group, selection, null);
         const covered = selectedOf(ledger, group, selection);
-        return { answer: { revision, queued, narrow: narrow2, coveredId: id }, covered };
+        const newlyQueued = newly.flatMap((one) => ledger.files.get(one)?.ref ?? []);
+        return { answer: { revision, queued, narrow: narrow2, coveredId: id, newlyQueued }, covered };
       }
     },
     wake: { lane: group, checkYields: true }
@@ -104831,9 +104832,8 @@ var AtRunRequests = class {
   }
 };
 function flagAccepted(requests, requested, options) {
-  if (options?.at !== true || requested?.narrow === void 0 || requested.queued === 0) return;
-  const notRun = new Set(requested.narrow.notRun.map(({ testFile }) => testFileId(testFile)));
-  const files5 = requested.narrow.selected.filter((file) => !notRun.has(testFileId(file)));
+  const files5 = requested?.newlyQueued ?? [];
+  if (options?.at !== true || requested === null || files5.length === 0) return;
   requests.accepted(options.owner ?? requested.coveredId ?? randomUUID16(), files5);
 }
 function withRunGroups(runner, options) {
