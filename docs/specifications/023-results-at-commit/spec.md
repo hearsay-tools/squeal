@@ -99,6 +99,18 @@ A red proof is two sides, red and green, run under identical conditions. A side 
 5a. The summary line of a `source` proof whose named test changed says what red is not (amended 2026-11-20, R5): "proven: the new test fails on the old code. This is not the file's result at <base>; that is `squeal status --at <base> <file> --run`".
 6. Exit codes: `0` every named file `proven`, `1` some file `not red` or `not green`, `3` some file not comparable or red for another reason, `2` usage or setup error.
 
+### D7. The commit daemon (`run --wait` model; amended 2026-11-21, the human: "A: ship now, then jobs", "Finish everything", then on `research/run-wait-model.md`: "Yes, as proposed", "100 s then return", "Wait for a place")
+
+Replaces D4 steps 2 to 8 and 10 to 11 and the in-call runs of D5 sides without conditions, as rows 023-38 to 023-42 land.
+
+1. **Commit worktree.** One worktree per (repository, commit, environment fingerprint), shared by every caller and every worktree of the repository; created and installed once (frozen install), reused while it lives. Keys there equal D2's by construction.
+2. **Commit daemon.** A Squeal daemon in that worktree in commit mode: lookup-only start, no lint and no complexity count, no edits to watch; it exits 10 minutes after its last activity (no request, no queued file, no waiting call) and at most 3 hours after start; its exit removes the worktree; the sweep removes worktrees whose daemon is dead. Results reach the shared store at the commit's keys.
+3. **`--run`.** `status --at <commit> --run [--wait [<ms>]]` sends one narrow request per group to the commit daemon (the commit side) and to the user's worktree daemon (the working-tree side, started if none runs), files the call names first, and waits up to 100 s by default. It then reports what is done; files still running say so ("N still running at <commit>, M in the working tree; call again with `--wait`"). Work keeps running after the call ends and finishes ("Finish everything"). `--at … --wait` without `--run` joins work already queued. No take-back, no budget, no in-call batches.
+4. **Limit.** The number of commit daemons has a ceiling derived from the machine's memory (configurable). When it is reached, a new commit's request waits for a place, and the call says so.
+5. **Load.** Commit daemons take permits from the same per-user pool as every daemon (spec 011).
+6. **`proof`.** A side with no condition and no repeat reads and runs on a commit daemon (the green side at HEAD first; red sides with copied test files in their own worktrees only if 023-43's measurements justify them). Sides with `--env`, `--without`, an empty `HOME`, `--repeat`, and the `dependency` case stay in the call (D5.3, D5.4).
+7. **Visibility.** `squeal ps` lists commit daemons with their commit; `squeal stop --at <commit>` stops one; `squeal stop` in a worktree does not stop commit daemons.
+
 ### D6. Cleanup and visibility
 
 - The gate's child, if any remains, ends with its parent (process group); a SIGKILL of the command leaves nothing writing to the store.

@@ -1,0 +1,19 @@
+# Wave 22 (rows 023-38, 023-39): the commit worktree and the daemon's commit mode. Use /worker.
+
+The human chose (2026-11-21) the design of `research/run-wait-model.md`: one worktree with its own Squeal daemon per commit ("Yes, as proposed"), `--run` waits 100 s by default then returns with the rest still running, and a new commit waits for a place when the limit of commit daemons is reached. Read `../spec.md` D7 (new), D4, D6, `research/run-wait-model.md` (all of it; its file and line pointers), `tasks/023-36-notes.md` (per-run process mark), and spec 011's pool and lifecycle sections. Never write the lab VM host name, the company name, sandbox ids or home paths in committed files (check `pnpm run check:private` unpiped). Host is loaded: direct vitest only with `timeout 600 pnpm exec vitest run --maxWorkers=2 <paths>`; no full suite; no version, no build; nothing left running.
+
+## Row 023-38: the commit worktree (D7.1, D7.4, D7.7)
+
+- **Identity and reuse.** One worktree per (repository common dir, commit, environment fingerprint: the inputs D2 already uses for the environment), in the existing checkout folder (`src/core/checkout/location.ts`), found or created under the existing lock (`checkout.ts`), installed once (frozen), with a marker that names its commit, fingerprint, creation time and the daemon that owns it. A second caller finds it and does not install again.
+- **Removal.** Removed when its daemon exits (023-39 calls the removal) or by the sweep when its daemon is dead (extend `sweep.ts`). Leftover processes: the D6 working-folder rule applies.
+- **Limit.** A ceiling on live commit worktrees derived from the machine's memory (for example free memory divided by a per-daemon estimate, at least 1, configurable in squeal.config.json); when reached, the creator waits for a place (poll the markers or wait on the lock) and reports that it waits.
+- **Visibility.** `squeal ps` lists commit worktrees and their daemons with the commit; `squeal stop --at <commit>` stops that daemon and removes the worktree; plain `squeal stop` in a user worktree does not touch them.
+- **Ownership.** `src/core/checkout/**`, `src/cli/ps*.ts`, `src/cli/stop*.ts`, `src/cli/main.ts` help lines for `ps` and `stop --at`, tests beside them. Do not start the daemon here; expose a function 023-40 calls (`ensureCommitWorktree(commit) -> path`).
+- **Done when:** tests for reuse by a second caller, the waiting limit, sweep of a dead owner, `ps` and `stop --at`; lint, typecheck, check:private, boundaries; Squeal's affected results.
+
+## Row 023-39: the daemon's commit mode (D7.2; spec 011 files, coordinator-approved)
+
+- **Mode.** A daemon started in a commit worktree (marker present, or an explicit start option) runs lookup-only at start, never lints and never counts complexity, watches no edits, takes permits from the per-user pool as every daemon, and serves narrow `run-group-paths` requests and `--wait` as today.
+- **Lifetime.** Exits 10 minutes after its last activity (no request, no queued or running file, no waiting call) and at most 3 hours after its start; at exit it removes its worktree through 023-38's removal (agree the function name with 023-38 through the coordinator). Answer the research's open question 4: a queue waiting for a pool permit counts as activity.
+- **Ownership.** `src/core/daemon/lifecycle.ts`, the daemon's start options and policy, tests beside them. These are spec 011's files; its coordinator is inactive and the spec 023 coordinator approves; each commit subject says "(spec 023 D7; 011 files, coordinator-approved)". If the change needs the scheduler or the protocol, send the coordinator a request first.
+- **Done when:** tests for each rule (lookup-only, no lint, no complexity, idle exit, cap, removal at exit, pool wait counts as activity); lint, typecheck, check:private, boundaries; Squeal's affected results.
