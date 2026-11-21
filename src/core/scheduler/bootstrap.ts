@@ -15,6 +15,7 @@ import { takeHeldFiles } from "./held.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
+import { unprovenWalks } from "./proven-walks.js";
 import { priorityOf } from "./queue.js";
 import { readRefined } from "./refined.js";
 import { openMoves } from "./rekeyed-moves.js";
@@ -40,7 +41,9 @@ import { runnerPartBound } from "./runner-work-bound.js";
  *    `lookup-only` the first lookup commits, with the listed counts, before
  *    that recheck, and the recheck commits again (011 C9 as amended
  *    2026-10-25, row 011-227): a file the recheck finds current is never
- *    queued for its first key.
+ *    queued for its first key. A miss is not walked again when the store
+ *    holds a walk of it at the key the list gives here (row 023-46,
+ *    `proven-walks.ts`): that walk's closure is this one's.
  * 4. One checkpoint of kind `baseline` over the misses and the unkeyed
  *    files, run in tiers or, with `baseline.onStart: "lookup-only"` (the
  *    default, 001 D11 as amended 2026-10-23), abandoned unless empty. An
@@ -192,12 +195,7 @@ export async function baseline(
   if (lookupOnly && recheck.length > 0) {
     commitFirst(ledger, { refined: ledger.revision.number }, handedMisses);
   }
-  await resolveClosures(
-    context,
-    recheck.map((file) => file.ref),
-    failures,
-    bound,
-  );
+  await resolveClosures(context, unprovenWalks(context, recheck), failures, bound);
   const misses = [
     ...first.filter((file) => !fromStore.has(file.id)),
     ...lookup(recheck.map((file) => file.ref)),
