@@ -22,8 +22,12 @@ const FIRST: CommitSnapshot = { setup: { phase: "install" }, asks: [] };
 export class CommitDesk {
   #snapshot: CommitSnapshot = FIRST;
   readonly #forwarded = new Set<string>();
+  /** The worker loads this file with types stripped: no parameter properties. */
+  readonly #forward: (request: CommitAskRequest) => void;
 
-  constructor(private readonly forward: (request: CommitAskRequest) => void) {}
+  constructor(forward: (request: CommitAskRequest) => void) {
+    this.#forward = forward;
+  }
 
   /** The main thread's snapshot, at each change. */
   set(snapshot: CommitSnapshot): void {
@@ -35,7 +39,7 @@ export class CommitDesk {
     const known = this.#snapshot.asks.some((ask) => ask.owner === request.owner);
     if (!known && !this.#forwarded.has(request.owner)) {
       this.#forwarded.add(request.owner);
-      this.forward(request);
+      this.#forward(request);
     }
     return {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,

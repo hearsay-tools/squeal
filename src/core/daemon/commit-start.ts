@@ -46,7 +46,10 @@ export class CommitStart {
   #settle: () => void = () => {};
   readonly asks: AtAsks;
 
-  constructor(private readonly ports: CommitStartPorts) {
+  private readonly ports: CommitStartPorts;
+
+  constructor(ports: CommitStartPorts) {
+    this.ports = ports;
     const { store, worktreeId } = ports;
     this.#started = new Promise((resolve) => {
       this.#settle = resolve;

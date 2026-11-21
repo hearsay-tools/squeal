@@ -70,7 +70,11 @@ interface Kept {
 export class AtAsks {
   readonly #asks = new Map<string, Kept>();
 
-  constructor(private readonly ports: AtAskPorts) {}
+  private readonly ports: AtAskPorts;
+
+  constructor(ports: AtAskPorts) {
+    this.ports = ports;
+  }
 
   /** Keeps the ask and starts its selection; an owner asked again is left as it stands. */
   ask(request: CommitAskRequest): void {
