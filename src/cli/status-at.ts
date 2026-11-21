@@ -94,9 +94,7 @@ function runOf(flags: ReadonlySet<string>, timeout: string | undefined): RunArgs
     return "--timeout takes whole seconds above 0";
   if (!run) return null;
   const timeoutSeconds = timeout === undefined ? RUN_TIMEOUT_SECONDS : Number(timeout);
-  // Row 023-34 (T1): with neither `--timeout` nor `--all-missing`, a selection that cannot fit runs nothing.
-  const fitCheck = !allMissing && timeout === undefined ? { fitCheck: true as const } : {};
-  return { allMissing, timeoutSeconds, ...fitCheck };
+  return { allMissing, timeoutSeconds };
 }
 
 /** The valued option at `args[i]`, with how many more words it took; `null` when it is none. */
