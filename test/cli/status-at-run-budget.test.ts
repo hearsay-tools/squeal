@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
-import { check, clean, run, runCommit, testOf, withStore } from "./status-at-kit.js";
+import {
+  check,
+  clean,
+  run,
+  runCommit,
+  standIn,
+  standInTree,
+  testOf,
+  withStore,
+} from "./status-at-kit.js";
 
 /*
  * Row 023-19 (lessons P3) on `$TMPDIR` git fixtures with the real Vitest
@@ -101,24 +110,25 @@ describe("status --at --run at its budget (row 023-19, P3)", SLOW, () => {
     clean(f);
   });
 
-  it("tells the estimate and how to narrow it before a selection over half the budget", async () => {
+  it("tells the estimate and how to narrow it when the selection runs past the wait (row 023-40)", async () => {
     const { f, a } = held();
     withStore(f, (store) =>
       store.results.putMany(
         [A1, A2].map((file) => ({ ...result(check(file.path), "elsewhere"), durationMs: 900_000 })),
       ),
     );
-    const cut = await run(f, { commit: a, run: { allMissing: false, timeoutSeconds: 3 } });
+    const daemons = standIn(standInTree(f), () => undefined);
+    const options = {
+      cacheRoot: f.cacheRoot,
+      install: linkInstall().install,
+      daemons: daemons.ports,
+    };
+    const cut = await run(f, { commit: a, run: { allMissing: false }, waitMs: 3000 }, options);
     expect(cut.err).toMatch(
       new RegExp(
-        `squeal: --run: 4 test files with no result at ${a.slice(0, 9)} to run, up to \\d+ at once: about \\d+ s from the stored durations of 2 \\(the others at their median\\); the budget is 3 s, the checkout and install included; to narrow it, name test files or folders: squeal status --at ${a} <path>\\.\\.\\. --run\n`,
+        `squeal: --run: 4 test files with no result at ${a.slice(0, 9)} queued in its commit daemon, up to \\d+ at once: about \\d+ (s|min) at this machine's rate; they run on after the wait; name test files or folders to narrow it: squeal status --at ${a} <path>\\.\\.\\. --run\n`,
       ),
     );
-    // Row 023-29 (R4): 900 s each, stored: no rerun up to the cap fits, so none is offered.
-    expect(cut.out).toMatch(
-      /\n8 not run \(budget: 4 at [0-9a-f]{9}, 4 now\); from their stored durations they need about \d+ (min|h)/,
-    );
-    expect(cut.out).not.toContain("A rerun that fits");
     clean(f);
   });
 });

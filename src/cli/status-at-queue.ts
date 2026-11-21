@@ -56,7 +56,10 @@ export interface QueueInput {
 }
 
 /** The commit side: its worktree and daemon first (D7.1, D7.2), then its requests and wait. */
-export async function commitQueue(input: QueueInput, commit: CommitDaemonInput): Promise<SideQueue> {
+export async function commitQueue(
+  input: QueueInput,
+  commit: CommitDaemonInput,
+): Promise<SideQueue> {
   if (input.files.length === 0) return NOTHING;
   const tree = await input.daemons.commit(commit);
   if (typeof tree !== "string") return unreached(input.files, tree.problem);
@@ -75,7 +78,9 @@ export async function worktreeQueue(input: QueueInput, root: AbsolutePath): Prom
 }
 
 /** One request per group to the daemon of `root`, then the wait over the files it took. */
-export async function queueSide(input: QueueInput & { readonly root: AbsolutePath }): Promise<SideQueue> {
+export async function queueSide(
+  input: QueueInput & { readonly root: AbsolutePath },
+): Promise<SideQueue> {
   const { daemons, root, files, deadline, call } = input;
   const view = groupView(readPolicy(root));
   const groupOf = (ref: TestFileRef) => view.of(ref).name;

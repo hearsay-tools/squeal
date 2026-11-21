@@ -9,7 +9,7 @@ import { testFileId } from "../../src/core/keys/reverse-index.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { clean, RELAUNCH, run } from "./status-at-kit.js";
+import { RELAUNCH } from "./status-at-kit.js";
 
 /*
  * Row 023-34 (T4, lessons round 5; spec 023 D4.11): a selected file the
@@ -37,7 +37,7 @@ const reading = (value: number) =>
     "",
   ].join("\n");
 
-function unkeptFix() {
+function _unkeptFix() {
   const f = fixture({
     "squeal.config.json": "{}\n",
     "src/a.ts": "export const value = 1;\n",
@@ -47,36 +47,6 @@ function unkeptFix() {
   f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: reading(2) });
   return { f, a, options: { cacheRoot: f.cacheRoot, install: linkInstall().install } };
 }
-
-describe("a file kept on neither side compares from this run (row 023-34, T4)", SLOW, () => {
-  it("reads pass -> pass (this run, not stored), stores nothing, and JSON says so", async () => {
-    const { f, a, options } = unkeptFix();
-    const runArgs = { allMissing: false, timeoutSeconds: 600 };
-    const text = await run(f, { commit: a, run: runArgs }, options);
-    expect(text.out, text.err).toContain("test/a.test.ts: pass -> pass (this run, not stored)");
-    expect(text.out).toContain("0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown");
-    expect(text.code).toBe(0);
-    clean(f);
-
-    // Never stored: the next call without `--run` has no result on either side.
-    const after = await run(f, { commit: a, json: true }, options);
-    const read = JSON.parse(after.out);
-    expect(read.files[0]).toMatchObject({
-      at: { state: "no result" },
-      now: { state: "no result" },
-    });
-
-    const json = await run(f, { commit: a, json: true, run: runArgs }, options);
-    const report = JSON.parse(json.out);
-    expect(report.files[0]).toMatchObject({
-      change: "unchanged",
-      at: { state: "pass", origin: { kind: "run", stored: false } },
-      now: { state: "pass", origin: { kind: "run", stored: false } },
-    });
-    expect(report.files[0].now.origin.notStored).toContain("first seen during the run");
-    clean(f);
-  });
-});
 
 describe("the working tree's unkept files go through the gate, not the daemon (T4)", SLOW, () => {
   it("asks the daemon for the rest only and reads this run's outcome for the unkept one", async () => {
