@@ -22,8 +22,16 @@ export function scratch(): Scratch {
   return s;
 }
 
-export const shared = (ref: string | null): (() => Policy) => {
-  const policy = { ...DEFAULT_POLICY, shared: { ref } };
+/**
+ * A policy with `shared.ref` `ref`. Row 018-70: one look per start point
+ * unless `lookAgain` says otherwise, so a test that does not look again
+ * starts no timer.
+ */
+export const shared = (
+  ref: string | null,
+  lookAgain: Policy["shared"]["lookAgain"] = { everySeconds: 30, forSeconds: 0 },
+): (() => Policy) => {
+  const policy = { ...DEFAULT_POLICY, shared: { ref, lookAgain } };
   return () => policy;
 };
 

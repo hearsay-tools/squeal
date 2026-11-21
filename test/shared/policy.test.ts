@@ -21,7 +21,7 @@ function load(file: unknown) {
 
 describe("policy shared.ref (018 D14)", () => {
   it("is null by default: a project that sets none fetches nothing", () => {
-    expect(DEFAULT_POLICY.shared).toEqual({ ref: null });
+    expect(DEFAULT_POLICY.shared.ref).toBeNull();
     const { policy, problems } = load({});
     expect(problems).toEqual([]);
     expect(policy.shared.ref).toBeNull();
@@ -52,5 +52,38 @@ describe("policy shared.ref (018 D14)", () => {
     expect(policy.shared.ref).toBeNull();
     expect(problems).toHaveLength(1);
     expect(problems[0]).toMatch(/shared\.ref.*refs\/squeal.*null/);
+  });
+});
+
+describe("policy shared.lookAgain (row 018-70)", () => {
+  const DEFAULT = { everySeconds: 30, forSeconds: 600 };
+
+  it("lists again every 30 s for 10 min by default", () => {
+    expect(DEFAULT_POLICY.shared.lookAgain).toEqual(DEFAULT);
+    expect(load({ shared: { ref: "refs/squeal" } }).policy.shared.lookAgain).toEqual(DEFAULT);
+  });
+
+  it("takes each key alone, and 0 s: one look per start point", () => {
+    const off = load({ shared: { lookAgain: { forSeconds: 0 } } });
+    expect(off.problems).toEqual([]);
+    expect(off.policy.shared.lookAgain).toEqual({ everySeconds: 30, forSeconds: 0 });
+    expect(load({ shared: { lookAgain: { everySeconds: 5 } } }).policy.shared.lookAgain).toEqual({
+      everySeconds: 5,
+      forSeconds: 600,
+    });
+  });
+
+  it.each([
+    ["everySeconds", 0],
+    ["everySeconds", 1.5],
+    ["everySeconds", "30"],
+    ["forSeconds", -1],
+    ["forSeconds", 2.5],
+    ["forSeconds", null],
+  ])("reports %s %j as a problem, and its default applies", (key, value) => {
+    const { policy, problems } = load({ shared: { lookAgain: { [key]: value } } });
+    expect(policy.shared.lookAgain).toEqual(DEFAULT);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain(`shared.lookAgain.${key}`);
   });
 });
