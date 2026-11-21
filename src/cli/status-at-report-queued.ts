@@ -42,8 +42,15 @@ export interface QueuedRun {
   readonly waitMs: number | null;
   /** From the call's start to the wait's end. */
   readonly usedMs: number;
-  /** The commit daemon's side, with its worktree when one was reached. */
-  readonly commit: QueuedSide & { readonly tree: string | null };
+  /**
+   * The commit daemon's side, with its worktree when one was reached; row
+   * 023-40c: `setup`, what the daemon still did when the wait ended (its
+   * install, its start, the selection), `null` once its files are queued.
+   */
+  readonly commit: QueuedSide & {
+    readonly tree: string | null;
+    readonly setup?: "install" | "starting" | "selecting" | null;
+  };
   /** R8: files with no result at the commit the change did not select, which were not queued. */
   readonly notSelected: number;
   /** The working tree's side, in this worktree's daemon. */
@@ -102,10 +109,16 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
     lines.push(
       `--wait: nothing is queued or running for these files at ${at} or in the working tree`,
     );
-  if (commit.running + now.running > 0 && run.again !== null)
+  const setup = commit.setup ?? null;
+  if ((setup !== null || commit.running + now.running > 0) && run.again !== null) {
+    const there =
+      setup === null
+        ? `${commit.running} still running at ${at} (its worktree)`
+        : `still setting up at ${at} (${setup})`;
     lines.push(
-      `${commit.running} still running at ${at} (its worktree), ${now.running} in the working tree; their runs go on in the daemons. ${run.again} waits for them; squeal ps shows them.`,
+      `${there}, ${now.running} in the working tree; their runs go on in the daemons. ${run.again} waits for them; squeal ps shows them.`,
     );
+  }
   return lines;
 }
 
@@ -119,7 +132,14 @@ function commitLines(run: QueuedRun, at: string): string[] {
   const flag = flagOf(run);
   const lines: string[] = [];
   const where = commit.tree === null ? "" : ` (its worktree ${commit.tree})`;
-  if (run.mode === "queue" && commit.files === 0)
+  const setup = commit.setup ?? null;
+  if (setup !== null && commit.reached)
+    lines.push(
+      `${flag}: still setting up at ${at} (${setup}) in its commit daemon${where}; it queues the files with no result there that the change selects, then runs them`,
+    );
+  else if (run.mode === "queue" && commit.files === 0 && commit.problem !== null)
+    lines.push(`--run: nothing queued at ${at}: ${commit.problem}${retryText(commit, run.retry)}`);
+  else if (run.mode === "queue" && commit.files === 0)
     lines.push(`--run: no file with no result at ${at} that the change selects to run`);
   else if (commit.files > 0 && !commit.reached)
     lines.push(

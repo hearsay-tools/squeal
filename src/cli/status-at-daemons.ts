@@ -1,16 +1,20 @@
 import { environmentFingerprint } from "../core/checkout/commit-places.js";
+import { ownedByStart } from "../core/checkout/commit-setup.js";
 import {
-  COMMIT_INSTALL_TIMEOUT_MS,
   ensureCommitWorktree,
   PLACE_WAIT_MS,
   readCommitWorktree,
 } from "../core/checkout/commit-worktree.js";
-import { type InstallResult, installCheckout } from "../core/checkout/install.js";
 import { cacheCheckoutsRoot, gitCheckoutsDir } from "../core/checkout/location.js";
 import { cacheRepositoryDirs, listCheckouts } from "../core/checkout/sweep.js";
 import { probeDaemon } from "../core/daemon/ensure.js";
 import { NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { resolveCommonDir } from "../core/fs/git-layout.js";
+import type {
+  CommitAskRequest,
+  CommitReadRequest,
+  CommitReadResponse,
+} from "../core/types/commit-ask.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import { DAEMON_SOCKET_TIMEOUT_MS, type RunGroupPathsRequest } from "../core/types/daemon.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -18,10 +22,9 @@ import { daemonSocket } from "./daemon-access.js";
 import { takenRequest } from "./run-group.js";
 import { joinRequestAt, type RecordedJoins, recordedAt } from "./status-at-join.js";
 import {
-  claimWait,
-  lockHolder,
   quietStart,
   type StartCommit,
+  serveWait,
   spawnCommitDaemon,
   worktreeStops,
 } from "./status-at-start.js";
@@ -29,22 +32,19 @@ import { askWithin, socketBound } from "./wait/socket.js";
 import { runWait } from "./wait/wait.js";
 
 /*
- * Spec 023 D7.3 (row 023-40): the two daemons a `status --at --run` call
- * talks to. The commit side: the commit worktree (`ensureCommitWorktree`,
- * row 023-38) and its daemon, started in the tree as `squeal start` starts
- * one, and this process kept alive until the daemon claimed the worktree
- * (023-38 notes: before the claim the creator owns it, and a sweep in that
- * gap would remove it). The working tree's side: the user's worktree
- * daemon, started as `squeal start` does when none runs. To both: one
+ * Spec 023 D7.3 (row 023-40; row 023-40c, D7.3 as amended 2026-11-21, the
+ * human: "A: daemon owns setup"): the two daemons a `status --at --run`
+ * call talks to. The commit side: the commit worktree
+ * (`ensureCommitWorktree`, row 023-38) made with no install, its daemon
+ * spawned in the tree as `squeal start` spawns one and the owner of the
+ * worktree from its spawn (`ownedByStart`), then one `commit-ask` with the
+ * call's change and named paths and `commit-read`s of it; the daemon
+ * installs, keys, selects and runs. The working tree's side: the user's
+ * worktree daemon, started as `squeal start` does when none runs, one
  * narrow `run-group-paths` request per group, and the wait of `run <group>
- * --wait`. Tests pass their own (`AtDaemons`).
+ * --wait`. Every step ends by the bound the call gives. Tests pass their
+ * own (`AtDaemons`).
  */
-
-/** The install's bound: the call's time left, at most D4.3's. */
-export interface InstallBound {
-  readonly timeoutMs: number;
-  readonly started: (group: number) => void;
-}
 
 export interface CommitDaemonInput {
   /** The user's worktree: git resolves the commit there. */
@@ -58,12 +58,11 @@ export interface CommitDaemonInput {
   readonly cacheRoot?: AbsolutePath;
   /** Tests: how long a new commit waits for a place under the ceiling (10 min by default). */
   readonly placeWaitMs?: number;
-  /** Tests: the commit worktree's install; a frozen install by default (D4.3). */
-  readonly install?: (tree: AbsolutePath, bound: InstallBound) => Promise<InstallResult>;
   /**
-   * Review wave-23 B1: epoch ms when the call's wait ends; absent or
-   * `Infinity` for a bare `--wait`. The place wait, the install and the
-   * claim end by it (the claim `CLAIM_GRACE_MS` later at most).
+   * Review wave-23 B1, row 023-40c: epoch ms by which every step of the
+   * commit side ends (the call's bound); absent or `Infinity` for a bare
+   * `--wait`. The checkout lock, the place, the start and the socket wait
+   * end by it.
    */
   readonly deadline?: number;
   /** One line to stderr: the "waiting for a place" note, and removal notes. */
@@ -85,10 +84,22 @@ export type Asked = "taken" | "pending" | { readonly problem: string };
 export interface AtDaemons extends RecordedJoins {
   /** D7.1 to D7.3: the commit worktree at `commit`, its daemon serving it; its tree, or why not. */
   commit(input: CommitDaemonInput): Promise<AbsolutePath | { readonly problem: string }>;
+  /** Row 023-40c: one ask of the commit daemon of `tree`; `null`, or why it was not taken. */
+  commitAsk(
+    tree: AbsolutePath,
+    ask: Omit<CommitAskRequest, "type">,
+    bound: number,
+  ): Promise<string | null>;
+  /** Row 023-40c: the setup and the asks of the commit daemon of `tree`; why not, when it gave none. */
+  commitRead(
+    tree: AbsolutePath,
+    owners: readonly string[] | undefined,
+    bound: number,
+  ): Promise<CommitReadResponse | string>;
   /** `--wait` without `--run`: the commit worktree at the resolved `commit` that serves this environment; `null`: none. */
   find(input: CommitDaemonInput): AbsolutePath | null;
-  /** The worktree's own daemon, started when none runs; `null`, or why none serves. */
-  worktree(root: AbsolutePath): Promise<string | null>;
+  /** The worktree's own daemon, started when none runs, its start ending by `bound`; `null`, or why none serves. */
+  worktree(root: AbsolutePath, bound?: number): Promise<string | null>;
   /** One narrow request of `paths` of `group` to the daemon of `root`. */
   ask(
     root: AbsolutePath,
@@ -105,8 +116,8 @@ export interface AtDaemons extends RecordedJoins {
 export interface DaemonStarts {
   /** The commit daemon's: `spawnCommitDaemon` by default. */
   readonly start?: StartCommit;
-  /** The working tree's: `squeal start`'s, quiet (`quietStart`), by default. */
-  readonly startWorktree?: (root: AbsolutePath) => Promise<string | null>;
+  /** The working tree's: `squeal start`'s, quiet (`quietStart`), ending by `bound`, by default. */
+  readonly startWorktree?: (root: AbsolutePath, bound: number) => Promise<string | null>;
   /** Where a start's warnings go. */
   readonly note?: (text: string) => void;
 }
@@ -115,7 +126,8 @@ export interface DaemonStarts {
 export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
   const start = starts.start ?? spawnCommitDaemon;
   const note = starts.note ?? (() => undefined);
-  const startWorktree = starts.startWorktree ?? ((root: AbsolutePath) => quietStart(root, note));
+  const startWorktree =
+    starts.startWorktree ?? ((root: AbsolutePath, bound: number) => quietStart(root, note, bound));
   const sockets = new Map<string, AbsolutePath>();
   const socketOf = async (root: AbsolutePath, deadline: number) => {
     const known = sockets.get(root);
@@ -135,19 +147,43 @@ export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
       } catch (error) {
         return { problem: notMade(messageOf(error), deadline) };
       }
-      const started = (await alive(tree)) ? lockHolder(tree) : await start(tree);
+      if (await alive(tree)) return tree;
+      const started = await start(tree);
       if (typeof started === "string")
         return { problem: `the commit daemon did not start: ${started}` };
-      const claimed = await claimWait(tree, started, deadline);
-      return claimed === null ? tree : { problem: claimed };
+      // Review wave-23 re-review B1: the spawned process owns the worktree from now on.
+      if (started.pid !== undefined) ownedByStart(tree, started.pid);
+      const served = await serveWait(tree, started, deadline);
+      return served === null ? tree : { problem: served };
+    },
+    async commitAsk(tree, ask, bound) {
+      const answer = await askWithin(
+        await socketOf(tree, bound),
+        { type: "commit-ask", ...ask },
+        bound,
+      );
+      if (answer === null) return "no daemon answered";
+      if ("unanswered" in answer) return `the daemon did not answer${answer.unanswered}`;
+      return answer.ok ? null : answer.error;
+    },
+    async commitRead(tree, owners, bound) {
+      const request: CommitReadRequest = {
+        type: "commit-read",
+        ...(owners === undefined ? {} : { owners }),
+      };
+      const answer = await askWithin(await socketOf(tree, bound), request, bound);
+      if (answer === null) return "no daemon answered";
+      if ("unanswered" in answer) return `the daemon did not answer${answer.unanswered}`;
+      if (!answer.ok) return answer.error;
+      return answer.type === "commit-read" ? answer : "the daemon reads no asks (an older Squeal)";
     },
     find: findCommitWorktree,
-    async worktree(root) {
+    async worktree(root, bound = Number.POSITIVE_INFINITY) {
       if (await alive(root)) return null;
       // Review wave-23 S1: the user's stop and command holds stay; nothing is started over them.
       const stopped = await worktreeStops(root);
       if (stopped !== null) return stopped;
-      const failed = await startWorktree(root);
+      const failed = await startWorktree(root, bound);
       return failed === null ? null : `this worktree's daemon did not start: ${failed}`;
     },
     async ask(root, group, paths, bound, call) {
@@ -203,25 +239,21 @@ export function findCommitWorktree(input: CommitDaemonInput): AbsolutePath | nul
 }
 
 /**
- * Review wave-23 B1: `ensureCommitWorktree`'s options within the call's
- * wait. A place not free by `deadline` is given up with no worktree made;
- * the install's bound is the time left (at most D4.3's), and an install it
- * cuts fails, which removes the worktree (`installOnce`), so none is left
- * without its creator.
+ * Review wave-23 B1, row 023-40c: `ensureCommitWorktree`'s options within
+ * the call's bound: no install (the daemon installs), the checkout lock
+ * and a place under the ceiling waited for at most until `deadline`. A
+ * place not free by then is given up with no worktree made.
  */
 function withinCall(input: CommitDaemonInput, deadline: number) {
   const left = () => Math.max(0, deadline - Date.now());
-  const install = (tree: AbsolutePath, started: (group: number) => void) => {
-    const bound = { timeoutMs: Math.min(COMMIT_INSTALL_TIMEOUT_MS, left()), started };
-    return input.install === undefined ? installCheckout(tree, bound) : input.install(tree, bound);
-  };
   return {
     root: input.root,
     commit: input.commit,
     environment: input.environment,
     note: input.note,
+    installs: false,
     placeWaitMs: Math.min(input.placeWaitMs ?? PLACE_WAIT_MS, left()),
-    install,
+    ...(Number.isFinite(deadline) ? { lockWaitMs: left() } : {}),
     ...(input.limit === undefined ? {} : { limit: input.limit }),
     ...(input.cacheRoot === undefined ? {} : { cacheRoot: input.cacheRoot }),
   };

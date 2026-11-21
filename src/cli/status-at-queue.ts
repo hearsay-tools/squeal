@@ -29,6 +29,8 @@ export interface SideQueue {
   readonly groupOf: (ref: TestFileRef) => string;
   /** Review wave-23 B1: the call's wait ended before its daemon could be asked. */
   readonly late?: boolean;
+  /** Row 023-40c: the files the daemon took, when the side was asked with `waits: false`. */
+  readonly taken?: readonly TestFileRef[];
 }
 
 const NO_GROUP = () => "";
@@ -77,6 +79,8 @@ export interface QueueInput {
   readonly call: NarrowCall;
   /** `false` for `--wait` without `--run`: join, ask nothing. */
   readonly ask: boolean;
+  /** Row 023-40c: `false` asks and does not wait; the caller waits once over every step's files. */
+  readonly waits?: false;
 }
 
 /** The commit side: its worktree and daemon first (D7.1, D7.2), then its requests and wait. */
@@ -103,7 +107,8 @@ export async function worktreeQueue(input: QueueInput, root: AbsolutePath): Prom
         "the call's wait ended before this worktree's daemon was asked (starting)",
         true,
       );
-    const problem = await input.daemons.worktree(root);
+    // Row 023-40c: the start's own waits end by the call's bound too.
+    const problem = await input.daemons.worktree(root, input.askBy());
     if (problem !== null) return unreached(input.files, problem);
   }
   return queueSide({ ...input, root });
@@ -142,6 +147,7 @@ export async function queueSide(
     else if (asked === "pending") for (const ref of refs) pending.add(testFileId(ref));
     else problems.push(`group ${group}: ${asked.problem}`);
   }
+  if (input.waits === false) return { root, files, pending, problems, groupOf, taken: waited };
   if (waited.length > 0) {
     const ended = await daemons
       .wait(root, waited, deadline)
@@ -149,4 +155,42 @@ export async function queueSide(
     if (ended !== null) problems.push(ended);
   }
   return { root, files, pending, problems, groupOf };
+}
+
+/**
+ * Row 023-40c (R1 with the daemon's selection): the working tree's side in
+ * two steps, one wait. First the files the call has at once (the change's
+ * own test files and the named ones with no result now), then the files
+ * `later` gives once the commit daemon selected them; then one wait over
+ * every file taken, until none is pending or the deadline.
+ */
+export async function worktreeTwice(
+  input: QueueInput,
+  root: AbsolutePath,
+  later: Promise<readonly TestFileRef[]>,
+): Promise<SideQueue> {
+  const first = await worktreeQueue({ ...input, waits: false }, root);
+  const ids = new Set(input.files.map(testFileId));
+  const extra = (await later).filter((ref) => !ids.has(testFileId(ref)));
+  const second =
+    extra.length === 0
+      ? NOTHING
+      : await worktreeQueue({ ...input, files: extra, waits: false }, root);
+  const files = [...first.files, ...second.files];
+  const reached = first.root ?? second.root;
+  const problems = [...first.problems, ...second.problems];
+  const late = first.late === true || second.late === true;
+  if (reached === null)
+    return files.length === 0 ? NOTHING : unreached(files, problems.join("; "), late);
+  const pending = new Set([...first.pending, ...second.pending]);
+  const taken = [...(first.taken ?? []), ...(second.taken ?? [])];
+  if (taken.length > 0) {
+    const ended = await input.daemons
+      .wait(reached, taken, input.deadline)
+      .catch((error: unknown) => String(error));
+    if (ended !== null) problems.push(ended);
+  }
+  const view = groupView(readPolicy(reached));
+  const groupOf = (ref: TestFileRef) => view.of(ref).name;
+  return { root: reached, files, pending, problems, groupOf, ...(late ? { late } : {}) };
 }

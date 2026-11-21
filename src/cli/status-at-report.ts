@@ -60,8 +60,12 @@ export type SideState =
   | {
       readonly state: "no result";
       readonly key: string;
-      /** The daemon's run for the key is queued or running. */
-      readonly pending?: "queued" | "running";
+      /**
+       * The daemon's run for the key is queued or running; row 023-40c:
+       * `setting up`, the commit daemon still installs or starts, so the
+       * file has no key yet (`key` is empty).
+       */
+      readonly pending?: "queued" | "running" | "setting up";
       /** Row 023-29 (R8): with `--run`, at the commit: the change did not select it, so it did not run. */
       readonly notSelected?: true;
       /**
