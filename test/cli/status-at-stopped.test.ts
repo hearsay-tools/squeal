@@ -10,6 +10,7 @@ import {
   readCommandHolds,
 } from "../../src/core/scheduler/hold-rows.js";
 import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { run, standIn, standInTree, testOf, withStore } from "./status-at-kit.js";

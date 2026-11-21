@@ -36,23 +36,11 @@ export interface SideQueue {
 const NO_GROUP = () => "";
 
 /**
- * A request is asked at least this long, so it is recorded even after the
- * wait's deadline. Review wave-23 B1: once per call, shared by every
- * request on both sides (`askBound`), never once per request.
+ * A request is asked at least this long after the call's start, so it is
+ * recorded even when the wait is shorter (`--wait 0`). Review wave-23 B1,
+ * row 023-40c: once per call, shared by every step on both sides.
  */
 export const RECORD_WAIT_MS = 10_000;
-
-/**
- * The bound of every daemon start and request of one call: its deadline,
- * or `RECORD_WAIT_MS` after the first of them, whichever is later.
- */
-export function askBound(deadline: number): () => number {
-  let bound: number | undefined;
-  return () => {
-    bound ??= Math.max(deadline, Date.now() + RECORD_WAIT_MS);
-    return bound;
-  };
-}
 
 /** A side whose daemon was never reached: its files run nowhere, `problem` says why. */
 export function unreached(files: readonly TestFileRef[], problem: string, late = false): SideQueue {
@@ -74,7 +62,7 @@ export interface QueueInput {
   readonly files: readonly TestFileRef[];
   /** Epoch ms; `Infinity` for a bare `--wait`. */
   readonly deadline: number;
-  /** The bound every request of the call shares (`askBound`). */
+  /** The bound every start and request of the call shares (the call's `askBy`). */
   readonly askBy: () => number;
   readonly call: NarrowCall;
   /** `false` for `--wait` without `--run`: join, ask nothing. */

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AtDaemons } from "../../src/cli/status-at-daemons.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/common.js";
@@ -107,7 +108,7 @@ describe("squeal status --at --run (row 023-07, D4; row 023-40, D7.3; row 023-40
     const tree = standInTree(f);
     const stand = standIn(tree, () => undefined);
     const text = "install: npm ci: exit 1";
-    const daemons = {
+    const daemons: AtDaemons = {
       ...stand.ports,
       commitRead: async () => ({
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
