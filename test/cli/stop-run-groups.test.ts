@@ -4,16 +4,22 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { stopCommand } from "../../src/cli/stop.js";
-import { readGroups, runGroupsFile, writeGroups } from "../../src/core/daemon/run-groups.js";
+import {
+  RUN_GROUP_VARIABLE,
+  readRuns,
+  runGroupsFile,
+  writeRuns,
+} from "../../src/core/daemon/run-groups.js";
 import { type ProcessEntry, statOf } from "../../src/core/daemon/terminate.js";
 import { resolveCommonDir } from "../../src/core/fs/git-layout.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { git } from "../hash/git-repo.js";
 
 /*
- * Row 023-36 (spec 023 D4 step 11, T3), done-when 2: `squeal stop` ends a
- * process group a `--run` run started that its daemon's record still lists,
- * names it, and clears the record; a process outside the group survives.
+ * Row 023-36 (spec 023 D4 step 11, T3), done-when 2: `squeal stop` ends
+ * what carries the token of a `--run` run its daemon's record still lists,
+ * names it, and clears the record; a process outside the run survives, and
+ * one in a recorded group with no mark is named, not signalled (B6).
  */
 
 const saved = { ...process.env };
@@ -39,12 +45,14 @@ function repo(): AbsolutePath {
   return root as AbsolutePath;
 }
 
-/** A sleeping node in a session and group of its own, with an empty env. */
-async function detached(): Promise<ProcessEntry> {
+const TOKEN = "run-token-0123456789abcdef";
+
+/** A sleeping node in a session and group of its own, with `env`. */
+async function detached(env: NodeJS.ProcessEnv = {}): Promise<ProcessEntry> {
   const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
     detached: true,
     stdio: "ignore",
-    env: {},
+    env,
   });
   child.unref();
   const pid = child.pid;
@@ -65,14 +73,17 @@ async function detached(): Promise<ProcessEntry> {
 }
 
 describe.runIf(process.platform === "linux")("squeal stop and a --run run's groups", () => {
-  it("ends a recorded group still alive, names it, and leaves a process outside it", async () => {
+  it("ends what carries a recorded run's token, names it, and leaves the rest", async () => {
     const root = repo();
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) throw new Error("no common dir");
     const file = runGroupsFile(commonDir, root);
-    const inside = await detached();
+    const inside = await detached({ [RUN_GROUP_VARIABLE]: TOKEN });
     const outside = await detached();
-    writeGroups(file, [{ pgid: inside.pid, start: inside.start, runId: "run-7" }]);
+    // A group the run's process led, now held by an unmarked process: named, never signalled.
+    writeRuns(file, [
+      { token: TOKEN, runId: "run-7", groups: [{ pgid: outside.pid, start: outside.start - 1 }] },
+    ]);
 
     const out: string[] = [];
     const io: CliIo = { stdout: (text) => out.push(text), stderr: (text) => out.push(text) };
@@ -80,12 +91,13 @@ describe.runIf(process.platform === "linux")("squeal stop and a --run run's grou
 
     expect(code).toBe(0);
     const text = out.join("");
-    expect(text).toContain(
-      `Ended 1 process in a process group a \`--run\` run started: ${inside.pid} `,
-    );
+    expect(text).toContain(`Ended 1 process a \`--run\` run started: ${inside.pid} `);
     expect(text).toContain("(run run-7)");
+    expect(text).toContain(
+      `Left 1 process running in a group a \`--run\` run's process led: ${outside.pid}`,
+    );
     expect(statOf(inside.pid)).toBeNull();
     expect(statOf(outside.pid)?.start).toBe(outside.start);
-    expect(readGroups(file)).toEqual([]);
+    expect(readRuns(file)).toEqual([]);
   });
 });
