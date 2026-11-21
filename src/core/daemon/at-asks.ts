@@ -56,6 +56,8 @@ export interface AtAskPorts {
   ) => Promise<unknown>;
   /** The setup or an ask changed: the socket thread gets `AtAsks.snapshot()`. */
   readonly changed: () => void;
+  /** T2: per node:test project, its files with an incomplete static closure; absent: none told. */
+  readonly incomplete?: () => Record<string, readonly RelativePath[]>;
 }
 
 /** A row of the daemon's keys, as `TestFileKeyRecord` holds it. */
@@ -110,7 +112,12 @@ export class AtAsks {
   /** The setup and every kept ask, for the socket thread. */
   snapshot(): CommitSnapshot {
     const setup = this.ports.setup();
-    return { setup, asks: [...this.#asks.values()].map((ask) => stateOf(ask, setup)) };
+    const incomplete = this.ports.incomplete?.() ?? {};
+    return {
+      setup,
+      asks: [...this.#asks.values()].map((ask) => stateOf(ask, setup)),
+      ...(Object.keys(incomplete).length === 0 ? {} : { incomplete }),
+    };
   }
 
   async #take(request: CommitAskRequest, kept: Kept): Promise<void> {

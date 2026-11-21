@@ -7,7 +7,7 @@ import { nodeTestTraits } from "../../runners/node-test/traits.js";
 import { NODE_TEST_ADAPTER_VERSION } from "../../runners/node-test/version.js";
 import { createHostedNodeTest, type ProcessHost } from "../runner-host/process-host.js";
 import { runnerHostGone } from "../runner-host/proxy.js";
-import type { AbsolutePath } from "../types/common.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { NodeTestProject, PolicyInputs } from "../types/policy.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
@@ -29,6 +29,16 @@ export interface NodeTestRunnersOptions {
   readonly host?: ProcessHost | undefined;
   /** Spec 021 D20 (row 021-26): how long a host stays up with no call; absent, for good. */
   readonly idleMs?: () => number;
+  /**
+   * Spec 023 D7.3 (row 023-40c; row 023-35, T2): told each project's test
+   * files whose static closure is incomplete, at open and after each batch;
+   * with it the adapter writes no note of them. Only in this process: an
+   * adapter in a runner host does not tell it.
+   */
+  readonly closures?: (
+    project: string,
+    files: readonly (readonly [RelativePath, readonly string[]])[],
+  ) => void;
 }
 
 /**
@@ -90,6 +100,9 @@ function nodeTestRunner(
     ...(options.inputs === undefined ? {} : { inputs: options.inputs }),
     ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
     ...(options.coverage === undefined ? {} : { coverage: options.coverage }),
+    ...(options.closures === undefined
+      ? {}
+      : { closures: (files) => options.closures?.(project.name, files) }),
   };
   const { host } = options;
   return createRecoveringRunner({

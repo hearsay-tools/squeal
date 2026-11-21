@@ -88,6 +88,12 @@ export interface CommitRefusal {
 export interface CommitSnapshot {
   readonly setup: CommitSetup;
   readonly asks: readonly CommitAskState[];
+  /**
+   * Row 023-35 (T2): per node:test project, its test files whose static
+   * closure is incomplete, once its adapter told them. A project absent
+   * here does not tell (Vitest), or has not yet.
+   */
+  readonly incomplete?: Readonly<Record<string, readonly RelativePath[]>>;
 }
 
 export interface CommitReadResponse extends CommitSnapshot {
