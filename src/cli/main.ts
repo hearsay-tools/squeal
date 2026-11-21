@@ -329,6 +329,8 @@ Usage:
                                 Stop this worktree's daemon; a hook starts one at the
                                 next edit. --until-start: no edit or Git operation
                                 starts one until squeal start
+  squeal stop --at <commit>     Stop the commit daemon at that commit and remove its
+                                worktree; plain stop never stops commit daemons
   squeal hold [--max <duration>] -- <command> [args...]
                                 Run the command with this worktree's validation on hold:
                                 the daemon cancels the runs it can, starts none, and

@@ -17,6 +17,7 @@ import type { AbsolutePath, EpochMs } from "../core/types/common.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
+import { stopAt } from "./stop-at.js";
 import { stopRemoved } from "./stop-removed.js";
 import { endRunGroups } from "./stop-run-groups.js";
 import {
@@ -59,6 +60,8 @@ export const STOP_BOUNDS: StopBounds = { socketMs: 60_000, lockMs: 30_000, lefto
  * refuses `--until-start`: no worktree is there to hold. Spec 021 D1
  * (#158): the mark's write asks a busy store again until `busyBoundMs`
  * (default `BUSY_BOUND_MS`); `--until-start` without its mark exits 1.
+ * `--at <commit>` stops the commit daemons at that commit instead and
+ * removes their worktrees (spec 023 D7.7, `stopAt`).
  */
 export async function stopCommand(
   args: readonly string[],
@@ -69,6 +72,7 @@ export async function stopCommand(
   const parsed = stopArgs(args, io);
   if (typeof parsed === "number") return parsed;
   if ("removed" in parsed) return stopRemoved(parsed.removed, io, bounds);
+  if ("at" in parsed) return stopAt(parsed.root, parsed.at, io, bounds);
   const { root, untilStart } = parsed;
   const socketPath = await daemonSocket(root);
   const ping = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
@@ -126,11 +130,13 @@ async function endedRunGroups(root: AbsolutePath, io: CliIo): Promise<void> {
 }
 
 const UNTIL_START = "--until-start";
+const AT = "--at";
 
 /**
  * The worktree `args` name and whether `--until-start` is among them, the
- * named path when it is gone (`stopRemoved`), or the exit code after saying
- * why neither.
+ * named path when it is gone (`stopRemoved`), the commit of `--at` (row
+ * 023-38) with the worktree it resolves in, or the exit code after saying
+ * why none.
  */
 function stopArgs(
   args: readonly string[],
@@ -138,7 +144,17 @@ function stopArgs(
 ):
   | { readonly root: AbsolutePath; readonly untilStart: boolean }
   | { readonly removed: AbsolutePath }
+  | { readonly root: AbsolutePath; readonly at: string }
   | number {
+  if (args[0] === AT) {
+    const at = args[1];
+    if (args.length !== 2 || at === undefined || at.startsWith("-")) {
+      io.stderr(`usage: squeal stop ${AT} <commit>\n`);
+      return 2;
+    }
+    const root = worktreeRoot(undefined, io);
+    return root === null ? 1 : { root, at };
+  }
   const rest = args.filter((arg) => arg !== UNTIL_START);
   if (rest.length > 1 || rest[0]?.startsWith("-")) {
     io.stderr(`usage: squeal stop [${UNTIL_START}] [root]\n`);

@@ -1,4 +1,5 @@
 import { cacheCheckoutsRoot, gitCheckoutsDir } from "../checkout/location.js";
+import { ownerOf } from "../checkout/marker.js";
 import { cacheRepositoryDirs, type ListedCheckout, listCheckouts } from "../checkout/sweep.js";
 import { shellWord } from "../text.js";
 import type { PsPlaces } from "./model.js";
@@ -32,14 +33,17 @@ function shapeOf(listed: ListedCheckout): PsCheckout {
     folder: listed.folder,
     commit: marker?.commit ?? null,
     commonDir: marker?.commonDir ?? null,
-    pid: marker?.owner.pid ?? null,
+    pid: marker === null ? null : ownerOf(marker).pid,
     createdAt: marker?.createdAt ?? null,
+    ...(marker?.fingerprint === undefined
+      ? {}
+      : { kind: "commit" as const, daemon: marker.daemon !== undefined }),
     owner,
     flags: dead
       ? [
           {
             flag: "dead-checkout",
-            reason: `its owner, pid ${marker.owner.pid}, is gone`,
+            reason: `its owner, pid ${ownerOf(marker).pid}, is gone`,
             command: removal(marker.commonDir, listed),
           },
         ]

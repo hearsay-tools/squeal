@@ -299,9 +299,15 @@ export interface PsCheckout {
   /** The rest is from its marker, `null` without one. */
   readonly commit: string | null;
   readonly commonDir: AbsolutePath | null;
-  /** Its owner's pid. */
+  /** Its owner's pid: a commit worktree's daemon once it claimed it. */
   readonly pid: number | null;
   readonly createdAt: EpochMs | null;
+  /**
+   * Spec 023 D7.7 (row 023-38): `commit` for a commit worktree, `daemon`
+   * when its daemon claimed it; absent for a temporary checkout.
+   */
+  readonly kind?: "commit";
+  readonly daemon?: boolean;
   /** `unknown` without a marker or when the owner's PID namespace is another. */
   readonly owner: "live" | "dead" | "unknown";
   /** `dead-checkout` when its owner is gone. */
