@@ -198,11 +198,11 @@ describe("removal (D7.2) and the sweep (D6)", () => {
     claimCommitWorktree(a.tree);
     expect(readCommitWorktree(a.tree)?.daemon?.pid).toBe(process.pid);
 
-    await removeCommitWorktree(a.tree);
+    await expect(removeCommitWorktree(a.tree)).resolves.toBe("removed");
     expect(existsSync(a.folder)).toBe(false);
     expect(worktrees()).toEqual([fx.repo]);
-    await expect(removeCommitWorktree(a.tree)).resolves.toBeUndefined();
-    await expect(removeCommitWorktree(fx.repo)).resolves.toBeUndefined();
+    await expect(removeCommitWorktree(a.tree)).resolves.toBe("removed");
+    await expect(removeCommitWorktree(fx.repo)).resolves.toBe("kept");
   });
 
   it("keeps a worktree another live process owns now", async () => {

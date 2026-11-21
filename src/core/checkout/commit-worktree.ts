@@ -1,9 +1,8 @@
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { leaseProcess, leaseProcessAlive } from "../daemon/lease-process.js";
 import { awaitDaemonLock } from "../daemon/lock.js";
-import { resolveCommonDir } from "../fs/git-layout.js";
+import { lstatOrNull, resolveCommonDir } from "../fs/git-layout.js";
 import { installCommand } from "../scheduler/install-command.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { LeaseProcess } from "../types/daemon-writes.js";
@@ -17,10 +16,13 @@ import {
   withFileLock,
 } from "./checkout.js";
 import {
+  type CommitRemoval,
   commitFolderName,
   commitIdentity,
   isCheckoutLocation,
+  pathState,
   removeCommitFolder,
+  treelessCommitFolder,
 } from "./commit-identity.js";
 import {
   commitWorktreeCeiling,
@@ -212,10 +214,22 @@ async function foundPlace(
 ): Promise<Place | null> {
   for (const dir of new Set(dirs)) {
     const folder = join(dir, name);
-    if (!existsSync(folder)) continue;
+    // Review wave-22 N3: a folder it cannot read fails the call; it is not missing.
+    if (lstatOrNull(folder) === null) continue;
     const tree = treePath(folder);
     const marker = readMarker(folder);
-    if (marker === null || marker.commonDir !== commonDir || !existsSync(join(tree, ".git"))) {
+    // Review wave-22 N2: a folder a removal kept loses only Squeal's files; the tree is made beside the rest.
+    const treeless = marker?.commonDir === commonDir ? treelessCommitFolder(folder, marker) : null;
+    if (treeless !== null) {
+      if ((await removeCommitFolder(treeless, note)) !== "removed")
+        throw new Error(`squeal: could not clear ${folder} for a new commit worktree`);
+      continue;
+    }
+    if (
+      marker === null ||
+      marker.commonDir !== commonDir ||
+      lstatOrNull(join(tree, ".git")) === null
+    ) {
       await removeTree({ folder, tree, commonDir }, note);
       continue;
     }
@@ -305,31 +319,39 @@ export interface RemoveCommitWorktreeOptions {
  * stays. Nothing when `tree` is not a commit worktree Squeal made, checked
  * again under the lock (review wave-22 B1), or is gone; it never throws: a
  * failure goes to `note`, and the sweep removes the rest once the owner is
- * gone.
+ * gone. It says what is left of the tree: `unknown` when it cannot read
+ * the tree, never `removed` (review wave-22 N3).
  */
 export async function removeCommitWorktree(
   tree: AbsolutePath,
   options: RemoveCommitWorktreeOptions = {},
-): Promise<void> {
+): Promise<CommitRemoval> {
+  // Review wave-22 N3: a tree it cannot read is not one it removed.
+  const before = pathState(tree);
+  if (before === "unknown") {
+    options.note?.(`squeal: could not read ${tree}: it may still be there`);
+    return before;
+  }
   const first = commitIdentity(tree);
-  if (first === null) return;
+  if (first === null) return pathState(tree);
   try {
-    await withCheckoutLock(
+    return await withCheckoutLock(
       first.marker.commonDir,
-      async () => {
+      async (): Promise<CommitRemoval> => {
         const identity = commitIdentity(tree);
-        if (identity === null || identity.folder !== first.folder) return;
+        if (identity === null || identity.folder !== first.folder) return pathState(tree);
         const owner = ownerOf(identity.marker);
         if (owner.pid !== process.pid && leaseProcessAlive(owner) === true) {
           options.note?.(`squeal: kept ${tree}: pid ${owner.pid} owns it now`);
-          return;
+          return "kept";
         }
-        await removeCommitFolder(identity, options.note);
+        return removeCommitFolder(identity, options.note);
       },
       options.lockWaitMs,
     );
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error);
     options.note?.(`squeal: could not remove ${tree}: ${text}`);
+    return pathState(tree);
   }
 }
