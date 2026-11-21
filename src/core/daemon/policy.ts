@@ -104,7 +104,12 @@ const SHAPE: Shape = {
     quietMs: atLeastZero,
   },
   delivery: { uncoveredEdits: boolean },
-  daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
+  daemon: {
+    idleExitMinutes: aboveZero,
+    unusedExitMinutes: aboveZero,
+    // Spec 023 D7.4 (row 023-40).
+    maxCommitDaemons: orNull(positiveInteger),
+  },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,

@@ -6,6 +6,7 @@ import type { CommitRun } from "./status-at-commit-run.js";
 import { nextOf } from "./status-at-next.js";
 import type { NowSide } from "./status-at-now.js";
 import { type AtReport, compareSides } from "./status-at-report.js";
+import type { QueuedRun } from "./status-at-report-queued.js";
 import type { NowPart } from "./status-at-run.js";
 
 /*
@@ -24,9 +25,11 @@ export interface AssembleInput {
   readonly unmatched: readonly RelativePath[];
   /** The current side as last read: after the working tree's run, when it ran. */
   readonly current: NowSide;
-  readonly side: CommitRun;
+  readonly side: Pick<CommitRun, "at" | "ran" | "probe" | "state">;
   /** R1: the working tree's part of `--run`; `null` when it did not run. */
   readonly part: NowPart | null;
+  /** Row 023-40 (D7.3): what the call queued in the daemons or joined; absent without either. */
+  readonly queued?: QueuedRun;
 }
 
 export async function assembleReport(input: AssembleInput): Promise<AtReport> {
@@ -45,7 +48,11 @@ export async function assembleReport(input: AssembleInput): Promise<AtReport> {
     failure: at.failure,
     files: compareSides(input.refs, side.state, current.state),
     ...(unmatched.length === 0 ? {} : { unmatched }),
-    ...(ran === null ? {} : { run: ran.use(input.part ?? undefined) }),
+    ...(input.queued !== undefined
+      ? { run: input.queued }
+      : ran === null
+        ? {}
+        : { run: ran.use(input.part ?? undefined) }),
     ...nextOf(side.probe, at),
   };
 }

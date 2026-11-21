@@ -15,6 +15,7 @@ import {
   proofCommand,
   unchangeable,
 } from "./status-at-report-files.js";
+import { type QueuedRun, queuedLines } from "./status-at-report-queued.js";
 import { type RunUse, runLines } from "./status-at-report-run.js";
 
 export type { RunUse };
@@ -29,9 +30,10 @@ export interface Origin {
   /**
    * `ci`: CI's export for the commit (row 023-17); `import`: a `squeal
    * import`; `own`: this worktree; `worktree`: another one; `run`: this
-   * command's `--run`, in its checkout (row 023-07).
+   * command's `--run`, in its checkout (row 023-07); `commit`: the commit
+   * daemon in its commit worktree (row 023-40, D7.3).
    */
-  readonly kind: "ci" | "import" | "own" | "worktree" | "run";
+  readonly kind: "ci" | "import" | "own" | "worktree" | "run" | "commit";
   /** The worktree that stored it; `null` for `ci` and `run`. */
   readonly worktreeId: WorktreeId | null;
   /** The commit its run recorded. */
@@ -224,8 +226,12 @@ export interface AtReport {
    * closure, at the commit or now; absent when none.
    */
   readonly unmatched?: readonly string[];
-  /** Row 023-07: `--run`'s budget use; absent without `--run`. */
-  readonly run?: RunUse;
+  /**
+   * Row 023-40 (D7.3): what `--run` queued in the daemons, or `--wait`
+   * joined, and what stands when the wait ended; absent without either.
+   * `RunUse` is the in-call run's, which row 023-41 removes.
+   */
+  readonly run?: QueuedRun | RunUse;
   /** Row 023-24 (Q1): without `--run`, the command that runs the files with no result; absent when none. */
   readonly next?: AtNext;
 }
@@ -294,7 +300,8 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
     `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown - fixed} unknown${apart}`,
   );
   // A failed checkout ran nothing; its line above says why.
-  if (report.run !== undefined && report.failure === null) lines.push(...runLines(report.run, at));
+  if (report.run !== undefined && report.failure === null)
+    lines.push(...("mode" in report.run ? queuedLines(report.run, at) : runLines(report.run, at)));
   if (pastRetention(report.files, report.commitTimeMs, nowMs)) {
     const days = Math.floor((nowMs - report.commitTimeMs) / DAY_MS);
     lines.push(
@@ -306,8 +313,8 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
   return `${lines.join("\n")}\n`;
 }
 
-/** D1's versioned JSON report. */
-export const AT_REPORT_VERSION = "squeal-status-at/1";
+/** D1's versioned JSON report; row 023-40 made `run` the daemons' part (version 2). */
+export const AT_REPORT_VERSION = "squeal-status-at/2";
 
 export function jsonAt(report: AtReport): string {
   const value = {

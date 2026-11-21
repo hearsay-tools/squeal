@@ -32,6 +32,7 @@ export function originText(origin: Origin): string {
   if (origin.kind === "ci") return "from CI's export";
   if (origin.kind === "import") return `imported from CI at ${short(origin.commit)}`;
   if (origin.kind === "own") return "run in this worktree";
+  if (origin.kind === "commit") return "run in the commit's worktree";
   if (origin.kind === "run") {
     if (origin.stored === true) return "run by this command, stored";
     // The third look: a stop before the record said whether the gate kept it.
