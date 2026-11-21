@@ -52,18 +52,35 @@ type Side = {
 const atOf = (out: string) =>
   (JSON.parse(out).files as { path: string; at: Side }[]).find((x) => x.path === TEST.path)?.at;
 
-/** Waits until the store holds a result of the test file, at any key. */
+/**
+ * Waits until the store holds a result of the test file, at any key. Review
+ * wave-23: the run writes the store meanwhile, so a read that finds it
+ * locked (`SQLITE_BUSY`) is tried again at the next poll.
+ */
 async function storedOnce(f: Parameters<typeof withStore>[0]): Promise<void> {
   const deadline = Date.now() + 30_000;
   for (;;) {
     let found = false;
-    withStore(f, (store) => {
-      found = store.results.newestForTestFile(TEST).length > 0;
-    });
+    try {
+      withStore(f, (store) => {
+        found = store.results.newestForTestFile(TEST).length > 0;
+      });
+    } catch (error) {
+      if (!busy(error)) throw error;
+    }
     if (found) return;
     if (Date.now() > deadline) throw new Error("the first run kept nothing in 30 s");
     await new Promise((done) => setTimeout(done, 100));
   }
+}
+
+/** A store read that found the database locked by a writer. */
+function busy(error: unknown): boolean {
+  const text =
+    error instanceof Error
+      ? `${String((error as { code?: unknown }).code)} ${error.message}`
+      : String(error);
+  return /SQLITE_BUSY|database is locked/i.test(text);
 }
 
 afterEach(() => {
