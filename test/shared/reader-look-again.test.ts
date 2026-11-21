@@ -75,11 +75,16 @@ async function movedBeforePublish(lookAgain: LookAgain) {
   const dev = cloneOf(s, "dev");
   const listings = counted(s, dev);
   let now = 1_762_100_000_000;
+  /** What the clock moves at each of the reader's next reads of it: time its local steps take. */
+  const steps: number[] = [];
   const hand = handTimer();
   const r = readerOf(dev, {
     policy: shared("refs/squeal", lookAgain),
     timer: hand.timer,
-    now: () => now,
+    now: () => {
+      now += steps.shift() ?? 0;
+      return now;
+    },
   });
   await r.run();
   expect(r.commits()).toEqual([c0]);
@@ -92,7 +97,8 @@ async function movedBeforePublish(lookAgain: LookAgain) {
     hand.fire();
     await r.reader.idle();
   };
-  return { s, ci: ci.root, dev, c0, c1, r, hand, listings, fire };
+  const later = (...ms: number[]) => steps.push(...ms);
+  return { s, ci: ci.root, dev, c0, c1, r, hand, listings, fire, later };
 }
 
 describe("the reader looks again for a missing export (row 018-70)", () => {
@@ -148,6 +154,57 @@ describe("the reader looks again for a missing export (row 018-70)", () => {
     await r.run();
     expect(listings()).toBe(after);
     expect(r.notes).toHaveLength(1);
+  });
+
+  it("lists nothing when its timer fires after the window, and notes once (review 0.1.588 B1)", async () => {
+    const { ci, c0, c1, r, hand, listings, fire } = await movedBeforePublish({
+      everySeconds: 30,
+      forSeconds: 45,
+    });
+    // The export is there by now, but the look comes too late to take it.
+    await publish(ci, c1);
+    const before = listings();
+    await fire(60_000);
+    expect(listings()).toBe(before);
+    expect(r.commits()).toEqual([c0]);
+    expect(hand.pending()).toEqual([]);
+    expect(r.notes).toEqual([
+      `CI results: origin had no refs/squeal/${c1} after 45 s; tests run here as before`,
+    ]);
+    await r.run();
+    expect(listings()).toBe(before);
+    expect(r.notes).toHaveLength(1);
+  });
+
+  it("lists nothing when its local steps end after the window (review 0.1.588 B1)", async () => {
+    const { c1, r, hand, listings, fire, later } = await movedBeforePublish({
+      everySeconds: 30,
+      forSeconds: 45,
+    });
+    const before = listings();
+    // The look starts in time; its local git steps take 30 s.
+    later(0, 30_000);
+    await fire(30_000);
+    expect(listings()).toBe(before);
+    expect(hand.pending()).toEqual([]);
+    expect(r.notes).toEqual([
+      `CI results: origin had no refs/squeal/${c1} after 45 s; tests run here as before`,
+    ]);
+  });
+
+  it("still makes its last look when the timer fires within 1 s of the window's end", async () => {
+    const { c1, r, hand, listings, fire } = await movedBeforePublish({
+      everySeconds: 30,
+      forSeconds: 45,
+    });
+    const before = listings();
+    await fire(30_000);
+    await fire(15_500);
+    expect(listings()).toBe(before + 2);
+    expect(hand.pending()).toEqual([]);
+    expect(r.notes).toEqual([
+      `CI results: origin had no refs/squeal/${c1} after 45 s; tests run here as before`,
+    ]);
   });
 
   it("lists nothing once closed, even when its timer fires", async () => {

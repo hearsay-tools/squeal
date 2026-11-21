@@ -199,6 +199,8 @@ class Reader implements SharedReader {
     if (key === this.#start && !again) return;
     if (key !== this.#start) this.#looks.stop();
     this.#start = key;
+    // Review 0.1.588 B1: a look again whose timer fired after the window lists nothing.
+    if (again && this.#expired({ prefix, start, key, again }, upstream.remote)) return;
 
     const candidates = await this.#live((signal) => firstParents(root, start, signal));
     const imports = listImports(this.o.store);
@@ -224,6 +226,8 @@ class Reader implements SharedReader {
     const { root } = this.o;
     const { prefix, start } = look;
     const env = await this.#live((signal) => networkEnv(root, signal));
+    // Review 0.1.588 B1: the local steps take time too; the window decides again at the listing.
+    if (look.again && this.#expired(look, upstream.remote)) return;
     const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
     const listed = await this.#live((signal) =>
       remoteExports(root, upstream.remote, prefix, { timeoutMs: listMs, env, signal }),
@@ -255,6 +259,14 @@ class Reader implements SharedReader {
       await this.#take(upstream.remote, ref, commit, oid, env);
       return;
     }
+  }
+
+  /** Review 0.1.588 B1: whether the look's window ended before now; its one note then. */
+  #expired(look: Look, remote: string): boolean {
+    if (!this.#looks.expired(look.key, this.o.now())) return false;
+    const { forSeconds } = this.o.policy().shared.lookAgain;
+    this.o.note(gaveUpNote(refOf(look.prefix, look.start), remote, forSeconds));
+    return true;
   }
 
   /** Row 018-70: the start point's own export was not listed; one note when the window ends. */
