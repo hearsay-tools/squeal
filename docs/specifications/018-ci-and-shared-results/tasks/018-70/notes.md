@@ -37,6 +37,24 @@ Local evidence (not committed): with B and the early import only (no second impo
 - `test/shared/policy.test.ts`: the defaults, partial keys and wrong values.
 - Test kit: `shared()` in `reader-kit.ts` defaults to `forSeconds: 0`, so the older reader tests keep one look and start no timer. `readsInput` is exported from `daemon-kit.ts`. The race test gives the reader the scheduler's clock: `readerOf`'s fixed 2025 time stamps imports older than the scheduler's start, so `StoredKeys` never reads them as new.
 
+## Bench `@ff` (docs/process.md 6c)
+
+`bench/boat-run.sh --ref squeal--v0.1.585 --ref . --cells @ff`, one sandbox (default, 4 vCPU, AMD Ryzen 7 9700X), 2026-11-21 12:37Z to about 14:20Z, one run of each cell per version. `-1` is release 0.1.585. `-2` is a build of d37726b0b, made in a scratch worktree with the same build script. Its version string is also 0.1.585. Correctness: PASS in every cell.
+
+| Cell | 0.1.585 | d37726b0b | Δ | Hooks Δ | Commands Δ | Verdicts Δ | Resources Δ | Store Δ |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| ff | 65 | 65 | +0 | +0 | +0 | +0 | +0 | +0 |
+| ff-known | 74 | 61 | -13 | -13 | -25 | +0 | -25 | +0 |
+| ff-load50 | 63 | 60 | -3 | -13 | +0 | +0 | +0 | +0 |
+| ff-rebase | 78 | 73 | -5 | -13 | -13 | +0 | +0 | +0 |
+
+The fast-forward metrics are equal or within a few percent in every cell:
+- files queued 3 s after the fast-forward: 350 and 350 (0 and 0 in ff-known);
+- late notices: 1, 0, 9 and 1 in both versions;
+- time until no file waits: ff 61 s and 73 s, ff-known 9.6 s and 9.8 s, ff-rebase 59 s and 61 s.
+
+The score drops come from hook p95 times: before each tool call, +35% to +77%; after each batch, -32% to +124%; at session start, -39% to +143%. Idle CPU is a fraction of a core in both versions. The hook bundles of the two versions differ only in the `shared` policy shape: four lines, 212 bytes, and no hook code. So these spreads are run-to-run noise of one run per cell, not this change. No cell dropped 15 points, so step 6c asks for no re-run. As the research says, no `@ff` cell sets `shared.ref`, so none runs the reader's new paths. This run shows only that nothing else moved.
+
 ## For the next worker
 
 - `reader.ts` is about 390 lines, over the about-300 guide. A later split could move `#take` and `#import` into a module of their own.
