@@ -51,6 +51,21 @@ function worktreeSide() {
   return { worktree: real.worktree, started };
 }
 
+/** The stand-in commit daemon's rows: `files` queued at `commit-<path>`. */
+function queuedRows(f: Fixture, tree: string, files: readonly TestFileRef[]): void {
+  withStore(f, (store) =>
+    store.testFileKeys.upsertMany(
+      files.map((testFile) => ({
+        worktreeId: worktreeIdFor(tree as AbsolutePath),
+        testFile,
+        key: `commit-${testFile.path}`,
+        revision: 2,
+        pending: "queued" as const,
+      })),
+    ),
+  );
+}
+
 function stopMark(
   f: Fixture,
   id: ReturnType<typeof worktreeIdFor>,
@@ -67,7 +82,7 @@ describe("status --at --run keeps the user's stop and holds (review wave-23 S1)"
     const { f, a, id } = changed();
     stopMark(f, id, null, true);
     const tree = standInTree(f);
-    const ports = standIn(tree, () => undefined);
+    const ports = standIn(tree, () => undefined, { rows: (at, files) => queuedRows(f, at, files) });
     const side = worktreeSide();
     const daemons = { ...ports.ports, worktree: side.worktree };
     const options = { cacheRoot: f.cacheRoot, install: linkInstall().install, daemons };
@@ -82,7 +97,9 @@ describe("status --at --run keeps the user's stop and holds (review wave-23 S1)"
       `--run, now: 1 test files the change selects with no result in the working tree not queued: ${STOPPED}`,
     );
     expect(called.out).toContain(`--run: queued 1 test files with no result at ${a.slice(0, 9)}`);
-    expect(ports.asks.map((ask) => ask.root)).toEqual([tree]);
+    // Row 023-40c: the commit side is one ask of the commit daemon; the worktree got none.
+    expect(ports.commitAsks.map((ask) => ask.named)).toEqual([[TEST.path]]);
+    expect(ports.asks).toEqual([]);
     withStore(f, (store) => expect(readStop(store, id)).toMatchObject({ untilStart: true }));
   });
 

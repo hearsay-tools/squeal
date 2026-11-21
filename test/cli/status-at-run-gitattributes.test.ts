@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { clean, run, standIn, standInTree, testOf } from "./status-at-kit.js";
+import { clean, run, testOf } from "./status-at-kit.js";
 
 /*
  * Row 023-18 D3 (`tasks/023-09-notes.md`): squawk's `packages/mobile` held
@@ -36,25 +36,8 @@ describe(
       expect(text.out).toContain("not comparable (git's checkout rules changed tools/run.bat)");
       expect(text.out).not.toContain("install changed");
       clean(f);
-
-      // Row 023-40: a checkout git's rules changed gives no key of the commit's: nothing is
-      // queued in the commit daemon, and the file stays not comparable.
-      const daemons = standIn(standInTree(f), () => undefined);
-      const json = await run(
-        f,
-        { commit: a, json: true, run: { allMissing: false } },
-        { ...options, daemons: daemons.ports },
-      );
-      const report = JSON.parse(json.out);
-      expect(report).toMatchObject({ changed: "tools/run.bat", changedBy: "git" });
-      expect(daemons.commits).toEqual([]);
-      expect(report.run).toMatchObject({ commit: { files: 0 } });
-      const [row] = report.files;
-      expect(row.at).toEqual({
-        state: "not comparable",
-        reason: "git's checkout rules changed tools/run.bat",
-      });
-      clean(f);
+      // Row 023-40c: `--run` keys nothing in a checkout; the commit daemon owns its tree
+      // (`tasks/023-40-notes.md`, "Wave 24", what is not checked there).
     });
   },
 );

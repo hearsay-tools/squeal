@@ -109,7 +109,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
   const [atQueue, nowQueue] =
     run === null
       ? await Promise.all([
-          joinCommit(daemons, await joinedTree(daemons, commitInput, commonDir), bound),
+          joinedCommit(daemons, commitInput, commonDir, place.paths, bound),
           joinNow({ daemons, root, refs: listed.refs, now: listed.state, deadline: bound }),
         ])
       : await queueBoth(input, { daemons, commit: commitInput, now: listed, bound, run });
@@ -204,6 +204,25 @@ async function joinedTree(
   commonDir: AbsolutePath,
 ): Promise<AbsolutePath | null> {
   return daemons.find(input) ?? (await formerTree(input, commonDir));
+}
+
+/** `--wait` alone, the commit side: the daemon's asks and the call's files it lists pending. */
+async function joinedCommit(
+  daemons: AtDaemons,
+  input: CommitDaemonInput,
+  commonDir: AbsolutePath,
+  paths: readonly RelativePath[] | null,
+  bound: number,
+): Promise<CommitAsked> {
+  const tree = await joinedTree(daemons, input, commonDir);
+  if (tree === null) return joinCommit(daemons, null, bound);
+  const listed = await withStores(commonDir, async (main) =>
+    (main?.testFileKeys.list(idOf(tree)) ?? [])
+      .filter((row) => row.pending !== null && row.pending !== undefined)
+      .map((row) => row.testFile)
+      .filter((ref) => paths === null || selects(paths, ref.path)),
+  );
+  return joinCommit(daemons, tree, bound, listed);
 }
 
 /** The report's part for the call (D7.3, Q7). */

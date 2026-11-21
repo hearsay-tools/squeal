@@ -70,15 +70,20 @@ export async function askCommit(input: AskInput): Promise<CommitAsked> {
   return waitFor(daemons, tree, read, bound);
 }
 
-/** `--wait` alone: the asks the commit daemon at `tree` keeps, joined; nothing is asked or started. */
+/**
+ * `--wait` alone: the asks the commit daemon at `tree` keeps and the
+ * call's files it lists pending (`listed`), joined; nothing is asked or
+ * started.
+ */
 export async function joinCommit(
   daemons: AtDaemons,
   tree: AbsolutePath | null,
   bound: number,
+  listed: readonly TestFileRef[] = [],
 ): Promise<CommitAsked> {
   if (tree === null) return { ...NOTHING, setup: null, asks: [] };
   const read = await readUntilQueued(daemons, tree, undefined, bound);
-  return waitFor(daemons, tree, read, bound);
+  return waitFor(daemons, tree, read, bound, listed);
 }
 
 interface Read {
@@ -110,6 +115,7 @@ async function waitFor(
   tree: AbsolutePath,
   read: Read,
   bound: number,
+  listed: readonly TestFileRef[] = [],
 ): Promise<CommitAsked> {
   const files = new Map<string, TestFileRef>();
   const pending = new Set<string>();
@@ -119,7 +125,11 @@ async function waitFor(
     problems.push(...ask.problems);
     for (const ref of ask.files) files.set(testFileId(ref), ref);
   }
-  const queued = read.asks.filter((a) => a.phase === "queued").flatMap((a) => a.files);
+  for (const ref of listed) files.set(testFileId(ref), ref);
+  const queued = [
+    ...read.asks.filter((a) => a.phase === "queued").flatMap((a) => a.files),
+    ...listed,
+  ];
   if (queued.length > 0) {
     const ended = await daemons.wait(tree, queued, bound).catch((error: unknown) => String(error));
     if (ended !== null) problems.push(ended);
