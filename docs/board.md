@@ -2691,6 +2691,12 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 |---|---|---|---|
 | 022-07 research: select by the functions a test file entered; a narrow skip rule and an order-only rule | done (researcher f5fd6e82, `research/function-selection.md`, 2026-11-21: do not build either. The skip rule saves 0.07 to 0.15% of re-run seconds per edit here, 0.004 to 0.07% in cezar, 0.68% and 0.17% per commit; 5 of 12 fixture skips change the result (function text, line numbers); 26 to 36% of sampled test files enter other functions on identical sources. The order-only rule holds 5 of 15 new failures here against the edit cut's 2, at 2.2 times its seconds, and 5 of 13 in cezar against 11. No product change; coordinator c57d5feb) | Topic `function-selection`: savings of the skip rule on stored edit revisions here and in cezar, its misses on fixtures, how often reflection, line-number assertions and unstable paths occur, record carry-over, the order-only rule against today's edit cut, cost. Research only. | `research/function-selection.md` committed; every question has a tagged answer |
 
+### Wave 4: short shrink steps (the human, 2026-11-21: "Shrink: A: Shorter shrink steps"; brief `specifications/022-selection-strategy/tasks/wave-4.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 022-08 each prune vacuum step and list-delete step holds the store lock briefly | running (coordinator da243dbd, 2026-11-21) | The 022-05 bench: after 0.1.591 empties the lists, `incremental_vacuum(512)` slices held the lock 0.76 s on average, up to 2.4 s, about 6 min per 13-minute cell (estimated an hour once on a 7 GB store); hook after each batch slowest 5% 860-950 ms vs 215 ms. Time-bounded vacuum slices (about 100 ms) in both stores, smaller list-delete batches. | Brief's done-when; bench `store-7g` and `store-7g-wt3` pair 0.1.591 vs candidate |
+
 ## Feature 023: results at a commit
 
 Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16, wave 1 running; the human, 2026-11-16: an agent asks Squeal for the results at a commit, the checks with no result there, and has Squeal run those; chose one slice with auto-run, retention stays 7 days). First finding `specifications/018-ci-and-shared-results/research/results-at-commit.md`. Coordinator d36c4d53.
