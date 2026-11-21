@@ -1,4 +1,4 @@
-wt=/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-squeal-warm commit=7591bf996 load_before=15.82 12.85 14.26
+wt=~/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-squeal-warm commit=7591bf996 load_before=15.82 12.85 14.26
 start_rc=0 start_s=.960542512
   Complexity: no file counted yet.
   Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
@@ -9,18 +9,18 @@ settle_rc=0 start_to_settled_s=21.729854711
   Affected checks: 18139 passed (16047 tests, 2092 test files loaded), 0 running, 0 queued, 24 skipped (24 tests)
   Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
   Returned on quiet: the edits since revision 0 affect no test file, at revision 0 after 20.6 s; this wait does not hold for the rest of the worktree. Worktree: known failures 0; not current: 1 of 2093 test files (1 unknown)
-  proc_idle30 pid=79518 rss_kb=577064 pss_kb=517183 cmd=squeal squeal daemon @dcbe8edf /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.mjs da
-  proc_idle30 pid=80348 rss_kb=250468 pss_kb=181573 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
+  proc_idle30 pid=79518 rss_kb=577064 pss_kb=517183 cmd=squeal squeal daemon @dcbe8edf ~/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.mjs da
+  proc_idle30 pid=80348 rss_kb=250468 pss_kb=181573 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
 mem_idle30 procs=2 rss_kb=827532 pss_kb=698756 threads=13
 run_rc=0 run_wait_s=2.667043671 load=17.64 13.69 14.47
   Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
   More: `squeal status --full` adds the worktree and daemon, the 18163 current results inherited from 12 worktrees, the 1 test file without a result one by one and 2 notes
-  proc_after_run pid=79518 rss_kb=587728 pss_kb=527989 cmd=squeal squeal daemon @dcbe8edf /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.mjs da
-  proc_after_run pid=80348 rss_kb=250476 pss_kb=181891 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
+  proc_after_run pid=79518 rss_kb=587728 pss_kb=527989 cmd=squeal squeal daemon @dcbe8edf ~/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.mjs da
+  proc_after_run pid=80348 rss_kb=250476 pss_kb=181891 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
 mem_after_run procs=2 rss_kb=838204 pss_kb=709880 threads=13
-  proc_idle_after_run pid=79518 rss_kb=457044 pss_kb=394008 cmd=squeal squeal daemon @dcbe8edf /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.mjs da
-  proc_idle_after_run pid=80348 rss_kb=250476 pss_kb=182301 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
+  proc_idle_after_run pid=79518 rss_kb=457044 pss_kb=394008 cmd=squeal squeal daemon @dcbe8edf ~/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.mjs da
+  proc_idle_after_run pid=80348 rss_kb=250476 pss_kb=182301 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
 mem_idle_after_run procs=2 rss_kb=707520 pss_kb=576309 threads=13
-checkout_kb_excl_nm 334984	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-squeal-warm
+checkout_kb_excl_nm 334984	~/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-squeal-warm
 stop_rc=0 stop_s=.878541604
 daemon_alive_after_stop=no

@@ -12,8 +12,8 @@ node_modules_dirs=5
 nm_unique_bytes=1144897
 nm_hardlinked_bytes=450828507
 nm_entries=36603
-cold_cache_kb 510212	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/store-cold-cezar-cold
-cold_cache_kb 126868	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/cache-cold-cezar-cold
+cold_cache_kb 510212	~/projects/squeal/.ai/squawk/t/a6b117e2/rw/store-cold-cezar-cold
+cold_cache_kb 126868	~/projects/squeal/.ai/squawk/t/a6b117e2/rw/cache-cold-cezar-cold
 Packages: +700
 Progress: resolved 700, reused 0, downloaded 700, added 700, done
-wt=/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-cold
+wt=~/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-cold

@@ -1,4 +1,4 @@
-wt=/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-warm commit=c11e4edf0 load_before=16.42 14.14 14.55
+wt=~/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-warm commit=c11e4edf0 load_before=16.42 14.14 14.55
 start_rc=0 start_s=.541044830
   Complexity: no file counted yet.
   Lint: linting has not started.
@@ -9,27 +9,27 @@ settle_rc=0 start_to_settled_s=47.467477321
   Affected checks: 0 passed, 0 running, 0 queued
   Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
   Returned on quiet: the edits since revision 0 affect no test file, at revision 0 after 46.7 s; this wait does not hold for the rest of the worktree; 320 run-loop test files are not current; this repository does not require them before you finish; `squeal run run-loop --wait 60000` runs them now and waits for their results; 97 browser test files are not current; this repository does not require them before you finish; `squeal run browser --wait 60000` runs them now and waits for their results. Worktree: known failures 0; not current: 1931 of 1931 test files (1931 unknown)
-  proc_idle30 pid=130089 rss_kb=945696 pss_kb=884071 cmd=squeal cezar-clone daemon @3a401e23 /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.m
-  proc_idle30 pid=130564 rss_kb=632652 pss_kb=574876 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_idle30 pid=130566 rss_kb=107816 pss_kb=53617 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_idle30 pid=130572 rss_kb=114316 pss_kb=60269 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_idle30 pid=148675 rss_kb=393208 pss_kb=335985 cmd=squeal cezar-clone store --disable-warning=ExperimentalWarning /home/agent/.claude/plugins/cache/hearsay/squea
+  proc_idle30 pid=130089 rss_kb=945696 pss_kb=884071 cmd=squeal cezar-clone daemon @3a401e23 ~/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.m
+  proc_idle30 pid=130564 rss_kb=632652 pss_kb=574876 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_idle30 pid=130566 rss_kb=107816 pss_kb=53617 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_idle30 pid=130572 rss_kb=114316 pss_kb=60269 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_idle30 pid=148675 rss_kb=393208 pss_kb=335985 cmd=squeal cezar-clone store --disable-warning=ExperimentalWarning ~/.claude/plugins/cache/hearsay/squea
 mem_idle30 procs=5 rss_kb=2193688 pss_kb=1908818 threads=13
 run_rc=0 run_wait_s=3.373414311 load=18.97 15.51 14.99
   Lint: linting, 400 of 3471 files.
   More: `squeal status --full` adds the worktree and daemon, the 1930 test files without a result one by one and 5 notes
-  proc_after_run pid=130089 rss_kb=953328 pss_kb=830818 cmd=squeal cezar-clone daemon @3a401e23 /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.m
-  proc_after_run pid=130564 rss_kb=782100 pss_kb=723346 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_after_run pid=130566 rss_kb=107816 pss_kb=53433 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_after_run pid=130572 rss_kb=114316 pss_kb=60043 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_after_run pid=148675 rss_kb=399020 pss_kb=341531 cmd=squeal cezar-clone store --disable-warning=ExperimentalWarning /home/agent/.claude/plugins/cache/hearsay/squea
+  proc_after_run pid=130089 rss_kb=953328 pss_kb=830818 cmd=squeal cezar-clone daemon @3a401e23 ~/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.m
+  proc_after_run pid=130564 rss_kb=782100 pss_kb=723346 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_after_run pid=130566 rss_kb=107816 pss_kb=53433 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_after_run pid=130572 rss_kb=114316 pss_kb=60043 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_after_run pid=148675 rss_kb=399020 pss_kb=341531 cmd=squeal cezar-clone store --disable-warning=ExperimentalWarning ~/.claude/plugins/cache/hearsay/squea
 mem_after_run procs=5 rss_kb=2356580 pss_kb=2009171 threads=13
-  proc_idle_after_run pid=130089 rss_kb=527368 pss_kb=465273 cmd=squeal cezar-clone daemon @3a401e23 /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.m
-  proc_idle_after_run pid=130564 rss_kb=569236 pss_kb=510233 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_idle_after_run pid=130566 rss_kb=100060 pss_kb=45735 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_idle_after_run pid=130572 rss_kb=110572 pss_kb=56360 cmd=/home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/.claude/plu
-  proc_idle_after_run pid=148675 rss_kb=399020 pss_kb=341594 cmd=squeal cezar-clone store --disable-warning=ExperimentalWarning /home/agent/.claude/plugins/cache/hearsay/squea
+  proc_idle_after_run pid=130089 rss_kb=527368 pss_kb=465273 cmd=squeal cezar-clone daemon @3a401e23 ~/.claude/plugins/cache/hearsay/squeal/0.1.586/dist/cli/squeal.m
+  proc_idle_after_run pid=130564 rss_kb=569236 pss_kb=510233 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_idle_after_run pid=130566 rss_kb=100060 pss_kb=45735 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_idle_after_run pid=130572 rss_kb=110572 pss_kb=56360 cmd=~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/.claude/plu
+  proc_idle_after_run pid=148675 rss_kb=399020 pss_kb=341594 cmd=squeal cezar-clone store --disable-warning=ExperimentalWarning ~/.claude/plugins/cache/hearsay/squea
 mem_idle_after_run procs=5 rss_kb=1706256 pss_kb=1419195 threads=13
-checkout_kb_excl_nm 64632	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-warm
+checkout_kb_excl_nm 64632	~/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-warm
 stop_rc=0 stop_s=1.093092253
 daemon_alive_after_stop=no

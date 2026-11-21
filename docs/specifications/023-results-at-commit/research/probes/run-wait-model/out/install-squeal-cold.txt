@@ -12,9 +12,9 @@ node_modules_dirs=5
 nm_unique_bytes=15295671
 nm_hardlinked_bytes=796721858
 nm_entries=24979
-cold_cache_kb 660400	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/store-cold-squeal-cold
-cold_cache_kb 253264	/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/cache-cold-squeal-cold
+cold_cache_kb 660400	~/projects/squeal/.ai/squawk/t/a6b117e2/rw/store-cold-squeal-cold
+cold_cache_kb 253264	~/projects/squeal/.ai/squawk/t/a6b117e2/rw/cache-cold-squeal-cold
 Progress: resolved 321, reused 0, downloaded 29, added 0
 Packages: +321
 Progress: resolved 321, reused 0, downloaded 321, added 321, done
-wt=/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-squeal-cold
+wt=~/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-squeal-cold

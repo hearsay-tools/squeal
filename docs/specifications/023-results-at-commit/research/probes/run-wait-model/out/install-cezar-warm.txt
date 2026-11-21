@@ -14,4 +14,4 @@ nm_hardlinked_bytes=450959338
 nm_entries=36603
 Packages: +700
 Progress: resolved 700, reused 700, downloaded 0, added 700, done
-wt=/home/agent/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-warm
+wt=~/projects/squeal/.ai/squawk/t/a6b117e2/rw/wt-cezar-warm
