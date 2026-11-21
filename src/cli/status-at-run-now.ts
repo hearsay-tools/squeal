@@ -1,21 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { readPolicy } from "../core/daemon/policy.js";
 import { NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { groupView } from "../core/scheduler/slow.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import { storedDurations } from "./code-gate-durations.js";
 import { daemonSocket } from "./daemon-access.js";
 import { takenRequest } from "./run-group.js";
 import type { SideState } from "./status-at-report.js";
 import type { NowRunUse } from "./status-at-report-run.js";
-import { estimateOf } from "./status-at-run-batches.js";
-import { type RunAnswer, runInChild } from "./status-at-run-child.js";
 import { setupCounts } from "./status-at-run-fit.js";
-import { runBatches } from "./status-at-run-loop.js";
+import { throughGate } from "./status-at-run-now-gate.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 import { runWait } from "./wait/wait.js";
 
@@ -48,6 +42,14 @@ export interface NowRunInput {
   readonly batchFiles?: number;
   /** Tests: the daemon's side, else the real one (`daemonPorts`). */
   readonly ports?: DaemonPorts;
+  /**
+   * Row 023-34 (T4): the `testFileId`s the commit side ran and did not
+   * keep. They run through the gate, never the daemon, so this run's
+   * outcome is known when the gate does not keep them here either.
+   */
+  readonly alone?: ReadonlySet<string>;
+  /** T4: a file's key in the working tree, `null` for none; with it, unkept outcomes are read. */
+  readonly keyOf?: (ref: TestFileRef) => string | null;
 }
 
 /** What the run left, before the current side is read again. */
@@ -74,18 +76,49 @@ export function nowFiles(
   });
 }
 
-/** R1: the files run in the working tree, through the daemon or the gate. */
+/**
+ * R1: the files run in the working tree, through the daemon or the gate.
+ * T4: the commit side's unkept files (`alone`) go through the gate first.
+ */
 export async function runNow(input: NowRunInput): Promise<NowRunEnd> {
   if (input.files.length === 0) {
     const how = input.daemon ? "daemon" : "gate";
     return { how, gateMs: null, states: new Map(), problem: null, leftEstimate: null };
   }
-  if (input.daemon) {
-    const ports = input.ports ?? daemonPorts(input.root);
-    const end = await throughDaemon(input, ports);
-    if (end !== null) return end;
-  }
-  return throughGate(input);
+  if (!input.daemon) return throughGate(input);
+  const alone = input.alone ?? new Set<string>();
+  const gated = input.files.filter((ref) => alone.has(testFileId(ref)));
+  const rest = input.files.filter((ref) => !alone.has(testFileId(ref)));
+  const first = gated.length === 0 ? null : await throughGate({ ...input, files: gated });
+  if (rest.length === 0 && first !== null) return first;
+  const ports = input.ports ?? daemonPorts(input.root);
+  const end =
+    (await throughDaemon({ ...input, files: rest }, ports)) ??
+    (await throughGate({ ...input, files: rest }));
+  return first === null ? end : mergedEnd(first, end, rest);
+}
+
+/**
+ * Two passes as one: the later pass's files (`list`) take its states, the
+ * times add up; the later pass's way names the whole.
+ */
+export function mergedEnd(
+  earlier: NowRunEnd | null,
+  later: NowRunEnd,
+  list: readonly TestFileRef[],
+): NowRunEnd {
+  if (earlier === null) return later;
+  const again = new Set(list.map(testFileId));
+  const states = new Map([...earlier.states].filter(([id]) => !again.has(id)));
+  for (const [id, state] of later.states) states.set(id, state);
+  const times = [earlier.gateMs, later.gateMs].filter((ms): ms is number => ms !== null);
+  return {
+    how: later.how,
+    gateMs: times.length === 0 ? null : times.reduce((a, b) => a + b, 0),
+    states,
+    problem: earlier.problem ?? later.problem,
+    leftEstimate: later.leftEstimate,
+  };
 }
 
 /** The daemon's side of R1, injectable for tests. */
@@ -161,95 +194,6 @@ async function throughDaemon(input: NowRunInput, ports: DaemonPorts): Promise<No
     problem: problems.length === 0 ? null : problems.join("; "),
     leftEstimate: null,
   };
-}
-
-/** With no daemon: the gate in a child in the worktree, in batches, storing as the gate does. */
-async function throughGate(input: NowRunInput): Promise<NowRunEnd> {
-  const { root } = input;
-  const folder = mkdtempSync(join(tmpdir(), "squeal-at-now-")) as AbsolutePath;
-  const run = join(folder, "run") as AbsolutePath;
-  mkdirSync(run);
-  // The child's request, answer and record live here; the worktree is the tree it runs in.
-  const place = { folder, tree: root, run, commit: "HEAD", commonDir: input.commonDir };
-  const states = new Map<string, SideState>();
-  const durations = storedDurations(root);
-  const policy = readPolicy(root);
-  let problem: string | null = null;
-  try {
-    const end = await runBatches({
-      files: input.files,
-      refOf: (ref) => ref,
-      policy,
-      timeoutSeconds: input.timeoutSeconds,
-      ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
-      endMs: input.endMs,
-      secondsOf: durations?.of ?? (() => null),
-      run: (batch, budgetSeconds, stopAfterSeconds) =>
-        runInChild({
-          relaunch: input.relaunch,
-          checkout: place,
-          files: batch.paths,
-          // Review wave-18 B3: the batch's own projects only.
-          refs: batch.refs,
-          budgetSeconds,
-          stopAfterSeconds,
-          store: true,
-          env: input.env,
-          forward: input.forward,
-        }),
-      readBack: async (files, answer) => {
-        const read = readNow(files, answer);
-        for (const [id, state] of read.states) states.set(id, state);
-        problem ??= read.problem;
-      },
-      stateOf: (ref) => states.get(testFileId(ref)),
-      setState: (ref, state) => states.set(testFileId(ref), state),
-    });
-    const left = input.files.filter((ref) => {
-      const s = states.get(testFileId(ref));
-      return s?.state === "not run" && s.reason === "budget";
-    });
-    // D17.1, as the commit side estimates its left files: one Vitest-wide run.
-    const of = durations?.of ?? (() => null);
-    const leftEstimate = estimateOf(
-      left.map((ref) => ({ ref })),
-      of,
-    ).seconds;
-    return { how: "gate", gateMs: end.gateMs, states, problem, leftEstimate };
-  } finally {
-    durations?.close();
-    rmSync(folder, { recursive: true, force: true });
-  }
-}
-
-/**
- * A batch's answer in the working tree: the files it did not run, by
- * `testFileId`. A file that ended needs no state here: the current side
- * is read again from the store after the run. Review wave-18 B2: a stop
- * is the budget; a gate that rejected at its setup is left to the batch
- * loop, which marks its files `not run (setup)` with their group and text;
- * a child that gave no answer otherwise is a problem of its own, counted
- * neither as budget nor as setup.
- */
-function readNow(
-  files: readonly TestFileRef[],
-  answer: RunAnswer,
-): { states: Map<string, SideState>; problem: string | null } {
-  const states = new Map<string, SideState>();
-  if ("error" in answer) {
-    if (answer.stopped === true)
-      for (const ref of files) states.set(testFileId(ref), { state: "not run", reason: "budget" });
-    const setup = answer.setup !== undefined && answer.setup.length > 0;
-    return { states, problem: answer.stopped === true || setup ? null : answer.error };
-  }
-  for (const ref of files) {
-    const runs = answer.result.runs.filter((r) => r.path === ref.path);
-    if (runs.length > 0 && runs.every((r) => r.outcome === "not-run")) {
-      const prepare = runs.some((r) => r.reason === "prepare");
-      states.set(testFileId(ref), { state: "not run", reason: prepare ? "prepare" : "budget" });
-    }
-  }
-  return { states, problem: null };
 }
 
 /** The report's part for the working tree, once the current side was read again. */

@@ -73,6 +73,12 @@ function detail(name: string, side: SideState): string | null {
  * side, for one file (`many` false) or a group.
  */
 function changeText(f: FileReport, at: string, many = false): string {
+  // Row 023-34 (T4): both sides from this call's runs, which the gate did not keep.
+  if (thisRunOnly(f)) {
+    const failed = [f.at, f.now].flatMap((s) => (s.state === "fail" ? [s.failed.join(", ")] : []));
+    const more = failed.length === 0 ? "" : `; failed: ${failed.join("; ")}`;
+    return `${f.at.state} -> ${f.now.state} (this run, not stored${more})`;
+  }
   const parts = [detail(`at ${at}`, f.at), detail("now", f.now)].filter((p) => p !== null);
   const more = parts.length === 0 ? "" : ` (${parts.join("; ")})`;
   if (f.at.state === "no result" && f.at.notSelected === true) {
@@ -80,6 +86,17 @@ function changeText(f: FileReport, at: string, many = false): string {
     return `no result at ${at}, not selected by the change; ${runs}; now ${word(f.now)}${more}`;
   }
   return `${word(f.at)} -> ${word(f.now)}${more}`;
+}
+
+/** Row 023-34 (T4): both sides are passes or fails of this call's runs that the store does not hold. */
+function thisRunOnly(f: FileReport): boolean {
+  return [f.at, f.now].every(
+    (s) =>
+      (s.state === "pass" || s.state === "fail") &&
+      s.origin.kind === "run" &&
+      s.origin.stored === false &&
+      !maybeStoredText(s.origin.notStored),
+  );
 }
 
 /**
@@ -97,6 +114,9 @@ export function fileLines(
     for (const f of files.filter((file) => file.change === kind))
       lines.push(`${f.ref.path}: ${changeText(f, at)}`);
   }
+  // T4: an unchanged file compared only from this call's runs says so; the next call cannot.
+  for (const f of files.filter((file) => file.change === "unchanged" && thisRunOnly(file)))
+    lines.push(`${f.ref.path}: ${changeText(f, at)}`);
   const groups = new Map<string, FileReport[]>();
   for (const f of files.filter((file) => file.change === "unknown")) {
     const text = changeText(f, at);

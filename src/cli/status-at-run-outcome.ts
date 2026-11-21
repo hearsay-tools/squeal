@@ -2,7 +2,7 @@ import { type KeyedFile, resultsAt, withStores } from "../core/commit/at-keys-ch
 import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
-import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { AbsolutePath, CommitSha, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { GateFileRun } from "./code-gate-files.js";
 import { type Origin, type SideState, stateOf } from "./status-at-report.js";
@@ -205,12 +205,13 @@ export function notKeptWhy(
 /**
  * The gate's outcome for a path no result was stored for. Its runs under
  * the path's projects must agree, or nothing tells which one is this
- * project's. `why` says why it is not stored, when the run stored.
+ * project's. `why` says why it is not stored, when the run stored. Row
+ * 023-34 (T4): the working tree's side reads it too, `commit` `null`.
  */
-function fromGate(
+export function fromGate(
   key: string,
   runs: readonly GateFileRun[],
-  commit: string,
+  commit: CommitSha,
   why?: string,
 ): SideState {
   const [first] = runs;
