@@ -91,7 +91,7 @@ describe("the working tree's unkept files go through the gate, not the daemon (T
     const ports: DaemonPorts = {
       ask: async (_group, paths) => {
         asked.push([...paths]);
-        return { coveredId: null };
+        return true;
       },
       wait: async () => null,
     };

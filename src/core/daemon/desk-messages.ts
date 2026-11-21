@@ -8,7 +8,12 @@ import type {
   SentBatch,
 } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { FullSuiteCheckpoint, FullSuiteRequest, TakeBackResult } from "../types/scheduler.js";
+import type {
+  FullSuiteCheckpoint,
+  FullSuiteRequest,
+  NarrowRunOptions,
+  TakeBackResult,
+} from "../types/scheduler.js";
 import type { GroupRequested, HeldBy } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 
@@ -116,10 +121,12 @@ export type FromDesk =
       readonly group: string;
       /** Row 019-49: a narrow run's paths; absent, the whole group. */
       readonly paths?: readonly RelativePath[];
+      /** Row 023-34: a `status --at --run` narrow run's identity and lead. */
+      readonly options?: NarrowRunOptions;
     }
   | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
-  | { readonly type: "take-back"; readonly id: string; readonly coveredIds: readonly string[] }
+  | { readonly type: "take-back"; readonly id: string; readonly owners: readonly string[] }
   | { readonly type: "resume" }
   | { readonly type: "write"; readonly id: string; readonly batch: SentBatch }
   | { readonly type: "import"; readonly id: string; readonly request: ImportRequest }

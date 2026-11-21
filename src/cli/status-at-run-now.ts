@@ -3,6 +3,7 @@ import { NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { groupView } from "../core/scheduler/slow.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
+import type { RunGroupPathsRequest } from "../core/types/daemon.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { TakeBackResult } from "../core/types/scheduler.js";
 import { daemonSocket } from "./daemon-access.js";
@@ -50,6 +51,8 @@ export interface NowRunInput {
    * outcome is known when the gate does not keep them here either.
    */
   readonly alone?: ReadonlySet<string>;
+  /** Row 023-34 (B1-B3): the call, as its daemon requests name it; absent: none named. */
+  readonly call?: NarrowCall;
   /** T4: a file's key in the working tree, `null` for none; with it, unkept outcomes are read. */
   readonly keyOf?: (ref: TestFileRef) => string | null;
 }
@@ -66,7 +69,7 @@ export interface NowRunEnd {
   readonly leftEstimate: number | null;
   /**
    * Row 023-34 (T1): what the call asked the daemon to run, the files and
-   * the covered-files ids of its narrow runs, for the take-back at its end
+   * the call's identity, for the take-back at its end
    * (`giveBack`); absent when it asked the daemon nothing.
    */
   readonly asked?: DaemonAsked;
@@ -74,10 +77,11 @@ export interface NowRunEnd {
   readonly takenBack?: TakeBackResult;
 }
 
-/** T1: the daemon's part of the call: its files and its narrow runs' covered-files ids. */
+/** T1: the daemon's part of the call: its files and the identity its requests carried. */
 export interface DaemonAsked {
   readonly files: readonly TestFileRef[];
-  readonly coveredIds: readonly string[];
+  /** The calls' identities its requests carried (`NarrowCall.owner`). */
+  readonly owners: readonly string[];
 }
 
 /** The files of `refs` the change selects (R1) that have no result now. */
@@ -140,7 +144,7 @@ export function mergedEnd(
       : {
           asked: {
             files: asked.flatMap((a) => a.files),
-            coveredIds: asked.flatMap((a) => a.coveredIds),
+            owners: [...new Set(asked.flatMap((a) => a.owners))],
           },
         }),
   };
@@ -149,23 +153,32 @@ export function mergedEnd(
 /** The daemon's side of R1, injectable for tests. */
 export interface DaemonPorts {
   /**
-   * Asks the daemon to run `paths` of `group` now; `null` when no daemon
-   * answers, else an error text or the request's covered-files id (row
-   * 023-34: `null` when the daemon had not taken it, or names none).
+   * Asks the daemon to run `paths` of `group` now, for `call` (row 023-34,
+   * review wave-20 B1-B3: its identity and whether it leads); `null` when
+   * no daemon answers, else an error text or `true`.
    */
   ask(
     group: string,
     paths: readonly RelativePath[],
     deadline: number,
-  ): Promise<{ readonly coveredId: string | null } | string | null>;
+    call?: NarrowCall,
+  ): Promise<true | string | null>;
   /** Waits until none of `files` is pending or the deadline; why it ended early, `null` when it ended. */
   wait(files: readonly TestFileRef[], deadline: number): Promise<string | null>;
   /**
-   * Row 023-34 (T1): takes back what the narrow runs `coveredIds` queued
-   * and did not start; why not as a text (an older daemon's included).
-   * Absent: nothing is taken back.
+   * Row 023-34 (T1, B3): cancels the requests of `owners` and takes back
+   * what they queued and did not start; why not as a text (an older
+   * daemon's included). Absent: nothing is taken back.
    */
-  takeBack?(coveredIds: readonly string[], deadline: number): Promise<TakeBackResult | string>;
+  takeBack?(owners: readonly string[], deadline: number): Promise<TakeBackResult | string>;
+}
+
+/** Row 023-34: a `status --at --run` call as its daemon requests name it. */
+export interface NarrowCall {
+  /** The call's own identity, made before its first request (review wave-20 B3). */
+  readonly owner: string;
+  /** The call named its files: they lead the daemon's earlier batches (B2). */
+  readonly lead: boolean;
 }
 
 /** The real daemon: `run-group-paths` and the group wait, as `squeal run <group> <path>... --wait`. */
@@ -176,20 +189,27 @@ export function daemonPorts(root: AbsolutePath): DaemonPorts {
     return socket;
   };
   return {
-    async ask(group, paths, deadline) {
+    async ask(group, paths, deadline, call) {
       const socketPath = await socketOf(deadline);
       // Row 023-36 (T3): `at`, so the daemon stops the groups these runs start.
-      const request = { type: "run-group-paths", group, paths, at: true } as const;
+      // Row 023-34 (B1-B3): the call's identity, for its take-back, and its lead.
+      const request: RunGroupPathsRequest = {
+        type: "run-group-paths",
+        group,
+        paths,
+        at: true,
+        ...(call === undefined ? {} : { owner: call.owner }),
+        ...(call?.lead === true ? { lead: true } : {}),
+      };
       const first = await askWithin(socketPath, request, deadline);
       if (first === null) return null;
       if ("unanswered" in first) return `the daemon did not answer${first.unanswered}`;
       const taken = await takenRequest(socketPath, first, deadline, group, NARROW_NOT_SUPPORTED);
       if (typeof taken === "string") return taken;
-      if ("pending" in taken) return "the daemon had not taken the request by the deadline";
-      return { coveredId: taken.requested.coveredId ?? null };
+      return "pending" in taken ? "the daemon had not taken the request by the deadline" : true;
     },
-    async takeBack(coveredIds, deadline) {
-      return askTakeBack(await socketOf(deadline), coveredIds, deadline);
+    async takeBack(owners, deadline) {
+      return askTakeBack(await socketOf(deadline), owners, deadline);
     },
     async wait(files, deadline) {
       const socketPath = await socketOf(deadline);
@@ -217,14 +237,14 @@ async function throughDaemon(input: NowRunInput, ports: DaemonPorts): Promise<No
     byGroup.set(name, paths);
   }
   const problems: string[] = [];
-  const coveredIds: string[] = [];
   let answered = false;
   for (const [group, paths] of byGroup) {
-    const asked = await ports.ask(group, paths, deadline).catch((e: unknown) => String(e));
+    const asked = await ports
+      .ask(group, paths, deadline, input.call)
+      .catch((e: unknown) => String(e));
     if (asked === null) continue;
     answered = true;
-    if (typeof asked === "string") problems.push(`group ${group}: ${asked}`);
-    else if (asked.coveredId !== null) coveredIds.push(asked.coveredId);
+    if (asked !== true) problems.push(`group ${group}: ${asked}`);
   }
   if (!answered) return null;
   const waited = await ports.wait(input.files, deadline).catch((e: unknown) => String(e));
@@ -235,7 +255,8 @@ async function throughDaemon(input: NowRunInput, ports: DaemonPorts): Promise<No
     states: new Map(),
     problem: problems.length === 0 ? null : problems.join("; "),
     leftEstimate: null,
-    asked: { files: input.files, coveredIds },
+    // B3: the owner even of a request still pending: its take-back cancels it.
+    asked: { files: input.files, owners: input.call === undefined ? [] : [input.call.owner] },
   };
 }
 

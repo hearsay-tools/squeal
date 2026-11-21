@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -9,7 +10,12 @@ import {
   giveBack,
   NOT_SUPPORTED,
 } from "../../src/cli/status-at-run-give-back.js";
-import type { DaemonPorts, NowRunEnd } from "../../src/cli/status-at-run-now.js";
+import {
+  type DaemonPorts,
+  type NarrowCall,
+  type NowRunEnd,
+  runNow,
+} from "../../src/cli/status-at-run-now.js";
 import { type DeskEvents, prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { TakeBackResult } from "../../src/core/types/scheduler.js";
@@ -36,7 +42,7 @@ const ended = (problem: string | null = BUDGET_ENDED): NowRunEnd => ({
   states: new Map(),
   problem,
   leftEstimate: null,
-  asked: { files: [FILE], coveredIds: ["c1", "c2"] },
+  asked: { files: [FILE], owners: ["call-1"] },
 });
 
 function ports(takeBack: DaemonPorts["takeBack"], waited: string | null = BUDGET_ENDED) {
@@ -63,7 +69,7 @@ describe("giveBack (T1)", () => {
   it("waits out the budget, takes back, and drops the 'go on in the daemon' problem", async () => {
     const { fake, calls } = ports(async () => RESULT);
     const end = await giveBack(ended(), performance.now() + 1_000, fake);
-    expect(calls).toEqual({ waits: 1, takeBacks: [["c1", "c2"]] });
+    expect(calls).toEqual({ waits: 1, takeBacks: [["call-1"]] });
     expect(end).toMatchObject({ problem: null, takenBack: RESULT });
   });
 
@@ -78,11 +84,12 @@ describe("giveBack (T1)", () => {
     expect(end).toMatchObject({ problem: "group browser: no Chrome", takenBack: RESULT });
   });
 
-  it("takes nothing back when every file ended inside the budget", async () => {
-    const { fake, calls } = ports(async () => RESULT, null);
+  it("takes back even when every file ended: a request not taken yet is cancelled (B3)", async () => {
+    const none = { takenBack: 0, running: 0, kept: 0 };
+    const { fake, calls } = ports(async () => none, null);
     const end = await giveBack(ended(null), performance.now() + 1_000, fake);
-    expect(calls.takeBacks).toEqual([]);
-    expect(end.takenBack).toBeUndefined();
+    expect(calls.takeBacks).toEqual([["call-1"]]);
+    expect(end).toMatchObject({ problem: null, takenBack: none });
   });
 
   it("an older daemon keeps today's line; another failure is named", async () => {
@@ -92,6 +99,44 @@ describe("giveBack (T1)", () => {
     expect((await giveBack(ended(), performance.now() - 1, failed.fake)).problem).toBe(
       `${BUDGET_ENDED}; their take-back failed: the daemon did not answer within 2 s`,
     );
+  });
+});
+
+describe("a request still pending at the deadline is taken back by its call (review wave-20 B3)", () => {
+  it("runNow names the call in every request and keeps its identity when one was not taken", async () => {
+    const root = mkdtempSync(join(tmpdir(), "squeal-b3-"));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const calls: (NarrowCall | undefined)[] = [];
+    const taken: (readonly string[])[] = [];
+    const fake: DaemonPorts = {
+      ask: async (_group, _paths, _deadline, call) => {
+        calls.push(call);
+        return "the daemon had not taken the request by the deadline";
+      },
+      wait: async () => BUDGET_ENDED,
+      takeBack: async (owners) => {
+        taken.push(owners);
+        return { takenBack: 0, running: 0, kept: 0 };
+      },
+    };
+    const call = { owner: "call-7", lead: true };
+    const end = await runNow({
+      root: root as AbsolutePath,
+      commonDir: join(root, ".git") as AbsolutePath,
+      files: [FILE],
+      daemon: true,
+      endMs: performance.now() + 1_000,
+      timeoutSeconds: 1,
+      env: {},
+      relaunch: undefined,
+      forward: () => {},
+      ports: fake,
+      call,
+    });
+    expect(calls).toEqual([call]);
+    expect(end.asked).toEqual({ files: [FILE], owners: ["call-7"] });
+    await giveBack(end, performance.now() - 1, fake);
+    expect(taken).toEqual([["call-7"]]);
   });
 });
 

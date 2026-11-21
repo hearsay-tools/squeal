@@ -6,6 +6,7 @@ import type {
   SyncRequest,
 } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
+import type { NarrowRunOptions } from "../types/scheduler.js";
 import { parseWriteRequest } from "./write-protocol.js";
 
 /** A request line is small; anything longer is not a Squeal client. */
@@ -82,7 +83,7 @@ export function parseRequest(line: string): DaemonRequest | string {
       if (!isText(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
     case "run-group-paths":
-      return parseGroupPaths(request.group, request.paths, request.at);
+      return parseGroupPaths(request);
     case "run-group-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-group-status", requestId: request.requestId };
@@ -125,17 +126,17 @@ export function parseRequest(line: string): DaemonRequest | string {
   }
 }
 
-/** Row 023-34 (T1): `take-back` with its covered-files ids, or its status by request id. */
+/** Row 023-34 (T1): `take-back` with the calls' identities, or its status by request id. */
 function parseTakeBack(request: Record<string, unknown>): DaemonRequest | string {
   if (request.type === "take-back-status") {
     if (typeof request.requestId !== "string") return '"requestId" must be a string';
     return { type: "take-back-status", requestId: request.requestId };
   }
-  const { coveredIds } = request;
-  if (!Array.isArray(coveredIds) || !coveredIds.every(isText)) {
-    return '"coveredIds" must be a list of non-empty strings';
+  const { owners } = request;
+  if (!Array.isArray(owners) || !owners.every(isText)) {
+    return '"owners" must be a list of non-empty strings';
   }
-  return { type: "take-back", coveredIds: [...coveredIds] };
+  return { type: "take-back", owners: [...owners] };
 }
 
 /** Row 011-234: a sync with a named wait's source paths, whose readers its answer names. */
@@ -148,17 +149,32 @@ function parseSync(paths: unknown): SyncRequest | string {
 }
 
 /** Row 019-49: a narrow run names its group and at least one path. */
-function parseGroupPaths(
-  group: unknown,
-  paths: unknown,
-  at: unknown,
-): RunGroupPathsRequest | string {
+function parseGroupPaths(request: Record<string, unknown>): RunGroupPathsRequest | string {
+  const { group, paths, at, owner, lead } = request;
   if (!isText(group)) return '"group" must be a non-empty string';
   if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
   if (at !== undefined && at !== true) return '"at" must be true when given';
-  return { type: "run-group-paths", group, paths: [...paths], ...(at === true ? { at } : {}) };
+  // Row 023-34 (review wave-20 B1-B3): the calling `status --at --run`'s identity, and its lead.
+  if (owner !== undefined && !isText(owner)) return '"owner" must be a non-empty string';
+  if (lead !== undefined && lead !== true) return '"lead" must be true when given';
+  return {
+    type: "run-group-paths",
+    group,
+    paths: [...paths],
+    ...(at === true ? { at } : {}),
+    ...(owner === undefined ? {} : { owner }),
+    ...(lead === true ? { lead } : {}),
+  };
+}
+
+/** Row 023-34: a narrow request's options for the scheduler (`NarrowRunOptions`). */
+export function narrowOptionsOf(request: RunGroupPathsRequest): NarrowRunOptions {
+  return {
+    ...(request.owner === undefined ? {} : { owner: request.owner }),
+    ...(request.lead === true ? { lead: true } : {}),
+  };
 }
 
 function isTestFileRef(value: unknown): value is TestFileRef {

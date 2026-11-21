@@ -6,7 +6,7 @@ import {
   type RelativePath,
 } from "../types/common.js";
 import type { DaemonResponse, GroupHolder, RunGroupResponse } from "../types/daemon.js";
-import type { LockHolder, NarrowRun, Scheduler } from "../types/scheduler.js";
+import type { LockHolder, NarrowRun, NarrowRunOptions, Scheduler } from "../types/scheduler.js";
 import { requestDaemon } from "./client.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 
@@ -109,6 +109,7 @@ export async function requestGroup(
   group: string,
   held?: Held,
   paths?: readonly RelativePath[],
+  options?: NarrowRunOptions,
 ): Promise<GroupRequested | null> {
   const groups = scheduler as Partial<Pick<Scheduler, "requestGroup" | "requestGroupPaths">>;
   if (typeof groups.requestGroup !== "function") throw new Error(GROUP_NOT_SUPPORTED);
@@ -119,7 +120,8 @@ export async function requestGroup(
   const stop = held === undefined ? undefined : watchHolder(scheduler, held);
   if (stop === undefined) held?.(null);
   try {
-    if (paths !== undefined) return (await scheduler.requestGroupPaths?.(group, paths)) ?? null;
+    if (paths !== undefined)
+      return (await scheduler.requestGroupPaths?.(group, paths, options ?? {})) ?? null;
     return await groups.requestGroup.call(scheduler, group);
   } finally {
     stop?.();
@@ -191,13 +193,18 @@ export function groupRequests(
         group: string,
         held: Held,
         paths?: readonly RelativePath[],
+        options?: NarrowRunOptions,
       ) => Promise<GroupRequested | null>)
     | undefined,
   max: number,
   step: () => MainStep | null = () => null,
   now: () => EpochMs = Date.now,
 ): {
-  start(group: string, paths?: readonly RelativePath[]): RunGroupResponse;
+  start(
+    group: string,
+    paths?: readonly RelativePath[],
+    options?: NarrowRunOptions,
+  ): RunGroupResponse;
   status(requestId: string): RunGroupResponse | null;
 } {
   const requests = new Map<string, GroupRequest>();
@@ -246,7 +253,7 @@ export function groupRequests(
     };
   };
   return {
-    start(group, paths) {
+    start(group, paths, options) {
       const requestId = randomUUID();
       const request: GroupRequest = {
         group,
@@ -265,7 +272,7 @@ export function groupRequests(
         request.held = holder;
       };
       const missing = new Error(paths === undefined ? GROUP_NOT_SUPPORTED : NARROW_NOT_SUPPORTED);
-      (requestGroup?.(group, held, paths) ?? Promise.reject(missing)).then(
+      (requestGroup?.(group, held, paths, options) ?? Promise.reject(missing)).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;

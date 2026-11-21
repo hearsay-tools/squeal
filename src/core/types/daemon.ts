@@ -133,20 +133,29 @@ export interface RunGroupPathsRequest {
    * ends. A daemon before it ignores it.
    */
   readonly at?: true;
+  /**
+   * Row 023-34 (review wave-20 B1-B3): the calling `status --at --run`'s
+   * own identity, the same for each of its requests: its take-back names
+   * it (`TakeBackRequest.owners`). A daemon before it ignores it.
+   */
+  readonly owner?: string;
+  /** Row 023-34 (B2): the call named its files: they lead every earlier batch. */
+  readonly lead?: true;
 }
 
 /**
- * Spec 023 D4.11 (row 023-34, T1): `status --at --run` gives back what it
- * queued. Of the narrow runs whose covered-files ids
- * (`RunGroupResponse.requested.coveredId`) are `coveredIds`, the files
- * each queued itself that have not started leave the queue. Answered at
- * once with a request id, like `sync`; ask what it did with
- * `TakeBackStatusRequest`. A daemon from before it answers "unknown
+ * Spec 023 D4.11 (row 023-34, T1; review wave-20 B3): `status --at --run`
+ * gives back what it queued. The narrow runs whose
+ * `RunGroupPathsRequest.owner` is one of `owners` are cancelled, so one
+ * the scheduler has not taken yet queues nothing, and the files they
+ * queued that no one else needs and that have not started leave the
+ * queue. Answered at once with a request id, like `sync`; ask what it did
+ * with `TakeBackStatusRequest`. A daemon from before it answers "unknown
  * request type", and nothing is taken back.
  */
 export interface TakeBackRequest {
   readonly type: "take-back";
-  readonly coveredIds: readonly string[];
+  readonly owners: readonly string[];
 }
 
 /** What a `take-back` request did, once the scheduler took it. */

@@ -42,6 +42,7 @@ import { BESIDE_LANE_PREFIX, SLOW_LANE_PREFIX } from "../types/runner.js";
 import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
+  NarrowRunOptions,
   StoppedProcesses,
   TakeBackResult,
 } from "../types/scheduler.js";
@@ -1090,7 +1091,9 @@ class Daemon {
       {
         requestFullSuite: watch((request) => this.#requestFullSuite(request)),
         requestSlowSuite: watch(() => this.#requestSlowSuite()),
-        requestGroup: watch((group, held, paths) => this.#requestGroup(group, held, paths)),
+        requestGroup: watch((group, held, paths, options) =>
+          this.#requestGroup(group, held, paths, options),
+        ),
         requestSync: watch((paths) => this.#requestSync(paths)),
         onActivity: () => {
           this.#lastActive = this.#now();
@@ -1104,7 +1107,7 @@ class Daemon {
           this.#requestFocus(testFiles, texts, withinMs),
         requestHold: watch(() => this.#requestHold()),
         requestResume: watch(async () => void (await this.#requestHold())),
-        requestTakeBack: watch((coveredIds) => this.#requestTakeBack(coveredIds)),
+        requestTakeBack: watch((owners) => this.#requestTakeBack(owners)),
         // Spec 021 D15 (row 021-16): a hook's or a command's writes, in the retried path of D2.
         requestWrite: watch((batch) =>
           this.#writes.write(
@@ -1193,11 +1196,11 @@ class Daemon {
    * Row 023-34 (T1): `status --at --run` gives back what its narrow runs
    * queued; a scheduler before it, or one not started, takes nothing.
    */
-  async #requestTakeBack(coveredIds: readonly string[]): Promise<TakeBackResult> {
+  async #requestTakeBack(owners: readonly string[]): Promise<TakeBackResult> {
     await this.#starting;
     const takeBack = this.#loop?.scheduler.takeBack;
     if (this.#loop === null || takeBack === undefined) return { takenBack: 0, running: 0, kept: 0 };
-    return takeBack.call(this.#loop.scheduler, coveredIds);
+    return takeBack.call(this.#loop.scheduler, owners);
   }
 
   /** Spec 011 C15: a named wait promotes its test files for `withinMs`. */
@@ -1257,13 +1260,14 @@ class Daemon {
     group: string,
     held?: Held,
     paths?: readonly RelativePath[],
+    options?: NarrowRunOptions,
   ): Promise<GroupRequested | null> {
     if (this.#phase === "starting") held?.({ kind: "startup", since: this.#startedAt });
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    return requestGroup(this.#loop.scheduler, group, held, paths);
+    return requestGroup(this.#loop.scheduler, group, held, paths, options);
   }
 
   /**

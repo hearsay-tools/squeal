@@ -7,7 +7,7 @@ import { errorResponse } from "./protocol.js";
 /*
  * Spec 023 D4.11 (row 023-34, T1; a change in spec 011's files approved by
  * 023's coordinator): the socket's `take-back` requests, as `sync`'s are
- * kept. `take` hands the covered-files ids to the scheduler, never
+ * kept. `take` hands the calls' identities to the scheduler, never
  * awaited, and answers at once with a request id; `status` answers what
  * the scheduler did. The newest `max` are remembered.
  */
@@ -18,10 +18,10 @@ interface TakeBackState {
 }
 
 export function takeBackRequests(
-  takeBack: ((coveredIds: readonly string[]) => Promise<TakeBackResult>) | undefined,
+  takeBack: ((owners: readonly string[]) => Promise<TakeBackResult>) | undefined,
   max: number,
 ): {
-  take(coveredIds: readonly string[]): DaemonResponse;
+  take(owners: readonly string[]): DaemonResponse;
   status(requestId: string): DaemonResponse;
 } {
   const requests = new Map<string, TakeBackState>();
@@ -34,7 +34,7 @@ export function takeBackRequests(
     error: state.error,
   });
   return {
-    take(coveredIds) {
+    take(owners) {
       if (takeBack === undefined) return errorResponse("this daemon cannot take back");
       const requestId = randomUUID();
       const state: TakeBackState = { result: null, error: null };
@@ -43,7 +43,7 @@ export function takeBackRequests(
         if (requests.size <= max) break;
         requests.delete(old);
       }
-      takeBack(coveredIds).then(
+      takeBack(owners).then(
         (result) => {
           state.result = result;
         },
