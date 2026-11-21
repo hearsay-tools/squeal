@@ -9,6 +9,7 @@ import {
   AT_RUN_TTL_MS,
   AtRunRequests,
   flagAccepted,
+  TAKEN_BACK_MAX,
 } from "../../src/core/daemon/run-groups-watch.js";
 import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
@@ -108,28 +109,32 @@ describe("run-group-paths with at (023-36)", () => {
 const A: TestFileRef = { project: "unit", path: "a.test.ts" };
 const A_ELSEWHERE: TestFileRef = { project: "e2e", path: "a.test.ts" };
 const B: TestFileRef = { project: "unit", path: "b.test.ts" };
-const narrow = (selected: readonly TestFileRef[]) => ({
+const narrow = (selected: readonly TestFileRef[], notRun: readonly TestFileRef[] = []) => ({
   selected,
   reached: 0,
   others: [],
   unmatched: [],
   current: 0,
-  notRun: [],
+  notRun: notRun.map((testFile) => ({ testFile, reason: "taken back" })),
 });
 
 describe("which runs an at request flags (023-36, B8)", () => {
   it("flags nothing for a refused, unknown or plain request", () => {
     const requests = new AtRunRequests();
     flagAccepted(requests, null, { at: true, owner: "call-1" });
-    flagAccepted(requests, { coveredId: "c1" }, { at: true, owner: "call-1" });
-    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c3" }, { owner: "call-1" });
-    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c2" }, undefined);
+    flagAccepted(requests, { queued: 1, coveredId: "c1" }, { at: true, owner: "call-1" });
+    flagAccepted(
+      requests,
+      { queued: 1, narrow: narrow([A]), coveredId: "c3" },
+      { owner: "call-1" },
+    );
+    flagAccepted(requests, { queued: 1, narrow: narrow([A]), coveredId: "c2" }, undefined);
     expect(requests.flagged([A])).toBe(false);
   });
 
   it("flags an accepted request's files by project and path, a mixed batch included", () => {
     const requests = new AtRunRequests();
-    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c1" }, { at: true });
+    flagAccepted(requests, { queued: 1, narrow: narrow([A]), coveredId: "c1" }, { at: true });
     expect(requests.flagged([A])).toBe(true);
     expect(requests.flagged([A_ELSEWHERE])).toBe(false);
     expect(requests.flagged([B, A])).toBe(true);
@@ -138,13 +143,55 @@ describe("which runs an at request flags (023-36, B8)", () => {
 
   it("keys a call's requests by its owner, which one take-back ends", () => {
     const requests = new AtRunRequests();
-    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c1" }, { at: true, owner: "call-1" });
-    flagAccepted(requests, { narrow: narrow([B]), coveredId: "c2" }, { at: true, owner: "call-1" });
+    flagAccepted(
+      requests,
+      { queued: 1, narrow: narrow([A]), coveredId: "c1" },
+      { at: true, owner: "call-1" },
+    );
+    flagAccepted(
+      requests,
+      { queued: 1, narrow: narrow([B]), coveredId: "c2" },
+      { at: true, owner: "call-1" },
+    );
     requests.takenBack(["c1"]);
     expect(requests.flagged([A])).toBe(true);
     requests.takenBack(["call-1"]);
     expect(requests.flagged([A])).toBe(false);
     expect(requests.flagged([B])).toBe(false);
+  });
+
+  it("flags only accepted work: nothing when the answer queued none, never a file it will not run", () => {
+    const requests = new AtRunRequests();
+    flagAccepted(requests, { queued: 0, narrow: narrow([A]), coveredId: "c1" }, { at: true });
+    expect(requests.flagged([A])).toBe(false);
+    flagAccepted(
+      requests,
+      { queued: 1, narrow: narrow([A, B], [B]), coveredId: "c2" },
+      { at: true },
+    );
+    expect(requests.flagged([A])).toBe(true);
+    expect(requests.flagged([B])).toBe(false);
+  });
+
+  it("never flags a request whose owner was taken back before its answer, for the hour", () => {
+    let now = 0;
+    const requests = new AtRunRequests(() => now);
+    requests.takenBack(["late"]);
+    flagAccepted(
+      requests,
+      { queued: 1, narrow: narrow([A]), coveredId: "c1" },
+      { at: true, owner: "late" },
+    );
+    expect(requests.flagged([A])).toBe(false);
+    now = AT_RUN_TTL_MS;
+    expect(requests.wasTakenBack("late")).toBe(false);
+  });
+
+  it("keeps a bounded memory of taken-back owners", () => {
+    const requests = new AtRunRequests();
+    requests.takenBack(Array.from({ length: TAKEN_BACK_MAX + 5 }, (_, i) => `o${i}`));
+    expect(requests.wasTakenBack("o0")).toBe(false);
+    expect(requests.wasTakenBack(`o${TAKEN_BACK_MAX + 4}`)).toBe(true);
   });
 
   it("ends the flag when the files ran, at the request's take-back, or after the hour", () => {
