@@ -144,6 +144,7 @@ Started: 2026-10-31
 - 2026-11-21, repair 018-65 (worker 28122529) integrated: b2 (`type-imports.ts`) and b3 (code-only `require`) removed, b1 and b4 kept; the review's B1 and B2 cases pinned as real-run tests (each failed on 25b7b41ea); `readPartsIn` refuses an unreadable path (`cannot read <path> (<code>)`, exit 2); `tasks/018-62/notes.md` written; key-format alarm 12 of 12 with no adapter raise.
 - 2026-11-21, re-review 0.1.585 (`reviews/0.1.585-r2.md`): FAIL, B1 to B3 resolved, new B4 proven: the kept tsconfig fix scoped path aliases to importers under the tsconfig's folder, while tsx applies them to every importer, so a loaded module was left out. Second failing review on row 018-62. The human: "A: drop 018-62, ship rest". The node:test graph, `adapter-project.ts`, the node:test validity cases and graph tests are back to 0.1.584's (git diff empty); 0.1.585 ships rows 018-60, 018-61, 018-63 (with 018-65's unreadable-path refusal) and 018-64. Proposed row 018-66 redoes node:test keying against real runs.
 - 2026-11-21, 0.1.585 landed (rows 018-60, 018-61, 018-63 with 018-65's unreadable-path refusal, 018-64; 018-62 dropped). Narrow check `reviews/0.1.585-r3.md` PASS at 9a852da3d; candidate CI 44886984042 green.
+- 2026-11-21, released 0.1.585 (tag squeal--v0.1.585 at 9773fedc8, hub 0ec302a, tags v0.1.585 and v0 moved; GitHub latest with install.sh and both Codex runtime assets). Main CI 44888885756 green. Open: proposed row 018-66 (node:test keying against real runs), 018-51 (later), 018-45's week (timer until 2026-11-27).
 
 ## Open questions
 
