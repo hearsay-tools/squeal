@@ -1,6 +1,6 @@
 # 018 CI and shared results: status
 
-Stage: third slice (node:test from CI) released in 0.1.579, cezar proof (018-52) waits for the human; second slice building (wave 5); first slice done (0.1.417 to 0.1.419, trial 018-08) (spec approved by the human 2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
+Stage: fourth slice (inputs nothing touched) released in 0.1.582; third slice (node:test from CI) released in 0.1.579, cezar proof (018-52) waits for the human; second slice building (wave 5); first slice done (0.1.417 to 0.1.419, trial 018-08) (spec approved by the human 2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
 Started: 2026-10-31
 
 ## Decisions so far
@@ -135,6 +135,7 @@ Started: 2026-10-31
 - 2026-11-21, review 0.1.582-r2 (`reviews/0.1.582-r2.md`): FAIL, B1 resolved, B2 proven: `src/runners/ci-runtime/evidence.cjs` built read evidence by assignment into a plain object, so a Node read of a file named `__proto__` was lost and the D33 rule certified it from its endpoint hashes (a wrong pass outside D34). Coordinator fix: the evidence map has no prototype. Second failing review on one slice; the human chose "A: guard + 3rd review" (row 018-59: one owner for path-keyed maps in the CI code and an end-to-end guard).
 - 2026-11-21, repair row 018-59 (worker d6e29041): one helper (`src/core/ci/own-map.ts`, runtime copy `src/runners/ci-runtime/own-map.cjs`, kept equal by test) builds and reads every map keyed by path or name in the CI code; a scan test forbids the assignment forms; an end-to-end guard (`test/ci/export-object-names.test.ts`) runs both runners on inputs named `__proto__`, `constructor`, `toString`, `hasOwnProperty` and fails at the parent of each fix. Also found: env maps in `children.cjs` and `vitest-ci.cjs` dropped a variable named `__proto__` (no key or export effect). Row 023-14's `resolution-import.test.ts` amended to D33 with spec 023's agreement: b1 and b2 are now exported by the endpoint rule, so their refusal checks run for real; b2add stays left out.
 - 2026-11-21, 0.1.582 landed (rows 018-57, 018-58, 018-59). Third review PASS (`reviews/0.1.582-r3.md`). Candidate CI first failed on the Codex runtime file list (`ci/own-map.cjs`) and on `repository-inputs.test.ts` with `ENOBUFS` (main red since b052ef972: the tracked file list passed the 1 MiB default); both test-only fixes in the candidate. Attempt 1 of the final CI failed only `busy-requests.test.ts` (755 ms against a 750 ms bound, daemon timing); attempt 2 green.
+- 2026-11-21, released 0.1.582 (tag squeal--v0.1.582 at ef0e5002c, hub fa3d972, tags v0.1.582 and v0 moved; GitHub latest with install.sh and both Codex runtime assets). Main CI 44843807490 green. Next: row 018-52, the cezar node:test job with the pin moved to 0.1.582.
 
 ## Open questions
 
