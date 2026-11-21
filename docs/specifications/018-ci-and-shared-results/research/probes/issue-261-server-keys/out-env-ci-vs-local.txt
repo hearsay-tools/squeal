@@ -1,0 +1,6 @@
+ab0faa35cc first recorded 2026-11-21T05:31:31.554Z
+de4dd77e20 first recorded 2026-11-21T00:16:36.780Z
+config.allowOnly                                                       "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"  "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+config.browser                                                         "7db830be425c3ef866f004fa2c4ef8865384ee7336a622816aa0492a5d592312"  "bfd3cdc5e43b262b1a378c4afe179a1ab1c4cc732a21cf229ff365908bda0112"
+config.watch                                                           "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"  -
+ci                                                                     true  false

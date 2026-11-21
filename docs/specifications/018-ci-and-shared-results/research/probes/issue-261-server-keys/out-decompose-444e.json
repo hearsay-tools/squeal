@@ -1,0 +1,18 @@
+{
+ "event": "cc3559cfd008dd06 444e9ae4 78ec240e4a,5b6b4f1786,fe542a26ba",
+ "export": "444e9ae4",
+ "squeal": "0.1.522",
+ "samples": 400,
+ "tally": {
+  "no candidate reproduces the run key": 400
+ }
+}
+{
+ "event": "cc3559cfd008dd06 444e9ae4 5b6b4f1786,fe542a26ba",
+ "export": "444e9ae4",
+ "squeal": "0.1.522",
+ "samples": 115,
+ "tally": {
+  "no candidate reproduces the run key": 115
+ }
+}
