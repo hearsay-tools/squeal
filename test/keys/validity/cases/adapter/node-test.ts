@@ -189,6 +189,33 @@ const CHILD_RECORDED: Readonly<Record<string, string>> = {
   ),
 };
 
+/**
+ * Row 023-36 (spec 023 D4 step 11, T3): under a `--run` run's token, a test
+ * that starts children with an env of its own, async and sync; the module
+ * recorder adds the token to each. The children run no project module and
+ * the test's outcome reads nothing of the token, so the keys and outcomes
+ * stay alike.
+ */
+const RUN_GROUP_CHILDREN: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "test/run-group.test.mjs": lines(
+    'import assert from "node:assert/strict";',
+    'import { execFileSync, execSync, spawn, spawnSync } from "node:child_process";',
+    'import { test } from "node:test";',
+    "",
+    'test("starts children with an env of their own", async () => {',
+    '  const args = ["-e", "process.exitCode = 0"];',
+    "  assert.equal(spawnSync(process.execPath, args, { env: {} }).status, 0);",
+    "  execFileSync(process.execPath, args, { env: {} });",
+    "  execSync(JSON.stringify(process.execPath) + ' -e 0', { env: { PATH: process.env.PATH } });",
+    "  execFileSync(process.execPath, args);",
+    '  const child = spawn(process.execPath, args, { env: {}, stdio: "ignore" });',
+    '  const code = await new Promise((resolve) => child.on("close", resolve));',
+    "  assert.equal(code, 0);",
+    "});",
+  ),
+};
+
 const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] }];
 
 const OUTCOME_FILES = ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"];
@@ -344,6 +371,16 @@ export const NODE_TEST_RUNS: readonly Case[] = [
     name: "a test finds its child process's load recorded (row 020-36)",
     why: "020 D12.6 as amended 2026-11-12, the case that stands for NODE_TEST_ADAPTER_VERSION 12. Observable: the module recorder now rides in NODE_OPTIONS for every project, so a process a test spawns writes its own graph, whose loads key the test file; under one key a test that reads its child's graph stores a pass where the last release, whose recorder reached no child of a project that is not slow, stored a fail. The child runs a module the test file imports too, so the keys stay alike. The reason for the raise: a pass an earlier release stored while a child's loads went unkeyed must not be found by this release's keys (the human, 2026-11-12: \"Record them\")",
     input: { files: CHILD_RECORDED, runs: [{ files: ["test/child-recorded.test.mjs"] }] },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a run under a --run run's token whose test starts children with an env of their own stores alike (row 023-36)",
+    why: "023 D4 step 11 (T3): with SQUEAL_RUN_GROUP in the project's processes, the module recorder adds it to every child a test starts, async through ChildProcess#spawn and sync through spawnSync, execFileSync and execSync, an env of the test's own included, so the run's stop finds the child wherever it is reparented. It changes no load, no key and no outcome: each run stores what the last release stored, so NODE_TEST_ADAPTER_VERSION stays",
+    input: {
+      files: RUN_GROUP_CHILDREN,
+      env: { SQUEAL_RUN_GROUP: "validity-run-group-0123456789abcdef" },
+      runs: [{ files: ["test/run-group.test.mjs"] }],
+    },
   },
   {
     kind: "adapter:node-test",
