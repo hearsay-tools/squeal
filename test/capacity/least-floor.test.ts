@@ -1,0 +1,95 @@
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { backlogShareSlots } from "../../src/core/capacity/background.js";
+import type { TreeCpu } from "../../src/core/capacity/cores.js";
+import { readMarks } from "../../src/core/capacity/marks.js";
+import { createPermitPool, type PermitPool } from "../../src/core/capacity/pool.js";
+import { createHostAdmission } from "../../src/core/runner-host/remote/admission.js";
+
+/*
+ * Review 0.1.584 B1 (row 011-424): a backlog tier's fair shares divide the
+ * workers the ceiling admits, raised to the most fewest workers a demand's
+ * tier runs (row 011-97), at most the slots. Without the raise, a ceiling
+ * below a tier's fewest workers left a share below them: the pool's floor
+ * (spec 021 D18), which serves the oldest waiter its fewest workers while
+ * no background tier runs, was refused at every look. The machine: 4 CPUs,
+ * 3 slots; an idle tree, no host reading.
+ */
+
+let root: string;
+let dir: string;
+const closing: { close(): void }[] = [];
+
+beforeEach(() => {
+  root = mkdtempSync(join(tmpdir(), "squeal-least-floor-test-"));
+  dir = join(root, "squeal-uid");
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+});
+
+afterEach(() => {
+  for (const pool of closing.splice(0)) pool.close();
+  rmSync(root, { recursive: true, force: true });
+});
+
+const tree: TreeCpu = { read: () => 0, reset() {} };
+
+/** `backgroundShare` of 4 CPUs is the ceiling: 0 → 0, 0.1875 → 0.75, 0.25 → 1. */
+function options(id: string, backgroundShare: number) {
+  return {
+    dir,
+    owner: { pid: process.pid, worktreeId: id },
+    hostSlots: 3,
+    cpus: 4,
+    backgroundShare,
+    cores: tree,
+    host: null,
+  };
+}
+
+function daemon(id: string, backgroundShare: number): PermitPool {
+  const pool = createPermitPool(options(id, backgroundShare));
+  closing.push(pool);
+  return pool;
+}
+
+describe("a tier's fewest workers on a ceiling below them (review 0.1.584 B1)", () => {
+  test.each([0, 0.1875, 0.25])(
+    "an idle lone daemon at share %s starts a tier of least 2 at 2",
+    (share) => {
+      expect(daemon("me", share).acquire(10, "fast", 2, "backlog")?.grant).toBe(2);
+    },
+  );
+
+  test("the oldest waiter gets its 2 before a younger one; the younger waits behind it", () => {
+    const share = 0.25;
+    const holder = daemon("holder", share);
+    const held = holder.acquire(1, "fast", 1, "backlog");
+    expect(held?.grant).toBe(1);
+    const older = daemon("older", share);
+    // A background tier runs: no floor, and the ceiling (1) is full.
+    expect(older.acquire(10, "fast", 2, "backlog")).toBeNull();
+    held?.release();
+    const younger = daemon("younger", share);
+    // The older waiter is served first: the younger's share is 0.
+    expect(younger.acquire(10, "fast", 1, "backlog")).toBeNull();
+    expect(older.acquire(10, "fast", 2, "backlog")?.grant).toBe(2);
+    expect(readMarks(dir, "reader", Date.now()).find((m) => m.id === "younger")).toMatchObject({
+      grant: 0,
+    });
+  });
+
+  test("the remote runner host's admission starts the tier too", () => {
+    const admission = createHostAdmission(() => createPermitPool(options("remote", 0.25)));
+    closing.push(admission);
+    expect(admission.admit({ want: 10, least: 2 }).grant).toBe(2);
+  });
+
+  test("the raise stops at the slots, and leaves the 5 + 4 total alone", () => {
+    expect(backlogShareSlots(1, 3, 2)).toBe(2);
+    expect(backlogShareSlots(0, 3, 8)).toBe(3);
+    expect(backlogShareSlots(9, 11, 2)).toBe(9);
+    expect(backlogShareSlots(7.5, 9)).toBe(8);
+  });
+});

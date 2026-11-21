@@ -30,9 +30,15 @@ export function backgroundCeiling(share: number, cpus: number): number {
  * cores are below the ceiling). Two daemons' shares fill the ceiling
  * together: 5 + 4 of 9, where shares of the 11 slots gave 6, and the gate
  * left the second 3 (`research/simultaneous-demand.md`).
+ *
+ * `least`, the most workers a demand's tier runs no fewer than (row
+ * 011-97), raises it, at most to the slots (review 0.1.584 B1): a share
+ * below a tier's fewest workers never starts it, so on a ceiling below them
+ * the pool's floor (021 D18), which serves the oldest waiter its fewest
+ * workers while no background tier runs, would be refused for ever.
  */
-export function backlogShareSlots(ceiling: number, hostSlots: number): number {
-  return Math.max(1, Math.min(hostSlots, Math.ceil(ceiling)));
+export function backlogShareSlots(ceiling: number, hostSlots: number, least = 1): number {
+  return Math.max(1, Math.min(hostSlots, Math.max(Math.ceil(ceiling), least)));
 }
 
 /**

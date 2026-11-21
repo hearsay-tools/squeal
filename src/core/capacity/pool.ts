@@ -26,7 +26,7 @@ import {
 } from "./cores.js";
 import { clearMark, type PoolMark, readMarks, writeMark } from "./marks.js";
 import { QuietDemand } from "./quiet-demand.js";
-import { fairShares } from "./share.js";
+import { type Demand, fairShares } from "./share.js";
 
 /** The numbers of the user-level `capacity` keys (spec 001 D11), injected by the daemon. */
 export interface PoolCapacity {
@@ -267,8 +267,6 @@ class LockFilePool implements PermitPool {
   readonly #backgroundShare: number;
   /** The busy CPUs below which a background tier takes a permit (D18). */
   readonly #ceiling: number;
-  /** The workers a backlog tier's fair shares divide (row 011-424). */
-  readonly #backlogSlots: number;
   /** What a lane's wait for quiet states in the mark (row 011-424). */
   readonly #quiet = new QuietDemand();
   /** The last look's grant was the floor's (D18). */
@@ -288,7 +286,6 @@ class LockFilePool implements PermitPool {
       ? options.backgroundShare
       : DEFAULT_BACKGROUND_SHARE;
     this.#ceiling = backgroundCeiling(this.#backgroundShare, this.#cpus);
-    this.#backlogSlots = backlogShareSlots(this.#ceiling, this.#hostSlots);
     this.#refusals =
       options.log === undefined ? null : new RefusalEpisodes(options.log, SLOT_WAITER_FRESH_MS);
     this.#tree = options.cores === undefined ? createTreeCpu() : options.cores;
@@ -445,8 +442,8 @@ class LockFilePool implements PermitPool {
       ...(project === undefined ? {} : { project }),
     };
     // An edit's mark, `want` 0, states CPU and no backlog demand (row 011-98).
-    const total = kind === "backlog" ? this.#backlogSlots : this.#hostSlots;
-    const shares = fairShares(total, [me, ...others.filter((o) => o.want > 0)]);
+    const demands = [me, ...others.filter((o) => o.want > 0)];
+    const shares = fairShares(this.#shareTotal(kind, demands), demands);
     const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 0) - inUse));
     let target = entitled;
     if (project !== undefined) {
@@ -456,6 +453,18 @@ class LockFilePool implements PermitPool {
       target = Math.min(target, Math.max(0, project.slots - held - inUse));
     }
     return { others, inUse, demand, shares, entitled, target };
+  }
+
+  /**
+   * The workers the fair shares of a tier of `kind` divide: a checkpoint's
+   * the slots; a backlog tier's those the ceiling admits, raised to the
+   * most fewest workers of `demands` (`backlogShareSlots`, row 011-424,
+   * review 0.1.584 B1).
+   */
+  #shareTotal(kind: PoolTierKind, demands: readonly Demand[]): number {
+    if (kind !== "backlog") return this.#hostSlots;
+    const least = Math.max(...demands.map((d) => d.least ?? 1));
+    return backlogShareSlots(this.#ceiling, this.#hostSlots, least);
   }
 
   /**
