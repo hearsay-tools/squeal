@@ -2721,6 +2721,7 @@ Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16,
 | 023-34 `--run` gives back what it queued; never-kept files compare from this run; `--at --wait` one line (T1, T4, T5) | running (wave 20, brief `tasks/wave-20.md`; the human 2026-11-21, "All T1-T6") | D4 | after 023-33 |
 | 023-35 "not selected" says the commit cannot change the result; step 8 tool timeout (T2, T6) | running (wave 20) | D3, D4 | after 023-33 |
 | 023-36 stop the processes the working-tree run leaves (T3) | running (wave 20; daemon files owned by spec 011, by request) | D6 | after 023-33 |
+| 023-37 one daemon checkout job for `status --at --run` and `proof`, with `run --wait` semantics: work keeps running after the call, a later call reads it, named files first; take-back removed; abandoned work finishes (the human 2026-11-21) | proposed (next wave after 0.1.586; the human 2026-11-21: "A: ship now, then jobs", "Finish everything") | D4, D5, D6 | after 023-34 |
 
 ## Later
 
