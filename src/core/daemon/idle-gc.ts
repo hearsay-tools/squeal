@@ -148,6 +148,11 @@ export class IdleGc {
     this.#running += 1;
   }
 
+  /** Tiers running now, in any lane (a commit daemon's activity, spec 023 D7.2). */
+  running(): number {
+    return this.#running;
+  }
+
   ended(): void {
     this.#running = Math.max(0, this.#running - 1);
     this.#quietSince = this.#options.now();
