@@ -163,7 +163,7 @@ describe(
           );
           return null;
         },
-        recorded: (root) => recordedAt(socketOf(root)),
+        recorded: (root, deadline) => recordedAt(socketOf(root), deadline),
         joinRequest: (root, request, deadline) => joinRequestAt(socketOf(root), request, deadline),
       };
       const call = run(
@@ -182,7 +182,9 @@ describe(
       expect(asked).toEqual([]);
       expect([commitDaemon.takes.length, ownDaemon.takes.length]).toEqual([0, 0]);
       expect(waits.sort()).toEqual([tree, f.root].sort());
-      expect(joined.out).toContain(`--wait: joined 1 test files with no result at ${a.slice(0, 9)}`);
+      expect(joined.out).toContain(
+        `--wait: joined 1 test files with no result at ${a.slice(0, 9)}`,
+      );
       expect(joined.out).toContain("--wait, now: joined 1 test files");
       expect(joined.code).toBe(0);
     });
@@ -206,7 +208,7 @@ describe(
           waits.push(root);
           return null;
         },
-        recorded: (root) => recordedAt(socketOf(root)),
+        recorded: (root, deadline) => recordedAt(socketOf(root), deadline),
         joinRequest: (root, request, deadline) => joinRequestAt(socketOf(root), request, deadline),
       };
       const options = { cacheRoot: f.cacheRoot, install, daemons };
