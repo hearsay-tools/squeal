@@ -66,6 +66,12 @@ export async function rowsSide(
   const refused = new Map(
     asked.asks.flatMap((ask) => ask.refused ?? []).map((r) => [testFileId(r.ref), r.reason]),
   );
+  // Row 023-35 (T2): a node:test project tells its incomplete static closures; Vitest tells none.
+  const closureOf = (ref: TestFileRef): "complete" | "incomplete" | "unchecked" => {
+    const list = asked.incomplete?.[ref.project];
+    if (list === undefined) return "unchecked";
+    return list.includes(ref.path) ? "incomplete" : "complete";
+  };
   const state = (ref: TestFileRef): SideState => {
     if (changed !== null) return { state: "not comparable", reason: changedText(changed) };
     const no = refused.get(testFileId(ref));
@@ -83,8 +89,7 @@ export async function rowsSide(
     if (row.pending !== null && row.pending !== undefined)
       return { state: "no result", key: row.key, pending: row.pending };
     if (chose && !queued.has(testFileId(ref)))
-      // Row 023-35 (T2): the call cannot tell whether the static closure is complete.
-      return { state: "no result", key: row.key, notSelected: true, closure: "unchecked" };
+      return { state: "no result", key: row.key, notSelected: true, closure: closureOf(ref) };
     return now;
   };
   const at: CommitSide = {

@@ -28,6 +28,8 @@ const READ_EVERY_MS = 250;
 export interface CommitAsked extends SideQueue {
   /** The commit daemon's setup; `null` when none was reached or read. */
   readonly setup: CommitSetup | null;
+  /** T2: per node:test project, its files with an incomplete static closure, as the daemon told. */
+  readonly incomplete?: Readonly<Record<string, readonly RelativePath[]>>;
   /** The asks read (the call's own with `--run`, every kept one with `--wait`). */
   readonly asks: readonly CommitAskState[];
 }
@@ -99,6 +101,7 @@ interface Read {
   readonly setup: CommitSetup | null;
   readonly asks: readonly CommitAskState[];
   readonly problem: string | null;
+  readonly incomplete?: Readonly<Record<string, readonly RelativePath[]>>;
 }
 
 /**
@@ -119,7 +122,12 @@ async function readUntilQueued(
     const settled = answer.asks.every((a) => a.phase === "queued" || a.phase === "failed");
     const over = answer.setup.phase === "failed" || answer.setup.phase === "changed";
     if (settled || over || Date.now() >= deadline)
-      return { setup: answer.setup, asks: answer.asks, problem: null };
+      return {
+        setup: answer.setup,
+        asks: answer.asks,
+        problem: null,
+        ...(answer.incomplete === undefined ? {} : { incomplete: answer.incomplete }),
+      };
     await sleep(Math.min(READ_EVERY_MS, Math.max(0, deadline - Date.now())));
   }
 }
@@ -160,6 +168,7 @@ async function waitFor(
     problems: [...new Set(problems)],
     groupOf: groupsOf(tree),
     setup: read.setup,
+    ...(read.incomplete === undefined ? {} : { incomplete: read.incomplete }),
     asks: read.asks,
   };
 }

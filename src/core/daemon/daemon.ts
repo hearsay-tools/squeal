@@ -482,6 +482,26 @@ class Daemon {
     });
   }
 
+  /**
+   * Row 023-40c (T2): a commit daemon's node:test adapters in this process,
+   * telling each project's incomplete static closures to its asks; any other
+   * daemon's in `host`, as before.
+   */
+  #commitClosures(
+    host: { readonly launch: RunnerHostLaunch; readonly version: string } | undefined,
+  ) {
+    const start = this.#commitStart;
+    if (start === null) return { host };
+    return {
+      host: undefined,
+      closures: (project: string, files: readonly (readonly [RelativePath, readonly string[]])[]) =>
+        start.closures(
+          project,
+          files.map(([path]) => path),
+        ),
+    };
+  }
+
   /** Spec 023 D7.2: a commit daemon's lock is held; its marker names it, for the sweep. */
   #claimCommitWorktree(): void {
     try {
@@ -872,7 +892,9 @@ class Daemon {
       // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
-        host,
+        // Spec 023 D7.3 (row 023-40c, T2): a commit daemon's node:test adapters stay in this
+        // process, so they tell their incomplete static closures to its asks.
+        ...this.#commitClosures(host),
         idleMs,
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,

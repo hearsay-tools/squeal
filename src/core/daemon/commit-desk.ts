@@ -69,6 +69,7 @@ export class CommitDesk {
       type: "commit-read",
       setup: this.#snapshot.setup,
       asks,
+      ...(this.#snapshot.incomplete === undefined ? {} : { incomplete: this.#snapshot.incomplete }),
     };
   }
 }
