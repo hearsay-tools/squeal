@@ -221,6 +221,8 @@ Set it up once:
    { "shared": { "ref": "refs/squeal", "lookAgain": { "everySeconds": 30, "forSeconds": 600 } } }
    ```
 
+   Known limitation: Squeal does not wait for the results before it runs tests. After a pull or fast-forward onto a main commit whose results are not published yet, the affected test files queue at once. When the results arrive, every file still waiting takes its CI result and does not run. A file already running finishes. On an idle machine many files can start before the results arrive. To avoid that, publish before main moves: with a merge queue (last item below), make the job that publishes a required check, so main moves only after its results are on the ref. Each merge then waits for the export, and a failed publish blocks the merge.
+
 3. Add the action and an export job to the workflow that tests main:
 
 ```yaml
