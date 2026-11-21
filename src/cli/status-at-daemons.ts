@@ -179,7 +179,8 @@ export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
       return outcome.unavailable;
     },
     // Review wave-23 B2: `--wait` alone joins requests recorded and not taken yet; it starts nothing.
-    recorded: async (root) => recordedAt(await socketOf(root, Date.now())),
+    // Review wave-23 B1: the join's reads end by the call's deadline too.
+    recorded: async (root, deadline) => recordedAt(await socketOf(root, deadline), deadline),
     joinRequest: async (root, request, deadline) =>
       joinRequestAt(await socketOf(root, deadline), request, deadline),
   };

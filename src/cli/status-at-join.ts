@@ -7,7 +7,6 @@ import { groupView } from "../core/scheduler/slow.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { DaemonResponse, RecordedRequest } from "../core/types/daemon.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import { askDaemon } from "./daemon-access.js";
 import { takenRequest } from "./run-group.js";
 import { idOf } from "./status-at-after.js";
 import type { Asked, AtDaemons, CommitDaemonInput } from "./status-at-daemons.js";
@@ -34,8 +33,11 @@ import { askWithin } from "./wait/socket.js";
  * stand-in without them lists no recorded request.
  */
 export interface RecordedJoins {
-  /** The narrow requests the daemon of `root` recorded and has not taken; none when none answers. */
-  recorded?(root: AbsolutePath): Promise<readonly RecordedRequest[]>;
+  /**
+   * The narrow requests the daemon of `root` recorded and has not taken;
+   * none when none answers by `deadline` (the call's, review wave-23 B1).
+   */
+  recorded?(root: AbsolutePath, deadline: number): Promise<readonly RecordedRequest[]>;
   /** Joins recorded `request` until taken, failed (why) or `deadline` (`pending`). */
   joinRequest?(root: AbsolutePath, request: RecordedRequest, deadline: number): Promise<Asked>;
 }
@@ -53,24 +55,30 @@ export interface JoinInput {
   readonly commonDir: AbsolutePath;
   /** Epoch ms; `Infinity` for a bare `--wait`. The call's one deadline (B1). */
   readonly deadline: number;
+  /**
+   * Review wave-23 B1: the bound of the join's daemon reads, as of `--run`'s
+   * requests (`askBound`): the deadline, or a few seconds after the first.
+   */
+  readonly askBy: () => number;
 }
 
 /** Both sides joined, commit side first. */
 export async function joinBoth(input: JoinInput): Promise<[SideQueue, SideQueue]> {
-  const { daemons, refs, deadline } = input;
+  const { daemons, refs } = input;
+  const bounds = { deadline: input.deadline, askBy: input.askBy };
   const atSide = async (): Promise<SideQueue> => {
     const tree = daemons.find(input.commit);
     if (tree === null) return NOTHING;
     const listed = await pendingRows(input.commonDir, tree);
     const without = refs.filter((ref) => input.at(ref).state === "no result");
-    return joinSide(daemons, tree, without, (ref) => listed.has(testFileId(ref)), deadline);
+    return joinSide(daemons, tree, without, (ref) => listed.has(testFileId(ref)), bounds);
   };
   const without = refs.filter((ref) => input.now(ref).state === "no result");
   const pendingNow = (ref: TestFileRef) => {
     const s = input.now(ref);
     return s.state === "no result" && s.pending !== undefined;
   };
-  return Promise.all([atSide(), joinSide(daemons, input.root, without, pendingNow, deadline)]);
+  return Promise.all([atSide(), joinSide(daemons, input.root, without, pendingNow, bounds)]);
 }
 
 /**
@@ -83,10 +91,11 @@ async function joinSide(
   root: AbsolutePath,
   without: readonly TestFileRef[],
   listed: (ref: TestFileRef) => boolean,
-  deadline: number,
+  { deadline, askBy }: Pick<JoinInput, "deadline" | "askBy">,
 ): Promise<SideQueue> {
   if (without.length === 0) return NOTHING;
-  const recorded = (await daemons.recorded?.(root).catch(() => [])) ?? [];
+  // Review wave-23 B1: the ping and the requests' joins end with the call's requests, as `--run`'s.
+  const recorded = (await daemons.recorded?.(root, askBy()).catch(() => [])) ?? [];
   const view = groupView(readPolicy(root));
   const groupOf = (ref: TestFileRef) => view.of(ref).name;
   const covers = (request: RecordedRequest, ref: TestFileRef) =>
@@ -100,7 +109,7 @@ async function joinSide(
       asked:
         daemons.joinRequest === undefined
           ? ("taken" as const)
-          : await daemons.joinRequest(root, request, deadline).catch(problemOf),
+          : await daemons.joinRequest(root, request, askBy()).catch(problemOf),
     })),
   );
   const pending = new Set<string>();
@@ -133,10 +142,19 @@ async function pendingRows(commonDir: AbsolutePath, tree: AbsolutePath): Promise
 
 const problemOf = (error: unknown): Asked => ({ problem: String(error) });
 
-/** Review wave-23 B2: the narrow requests the daemon on `socketPath` recorded and has not taken; none when none answers. */
-export async function recordedAt(socketPath: AbsolutePath): Promise<readonly RecordedRequest[]> {
-  const answer = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
-  return answer?.ok === true && answer.type === "ping" ? (answer.recorded ?? []) : [];
+/**
+ * Review wave-23 B2: the narrow requests the daemon on `socketPath`
+ * recorded and has not taken; none when none answers. Review wave-23 B1:
+ * the ping waits what is left before `deadline` (`askWithin`), never the
+ * CLI's whole socket bound.
+ */
+export async function recordedAt(
+  socketPath: AbsolutePath,
+  deadline: number,
+): Promise<readonly RecordedRequest[]> {
+  const answer = await askWithin(socketPath, { type: "ping" }, deadline);
+  if (answer === null || "unanswered" in answer) return [];
+  return answer.ok && answer.type === "ping" ? (answer.recorded ?? []) : [];
 }
 
 /**
