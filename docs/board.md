@@ -2656,7 +2656,7 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 
 ## Feature 022: selection strategy
 
-Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14, phase 1 released in 0.1.496; phase 2 closed and stored lists dropped by the human 2026-11-21, row 022-05; the human, 2026-11-14: an option to choose the selection strategy, adding selection by the modules a test loads beside today's import closure). Coordinator 3d192245.
+Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14, phase 1 released in 0.1.496; phase 2 closed and stored lists dropped by the human 2026-11-21, released in 0.1.591 (row 022-05); the human, 2026-11-14: an option to choose the selection strategy, adding selection by the modules a test loads beside today's import closure). Coordinator 3d192245.
 
 ### Wave 0: research (parallel; brief `specifications/022-selection-strategy/research/README.md`)
 
@@ -2676,8 +2676,8 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 022-05 stop storing loaded lists; remove the reach estimate (D3, D4 amended) | in review (`cand/0.1.589` at `ef13b0282`, CI 44925909051; worker 2ece4b73 `d5e2a9e0b`; coordinator da243dbd, 2026-11-21) | No `loaded_modules` writes; prune empties the table in slices; `squeal reach` loses its narrowing section; a run's list still joins its key and CI part (D2). Evidence: reach 1.9% (squeal, upper bound) and 0.12% (cezar); lists 82% of the store; bench `@lists` lock holds 13 s vs 2.5 s with 3 worktrees. | Brief's done-when; no key format raise |
-| 022-06 review of candidate 0.1.589 (row 022-05) | running (codex gpt-6.1-sol high; brief `tasks/wave-2.md`) | The brief's four checks on `cand/0.1.589`. | `reviews/0.1.589.md` committed with PASS or FAIL |
+| 022-05 stop storing loaded lists; remove the reach estimate (D3, D4 amended) | done (released 0.1.591: tag `squeal--v0.1.591` at `1d9d54fab`, hub `dd0fc16`, GitHub latest with `install.sh` and both Codex runtime assets; review `reviews/0.1.589.md` PASS on `ef13b0282`, the same source rebased onto 0.1.590 as 0.1.591 (0.1.590 landed above it); candidate CI 44925909051 and 44937331994 green; worker 2ece4b73, notes `tasks/022-05/notes.md`; no key format change; paired bench `@lists` 0.1.587 vs 0.1.589 running, its comparison goes to the notes) | No `loaded_modules` writes; prune empties the table in slices; `squeal reach` loses its narrowing section; a run's list still joins its key and CI part (D2). Evidence: reach 1.9% (squeal, upper bound) and 0.12% (cezar); lists 82% of the store; bench `@lists` lock holds 13 s vs 2.5 s with 3 worktrees. | Brief's done-when; no key format raise |
+| 022-06 review of candidate 0.1.589 (row 022-05) | done (reviewer 2d806111, codex gpt-6.1-sol high: PASS on `ef13b0282`, 0 findings; 160,000 lists of 53.6 KB deleted in 625 transactions, longest write lock 92 ms; benchmark left unverified) | The brief's four checks on `cand/0.1.589`. | `reviews/0.1.589.md` committed with PASS or FAIL |
 
 ### Wave 3: research, selection by executed functions (the human, 2026-11-21: "Run that research"; brief `specifications/022-selection-strategy/research/function-selection-brief.md`; coordinator c57d5feb)
 
