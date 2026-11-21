@@ -1,0 +1,10 @@
+base582-a exit=0 seconds=82.430861950
+base582-prof exit=0 seconds=83.545628650
+base-1 exit=0 seconds=81.077684881
+base-1 exit=0 seconds=84.234642747
+fix-1 exit=0 seconds=25.099966569
+fix-2 exit=0 seconds=25.019918811
+base-2 exit=0 seconds=72.258018263
+base-3 exit=0 seconds=74.259296004
+fix-3 exit=0 seconds=31.446837650
+fix-prof exit=0 seconds=37.274038580
