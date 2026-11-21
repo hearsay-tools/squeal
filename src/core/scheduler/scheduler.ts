@@ -972,12 +972,20 @@ class TierScheduler implements Scheduler {
     return this.#lock.run(() => {
       const out = new Map<string, RelativePath>();
       if (this.#context === null) return out;
-      const { reverse } = this.#context.keys.index;
-      for (const path of reverse.paths().filter(picks).sort()) {
-        for (const ref of reverse.referencing([path])) {
-          const id = testFileId(ref);
-          if (!out.has(id)) out.set(id, path);
-        }
+      const { index } = this.#context.keys;
+      // The reverse index holds each file's closure paths (`KeyIndex.setClosure`): its
+      // imports and their resolution candidates, its declared inputs and observed reads.
+      const picked = new Map<RelativePath, boolean>();
+      const pick = (path: RelativePath) => {
+        const known = picked.get(path);
+        if (known !== undefined) return known;
+        const yes = picks(path);
+        picked.set(path, yes);
+        return yes;
+      };
+      for (const ref of index.reverse.testFiles()) {
+        const path = index.closure(ref)?.paths.find(pick);
+        if (path !== undefined) out.set(testFileId(ref), path);
       }
       return out;
     }, "finding the test files that read paths the commit does not hold");
