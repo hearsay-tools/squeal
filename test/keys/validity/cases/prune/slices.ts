@@ -45,7 +45,7 @@ export const PRUNE_SLICES: readonly Case[] = [
   {
     kind: "prune",
     name: "loaded lists beside expired and kept results, at 7 days (row 022-03)",
-    why: "022 D3: a list goes with the last result at its key and changes nothing the prune keeps or removes",
+    why: "022 D3 (amended, row 022-05): every stored list goes, and changes nothing the prune keeps or removes",
     input: {
       worktrees: [{ id: "linked", root: "live", rows: 1 }],
       liveKeys: [{ worktree: "linked", key: "k-live" }],

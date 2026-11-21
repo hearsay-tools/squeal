@@ -426,9 +426,11 @@ export interface PruneInput {
    */
   readonly asked?: readonly string[];
   /**
-   * Spec 022 D3 (row 022-03): result keys a loaded list is stored at, in a
-   * `loaded_modules` table made by SQL. No key reads the table, so what a
-   * prune leaves of it is wording: a release before it leaves every list.
+   * Spec 022 D3 (rows 022-03, 022-05): result keys a loaded list is stored
+   * at, in a `loaded_modules` table made by SQL as releases 0.1.496 to
+   * 0.1.586 made it. No key reads the table, so what a prune leaves of it
+   * is wording: a release before 0.1.496 leaves every list, one from
+   * 022-05 on leaves none.
    */
   readonly loadedLists?: readonly string[];
 }

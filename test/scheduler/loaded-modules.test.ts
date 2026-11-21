@@ -5,20 +5,19 @@ import { describe, expect, it } from "vitest";
 import { coverageProvider } from "../../src/core/code/coverage/runtime.js";
 import type { VitestCoverageOptions } from "../../src/core/code/coverage/types.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
-import { LOADED_MODULES_TABLE, type LoadedModule } from "../../src/core/store/loaded-modules.js";
+import { hasLoadedModulesTable } from "../../src/core/store/loaded-modules.js";
 import { connectionOf } from "../../src/core/store/store.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
-import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { onCleanUp, SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore, ref } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
- * Spec 022 D1 to D3 (row 022-03), through the scheduler over a real Vitest
- * with Squeal's provider: each completed file's loaded list is stored at its
- * result key, and a module it loads only at run time joins its key, less
- * the setup files the environment holds and the paths its closure holds.
+ * Spec 022 D1 to D3 (rows 022-03, 022-05), through the scheduler over a
+ * real Vitest with Squeal's provider: a module a file loads only at run
+ * time joins its key, less the setup files the environment holds and the
+ * paths its closure holds. No list is stored (D3 amended 2026-11-21).
  */
 
 const RUNTIME = "test/runtime.test.ts";
@@ -47,36 +46,16 @@ async function started(observe: boolean): Promise<Harness> {
   return h;
 }
 
-/** The stored lists of `path`: each key and its modules' paths. */
-function listsOf(store: Store, path: string): { key: string; paths: string[] }[] {
-  const conn = connectionOf(store);
-  return conn
-    .all(`SELECT key, modules FROM ${LOADED_MODULES_TABLE} WHERE project = '' AND path = ?`, path)
-    .map((row) => ({
-      key: String(row.key),
-      paths: (JSON.parse(String(row.modules)) as LoadedModule[]).map((m) => m.path),
-    }));
-}
-
 const closureOf = (h: Harness, path: string) =>
   h.store.testFiles.get(ref(path))?.closure.paths ?? [];
 
 describe("scheduler: loaded modules (spec 022, row 022-03)", SLOW, () => {
-  it("stores each file's list at its result key, setup files and runtime loads among them", async () => {
+  it("stores no list, and the file's results are at its key", async () => {
     const h = await started(true);
     const key = h.keyOf(RUNTIME);
     expect(key).not.toBeNull();
-    const [list, ...more] = listsOf(h.store, RUNTIME);
-    expect(more).toEqual([]);
-    expect(list?.key).toBe(key);
-    expect(list?.paths).toEqual([LAZY, ...SETUP, RUNTIME].sort());
     expect(h.store.results.byKey(key ?? "").length).toBeGreaterThan(0);
-    // Each module with its blob id at the run.
-    const conn = connectionOf(h.store);
-    const row = conn.get(`SELECT modules FROM ${LOADED_MODULES_TABLE} WHERE path = ?`, RUNTIME);
-    for (const module of JSON.parse(String(row?.modules)) as LoadedModule[]) {
-      expect(module.hash).toMatch(/^[0-9a-f]{40}$/);
-    }
+    expect(hasLoadedModulesTable(connectionOf(h.store))).toBe(false);
   });
 
   it("joins a module loaded only at run time to the key: an edit to it re-runs the file", async () => {
@@ -100,16 +79,15 @@ describe("scheduler: loaded modules (spec 022, row 022-03)", SLOW, () => {
       expect(closureOf(h, PLAIN)).not.toContain(path);
     }
     // Plain's list is its closure and the setup files: nothing observed, its key as without lists.
-    expect(listsOf(h.store, PLAIN)[0]?.paths).toEqual(["src/math.ts", ...SETUP, PLAIN].sort());
+    expect(closureOf(h, PLAIN)).toContain("src/math.ts");
     const observed = JSON.parse(h.store.meta.get(observedMetaKey("")) ?? "{}") as object;
     expect(Object.keys(observed)).not.toContain(PLAIN);
     expect(closureOf(h, PLAIN)).not.toContain(LAZY);
   });
 
-  it("joins nothing with policy observe.runtimeInputs off, and stores the lists all the same", async () => {
+  it("joins nothing with policy observe.runtimeInputs off", async () => {
     const h = await started(false);
     expect(closureOf(h, RUNTIME)).not.toContain(LAZY);
-    expect(listsOf(h.store, RUNTIME)[0]?.paths).toContain(LAZY);
-    expect(listsOf(h.store, RUNTIME)[0]?.key).toBe(h.keyOf(RUNTIME));
+    expect(hasLoadedModulesTable(connectionOf(h.store))).toBe(false);
   });
 });
