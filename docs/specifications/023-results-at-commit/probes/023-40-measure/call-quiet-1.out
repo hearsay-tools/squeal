@@ -1,0 +1,7 @@
+squeal status --at ce7a1ba9c: 1 test files at ce7a1ba9c against the working tree (HEAD fd82e3ccc); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at ce7a1ba9c from a temporary checkout, 18.4 s (checked against the commit in 2068 ms).
+test/daemon/commit-removal.test.ts: not determined (the daemon stored it at key 31ba6e218a52, not at this call's 65938cf808a8) -> pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown
+--run: queued 1 test files with no result at ce7a1ba9c in its commit daemon (its worktree ~/.cache/squeal/checkouts/e1b2b09ca2250a1a/commit-ce7a1ba9c9274dda93052f41a212045518fb9690-689b346b5e4535af/tree); 0 have a result now (74.7 s)
+--run, now: queued 1 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now

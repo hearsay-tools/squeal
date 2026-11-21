@@ -1,0 +1,88 @@
+profile 44.9 s wall, window 44.9 s
+
+by area
+  38.47 s  (idle)
+   3.61 s  squeal.mjs
+   0.70 s  node:zlib
+   0.53 s  (gc)
+   0.44 s  native:lstat
+   0.22 s  (program)
+   0.14 s  node:child_process
+   0.09 s  node:crypto/hash
+   0.07 s  node:path
+   0.06 s  node:fs/promises
+   0.06 s  node:modules/esm
+   0.05 s  node:timers
+   0.04 s  native:RegExp: ^(?![A-Za-z]:)(?!\.\.?(?:\/|$))[^/\\]+(?:\/(?!\.\.?(?:\/|$))[^/\\]+)*$
+   0.03 s  node:process/task_queues
+   0.03 s  node:buffer
+
+by nearest named squeal function (busy only)
+   1.10 s  (none)
+   0.90 s  encodeImports
+   0.51 s  unlink
+   0.48 s  set
+   0.34 s  push
+   0.28 s  changes
+   0.26 s  stat
+   0.26 s  acquire
+   0.16 s  runGit
+   0.16 s  keyFromSegments
+   0.15 s  transaction
+   0.13 s  lstatOrNull2
+   0.13 s  hashOf
+   0.12 s  setClosure
+   0.12 s  isLinkedDir
+   0.08 s  assembleClosure
+   0.08 s  of
+   0.07 s  normalizeRelativePath
+   0.06 s  toAbsolute
+   0.05 s  include
+   0.04 s  put
+   0.04 s  for
+   0.04 s  write
+   0.03 s  readCleanIndexHashes
+   0.03 s  isNodeModules
+   0.03 s  release
+   0.03 s  splitNul
+   0.03 s  isInside
+   0.03 s  json
+   0.03 s  all
+
+by self function
+  38.47 s  (idle) :-1
+   0.69 s  processChunkSync node:zlib:420
+   0.53 s  (garbage collector) :-1
+   0.51 s  unlink squeal.mjs:794
+   0.47 s  set squeal.mjs:744
+   0.44 s  lstat :-1
+   0.34 s  push squeal.mjs:69279
+   0.28 s  changes squeal.mjs:1082
+   0.25 s  acquire squeal.mjs:27993
+   0.22 s  (program) :-1
+   0.18 s  encodeImports squeal.mjs:14690
+   0.14 s  transaction squeal.mjs:1099
+   0.13 s  spawn child_process:384
+   0.13 s  hashOf squeal.mjs:10629
+   0.08 s  assembleClosure squeal.mjs:2946
+   0.07 s  update hash:185
+   0.07 s  join node:path:1328
+   0.06 s  of squeal.mjs:2707
+   0.05 s  compileSourceTextModule utils:316
+   0.05 s  (anon) squeal.mjs:27898
+   0.05 s  keyFromSegments squeal.mjs:27803
+   0.05 s  include squeal.mjs:2948
+   0.04 s  RegExp: ^(?![A-Za-z]:)(?!\.\.?(?:\/|$))[^/\\]+(?:\/(?!\.\.?(?:\/|$))[^/\\]+)*$ :-1
+   0.04 s  put squeal.mjs:6143
+   0.04 s  setClosure squeal.mjs:27894
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 3.4 | (none) 0.4 | stat 0.3 | set 0.2
+   5 s: (idle) 4.6 | unlink 0.1 | changes 0.1 | keyFromSegments 0.1
+  10 s: (idle) 4.3 | unlink 0.1 | push 0.1 | (none) 0.1
+  15 s: (idle) 4.4 | unlink 0.1 | (none) 0.1 | set 0.1
+  20 s: (idle) 4.3 | (none) 0.2 | unlink 0.1 | push 0.1
+  25 s: (idle) 3.2 | encodeImports 0.9 | changes 0.2 | transaction 0.1
+  30 s: (idle) 4.5 | (none) 0.1 | lstatOrNull2 0.1 | runGit 0.1
+  35 s: (idle) 5.0 | (none) 0.0 | owedWork 0.0
+  40 s: (idle) 4.8 | (none) 0.0 | clearFolder 0.0 | runGit 0.0

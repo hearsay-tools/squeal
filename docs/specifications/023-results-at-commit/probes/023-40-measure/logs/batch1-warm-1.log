@@ -1,0 +1,11 @@
+2026-11-21T20:37:42.086Z [29195] squeal daemon: long write: store.sqlite write lock held 2096 ms by storeClosures < resolveClosures < baseline; 6315 rows written
+2026-11-21T20:37:42.133Z [29942] squeal daemon: the store was busy for 0.9 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T20:37:48.122Z [29195] squeal daemon: serving ~/r on /run/user/1000/squeal-03b90b3d83f51152.sock
+2026-11-21T20:37:48.228Z [29195] squeal daemon: full integrity check: ok
+2026-11-21T20:38:23.906Z [29195] squeal daemon: the store was busy for 1.4 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-21T20:38:23.908Z [29942] squeal daemon: long write: store.sqlite write lock held 1928 ms by storeClosures < resolveClosures < process.processTicksAndRejections; 4290 rows written
+2026-11-21T20:38:24.933Z [29942] squeal daemon: serving ~/.cache/squeal/checkouts/e1b2b09ca2250a1a/commit-ce7a1ba9c9274dda93052f41a212045518fb9690-689b346b5e4535af/tree on /run/user/1000/squeal-6226ab103cd8498c.sock
+2026-11-21T20:38:42.283Z [29195] squeal daemon: code store: last minute: 163 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T20:38:57.880Z [29195] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 704 to 477 MiB in a 320 ms pause
+2026-11-21T20:39:18.391Z [29942] squeal daemon: daemon stopped: squeal stop
+2026-11-21T20:39:19.535Z [29942] squeal daemon: daemon stopped: squeal stop; the commit worktree is removed
