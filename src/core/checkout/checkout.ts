@@ -9,7 +9,7 @@ import { lstatOrNull } from "../fs/git-layout.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { LeaseProcess } from "../types/daemon-writes.js";
 import { endLeftUnder, leftUnderNote } from "./left-under.js";
-import { readMarker, runPath, treePath, writeMarker } from "./marker.js";
+import { type CheckoutMarker, readMarker, runPath, treePath, writeMarker } from "./marker.js";
 
 /*
  * Spec 023 D4.1, D4.2, D4.8 (row 023-05): create and remove a temporary
@@ -54,17 +54,31 @@ export function checkoutLockPath(commonDir: AbsolutePath): AbsolutePath {
 }
 
 /** Runs `body` while holding the repository's checkout lock. */
-export async function withCheckoutLock<T>(
+export function withCheckoutLock<T>(
   commonDir: AbsolutePath,
   body: () => Promise<T>,
   waitMs: number = CHECKOUT_LOCK_WAIT_MS,
 ): Promise<T> {
-  const lock: DaemonLock | string = await awaitDaemonLock(checkoutLockPath(commonDir), {
+  return withFileLock(
+    checkoutLockPath(commonDir),
+    `the checkout lock of ${commonDir}`,
+    body,
+    waitMs,
+  );
+}
+
+/** Runs `body` while holding the lock at `path`, which the OS frees when its holder dies. */
+export async function withFileLock<T>(
+  path: AbsolutePath,
+  what: string,
+  body: () => Promise<T>,
+  waitMs: number = CHECKOUT_LOCK_WAIT_MS,
+): Promise<T> {
+  const lock: DaemonLock | string = await awaitDaemonLock(path, {
     timeoutMs: waitMs,
     giveUp: () => false,
   });
-  if (typeof lock === "string")
-    throw new Error(`squeal: the checkout lock of ${commonDir} stayed held for ${waitMs} ms`);
+  if (typeof lock === "string") throw new Error(`squeal: ${what} stayed held for ${waitMs} ms`);
   try {
     return await body();
   } finally {
@@ -74,45 +88,56 @@ export async function withCheckoutLock<T>(
 
 /** D4.1, D4.2: lock, prune, marker, then `git worktree add --detach --lock --reason squeal`. */
 export async function createCheckout(options: CreateCheckoutOptions): Promise<Checkout> {
-  const { root, commonDir, dir } = options;
-  const commit = (
-    await runGit(root, ["rev-parse", "--verify", "--end-of-options", `${options.commit}^{commit}`])
-  ).trim();
+  const commit = await resolveCommit(options.root, options.commit);
   return withCheckoutLock(
-    commonDir,
-    async () => {
-      await runGit(commonDir, ["worktree", "prune"], { timeoutMs: GIT_TIMEOUT_MS });
-      const folder = join(dir, `${Date.now().toString(36)}-${randomBytes(4).toString("hex")}`);
-      mkdirSync(folder, { recursive: true });
-      const checkout = {
-        folder,
-        tree: treePath(folder),
-        run: runPath(folder),
-        commit,
-        commonDir,
-      };
-      try {
-        writeMarker(folder, {
-          v: 1,
-          owner: leaseProcess(),
-          commit,
-          commonDir,
-          createdAt: (options.now ?? Date.now)(),
-        });
-        mkdirSync(checkout.run);
-        await runGit(
-          root,
-          ["worktree", "add", "--detach", "--lock", "--reason", "squeal", checkout.tree, commit],
-          { timeoutMs: GIT_TIMEOUT_MS },
-        );
-      } catch (error) {
-        await removeTree(checkout);
-        throw error;
-      }
-      return checkout;
-    },
+    options.commonDir,
+    () => addCheckout({ ...options, commit }),
     options.lockWaitMs,
   );
+}
+
+/** The full id of the commit `revision` names in `root`. */
+export async function resolveCommit(root: AbsolutePath, revision: string): Promise<string> {
+  return (
+    await runGit(root, ["rev-parse", "--verify", "--end-of-options", `${revision}^{commit}`])
+  ).trim();
+}
+
+export interface AddCheckoutOptions extends CreateCheckoutOptions {
+  /** The folder's name in `dir`; a fresh one by default. */
+  readonly name?: string;
+  /** Marker fields beyond the plain checkout's (row 023-38: a commit worktree's fingerprint). */
+  readonly extra?: Pick<CheckoutMarker, "fingerprint">;
+}
+
+/** `createCheckout`'s steps for a caller that holds the lock; `commit` is a full id. */
+export async function addCheckout(options: AddCheckoutOptions): Promise<Checkout> {
+  const { root, commonDir, dir, commit } = options;
+  await runGit(commonDir, ["worktree", "prune"], { timeoutMs: GIT_TIMEOUT_MS });
+  const name = options.name ?? `${Date.now().toString(36)}-${randomBytes(4).toString("hex")}`;
+  const folder = join(dir, name);
+  mkdirSync(folder, { recursive: true });
+  const checkout = { folder, tree: treePath(folder), run: runPath(folder), commit, commonDir };
+  try {
+    writeMarker(folder, {
+      v: 1,
+      owner: leaseProcess(),
+      commit,
+      commonDir,
+      createdAt: (options.now ?? Date.now)(),
+      ...options.extra,
+    });
+    mkdirSync(checkout.run);
+    await runGit(
+      root,
+      ["worktree", "add", "--detach", "--lock", "--reason", "squeal", checkout.tree, commit],
+      { timeoutMs: GIT_TIMEOUT_MS },
+    );
+  } catch (error) {
+    await removeTree(checkout);
+    throw error;
+  }
+  return checkout;
 }
 
 /**

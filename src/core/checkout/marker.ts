@@ -31,6 +31,15 @@ export interface CheckoutMarker {
    * install outlives no owner a SIGKILL ended.
    */
   readonly group?: LeaseProcess;
+  /**
+   * Spec 023 D7.1 (row 023-38): present on a commit worktree only, the
+   * environment fingerprint it was made for. `owner` is then its creator.
+   */
+  readonly fingerprint?: string;
+  /** D7.2: the commit daemon that claimed the worktree; it owns it from then on. */
+  readonly daemon?: LeaseProcess;
+  /** D7.1: the frozen install finished, so no later caller installs again. */
+  readonly installed?: boolean;
 }
 
 /** The marker of the checkout folder `folder`. */
@@ -65,7 +74,7 @@ export function readMarker(folder: AbsolutePath): CheckoutMarker | null {
     return null;
   }
   if (!isRecord(value) || value.v !== MARKER_VERSION || !isRecord(value.owner)) return null;
-  const { owner, commit, commonDir, createdAt, group } = value;
+  const { owner, commit, commonDir, createdAt, group, fingerprint, daemon, installed } = value;
   if (typeof owner.pid !== "number") return null;
   if (typeof commit !== "string" || typeof commonDir !== "string") return null;
   if (typeof createdAt !== "number") return null;
@@ -76,6 +85,9 @@ export function readMarker(folder: AbsolutePath): CheckoutMarker | null {
     commonDir,
     createdAt,
     ...(isRecord(group) && typeof group.pid === "number" ? { group: leaseOf(group) } : {}),
+    ...(typeof fingerprint === "string" ? { fingerprint } : {}),
+    ...(isRecord(daemon) && typeof daemon.pid === "number" ? { daemon: leaseOf(daemon) } : {}),
+    ...(installed === true ? { installed } : {}),
   };
 }
 
@@ -97,7 +109,12 @@ function leaseOf(value: Record<string, unknown>): LeaseProcess {
 /** `live`, `dead` (its pid is free or reused), or `unknown` (another PID namespace, unreadable). */
 export type OwnerState = "live" | "dead" | "unknown";
 
+/** The process that owns the checkout now: a commit worktree's daemon once it claimed it, else the creator. */
+export function ownerOf(marker: CheckoutMarker): LeaseProcess {
+  return marker.daemon ?? marker.owner;
+}
+
 export function ownerState(marker: CheckoutMarker): OwnerState {
-  const alive = leaseProcessAlive(marker.owner);
+  const alive = leaseProcessAlive(ownerOf(marker));
   return alive === null ? "unknown" : alive ? "live" : "dead";
 }
