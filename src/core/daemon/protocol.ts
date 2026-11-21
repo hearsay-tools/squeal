@@ -1,4 +1,4 @@
-import { PAYLOAD_SCHEMA_VERSION } from "../types/common.js";
+import { PAYLOAD_SCHEMA_VERSION, type RelativePath } from "../types/common.js";
 import type {
   DaemonErrorResponse,
   DaemonRequest,
@@ -23,7 +23,12 @@ export const MAX_LINE_BYTES = 64 * 1024;
 export const MAX_WRITE_LINE_BYTES = 32 * 1024 * 1024;
 
 /** The start of every line `requestDaemon` writes for a `write` or a `keep` request. */
-const LONG_LINE_STARTS = ['{"type":"write",', '{"type":"keep",'] as const;
+const LONG_LINE_STARTS = [
+  '{"type":"write",',
+  '{"type":"keep",',
+  // Row 023-40c: an ask carries every path a change names.
+  '{"type":"commit-ask",',
+] as const;
 
 /** How long the request line that begins with `start` may be. */
 export function lineLimit(start: string): number {
@@ -96,6 +101,9 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "take-back":
     case "take-back-status":
       return parseTakeBack(request);
+    case "commit-ask":
+    case "commit-read":
+      return parseCommitAsk(request);
     case "promote": {
       const { testFiles, withinMs } = request;
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
@@ -124,6 +132,31 @@ export function parseRequest(line: string): DaemonRequest | string {
     default:
       return parseWriteRequest(request) ?? `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+
+/** Row 023-40c (spec 023 D7.3 as amended): a commit daemon's ask, or a read of its asks. */
+function parseCommitAsk(request: Record<string, unknown>): DaemonRequest | string {
+  if (request.type === "commit-read") {
+    const { owners } = request;
+    if (owners === undefined) return { type: "commit-read" };
+    if (!Array.isArray(owners) || !owners.every(isText))
+      return '"owners" must be a list of non-empty strings';
+    return { type: "commit-read", owners: [...owners] };
+  }
+  const { owner, changed, named, allMissing } = request;
+  if (!isText(owner)) return '"owner" must be a non-empty string';
+  if (!Array.isArray(changed) || !changed.every(isText))
+    return '"changed" must be a list of non-empty strings';
+  if (!Array.isArray(named) || !named.every(isText))
+    return '"named" must be a list of non-empty strings';
+  if (typeof allMissing !== "boolean") return '"allMissing" must be true or false';
+  return {
+    type: "commit-ask",
+    owner,
+    changed: changed as RelativePath[],
+    named: named as RelativePath[],
+    allMissing,
+  };
 }
 
 /** Row 023-34 (T1): `take-back` with the calls' identities, or its status by request id. */

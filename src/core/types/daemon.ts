@@ -1,4 +1,10 @@
 import type {
+  CommitAskRequest,
+  CommitAskResponse,
+  CommitReadRequest,
+  CommitReadResponse,
+} from "./commit-ask.js";
+import type {
   AbsolutePath,
   EpochMs,
   PayloadSchemaVersion,
@@ -299,7 +305,9 @@ export type DaemonRequest =
   | KeepRequest
   | KeepStatusRequest
   | TakeBackRequest
-  | TakeBackStatusRequest;
+  | TakeBackStatusRequest
+  | CommitAskRequest
+  | CommitReadRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -628,6 +636,8 @@ export type DaemonResponse =
   | ImportResponse
   | KeepResponse
   | TakeBackResponse
+  | CommitAskResponse
+  | CommitReadResponse
   | DaemonErrorResponse;
 
 /**

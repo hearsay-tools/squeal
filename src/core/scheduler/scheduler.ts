@@ -3,6 +3,7 @@ import { heldUntilAsked } from "../daemon/check-groups.js";
 import { isMissing } from "../fs/errors.js";
 import { readObjectFormat } from "../hash/git-index.js";
 import { createFsHasher } from "../hash/hasher.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { appendNote } from "../notes.js";
 import { hostLoad } from "../retry/load.js";
 import { statCandidates } from "../revision/reconcile.js";
@@ -920,6 +921,43 @@ class TierScheduler implements Scheduler {
         readers: Object.fromEntries(paths.map((p) => [p, reverse.referencing([p])])),
       };
     }, "finding the test files that read the paths of a named wait");
+  }
+
+  /**
+   * Spec 023 D4.5, D7.3 as amended (row 023-40c; spec 011 file,
+   * coordinator-approved): the test files `paths` select, read from the
+   * key index under the lock with no runner call (023-46: the runner's
+   * `affected` would walk every source again). A file is selected when it
+   * is at one of `paths`, when its closure holds one (`referencing`: its
+   * imports, declared inputs, observed reads and missing-target
+   * candidates), when one is an environment file of its project or a
+   * declared input of it; an environment input of no project's files (a
+   * lockfile) selects every file. Before the start, none.
+   */
+  async changedSelects(paths: readonly RelativePath[]): Promise<readonly TestFileRef[]> {
+    return this.#lock.run(() => {
+      const context = this.#context;
+      const ledger = this.#ledger;
+      if (context === null || ledger === null || paths.length === 0) return [];
+      const { keys } = context;
+      const changed = new Set(paths);
+      const files = [...ledger.files.values()];
+      const projects = new Set(files.map((file) => file.ref.project));
+      const inProject = new Set([...projects].flatMap((p) => keys.environmentFiles(p)));
+      const everyFile = paths.some((p) => keys.isEnvironmentInput(p) && !inProject.has(p));
+      const out = new Map<string, TestFileRef>();
+      for (const ref of keys.index.reverse.referencing(paths)) out.set(testFileId(ref), ref);
+      for (const { id, ref } of files) {
+        if (
+          everyFile ||
+          changed.has(ref.path) ||
+          keys.environmentFiles(ref.project).some((p) => changed.has(p)) ||
+          keys.declaredFor(ref.path).some((p) => changed.has(p))
+        )
+          out.set(id, ref);
+      }
+      return [...out.values()];
+    }, "finding the test files a commit's changed paths select");
   }
 
   /**

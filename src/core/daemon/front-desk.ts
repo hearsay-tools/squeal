@@ -3,6 +3,7 @@ import { parentPort } from "node:worker_threads";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
 import type { ImportOutcome, KeepOutcome } from "../types/daemon-writes.js";
 import type { FullSuiteCheckpoint, TakeBackResult } from "../types/scheduler.js";
+import { CommitDesk } from "./commit-desk.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import { type GroupRequested, type Held, MainSteps } from "./run-group.js";
@@ -67,8 +68,15 @@ const waitingKeep = new Map<string, (outcome: KeepOutcome) => void>();
 
 let server: DaemonServer | null = null;
 
+/** Row 023-40c: a commit daemon's asks; `null` for any other daemon. */
+let commitDesk: CommitDesk | null = null;
+
 /** Started before the main thread holds the lock; binds only when told to. */
 function bind(identity: DeskIdentity): void {
+  commitDesk =
+    identity.commit === true
+      ? new CommitDesk((request) => post({ type: "commit-ask", request }))
+      : null;
   const handle = createHandlers({
     worktreeId: identity.worktreeId,
     root: identity.root,
@@ -126,6 +134,8 @@ function bind(identity: DeskIdentity): void {
       post({ type: "focus", testFiles, texts, withinMs }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),
+    // Row 023-40c: a commit daemon's asks, answered here from the main thread's last snapshot.
+    ...(commitDesk === null ? {} : { commitDesk }),
     ...(identity.storeSchema === undefined
       ? {}
       : {
@@ -175,6 +185,9 @@ function receive(message: ToDesk): void {
       return;
     case "phase":
       phase = message.phase;
+      return;
+    case "commit-state":
+      commitDesk?.set(message.snapshot);
       return;
     case "run-all-result": {
       const entry = waiting.get(message.id);
