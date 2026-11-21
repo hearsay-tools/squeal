@@ -1,0 +1,7 @@
+[2026-11-21T10:03:37.829Z] ff-known: plain vitest run
+[2026-11-21T10:04:12.862Z] ff-known: squeal start + run --all
+[2026-11-21T10:05:08.558Z] ff-known: upstream commit: 125 modules, known
+[2026-11-21T10:05:44.012Z] ff-known: idle
+[2026-11-21T10:06:44.017Z] ff-known: sessions
+[2026-11-21T10:13:22.926Z] ff-known: collect
+[2026-11-21T10:13:26.321Z] ff-known: done

@@ -1,0 +1,8 @@
+2026-11-21T10:28:15.704Z [80270] store process: serving /home/user/results/cells/ff-rebase/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/ff-rebase/work/run/squeal-code-26192c0577f814d5.sock
+2026-11-21T10:29:15.705Z [80270] store process: last minute: edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 301 ms; record: 1090 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1338 ms
+2026-11-21T10:30:15.706Z [80270] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 2 ms; record: 4 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 10 ms
+2026-11-21T10:31:15.706Z [80270] store process: last minute: edit: 29 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 38 ms; record: 263 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 181 ms
+2026-11-21T10:32:15.707Z [80270] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 10 ms; record: 290 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 321 ms
+2026-11-21T10:33:15.708Z [80270] store process: last minute: edit: 12 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 8 ms; record: 50 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 94 ms
+2026-11-21T10:34:15.709Z [80270] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 4 ms; record: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 22 ms
+2026-11-21T10:35:15.709Z [80270] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 8 ms; record: 13 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 21 ms

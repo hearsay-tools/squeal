@@ -1,0 +1,6 @@
+2026-11-21T10:05:12.413Z [37974] squeal daemon: serving /home/user/results/cells/ff-known/work/upstream on /home/user/results/cells/ff-known/work/run/squeal-62fcae30a6adcc5c.sock
+2026-11-21T10:05:30.402Z [37974] squeal daemon: busy, heap in use 96 MiB over twice the last live size of 34 MiB: a last-resort GC took private memory from 277 to 187 MiB in a 76 ms pause; 46 MiB of heap in use after it
+2026-11-21T10:05:43.898Z [37974] squeal daemon: daemon stopped: squeal stop
+2026-11-21T10:05:43.904Z [37974] squeal daemon: coverage: 86 completed test files got no record since this daemon started: 86 closed (the writer closed first); the last: test/m470.test.ts: the writer closed first
+2026-11-21T10:05:43.912Z [37974] squeal daemon: code store: last minute: 441 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:05:43.972Z [37974] squeal daemon: daemon stopped: squeal stop

@@ -177,7 +177,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | `cmd.reach.s`, `res.reach.rss` | report | | `squeal reach --json` after the sessions: time and peak memory |
 | `ff.queued` | report | | Fast-forward cells: test files queued 3 s after it |
 | `ff.drainS` | ≤ 120 s | ≤ 600 s | Fast-forward cells: until no test file waits, read before each later step (so to within one step, 5–10 s) |
-| `ff.lateNotices` | 0 | ≤ 3 | Fast-forward cells: hook outputs after it that report late or queued results; issue 261's agent saw one almost every turn for 9 hours |
+| `ff.lateNotices` | 0 | ≤ 3 | Fast-forward cells: hook outputs after it that report its files as not run yet ("N of the M test files your edits affect have not run", with M at least 90% of what it queued); issue 261's agent saw one almost every turn for 9 hours |
 | `ff.editVerdict.p50` | ≤ 3 s | ≤ 10 s | Fast-forward cells: the agent's own edits after it until their verdict; incoming files must not push the agent's work back |
 | `ff.gitFailed` | 0 (gate) | | The fast-forward or rebase that git refused; the cell then measured no fast-forward |
 | `store.longWrites` | 0 | ≤ 3 | Writes the daemon logs as held over 250 ms (`LONG_WRITE_MS`) |

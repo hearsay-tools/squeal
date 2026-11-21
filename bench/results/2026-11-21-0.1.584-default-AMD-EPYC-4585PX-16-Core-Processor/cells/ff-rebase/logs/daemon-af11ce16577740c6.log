@@ -1,0 +1,21 @@
+2026-11-21T10:28:15.481Z [80144] squeal daemon: serving /home/user/results/cells/ff-rebase/work/wt0 on /home/user/results/cells/ff-rebase/work/run/squeal-af11ce16577740c6.sock
+2026-11-21T10:28:15.561Z [80144] squeal daemon: full integrity check: ok
+2026-11-21T10:28:50.070Z [80144] squeal daemon: busy, heap in use 64 MiB over twice the last live size of 32 MiB: a last-resort GC took private memory from 347 to 209 MiB in a 58 ms pause; 45 MiB of heap in use after it
+2026-11-21T10:29:11.432Z [80144] squeal daemon: code store: last minute: 1133 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:30:01.462Z [80144] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 186 to 183 MiB in a 17 ms pause
+2026-11-21T10:30:11.433Z [80144] squeal daemon: code store: last minute: 7 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:31:06.398Z [80144] squeal daemon: busy, heap in use 90 MiB over twice the last live size of 23 MiB: a last-resort GC took private memory from 352 to 191 MiB in a 47 ms pause; 30 MiB of heap in use after it
+2026-11-21T10:31:11.434Z [80144] squeal daemon: code store: last minute: 292 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:31:36.699Z [80144] squeal daemon: coverage: no result of run 75f9d8fb-aac6-4734-a09c-cee26848cc40 for test/m360.test.ts
+2026-11-21T10:31:36.700Z [80144] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 no-result (its run's result was not found at its key); the last: test/m360.test.ts: its run's result was not found at its key
+2026-11-21T10:31:36.705Z [80144] squeal daemon: coverage: no result of run 75f9d8fb-aac6-4734-a09c-cee26848cc40 for test/m371.test.ts
+2026-11-21T10:31:36.705Z [80144] squeal daemon: coverage: 2 completed test files got no record since this daemon started: 2 no-result (its run's result was not found at its key); the last: test/m371.test.ts: its run's result was not found at its key
+2026-11-21T10:31:36.707Z [80144] squeal daemon: coverage: no result of run 75f9d8fb-aac6-4734-a09c-cee26848cc40 for test/m372.test.ts
+2026-11-21T10:32:11.435Z [80144] squeal daemon: code store: last minute: 292 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:32:23.639Z [80144] squeal daemon: busy, heap in use 92 MiB over twice the last live size of 30 MiB: a last-resort GC took private memory from 364 to 226 MiB in a 99 ms pause; 29 MiB of heap in use after it
+2026-11-21T10:33:11.435Z [80144] squeal daemon: code store: last minute: 69 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:34:11.434Z [80144] squeal daemon: code store: last minute: 17 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:35:11.435Z [80144] squeal daemon: code store: last minute: 26 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:35:36.530Z [80144] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 315 to 201 MiB in a 42 ms pause
+2026-11-21T10:36:48.464Z [80144] squeal daemon: busy, heap in use 77 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 293 to 234 MiB in a 45 ms pause; 50 MiB of heap in use after it
+2026-11-21T10:37:11.435Z [80144] squeal daemon: code store: last minute: 449 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed

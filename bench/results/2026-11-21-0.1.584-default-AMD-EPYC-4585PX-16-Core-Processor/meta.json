@@ -1,0 +1,66 @@
+{
+  "startedAt": "2026-11-21T09:53:55.023Z",
+  "squealVersion": "0.1.584",
+  "plugins": [
+    {
+      "version": "0.1.584",
+      "label": "0.1.584"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD EPYC 4585PX 16-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.8,
+  "sha256MiBPerS": [
+    2452,
+    2449.3333333333335,
+    2435.6666666666665
+  ],
+  "loadavgAtStart": "0.51 0.17 0.06 1/390 7955",
+  "cells": [
+    {
+      "name": "ff",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ff": "cold",
+      "base": "ff",
+      "plugin": "0.1.584",
+      "rep": 1
+    },
+    {
+      "name": "ff-known",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ff": "known",
+      "base": "ff-known",
+      "plugin": "0.1.584",
+      "rep": 1
+    },
+    {
+      "name": "ff-load50",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "ff": "cold",
+      "base": "ff-load50",
+      "plugin": "0.1.584",
+      "rep": 1
+    },
+    {
+      "name": "ff-rebase",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ff": "cold",
+      "ffMode": "rebase",
+      "base": "ff-rebase",
+      "plugin": "0.1.584",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-21T10:37:18.670Z"
+}

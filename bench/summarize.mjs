@@ -235,7 +235,7 @@ export const METRICS = [
   },
   {
     id: "ff.lateNotices",
-    what: "Fast-forward: hook outputs after it that report late or queued results",
+    what: "Fast-forward: hook outputs after it that report its files as not run yet",
     unit: "",
     healthy: 0,
     warn: 3,
@@ -411,13 +411,14 @@ function ffValues(rows) {
   let drainS = INF;
   if (drained) drainS = drained.sinceFfMs / 1000;
   else if (quiet?.outcome === "settled") drainS = quiet.sinceFfMs / 1000;
-  const late = after.filter(
-    (r) =>
-      r.kind === "hook" &&
-      r.hook === "post-tool-batch" &&
-      r.text &&
-      /late|have not run|queued/i.test(r.text),
-  ).length;
+  // Notices about the fast-forward's files: "N of the M test files your edits affect have not
+  // run" where M covers what it queued. Notices about the agent's own few edits do not count.
+  const queued = ff.testFiles?.pending ?? 0;
+  const late = after.filter((r) => {
+    if (r.kind !== "hook" || r.hook !== "post-tool-batch" || !r.text || queued === 0) return false;
+    const m = /(\d+) of the (\d+) test files/.exec(r.text);
+    return m !== null && Number(m[1]) > 0 && Number(m[2]) >= 0.9 * queued;
+  }).length;
   const verdicts = after
     .filter((r) => r.kind === "step" && r.type === "benign")
     .map((r) => (r.late ? INF : r.verdictMs));

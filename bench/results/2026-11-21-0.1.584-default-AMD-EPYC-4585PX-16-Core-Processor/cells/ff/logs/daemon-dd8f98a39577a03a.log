@@ -1,0 +1,18 @@
+2026-11-21T09:54:43.005Z [12287] squeal daemon: serving /home/user/results/cells/ff/work/wt0 on /home/user/results/cells/ff/work/run/squeal-dd8f98a39577a03a.sock
+2026-11-21T09:54:43.045Z [12287] squeal daemon: full integrity check: ok
+2026-11-21T09:55:40.796Z [12287] squeal daemon: code store: last minute: 1127 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T09:56:20.834Z [12287] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 424 to 248 MiB in a 31 ms pause
+2026-11-21T09:56:40.797Z [12287] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T09:57:25.298Z [12287] squeal daemon: busy, heap in use 124 MiB over twice the last live size of 23 MiB: a last-resort GC took private memory from 426 to 276 MiB in a 46 ms pause; 33 MiB of heap in use after it
+2026-11-21T09:57:40.797Z [12287] squeal daemon: code store: last minute: 335 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T09:57:57.408Z [12287] squeal daemon: coverage: no result of run a186e96c-6f49-444d-9e1d-416d308d80a7 for test/m360.test.ts
+2026-11-21T09:57:57.408Z [12287] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 no-result (its run's result was not found at its key); the last: test/m360.test.ts: its run's result was not found at its key
+2026-11-21T09:58:32.079Z [12287] squeal daemon: busy, heap in use 73 MiB over twice the last live size of 33 MiB: a last-resort GC took private memory from 443 to 297 MiB in a 31 ms pause; 29 MiB of heap in use after it
+2026-11-21T09:58:40.797Z [12287] squeal daemon: code store: last minute: 264 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T09:59:40.796Z [12287] squeal daemon: code store: last minute: 34 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:00:40.798Z [12287] squeal daemon: code store: last minute: 35 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:00:44.678Z [12287] squeal daemon: long write: store.sqlite write lock held 287 ms by reconcileBatch < process.processTicksAndRejections < #pass; 8005 rows written
+2026-11-21T10:01:40.798Z [12287] squeal daemon: code store: last minute: 11 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T10:01:50.857Z [12287] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 339 to 217 MiB in a 24 ms pause
+2026-11-21T10:03:00.228Z [12287] squeal daemon: busy, heap in use 77 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 309 to 249 MiB in a 79 ms pause; 49 MiB of heap in use after it
+2026-11-21T10:03:19.540Z [12287] squeal daemon: long write: store.sqlite write lock held 256 ms by #write < #record; 6203 rows written

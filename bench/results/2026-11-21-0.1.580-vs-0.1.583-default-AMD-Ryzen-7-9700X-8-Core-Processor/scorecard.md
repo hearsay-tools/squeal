@@ -133,7 +133,7 @@ Raw numbers, mean per cell and version (Δ% against the first version):
 | Edit every test imports until the whole suite is current (`session.broad.verdict`) | ≤ 180 | ≤ 300 | 160 s ✅ | 159 s ✅ | 179 s ✅ | 168 s ✅ | 216 s ⚠️ | 230 s ⚠️ |
 | Fast-forward: test files queued 3 s after it (`ff.queued`) | report |  | n/a | n/a | n/a | n/a | n/a | n/a |
 | Fast-forward: until no test file waits (polled before each later step) (`ff.drainS`) | ≤ 120 | ≤ 600 | n/a | n/a | n/a | n/a | n/a | n/a |
-| Fast-forward: hook outputs after it that report late or queued results (`ff.lateNotices`) | ≤ 0 | ≤ 3 | n/a | n/a | n/a | n/a | n/a | n/a |
+| Fast-forward: hook outputs after it that report its files as not run yet (`ff.lateNotices`) | ≤ 0 | ≤ 3 | n/a | n/a | n/a | n/a | n/a | n/a |
 | Fast-forward: the agent's own edits after it until their verdict (median) (`ff.editVerdict.p50`) | ≤ 3000 | ≤ 10000 | n/a | n/a | n/a | n/a | n/a | n/a |
 | **Resources** | | |  |  |  |  |  |  |
 | CPU with no edits: the busiest daemon, plus the store process (`res.idleCpu.maxPct`) | ≤ 1 | ≤ 5 | 2.2 % core ⚠️ | 1.4 % core ⚠️ | 5.0 % core ⚠️ | 3.5 % core ⚠️ | 1.1 % core ⚠️ | 1.7 % core ⚠️ |

@@ -1,0 +1,7 @@
+[2026-11-21T10:13:31.585Z] ff-load50: plain vitest run
+[2026-11-21T10:14:19.054Z] ff-load50: squeal start + run --all
+[2026-11-21T10:15:29.346Z] ff-load50: upstream commit: 125 modules, cold
+[2026-11-21T10:15:29.507Z] ff-load50: idle
+[2026-11-21T10:16:29.519Z] ff-load50: sessions
+[2026-11-21T10:27:29.487Z] ff-load50: collect
+[2026-11-21T10:27:32.860Z] ff-load50: done

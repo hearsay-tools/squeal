@@ -1,0 +1,7 @@
+[2026-11-21T09:54:10.681Z] ff: plain vitest run
+[2026-11-21T09:54:40.569Z] ff: squeal start + run --all
+[2026-11-21T09:55:20.331Z] ff: upstream commit: 125 modules, cold
+[2026-11-21T09:55:20.400Z] ff: idle
+[2026-11-21T09:56:20.405Z] ff: sessions
+[2026-11-21T10:03:28.963Z] ff: collect
+[2026-11-21T10:03:32.444Z] ff: done
