@@ -59,7 +59,7 @@ const tree: TreeCpu = { read: () => 0, reset() {} };
 /** The host's busy CPUs, which the test sets; each test starts at 0.3. */
 let host: HostCpu & { cores: number };
 
-function daemon(id: string, cpus = 12): PermitPool {
+function daemon(id: string, cpus = 12, refreshMs?: number): PermitPool {
   const pool = createPermitPool({
     dir,
     owner: { pid: process.pid, worktreeId: id },
@@ -68,6 +68,7 @@ function daemon(id: string, cpus = 12): PermitPool {
     cores: tree,
     host,
     now,
+    ...(refreshMs === undefined ? {} : { refreshMs }),
   });
   pools.push(pool);
   return pool;
@@ -151,6 +152,22 @@ describe("the quiet's demand in the mark (row 011-424)", () => {
     expect(markOf("q")).toMatchObject({ want: 30, grant: 0 });
     end();
     expect(markOf("q")).toMatchObject({ want: 30, grant: 0 });
+  });
+
+  test("ended while an edit's tier runs, no refresh of the edit's mark states it again", async () => {
+    // Review 0.1.584 B2: the quiet started again under an edit's tier, which runs without a lease.
+    const quiet = daemon("q", 12, 10);
+    quiet.expectBacklog(6);
+    const end = quiet.running(4);
+    quiet.expectBacklog(0);
+    expect(markOf("q")).toMatchObject({ want: 0, grant: 0 });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(markOf("q")).toMatchObject({ want: 0, grant: 0 });
+    // A peer is offered the whole ceiling again once the edit's tree is measured idle.
+    const peer = daemon("peer");
+    await expect.poll(() => peer.offer(9, "fast", "backlog")).toBe(9);
+    end();
+    expect(markOf("q")).toBeUndefined();
   });
 
   test("ending it keeps a refused waiter's mark", () => {

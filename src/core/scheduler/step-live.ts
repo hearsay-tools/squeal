@@ -11,6 +11,7 @@ import { type InstallStamps, refreshInstall } from "./install-stamp.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
 import { nextOverrun } from "./overrun.js";
+import { quietDemand } from "./quiet.js";
 import type { RunnerWork } from "./runner-work.js";
 import type { SlowRelease } from "./slow-release.js";
 import type { SlowRun } from "./slow-tier.js";
@@ -134,6 +135,7 @@ export class StepLive {
    */
   step(events: readonly SchedulerEvent[], reads: Reads | null): Step {
     const turn = { at: this.host.now(), events, reads, ports: this.#ports };
+    this.#stateQuietDemand(turn.at);
     // Review 0.1.524 B2: the steps' total as of that reading, which the step's wake `at` is in.
     const mark = this.host.stepsTotal();
     const decided = { ...step(turn), mark };
@@ -149,6 +151,18 @@ export class StepLive {
     for (const decision of decided.decisions)
       if (!inTurn(decision)) reads = { ...reads, ...(await this.#carryAfter(decision)) };
     return reads;
+  }
+
+  /**
+   * Row 011-424 (review 0.1.584 B2): the catch-up each wait for quiet holds
+   * in its last 30 s goes in the pool mark at each step, before the step
+   * chooses between a start, a wait on claims and a wait for quiet; 0, as
+   * after an edit that starts the wait again, withdraws it. The quiet's
+   * wake (`quietSleepMs`) keeps its place after the claims in that choice.
+   */
+  #stateQuietDemand(at: EpochMs): void {
+    const { context, ledger } = this.host.started();
+    context.capacity?.expectBacklog(quietDemand(context, ledger, at));
   }
 
   /** Tells each listener the step `decided` with `reads`. */

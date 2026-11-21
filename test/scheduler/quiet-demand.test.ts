@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
-import type { TierCapacity } from "../../src/core/scheduler/capacity.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
@@ -11,8 +10,6 @@ import {
   QUIET_DEMAND_LEAD_MS,
   quietDemand,
 } from "../../src/core/scheduler/quiet.js";
-import type { CutFiles } from "../../src/core/scheduler/sharing.js";
-import { liveView } from "../../src/core/scheduler/tier-live.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
@@ -24,11 +21,11 @@ import { freshStore } from "../state/helpers.js";
 
 /*
  * Row 011-424 (spec 011 C4 step 5 and C10 as amended): while a lane's wait
- * for catch-up holds files and ends within 30 s, each look at the waits
- * states them, at most 64, in the pool mark (`TierCapacity.expectBacklog`).
- * An edit that starts the wait again withdraws them at the next look, and
- * so does the wait's end. The pool's side is
- * `test/capacity/quiet-demand.test.ts`.
+ * for catch-up holds files and ends within 30 s, each step states them, at
+ * most 64, in the pool mark (`TierCapacity.expectBacklog`). An edit that
+ * starts the wait again withdraws them at the next step, and so does the
+ * wait's end. The pool's side is `test/capacity/quiet-demand.test.ts`; the
+ * step's, through the live scheduler, `quiet-demand-live.test.ts`.
  */
 
 const WT = "wt-011-424" as WorktreeId;
@@ -45,8 +42,6 @@ function setup() {
   liveDaemon(store, WT);
   const at = { now: T0 };
   const quiet = new BacklogQuiet();
-  const stated: number[] = [];
-  const capacity = { expectBacklog: (files: number) => stated.push(files) };
   const context = {
     root: "/repo/wt-011-424",
     store,
@@ -69,18 +64,10 @@ function setup() {
       endRun: () => {},
     },
     quiet,
-    capacity: capacity as unknown as TierCapacity,
   } as unknown as SchedulerContext;
   const ledger = new Ledger(context);
-  /** One pump look at the waits, as the tier plan's idle answer makes it; what it stated. */
-  const look = (): number | undefined => {
-    const view = liveView(context, ledger, {
-      busy: () => new Set(),
-      cut: { cutPastEstimate: () => false } as unknown as CutFiles,
-    });
-    view.quietWakeMs(at.now as EpochMs);
-    return stated.at(-1);
-  };
+  /** What a step states for the waits at the clock's now (`StepLive`, review 0.1.584 B2). */
+  const look = () => quietDemand(context, ledger, at.now as EpochMs);
   return { ledger, context, quiet, at, look };
 }
 
