@@ -119,6 +119,25 @@ export function aliasCandidates(aliases: PathAliases, specifier: string): string
   return best.substitutions.map((s) => s.replace("*", star));
 }
 
+/**
+ * Row 018-73 (review 0.1.587 B1): the specifier tsx resolves, its `?query`
+ * cut off before alias matching (`getSpecifierMetadataIndex`). An `import`
+ * of a path or URL loses its `?query` and `#hash`; a bare `import` (`#hash`
+ * is part of `#imports` and package names) and any `require`
+ * (`preserveQuery`) only the `?query`. A `data:` URL stays whole.
+ */
+export function tsxSpecifier(specifier: string, kind: "import" | "require"): string {
+  if (/^data:/i.test(specifier)) return specifier;
+  const query = specifier.indexOf("?");
+  const fragment = specifier.indexOf("#");
+  const path = isAbsolute(specifier) || isRelative(specifier) || URL_LIKE.test(specifier);
+  const cut =
+    kind === "import" && path && fragment !== -1 && (query === -1 || fragment < query)
+      ? fragment
+      : query;
+  return cut === -1 ? specifier : specifier.slice(0, cut);
+}
+
 /** tsx 4's `isRelativePath`: `./`, `../`, or any `..` start. */
 const isRelative = (s: string) => s[0] === "." && (s[1] === "/" || s[1] === "." || s[2] === "/");
 

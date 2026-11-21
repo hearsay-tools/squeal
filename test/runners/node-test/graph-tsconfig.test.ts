@@ -10,6 +10,7 @@ import {
   compileAliases,
   parseJsonc,
   readTsconfigPaths,
+  tsxSpecifier,
 } from "../../../src/runners/node-test/graph/tsconfig.js";
 
 /**
@@ -159,6 +160,26 @@ describe("node-test graph: the alias targets tsx tries (row 018-66)", () => {
     }
     expect(aliasCandidates(aliases, "~/util")).toEqual([join(root, "src/util")]);
     expect(aliasCandidates(aliases, "util/x")).toEqual([join(root, "src/util/x")]);
+  });
+
+  it("matches the specifier tsx cuts at its query (review 0.1.587 B1)", () => {
+    const cases: [string, "import" | "require", string][] = [
+      ["@dep?q=1", "import", "@dep"],
+      ["@dep?q=1#h", "import", "@dep"],
+      ["@dep#frag", "import", "@dep#frag"],
+      ["#dep?q=1", "import", "#dep"],
+      ["./a.ts#h?q", "import", "./a.ts"],
+      ["./a.ts?q#h", "import", "./a.ts"],
+      ["/a.ts#h", "import", "/a.ts"],
+      ["file:///a.ts#h", "import", "file:///a.ts"],
+      ["./a.cjs#h", "require", "./a.cjs#h"],
+      ["@dep?q=1", "require", "@dep"],
+      ["data:text/javascript,x?y#z", "import", "data:text/javascript,x?y#z"],
+      ["@dep", "import", "@dep"],
+    ];
+    for (const [specifier, kind, cut] of cases) {
+      expect(tsxSpecifier(specifier, kind), `${kind} ${specifier}`).toBe(cut);
+    }
   });
 
   it("is null for a chain with neither paths nor baseUrl", () => {

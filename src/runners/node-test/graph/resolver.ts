@@ -11,6 +11,7 @@ import {
   parseJsonc,
   readTsconfigPaths,
   type TsconfigPaths,
+  tsxSpecifier,
 } from "./tsconfig.js";
 
 export type EdgeKind = "import" | "require";
@@ -255,7 +256,8 @@ export function createResolver(
       missingDependencies: new Set<string>(),
       contextDependencies: new Set<string>(),
     };
-    const target = targetOf(specifier, from, kind, config?.aliases ?? null, context);
+    const asked = tsx ? tsxSpecifier(specifier, kind) : specifier;
+    const target = targetOf(asked, from, kind, config?.aliases ?? null, context);
     if (target === null) return BUILTIN;
     // `symlinks: true` already gives the target's real path.
     const path = target === false ? null : target;
@@ -271,12 +273,13 @@ export function createResolver(
       path === null
         ? [...context.missingDependencies].filter((p) => inWorktree(p) && !isDirectory(p))
         : [];
-    return { path, builtin: false, reads: [...reads], candidates, pair: pairOf(specifier, path) };
+    return { path, builtin: false, reads: [...reads], candidates, pair: pairOf(asked, path) };
   }
 
   /**
-   * As tsx resolves: each alias target first, then the specifier as written;
-   * `null` for a builtin no alias target shadows.
+   * As tsx resolves: each alias target first, then the specifier (under tsx
+   * without its query, `tsxSpecifier`); `null` for a builtin no alias target
+   * shadows.
    */
   function targetOf(
     specifier: string,
