@@ -370,7 +370,7 @@ In cezar's newest merge-group run (44808547913), 583 of 1,749 test files were le
 
 ### D30. Endpoint hashes in `ci record`
 
-`squeal ci record` hashes the checkout twice in its own process: before it starts the command, and after every process of the command has exited. It hashes every path the commit's tree holds, also when it is gone from disk, and the listing of each directory the tree holds (2026-11-20, row 018-57: untracked paths are not hashed; they are absent at the commit, so D33 never certifies them), as the key holds them (`hereOf`: a file by its blob id, a listing by its names hash). It runs no `git status` and starts no other program for this. A path whose two hashes are equal is **stable**. Cost measured: about 1 s per end for cezar's 4,967 tracked files (24 MB) at a host load of about 40. The time joins the cost line of row 018-29.
+`squeal ci record` hashes the checkout twice in its own process: before it starts the command, and after every process of the command has exited. It hashes every path the commit's tree holds, also when it is gone from disk, and the listing of each directory the tree holds (2026-11-20, row 018-57: untracked paths are not hashed; they are absent at the commit, so D33 never certifies them), as the key holds them (`hereOf`: a file by its blob id, a listing by its names hash). It runs no `git status` and starts no other program for this. A path whose two hashes are equal is **stable**. Cost measured: about 1 s per end for cezar's 4,967 tracked files (24 MB) at a host load of about 40. The time joins the cost line of row 018-29. Each round of hashing has a limit (2026-11-21, row 018-61): it gives up once its time passes the larger of 10 s and four times the time all paths would take at the rate measured so far; a stalled read stops the measured rate, so slow progress finishes and a stall does not. Past the limit, `ci record` reads no further path, prints one note, starts the command (or writes the parts) without endpoint hashes, and the export keeps D9 alone (D20.2).
 
 ### D31. Touched paths
 
@@ -422,4 +422,4 @@ Acceptance in cezar: the first merge-group run after the release exports at leas
 ## Open questions
 
 1. The cost of listing hashes and the size of a format 6 part on a real shard. The record row measures both on cezar's shard 3 fixture shape.
-2. Whether the gate (`squeal code --base --parts`) uses the rule as is. `FileReuse` is shared, so it does unless the review finds a difference.
+2. ~~Whether the gate (`squeal code --base --parts`) uses the rule as is.~~ Answered 2026-11-21 (row 018-64): it does; the gate now passes the commit tree to `FileReuse`.
