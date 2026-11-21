@@ -171,8 +171,12 @@ async function clearFolder(
  * keeps whole, since its tree failed the identity check.
  */
 export function identityFailedNote(folder: AbsolutePath): string {
-  return `squeal: kept ${folder}: its tree is not a commit worktree Squeal made; check it and remove it by hand`;
+  return `squeal: kept ${folder}: ${IDENTITY_FAILED}`;
 }
+
+/** Review wave-23 N1: why Squeal keeps such a folder, for the sweep and `squeal ps` alike. */
+export const IDENTITY_FAILED =
+  "its tree is not a commit worktree Squeal made; check it and remove it by hand";
 
 /** The files a commit worktree's folder holds beside its tree: marker, run folder, install lock. */
 function ownFile(name: string): boolean {
