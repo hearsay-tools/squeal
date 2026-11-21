@@ -1,0 +1,95 @@
+{
+  "name": "load-50@0.1.586",
+  "files": 500,
+  "worktrees": 1,
+  "load": 50,
+  "ageRounds": 0,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "phases": {
+    "plainVitest": {
+      "ms": 43249.033837,
+      "code": 0
+    },
+    "startMain": {
+      "ms": 530.583286000001,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/load-50@0.1.586/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `sq"
+    },
+    "runAll": {
+      "ms": 62519.108469000006,
+      "code": 0,
+      "tail": "w\nCheckpoint b456dc22-09d8-4dec-9c9c-8bf93b093c57 started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 181 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.9689344076257733
+    },
+    "startOthers": [],
+    "idle": {
+      "ms": 60000,
+      "daemons": 1,
+      "storeProcessCpuPct": 0.4,
+      "perDaemonCpuPct": [
+        1.3166666666666662
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 924953.726274,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.560970683004351,
+    "sessionDaemonCpuS": [
+      21.990000000000002
+    ],
+    "edits": 19,
+    "sessionStoreProcessCpuS": 1.15,
+    "reach": {
+      "ms": 290.01789700007066,
+      "code": 0,
+      "peakRssBytes": 127217664
+    }
+  },
+  "store": {
+    "storeBytes": 7180288,
+    "walBytes": 6748592,
+    "codeBytes": 7286784,
+    "runsDirs": 38,
+    "rows": {
+      "results": 7728,
+      "runs": 38,
+      "revisions": 19,
+      "transitions": 204
+    },
+    "longWrites": 5,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      283,
+      364,
+      426,
+      358,
+      268
+    ]
+  },
+  "storeProcess": {
+    "seen": 1,
+    "cpuS": 3,
+    "maxRssBytes": 159535104,
+    "written": 1624,
+    "failed": 0,
+    "queueWaitMaxMs": 5,
+    "busyMs": 4401,
+    "stops": 0,
+    "failedLines": 0,
+    "relay": {
+      "sent": 1624,
+      "direct": 1,
+      "failed": 0
+    }
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 521695232,
+    "maxTreeBytes": 1195732992
+  }
+}

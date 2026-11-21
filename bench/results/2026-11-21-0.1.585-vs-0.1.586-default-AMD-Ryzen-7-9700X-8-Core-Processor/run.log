@@ -1,0 +1,203 @@
+[2026-11-21T14:23:18.772Z] machine AMD Ryzen 7 9700X 8-Core Processor x4, sha256 2280/2417/2447 MiB/s
+[2026-11-21T14:23:18.772Z] template 500 files
+[2026-11-21T14:23:20.325Z] template 2000 files
+[2026-11-21T14:23:21.604Z] cell ref@0.1.585: 500 files, 1 worktrees, 0% load
+[2026-11-21T14:40:10.292Z] cell ref@0.1.585 exit 0 in 16.8 min
+[2026-11-21T14:40:10.292Z] cell ref@0.1.586: 500 files, 1 worktrees, 0% load
+[2026-11-21T14:56:59.218Z] cell ref@0.1.586 exit 0 in 16.8 min
+[2026-11-21T14:56:59.218Z] cell size-l@0.1.586: 2000 files, 1 worktrees, 0% load
+[2026-11-21T15:16:22.557Z] cell size-l@0.1.586 exit 0 in 19.4 min
+[2026-11-21T15:16:22.574Z] cell size-l@0.1.585: 2000 files, 1 worktrees, 0% load
+[2026-11-21T15:36:11.016Z] cell size-l@0.1.585 exit 0 in 19.8 min
+[2026-11-21T15:36:11.017Z] cell wt-3@0.1.585: 500 files, 3 worktrees, 0% load
+[2026-11-21T15:52:37.622Z] cell wt-3@0.1.585 exit 0 in 16.4 min
+[2026-11-21T15:52:37.622Z] cell wt-3@0.1.586: 500 files, 3 worktrees, 0% load
+[2026-11-21T16:08:59.326Z] cell wt-3@0.1.586 exit 0 in 16.4 min
+[2026-11-21T16:08:59.330Z] cell load-50@0.1.586: 500 files, 1 worktrees, 50% load
+[2026-11-21T16:27:19.590Z] cell load-50@0.1.586 exit 0 in 18.3 min
+[2026-11-21T16:27:19.590Z] cell load-50@0.1.585: 500 files, 1 worktrees, 50% load
+[2026-11-21T16:45:48.084Z] cell load-50@0.1.585 exit 0 in 18.5 min
+# Squeal performance scorecard
+
+Squeal 0.1.585 vs 0.1.586 · Node v24.22.1 · AMD Ryzen 7 9700X 8-Core Processor · 4 vCPU · 7.8 GiB · SHA-256 2447 MiB/s · 2026-11-21T14:23:09.769Z
+
+**Correctness: PASS** (no wrong verdict, missed, false or misaddressed notice, hook over its 2 s timeout or failed session in any cell)
+
+**Overall score: 56 / 100** (mean of the cell scores; a cell is the mean of its 5 areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)
+
+| Area | Hooks | Commands | Verdicts | Resources | Store |
+|---|---:|---:|---:|---:|---:|
+| All cells | 69 | 86 | 36 | 38 | 53 |
+
+| Cell | Files | Worktrees | Load | Aged rounds | Correct | Score | Hooks | Commands | Verdicts | Resources | Store |
+|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|
+| ref@0.1.585 | 500 | 1 | 0% | 0 | ✅ | 61 | 75 | 88 | 40 | 50 | 50 |
+| ref@0.1.586 | 500 | 1 | 0% | 0 | ✅ | 66 | 75 | 88 | 40 | 50 | 75 |
+| size-l@0.1.585 | 2000 | 1 | 0% | 0 | ✅ | 44 | 50 | 75 | 20 | 25 | 50 |
+| size-l@0.1.586 | 2000 | 1 | 0% | 0 | ✅ | 37 | 50 | 63 | 20 | 0 | 50 |
+| wt-3@0.1.585 | 500 | 3 | 0% | 0 | ✅ | 60 | 75 | 100 | 50 | 25 | 50 |
+| wt-3@0.1.586 | 500 | 3 | 0% | 0 | ✅ | 67 | 75 | 100 | 60 | 50 | 50 |
+| load-50@0.1.585 | 500 | 1 | 50% | 0 | ✅ | 59 | 75 | 88 | 30 | 50 | 50 |
+| load-50@0.1.586 | 500 | 1 | 50% | 0 | ✅ | 59 | 75 | 88 | 30 | 50 | 50 |
+
+## 0.1.585 compared with 0.1.586 (same machine, cells alternated)
+
+| Cell | Version | Runs | Correct | Score (range) | Δ | Hooks Δ | Commands Δ | Verdicts Δ | Resources Δ | Store Δ |
+|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| ref | 0.1.585 | 1 | ✅ | 61 |  |  |  |  |  |  |
+| ref | 0.1.586 | 1 | ✅ | 66 | +5 | +0 | +0 | +0 | +0 | +25 |
+| size-l | 0.1.585 | 1 | ✅ | 44 |  |  |  |  |  |  |
+| size-l | 0.1.586 | 1 | ✅ | 37 | -8 | +0 | -13 | +0 | -25 | +0 |
+| wt-3 | 0.1.585 | 1 | ✅ | 60 |  |  |  |  |  |  |
+| wt-3 | 0.1.586 | 1 | ✅ | 67 | +7 | +0 | +0 | +10 | +25 | +0 |
+| load-50 | 0.1.585 | 1 | ✅ | 59 |  |  |  |  |  |  |
+| load-50 | 0.1.586 | 1 | ✅ | 59 | +0 | +0 | +0 | +0 | +0 | +0 |
+
+Raw numbers, mean per cell and version (Δ% against the first version):
+
+| Cell | Metric | 0.1.585 | 0.1.586 | Δ% |
+|---|---|---:|---:|---:|
+| ref | Hook before each tool call (slowest 5%) | 113 ms | 118 ms | +4% |
+| ref | Hook after each batch of tool calls (slowest 5%) | 128 ms | 178 ms | +39% |
+| ref | Hook at session start (slowest) | 90 ms | 91 ms | +1% |
+| ref | `squeal status` (slowest 5%) | 210 ms | 203 ms | -4% |
+| ref | Edit that breaks a test until the agent is told (median) | 1205 ms | 1301 ms | +8% |
+| ref | Edits with a verdict within the 60 s agents wait | 50 % | 50 % | +0% |
+| ref | CPU with no edits: the busiest daemon, plus the store process | 1.5 % core | 2.0 % core | +37% |
+| ref | CPU per edit: daemons with their test runs, plus the store process | 1.3 s | 1.3 s | -2% |
+| ref | Daemon memory, peak | 507 MiB | 524 MiB | +3% |
+| ref | Store process memory, peak | 162 MiB | 159 MiB | -2% |
+| ref | Store writes that held the lock over 250 ms | 5 | 3 | -40% |
+| ref | Longest logged lock hold (only holds over 250 ms are logged) | 402 ms | 311 ms | -23% |
+| ref | Logged lock holds, total | 1.7 s | 0.9 s | -47% |
+| ref | `squeal reach` (reads every stored module list) | 0.3 s | 0.2 s | -8% |
+| ref | `squeal reach` memory, peak | 120 MiB | 128 MiB | +7% |
+| size-l | Hook before each tool call (slowest 5%) | 251 ms | 221 ms | -12% |
+| size-l | Hook after each batch of tool calls (slowest 5%) | 643 ms | 775 ms | +21% |
+| size-l | Hook at session start (slowest) | 342 ms | 228 ms | -33% |
+| size-l | `squeal status` (slowest 5%) | 361 ms | 396 ms | +10% |
+| size-l | Edit that breaks a test until the agent is told (median) | 1695 ms | 1869 ms | +10% |
+| size-l | Edits with a verdict within the 60 s agents wait | 72 % | 72 % | +0% |
+| size-l | CPU with no edits: the busiest daemon, plus the store process | 4.9 % core | 5.1 % core | +4% |
+| size-l | CPU per edit: daemons with their test runs, plus the store process | 4.3 s | 3.9 s | -11% |
+| size-l | Daemon memory, peak | 900 MiB | 910 MiB | +1% |
+| size-l | Store process memory, peak | 240 MiB | 262 MiB | +9% |
+| size-l | Store writes that held the lock over 250 ms | 17 | 20 | +18% |
+| size-l | Longest logged lock hold (only holds over 250 ms are logged) | 824 ms | 750 ms | -9% |
+| size-l | Logged lock holds, total | 8.1 s | 8.1 s | -0% |
+| size-l | `squeal reach` (reads every stored module list) | 0.8 s | 1.1 s | +30% |
+| size-l | `squeal reach` memory, peak | 224 MiB | 233 MiB | +4% |
+| wt-3 | Hook before each tool call (slowest 5%) | 146 ms | 99 ms | -32% |
+| wt-3 | Hook after each batch of tool calls (slowest 5%) | 186 ms | 151 ms | -19% |
+| wt-3 | Hook at session start (slowest) | 136 ms | 117 ms | -14% |
+| wt-3 | `squeal status` (slowest 5%) | 248 ms | 196 ms | -21% |
+| wt-3 | Edit that breaks a test until the agent is told (median) | 1245 ms | 1218 ms | -2% |
+| wt-3 | Edits with a verdict within the 60 s agents wait | 69 % | 69 % | +0% |
+| wt-3 | CPU with no edits: the busiest daemon, plus the store process | 6.2 % core | 4.1 % core | -33% |
+| wt-3 | CPU per edit: daemons with their test runs, plus the store process | 0.5 s | 0.4 s | -13% |
+| wt-3 | Daemon memory, peak | 476 MiB | 474 MiB | -0% |
+| wt-3 | Store process memory, peak | 187 MiB | 196 MiB | +5% |
+| wt-3 | Store writes that held the lock over 250 ms | 11 | 8 | -27% |
+| wt-3 | Longest logged lock hold (only holds over 250 ms are logged) | 538 ms | 450 ms | -16% |
+| wt-3 | Logged lock holds, total | 4.0 s | 2.4 s | -39% |
+| wt-3 | `squeal reach` (reads every stored module list) | 0.3 s | 0.2 s | -8% |
+| wt-3 | `squeal reach` memory, peak | 122 MiB | 129 MiB | +6% |
+| load-50 | Hook before each tool call (slowest 5%) | 95 ms | 116 ms | +22% |
+| load-50 | Hook after each batch of tool calls (slowest 5%) | 155 ms | 180 ms | +17% |
+| load-50 | Hook at session start (slowest) | 102 ms | 81 ms | -21% |
+| load-50 | `squeal status` (slowest 5%) | 196 ms | 205 ms | +5% |
+| load-50 | Edit that breaks a test until the agent is told (median) | 1244 ms | 1253 ms | +1% |
+| load-50 | Edits with a verdict within the 60 s agents wait | 50 % | 50 % | +0% |
+| load-50 | CPU with no edits: the busiest daemon, plus the store process | 1.9 % core | 1.7 % core | -8% |
+| load-50 | CPU per edit: daemons with their test runs, plus the store process | 1.2 s | 1.2 s | +2% |
+| load-50 | Daemon memory, peak | 462 MiB | 498 MiB | +8% |
+| load-50 | Store process memory, peak | 163 MiB | 152 MiB | -6% |
+| load-50 | Store writes that held the lock over 250 ms | 6 | 5 | -17% |
+| load-50 | Longest logged lock hold (only holds over 250 ms are logged) | 664 ms | 426 ms | -36% |
+| load-50 | Logged lock holds, total | 2.5 s | 1.7 s | -32% |
+| load-50 | `squeal reach` (reads every stored module list) | 0.3 s | 0.3 s | +8% |
+| load-50 | `squeal reach` memory, peak | 122 MiB | 121 MiB | -1% |
+
+## What is not healthy
+
+- **Hooks · Hook before each tool call (slowest 5%)** (healthy ≤ 80 ms): 8 of 8 cells: ref@0.1.585 113 ms ⚠️, ref@0.1.586 118 ms ⚠️, size-l@0.1.585 251 ms ❌, size-l@0.1.586 221 ms ❌, wt-3@0.1.585 146 ms ⚠️, wt-3@0.1.586 99 ms ⚠️, load-50@0.1.585 95 ms ⚠️, load-50@0.1.586 116 ms ⚠️
+- **Hooks · Hook after each batch of tool calls (slowest 5%)** (healthy ≤ 80 ms): 8 of 8 cells: ref@0.1.585 128 ms ⚠️, ref@0.1.586 178 ms ⚠️, size-l@0.1.585 643 ms ❌, size-l@0.1.586 775 ms ❌, wt-3@0.1.585 186 ms ⚠️, wt-3@0.1.586 151 ms ⚠️, load-50@0.1.585 155 ms ⚠️, load-50@0.1.586 180 ms ⚠️
+- **Commands · `squeal status` (slowest 5%)** (healthy ≤ 300 ms): 2 of 8 cells: size-l@0.1.585 361 ms ⚠️, size-l@0.1.586 396 ms ⚠️
+- **Commands · `squeal status --json` (slowest 5%)** (healthy ≤ 300 ms): 2 of 8 cells: size-l@0.1.585 400 ms ⚠️, size-l@0.1.586 459 ms ⚠️
+- **Commands · Full run with Squeal, as a multiple of plain Vitest** (healthy ≤ 1.3 x): 5 of 8 cells: ref@0.1.585 1.31 x ⚠️, ref@0.1.586 1.39 x ⚠️, size-l@0.1.586 1.42 x ⚠️, load-50@0.1.585 1.57 x ⚠️, load-50@0.1.586 1.45 x ⚠️
+- **Verdicts · Edit until `status --wait` gives a verdict (median)** (healthy ≤ 3000 ms): 6 of 8 cells: ref@0.1.585 late ❌, ref@0.1.586 late ❌, size-l@0.1.585 late ❌, size-l@0.1.586 late ❌, load-50@0.1.585 late ❌, load-50@0.1.586 late ❌
+- **Verdicts · Edit until `status --wait` gives a verdict (slowest 5%)** (healthy ≤ 10000 ms): 8 of 8 cells: ref@0.1.585 late ❌, ref@0.1.586 late ❌, size-l@0.1.585 late ❌, size-l@0.1.586 late ❌, wt-3@0.1.585 late ❌, wt-3@0.1.586 late ❌, load-50@0.1.585 late ❌, load-50@0.1.586 late ❌
+- **Verdicts · Edits with a verdict within the 60 s agents wait** (healthy ≥ 95 %): 8 of 8 cells: ref@0.1.585 50 % ❌, ref@0.1.586 50 % ❌, size-l@0.1.585 72 % ❌, size-l@0.1.586 72 % ❌, wt-3@0.1.585 69 % ❌, wt-3@0.1.586 69 % ❌, load-50@0.1.585 50 % ❌, load-50@0.1.586 50 % ❌
+- **Verdicts · Edit every test imports until the whole suite is current** (healthy ≤ 180 s): 5 of 8 cells: size-l@0.1.585 late ❌, size-l@0.1.586 late ❌, wt-3@0.1.585 195 s ⚠️, load-50@0.1.585 237 s ⚠️, load-50@0.1.586 226 s ⚠️
+- **Resources · CPU with no edits: the busiest daemon, plus the store process** (healthy ≤ 1 % core): 8 of 8 cells: ref@0.1.585 1.5 % core ⚠️, ref@0.1.586 2.0 % core ⚠️, size-l@0.1.585 4.9 % core ⚠️, size-l@0.1.586 5.1 % core ❌, wt-3@0.1.585 6.2 % core ❌, wt-3@0.1.586 4.1 % core ⚠️, load-50@0.1.585 1.9 % core ⚠️, load-50@0.1.586 1.7 % core ⚠️
+- **Resources · Daemon memory, peak** (healthy ≤ 300 MiB): 8 of 8 cells: ref@0.1.585 507 MiB ⚠️, ref@0.1.586 524 MiB ⚠️, size-l@0.1.585 900 MiB ❌, size-l@0.1.586 910 MiB ❌, wt-3@0.1.585 476 MiB ⚠️, wt-3@0.1.586 474 MiB ⚠️, load-50@0.1.585 462 MiB ⚠️, load-50@0.1.586 498 MiB ⚠️
+- **Store · Store writes that held the lock over 250 ms** (healthy ≤ 0): 8 of 8 cells: ref@0.1.585 5 ❌, ref@0.1.586 3 ⚠️, size-l@0.1.585 17 ❌, size-l@0.1.586 20 ❌, wt-3@0.1.585 11 ❌, wt-3@0.1.586 8 ❌, load-50@0.1.585 6 ❌, load-50@0.1.586 5 ❌
+
+## Every metric
+
+| Metric | Healthy | Warn | ref@0.1.585 | ref@0.1.586 | size-l@0.1.585 | size-l@0.1.586 | wt-3@0.1.585 | wt-3@0.1.586 | load-50@0.1.585 | load-50@0.1.586 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **Hooks** | | |  |  |  |  |  |  |  |  |
+| Hook before each tool call (slowest 5%) (`hook.preToolUse.p95`) | ≤ 80 | ≤ 200 | 113 ms ⚠️ | 118 ms ⚠️ | 251 ms ❌ | 221 ms ❌ | 146 ms ⚠️ | 99 ms ⚠️ | 95 ms ⚠️ | 116 ms ⚠️ |
+| Hook after each batch of tool calls (slowest 5%) (`hook.postToolBatch.p95`) | ≤ 80 | ≤ 200 | 128 ms ⚠️ | 178 ms ⚠️ | 643 ms ❌ | 775 ms ❌ | 186 ms ⚠️ | 151 ms ⚠️ | 155 ms ⚠️ | 180 ms ⚠️ |
+| Hook at session start (slowest) (`hook.sessionStart.max`) | ≤ 750 | ≤ 2000 | 90 ms ✅ | 91 ms ✅ | 342 ms ✅ | 228 ms ✅ | 136 ms ✅ | 117 ms ✅ | 102 ms ✅ | 81 ms ✅ |
+| Hook when the agent stops (slowest) (`hook.stop.max`) | ≤ 1500 | ≤ 2000 | 110 ms ✅ | 95 ms ✅ | 377 ms ✅ | 625 ms ✅ | 175 ms ✅ | 291 ms ✅ | 122 ms ✅ | 122 ms ✅ |
+| **Commands** | | |  |  |  |  |  |  |  |  |
+| `squeal status` (slowest 5%) (`cmd.status.p95`) | ≤ 300 | ≤ 1000 | 210 ms ✅ | 203 ms ✅ | 361 ms ⚠️ | 396 ms ⚠️ | 248 ms ✅ | 196 ms ✅ | 196 ms ✅ | 205 ms ✅ |
+| `squeal status --json` (slowest 5%) (`cmd.statusJson.p95`) | ≤ 300 | ≤ 1000 | 192 ms ✅ | 193 ms ✅ | 400 ms ⚠️ | 459 ms ⚠️ | 260 ms ✅ | 191 ms ✅ | 158 ms ✅ | 214 ms ✅ |
+| `squeal start` in the main worktree (`cmd.start.main`) | ≤ 2000 | ≤ 5000 | 517 ms ✅ | 535 ms ✅ | 689 ms ✅ | 526 ms ✅ | 629 ms ✅ | 492 ms ✅ | 601 ms ✅ | 531 ms ✅ |
+| `squeal start` in another worktree on the shared store (`cmd.start.others.max`) | ≤ 2000 | ≤ 5000 | n/a | n/a | n/a | n/a | 409 ms ✅ | 301 ms ✅ | n/a | n/a |
+| Full run with Squeal, as a multiple of plain Vitest (`cmd.runAll.overhead`) | ≤ 1.3 | ≤ 2 | 1.31 x ⚠️ | 1.39 x ⚠️ | 1.27 x ✅ | 1.42 x ⚠️ | n/a | n/a | 1.57 x ⚠️ | 1.45 x ⚠️ |
+| Full run with Squeal (`cmd.runAll`) | report |  | 45 s | 46 s | 190 s | 185 s | 54 s | 45 s | 64 s | 63 s |
+| **Verdicts** | | |  |  |  |  |  |  |  |  |
+| Edit that breaks a test until the agent is told (median) (`session.pushFail.p50`) | ≤ 3000 | ≤ 10000 | 1205 ms ✅ | 1301 ms ✅ | 1695 ms ✅ | 1869 ms ✅ | 1245 ms ✅ | 1218 ms ✅ | 1244 ms ✅ | 1253 ms ✅ |
+| **Correctness** | | |  |  |  |  |  |  |  |  |
+| Breaks the agent was never told about (`session.pushFail.missed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Fixes the agent was never told about (`session.pushRecovery.missed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |  |  |  |  |  |
+| Edit until `status --wait` gives a verdict (median) (`session.verdict.p50`) | ≤ 3000 | ≤ 10000 | late ❌ | late ❌ | late ❌ | late ❌ | 1675 ms ✅ | 1543 ms ✅ | late ❌ | late ❌ |
+| Edit until `status --wait` gives a verdict (slowest 5%) (`session.verdict.p95`) | ≤ 10000 | ≤ 30000 | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ | late ❌ |
+| Edits with a verdict within the 60 s agents wait (`session.verdict.within60s`) | ≥ 95 | ≥ 80 | 50 % ❌ | 50 % ❌ | 72 % ❌ | 72 % ❌ | 69 % ❌ | 69 % ❌ | 50 % ❌ | 50 % ❌ |
+| **Correctness** | | |  |  |  |  |  |  |  |  |
+| Verdicts that disagree with the truth (`session.verdict.wrong`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Hook calls over the 2 s timeout, which Claude Code kills and whose output it drops (`hook.overTimeout`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| FAIL notices when this session had broken nothing (`notice.falseAlarm`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Failure notices that name neither the edited file nor a test it broke (`notice.unnamed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| FAIL lines for a test the session's break does not reach (`notice.wrongTest`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| FAIL lines for another worktree's break (`notice.wrongSession`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Code-store batches reported failed, by the store process or a daemon (lost writes) (`store.failedBatches`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Cell setup failed: plain Vitest, the full run or the store aging did not succeed, so the cell measured nothing (`cell.setupFailed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Fast-forward or rebase that git refused, so the cell measured no fast-forward (`ff.gitFailed`) | 0 (gate) |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Scripted sessions that crashed (`session.failed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| **Verdicts** | | |  |  |  |  |  |  |  |  |
+| Edit every test imports until the whole suite is current (`session.broad.verdict`) | ≤ 180 | ≤ 300 | 165 s ✅ | 164 s ✅ | late ❌ | late ❌ | 195 s ⚠️ | 164 s ✅ | 237 s ⚠️ | 226 s ⚠️ |
+| Fast-forward: test files queued 3 s after it (`ff.queued`) | report |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Fast-forward: until no test file waits (polled before each later step) (`ff.drainS`) | ≤ 120 | ≤ 600 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Fast-forward: hook outputs after it that report its files as not run yet (`ff.lateNotices`) | ≤ 0 | ≤ 3 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Fast-forward: the agent's own edits after it until their verdict (median) (`ff.editVerdict.p50`) | ≤ 3000 | ≤ 10000 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| **Resources** | | |  |  |  |  |  |  |  |  |
+| CPU with no edits: the busiest daemon, plus the store process (`res.idleCpu.maxPct`) | ≤ 1 | ≤ 5 | 1.5 % core ⚠️ | 2.0 % core ⚠️ | 4.9 % core ⚠️ | 5.1 % core ❌ | 6.2 % core ❌ | 4.1 % core ⚠️ | 1.9 % core ⚠️ | 1.7 % core ⚠️ |
+| Daemon memory, peak (`res.daemonRss.max`) | ≤ 300 | ≤ 600 | 507 MiB ⚠️ | 524 MiB ⚠️ | 900 MiB ❌ | 910 MiB ❌ | 476 MiB ⚠️ | 474 MiB ⚠️ | 462 MiB ⚠️ | 498 MiB ⚠️ |
+| CPU per edit: daemons with their test runs, plus the store process (`res.cpuPerEdit`) | report |  | 1.3 s | 1.3 s | 4.3 s | 3.9 s | 0.5 s | 0.4 s | 1.2 s | 1.2 s |
+| Store process CPU during the sessions (`res.storeProcess.cpuS`) | report |  | 1.4 s | 1.2 s | 6.9 s | 5.7 s | 4.1 s | 3.3 s | 1.2 s | 1.1 s |
+| Store process memory, peak (`res.storeProcess.rss`) | report |  | 162 MiB | 159 MiB | 240 MiB | 262 MiB | 187 MiB | 196 MiB | 163 MiB | 152 MiB |
+| **Store** | | |  |  |  |  |  |  |  |  |
+| Store writes that held the lock over 250 ms (`store.longWrites`) | ≤ 0 | ≤ 3 | 5 ❌ | 3 ⚠️ | 17 ❌ | 20 ❌ | 11 ❌ | 8 ❌ | 6 ❌ | 5 ❌ |
+| Store writes that failed on a held lock (`store.lockFailures`) | ≤ 0 | ≤ 3 | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Store files on disk (`store.size`) | report |  | 20 MiB | 20 MiB | 60 MiB | 63 MiB | 37 MiB | 36 MiB | 20 MiB | 20 MiB |
+| Result rows in the store (`store.results`) | report |  | 7728 | 7728 | 24500 | 28672 | 15890 | 15890 | 7728 | 7728 |
+| Restart until a day of expired history is pruned (`store.prune.doneMin`) | ≤ 12 | ≤ 20 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Time the prune spent deleting (`store.prune.s`) | report |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Restart until the integrity check passed (`store.fullCheck.s`) | report |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Store process: longest wait of a batch in its queue (`store.process.queueWaitMax`) | report |  | 0 ms | 1 ms | 1 ms | 2 ms | 186 ms | 228 ms | 2 ms | 5 ms |
+| Store process: time spent writing (`store.process.busy`) | report |  | 5.7 s | 5.7 s | 32 s | 28 s | 13 s | 10 s | 5.0 s | 4.4 s |
+| Code-store batches a daemon wrote itself because the store process was gone (`store.process.direct`) | report |  | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| Store process: times it stopped (`store.process.stops`) | report |  | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| **Commands** | | |  |  |  |  |  |  |  |  |
+| `squeal reach` (reads every stored module list) (`cmd.reach.s`) | report |  | 0.3 s | 0.2 s | 0.8 s | 1.1 s | 0.3 s | 0.2 s | 0.3 s | 0.3 s |
+| **Resources** | | |  |  |  |  |  |  |  |  |
+| `squeal reach` memory, peak (`res.reach.rss`) | report |  | 120 MiB | 128 MiB | 224 MiB | 233 MiB | 122 MiB | 129 MiB | 122 MiB | 121 MiB |
+| **Store** | | |  |  |  |  |  |  |  |  |
+| Longest logged lock hold (only holds over 250 ms are logged) (`store.longWrite.maxMs`) | report |  | 402 ms | 311 ms | 824 ms | 750 ms | 538 ms | 450 ms | 664 ms | 426 ms |
+| Logged lock holds, total (`store.longWrite.totalS`) | report |  | 1.7 s | 0.9 s | 8.1 s | 8.1 s | 4.0 s | 2.4 s | 2.5 s | 1.7 s |
+
