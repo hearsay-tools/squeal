@@ -19,8 +19,15 @@ import type { Source } from "./sources.js";
 export const CLI = (end: "!" | "?" = "!") =>
   `console.log(\`\${process.argv[2].toUpperCase()}${end}\`);\n`;
 
-/** The slow tier's tuning every shape adds: the guard never defers on this host. */
-export const SLOW_TUNING = { maxLoadPerCpu: 1_000 };
+/**
+ * The slow tier's tuning every shape adds: the guard never defers on this
+ * host, and the slow files start when the consumer is idle (004 D2's
+ * `"idle"` trigger), the moment these scenarios test. Under the default
+ * `"continuous"` trigger they start mid-turn once the revision is
+ * `slow.quietMs` old, so "pending in a turn" held only while the checks ran
+ * within 3 s of the edit (row 023-45).
+ */
+export const SLOW_TUNING = { maxLoadPerCpu: 1_000, trigger: "idle" };
 
 export interface Shape {
   /** Fixture options: the overlay with the slow files, the CLI, the policy. */
