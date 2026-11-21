@@ -204,7 +204,7 @@ var DEFAULT_POLICY = {
     tools: ["eslint", "oxlint"]
   },
   gate: { groups: null },
-  shared: { ref: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
   remote: { allowed: true, needsRepository: [] }
@@ -380,10 +380,10 @@ function utcTimeText(at) {
   return `${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}:${pad2(date.getUTCSeconds())} UTC`;
 }
 function durationText(ms, round = Math.round) {
-  const seconds2 = Math.max(0, round(ms / 1e3));
-  if (seconds2 < 60) return `${seconds2} s`;
-  const rest = seconds2 % 60;
-  return `${Math.floor(seconds2 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  const seconds3 = Math.max(0, round(ms / 1e3));
+  if (seconds3 < 60) return `${seconds3} s`;
+  const rest = seconds3 % 60;
+  return `${Math.floor(seconds3 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
 }
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
 function shellWord(word) {
@@ -988,7 +988,11 @@ function isSharedRef(prefix) {
   return parts.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
 }
 var ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
-var SHARED_SHAPE = { shared: { ref } };
+var MAX_LOOK_AGAIN_SECONDS = 2147483;
+var seconds = (min) => (v) => Number.isInteger(v) && v >= min && v <= MAX_LOOK_AGAIN_SECONDS ? null : `a whole number from ${min} to ${MAX_LOOK_AGAIN_SECONDS}`;
+var SHARED_SHAPE = {
+  shared: { ref, lookAgain: { everySeconds: seconds(1), forSeconds: seconds(0) } }
+};
 
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
@@ -1098,7 +1102,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.587";
+  if (true) return "0.1.588";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -17525,7 +17529,7 @@ function slowSuiteReason(revision, files2, command = SQUEAL_COMMAND, group = SLO
 }
 function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, refining = false, group = SLOW_GROUP, before = [], runners) {
   const words = stopGroupWords(group, command);
-  const after = `${words.policy} and after ${seconds(waitedMs)} `;
+  const after = `${words.policy} and after ${seconds2(waitedMs)} `;
   const wait = `${words.run} waits for their results.`;
   const unlisted3 = { revision, runners, files: `${words.file}s` };
   if (files2.length === 0) return `${after}${unlistedClause(unlisted3)}. ${wait}`;
@@ -17599,7 +17603,7 @@ function requiredFailuresReason(revision, failed2, groupOf2) {
 function filesOf(open2, group) {
   return open2.filter((file) => file.group === group).map((file) => file.ref);
 }
-function seconds(ms) {
+function seconds2(ms) {
   return `${(ms / 1e3).toFixed(ms % 1e3 === 0 ? 0 : 1)} s`;
 }
 

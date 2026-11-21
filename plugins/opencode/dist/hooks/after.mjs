@@ -205,7 +205,7 @@ var DEFAULT_POLICY = {
     tools: ["eslint", "oxlint"]
   },
   gate: { groups: null },
-  shared: { ref: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
   remote: { allowed: true, needsRepository: [] }
@@ -381,10 +381,10 @@ function utcTimeText(at) {
   return `${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}:${pad2(date.getUTCSeconds())} UTC`;
 }
 function durationText(ms, round = Math.round) {
-  const seconds = Math.max(0, round(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  const seconds2 = Math.max(0, round(ms / 1e3));
+  if (seconds2 < 60) return `${seconds2} s`;
+  const rest = seconds2 % 60;
+  return `${Math.floor(seconds2 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
 }
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
 function shellWord(word) {
@@ -989,7 +989,11 @@ function isSharedRef(prefix) {
   return parts.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
 }
 var ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
-var SHARED_SHAPE = { shared: { ref } };
+var MAX_LOOK_AGAIN_SECONDS = 2147483;
+var seconds = (min) => (v) => Number.isInteger(v) && v >= min && v <= MAX_LOOK_AGAIN_SECONDS ? null : `a whole number from ${min} to ${MAX_LOOK_AGAIN_SECONDS}`;
+var SHARED_SHAPE = {
+  shared: { ref, lookAgain: { everySeconds: seconds(1), forSeconds: seconds(0) } }
+};
 
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
@@ -12819,7 +12823,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.587";
+  if (true) return "0.1.588";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

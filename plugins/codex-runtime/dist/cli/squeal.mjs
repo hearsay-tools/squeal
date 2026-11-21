@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.587";
+  if (true) return "0.1.588";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -166,10 +166,10 @@ function utcTimeText(at2) {
   return `${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}:${pad2(date.getUTCSeconds())} UTC`;
 }
 function durationText(ms2, round2 = Math.round) {
-  const seconds5 = Math.max(0, round2(ms2 / 1e3));
-  if (seconds5 < 60) return `${seconds5} s`;
-  const rest2 = seconds5 % 60;
-  return `${Math.floor(seconds5 / 60)} min${rest2 === 0 ? "" : ` ${rest2} s`}`;
+  const seconds6 = Math.max(0, round2(ms2 / 1e3));
+  if (seconds6 < 60) return `${seconds6} s`;
+  const rest2 = seconds6 % 60;
+  return `${Math.floor(seconds6 / 60)} min${rest2 === 0 ? "" : ` ${rest2} s`}`;
 }
 function shellWord(word2) {
   return SAFE_WORD.test(word2) ? word2 : `'${word2.replaceAll("'", `'\\''`)}'`;
@@ -1236,9 +1236,9 @@ function entryText({ pid, args: args2, ppid, parent: parent2, ageSeconds, killed
   ];
   return `${`${pid} ${args2}`.trimEnd()} (${facts.join(", ")})`;
 }
-function ageText(seconds5) {
-  if (seconds5 < 60) return `${seconds5.toFixed(1)} s`;
-  const whole = Math.floor(seconds5);
+function ageText(seconds6) {
+  if (seconds6 < 60) return `${seconds6.toFixed(1)} s`;
+  const whole = Math.floor(seconds6);
   if (whole < 3600) return `${Math.floor(whole / 60)} min ${whole % 60} s`;
   return `${Math.floor(whole / 3600)} h ${Math.floor(whole % 3600 / 60)} min`;
 }
@@ -1795,7 +1795,7 @@ var init_policy = __esm({
         tools: ["eslint", "oxlint"]
       },
       gate: { groups: null },
-      shared: { ref: null },
+      shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
       node: "project",
       requires: { commands: [] },
       remote: { allowed: true, needsRepository: [] }
@@ -3117,14 +3117,18 @@ function isSharedRef(prefix) {
   if (RESERVED.some((r) => prefix === r || prefix.startsWith(`${r}/`))) return false;
   return parts3.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
 }
-var RESERVED, COMPONENT, ref, SHARED_SHAPE;
+var RESERVED, COMPONENT, ref, MAX_LOOK_AGAIN_SECONDS, seconds, SHARED_SHAPE;
 var init_policy_shared = __esm({
   "src/core/daemon/policy-shared.ts"() {
     "use strict";
     RESERVED = ["refs/heads", "refs/tags", "refs/remotes"];
     COMPONENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
     ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
-    SHARED_SHAPE = { shared: { ref } };
+    MAX_LOOK_AGAIN_SECONDS = 2147483;
+    seconds = (min) => (v) => Number.isInteger(v) && v >= min && v <= MAX_LOOK_AGAIN_SECONDS ? null : `a whole number from ${min} to ${MAX_LOOK_AGAIN_SECONDS}`;
+    SHARED_SHAPE = {
+      shared: { ref, lookAgain: { everySeconds: seconds(1), forSeconds: seconds(0) } }
+    };
   }
 });
 
@@ -11778,9 +11782,9 @@ var init_background = __esm({
         const episode = this.#episode;
         this.#episode = null;
         if (episode === null || now - episode.last >= this.#quietMs) return;
-        const seconds5 = Math.round((now - episode.since) / 1e3);
+        const seconds6 = Math.round((now - episode.since) / 1e3);
         const looks = episode.looks === 1 ? "1 refused look" : `${episode.looks} refused looks`;
-        this.#log(`the background ceiling let a backlog tier start after ${seconds5} s and ${looks}`);
+        this.#log(`the background ceiling let a backlog tier start after ${seconds6} s and ${looks}`);
       }
     };
   }
@@ -13355,8 +13359,8 @@ var init_proc = __esm({
         return TICKS_PER_SECOND;
       }
       bootTime() {
-        const seconds5 = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
-        return seconds5 === void 0 ? null : Number(seconds5) * 1e3;
+        const seconds6 = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
+        return seconds6 === void 0 ? null : Number(seconds6) * 1e3;
       }
       processTable(pids3, since) {
         const table = /* @__PURE__ */ new Map();
@@ -15228,7 +15232,7 @@ function runnerPartBound(context) {
     context.wakes
   );
 }
-function seconds(ms2) {
+function seconds2(ms2) {
   return ms2 >= 1e3 ? `${Math.round(ms2 / 1e3)} s` : `${ms2} ms`;
 }
 var RUNNER_PART_MARGIN_MS, RunnerPartBound;
@@ -15260,7 +15264,7 @@ var init_runner_work_bound = __esm({
           reject = rejected2;
         });
         const wake = this.#wakes.slot("runner-part-bound", () => {
-          this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
+          this.#abandoned ??= `no answer within ${seconds2(this.ms)}; the call was abandoned`;
           reject(new Error(this.#abandoned));
         });
         wake.after(this.ms);
@@ -23518,9 +23522,9 @@ var init_pool_wait = __esm({
         const live = this.#live(lane, elapsed);
         if (!this.#lanes.delete(lane)) return;
         if (live !== void 0) {
-          const seconds5 = Math.round((elapsed - live.began) / 1e3);
+          const seconds6 = Math.round((elapsed - live.began) / 1e3);
           this.#options.log(
-            `the pool granted the ${laneName(lane)} lane's tier after ${seconds5} s of waiting for CPU`
+            `the pool granted the ${laneName(lane)} lane's tier after ${seconds6} s of waiting for CPU`
           );
         }
         this.#publish(now, elapsed);
@@ -49970,8 +49974,8 @@ async function retryWhileBusy(attempt, retry2) {
   }
 }
 function busyNote(waitedMs, waited) {
-  const seconds5 = Number((waitedMs / 1e3).toFixed(1));
-  return `the store was busy for ${seconds5} s (another connection held its write lock); ran once it was free: ${waited.join(", ")}`;
+  const seconds6 = Number((waitedMs / 1e3).toFixed(1));
+  return `the store was busy for ${seconds6} s (another connection held its write lock); ran once it was free: ${waited.join(", ")}`;
 }
 var BUSY_SLICE_MS, BACKOFF_MS, BusyWaits;
 var init_busy = __esm({
@@ -78723,6 +78727,93 @@ var init_local = __esm({
   }
 });
 
+// src/core/shared/look-again.ts
+import { setTimeout as sleep18 } from "node:timers/promises";
+function gaveUpNote(ref3, remote, forSeconds) {
+  const window2 = forSeconds % 60 === 0 ? `${forSeconds / 60} min` : `${forSeconds} s`;
+  return `CI results: ${remote} had no ${ref3} after ${window2}; tests run here as before`;
+}
+async function closuresStored(store, worktreeId, revision, options) {
+  while (!options.signal.aborted && !isRefined(store, worktreeId, revision)) {
+    await sleep18(options.pollMs, void 0, { signal: options.signal }).catch(() => {
+    });
+  }
+}
+var unrefTimer, LATE_LOOK_MS, LookAgain, REFINED_POLL_MS;
+var init_look_again = __esm({
+  "src/core/shared/look-again.ts"() {
+    "use strict";
+    init_refined();
+    unrefTimer = (ms2, fire) => {
+      const timer = setTimeout(fire, ms2);
+      timer.unref();
+      return () => clearTimeout(timer);
+    };
+    LATE_LOOK_MS = 1e3;
+    LookAgain = class {
+      constructor(timer, fire) {
+        this.timer = timer;
+        this.fire = fire;
+      }
+      timer;
+      fire;
+      #key = null;
+      #until = 0;
+      #due = false;
+      #cancel = null;
+      /** Whether the timer fired for `key`; a pass for another key ends that wait. */
+      takeDue(key3) {
+        const due = this.#due && this.#key === key3;
+        this.#due = false;
+        return due;
+      }
+      /**
+       * Review 0.1.588 B1: whether `key`'s window ended before `now`, a look's
+       * lateness (`LATE_LOOK_MS`) allowed. The reader asks before any listing of
+       * a look again: when the timer fired late, and again after its local git
+       * steps. An ended window stops here, and the caller gives its one note.
+       */
+      expired(key3, now) {
+        if (this.#key !== key3 || now <= this.#until + LATE_LOOK_MS) return false;
+        this.stop();
+        return true;
+      }
+      /**
+       * `key`'s own export was not listed at `now`: the first look (`first`)
+       * opens the window, a later one keeps it. Schedules the next look while
+       * the window lasts; the last one is at its end.
+       */
+      missed(key3, now, first2, policy) {
+        if (first2) {
+          this.stop();
+          if (policy.forSeconds === 0) return "once";
+          this.#key = key3;
+          this.#until = now + policy.forSeconds * 1e3;
+        } else if (this.#key !== key3) return "once";
+        const left = this.#until - now;
+        if (left <= 0) {
+          this.stop();
+          return "gave up";
+        }
+        this.#cancel = this.timer(Math.min(policy.everySeconds * 1e3, left), () => {
+          this.#cancel = null;
+          this.#due = true;
+          this.fire();
+        });
+        return "again";
+      }
+      /** No look again is due: the start point moved, its export came, or the reader closed. */
+      stop() {
+        this.#cancel?.();
+        this.#cancel = null;
+        this.#key = null;
+        this.#due = false;
+      }
+    };
+    REFINED_POLL_MS = 250;
+  }
+});
+
 // src/core/shared/served.ts
 import { createHash as createHash45 } from "node:crypto";
 function triedHere(store, worktreeId, imports2, candidates, nearestHeld) {
@@ -78785,6 +78876,7 @@ var init_reader = __esm({
     "use strict";
     init_version();
     init_key_format();
+    init_refined();
     init_imports();
     init_transfer_bundle();
     init_transfer_import();
@@ -78792,6 +78884,7 @@ var init_reader = __esm({
     init_fetch();
     init_git3();
     init_local();
+    init_look_again();
     init_refs();
     init_refused();
     init_served();
@@ -78802,6 +78895,7 @@ var init_reader = __esm({
     Reader = class {
       constructor(o) {
         this.o = o;
+        this.#looks = new LookAgain(o.timer ?? unrefTimer, () => this.nudge());
       }
       o;
       /** The `shared.ref` and start point last handled: one export per start point. */
@@ -78812,6 +78906,8 @@ var init_reader = __esm({
       #asked = null;
       /** The reader's one stop: each step checks it, and each git call it starts is killed by it. */
       #stop = new AbortController();
+      /** Row 018-70: the looks again while the start point's own export is missing. */
+      #looks;
       nudge() {
         if (this.#stop.signal.aborted || this.o.policy().shared.ref === null) return;
         if (this.#running !== null) {
@@ -78827,6 +78923,7 @@ var init_reader = __esm({
       }
       close() {
         this.#stop.abort();
+        this.#looks.stop();
       }
       async #loop() {
         do {
@@ -78865,8 +78962,13 @@ var init_reader = __esm({
           return;
         }
         const start2 = await this.#live((signal3) => startPoint(root, head2, upstream, signal3));
-        if (start2 === null || `${prefix} ${start2}` === this.#start) return;
-        this.#start = `${prefix} ${start2}`;
+        if (start2 === null) return;
+        const key3 = `${prefix} ${start2}`;
+        const again2 = this.#looks.takeDue(key3);
+        if (key3 === this.#start && !again2) return;
+        if (key3 !== this.#start) this.#looks.stop();
+        this.#start = key3;
+        if (again2 && this.#expired({ prefix, start: start2, key: key3, again: again2 }, upstream.remote)) return;
         const candidates = await this.#live((signal3) => firstParents(root, start2, signal3));
         const imports2 = listImports(this.o.store);
         const held4 = new Set(imports2.map((i3) => i3.header.commit));
@@ -78877,19 +78979,29 @@ var init_reader = __esm({
           writeSquealMismatch(this.o.store, this.o.worktreeId, null);
         }
         const last = triedHere(this.o.store, this.o.worktreeId, imports2, candidates, nearestHeld);
-        const tried = candidates.slice(0, last);
-        if (tried.length === 0) return;
+        const tried = candidates.slice(0, again2 ? Math.min(last, 1) : last);
+        if (tried.length > 0) await this.#fromRemote({ prefix, start: start2, key: key3, again: again2 }, upstream, tried);
+      }
+      /** Lists the remote, then takes the nearest export of `tried` it lists. */
+      async #fromRemote(look, upstream, tried) {
+        const { root } = this.o;
+        const { prefix, start: start2 } = look;
         const env = await this.#live((signal3) => networkEnv(root, signal3));
+        if (look.again && this.#expired(look, upstream.remote)) return;
         const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
         const listed12 = await this.#live(
           (signal3) => remoteExports(root, upstream.remote, prefix, { timeoutMs: listMs, env, signal: signal3 })
         );
         if ("timedOut" in listed12) {
-          this.o.note(
-            `CI results: could not list ${prefix} on ${upstream.remote} (${failureOf(listed12, listMs)}); tests run here as before`
-          );
+          if (!look.again) {
+            this.o.note(
+              `CI results: could not list ${prefix} on ${upstream.remote} (${failureOf(listed12, listMs)}); tests run here as before`
+            );
+          }
+          this.#missed(look, upstream.remote);
           return;
         }
+        if (!listed12.has(start2)) this.#missed(look, upstream.remote);
         for (const commit of tried) {
           const oid = listed12.get(commit);
           if (oid === void 0) continue;
@@ -78905,6 +79017,20 @@ var init_reader = __esm({
           }
           await this.#take(upstream.remote, ref3, commit, oid, env);
           return;
+        }
+      }
+      /** Review 0.1.588 B1: whether the look's window ended before now; its one note then. */
+      #expired(look, remote) {
+        if (!this.#looks.expired(look.key, this.o.now())) return false;
+        const { forSeconds } = this.o.policy().shared.lookAgain;
+        this.o.note(gaveUpNote(refOf3(look.prefix, look.start), remote, forSeconds));
+        return true;
+      }
+      /** Row 018-70: the start point's own export was not listed; one note when the window ends. */
+      #missed(look, remote) {
+        const { lookAgain } = this.o.policy().shared;
+        if (this.#looks.missed(look.key, this.o.now(), !look.again, lookAgain) === "gave up") {
+          this.o.note(gaveUpNote(refOf3(look.prefix, look.start), remote, lookAgain.forSeconds));
         }
       }
       /**
@@ -78950,18 +79076,36 @@ var init_reader = __esm({
         }
         const fileHash = createHash46("sha256").update(bytes2).digest("hex");
         const blobs = await this.#live((signal3) => blobsAt2(this.o.root, commit, signal3));
+        const { store, worktreeId } = this.o;
+        const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+        const refined = isRefined(store, worktreeId, revision);
+        const added = await this.#import(bundle, fileHash, blobs);
+        this.o.log(`CI results: imported ${added} results from ${sourceLabel(bundle.header)}`);
+        this.o.imported();
+        if (refined) return;
+        const pollMs = this.o.refinedPollMs ?? REFINED_POLL_MS;
+        await this.#live((signal3) => closuresStored(store, worktreeId, revision, { pollMs, signal: signal3 }));
+        const more2 = await this.#import(bundle, fileHash, blobs);
+        this.o.log(
+          `CI results: imported ${more2} more results from ${sourceLabel(bundle.header)} over revision ${revision}'s closure lists`
+        );
+        if (more2 > 0) this.o.imported();
+      }
+      /** Imports `bundle` into the store, re-keyed here where D11 proves it: the results added. */
+      async #import(bundle, fileHash, blobs) {
+        const { store, worktreeId } = this.o;
         this.o.step?.(IMPORT_STEP, true);
-        let added;
         try {
-          writeSquealMismatch(this.o.store, this.o.worktreeId, null);
-          added = (await importSliced(this.o.store, bundle, {
-            importId: importIdHere(this.o.store, this.o.worktreeId, fileHash),
+          writeSquealMismatch(store, worktreeId, null);
+          const counts = await importSliced(store, bundle, {
+            importId: importIdHere(store, worktreeId, fileHash),
             fileHash,
             now: this.o.now(),
             clock: this.o.now,
-            rekeying: { worktreeId: this.o.worktreeId, blobs },
+            rekeying: { worktreeId, blobs },
             stopped: () => this.#stop.signal.aborted
-          })).results;
+          });
+          return counts.results;
         } catch (error) {
           this.#start = null;
           if (error instanceof ImportStopped) throw STOPPED2;
@@ -78969,8 +79113,6 @@ var init_reader = __esm({
         } finally {
           this.o.step?.(IMPORT_STEP, false);
         }
-        this.o.log(`CI results: imported ${added} results from ${sourceLabel(bundle.header)}`);
-        this.o.imported();
       }
       /**
        * Spec 018 D21 (row 018-34): an export of another key format is one record
@@ -86526,9 +86668,9 @@ function limited(limit, work) {
         return;
       }
       clock.over = true;
-      const seconds5 = (allowed() / 1e3).toFixed(1);
+      const seconds6 = (allowed() / 1e3).toFixed(1);
       const progress2 = begun === 0 ? "before it listed the paths" : `${done} of ${total} paths`;
-      resolve52(`hashing the checkout passed its limit of ${seconds5} s (${progress2})`);
+      resolve52(`hashing the checkout passed its limit of ${seconds6} s (${progress2})`);
       stop2.abort();
     };
     timer = setTimeout(check3, limit.floorMs);
@@ -87466,15 +87608,15 @@ function costOf(parts3) {
     parts: parts3.length
   };
 }
-var seconds2 = (ms2) => `${(ms2 / 1e3).toFixed(ms2 < 1e4 ? 2 : 1)} s`;
+var seconds3 = (ms2) => `${(ms2 / 1e3).toFixed(ms2 < 1e4 ? 2 : 1)} s`;
 function costText(cost) {
   const threads = cost.threads === 1 ? "1 process or thread" : `${cost.threads} processes and threads`;
   const of = cost.commands === 1 ? "" : ` of ${cost.commands} commands`;
-  const share2 = cost.testMs > 0 ? `${(100 * cost.hooksMs / cost.testMs).toFixed(1)}% of the test time (${seconds2(cost.testMs)})` : "no test time recorded";
-  const after3 = `${seconds2(cost.afterMs)} more after the command${cost.commands === 1 ? "" : "s"}`;
-  const hashing2 = cost.endpointsMs === void 0 ? "" : `; ${seconds2(cost.endpointsMs)} hashing the checkout before and after ${cost.commands === 1 ? "it" : "them"}`;
+  const share2 = cost.testMs > 0 ? `${(100 * cost.hooksMs / cost.testMs).toFixed(1)}% of the test time (${seconds3(cost.testMs)})` : "no test time recorded";
+  const after3 = `${seconds3(cost.afterMs)} more after the command${cost.commands === 1 ? "" : "s"}`;
+  const hashing2 = cost.endpointsMs === void 0 ? "" : `; ${seconds3(cost.endpointsMs)} hashing the checkout before and after ${cost.commands === 1 ? "it" : "them"}`;
   const older = cost.without === 0 ? "" : `; ${cost.without} of ${cost.parts} parts hold no cost (an older Squeal made them)`;
-  return `Squeal's recording took ${seconds2(cost.hooksMs)} in ${threads}${of}, ${share2}; ${after3}${hashing2}${older}`;
+  return `Squeal's recording took ${seconds3(cost.hooksMs)} in ${threads}${of}, ${share2}; ${after3}${hashing2}${older}`;
 }
 
 // src/core/ci/export.ts
@@ -87730,8 +87872,9 @@ var MAP_KEY4 = {
 };
 function bundleOf(store, worktreeId, header2, files5) {
   const absolute = [];
+  const entries3 = entriesOnce(store);
   const sorted4 = [...files5].sort((a, b) => compare(a.file.project, b.file.project) || compare(a.file.path, b.file.path)).flatMap(({ file, records }) => {
-    const testFile = { ...file, observed: observedOf(store, file) };
+    const testFile = { ...file, observed: observedOf(entries3, file) };
     const results3 = [...records].sort(byCheck).map(exported);
     const path = absolutePathOfFile(testFile, results3);
     if (path === null) return [{ testFile, results: results3 }];
@@ -87754,13 +87897,21 @@ function bundleOf(store, worktreeId, header2, files5) {
   if (refused !== null) throw new AbsolutePathError(refused);
   return { bundle, absolute };
 }
-function observedOf(store, testFile) {
+function entriesOnce(store) {
+  const read7 = /* @__PURE__ */ new Map();
+  return (key3) => {
+    let entries3 = read7.get(key3);
+    if (entries3 === void 0) {
+      entries3 = readSharedEntries(store, key3);
+      read7.set(key3, entries3);
+    }
+    return entries3;
+  };
+}
+function observedOf(entries3, testFile) {
   return ownMap(
     OBSERVED_MAPS.flatMap((map) => {
-      const entry4 = ownValue(
-        readSharedEntries(store, MAP_KEY4[map](testFile.project)),
-        testFile.path
-      );
+      const entry4 = ownValue(entries3(MAP_KEY4[map](testFile.project)), testFile.path);
       return entry4 === void 0 ? [] : [[map, entry4]];
     })
   );
@@ -94815,10 +94966,10 @@ function loadFactor(load) {
   return factor > 1 ? factor : null;
 }
 function scaleEstimate(estimate2, factor) {
-  const { seconds: seconds5 } = estimate2;
-  if (factor === null || seconds5 === null) return estimate2;
-  const load = { perCpu: factor, unscaled: seconds5 };
-  return { ...estimate2, seconds: Math.ceil(seconds5 * factor), load };
+  const { seconds: seconds6 } = estimate2;
+  if (factor === null || seconds6 === null) return estimate2;
+  const load = { perCpu: factor, unscaled: seconds6 };
+  return { ...estimate2, seconds: Math.ceil(seconds6 * factor), load };
 }
 function median2(values) {
   if (values.length === 0) return null;
@@ -94846,7 +94997,7 @@ var RERUN_FACTOR = 2;
 var EARLY_FACTOR = 2;
 var EARLY_KNOWN = 20;
 function runSeconds(runners2) {
-  return runners2.reduce((longest2, seconds5) => Math.max(longest2, seconds5), 0);
+  return runners2.reduce((longest2, seconds6) => Math.max(longest2, seconds6), 0);
 }
 function estimateAll(runners2) {
   const stored3 = runners2.flatMap(
@@ -94863,13 +95014,13 @@ function estimateAll(runners2) {
   return { seconds: runSeconds(each), known: stored3.length };
 }
 function fitBudget(run7, budget2) {
-  const { seconds: seconds5, known: known4, load } = run7;
+  const { seconds: seconds6, known: known4, load } = run7;
   const { leftSeconds } = budget2;
-  const fit = { leftSeconds, seconds: seconds5, known: known4, ...load === void 0 ? {} : { load } };
-  if (seconds5 === null || seconds5 <= leftSeconds) return fit;
+  const fit = { leftSeconds, seconds: seconds6, known: known4, ...load === void 0 ? {} : { load } };
+  if (seconds6 === null || seconds6 <= leftSeconds) return fit;
   const spent = Math.max(0, budget2.budgetSeconds - leftSeconds);
-  const rerunSeconds = Math.ceil((spent + RERUN_FACTOR * seconds5) / 60) * 60;
-  const early = seconds5 >= EARLY_FACTOR * leftSeconds && known4 >= EARLY_KNOWN;
+  const rerunSeconds = Math.ceil((spent + RERUN_FACTOR * seconds6) / 60) * 60;
+  const early = seconds6 >= EARLY_FACTOR * leftSeconds && known4 >= EARLY_KNOWN;
   return { ...fit, rerunSeconds, ...early ? { early: true } : {} };
 }
 
@@ -94932,7 +95083,7 @@ function runnerOrder(runners2) {
 // src/core/code/gate/plan.ts
 var vitestWidth2 = () => Math.max(1, availableParallelism7() - 1);
 function orderRuns(picked, known4, context) {
-  const seconds5 = context.durations ?? (() => null);
+  const seconds6 = context.durations ?? (() => null);
   const runs2 = picked.map((pick, index) => {
     return { pick, index, files: pick.run.filter((ref3) => !known4.has(ref3)) };
   });
@@ -94942,7 +95093,7 @@ function orderRuns(picked, known4, context) {
     groups3.set(pick.kind, own);
     const grant = pick.kind === "vitest" ? vitestWidth2() : context.tierSize;
     const width = (ref3) => pick.adapter.traits.tierWidth(ref3, grant);
-    own.push(...byWidth(files5, width, seconds5));
+    own.push(...byWidth(files5, width, seconds6));
   }
   const runners2 = [...groups3].map(([runner, of]) => ({ runner, groups: of }));
   const kinds2 = runnerOrder(runners2);
@@ -94982,7 +95133,7 @@ async function stoppedEarly(runner, run7, children) {
   }
   return { chosen: run7.pick.run.filter((ref3) => !overBudget.includes(ref3)), evidence };
 }
-var defaultRerun = (ref3) => (seconds5) => `squeal code --base ${shellWord(ref3)} --timeout ${seconds5}`;
+var defaultRerun = (ref3) => (seconds6) => `squeal code --base ${shellWord(ref3)} --timeout ${seconds6}`;
 function budgetTold(fit, runs2, command) {
   const { rerunSeconds } = fit;
   if (rerunSeconds === void 0) return { fit };
@@ -94993,7 +95144,7 @@ function budgetTold(fit, runs2, command) {
   return { fit, rerun, early: { run: run7, overBudget: [...new Set(overBudget)].sort(compare) } };
 }
 async function inLoaderOrder(runs2, context) {
-  const seconds5 = context.durations ?? (() => null);
+  const seconds6 = context.durations ?? (() => null);
   const { early } = context;
   const ordered2 = [];
   for (const run7 of runs2) {
@@ -95001,7 +95152,7 @@ async function inLoaderOrder(runs2, context) {
     for (const ref3 of run7.files) {
       loads2.set(ref3, await loadsOf2(run7.pick.adapter, ref3));
     }
-    const inputs2 = { loads: (ref3) => loads2.get(ref3) ?? null, seconds: seconds5 };
+    const inputs2 = { loads: (ref3) => loads2.get(ref3) ?? null, seconds: seconds6 };
     const files5 = loaderOrder(run7.files, context.changed, inputs2);
     if (early === void 0) {
       ordered2.push({ ...run7, files: files5 });
@@ -95015,12 +95166,12 @@ async function inLoaderOrder(runs2, context) {
   }
   return ordered2;
 }
-function byWidth(refs2, width, seconds5) {
+function byWidth(refs2, width, seconds6) {
   const groups3 = /* @__PURE__ */ new Map();
   for (const ref3 of refs2) {
     const at2 = Math.max(1, width(ref3));
     const group = groups3.get(at2) ?? [];
-    group.push(seconds5(ref3));
+    group.push(seconds6(ref3));
     groups3.set(at2, group);
   }
   return [...groups3].map(([w2, s]) => ({ width: w2, seconds: s }));
@@ -95897,9 +96048,9 @@ var FileProgress = class {
     const timer = setTimeout(() => {
       this.#open.delete(end);
       const now = performance.now();
-      const seconds5 = Math.max(Math.floor(limit), Math.floor((now - at2) / 1e3));
-      const usedSeconds = Math.max(seconds5, Math.floor((now - since) / 1e3));
-      overran({ runner, path: ref3.path, seconds: seconds5, storedSeconds, usedSeconds, budgetSeconds });
+      const seconds6 = Math.max(Math.floor(limit), Math.floor((now - at2) / 1e3));
+      const usedSeconds = Math.max(seconds6, Math.floor((now - since) / 1e3));
+      overran({ runner, path: ref3.path, seconds: seconds6, storedSeconds, usedSeconds, budgetSeconds });
     }, limit * 1e3);
     timer.unref();
     this.#open.set(end, key3);
@@ -96355,8 +96506,8 @@ function runsOf(evidence, durationsMs) {
     ];
   });
 }
-var withoutRunner = ({ seconds: seconds5, files: files5, known: known4, width, load }) => ({
-  seconds: seconds5,
+var withoutRunner = ({ seconds: seconds6, files: files5, known: known4, width, load }) => ({
+  seconds: seconds6,
   files: files5,
   known: known4,
   width,
@@ -96570,8 +96721,8 @@ function evaluate(changed2, evidence, policy, versions2, times, exceptions) {
   };
 }
 function budgetOf(evidence) {
-  const { budgetSeconds: seconds5, timedOut, rerun } = evidence;
-  return { seconds: seconds5, timedOut, ...rerun === void 0 ? {} : { rerun } };
+  const { budgetSeconds: seconds6, timedOut, rerun } = evidence;
+  return { seconds: seconds6, timedOut, ...rerun === void 0 ? {} : { rerun } };
 }
 
 // src/core/code/gate/parts-refused.ts
@@ -97125,21 +97276,21 @@ function wholeProjectLine(whole, fit) {
   const here = run7 === files5 ? "" : `, ${run7 === 0 ? "none" : run7} to run here`;
   return `${of} depends on ${listPaths(marked4, NAMED3)}, so ${all2} selected${here}; ${wholeRunText(fit)}`;
 }
-function wholeRunText({ seconds: seconds5, leftSeconds, load }) {
-  if (seconds5 === null) return "the whole run's time is unknown: no stored duration";
+function wholeRunText({ seconds: seconds6, leftSeconds, load }) {
+  if (seconds6 === null) return "the whole run's time is unknown: no stored duration";
   const at2 = load === void 0 ? "" : " at the host's load";
-  const where3 = seconds5 > leftSeconds ? "over" : "within";
-  return `the whole run takes about ${seconds5} s${at2}, ${where3} the ${leftSeconds} s left of the budget`;
+  const where3 = seconds6 > leftSeconds ? "over" : "within";
+  return `the whole run takes about ${seconds6} s${at2}, ${where3} the ${leftSeconds} s left of the budget`;
 }
 var WAYS_OUT = "To fit it: a longer --timeout, paths that narrow the changed files, fewer check groups (gate.groups at the base, --group), or CI's results with --parts. The run starts anyway.";
 function estimateText(estimates, leftSeconds, budget2) {
-  const lines = estimates.map(({ runner, seconds: seconds5, files: files5, known: known4, width, load }) => {
+  const lines = estimates.map(({ runner, seconds: seconds6, files: files5, known: known4, width, load }) => {
     const name3 = RUNNER_NAMES[runner];
     const run7 = `${plural(files5, "test file")} to run here, up to ${width} at once`;
-    if (seconds5 === null) return `${name3}: ${run7}; no stored duration, so the time is unknown`;
+    if (seconds6 === null) return `${name3}: ${run7}; no stored duration, so the time is unknown`;
     const from = known4 < files5 ? `the stored durations of ${known4} (the others at their median)` : files5 === 1 ? "its stored duration" : "their stored durations";
-    const over2 = seconds5 > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
-    return `${name3}: ${run7}: about ${seconds5} s from ${from}${scaledText(load)}${over2}`;
+    const over2 = seconds6 > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
+    return `${name3}: ${run7}: about ${seconds6} s from ${from}${scaledText(load)}${over2}`;
   });
   const fit = budget2 === void 0 ? null : budgetLine(budget2);
   return [...lines, ...fit === null ? [] : [fit]].map((line) => `squeal code: ${line}
@@ -97166,7 +97317,7 @@ function budgetLine({ fit, rerun, early }) {
 }
 function rerunCommand(args2, squeal) {
   const listed12 = (flag3, values) => values === void 0 || values.length === 0 ? [] : [flag3, ...values];
-  return (seconds5) => {
+  return (seconds6) => {
     const words = [
       "--base",
       args2.ref,
@@ -97176,7 +97327,7 @@ function rerunCommand(args2, squeal) {
       ...listed12("--parts", args2.parts),
       ...args2.exceptions === void 0 ? [] : ["--exceptions", args2.exceptions],
       "--timeout",
-      String(seconds5),
+      String(seconds6),
       ...args2.json ? ["--json"] : []
     ];
     return `${squeal} code ${words.map(shellWord).join(" ")}`;
@@ -98134,7 +98285,7 @@ var StoreWait = class {
     if (this.#since === null) return;
     const moved4 = changed2 === 0 ? null : `${changed2} changed during the wait, so ${again(changed2)}`;
     if (freed) {
-      const free = `the store was free after ${seconds3(now() - this.#since)} s: ${completed(written2)} kept`;
+      const free = `the store was free after ${seconds4(now() - this.#since)} s: ${completed(written2)} kept`;
       tell(moved4 === null ? free : `${free}; ${moved4}`);
     } else if (changed2 > 0) {
       tell(
@@ -98149,7 +98300,7 @@ var StoreWait = class {
   spent(left, changed2) {
     const busy2 = this.#database === null ? "" : ` (${holderOf3(this.#database)})`;
     const moved4 = changed2 === 0 ? "" : `, and ${changed2} of them changed during the wait`;
-    const why2 = this.#stop === "ceiling" ? `the store was still busy after ${seconds3(this.#ceilingMs)} s${busy2}, and waiting longer would cost more than running ${left === 1 ? "it" : "them"} again` : `no write landed for ${seconds3(this.#options.boundMs)} s${busy2}`;
+    const why2 = this.#stop === "ceiling" ? `the store was still busy after ${seconds4(this.#ceilingMs)} s${busy2}, and waiting longer would cost more than running ${left === 1 ? "it" : "them"} again` : `no write landed for ${seconds4(this.#options.boundMs)} s${busy2}`;
     return `${notKept(left)}: ${why2}${moved4}; ${again(left)}`;
   }
   #start(database, left) {
@@ -98159,7 +98310,7 @@ var StoreWait = class {
     this.#ceilingMs = Math.max(boundMs, runMs?.(left) ?? 0);
     const { keptEarly = 0 } = this.#options;
     const early = keptEarly === 0 ? "" : ` (${keptEarly} kept while the runs went on)`;
-    const limits2 = `until no write lands for ${seconds3(boundMs)} s, at most ${seconds3(this.#ceilingMs)} s in all`;
+    const limits2 = `until no write lands for ${seconds4(boundMs)} s, at most ${seconds4(this.#ceilingMs)} s in all`;
     const wait = `waiting to keep ${completed(left.length)}${early} ${limits2}`;
     tell(`the store is busy (${holderOf3(database)}); ${wait}: ${names4(left)}`);
   }
@@ -98197,7 +98348,7 @@ function names4(files5) {
   const more2 = files5.length - shown.length;
   return more2 > 0 ? `${shown.join(", ")} and ${more2} more` : shown.join(", ");
 }
-function seconds3(ms2) {
+function seconds4(ms2) {
   return Number((ms2 / 1e3).toFixed(1));
 }
 
@@ -101903,7 +102054,7 @@ init_notes();
 init_events2();
 import { randomUUID as randomUUID20 } from "node:crypto";
 import { dirname as dirname62 } from "node:path";
-import { setTimeout as sleep18 } from "node:timers/promises";
+import { setTimeout as sleep19 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath22 } from "node:url";
 
 // src/core/presence/lock-events.ts
@@ -106094,7 +106245,7 @@ var Daemon = class {
       () => true
     );
     this.#cancelling = (async () => {
-      const grace = sleep18(CANCEL_GRACE_MS, false, { ref: false });
+      const grace = sleep19(CANCEL_GRACE_MS, false, { ref: false });
       if (await Promise.race([closed, grace])) return;
       const stop2 = await this.#children.stopMarked().catch(() => null);
       if (stop2 !== null) this.#note(stop2.text, stop2.stopped);
@@ -107628,7 +107779,7 @@ init_hold_rows();
 import { spawn as spawn15 } from "node:child_process";
 import { randomUUID as randomUUID21 } from "node:crypto";
 import { constants as constants11 } from "node:os";
-import { setTimeout as sleep19 } from "node:timers/promises";
+import { setTimeout as sleep20 } from "node:timers/promises";
 var HOLD_WAIT_MS = 3e3;
 var USAGE5 = "usage: squeal hold [--max <duration>] -- <command> [args...]\n";
 var FORWARDED3 = ["SIGINT", "SIGTERM", "SIGHUP"];
@@ -107757,7 +107908,7 @@ async function holdDaemon(root, ask2, waitMs) {
   }
   if (answer4.type !== "hold") return "";
   for (let state = answer4; !state.settled && performance.now() < deadline; ) {
-    await sleep19(50);
+    await sleep20(50);
     const next = await ask2(root, { type: "hold-status", requestId: answer4.requestId }).catch(
       () => null
     );
@@ -107816,7 +107967,7 @@ init_transfer_import();
 
 // src/cli/import-daemon.ts
 init_heartbeat();
-import { setTimeout as sleep20 } from "node:timers/promises";
+import { setTimeout as sleep21 } from "node:timers/promises";
 var STATUS_PAUSES_MS3 = [20, 50, 100, 250];
 async function importThroughDaemon(store, sent, now) {
   const record2 = store.worktrees.get(sent.worktreeId)?.daemon ?? null;
@@ -107827,7 +107978,7 @@ async function importThroughDaemon(store, sent, now) {
   if (!isImport(answer4)) return null;
   let state = answer4;
   for (let attempt = 0; state.outcome === null; attempt++) {
-    await sleep20(STATUS_PAUSES_MS3[Math.min(attempt, STATUS_PAUSES_MS3.length - 1)]);
+    await sleep21(STATUS_PAUSES_MS3[Math.min(attempt, STATUS_PAUSES_MS3.length - 1)]);
     const next = await askDaemon(socket, {
       type: "import-status",
       requestId: answer4.requestId
@@ -110742,7 +110893,7 @@ import { join as join179 } from "node:path";
 import { randomBytes as randomBytes3 } from "node:crypto";
 import { constants as constants12, copyFileSync as copyFileSync4, mkdirSync as mkdirSync30, rmSync as rmSync37, unlinkSync as unlinkSync2 } from "node:fs";
 import { isAbsolute as isAbsolute27, join as join175, normalize as normalize9, sep as sep36 } from "node:path";
-import { setTimeout as sleep22 } from "node:timers/promises";
+import { setTimeout as sleep23 } from "node:timers/promises";
 init_git();
 init_git_layout();
 
@@ -110755,7 +110906,7 @@ import {
   statSync as statSync40
 } from "node:fs";
 import { basename as basename37, dirname as dirname65, extname as extname14, join as join173, resolve as resolve43 } from "node:path";
-import { setTimeout as sleep21 } from "node:timers/promises";
+import { setTimeout as sleep22 } from "node:timers/promises";
 var LEFT_GRACE_MS = 2e3;
 var KILL_WAIT_MS = 500;
 var POLL_MS2 = 50;
@@ -110839,7 +110990,7 @@ async function waitGone(proc, found4, ms2) {
   const deadline = performance.now() + ms2;
   let left = found4.filter((f) => alive2(proc, f));
   while (left.length > 0 && performance.now() < deadline) {
-    await sleep21(POLL_MS2);
+    await sleep22(POLL_MS2);
     left = left.filter((f) => alive2(proc, f));
   }
   return left;
@@ -111135,7 +111286,7 @@ async function stopGroup(group, graceMs = STOP_GRACE_MS) {
   if (!signalGroup(group, "SIGTERM")) return;
   const deadline = performance.now() + graceMs;
   while (performance.now() < deadline) {
-    await sleep22(50);
+    await sleep23(50);
     if (!signalGroup(group, 0)) return;
   }
   signalGroup(group, "SIGKILL");
@@ -111644,8 +111795,8 @@ var Batches = class {
     return Math.max(1, n);
   }
   /** A batch of `paths` paths took `seconds` here, its child's start included. */
-  took(paths, seconds5) {
-    this.#ran.push({ paths, seconds: seconds5 });
+  took(paths, seconds6) {
+    this.#ran.push({ paths, seconds: seconds6 });
   }
   /** The batches so far, in order. */
   ran() {
@@ -111655,10 +111806,10 @@ var Batches = class {
 function costOf2(ran) {
   if (ran.length === 0) return null;
   const paths = ran.reduce((sum2, b) => sum2 + b.paths, 0);
-  const seconds5 = ran.reduce((sum2, b) => sum2 + b.seconds, 0);
-  const mean = { start: 0, perPath: seconds5 / Math.max(1, paths) };
+  const seconds6 = ran.reduce((sum2, b) => sum2 + b.seconds, 0);
+  const mean = { start: 0, perPath: seconds6 / Math.max(1, paths) };
   const mx = paths / ran.length;
-  const my = seconds5 / ran.length;
+  const my = seconds6 / ran.length;
   const sxx = ran.reduce((sum2, b) => sum2 + (b.paths - mx) ** 2, 0);
   if (sxx === 0) return mean;
   const slope = ran.reduce((sum2, b) => sum2 + (b.paths - mx) * (b.seconds - my), 0) / sxx;
@@ -111672,17 +111823,17 @@ function tellsEstimate(estimate2, allMissing, left) {
   return estimate2.seconds * 2 > left;
 }
 function estimateText2(estimate2, commit, budget2, call2) {
-  const { files: files5, seconds: seconds5, known: known4, width } = estimate2;
+  const { files: files5, seconds: seconds6, known: known4, width } = estimate2;
   const at2 = commit.slice(0, 9);
   const flag3 = call2.allMissing ? "--all-missing" : "--run";
   if (files5 === 0) return `${flag3}: no test file with no result at ${at2}`;
   const what = `${files5} test file${files5 === 1 ? "" : "s"} with no result at ${at2} to run, up to ${width} at once`;
   const budgetText = `the budget is ${budget2} s, the checkout and install included`;
   const narrow2 = call2.allMissing ? "" : `; to narrow it, name test files or folders: squeal status --at ${shellWord(call2.given)} <path>... --run`;
-  if (seconds5 === null)
+  if (seconds6 === null)
     return `${flag3}: ${what}; no stored duration, so the time is unknown; ${budgetText}${narrow2}`;
   const from = known4 < files5 ? `the stored durations of ${known4} (the others at their median)` : files5 === 1 ? "its stored duration" : "their stored durations";
-  return `${flag3}: ${what}: about ${seconds5} s from ${from}; ${budgetText}${narrow2}`;
+  return `${flag3}: ${what}: about ${seconds6} s from ${from}; ${budgetText}${narrow2}`;
 }
 function stopMargin(leftSeconds) {
   return Math.min(60, Math.max(5, Math.ceil(leftSeconds / 10)));
@@ -112013,9 +112164,9 @@ function rerunFit(overheadMs, sides, cap2 = RERUN_CAP_SECONDS) {
   let from = "durations";
   for (const side of sides) {
     if (side.left === 0) continue;
-    const seconds5 = (side.gateMs ?? 0) / 1e3;
-    if (side.ran > 0 && seconds5 > 0) {
-      needs += side.left / (side.ran / seconds5);
+    const seconds6 = (side.gateMs ?? 0) / 1e3;
+    if (side.ran > 0 && seconds6 > 0) {
+      needs += side.left / (side.ran / seconds6);
       from = "rate";
     } else if (side.estimate !== null) needs += side.estimate;
     else return { needs: null, from };
@@ -112025,10 +112176,10 @@ function rerunFit(overheadMs, sides, cap2 = RERUN_CAP_SECONDS) {
   if (minutes <= cap2) return { seconds: minutes };
   return { needs: Math.round(overheadMs / 1e3 + needs), from };
 }
-function aboutText(seconds5) {
-  if (seconds5 < 120) return `${Math.max(1, Math.round(seconds5))} s`;
-  if (seconds5 < 120 * 60) return `${Math.round(seconds5 / 60)} min`;
-  return `${Math.round(seconds5 / 3600)} h`;
+function aboutText(seconds6) {
+  if (seconds6 < 120) return `${Math.max(1, Math.round(seconds6))} s`;
+  if (seconds6 < 120 * 60) return `${Math.round(seconds6 / 60)} min`;
+  return `${Math.round(seconds6 / 3600)} h`;
 }
 function noFitText(notRun, fit) {
   const narrow2 = "name test files or folders to narrow it";
@@ -113397,7 +113548,7 @@ async function runBatches(loop) {
   const batches2 = new Batches(loop.timeoutSeconds, {
     ...loop.batchFiles === void 0 ? {} : { fixed: loop.batchFiles }
   });
-  const seconds5 = (slot2) => {
+  const seconds6 = (slot2) => {
     const known4 = (bySlot.get(slot2) ?? []).map((f) => loop.secondsOf(refOf5(f)));
     return known4.some((s) => s !== null) ? Math.max(...known4.map((s) => s ?? 0)) : null;
   };
@@ -113413,7 +113564,7 @@ async function runBatches(loop) {
     await loop.beforeEach?.();
     const first2 = lotOfSlot(slots[0]);
     const same4 = slots.filter((slot2) => lotOfSlot(slot2) === first2);
-    const take = same4.slice(0, batches2.next(same4, seconds5));
+    const take = same4.slice(0, batches2.next(same4, seconds6));
     const taken3 = new Set(take);
     slots = slots.filter((slot2) => !taken3.has(slot2));
     const files5 = take.flatMap((slot2) => bySlot.get(slot2) ?? []);
@@ -114312,7 +114463,7 @@ function runUse(record2, now) {
     ...now === void 0 ? {} : { now: now.use }
   };
 }
-function rerunCommand2(call2, seconds5) {
+function rerunCommand2(call2, seconds6) {
   const words = [
     "squeal status --at",
     shellWord(call2.given),
@@ -114320,7 +114471,7 @@ function rerunCommand2(call2, seconds5) {
     "--run",
     ...call2.allMissing ? ["--all-missing"] : [],
     "--timeout",
-    String(seconds5)
+    String(seconds6)
   ];
   return words.join(" ");
 }
@@ -115039,9 +115190,9 @@ function jsonProof(report4) {
 init_text();
 var RERUN_FACTOR2 = 2;
 function rerunCommand3(args2, conditions) {
-  const seconds5 = Math.max(60, Math.ceil(RERUN_FACTOR2 * args2.timeoutSeconds / 60) * 60);
+  const seconds6 = Math.max(60, Math.ceil(RERUN_FACTOR2 * args2.timeoutSeconds / 60) * 60);
   const given2 = { with: args2.with ?? [], source: args2.source ?? [] };
-  return [...commandWords(args2, conditions, given2), "--timeout", String(seconds5)].join(" ");
+  return [...commandWords(args2, conditions, given2), "--timeout", String(seconds6)].join(" ");
 }
 function withRerunCommand(args2, conditions, more2) {
   const add3 = (given2, extra) => [
@@ -115235,15 +115386,15 @@ async function runFiles(input, checkout, toRun2, change3, files5) {
   let left = toRun2;
   let made = 0;
   for (let round2 = 0; round2 < input.repeat && left.length > 0; round2++) {
-    const seconds5 = Math.floor((input.deadline - performance.now()) / 1e3);
-    if (seconds5 < 1) {
+    const seconds6 = Math.floor((input.deadline - performance.now()) / 1e3);
+    if (seconds6 < 1) {
       for (const file of left) {
         const id = testFileId(file.ref);
         files5.set(id, { ...budgetSide(), runs: runs2.get(id) ?? 0 });
       }
       break;
     }
-    const sides = await runOnce(input, checkout, left, { change: change3, env, seconds: seconds5 });
+    const sides = await runOnce(input, checkout, left, { change: change3, env, seconds: seconds6 });
     const next = [];
     for (const file of left) {
       const id = testFileId(file.ref);
@@ -115283,13 +115434,13 @@ function budgetSide() {
   };
 }
 async function runOnce(input, checkout, toRun2, round2) {
-  const { change: change3, env, seconds: seconds5 } = round2;
+  const { change: change3, env, seconds: seconds6 } = round2;
   const forced = forcedReason(input);
   const answer4 = await runInChild({
     relaunch: input.relaunch,
     checkout,
     files: [...new Set(toRun2.map((f) => f.ref.path))].sort(),
-    budgetSeconds: seconds5,
+    budgetSeconds: seconds6,
     // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing;
     // D5.3: nor does a side under a condition, whose key does not record it.
     store: forced === null && change3 === null,
@@ -115637,7 +115788,7 @@ init_user_config();
 init_git_layout();
 import { homedir as homedir6 } from "node:os";
 import { isAbsolute as isAbsolute32, resolve as resolve46 } from "node:path";
-import { setTimeout as sleep23 } from "node:timers/promises";
+import { setTimeout as sleep24 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
 init_source();
@@ -115777,14 +115928,14 @@ var DarwinSource = class {
 function ticksOf(time) {
   const m = TIME.exec(time);
   if (m === null) return null;
-  const [, days = "0", hours = "0", minutes = "0", seconds5 = "0", fraction = "0"] = m;
-  const total = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes)) * 60 + Number(seconds5);
+  const [, days = "0", hours = "0", minutes = "0", seconds6 = "0", fraction = "0"] = m;
+  const total = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes)) * 60 + Number(seconds6);
   return total * CLOCK_TICKS + Math.round(Number(`0.${fraction}`) * CLOCK_TICKS);
 }
 function localTime(year, month, day2, time) {
   const index = MONTHS.indexOf(month);
-  const [hours = 0, minutes = 0, seconds5 = 0] = time;
-  const date = new Date(year, index, day2, hours, minutes, seconds5);
+  const [hours = 0, minutes = 0, seconds6 = 0] = time;
+  const date = new Date(year, index, day2, hours, minutes, seconds6);
   return index < 0 || date.getDate() !== day2 || date.getMonth() !== index ? null : date.getTime();
 }
 function usedMemory(text3) {
@@ -117944,7 +118095,7 @@ ${USAGE7}`);
       repo: parsed3.repo,
       sampleMs: SAMPLE_MS,
       now: io.now ?? Date.now,
-      wait: options.wait ?? ((ms2) => sleep23(ms2))
+      wait: options.wait ?? ((ms2) => sleep24(ms2))
     });
   } catch (error) {
     io.stderr(
@@ -118603,14 +118754,14 @@ function addPair(files5, pair2, test, index, detail2) {
     };
     files5.set(pair2.path, file);
   }
-  const seconds5 = test.seconds ?? 0;
+  const seconds6 = test.seconds ?? 0;
   file.testFiles++;
   if (test.seconds === null) file.withoutSeconds++;
-  file.seconds += seconds5;
-  file.kinds[pair2.kind] += seconds5;
-  file.coverage[pair2.coverage] += seconds5;
-  if (AVOIDABLE_KINDS.has(pair2.kind) && UNCALLED.has(pair2.coverage)) file.avoidable += seconds5;
-  if (IMPORT_KINDS.has(pair2.kind) && pair2.coverage === "unknown") file.unknown += seconds5;
+  file.seconds += seconds6;
+  file.kinds[pair2.kind] += seconds6;
+  file.coverage[pair2.coverage] += seconds6;
+  if (AVOIDABLE_KINDS.has(pair2.kind) && UNCALLED.has(pair2.coverage)) file.avoidable += seconds6;
+  if (IMPORT_KINDS.has(pair2.kind) && pair2.coverage === "unknown") file.unknown += seconds6;
   if (pair2.notRecorded === true) file.notRecorded++;
   if (IMPORT_KINDS.has(pair2.kind) && pair2.chain.length > 2) {
     const importer = pair2.chain.at(-2);
@@ -118638,8 +118789,8 @@ function addPair(files5, pair2, test, index, detail2) {
     };
     file.routes.set(key3, route);
   }
-  route.seconds += seconds5;
-  route.coverage[pair2.coverage] += seconds5;
+  route.seconds += seconds6;
+  route.coverage[pair2.coverage] += seconds6;
   count3(route, pair2.coverage);
   route.tests?.push({ path: test.ref.path, seconds: test.seconds, coverage: pair2.coverage });
 }
@@ -118767,9 +118918,9 @@ function setupText(them, chain) {
 }
 
 // src/core/reach/entries.ts
-function split4(seconds5, total) {
+function split4(seconds6, total) {
   const out2 = {};
-  for (const [key3, value] of Object.entries(seconds5)) {
+  for (const [key3, value] of Object.entries(seconds6)) {
     if (value > 0 && total > 0) out2[key3] = value / total;
   }
   return out2;
@@ -118789,16 +118940,16 @@ function better(a, b) {
   return a.seconds > b.seconds || a.seconds === b.seconds && a.testFiles > b.testFiles;
 }
 function routeOf(route) {
-  const { kind, gateway, chain, testFiles: testFiles3, seconds: seconds5 } = route;
-  return { kind, gateway, chain, testFiles: testFiles3, seconds: seconds5, coverage: split4(route.coverage, seconds5) };
+  const { kind, gateway, chain, testFiles: testFiles3, seconds: seconds6 } = route;
+  return { kind, gateway, chain, testFiles: testFiles3, seconds: seconds6, coverage: split4(route.coverage, seconds6) };
 }
 var BY_DESIGN_KINDS = /* @__PURE__ */ new Set(["child process", "runtime read"]);
 function noteOf(kinds2) {
   let byDesign = 0;
   let imports2 = 0;
-  for (const [kind, seconds5] of Object.entries(kinds2)) {
-    if (BY_DESIGN_KINDS.has(kind)) byDesign += seconds5;
-    if (IMPORT_KINDS.has(kind)) imports2 += seconds5;
+  for (const [kind, seconds6] of Object.entries(kinds2)) {
+    if (BY_DESIGN_KINDS.has(kind)) byDesign += seconds6;
+    if (IMPORT_KINDS.has(kind)) imports2 += seconds6;
   }
   return byDesign > imports2 ? { note: BY_DESIGN } : {};
 }
@@ -118837,20 +118988,20 @@ function entryOf3({ files: files5, route, lead }, analysis, snapshot3) {
   const [first2] = files5;
   const mean = (f) => files5.reduce((s, x) => s + f(x), 0) / files5.length;
   const kinds2 = sum(files5.map((f) => f.kinds));
-  const seconds5 = mean((f) => f.seconds);
+  const seconds6 = mean((f) => f.seconds);
   const total = analysis.suite.seconds;
   return {
     files: paths,
     folder: paths.length > 1 ? commonFolder(paths) : null,
     testFiles: first2.testFiles,
-    seconds: seconds5,
-    share: total > 0 ? seconds5 / total : 0,
+    seconds: seconds6,
+    share: total > 0 ? seconds6 / total : 0,
     avoidableSeconds: mean((f) => f.avoidable),
     unknownSeconds: mean((f) => f.unknown),
     edits: files5.reduce((n, f) => n + (analysis.edits.get(f.path) ?? 0), 0),
     editSeconds: files5.reduce((s, f) => s + (analysis.edits.get(f.path) ?? 0) * f.seconds, 0),
-    coverage: split4(sum(files5.map((f) => f.coverage)), seconds5 * files5.length),
-    kinds: split4(kinds2, seconds5 * files5.length),
+    coverage: split4(sum(files5.map((f) => f.coverage)), seconds6 * files5.length),
+    kinds: split4(kinds2, seconds6 * files5.length),
     kind: route?.kind ?? "import",
     gateway: route?.gateway == null ? null : routeOf(route),
     second: route === null ? null : secondGateway(paths, route, snapshot3, lead),
@@ -118874,7 +119025,7 @@ function commonFolder(paths) {
 }
 function testEntries(analysis) {
   const entries3 = analysis.tests.filter((t) => t.imports > 0).map((t) => {
-    const seconds5 = t.test.seconds ?? 0;
+    const seconds6 = t.test.seconds ?? 0;
     let via = null;
     for (const [path, uncalled] of t.uncalledVia) {
       if (via === null || uncalled > via.uncalled) via = { path, uncalled };
@@ -118887,13 +119038,13 @@ function testEntries(analysis) {
       called: t.called,
       edits: t.edits,
       via,
-      avoidablePairSeconds: seconds5 * t.uncalled
+      avoidablePairSeconds: seconds6 * t.uncalled
     };
     const unknown3 = t.test.coverage.kind === "unknown";
     return {
       entry: entry4,
-      rank: seconds5 * (unknown3 ? t.imports : t.uncalled),
-      all: seconds5 * t.sources
+      rank: seconds6 * (unknown3 ? t.imports : t.uncalled),
+      all: seconds6 * t.sources
     };
   });
   entries3.sort((a, b) => b.rank - a.rank || b.all - a.all || compare(a.entry.path, b.entry.path));
@@ -119004,10 +119155,10 @@ function estimateOf2(project, sums, edits, snapshot3, limit) {
   for (const edit of edits) {
     for (const test of keyed) addPair2(sums, test, edit, facts);
   }
-  const withoutList = [...sums.noList.values()].map(({ reason: reason2, detail: detail2, testFiles: testFiles3, seconds: seconds5 }) => ({ reason: reason2, detail: detail2, testFiles: testFiles3, seconds: seconds5 })).sort(
+  const withoutList = [...sums.noList.values()].map(({ reason: reason2, detail: detail2, testFiles: testFiles3, seconds: seconds6 }) => ({ reason: reason2, detail: detail2, testFiles: testFiles3, seconds: seconds6 })).sort(
     (a, b) => b.testFiles - a.testFiles || compare(a.reason, b.reason) || compare(a.detail ?? "", b.detail ?? "")
   );
-  const unproved = [...sums.unproved.values()].map(({ reason: reason2, testFiles: testFiles3, seconds: seconds5 }) => ({ reason: reason2, testFiles: testFiles3, seconds: seconds5 })).sort((a, b) => b.testFiles - a.testFiles || compare(a.reason, b.reason));
+  const unproved = [...sums.unproved.values()].map(({ reason: reason2, testFiles: testFiles3, seconds: seconds6 }) => ({ reason: reason2, testFiles: testFiles3, seconds: seconds6 })).sort((a, b) => b.testFiles - a.testFiles || compare(a.reason, b.reason));
   if (facts.first === null) {
     return {
       project,
@@ -119021,9 +119172,9 @@ function estimateOf2(project, sums, edits, snapshot3, limit) {
   }
   const ranked = [...sums.files.entries()].sort(([a, x], [b, y]) => y - x || compare(a, b));
   const files5 = ranked.slice(0, limit).map(
-    ([path, seconds5]) => ({
+    ([path, seconds6]) => ({
       path,
-      avoidableSeconds: seconds5,
+      avoidableSeconds: seconds6,
       // Review 0.1.493 B2: importers by stored edges, whatever route the report displays.
       importedBy: keyed.filter((t) => t.facts.imports(path)).length,
       loadedBy: sums.tests.filter((t) => t.test.loaded.lists.at(-1)?.paths.has(path) === true).length
@@ -119055,8 +119206,8 @@ function addPair2(sums, { reach: reach2, facts: inputs2 }, edit, facts) {
   const { test } = reach2;
   const changed2 = edit.paths.filter((p) => inputs2.keyedBy.has(p));
   if (changed2.length === 0) return;
-  const seconds5 = test.seconds ?? 0;
-  sums.rerun += seconds5;
+  const seconds6 = test.seconds ?? 0;
+  sums.rerun += seconds6;
   const list2 = listAt(test.loaded.lists, edit.at);
   if (list2 === null) {
     const { reason: reason2, detail: detail2 } = reasonOf5(reach2, facts);
@@ -119065,7 +119216,7 @@ function addPair2(sums, { reach: reach2, facts: inputs2 }, edit, facts) {
       `${reason2}\0${detail2 ?? ""}`,
       { reason: reason2, detail: detail2, testFiles: 0, seconds: 0 },
       test.ref.path,
-      seconds5
+      seconds6
     );
     return;
   }
@@ -119075,17 +119226,17 @@ function addPair2(sums, { reach: reach2, facts: inputs2 }, edit, facts) {
   const unproved = kinds2.find((k) => k.kind === "unproved");
   if (unproved !== void 0) {
     const { reason: reason2 } = unproved;
-    count4(sums.unproved, reason2, { reason: reason2, testFiles: 0, seconds: 0 }, test.ref.path, seconds5);
+    count4(sums.unproved, reason2, { reason: reason2, testFiles: 0, seconds: 0 }, test.ref.path, seconds6);
     return;
   }
-  sums.avoidable += seconds5;
+  sums.avoidable += seconds6;
   for (const path of changed2) {
-    sums.files.set(path, (sums.files.get(path) ?? 0) + seconds5 / changed2.length);
+    sums.files.set(path, (sums.files.get(path) ?? 0) + seconds6 / changed2.length);
   }
 }
-function count4(buckets, id, entry4, testFile, seconds5) {
+function count4(buckets, id, entry4, testFile, seconds6) {
   const bucket = buckets.get(id) ?? { ...entry4, seen: /* @__PURE__ */ new Set() };
-  bucket.seconds += seconds5;
+  bucket.seconds += seconds6;
   if (!bucket.seen.has(testFile)) {
     bucket.seen.add(testFile);
     bucket.testFiles++;
@@ -119140,7 +119291,7 @@ function proposals(snapshot3, analysis, history2, { command, listed: listed12 })
     return [{ kind: "warmup", command: warmup, testFiles: listed12 }];
   }
   const out2 = [];
-  const { withoutSeconds, seconds: seconds5 } = analysis.suite;
+  const { withoutSeconds, seconds: seconds6 } = analysis.suite;
   if (withoutSeconds > 0) out2.push({ kind: "seconds", command: warmup, testFiles: withoutSeconds });
   const { coverage } = snapshot3;
   if (!coverage.on) {
@@ -119162,7 +119313,7 @@ function proposals(snapshot3, analysis, history2, { command, listed: listed12 })
       command: `${command} run --all --force`,
       retry: `${command} retry`,
       testFiles: none3.length,
-      share: seconds5 > 0 ? missing2 / seconds5 : 0,
+      share: seconds6 > 0 ? missing2 / seconds6 : 0,
       current: paths(true).sort(compare),
       noResult: paths(false).sort(compare)
     });
@@ -119561,7 +119712,7 @@ Usage: ${REACH_USAGE}
 // src/cli/remove.ts
 import { existsSync as existsSync76, lstatSync as lstatSync12, readdirSync as readdirSync47, readFileSync as readFileSync85, rmSync as rmSync42 } from "node:fs";
 import { basename as basename40, dirname as dirname68, join as join198 } from "node:path";
-import { setTimeout as sleep24 } from "node:timers/promises";
+import { setTimeout as sleep25 } from "node:timers/promises";
 init_paths4();
 init_scratch();
 init_git();
@@ -119735,7 +119886,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
         for (const lock3 of held4) lock3.release();
         return { held: name3.slice(0, -".sqlite".length), lockPath, store: store !== null };
       }
-      await sleep24(50);
+      await sleep25(50);
     }
   }
   return held4;
@@ -120891,7 +121042,7 @@ init_escaped();
 init_low_priority();
 init_outlived();
 init_terminate();
-import { setTimeout as sleep25 } from "node:timers/promises";
+import { setTimeout as sleep26 } from "node:timers/promises";
 function markOf(options) {
   const value = options.childEnv?.[CHILD_VARIABLE];
   if (value === void 0) return null;
@@ -120931,7 +121082,7 @@ async function workersGone(self, mark, since) {
   const deadline = Date.now() + GRACE_MS;
   left = left.filter((entry4) => !exited(entry4));
   while (left.length > 0 && Date.now() < deadline) {
-    await sleep25(25);
+    await sleep26(25);
     left = left.filter((entry4) => !exited(entry4));
   }
 }
@@ -121130,7 +121281,7 @@ init_stored();
 init_open();
 
 // src/cli/start-ready.ts
-import { setTimeout as sleep26 } from "node:timers/promises";
+import { setTimeout as sleep27 } from "node:timers/promises";
 var SPAWN_WAIT_MS = 3e4;
 async function spawnedFailed(root, { pid, ended: ended2 }, io) {
   const lives = () => !ended2();
@@ -121156,7 +121307,7 @@ async function served(root, deadline, accepts, lives = () => true) {
     if (answered2 && registered(root, probe2.ping)) return "served";
     if (ended2 && !answered2) return "ended";
     if (Date.now() > deadline) return answered2 ? "served" : "starting";
-    await sleep26(50);
+    await sleep27(50);
   }
 }
 function registered(root, ping2) {
@@ -121166,14 +121317,14 @@ function registered(root, ping2) {
 // src/cli/stop.ts
 import { realpathSync as realpathSync35 } from "node:fs";
 import { resolve as resolve50 } from "node:path";
-import { setTimeout as sleep29 } from "node:timers/promises";
+import { setTimeout as sleep30 } from "node:timers/promises";
 init_git_layout();
 init_paths();
 
 // src/cli/stop-removed.ts
 import { realpathSync as realpathSync33 } from "node:fs";
 import { basename as basename42, dirname as dirname70, join as join200 } from "node:path";
-import { setTimeout as sleep28 } from "node:timers/promises";
+import { setTimeout as sleep29 } from "node:timers/promises";
 init_paths4();
 init_terminate();
 init_git_layout();
@@ -121183,12 +121334,12 @@ init_open();
 init_paths();
 
 // src/cli/stop-waits.ts
-import { setTimeout as sleep27 } from "node:timers/promises";
+import { setTimeout as sleep28 } from "node:timers/promises";
 async function socketClosed(socketPath, ms2) {
   const deadline = Date.now() + ms2;
   while (await askDaemon(socketPath, { type: "ping" }).catch(() => "busy") !== null) {
     if (Date.now() > deadline) return false;
-    await sleep27(50);
+    await sleep28(50);
   }
   return true;
 }
@@ -121197,7 +121348,7 @@ async function leftoversGone(marks2, ms2) {
   for (; ; ) {
     const left = await leftovers(marks2);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep27(100);
+    await sleep28(100);
   }
 }
 function refusedLine2(error) {
@@ -121205,7 +121356,7 @@ function refusedLine2(error) {
 `;
 }
 function leftoverLine(root, left, ms2) {
-  return `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, seconds4(ms2))}
+  return `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, seconds5(ms2))}
 `;
 }
 function leftoversClause(left, after3) {
@@ -121213,7 +121364,7 @@ function leftoversClause(left, after3) {
   const what = left.length === 1 ? "a process it started still runs" : `${left.length} processes it started still run`;
   return `${what} after ${after3}: ${named4}`;
 }
-function seconds4(ms2) {
+function seconds5(ms2) {
   return `${ms2 / 1e3} s`;
 }
 function processGone(pid) {
@@ -121244,13 +121395,13 @@ async function stopRemoved(named4, io, bounds) {
   }
   const which = `the daemon for ${root} (pid ${ping2.pid})`;
   if (!await socketClosed(socketPath, bounds.socketMs)) {
-    io.stdout(`Stop requested; ${which} still serves after ${seconds4(bounds.socketMs)}
+    io.stdout(`Stop requested; ${which} still serves after ${seconds5(bounds.socketMs)}
 `);
     return 1;
   }
   if (!await processEnded(ping2.pid, start2, bounds.lockMs)) {
     io.stdout(
-      `Stop requested; ${which} closed its socket but still runs after ${seconds4(bounds.lockMs)}
+      `Stop requested; ${which} closed its socket but still runs after ${seconds5(bounds.lockMs)}
 `
     );
     return 1;
@@ -121383,7 +121534,7 @@ async function processEnded(pid, start2, ms2) {
     const gone5 = start2 === null ? processGone(pid) : statOf(pid)?.start !== start2;
     if (gone5) return true;
     if (Date.now() > deadline) return false;
-    await sleep28(50);
+    await sleep29(50);
   }
 }
 
@@ -121515,7 +121666,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS, busyBoundMs) {
   if (!await socketClosed(socketPath, bounds.socketMs)) {
     const which = daemon === null ? "" : ` (pid ${daemon.pid})`;
     io.stdout(
-      `Stop requested; the daemon for ${root}${which} still serves after ${seconds4(bounds.socketMs)}
+      `Stop requested; the daemon for ${root}${which} still serves after ${seconds5(bounds.socketMs)}
 `
     );
     return 1;
@@ -121523,7 +121674,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS, busyBoundMs) {
   pauseAt("stop-mark");
   const mark = await stoppedMark(root, tree, untilStart, busyBoundMs, io);
   const lock2 = await lockFreed(root, daemon, bounds.lockMs);
-  const after3 = seconds4(bounds.lockMs);
+  const after3 = seconds5(bounds.lockMs);
   if (lock2.state === "held") {
     io.stdout(
       `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${after3}
@@ -121624,7 +121775,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone4(root, daemon)) return { state: "free" };
     const probe2 = marked3(path, daemon) ?? probeLock(path);
     if (probe2.state === "free" || Date.now() > deadline) return probe2;
-    await sleep29(50);
+    await sleep30(50);
   }
 }
 function marked3(path, daemon) {

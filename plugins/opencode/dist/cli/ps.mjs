@@ -369,14 +369,14 @@ var DarwinSource = class {
 function ticksOf(time) {
   const m = TIME.exec(time);
   if (m === null) return null;
-  const [, days = "0", hours = "0", minutes = "0", seconds = "0", fraction = "0"] = m;
-  const total = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes)) * 60 + Number(seconds);
+  const [, days = "0", hours = "0", minutes = "0", seconds2 = "0", fraction = "0"] = m;
+  const total = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes)) * 60 + Number(seconds2);
   return total * CLOCK_TICKS + Math.round(Number(`0.${fraction}`) * CLOCK_TICKS);
 }
 function localTime(year, month, day, time) {
   const index = MONTHS.indexOf(month);
-  const [hours = 0, minutes = 0, seconds = 0] = time;
-  const date = new Date(year, index, day, hours, minutes, seconds);
+  const [hours = 0, minutes = 0, seconds2 = 0] = time;
+  const date = new Date(year, index, day, hours, minutes, seconds2);
   return index < 0 || date.getDate() !== day || date.getMonth() !== index ? null : date.getTime();
 }
 function usedMemory(text2) {
@@ -1872,8 +1872,8 @@ var ProcSource = class {
     return TICKS_PER_SECOND;
   }
   bootTime() {
-    const seconds = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
-    return seconds === void 0 ? null : Number(seconds) * 1e3;
+    const seconds2 = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
+    return seconds2 === void 0 ? null : Number(seconds2) * 1e3;
   }
   processTable(pids3, since) {
     const table = /* @__PURE__ */ new Map();
@@ -3374,7 +3374,7 @@ var DEFAULT_POLICY = {
     tools: ["eslint", "oxlint"]
   },
   gate: { groups: null },
-  shared: { ref: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
   remote: { allowed: true, needsRepository: [] }
@@ -3945,7 +3945,11 @@ function isSharedRef(prefix) {
   return parts.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
 }
 var ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
-var SHARED_SHAPE = { shared: { ref } };
+var MAX_LOOK_AGAIN_SECONDS = 2147483;
+var seconds = (min) => (v) => Number.isInteger(v) && v >= min && v <= MAX_LOOK_AGAIN_SECONDS ? null : `a whole number from ${min} to ${MAX_LOOK_AGAIN_SECONDS}`;
+var SHARED_SHAPE = {
+  shared: { ref, lookAgain: { everySeconds: seconds(1), forSeconds: seconds(0) } }
+};
 
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
