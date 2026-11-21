@@ -1,0 +1,17 @@
+2026-11-20T23:54:04.201Z [58565] store process: serving /home/user/results/cells/wt-3@0.1.583/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/wt-3@0.1.583/work/run/squeal-code-f9a233c3ebd7f13c.sock
+2026-11-20T23:55:04.201Z [58565] store process: last minute: edit: 119 written, 0 failed, queue wait p50 0 ms max 112 ms, busy 1168 ms; record: 1094 written, 0 failed, queue wait p50 0 ms max 98 ms, busy 3409 ms
+2026-11-20T23:56:04.201Z [58565] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 34 ms, busy 39 ms; record: 30 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 122 ms
+2026-11-20T23:57:04.201Z [58565] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 6 ms; record: 44 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 108 ms
+2026-11-20T23:58:04.201Z [58565] store process: last minute: edit: 24 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 45 ms; record: 89 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 233 ms
+2026-11-20T23:59:04.202Z [58565] store process: last minute: edit: 27 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 53 ms; record: 83 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 336 ms
+2026-11-21T00:00:04.202Z [58565] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 6 ms; record: 37 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 204 ms
+2026-11-21T00:01:04.203Z [58565] store process: last minute: edit: 33 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 19 ms; record: 103 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 239 ms
+2026-11-21T00:02:04.203Z [58565] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 4 ms; record: 26 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 311 ms
+2026-11-21T00:03:04.204Z [58565] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 4 ms; record: 25 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 26 ms
+2026-11-21T00:04:04.204Z [58565] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 157 ms; record: 592 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 1656 ms
+2026-11-21T00:05:04.205Z [58565] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 5 ms; record: 33 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 28 ms
+2026-11-21T00:06:04.207Z [58565] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 2 ms; record: 14 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 196 ms
+2026-11-21T00:07:04.208Z [58565] store process: last minute: record: 563 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 2007 ms
+2026-11-21T00:07:26.633Z [58565] store process: long write: code.sqlite write lock held 285 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 2 rows written
+2026-11-21T00:08:04.218Z [58565] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 4 ms; record: 22 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 342 ms
+2026-11-21T00:10:04.234Z [58565] store process: last minute: record: 231 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 951 ms
