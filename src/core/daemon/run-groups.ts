@@ -1,46 +1,44 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 import { isRecord } from "../fs/json.js";
 import { storePaths } from "../store/paths.js";
 import type { AbsolutePath } from "../types/common.js";
-import {
-  commandLine,
-  exited,
-  GRACE_MS,
-  type ProcessEntry,
-  type ProcessTable,
-  type Stopped,
-  statOf,
-  terminate,
-  uptimeTicks,
-} from "./terminate.js";
 
 /*
- * Spec 023 D4 step 11, D6 (row 023-36, lessons round 5 T3): the process
- * groups a `--run` request's run started in the working tree. A test may
- * start a process in a session and group of its own with an env of its own
- * (squawk's e2e app and its watcher), which no mark and no daemon group
- * reaches. While the test's worker lives, the new group's leader descends
- * from it: the daemon records the group then (`run-groups-watch.ts`), by
- * its id and its leader's start, and stops it when the run ends. A record
- * outlives a daemon killed mid-run, so `squeal stop` ends what is left.
- * A group is matched by its recorded id only, never by a path or a command
- * line (the human, 2026-11-21).
+ * Spec 023 D4 step 11, D6 (row 023-36, lessons round 5 T3): what a `--run`
+ * request's runs in the working tree leave running. A test may start a
+ * process in a session and group of its own with an env of its own
+ * (squawk's e2e app and its watcher). Each such run gets a token of its own,
+ * random, in its workers' env (`RUN_GROUP_VARIABLE`); the recorder's spawn
+ * hook puts it in every child's env, the caller's own `env: {}` too
+ * (`spawn.cjs`), so the process carries it from its start wherever it is
+ * reparented. The daemon records the run's token here before the run
+ * starts, so a daemon killed mid-run leaves it for `squeal stop`, and the
+ * groups the run's marked processes lead, so a member the stop spares is
+ * named. Which processes are stopped is `run-groups-stop.ts`. Never a path
+ * or a command line (the human, 2026-11-21).
  */
 
-/** A process group a `--run` run started, by its id and its leader's start. */
-export interface RecordedGroup {
-  /** The group's id: its leader's pid. */
+/** The variable that carries a `--run` run's token in every process of the run. */
+export const RUN_GROUP_VARIABLE = "SQUEAL_RUN_GROUP";
+
+/** A group a marked process of a run led when the daemon looked: its id and its leader's start. */
+export interface SeenGroup {
   readonly pgid: number;
-  /** The leader's start, in ticks since boot (`ProcessEntry.start`). */
   readonly start: number;
-  /** The run that started it. */
-  readonly runId: string;
 }
 
-const RECORD_VERSION = 1;
+/** A `--run` run whose processes are stopped when it ends. */
+export interface RecordedRun {
+  /** The run's token, random: only its processes carry it. */
+  readonly token: string;
+  readonly runId: string;
+  /** The groups its marked processes led, for naming a member the stop spares. */
+  readonly groups: readonly SeenGroup[];
+}
+
+const RECORD_VERSION = 2;
 
 /** The record of the worktree at `root`: `<store dir>/run-groups/<hash of root>.json`. */
 export function runGroupsFile(commonDir: AbsolutePath, root: AbsolutePath): AbsolutePath {
@@ -48,168 +46,89 @@ export function runGroupsFile(commonDir: AbsolutePath, root: AbsolutePath): Abso
   return join(storePaths(commonDir).dir, "run-groups", `${key}.json`);
 }
 
-/** The groups in the record at `file`; `[]` when it is missing or not a record. */
-export function readGroups(file: AbsolutePath): RecordedGroup[] {
+/** The runs in the record at `file`; `[]` when it is missing, of another version, or not a record. */
+export function readRuns(file: AbsolutePath): RecordedRun[] {
   let value: unknown;
   try {
     value = JSON.parse(readFileSync(file, "utf8"));
   } catch {
     return [];
   }
-  if (!isRecord(value) || value.v !== RECORD_VERSION || !Array.isArray(value.groups)) return [];
-  return value.groups.flatMap((group: unknown) => {
-    if (!isRecord(group)) return [];
-    const { pgid, start, runId } = group;
-    if (typeof pgid !== "number" || !Number.isInteger(pgid) || pgid <= 1) return [];
-    if (typeof start !== "number" || typeof runId !== "string") return [];
-    return [{ pgid, start, runId }];
+  if (!isRecord(value) || value.v !== RECORD_VERSION || !Array.isArray(value.runs)) return [];
+  return value.runs.flatMap((run: unknown) => {
+    if (!isRecord(run)) return [];
+    const { token, runId, groups } = run;
+    if (typeof token !== "string" || token.length < 16 || typeof runId !== "string") return [];
+    return [{ token, runId, groups: Array.isArray(groups) ? groups.flatMap(groupOf) : [] }];
   });
 }
 
-/** Writes `groups` to `file` by rename; removes the file when there are none. */
-export function writeGroups(file: AbsolutePath, groups: readonly RecordedGroup[]): void {
-  if (groups.length === 0) {
+function groupOf(value: unknown): SeenGroup[] {
+  if (!isRecord(value)) return [];
+  const { pgid, start } = value;
+  if (typeof pgid !== "number" || !Number.isInteger(pgid) || pgid <= 1) return [];
+  return typeof start === "number" ? [{ pgid, start }] : [];
+}
+
+/** Writes `runs` to `file` by rename; removes the file when there are none. */
+export function writeRuns(file: AbsolutePath, runs: readonly RecordedRun[]): void {
+  if (runs.length === 0) {
     rmSync(file, { force: true });
     return;
   }
   mkdirSync(dirname(file), { recursive: true });
   const temp = `${file}.${process.pid}`;
-  writeFileSync(temp, `${JSON.stringify({ v: RECORD_VERSION, groups })}\n`);
+  writeFileSync(temp, `${JSON.stringify({ v: RECORD_VERSION, runs })}\n`);
   renameSync(temp, file);
 }
 
 /** The daemon's record: kept in memory, written through at each change. */
-export class GroupRecord {
+export class RunRecord {
   readonly #file: AbsolutePath;
-  #groups: RecordedGroup[];
+  #runs: RecordedRun[];
 
   constructor(file: AbsolutePath) {
     this.#file = file;
-    this.#groups = readGroups(file);
+    this.#runs = readRuns(file);
   }
 
-  list(): readonly RecordedGroup[] {
-    return this.#groups;
+  list(): readonly RecordedRun[] {
+    return this.#runs;
   }
 
-  add(group: RecordedGroup): void {
-    if (this.#groups.some((known) => same(known, group))) return;
-    this.#groups = [...this.#groups, group];
+  add(run: RecordedRun): void {
+    if (this.#runs.some(({ token }) => token === run.token)) return;
+    this.#runs = [...this.#runs, run];
     this.#write();
   }
 
-  remove(groups: readonly RecordedGroup[]): void {
-    const kept = this.#groups.filter((known) => !groups.some((group) => same(known, group)));
-    if (kept.length === this.#groups.length) return;
-    this.#groups = kept;
+  /** Adds `groups` to the run of `token`, those it lacks. */
+  saw(token: string, groups: readonly SeenGroup[]): void {
+    const run = this.#runs.find((known) => known.token === token);
+    if (run === undefined) return;
+    const fresh = groups.filter((group) => !run.groups.some((known) => sameGroup(known, group)));
+    if (fresh.length === 0) return;
+    const next = { ...run, groups: [...run.groups, ...fresh] };
+    this.#runs = this.#runs.map((known) => (known === run ? next : known));
+    this.#write();
+  }
+
+  remove(tokens: readonly string[]): void {
+    const kept = this.#runs.filter(({ token }) => !tokens.includes(token));
+    if (kept.length === this.#runs.length) return;
+    this.#runs = kept;
     this.#write();
   }
 
   #write(): void {
     try {
-      writeGroups(this.#file, this.#groups);
+      writeRuns(this.#file, this.#runs);
     } catch {
       // A record that cannot be written leaves the stop at the run's end, which reads memory.
     }
   }
 }
 
-function same(a: RecordedGroup, b: RecordedGroup): boolean {
+function sameGroup(a: SeenGroup, b: SeenGroup): boolean {
   return a.pgid === b.pgid && a.start === b.start;
 }
-
-/**
- * The members of `group` among `entries`. While a member lives, the kernel
- * gives no new process the group's id, so a member started at or after the
- * leader is the group's. A live leader whose start differs is another
- * process that took the freed id: such a group is none of the run's, and
- * nothing is returned.
- */
-export function membersOf(group: RecordedGroup, entries: readonly ProcessEntry[]): ProcessEntry[] {
-  const leader = entries.find(({ pid }) => pid === group.pgid);
-  if (leader !== undefined && leader.start !== group.start) return [];
-  return entries.filter(({ pgrp, start }) => pgrp === group.pgid && start >= group.start);
-}
-
-/** Scans per stop: each after the first finds what a member started while the one before ran. */
-const ROUNDS = 3;
-
-/** What `stopGroups` reads and signals; `/proc` on Linux, a table of its own in tests. */
-export interface GroupTable extends ProcessTable {
-  /** Every process now, the exiting left out. */
-  list(): ProcessEntry[];
-}
-
-/**
- * Stops every live member of `groups`: SIGTERM, then SIGKILL after the
- * grace (`terminate`), each named with the run that started its group.
- * Linux only; elsewhere nothing is found. Never rejects.
- */
-export async function stopGroups(
-  groups: readonly RecordedGroup[],
-  table: GroupTable | null = PROC_GROUPS,
-): Promise<Stopped[]> {
-  if (groups.length === 0 || table === null) return [];
-  const stopped: Stopped[] = [];
-  const seen = new Set<string>();
-  try {
-    for (let round = 0; round < ROUNDS; round++) {
-      const entries = table.list();
-      const found = groups.flatMap((group) =>
-        membersOf(group, entries)
-          .filter((entry) => !seen.has(`${entry.pid}:${entry.start}`))
-          .map((entry) => ({ entry, run: `run ${group.runId}` })),
-      );
-      if (found.length === 0) break;
-      for (const { entry } of found) seen.add(`${entry.pid}:${entry.start}`);
-      const runOf = new Map(found.map(({ entry, run }) => [entry.pid, run]));
-      for (const one of await terminate(
-        found.map(({ entry }) => entry),
-        table,
-      )) {
-        const run = runOf.get(one.pid);
-        stopped.push(run === undefined ? one : { ...one, run });
-      }
-      await gone(found.map(({ entry }) => entry));
-    }
-  } catch {
-    // A failed read stops what it stopped so far.
-  }
-  return stopped;
-}
-
-/** What a note says of the processes `stopGroups` stopped. */
-export const STOPPED_WHAT = "in a process group a `--run` run started";
-
-async function gone(entries: readonly ProcessEntry[]): Promise<void> {
-  const deadline = Date.now() + GRACE_MS;
-  let left = entries.filter((entry) => !exited(entry));
-  while (left.length > 0 && Date.now() < deadline) {
-    await sleep(25);
-    left = left.filter((entry) => !exited(entry));
-  }
-}
-
-function processes(): ProcessEntry[] {
-  return readdirSync("/proc").flatMap((name) => {
-    const entry = /^\d+$/.test(name) ? statOf(Number(name)) : null;
-    return entry === null ? [] : [entry];
-  });
-}
-
-const PROC_GROUPS: GroupTable | null =
-  process.platform === "linux"
-    ? {
-        list: processes,
-        stat: statOf,
-        commandLine,
-        signal(pid, name) {
-          try {
-            process.kill(pid, name);
-          } catch {
-            // Already gone.
-          }
-        },
-        uptime: uptimeTicks,
-      }
-    : null;

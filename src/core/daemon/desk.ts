@@ -69,8 +69,6 @@ export interface DeskEvents {
     paths?: readonly RelativePath[],
     options?: NarrowRunOptions,
   ) => Promise<GroupRequested | null>;
-  /** Row 023-36 (T3): a `status --at --run` asked for `paths` (`HandlerContext.onAtRun`). */
-  readonly onAtRun?: (paths: readonly RelativePath[]) => void;
   /** A `status --wait` reconciliation pass (lessons, defect 30); with `paths`, their readers (row 011-234). */
   readonly requestSync: (paths?: readonly RelativePath[]) => Promise<SyncAnswer>;
   readonly onStop: () => void;
@@ -211,7 +209,6 @@ export function guarded(events: DeskEvents): DeskEvents {
     };
   const {
     onNudge,
-    onAtRun,
     requestRetries,
     requestPromotion,
     requestFocus,
@@ -226,7 +223,6 @@ export function guarded(events: DeskEvents): DeskEvents {
   return {
     onActivity: safe(events.onActivity),
     ...(onNudge === undefined ? {} : { onNudge: safe(onNudge) }),
-    ...(onAtRun === undefined ? {} : { onAtRun: safe(onAtRun) }),
     ...(requestRetries === undefined ? {} : { requestRetries: asked(requestRetries) }),
     ...(requestPromotion === undefined ? {} : { requestPromotion: asked(requestPromotion) }),
     ...(requestFocus === undefined ? {} : { requestFocus: asked(requestFocus) }),
@@ -289,9 +285,6 @@ async function inWorker(
           return;
         case "nudge":
           events.onNudge?.();
-          return;
-        case "at-run":
-          events.onAtRun?.(message.paths);
           return;
         case "retry":
           events.requestRetries?.().catch(() => {});
@@ -474,7 +467,6 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       ...(events.requestTakeBack === undefined ? {} : { requestTakeBack: events.requestTakeBack }),
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),
-      ...(events.onAtRun === undefined ? {} : { onAtRun: events.onAtRun }),
       ...(events.requestRetries === undefined ? {} : { requestRetries: events.requestRetries }),
       ...(events.requestPromotion === undefined
         ? {}
