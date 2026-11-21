@@ -1,3 +1,4 @@
+import { type CommitRemoval, pathState } from "../checkout/commit-identity.js";
 import {
   claimCommitWorktree,
   readCommitWorktree,
@@ -48,9 +49,10 @@ export interface CommitWorktrees {
    * then the tree. Called by the daemon that owns it, from its live process,
    * before it releases its daemon lock. Already gone: nothing to do. `note`
    * takes the report: the processes it ended and an error it caught (review
-   * wave-22 S1).
+   * wave-22 S1). It says what is left of the tree (review wave-22 N3);
+   * without an answer, the daemon reads the tree itself.
    */
-  remove(root: AbsolutePath, note: (text: string) => void): Promise<void>;
+  remove(root: AbsolutePath, note: (text: string) => void): Promise<CommitRemoval | undefined>;
 }
 
 /** 023-38's functions: the marker decides, the owning daemon claims and removes its worktree. */
@@ -64,7 +66,7 @@ export const COMMIT_WORKTREES: CommitWorktrees = {
 export const NO_COMMIT_WORKTREES: CommitWorktrees = {
   read: () => null,
   claim: () => {},
-  remove: async () => {},
+  remove: async () => undefined,
 };
 
 /** How a commit daemon lives and ends. */
@@ -130,12 +132,22 @@ export function removesAtExit(reason: DaemonExitReason): boolean {
 /**
  * The exit text after the removal at `root` (review wave-22 S1): the
  * worktree is named removed only when it is gone; otherwise the sweep
- * removes it once this daemon is dead (D7.2).
+ * removes it once this daemon is dead (D7.2). Review wave-22 N3: a tree
+ * Squeal could not read is neither; `undefined` reads the tree by `lstat`.
  */
-export function removalText(text: string, root: AbsolutePath, gone: boolean): string {
-  return gone
-    ? `${text}; the commit worktree is removed`
-    : `${text}; the commit worktree is not removed (${root}): the sweep removes it later`;
+export function removalText(
+  text: string,
+  root: AbsolutePath,
+  outcome: CommitRemoval | undefined,
+): string {
+  switch (outcome ?? pathState(root)) {
+    case "removed":
+      return `${text}; the commit worktree is removed`;
+    case "kept":
+      return `${text}; the commit worktree is not removed (${root}): the sweep removes it later`;
+    case "unknown":
+      return `${text}; the commit worktree may still be there (${root}): Squeal could not read it`;
+  }
 }
 
 /** What the lifecycle check reads of a commit daemon's work. */
