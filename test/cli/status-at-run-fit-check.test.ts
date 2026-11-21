@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseAt } from "../../src/cli/status-at.js";
-import { clearlyOver } from "../../src/cli/status-at-run-fit.js";
+import { runLines } from "../../src/cli/status-at-report-run.js";
+import { clearlyOver, roundsHold } from "../../src/cli/status-at-run-fit.js";
 import { fixture, git, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
@@ -42,6 +43,38 @@ describe("clearlyOver (T1)", () => {
     const all = parseAt(["--at", "a", "--run", "--all-missing"]);
     for (const args of [timeout, all])
       expect(typeof args !== "string" && args.run?.fitCheck).toBeUndefined();
+  });
+});
+
+describe("the refusal's words with no stored duration (T1)", () => {
+  it("say about how many files fit here, then R4's line and the forcing call", () => {
+    expect(roundsHold(11, 300)).toBe(165);
+    const lines = runLines(
+      {
+        timeoutSeconds: 300,
+        usedMs: 20_000,
+        gateMs: null,
+        selected: 1338,
+        ran: 0,
+        stored: 0,
+        notStored: [],
+        changed: null,
+        changedBy: null,
+        notRun: 1338,
+        notComparable: 0,
+        timedOut: true,
+        estimate: null,
+        rerun: null,
+        rerunNeeds: { seconds: null, from: "durations" },
+        refused: { force: "squeal status --at HEAD~1 --run --timeout 300", fits: 165 },
+      },
+      "d8abcfe46",
+    );
+    expect(lines).toEqual([
+      "--run ran nothing: the 1338 test files with no result at d8abcfe46 clearly do not fit the 300 s budget (with no stored duration, about 165 fit in 300 s here)",
+      "1338 not run (budget); no file ended in this run and none has a stored duration, so the time they need is unknown; name test files or folders to narrow it",
+      "To run what fits anyway: squeal status --at HEAD~1 --run --timeout 300; `--all-missing` runs every file with no result",
+    ]);
   });
 });
 

@@ -31,7 +31,7 @@ export interface UseRecord {
   readonly leftSeconds: number | null;
   readonly batches: readonly BatchTime[];
   /** Row 023-34 (T1): the selection clearly could not fit; neither side ran. */
-  readonly refused?: true;
+  readonly refused?: { readonly fits: number | null };
 }
 
 /** D1's budget use, with the working tree's side when it ran. */
@@ -81,8 +81,13 @@ export function runUse(record: UseRecord, now?: NowPart): RunUse {
     setupFailed: setupCounts(all),
     ...(notPrepared === 0 ? {} : { notPrepared }),
     // T1: the same call, forced with its own budget, runs what fits.
-    ...(record.refused === true
-      ? { refused: { force: rerunCommand(record.call, record.timeoutSeconds) } }
+    ...(record.refused !== undefined
+      ? {
+          refused: {
+            force: rerunCommand(record.call, record.timeoutSeconds),
+            fits: record.refused.fits,
+          },
+        }
       : {}),
     ...(now === undefined ? {} : { now: now.use }),
   };
