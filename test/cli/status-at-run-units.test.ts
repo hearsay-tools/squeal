@@ -239,7 +239,7 @@ describe("runNow through the daemon (R1)", () => {
     const ports: DaemonPorts = {
       ask: async (group, paths) => {
         asked.push([group, paths]);
-        return group === "browser" ? "squeal run browser failed: no Chrome" : true;
+        return group === "browser" ? "squeal run browser failed: no Chrome" : { coveredId: null };
       },
       wait: async (files) => {
         waited = files;

@@ -1,5 +1,6 @@
 import type { RunEstimate } from "../core/code/gate/estimate.js";
 import { changedText } from "../core/commit/at-keys-walk.js";
+import type { TakeBackResult } from "../core/types/scheduler.js";
 import { maybeStoredText } from "./status-at-report-files.js";
 import { noFitText } from "./status-at-run-fit.js";
 
@@ -91,6 +92,8 @@ export interface NowRunUse {
   readonly setupFailed: readonly SetupCount[];
   /** Why the daemon or the gate gave no result for some files; `null` when none. */
   readonly problem: string | null;
+  /** Row 023-34 (T1): what the take-back at the call's end did in the daemon; absent: none. */
+  readonly takenBack?: TakeBackResult;
 }
 
 /** Row 023-18 (D2): one line per reason a ran file was not stored, with how many. */
@@ -163,6 +166,21 @@ function nowLines(now: NowRunUse): string[] {
   const setup = now.setupFailed.reduce((n, f) => n + f.files, 0);
   if (now.problem !== null && without - setup > 0)
     lines.push(`now: ${without - setup} without a result: ${now.problem}`);
+  lines.push(...takenBackLines(now.takenBack));
+  return lines;
+}
+
+/** T1: what the call's take-back did in the daemon, one line per kind that has files. */
+function takenBackLines(back: TakeBackResult | undefined): string[] {
+  if (back === undefined) return [];
+  const lines: string[] = [];
+  if (back.takenBack > 0) lines.push(`now: ${back.takenBack} not run; taken back from the daemon`);
+  if (back.running > 0)
+    lines.push(`now: ${back.running} still running in the daemon; their results come later`);
+  if (back.kept > 0)
+    lines.push(
+      `now: ${back.kept} stay queued in the daemon: an edit, a forced run or another wait asked for them`,
+    );
   return lines;
 }
 
