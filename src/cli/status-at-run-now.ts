@@ -4,11 +4,13 @@ import { testFileId } from "../core/keys/reverse-index.js";
 import { groupView } from "../core/scheduler/slow.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import type { TakeBackResult } from "../core/types/scheduler.js";
 import { daemonSocket } from "./daemon-access.js";
 import { takenRequest } from "./run-group.js";
 import type { SideState } from "./status-at-report.js";
 import type { NowRunUse } from "./status-at-report-run.js";
 import { setupCounts } from "./status-at-run-fit.js";
+import { askTakeBack, BUDGET_ENDED } from "./status-at-run-give-back.js";
 import { throughGate } from "./status-at-run-now-gate.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 import { runWait } from "./wait/wait.js";
@@ -62,6 +64,20 @@ export interface NowRunEnd {
   readonly problem: string | null;
   /** D17.1's estimate of the files left, in seconds, for the rerun's fit. */
   readonly leftEstimate: number | null;
+  /**
+   * Row 023-34 (T1): what the call asked the daemon to run, the files and
+   * the covered-files ids of its narrow runs, for the take-back at its end
+   * (`giveBack`); absent when it asked the daemon nothing.
+   */
+  readonly asked?: DaemonAsked;
+  /** T1: what the take-back at the call's end did; absent when none was answered. */
+  readonly takenBack?: TakeBackResult;
+}
+
+/** T1: the daemon's part of the call: its files and its narrow runs' covered-files ids. */
+export interface DaemonAsked {
+  readonly files: readonly TestFileRef[];
+  readonly coveredIds: readonly string[];
 }
 
 /** The files of `refs` the change selects (R1) that have no result now. */
@@ -112,25 +128,44 @@ export function mergedEnd(
   const states = new Map([...earlier.states].filter(([id]) => !again.has(id)));
   for (const [id, state] of later.states) states.set(id, state);
   const times = [earlier.gateMs, later.gateMs].filter((ms): ms is number => ms !== null);
+  const asked = [earlier.asked, later.asked].filter((a): a is DaemonAsked => a !== undefined);
   return {
     how: later.how,
     gateMs: times.length === 0 ? null : times.reduce((a, b) => a + b, 0),
     states,
     problem: earlier.problem ?? later.problem,
     leftEstimate: later.leftEstimate,
+    ...(asked.length === 0
+      ? {}
+      : {
+          asked: {
+            files: asked.flatMap((a) => a.files),
+            coveredIds: asked.flatMap((a) => a.coveredIds),
+          },
+        }),
   };
 }
 
 /** The daemon's side of R1, injectable for tests. */
 export interface DaemonPorts {
-  /** Asks the daemon to run `paths` of `group` now; `null` when no daemon answers, else an error text or `true`. */
+  /**
+   * Asks the daemon to run `paths` of `group` now; `null` when no daemon
+   * answers, else an error text or the request's covered-files id (row
+   * 023-34: `null` when the daemon had not taken it, or names none).
+   */
   ask(
     group: string,
     paths: readonly RelativePath[],
     deadline: number,
-  ): Promise<true | string | null>;
+  ): Promise<{ readonly coveredId: string | null } | string | null>;
   /** Waits until none of `files` is pending or the deadline; why it ended early, `null` when it ended. */
   wait(files: readonly TestFileRef[], deadline: number): Promise<string | null>;
+  /**
+   * Row 023-34 (T1): takes back what the narrow runs `coveredIds` queued
+   * and did not start; why not as a text (an older daemon's included).
+   * Absent: nothing is taken back.
+   */
+  takeBack?(coveredIds: readonly string[], deadline: number): Promise<TakeBackResult | string>;
 }
 
 /** The real daemon: `run-group-paths` and the group wait, as `squeal run <group> <path>... --wait`. */
@@ -149,14 +184,18 @@ export function daemonPorts(root: AbsolutePath): DaemonPorts {
       if ("unanswered" in first) return `the daemon did not answer${first.unanswered}`;
       const taken = await takenRequest(socketPath, first, deadline, group, NARROW_NOT_SUPPORTED);
       if (typeof taken === "string") return taken;
-      return "pending" in taken ? "the daemon had not taken the request by the deadline" : true;
+      if ("pending" in taken) return "the daemon had not taken the request by the deadline";
+      return { coveredId: taken.requested.coveredId ?? null };
+    },
+    async takeBack(coveredIds, deadline) {
+      return askTakeBack(await socketOf(deadline), coveredIds, deadline);
     },
     async wait(files, deadline) {
       const socketPath = await socketOf(deadline);
       const files_ = { kind: "list", files } as const;
       const outcome = await runWait({ wait: "group", root, socketPath, deadline, files: files_ });
       if (outcome.kind === "ended") return null;
-      if (outcome.kind === "deadline") return "the budget ended; their runs go on in the daemon";
+      if (outcome.kind === "deadline") return BUDGET_ENDED;
       if (outcome.kind === "on-hold") return "the worktree is on hold";
       if (outcome.kind === "stopped") return "the daemon stopped";
       return outcome.unavailable;
@@ -177,12 +216,14 @@ async function throughDaemon(input: NowRunInput, ports: DaemonPorts): Promise<No
     byGroup.set(name, paths);
   }
   const problems: string[] = [];
+  const coveredIds: string[] = [];
   let answered = false;
   for (const [group, paths] of byGroup) {
     const asked = await ports.ask(group, paths, deadline).catch((e: unknown) => String(e));
     if (asked === null) continue;
     answered = true;
-    if (asked !== true) problems.push(`group ${group}: ${asked}`);
+    if (typeof asked === "string") problems.push(`group ${group}: ${asked}`);
+    else if (asked.coveredId !== null) coveredIds.push(asked.coveredId);
   }
   if (!answered) return null;
   const waited = await ports.wait(input.files, deadline).catch((e: unknown) => String(e));
@@ -193,6 +234,7 @@ async function throughDaemon(input: NowRunInput, ports: DaemonPorts): Promise<No
     states: new Map(),
     problem: problems.length === 0 ? null : problems.join("; "),
     leftEstimate: null,
+    asked: { files: input.files, coveredIds },
   };
 }
 
@@ -217,5 +259,6 @@ export function nowUse(
     gateMs: end.gateMs,
     setupFailed: setupCounts(end.states.values()),
     problem: end.problem,
+    ...(end.takenBack === undefined ? {} : { takenBack: end.takenBack }),
   };
 }

@@ -3,7 +3,16 @@ import { testFileId } from "../core/keys/reverse-index.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { listLate, type NowInput, type NowSide, nowSide } from "./status-at-now.js";
 import type { AtRun, NowPart, NowTurn } from "./status-at-run.js";
-import { mergedEnd, type NowRunEnd, nowFiles, nowUse, runNow } from "./status-at-run-now.js";
+import { giveBack } from "./status-at-run-give-back.js";
+import {
+  type DaemonPorts,
+  daemonPorts,
+  mergedEnd,
+  type NowRunEnd,
+  nowFiles,
+  nowUse,
+  runNow,
+} from "./status-at-run-now.js";
 import { unkept, withUnkept } from "./status-at-run-unkept.js";
 
 /*
@@ -37,6 +46,8 @@ export interface TurnInput {
   readonly relaunch: readonly string[] | undefined;
   readonly forward: (text: string) => void;
   readonly batchFiles?: number;
+  /** Tests: the daemon's side, else the real one (`daemonPorts`). */
+  readonly ports?: DaemonPorts;
 }
 
 /** R1: the working tree's side, as the commit side's turn and the report's last pass. */
@@ -84,6 +95,7 @@ export function workingTree(input: TurnInput): WorkingTree {
       relaunch: input.relaunch,
       forward: input.forward,
       ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
+      ...(input.ports === undefined ? {} : { ports: input.ports }),
     });
     end = mergedEnd(end, next, list);
   };
@@ -122,6 +134,8 @@ export function workingTree(input: TurnInput): WorkingTree {
       files = [...files, ...late];
       if (left.length > 0 && ran.endMs - performance.now() > LAST_PASS_MS)
         await pass(left, ran.endMs, current, alone);
+      // T1: the daemon's files get the rest of the budget; what is left is taken back.
+      if (end !== null) end = await giveBack(end, ran.endMs, input.ports ?? daemonPorts(read.root));
       const again =
         end === null
           ? current
