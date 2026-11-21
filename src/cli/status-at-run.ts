@@ -18,7 +18,7 @@ import {
   tellsEstimate,
 } from "./status-at-run-batches.js";
 import { type RunAnswer, runInChild } from "./status-at-run-child.js";
-import type { SideFit } from "./status-at-run-fit.js";
+import { clearlyOver, type SideFit } from "./status-at-run-fit.js";
 import { runBatches } from "./status-at-run-loop.js";
 import { outcomesOf } from "./status-at-run-outcome.js";
 import { noResult, type Selection, selector } from "./status-at-run-select.js";
@@ -45,6 +45,12 @@ export interface RunArgs {
   readonly allMissing: boolean;
   /** D4.6: the one budget, the checkout and install included. */
   readonly timeoutSeconds: number;
+  /**
+   * Row 023-34 (T1, spec 023 D4.11): the call gave neither `--timeout`
+   * nor `--all-missing`, so a selection that clearly cannot fit runs
+   * nothing (`clearlyOver`); either flag runs what fits.
+   */
+  readonly fitCheck?: true;
 }
 
 /**
@@ -124,6 +130,8 @@ export interface AtRun {
   readonly timeoutSeconds: number;
   /** D1's budget use, for the report, with the working tree's side when it ran. */
   use(now?: NowPart): RunUse;
+  /** T1: the selection clearly could not fit, so neither side ran. */
+  refused(): boolean;
 }
 
 /** D4: the run, as hooks the keying calls in its checkout. */
@@ -145,6 +153,8 @@ export function atRun(input: AtRunInput): AtRun {
   let batchTimes: readonly BatchTime[] = [];
   /** The gate children started in the checkout, over every pass. */
   let children = 0;
+  /** T1: the selection clearly could not fit; nothing ran. */
+  let refused = false;
 
   const whileOpen = selector(
     { root: input.root, commit, allMissing: args.allMissing, named: new Set(input.named ?? []) },
@@ -166,6 +176,14 @@ export function atRun(input: AtRunInput): AtRun {
       if (tellsEstimate(estimate, args.allMissing, left)) {
         const call = { given: input.given, paths: input.paths, allMissing: args.allMissing };
         input.note(estimateText(estimate, commit, args.timeoutSeconds, call));
+      }
+      // T1: a selection that clearly cannot fit runs on neither side, unless the call forces it.
+      if (args.fitCheck === true && clearlyOver(estimate, elapsed(), args.timeoutSeconds)) {
+        refused = true;
+        for (const f of run) states.set(testFileId(f.ref), { state: "not run", reason: "budget" });
+        leftOut = run;
+        leftSeconds = estimate.seconds;
+        return;
       }
       // R1: each side a share of what is left by its count; what one leaves unused goes on.
       const now = input.now?.files(selection) ?? 0;
@@ -291,6 +309,7 @@ export function atRun(input: AtRunInput): AtRun {
         estimate,
         leftSeconds,
         batches: batchTimes,
+        ...(refused ? { refused: true as const } : {}),
       },
       now,
     );
@@ -305,5 +324,14 @@ export function atRun(input: AtRunInput): AtRun {
 
   const selects = () => selection.selects ?? null;
   const { timeoutSeconds } = args;
-  return { whileOpen, beforeRemove, state, selects, endMs, timeoutSeconds, use };
+  return {
+    whileOpen,
+    beforeRemove,
+    state,
+    selects,
+    endMs,
+    timeoutSeconds,
+    use,
+    refused: () => refused,
+  };
 }

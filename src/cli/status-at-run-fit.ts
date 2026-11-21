@@ -1,3 +1,4 @@
+import type { RunEstimate } from "../core/code/gate/estimate.js";
 import type { SideState } from "./status-at-report.js";
 
 /*
@@ -64,6 +65,33 @@ export function rerunFit(
   const minutes = Math.max(60, Math.ceil(total / 60) * 60);
   if (minutes <= cap) return { seconds: minutes };
   return { needs: Math.round(overheadMs / 1000 + needs), from };
+}
+
+/**
+ * Row 023-34 (T1): with no stored duration, the seconds one round of
+ * files at once is taken to need at the least when the selection's fit is
+ * judged before it runs: a round of `width` files per this many seconds
+ * of the budget is the most it can hold.
+ */
+const ROUND_SECONDS = 20;
+
+/**
+ * Row 023-34 (T1, lessons round 5; spec 023 D4.11): whether `estimate`'s
+ * selection clearly cannot fit before it runs, `overheadMs` spent and a
+ * budget of `budgetSeconds`: R4's estimate is above the cap; or no file
+ * has a stored duration and there are more of them than one round of
+ * files at once per `ROUND_SECONDS` of the budget holds. In round 5, the
+ * second case was 1,338 files at width 11 in 300 s (165 at the most);
+ * 111 files in squawk ran and answered.
+ */
+export function clearlyOver(estimate: RunEstimate, overheadMs: number, budgetSeconds: number) {
+  if (estimate.files === 0) return false;
+  if (estimate.seconds !== null) {
+    const side = { left: estimate.files, ran: 0, gateMs: null, estimate: estimate.seconds };
+    return "needs" in rerunFit(overheadMs, [side]);
+  }
+  const rounds = Math.max(1, Math.floor(budgetSeconds / ROUND_SECONDS));
+  return estimate.files > estimate.width * rounds;
 }
 
 /** About `seconds` in words: seconds, minutes or hours. */
