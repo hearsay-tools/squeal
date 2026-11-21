@@ -44,12 +44,14 @@ function commits(): { f: Fixture; a: string; b: string } {
 /** The real commit side with `start` in place of a daemon; the working tree's side asks nothing. */
 function commitSide(root: string, start: (tree: AbsolutePath) => Promise<Started | string>) {
   const trees: AbsolutePath[] = [];
-  const real = realDaemons(async (tree) => {
-    trees.push(tree);
-    onTestFinished(async () => {
-      await removeCommitWorktree(tree);
-    });
-    return start(tree);
+  const real = realDaemons({
+    start: async (tree) => {
+      trees.push(tree);
+      onTestFinished(async () => {
+        await removeCommitWorktree(tree);
+      });
+      return start(tree);
+    },
   });
   const daemons: AtDaemons = {
     ...real,

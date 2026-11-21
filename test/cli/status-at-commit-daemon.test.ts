@@ -26,16 +26,18 @@ const B = ref("test/b.test.ts");
 function commitOnly(root: string, started: AbsolutePath[], daemons: RunningDaemon[]): AtDaemons {
   const runtime = realpathSync(mkdtempSync("/tmp/sq-at-"));
   onTestFinished(() => rmSync(runtime, { recursive: true, force: true }));
-  const real = realDaemons(async (tree) => {
-    started.push(tree);
-    const daemon = await startDaemon({ root: tree, env: childEnv(runtime) });
-    if ("reason" in daemon) return daemon.message;
-    daemons.push(daemon);
-    let exited = false;
-    void daemon.exited.then(() => {
-      exited = true;
-    });
-    return { lives: async () => !exited };
+  const real = realDaemons({
+    start: async (tree) => {
+      started.push(tree);
+      const daemon = await startDaemon({ root: tree, env: childEnv(runtime) });
+      if ("reason" in daemon) return daemon.message;
+      daemons.push(daemon);
+      let exited = false;
+      void daemon.exited.then(() => {
+        exited = true;
+      });
+      return { lives: async () => !exited };
+    },
   });
   return {
     ...real,
@@ -113,5 +115,44 @@ describe("status --at --run on a real commit daemon (row 023-40, D7)", SLOW, () 
     for (const daemon of daemons.splice(0)) await daemon.stop("stop-requested");
     expect(existsSync(tree)).toBe(false);
     expect(f.checkouts()).toEqual([]);
+  });
+
+  it("reads a first run that observed a tracked file at its completed key, in the same call (review wave-23 B3)", {
+    timeout: 300_000,
+  }, async () => {
+    const P = ref("test/p.test.ts");
+    const reads = [
+      'import { readFileSync } from "node:fs";',
+      'import { expect, it } from "vitest";',
+      'const payload = () => JSON.parse(readFileSync(new URL("../payload.json", import.meta.url), "utf8"));',
+      'it("payload", () => expect(payload().ok).toBe(true));',
+      "",
+    ].join("\n");
+    // A fresh store: no file was ever observed, so the call keys P without payload.json.
+    const f = fixture({ "payload.json": '{ "ok": true }\n', [P.path]: reads });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "payload.json": '{ "ok": false }\n' });
+    const started: AbsolutePath[] = [];
+    const daemons: RunningDaemon[] = [];
+    onTestFinished(async () => {
+      for (const daemon of daemons) await daemon.stop("stop-requested");
+    });
+    const options = {
+      cacheRoot: f.cacheRoot,
+      install: linkInstall().install,
+      daemons: commitOnly(f.root, started, daemons),
+    };
+
+    const called = await run(
+      f,
+      { commit: a, paths: [P.path], json: true, run: { allMissing: false }, waitMs: Infinity },
+      options,
+    );
+    expect(atOf(called.out, P.path), called.err).toMatchObject({
+      state: "pass",
+      origin: { kind: "commit" },
+    });
+    expect(JSON.parse(called.out).run.commit).toMatchObject({ files: 1, known: 1, running: 0 });
+    for (const daemon of daemons.splice(0)) await daemon.stop("stop-requested");
   });
 });

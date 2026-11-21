@@ -96,36 +96,8 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 
 /** The report's lines for the call's part, ending with Q7's line while work runs. */
 export function queuedLines(run: QueuedRun, at: string): string[] {
-  const lines: string[] = [];
   const { commit, now } = run;
-  const verb = run.mode === "queue" ? "queued" : "joined";
-  const where = commit.tree === null ? "" : ` (its worktree ${commit.tree})`;
-  if (run.mode === "queue" && commit.files === 0)
-    lines.push(`--run: no file with no result at ${at} that the change selects to run`);
-  else if (commit.files > 0 && !commit.reached)
-    lines.push(
-      `--run: ${commit.files} test files with no result at ${at} not queued: ${commit.problem ?? "no commit daemon"}${retryText(commit, run.retry)}`,
-    );
-  else if (commit.files > 0)
-    lines.push(
-      `--run: ${verb} ${commit.files} test files with no result at ${at} in its commit daemon${where}; ${commit.known} have a result now (${seconds(run.usedMs)})`,
-    );
-  if (run.notSelected > 0)
-    lines.push(
-      `${run.notSelected} more with no result at ${at} not selected by the change did not run; \`--all-missing\` runs ${run.notSelected === 1 ? "it" : "them"}`,
-    );
-  lines.push(...sideLines(commit, ""));
-  if (now.files > 0 && !now.reached)
-    lines.push(
-      `--run, now: ${now.files} test files the change selects with no result in the working tree not queued: ${now.problem ?? "no daemon"}${retryText(now, run.retry)}`,
-    );
-  else if (now.files > 0)
-    lines.push(
-      `--run, now: ${verb} ${now.files} test files the change selects with no result in the working tree in this worktree's daemon; ${now.known} have a result now`,
-    );
-  else if (run.mode === "queue")
-    lines.push("--run, now: every test file the change selects has a result in the working tree");
-  lines.push(...sideLines(now, "now: "));
+  const lines = [...commitLines(run, at), ...nowLines(run)];
   if (run.mode === "join" && commit.files + now.files === 0)
     lines.push(
       `--wait: nothing is queued or running for these files at ${at} or in the working tree`,
@@ -135,6 +107,51 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
       `${commit.running} still running at ${at} (its worktree), ${now.running} in the working tree; their runs go on in the daemons. ${run.again} waits for them; squeal ps shows them.`,
     );
   return lines;
+}
+
+/** Review wave-23 S2: a join names its own flag, never `--run`, which it did not do. */
+const flagOf = (run: QueuedRun) => (run.mode === "queue" ? "--run" : "--wait");
+const verbOf = (run: QueuedRun) => (run.mode === "queue" ? "queued" : "joined");
+
+/** The commit side's lines, R8's not-selected line among them. */
+function commitLines(run: QueuedRun, at: string): string[] {
+  const { commit } = run;
+  const flag = flagOf(run);
+  const lines: string[] = [];
+  const where = commit.tree === null ? "" : ` (its worktree ${commit.tree})`;
+  if (run.mode === "queue" && commit.files === 0)
+    lines.push(`--run: no file with no result at ${at} that the change selects to run`);
+  else if (commit.files > 0 && !commit.reached)
+    lines.push(
+      `${flag}: ${commit.files} test files with no result at ${at} not queued: ${commit.problem ?? "no commit daemon"}${retryText(commit, run.retry)}`,
+    );
+  else if (commit.files > 0)
+    lines.push(
+      `${flag}: ${verbOf(run)} ${commit.files} test files with no result at ${at} in its commit daemon${where}; ${commit.known} have a result now (${seconds(run.usedMs)})`,
+    );
+  if (run.notSelected > 0)
+    lines.push(
+      `${run.notSelected} more with no result at ${at} not selected by the change did not run; \`--all-missing\` runs ${run.notSelected === 1 ? "it" : "them"}`,
+    );
+  return [...lines, ...sideLines(commit, "")];
+}
+
+/** The working tree's side's lines. */
+function nowLines(run: QueuedRun): string[] {
+  const { now } = run;
+  const flag = flagOf(run);
+  const lines: string[] = [];
+  if (now.files > 0 && !now.reached)
+    lines.push(
+      `${flag}, now: ${now.files} test files the change selects with no result in the working tree not queued: ${now.problem ?? "no daemon"}${retryText(now, run.retry)}`,
+    );
+  else if (now.files > 0)
+    lines.push(
+      `${flag}, now: ${verbOf(run)} ${now.files} test files the change selects with no result in the working tree in this worktree's daemon; ${now.known} have a result now`,
+    );
+  else if (run.mode === "queue")
+    lines.push("--run, now: every test file the change selects has a result in the working tree");
+  return [...lines, ...sideLines(now, "now: ")];
 }
 
 /** R3's setup lines, then what the daemon did not answer. */
