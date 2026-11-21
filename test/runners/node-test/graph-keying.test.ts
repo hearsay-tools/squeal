@@ -188,7 +188,7 @@ describe("review 0.1.585: no import Node loads is left out", () => {
 
   it("B2: keeps a value import after a division of an object literal", SLOW, async () => {
     const files = value(
-      "const result = ({ valueOf: () => 8 } as unknown as number) / Value / 2;",
+      "const result = { valueOf: () => 8 } / Value / 2;",
       'test("value", () => assert.equal(result, 2));',
     );
     await keeps(files, "a.test.ts", "dep.ts");
