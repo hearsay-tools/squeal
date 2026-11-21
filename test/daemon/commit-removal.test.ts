@@ -51,4 +51,14 @@ describe("a commit daemon's worktree removal report (review wave-22 S1)", SLOW, 
     expect(log).toContain(ENDED);
     expect(exit.message).toContain("the commit worktree is removed");
   });
+
+  it("does not say removed when the removal could not read the tree (review wave-22 N3)", async () => {
+    const { exit } = await stopped(async (root: AbsolutePath) => {
+      rmSync(root, { recursive: true, force: true });
+      return "unknown";
+    });
+    expect(exit.message).toContain("the commit worktree may still be there (");
+    expect(exit.message).toContain("Squeal could not read it");
+    expect(exit.message).not.toContain("the commit worktree is removed");
+  });
 });
