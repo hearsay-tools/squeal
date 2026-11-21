@@ -35294,7 +35294,7 @@ function parseStripped(source2) {
   }
   return null;
 }
-function quietly(strip2) {
+function quietly(strip) {
   const emit = process.emitWarning;
   process.emitWarning = function(warning, ...rest2) {
     const text3 = typeof warning === "string" ? warning : warning.message;
@@ -35302,7 +35302,7 @@ function quietly(strip2) {
     return Reflect.apply(emit, this, [warning, ...rest2]);
   };
   try {
-    return strip2();
+    return strip();
   } finally {
     process.emitWarning = emit;
   }
@@ -35995,100 +35995,17 @@ var init_code_ranges = __esm({
   }
 });
 
-// src/runners/node-test/graph/type-imports.ts
-import * as nodeModule from "node:module";
-function droppedImports(source2, imports2) {
-  const candidates = imports2.map((record2) => ({ record: record2, names: bindingsOf(source2, record2) })).filter((c) => c.names !== null);
-  const dropped = /* @__PURE__ */ new Set();
-  if (candidates.length === 0) return dropped;
-  const statements = imports2.map((r) => [r.importStart, r.importEnd]);
-  const outside2 = (offset2) => !statements.some(([s, e]) => offset2 >= s && offset2 < e);
-  const written2 = referencesIn(source2, outside2, false);
-  const open7 = candidates.filter(
-    (c) => !c.names.some((n) => written2.has(n) && valueUse(source2, n, outside2))
-  );
-  let stripped2 = null;
-  if (open7.some((c) => c.names.some((n) => written2.has(n)))) {
-    const text3 = strip(source2);
-    if (text3 !== null) stripped2 = referencesIn(text3, outside2, true);
-  }
-  for (const { record: record2, names: names9 } of open7) {
-    const seen = names9.some((n) => written2.has(n)) ? stripped2 : written2;
-    if (seen !== null && !names9.some((n) => seen.has(n))) dropped.add(record2);
-  }
-  return dropped;
-}
-function bindingsOf(source2, record2) {
-  if (record2.typeOnly || record2.phase !== null || record2.type !== "static") return null;
-  const head2 = source2.slice(record2.importStart, record2.start - 1);
-  const clause = /^import\s+([\s\S]*?)\s*from\s*$/.exec(head2)?.[1];
-  if (clause === void 0 || /\/[/*]/.test(clause)) return null;
-  const braces = /\{([\s\S]*)\}/.exec(clause);
-  const outer = braces === null ? clause : clause.replace(braces[0], "");
-  const names9 = [
-    ...outer.split(",").map((part2) => locals(part2, /^\*\s*as\s+(\S+)$/)),
-    ...(braces?.[1] ?? "").split(",").map((part2) => locals(part2, /\sas\s+(\S+)$/))
-  ];
-  return names9.includes(null) ? null : names9.flatMap((n) => n ?? []);
-}
-function locals(written2, renamed) {
-  const part2 = written2.trim();
-  if (part2 === "" || /^type\s+\S/.test(part2)) return [];
-  const local2 = renamed.exec(part2)?.[1] ?? part2;
-  return IDENTIFIER.test(local2) ? [local2] : null;
-}
-function referencesIn(text3, outside2, codeOnly) {
-  const code = codeOnly ? codeAt(text3) : () => true;
-  const names9 = /* @__PURE__ */ new Set();
-  for (const match2 of text3.matchAll(/(?<![\w$])[A-Za-z_$][\w$]*/g)) {
-    const at2 = match2.index;
-    if (text3[at2 - 1] === "." && text3.slice(at2 - 3, at2) !== "...") continue;
-    if (outside2(at2) && code(at2)) names9.add(match2[0]);
-  }
-  return names9;
-}
-function valueUse(source2, name3, outside2) {
-  const word2 = name3.replaceAll("$", "\\$");
-  const value = new RegExp(
-    `(?<![\\w$.])${word2}(?:\\s*\\.\\s*[A-Za-z_$][\\w$]*)*\\s*(?:\\?\\.\\s*)?[(\`]|\\b(?:new|throw|return|await|yield|instanceof)\\s+${word2}(?![\\w$])`,
-    "g"
-  );
-  for (const match2 of source2.matchAll(value)) if (outside2(match2.index)) return true;
-  return false;
-}
-function strip(source2) {
-  const stripTypes = nodeModule.stripTypeScriptTypes;
-  if (stripTypes === void 0) return null;
-  try {
-    return stripTypes(source2);
-  } catch {
-    return null;
-  }
-}
-var ELIDING_EXTENSION, IDENTIFIER;
-var init_type_imports = __esm({
-  "src/runners/node-test/graph/type-imports.ts"() {
-    "use strict";
-    init_code_ranges();
-    ELIDING_EXTENSION = /\.[mc]?ts$/;
-    IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
-  }
-});
-
 // src/runners/node-test/graph/parse.ts
-function parseModule(source2, name3, options = {}) {
-  const lexed = lexImports(source2, name3, options);
-  const { specifiers, incomplete: incomplete2, elided } = lexed;
+function parseModule(source2, name3) {
+  const lexed = lexImports(source2, name3);
+  const { specifiers, incomplete: incomplete2 } = lexed;
   let unnamed = lexed.unnamed;
   const literal2 = /* @__PURE__ */ new Set();
-  let code = null;
   for (const match2 of source2.matchAll(REQUIRE2)) {
+    if (match2[2] !== void 0) specifiers.push({ specifier: match2[2], kind: "require" });
     literal2.add(match2.index);
-    code ??= codeAt(source2);
-    if (match2[2] !== void 0 && code(match2.index)) {
-      specifiers.push({ specifier: match2[2], kind: "require" });
-    }
   }
+  let code = null;
   for (const match2 of source2.matchAll(REQUIRE_CALL)) {
     if (literal2.has(match2.index)) continue;
     code ??= codeAt(source2);
@@ -36115,24 +36032,18 @@ function parseModule(source2, name3, options = {}) {
     code ??= codeAt(source2);
     unnamed = code(match2.index);
   }
-  return { specifiers, incomplete: incomplete2, unnamed, ...elided ? { elided: true } : {} };
+  return { specifiers, incomplete: incomplete2, unnamed };
 }
-function lexImports(source2, name3, options) {
+function lexImports(source2, name3) {
   const specifiers = [];
   const incomplete2 = [];
   let unnamed = false;
-  let elided = false;
   try {
     const [imports2] = parse7(source2, name3);
-    const statics = imports2.filter((r) => r.type === "static");
-    const dropped = options.elideTypeImports === true && ELIDING_EXTENSION.test(name3) ? droppedImports(source2, statics) : /* @__PURE__ */ new Set();
-    elided = dropped.size > 0;
     for (const record2 of imports2) {
       if (record2.type === "import-meta") continue;
       if (record2.type !== "dynamic") {
-        if (!record2.typeOnly && !dropped.has(record2)) {
-          specifiers.push({ specifier: record2.specifier, kind: "import" });
-        }
+        if (!record2.typeOnly) specifiers.push({ specifier: record2.specifier, kind: "import" });
       } else if (record2.probablyTypeOnly) {
       } else if (record2.specifier === void 0) {
         incomplete2.push(
@@ -36149,7 +36060,7 @@ function lexImports(source2, name3, options) {
     incomplete2.push(`${name3} does not parse as a module: ${error.message}`);
     unnamed = true;
   }
-  return { specifiers, incomplete: incomplete2, unnamed, elided };
+  return { specifiers, incomplete: incomplete2, unnamed };
 }
 function position(source2, offset2) {
   let line = 1;
@@ -36166,7 +36077,6 @@ var init_parse = __esm({
     "use strict";
     init_lexer();
     init_code_ranges();
-    init_type_imports();
     parserReady = init2();
     PARSED_EXTENSION = /\.(?:[mc]?[jt]s|[jt]sx)$/;
     REQUIRE2 = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;
@@ -36200,8 +36110,6 @@ var init_modules2 = __esm({
       resolver;
       tsx;
       parses = /* @__PURE__ */ new Map();
-      /** Whether the cached parses left out the imports esbuild drops (row 018-62, b2). */
-      parsedEliding = null;
       nodes = /* @__PURE__ */ new Map();
       node(file) {
         return this.nodes.get(file);
@@ -36235,29 +36143,13 @@ var init_modules2 = __esm({
         for (const file of forget2) this.parses.delete(file);
         this.nodes = /* @__PURE__ */ new Map();
       }
-      /**
-       * Row 018-62, b2: under tsx, esbuild drops an import used only as a type
-       * unless the project's tsconfig keeps value imports. A tsconfig change
-       * that flips this parses every module again.
-       */
-      eliding() {
-        const eliding = this.tsx && this.resolver.projectTsconfig()?.keepsValueImports !== true;
-        if (eliding !== this.parsedEliding) {
-          this.parses.clear();
-          this.parsedEliding = eliding;
-        }
-        return eliding;
-      }
       parsed(file) {
-        const elideTypeImports = this.eliding();
         let parsed3 = this.parses.get(file);
         if (parsed3 === void 0) {
           parsed3 = NO_PARSE;
           if (PARSED_EXTENSION.test(file)) {
             try {
-              parsed3 = parseModule(readFileSync41(file, "utf8"), relative10(this.root, file), {
-                elideTypeImports
-              });
+              parsed3 = parseModule(readFileSync41(file, "utf8"), relative10(this.root, file));
             } catch {
             }
           }
@@ -36277,7 +36169,6 @@ var init_modules2 = __esm({
         const from = this.relativeDir(file);
         const format2 = this.tsx ? this.resolver.moduleFormat(file) : null;
         if (format2?.manifest != null && parsed3.specifiers.length > 0) reads2.add(format2.manifest);
-        if (parsed3.elided) this.tsconfigReads(reads2);
         for (const { specifier, kind: written2, dynamic } of parsed3.specifiers) {
           if (written2 === "glob") {
             const matches5 = expandGlob(specifier, file, this.tsx);
@@ -36307,12 +36198,6 @@ var init_modules2 = __esm({
           if (resolution.pair !== null) pairs.push(resolution.pair);
         }
         return { deps, reads: reads2, candidates, incomplete: incomplete2, pairs, packages, builtins: [...builtins] };
-      }
-      /** b2: the tsconfig decided which imports of a module load, so it keys the module. */
-      tsconfigReads(reads2) {
-        for (const read7 of this.resolver.projectTsconfig()?.files ?? []) {
-          if (this.inWorktree(read7)) reads2.add(read7);
-        }
       }
       /**
        * Review wave-3 B1: records the package an installed `path` belongs to,
@@ -38195,7 +38080,7 @@ var require_strip_json_comments = __commonJS({
           `Expected argument \`jsonString\` to be a \`string\`, got \`${typeof jsonString}\``
         );
       }
-      const strip2 = whitespace ? stripWithWhitespace : stripWithoutWhitespace;
+      const strip = whitespace ? stripWithWhitespace : stripWithoutWhitespace;
       let isInsideString = false;
       let isInsideComment = false;
       let offset2 = 0;
@@ -38222,12 +38107,12 @@ var require_strip_json_comments = __commonJS({
         } else if (isInsideComment === singleComment && currentCharacter + nextCharacter === "\r\n") {
           index++;
           isInsideComment = false;
-          buffer += strip2(jsonString, offset2, index);
+          buffer += strip(jsonString, offset2, index);
           offset2 = index;
           continue;
         } else if (isInsideComment === singleComment && currentCharacter === "\n") {
           isInsideComment = false;
-          buffer += strip2(jsonString, offset2, index);
+          buffer += strip(jsonString, offset2, index);
           offset2 = index;
         } else if (!isInsideComment && currentCharacter + nextCharacter === "/*") {
           buffer += jsonString.slice(offset2, index);
@@ -38238,14 +38123,14 @@ var require_strip_json_comments = __commonJS({
         } else if (isInsideComment === multiComment && currentCharacter + nextCharacter === "*/") {
           index++;
           isInsideComment = false;
-          buffer += strip2(jsonString, offset2, index + 1);
+          buffer += strip(jsonString, offset2, index + 1);
           offset2 = index + 1;
           continue;
         } else if (trailingCommas && !isInsideComment) {
           if (commaIndex !== -1) {
             if (currentCharacter === "}" || currentCharacter === "]") {
               buffer += jsonString.slice(offset2, index);
-              result += strip2(buffer, 0, 1) + buffer.slice(1);
+              result += strip(buffer, 0, 1) + buffer.slice(1);
               buffer = "";
               offset2 = index;
               commaIndex = -1;
@@ -38262,7 +38147,7 @@ var require_strip_json_comments = __commonJS({
           }
         }
       }
-      const remaining = isInsideComment === singleComment ? strip2(jsonString, offset2, jsonString.length) : jsonString.slice(offset2);
+      const remaining = isInsideComment === singleComment ? strip(jsonString, offset2, jsonString.length) : jsonString.slice(offset2);
       return result + buffer + remaining;
     }
     module2.exports = stripJsonComments;
@@ -45705,7 +45590,6 @@ function readTsconfigPaths(file, read7) {
     const bases4 = typeof raw === "string" ? [raw] : Array.isArray(raw) ? raw : [];
     let pathsFile = null;
     let baseUrl = null;
-    let keeping2 = {};
     for (const base of bases4) {
       if (typeof base !== "string") continue;
       const target = locate(base, dirname31(config), read7);
@@ -45713,23 +45597,15 @@ function readTsconfigPaths(file, read7) {
       const inherited2 = load(target, /* @__PURE__ */ new Set([...seen, target]));
       pathsFile = inherited2.pathsFile ?? pathsFile;
       baseUrl = inherited2.baseUrl ?? baseUrl;
-      keeping2 = { ...keeping2, ...inherited2.keeping };
     }
     const options = json3?.compilerOptions;
     if (isObject5(options)) {
       if (isObject5(options.paths)) pathsFile = config;
       if (typeof options.baseUrl === "string") baseUrl = resolve18(dirname31(config), options.baseUrl);
-      for (const key3 of KEEPING) if (key3 in options) keeping2 = { ...keeping2, [key3]: options[key3] };
     }
-    return { pathsFile, baseUrl, keeping: keeping2 };
+    return { pathsFile, baseUrl };
   };
-  const { keeping, ...effective } = load(file, /* @__PURE__ */ new Set([file]));
-  return { ...effective, files: files5, keepsValueImports: keeps2(keeping) };
-}
-function keeps2(keeping) {
-  const on = (value) => value !== void 0 && value !== false && value !== null;
-  const notUsed = keeping.importsNotUsedAsValues;
-  return on(keeping.verbatimModuleSyntax) || on(keeping.preserveValueImports) || on(notUsed) && String(notUsed).toLowerCase() !== "remove";
+  return { ...load(file, /* @__PURE__ */ new Set([file])), files: files5 };
 }
 function locate(specifier, dir2, read7) {
   const exists3 = (path) => read7(path) !== null;
@@ -45771,11 +45647,10 @@ function parseJsonc(text3) {
     return null;
   }
 }
-var KEEPING, isObject5;
+var isObject5;
 var init_tsconfig = __esm({
   "src/runners/node-test/graph/tsconfig.ts"() {
     "use strict";
-    KEEPING = ["verbatimModuleSyntax", "preserveValueImports", "importsNotUsedAsValues"];
     isObject5 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
   }
 });
@@ -45915,7 +45790,6 @@ function createResolver(chain, root, source2 = {}) {
       if (MODULE.test(file)) return { format: "module", manifest: null };
       return scopeOf(dirname32(file));
     },
-    projectTsconfig,
     release() {
       fileSystem.purge();
       resolvers.clear();
@@ -47027,8 +46901,8 @@ async function execute(vitest, specs, timeoutMs, collector, signal3, beforeForce
   const reason2 = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
   const failure2 = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : cancelled(signal3?.reason);
   if (!timedOut) collector.note(failure2);
-  const keeps3 = !timedOut && signal3?.reason === "step-down";
-  const keepsWhole = keeps3 ? { keepsWhole: true } : {};
+  const keeps2 = !timedOut && signal3?.reason === "step-down";
+  const keepsWhole = keeps2 ? { keepsWhole: true } : {};
   const stopped = (execution) => timedOut ? {
     end: "timed-out",
     failure: failure2,
@@ -86380,7 +86254,14 @@ function isPaths(value) {
 function readPartsIn(paths) {
   const parts3 = [];
   for (const path of paths) {
-    const kind = statSync18(path, { throwIfNoEntry: false });
+    let kind;
+    let names9 = [];
+    try {
+      kind = statSync18(path, { throwIfNoEntry: false });
+      if (kind?.isDirectory()) names9 = readdirSync21(path);
+    } catch (error) {
+      return `cannot read ${path} (${error.code ?? String(error)})`;
+    }
     if (kind === void 0) return `no directory ${path}`;
     if (kind.isFile()) {
       const part2 = readPart(path);
@@ -86389,7 +86270,7 @@ function readPartsIn(paths) {
       continue;
     }
     if (!kind.isDirectory()) return `no directory ${path}`;
-    const names9 = readdirSync21(path).filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
+    names9 = names9.filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
     if (names9.length === 0) return `no part (${PART_PREFIX}*.json) in ${path}`;
     for (const name3 of names9.sort(compare)) {
       const file = join51(path, name3);
@@ -101970,7 +101851,7 @@ function createHandlers(context) {
   const writes = requestWrite === void 0 || storeSchema === void 0 ? null : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
   const { requestImport, requestKeep, worktreeId } = context;
   const imports2 = requestImport === void 0 || storeSchema === void 0 ? null : new RequestDesk({ type: "import", worktreeId, storeSchema, run: requestImport });
-  const keeps3 = requestKeep === void 0 || storeSchema === void 0 ? null : new RequestDesk({
+  const keeps2 = requestKeep === void 0 || storeSchema === void 0 ? null : new RequestDesk({
     type: "keep",
     worktreeId,
     storeSchema,
@@ -102023,7 +101904,7 @@ function createHandlers(context) {
     if (isWriteRequest(request)) {
       return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
     }
-    if (isDeskRequest(request)) return deskAnswer(request, { imports: imports2, keeps: keeps3 }, context.phase());
+    if (isDeskRequest(request)) return deskAnswer(request, { imports: imports2, keeps: keeps2 }, context.phase());
     switch (request.type) {
       case "ping":
         return {
@@ -102188,13 +102069,13 @@ function isDeskRequest(request) {
   return isImportRequest(request) || isKeepRequest(request);
 }
 function deskAnswer(request, desks, phase) {
-  const { imports: imports2, keeps: keeps3 } = desks;
+  const { imports: imports2, keeps: keeps2 } = desks;
   if (isImportRequest(request)) {
     if (imports2 === null) return errorResponse(NO_IMPORTS);
     return request.type === "import" ? imports2.take(request, phase) : imports2.status(request.requestId);
   }
-  if (keeps3 === null) return errorResponse(NO_KEEPS);
-  return request.type === "keep" ? keeps3.take(request, phase) : keeps3.status(request.requestId);
+  if (keeps2 === null) return errorResponse(NO_KEEPS);
+  return request.type === "keep" ? keeps2.take(request, phase) : keeps2.status(request.requestId);
 }
 var NO_IMPORTS = "this daemon takes no imports";
 var NO_KEEPS = "this daemon takes no kept files";
