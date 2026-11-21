@@ -1,14 +1,10 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
 import { decideTakeBack, type TakeBackView } from "../../src/core/scheduler/take-back.js";
-import type { CheckGroup } from "../../src/core/types/check-groups.js";
-import { Gate } from "./batch-fixture.js";
-import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
-import { groupPolicy, inTurn, ranPaths, runnerLane } from "./group-lanes-fixture.js";
+import type { CatchUpFile } from "./catch-up-fixture.js";
+import { ranPaths } from "./group-lanes-fixture.js";
+import { heldSide } from "./take-back-fixture.js";
 
 /*
  * Spec 023 D4.11 (row 023-34, T1; lessons round 5): `take-back` takes out
@@ -19,20 +15,17 @@ import { groupPolicy, inTurn, ranPaths, runnerLane } from "./group-lanes-fixture
  * budget, and the next narrowed call waited behind them.
  */
 
-const none = () => false;
 const view = (over: Partial<TakeBackView> = {}): TakeBackView => ({
-  queued: () => true,
-  running: none,
-  forced: none,
-  recent: none,
-  promotedElsewhere: none,
+  running: () => false,
+  promotedElsewhere: () => false,
+  release: () => "free",
   ...over,
 });
 
-describe("decideTakeBack (T1): each skip rule", () => {
-  const records = [{ ids: ["a", "b", "c"], promotion: 7 }];
+describe("decideTakeBack (T1): each rule", () => {
+  const records = [{ owner: "o1", queued: { ids: ["a", "b", "c"], promotions: [7] } }];
 
-  it("takes every queued file a narrow run queued itself", () => {
+  it("takes every file no one else needs", () => {
     expect(decideTakeBack(records, view())).toEqual({
       take: ["a", "b", "c"],
       result: { takenBack: 3, running: 0, kept: 0 },
@@ -44,28 +37,53 @@ describe("decideTakeBack (T1): each skip rule", () => {
     expect(d).toEqual({ take: ["b", "c"], result: { takenBack: 2, running: 1, kept: 0 } });
   });
 
-  it("keeps a forced file, a recent one and one another promotion holds", () => {
-    expect(decideTakeBack(records, view({ forced: (id) => id === "a" })).take).toEqual(["b", "c"]);
-    expect(decideTakeBack(records, view({ recent: (id) => id === "b" })).take).toEqual(["a", "c"]);
-    const asked: (number | null)[] = [];
+  it("keeps a file something else needs, and one another promotion holds", () => {
+    const released = view({ release: (id) => (id === "a" ? "kept" : "free") });
+    expect(decideTakeBack(records, released).result).toEqual({ takenBack: 2, running: 0, kept: 1 });
+    const own: (readonly number[])[] = [];
     const elsewhere = view({
-      promotedElsewhere: (id, own) => {
-        asked.push(own);
+      promotedElsewhere: (id, promotions) => {
+        own.push(promotions);
         return id === "c";
       },
     });
-    expect(decideTakeBack(records, elsewhere)).toEqual({
-      take: ["a", "b"],
-      result: { takenBack: 2, running: 0, kept: 1 },
-    });
-    // The request's own promotion is the one excepted.
-    expect(new Set(asked)).toEqual(new Set([7]));
+    expect(decideTakeBack(records, elsewhere).take).toEqual(["a", "b"]);
+    // The request's own promotions are the ones excepted.
+    expect(own).toEqual([[7], [7], [7]]);
   });
 
   it("counts nothing for a file no longer queued, and each file once", () => {
-    const twice = [...records, { ids: ["a"], promotion: 8 }];
-    const d = decideTakeBack(twice, view({ queued: (id) => id !== "b" }));
+    const twice = [...records, { owner: "o2", queued: { ids: ["a"], promotions: [] } }];
+    const d = decideTakeBack(twice, view({ release: (id) => (id === "b" ? "absent" : "free") }));
     expect(d).toEqual({ take: ["a", "c"], result: { takenBack: 2, running: 0, kept: 0 } });
+  });
+});
+
+describe("RunQueue owners (review wave-20 B1)", () => {
+  const ref = (path: string) => ({ project: "", path });
+  const queue = () => new RunQueue({ now: () => 1_000, isRunning: () => false });
+
+  it("an entry its request queued is free once it gives it up; one shared, once both do", () => {
+    const q = queue();
+    q.add(ref("a"), Priority.neverRun);
+    q.claim(ref("a"), "o1", true);
+    q.claim(ref("a"), "o2", false);
+    expect(q.release(ref("a"), "o1")).toBe("kept");
+    expect(q.release(ref("a"), "o2")).toBe("free");
+    expect(q.release(ref("b"), "o1")).toBe("absent");
+  });
+
+  it("an entry queued again for any other cause is nobody's", () => {
+    const q = queue();
+    q.add(ref("a"), Priority.neverRun);
+    q.claim(ref("a"), "o1", true);
+    // An edit, catch-up or a demoted reader queues it again.
+    q.add(ref("a"), Priority.transitive, false, false, true);
+    expect(q.release(ref("a"), "o1")).toBe("kept");
+    // One found queued for another cause is not claimed.
+    q.add(ref("b"), Priority.neverRun);
+    q.claim(ref("b"), "o1", false);
+    expect(q.release(ref("b"), "o1")).toBe("kept");
   });
 });
 
@@ -79,23 +97,16 @@ describe("RunQueue.promotedElsewhere (T1)", () => {
     queue.add(ref("b"), Priority.neverRun);
     const own = queue.promote([ref("a"), ref("b")], clock.now + 10_000);
     expect(own).not.toBeNull();
-    expect(queue.promotedElsewhere(ref("a"), own, clock.now)).toBe(false);
+    const mine = own === null ? [] : [own];
+    expect(queue.promotedElsewhere(ref("a"), mine, clock.now)).toBe(false);
     clock.now += 20_000;
-    // The narrow run's own batch holds `a` past its deadline; still not elsewhere.
-    expect(queue.promotedElsewhere(ref("a"), own, clock.now)).toBe(false);
+    expect(queue.promotedElsewhere(ref("a"), mine, clock.now)).toBe(false);
     // A named wait that selects `a` holds it while the wait is open.
-    const wait = queue.promote([ref("a")], clock.now + 60_000);
-    expect(wait).not.toBeNull();
-    expect(queue.promotedElsewhere(ref("a"), own, clock.now)).toBe(true);
-    expect(queue.promotedElsewhere(ref("b"), own, clock.now)).toBe(false);
+    expect(queue.promote([ref("a")], clock.now + 60_000)).not.toBeNull();
+    expect(queue.promotedElsewhere(ref("a"), mine, clock.now)).toBe(true);
+    expect(queue.promotedElsewhere(ref("b"), mine, clock.now)).toBe(false);
     clock.now += 61_000;
-    expect(queue.promotedElsewhere(ref("a"), own, clock.now)).toBe(false);
-    // A wait whose batch holds `c`, past its deadline too.
-    queue.add(ref("c"), Priority.neverRun);
-    const other = queue.promote([ref("c")], clock.now + 1_000);
-    clock.now += 2_000;
-    expect(queue.promotedElsewhere(ref("c"), own, clock.now)).toBe(true);
-    expect(queue.promotedElsewhere(ref("c"), other, clock.now)).toBe(false);
+    expect(queue.promotedElsewhere(ref("a"), mine, clock.now)).toBe(false);
   });
 });
 
@@ -104,44 +115,20 @@ const FILES: readonly CatchUpFile[] = [
   { path: "test/browser/b.test.ts", ms: 20, imports: ["src/core.ts"] },
   { path: "test/browser/c.test.ts", ms: 30, imports: ["src/core.ts"] },
 ];
-const BROWSER: CheckGroup = {
-  name: "browser",
-  runner: "vitest",
-  tests: ["test/browser/**"],
-  at: "manual",
-};
 
 describe("a narrow run taken back (T1)", { timeout: 60_000 }, () => {
   it("takes out its queued files, leaves the running one, and runs nothing more", async () => {
-    const repo = catchUpRepo(FILES);
-    const slotDir = mkdtempSync(join(tmpdir(), "squeal-023-34-slot-"));
-    onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
-    const side = catchUpSide(repo, repo.main, {
-      files: FILES,
-      hostSlots: 8,
-      tierSize: 1,
-      lane: runnerLane,
-      // The default baseline, as a user's daemon has it: a miss is not queued until asked.
-      policy: { ...groupPolicy({ checks: [BROWSER] }), baseline: { onStart: "lookup-only" } },
-      scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [0] } },
-    });
-    const turn = await inTurn(side);
-    onTestFinished(() => turn.end());
-    await side.scheduler.start();
-    await side.rest();
-    const gate = new Gate();
-    side.runner.holdOf = () => gate.wait();
+    const { side, gate } = await heldSide(FILES);
     const paths = FILES.map((f) => f.path);
-    const request = await side.scheduler.requestGroupPaths?.("browser", paths);
+    const request = await side.scheduler.requestGroupPaths?.("browser", paths, { owner: "o1" });
     expect(request).toMatchObject({ queued: 3 });
-    const coveredId = request?.coveredId ?? "";
     // One file starts (tier size 1) and is held; the other two wait in the queue.
     await expect.poll(() => side.runner.runs.length, { timeout: 20_000 }).toBe(1);
     const started = ranPaths(side);
-    const taken = await side.scheduler.takeBack?.([coveredId]);
+    const taken = await side.scheduler.takeBack?.(["o1"]);
     expect(taken).toEqual({ takenBack: 2, running: 1, kept: 0 });
-    // Taken once: the same id takes nothing again.
-    expect(await side.scheduler.takeBack?.([coveredId])).toEqual({
+    // Taken once: the same owner takes nothing again.
+    expect(await side.scheduler.takeBack?.(["o1"])).toEqual({
       takenBack: 0,
       running: 0,
       kept: 0,
@@ -153,5 +140,36 @@ describe("a narrow run taken back (T1)", { timeout: 60_000 }, () => {
     expect(ranPaths(side)).toEqual(started);
     for (const path of paths.filter((p) => !started.includes(p)))
       expect(side.current(path)).toBe(false);
+  });
+});
+
+describe("a request not taken yet when its call takes it back (review wave-20 B3)", {
+  timeout: 60_000,
+}, () => {
+  it("queues nothing once the scheduler takes it, and nothing runs", async () => {
+    const { side, gate } = await heldSide(FILES);
+    gate.stop();
+    // A source path asks the runner under the lock: holding that answer holds the intake.
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = false;
+    const affected = side.runner.affected;
+    side.runner.affected = async (changed) => {
+      asked = true;
+      await held;
+      return affected(changed);
+    };
+    const request = side.scheduler.requestGroupPaths?.("browser", ["src/core.ts"], { owner: "o1" });
+    await expect.poll(() => asked, { timeout: 20_000 }).toBe(true);
+    // The call's budget ended: its take-back comes while the request waits.
+    const back = side.scheduler.takeBack?.(["o1"]);
+    release();
+    await expect(request).resolves.toMatchObject({ queued: 0 });
+    await expect(back).resolves.toEqual({ takenBack: 0, running: 0, kept: 0 });
+    await side.rest();
+    await delay(300);
+    expect(ranPaths(side)).toEqual([]);
   });
 });

@@ -2,7 +2,12 @@ import { testFileId } from "../keys/reverse-index.js";
 import type { RelativePath, RevisionNumber } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { AffectedTestFiles } from "../types/runner.js";
-import type { NarrowNotRun, NarrowRun, NarrowRunRequest } from "../types/scheduler.js";
+import type {
+  NarrowNotRun,
+  NarrowRun,
+  NarrowRunOptions,
+  NarrowRunRequest,
+} from "../types/scheduler.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { coveredOf } from "./covered-files.js";
@@ -117,7 +122,9 @@ export function narrowRequest(
   paths: readonly RelativePath[],
   groups: GroupTiers,
   takeBacks?: TakeBacks,
+  options: NarrowRunOptions = {},
 ): Request<NarrowRunRequest | null, NarrowPlan> {
+  const { owner } = options;
   return {
     operation: `taking a squeal run ${group} <path>... request`,
     start: {
@@ -149,14 +156,26 @@ export function narrowRequest(
     },
     store: {
       stage: (context, ledger, { revision, selection }, id) => {
+        // Row 023-34 (review wave-20 B3): its caller took it back before it was taken.
+        if (owner !== undefined && takeBacks?.cancelled(owner) === true) {
+          const narrow = narrowAnswer(context, ledger, group, selection, TAKEN_BACK_REASON);
+          const covered = selectedOf(ledger, group, selection);
+          return { answer: { revision, queued: 0, narrow, coveredId: id }, covered };
+        }
         const selected = selection.selected.get(group) ?? new Set<string>();
-        const { queued, asks, newly } = queueNarrow(ledger, selected);
+        const { queued, asks, newly, shared } = queueNarrow(ledger, selected);
         groups.lanes(context.policy);
         groups.get(group)?.narrow.add(asks, ledger);
-        // Row 011-397 (gh-181): its queued files form a batch as a named wait's do (C15).
-        const promotion = promoteNarrow(context, ledger, selected);
-        // Row 023-34 (T1): what it queued itself, which a `take-back` of its id may take out.
-        takeBacks?.record(id, { ids: newly, promotion });
+        // Row 011-397 (gh-181): its queued files form a batch as a named wait's do (C15);
+        // row 023-34 (B2): one a later call named leads every earlier batch.
+        const promotion = promoteNarrow(context, ledger, selected, options.lead === true);
+        // Row 023-34 (T1, B1): its owner's claim on what it queued or shares, for a take-back.
+        if (owner !== undefined && takeBacks !== undefined) {
+          claimNarrow(ledger, owner, newly, true);
+          claimNarrow(ledger, owner, shared, false);
+          const promotions = promotion === null ? [] : [promotion];
+          takeBacks.record(owner, { ids: [...newly, ...shared], promotions });
+        }
         // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
         const narrow = narrowAnswer(context, ledger, group, selection, null);
         const covered = selectedOf(ledger, group, selection);
@@ -186,12 +205,25 @@ function promoteNarrow(
   context: SchedulerContext,
   ledger: Ledger,
   ids: ReadonlySet<string>,
+  lead: boolean,
 ): number | null {
   const refs = [...ids].flatMap((id) => ledger.files.get(id)?.ref ?? []);
   if (refs.length === 0) return null;
   const until = context.now() + NARROW_PROMOTION_MS;
-  return ledger.queue.promote(refs, until, answeredOf(context, ledger));
+  return ledger.queue.promote(refs, until, answeredOf(context, ledger), lead);
 }
+
+/** B1: `owner` claims the queue entries of `ids` (`RunQueue.claim`). */
+function claimNarrow(ledger: Ledger, owner: string, ids: readonly string[], fresh: boolean): void {
+  for (const id of ids) {
+    const ref = ledger.files.get(id)?.ref;
+    if (ref !== undefined) ledger.queue.claim(ref, owner, fresh);
+  }
+}
+
+/** Row 023-34 (B3): why a narrow run queued nothing: its caller took it back before it was taken. */
+export const TAKEN_BACK_REASON =
+  "the call that asked for it took it back before the daemon took it";
 
 /** Group `group`'s selected files, a narrow run's covered files. */
 function selectedOf(ledger: Ledger, group: string, selection: Selection): FileState[] {
@@ -214,6 +246,7 @@ export function queueNarrow(
   readonly queued: number;
   readonly asks: readonly CommitAsk[];
   readonly newly: readonly string[];
+  readonly shared: readonly string[];
 } {
   const open = [...ids]
     .flatMap((id) => ledger.files.get(id) ?? [])
@@ -228,7 +261,8 @@ export function queueNarrow(
   const asks = open.flatMap((file) =>
     file.key === null ? [] : [{ ref: file.ref, key: file.key }],
   );
-  return { queued: pending.length + misses.length, asks, newly: misses.map((file) => file.id) };
+  const newly = misses.map((file) => file.id);
+  return { queued: pending.length + misses.length, asks, newly, shared: pending.map((f) => f.id) };
 }
 
 /**

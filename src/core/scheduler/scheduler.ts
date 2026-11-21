@@ -21,6 +21,7 @@ import {
   type FullSuiteRequest,
   isGroupLane,
   type LockHolder,
+  type NarrowRunOptions,
   type NarrowRunRequest,
   type Rest,
   type Scheduler,
@@ -832,13 +833,20 @@ class TierScheduler implements Scheduler {
   requestGroupPaths(
     group: string,
     paths: readonly RelativePath[],
+    options: NarrowRunOptions = {},
   ): Promise<NarrowRunRequest | null> {
-    return this.#intake.take(narrowRequest(group, paths, this.#groups, this.#takeBacks));
+    const request = narrowRequest(group, paths, this.#groups, this.#takeBacks, options);
+    return this.#intake.take(request);
   }
 
-  /** Spec 023 D4.11 (row 023-34, T1): `takeBackRequest`. */
-  takeBack(coveredIds: readonly string[]): Promise<TakeBackResult> {
-    return this.#intake.take(takeBackRequest(coveredIds, this.#takeBacks));
+  /**
+   * Spec 023 D4.11 (row 023-34, T1): `takeBackRequest`. Review wave-20 B3:
+   * the owners are cancelled now, before the intake, so a narrow run of
+   * theirs that waits for it queues nothing when it is taken.
+   */
+  takeBack(owners: readonly string[]): Promise<TakeBackResult> {
+    this.#takeBacks.cancel(owners);
+    return this.#intake.take(takeBackRequest(owners, this.#takeBacks));
   }
 
   /** `squeal retry` (001-368): queues the requests in the store that may run now. */

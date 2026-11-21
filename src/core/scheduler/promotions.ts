@@ -16,6 +16,11 @@ interface Promotion {
   readonly files: ReadonlyMap<string, TestFileRef>;
   readonly until: number;
   readonly seq: number;
+  /**
+   * Its order among batches: `seq`; a leading batch's (row 023-34, review
+   * wave-20 B2) is below every other's, the later leading batch first.
+   */
+  readonly rank: number;
   /** Each stays while it is queued or running: until its result is current, or it leaves the queue. */
   readonly members: ReadonlySet<string>;
   /** When its tier is estimated to end, while a file of it runs (`started`); `null` otherwise. */
@@ -121,13 +126,16 @@ export class Promotions {
     until: number,
     queued: (id: string) => boolean,
     facts: SelectedFacts = NO_FACTS,
+    lead = false,
   ): number | null {
     let changed = this.#settle(queued);
     const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
     const taken = this.#members();
     const open = [...files].filter(([id, ref]) => this.#isOpen(id, ref, queued));
     const seen = new Set(open.map(([id]) => id));
-    const members = new Set([...seen].filter((id) => !taken.has(id)));
+    // Row 023-34 (review wave-20 B2): a leading batch takes its files out of earlier batches.
+    const members = new Set([...seen].filter((id) => lead || !taken.has(id)));
+    if (lead && members.size > 0) changed = this.#release(members) || changed;
     const keys = new Map(
       [...files].filter(([id]) => !seen.has(id)).map(([id, ref]) => [id, facts(ref).key]),
     );
@@ -135,7 +143,9 @@ export class Promotions {
     let formed: number | null = null;
     if (until > this.#now() && (open.length > 0 || awaits)) {
       const seq = this.#seq++;
-      this.#promotions.push({ files, until, seq, members, estimatedEnd: null, seen, facts, keys });
+      const rank = lead ? -(seq + 1) : seq;
+      const promotion = { files, until, seq, rank, members, estimatedEnd: null, seen };
+      this.#promotions.push({ ...promotion, facts, keys });
       changed = true;
       formed = seq;
     }
@@ -144,13 +154,13 @@ export class Promotions {
   }
 
   /**
-   * Row 023-34 (T1): whether a promotion other than `own` holds `id` at
+   * Row 023-34 (T1): whether a promotion not of `own` holds `id` at
    * `now`: as a member of its batch, or as a selected file of a wait open
    * then. A take-back leaves such a file queued.
    */
-  heldElsewhere(id: string, own: number | null, now: number): boolean {
+  heldElsewhere(id: string, own: readonly number[], now: number): boolean {
     return this.#promotions.some(
-      (p) => p.seq !== own && (p.members.has(id) || (p.until > now && p.files.has(id))),
+      (p) => !own.includes(p.seq) && (p.members.has(id) || (p.until > now && p.files.has(id))),
     );
   }
 
@@ -177,8 +187,20 @@ export class Promotions {
    */
   rankAt(id: string, now: number): PromotionRank | null {
     const member = this.#promotions.find((p) => p.members.has(id));
-    const first = member ?? this.#promotions.find((p) => p.until > now && p.files.has(id));
-    return first === undefined ? null : { rank: first.seq };
+    if (member !== undefined) return { rank: member.rank };
+    const ranks = this.#promotions.filter((p) => p.until > now && p.files.has(id));
+    return ranks.length === 0 ? null : { rank: Math.min(...ranks.map((p) => p.rank)) };
+  }
+
+  /** B2: takes `ids` out of every batch's members; whether one changed. */
+  #release(ids: ReadonlySet<string>): boolean {
+    let changed = false;
+    this.#promotions = this.#promotions.map((p) => {
+      if (![...p.members].some((id) => ids.has(id))) return p;
+      changed = true;
+      return { ...p, members: new Set([...p.members].filter((id) => !ids.has(id))) };
+    });
+    return changed;
   }
 
   /**
@@ -186,7 +208,7 @@ export class Promotions {
    * `estimatedEnd` (row 011-268): status names it.
    */
   started(rank: number, estimatedEnd: EpochMs): void {
-    const at = this.#promotions.findIndex((p) => p.seq === rank);
+    const at = this.#promotions.findIndex((p) => p.rank === rank);
     const promotion = this.#promotions[at];
     if (promotion === undefined || promotion.estimatedEnd === estimatedEnd) return;
     this.#promotions = this.#promotions.with(at, { ...promotion, estimatedEnd });
@@ -224,7 +246,15 @@ export class Promotions {
       const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
       const members = new Set(files.keys());
       const seq = this.#seq++;
-      const promotion = { files, until, seq, members, estimatedEnd: null, seen: members };
+      const promotion = {
+        files,
+        until,
+        seq,
+        rank: seq,
+        members,
+        estimatedEnd: null,
+        seen: members,
+      };
       this.#promotions.push({ ...promotion, facts: NO_FACTS, keys: NO_KEYS });
     }
     this.#told();
