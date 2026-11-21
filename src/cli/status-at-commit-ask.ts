@@ -50,24 +50,26 @@ export interface AskInput {
   readonly changed: readonly RelativePath[];
   readonly named: readonly RelativePath[];
   readonly allMissing: boolean;
-  /** Epoch ms by which every request ends (the call's deadline less its report reserve). */
-  readonly bound: number;
+  /** Epoch ms by which the worktree, the start and every request end (the call's `askBy`). */
+  readonly askBy: number;
+  /** Epoch ms when the reads and the wait end (the call's wait less its report reserve). */
+  readonly deadline: number;
   /** Told the ask's files once the daemon queued them (R1: the working tree runs them too). */
   readonly queued?: (files: readonly TestFileRef[]) => void;
 }
 
 /** `--run`: the commit worktree and its daemon, one ask, its reads, then the wait for its files. */
 export async function askCommit(input: AskInput): Promise<CommitAsked> {
-  const { daemons, bound, owner } = input;
-  const tree = await daemons.commit({ ...input.commit, deadline: bound });
-  if (typeof tree !== "string") return notReached(tree.problem, Date.now() >= bound);
+  const { daemons, askBy, deadline, owner } = input;
+  const tree = await daemons.commit({ ...input.commit, deadline: askBy });
+  if (typeof tree !== "string") return notReached(tree.problem, Date.now() >= askBy);
   const ask = { owner, changed: input.changed, named: input.named, allMissing: input.allMissing };
-  const refused = await daemons.commitAsk(tree, ask, bound).catch((error) => String(error));
+  const refused = await daemons.commitAsk(tree, ask, askBy).catch((error) => String(error));
   if (refused !== null) return { ...notReached(refused, false), root: tree };
-  const read = await readUntilQueued(daemons, tree, [owner], bound);
+  const read = await readUntilQueued(daemons, tree, [owner], askBy, deadline);
   const own = read.asks.find((a) => a.owner === owner);
   input.queued?.(own?.phase === "queued" ? own.files : []);
-  return waitFor(daemons, tree, read, bound);
+  return waitFor(daemons, tree, read, deadline);
 }
 
 /**
@@ -82,7 +84,7 @@ export async function joinCommit(
   listed: readonly TestFileRef[] = [],
 ): Promise<CommitAsked> {
   if (tree === null) return { ...NOTHING, setup: null, asks: [] };
-  const read = await readUntilQueued(daemons, tree, undefined, bound);
+  const read = await readUntilQueued(daemons, tree, undefined, bound, bound);
   return waitFor(daemons, tree, read, bound, listed);
 }
 
@@ -92,20 +94,25 @@ interface Read {
   readonly problem: string | null;
 }
 
-/** Reads the asks of `owners` until each is queued or failed, or `bound`; the last read. */
+/**
+ * Reads the asks of `owners` until each is queued or failed, or
+ * `deadline`; the last read. Each read ends by `askBy`, so one read is
+ * made even when the wait is over.
+ */
 async function readUntilQueued(
   daemons: AtDaemons,
   tree: AbsolutePath,
   owners: readonly string[] | undefined,
-  bound: number,
+  askBy: number,
+  deadline: number,
 ): Promise<Read> {
   for (;;) {
-    const answer = await daemons.commitRead(tree, owners, bound).catch((error) => String(error));
+    const answer = await daemons.commitRead(tree, owners, askBy).catch((error) => String(error));
     if (typeof answer === "string") return { setup: null, asks: [], problem: answer };
     const settled = answer.asks.every((a) => a.phase === "queued" || a.phase === "failed");
-    if (settled || answer.setup.phase === "failed" || Date.now() >= bound)
+    if (settled || answer.setup.phase === "failed" || Date.now() >= deadline)
       return { setup: answer.setup, asks: answer.asks, problem: null };
-    await sleep(Math.min(READ_EVERY_MS, Math.max(0, bound - Date.now())));
+    await sleep(Math.min(READ_EVERY_MS, Math.max(0, deadline - Date.now())));
   }
 }
 
