@@ -10,7 +10,6 @@ import type {
 import { chainText } from "../core/reach/suggest.js";
 import { plural } from "../core/text.js";
 import type { EpochMs } from "../core/types/common.js";
-import { narrowingLines } from "./reach-narrowing.js";
 import { proposalLines } from "./reach-proposals.js";
 import { pct, secs } from "./reach-text.js";
 
@@ -221,7 +220,6 @@ export function formatReach(report: ReachReport): string {
           title.tests,
           ...report.testFiles.flatMap((e, i) => testLines(e, i + 1)),
           ...more(report.moreTestFiles),
-          ...(report.narrowing.length === 0 ? [] : ["", ...narrowingLines(report.narrowing)]),
         ]
       : ["", ...named.flatMap(namedLines)];
   const proposals = report.proposals.flatMap((p) => proposalLines(p, report.coverage));

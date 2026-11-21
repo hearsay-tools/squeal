@@ -3,11 +3,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { codeStorePath } from "../../src/core/code/store/open.js";
 import { noCodeRemoved, pruneCodeSlices } from "../../src/core/code/store/prune.js";
 import { Connection, observeWrites } from "../../src/core/store/connection.js";
-import {
-  dropOrphanLoadedModules,
-  LOADED_MODULES_TABLE,
-  writeLoadedModules,
-} from "../../src/core/store/loaded-modules.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { noneRemoved, pruneSlices } from "../../src/core/store/prune.js";
 import { deleteByKey } from "../../src/core/store/prune-keyed.js";
@@ -135,7 +130,6 @@ describe("a prune with nothing to delete (row 021-33)", () => {
     const store = open(commonDir);
     store.results.putMany([result(testCheck("c1"), "k1", { recordedAt: NOW - DAY_MS })]);
     store.knownStates.upsertMany([knownState("w1", testCheck("c2"))]);
-    writeLoadedModules(store, loaded("k1"));
     const seen = writes();
     const counts = noneRemoved();
     const options = { now: NOW, retentionDays: 7, maxSizeMb: null };
@@ -217,16 +211,6 @@ describe("a row that stops matching between the read and the delete (row 021-33)
     expect(Number(conn.get("SELECT count(*) AS n FROM checks")?.n)).toBe(before);
   });
 
-  it("keeps a loaded list a result came to be stored at", () => {
-    const store = open(fakeCommonDir());
-    writeLoadedModules(store, loaded("k-orphan"));
-    const conn = connectionOf(store);
-    raceAfterRead(conn, dropOrphanLoadedModules(conn), LOADED_MODULES_TABLE, () =>
-      store.results.putMany([result(testCheck("c1"), "k-orphan")]),
-    );
-    expect(conn.all(`SELECT key FROM ${LOADED_MODULES_TABLE}`)).toHaveLength(1);
-  });
-
   it("keeps a main-store check a known state came to name", () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
@@ -245,16 +229,6 @@ describe("a row that stops matching between the read and the delete (row 021-33)
     expect(store.knownStates.list("w1")).toHaveLength(1);
   });
 });
-
-function loaded(key: string) {
-  return {
-    project: "",
-    path: "a.test.ts",
-    key,
-    recordedAt: NOW,
-    modules: [{ path: "a.test.ts", hash: "2".repeat(40) }],
-  };
-}
 
 function stateOf(worktreeId: string): CodeKnownState {
   return {

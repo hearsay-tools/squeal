@@ -3,7 +3,6 @@ import type { RelativePath } from "../types/common.js";
 import { analyze } from "./analyze.js";
 import { fileEntries, testEntries } from "./entries.js";
 import { named, namedFiles } from "./named.js";
-import { narrowingEstimates } from "./narrowing.js";
 import { proposals } from "./proposals.js";
 import { REACH_REPORT_VERSION, type ReachReport } from "./report-types.js";
 import type { ReachSnapshot } from "./types.js";
@@ -64,7 +63,6 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
     ...(options.paths === null || !history
       ? {}
       : { named: namedFiles(analysis, snapshot, options.paths, limit) }),
-    narrowing: history ? narrowingEstimates(analysis, snapshot, limit) : [],
     proposals: proposals(snapshot, analysis, history, options),
   };
 }

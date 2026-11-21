@@ -6,7 +6,6 @@ import { COVERAGE_RECORD_VERSION } from "../../src/core/code/coverage/record.js"
 import { codeStorePath } from "../../src/core/code/store/open.js";
 import { noCodeRemoved, pruneCodeSlices } from "../../src/core/code/store/prune.js";
 import { Connection, type Params } from "../../src/core/store/connection.js";
-import { writeLoadedModules } from "../../src/core/store/loaded-modules.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { noneRemoved, pruneSlices } from "../../src/core/store/prune.js";
 import { connectionOf } from "../../src/core/store/store.js";
@@ -23,6 +22,7 @@ import {
   testCheck,
   worktree,
 } from "./helpers.js";
+import { putOldList } from "./loaded-lists.js";
 
 /*
  * Row 021-33 (review 0.1.568 B3): no prune slice scans a table while it
@@ -163,15 +163,9 @@ function mainStore(): { commonDir: string; store: Store } {
       startedAt: ago(20),
     });
     store.runs.finish(`run${i}`, "completed", ago(20));
-    writeLoadedModules(store, {
-      project: "",
-      path: `t${i}.test.ts`,
-      key: i % 2 ? `new${i}` : `orphan${i}`,
-      recordedAt: 1,
-      modules: [{ path: `t${i}.test.ts`, hash: "1".repeat(40) }],
-    });
   }
   const conn = connectionOf(store);
+  for (const i of n) putOldList(conn, `k${i}`, `t${i}.test.ts`);
   for (const i of n)
     conn.run("INSERT INTO failure_texts (id, summary, errors) VALUES (?, 'x', '[]')", `t${i}`);
   return { commonDir, store };

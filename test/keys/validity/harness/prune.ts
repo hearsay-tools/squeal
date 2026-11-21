@@ -145,7 +145,7 @@ function withResults(
   return { withResults: [...new Set(asked)].filter((key) => stored.has(key)) };
 }
 
-/** Spec 022 D3's table, as `LOADED_MODULES_SQL` makes it, with a list at each of `keys`. */
+/** Spec 022 D3's table, as releases 0.1.496 to 0.1.586 made it, with a list at each of `keys`. */
 function addLoadedLists(db: ReturnType<typeof connectionOf>["db"], keys?: readonly string[]) {
   if (keys === undefined) return;
   db.exec(`CREATE TABLE loaded_modules (
