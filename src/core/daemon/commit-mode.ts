@@ -1,3 +1,8 @@
+import {
+  claimCommitWorktree,
+  readCommitWorktree,
+  removeCommitWorktree,
+} from "../checkout/commit-worktree.js";
 import type { CodePass } from "../code/pass/index.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { DaemonExitReason } from "../types/daemon.js";
@@ -30,9 +35,8 @@ export const COMMIT_IDLE_EXIT_MS = 10 * 60_000;
 export const COMMIT_MAX_LIFE_MS = 3 * 60 * 60_000;
 
 /**
- * 023-38's commit worktree functions (`src/core/checkout/commit-worktree.ts`,
- * agreed through the coordinator 2026-11-21), behind a seam until that row
- * lands: `readCommitWorktree`, `claimCommitWorktree`, `removeCommitWorktree`.
+ * The commit worktree functions the daemon uses (row 023-38,
+ * `src/core/checkout/commit-worktree.ts`); tests pass their own.
  */
 export interface CommitWorktrees {
   /** The commit worktree's marker when `root` is the tree of one, else `null`. */
@@ -47,7 +51,14 @@ export interface CommitWorktrees {
   remove(root: AbsolutePath): Promise<void>;
 }
 
-/** No commit worktrees: no marker is read and nothing is removed. The coordinator wires 023-38's. */
+/** 023-38's functions: the marker decides, the owning daemon claims and removes its worktree. */
+export const COMMIT_WORKTREES: CommitWorktrees = {
+  read: readCommitWorktree,
+  claim: claimCommitWorktree,
+  remove: (root) => removeCommitWorktree(root),
+};
+
+/** No commit worktrees: no marker is read and nothing is removed. */
 export const NO_COMMIT_WORKTREES: CommitWorktrees = {
   read: () => null,
   claim: () => {},
@@ -71,7 +82,7 @@ export interface CommitModeOptions {
 
 /** The daemon at `root` runs in commit mode: an explicit option, or else the marker. */
 export function commitModeOf(options: CommitModeOptions, root: AbsolutePath): CommitMode | null {
-  const worktrees = options.commitWorktrees ?? NO_COMMIT_WORKTREES;
+  const worktrees = options.commitWorktrees ?? COMMIT_WORKTREES;
   const on = options.commitMode ?? worktrees.read(root) !== null;
   if (!on) return null;
   return {
