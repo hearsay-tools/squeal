@@ -1,5 +1,15 @@
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
+import { commitFolderName } from "../core/checkout/commit-identity.js";
+import { environmentFingerprint } from "../core/checkout/commit-places.js";
+import {
+  cacheCheckoutsDir,
+  cacheCheckoutsRoot,
+  gitCheckoutsDir,
+} from "../core/checkout/location.js";
+import { treePath } from "../core/checkout/marker.js";
 import { withStores } from "../core/commit/at-keys-checkout.js";
+import { selects } from "../core/commit/at-keys-narrow.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { runGit } from "../core/fs/git.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -8,16 +18,18 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { storedDurations } from "./code-gate-durations.js";
 import type { CliIo } from "./main.js";
 import type { AtArgs, AtOptions } from "./status-at.js";
-import { commitAfter, nowAfter } from "./status-at-after.js";
+import { idOf, nowAfter } from "./status-at-after.js";
 import { assembleReport } from "./status-at-assemble.js";
-import { type CommitRun, commitRun } from "./status-at-commit-run.js";
-import { type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
-import { joinBoth } from "./status-at-join.js";
+import type { CommitSide } from "./status-at-commit.js";
+import { askCommit, type CommitAsked, joinCommit } from "./status-at-commit-ask.js";
+import { rowsSide } from "./status-at-commit-rows.js";
+import { type AtDaemons, type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
+import { uncommitted } from "./status-at-dirty.js";
+import { joinNow } from "./status-at-join.js";
 import { listLate, type NowInput, type NowSide, nowSide } from "./status-at-now.js";
-import { askBound, commitQueue, type SideQueue, worktreeQueue } from "./status-at-queue.js";
+import { type SideQueue, worktreeTwice } from "./status-at-queue.js";
 import { unionRefs } from "./status-at-refs.js";
-import { rekeyGrown } from "./status-at-rekey.js";
-import { exitCode, formatAt, jsonAt, type SideState } from "./status-at-report.js";
+import { exitCode, formatAt, jsonAt } from "./status-at-report.js";
 import {
   type QueuedRun,
   queuedSide,
@@ -26,21 +38,27 @@ import {
   waitAgain,
 } from "./status-at-report-queued.js";
 import { estimateOf, tellsEstimate } from "./status-at-run-batches.js";
-import { commitSelect, type Selected } from "./status-at-select.js";
 
 /*
- * Spec 023 D7.3 (row 023-40): `status --at <commit> --run [--wait [<ms>]]`
- * and `status --at <commit> --wait [<ms>]`. With `--run`, the commit's
- * keys and D4.5's selection come from a temporary checkout as before (D2),
- * then the selected files are queued in the commit daemon (its worktree
- * made and its daemon started when none serves it) and the working tree's
- * selected files in this worktree's daemon (started when none runs), each
- * with one narrow request per group, the named files first. The call waits
- * up to 100 s by default (`--wait <ms>` sets it, a bare `--wait` waits
- * until done) as `run <group> --wait` does, then reports what is known;
- * what still runs goes on in the daemons and Q7's line says so. `--wait`
- * without `--run` joins what the daemons already queued and starts none.
+ * Spec 023 D7.3 (row 023-40; row 023-40c, D7.3 as amended 2026-11-21, the
+ * human: "A: daemon owns setup"): `status --at <commit> --run [--wait
+ * [<ms>]]` and `status --at <commit> --wait [<ms>]`. With `--run` the call
+ * keys nothing and installs nothing at the commit: it sends the change
+ * (`git diff <commit>..HEAD` and the working tree's changes) and its named
+ * paths to the commit daemon (its worktree made with no install and its
+ * daemon started when none serves it), which installs, keys, selects (D4.5)
+ * and runs; the working tree's selected files go to this worktree's daemon
+ * (started when none runs). Every step ends by one bound, the wait (100 s
+ * by default; `--wait <ms>` sets it, a bare `--wait` waits until done) less
+ * a reserve for the report; then the call reads both sides, the commit
+ * side at its daemon's live keys, and reports what is known and what is
+ * still setting up or running. What still runs goes on in the daemons and
+ * Q7's line says so. `--wait` without `--run` joins what the daemons keep
+ * and starts none.
  */
+
+/** Row 023-40c: kept back from the wait for reading both sides and the report. */
+export const REPORT_RESERVE_MS = 2_000;
 
 /** Where the call runs, as `statusAtCommand` located it. */
 export interface CallPlace {
@@ -68,15 +86,13 @@ export interface CallInput {
 /** D7.3: queue (or join), wait, read both sides again, report; D1's exit code. */
 export async function daemonCall(input: CallInput): Promise<number> {
   const { args, place, io, options } = input;
-  const { root, commonDir, commit, paths } = place;
+  const { root, commonDir, commit } = place;
   const run = args.run ?? null;
   const waitMs = args.waitMs ?? (run === null ? 0 : RUN_WAIT_MS);
   const note = (text: string) =>
     io.stderr(text.startsWith("squeal: ") ? `${text}\n` : `squeal: ${text}\n`);
-  const { chosen, side } = await commitKeys(input, note);
-  const sides = { now: input.now.sources, at: side.at.sources, failed: side.at.failure !== null };
-  const { refs, unmatched } = unionRefs(input.now.refs, side.at.refs, paths, sides, root, commit);
-  const listed = await listLate(input.read, input.now, refs);
+  // Review wave-23 B1, row 023-40c: one bound for every step, counted from the call's start.
+  const bound = Math.max(input.startedMs, input.startedMs + waitMs - REPORT_RESERVE_MS);
   const commitInput: CommitDaemonInput = {
     root,
     commit,
@@ -86,111 +102,125 @@ export async function daemonCall(input: CallInput): Promise<number> {
       limit: readPolicy(root).daemon.maxCommitDaemons ?? undefined,
       cacheRoot: options.cacheRoot,
       placeWaitMs: options.placeWaitMs,
-      install: options.install,
     }),
   };
   const daemons = options.daemons ?? realDaemons({ note });
-  // Review wave-23 B1: one deadline for the whole call, counted from its start.
-  const deadline = input.startedMs + waitMs;
-  const queue = {
-    daemons,
-    deadline,
-    askBy: askBound(deadline),
-    call: { owner: randomUUID(), lead: paths !== null },
-    ask: run !== null,
-  };
-  let queues: [SideQueue, SideQueue];
-  if (chosen !== null) {
-    // A checkout whose files git's rules or the install changed gives no key of the commit's
-    // (row 023-07): nothing from it is queued, and its files stay not comparable.
-    const comparable = chosen.at.changed === null;
-    const atFiles = comparable ? (chosen.selection?.run.map((file) => file.ref) ?? []) : [];
-    const selects = chosen.selection?.selects;
-    const nowFiles = selects === undefined ? [] : selectedNow(refs, listed.state, selects);
-    tellEstimate(atFiles, args, waitMs, root, commit, note);
-    queues = await Promise.all([
-      commitQueue({ ...queue, files: atFiles }, commitInput),
-      worktreeQueue({ ...queue, files: nowFiles }, root),
-    ]);
-  } else {
-    // Review wave-23 B2: also the requests the daemons recorded and have not taken yet.
-    queues = await joinBoth({
-      daemons,
-      commit: commitInput,
-      refs,
-      at: side.state,
-      now: listed.state,
-      root,
-      commonDir,
-      deadline: queue.deadline,
-      askBy: queue.askBy,
-    });
-  }
-  // Review wave-23 B3: a run that observed new inputs stored at their key; key those files again (D2).
-  const checkout = defined({ cacheRoot: options.cacheRoot, install: options.install });
-  const rekey = { ...place, env: input.env, note, options: checkout };
-  const keyed = await rekeyGrown(rekey, side.state, queues[0]);
-  const after = await readAfter(input, refs, keyed, ...queues);
+  const listed = await listLate(input.read, input.now, input.now.refs);
+  const [atQueue, nowQueue] =
+    run === null
+      ? await Promise.all([
+          joinCommit(daemons, await joinedTree(daemons, commitInput, commonDir), bound),
+          joinNow({ daemons, root, refs: listed.refs, now: listed.state, deadline: bound }),
+        ])
+      : await queueBoth(input, { daemons, commit: commitInput, now: listed, bound, run });
+  if (run !== null) tellEstimate(atQueue.files, args, waitMs, root, commit, note);
+  const after = await readAfter(input, atQueue, nowQueue, run !== null);
   const report = await assembleReport({
     root,
     commit,
-    refs,
-    unmatched,
+    refs: after.refs,
+    unmatched: after.unmatched,
     current: after.current,
     // Review wave-23 S2: Q1's step was read before the wait; the call's own lines say what is next.
-    side: { ...side, probe: null, state: after.at },
+    side: { at: after.at, ran: null, probe: null, state: after.at.state },
     part: null,
-    queued: queuedRun(input, waitMs, queues, after, chosen),
+    queued: queuedRun(input, waitMs, [atQueue, nowQueue], after, run !== null),
   });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, input.startedMs, args.full === true));
-  return side.at.failure === null && unmatched.length === 0 ? exitCode(report.files) : 3;
+  return after.unmatched.length === 0 ? exitCode(report.files) : 3;
 }
 
-/** The commit side's keys: with `--run`, with D4.5's selection; else as without it, with Q1's probe. */
-async function commitKeys(
+/**
+ * `--run`: the commit side's ask and the working tree's side together. The
+ * working tree runs at once the files the change and the call name with no
+ * result now, then those the commit daemon selected, once it queued them
+ * (R1).
+ */
+async function queueBoth(
   input: CallInput,
-  note: (text: string) => void,
-): Promise<{
-  readonly chosen: Selected | null;
-  readonly side: Pick<CommitRun, "at" | "ran" | "probe" | "state">;
-}> {
-  const { args, place, options, io } = input;
-  const { root, worktreeId, commit, paths } = place;
-  const select = { root, worktreeId, commit, paths, env: input.env, note };
-  const checkout = defined({ cacheRoot: options.cacheRoot, install: options.install });
-  const run = args.run ?? null;
-  if (run !== null) {
-    const chosen = await commitSelect({ ...select, allMissing: run.allMissing, options: checkout });
-    return { chosen, side: { at: chosen.at, ran: null, probe: null, state: chosen.state } };
-  }
-  const side = await commitRun({
-    ...select,
-    commonDir: place.commonDir,
-    given: args.commit,
-    givenPaths: args.paths,
-    run: null,
-    relaunch: io.relaunch,
-    forward: () => undefined,
-    options: checkout,
+  side: {
+    readonly daemons: AtDaemons;
+    readonly commit: CommitDaemonInput;
+    readonly now: NowSide;
+    readonly bound: number;
+    readonly run: NonNullable<AtArgs["run"]>;
+  },
+): Promise<[CommitAsked, SideQueue]> {
+  const { root, commit, paths } = input.place;
+  const { daemons, bound, now } = side;
+  const changed = await changedPaths(root, commit);
+  const owner = randomUUID();
+  const withoutNow = now.refs.filter((ref) => now.state(ref).state === "no result");
+  const named = (ref: TestFileRef) => paths !== null && selects(paths, ref.path);
+  const first = side.run.allMissing
+    ? withoutNow
+    : withoutNow.filter((ref) => changed.includes(ref.path) || named(ref));
+  let selected: (files: readonly TestFileRef[]) => void = () => {};
+  const later = new Promise<readonly TestFileRef[]>((resolve) => {
+    selected = resolve;
   });
-  return { chosen: null, side };
+  const atPaths = new Set<string>();
+  const queue = {
+    daemons,
+    deadline: bound,
+    askBy: () => bound,
+    call: { owner, lead: paths !== null },
+    ask: true,
+    files: first,
+  };
+  return Promise.all([
+    askCommit({
+      daemons,
+      commit: side.commit,
+      owner,
+      changed,
+      named: paths ?? [],
+      allMissing: side.run.allMissing,
+      bound,
+      queued: (files) => {
+        for (const ref of files) atPaths.add(ref.path);
+        selected(withoutNow.filter((ref) => atPaths.has(ref.path)));
+      },
+    }).finally(() => selected([])),
+    worktreeTwice(queue, root, later),
+  ]);
+}
+
+/** D4.5's input: the paths `<commit>..HEAD` changes and the working tree's changes since HEAD. */
+async function changedPaths(root: AbsolutePath, commit: string): Promise<RelativePath[]> {
+  const out = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", commit, "HEAD"]);
+  const committed = out.split("\0").filter((path) => path !== "") as RelativePath[];
+  return [...new Set([...committed, ...((await uncommitted(root)) ?? [])])];
+}
+
+/**
+ * `--wait` alone: the commit worktree that serves this commit and
+ * environment, or the one that did, gone now, whose daemon's rows the
+ * store still holds; `null` when neither.
+ */
+async function joinedTree(
+  daemons: AtDaemons,
+  input: CommitDaemonInput,
+  commonDir: AbsolutePath,
+): Promise<AbsolutePath | null> {
+  return daemons.find(input) ?? (await formerTree(input, commonDir));
 }
 
 /** The report's part for the call (D7.3, Q7). */
 function queuedRun(
   input: CallInput,
   waitMs: number,
-  [atQueue, nowQueue]: readonly [SideQueue, SideQueue],
-  after: { readonly at: (ref: TestFileRef) => SideState; readonly current: NowSide },
-  chosen: Selected | null,
+  [atQueue, nowQueue]: readonly [CommitAsked, SideQueue],
+  after: { readonly at: CommitSide; readonly current: NowSide },
+  queue: boolean,
 ): QueuedRun {
   const finite = Number.isFinite(waitMs);
   return {
-    mode: chosen === null ? "join" : "queue",
+    mode: queue ? "queue" : "join",
     waitMs: finite ? waitMs : null,
     usedMs: Date.now() - input.startedMs,
-    commit: { ...queuedSide(atQueue, after.at), tree: atQueue.root },
-    notSelected: chosen?.selection?.unselected?.size ?? 0,
+    commit: { ...queuedSide(atQueue, after.at.state), tree: atQueue.root, setup: setupOf(atQueue) },
+    notSelected: notSelectedOf(after.at),
     now: queuedSide(nowQueue, after.current.state),
     again: finite ? waitAgain(input.args.commit, input.args.paths) : null,
     retry:
@@ -200,32 +230,70 @@ function queuedRun(
   };
 }
 
-/** Both sides read again once the wait ended. */
-async function readAfter(
-  input: CallInput,
-  refs: readonly TestFileRef[],
-  keyed: (ref: TestFileRef) => SideState,
-  atQueue: SideQueue,
-  nowQueue: SideQueue,
-): Promise<{ readonly at: (ref: TestFileRef) => SideState; readonly current: NowSide }> {
-  const { read, place } = input;
-  const fresh = await withStores(place.commonDir, (main) => nowSide({ ...read, main }));
-  const current = await listLate(read, fresh, refs);
-  return withStores(place.commonDir, async (main) => ({
-    at: commitAfter(main, keyed, atQueue, place.worktreeId),
-    current: { ...current, state: nowAfter(main, current.state, nowQueue) },
-  }));
+/** Row 023-40c: what the commit daemon still sets up when the wait ends; `null` when none. */
+function setupOf(queue: CommitAsked): "install" | "starting" | "selecting" | null {
+  const { setup } = queue;
+  if (setup === null || setup.phase === "failed") return null;
+  if (setup.phase !== "ready") return setup.phase;
+  return queue.asks.some((a) => a.phase === "waiting" || a.phase === "selecting")
+    ? "selecting"
+    : null;
 }
 
-/** R1: the files of `refs` the change selects that have no result in the working tree. */
-function selectedNow(
-  refs: readonly TestFileRef[],
-  state: (ref: TestFileRef) => SideState,
-  selects: { readonly ids: ReadonlySet<string> | null; readonly paths: ReadonlySet<string> },
-): TestFileRef[] {
-  return refs.filter((ref) => {
-    if (state(ref).state !== "no result") return false;
-    return selects.ids === null || selects.ids.has(testFileId(ref)) || selects.paths.has(ref.path);
+/** R8: the files the commit side reads with no result that the change did not select. */
+function notSelectedOf(at: CommitSide): number {
+  return at.refs.filter((ref) => {
+    const s = at.state(ref);
+    return s.state === "no result" && s.notSelected === true;
+  }).length;
+}
+
+/** Both sides read again once the waits ended: the commit side at its daemon's live keys. */
+async function readAfter(
+  input: CallInput,
+  atQueue: CommitAsked,
+  nowQueue: SideQueue,
+  selection: boolean,
+): Promise<{
+  readonly at: CommitSide;
+  readonly current: NowSide;
+  readonly refs: readonly TestFileRef[];
+  readonly unmatched: readonly RelativePath[];
+}> {
+  const { read, place } = input;
+  const { root, commit, paths, worktreeId } = place;
+  const fresh = await withStores(place.commonDir, (main) => nowSide({ ...read, main }));
+  return withStores(place.commonDir, async (main) => {
+    const rows = { root, commit, paths, own: worktreeId, asked: atQueue, selection };
+    const { at: live } = await rowsSide(main, rows);
+    const sides = { now: fresh.sources, at: live.sources, failed: false };
+    const { refs, unmatched } = unionRefs(fresh.refs, live.refs, paths, sides, root, commit);
+    // The store closes after this read: each file's state is read now, not later.
+    const fixed = new Map(
+      [...refs, ...atQueue.files].map((ref) => [testFileId(ref), live.state(ref)]),
+    );
+    const at = {
+      ...live,
+      state: (ref: TestFileRef) => fixed.get(testFileId(ref)) ?? live.state(ref),
+    };
+    const current = await listLate(read, fresh, refs);
+    const state = nowAfter(main, current.state, nowQueue);
+    return { at, current: { ...current, state }, refs, unmatched };
+  });
+}
+
+/** A commit worktree of this commit and environment whose tree is gone, if the store still holds its daemon's rows. */
+async function formerTree(
+  input: CommitDaemonInput,
+  commonDir: AbsolutePath,
+): Promise<AbsolutePath | null> {
+  const name = commitFolderName(input.commit, environmentFingerprint(input.environment));
+  const cacheRoot = input.cacheRoot ?? cacheCheckoutsRoot();
+  const dirs = [cacheCheckoutsDir(cacheRoot, commonDir), gitCheckoutsDir(commonDir)];
+  const trees = dirs.map((dir) => treePath(join(dir, name)));
+  return withStores(commonDir, async (main) => {
+    if (main === null) return null;
+    return trees.find((tree) => main.testFileKeys.list(idOf(tree)).length > 0) ?? null;
   });
 }
 

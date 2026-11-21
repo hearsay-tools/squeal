@@ -10,7 +10,12 @@ import type { RunArgs } from "../../src/cli/status-at-run.js";
 import { resolveCommit } from "../../src/core/commit/at-keys-checkout.js";
 import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import type { AbsolutePath, RelativePath } from "../../src/core/types/common.js";
+import type { CommitAskRequest } from "../../src/core/types/commit-ask.js";
+import {
+  type AbsolutePath,
+  PAYLOAD_SCHEMA_VERSION,
+  type RelativePath,
+} from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { Store } from "../../src/core/types/store.js";
 import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
@@ -65,6 +70,8 @@ export function withStore(f: Fixture, body: (store: Store) => void): void {
  */
 export const NO_DAEMONS: AtDaemons = {
   commit: async () => ({ problem: "no daemon in this test" }),
+  commitAsk: async () => "no daemon in this test",
+  commitRead: async () => "no daemon in this test",
   find: () => null,
   worktree: async () => "no daemon in this test",
   ask: async () => ({ problem: "no daemon in this test" }),
@@ -148,19 +155,56 @@ export interface Ask {
   readonly call: NarrowCall;
 }
 
+/** What a stand-in commit daemon does with an ask (row 023-40c). */
+export interface StandInCommit {
+  /** The files it selects and queues; by default the named paths, as files of the default project. */
+  readonly select?: (ask: Omit<CommitAskRequest, "type">) => readonly TestFileRef[];
+  /** Writes its rows for the files it queued (as the daemon's listing and queue would). */
+  readonly rows?: (tree: AbsolutePath, files: readonly TestFileRef[]) => void;
+}
+
 /** Stand-in daemons: each records what it is asked; `onWait` plays what the daemon did meanwhile. */
 export function standIn(
   tree: AbsolutePath,
   onWait: (root: string, files: readonly TestFileRef[]) => void,
+  commitDaemon: StandInCommit = {},
 ) {
   const asks: Ask[] = [];
   const commits: string[] = [];
   const started: string[] = [];
   const waits: string[] = [];
+  const commitAsks: Omit<CommitAskRequest, "type">[] = [];
+  const queued = new Map<string, readonly TestFileRef[]>();
   const ports: AtDaemons = {
     async commit(input) {
       commits.push(input.commit);
       return tree;
+    },
+    async commitAsk(_tree, ask) {
+      commitAsks.push(ask);
+      const files =
+        commitDaemon.select?.(ask) ?? ask.named.map((path): TestFileRef => ({ project: "", path }));
+      queued.set(ask.owner, files);
+      commitDaemon.rows?.(tree, files);
+      return null;
+    },
+    async commitRead(_tree, owners) {
+      const asks = [...queued]
+        .filter(([owner]) => owners === undefined || owners.includes(owner))
+        .map(([owner, files]) => ({
+          owner,
+          phase: "queued" as const,
+          files,
+          readers: {},
+          problems: [],
+        }));
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        ok: true,
+        type: "commit-read",
+        setup: { phase: "ready" },
+        asks,
+      };
     },
     find: () => tree,
     async worktree(root) {
@@ -177,7 +221,7 @@ export function standIn(
       return null;
     },
   };
-  return { ports, asks, commits, started, waits };
+  return { ports, asks, commits, started, waits, commitAsks };
 }
 
 /** A folder that stands for the commit worktree's tree. */
