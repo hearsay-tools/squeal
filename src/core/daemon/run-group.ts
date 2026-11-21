@@ -5,7 +5,12 @@ import {
   PAYLOAD_SCHEMA_VERSION,
   type RelativePath,
 } from "../types/common.js";
-import type { DaemonResponse, GroupHolder, RunGroupResponse } from "../types/daemon.js";
+import type {
+  DaemonResponse,
+  GroupHolder,
+  RecordedRequest,
+  RunGroupResponse,
+} from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { LockHolder, NarrowRun, NarrowRunOptions, Scheduler } from "../types/scheduler.js";
 import { requestDaemon } from "./client.js";
@@ -171,6 +176,8 @@ function watchHolder(scheduler: Scheduler, held: Held): (() => void) | undefined
 /** One `run-group` request as the socket remembers it for `run-group-status`. */
 interface GroupRequest {
   readonly group: string;
+  /** A narrow request's paths (`run-group-paths`); `undefined` for a whole group's. */
+  readonly paths: readonly RelativePath[] | undefined;
   /** When the socket handed it to the main thread. */
   readonly at: EpochMs;
   requested: GroupRequested | null;
@@ -211,6 +218,7 @@ export function groupRequests(
     options?: NarrowRunOptions,
   ): RunGroupResponse;
   status(requestId: string): RunGroupResponse | null;
+  recorded(): RecordedRequest[];
 } {
   const requests = new Map<string, GroupRequest>();
   const holderOf = (request: GroupRequest): GroupHolder | null => {
@@ -262,6 +270,7 @@ export function groupRequests(
       const requestId = randomUUID();
       const request: GroupRequest = {
         group,
+        paths,
         at: now(),
         requested: null,
         unknown: false,
@@ -291,6 +300,13 @@ export function groupRequests(
     status(requestId) {
       const request = requests.get(requestId);
       return request === undefined ? null : answer(requestId, request);
+    },
+    // Review wave-23 B2: the narrow requests still waiting for the scheduler, for `ping`.
+    recorded() {
+      const waiting = [...requests].filter(
+        ([, r]) => r.paths !== undefined && holderOf(r) !== null,
+      );
+      return waiting.map(([requestId, r]) => ({ requestId, group: r.group, paths: r.paths ?? [] }));
     },
   };
 }
