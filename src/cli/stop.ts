@@ -18,6 +18,7 @@ import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import { stopRemoved } from "./stop-removed.js";
+import { endRunGroups } from "./stop-run-groups.js";
 import {
   leftoverLine,
   leftoversGone,
@@ -77,6 +78,7 @@ export async function stopCommand(
   const tree = await stopTree(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
+    await endedRunGroups(root, io);
     const mark = await stoppedMark(root, tree, untilStart, busyBoundMs, io);
     return stoppedLine(`No daemon running for ${root}`, untilStart, mark, io);
   }
@@ -108,12 +110,19 @@ export async function stopCommand(
     );
     return 1;
   }
+  await endedRunGroups(root, io);
   const left = marks === null ? [] : await leftoversGone(marks, bounds.leftoversMs);
   if (left.length > 0) {
     io.stdout(leftoverLine(root, left, bounds.leftoversMs));
     return 1;
   }
   return stoppedLine(`Squeal daemon stopped for ${root}`, untilStart, mark, io);
+}
+
+/** Row 023-36 (T3): ends the groups a `--run` run started that are left, and names them. */
+async function endedRunGroups(root: AbsolutePath, io: CliIo): Promise<void> {
+  const line = await endRunGroups(root);
+  if (line !== null) io.stdout(line);
 }
 
 const UNTIL_START = "--until-start";
