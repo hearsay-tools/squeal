@@ -500,7 +500,9 @@ async function makeUpstream(count, kind) {
  * Spec 018's path for a base branch's results: in the upstream checkout, as CI would, run the
  * tests under `squeal ci record` and write one export with `squeal ci export`; then
  * `squeal import` the export into the shared store from the main worktree, before the
- * fast-forward. Each step's time, exit code and the import's own report are kept.
+ * fast-forward. Each step's time, exit code and the import's own report are kept. The
+ * record runs with CI=true, as in a CI job: Vitest then writes no snapshot, and `ci export`
+ * refuses a run that may have written one (2026-11-21: "snapshot update new ... wrote nothing").
  */
 async function ciImport(up) {
   await timed("cp", ["-a", join(main, "node_modules"), join(up, "node_modules")]);
@@ -509,7 +511,7 @@ async function ciImport(up) {
   const rec = await timed(
     NODE,
     [...cli, "ci", "record", "--out", parts, "--", join(up, "node_modules/.bin/vitest"), "run"],
-    { env, cwd: up, timeoutMs: 3_600_000 },
+    { env: { ...env, CI: "true" }, cwd: up, timeoutMs: 3_600_000 },
   );
   const exp = await timed(NODE, [...cli, "ci", "export", "--parts", parts, "--out", file], {
     env,
