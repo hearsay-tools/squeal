@@ -46,16 +46,18 @@ export interface CommitWorktrees {
   /**
    * Removes the worktree and its folder: ends what still runs under it (D6),
    * then the tree. Called by the daemon that owns it, from its live process,
-   * before it releases its daemon lock. Already gone: nothing to do.
+   * before it releases its daemon lock. Already gone: nothing to do. `note`
+   * takes the report: the processes it ended and an error it caught (review
+   * wave-22 S1).
    */
-  remove(root: AbsolutePath): Promise<void>;
+  remove(root: AbsolutePath, note: (text: string) => void): Promise<void>;
 }
 
 /** 023-38's functions: the marker decides, the owning daemon claims and removes its worktree. */
 export const COMMIT_WORKTREES: CommitWorktrees = {
   read: readCommitWorktree,
   claim: claimCommitWorktree,
-  remove: (root) => removeCommitWorktree(root),
+  remove: (root, note) => removeCommitWorktree(root, { note }),
 };
 
 /** No commit worktrees: no marker is read and nothing is removed. */
@@ -125,6 +127,17 @@ export function removesAtExit(reason: DaemonExitReason): boolean {
   return reason !== "superseded";
 }
 
+/**
+ * The exit text after the removal at `root` (review wave-22 S1): the
+ * worktree is named removed only when it is gone; otherwise the sweep
+ * removes it once this daemon is dead (D7.2).
+ */
+export function removalText(text: string, root: AbsolutePath, gone: boolean): string {
+  return gone
+    ? `${text}; the commit worktree is removed`
+    : `${text}; the commit worktree is not removed (${root}): the sweep removes it later`;
+}
+
 /** What the lifecycle check reads of a commit daemon's work. */
 export interface CommitWork {
   /** Test files queued, a tier's files waiting for a pool permit included. */
@@ -172,14 +185,14 @@ export function commitCheck(
 function capText(maxLifeMs: number): string {
   return (
     `daemon stopped: this commit worktree's daemon reached its limit of ${minutes(maxLifeMs)} ` +
-    "after its start; the worktree is removed, its results stay in the store"
+    "after its start; its results stay in the store"
   );
 }
 
 function idleText(idleMs: number): string {
   return (
     `daemon stopped: this commit worktree's daemon had no request and no queued or running ` +
-    `file for ${minutes(idleMs)}; the worktree is removed, its results stay in the store`
+    `file for ${minutes(idleMs)}; its results stay in the store`
   );
 }
 
