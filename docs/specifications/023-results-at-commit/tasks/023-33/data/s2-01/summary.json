@@ -1,0 +1,49 @@
+{
+  "id": "s2-01",
+  "leftover": 1,
+  "loadStart": "3.63",
+  "exit": 0,
+  "wallSeconds": 787.143,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run 2>&1 | tail -60; echo ----; git show --stat --format=%H 20f03a431 | head -20",
+    "5s squeal status --at HEAD~1 --run 2>&1 | tail -60",
+    "354s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -25",
+    "656s sleep 120; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-01/b13184ef-9bb1-411f-ba04-5ca963c890b1/tasks/b61tvpygn.output | tail -25",
+    "660s squeal status --wait 120000 test/store/open.test.ts src/core/store/mark.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "354s +300s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -25"
+  ],
+  "long": [
+    "5s +347s Bash squeal status --at HEAD~1 --run 2>&1 | tail -60",
+    "660s +121s Bash squeal status --wait 120000 test/store/open.test.ts src/core/store/mark.ts 2>&1 | tail -15"
+  ],
+  "results": 1,
+  "turns": 9,
+  "costUsd": 0.10567479999999999,
+  "usage": {
+    "cache_creation_input_tokens": 29221,
+    "cache_read_input_tokens": 167703,
+    "output_tokens": 1582
+  },
+  "firstFinal": "I can't say yet, and what I have doesn't show a change. The comparison didn't finish.\n\n**What the commit touched:** `src/core/store/mark.ts` (7 lines) and `test/store/open.test.ts` (27 lines added). Because `mark.ts` is read by 1338 test files, Squeal's full comparison with the parent commit (a5c9b72) needs about 79 minutes. I stopped it at its 300 s budget.\n\n**What I got:**\n- **Before/after comparison:** 0 pass → fail, 0 fail → pass, 0 unchanged. All 1962 files came back \"unknown\", because the parent-commit side mostly never ran. 49 of the 1338 selected files ran at the parent commit, 9 of them stored.\n- **`test/store/open.test.ts`:** it ran at the parent commit but the budget ended first, and its result there is unknown. At HEAD it is still queued, with no verdict. This is the file the commit changed.\n- **Current failures at HEAD:** these are not comparisons, and I can't tie any of them to this commit.\n  - `test/cli/group-pending-release.test.ts` fails because no `squeal--v*` tag is an ancestor of HEAD, so it looks like an environment problem.\n  - `test/harness/codex/packaging/runtime.test.ts` fails because `cli/squeal.mjs` differs from the build output. That could be related, but I haven't checked.\n  - `test/code/delivery/uncountable.test.ts` timed out once under load, then passed on its automatic re-run. It looks flaky.\n\nSqueal has no earlier result for any of these three, so it can't say whether this commit caused them. I'd start with `runtime.test.ts`, since `cli/squeal.mjs` is committed build output that could drift when `src/core/store/mark.ts` changes.\n\nI can wait for the daemon to finish `test/store/open.test.ts`, or run `squeal proof` / `squeal status --at HEAD~1` on `runtime.test.ts` alone. Which do you want?",
+  "final": "I can't say yet, and what I have doesn't show a change. The comparison didn't finish.\n\n**What the commit touched:** `src/core/store/mark.ts` (7 lines) and `test/store/open.test.ts` (27 lines added). Because `mark.ts` is read by 1338 test files, Squeal's full comparison with the parent commit (a5c9b72) needs about 79 minutes. I stopped it at its 300 s budget.\n\n**What I got:**\n- **Before/after comparison:** 0 pass → fail, 0 fail → pass, 0 unchanged. All 1962 files came back \"unknown\", because the parent-commit side mostly never ran. 49 of the 1338 selected files ran at the parent commit, 9 of them stored.\n- **`test/store/open.test.ts`:** it ran at the parent commit but the budget ended first, and its result there is unknown. At HEAD it is still queued, with no verdict. This is the file the commit changed.\n- **Current failures at HEAD:** these are not comparisons, and I can't tie any of them to this commit.\n  - `test/cli/group-pending-release.test.ts` fails because no `squeal--v*` tag is an ancestor of HEAD, so it looks like an environment problem.\n  - `test/harness/codex/packaging/runtime.test.ts` fails because `cli/squeal.mjs` differs from the build output. That could be related, but I haven't checked.\n  - `test/code/delivery/uncountable.test.ts` timed out once under load, then passed on its automatic re-run. It looks flaky.\n\nSqueal has no earlier result for any of these three, so it can't say whether this commit caused them. I'd start with `runtime.test.ts`, since `cli/squeal.mjs` is committed build output that could drift when `src/core/store/mark.ts` changes.\n\nI can wait for the daemon to finish `test/store/open.test.ts`, or run `squeal proof` / `squeal status --at HEAD~1` on `runtime.test.ts` alone. Which do you want?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

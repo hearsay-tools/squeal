@@ -1,0 +1,48 @@
+{
+  "id": "s2-02",
+  "leftover": 0,
+  "loadStart": "11.03",
+  "exit": 0,
+  "wallSeconds": 795.994,
+  "squeal": [
+    "3s squeal status --at 20f03a431~1 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431 --run 2>&1 | tail -40; git show --stat 20f03a431 | tail -15",
+    "362s squeal status --at 20f03a431~1 test/store/open.test.ts --run 2>&1 | tail -15; echo ----; squeal status --wait 60000 test/store/open.test.ts 2>&1 | tail -8",
+    "665s sleep 240; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-02/6f1c9eda-4d58-43e4-8061-3b1bd3a112f5/tasks/b8xsohm6y.output | tail -20",
+    "668s squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -12"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "362s +300s squeal status --at 20f03a431~1 test/store/open.test.ts --run 2>&1 | tail -15; echo ----; squeal status --wait 60000 test/store/open.test.ts 2>&1 | tail -8"
+  ],
+  "long": [
+    "3s +356s Bash squeal status --at 20f03a431~1 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431 --run 2>&1 | tail -40; git show --stat 20f03a431 | tail -15",
+    "668s +121s Bash squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -12"
+  ],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.09863950000000002,
+  "usage": {
+    "cache_creation_input_tokens": 27245,
+    "cache_read_input_tokens": 144590,
+    "output_tokens": 1604
+  },
+  "firstFinal": "I can't give you a confirmed answer yet. The comparison is incomplete because the current commit's result for the one test file that matters is still pending.\n\n**What the commit touched:** `src/core/store/mark.ts` (+6 lines) and `test/store/open.test.ts` (+27 lines).\n\n**Results so far:**\n- **Parent commit (`a5c9b7223`):** `test/store/open.test.ts` passed. Squeal ran it in a temporary checkout and stored the result.\n- **`20f03a431`:** the same file is queued in the daemon, behind a tier of about 200 files that was running when I last checked. It has no verdict yet.\n- **Other files:** I haven't run them. The other test files that read `mark.ts` are also unrun. Squeal's budget ran out before it got through them.\n\n**Failures that showed up:** Squeal reported four failing tests, none of which I can tie to this commit:\n- `test/cli/group-pending-release.test.ts` fails because no `squeal--v*` tag is an ancestor of HEAD (fixing it needs `git fetch --tags`).\n- `test/code/delivery/status.test.ts`, `uncountable.test.ts` and `views.test.ts` each timed out at 5000 ms with a load average of about 11.8.\n\nThese were first observed at HEAD, so Squeal has no earlier result to compare them with. I have not checked them against the parent. They don't touch the store or mark code, so they look like environment or load problems.\n\nSo far I see 0 pass→fail and 0 fail→pass. The only candidate for a change is `test/store/open.test.ts`, which is new or extended in this commit.\n\nThe next step is to wait for that one result with `squeal status --wait 120000 test/store/open.test.ts`. Do you want me to keep waiting?",
+  "final": "I can't give you a confirmed answer yet. The comparison is incomplete because the current commit's result for the one test file that matters is still pending.\n\n**What the commit touched:** `src/core/store/mark.ts` (+6 lines) and `test/store/open.test.ts` (+27 lines).\n\n**Results so far:**\n- **Parent commit (`a5c9b7223`):** `test/store/open.test.ts` passed. Squeal ran it in a temporary checkout and stored the result.\n- **`20f03a431`:** the same file is queued in the daemon, behind a tier of about 200 files that was running when I last checked. It has no verdict yet.\n- **Other files:** I haven't run them. The other test files that read `mark.ts` are also unrun. Squeal's budget ran out before it got through them.\n\n**Failures that showed up:** Squeal reported four failing tests, none of which I can tie to this commit:\n- `test/cli/group-pending-release.test.ts` fails because no `squeal--v*` tag is an ancestor of HEAD (fixing it needs `git fetch --tags`).\n- `test/code/delivery/status.test.ts`, `uncountable.test.ts` and `views.test.ts` each timed out at 5000 ms with a load average of about 11.8.\n\nThese were first observed at HEAD, so Squeal has no earlier result to compare them with. I have not checked them against the parent. They don't touch the store or mark code, so they look like environment or load problems.\n\nSo far I see 0 pass→fail and 0 fail→pass. The only candidate for a change is `test/store/open.test.ts`, which is new or extended in this commit.\n\nThe next step is to wait for that one result with `squeal status --wait 120000 test/store/open.test.ts`. Do you want me to keep waiting?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431 --run",
+    "20f03a431~1 --run"
+  ]
+}

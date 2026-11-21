@@ -1,0 +1,40 @@
+{
+  "id": "s1-02",
+  "leftover": 3,
+  "loadStart": "2.91",
+  "exit": 0,
+  "wallSeconds": 223.509,
+  "squeal": [
+    "3s squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "3s +215s Bash squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0588043,
+  "usage": {
+    "cache_creation_input_tokens": 18160,
+    "cache_read_input_tokens": 59323,
+    "output_tokens": 746
+  },
+  "firstFinal": "**No test file changed its result between 8be977ad6 and its parent d8abcfe46, on the evidence I could gather.** The comparison is mostly empty, so this doesn't prove the commit is safe.\n\n- **Changed results:** 0 files went pass → fail, and 0 went fail → pass.\n- **Unchanged:** 14 of the 111 files the commit affects ran at both commits and gave the same result.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. A new file isn't a changed result. `squeal proof` would show whether it fails on the parent's code.\n- **Not stored:** I ran `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, but Squeal didn't keep their results. They read ast-grep baseline files that only appeared during the run, so there is no stored comparison for them.\n- **Browser e2e not run:** the 97 files under `packages/web/e2e/` didn't run at either commit. Chrome failed to launch in this environment, so the e2e global setup failed, and that failure isn't evidence about the commit.\n- **No comparison:** about 1,808 other test files weren't selected by the change and have no result at the parent, so I didn't compare them. `--all-missing` would run them.\n\nThe commit is a lint perf refactor, so the lint tests are the likeliest place for any difference to show up, and those are the ones above that ran and matched.",
+  "final": "**No test file changed its result between 8be977ad6 and its parent d8abcfe46, on the evidence I could gather.** The comparison is mostly empty, so this doesn't prove the commit is safe.\n\n- **Changed results:** 0 files went pass → fail, and 0 went fail → pass.\n- **Unchanged:** 14 of the 111 files the commit affects ran at both commits and gave the same result.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. A new file isn't a changed result. `squeal proof` would show whether it fails on the parent's code.\n- **Not stored:** I ran `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, but Squeal didn't keep their results. They read ast-grep baseline files that only appeared during the run, so there is no stored comparison for them.\n- **Browser e2e not run:** the 97 files under `packages/web/e2e/` didn't run at either commit. Chrome failed to launch in this environment, so the e2e global setup failed, and that failure isn't evidence about the commit.\n- **No comparison:** about 1,808 other test files weren't selected by the change and have no result at the parent, so I didn't compare them. `--all-missing` would run them.\n\nThe commit is a lint perf refactor, so the lint tests are the likeliest place for any difference to show up, and those are the ones above that ran and matched.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}

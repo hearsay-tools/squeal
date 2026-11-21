@@ -1,0 +1,47 @@
+{
+  "id": "s2-09",
+  "leftover": 1,
+  "loadStart": "13.21",
+  "exit": 0,
+  "wallSeconds": 794.684,
+  "squeal": [
+    "5s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "362s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -15; echo ---; squeal status --wait 60000 test/store/open.test.ts src/core/store/mark.ts 2>&1 | tail -15",
+    "667s squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "362s +301s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -15; echo ---; squeal status --wait 60000 test/store/open.test.ts src/core/store/mark.ts 2>&1 | tail -15"
+  ],
+  "long": [
+    "5s +354s Bash squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "667s +121s Bash squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15"
+  ],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.09543989999999998,
+  "usage": {
+    "cache_creation_input_tokens": 26417,
+    "cache_read_input_tokens": 141794,
+    "output_tokens": 1519
+  },
+  "firstFinal": "I can't give you a verified answer. Squeal never finished a comparison between 20f03a4 and its parent, and it has no verdict for the one file I'd expect to differ.\n\n**What the commit changed**\n- `src/core/store/mark.ts`, a 7-line change.\n- `test/store/open.test.ts`, with 27 lines added (new tests).\n\n**What I got from Squeal**\n- **Full comparison:** `squeal status --at HEAD~1 --run` hit its 300 s budget. It reported 0 pass→fail and 0 fail→pass, but 1955 of 1962 test files were still unknown. That count says nothing about the commit.\n- **Narrowed to `test/store/open.test.ts`:** the parent's run was queued and also ran out of budget, and the current tree's run is still pending behind a 200-file tier. So there is no before-and-after result for it.\n- **Unrelated failure:** `test/cli/group-pending-release.test.ts` fails. Its error is \"no squeal--v* tag is an ancestor of HEAD\", which is a missing git tag in this clone. It fails the same way regardless of this commit, and I did not retry it.\n\n**What I'd expect, not verified**\n- `test/store/open.test.ts` is the only file whose result could clearly change. Its new tests would be new passes, or failures if the fix doesn't work.\n- Other test files that read `mark.ts` could also be affected.\n\nTo settle it, I can wait on `squeal status --wait 120000 test/store/open.test.ts`, or run `squeal proof test/store/open.test.ts --base HEAD~1`. The proof run would show whether the new tests fail without the fix. Do you want me to do either?",
+  "final": "I can't give you a verified answer. Squeal never finished a comparison between 20f03a4 and its parent, and it has no verdict for the one file I'd expect to differ.\n\n**What the commit changed**\n- `src/core/store/mark.ts`, a 7-line change.\n- `test/store/open.test.ts`, with 27 lines added (new tests).\n\n**What I got from Squeal**\n- **Full comparison:** `squeal status --at HEAD~1 --run` hit its 300 s budget. It reported 0 pass→fail and 0 fail→pass, but 1955 of 1962 test files were still unknown. That count says nothing about the commit.\n- **Narrowed to `test/store/open.test.ts`:** the parent's run was queued and also ran out of budget, and the current tree's run is still pending behind a 200-file tier. So there is no before-and-after result for it.\n- **Unrelated failure:** `test/cli/group-pending-release.test.ts` fails. Its error is \"no squeal--v* tag is an ancestor of HEAD\", which is a missing git tag in this clone. It fails the same way regardless of this commit, and I did not retry it.\n\n**What I'd expect, not verified**\n- `test/store/open.test.ts` is the only file whose result could clearly change. Its new tests would be new passes, or failures if the fix doesn't work.\n- Other test files that read `mark.ts` could also be affected.\n\nTo settle it, I can wait on `squeal status --wait 120000 test/store/open.test.ts`, or run `squeal proof test/store/open.test.ts --base HEAD~1`. The proof run would show whether the new tests fail without the fix. Do you want me to do either?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run",
+    "HEAD~1 --run"
+  ]
+}

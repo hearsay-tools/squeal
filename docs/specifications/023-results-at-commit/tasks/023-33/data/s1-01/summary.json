@@ -1,0 +1,40 @@
+{
+  "id": "s1-01",
+  "leftover": 2,
+  "loadStart": "1.05",
+  "exit": 0,
+  "wallSeconds": 174.647,
+  "squeal": [
+    "3s squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "skill": [
+    "1s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "3s +167s Bash squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0860322,
+  "usage": {
+    "cache_creation_input_tokens": 29512,
+    "cache_read_input_tokens": 48202,
+    "output_tokens": 742
+  },
+  "firstFinal": "**No test result changed between 8be977ad6 and its parent (d8abcfe46), as far as Squeal could measure.** The comparison is incomplete, though.\n\n- **Changed results:** 0 files went pass → fail and 0 went fail → pass.\n- **Unchanged:** 14 of the 15 test files the commit selects passed on both sides.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent, so it goes absent → pass.\n- **Not compared (97 browser e2e files, `packages/web/e2e/*.e2e.ts`):** the Chrome launch failed in this environment, so they have no result on either side. They aren't affected by a lint-only change, but I haven't verified that.\n- **Not compared (1808 other files):** the commit doesn't select them, so Squeal didn't run them at the parent. Running them would need `--all-missing`.\n- **Not kept in the stores (2 files):** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` ran, but Squeal didn't keep their results because they read baseline files it hadn't seen before. I can't confirm how those two compare.\n\nThe commit is `perf(lint)`, a change to lint indexes, so unchanged results are what I'd expect. The Chrome failure is an environment problem here, not something the commit caused.\n\nI can run the two ast-grep lint tests on their own, or the full `--all-missing` comparison, if you want either.",
+  "final": "**No test result changed between 8be977ad6 and its parent (d8abcfe46), as far as Squeal could measure.** The comparison is incomplete, though.\n\n- **Changed results:** 0 files went pass → fail and 0 went fail → pass.\n- **Unchanged:** 14 of the 15 test files the commit selects passed on both sides.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent, so it goes absent → pass.\n- **Not compared (97 browser e2e files, `packages/web/e2e/*.e2e.ts`):** the Chrome launch failed in this environment, so they have no result on either side. They aren't affected by a lint-only change, but I haven't verified that.\n- **Not compared (1808 other files):** the commit doesn't select them, so Squeal didn't run them at the parent. Running them would need `--all-missing`.\n- **Not kept in the stores (2 files):** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` ran, but Squeal didn't keep their results because they read baseline files it hadn't seen before. I can't confirm how those two compare.\n\nThe commit is `perf(lint)`, a change to lint indexes, so unchanged results are what I'd expect. The Chrome failure is an environment problem here, not something the commit caused.\n\nI can run the two ast-grep lint tests on their own, or the full `--all-missing` comparison, if you want either.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}

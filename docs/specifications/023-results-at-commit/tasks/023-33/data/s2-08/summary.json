@@ -1,0 +1,48 @@
+{
+  "id": "s2-08",
+  "leftover": 0,
+  "loadStart": "12.32",
+  "exit": 0,
+  "wallSeconds": 806.085,
+  "squeal": [
+    "5s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "371s squeal status --at 20f03a431~1 test/store/open.test.ts --run 2>&1 | tail -15; git show 20f03a431 -- test/store/open.test.ts | grep -E '^\\+\\s*(it|test)\\(' ",
+    "674s sleep 240; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-08/3ef8dc95-6a25-4303-9579-12cd9e683e41/tasks/bqoxf2nya.output | tail -15",
+    "678s squeal status --wait 120000 test/store/open.test.ts src/core/store/mark.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "371s +300s squeal status --at 20f03a431~1 test/store/open.test.ts --run 2>&1 | tail -15; git show 20f03a431 -- test/store/open.test.ts | grep -E '^\\+\\s*(it|test)\\(' "
+  ],
+  "long": [
+    "5s +363s Bash squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "678s +121s Bash squeal status --wait 120000 test/store/open.test.ts src/core/store/mark.ts 2>&1 | tail -15"
+  ],
+  "results": 1,
+  "turns": 9,
+  "costUsd": 0.10730139999999999,
+  "usage": {
+    "cache_creation_input_tokens": 29540,
+    "cache_read_input_tokens": 172094,
+    "output_tokens": 1621
+  },
+  "firstFinal": "I can't say yet. Squeal has no result for either side of the comparison on the one file that matters.\n\n**What the commit touched:** `src/core/store/mark.ts` (+7/−1) and `test/store/open.test.ts` (+27, one new test: \"keeps a parsed mark's unknown finder, never the full check's\"). So the only test file it could change is `test/store/open.test.ts`.\n\n**What Squeal showed:**\n- **Before the commit (`20f03a431~1`):** `test/store/open.test.ts` has no recorded result. The run exceeded Squeal's 300 s budget on this loaded machine, so the old side is still unknown. It would also be a different file than today's, since the new test didn't exist then.\n- **At the commit:** `test/store/open.test.ts` is still queued in the daemon, behind 974 pending files. It has no verdict yet.\n- **Whole-suite comparison:** 0 pass→fail, 0 fail→pass, 7 unchanged and 1955 unknown, again because of the budget.\n\n**Failures that are not from this commit:**\n- Nine failures are currently known. Eight are 5 s timeouts under load average 11–15, in `test/code/crap/*`, `test/code/pass/retry-daemon`, `test/code/prune`, `test/code/repos` and `test/code/store`.\n- The ninth is `test/cli/group-pending-release.test.ts`, which fails because no `squeal--v*` tag is reachable (`git fetch --tags` would fix that).\n- None of these files was touched by the commit, and Squeal has no earlier result for them. I can't prove they predate it, but nothing in the diff connects it to them.\n\nWhen the daemon reaches `test/store/open.test.ts`, `squeal status --wait 120000 test/store/open.test.ts` will give its verdict. Expect that file to be the only one that changes, with the new test passing if the fix works. Running `squeal status --at HEAD~1 test/store/open.test.ts --run` again once the load drops should also fill in the old side.",
+  "final": "I can't say yet. Squeal has no result for either side of the comparison on the one file that matters.\n\n**What the commit touched:** `src/core/store/mark.ts` (+7/−1) and `test/store/open.test.ts` (+27, one new test: \"keeps a parsed mark's unknown finder, never the full check's\"). So the only test file it could change is `test/store/open.test.ts`.\n\n**What Squeal showed:**\n- **Before the commit (`20f03a431~1`):** `test/store/open.test.ts` has no recorded result. The run exceeded Squeal's 300 s budget on this loaded machine, so the old side is still unknown. It would also be a different file than today's, since the new test didn't exist then.\n- **At the commit:** `test/store/open.test.ts` is still queued in the daemon, behind 974 pending files. It has no verdict yet.\n- **Whole-suite comparison:** 0 pass→fail, 0 fail→pass, 7 unchanged and 1955 unknown, again because of the budget.\n\n**Failures that are not from this commit:**\n- Nine failures are currently known. Eight are 5 s timeouts under load average 11–15, in `test/code/crap/*`, `test/code/pass/retry-daemon`, `test/code/prune`, `test/code/repos` and `test/code/store`.\n- The ninth is `test/cli/group-pending-release.test.ts`, which fails because no `squeal--v*` tag is reachable (`git fetch --tags` would fix that).\n- None of these files was touched by the commit, and Squeal has no earlier result for them. I can't prove they predate it, but nothing in the diff connects it to them.\n\nWhen the daemon reaches `test/store/open.test.ts`, `squeal status --wait 120000 test/store/open.test.ts` will give its verdict. Expect that file to be the only one that changes, with the new test passing if the fix works. Running `squeal status --at HEAD~1 test/store/open.test.ts --run` again once the load drops should also fill in the old side.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

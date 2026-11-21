@@ -1,0 +1,213 @@
+## 7s +121s $ squeal status --at 20f03a4 --run 2>&1 | head -60; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | head -60
+squeal status --at: 20f03a4 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+----
+Command did not complete within its 120s timeout and was moved to the background (ID: b3g49xmmt). Output is being written to: ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. To check interim output, use Read on that file path.
+
+## 130s +0s $ sleep 100; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output | head -60
+<tool_use_error>Blocked: sleep 100 followed by: cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output head -60. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+
+## 134s +0s (background) $ f=~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output; until [ -s $f ] && ! pgrep -f "squeal status --at" >/dev/null; do sleep 3; done; head -80 $f
+Command running in background with ID: bgxuc64ze. Output is being written to: ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/bgxuc64ze.output. You will be notified when it completes. To check interim output, use Read on that file path.
+
+## 136s +0s $ f=~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output; tail -c 3000 $f
+squeal status --at: 20f03a4 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+----
+
+## 140s SAY
+The comparison is still running, so I don't have an answer yet. `squeal status --at HEAD~1 --run` is running the tests at the parent commit, 20f03a4~1. I'll report the test files whose result changed once it finishes.
+
+## 160s +0s $ cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output | head -80
+squeal status --at: 20f03a4 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+----
+squeal: keying test files at a5c9b7223 in a temporary checkout
+squeal: --run: 1338 test files with no result at a5c9b7223 to run, up to 11 at once; no stored duration, so the time is unknown; the budget is 300 s, the checkout and install included; to narrow it, name test files or folders: squeal status --at '20f03a4~1' <path>... --run
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/ci-evidence-c3184ad2-9a12-4f1e-998e-f0fdcdafc058/origin
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/ci-formats-d8077e94-8740-4536-89a4-22f85a01f5be/origin
+      Coverage enabled with squeal
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/ci-wrapper-A-node-3c288532-4143-4b12-af52-63c59163320c/origin
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/record-fails-6bd3864c-c56f-4d38-a8ea-fdafca8b0b11
+
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+   Start at  09:05:02
+   Duration  632ms (transform 50%, import 35%, tests 8%, worker 7%)
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/resolution-import-eec2eca2-b06b-4f3a-a214-b4f52f561d84/ci
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/glob-import-66e4066e-4ebe-4598-ae6d-843960aea941/ci
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/ci-export-loaded-6f5d2de3-79c6-4b0c-86b7-7d94d9116d21/origin
+      Coverage enabled with squeal
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4fnnb-ef24dfdf/tree/test/fixtures/vitest/.tmp/ci-export-absolute-5f4675b4-b585-40d7-b2f4-a68b50b44b7e/origin
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  09:05:02
+   Duration  1.07s (worker 58%, import 18%, transform 17%, tests 6%)
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:05:02
+
+   Duration  935ms (transform 41%, import 40%, tests 13%, worker 6%)
+
+
+ Test Files  2 passed (2)
+      Tests  3 passed (3)
+   Start at  09:05:02
+   Duration  1.16s (import 43%, transform 40%, tests 9%, worker 8%)
+
+    Isolate  2 workers spawned · ~435ms startup each (spawn + environment, per file)
+             at least ~435ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:05:03
+   Duration  629ms (transform 56%, import 35%, tests 5%, worker 4%)
+
+[exited with code 0]
+
+## 162s +0s $ cd ~squeal-w19/runs/w19/s2-07; git show --stat --format=%s 20f03a4 | cat
+fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+
+ src/core/store/mark.ts  |  7 ++++++-
+ test/store/open.test.ts | 27 +++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+), 1 deletion(-)
+
+## 164s +302s $ cd ~squeal-w19/runs/w19/s2-07; squeal status --at 'HEAD~1' src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | tail -40
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/04d67f8eb08349a2/mwq4hri8-974fda8c/tree/test/fixtures/vitest/.tmp/gate-parts-unstarted-85dd15f6-c925-4944-954b-c0c176611942/origin
+      Coverage enabled with squeal
+
+
+ Test Files  2 passed (2)
+      Tests  4 passed | 1 skipped (5)
+   Start at  09:09:35
+   Duration  886ms (worker 46%, import 26%, transform 22%, tests 6%)
+
+squeal: vitest run: run exceeded timeoutMs (37408 ms)
+squeal: 8 completed test files were not kept in the stores, because they read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 176 more): test/cli/code-gate-keep-kill.test.ts, test/cli/code-gate-parts-link.test.ts, test/cli/code-gate-parts-unstarted.test.ts and 5 more; the next run will run them again
+squeal: 2 of 10 completed test files are kept in the stores (2 while the runs went on); the next run on the same bytes runs the other 8
+squeal: ended 2 processes left under the checkout (squeal main node-test @4f6f3e3f, z-late.test)
+squeal status --at a5c9b7223: 1338 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at a5c9b7223 from a temporary checkout, 300.6 s (checked against the commit in 5053 ms).
+1130 test files: not run (budget) -> no result (queued): test/cli/status-wait-unlisted-run.test.ts, test/cli/status-wait-window.test.ts, test/cli/status-wait.test.ts and 1127 more
+151 test files: not run (budget) -> no result (running): test/cli/code-gate-keep.test.ts, test/cli/code-gate-retry.test.ts, test/cli/code-gate-scope.test.ts and 148 more
+40 test files: pass -> no result (running) (at a5c9b7223: run by this command, not stored): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 37 more
+9 test files: pass -> no result (running) (at a5c9b7223: run by this command, stored): test/ci/export-keys.test.ts, test/cli/ci-publish.test.ts, test/cli/ci-usage.test.ts and 6 more
+8 test files: no result -> no result (queued): test/harness/codex/input.test.ts, test/harness/codex/output.test.ts, test/harness/pi/events.test.ts and 5 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1338 unknown
+--run: 49 of 1330 test files with no result at a5c9b7223 ran in its checkout, 9 stored at its keys (301.2 s of the 300 s budget)
+1 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/coverage/coverage-map.mjs, src/core/code/coverage/map-worker.js, src/core/daemon/package.json and 4 more)); the next --at has no result for it
+11 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 104 more)); the next --at has no result for them
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 88 more)); the next --at has no result for it
+2 not stored (the gate did not keep it: it read paths first seen during the run (src/core/daemon/package.json, src/core/package.json, src/package.json)); the next --at has no result for them
+4 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 103 more)); the next --at has no result for them
+7 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/code/tree-sitter-tsx.wasm, src/core/daemon/package.json, src/core/package.json and 4 more)); the next --at has no result for them
+2 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 101 more)); the next --at has no result for them
+6 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 107 more)); the next --at has no result for them
+2 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 86 more)); the next --at has no result for them
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 82 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 85 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 105 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/code/tree-sitter-tsx.wasm, src/core/daemon/package.json, src/core/package.json and 7 more)); the next --at has no result for it
+--run, now: 0 of 1338 test files the change selects with no result in the working tree ran there, through this worktree's daemon
+now: 1338 without a result: the budget ended; their runs go on in the daemon
+1281 not run (budget); at this run's rate they need about 71 min; name test files or folders to narrow it
+
+## 469s +43s $ cd ~squeal-w19/runs/w19/s2-07; squeal status --at 'HEAD~1' test/store/open.test.ts --run 2>&1 | tail -15; git diff HEAD~1 HEAD -- src | cat
+squeal: keying test files at a5c9b7223 in a temporary checkout
+squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at a5c9b7223 from a temporary checkout, 42.6 s (checked against the commit in 2459 ms).
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
+--run: 1 of 1 test files with no result at a5c9b7223 ran in its checkout, 1 stored at its keys (42.8 s of the 300 s budget)
+--run, now: 1 of 1 test files the change selects with no result in the working tree ran there, through this worktree's daemon
+diff --git a/src/core/store/mark.ts b/src/core/store/mark.ts
+index 09e5d3e..46e131c 100644
+--- a/src/core/store/mark.ts
++++ b/src/core/store/mark.ts
+@@ -42,7 +42,12 @@ export interface StoreMark {
+   readonly file?: MarkedFile;
+ }
+ 
+-const MARK_FINDERS: readonly FaultFinder[] = ["full-check", "daemon", "hook"];
++/**
++ * The finders a parsed mark keeps. Review 0.1.559 S1: a mark that says `unknown` reads as a mark
++ * cut short does, never as the full check's; a mark with no finder, or another, stays the full
++ * check's (written before row 011-391).
++ */
++const MARK_FINDERS: readonly FaultFinder[] = ["full-check", "daemon", "hook", "unknown"];
+ 
+ /** The mark beside the store that names the file at its path now; `null` with none. */
+ export function readStoreMark(commonDir: AbsolutePath): StoreMark | null {
+
+## 518s SAY
+I can't confirm a complete answer. The full before/after comparison didn't finish. Squeal's 300 s budget covered 49 of 1,338 test files, and none of those showed a changed result.
+
+What I can say:
+
+- **The commit's changes:** `20f03a4` changes `src/core/store/mark.ts`, where `MARK_FINDERS` now also accepts `"unknown"`. It adds 27 lines to `test/store/open.test.ts`.
+- **Changed result, one file at most:** I compared `test/store/open.test.ts` at `HEAD~1` and at HEAD, and its result is unchanged. Its status at both commits is pass, so no test file is confirmed as changed. The new assertions in that file can't be judged against the parent, because the parent doesn't have them.
+- **Not compared:** Squeal selected 1,338 test files for this change because `mark.ts` is widely imported. The other 1,289 or so have no result at the parent commit. Squeal estimates about 71 minutes to run them all.
+- **Unrelated failure:** `test/cli/group-pending-release.test.ts` currently fails because no `squeal--v*` tag is an ancestor of HEAD (`git fetch --tags` would fix it). That is a missing-tag setup problem in this checkout, not something the commit changed. I did not run that file at the parent commit.
+
+For a full answer, I can run the comparison in batches by folder, for example `squeal status --at HEAD~1 test/store test/core --run`, or let it run for the whole 71 minutes. The folders that import `mark.ts` are the most likely to show a change.
+
+## 736s SAY
+Four more tests failed, all with "Test timed out in 5000ms" at load average 16. The runs I started are probably what loaded the host. I'll ask Squeal to retry them once with `--reason load` instead of judging them from these results.
+
+## 738s +122s $ cd ~squeal-w19/runs/w19/s2-07; pgrep -fa "squeal status --at" | head -3; squeal retry test/code/pass/retry-daemon.test.ts test/code/pass/test-files.test.ts test/code/prune.test.ts test/code/repos.test.ts --reason load 2>&1 | tail -5; squeal status --wait 120000 test/code/pass/retry-daemon.test.ts test/code/pass/test-files.test.ts test/code/prune.test.ts test/code/repos.test.ts 2>&1 | tail -20
+1062085 /bin/bash -c source ~squeal-w19/runs/w19/claude/shell-snapshots/snapshot-bash-1795248154451-hj7lss.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'until ! pgrep -f "squeal status --at" >/dev/null; do sleep 5; done; echo done' < /dev/null && pwd -P >| ~squeal-w19/runs/w19/tmp/claude-cf46-cwd
+1153207 /bin/bash -c source ~squeal-w19/runs/w19/claude/shell-snapshots/snapshot-bash-1795248642188-0b0o9i.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'git rev-parse 8be977ad6^ && squeal status --at 8be977ad6^ --run 2>&1 | tail -40' < /dev/null && pwd -P >| ~squeal-w19/runs/w19/tmp/claude-4281-cwd
+1153209 node --disable-warning=ExperimentalWarning -e  const { createHash } = require("node:crypto"); const { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } = require("node:fs"); const { basename, dirname, isAbsolute, join, sep } = require("node:path"); const { pathToFileURL } = require("node:url"); const env = process.env; const home = env.HOME ?? ""; const cliOf = (dir) => join(dir, "dist", "cli", "squeal.mjs"); const compare = (a, b) => {   const x = a.split(".").map(Number);   const y = b.split(".").map(Number);   for (let i = 0; i < Math.max(x.length, y.length); i++) {     const d = (x[i] ?? 0) - (y[i] ?? 0);     if (d !== 0) return d;   }   return 0; }; const newestIn = (dir) =>   readdirSync(dir)     .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(dir, v))))     .sort(compare)     .at(-1); const fail = (text) => {   process.stderr.write(`squeal: ${text}\n`);   process.exit(1); }; const found = []; try {   const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");   const file = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));   const cwd = process.cwd();   const applies = (e) =>     e.scope === "user" ||     (e.scope === "project" &&       typeof e.projectPath === "string" &&       (cwd === e.projectPath || cwd.startsWith(e.projectPath + sep)));   const entry = (file.plugins?.["squeal@hearsay"] ?? []).find(     (e) => applies(e) && typeof e.installPath === "string" && existsSync(cliOf(e.installPath)),   );   if (entry) {     const version = typeof entry.version === "string" ? entry.version : basename(entry.installPath);     found.push({ harness: "Claude Code", version, dir: entry.installPath });   } } catch {} const codexHome = env.CODEX_HOME ?? join(home, ".codex"); // A runtime version names a directory, so it is a plain release, never a path. const plain = (v) => typeof v === "string" && /^\d+\.\d+\.\d+$/.test(v); const versionIn = (file) => {   try {     return JSON.parse(readFileSync(file, "utf8")).version;   } catch {} }; // A whole runtime: runtime.json and its plugin manifest name one version, and its CLI is there. const runtimeAt = (dir) => {   const v = versionIn(join(dir, "runtime.json"));   return plain(v) && v === versionIn(join(dir, ".codex-plugin", "plugin.json")) && existsSync(cliOf(dir)) ? v : undefined; }; let self; try {   self = dirname(dirname(realpathSync(process.argv[1]))); } catch {} const data = self !== undefined && existsSync(join(self, "runtime")) ? self : join(codexHome, "plugins", "data", "squeal-hearsay"); let adapter; let codex; try {   const cache = join(codexHome, "plugins", "cache", "hearsay", "squeal");   for (const v of readdirSync(cache).filter((v) => /^\d+(\.\d+)*$/.test(v)).sort(compare)) {     const dir = join(cache, v);     if (existsSync(join(dir, "hooks", "hooks.json")) && existsSync(join(dir, "seed"))) adapter = dir;     else if (existsSync(cliOf(dir))) codex = { harness: "Codex", version: v, dir };   } } catch {} const managed = adapter !== undefined || existsSync(join(data, "runtime")); let pinned; for (const id of [env.CODEX_SESSION_ID, env.CODEX_THREAD_ID]) {   if (!id || pinned) continue;   const file = join(data, "runtime", "sessions", `${createHash("sha256").update(id).digest("hex")}.json`);   let pin;   try {     pin = readFileSync(file, "utf8");   } catch {     continue;   }   try {     pin = JSON.parse(pin);   } catch {}   if (pin?.schema !== 1 || pin.sessionId !== id || !plain(pin.version))     fail(`the runtime record of this Codex session, ${file}, is unreadable. Squeal does not guess the runtime of a running session. Start a new Codex session.`);   const dir = join(data, "versions", pin.version);   if (runtimeAt(dir) !== pin.version)     fail(`Squeal runtime ${pin.version}, which this Codex session started with, is missing or incomplete at ${dir}. Squeal does not switch a running session to another runtime. Start a new Codex session to use the installed runtime.`);   pinned = { harness: "Codex", version: pin.version, dir }; } let problem; if (managed) {   const current = versionIn(join(data, "runtime", "current.json"));   const root = plain(current) ? join(data, "versions", current) : undefined;   const now = root && runtimeAt(root) === current ? { harness: "Codex", version: current, dir: root } : undefined;   const seed = adapter && runtimeAt(join(adapter, "seed"));   const chosen = seed && (!now || compare(seed, now.version) > 0) ? { harness: "Codex", version: seed, dir: join(adapter, "seed") } : now;   if (chosen && (!codex || compare(chosen.version, codex.version) >= 0)) codex = chosen;   if (!chosen && adapter)     problem = `the squeal@hearsay plugin for Codex at ${adapter} has no usable runtime: none in ${data} is current and whole, and its seed is incomplete. Run install.sh again, or reinstall the plugin: codex plugin remove squeal@hearsay && codex plugin add squeal@hearsay`; } if (codex) found.push(codex); for (const [harness, name] of [["Pi", "pi"], ["OpenCode", "opencode"]]) {   try {     const packages = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", name);     const version = newestIn(packages);     if (version) found.push({ harness, version, dir: join(packages, version) });   } catch {} } // Spec 005 D3 copies decide only without the managed runtimes of spec 002 D9. let kept; try {   const versions = join(self, "versions");   const version = managed ? undefined : newestIn(versions);   if (version) kept = { version, dir: join(versions, version) }; } catch {} if (found.length === 0 && kept === undefined && pinned === undefined) {   if (problem) fail(problem);   process.stderr.write(     "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode. Install it:\n" +       "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +       "  codex plugin marketplace add hearsay-tools/marketplace && codex plugin add squeal@hearsay\n" +       "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi and OpenCode.\n",   );   process.exit(1); } const newest = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a), found[0]); const run = pinned ?? (newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest); // gh-85: an unchanged line prints once per scope, a session or, outside one, // the machine; its mark lives in the data directory this launcher runs from, // else in the state directory install.sh records in. A mark that cannot be // written prints each time. const notice = (line) => {   const scope =     env.CLAUDE_CODE_SESSION_ID || env.CODEX_SESSION_ID || env.OPENCODE_SESSION_ID || env.PI_SESSION_ID || "";   const dir = kept     ? dirname(dirname(kept.dir))     : data === self       ? data       : join(env.XDG_STATE_HOME || join(home, ".local", "state"), "squeal");   const mark = join(dir, "launcher-notices.json");   try {     let seen = [];     try {       const read = JSON.parse(readFileSync(mark, "utf8"));       if (Array.isArray(read)) seen = read.filter(Array.isArray);     } catch {}     if (seen.some(([s, l]) => s === scope && l === line)) return;     if (!isAbsolute(dir)) throw new Error("no state directory");     mkdirSync(dir, { recursive: true });     const next = join(dir, `.launcher-notices.${process.pid}.tmp`);     writeFileSync(next, JSON.stringify([...seen.filter(([s]) => s !== scope), [scope, line]].slice(-64)));     renameSync(next, mark);   } catch {}   process.stderr.write(line); }; // One line names each version apart: the CLI this command runs, the plugin // of each harness, and the version Codex sessions started before an update keep. const skewed = found.some((f) => f.version !== newest.version); const older = kept && compare(kept.version, run.version) < 0; const behind = pinned && newest && compare(newest.version, pinned.version) > 0; if (skewed || older || behind) {   const plugins = found.map((f) => `${f.harness} ${f.version}`);   const listed = plugins.length > 1 ? `${plugins.slice(0, -1).join(", ")} and ${plugins.at(-1)}` : plugins[0];   notice(     `squeal: this command runs squeal ${run.version}; plugins: ${listed}` +       (older ? `; Codex sessions started on ${kept.version} keep ${kept.version} until they restart` : "") +       (behind ? `; this Codex session started on ${pinned.version} and keeps it until it restarts` : "") +       (skewed ? ". Run squeal update to bring the plugins to one version.\n" : ".\n"),   ); } // `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014 // goal 6); an older plugin has none. const ps = join(run.dir, "dist", "cli", "ps.mjs"); const cli = process.argv[2] === "ps" && existsSync(ps) ? ps : cliOf(run.dir); process.argv.splice(1, 1, cli); process.execArgv.splice(-2); import(pathToFileURL(cli).href);  ~squeal-w19/runs/w19/home/.local/bin/squeal status --at 8be977ad6^ --run
+Retry queued (reason: load): test/code/pass/retry-daemon.test.ts joins the queue when the one-minute load average falls below the CPU count, or after at most 10 min above it, then with a load note, and runs once more in its turn at its normal priority, at no set time (load average 33.47 on 12 CPUs now). Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. squeal status --wait 60000 test/code/pass/retry-daemon.test.ts waits for its result; the wait leaves the retry at its normal priority.
+Retry queued (reason: load): test/code/pass/test-files.test.ts joins the queue when the one-minute load average falls below the CPU count, or after at most 10 min above it, then with a load note, and runs once more in its turn at its normal priority, at no set time (load average 33.47 on 12 CPUs now). Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. squeal status --wait 60000 test/code/pass/test-files.test.ts waits for its result; the wait leaves the retry at its normal priority.
+Retry queued (reason: load): test/code/prune.test.ts joins the queue when the one-minute load average falls below the CPU count, or after at most 10 min above it, then with a load note, and runs once more in its turn at its normal priority, at no set time (load average 33.47 on 12 CPUs now). Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. squeal status --wait 60000 test/code/prune.test.ts waits for its result; the wait leaves the retry at its normal priority.
+Retry queued (reason: load): test/code/repos.test.ts joins the queue when the one-minute load average falls below the CPU count, or after at most 10 min above it, then with a load note, and runs once more in its turn at its normal priority, at no set time (load average 33.47 on 12 CPUs now). Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. squeal status --wait 60000 test/code/repos.test.ts waits for its result; the wait leaves the retry at its normal priority.
+Revision: 0
+Selected: test/code/pass/retry-daemon.test.ts, test/code/pass/test-files.test.ts, test/code/prune.test.ts, test/code/repos.test.ts
+  FAIL  test/code/pass/retry-daemon.test.ts > the daemon retries a failed count (row 015-18) > waits 60 s between passes a lock keeps aborting, and moves no attempt
+        Test timed out in 5000ms.
+        at test/code/pass/retry-daemon.test.ts:136:3, observed at revision 0, current
+  FAIL  test/code/pass/test-files.test.ts > the upgrade that counts test files (spec 020 D11.6) > recounts once, as an include change, with one summary line and no line per function
+        Test timed out in 5000ms.
+        at test/code/pass/test-files.test.ts:122:3, observed at revision 0, current
+  FAIL  test/code/prune.test.ts > code store prune (015 D4, 011 C7) > drops a count no current file uses once it is past the retention, and keeps the rest
+        Test timed out in 5000ms.
+        at test/code/prune.test.ts:46:3, observed at revision 0, current
+  FAIL  test/code/repos.test.ts > code store repositories (015 D4) > reads a count one worktree stored from another worktree's connection
+        Test timed out in 5000ms.
+        at test/code/repos.test.ts:23:3, observed at revision 0, current
+Pending (4):
+  4 ended at revision 0, awaiting the tier's final checks and 12 files not reported ended as of 09:16:44 (test/daemon/shared-store.test.ts, test/delivery/listing-equivalence.test.ts, test/harness/codex/latency.test.ts and 9 more), in the vitest tier of 200 test files running since 09:12:51, 188 of them ended, in batch 1 of 1 (1077 files), its tier estimated to end at 09:13:04; the tier does not yield: it runs a file this wait or an earlier one selected: test/code/pass/retry-daemon.test.ts, test/code/pass/test-files.test.ts, test/code/prune.test.ts, test/code/repos.test.ts; no command runs them sooner (a running tier that does not yield is waited for)
+Named test files have no verdict: the deadline passed after 120.6 s: 4 test files still pending at revision 0: 4 ended at revision 0, awaiting the tier's final checks and 12 files not reported ended as of 09:16:44 (test/daemon/shared-store.test.ts, test/delivery/listing-equivalence.test.ts, test/harness/codex/latency.test.ts and 9 more), in the vitest tier of 200 test files running since 09:12:51, 188 of them ended, in batch 1 of 1 (1077 files), its tier estimated to end at 09:13:04; the tier does not yield: it runs a file this wait or an earlier one selected. Worktree: known failures 5 (5 tests); not current: 1701 of 1962 test files (200 running, 877 queued, 624 unknown). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `squeal status --wait 120000 <same paths>`
+
+## 866s SAY
+I can't give a complete list. The only file I confirmed is `test/store/open.test.ts`, whose result is unchanged. I'm stopping here because the full comparison is too heavy for this host right now.
+
+- **Confirmed:** `test/store/open.test.ts` has the same result at `20f03a4~1` and at `20f03a4`, so no test file is confirmed as changed. The commit changed only `src/core/store/mark.ts` (it now accepts `"unknown"` as a finder) and added 27 lines to that test file.
+- **Not compared:** `mark.ts` is widely imported, so Squeal selected 1,338 test files for this change. Only 49 ran at the parent commit within the 300 s budget, and none of those showed a changed result. The rest have no result at the parent commit, and Squeal estimates about 71 minutes to run them all.
+- **Current failures that are not evidence either way:**
+  - `test/cli/group-pending-release.test.ts` fails because no `squeal--v*` tag is an ancestor of HEAD. Fetching tags would fix it.
+  - `test/code/pass/retry-daemon.test.ts`, `test/code/pass/test-files.test.ts`, `test/code/prune.test.ts` and `test/code/repos.test.ts` all failed with "Test timed out in 5000ms" while the load average was 16 to 33 on 12 CPUs. I queued one retry for each with `--reason load`, but they hadn't run when I stopped, so those four are still failing and unexplained. I haven't run any of them at the parent commit.
+- **Load on the host:** my own comparison runs are adding to the load. Another `squeal status --at 8be977ad6^ --run` is also running on this machine, and I didn't start it.
+
+To get a full answer, I can run the comparison in batches by folder, for example `squeal status --at HEAD~1 test/store test/core --run`, once the load drops. Or I can let the full run go for the roughly 71 minutes. The four timeouts should be re-checked first, after the load drops.

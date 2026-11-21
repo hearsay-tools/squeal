@@ -1,0 +1,123 @@
+## head
+20f03a43139ea3e99e057b32dac3db3dffbb903d
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+20f03a4 HEAD@{2026-11-21 09:27:24 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w19/runs/w19/s2-10
+HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
+branch refs/heads/main
+
+
+## checkouts
+home/.cache/squeal/checkouts/04d67f8eb08349a2:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:10 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/0e7ec371de7e7916:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:34 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/1555955449de3787:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:38 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/1cf1ca2b54cd4508:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:31 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/22126390ad627af5:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:41 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/2280c3c08e112626:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:15 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/3059dd68e7935342:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:22 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/545991eae984e3b0:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:50 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/580a3c4ed0567984:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:55 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/7ab25fac1a1ed078:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:28 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/999f4ff4624c411d:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:44 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/9ce5eaee165a52e7:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:47 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/a5a35e4bb2e257cf:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:19 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/bc9e393398983aba:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:15 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/d8963167fe928d1c:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:23 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/d9461e22363b36ab:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:04 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/e20b857429535472:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 09:07 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/e3227366b92a3c02:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:36 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/e88e038efc1d1bd3:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:22 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+home/.cache/squeal/checkouts/e96b1d5e5e607341:
+total 8
+drwxrwxr-x  2 squeal-w19 squeal-w19 4096 Nov 21 08:57 .
+drwxrwxr-x 22 squeal-w19 squeal-w19 4096 Nov 21 09:28 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+(none)

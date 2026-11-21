@@ -1,0 +1,3 @@
+795782	~squeal-w19/runs/w19/s1-05	/opt/squeal-w19/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w19/runs/w19/s1-05/.ai/qa/served/s1-05
+795783	/tmp/squeal-1002/tmp/d0f75721ea3e36f5 (deleted)	/opt/squeal-w19/node24/bin/node ~squeal-w19/runs/w19/s1-05/.ai/scripts/test-env-lease.mjs watch-app 795782 37589391-3c47-4b79-82d0-52e637649fd9:7696684 ~squeal-w19/runs/w19/s1-05 ~squeal-w19/runs/w19/s1-05/.ai/qa/served/s1-05
+2 processes

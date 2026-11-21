@@ -1,0 +1,40 @@
+{
+  "id": "s1-05",
+  "leftover": 2,
+  "loadStart": "11.59",
+  "exit": 0,
+  "wallSeconds": 223.336,
+  "squeal": [
+    "4s squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "4s +215s Bash squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0583546,
+  "usage": {
+    "cache_creation_input_tokens": 18164,
+    "cache_read_input_tokens": 59326,
+    "output_tokens": 700
+  },
+  "firstFinal": "**No test file changed its result.** Squeal compared 8be977ad6 with its parent, d8abcfe46: 0 files went pass → fail and 0 went fail → pass.\n\n- **Ran in both versions:** 14 of the test files the commit's changes select ran in both checkouts. All 14 gave the same result.\n- **Added by the commit:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new. It didn't exist at the parent and passes now. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n- **Not compared:** this is a partial answer, because most files have no result at the parent.\n  - 1808 files weren't selected by the change and didn't run. `--all-missing` would run them.\n  - 97 browser e2e files couldn't run on either side. Chrome failed to launch during the e2e setup, so they have no result.\n  - Two lint tests, `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, ran at the parent but their results weren't stored, so they can't be compared later. They read ast-grep baseline files that first appeared during the run.\n\nThe commit is a lint performance change and touches no tests. Within the files that can be compared, nothing differs.",
+  "final": "**No test file changed its result.** Squeal compared 8be977ad6 with its parent, d8abcfe46: 0 files went pass → fail and 0 went fail → pass.\n\n- **Ran in both versions:** 14 of the test files the commit's changes select ran in both checkouts. All 14 gave the same result.\n- **Added by the commit:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new. It didn't exist at the parent and passes now. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n- **Not compared:** this is a partial answer, because most files have no result at the parent.\n  - 1808 files weren't selected by the change and didn't run. `--all-missing` would run them.\n  - 97 browser e2e files couldn't run on either side. Chrome failed to launch during the e2e setup, so they have no result.\n  - Two lint tests, `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`, ran at the parent but their results weren't stored, so they can't be compared later. They read ast-grep baseline files that first appeared during the run.\n\nThe commit is a lint performance change and touches no tests. Within the files that can be compared, nothing differs.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}

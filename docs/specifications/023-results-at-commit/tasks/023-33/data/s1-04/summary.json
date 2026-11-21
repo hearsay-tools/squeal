@@ -1,0 +1,42 @@
+{
+  "id": "s1-04",
+  "leftover": 3,
+  "loadStart": "10.23",
+  "exit": 0,
+  "wallSeconds": 313.039,
+  "squeal": [
+    "3s squeal status --at 8be977ad6~1 --run --wait 600000 2>&1 | tail -60",
+    "5s squeal status --at 8be977ad6~1 --run 2>&1 | head -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "5s +301s Bash squeal status --at 8be977ad6~1 --run 2>&1 | head -40"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.06533349999999999,
+  "usage": {
+    "cache_creation_input_tokens": 19032,
+    "cache_read_input_tokens": 85975,
+    "output_tokens": 914
+  },
+  "firstFinal": "No test file changed from pass to fail, or from fail to pass, between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though.\n\n`squeal status --at` reported **0 pass → fail, 0 fail → pass, 14 unchanged, 1906 unknown**.\n\n- **Unchanged (14):** these files have results on both sides and gave the same verdict.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` did not exist at the parent. It is now run in this worktree. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n- **Unknown (1906):** these have no result at the parent and weren't selected by the change. 1808 of them were never run; `--all-missing` would run them.\n- **Browser e2e specs (97):** they could not run on either side. The browser setup failed because the installed Chrome would not launch. Squeal reports it as a first-observed FAIL for `[e2e] (global setup)`. This is an environment problem, not something the commit caused.\n- **Two lint tests not stored:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` read ast-grep baseline files that were first seen during the run. Squeal did not keep their results, so they will run again next time.\n\nThe commit is a lint performance refactor, so its tests are mostly the lint ones. If you want the full picture, I can run `squeal status --at 8be977ad6~1 --all-missing --run`. That would take much longer than the roughly 4-minute run above. I can also run just `packages/cezar/src/lint/` against both commits.",
+  "final": "No test file changed from pass to fail, or from fail to pass, between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though.\n\n`squeal status --at` reported **0 pass → fail, 0 fail → pass, 14 unchanged, 1906 unknown**.\n\n- **Unchanged (14):** these files have results on both sides and gave the same verdict.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` did not exist at the parent. It is now run in this worktree. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n- **Unknown (1906):** these have no result at the parent and weren't selected by the change. 1808 of them were never run; `--all-missing` would run them.\n- **Browser e2e specs (97):** they could not run on either side. The browser setup failed because the installed Chrome would not launch. Squeal reports it as a first-observed FAIL for `[e2e] (global setup)`. This is an environment problem, not something the commit caused.\n- **Two lint tests not stored:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` read ast-grep baseline files that were first seen during the run. Squeal did not keep their results, so they will run again next time.\n\nThe commit is a lint performance refactor, so its tests are mostly the lint ones. If you want the full picture, I can run `squeal status --at 8be977ad6~1 --all-missing --run`. That would take much longer than the roughly 4-minute run above. I can also run just `packages/cezar/src/lint/` against both commits.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "8be977ad6~1 --run"
+  ]
+}

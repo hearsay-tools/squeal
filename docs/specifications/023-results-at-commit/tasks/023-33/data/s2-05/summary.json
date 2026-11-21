@@ -1,0 +1,50 @@
+{
+  "id": "s2-05",
+  "leftover": 1,
+  "loadStart": "9.99",
+  "exit": 0,
+  "wallSeconds": 918.368,
+  "squeal": [
+    "4s squeal status --at 20f03a4~1 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run 2>&1 | tail -40",
+    "362s squeal status --at 20f03a4~1 test/store/open.test.ts --run 2>&1 | tail -15",
+    "665s sleep 240; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-05/eb504bd1-8d7c-439d-ab4f-4830275dd594/tasks/bk3g28d7y.output | tail -15",
+    "668s squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15",
+    "790s squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -8"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "362s +301s squeal status --at 20f03a4~1 test/store/open.test.ts --run 2>&1 | tail -15"
+  ],
+  "long": [
+    "4s +355s Bash squeal status --at 20f03a4~1 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run 2>&1 | tail -40",
+    "668s +121s Bash squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15",
+    "790s +121s Bash squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -8"
+  ],
+  "results": 1,
+  "turns": 10,
+  "costUsd": 0.10571459999999999,
+  "usage": {
+    "cache_creation_input_tokens": 27511,
+    "cache_read_input_tokens": 195711,
+    "output_tokens": 1733
+  },
+  "firstFinal": "I couldn't confirm a changed result. At the parent commit (`a5c9b72`), the only file the commit touches that has a test result is `test/store/open.test.ts`, and it passed. I have no result for it at `20f03a4`.\n\n- **What the commit changed:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n- **Parent result:** `test/store/open.test.ts` passed at `a5c9b72`.\n- **Result at `20f03a4`:** still pending after two 2-minute waits. It is queued behind a long Squeal run, because the daemon has about 950 test files ahead of it and the machine is heavily loaded. I didn't want to hand-run it, since CLAUDE.md says to rely on Squeal.\n- **Wider comparison:** the first `squeal status --at 20f03a4~1 --run` hit its 300 s budget. It reported 0 pass→fail, 0 fail→pass, 11 unchanged and 1951 unknown. Those 11 unchanged files were the only ones with results on both sides.\n- **Other results during the session:** two failures appeared. `test/cli/group-pending-release.test.ts` failed because no `squeal--v*` tag is an ancestor of `HEAD`, which is an environment problem and not from this commit. `test/cli/selection-result.test.ts` timed out at load average 18, then passed on Squeal's re-run, so it is flaky. Neither has a result at the parent commit, so neither counts as changed.\n\n`src/core/store/mark.ts` changed too, so other tests that read it could also change result. Squeal hasn't run them on both sides.\n\nTo get the answer, run `squeal status --wait 120000 test/store/open.test.ts` once the queue drains. It should return pass or fail for the new commit.",
+  "final": "I couldn't confirm a changed result. At the parent commit (`a5c9b72`), the only file the commit touches that has a test result is `test/store/open.test.ts`, and it passed. I have no result for it at `20f03a4`.\n\n- **What the commit changed:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n- **Parent result:** `test/store/open.test.ts` passed at `a5c9b72`.\n- **Result at `20f03a4`:** still pending after two 2-minute waits. It is queued behind a long Squeal run, because the daemon has about 950 test files ahead of it and the machine is heavily loaded. I didn't want to hand-run it, since CLAUDE.md says to rely on Squeal.\n- **Wider comparison:** the first `squeal status --at 20f03a4~1 --run` hit its 300 s budget. It reported 0 pass→fail, 0 fail→pass, 11 unchanged and 1951 unknown. Those 11 unchanged files were the only ones with results on both sides.\n- **Other results during the session:** two failures appeared. `test/cli/group-pending-release.test.ts` failed because no `squeal--v*` tag is an ancestor of `HEAD`, which is an environment problem and not from this commit. `test/cli/selection-result.test.ts` timed out at load average 18, then passed on Squeal's re-run, so it is flaky. Neither has a result at the parent commit, so neither counts as changed.\n\n`src/core/store/mark.ts` changed too, so other tests that read it could also change result. Squeal hasn't run them on both sides.\n\nTo get the answer, run `squeal status --wait 120000 test/store/open.test.ts` once the queue drains. It should return pass or fail for the new commit.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4~1 --run",
+    "20f03a4 --run",
+    "20f03a4~1 --run"
+  ]
+}

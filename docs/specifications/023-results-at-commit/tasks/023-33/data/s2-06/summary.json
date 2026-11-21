@@ -1,0 +1,48 @@
+{
+  "id": "s2-06",
+  "leftover": 0,
+  "loadStart": "10.77",
+  "exit": 0,
+  "wallSeconds": 805.974,
+  "squeal": [
+    "4s squeal status --at 20f03a431~1 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431 --run 2>&1 | tail -40",
+    "372s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -15",
+    "675s sleep 240; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-06/66a41ae8-68b1-4155-b58d-f9abdbcf8f93/tasks/btps0b1bq.output | tail -15",
+    "679s squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "372s +301s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -15"
+  ],
+  "long": [
+    "4s +364s Bash squeal status --at 20f03a431~1 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431 --run 2>&1 | tail -40",
+    "679s +122s Bash squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15"
+  ],
+  "results": 1,
+  "turns": 9,
+  "costUsd": 0.10015539999999999,
+  "usage": {
+    "cache_creation_input_tokens": 27437,
+    "cache_read_input_tokens": 170309,
+    "output_tokens": 1450
+  },
+  "firstFinal": "I can't say yet whether commit 20f03a431 changed any test result. Squeal hasn't produced a result for the commit, so the comparison is incomplete.\n\nThe commit touched two files: `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n\n- **Parent commit (a5c9b72):** `test/store/open.test.ts` passed. I ran `squeal status --at HEAD~1`, and that run was stored.\n- **20f03a431 (HEAD):** `test/store/open.test.ts` has no result. The file is still queued behind a 200-file tier that was running on a busy host (load average about 12). I waited about 2 minutes and it was still pending.\n- **Other files:** a full-suite comparison ran out of its 300 s budget with 1962 files unknown. I have no before/after comparison for any file other than `open.test.ts`.\n\nSix test files failed in the current worktree: `group-pending-release`, `retry-daemon`, `repos`, `store-index`, `store` and `stop-told-daemon`. They aren't evidence of a change from this commit. Squeal has no earlier result for them. Four of them timed out at 5 s under load. `group-pending-release` fails because no `squeal--v*` tag is reachable. `stop-told-daemon` expected a \"1 test file still running\" line that never appeared. None of them touches `mark.ts` or `open.test.ts`.\n\nTo finish, run `squeal status --wait 120000 test/store/open.test.ts` again once the queue drains. It should show a pass, since the commit adds tests with a fix.",
+  "final": "I can't say yet whether commit 20f03a431 changed any test result. Squeal hasn't produced a result for the commit, so the comparison is incomplete.\n\nThe commit touched two files: `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n\n- **Parent commit (a5c9b72):** `test/store/open.test.ts` passed. I ran `squeal status --at HEAD~1`, and that run was stored.\n- **20f03a431 (HEAD):** `test/store/open.test.ts` has no result. The file is still queued behind a 200-file tier that was running on a busy host (load average about 12). I waited about 2 minutes and it was still pending.\n- **Other files:** a full-suite comparison ran out of its 300 s budget with 1962 files unknown. I have no before/after comparison for any file other than `open.test.ts`.\n\nSix test files failed in the current worktree: `group-pending-release`, `retry-daemon`, `repos`, `store-index`, `store` and `stop-told-daemon`. They aren't evidence of a change from this commit. Squeal has no earlier result for them. Four of them timed out at 5 s under load. `group-pending-release` fails because no `squeal--v*` tag is reachable. `stop-told-daemon` expected a \"1 test file still running\" line that never appeared. None of them touches `mark.ts` or `open.test.ts`.\n\nTo finish, run `squeal status --wait 120000 test/store/open.test.ts` again once the queue drains. It should show a pass, since the commit adds tests with a fix.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431 --run",
+    "HEAD~1 --run"
+  ]
+}

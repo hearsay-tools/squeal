@@ -1,0 +1,2 @@
+1295580	~squeal-w19/runs/w19/s2-09/.git/squeal	squeal s2-09 store --disable-warning=ExperimentalWarning ~squeal-w19/runs/w19/claude/plugins/cache/hearsay/squeal/0.1.584/dist/cli/squeal.mjs store-process ~squeal-w19/runs/w19/s2-09/.git --store code
+1 processes

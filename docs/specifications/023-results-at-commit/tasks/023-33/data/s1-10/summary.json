@@ -1,0 +1,42 @@
+{
+  "id": "s1-10",
+  "leftover": 3,
+  "loadStart": "10.47",
+  "exit": 0,
+  "wallSeconds": 299.846,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 --run 2>&1 | tail -60",
+    "5s squeal status --at HEAD~1 --run 2>&1 | tail -80"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "5s +288s Bash squeal status --at HEAD~1 --run 2>&1 | tail -80"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0640265,
+  "usage": {
+    "cache_creation_input_tokens": 18447,
+    "cache_read_input_tokens": 85030,
+    "output_tokens": 939
+  },
+  "firstFinal": "As far as Squeal could check, commit 8be977ad6 didn't change any test result. The comparison is only partial, though.\n\n**Result: 0 pass→fail, 0 fail→pass, 14 unchanged, 1906 unknown.** The 14 unchanged are the test files the diff selects that actually ran. They gave the same result on the parent (d8abcfe46) and on HEAD.\n\n**One new test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist in the parent and passes on HEAD. That is a new test, not a changed result.\n\n**What I couldn't compare:**\n- **1808 test files** have no stored result at the parent. The commit's diff doesn't select them, and I didn't run them (`--all-missing` would).\n- **97 browser e2e files** (`packages/web/e2e/*.e2e.ts`) didn't run. Installed Chrome failed to launch in this environment, so the `[e2e] (global setup)` check reports FAIL. That failure is an environment problem, not a regression from the commit.\n- **2 files** ran but weren't stored: `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`. They read ast-grep baseline paths that were first seen during the run, so I don't have a stored verdict for them on the parent.\n\nThe commit is a lint performance refactor (shared syntax indexes), so no behavior change fits what I saw. If you want more certainty, I can run `--all-missing` for the full comparison, which will take a while. I can also run the two ast-grep lint tests on their own.",
+  "final": "As far as Squeal could check, commit 8be977ad6 didn't change any test result. The comparison is only partial, though.\n\n**Result: 0 pass→fail, 0 fail→pass, 14 unchanged, 1906 unknown.** The 14 unchanged are the test files the diff selects that actually ran. They gave the same result on the parent (d8abcfe46) and on HEAD.\n\n**One new test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist in the parent and passes on HEAD. That is a new test, not a changed result.\n\n**What I couldn't compare:**\n- **1808 test files** have no stored result at the parent. The commit's diff doesn't select them, and I didn't run them (`--all-missing` would).\n- **97 browser e2e files** (`packages/web/e2e/*.e2e.ts`) didn't run. Installed Chrome failed to launch in this environment, so the `[e2e] (global setup)` check reports FAIL. That failure is an environment problem, not a regression from the commit.\n- **2 files** ran but weren't stored: `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`. They read ast-grep baseline paths that were first seen during the run, so I don't have a stored verdict for them on the parent.\n\nThe commit is a lint performance refactor (shared syntax indexes), so no behavior change fits what I saw. If you want more certainty, I can run `--all-missing` for the full comparison, which will take a while. I can also run the two ast-grep lint tests on their own.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "HEAD~1 --run"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "id": "s2-04",
+  "leftover": 1,
+  "loadStart": "11.18",
+  "exit": 0,
+  "wallSeconds": 467.425,
+  "squeal": [
+    "3s squeal status --at 20f03a4 --run 2>&1 | head -60",
+    "5s squeal status --at HEAD~1 --run 2>&1 | head -80",
+    "115s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -30; echo ----; squeal status test/store/open.test.ts --wait 60000 2>&1 | tail -15",
+    "158s squeal status --at HEAD~1 src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | grep -v '^\\s*$' | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "158s +305s Bash squeal status --at HEAD~1 src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | grep -v '^\\s*$' | tail -15"
+  ],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.0641082,
+  "usage": {
+    "cache_creation_input_tokens": 14976,
+    "cache_read_input_tokens": 147302,
+    "output_tokens": 1191
+  },
+  "firstFinal": "I can only partly answer this. Only one test file was checked on both sides, and it didn't change result.\n\n- **`test/store/open.test.ts`** is the only test file the commit touched. It has the same result at `20f03a4` as at its parent, `a5c9b72`: 0 pass→fail, 0 fail→pass, 1 unchanged. The commit adds 27 lines to this file, so the unchanged result is for the new version against the parent's checkout. I didn't check whether the new tests fail on the old `mark.ts`. `squeal proof test/store/open.test.ts --base HEAD~1` would show that.\n- **Other test files** are not verified. The commit also changed `src/core/store/mark.ts`. When I asked Squeal to compare using that path, it selected 1337 test files. The 300 s budget ran out, and most of them never ran at the parent commit, so I have no comparison for them.\n\nI can't rule out a change in some other test file that reads `mark.ts`. Squeal reports no known failures, but only 1 of 1962 test files is current in this worktree. I can narrow it to the tests under `test/store/` and rerun, if you want that.",
+  "final": "I can only partly answer this. Only one test file was checked on both sides, and it didn't change result.\n\n- **`test/store/open.test.ts`** is the only test file the commit touched. It has the same result at `20f03a4` as at its parent, `a5c9b72`: 0 pass→fail, 0 fail→pass, 1 unchanged. The commit adds 27 lines to this file, so the unchanged result is for the new version against the parent's checkout. I didn't check whether the new tests fail on the old `mark.ts`. `squeal proof test/store/open.test.ts --base HEAD~1` would show that.\n- **Other test files** are not verified. The commit also changed `src/core/store/mark.ts`. When I asked Squeal to compare using that path, it selected 1337 test files. The 300 s budget ran out, and most of them never ran at the parent commit, so I have no comparison for them.\n\nI can't rule out a change in some other test file that reads `mark.ts`. Squeal reports no known failures, but only 1 of 1962 test files is current in this worktree. I can narrow it to the tests under `test/store/` and rerun, if you want that.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

@@ -270,3 +270,84 @@ Not product defects, recorded for the coordinator:
 - After R1 to R4: s1 and s2 again, to see whether a full answer fits a session on an empty store and within the 1,200 s session limit. In Squeal's own repository a 7-line change selects 1,338 files, so R1 may need a selection cap or a statement of what is left.
 - R5's step-8 wording with s2 only, at least 10 sessions, since s2 alone shows the proof misreading.
 - Codex, Pi and OpenCode are still not exercised.
+
+## Round 5 (023-33)
+
+Row 023-33, wave 19, worker c997603f, 2026-11-21 07:12Z to 08:41Z, on the lab VM. The human chose the VM this once, as round 4, because the boat.dev sandbox had no model credential. Squeal 0.1.584 as released (tag `squeal--v0.1.584`, hub entry `cf42b11`), which carries 0.1.583's R1 to R6. Claude Code 2.1.327, `--model sonnet`, prompts exactly as round 4, no hint. The brief is `tasks/wave-19.md`; scripts, per-session data and judgements are in `tasks/023-33/`.
+
+### Verdict
+
+- **Still no full answer, but no wrong one.** 0 of 20 sessions answered the whole question. 13 gave a partial answer that was right for the files they compared (s1 10, s2 3); one of them (s1-03) added an unsupported side claim. 7 said honestly they could not tell. 0 were wrong (round 4: 6).
+- **squawk (s1): one call now gives all the answer the store can give.** 10 of 10 sessions made one `--at <parent> --run` call. It filled both sides (R1) and reported 0 flips, 14 unchanged and the new test file, in 175 to 350 s. Round 4: 4 partial, 6 "cannot tell". Every s1 answer stopped short of full for the same three reasons. Squeal printed each one and the agents read it right: 2 selected lint files ran but were not kept ("read paths first seen during the run"); 97 browser files did not run, because the VM has no Chrome (R3's new line); and 1,808 files were "not selected by the change". All 10 listed those 1,808 as not compared. None said the commit cannot change their result.
+- **Squeal's own repository (s2): R1 works against a wide change.** The parent `--run` selects 1,338 files. At the end of its 300 s budget, 35 to 50 have run at the parent and 0 to 11 in the working tree. The rest "go on in the daemon": about 1,300 files stay queued in the agent's own daemon, and Squeal's own estimate was 71 to 110 minutes. All 10 sessions then narrowed to `test/store/open.test.ts`, as R4's line asks. In 7 of them, that one file's working-tree run waited behind the queue ("behind the vitest tier of 200 test files …; the tier does not yield") for the whole 300 s budget. The 3 right answers came from narrowed calls that ended in 41 to 53 s, made before the queue filled or between its tiers.
+- **R2, R3, R4 and R5 worked as intended.**
+  - R2: every `--at <HEAD> --run` call was refused, in 13 sessions (round 4: 22 of 25 sessions compared HEAD with itself).
+  - R3: the browser setup failure was named, and 10 of 10 s1 sessions called it an environment problem.
+  - R4: "at this run's rate they need about 79 min; name test files or folders to narrow it" made 10 of 10 s2 sessions narrow.
+  - R5: no session ran `proof` (round 4: 6 of 10 s2 sessions ran it, and all 6 misread it). The sessions used `--at <base> <file> --run` instead.
+- **R6 is half fixed.** In 16 sessions Squeal ended what ran under its checkout ("ended 2 processes left under the checkout (cezar, test-env-lease watch-app)"). But the working-tree side now runs in the user's own tree through the daemon. In 10 of 10 s1 sessions, squawk's e2e environment started there (its server and lease watcher) outlived the session and `squeal stop`.
+- **Time:** s1 median 287 s (round 4: 327 s). s2 median 796 s (round 4: 478 s), longest 918 s. No session reached the 1,200 s limit, but s2 spent most of its time waiting for runs that did not end.
+
+### Setup
+
+| Item | Value |
+|---|---|
+| Machine | The lab VM, 12 CPUs. At 07:10Z the load was 0.00 and no user job ran (the coordinator: "VM free"). Sessions started only while the 1-minute load was below 12, at most 3 at once (`bin/batch.mjs`). The 1-minute load at session start was 1.05 to 13.21. The 15-minute load was 15.6 at 08:39Z, and agents quoted 1-minute loads of 10 to 33: the queued daemon runs of R1 kept running after each call ended. |
+| Isolation | Throwaway OS user `squeal-w19`, case root `~squeal-w19/runs/w19`, `env -i`, cwd `/`; `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` passed by name only, as round 4. |
+| Squeal | The release's `install.sh` (`git show squeal--v0.1.584:install.sh`) with `SQUEAL_MARKETPLACE` at a clone of the hub at `cf42b11`; `squeal --version` and `claude plugin list` printed 0.1.584. |
+| Harness | Round 4's scripts with the changes in `tasks/023-33/notes.md`. New: 5 s after `squeal stop`, each process left under the session's clone or its checkout folder is recorded in `leftover.txt` and then ended. |
+| Repositories | As round 4: squawk at `8be977ad6` (s1), Squeal at `20f03a431` (s2), one fresh clone and install per session, empty store. |
+| Order | s1-01 alone as a trial (175 s), then s1-02..10 and s2-01..10 interleaved, 3 at once. |
+| Cost | 20 sessions, $1.78 (s1 $0.74, s2 $1.04). The boat.dev sandbox ran no session; it was deleted after 3,699 billed seconds of a large type, $0.037. |
+| Cleanup | Each clone was removed after its session. At the end: every process of the user ended, the user and its home removed, `/opt/squeal-w19` and the user's 170 `/tmp` entries removed, and the work folder deleted, streams and transcripts included. No uid-1002 file and no process left. |
+
+### Per group
+
+Round 4's counts are in brackets. "Both sides" counts sessions that got a result on both sides for the files they compared. "Past 120 s" counts sessions with at least one tool call longer than Claude Code's default 120 s limit; in brackets after it, the sessions in which Claude Code moved a call to the background.
+
+| Group (n) | `--run` | Both sides | Answer | `--at` on HEAD (refused) | Past 120 s (moved) | Swaps | Left after the session | Wall median (range) | Cost |
+|---|---|---|---|---|---|---|---|---|---|
+| s1 squawk, empty store (10) | 10 [10] | 10 [0]: 14 of the 16 selected unit files (s1-08: 12) | full 0 [0]; partial, right 10 [4] (s1-03 with one unsupported claim); honest 0 [6]; wrong 0 [0] | 3 [9] (3; s1-04, 06 and 08 also hit "--wait with --at") | 10 (0) [9 (3)] | 0 [0] | 10 of 10: the e2e server and lease watcher in the clone; 8 also a Squeal store process | 287 s (175 to 350) [327 s] | $0.74 [$1.03] |
+| s2 Squeal, empty store (10) | 10 [10] | 3 [3]: `open.test.ts` (s2-03, 04, 07); 3 more read only the parent side | full 0 [0]; partial, right 3 [3] (`open.test.ts` passes at both commits); honest 7 [1]; wrong 0 [6] | 10 [10] (10 [1]) | 10 (8) [10 (9)] | 0 [0] | 4 of 10: a Squeal store process only | 796 s (467 to 918) [478 s] | $1.04 [$0.94] |
+
+Per session: `tasks/023-33/data/judgements.tsv` and `data/<id>/`, which holds the timeline, summary, the Squeal calls with their full output in `squeal-results.txt`, the clone's state after `squeal stop`, and `leftover.txt`.
+
+### Squeal text read wrong or not acted on
+
+| Text | Sessions | What the agent did |
+|---|---|---|
+| `1808 test files: no result at d8abcfe46, not selected by the change; --all-missing runs them`, and the summary `… 14 unchanged, 1906 unknown` | s1: 10 of 10 | Listed them as "not compared" or "unknown"; 8 offered `--all-missing` (slow) as the way to a full answer. None said the commit cannot change their result. s1-08 came closest: "I'm relying on that import analysis". |
+| `1 not stored (the gate did not keep it: it read paths first seen during the run (.ai/ast-grep/rules/…baseline.json))`, twice | s1: 10 of 10 | Named both files as not compared, which is right. s1-03 said the commit touches those baseline files; it touches only `active-run-write.ts` and its new test. No session reran them. |
+| `test/store/open.test.ts: pass -> no result (queued)`, then `now: 1 without a result: the budget ended; their runs go on in the daemon`; in `status --wait`: `queued, promoted, … behind the vitest tier of 200 test files …; the tier does not yield` | s2: 7 of 10 | Waited 2 to 4 more minutes, then answered "cannot tell". No session saw that its own first `--run` had queued the 1,300 files ahead of its file. s2-05 would not run the file by hand "since CLAUDE.md says to rely on Squeal". |
+| The narrowed call's result (parent `pass`, stored) | s2-01, 08, 09, 10 | Said the parent side had no result. They never read the output: the call ran the full 300 s budget, Claude Code moved it to the background at the same second (the agents had set a 300 s timeout), and Claude Code blocked their `sleep N; cat <output>`. This is not Squeal's text, but the timing is Squeal's. |
+| `squeal status: unknown option "--wait" with --at`, followed by the whole help | s1-04, 06, 08 | Retried without `--wait`; under 2 s each. |
+
+Read right this time: the HEAD refusal with `--run` (all 13 sessions went on with `HEAD~1`); R3's `97 not run: the batch's setup failed (browser: … Chrome failed to launch)` (10 of 10 called it the environment); R4's rate line (10 of 10 narrowed); `<file> is new since <commit>`; `pass -> no result (running) (at d8abcfe46: run by this command, not stored)` (s1-08).
+
+### What went wrong, and the changes the evidence asks for
+
+Proposals, not code. The coordinator numbers rows.
+
+| # | Problem, with the evidence | Proposed change |
+|---|---|---|
+| T1 | **A wide `--run` fills the user's daemon and blocks the narrowed call that follows.** In s2, the parent `--run` selects 1,338 files. In the working tree 0 to 11 run before the budget ends, and about 1,330 "go on in the daemon", which Squeal estimates at 71 to 110 minutes. In 7 of 10 sessions the next call, narrowed to one file as R4 asks, waited the whole 300 s behind that queue ("the tier does not yield") and returned `pass -> no result (queued)`. Host load rose, and the s2 median went from 478 to 796 s. | When the budget ends, remove from the daemon's queue the files this call queued and did not start, and say so ("now: 1,331 not run; taken back from the daemon"). A later `--at … <file> --run` puts its named files ahead of earlier `--run` work. Before running, when the selection clearly cannot fit (1,338 files, no stored durations), print R4's line and run nothing until the user narrows. |
+| T2 | **"Not selected by the change" reads as "not compared".** 10 of 10 s1 sessions counted the 1,808 files as unknown, and the summary line counts them in `1906 unknown`. Their inputs are equal at both commits, so the commit cannot change their result, except the incomplete closures that Squeal already lists. | Say what it means: "1808 test files: not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 15 with an incomplete static closure excepted; `--json` lists them)". Count them apart from "unknown" in the summary line. |
+| T3 | **R6 covers the checkout, not the working tree.** The working-tree side now runs in the user's tree through the daemon. squawk's e2e server and lease watcher, started by that run, outlived `squeal stop` in 10 of 10 s1 sessions (cwd: the clone). | Record the process group of each run the daemon starts for `--run`, as for the checkout's install, and stop it when the run ends; let `squeal stop` end what is left, and name it. |
+| T4 | **A selected file that the gate never keeps can never be compared.** In s1, 2 of 16 selected unit files ran on both sides and were kept on neither ("read paths first seen during the run"). | In a `--run` comparison, compare such a file from this run's results on both sides, marked "(this run, not stored)". The parent side already shows that in s1-08. |
+| T5 | **`--wait` with `--at` prints the whole help.** 3 s1 sessions. | One line: "`--at` takes no `--wait`; `--run` waits up to `--timeout` (300 s)". |
+| T6 | **The budget ends exactly when the agent's tool limit does.** 8 of 10 s2 sessions set a 300 s Bash timeout, and the call that used the full 300 s budget went to the background at the same moment. 4 of them never read that output. | Step 8 of the skill: "give the call a timeout above `--timeout`, for example 360 s for the default 300 s". Or end the budget a few seconds before a round number. |
+
+Not product defects, recorded for the coordinator:
+
+- **No Chrome on the VM**, as in round 4: the 97 browser files could not run on either side. With Chrome they would run (023-32 saw 96 of 97).
+- **A Squeal store process was alive 5 s after `squeal stop`** in 12 of 20 sessions. The check did not wait longer, so this can be a normal slow exit. The harness ended it.
+- **`/tmp` collects squawk's e2e folders**: 170 entries after 21 runs (round 4: 63 after 25).
+- **The sessions share one OS user**, so s2-07 saw another session's `--run` in `pgrep` and named it as host load. The same held in round 4.
+- **One agent cited the repository's rules again**: s2-05 would not run a test by hand.
+
+### Open for a later round
+
+- After T1: s2 again, 10 sessions, to see whether the narrowed call then gets both sides inside a session.
+- After T2: s1 again; the full answer is then within reach of one call, except where Chrome is missing.
+- s1 on a host with Chrome and a model credential (a boat.dev sandbox once the account has one), to compare the 97 browser files too.
+- Codex, Pi and OpenCode are still not exercised.

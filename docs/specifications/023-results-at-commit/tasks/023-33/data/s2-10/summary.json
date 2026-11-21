@@ -1,0 +1,48 @@
+{
+  "id": "s2-10",
+  "leftover": 0,
+  "loadStart": "10.12",
+  "exit": 0,
+  "wallSeconds": 788.196,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "355s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -15; git diff HEAD~1 HEAD -- test/store/open.test.ts | head -50",
+    "658s sleep 240; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-10/97f66634-9ba1-40cf-b736-74a2a8b82e5b/tasks/bjopvjfp4.output | tail -15",
+    "661s squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -8"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "355s +300s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -15; git diff HEAD~1 HEAD -- test/store/open.test.ts | head -50"
+  ],
+  "long": [
+    "3s +349s Bash squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -40",
+    "661s +121s Bash squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -8"
+  ],
+  "results": 1,
+  "turns": 9,
+  "costUsd": 0.1034795,
+  "usage": {
+    "cache_creation_input_tokens": 28391,
+    "cache_read_input_tokens": 168600,
+    "output_tokens": 1561
+  },
+  "firstFinal": "I can't say for certain. Squeal never got a parent-commit result for any test file in the time budget, so there is no verified before/after comparison.\n\n**What the commit changed**\n- `src/core/store/mark.ts` (+6/−1): a parsed mark that says `found: \"unknown\"` now keeps the unknown finder.\n- `test/store/open.test.ts`: one new test, \"keeps a parsed mark's unknown finder, never the full check's\".\n\n**What I could and couldn't establish**\n- Comparing `20f03a431` with its parent for `test/store/open.test.ts` timed out at the 300 s budget. That file had no result at the parent.\n- The same comparison over the whole suite found no test that went pass → fail or fail → pass. But 1951 of 1962 files came back unknown, so that figure says almost nothing.\n- Only `test/store/open.test.ts` is plausibly affected. It gained a test, so that is the one file whose result could differ, and it is still queued in Squeal at HEAD with no verdict yet.\n- Several tests failed while I was running this:\n  - `test/cli/group-pending-release.test.ts` failed because no `squeal--v*` tag is an ancestor of HEAD.\n  - Five `test/code/delivery/*` tests failed with 5000 ms timeouts at load average 10.\n  - Squeal had no earlier result for any of them. They don't touch `mark.ts` or the store, so they look environmental, but I haven't proven that.\n\nTo settle it, wait for `squeal status --wait 120000 test/store/open.test.ts` to return a verdict. Then run `squeal status --at HEAD~1 test/store/open.test.ts --run` once the host is quieter, so the parent run can finish and be stored.",
+  "final": "I can't say for certain. Squeal never got a parent-commit result for any test file in the time budget, so there is no verified before/after comparison.\n\n**What the commit changed**\n- `src/core/store/mark.ts` (+6/−1): a parsed mark that says `found: \"unknown\"` now keeps the unknown finder.\n- `test/store/open.test.ts`: one new test, \"keeps a parsed mark's unknown finder, never the full check's\".\n\n**What I could and couldn't establish**\n- Comparing `20f03a431` with its parent for `test/store/open.test.ts` timed out at the 300 s budget. That file had no result at the parent.\n- The same comparison over the whole suite found no test that went pass → fail or fail → pass. But 1951 of 1962 files came back unknown, so that figure says almost nothing.\n- Only `test/store/open.test.ts` is plausibly affected. It gained a test, so that is the one file whose result could differ, and it is still queued in Squeal at HEAD with no verdict yet.\n- Several tests failed while I was running this:\n  - `test/cli/group-pending-release.test.ts` failed because no `squeal--v*` tag is an ancestor of HEAD.\n  - Five `test/code/delivery/*` tests failed with 5000 ms timeouts at load average 10.\n  - Squeal had no earlier result for any of them. They don't touch `mark.ts` or the store, so they look environmental, but I haven't proven that.\n\nTo settle it, wait for `squeal status --wait 120000 test/store/open.test.ts` to return a verdict. Then run `squeal status --at HEAD~1 test/store/open.test.ts --run` once the host is quieter, so the parent run can finish and be stored.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "HEAD~1 --run"
+  ]
+}

@@ -1,0 +1,75 @@
+## 4s +355s $ squeal status --at 20f03a4~1 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run 2>&1 | tail -40
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/580a3c4ed0567984/mwq3subj-7aa18cc1/tree/test/fixtures/vitest/.tmp/gate-parts-update-0238ce09-4a8a-4974-8714-37a468cb8990/origin
+      Coverage enabled with squeal
+
+
+ Test Files  3 passed (3)
+      Tests  5 passed | 1 skipped (6)
+   Start at  08:48:39
+   Duration  525ms (worker 49%, transform 23%, import 23%, tests 6%)
+
+squeal: vitest run: run exceeded timeoutMs (27527 ms)
+squeal: 10 completed test files were not kept in the stores, because they read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 135 more): test/cli/code-gate-files-environment.test.ts, test/cli/code-gate-files.test.ts, test/cli/code-gate-inputs.test.ts and 7 more; the next run will run them again
+squeal: 1 of 11 completed test files is kept in the stores (1 while the runs went on); the next run on the same bytes runs the other 10
+squeal: ended 2 processes left under the checkout (squeal main node-test @c4ff784a, z-late.test)
+squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at a5c9b7223 from a temporary checkout, 302.5 s (checked against the commit in 3911 ms).
+1122 test files: not run (budget) -> no result (queued): test/cli/wait-every-state.test.ts, test/cli/wait-locked.test.ts, test/cli/wait-mixed-read.test.ts and 1119 more
+624 test files: no result at a5c9b7223, not selected by the change; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+181 test files: not run (budget) -> no result (running): test/cli/code-gate-keep-stop.test.ts, test/cli/code-gate-keep.test.ts, test/cli/code-gate-kill-parent.test.ts and 178 more
+15 test files: pass -> no result (running) (at a5c9b7223: run by this command, not stored): test/cli/code-gate-children.test.ts, test/cli/code-gate-closures.test.ts, test/cli/code-gate-estimate.test.ts and 12 more
+5 test files: pass -> no result (queued) (at a5c9b7223: run by this command, not stored): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 2 more
+4 test files: pass -> no result (running) (at a5c9b7223: run by this command, stored): test/cli/code-gate-args.test.ts, test/cli/code-gate-budget.test.ts, test/cli/code-gate-durations.test.ts and 1 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 11 unchanged, 1951 unknown
+--run: 35 of 1338 test files with no result at a5c9b7223 that the change selects ran in its checkout, 7 stored at its keys (302.9 s of the 300 s budget)
+624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
+1 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/coverage/coverage-map.mjs, src/core/code/coverage/map-worker.js, src/core/daemon/package.json and 4 more)); the next --at has no result for it
+10 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 104 more)); the next --at has no result for them
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 88 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (src/core/daemon/package.json, src/core/package.json, src/package.json)); the next --at has no result for it
+3 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 103 more)); the next --at has no result for them
+6 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/code/tree-sitter-tsx.wasm, src/core/daemon/package.json, src/core/package.json and 4 more)); the next --at has no result for them
+2 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 101 more)); the next --at has no result for them
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 107 more)); the next --at has no result for it
+2 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 86 more)); the next --at has no result for them
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 82 more)); the next --at has no result for it
+--run, now: 11 of 1338 test files the change selects with no result in the working tree ran there, through this worktree's daemon
+now: 1327 without a result: the budget ended; their runs go on in the daemon
+1303 not run (budget); at this run's rate they need about 110 min; name test files or folders to narrow it
+----
+squeal status --at: 20f03a4 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+
+## 362s +301s $ squeal status --at 20f03a4~1 test/store/open.test.ts --run 2>&1 | tail -15
+Command did not complete within its 300s timeout and was moved to the background (ID: bk3g28d7y). Output is being written to: ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-05/eb504bd1-8d7c-439d-ab4f-4830275dd594/tasks/bk3g28d7y.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. No output had been read from it when it was moved. A program that buffers its output, or a pipe into one such as tail, can keep the output file empty until the command finishes. To check interim output, use Read on that file path.
+
+## 665s +0s $ sleep 240; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-05/eb504bd1-8d7c-439d-ab4f-4830275dd594/tasks/bk3g28d7y.output | tail -15
+<tool_use_error>Blocked: sleep 240 followed by: cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-05/eb504bd1-8d7c-439d-ab4f-4830275dd594/tasks/bk3g28d7y.output tail -15. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+
+## 668s +121s $ squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -15
+Revision: 0
+Selected: test/store/open.test.ts
+Pending (1):
+  1 queued, promoted, in batch 1 of 1 (1162 files), its tier estimated to end at 08:53:18, behind the vitest tier of 200 test files running since 08:53:10; the tier does not yield: its estimated remainder was 0 s, not over 30 s: test/store/open.test.ts; no command runs it sooner (a running tier that does not yield is waited for)
+Named test files have no verdict: the deadline passed after 120.8 s: 1 test file still pending at revision 0: 1 queued, promoted, in batch 1 of 1 (1162 files), its tier estimated to end at 08:53:18, behind the vitest tier of 200 test files running since 08:53:10; the tier does not yield: its estimated remainder was 0 s, not over 30 s. Worktree: known failures 2 (2 tests); not current: 1786 of 1962 test files (204 running, 958 queued, 624 unknown). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `squeal status --wait 120000 test/store/open.test.ts`
+
+## 790s +121s $ squeal status --wait 120000 test/store/open.test.ts 2>&1 | tail -8
+Revision: 0
+Selected: test/store/open.test.ts
+Pending (1):
+  1 queued, promoted, in batch 1 of 1 (947 files), its tier estimated to end at 08:59:50, behind the vitest tier of 4 test files running since 08:59:50: test/store/open.test.ts; no command runs it sooner (a running tier is not interrupted)
+Named test files have no verdict: the deadline passed after 120.7 s: 1 test file still pending at revision 0: 1 queued, promoted, in batch 1 of 1 (947 files), its tier estimated to end at 08:59:50, behind the vitest tier of 4 test files running since 08:59:50. Worktree: known failures 1 (1 test); not current: 1571 of 1962 test files (4 running, 943 queued, 624 unknown). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `squeal status --wait 120000 test/store/open.test.ts`
+
+## 918s SAY
+I couldn't confirm a changed result. At the parent commit (`a5c9b72`), the only file the commit touches that has a test result is `test/store/open.test.ts`, and it passed. I have no result for it at `20f03a4`.
+
+- **What the commit changed:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.
+- **Parent result:** `test/store/open.test.ts` passed at `a5c9b72`.
+- **Result at `20f03a4`:** still pending after two 2-minute waits. It is queued behind a long Squeal run, because the daemon has about 950 test files ahead of it and the machine is heavily loaded. I didn't want to hand-run it, since CLAUDE.md says to rely on Squeal.
+- **Wider comparison:** the first `squeal status --at 20f03a4~1 --run` hit its 300 s budget. It reported 0 pass→fail, 0 fail→pass, 11 unchanged and 1951 unknown. Those 11 unchanged files were the only ones with results on both sides.
+- **Other results during the session:** two failures appeared. `test/cli/group-pending-release.test.ts` failed because no `squeal--v*` tag is an ancestor of `HEAD`, which is an environment problem and not from this commit. `test/cli/selection-result.test.ts` timed out at load average 18, then passed on Squeal's re-run, so it is flaky. Neither has a result at the parent commit, so neither counts as changed.
+
+`src/core/store/mark.ts` changed too, so other tests that read it could also change result. Squeal hasn't run them on both sides.
+
+To get the answer, run `squeal status --wait 120000 test/store/open.test.ts` once the queue drains. It should return pass or fail for the new commit.

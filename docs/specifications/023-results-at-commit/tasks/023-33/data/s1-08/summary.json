@@ -1,0 +1,47 @@
+{
+  "id": "s1-08",
+  "leftover": 3,
+  "loadStart": "11.16",
+  "exit": 0,
+  "wallSeconds": 350.249,
+  "squeal": [
+    "4s squeal checks | tail -20; git show --stat --oneline 8be977ad6 | head -30",
+    "5s squeal status --at 8be977ad6 --run --wait 120000 2>&1 | tail -40",
+    "7s squeal status --at 8be977ad6 --run --wait 120000 2>&1 | head -15; squeal status --help 2>&1 | head -30",
+    "9s squeal status --at 8be977ad6 --run 2>&1 | head -60",
+    "10s squeal status --at HEAD~1 --run 2>&1 | head -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "10s +333s Bash squeal status --at HEAD~1 --run 2>&1 | head -60"
+  ],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.1232486,
+  "usage": {
+    "cache_creation_input_tokens": 38128,
+    "cache_read_input_tokens": 150706,
+    "output_tokens": 1283
+  },
+  "firstFinal": "No test file changed from pass to fail or from fail to pass between 8be977ad6 and its parent d8abcfe46, but the comparison is only partial. `squeal status --at HEAD~1 --run` reported 0 pass → fail and 0 fail → pass, with 12 files unchanged.\n\n**What did change**\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It went from absent to pass. I did not run `squeal proof` on it, so I don't know whether it would fail on the parent's code.\n\n**What I couldn't compare**\n- `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent. Squeal didn't store their runs there because they read ast-grep baseline files it hadn't seen before. They show \"pass → no result (running)\", so I have no current verdict for either. They are the tests most likely to be affected by a lint change like this, so they are worth running directly.\n- 97 `packages/web/e2e/*.e2e.ts` files didn't run on either side. Browser E2E setup failed with \"installed Chrome failed to launch\", so there is no result for them. The same setup failure (`[e2e] (global setup)`) now appears in this worktree. It comes from the environment, not from the commit.\n- 1,808 other test files have no stored result at the parent. Squeal treats them as not selected by this change, since they don't import the two files it touched (`active-run-write.ts` and the new test). I did not run them, so I'm relying on that import analysis.\n\nThe commit touched only `active-run-write.ts` and its new test, so the import analysis suggests little else is affected. I haven't run the whole suite on both sides.",
+  "final": "No test file changed from pass to fail or from fail to pass between 8be977ad6 and its parent d8abcfe46, but the comparison is only partial. `squeal status --at HEAD~1 --run` reported 0 pass → fail and 0 fail → pass, with 12 files unchanged.\n\n**What did change**\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It went from absent to pass. I did not run `squeal proof` on it, so I don't know whether it would fail on the parent's code.\n\n**What I couldn't compare**\n- `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent. Squeal didn't store their runs there because they read ast-grep baseline files it hadn't seen before. They show \"pass → no result (running)\", so I have no current verdict for either. They are the tests most likely to be affected by a lint change like this, so they are worth running directly.\n- 97 `packages/web/e2e/*.e2e.ts` files didn't run on either side. Browser E2E setup failed with \"installed Chrome failed to launch\", so there is no result for them. The same setup failure (`[e2e] (global setup)`) now appears in this worktree. It comes from the environment, not from the commit.\n- 1,808 other test files have no stored result at the parent. Squeal treats them as not selected by this change, since they don't import the two files it touched (`active-run-write.ts` and the new test). I did not run them, so I'm relying on that import analysis.\n\nThe commit touched only `active-run-write.ts` and its new test, so the import analysis suggests little else is affected. I haven't run the whole suite on both sides.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 3,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6 --run",
+    "8be977ad6 --run",
+    "HEAD~1 --run"
+  ]
+}

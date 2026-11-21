@@ -1,0 +1,48 @@
+{
+  "id": "s2-03",
+  "leftover": 0,
+  "loadStart": "11.80",
+  "exit": 0,
+  "wallSeconds": 571.06,
+  "squeal": [
+    "5s squeal status --at 20f03a431 --run 2>&1 | head -60; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | head -60",
+    "146s git show --stat --format=%s 20f03a431 | cat; squeal status --at HEAD~1 --help 2>&1 | head -20",
+    "149s squeal status --at HEAD~1 src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | tail -30; echo =====; squeal status --wait 60000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | tail -30",
+    "513s squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -8; squeal status --wait 60000 test/store/open.test.ts 2>&1 | tail -6"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "5s +139s Bash squeal status --at 20f03a431 --run 2>&1 | head -60; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | head -60",
+    "149s +361s Bash squeal status --at HEAD~1 src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | tail -30; echo =====; squeal status --wait 60000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | tail -30"
+  ],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.10445499999999999,
+  "usage": {
+    "cache_creation_input_tokens": 31567,
+    "cache_read_input_tokens": 115835,
+    "output_tokens": 1393
+  },
+  "firstFinal": "I can't say for certain across the whole suite. For the one test file the commit changed, the result is the same before and after.\n\n**What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n\n**What I checked:**\n- `test/store/open.test.ts` passes at both `20f03a431~1` (a5c9b7223) and `20f03a431`. Squeal reports 0 pass→fail, 0 fail→pass and 1 unchanged, so no test file changed result.\n- Only the unchanged file test counts as direct evidence. The added tests in it pass now. I did not check whether they would fail on the parent, since I compared whole-file results rather than running `squeal proof`.\n\n**What I could not settle:**\n- `src/core/store/mark.ts` is read by 1338 test files. Squeal's 300 s budget ran out after about 48 of them had been run at the parent commit. The comparison for the other 1,290 or so is unknown, not \"unchanged\". Finishing it would take about 77 minutes.\n- Squeal's wait shows one failure in the worktree: `test/cli/group-pending-release.test.ts`. It says no `squeal--v*` tag is an ancestor of HEAD, which is a repository-history problem and not something this commit's code changed. Squeal has no earlier result for it, so it can't tell whether the commit caused it. I think it is unrelated, but I didn't prove that.\n\nIf you want the full comparison, I can let the queued runs finish and re-run `squeal status --at HEAD~1` afterwards.",
+  "final": "I can't say for certain across the whole suite. For the one test file the commit changed, the result is the same before and after.\n\n**What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n\n**What I checked:**\n- `test/store/open.test.ts` passes at both `20f03a431~1` (a5c9b7223) and `20f03a431`. Squeal reports 0 pass→fail, 0 fail→pass and 1 unchanged, so no test file changed result.\n- Only the unchanged file test counts as direct evidence. The added tests in it pass now. I did not check whether they would fail on the parent, since I compared whole-file results rather than running `squeal proof`.\n\n**What I could not settle:**\n- `src/core/store/mark.ts` is read by 1338 test files. Squeal's 300 s budget ran out after about 48 of them had been run at the parent commit. The comparison for the other 1,290 or so is unknown, not \"unchanged\". Finishing it would take about 77 minutes.\n- Squeal's wait shows one failure in the worktree: `test/cli/group-pending-release.test.ts`. It says no `squeal--v*` tag is an ancestor of HEAD, which is a repository-history problem and not something this commit's code changed. Squeal has no earlier result for it, so it can't tell whether the commit caused it. I think it is unrelated, but I didn't prove that.\n\nIf you want the full comparison, I can let the queued runs finish and re-run `squeal status --at HEAD~1` afterwards.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 5,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "HEAD~1",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

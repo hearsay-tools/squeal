@@ -1,0 +1,54 @@
+{
+  "id": "s2-07",
+  "leftover": 0,
+  "loadStart": "11.87",
+  "exit": 0,
+  "wallSeconds": 866.599,
+  "squeal": [
+    "7s squeal status --at 20f03a4 --run 2>&1 | head -60; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | head -60",
+    "130s sleep 100; cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output | head -60",
+    "134s f=~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output; until [ -s $f ] && ! pgrep -f \"squeal status --at\" >/dev/null; do sleep 3; done; head -80 $f",
+    "136s f=~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output; tail -c 3000 $f",
+    "160s cat ~squeal-w19/runs/w19/tmp/claude-1002/-home-squeal-w19-runs-w19-s2-07/056b96d3-b773-4a0b-aa70-ea708eb69f3b/tasks/b3g49xmmt.output | head -80",
+    "162s cd ~squeal-w19/runs/w19/s2-07; git show --stat --format=%s 20f03a4 | cat",
+    "164s cd ~squeal-w19/runs/w19/s2-07; squeal status --at 'HEAD~1' src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | tail -40",
+    "469s cd ~squeal-w19/runs/w19/s2-07; squeal status --at 'HEAD~1' test/store/open.test.ts --run 2>&1 | tail -15; git diff HEAD~1 HEAD -- src | cat",
+    "738s cd ~squeal-w19/runs/w19/s2-07; pgrep -fa \"squeal status --at\" | head -3; squeal retry test/code/pass/retry-daemon.test.ts test/code/pass/test-files.test.ts test/code/prune.test.ts test/code/repos.test.ts --reason load 2>&1 | tail -5; squeal status --wait 120000 test/code/pass/retry-daemon.test.ts test/code/pass/test-files.test.ts test/code/prune.test.ts test/code/repos.test.ts 2>&1 | tail -20"
+  ],
+  "skill": [
+    "4s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "7s +121s squeal status --at 20f03a4 --run 2>&1 | head -60; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | head -60"
+  ],
+  "long": [
+    "164s +302s Bash cd ~squeal-w19/runs/w19/s2-07; squeal status --at 'HEAD~1' src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | tail -40",
+    "738s +122s Bash cd ~squeal-w19/runs/w19/s2-07; pgrep -fa \"squeal status --at\" | head -3; squeal retry test/code/pass/retry-daemon.test.ts test/code/pass/test-files.test.ts test/code/prune.test.ts test/code/repos.test.ts --reason load 2>&1 | tail -5; squeal status --wait 120000 test/code/pass/retry-daemon.test."
+  ],
+  "results": 3,
+  "turns": 16,
+  "costUsd": 0.1531836,
+  "usage": {
+    "cache_creation_input_tokens": 30663,
+    "cache_read_input_tokens": 385741,
+    "output_tokens": 3788
+  },
+  "firstFinal": "The comparison is still running, so I don't have an answer yet. `squeal status --at HEAD~1 --run` is running the tests at the parent commit, 20f03a4~1. I'll report the test files whose result changed once it finishes.",
+  "final": "I can't give a complete list. The only file I confirmed is `test/store/open.test.ts`, whose result is unchanged. I'm stopping here because the full comparison is too heavy for this host right now.\n\n- **Confirmed:** `test/store/open.test.ts` has the same result at `20f03a4~1` and at `20f03a4`, so no test file is confirmed as changed. The commit changed only `src/core/store/mark.ts` (it now accepts `\"unknown\"` as a finder) and added 27 lines to that test file.\n- **Not compared:** `mark.ts` is widely imported, so Squeal selected 1,338 test files for this change. Only 49 ran at the parent commit within the 300 s budget, and none of those showed a changed result. The rest have no result at the parent commit, and Squeal estimates about 71 minutes to run them all.\n- **Current failures that are not evidence either way:**\n  - `test/cli/group-pending-release.test.ts` fails because no `squeal--v*` tag is an ancestor of HEAD. Fetching tags would fix it.\n  - `test/code/pass/retry-daemon.test.ts`, `test/code/pass/test-files.test.ts`, `test/code/prune.test.ts` and `test/code/repos.test.ts` all failed with \"Test timed out in 5000ms\" while the load average was 16 to 33 on 12 CPUs. I queued one retry for each with `--reason load`, but they hadn't run when I stopped, so those four are still failing and unexplained. I haven't run any of them at the parent commit.\n- **Load on the host:** my own comparison runs are adding to the load. Another `squeal status --at 8be977ad6^ --run` is also running on this machine, and I didn't start it.\n\nTo get a full answer, I can run the comparison in batches by folder, for example `squeal status --at HEAD~1 test/store test/core --run`, once the load drops. Or I can let the full run go for the roughly 71 minutes. The four timeouts should be re-checked first, after the load drops.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run",
+    "'HEAD~1' --run",
+    "'HEAD~1' --run"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "id": "s1-06",
+  "leftover": 3,
+  "loadStart": "9.52",
+  "exit": 0,
+  "wallSeconds": 250.14,
+  "squeal": [
+    "4s squeal status --at 8be977ad6~1 --run --wait 60000 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6 --run --wait 60000 2>&1 | tail -40",
+    "6s squeal status --at 8be977ad6~1 --run --wait 60000 2>&1 | head -8; squeal status --help 2>&1 | head -40",
+    "8s squeal status --at 8be977ad6~1 --run --timeout 540 2>&1 | tail -30; echo ----; squeal status --at 8be977ad6 --run --timeout 540 2>&1 | tail -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "8s +234s Bash squeal status --at 8be977ad6~1 --run --timeout 540 2>&1 | tail -30; echo ----; squeal status --at 8be977ad6 --run --timeout 540 2>&1 | tail -30"
+  ],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0744919,
+  "usage": {
+    "cache_creation_input_tokens": 19358,
+    "cache_read_input_tokens": 114869,
+    "output_tokens": 1459
+  },
+  "firstFinal": "Squeal found no test file that passes or fails differently between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though.\n\n**Result:** 0 files went pass → fail, 0 went fail → pass, and 14 were unchanged.\n\n**One new test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. Squeal hasn't checked whether it would fail on the old code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n\n**What the comparison did not cover:**\n- **Selected files:** Only 14 of the 111 test files the change selects had a result to compare. The rest had no result at the parent.\n- **Unselected files:** 1,808 test files had no result at the parent and weren't selected by the change. Squeal doesn't run them unless you pass `--all-missing`.\n- **Browser e2e:** The 97 browser e2e files could not run on either side, because the installed Chrome failed to launch. Squeal now reports `[e2e] (global setup)` as FAIL. It has no earlier result, so I can't say whether the commit caused it. It is most likely an environment problem, since the failure is in Chrome launching.\n- **Unstored results:** For two test files (the `.ai/ast-grep/rules/...baseline.json` readers), Squeal ran them but didn't store the results. They read baseline files that appeared for the first time during the run.\n\nI haven't run the full suite. If you want a firmer answer, I can rerun with `--all-missing`, which is slow, or run `squeal proof` on the new test file.",
+  "final": "Squeal found no test file that passes or fails differently between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though.\n\n**Result:** 0 files went pass → fail, 0 went fail → pass, and 14 were unchanged.\n\n**One new test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. Squeal hasn't checked whether it would fail on the old code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n\n**What the comparison did not cover:**\n- **Selected files:** Only 14 of the 111 test files the change selects had a result to compare. The rest had no result at the parent.\n- **Unselected files:** 1,808 test files had no result at the parent and weren't selected by the change. Squeal doesn't run them unless you pass `--all-missing`.\n- **Browser e2e:** The 97 browser e2e files could not run on either side, because the installed Chrome failed to launch. Squeal now reports `[e2e] (global setup)` as FAIL. It has no earlier result, so I can't say whether the commit caused it. It is most likely an environment problem, since the failure is in Chrome launching.\n- **Unstored results:** For two test files (the `.ai/ast-grep/rules/...baseline.json` readers), Squeal ran them but didn't store the results. They read baseline files that appeared for the first time during the run.\n\nI haven't run the full suite. If you want a firmer answer, I can rerun with `--all-missing`, which is slow, or run `squeal proof` on the new test file.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 5,
+  "atHeadCalls": 2,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "8be977ad6 --run",
+    "8be977ad6~1 --run",
+    "8be977ad6~1 --run",
+    "8be977ad6 --run"
+  ]
+}

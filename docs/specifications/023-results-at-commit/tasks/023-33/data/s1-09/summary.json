@@ -1,0 +1,40 @@
+{
+  "id": "s1-09",
+  "leftover": 3,
+  "loadStart": "10.93",
+  "exit": 0,
+  "wallSeconds": 321.229,
+  "squeal": [
+    "4s git rev-parse 8be977ad6^ && squeal status --at 8be977ad6^ --run 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "4s +312s Bash git rev-parse 8be977ad6^ && squeal status --at 8be977ad6^ --run 2>&1 | tail -40"
+  ],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.090753,
+  "usage": {
+    "cache_creation_input_tokens": 31781,
+    "cache_read_input_tokens": 45085,
+    "output_tokens": 678
+  },
+  "firstFinal": "No test file changed its result between `8be977ad6` and its parent `d8abcfe46`: 0 went from pass to fail, 0 from fail to pass, and 14 were unchanged. Only a small part of the suite was compared, though.\n\n- **Compared:** Squeal ran the 14 test files the change selects at the parent commit (the 15th is the new one below). Those 14 gave the same result at both commits.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It passes at `8be977ad6`.\n- **Not stored:** two files didn't get a stored result at the parent commit because they read baseline files first seen during the run. They are `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`. They ran, but Squeal could not keep their results for a later comparison.\n- **Not run:** 97 browser e2e files under `packages/web/e2e/` did not run, because the Chrome launch failed in the environment (`[e2e] (global setup)`). I can't say whether they differ, but the commit only touches lint code, so I'd expect no change.\n- **Unknown:** 1,808 other test files have no result at either commit. The change doesn't select them. `squeal status --at d8abcfe46 --all-missing` would run them.",
+  "final": "No test file changed its result between `8be977ad6` and its parent `d8abcfe46`: 0 went from pass to fail, 0 from fail to pass, and 14 were unchanged. Only a small part of the suite was compared, though.\n\n- **Compared:** Squeal ran the 14 test files the change selects at the parent commit (the 15th is the new one below). Those 14 gave the same result at both commits.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It passes at `8be977ad6`.\n- **Not stored:** two files didn't get a stored result at the parent commit because they read baseline files first seen during the run. They are `packages/cezar/src/lint/lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts`. They ran, but Squeal could not keep their results for a later comparison.\n- **Not run:** 97 browser e2e files under `packages/web/e2e/` did not run, because the Chrome launch failed in the environment (`[e2e] (global setup)`). I can't say whether they differ, but the commit only touches lint code, so I'd expect no change.\n- **Unknown:** 1,808 other test files have no result at either commit. The change doesn't select them. `squeal status --at d8abcfe46 --all-missing` would run them.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6^ --run"
+  ]
+}

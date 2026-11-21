@@ -1,0 +1,167 @@
+## 5s +139s $ squeal status --at 20f03a431 --run 2>&1 | head -60; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | head -60
+squeal status --at: 20f03a431 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+----
+squeal: keying test files at a5c9b7223 in a temporary checkout
+squeal: --run: 1338 test files with no result at a5c9b7223 to run, up to 11 at once; no stored duration, so the time is unknown; the budget is 300 s, the checkout and install included; to narrow it, name test files or folders: squeal status --at '20f03a431~1' <path>... --run
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/ci-evidence-93fd690a-bf3f-424f-9cf4-5a9fe861849a/origin
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/ci-wrapper-A-node-c970dd52-47f8-4a57-9615-a289209de789/origin
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/record-fails-8e4c5b56-3a08-4251-9aa4-4255723e5d8b
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/ci-formats-a2e16e33-fbce-4037-a6b9-69653c4d3bb5/origin
+      Coverage enabled with squeal
+
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+   Start at  08:34:49
+   Duration  686ms (import 46%, transform 31%, worker 12%, tests 10%)
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/ci-export-f96d7960-ceec-4935-86d3-9b6e6f4940f0/origin
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  08:34:49
+   Duration  662ms (import 50%, transform 29%, worker 14%, tests 7%)
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  08:34:49
+   Duration  640ms (worker 59%, import 23%, transform 10%, tests 8%)
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/ci-export-loaded-24493148-3555-4352-82dd-240ecf2fc693/origin
+      Coverage enabled with squeal
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/ci-export-absolute-b099c0a0-7d68-41d3-ac5c-82149fe842bd/origin
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/glob-import-6eccfa31-65e5-4318-9eba-e14c84e809d2/ci
+
+
+ Test Files  2 passed (2)
+      Tests  3 passed (3)
+   Start at  08:34:49
+   Duration  1.24s (import 46%, transform 26%, worker 16%, tests 11%)
+
+    Isolate  2 workers spawned · ~521ms startup each (spawn + environment, per file)
+             at least ~521ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+ RUN  v5.0.3 ~squeal-w19/runs/w19/home/.cache/squeal/checkouts/22126390ad627af5/mwq3d6i6-45d7c714/tree/test/fixtures/vitest/.tmp/resolution-import-59ef7a8b-2d64-4f70-b160-4e345dfd9732/ci
+
+
+ Test Files  2 passed (2)
+
+## 146s +0s $ git show --stat --format=%s 20f03a431 | cat; squeal status --at HEAD~1 --help 2>&1 | head -20
+fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+
+ src/core/store/mark.ts  |  7 ++++++-
+ test/store/open.test.ts | 27 +++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+), 1 deletion(-)
+Usage:
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+                                advances it; --full adds the worktree, daemon,
+                                inheritance, each file without a result and the notes;
+                                --notes is --full with every note in full
+  squeal status <path>... [--check <text>]... [--full] [--json]
+                                The verdict of the test files the paths select (a test
+                                file; a folder: the listed test files under it; or a
+                                file in test files' closures) now, if the
+                                daemon stores its pass over your edits within 750 ms:
+                                exit 0, 1 on known failures, 3 without one; a path
+                                that selects nothing is named beside it, exit 3 unless
+                                a selected file fails; --full prints this worktree's
+                                status first; --json: the files and their verdicts in
+                                selection.testFiles, and selection.complete false while
+                                the list may still grow (the text says "at least");
+                                every field, result, reason and exit code: "Status
+                                JSON" in the squeal skill's references/commands.md;
+
+## 148s SAY
+Narrow to the affected tests: the changed source file and the changed test file.
+
+## 149s +361s $ squeal status --at HEAD~1 src/core/store/mark.ts test/store/open.test.ts --run 2>&1 | tail -30; echo =====; squeal status --wait 60000 src/core/store/mark.ts test/store/open.test.ts 2>&1 | tail -30
+squeal: 8 completed test files were not kept in the stores, because they read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 176 more): test/cli/code-gate-keep-kill.test.ts, test/cli/code-gate-parts-environment.test.ts, test/cli/code-gate-parts-link.test.ts and 5 more; the next run will run them again
+squeal: 2 of 10 completed test files are kept in the stores (2 while the runs went on); the next run on the same bytes runs the other 8
+squeal: ended 2 processes left under the checkout (squeal main node-test @2988419b, z-late.test)
+squeal status --at a5c9b7223: 1338 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at a5c9b7223 from a temporary checkout, 299.2 s (checked against the commit in 4374 ms).
+1130 test files: not run (budget) -> no result (queued): test/cli/status-wait-unlisted-run.test.ts, test/cli/status-wait-window.test.ts, test/cli/status-wait.test.ts and 1127 more
+152 test files: not run (budget) -> no result (running): test/cli/code-gate-keep.test.ts, test/cli/code-gate-relaunch.test.ts, test/cli/code-gate-retry.test.ts and 149 more
+39 test files: pass -> no result (running) (at a5c9b7223: run by this command, not stored): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 36 more
+9 test files: pass -> no result (running) (at a5c9b7223: run by this command, stored): test/ci/export-keys.test.ts, test/cli/ci-publish.test.ts, test/cli/ci-usage.test.ts and 6 more
+8 test files: no result -> no result (queued): test/harness/codex/input.test.ts, test/harness/codex/output.test.ts, test/harness/pi/events.test.ts and 5 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1338 unknown
+--run: 48 of 1330 test files with no result at a5c9b7223 ran in its checkout, 9 stored at its keys (299.7 s of the 300 s budget)
+1 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/coverage/coverage-map.mjs, src/core/code/coverage/map-worker.js, src/core/daemon/package.json and 4 more)); the next --at has no result for it
+11 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 104 more)); the next --at has no result for them
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 88 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (src/core/daemon/package.json, src/core/package.json, src/package.json)); the next --at has no result for it
+4 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 103 more)); the next --at has no result for them
+7 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/code/tree-sitter-tsx.wasm, src/core/daemon/package.json, src/core/package.json and 4 more)); the next --at has no result for them
+2 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 101 more)); the next --at has no result for them
+6 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 107 more)); the next --at has no result for them
+2 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 86 more)); the next --at has no result for them
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 82 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 85 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (.postcssrc, .postcssrc.cjs, .postcssrc.cts and 105 more)); the next --at has no result for it
+1 not stored (the gate did not keep it: it read paths first seen during the run (src/core/code/code/tree-sitter-tsx.wasm, src/core/daemon/package.json, src/core/package.json and 7 more)); the next --at has no result for it
+--run, now: 0 of 1338 test files the change selects with no result in the working tree ran there, through this worktree's daemon
+now: 1338 without a result: the budget ended; their runs go on in the daemon
+1282 not run (budget); at this run's rate they need about 77 min; name test files or folders to narrow it
+=====
+Revision: 0
+Selected: test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts, test/ci/export-formats.test.ts, test/ci/export-keys.test.ts, test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts, test/ci/export-wrapper.test.ts, test/ci/export.test.ts, test/ci/glob-import.test.ts and 1328 more
+Not a listed test file: src/core/store/mark.ts; it selects the 1338 test files that read it
+  FAIL  test/cli/group-pending-release.test.ts > the previous release's CLI and a pending request's holder (row 011-302) > reads the new pending answer without error: no verdict, exit 3
+        no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+        at test/keys/validity/trees.ts:37:11, observed at revision 0, current
+Pending (1272):
+  1072 queued, promoted, in batch 1 of 1 (1272 files), its tier estimated to end at 08:40:29, behind the vitest tier of 200 test files running since 08:40:29: test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts, test/ci/export-formats.test.ts, test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts, test/ci/export-wrapper.test.ts, test/ci/export.test.ts, test/ci/glob-import.test.ts, test/ci/resolution-import.test.ts and 1062 more; no command runs them sooner (a running tier is not interrupted)
+  69 ended at revision 0, awaiting the tier's final checks and 131 files not reported ended as of 08:40:54 (test/cli/warmup.test.ts, test/code/crap/chain-load.test.ts, test/code/crap/children-daemon.test.ts and 128 more), in the vitest tier of 200 test files running since 08:40:29, 69 of them ended, in batch 1 of 1 (1272 files), its tier estimated to end at 08:40:29: test/cli/group-pending-release.test.ts, test/cli/status-wait-unlisted-run.test.ts, test/cli/status-wait-window.test.ts, test/cli/status-wait.test.ts, test/cli/stop-bound.test.ts, test/cli/stop-lock.test.ts, test/cli/stop-mark.test.ts, test/cli/stop-removed.test.ts, test/cli/stop-root.test.ts, test/cli/stored-closures.test.ts and 59 more; no command runs them sooner (a running tier is not interrupted)
+  131 in the vitest tier of 200 test files running since 08:40:29, 69 of them ended, in batch 1 of 1 (1272 files), its tier estimated to end at 08:40:29: test/cli/warmup.test.ts, test/code/crap/chain-load.test.ts, test/code/crap/children-daemon.test.ts, test/code/crap/not-measured.test.ts, test/code/crap/own-closures.test.ts, test/code/crap/pass.test.ts, test/code/crap/pending-reason.test.ts, test/code/crap/record-version.test.ts, test/code/crap/replaced.test.ts, test/code/crap/seed-budget.test.ts and 121 more; no command runs them sooner (a running tier is not interrupted)
+Current (66):
+  66 pass: test/ci/export-keys.test.ts, test/cli/ci-publish.test.ts, test/cli/ci-usage.test.ts, test/cli/code-gate-args.test.ts, test/cli/code-gate-budget.test.ts, test/cli/code-gate-durations.test.ts, test/cli/code-gate-files-outcome.test.ts, test/cli/code-gate-prerun-text.test.ts, test/cli/code-gate-progress.test.ts, test/cli/code-gate-text-left-out.test.ts and 56 more
+Named test files have no verdict: the deadline passed after 60.7 s: 1272 test files still pending at revision 0: 1072 queued, promoted, in batch 1 of 1 (1272 files), its tier estimated to end at 08:40:29, behind the vitest tier of 200 test files running since 08:40:29, 69 ended at revision 0, awaiting the tier's final checks and 131 files not reported ended as of 08:40:54 (test/cli/warmup.test.ts, test/code/crap/chain-load.test.ts, test/code/crap/children-daemon.test.ts and 128 more), in the vitest tier of 200 test files running since 08:40:29, 69 of them ended, in batch 1 of 1 (1272 files), its tier estimated to end at 08:40:29, 131 in the vitest tier of 200 test files running since 08:40:29, 69 of them ended, in batch 1 of 1 (1272 files), its tier estimated to end at 08:40:29. Worktree: known failures 1 (1 test); not current: 1896 of 1962 test files (200 running, 1072 queued, 624 unknown). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `squeal status --wait 60000 src/core/store/mark.ts test/store/open.test.ts`
+
+## 513s +53s $ squeal status --at HEAD~1 test/store/open.test.ts --run 2>&1 | tail -8; squeal status --wait 60000 test/store/open.test.ts 2>&1 | tail -6
+squeal: keying test files at a5c9b7223 in a temporary checkout
+squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+Keys at a5c9b7223 from a temporary checkout, 48.4 s (checked against the commit in 4639 ms).
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
+--run: 1 of 1 test files with no result at a5c9b7223 ran in its checkout, 1 stored at its keys (48.7 s of the 300 s budget)
+--run, now: every test file the change selects has a result in the working tree
+Revision: 0
+Selected: test/store/open.test.ts
+Named test files at revision 0: no known failures; 1 test file, each with a current result, after 3.7 s. Worktree: known failures 1 (1 test); not current: 1896 of 1962 test files (200 running, 1072 queued, 624 unknown)
+
+## 571s SAY
+I can't say for certain across the whole suite. For the one test file the commit changed, the result is the same before and after.
+
+**What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.
+
+**What I checked:**
+- `test/store/open.test.ts` passes at both `20f03a431~1` (a5c9b7223) and `20f03a431`. Squeal reports 0 pass→fail, 0 fail→pass and 1 unchanged, so no test file changed result.
+- Only the unchanged file test counts as direct evidence. The added tests in it pass now. I did not check whether they would fail on the parent, since I compared whole-file results rather than running `squeal proof`.
+
+**What I could not settle:**
+- `src/core/store/mark.ts` is read by 1338 test files. Squeal's 300 s budget ran out after about 48 of them had been run at the parent commit. The comparison for the other 1,290 or so is unknown, not "unchanged". Finishing it would take about 77 minutes.
+- Squeal's wait shows one failure in the worktree: `test/cli/group-pending-release.test.ts`. It says no `squeal--v*` tag is an ancestor of HEAD, which is a repository-history problem and not something this commit's code changed. Squeal has no earlier result for it, so it can't tell whether the commit caused it. I think it is unrelated, but I didn't prove that.
+
+If you want the full comparison, I can let the queued runs finish and re-run `squeal status --at HEAD~1` afterwards.

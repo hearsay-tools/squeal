@@ -1,0 +1,40 @@
+{
+  "id": "s1-03",
+  "leftover": 3,
+  "loadStart": "4.85",
+  "exit": 0,
+  "wallSeconds": 274.678,
+  "squeal": [
+    "4s squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "4s +263s Bash squeal status --at 8be977ad6~1 --run 2>&1 | tail -60"
+  ],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.060952099999999995,
+  "usage": {
+    "cache_creation_input_tokens": 18159,
+    "cache_read_input_tokens": 59326,
+    "output_tokens": 961
+  },
+  "firstFinal": "Squeal found no test file that changed result between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though: 1906 of the 1920 test files have no result at either commit.\n\n- **Compared:** 14 test files were selected by the commit's change and run at both commits. 0 went pass → fail, 0 went fail → pass, and 14 are unchanged.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It passes now, so it counts as absent → pass rather than a changed result. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n- **Not run (browser e2e):** 97 browser e2e files under `packages/web/e2e/` didn't run at the parent. The Chrome launch failed in the temporary checkout (\"installed Chrome failed to launch with resolved settings\"). The same failure shows as a `[e2e] (global setup)` FAIL in this worktree, with no earlier result, so it looks environmental and not caused by the commit. These files are unknown, not passing.\n- **Not run (other files):** 1808 other test files have no result at the parent. The commit's change doesn't select them, and `--all-missing` would run them.\n- **Not stored:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` ran but weren't stored. They read `.ai/ast-grep/rules/*.baseline.json` paths that were first seen during the run, so a later `--at` has no result for them. Those baseline files are the ones the commit touches, so these two are the most likely place for a difference to hide.\n\nThe commit is a lint refactor and the 14 comparable files are unchanged, so a regression is unlikely. For a full answer, run `squeal status --at 8be977ad6~1 --all-missing --run` for the remaining unit tests, and rerun the two `lint-ast-grep` files. The browser files need a working Chrome first.",
+  "final": "Squeal found no test file that changed result between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though: 1906 of the 1920 test files have no result at either commit.\n\n- **Compared:** 14 test files were selected by the commit's change and run at both commits. 0 went pass → fail, 0 went fail → pass, and 14 are unchanged.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It passes now, so it counts as absent → pass rather than a changed result. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n- **Not run (browser e2e):** 97 browser e2e files under `packages/web/e2e/` didn't run at the parent. The Chrome launch failed in the temporary checkout (\"installed Chrome failed to launch with resolved settings\"). The same failure shows as a `[e2e] (global setup)` FAIL in this worktree, with no earlier result, so it looks environmental and not caused by the commit. These files are unknown, not passing.\n- **Not run (other files):** 1808 other test files have no result at the parent. The commit's change doesn't select them, and `--all-missing` would run them.\n- **Not stored:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` ran but weren't stored. They read `.ai/ast-grep/rules/*.baseline.json` paths that were first seen during the run, so a later `--at` has no result for them. Those baseline files are the ones the commit touches, so these two are the most likely place for a difference to hide.\n\nThe commit is a lint refactor and the 14 comparable files are unchanged, so a regression is unlikely. For a full answer, run `squeal status --at 8be977ad6~1 --all-missing --run` for the remaining unit tests, and rerun the two `lint-ast-grep` files. The browser files need a working Chrome first.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}
