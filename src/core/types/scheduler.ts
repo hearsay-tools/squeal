@@ -241,6 +241,13 @@ export interface NarrowNotRun {
 /** A narrow run's request (row 019-49): `queued` counts the selected files that are not current. */
 export interface NarrowRunRequest extends SlowSuiteRequest {
   readonly narrow: NarrowRun;
+  /**
+   * Row 023-36 (T3; review wave-20 third look): the selected files this
+   * request put in the queue itself, none current, queued by another or
+   * running then: what a `status --at --run` request flags. In the daemon's
+   * process only; no answer on the socket carries it.
+   */
+  readonly newlyQueued?: readonly TestFileRef[];
 }
 
 /**
