@@ -73,6 +73,13 @@ describe("policy shared.lookAgain (row 018-70)", () => {
     });
   });
 
+  it("takes up to 2,147,483 s, the longest wait of Node's timers (review 0.1.588 S1)", () => {
+    const longest = { everySeconds: 2_147_483, forSeconds: 2_147_483 };
+    const { policy, problems } = load({ shared: { lookAgain: longest } });
+    expect(problems).toEqual([]);
+    expect(policy.shared.lookAgain).toEqual(longest);
+  });
+
   it.each([
     ["everySeconds", 0],
     ["everySeconds", 1.5],
@@ -80,6 +87,9 @@ describe("policy shared.lookAgain (row 018-70)", () => {
     ["forSeconds", -1],
     ["forSeconds", 2.5],
     ["forSeconds", null],
+    // Review 0.1.588 S1: Node's timers wait at most 2^31 - 1 ms.
+    ["everySeconds", 2_147_484],
+    ["forSeconds", 2_147_484],
   ])("reports %s %j as a problem, and its default applies", (key, value) => {
     const { policy, problems } = load({ shared: { lookAgain: { [key]: value } } });
     expect(policy.shared.lookAgain).toEqual(DEFAULT);
