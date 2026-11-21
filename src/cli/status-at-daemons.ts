@@ -24,6 +24,7 @@ import {
   spawnCommitDaemon,
   worktreeStops,
 } from "./status-at-start.js";
+import { joinRequestAt, type RecordedJoins, recordedAt } from "./status-at-join.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 import { runWait } from "./wait/wait.js";
 
@@ -80,7 +81,8 @@ export interface NarrowCall {
 /** What a request did: taken, recorded and not taken yet, or why not. */
 export type Asked = "taken" | "pending" | { readonly problem: string };
 
-export interface AtDaemons {
+/** Review wave-23 B2: `RecordedJoins`, so `--wait` alone joins requests recorded and not taken yet. */
+export interface AtDaemons extends RecordedJoins {
   /** D7.1 to D7.3: the commit worktree at `commit`, its daemon serving it; its tree, or why not. */
   commit(input: CommitDaemonInput): Promise<AbsolutePath | { readonly problem: string }>;
   /** `--wait` without `--run`: the commit worktree at the resolved `commit` that serves this environment; `null`: none. */
@@ -176,6 +178,10 @@ export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
       if (outcome.kind === "stopped") return "the daemon stopped";
       return outcome.unavailable;
     },
+    // Review wave-23 B2: `--wait` alone joins requests recorded and not taken yet; it starts nothing.
+    recorded: async (root) => recordedAt(await socketOf(root, Date.now())),
+    joinRequest: async (root, request, deadline) =>
+      joinRequestAt(await socketOf(root, deadline), request, deadline),
   };
 }
 
