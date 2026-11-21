@@ -133,7 +133,7 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
  * Review wave-20 B5: `dirty` when the working tree's uncommitted paths
  * reach it, or git could not list them; only `complete` is vouched for.
  */
-function closureOf(
+export function closureOf(
   lists: ReadonlyMap<string, ReadonlySet<RelativePath>>,
   reached: Reached,
   ref: TestFileRef,
