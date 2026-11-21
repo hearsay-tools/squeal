@@ -76,7 +76,7 @@ describe("squeal status --at on a git fixture (row 023-06)", SLOW, () => {
     expect(json.code).toBe(0);
     const value = JSON.parse(json.out);
     expect(value).toMatchObject({
-      version: "squeal-status-at/1",
+      version: "squeal-status-at/2",
       commit: before,
       head: after,
       dirty: false,

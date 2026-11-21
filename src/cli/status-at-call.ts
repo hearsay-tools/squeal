@@ -90,6 +90,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
       limit: readPolicy(root).daemon.maxCommitDaemons ?? undefined,
       cacheRoot: options.cacheRoot,
       placeWaitMs: options.placeWaitMs,
+      install: options.install,
     }),
   };
   const daemons = options.daemons ?? realDaemons();

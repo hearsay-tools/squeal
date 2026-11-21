@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { environmentFingerprint } from "../core/checkout/commit-places.js";
 import { ensureCommitWorktree, readCommitWorktree } from "../core/checkout/commit-worktree.js";
+import type { InstallResult } from "../core/checkout/install.js";
 import { cacheCheckoutsRoot, gitCheckoutsDir } from "../core/checkout/location.js";
 import { cacheRepositoryDirs, listCheckouts } from "../core/checkout/sweep.js";
 import { probeDaemon } from "../core/daemon/ensure.js";
@@ -46,6 +47,8 @@ export interface CommitDaemonInput {
   readonly cacheRoot?: AbsolutePath;
   /** Tests: how long a new commit waits for a place under the ceiling (10 min by default). */
   readonly placeWaitMs?: number;
+  /** Tests: the commit worktree's install; a frozen install by default (D4.3). */
+  readonly install?: (tree: AbsolutePath) => Promise<InstallResult>;
   /** One line to stderr: the "waiting for a place" note, and removal notes. */
   readonly note: (text: string) => void;
 }
@@ -109,6 +112,7 @@ export function realDaemons(start: StartDaemon = quietStart): AtDaemons {
           ...(input.limit === undefined ? {} : { limit: input.limit }),
           ...(input.cacheRoot === undefined ? {} : { cacheRoot: input.cacheRoot }),
           ...(input.placeWaitMs === undefined ? {} : { placeWaitMs: input.placeWaitMs }),
+          ...(input.install === undefined ? {} : { install: input.install }),
         }));
       } catch (error) {
         return { problem: `the commit worktree could not be made: ${messageOf(error)}` };
