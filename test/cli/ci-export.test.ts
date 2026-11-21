@@ -96,13 +96,13 @@ describe("squeal ci export", () => {
     const { io, text: said } = capture(BASE);
     expect(await ciCommand(args, io)).toBe(2);
     expect(said()).toContain(text);
-    expect(said()).toContain("usage: squeal ci export --parts <dir>... [--out <file>]");
+    expect(said()).toContain("usage: squeal ci export --parts <dir|file>... [--out <file>]");
   });
 
   it("is in the CLI's help", async () => {
     const { io, text } = capture(BASE);
     expect(await main(["ci", "--help"], io)).toBe(0);
-    expect(text()).toContain("squeal ci export --parts <dir>... [--out <file>]");
+    expect(text()).toContain("squeal ci export --parts <dir|file>... [--out <file>]");
   });
 
   it("names both subcommands when none is given", async () => {

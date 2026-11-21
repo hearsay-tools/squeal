@@ -5,7 +5,7 @@
  */
 
 export const CODE_GATE_USAGE =
-  "squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--rerun-stored-failures] [--json]";
+  "squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir|file>...] [--timeout <seconds>] [--exceptions <file>] [--rerun-stored-failures] [--json]";
 
 /** D3.4: the one budget over every run, in seconds. */
 export const DEFAULT_BUDGET_SECONDS = 600;

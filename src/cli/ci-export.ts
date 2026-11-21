@@ -33,7 +33,7 @@ import type { CliIo } from "./main.js";
 /** An export that refused nothing. */
 type Exported = Exclude<CiExport, { readonly refused: unknown }>;
 
-export const EXPORT_USAGE = "usage: squeal ci export --parts <dir>... [--out <file>]\n";
+export const EXPORT_USAGE = "usage: squeal ci export --parts <dir|file>... [--out <file>]\n";
 
 interface ExportArgs {
   readonly parts: readonly string[];
@@ -41,8 +41,8 @@ interface ExportArgs {
 }
 
 /**
- * `squeal ci export --parts <dir>... [--out <file>]` (spec 018 D9). A `<dir>`
- * may also be one part file (row 018-63). Exit 0, 1, or 2 as before.
+ * `squeal ci export --parts <dir|file>... [--out <file>]` (spec 018 D9). A
+ * path may be a directory of parts or one part file (row 018-63). Exit 0, 1, or 2 as before.
  */
 export async function ciExportCommand(
   args: readonly string[],
@@ -58,12 +58,8 @@ export async function ciExportCommand(
   const say = (text: string) => io.stderr(`squeal ci export: ${text}; wrote nothing\n`);
   const root = findWorktreeRoot(cwd);
   if (root === null) return fail(say, `${cwd} is not inside a git worktree`);
-  const parts = readPartsIn(parsed.parts.map((dir) => resolve(cwd, dir)));
-  if (typeof parts === "string") {
-    if (parts.startsWith("no part (")) return fail(say, parts);
-    io.stderr(`squeal ci export: ${parts}\n${EXPORT_USAGE}`);
-    return 2;
-  }
+  const parts = partsOrExit(parsed.parts, cwd, io, say);
+  if (typeof parts === "number") return parts;
   // Row 018-29: what recording cost the shards, whatever the export does with their parts.
   const cost = costOf(parts.map(({ part }) => part));
   if (cost !== null) io.stderr(`squeal ci export: ${costText(cost)}\n`);
@@ -106,6 +102,24 @@ export async function ciExportCommand(
     if (!isStoreOpenFailure(store)) store.close();
     rmSync(temp, { recursive: true, force: true });
   }
+}
+
+/**
+ * The parts `--parts` names, or the exit code: 1 for a directory with no
+ * part (review of 0.1.421 B3), 2 for a path that is neither a directory nor
+ * a part file (row 018-63) or a part that does not read.
+ */
+function partsOrExit(
+  paths: readonly string[],
+  cwd: string,
+  io: CliIo,
+  say: (text: string) => void,
+): NamedPart[] | number {
+  const parts = readPartsIn(paths.map((path) => resolve(cwd, path)));
+  if (typeof parts !== "string") return parts;
+  if (parts.startsWith("no part (")) return fail(say, parts);
+  io.stderr(`squeal ci export: ${parts}\n${EXPORT_USAGE}`);
+  return 2;
 }
 
 /**

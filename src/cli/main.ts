@@ -158,7 +158,7 @@ Usage:
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
   squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...]
-              [--timeout <seconds>] [--parts <dir>...] [--exceptions <file>]
+              [--timeout <seconds>] [--parts <dir|file>...] [--exceptions <file>]
               [--rerun-stored-failures] [--json]
                                 Runs tests, with no daemon, for up to --timeout
                                 seconds (default 600) in all: judges every JS/TS
@@ -308,7 +308,7 @@ Usage:
                                 change another program makes, and restores before the
                                 command ends, can be exported at content the test did
                                 not see
-  squeal ci export --parts <dir>... [--out <file>]
+  squeal ci export --parts <dir|file>... [--out <file>]
                                 In CI, after the shards: write the parts as one export
                                 (default squeal-results-<commit8>.json.gz), keyed as a
                                 daemon in this checkout of their commit keys
