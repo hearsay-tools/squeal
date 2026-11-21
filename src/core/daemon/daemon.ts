@@ -547,7 +547,11 @@ class Daemon {
       log: this.#log,
       busyWaits: this.#busyWaits,
       storeFault: this.#storeFault,
-      shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
+      shutdown: (reason, text) => {
+        // Review wave-22 B2 (D7.2, "at most 3 hours"): the cap stops the tiers as a stop does.
+        if (reason === "lifetime-cap") this.#cancelTiers("stop");
+        void this.#shutdown(reason, 0, text);
+      },
       // Spec 023 D7.2 (row 023-39): a commit daemon's idle period and cap.
       ...(this.commit === null
         ? {}
@@ -1395,11 +1399,12 @@ class Daemon {
 
   /**
    * D10 as amended (task 001-367; row 011-31, C9 as amended 2026-10-20): a
-   * `squeal stop` or a step-down cancels the tiers in flight in every lane,
-   * as a timeout stops one, and no other starts. A
-   * runner that cannot cancel (node:test, pytest) has its processes, every
-   * carrier of this daemon's mark, stopped after `CANCEL_GRACE_MS` (D12), so
-   * its run ends; what did not complete stays queued for the next daemon.
+   * `squeal stop`, a step-down or a commit daemon's cap (spec 023 D7.2,
+   * review wave-22 B2) cancels the tiers in flight in every lane, as a
+   * timeout stops one, and no other starts. A runner that cannot cancel
+   * (node:test, pytest) has its processes, every carrier of this daemon's
+   * mark, stopped after `CANCEL_GRACE_MS` (D12), so its run ends; what did
+   * not complete stays queued for the next daemon.
    */
   #cancelTiers(cause: "stop" | "step-down"): void {
     if (this.#stopRequested) return;
