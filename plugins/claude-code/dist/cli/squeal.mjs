@@ -78728,14 +78728,14 @@ var init_local = __esm({
 });
 
 // src/core/shared/look-again.ts
-import { setTimeout as sleep18 } from "node:timers/promises";
+import { setTimeout as sleep20 } from "node:timers/promises";
 function gaveUpNote(ref3, remote, forSeconds) {
   const window2 = forSeconds % 60 === 0 ? `${forSeconds / 60} min` : `${forSeconds} s`;
   return `CI results: ${remote} had no ${ref3} after ${window2}; tests run here as before`;
 }
 async function closuresStored(store, worktreeId, revision, options) {
   while (!options.signal.aborted && !isRefined(store, worktreeId, revision)) {
-    await sleep18(options.pollMs, void 0, { signal: options.signal }).catch(() => {
+    await sleep20(options.pollMs, void 0, { signal: options.signal }).catch(() => {
     });
   }
 }
@@ -86670,7 +86670,7 @@ function limited(limit, work) {
       clock.over = true;
       const seconds6 = (allowed() / 1e3).toFixed(1);
       const progress2 = begun === 0 ? "before it listed the paths" : `${done} of ${total} paths`;
-      resolve53(`hashing the checkout passed its limit of ${seconds5} s (${progress2})`);
+      resolve53(`hashing the checkout passed its limit of ${seconds6} s (${progress2})`);
       stop2.abort();
     };
     timer = setTimeout(check3, limit.floorMs);
@@ -87872,9 +87872,9 @@ var MAP_KEY4 = {
 };
 function bundleOf(store, worktreeId, header2, files5) {
   const absolute = [];
-  const entries3 = entriesOnce(store);
+  const entries4 = entriesOnce(store);
   const sorted4 = [...files5].sort((a, b) => compare(a.file.project, b.file.project) || compare(a.file.path, b.file.path)).flatMap(({ file, records }) => {
-    const testFile = { ...file, observed: observedOf(entries3, file) };
+    const testFile = { ...file, observed: observedOf(entries4, file) };
     const results3 = [...records].sort(byCheck).map(exported);
     const path = absolutePathOfFile(testFile, results3);
     if (path === null) return [{ testFile, results: results3 }];
@@ -87900,18 +87900,18 @@ function bundleOf(store, worktreeId, header2, files5) {
 function entriesOnce(store) {
   const read7 = /* @__PURE__ */ new Map();
   return (key3) => {
-    let entries3 = read7.get(key3);
-    if (entries3 === void 0) {
-      entries3 = readSharedEntries(store, key3);
-      read7.set(key3, entries3);
+    let entries4 = read7.get(key3);
+    if (entries4 === void 0) {
+      entries4 = readSharedEntries(store, key3);
+      read7.set(key3, entries4);
     }
-    return entries3;
+    return entries4;
   };
 }
-function observedOf(entries3, testFile) {
+function observedOf(entries4, testFile) {
   return ownMap(
     OBSERVED_MAPS.flatMap((map) => {
-      const entry4 = ownValue(entries3(MAP_KEY4[map](testFile.project)), testFile.path);
+      const entry4 = ownValue(entries4(MAP_KEY4[map](testFile.project)), testFile.path);
       return entry4 === void 0 ? [] : [[map, entry4]];
     })
   );
@@ -102055,7 +102055,7 @@ init_events2();
 import { randomUUID as randomUUID20 } from "node:crypto";
 import { existsSync as existsSync57 } from "node:fs";
 import { dirname as dirname65 } from "node:path";
-import { setTimeout as sleep20 } from "node:timers/promises";
+import { setTimeout as sleep21 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath22 } from "node:url";
 
 // src/core/presence/lock-events.ts
@@ -107086,7 +107086,7 @@ var Daemon = class {
       () => true
     );
     this.#cancelling = (async () => {
-      const grace = sleep20(CANCEL_GRACE_MS, false, { ref: false });
+      const grace = sleep21(CANCEL_GRACE_MS, false, { ref: false });
       if (await Promise.race([closed, grace])) return;
       const stop2 = await this.#children.stopMarked().catch(() => null);
       if (stop2 !== null) this.#note(stop2.text, stop2.stopped);
@@ -108627,7 +108627,7 @@ init_hold_rows();
 import { spawn as spawn16 } from "node:child_process";
 import { randomUUID as randomUUID21 } from "node:crypto";
 import { constants as constants12 } from "node:os";
-import { setTimeout as sleep21 } from "node:timers/promises";
+import { setTimeout as sleep22 } from "node:timers/promises";
 var HOLD_WAIT_MS = 3e3;
 var USAGE5 = "usage: squeal hold [--max <duration>] -- <command> [args...]\n";
 var FORWARDED3 = ["SIGINT", "SIGTERM", "SIGHUP"];
@@ -108756,7 +108756,7 @@ async function holdDaemon(root, ask2, waitMs) {
   }
   if (answer4.type !== "hold") return "";
   for (let state = answer4; !state.settled && performance.now() < deadline; ) {
-    await sleep21(50);
+    await sleep22(50);
     const next = await ask2(root, { type: "hold-status", requestId: answer4.requestId }).catch(
       () => null
     );
@@ -108815,7 +108815,7 @@ init_transfer_import();
 
 // src/cli/import-daemon.ts
 init_heartbeat();
-import { setTimeout as sleep22 } from "node:timers/promises";
+import { setTimeout as sleep23 } from "node:timers/promises";
 var STATUS_PAUSES_MS3 = [20, 50, 100, 250];
 async function importThroughDaemon(store, sent, now) {
   const record2 = store.worktrees.get(sent.worktreeId)?.daemon ?? null;
@@ -108826,7 +108826,7 @@ async function importThroughDaemon(store, sent, now) {
   if (!isImport(answer4)) return null;
   let state = answer4;
   for (let attempt = 0; state.outcome === null; attempt++) {
-    await sleep22(STATUS_PAUSES_MS3[Math.min(attempt, STATUS_PAUSES_MS3.length - 1)]);
+    await sleep23(STATUS_PAUSES_MS3[Math.min(attempt, STATUS_PAUSES_MS3.length - 1)]);
     const next = await askDaemon(socket, {
       type: "import-status",
       requestId: answer4.requestId
@@ -116062,7 +116062,7 @@ init_user_config();
 init_git_layout();
 import { homedir as homedir6 } from "node:os";
 import { isAbsolute as isAbsolute33, resolve as resolve47 } from "node:path";
-import { setTimeout as sleep23 } from "node:timers/promises";
+import { setTimeout as sleep24 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
 init_source();
@@ -116202,14 +116202,14 @@ var DarwinSource = class {
 function ticksOf(time) {
   const m = TIME.exec(time);
   if (m === null) return null;
-  const [, days = "0", hours = "0", minutes2 = "0", seconds5 = "0", fraction = "0"] = m;
-  const total = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes2)) * 60 + Number(seconds5);
+  const [, days = "0", hours = "0", minutes2 = "0", seconds6 = "0", fraction = "0"] = m;
+  const total = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes2)) * 60 + Number(seconds6);
   return total * CLOCK_TICKS + Math.round(Number(`0.${fraction}`) * CLOCK_TICKS);
 }
 function localTime(year, month, day2, time) {
   const index = MONTHS.indexOf(month);
-  const [hours = 0, minutes2 = 0, seconds5 = 0] = time;
-  const date = new Date(year, index, day2, hours, minutes2, seconds5);
+  const [hours = 0, minutes2 = 0, seconds6 = 0] = time;
+  const date = new Date(year, index, day2, hours, minutes2, seconds6);
   return index < 0 || date.getDate() !== day2 || date.getMonth() !== index ? null : date.getTime();
 }
 function usedMemory(text3) {
@@ -119302,7 +119302,7 @@ function commonFolder(paths) {
 }
 function testEntries(analysis) {
   const entries4 = analysis.tests.filter((t) => t.imports > 0).map((t) => {
-    const seconds5 = t.test.seconds ?? 0;
+    const seconds6 = t.test.seconds ?? 0;
     let via = null;
     for (const [path, uncalled] of t.uncalledVia) {
       if (via === null || uncalled > via.uncalled) via = { path, uncalled };
@@ -119989,7 +119989,7 @@ Usage: ${REACH_USAGE}
 // src/cli/remove.ts
 import { existsSync as existsSync77, lstatSync as lstatSync12, readdirSync as readdirSync48, readFileSync as readFileSync86, rmSync as rmSync43 } from "node:fs";
 import { basename as basename41, dirname as dirname69, join as join199 } from "node:path";
-import { setTimeout as sleep24 } from "node:timers/promises";
+import { setTimeout as sleep25 } from "node:timers/promises";
 init_paths4();
 init_scratch();
 init_git();
@@ -121594,13 +121594,13 @@ function registered(root, ping2) {
 // src/cli/stop.ts
 import { realpathSync as realpathSync36 } from "node:fs";
 import { resolve as resolve51 } from "node:path";
-import { setTimeout as sleep30 } from "node:timers/promises";
+import { setTimeout as sleep31 } from "node:timers/promises";
 init_git_layout();
 init_paths();
 
 // src/cli/stop-at.ts
 import { existsSync as existsSync78 } from "node:fs";
-import { setTimeout as sleep28 } from "node:timers/promises";
+import { setTimeout as sleep29 } from "node:timers/promises";
 init_git_layout();
 
 // src/cli/stop-waits.ts
@@ -121676,7 +121676,7 @@ async function stopOne(tree, short6, io, bounds) {
   const response = await askDaemon(socketPath, { type: "stop" }).catch(() => null);
   if (response !== null && !await socketClosed(socketPath, bounds.socketMs)) {
     io.stdout(
-      `Stop requested; the commit daemon at ${short6} (${tree}) still serves after ${seconds4(bounds.socketMs)}
+      `Stop requested; the commit daemon at ${short6} (${tree}) still serves after ${seconds5(bounds.socketMs)}
 `
     );
     return 1;
@@ -121684,7 +121684,7 @@ async function stopOne(tree, short6, io, bounds) {
   const daemon = readCommitWorktree(tree)?.daemon;
   if (daemon !== void 0 && !await gone4(daemon, bounds.lockMs)) {
     io.stdout(
-      `Stop requested; the commit daemon at ${short6}, pid ${daemon.pid}, is still running after ${seconds4(bounds.lockMs)}
+      `Stop requested; the commit daemon at ${short6}, pid ${daemon.pid}, is still running after ${seconds5(bounds.lockMs)}
 `
     );
     return 1;
@@ -121705,7 +121705,7 @@ async function gone4(daemon, ms2) {
   const deadline = Date.now() + ms2;
   while (leaseProcessAlive(daemon) === true) {
     if (Date.now() > deadline) return false;
-    await sleep28(50);
+    await sleep29(50);
   }
   return true;
 }
@@ -121713,7 +121713,7 @@ async function gone4(daemon, ms2) {
 // src/cli/stop-removed.ts
 import { realpathSync as realpathSync34 } from "node:fs";
 import { basename as basename43, dirname as dirname71, join as join201 } from "node:path";
-import { setTimeout as sleep29 } from "node:timers/promises";
+import { setTimeout as sleep30 } from "node:timers/promises";
 init_paths4();
 init_terminate();
 init_git_layout();
@@ -121878,7 +121878,7 @@ async function processEnded(pid, start2, ms2) {
     const gone6 = start2 === null ? processGone(pid) : statOf(pid)?.start !== start2;
     if (gone6) return true;
     if (Date.now() > deadline) return false;
-    await sleep29(50);
+    await sleep30(50);
   }
 }
 
@@ -122131,7 +122131,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone5(root, daemon)) return { state: "free" };
     const probe2 = marked3(path, daemon) ?? probeLock(path);
     if (probe2.state === "free" || Date.now() > deadline) return probe2;
-    await sleep30(50);
+    await sleep31(50);
   }
 }
 function marked3(path, daemon) {
