@@ -314,6 +314,22 @@ export interface PingResponse {
   readonly squealVersion: string;
   readonly phase: DaemonPhase;
   readonly startedAt: EpochMs;
+  /**
+   * Spec 023 D7.3 (review wave-23 B2): the `run-group-paths` requests the
+   * socket recorded that the scheduler has not taken, failed or answered
+   * unknown yet (its startup or a listing still holds them), oldest first;
+   * absent when there are none, and from a daemon before it. A later
+   * `status --at --wait` joins them by `requestId` (`run-group-status`).
+   */
+  readonly recorded?: readonly RecordedRequest[];
+}
+
+/** Review wave-23 B2: one narrow request recorded and not taken yet, as `PingResponse.recorded` lists it. */
+export interface RecordedRequest {
+  readonly requestId: string;
+  readonly group: string;
+  /** The request's paths, relative to the daemon's root, as `RunGroupPathsRequest.paths`. */
+  readonly paths: readonly RelativePath[];
 }
 
 export interface NudgeResponse {

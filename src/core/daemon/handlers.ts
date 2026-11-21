@@ -13,6 +13,8 @@ import {
   type DaemonResponse,
   daemonIncarnation,
   type HoldResponse,
+  type PingResponse,
+  type RecordedRequest,
   type RunAllResponse,
   type RunSlowResponse,
   type SyncAnswer,
@@ -196,6 +198,25 @@ interface HoldState {
 }
 
 /**
+ * The `ping` answer. Review wave-23 B2: with the narrow requests not taken
+ * yet, so a later `status --at --wait` joins them; none: no field.
+ */
+function pingAnswer(context: HandlerContext, recorded: readonly RecordedRequest[]): PingResponse {
+  return {
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "ping",
+    pid: process.pid,
+    worktreeId: context.worktreeId,
+    root: context.root,
+    squealVersion: context.squealVersion,
+    phase: context.phase(),
+    startedAt: context.startedAt,
+    ...(recorded.length === 0 ? {} : { recorded }),
+  };
+}
+
+/**
  * Socket request handlers. Every answer comes from memory, so each one fits
  * the hooks' 100 ms socket budget while a tier runs (spec 001 D9). Review
  * wave 2: "never await scheduler work in the socket handler".
@@ -278,17 +299,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     if (isDeskRequest(request)) return deskAnswer(request, { imports, keeps }, context.phase());
     switch (request.type) {
       case "ping":
-        return {
-          schemaVersion: PAYLOAD_SCHEMA_VERSION,
-          ok: true,
-          type: "ping",
-          pid: process.pid,
-          worktreeId: context.worktreeId,
-          root: context.root,
-          squealVersion: context.squealVersion,
-          phase: context.phase(),
-          startedAt: context.startedAt,
-        };
+        return pingAnswer(context, groups.recorded());
       case "nudge":
         context.onActivity();
         context.onNudge?.();
