@@ -77,6 +77,17 @@ export interface NodeTestSettings {
   /** Where the reporter writes each `node --test` process's events. */
   readonly events: AbsolutePath;
   /**
+   * Row 018-68: the command's env carries `NODE_TEST_CONTEXT`, so this recording
+   * runs inside a node:test test's process. Node itself skips every `node --test`
+   * of the command ("run() is being called recursively within a test file"), and
+   * a process that merely inherited the variable (a Vitest CLI, `npm`) is no test
+   * file's process: the hook writes no `<pid>.json`, so no empty part and no
+   * "names no Squeal reporter" line stands in for a run that never was. A real
+   * empty run (`node --test`, no matching files) has no `NODE_TEST_CONTEXT` in
+   * the command's env, so it keeps its part.
+   */
+  readonly skipped: boolean;
+  /**
    * The variables the `nodeTest` entries' `env` names (D25) and the policy's
    * `env.allowlist` (review of 0.1.579 B2): the reporter writes their values.
    */
@@ -140,7 +151,14 @@ export function startNodeTestRecording(
   for (const dir of [graph, events]) mkdirSync(dir);
   const named = options.entries.flatMap((entry) => Object.keys(entry.env));
   const variables = [...new Set([...named, ...options.allowlist])];
-  const settings = { nodeTest: { graph, events, variables: variables.sort() } };
+  const settings = {
+    nodeTest: {
+      graph,
+      events,
+      variables: variables.sort(),
+      skipped: options.env.NODE_TEST_CONTEXT !== undefined,
+    },
+  };
   const hooks = [runtime.hook, recorder];
   const addition = { hooks, settings, env: { [NODE_TEST_REPORTER_VARIABLE]: runtime.reporter } };
   let evidence: AbsolutePath | null = null;

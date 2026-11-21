@@ -104,6 +104,24 @@ describe("ci record of a node:test command", () => {
       expect(ts?.observed?.paths).toEqual(["lib/c.ts", "test/ts.test.ts"]);
     },
   );
+
+  // Row 018-68: a real empty run (no matching files) keeps its part and prints
+  // no "names no Squeal reporter" line, unlike a `node --test` Node itself
+  // skipped inside a test (an inner `ci record`), which is told apart by
+  // `NODE_TEST_CONTEXT` in the command's env.
+  it("writes the empty part of a run that matched no file", SLOW, async () => {
+    const root = project();
+    const command = nodeTestCommand(process.execPath, [...reporterPair(), "nope/*.test.mjs"]);
+    const recorded = await record(root, command);
+    expect(recorded.code, recorded.stderr).toBe(0);
+    expect(recorded.parts).toHaveLength(1);
+    const part = recorded.parts[0];
+    if (part === undefined) throw new Error("no part");
+    expect(part.header.end).toBe("completed");
+    expect(part.testFiles).toEqual([]);
+    expect(part.header.nodeTest?.noFiles).toBeUndefined();
+    expect(recorded.stderr).not.toContain("names no Squeal reporter");
+  });
 });
 
 describe("ci record of a node:test command's variables and children", () => {

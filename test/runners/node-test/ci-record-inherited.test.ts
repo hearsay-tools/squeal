@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type Part, readPart } from "../../../src/core/ci/parts.js";
@@ -19,7 +19,11 @@ import {
  * stale one in the CI job's own environment would read every process of the
  * recorded command as nested, so no part would be written; and a test that
  * starts another `ci record` gets that recording its own, while the outer
- * command's evidence stays withheld for it (D9, review of 018-23 B2).
+ * command's evidence stays withheld for it (D9, review of 018-23 B2). The
+ * `NODE_TEST_CONTEXT` the outer test's process set stays in an inner command's
+ * env too (row 018-68): no process of it is a test file's process, so no inner
+ * recording leaves an empty node:test part or a "names no Squeal reporter"
+ * line for a run that never was.
  */
 
 const SLOW = { timeout: 300_000 } as const;
@@ -58,23 +62,35 @@ function bothFixture(): string {
   });
 }
 
-/** A node:test test that starts another `squeal ci record` around a Vitest run. */
+/** A node:test test that starts other `squeal ci record`s: around a Vitest run and a `node --test`. */
 function innerFixture(): string {
   return committed(scratch("ci-inner-record"), {
     "package.json": JSON.stringify({ name: "ci-inner-record", private: true, type: "module" }),
     "squeal.config.json": '{"nodeTest":[{"name":"unit","include":["node/*.test.mjs"]}]}\n',
     "vitest.config.ts": `export default { test: { include: ["vt/**/*.test.ts"] } }\n`,
     "vt/plain.test.ts": `import { expect, it } from "vitest";\nit("adds", () => expect(1 + 1).toBe(2));\n`,
+    "inner/plain.test.mjs": `import { test } from "node:test";\ntest("inside a test", () => {});\n`,
     "node/starts-record.test.mjs": `import { spawnSync } from "node:child_process";
 import { test } from "node:test";
-const inner = [process.execPath, ${JSON.stringify(VITEST)}, "run", "vt/plain.test.ts"];
-test("starts another squeal ci record", () => {
+const record = (out, command) => {
   const run = spawnSync(
     process.execPath,
-    ["--import", "tsx", ${JSON.stringify(CLI)}, "ci", "record", "--out", "inner-parts", "--", ...inner],
+    ["--import", "tsx", ${JSON.stringify(CLI)}, "ci", "record", "--out", out, "--", ...command],
     { encoding: "utf8" },
   );
+  console.error(run.stderr);
   if (run.status !== 0) throw new Error(run.stderr);
+};
+test("starts a ci record around vitest run", () => {
+  record("inner-parts", [process.execPath, ${JSON.stringify(VITEST)}, "run", "vt/plain.test.ts"]);
+});
+test("starts a ci record around node --test", () => {
+  record("inner-node-parts", [
+    process.execPath,
+    "--test",
+    ...${JSON.stringify(reporterPair())},
+    "inner/plain.test.mjs",
+  ]);
 });
 `,
   });
@@ -167,15 +183,21 @@ describe("squeal ci record below a stale node:test marker (row 018-60)", () => {
       // command, so its Vitest run is a part (before row 018-60, the stale
       // marker read every process of it as nested and nothing was written).
       // The inherited `NODE_TEST_CONTEXT` (Node's own, which the outer test's
-      // process set) stays in it, as decided for this row: the node:test hook
-      // then also leaves one empty node:test part, whose file never ran.
+      // process set) stays in its command's env, so Node itself skips an inner
+      // `node --test`, and no process of the command is a test file's process
+      // (row 018-68): neither inner recording leaves an empty node:test part
+      // or a "names no Squeal reporter" line for a run that never was.
       expect(
         partsIn(join(origin, "inner-parts")).map((p) => [
           p.header.runner,
           p.testFiles.map((f) => f.path),
         ]),
         recorded.said,
-      ).toEqual(expect.arrayContaining([["vitest", ["vt/plain.test.ts"]]]));
+      ).toEqual([["vitest", ["vt/plain.test.ts"]]]);
+      const innerNode = join(origin, "inner-node-parts");
+      const skippedParts = existsSync(innerNode) ? partsIn(innerNode) : [];
+      expect(skippedParts, recorded.said).toEqual([]);
+      expect(recorded.said).not.toContain("names no Squeal reporter");
       expect(
         partsIn(out).map((p) => [p.header.runner, p.testFiles.map((f) => f.path)]),
         recorded.said,
