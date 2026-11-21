@@ -117,7 +117,8 @@ describe("status --at --run at its budget (row 023-19, P3)", SLOW, () => {
         [A1, A2].map((file) => ({ ...result(check(file.path), "elsewhere"), durationMs: 900_000 })),
       ),
     );
-    const daemons = standIn(standInTree(f), () => undefined);
+    // Row 023-40c: the commit daemon selects the four files; the call tells the estimate of them.
+    const daemons = standIn(standInTree(f), () => undefined, { select: () => [A1, A2, Z, ZZ] });
     const options = {
       cacheRoot: f.cacheRoot,
       install: linkInstall().install,

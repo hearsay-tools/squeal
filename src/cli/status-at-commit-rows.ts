@@ -73,7 +73,8 @@ export async function rowsSide(
     if (row.pending !== null && row.pending !== undefined)
       return { state: "no result", key: row.key, pending: row.pending };
     if (chose && !queued.has(testFileId(ref)))
-      return { state: "no result", key: row.key, notSelected: true };
+      // Row 023-35 (T2): the call cannot tell whether the static closure is complete.
+      return { state: "no result", key: row.key, notSelected: true, closure: "unchecked" };
     return now;
   };
   const at: CommitSide = {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { clean, run, standIn, standInTree, testOf } from "./status-at-kit.js";
+import { clean, run, standIn, standInTree, testOf, withStore } from "./status-at-kit.js";
 
 /*
  * Row 023-29 (lessons round 4, R8) on a `$TMPDIR` git fixture with the
@@ -25,9 +27,26 @@ function changedA() {
   });
   const a = git(f.root, "rev-parse", "HEAD").trim();
   f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: testOf("a", 2) });
-  // Row 023-40: stand-in daemons record what `--run` queues.
+  // Row 023-40: stand-in daemons record what `--run` queues; row 023-40c: the commit daemon
+  // lists both files and selects what the change selects (TEST), or the file the call names.
   const tree = standInTree(f);
-  const daemons = standIn(tree, () => undefined);
+  const queued = (files: readonly TestFileRef[], pending: "queued" | null) =>
+    withStore(f, (store) =>
+      store.testFileKeys.upsertMany(
+        files.map((testFile) => ({
+          worktreeId: worktreeIdFor(tree),
+          testFile,
+          key: `commit-${testFile.path}`,
+          revision: 2,
+          pending,
+        })),
+      ),
+    );
+  queued([TEST, PLAIN], null);
+  const daemons = standIn(tree, () => undefined, {
+    select: (ask) => (ask.named.includes(PLAIN.path) ? [PLAIN] : [TEST]),
+    rows: (_at, files) => queued(files, "queued"),
+  });
   const options = {
     cacheRoot: f.cacheRoot,
     install: linkInstall().install,
@@ -57,9 +76,7 @@ describe(
       expect(text.out).toContain(
         `--run: queued 1 test files with no result at ${at} in its commit daemon (its worktree ${tree}); 0 have a result now`,
       );
-      expect(daemons.asks.filter((ask) => ask.root === tree).map((ask) => ask.paths)).toEqual([
-        [TEST.path],
-      ]);
+      expect(daemons.commitAsks.map((ask) => ask.named)).toEqual([["test"]]);
       expect(text.out).toContain(
         `1 more with no result at ${at} not selected by the change did not run; \`--all-missing\` runs it`,
       );
@@ -93,8 +110,8 @@ describe(
       expect(text.out).not.toContain("no file with no result");
       expect(text.out).not.toContain("not selected by the change");
       // Row 023-40: queued on both sides, in each daemon, the named file leading.
+      expect(daemons.commitAsks.map((ask) => ask.named)).toEqual([[PLAIN.path]]);
       expect(daemons.asks.map((ask) => [ask.root, ask.paths, ask.call.lead])).toEqual([
-        [tree, [PLAIN.path], true],
         [f.root, [PLAIN.path], true],
       ]);
       expect(text.out).toContain(

@@ -166,34 +166,35 @@ interface Chosen {
 }
 
 /**
- * D4.5 at the commit: of the files with no result at their live key, the
- * ones the call names (a named path that is no test file names the files
- * that read it), then the ones the change selects (and each with no key),
- * or every one with `--all-missing`. `null` when no scheduler serves.
+ * D4.5 at the commit, as the call's keying chose before row 023-40c: the
+ * candidates are the files the call's paths select (by path, or for a path
+ * that is no test file, the files that read it), every file when it names
+ * none. Of the candidates with no result at their live key, a test file
+ * the call names by its own path runs first, whatever the change; the
+ * others run when the change selects them (or when they have no key, which
+ * no closure index holds), or every one with `--all-missing`. `null` when
+ * no scheduler serves.
  */
 export async function choose(request: CommitAskRequest, ports: AtAskPorts): Promise<Chosen | null> {
   const rows = ports.rows();
   const changed = request.allMissing ? [] : await ports.changedSelects(request.changed);
   if (changed === null) return null;
-  const named = new Set<string>();
   const readers: Record<RelativePath, readonly TestFileRef[]> = {};
   for (const path of request.named) {
-    const own = rows.filter((row) => selects([path], row.testFile.path));
-    if (own.length > 0) {
-      for (const row of own) named.add(testFileId(row.testFile));
-      continue;
-    }
-    const read = (await ports.changedSelects([path])) ?? [];
-    readers[path] = read;
-    for (const ref of read) named.add(testFileId(ref));
+    if (rows.some((row) => selects([path], row.testFile.path))) continue;
+    readers[path] = (await ports.changedSelects([path])) ?? [];
   }
+  const read = new Set(Object.values(readers).flat().map(testFileId));
+  const candidate = (ref: TestFileRef) =>
+    request.named.length === 0 || selects(request.named, ref.path) || read.has(testFileId(ref));
+  const own = new Set(request.named);
   const selected = new Set(changed.map(testFileId));
-  const missing = rows.filter((row) => row.key === null || !ports.stored(row.testFile, row.key));
   const first: TestFileRef[] = [];
   const rest: TestFileRef[] = [];
-  for (const { testFile, key } of missing) {
+  for (const { testFile, key } of rows) {
+    if (!candidate(testFile) || (key !== null && ports.stored(testFile, key))) continue;
     const id = testFileId(testFile);
-    if (named.has(id)) first.push(testFile);
+    if (own.has(testFile.path)) first.push(testFile);
     // 023-46's seam: a file with no key is in no closure index, so it is selected, never unaffected.
     else if (request.allMissing || selected.has(id) || key === null) rest.push(testFile);
   }
