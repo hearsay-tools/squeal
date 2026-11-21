@@ -155,6 +155,7 @@ test/daemon/composite-runner
 test/daemon/died-startup
 test/daemon/repeated-notes
 test/daemon/escaped-run-mark
+test/daemon/run-groups-watch
 test/daemon/bare-note-inputs
 test/daemon/step-down-lanes
 test/daemon/reload-projects
