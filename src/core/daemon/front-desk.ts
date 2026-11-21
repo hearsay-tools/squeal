@@ -88,11 +88,15 @@ function bind(identity: DeskIdentity): void {
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
       }),
-    requestGroup: (group, held, paths) =>
+    requestGroup: (group, held, paths, options) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
         waitingGroup.set(id, { resolve, reject, held });
-        post({ type: "run-group", id, group, ...(paths === undefined ? {} : { paths }) });
+        const narrow = {
+          ...(paths === undefined ? {} : { paths }),
+          ...(options === undefined ? {} : { options }),
+        };
+        post({ type: "run-group", id, group, ...narrow });
       }),
     mainStep: () => steps.current(),
     requestSync: (paths) =>
@@ -108,11 +112,11 @@ function bind(identity: DeskIdentity): void {
         post({ type: "hold", id });
       }),
     requestResume: async () => post({ type: "resume" }),
-    requestTakeBack: (coveredIds) =>
+    requestTakeBack: (owners) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
         waitingTakeBack.set(id, { resolve, reject });
-        post({ type: "take-back", id, coveredIds });
+        post({ type: "take-back", id, owners });
       }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),

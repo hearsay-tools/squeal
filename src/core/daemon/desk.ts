@@ -12,7 +12,12 @@ import type {
   SentBatch,
 } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { FullSuiteCheckpoint, FullSuiteRequest, TakeBackResult } from "../types/scheduler.js";
+import type {
+  FullSuiteCheckpoint,
+  FullSuiteRequest,
+  NarrowRunOptions,
+  TakeBackResult,
+} from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import { GROUP_NOT_SUPPORTED, type GroupRequested, type Held, MainSteps } from "./run-group.js";
@@ -62,6 +67,7 @@ export interface DeskEvents {
     group: string,
     held: Held,
     paths?: readonly RelativePath[],
+    options?: NarrowRunOptions,
   ) => Promise<GroupRequested | null>;
   /** Row 023-36 (T3): a `status --at --run` asked for `paths` (`HandlerContext.onAtRun`). */
   readonly onAtRun?: (paths: readonly RelativePath[]) => void;
@@ -77,7 +83,7 @@ export interface DeskEvents {
   /** `squeal hold` ended, or `squeal start`: the command holds read again. */
   readonly requestResume?: () => Promise<void>;
   /** Row 023-34 (T1): `Scheduler.takeBack`; absent: the daemon answers it cannot take back. */
-  readonly requestTakeBack?: (coveredIds: readonly string[]) => Promise<TakeBackResult>;
+  readonly requestTakeBack?: (owners: readonly string[]) => Promise<TakeBackResult>;
   /**
    * Spec 021 D15 (row 021-16): writes a batch a hook or command sent, in
    * the retried path; rejects with why not. Absent, or without
@@ -326,7 +332,7 @@ async function inWorker(
           // Row 011-302: posted only while the request waits; the daemon stops telling once taken.
           const held: Held = (holder) => post({ type: "run-group-held", id: message.id, holder });
           (
-            events.requestGroup?.(message.group, held, message.paths) ??
+            events.requestGroup?.(message.group, held, message.paths, message.options) ??
             Promise.reject(new Error(GROUP_NOT_SUPPORTED))
           ).then(
             (requested) =>
@@ -370,7 +376,7 @@ async function inWorker(
           return;
         case "take-back":
           (
-            events.requestTakeBack?.(message.coveredIds) ??
+            events.requestTakeBack?.(message.owners) ??
             Promise.reject(new Error("this daemon cannot take back"))
           ).then(
             (result) => post({ type: "take-back-result", id: message.id, result, error: null }),

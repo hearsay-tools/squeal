@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { withStores } from "../core/commit/at-keys-checkout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -69,6 +70,9 @@ export function workingTree(input: TurnInput): WorkingTree {
   let files: TestFileRef[] = [];
   let end: NowRunEnd | null = null;
   const { timeoutSeconds } = input;
+  // Row 023-34 (review wave-20 B1-B3): the call's own identity, the same for each of its daemon
+  // requests, and (B2) whether it named its files.
+  const call = { owner: randomUUID(), lead: read.paths !== null };
   /** T4: the files sent through the gate for the commit side's unkept ones, by `testFileId`. */
   const gated = new Set<string>();
   const keyOf = (ref: TestFileRef) => {
@@ -85,6 +89,7 @@ export function workingTree(input: TurnInput): WorkingTree {
     const next = await runNow({
       alone,
       keyOf,
+      call,
       root: read.root,
       commonDir: read.commonDir,
       files: list,

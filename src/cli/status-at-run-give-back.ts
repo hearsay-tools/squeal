@@ -30,10 +30,10 @@ export const NOT_SUPPORTED = "this daemon cannot take back";
 /** `take-back` and its status until the scheduler answered or `deadline` (epoch ms). */
 export async function askTakeBack(
   socketPath: AbsolutePath,
-  coveredIds: readonly string[],
+  owners: readonly string[],
   deadline: number,
 ): Promise<TakeBackResult | string> {
-  const first = await askWithin(socketPath, { type: "take-back", coveredIds }, deadline);
+  const first = await askWithin(socketPath, { type: "take-back", owners }, deadline);
   let answer = first;
   for (;;) {
     if (answer === null) return "no daemon answered";
@@ -65,14 +65,12 @@ export async function giveBack(
   ports: DaemonPorts,
 ): Promise<NowRunEnd> {
   const { asked } = end;
-  if (asked === undefined || asked.coveredIds.length === 0 || ports.takeBack === undefined)
-    return end;
+  if (asked === undefined || asked.owners.length === 0 || ports.takeBack === undefined) return end;
   const left = endMs - performance.now();
-  const waited =
-    left > 0 ? await ports.wait(asked.files, Date.now() + left).catch(() => BUDGET_ENDED) : null;
-  if (waited === null && end.problem === null) return end;
+  if (left > 0) await ports.wait(asked.files, Date.now() + left).catch(() => BUDGET_ENDED);
+  // Review wave-20 B3: always, so a request the daemon has not taken yet is cancelled too.
   const result = await ports
-    .takeBack(asked.coveredIds, Date.now() + TAKE_BACK_MS)
+    .takeBack(asked.owners, Date.now() + TAKE_BACK_MS)
     .catch((e: unknown) => String(e));
   if (result === NOT_SUPPORTED) return end;
   if (typeof result === "string") {

@@ -27,8 +27,13 @@ import type {
   SentBatch,
 } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { FullSuiteCheckpoint, FullSuiteRequest, TakeBackResult } from "../types/scheduler.js";
-import { errorResponse } from "./protocol.js";
+import type {
+  FullSuiteCheckpoint,
+  FullSuiteRequest,
+  NarrowRunOptions,
+  TakeBackResult,
+} from "../types/scheduler.js";
+import { errorResponse, narrowOptionsOf } from "./protocol.js";
 import { RequestDesk } from "./request-desk.js";
 import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
@@ -77,6 +82,7 @@ export interface HandlerContext {
     group: string,
     held: Held,
     paths?: readonly RelativePath[],
+    options?: NarrowRunOptions,
   ) => Promise<GroupRequested | null>;
   /**
    * Row 011-302: the main thread's step that may block it, which a pending
@@ -171,7 +177,7 @@ export interface HandlerContext {
    * queued (`Scheduler.takeBack`), never awaited. Absent: this daemon
    * answers that it cannot take back.
    */
-  readonly requestTakeBack?: (coveredIds: readonly string[]) => Promise<TakeBackResult>;
+  readonly requestTakeBack?: (owners: readonly string[]) => Promise<TakeBackResult>;
 }
 
 interface RunAllState {
@@ -356,7 +362,8 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         context.onActivity();
         // Row 023-36 (T3): told before the request, so its runs are flagged from the first.
         if (request.at === true) context.onAtRun?.(request.paths);
-        return groups.start(request.group, request.paths);
+        // Row 023-34 (review wave-20 B1-B3): the call's identity and whether it leads.
+        return groups.start(request.group, request.paths, narrowOptionsOf(request));
       case "run-group-status":
         return (
           groups.status(request.requestId) ??
@@ -364,7 +371,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         );
       // Row 023-34 (T1): it only takes queued files out, so a stopping daemon takes it too.
       case "take-back":
-        return takeBacks.take(request.coveredIds);
+        return takeBacks.take(request.owners);
       case "take-back-status":
         return takeBacks.status(request.requestId);
       case "sync": {
