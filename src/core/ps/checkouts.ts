@@ -1,9 +1,11 @@
+import { basename, dirname } from "node:path";
+import { commitIdentity, IDENTITY_FAILED } from "../checkout/commit-identity.js";
 import { cacheCheckoutsRoot, gitCheckoutsDir } from "../checkout/location.js";
-import { ownerOf } from "../checkout/marker.js";
+import { type CheckoutMarker, ownerOf } from "../checkout/marker.js";
 import { cacheRepositoryDirs, type ListedCheckout, listCheckouts } from "../checkout/sweep.js";
 import { shellWord } from "../text.js";
 import type { PsPlaces } from "./model.js";
-import type { PsCheckout } from "./shape.js";
+import type { PsCheckout, PsFlag } from "./shape.js";
 
 /*
  * Spec 023 D6 (row 023-05): the temporary checkouts `squeal ps` lists, with
@@ -39,16 +41,25 @@ function shapeOf(listed: ListedCheckout): PsCheckout {
       ? {}
       : { kind: "commit" as const, daemon: marker.daemon !== undefined }),
     owner,
-    flags: dead
-      ? [
-          {
-            flag: "dead-checkout",
-            reason: `its owner, pid ${ownerOf(marker).pid}, is gone`,
-            command: removal(marker.commonDir, listed),
-          },
-        ]
-      : [],
+    flags: dead ? [deadFlag(listed, marker)] : [],
   };
+}
+
+/**
+ * Review wave-23 N1: a commit worktree's folder is never given `rm -rf`.
+ * One Squeal made goes through `squeal stop --at`, which removes only what
+ * Squeal made; any other (its tree fails the identity check, or a removal
+ * kept files Squeal did not make) gets no command, only the sweep's words.
+ */
+function deadFlag(listed: ListedCheckout, marker: CheckoutMarker): PsFlag {
+  const reason = `its owner, pid ${ownerOf(marker).pid}, is gone`;
+  if (marker.fingerprint === undefined)
+    return { flag: "dead-checkout", reason, command: removal(marker.commonDir, listed) };
+  if (commitIdentity(listed.tree) === null)
+    return { flag: "dead-checkout", reason: `${reason}; ${IDENTITY_FAILED}`, command: null };
+  const repo = basename(marker.commonDir) === ".git" ? dirname(marker.commonDir) : listed.tree;
+  const command = `cd ${shellWord(repo)} && squeal stop --at ${marker.commit}`;
+  return { flag: "dead-checkout", reason, command };
 }
 
 /** What `removeTree` does, as shell commands. */

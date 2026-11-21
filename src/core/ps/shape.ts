@@ -269,7 +269,10 @@ export type PsFlagName =
 export interface PsFlag {
   readonly flag: PsFlagName;
   readonly reason: string;
-  /** The command that would end it, its paths quoted for the shell; `null` for `dead-consumer`. */
+  /**
+   * The command that would end it, its paths quoted for the shell; `null` for
+   * `dead-consumer`, and for a commit worktree's folder Squeal does not remove (review wave-23 N1).
+   */
   readonly command: string | null;
 }
 
