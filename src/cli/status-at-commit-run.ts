@@ -93,7 +93,13 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
           ...(input.paths === null ? {} : { named: input.paths }),
         })
       : null;
-  const keying = { adapters: daemonAdapters, squealVersion: squealVersion(), env: input.env };
+  // Row 023-35 (T2): each node:test project's files with an incomplete static closure.
+  const lists = new Map<string, ReadonlySet<RelativePath>>();
+  const adapters: typeof daemonAdapters = (root, policy, tempDir) =>
+    daemonAdapters(root, policy, tempDir, (project, files) =>
+      lists.set(project, new Set(files.map(([path]) => path))),
+    );
+  const keying = { adapters, squealVersion: squealVersion(), env: input.env };
   const at = await commitSide({
     ...keying,
     ...checkoutOptions,
@@ -104,8 +110,27 @@ export async function commitRun(input: CommitRunInput): Promise<CommitRun> {
     note: input.note,
     ...hooksOf(ran, probe, run),
   });
-  const state = ran === null ? at.state : (ref: TestFileRef) => ran.state(ref, at.state(ref));
+  const state =
+    ran === null
+      ? at.state
+      : (ref: TestFileRef) => closureOf(lists, ref, ran.state(ref, at.state(ref)));
   return { at, ran, probe, state };
+}
+
+/**
+ * Row 023-35 (T2): a file the change did not select, with what its runner
+ * told of its static closure: `unchecked` when it told nothing (Vitest, or
+ * a project whose list never came), so the report never vouches for it.
+ */
+function closureOf(
+  lists: ReadonlyMap<string, ReadonlySet<RelativePath>>,
+  ref: TestFileRef,
+  side: SideState,
+): SideState {
+  if (side.state !== "no result" || side.notSelected !== true) return side;
+  const list = lists.get(ref.project);
+  const closure = list === undefined ? "unchecked" : list.has(ref.path) ? "incomplete" : "complete";
+  return { ...side, closure };
 }
 
 /** The checkout's hooks: `--run`'s, with its install inside the one budget (D4.6), or Q1's probe. */

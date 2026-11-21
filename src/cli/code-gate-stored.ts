@@ -9,6 +9,7 @@ import type { KeptAt } from "../core/code/gate/keep.js";
 import { partsEvidence } from "../core/code/gate/parts.js";
 import type { PartRefusal } from "../core/code/gate/parts-refused.js";
 import type { GateAdapters } from "../core/code/gate/runners.js";
+import type { IncompleteClosure } from "../core/code/gate/select-closures.js";
 import { openStored, type StoredFiles } from "../core/code/gate/stored.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "../core/code/gate/types.js";
 import { readPolicy } from "../core/daemon/policy.js";
@@ -225,6 +226,11 @@ export async function daemonAdapters(
   root: AbsolutePath,
   policy: Policy,
   tempDir: AbsolutePath,
+  /**
+   * Row 023-35 (T2): told each node:test project's files with an incomplete
+   * static closure; with it, the adapter tells no note of its own.
+   */
+  closures?: (project: string, files: readonly IncompleteClosure[]) => void,
 ): Promise<RunnerAdapter[]> {
   const coverage = {
     enabled: () => coverageOn(policy),
@@ -249,6 +255,7 @@ export async function daemonAdapters(
         inputs: () => policy.inputs,
         tempDir,
         coverage,
+        ...(closures === undefined ? {} : { closures: (files) => closures(project.name, files) }),
       });
       adapters.push(nodeTest);
     }

@@ -247,3 +247,4 @@ test/ci/export-node-test-parity
 # Reviews 0.1.582 B1 and 0.1.582-r2 B2 (row 018-59): ci record and ci export of real
 # node:test runs on inputs named like Object members.
 test/ci/export-object-names
+test/cli/status-at-not-selected.test.ts
