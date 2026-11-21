@@ -201,7 +201,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "size-s": {
       "hook.preToolUse.p95": 89.64523799999586,
@@ -249,7 +254,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "size-l": {
       "hook.preToolUse.p95": 242.89736930000362,
@@ -297,7 +307,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-3": {
       "hook.preToolUse.p95": 177.41737340001848,
@@ -345,7 +360,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-6": {
       "hook.preToolUse.p95": 253.15966414995046,
@@ -393,7 +413,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "load-50": {
       "hook.preToolUse.p95": 467.06167750004147,
@@ -441,7 +466,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "load-100": {
       "hook.preToolUse.p95": 651.2884542999437,
@@ -489,7 +519,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "stress": {
       "hook.preToolUse.p95": 787.5729263999965,
@@ -537,7 +572,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     }
   }
 }

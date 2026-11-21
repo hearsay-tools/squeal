@@ -126,7 +126,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "store-1.7g": {
       "hook.preToolUse.p95": 157.01383829999247,
@@ -174,7 +179,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "store-7g": {
       "hook.preToolUse.p95": 229.82422469999392,
@@ -222,7 +232,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     }
   }
 }

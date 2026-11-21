@@ -197,6 +197,13 @@ export const METRICS = [
     group: "Correctness",
   },
   {
+    id: "ff.gitFailed",
+    what: "Fast-forward or rebase that git refused, so the cell measured no fast-forward",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
     id: "session.failed",
     what: "Scripted sessions that crashed",
     unit: "",
@@ -209,6 +216,37 @@ export const METRICS = [
     unit: "s",
     healthy: 180,
     warn: 300,
+    group: "Verdicts",
+  },
+  // Issue 261 (ff cells): the agent brings in a commit that changes 150 of 500 modules.
+  {
+    id: "ff.queued",
+    what: "Fast-forward: test files queued 3 s after it",
+    unit: "",
+    group: "Verdicts",
+  },
+  {
+    id: "ff.drainS",
+    what: "Fast-forward: until no test file waits (polled before each later step)",
+    unit: "s",
+    healthy: 120,
+    warn: 600,
+    group: "Verdicts",
+  },
+  {
+    id: "ff.lateNotices",
+    what: "Fast-forward: hook outputs after it that report late or queued results",
+    unit: "",
+    healthy: 0,
+    warn: 3,
+    group: "Verdicts",
+  },
+  {
+    id: "ff.editVerdict.p50",
+    what: "Fast-forward: the agent's own edits after it until their verdict (median)",
+    unit: "ms",
+    healthy: 3000,
+    warn: 10000,
     group: "Verdicts",
   },
   {
@@ -338,6 +376,7 @@ function cellValues(cellDir) {
     "session.failed": cell.phases.sessions.filter((x) => x.code !== 0).length,
     "cell.setupFailed": setupFailures(cell.phases),
     ...noticeValues(rows, cell.files),
+    ...ffValues(rows),
   };
   return { cell, v };
 }
@@ -350,6 +389,45 @@ function setupFailures(p) {
   // `age.code` was the code store's numbers in runs before 2026-11-21; only a number is an exit code.
   if (p.age && (p.age.err || (typeof p.age.code === "number" && p.age.code !== 0))) n++;
   return n;
+}
+
+/** Issue 261's numbers, from the session that made the fast-forward (worktree 0); null without one. */
+function ffValues(rows) {
+  const own = rows.filter((r) => r.wt === 0);
+  const at = own.findIndex((r) => r.kind === "step" && r.type === "ff");
+  if (at === -1) {
+    return {
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null,
+    };
+  }
+  const ff = own[at];
+  const after = own.slice(at + 1);
+  const drained = after.find((r) => r.kind === "ff-poll" && r.pending === 0);
+  const quiet = after.find((r) => r.kind === "ff-quiet");
+  let drainS = INF;
+  if (drained) drainS = drained.sinceFfMs / 1000;
+  else if (quiet?.outcome === "settled") drainS = quiet.sinceFfMs / 1000;
+  const late = after.filter(
+    (r) =>
+      r.kind === "hook" &&
+      r.hook === "post-tool-batch" &&
+      r.text &&
+      /late|have not run|queued/i.test(r.text),
+  ).length;
+  const verdicts = after
+    .filter((r) => r.kind === "step" && r.type === "benign")
+    .map((r) => (r.late ? INF : r.verdictMs));
+  return {
+    "ff.queued": ff.testFiles?.pending ?? null,
+    "ff.drainS": drainS,
+    "ff.lateNotices": late,
+    "ff.editVerdict.p50": quantile(verdicts, 0.5),
+    "ff.gitFailed": ff.gitCode === 0 ? 0 : 1,
+  };
 }
 
 const GROUP = 25;
@@ -587,6 +665,10 @@ const RAW = [
   "hook.postToolBatch.p95",
   "hook.sessionStart.max",
   "cmd.status.p95",
+  "ff.queued",
+  "ff.drainS",
+  "ff.lateNotices",
+  "ff.editVerdict.p50",
   "session.pushFail.p50",
   "session.verdict.within60s",
   "res.idleCpu.maxPct",

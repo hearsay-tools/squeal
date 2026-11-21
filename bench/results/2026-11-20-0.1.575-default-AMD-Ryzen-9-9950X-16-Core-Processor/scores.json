@@ -124,7 +124,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-3": {
       "hook.preToolUse.p95": 179.7305104000028,
@@ -172,7 +177,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "load-50": {
       "hook.preToolUse.p95": 159.39837880002196,
@@ -220,7 +230,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     }
   }
 }

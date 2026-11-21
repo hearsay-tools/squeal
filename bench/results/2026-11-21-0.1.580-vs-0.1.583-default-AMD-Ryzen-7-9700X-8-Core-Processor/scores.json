@@ -198,7 +198,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "ref@0.1.583": {
       "hook.preToolUse.p95": 110.6298073999989,
@@ -246,7 +251,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-3@0.1.580": {
       "hook.preToolUse.p95": 155.45483199999427,
@@ -294,7 +304,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-3@0.1.583": {
       "hook.preToolUse.p95": 96.52012200001623,
@@ -342,7 +357,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "load-50@0.1.580": {
       "hook.preToolUse.p95": 83.25887310004907,
@@ -390,7 +410,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "load-50@0.1.583": {
       "hook.preToolUse.p95": 130.45275129997444,
@@ -438,7 +463,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     }
   }
 }

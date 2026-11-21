@@ -149,9 +149,14 @@ Raw numbers, mean per cell and version (Δ% against the first version):
 | FAIL lines for another worktree's break (`notice.wrongSession`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
 | Code-store batches reported failed, by the store process or a daemon (lost writes) (`store.failedBatches`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
 | Cell setup failed: plain Vitest, the full run or the store aging did not succeed, so the cell measured nothing (`cell.setupFailed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| Fast-forward or rebase that git refused, so the cell measured no fast-forward (`ff.gitFailed`) | 0 (gate) |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Scripted sessions that crashed (`session.failed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
 | **Verdicts** | | |  |  |  |  |  |  |  |  |  |  |  |  |
 | Edit every test imports until the whole suite is current (`session.broad.verdict`) | ≤ 180 | ≤ 300 | 170 s ✅ | 208 s ⚠️ | 190 s ⚠️ | 212 s ⚠️ | 195 s ⚠️ | 175 s ✅ | 175 s ✅ | 184 s ⚠️ | 175 s ✅ | 192 s ⚠️ | 169 s ✅ | 163 s ✅ |
+| Fast-forward: test files queued 3 s after it (`ff.queued`) | report |  | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Fast-forward: until no test file waits (polled before each later step) (`ff.drainS`) | ≤ 120 | ≤ 600 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Fast-forward: hook outputs after it that report late or queued results (`ff.lateNotices`) | ≤ 0 | ≤ 3 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Fast-forward: the agent's own edits after it until their verdict (median) (`ff.editVerdict.p50`) | ≤ 3000 | ≤ 10000 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | **Resources** | | |  |  |  |  |  |  |  |  |  |  |  |  |
 | CPU with no edits: the busiest daemon, plus the store process (`res.idleCpu.maxPct`) | ≤ 1 | ≤ 5 | 2.5 % core ⚠️ | 2.5 % core ⚠️ | 1.7 % core ⚠️ | 3.3 % core ⚠️ | 5.1 % core ❌ | 3.2 % core ⚠️ | 3.4 % core ⚠️ | 3.5 % core ⚠️ | 4.3 % core ⚠️ | 2.1 % core ⚠️ | 2.3 % core ⚠️ | 2.7 % core ⚠️ |
 | Daemon memory, peak (`res.daemonRss.max`) | ≤ 300 | ≤ 600 | 463 MiB ⚠️ | 508 MiB ⚠️ | 512 MiB ⚠️ | 492 MiB ⚠️ | 515 MiB ⚠️ | 444 MiB ⚠️ | 490 MiB ⚠️ | 494 MiB ⚠️ | 493 MiB ⚠️ | 503 MiB ⚠️ | 508 MiB ⚠️ | 462 MiB ⚠️ |

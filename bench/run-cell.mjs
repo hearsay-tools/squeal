@@ -16,6 +16,7 @@
 //   7. one scripted session per worktree, all at once, starts 3 s apart
 //   8. store and daemon numbers, then `squeal stop` everywhere and the load stopped
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -36,6 +37,7 @@ import {
   procStat,
   quantile,
   relayLog,
+  rng,
   sleep,
   storeProcessLog,
   storeProcessMeter,
@@ -60,6 +62,12 @@ const { values: o } = parseArgs({
     "age-rounds": { type: "string", default: "0" },
     "age-span-days": { type: "string", default: "7" },
     "age-lists": { type: "string", default: "7d" },
+    // Issue 261, a big fast-forward: none | cold (nobody ran the incoming commit) | known (another
+    // worktree ran it first, so the shared store holds its results). --ff-mode merge | rebase.
+    ff: { type: "string", default: "none" },
+    "ff-mode": { type: "string", default: "merge" },
+    "ff-modules": { type: "string", default: "150" },
+    "ff-at": { type: "string", default: "6" },
     churn: { type: "boolean", default: false },
   },
 });
@@ -87,6 +95,7 @@ const cell = {
   load: Number(o.load),
   ageRounds: Number(o["age-rounds"]),
   ageLists: o["age-lists"],
+  ff: o.ff === "none" ? null : { kind: o.ff, mode: o["ff-mode"], modules: Number(o["ff-modules"]) },
   churn: o.churn,
   phases: {},
 };
@@ -208,6 +217,12 @@ if (Number(o["age-rounds"]) > 0) {
   cell.phases.firstStatusAged = { ms: st.ms, code: st.code };
 }
 
+// 4c. Issue 261: an `upstream` branch one commit ahead, which the session in wt0 brings in mid-session.
+if (o.ff !== "none") {
+  log(`upstream commit: ${o["ff-modules"]} modules, ${o.ff}`);
+  cell.phases.upstream = await makeUpstream(Number(o["ff-modules"]), o.ff === "known");
+}
+
 // 5. Start in the other worktrees.
 cell.phases.startOthers = [];
 for (const root of roots.slice(1)) {
@@ -264,6 +279,9 @@ const sessions = roots.map(async (root, w) => {
       o.steps,
       "--out",
       file,
+      ...(o.ff !== "none" && w === 0
+        ? ["--ff-at", o["ff-at"], "--ff-ref", "upstream", "--ff-mode", o["ff-mode"]]
+        : []),
     ],
     { env, cwd: root, timeoutMs: 3_600_000 },
   );
@@ -435,4 +453,40 @@ function fullCheckSeconds(logDir, since) {
     }
   }
   return null;
+}
+
+/**
+ * Commits a change to `count` modules (seeded, so every run picks the same) on a branch
+ * `upstream` in a worktree of its own: each gets a comment line at its end, which changes its
+ * content and its tests' keys but no result. With `known`, that worktree's own daemon then runs
+ * every test file, as a base branch's CI would, and stops; the shared store keeps the results.
+ */
+async function makeUpstream(count, known) {
+  const up = join(work, "upstream");
+  const gitEnv = {
+    ...env,
+    GIT_AUTHOR_NAME: "upstream",
+    GIT_AUTHOR_EMAIL: "upstream@example.invalid",
+    GIT_COMMITTER_NAME: "upstream",
+    GIT_COMMITTER_EMAIL: "upstream@example.invalid",
+  };
+  await timed("git", ["worktree", "add", "-q", "-b", "upstream", up], { cwd: main, env: gitEnv });
+  const random = rng(4261);
+  const chosen = new Set();
+  while (chosen.size < Math.min(count, cell.files)) chosen.add(Math.floor(random() * cell.files));
+  for (const i of chosen) appendFileSync(join(up, `src/m${i}.ts`), `// upstream change ${i}\n`);
+  await timed("git", ["add", "-A"], { cwd: up, env: gitEnv });
+  await timed("git", ["commit", "-qm", `upstream: ${chosen.size} modules`], {
+    cwd: up,
+    env: gitEnv,
+  });
+  const result = { modules: chosen.size, known };
+  if (known) {
+    await timed("cp", ["-a", join(main, "node_modules"), join(up, "node_modules")]);
+    await squeal(up, ["start"], 120_000);
+    const r = await squeal(up, ["run", "--all", "--wait"], 3_600_000);
+    await squeal(up, ["stop"], 60_000);
+    result.runAll = { ms: r.ms, code: r.code };
+  }
+  return result;
 }

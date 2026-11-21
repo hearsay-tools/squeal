@@ -43,6 +43,14 @@ export const CELLS = [
     lists: "none",
   },
   { name: "store-7g-lists1d", files: 500, worktrees: 1, load: 0, ageRounds: 326, lists: "1d" },
+  // Issue 261: mid-session, the worktree brings in a commit that changes 150 of 500 modules.
+  // ff: nobody ran that commit; ff-known: another worktree ran it first (as a base branch's CI
+  // would), so the shared store holds its results; ff-load50: cold on a half-busy machine;
+  // ff-rebase: the agent commits its own edits and rebases onto it.
+  { name: "ff", files: 500, worktrees: 1, load: 0, ff: "cold" },
+  { name: "ff-known", files: 500, worktrees: 1, load: 0, ff: "known" },
+  { name: "ff-load50", files: 500, worktrees: 1, load: 50, ff: "cold" },
+  { name: "ff-rebase", files: 500, worktrees: 1, load: 0, ff: "cold", ffMode: "rebase" },
 ];
 
 const { values: o } = parseArgs({
@@ -73,6 +81,7 @@ export const GROUPS = {
   load: ["ref", "load-50", "load-100"],
   store: ["ref", "store-1.7g", "store-7g", "churn"],
   lists: ["store-7g", "store-7g-wt3", "store-7g-wt3-nolists", "store-7g-lists1d"],
+  ff: ["ff", "ff-known", "ff-load50", "ff-rebase"],
   // Areas: where a change of that kind shows first.
   quick: ["ref", "wt-3"],
   hooks: ["ref", "wt-3", "stress"],
@@ -207,6 +216,10 @@ for (const c of cells) {
       String(c.spanDays ?? 7),
       "--age-lists",
       c.lists ?? "7d",
+      "--ff",
+      c.ff ?? "none",
+      "--ff-mode",
+      c.ffMode ?? "merge",
       ...(c.churn ? ["--churn"] : []),
     ],
     { timeoutMs: 7_200_000 },

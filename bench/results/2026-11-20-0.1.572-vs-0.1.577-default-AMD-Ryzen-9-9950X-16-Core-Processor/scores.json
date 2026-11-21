@@ -301,7 +301,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "ref@0.1.577": {
       "hook.preToolUse.p95": 101.9153764000635,
@@ -349,7 +354,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-3@0.1.572": {
       "hook.preToolUse.p95": 190.14795440001177,
@@ -397,7 +407,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-3@0.1.577": {
       "hook.preToolUse.p95": 169.16303479999766,
@@ -445,7 +460,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-6@0.1.572": {
       "hook.preToolUse.p95": 239.6474397999871,
@@ -493,7 +513,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "wt-6@0.1.577": {
       "hook.preToolUse.p95": 237.221115699997,
@@ -541,7 +566,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "stress@0.1.572": {
       "hook.preToolUse.p95": 674.6643272500097,
@@ -589,7 +619,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "stress@0.1.577": {
       "hook.preToolUse.p95": 330.0153128999838,
@@ -637,7 +672,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "store-7g@0.1.572": {
       "hook.preToolUse.p95": 1394.935667500008,
@@ -685,7 +725,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "store-7g@0.1.577": {
       "hook.preToolUse.p95": 440.93917630002073,
@@ -733,7 +778,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "churn@0.1.572": {
       "hook.preToolUse.p95": 192.53045640001645,
@@ -781,7 +831,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     },
     "churn@0.1.577": {
       "hook.preToolUse.p95": 180.69173049996732,
@@ -829,7 +884,12 @@
       "notice.falseAlarm": 0,
       "notice.unnamed": 0,
       "notice.wrongTest": 0,
-      "notice.wrongSession": 0
+      "notice.wrongSession": 0,
+      "ff.queued": null,
+      "ff.drainS": null,
+      "ff.lateNotices": null,
+      "ff.editVerdict.p50": null,
+      "ff.gitFailed": null
     }
   }
 }

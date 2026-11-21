@@ -35,6 +35,12 @@ const { values: o } = parseArgs({
     "think-max": { type: "string", default: "8000" },
     "broad-wait": { type: "string", default: "300000" },
     "push-wait": { type: "string", default: "60000" },
+    // Issue 261: at plan step --ff-at, bring in the branch --ff-ref, as a coordinator does after a
+    // merge: `git merge --ff-only` (mode merge) or, after committing its own edits, `git rebase` (mode rebase).
+    "ff-at": { type: "string" },
+    "ff-ref": { type: "string", default: "upstream" },
+    "ff-mode": { type: "string", default: "merge" },
+    "ff-wait": { type: "string", default: "900000" },
   },
 });
 const root = o.root;
@@ -216,6 +222,74 @@ for (let s = 0; s < steps - 1; s++) {
   else plan.push("benign");
 }
 plan.push("broad");
+if (o["ff-at"] !== undefined) plan.splice(Number(o["ff-at"]), 0, "ff");
+const gitEnv = {
+  ...env,
+  GIT_AUTHOR_NAME: "agent",
+  GIT_AUTHOR_EMAIL: "agent@example.invalid",
+  GIT_COMMITTER_NAME: "agent",
+  GIT_COMMITTER_EMAIL: "agent@example.invalid",
+};
+const git = (args) => timed("git", args, { env: gitEnv, cwd: root, timeoutMs: 120_000 });
+let ffAt = null;
+
+/** After the fast-forward, before each later step: how many test files still wait. */
+async function pollQueue(index) {
+  const st = await squeal(["status", "--json"]);
+  let pending = null;
+  try {
+    const j = JSON.parse(st.stdout);
+    pending = j.testFileCounts?.pending ?? null;
+  } catch {}
+  record({ kind: "ff-poll", step: index, sinceFfMs: performance.now() - ffAt, pending });
+}
+
+/** The fast-forward (or rebase) step: the git command, the hook after it, and what Squeal queued. */
+async function fastForward(index) {
+  const mode = o["ff-mode"];
+  if (mode === "rebase") {
+    await git(["add", "-A"]);
+    await git(["commit", "-qm", "own work before the rebase"]);
+  }
+  const command =
+    mode === "rebase" ? ["rebase", "-q", o["ff-ref"]] : ["merge", "-q", "--ff-only", o["ff-ref"]];
+  const g = await git(command);
+  ffAt = performance.now();
+  const post = await hook(
+    "post-tool-batch",
+    {
+      hook_event_name: "PostToolBatch",
+      tool_calls: [
+        {
+          tool_name: "Bash",
+          tool_input: { command: `git ${command.join(" ")}` },
+          tool_use_id: `toolu_ff${index}`,
+          tool_output: g.stdout,
+          tool_output_error: g.code !== 0,
+        },
+      ],
+    },
+    true,
+  );
+  await sleep(3000);
+  const st = await squeal(["status", "--json"]);
+  let counts = null;
+  try {
+    const j = JSON.parse(st.stdout);
+    counts = { testFiles: j.testFileCounts, byPhase: j.testFilesByPhase };
+  } catch {}
+  record({
+    kind: "step",
+    step: index,
+    type: "ff",
+    mode,
+    gitMs: g.ms,
+    gitCode: g.code,
+    gitErr: g.stderr.slice(0, 300),
+    postMs: post.ms,
+    ...counts,
+  });
+}
 
 const start = await hook("session-start", {
   hook_event_name: "SessionStart",
@@ -227,6 +301,11 @@ record({ kind: "session-start", ms: start.ms, text: start.text?.slice(0, 400) ??
 let brokenModule = null;
 for (const [index, kind] of plan.entries()) {
   await think();
+  if (kind === "ff") {
+    await fastForward(index);
+    continue;
+  }
+  if (ffAt !== null) await pollQueue(index);
   if (kind === "status") {
     const a = await squeal(["status"]);
     const b = await squeal(["status", "--json"]);
@@ -296,6 +375,21 @@ for (const [index, kind] of plan.entries()) {
     correct: v.outcome === "settled" && v.result === want,
     wrong: v.outcome === "settled" && v.result !== want,
     late: v.outcome !== "settled",
+  });
+}
+
+// After the session: how long from the fast-forward until every test file of the worktree is current.
+if (ffAt !== null) {
+  const wait = Number(o["ff-wait"]);
+  const r = await squeal(["status", "--wait", String(wait), "--json"], wait + 60_000);
+  let w = null;
+  try {
+    w = JSON.parse(r.stdout).wait ?? null;
+  } catch {}
+  record({
+    kind: "ff-quiet",
+    sinceFfMs: performance.now() - ffAt,
+    outcome: w?.outcome ?? "unparsed",
   });
 }
 
