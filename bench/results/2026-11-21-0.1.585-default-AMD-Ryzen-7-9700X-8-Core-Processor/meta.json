@@ -1,0 +1,55 @@
+{
+  "startedAt": "2026-11-21T12:52:17.506Z",
+  "squealVersion": "0.1.585",
+  "plugins": [
+    {
+      "version": "0.1.585",
+      "label": "0.1.585"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.8,
+  "sha256MiBPerS": [
+    2536.6666666666665,
+    2540,
+    2551.6666666666665
+  ],
+  "loadavgAtStart": "1.20 0.41 0.14 1/387 7943",
+  "cells": [
+    {
+      "name": "ff",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ff": "cold",
+      "base": "ff",
+      "plugin": "0.1.585",
+      "rep": 1
+    },
+    {
+      "name": "ff-known",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ff": "known",
+      "base": "ff-known",
+      "plugin": "0.1.585",
+      "rep": 1
+    },
+    {
+      "name": "ff-ci",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ff": "ci",
+      "base": "ff-ci",
+      "plugin": "0.1.585",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-21T13:21:12.729Z"
+}

@@ -1,0 +1,7 @@
+[2026-11-21T13:11:02.635Z] ff-ci: plain vitest run
+[2026-11-21T13:11:39.056Z] ff-ci: squeal start + run --all
+[2026-11-21T13:12:25.538Z] ff-ci: upstream commit: 125 modules, ci
+[2026-11-21T13:13:21.720Z] ff-ci: idle
+[2026-11-21T13:14:21.730Z] ff-ci: sessions
+[2026-11-21T13:21:09.204Z] ff-ci: collect
+[2026-11-21T13:21:12.721Z] ff-ci: done

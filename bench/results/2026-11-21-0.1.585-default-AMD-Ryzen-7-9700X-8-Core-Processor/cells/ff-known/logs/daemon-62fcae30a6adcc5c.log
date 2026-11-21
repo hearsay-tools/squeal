@@ -1,0 +1,7 @@
+2026-11-21T13:02:50.620Z [37795] squeal daemon: serving /home/user/results/cells/ff-known/work/upstream on /home/user/results/cells/ff-known/work/run/squeal-62fcae30a6adcc5c.sock
+2026-11-21T13:03:05.201Z [37795] squeal daemon: long write: store.sqlite write lock held 294 ms by #write < #record; 7802 rows written
+2026-11-21T13:03:15.456Z [37795] squeal daemon: busy, heap in use 95 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 446 to 274 MiB in a 28 ms pause; 42 MiB of heap in use after it
+2026-11-21T13:03:15.901Z [37795] squeal daemon: daemon stopped: squeal stop
+2026-11-21T13:03:15.919Z [37795] squeal daemon: coverage: 130 completed test files got no record since this daemon started: 130 closed (the writer closed first); the last: test/m466.test.ts: the writer closed first
+2026-11-21T13:03:15.920Z [37795] squeal daemon: code store: last minute: 375 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-21T13:03:15.980Z [37795] squeal daemon: daemon stopped: squeal stop

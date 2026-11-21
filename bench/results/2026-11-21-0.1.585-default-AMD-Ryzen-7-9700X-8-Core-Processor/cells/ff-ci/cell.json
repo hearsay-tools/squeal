@@ -1,0 +1,119 @@
+{
+  "name": "ff-ci",
+  "files": 500,
+  "worktrees": 1,
+  "load": 0,
+  "ageRounds": 0,
+  "ageLists": "7d",
+  "ff": {
+    "kind": "ci",
+    "mode": "merge",
+    "modules": 125
+  },
+  "churn": false,
+  "phases": {
+    "plainVitest": {
+      "ms": 36419.547253,
+      "code": 0
+    },
+    "startMain": {
+      "ms": 627.9592469999989,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/ff-ci/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `squeal statu"
+    },
+    "runAll": {
+      "ms": 45853.440137000005,
+      "code": 0,
+      "tail": "w\nCheckpoint fe22d527-3cee-40a7-a789-4d602643e5b3 started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 196 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.7480412473582878
+    },
+    "upstream": {
+      "modules": 125,
+      "kind": "ci",
+      "ci": {
+        "record": {
+          "ms": 52530.81887799999,
+          "code": 0,
+          "tail": "orkers across files instead of one per file\u001b[22m\n\nsqueal ci record: wrote 1 part with 500 test files to /home/user/results/cells/ff-ci/work/ci-parts\nsqueal ci record: coverage records for 500 of 500 test files\nsqueal ci record: Squeal's recording took 7.40 s in 502 processes and threads, 9.0% of the test time (81.8 s); 0.10 s more after the command; 0.07 s hashing the checkout before and after it\n"
+        },
+        "export": {
+          "ms": 2915.7713360000052,
+          "code": 0,
+          "tail": "Exported 500 test files, 3500 results, to /home/user/results/cells/ff-ci/work/ci-export.json.gz.\nsqueal ci export: Squeal's recording took 7.40 s in 502 processes and threads, 9.0% of the test time (81.8 s); 0.10 s more after the command; 0.07 s hashing the checkout before and after it\n"
+        },
+        "import": {
+          "ms": 585.4903000000049,
+          "code": 0,
+          "out": "Imported 2450 results of 500 test files from local export at 73b2b520; 1050 the store held at their keys already were left as they were.\nRe-keyed 500 of 500 test files to this worktree's closure lists and environment at 73b2b520.\nEnvironment: equal to this worktree's\n"
+        }
+      }
+    },
+    "startOthers": [],
+    "idle": {
+      "ms": 60000,
+      "daemons": 1,
+      "storeProcessCpuPct": 0.05000000000000041,
+      "perDaemonCpuPct": [
+        0.66666666666667
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 407220.23593900003,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.14070449153791517,
+    "sessionDaemonCpuS": [
+      21.79
+    ],
+    "edits": 20,
+    "sessionStoreProcessCpuS": 1.7799999999999998,
+    "reach": {
+      "ms": 248.98966399999335,
+      "code": 0,
+      "peakRssBytes": 140230656
+    }
+  },
+  "store": {
+    "storeBytes": 8552448,
+    "walBytes": 7238872,
+    "codeBytes": 7421952,
+    "runsDirs": 33,
+    "rows": {
+      "results": 9863,
+      "runs": 33,
+      "revisions": 20,
+      "transitions": 144
+    },
+    "longWrites": 4,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      326,
+      267,
+      260,
+      317
+    ]
+  },
+  "storeProcess": {
+    "seen": 1,
+    "cpuS": 3.86,
+    "maxRssBytes": 153636864,
+    "written": 1559,
+    "failed": 0,
+    "queueWaitMaxMs": 1,
+    "busyMs": 5441,
+    "stops": 0,
+    "failedLines": 0,
+    "relay": {
+      "sent": 1407,
+      "direct": 1,
+      "failed": 0
+    }
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 495034368,
+    "maxTreeBytes": 1158725632
+  }
+}
