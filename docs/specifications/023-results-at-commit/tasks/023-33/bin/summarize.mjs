@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Throwaway probe for 023-33 (023-28's summarize.mjs). Not product code. Runs in the sandbox over
+// Throwaway probe for 023-33 (023-28's summarize.mjs). Not product code. Runs on the VM over
 // <work>/logs:
 //
 //   node summarize.mjs <logs dir>

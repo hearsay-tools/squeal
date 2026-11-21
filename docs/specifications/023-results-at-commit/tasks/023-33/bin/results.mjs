@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Throwaway probe for 023-33 (023-28's results.mjs, unchanged). Not product code. Runs in the
-// sandbox over <work>/logs:
+// Throwaway probe for 023-33 (023-28's results.mjs, unchanged). Not product code. Runs on the
+// VM over <work>/logs:
 //
 //   node results.mjs <logs dir>
 //

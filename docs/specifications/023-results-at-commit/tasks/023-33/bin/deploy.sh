@@ -1,26 +1,26 @@
 #!/bin/sh
-# Throwaway probe for 023-33 (023-28's deploy.sh, with 023-32's boat.dev transport). Not product
-# code. Runs on the worker's host, never in the sandbox. The sessions run in a boat.dev sandbox
-# this worker created (`boat new`); BOX is its id, never written into this repository.
-#   BOX=<sandbox id> TASK=<task id> sh deploy.sh inputs|copy|fetch
-#     inputs  builds the sandbox's inputs in $SCRATCH/in: hub.bundle (the private hub at cf42b11, the
+# Throwaway probe for 023-33 (023-28's deploy.sh). Not product code. Runs on the worker's host,
+# never on the VM. The sessions run on the lab VM (the human, 2026-11-21: this once, as round 4).
+#   LAB=<user@vm> TASK=<task id> sh deploy.sh inputs|copy|fetch
+#     inputs  builds the VM's inputs in $SCRATCH/in: hub.bundle (the private hub at cf42b11, the
 #             0.1.584 entry, read with this user's gh), squawk.bundle (~/projects/cezar read only,
 #             history to 0dfe0724c, through a local bare clone), install.sh (git show
 #             squeal--v0.1.584:install.sh)
-#     copy    makes /home/user/work/$TASK/{bin,in,logs} in the sandbox; copies this folder,
-#             023-10's timeline.mjs and the inputs there
-#     fetch   copies the sandbox's logs back to $SCRATCH/logs, without transcript.jsonl and
-#             stream.jsonl (they stay in the sandbox until it is deleted)
+#     copy    makes ~/work/$TASK/{bin,in,logs} on the VM and copies this folder, 023-10's
+#             timeline.mjs, and the inputs there
+#     fetch   copies the VM's logs back to $SCRATCH/logs, without transcript.jsonl and
+#             stream.jsonl (they are deleted with the work folder)
+# LAB is the ssh target: it is never written into this repository.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-: "${BOX:?BOX=<sandbox id>}" "${TASK:?TASK=<task id>}"
+: "${LAB:?LAB=<user@vm>}" "${TASK:?TASK=<task id>}"
 SCRATCH=${SCRATCH:-$HOME/projects/squeal/.ai/squawk/t/${TASK%%-*}/w19}
 WT=$(cd "$here/../../../../../.." && pwd)
 CEZ=$HOME/projects/cezar
 HUB=cf42b11
 TAG=squeal--v0.1.584
 SQUAWK=0dfe0724cbf81ddc5b7cf7382ac717aea8c829bb
-remote="/home/user/work/$TASK"
+remote="~/work/$TASK"
 case "${1:-}" in
   inputs)
     mkdir -p "$SCRATCH/in"
@@ -38,16 +38,14 @@ case "${1:-}" in
     ls -la "$SCRATCH/in"
     ;;
   copy)
-    boat ssh "$BOX" -- "mkdir -p $remote/bin $remote/in $remote/logs"
-    for f in "$here"/* "$here/../../023-10/bin/timeline.mjs"; do boat scp "$f" "$BOX:$remote/bin/"; done
-    for f in hub.bundle squawk.bundle install.sh; do boat scp "$SCRATCH/in/$f" "$BOX:$remote/in/"; done
-    boat ssh "$BOX" -- "ls -la $remote/bin $remote/in"
+    ssh -o BatchMode=yes "$LAB" "mkdir -p $remote/bin $remote/in $remote/logs"
+    scp -q "$here"/* "$here/../../023-10/bin/timeline.mjs" "$LAB:$remote/bin/"
+    scp -q "$SCRATCH/in/hub.bundle" "$SCRATCH/in/squawk.bundle" "$SCRATCH/in/install.sh" "$LAB:$remote/in/"
+    ssh -o BatchMode=yes "$LAB" "ls -la $remote/bin $remote/in"
     ;;
   fetch)
     mkdir -p "$SCRATCH/logs"
-    boat ssh "$BOX" -- "cd $remote && tar --exclude=transcript.jsonl --exclude=stream.jsonl -czf /tmp/logs-$TASK.tgz logs"
-    boat scp "$BOX:/tmp/logs-$TASK.tgz" "$SCRATCH/"
-    tar -xzf "$SCRATCH/logs-$TASK.tgz" -C "$SCRATCH"
+    rsync -a --exclude transcript.jsonl --exclude stream.jsonl "$LAB:$remote/logs/" "$SCRATCH/logs/"
     ;;
-  *) echo "usage: BOX=<sandbox id> TASK=<task id> sh deploy.sh inputs|copy|fetch"; exit 2 ;;
+  *) echo "usage: LAB=<user@vm> TASK=<task id> sh deploy.sh inputs|copy|fetch"; exit 2 ;;
 esac

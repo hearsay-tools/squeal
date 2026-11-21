@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Throwaway probe for 023-33 (023-28's batch.mjs). Not product code. Runs sessions in the boat.dev
-// sandbox, at most N at once:
+// Throwaway probe for 023-33 (023-28's batch.mjs). Not product code. Runs sessions on the lab VM,
+// at most N at once:
 //
 //   node batch.mjs [--parallel 3] [--keep] [--prepared] <id>...
 //

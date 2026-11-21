@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Throwaway probe for 023-33 (023-28's session.mjs, in a boat.dev sandbox). Not product code.
+// Throwaway probe for 023-33 (023-28's session.mjs, on the lab VM). Not product code.
 // Runs one dogfood session as squeal-w19, on the clone `sh setup.sh prepare <id>` made:
 //
 //   node session.mjs <id>        (id: s<g>-<nn>; the prompt is prompts.json's s<g>)
@@ -41,18 +41,11 @@ const secretNames = [
   "HTTP_PROXY",
   "OPENCLAW_PROXY_URL",
   "STARSHIP_SESSION_KEY",
-  "GITHUB_TOKEN",
-  "ASCII_TOKEN",
-  "SERVICE_PREVIEW_TOKEN",
-  "BOX_ID",
-  "BOAT_ID",
-  "AGENT_ID",
-  "ENVIRONMENT_ID",
 ];
 const replace = [
   ...secretNames.map((n) => [process.env[n], "[redacted]"]),
   [process.env.ANTHROPIC_BASE_URL, "[api-base-url]"],
-  [hostname(), "[box]"],
+  [hostname(), "[vm]"],
 ].filter(([v]) => typeof v === "string" && v.length >= 6);
 const redact = (text) => replace.reduce((t, [s, r]) => t.split(s).join(r), text);
 

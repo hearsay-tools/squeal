@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Throwaway probe for 023-33 (023-28's as-user.mjs). Not product code. 023-10's as-e2e.mjs for the
-// throwaway user squeal-w19 in a boat.dev sandbox (023-10's own changes kept: the user's ~/.local/bin, where install.sh
+// throwaway user squeal-w19 on the lab VM (023-10's own changes kept: the user's ~/.local/bin, where install.sh
 // puts the squeal launcher, leads PATH, and pnpm 12's store variable is set).
 //
 // Runs one command as the throwaway OS user squeal-w19 by 005-17's contract (the command line and
@@ -30,7 +30,7 @@ const refuse = (why) => {
 };
 if (!root0 || !cwd0 || !cmd) refuse("usage: as-user.mjs <case root> <cwd> <cmd> [args...]");
 const U = "squeal-w19";
-if (userInfo().username === U) refuse(`run this as the sandbox user, not ${U}`);
+if (userInfo().username === U) refuse(`run this as agent, not ${U}`);
 const root = posix.normalize(root0);
 const cwd = posix.normalize(cwd0);
 if (!new RegExp(`^/home/${U}/runs/[a-z0-9-]+$`).test(root)) refuse(`case root ${root0}`);

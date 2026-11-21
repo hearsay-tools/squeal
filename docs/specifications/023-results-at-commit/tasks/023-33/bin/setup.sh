@@ -1,8 +1,7 @@
 #!/bin/sh
-# Throwaway probe for 023-33 (023-28's setup.sh, moved to a boat.dev sandbox as 023-32's). Not
-# product code. No model runs here. Runs in the sandbox as its user (passwordless sudo), from a
-# copy of this folder at <work>/bin, where <work> is /home/user/work/<task id> (deploy.sh makes
-# both). Inputs made on the worker's host and copied to <work>/in: hub.bundle (the private hub at
+# Throwaway probe for 023-33 (023-28's setup.sh). Not product code. No model runs here. Runs on
+# the lab VM as its user agent (passwordless sudo), from a copy of this folder at <work>/bin,
+# where <work> is ~/work/<task id> (deploy.sh makes both). Inputs made on the worker's host and copied to <work>/in: hub.bundle (the private hub at
 # cf42b11, the 0.1.584 entry), squawk.bundle (squawk's history to 0dfe0724c), install.sh (the
 # release's own, git show squeal--v0.1.584:install.sh). Throwaway user squeal-w19, case root
 # /home/$U/runs/w19 (U=squeal-w19); step dirs copies the inputs into its in/.
@@ -67,7 +66,7 @@ case "$step" in
   dirs)
     u mkdir -p "$R/home" "$R/tmp" "$R/codex" "$R/claude" "$R/xdg" "$R/evals" "$R/bin" "$R/corepack" "$R/pnpm-store" "$R/src" "$R/npm"
     mkdir -p "$W/logs"
-    # The user cannot read the sandbox user's home: its inputs are copied into the case root.
+    # The user cannot read agent's home: its inputs are copied into the case root.
     sudo -n rm -rf "$R/in"
     sudo -n mkdir "$R/in"
     sudo -n cp "$W/in/hub.bundle" "$W/in/squawk.bundle" "$W/in/install.sh" "$R/in/"
