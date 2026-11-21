@@ -24,8 +24,9 @@ import { cacheRepositoryDirs, type ListedCheckout, listCheckouts } from "./sweep
  * environment fingerprint covers what D2's environment reads beside them:
  * the Node version, the platform, the architecture and the allow-listed
  * variables the caller passes. The ceiling follows the machine's free
- * memory, 1 GB per commit daemon (the coordinator, 2026-11-21: the research
- * measured 0.7 to 1.8 GB idle), at least 1, unless the caller passes the
+ * memory, 2 GB per commit daemon (D7.4 as amended 2026-11-21 from 1 GB,
+ * `tasks/023-40-measure.md`: 0.7 GB idle, 2.0 GB running 40 files, three
+ * daemons swapped on 8 GB), at least 1, unless the caller passes the
  * configured number.
  *
  * Review wave-22 B3: the count is machine-wide. A worktree in a
@@ -37,7 +38,7 @@ import { cacheRepositoryDirs, type ListedCheckout, listCheckouts } from "./sweep
  */
 
 /** The memory one commit daemon is counted at. */
-export const COMMIT_DAEMON_BYTES = 1024 ** 3;
+export const COMMIT_DAEMON_BYTES = 2 * 1024 ** 3;
 
 /** The fingerprint of this process's environment and of `variables` (the allow-listed ones). */
 export function environmentFingerprint(variables: Readonly<Record<string, string>> = {}): string {
@@ -56,7 +57,7 @@ export interface CeilingInputs {
   readonly perDaemonBytes?: number | undefined;
 }
 
-/** D7.4: how many commit worktrees may live at once: free memory over 1 GB, at least 1. */
+/** D7.4: how many commit worktrees may live at once: free memory over 2 GB, at least 1. */
 export function commitWorktreeCeiling(inputs: CeilingInputs = {}): number {
   const { configured } = inputs;
   if (configured !== undefined && Number.isInteger(configured) && configured >= 1)
