@@ -1,0 +1,12 @@
+{"label":"before-15417c90c-1","variant":"before","tip":"15417c90c","serveMs":55961,"resultMs":64065,"runExit":0,"load":20.78,"store":{"keyed":2105,"keys":"1985ee20b30ddd40","walkRowsSince":80}}
+{"label":"after-15417c90c-1","variant":"after","tip":"15417c90c","serveMs":16329,"resultMs":25490,"runExit":0,"load":24.74,"store":{"keyed":2105,"keys":"1985ee20b30ddd40","walkRowsSince":80}}
+{"label":"before-15417c90c-2","variant":"before","tip":"15417c90c","serveMs":57868,"resultMs":71551,"runExit":0,"load":19.80,"store":{"keyed":2105,"keys":"1985ee20b30ddd40","walkRowsSince":80}}
+{"label":"after-15417c90c-2","variant":"after","tip":"15417c90c","serveMs":20397,"resultMs":31881,"runExit":0,"load":35.52,"store":{"keyed":2105,"keys":"1985ee20b30ddd40","walkRowsSince":80}}
+{"label":"before-15417c90c-3","variant":"before","tip":"15417c90c","serveMs":53973,"resultMs":63046,"runExit":0,"load":31.25,"store":{"keyed":2105,"keys":"1985ee20b30ddd40","walkRowsSince":80}}
+{"label":"after-15417c90c-3","variant":"after","tip":"15417c90c","serveMs":17252,"resultMs":27675,"runExit":0,"load":18.35,"store":{"keyed":2105,"keys":"1985ee20b30ddd40","walkRowsSince":80}}
+{"label":"before-0aee6dc0a-1","variant":"before","tip":"0aee6dc0a","serveMs":56010,"resultMs":66384,"runExit":0,"load":20.15,"store":{"keyed":2110,"keys":"fd723f8c9fffe261","walkRowsSince":244}}
+{"label":"after-0aee6dc0a-1","variant":"after","tip":"0aee6dc0a","serveMs":25435,"resultMs":33664,"runExit":0,"load":20.09,"store":{"keyed":2110,"keys":"fd723f8c9fffe261","walkRowsSince":244}}
+{"label":"before-0aee6dc0a-2","variant":"before","tip":"0aee6dc0a","serveMs":53725,"resultMs":61712,"runExit":0,"load":22.53,"store":{"keyed":2110,"keys":"fd723f8c9fffe261","walkRowsSince":244}}
+{"label":"after-0aee6dc0a-2","variant":"after","tip":"0aee6dc0a","serveMs":24821,"resultMs":34125,"runExit":0,"load":18.16,"store":{"keyed":2110,"keys":"fd723f8c9fffe261","walkRowsSince":244}}
+{"label":"before-0aee6dc0a-3","variant":"before","tip":"0aee6dc0a","serveMs":56190,"resultMs":64856,"runExit":0,"load":19.63,"store":{"keyed":2110,"keys":"fd723f8c9fffe261","walkRowsSince":244}}
+{"label":"after-0aee6dc0a-3","variant":"after","tip":"0aee6dc0a","serveMs":25855,"resultMs":33728,"runExit":0,"load":20.30,"store":{"keyed":2110,"keys":"fd723f8c9fffe261","walkRowsSince":244}}
