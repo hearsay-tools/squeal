@@ -150,6 +150,7 @@ Started: 2026-10-31
 - 2026-11-21, review 0.1.587 (`reviews/0.1.587.md`, reviewer 6c30b346): FAIL, B1 an exact tsconfig alias with `?query` (`@dep?q=1`) loads `dep.ts` but the closure omits it (0.1.585 keyed the bogus `dep.ts?q=1`, also wrong); S1 proven, non-blocking: past the hashing limit the child's `git ls-tree` keeps running. Repair row 018-73.
 - 2026-11-21, repair 018-73 (worker ddf9c51c) integrated and the candidate rebased onto 0.1.586 (spec 023, which also changed node:test's recorder.cjs, observe spawn.cjs and a node:test validity case). B1: under tsx, a specifier's `?query` (and `#hash` for paths and URLs) is cut before alias matching, as tsx does; four real-run differential cases (exact alias, wildcard with suffix, CommonJS require, package import `#dep?q=1`). S1: the hashing child leads its own process group, ended whole past the limit, on a lost parent or without a result (Windows: `taskkill /T`). Key-format alarm 12 of 12, no raise.
 - 2026-11-21, re-review 0.1.587 (`reviews/0.1.587-r2.md`) PASS at 9489a7aae. Candidate CI 44918225236 failed only the differential case "a CommonJS require of an exact alias with a `?query`" on Node 22: Node 22.19's tsx resolves it to the file `dep.cjs?q=1` and the real run fails with ERR_MODULE_NOT_FOUND, so there is no run to compare with. Coordinator test fix: the case needs Node 24 (`minNode`), skipped below it; product code unchanged since the review.
+- 2026-11-21, 0.1.587 landed (rows 018-66, 018-67, 018-68, 018-73). Candidate CI 44920067345 green on dc703eeb2.
 
 ## Open questions
 
