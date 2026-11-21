@@ -128,8 +128,17 @@ describe("the ceiling (D7.4)", () => {
   it("makes a new commit's creator wait, say so, and go on once a place frees", async () => {
     const a = await ensure(fx.first, { limit: 1 });
     const notes: string[] = [];
-    const waiting = ensure(fx.second, { limit: 1, pollMs: 20, note: (t) => notes.push(t) });
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    let told: () => void = () => {};
+    const said = new Promise<void>((resolve) => {
+      told = resolve;
+    });
+    const note = (text: string) => {
+      notes.push(text);
+      told();
+    };
+    const waiting = ensure(fx.second, { limit: 1, pollMs: 20, note });
+    // Review wave-22 N1: wait for the note itself, not for a fixed time.
+    await said;
     expect(notes).toEqual([expect.stringMatching(/^squeal: waiting for a place: 1 of 1 commit/)]);
     expect(notes[0]).toContain(fx.first.slice(0, 12));
 
