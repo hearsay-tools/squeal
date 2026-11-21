@@ -83,7 +83,12 @@ function changeText(f: FileReport, at: string, many = false): string {
   const more = parts.length === 0 ? "" : ` (${parts.join("; ")})`;
   if (f.at.state === "no result" && f.at.notSelected === true) {
     const runs = `\`--all-missing\` runs ${many ? "them" : "it"}`;
-    return `no result at ${at}, not selected by the change; ${runs}; now ${word(f.now)}${more}`;
+    // Row 023-35 (T2): not selected, yet its closure may hold a changed input.
+    const why =
+      excepted(f) === "incomplete"
+        ? ", but the static closure is incomplete"
+        : ", and its runner does not tell whether the static closure is complete";
+    return `no result at ${at}, not selected by the change${why}; ${runs}; now ${word(f.now)}${more}`;
   }
   return `${word(f.at)} -> ${word(f.now)}${more}`;
 }
@@ -118,7 +123,7 @@ export function fileLines(
   for (const f of files.filter((file) => file.change === "unchanged" && thisRunOnly(file)))
     lines.push(`${f.ref.path}: ${changeText(f, at)}`);
   const groups = new Map<string, FileReport[]>();
-  for (const f of files.filter((file) => file.change === "unknown")) {
+  for (const f of files.filter((file) => file.change === "unknown" && !unchangeable(file))) {
     const text = changeText(f, at);
     groups.set(text, [...(groups.get(text) ?? []), f]);
   }
@@ -135,7 +140,73 @@ export function fileLines(
     const many = changeText(group[0] as FileReport, at, true);
     lines.push(`${group.length} test files: ${many}: ${listPaths(paths, GROUP_SHOWN)}`);
   }
-  return { lines, folded };
+  const fixed = notSelectedLines(files, at, full);
+  lines.push(...fixed.lines);
+  return { lines, folded: folded || fixed.folded };
+}
+
+/**
+ * Row 023-35 (T2; round 5: 10 of 10 sessions read "not selected by the
+ * change" as "not compared"): the files the commit cannot change, on one
+ * line with their count and a few paths (each on its own line with `full`),
+ * and the not-selected files excepted from that, by why.
+ */
+function notSelectedLines(
+  files: readonly FileReport[],
+  at: string,
+  full: boolean,
+): { readonly lines: string[]; readonly folded: boolean } {
+  const paths = files.filter(unchangeable).map((f) => f.ref.path);
+  if (paths.length === 0) return { lines: [], folded: false };
+  const one = paths.length === 1;
+  const reasons = files.map(excepted);
+  const incomplete = reasons.filter((r) => r === "incomplete").length;
+  const unchecked = reasons.filter((r) => r === "unchecked").length;
+  const the = (n: number) => (n === 1 ? "the one" : `the ${n}`);
+  const parts = [
+    ...(incomplete === 0 ? [] : [`${the(incomplete)} with an incomplete static closure`]),
+    ...(unchecked === 0
+      ? []
+      : [
+          `${the(unchecked)} whose runner does not tell whether ${unchecked === 1 ? "its" : "their"} static closure is complete`,
+        ]),
+  ];
+  const except =
+    parts.length === 0
+      ? ""
+      : ` (${parts.join(" and ")} excepted; \`--json\` lists them in notSelected.excepted)`;
+  const head = `${one ? "1 test file" : `${paths.length} test files`} not selected: none of ${one ? "its" : "their"} inputs differs between ${at} and the working tree, so this commit cannot change ${one ? "its" : "their"} result${except}`;
+  if (full) return { lines: [head, ...paths.map((path) => `  ${path}`)], folded: false };
+  const folded = paths.length > GROUP_SHOWN;
+  return { lines: [`${head}: ${listPaths(paths, GROUP_SHOWN)}`], folded };
+}
+
+/**
+ * Row 023-35 (T2): a file with no result at the commit that the change did
+ * not select, and whose static closure its runner told complete: none of
+ * its inputs differs, so the commit cannot change its result.
+ */
+export const unchangeable = (f: FileReport) =>
+  f.at.state === "no result" && f.at.notSelected === true && f.at.closure === "complete";
+
+/** T2: a file the change did not select that the report cannot vouch for, with why. */
+export function excepted(f: FileReport): "incomplete" | "unchecked" | null {
+  if (f.at.state !== "no result" || f.at.notSelected !== true) return null;
+  return f.at.closure === "complete" ? null : (f.at.closure ?? "unchecked");
+}
+
+/**
+ * T2's JSON: how many files the commit cannot change, and each file the
+ * change did not select that is excepted, with why.
+ */
+export function notSelectedJson(files: readonly FileReport[]) {
+  return {
+    files: files.filter(unchangeable).length,
+    excepted: files.flatMap((f) => {
+      const why = excepted(f);
+      return why === null ? [] : [{ project: f.ref.project, path: f.ref.path, closure: why }];
+    }),
+  };
 }
 
 /** P8: the files the commit lacks that exist now: new in the range. */
