@@ -138,6 +138,7 @@ Started: 2026-10-31
 - 2026-11-21, released 0.1.582 (tag squeal--v0.1.582 at ef0e5002c, hub fa3d972, tags v0.1.582 and v0 moved; GitHub latest with install.sh and both Codex runtime assets). Main CI 44843807490 green. Next: row 018-52, the cezar node:test job with the pin moved to 0.1.582.
 - 2026-11-21, row 018-52 again: hearsay-tools/squawk#4010 re-applies #3989 with Squeal's action at v0.1.582. Local dry run at its commit (cezar's own node:test commands, Squeal 0.1.582): 2 node:test parts and no Vitest part; `ci export` kept 147 of 153 node:test files (37 on 0.1.579), 112 of them by the D33 rule; recording cost 4.2% of test time plus 2.2 s of hashing.
 - 2026-11-21, row 018-52 done: hearsay-tools/squawk#4010 merged (cf77ce2d5). Its first merge-group run (44847561223) published `refs/squeal/cf77ce2d5` with 1,888 test files and 33,432 results, against 1,163 files on the last run before: 1,740 Vitest files and all 148 node:test files. 626 rest on the D33 rule. 18 were left out (14 for inputs, 2 for repeated names, 2 for absolute paths), so about 99% of the recorded files are shared. Recording cost 7.5% of test time plus 6.4 s of hashing. Proposed later rows 018-60 to 018-64.
+- 2026-11-21, the human: "Next: Build all 018-60 to 64". Wave 21 brief `tasks/wave-21.md`; five rows in parallel on disjoint files. Row 018-62 moves node:test keys (every stored node:test result runs once again per store), accepted with the choice.
 
 ## Open questions
 
