@@ -29,3 +29,17 @@ Shape: repair, small. `squeal ci export --parts <file.json>` crashes with an `EN
 ## 018-64 `squeal code --base --parts` uses the D33 rule
 
 Shape: slice, small. Spec D33 and open question 2 of the fourth slice. The gate builds `FileReuse` without the commit tree, so it keeps D9 alone. Pass `atCommit` (`src/core/ci/inputs.ts`), as `ci export` does through `ReuseOptions.atCommit`. Starting seam: `src/core/code/gate/parts.ts` (spec 020's code, row 020-52; this row's change was approved by the human). Owns that file and its tests. Done when a gate test with an input nothing touched, equal at both ends and here, certifies the file. The same test with the input changed here refuses it. Close open question 2 in your notes. Use /worker.
+
+## 018-65 repair of review 0.1.585 (B1 to B3)
+
+Shape: repair, on the candidate. Read `reviews/0.1.585.md` whole. The coordinator's decision: the node:test graph keeps every import that Node could load. A fix that reads code text to drop an import is out, because an error there keys less than Node loads, and that gives a wrong pass (B1, B2).
+1. **Remove b2 and b3 of row 018-62.** b2 is the type-only import elision, `type-imports.ts` and its wiring. b3 is the code-only `require` scan, `codeAt` and its code ranges. Restore the earlier behaviour, which scans every `require(...)` and keeps every value import. Keep b1 (the one tsconfig tsx loads, with `TSX_TSCONFIG_PATH`) and b4 (`?query` and `#hash` stripped); both only drop paths Node never reads.
+2. **Pin the review's cases as tests:**
+   - B1: an import `{ type as Value }`;
+   - B2: division before a value import, and division before a literal `require`.
+
+   Each test asserts that the graph keeps the dependency a real `node --import tsx --test` run loads. Keep the review's positive controls.
+3. **B3:** `readPartsIn` refuses a path that cannot be stat'ed (ELOOP, EACCES and the like) with one line and exit 2. Use a real symlink loop in the test.
+4. **Write `tasks/018-62/notes.md`** (N1). It records what b1 and b4 do, why b2 and b3 were removed, and the key-format verdict after the repair.
+
+Run the key-format alarm after the graph repair. Owns `src/runners/node-test/graph/**`, `src/runners/node-test/adapter-project.ts`, `src/core/ci/parts.ts` and their tests. Do not run `pnpm run build`. Any direct vitest run gets `timeout 600`. Use /worker.
