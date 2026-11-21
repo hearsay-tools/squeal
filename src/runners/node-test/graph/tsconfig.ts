@@ -14,17 +14,7 @@ export interface TsconfigPaths {
   readonly baseUrl: AbsolutePath | null;
   /** Every config of the chain, the importer's first: each is a resolution read. */
   readonly files: readonly AbsolutePath[];
-  /**
-   * Row 018-62, b2: the chain keeps an import whose bindings are used only
-   * as types (`verbatimModuleSyntax`, `preserveValueImports`, or
-   * `importsNotUsedAsValues` other than `remove`), so esbuild drops none.
-   */
-  readonly keepsValueImports: boolean;
 }
-
-/** The compiler options that decide esbuild's import elision, as the chain sets them. */
-const KEEPING = ["verbatimModuleSyntax", "preserveValueImports", "importsNotUsedAsValues"] as const;
-type Keeping = Partial<Record<(typeof KEEPING)[number], unknown>>;
 
 /** Reads a file as text, or `null`; the resolver's cached file system. */
 export type ReadText = (path: string) => string | null;
@@ -37,7 +27,7 @@ export type ReadText = (path: string) => string | null;
  */
 export function readTsconfigPaths(file: AbsolutePath, read: ReadText): TsconfigPaths {
   const files: AbsolutePath[] = [];
-  type Effective = Pick<TsconfigPaths, "pathsFile" | "baseUrl"> & { keeping: Keeping };
+  type Effective = Pick<TsconfigPaths, "pathsFile" | "baseUrl">;
   const load = (config: AbsolutePath, seen: ReadonlySet<string>): Effective => {
     files.push(config);
     const json = parseJsonc(read(config));
@@ -45,7 +35,6 @@ export function readTsconfigPaths(file: AbsolutePath, read: ReadText): TsconfigP
     const bases = typeof raw === "string" ? [raw] : Array.isArray(raw) ? raw : [];
     let pathsFile: AbsolutePath | null = null;
     let baseUrl: AbsolutePath | null = null;
-    let keeping: Keeping = {};
     for (const base of bases) {
       if (typeof base !== "string") continue;
       const target = locate(base, dirname(config), read);
@@ -53,29 +42,15 @@ export function readTsconfigPaths(file: AbsolutePath, read: ReadText): TsconfigP
       const inherited = load(target, new Set([...seen, target]));
       pathsFile = inherited.pathsFile ?? pathsFile;
       baseUrl = inherited.baseUrl ?? baseUrl;
-      keeping = { ...keeping, ...inherited.keeping };
     }
     const options = json?.compilerOptions;
     if (isObject(options)) {
       if (isObject(options.paths)) pathsFile = config;
       if (typeof options.baseUrl === "string") baseUrl = resolve(dirname(config), options.baseUrl);
-      for (const key of KEEPING) if (key in options) keeping = { ...keeping, [key]: options[key] };
     }
-    return { pathsFile, baseUrl, keeping };
+    return { pathsFile, baseUrl };
   };
-  const { keeping, ...effective } = load(file, new Set([file]));
-  return { ...effective, files, keepsValueImports: keeps(keeping) };
-}
-
-/** Any doubt keeps: a value other than `false`, `null` or `remove` counts as set. */
-function keeps(keeping: Keeping): boolean {
-  const on = (value: unknown) => value !== undefined && value !== false && value !== null;
-  const notUsed = keeping.importsNotUsedAsValues;
-  return (
-    on(keeping.verbatimModuleSyntax) ||
-    on(keeping.preserveValueImports) ||
-    (on(notUsed) && String(notUsed).toLowerCase() !== "remove")
-  );
+  return { ...load(file, new Set([file])), files };
 }
 
 function locate(specifier: string, dir: string, read: ReadText): AbsolutePath | null {

@@ -1,6 +1,5 @@
-import { init, parse, type StaticImport } from "es-module-lexer";
+import { init, parse } from "es-module-lexer";
 import { codeAt } from "./code-ranges.js";
-import { droppedImports, ELIDING_EXTENSION } from "./type-imports.js";
 
 /** The lexer compiles its WebAssembly once; await before {@link parseModule}. */
 export const parserReady: Promise<void> = init();
@@ -31,11 +30,6 @@ export interface ParsedModule {
    * rejects. It can reach any installed package.
    */
   readonly unnamed: boolean;
-  /**
-   * Row 018-62, b2: an import was left out because esbuild drops it, which
-   * the tsconfig decides, so the tsconfig keys the module.
-   */
-  readonly elided?: true;
 }
 
 /** Modules the lexer reads; anything else (JSON, text) is a leaf. */
@@ -56,43 +50,51 @@ const RESOLVE =
 /** `process.getBuiltinModule(...)`, with its argument when that is one string literal. */
 const GET_BUILTIN = /\bgetBuiltinModule\s*\(\s*(?:(["'])([^"'\n]+)\1\s*\))?/g;
 
-export interface ParseOptions {
-  /**
-   * Row 018-62, b2: tsx compiles this TypeScript module with esbuild, and
-   * the tsconfig keeps no unused value import, so an import whose bindings
-   * are used only as types never loads.
-   */
-  readonly elideTypeImports?: boolean;
-}
-
 /**
  * Specifiers of one module (spec 003 D3): es-module-lexer for `import`,
- * `export ... from` and `import()`, dropping type-only records and, under
- * `elideTypeImports`, the imports esbuild drops, plus a scan for literal
- * `require(...)` in code. `name` is the module's worktree-relative path,
- * used in the reasons and to tell TypeScript.
+ * `export ... from` and `import()`, dropping type-only records, plus a scan
+ * for literal `require(...)`. `name` is the module's worktree-relative path,
+ * used in the reasons.
  */
-export function parseModule(
-  source: string,
-  name: string,
-  options: ParseOptions = {},
-): ParsedModule {
-  const lexed = lexImports(source, name, options);
-  const { specifiers, incomplete, elided } = lexed;
-  let unnamed = lexed.unnamed;
-  const literal = new Set<number>();
-  let code: ((offset: number) => boolean) | null = null;
-  // Row 018-62, b3: in code only. A `require('./x')` in a string or a comment
-  // loads nothing, and under D9 the absent candidates it adds leave the file out.
-  for (const match of source.matchAll(REQUIRE)) {
-    literal.add(match.index);
-    code ??= codeAt(source);
-    if (match[2] !== undefined && code(match.index)) {
-      specifiers.push({ specifier: match[2], kind: "require" });
+export function parseModule(source: string, name: string): ParsedModule {
+  const specifiers: ParsedSpecifier[] = [];
+  const incomplete: string[] = [];
+  let unnamed = false;
+  try {
+    const [imports] = parse(source, name);
+    for (const record of imports) {
+      if (record.type === "import-meta") continue;
+      if (record.type === "dynamic") {
+        if (record.probablyTypeOnly) continue;
+        if (record.specifier === undefined) {
+          incomplete.push(
+            `import() with a computed specifier at ${name}:${position(source, record.importStart)}`,
+          );
+          unnamed = true;
+          continue;
+        }
+        specifiers.push(
+          record.glob
+            ? { specifier: record.specifier, kind: "glob" }
+            : { specifier: record.specifier, kind: "import", dynamic: true },
+        );
+        continue;
+      }
+      if (!record.typeOnly) specifiers.push({ specifier: record.specifier, kind: "import" });
     }
+  } catch (error) {
+    incomplete.push(`${name} does not parse as a module: ${(error as Error).message}`);
+    unnamed = true;
+  }
+  const literal = new Set<number>();
+  for (const match of source.matchAll(REQUIRE)) {
+    if (match[2] !== undefined) specifiers.push({ specifier: match[2], kind: "require" });
+    literal.add(match.index);
   }
   // N6: a computed `require(x)` hides its target as a computed `import(p)` does.
-  // Wave 2 N3: in code only.
+  // Wave 2 N3: in code only; a literal `require` in a comment above stays a specifier,
+  // since a closure one path too wide only costs a re-run.
+  let code: ((offset: number) => boolean) | null = null;
   for (const match of source.matchAll(REQUIRE_CALL)) {
     if (literal.has(match.index)) continue;
     code ??= codeAt(source);
@@ -120,52 +122,7 @@ export function parseModule(
     code ??= codeAt(source);
     unnamed = code(match.index);
   }
-  return { specifiers, incomplete, unnamed, ...(elided ? { elided: true as const } : {}) };
-}
-
-/** es-module-lexer's records of one module, as {@link parseModule}'s first part. */
-function lexImports(
-  source: string,
-  name: string,
-  options: ParseOptions,
-): { specifiers: ParsedSpecifier[]; incomplete: string[]; unnamed: boolean; elided: boolean } {
-  const specifiers: ParsedSpecifier[] = [];
-  const incomplete: string[] = [];
-  let unnamed = false;
-  let elided = false;
-  try {
-    const [imports] = parse(source, name);
-    const statics = imports.filter((r): r is StaticImport => r.type === "static");
-    const dropped =
-      options.elideTypeImports === true && ELIDING_EXTENSION.test(name)
-        ? droppedImports(source, statics)
-        : new Set<StaticImport>();
-    elided = dropped.size > 0;
-    for (const record of imports) {
-      if (record.type === "import-meta") continue;
-      if (record.type !== "dynamic") {
-        if (!record.typeOnly && !dropped.has(record)) {
-          specifiers.push({ specifier: record.specifier, kind: "import" });
-        }
-      } else if (record.probablyTypeOnly) {
-      } else if (record.specifier === undefined) {
-        incomplete.push(
-          `import() with a computed specifier at ${name}:${position(source, record.importStart)}`,
-        );
-        unnamed = true;
-      } else {
-        specifiers.push(
-          record.glob
-            ? { specifier: record.specifier, kind: "glob" }
-            : { specifier: record.specifier, kind: "import", dynamic: true },
-        );
-      }
-    }
-  } catch (error) {
-    incomplete.push(`${name} does not parse as a module: ${(error as Error).message}`);
-    unnamed = true;
-  }
-  return { specifiers, incomplete, unnamed, elided };
+  return { specifiers, incomplete, unnamed };
 }
 
 /** 1-based `line:column` of an offset. */

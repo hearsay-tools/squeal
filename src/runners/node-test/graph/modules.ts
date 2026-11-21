@@ -40,8 +40,6 @@ const NO_PARSE: ParsedModule = { specifiers: [], incomplete: [], unnamed: false 
  */
 export class ModuleTable {
   private readonly parses = new Map<AbsolutePath, ParsedModule>();
-  /** Whether the cached parses left out the imports esbuild drops (row 018-62, b2). */
-  private parsedEliding: boolean | null = null;
   private nodes = new Map<AbsolutePath, ModuleNode>();
 
   constructor(
@@ -86,30 +84,13 @@ export class ModuleTable {
     this.nodes = new Map();
   }
 
-  /**
-   * Row 018-62, b2: under tsx, esbuild drops an import used only as a type
-   * unless the project's tsconfig keeps value imports. A tsconfig change
-   * that flips this parses every module again.
-   */
-  private eliding(): boolean {
-    const eliding = this.tsx && this.resolver.projectTsconfig()?.keepsValueImports !== true;
-    if (eliding !== this.parsedEliding) {
-      this.parses.clear();
-      this.parsedEliding = eliding;
-    }
-    return eliding;
-  }
-
   private parsed(file: AbsolutePath): ParsedModule {
-    const elideTypeImports = this.eliding();
     let parsed = this.parses.get(file);
     if (parsed === undefined) {
       parsed = NO_PARSE;
       if (PARSED_EXTENSION.test(file)) {
         try {
-          parsed = parseModule(readFileSync(file, "utf8"), relative(this.root, file), {
-            elideTypeImports,
-          });
+          parsed = parseModule(readFileSync(file, "utf8"), relative(this.root, file));
         } catch {
           // A file that vanished between listing and reading: a later delete re-resolves.
         }
@@ -131,7 +112,6 @@ export class ModuleTable {
     const from = this.relativeDir(file);
     const format = this.tsx ? this.resolver.moduleFormat(file) : null;
     if (format?.manifest != null && parsed.specifiers.length > 0) reads.add(format.manifest);
-    if (parsed.elided) this.tsconfigReads(reads);
     for (const { specifier, kind: written, dynamic } of parsed.specifiers) {
       if (written === "glob") {
         const matches = expandGlob(specifier, file, this.tsx);
@@ -164,13 +144,6 @@ export class ModuleTable {
       if (resolution.pair !== null) pairs.push(resolution.pair);
     }
     return { deps, reads, candidates, incomplete, pairs, packages, builtins: [...builtins] };
-  }
-
-  /** b2: the tsconfig decided which imports of a module load, so it keys the module. */
-  private tsconfigReads(reads: Set<AbsolutePath>): void {
-    for (const read of this.resolver.projectTsconfig()?.files ?? []) {
-      if (this.inWorktree(read)) reads.add(read);
-    }
   }
 
   /**

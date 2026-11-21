@@ -5,16 +5,16 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 import { createNodeTestGraph } from "../../../src/runners/node-test/graph/index.js";
-import { parseModule, parserReady } from "../../../src/runners/node-test/graph/parse.js";
 import { MANIFEST, observedClosure } from "./graph-observed.js";
 
 /**
  * Row 018-62 (`research/node-test-left-out.md`, finding b): the node:test
- * graph keys what Node loads. b1, the one tsconfig tsx loads; b2, no import
- * tsx's esbuild drops; b3, no `require` in a string or a comment; b4, no
- * `?query` or `#hash` on a resolved path. Each tree sits under the repository,
- * so a run under `--import tsx` finds tsx, and each closure is compared with
- * what that run loads.
+ * graph keys what Node loads. b1, the one tsconfig tsx loads; b4, no
+ * `?query` or `#hash` on a resolved path. Row 018-65 removed b2 and b3
+ * (review 0.1.585, B1 and B2): the graph keeps every import Node could load,
+ * so a closure may be one path too wide, never short. Each tree sits under
+ * the repository, so a run under `--import tsx` finds tsx, and each closure
+ * is compared with what that run loads.
  */
 
 const scratch = join(
@@ -112,130 +112,6 @@ describe("b1: the tsconfig tsx loads", () => {
   });
 });
 
-describe("b2: an import tsx's esbuild drops", () => {
-  const parse = (source: string, name = "m.ts", elideTypeImports = true) =>
-    parseModule(source, name, { elideTypeImports }).specifiers.map((s) => s.specifier);
-
-  it("leaves out an import whose every binding is used only as a type, or not at all", async () => {
-    await parserReady;
-    const source = lines(
-      'import { A } from "./type-use";',
-      'import B, { type C } from "./mixed-types";',
-      'import { D } from "./typeof";',
-      'import { E } from "./unused";',
-      'import { type F } from "./inline-type";',
-      'import { G } from "./value";',
-      'import * as H from "./namespace";',
-      'import { I } from "./in-string";',
-      'import "./side-effect";',
-      'export { J } from "./reexport";',
-      "export function f(a: A, b: B<C>, d: typeof D): void {",
-      "  new G(); H.run();",
-      '  console.log("I");',
-      "}",
-    );
-    expect(parse(source)).toEqual(["./value", "./namespace", "./side-effect", "./reexport"]);
-    expect(parseModule(source, "m.ts", { elideTypeImports: true }).elided).toBe(true);
-  });
-
-  it("keeps every import when the tsconfig keeps them, in JavaScript, TSX, or a source Node cannot strip", async () => {
-    await parserReady;
-    const source = lines('import { A } from "./a";', "let a: A;");
-    expect(parse(source, "m.ts", false)).toEqual(["./a"]);
-    expect(parse(source, "m.js")).toEqual(["./a"]);
-    expect(parse(source, "m.tsx")).toEqual(["./a"]);
-    expect(parse(`${source}enum E { a }\n`)).toEqual(["./a"]);
-    expect(parse(source, "m.mts")).toEqual([]);
-  });
-
-  it("keeps an import whose binding is a value somewhere: a call, a property read, a shorthand", async () => {
-    await parserReady;
-    for (const use of ["A();", "A.b.c();", "let x = { A };", "let x: A = A;", "f(A as A);"]) {
-      expect(parse(lines('import { A } from "./a";', use)), use).toEqual(["./a"]);
-    }
-  });
-
-  const CLASSES = {
-    "package.json": PACKAGE,
-    "src/type-use.ts": "export class A {}\n",
-    "src/typeof.ts": "export class D {}\n",
-    "src/unused.ts": "export class E {}\n",
-    "src/value.ts": "export class G {}\n",
-    "src/namespace.ts": "export class H {}\n",
-    "src/enum-file.ts": "export class K {}\n",
-    "src/strip-fails.ts": lines(
-      'import { K } from "./enum-file.ts";',
-      "export enum L { a }",
-      "let k: K;",
-    ),
-    "test/a.test.ts": lines(
-      'import { test } from "node:test";',
-      'import { A } from "../src/type-use.ts";',
-      'import { D } from "../src/typeof.ts";',
-      'import { E } from "../src/unused.ts";',
-      'import { G } from "../src/value.ts";',
-      'import * as H from "../src/namespace.ts";',
-      'import { L } from "../src/strip-fails.ts";',
-      "function f(a: A, d: typeof D): void {}",
-      'test("loads", () => { new G(); void H; void L; void f; });',
-    ),
-  };
-
-  it("never hides a module the run loads, and holds no module it drops", SLOW, async () => {
-    const root = tree(CLASSES);
-    const closure = modules((await closureOf(root, "test/a.test.ts")).paths);
-    const observed = observedClosure(root, root, TSX, "test/a.test.ts");
-    // A source Node's stripping rejects keeps its imports: one path too wide, never short.
-    expect(closure).toEqual([...observed, "src/enum-file.ts"].sort());
-    for (const dropped of ["src/type-use.ts", "src/typeof.ts", "src/unused.ts"]) {
-      expect(closure).not.toContain(dropped);
-    }
-  });
-
-  it("keys the tsconfig, and holds every import once the tsconfig keeps them", SLOW, async () => {
-    const root = tree({ ...CLASSES, "tsconfig.json": paths({}) });
-    const graph = await createNodeTestGraph({
-      root,
-      cwd: root,
-      argv: TSX,
-      testFiles: ["test/a.test.ts"],
-    });
-    expect(graph.closure("test/a.test.ts").paths).toContain("tsconfig.json");
-    writeFileSync(join(root, "tsconfig.json"), paths({ verbatimModuleSyntax: true }));
-    graph.invalidate([{ path: "tsconfig.json", kind: "change" }]);
-    const closure = modules(graph.closure("test/a.test.ts").paths);
-    expect(closure).toContain("src/type-use.ts");
-    expect(closure).toEqual(observedClosure(root, root, TSX, "test/a.test.ts"));
-  });
-});
-
-describe("b3: require in code only", () => {
-  it("names no require in a string or a comment", async () => {
-    await parserReady;
-    const source = lines(
-      "const fixture = \"require('./word.cjs')\";",
-      "// require('./commented.cjs')",
-      "const real = require('./real.cjs');",
-    );
-    expect(parseModule(source, "m.cjs").specifiers).toEqual([
-      { specifier: "./real.cjs", kind: "require" },
-    ]);
-  });
-
-  it("adds no absent candidate for one", SLOW, async () => {
-    const root = tree({
-      "package.json": PACKAGE,
-      "test/a.test.cjs": lines(
-        'const { test } = require("node:test");',
-        'test("text", () => void "require(\'./word.cjs\')");',
-      ),
-    });
-    const closure = await closureOf(root, "test/a.test.cjs", []);
-    expect(closure.paths.filter((p) => p.includes("word"))).toEqual([]);
-    expect(modules(closure.paths)).toEqual(observedClosure(root, root, [], "test/a.test.cjs"));
-  });
-});
-
 describe("b4: a query or a hash on a specifier", () => {
   it("keys the file Node loads, under Node's rules and tsx's", SLOW, async () => {
     const root = tree({
@@ -258,4 +134,149 @@ describe("b4: a query or a hash on a specifier", () => {
       expect(modules(closure.paths)).toEqual(observedClosure(root, root, argv, "test/a.test.mjs"));
     }
   });
+});
+
+/**
+ * Review 0.1.585: the graph keeps every import Node could load. Each case is
+ * a real `node --test` run whose test passes only when `dep` loads; the
+ * graph must hold `dep` and select the test when `dep` changes.
+ */
+describe("review 0.1.585: no import Node loads is left out", () => {
+  const ASSERT = 'import assert from "node:assert/strict";';
+  const TEST = 'import { test } from "node:test";';
+  const DEP_TS = lines('console.log("LOADED_DEP");', "export const Value = 2;");
+
+  async function keeps(files: Record<string, string>, file: string, dep: string, argv = TSX) {
+    const root = tree({ "package.json": PACKAGE, ...files });
+    const graph = await createNodeTestGraph({ root, cwd: root, argv, testFiles: [file] });
+    const closure = graph.closure(file);
+    const observed = observedClosure(root, root, argv, file);
+    expect(observed).toContain(dep);
+    expect(closure.incomplete).toEqual([]);
+    // One path too wide is allowed; one short is a wrong pass.
+    expect(modules(closure.paths)).toEqual(expect.arrayContaining(observed));
+    const affected = graph.affected([dep]);
+    expect([...affected.direct, ...affected.transitive]).toEqual([file]);
+    return modules(closure.paths);
+  }
+
+  const value = (...body: string[]) => ({
+    "dep.ts": DEP_TS,
+    "a.test.ts": lines(ASSERT, TEST, 'import { Value } from "./dep.ts";', ...body),
+  });
+
+  it("B1: keeps an import of a value named `type`, renamed", SLOW, async () => {
+    const files = {
+      "dep.ts": lines('console.log("LOADED_DEP");', "export const type = 2;"),
+      "a.test.ts": lines(
+        ASSERT,
+        TEST,
+        'import { type as Value } from "./dep.ts";',
+        'test("value", () => assert.equal(Value, 2));',
+      ),
+    };
+    expect(await keeps(files, "a.test.ts", "dep.ts")).toEqual(["a.test.ts", "dep.ts"]);
+  });
+
+  it("B2: keeps a value import after a division by a keyword-named property", SLOW, async () => {
+    const files = value(
+      "const result = ({ return: 8 }).return / Value / 2;",
+      'test("value", () => assert.equal(result, 2));',
+    );
+    await keeps(files, "a.test.ts", "dep.ts");
+  });
+
+  it("B2: keeps a value import after a division of an object literal", SLOW, async () => {
+    const files = value(
+      "const result = ({ valueOf: () => 8 } as unknown as number) / Value / 2;",
+      'test("value", () => assert.equal(result, 2));',
+    );
+    await keeps(files, "a.test.ts", "dep.ts");
+  });
+
+  it("B2: keeps a literal require after a division of an object literal", SLOW, async () => {
+    const files = {
+      "dep.cjs": lines('console.log("LOADED_DEP");', "module.exports = 2;"),
+      "a.test.cjs": lines(
+        'const { test } = require("node:test");',
+        'const assert = require("node:assert/strict");',
+        'const result = { valueOf: () => 8 } / require("./dep.cjs") / 2;',
+        'test("value", () => assert.equal(result, 2));',
+      ),
+    };
+    for (const argv of [[], TSX]) await keeps(files, "a.test.cjs", "dep.cjs", argv);
+  });
+
+  it("keeps an import tsx drops for a type-only binding: one path too wide", SLOW, async () => {
+    const files = {
+      "dep.ts": DEP_TS,
+      "a.test.ts": lines(
+        ASSERT,
+        TEST,
+        'import { type Value } from "./dep.ts";',
+        "const v: Value | null = null;",
+        'test("type", () => assert.equal(v, null));',
+      ),
+    };
+    const root = tree({ "package.json": PACKAGE, ...files });
+    const closure = await closureOf(root, "a.test.ts");
+    expect(observedClosure(root, root, TSX, "a.test.ts")).toEqual(["a.test.ts"]);
+    expect(modules(closure.paths)).toEqual(["a.test.ts", "dep.ts"]);
+  });
+
+  // The review's positive controls: each loads `dep`, and the graph held it.
+  const CONTROLS: Record<string, Record<string, string>> = {
+    "an enum": value("enum E { a = Value }", 'test("v", () => assert.equal(E.a, 2));'),
+    "a value re-export": {
+      "dep.ts": DEP_TS,
+      "re.ts": 'export { Value } from "./dep.ts";\n',
+      "a.test.ts": lines(
+        ASSERT,
+        TEST,
+        'import { Value } from "./re.ts";',
+        'test("v", () => assert.equal(Value, 2));',
+      ),
+    },
+    "a side-effect import": {
+      "dep.ts": lines("(globalThis as { v?: number }).v = 2;", "export {};"),
+      "a.test.ts": lines(
+        ASSERT,
+        TEST,
+        'import "./dep.ts";',
+        'test("v", () => assert.equal((globalThis as { v?: number }).v, 2));',
+      ),
+    },
+    "a mixed inline type and value import": {
+      "dep.ts": lines(DEP_TS, "export type T = number;"),
+      "a.test.ts": lines(
+        ASSERT,
+        TEST,
+        'import { type T, Value } from "./dep.ts";',
+        "const v: T = Value;",
+        'test("v", () => assert.equal(v, 2));',
+      ),
+    },
+    "a template expression": value(
+      "const s = `$" + "{Value}`;",
+      'test("v", () => assert.equal(s, "2"));',
+    ),
+    "JSX in .tsx": {
+      "dep.ts": DEP_TS,
+      "a.test.tsx": lines(
+        ASSERT,
+        TEST,
+        'import { Value } from "./dep.ts";',
+        "const React = { createElement: (_t: unknown, p: { v: number }) => p.v };",
+        "const out = <div v={Value} />;",
+        'test("v", () => assert.equal(out, 2));',
+      ),
+    },
+  };
+
+  for (const [name, files] of Object.entries(CONTROLS)) {
+    it(`keeps the dependency of ${name}`, SLOW, async () => {
+      const file = Object.keys(files).find((f) => f.startsWith("a.test")) ?? "";
+      await keeps(files, file, "dep.ts");
+    });
+  }
 });

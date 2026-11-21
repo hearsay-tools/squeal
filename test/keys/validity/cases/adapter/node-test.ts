@@ -243,10 +243,10 @@ const GATED: Readonly<Record<string, string>> = {
  * The fixture's `tsx` loads the repository's own, so the runs are tsx's.
  * b1: `lib/x.ts` sits under a tsconfig of its own, which tsx never reads,
  * and the project's `tsconfig.json` extends the one that holds `paths`;
- * b2: `src/kind.ts` is imported for a type only, and esbuild drops it, while
- * `src/enum.ts`, which Node's stripping rejects, keeps its own such import;
- * b3: `require('./word.cjs')` is text, and `src/legacy.cjs` requires in
- * code; b4: `import()` carries a query. `test/unparsable.test.ts` is listed,
+ * b4: `import()` carries a query. Row 018-65 removed b2 and b3 (review
+ * 0.1.585): `src/kind.ts`, imported for a type only, and the text
+ * `require('./word.cjs')` stay keyed, since the graph keeps every import
+ * Node could load. `test/unparsable.test.ts` is listed,
  * never run: the lexer rejects it, and the keys at open read it.
  */
 const TSX_LOADER = new URL("../../../../../node_modules/tsx/dist/loader.mjs", import.meta.url).href;
@@ -429,7 +429,7 @@ export const NODE_TEST_RUNS: readonly Case[] = [
   {
     kind: "adapter:node-test",
     name: "a tsx project's keys follow what tsx loads (row 018-62)",
-    why: "018-62, research node-test-left-out.md finding b: the graph keys the one tsconfig tsx loads (b1), leaves out an import esbuild drops for being used only as a type (b2), names no require in a string (b3) and keys the file a query names (b4). The closure narrows to what the run loads, so keys move and every node:test result runs once more, which the human accepted on 2026-11-21; the run stores what the last release stored",
+    why: "018-62, research node-test-left-out.md finding b: the graph keys the one tsconfig tsx loads (b1) and keys the file a query names (b4); row 018-65 removed b2 and b3, so an import used only as a type and a require in a string stay keyed. The closure narrows to what the run loads, so keys move and every node:test result runs once more, which the human accepted on 2026-11-21; the run stores what the last release stored",
     input: {
       files: TSX_KEYED,
       argv: ["--import", "tsx"],

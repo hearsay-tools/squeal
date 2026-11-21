@@ -36,11 +36,6 @@ export interface Resolver {
    * CommonJS, so its static imports resolve with the `require` conditions.
    */
   moduleFormat(file: AbsolutePath): ModuleFormat;
-  /**
-   * Row 018-62, b1: the one tsconfig tsx loads for the process, with its
-   * `extends` chain; `null` under Node's own rules or when there is none.
-   */
-  projectTsconfig(): TsconfigPaths | null;
   /** Releases build-only filesystem and resolver caches; keeps compact lookup summaries for edits. */
   release(): void;
   /** Drops every cached stat, read and resolver (D4: on add, delete, manifest change). */
@@ -165,6 +160,10 @@ export function createResolver(
     return found;
   };
   const cwd = source.cwd ?? root;
+  /**
+   * Row 018-62, b1: the one tsconfig tsx loads for the process, with its
+   * `extends` chain; `null` under Node's own rules or when there is none.
+   */
   const projectTsconfig = (): TsconfigPaths | null => {
     const file = source.tsconfigPath ? resolvePath(cwd, source.tsconfigPath) : tsconfigFor(cwd);
     return tsx && file !== null ? chainOf(file) : null;
@@ -232,7 +231,6 @@ export function createResolver(
       if (MODULE.test(file)) return { format: "module", manifest: null };
       return scopeOf(dirname(file));
     },
-    projectTsconfig,
     release() {
       fileSystem.purge();
       resolvers.clear();
