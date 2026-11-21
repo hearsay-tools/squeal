@@ -2390,8 +2390,10 @@ function checkoutLines(c, at) {
   const commit = c.commit === null ? UNKNOWN : c.commit.slice(0, 12);
   const pid = c.pid === null ? UNKNOWN : String(c.pid);
   const owner = c.owner === "live" ? "" : `  owner ${c.owner}`;
+  const kind = c.kind === "commit" ? "commit worktree  " : "";
+  const who = c.daemon === true ? "daemon pid" : "pid";
   return [
-    `  ${mark} ${c.path}  pid ${pid}  age ${age(c.createdAt, at)}  at ${commit}${owner}`,
+    `  ${mark} ${kind}${c.path}  ${who} ${pid}  age ${age(c.createdAt, at)}  at ${commit}${owner}`,
     ...flagLines(c.flags)
   ];
 }
@@ -2453,9 +2455,9 @@ function gitCheckoutsDir(commonDir) {
   return join18(commonDir, "squeal", "checkouts");
 }
 
-// src/core/checkout/sweep.ts
-import { readdirSync as readdirSync8 } from "node:fs";
-import { join as join20 } from "node:path";
+// src/core/checkout/marker.ts
+import { readFileSync as readFileSync11, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join19 } from "node:path";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync as readFileSync10, readlinkSync as readlinkSync2 } from "node:fs";
@@ -2518,17 +2520,7 @@ function leaseProcessAlive(holder) {
   }
 }
 
-// src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
-
-// src/core/daemon/test-pause.ts
-import { channel } from "node:diagnostics_channel";
-var TEST_PAUSE_CHANNEL = "squeal:test-pause";
-var pauses = channel(TEST_PAUSE_CHANNEL);
-
 // src/core/checkout/marker.ts
-import { readFileSync as readFileSync11, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join19 } from "node:path";
 var MARKER_VERSION = 1;
 function markerPath(folder) {
   return join19(folder, "marker.json");
@@ -2544,7 +2536,7 @@ function readMarker(folder) {
     return null;
   }
   if (!isRecord(value) || value.v !== MARKER_VERSION || !isRecord(value.owner)) return null;
-  const { owner, commit, commonDir, createdAt, group } = value;
+  const { owner, commit, commonDir, createdAt, group, fingerprint, daemon, installed } = value;
   if (typeof owner.pid !== "number") return null;
   if (typeof commit !== "string" || typeof commonDir !== "string") return null;
   if (typeof createdAt !== "number") return null;
@@ -2554,7 +2546,10 @@ function readMarker(folder) {
     commit,
     commonDir,
     createdAt,
-    ...isRecord(group) && typeof group.pid === "number" ? { group: leaseOf(group) } : {}
+    ...isRecord(group) && typeof group.pid === "number" ? { group: leaseOf(group) } : {},
+    ...typeof fingerprint === "string" ? { fingerprint } : {},
+    ...isRecord(daemon) && typeof daemon.pid === "number" ? { daemon: leaseOf(daemon) } : {},
+    ...installed === true ? { installed } : {}
   };
 }
 function leaseOf(value) {
@@ -2564,10 +2559,25 @@ function leaseOf(value) {
     pidNamespace: typeof value.pidNamespace === "string" ? value.pidNamespace : null
   };
 }
+function ownerOf(marker) {
+  return marker.daemon ?? marker.owner;
+}
 function ownerState(marker) {
-  const alive = leaseProcessAlive(marker.owner);
+  const alive = leaseProcessAlive(ownerOf(marker));
   return alive === null ? "unknown" : alive ? "live" : "dead";
 }
+
+// src/core/checkout/sweep.ts
+import { readdirSync as readdirSync8 } from "node:fs";
+import { join as join20 } from "node:path";
+
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
 
 // src/core/checkout/sweep.ts
 function listCheckouts(dirs) {
@@ -2613,13 +2623,14 @@ function shapeOf(listed) {
     folder: listed.folder,
     commit: marker?.commit ?? null,
     commonDir: marker?.commonDir ?? null,
-    pid: marker?.owner.pid ?? null,
+    pid: marker === null ? null : ownerOf(marker).pid,
     createdAt: marker?.createdAt ?? null,
+    ...marker?.fingerprint === void 0 ? {} : { kind: "commit", daemon: marker.daemon !== void 0 },
     owner,
     flags: dead ? [
       {
         flag: "dead-checkout",
-        reason: `its owner, pid ${marker.owner.pid}, is gone`,
+        reason: `its owner, pid ${ownerOf(marker).pid}, is gone`,
         command: removal(marker.commonDir, listed)
       }
     ] : []
