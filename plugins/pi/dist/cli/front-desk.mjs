@@ -838,6 +838,7 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
       const requestId = randomUUID2();
       const request = {
         group,
+        paths,
         at: now(),
         requested: null,
         unknown: false,
@@ -867,6 +868,13 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
     status(requestId) {
       const request = requests.get(requestId);
       return request === void 0 ? null : answer2(requestId, request);
+    },
+    // Review wave-23 B2: the narrow requests still waiting for the scheduler, for `ping`.
+    recorded() {
+      const waiting2 = [...requests].filter(
+        ([, r]) => r.paths !== void 0 && holderOf(r) !== null
+      );
+      return waiting2.map(([requestId, r]) => ({ requestId, group: r.group, paths: r.paths ?? [] }));
     }
   };
 }
@@ -1159,6 +1167,20 @@ function remember(set, value) {
 
 // src/core/daemon/handlers.ts
 var MAX_REQUESTS = 32;
+function pingAnswer(context, recorded) {
+  return {
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "ping",
+    pid: process.pid,
+    worktreeId: context.worktreeId,
+    root: context.root,
+    squealVersion: context.squealVersion,
+    phase: context.phase(),
+    startedAt: context.startedAt,
+    ...recorded.length === 0 ? {} : { recorded }
+  };
+}
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
@@ -1226,17 +1248,7 @@ function createHandlers(context) {
     if (isDeskRequest(request)) return deskAnswer(request, { imports, keeps }, context.phase());
     switch (request.type) {
       case "ping":
-        return {
-          schemaVersion: PAYLOAD_SCHEMA_VERSION,
-          ok: true,
-          type: "ping",
-          pid: process.pid,
-          worktreeId: context.worktreeId,
-          root: context.root,
-          squealVersion: context.squealVersion,
-          phase: context.phase(),
-          startedAt: context.startedAt
-        };
+        return pingAnswer(context, groups.recorded());
       case "nudge":
         context.onActivity();
         context.onNudge?.();

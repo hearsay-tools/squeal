@@ -4,7 +4,7 @@ const require = __squealCreateRequire(import.meta.url);
 
 // src/cli/ps.ts
 import { homedir as homedir3 } from "node:os";
-import { isAbsolute as isAbsolute9, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute10, resolve as resolve4 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/paths.ts
@@ -2439,25 +2439,12 @@ function clip(text2, width) {
   return text2.length <= width ? text2 : `\u2026${text2.slice(text2.length - width + 1)}`;
 }
 
-// src/core/checkout/location.ts
-import { homedir as homedir2 } from "node:os";
-import { dirname as dirname8, isAbsolute as isAbsolute6, join as join18 } from "node:path";
-function cacheCheckoutsRoot(env = process.env, platform = process.platform) {
-  return join18(cacheHome(env, platform), "squeal", "checkouts");
-}
-function cacheHome(env, platform) {
-  const xdg = env.XDG_CACHE_HOME;
-  if (xdg !== void 0 && xdg !== "" && isAbsolute6(xdg)) return xdg;
-  const home = env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2();
-  return platform === "darwin" ? join18(home, "Library", "Caches") : join18(home, ".cache");
-}
-function gitCheckoutsDir(commonDir) {
-  return join18(commonDir, "squeal", "checkouts");
-}
+// src/core/ps/checkouts.ts
+import { basename as basename6, dirname as dirname10 } from "node:path";
 
-// src/core/checkout/marker.ts
-import { readFileSync as readFileSync11, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join19 } from "node:path";
+// src/core/checkout/commit-identity.ts
+import { lstatSync as lstatSync4, readdirSync as readdirSync8, readFileSync as readFileSync12, realpathSync as realpathSync2, rmdirSync, rmSync as rmSync3 } from "node:fs";
+import { basename as basename5, dirname as dirname9, isAbsolute as isAbsolute7, join as join20, resolve as resolve3 } from "node:path";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync as readFileSync10, readlinkSync as readlinkSync2 } from "node:fs";
@@ -2520,13 +2507,23 @@ function leaseProcessAlive(holder) {
   }
 }
 
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
+
 // src/core/checkout/marker.ts
+import { readFileSync as readFileSync11, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join18 } from "node:path";
 var MARKER_VERSION = 1;
 function markerPath(folder) {
-  return join19(folder, "marker.json");
+  return join18(folder, "marker.json");
 }
 function treePath(folder) {
-  return join19(folder, "tree");
+  return join18(folder, "tree");
 }
 function readMarker(folder) {
   let value;
@@ -2567,24 +2564,70 @@ function ownerState(marker) {
   return alive === null ? "unknown" : alive ? "live" : "dead";
 }
 
+// src/core/checkout/location.ts
+import { homedir as homedir2 } from "node:os";
+import { dirname as dirname8, isAbsolute as isAbsolute6, join as join19 } from "node:path";
+function cacheCheckoutsRoot(env = process.env, platform = process.platform) {
+  return join19(cacheHome(env, platform), "squeal", "checkouts");
+}
+function cacheHome(env, platform) {
+  const xdg = env.XDG_CACHE_HOME;
+  if (xdg !== void 0 && xdg !== "" && isAbsolute6(xdg)) return xdg;
+  const home = env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2();
+  return platform === "darwin" ? join19(home, "Library", "Caches") : join19(home, ".cache");
+}
+function gitCheckoutsDir(commonDir) {
+  return join19(commonDir, "squeal", "checkouts");
+}
+
+// src/core/checkout/commit-identity.ts
+function commitFolderName(commit, fingerprint) {
+  return `commit-${commit}-${fingerprint}`;
+}
+function commitIdentity(tree) {
+  try {
+    return identityOf(tree);
+  } catch {
+    return null;
+  }
+}
+function identityOf(given) {
+  if (basename5(given) !== "tree" || lstatOrNull(given)?.isDirectory() !== true) return null;
+  const tree = realpathSync2(given);
+  const folder = dirname9(tree);
+  const marker = readMarker(folder);
+  if (marker?.fingerprint === void 0) return null;
+  const { commonDir, commit, fingerprint } = marker;
+  if (basename5(folder) !== commitFolderName(commit, fingerprint)) return null;
+  if (!isCheckoutLocation(dirname9(folder), commonDir)) return null;
+  if (!isSqueals(tree, commonDir)) return null;
+  return { tree, folder, marker: { ...marker, fingerprint } };
+}
+function isCheckoutLocation(dir, commonDir) {
+  return dir === gitCheckoutsDir(commonDir) || basename5(dir) === worktreeIdOfRealPath(commonDir);
+}
+function isSqueals(tree, commonDir) {
+  const dotGit2 = join20(tree, ".git");
+  if (lstatOrNull(dotGit2)?.isFile() !== true) return false;
+  const line = /^gitdir: (.+)$/m.exec(readFileSync12(dotGit2, "utf8"))?.[1]?.trim();
+  if (line === void 0) return false;
+  const admin = realpathSync2(isAbsolute7(line) ? line : resolve3(tree, line));
+  if (dirname9(admin) !== join20(commonDir, "worktrees")) return false;
+  const back = readFileSync12(join20(admin, "gitdir"), "utf8").trim();
+  if (realpathSync2(isAbsolute7(back) ? back : resolve3(admin, back)) !== realpathSync2(dotGit2))
+    return false;
+  return readFileSync12(join20(admin, "locked"), "utf8").trim() === "squeal";
+}
+var IDENTITY_FAILED = "its tree is not a commit worktree Squeal made; check it and remove it by hand";
+
 // src/core/checkout/sweep.ts
-import { readdirSync as readdirSync8 } from "node:fs";
-import { join as join20 } from "node:path";
-
-// src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
-
-// src/core/daemon/test-pause.ts
-import { channel } from "node:diagnostics_channel";
-var TEST_PAUSE_CHANNEL = "squeal:test-pause";
-var pauses = channel(TEST_PAUSE_CHANNEL);
-
-// src/core/checkout/sweep.ts
+import { readdirSync as readdirSync9 } from "node:fs";
+import { join as join21 } from "node:path";
 function listCheckouts(dirs) {
   const listed = [];
   for (const dir of dirs) {
     for (const name2 of entriesOf(dir)) {
-      const folder = join20(dir, name2);
+      const folder = join21(dir, name2);
       const marker = readMarker(folder);
       listed.push({
         folder,
@@ -2597,11 +2640,11 @@ function listCheckouts(dirs) {
   return listed.sort((a, b) => a.folder.localeCompare(b.folder));
 }
 function cacheRepositoryDirs(cacheRoot) {
-  return entriesOf(cacheRoot).map((name2) => join20(cacheRoot, name2));
+  return entriesOf(cacheRoot).map((name2) => join21(cacheRoot, name2));
 }
 function entriesOf(dir) {
   try {
-    return readdirSync8(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+    return readdirSync9(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return [];
     throw error;
@@ -2627,14 +2670,18 @@ function shapeOf(listed) {
     createdAt: marker?.createdAt ?? null,
     ...marker?.fingerprint === void 0 ? {} : { kind: "commit", daemon: marker.daemon !== void 0 },
     owner,
-    flags: dead ? [
-      {
-        flag: "dead-checkout",
-        reason: `its owner, pid ${ownerOf(marker).pid}, is gone`,
-        command: removal(marker.commonDir, listed)
-      }
-    ] : []
+    flags: dead ? [deadFlag(listed, marker)] : []
   };
+}
+function deadFlag(listed, marker) {
+  const reason = `its owner, pid ${ownerOf(marker).pid}, is gone`;
+  if (marker.fingerprint === void 0)
+    return { flag: "dead-checkout", reason, command: removal(marker.commonDir, listed) };
+  if (commitIdentity(listed.tree) === null)
+    return { flag: "dead-checkout", reason: `${reason}; ${IDENTITY_FAILED}`, command: null };
+  const repo = basename6(marker.commonDir) === ".git" ? dirname10(marker.commonDir) : listed.tree;
+  const command2 = `cd ${shellWord(repo)} && squeal stop --at ${marker.commit}`;
+  return { flag: "dead-checkout", reason, command: command2 };
 }
 function removal(commonDir, listed) {
   const git = `git -C ${shellWord(commonDir)} worktree`;
@@ -2646,7 +2693,7 @@ function removal(commonDir, listed) {
 }
 
 // src/core/ps/host.ts
-import { join as join21 } from "node:path";
+import { join as join22 } from "node:path";
 var hostTotals = (first, second) => {
   const a = first.cpuTime;
   const b = second.cpuTime;
@@ -2720,12 +2767,12 @@ function capacityOf(path, cpus3) {
 function permitFiles(places) {
   const files = [];
   const add = (dir, permit) => {
-    for (const name2 of names(dir)) if (permit.test(name2)) files.push(join21(dir, name2));
+    for (const name2 of names(dir)) if (permit.test(name2)) files.push(join22(dir, name2));
   };
   for (const base of poolDirs(places)) {
     add(base, PERMIT2);
     for (const name2 of names(base)) {
-      const dir = join21(base, name2);
+      const dir = join22(base, name2);
       if (isRepositorySlotDir(dir)) add(dir, REPOSITORY_PERMIT);
     }
   }
@@ -3002,7 +3049,7 @@ function filesOf(args) {
 }
 
 // src/core/ps/snapshot-shape.ts
-import { basename as basename5 } from "node:path";
+import { basename as basename7 } from "node:path";
 
 // src/core/fs/compare.ts
 function compare(a, b) {
@@ -3297,7 +3344,7 @@ function worktreeIdsOf(commonDir) {
   return new Set(locks.flatMap((n) => lockFileWorktreeId(n) ?? []));
 }
 function socketIdOf(path) {
-  return socketWorktreeId(basename5(path)) ?? "";
+  return socketWorktreeId(basename7(path)) ?? "";
 }
 function ofKept(what, kept2) {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
@@ -3330,7 +3377,7 @@ function isEpochMs(value) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join22 } from "node:path";
+import { join as join23 } from "node:path";
 
 // src/core/types/policy.ts
 var DEFAULT_POLICY = {
@@ -3516,7 +3563,7 @@ function defaultGroups(policy) {
 }
 
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute7, posix } from "node:path";
+import { isAbsolute as isAbsolute8, posix } from "node:path";
 function compiles(globs4) {
   for (const glob of globs4) {
     try {
@@ -3535,7 +3582,7 @@ var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s ===
 var insideRoot = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
   const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute7(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+  return isAbsolute8(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
 var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
 var prepare = (v) => {
@@ -3834,7 +3881,7 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute8, posix as posix2 } from "node:path";
+import { isAbsolute as isAbsolute9, posix as posix2 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -3858,7 +3905,7 @@ function withDefaults2(entry) {
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
-  if (python === void 0 || isAbsolute8(python)) return null;
+  if (python === void 0 || isAbsolute9(python)) return null;
   const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
@@ -4052,7 +4099,7 @@ var SHAPE = {
   ...NODE_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join22(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join23(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   const settled = settleChecks(loaded.value);
   return {
     policy: settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
@@ -4506,7 +4553,7 @@ ${USAGE}`);
   const cwd = io.cwd ?? process.cwd();
   const commonDir = commonDirOf(cwd);
   if (parsed2.repo && commonDir === null) {
-    io.stderr(`squeal ps --repo: ${resolve3(cwd)} is not inside a git repository
+    io.stderr(`squeal ps --repo: ${resolve4(cwd)} is not inside a git repository
 
 ${USAGE}`);
     return 2;
@@ -4556,7 +4603,7 @@ function locksCommand(parsed2, io, at) {
     );
     return 3;
   }
-  const cwd = resolve3(io.cwd ?? process.cwd());
+  const cwd = resolve4(io.cwd ?? process.cwd());
   try {
     const locks = readLocks(
       at.source,
@@ -4576,7 +4623,7 @@ function locksCommand(parsed2, io, at) {
 }
 function commonDirOf(cwd) {
   try {
-    const root = findWorktreeRoot(resolve3(cwd));
+    const root = findWorktreeRoot(resolve4(cwd));
     return root === null ? null : resolveCommonDir(root);
   } catch {
     return null;
@@ -4588,7 +4635,7 @@ function placesOf(env, commonDir, options) {
     uid: options.uid ?? currentUid(),
     home: env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir3(),
     userConfig: userConfigPath(env),
-    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? xdg : null,
+    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute10(xdg) ? xdg : null,
     tempDir: options.tempDir ?? "/tmp",
     commonDir
   };
