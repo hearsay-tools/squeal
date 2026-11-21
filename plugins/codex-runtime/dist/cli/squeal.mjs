@@ -35997,9 +35997,33 @@ var init_code_ranges = __esm({
 
 // src/runners/node-test/graph/parse.ts
 function parseModule(source2, name3) {
-  const lexed = lexImports(source2, name3);
-  const { specifiers, incomplete: incomplete2 } = lexed;
-  let unnamed = lexed.unnamed;
+  const specifiers = [];
+  const incomplete2 = [];
+  let unnamed = false;
+  try {
+    const [imports2] = parse7(source2, name3);
+    for (const record2 of imports2) {
+      if (record2.type === "import-meta") continue;
+      if (record2.type === "dynamic") {
+        if (record2.probablyTypeOnly) continue;
+        if (record2.specifier === void 0) {
+          incomplete2.push(
+            `import() with a computed specifier at ${name3}:${position(source2, record2.importStart)}`
+          );
+          unnamed = true;
+          continue;
+        }
+        specifiers.push(
+          record2.glob ? { specifier: record2.specifier, kind: "glob" } : { specifier: record2.specifier, kind: "import", dynamic: true }
+        );
+        continue;
+      }
+      if (!record2.typeOnly) specifiers.push({ specifier: record2.specifier, kind: "import" });
+    }
+  } catch (error) {
+    incomplete2.push(`${name3} does not parse as a module: ${error.message}`);
+    unnamed = true;
+  }
   const literal2 = /* @__PURE__ */ new Set();
   for (const match2 of source2.matchAll(REQUIRE2)) {
     if (match2[2] !== void 0) specifiers.push({ specifier: match2[2], kind: "require" });
@@ -36031,34 +36055,6 @@ function parseModule(source2, name3) {
     if (unnamed) break;
     code ??= codeAt(source2);
     unnamed = code(match2.index);
-  }
-  return { specifiers, incomplete: incomplete2, unnamed };
-}
-function lexImports(source2, name3) {
-  const specifiers = [];
-  const incomplete2 = [];
-  let unnamed = false;
-  try {
-    const [imports2] = parse7(source2, name3);
-    for (const record2 of imports2) {
-      if (record2.type === "import-meta") continue;
-      if (record2.type !== "dynamic") {
-        if (!record2.typeOnly) specifiers.push({ specifier: record2.specifier, kind: "import" });
-      } else if (record2.probablyTypeOnly) {
-      } else if (record2.specifier === void 0) {
-        incomplete2.push(
-          `import() with a computed specifier at ${name3}:${position(source2, record2.importStart)}`
-        );
-        unnamed = true;
-      } else {
-        specifiers.push(
-          record2.glob ? { specifier: record2.specifier, kind: "glob" } : { specifier: record2.specifier, kind: "import", dynamic: true }
-        );
-      }
-    }
-  } catch (error) {
-    incomplete2.push(`${name3} does not parse as a module: ${error.message}`);
-    unnamed = true;
   }
   return { specifiers, incomplete: incomplete2, unnamed };
 }
@@ -45658,8 +45654,8 @@ var init_tsconfig = __esm({
 // src/runners/node-test/graph/resolver.ts
 import * as fs2 from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname as dirname32, extname as extname3, join as join66, resolve as resolvePath, sep as sep16 } from "node:path";
-function createResolver(chain, root, source2 = {}) {
+import { dirname as dirname32, extname as extname3, join as join66, sep as sep16 } from "node:path";
+function createResolver(chain, root) {
   let fileSystem = new import_enhanced_resolve.default.CachedInputFileSystem(fs2, Number.POSITIVE_INFINITY);
   let resolvers = /* @__PURE__ */ new Map();
   let tsconfigs = /* @__PURE__ */ new Map();
@@ -45738,11 +45734,6 @@ function createResolver(chain, root, source2 = {}) {
     }
     return found4;
   };
-  const cwd = source2.cwd ?? root;
-  const projectTsconfig = () => {
-    const file = source2.tsconfigPath ? resolvePath(cwd, source2.tsconfigPath) : tsconfigFor(cwd);
-    return tsx2 && file !== null ? chainOf2(file) : null;
-  };
   const tsconfigOption = (paths) => {
     if (paths === null || paths.pathsFile === null && paths.baseUrl === null) return {};
     const configFile = paths.pathsFile ?? paths.files[0];
@@ -45805,18 +45796,20 @@ function createResolver(chain, root, source2 = {}) {
     }
   };
   function resolveFrom(specifier, from, kind) {
-    const paths = projectTsconfig();
+    const tsconfig = tsx2 ? tsconfigFor(from) : null;
+    const paths = tsconfig === null ? null : chainOf2(tsconfig);
     const resolver = resolverFor(paths, kind);
     const context = {
       fileDependencies: /* @__PURE__ */ new Set(),
       missingDependencies: /* @__PURE__ */ new Set(),
       contextDependencies: /* @__PURE__ */ new Set()
     };
-    const found4 = { path: false };
-    resolver.resolve({}, from, specifier, context, (error, _result, request) => {
-      found4.path = error || request === void 0 ? false : request.path;
-    });
-    const target = found4.path;
+    let target;
+    try {
+      target = resolver.resolveSync({}, from, specifier, context);
+    } catch {
+      target = false;
+    }
     const path = target === false ? null : target;
     const reads2 = new Set((paths?.files ?? []).filter(inWorktree2));
     for (const dependency of context.fileDependencies) {
@@ -45864,8 +45857,7 @@ async function createNodeTestGraph(options) {
   const root = realpathSync9(options.root);
   const cwd = realpathSync9(options.cwd);
   const chain = readLoaderChain(options.argv);
-  const resolver = createResolver(chain, root, { cwd, tsconfigPath: options.tsconfigPath });
-  const graph = new Graph(root, cwd, chain, resolver);
+  const graph = new Graph(root, cwd, chain, createResolver(chain, root));
   graph.build(options.testFiles);
   const loaderNotes = () => [
     ...chain.unrecognized.map(
@@ -46409,13 +46401,7 @@ async function openProject(context) {
   let files5 = listTestFiles(root, project);
   const argv = [...nodeOptionsOf(project), ...project.argv];
   const [graph, firstProbe] = await Promise.all([
-    createNodeTestGraph({
-      root,
-      cwd,
-      argv,
-      testFiles: files5,
-      tsconfigPath: projectEnv(project, process.env).TSX_TSCONFIG_PATH
-    }),
+    createNodeTestGraph({ root, cwd, argv, testFiles: files5 }),
     probeNode(project, cwd)
   ]);
   let probe2 = firstProbe;
