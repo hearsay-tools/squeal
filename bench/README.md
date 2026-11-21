@@ -39,6 +39,7 @@ bench/boat-run.sh --ref squeal--v0.1.579 --ref .                       # stage 2
 | `@scheduler` | ref, wt-3, load-50, size-l | scheduling, catch-up, the edit cut |
 | `@store` | ref, store-1.7g, store-7g, churn | store size, prune, the integrity check |
 | `@lists` | store-7g, store-7g-wt3, store-7g-wt3-nolists, store-7g-lists1d | module lists (`loaded_modules`) |
+| `@ff` | ff, ff-known, ff-load50, ff-rebase | fast-forwards, pulls and rebases from the base branch (issue 261) |
 | `@size`, `@worktrees`, `@load` | one axis each, with ref | how one factor scales |
 | `@all` | every cell | the default |
 
@@ -96,12 +97,18 @@ The benchmark varies one factor at a time from the reference cell, and adds one 
 | store-7g-wt3 | 500 | 3 | 0% (as store-7g) |
 | store-7g-wt3-nolists | 500 | 3 | 0% (as store-7g, no module lists) |
 | store-7g-lists1d | 500 | 1 | 0% (as store-7g, module lists for the newest day only) |
+| ff | 500 | 1 | 0% (a fast-forward mid-session, issue 261) |
+| ff-known | 500 | 1 | 0% (the same, its commit already run by another worktree) |
+| ff-load50 | 500 | 1 | 50% (the cold fast-forward on a half-busy machine) |
+| ff-rebase | 500 | 1 | 0% (the agent commits its edits and rebases instead) |
 
 The two store cells run the reference cell on a store that already holds a week of history. After the full run, `age-store.mjs` adds rounds of history: every test file gets a new content key, with its results, one `loaded_modules` list of real-store size (about 50 KB) and the runs that recorded them. All of it is dated within the last 7 days and is older than the real rows. The shape follows Squeal's own store on 2026-11-20: 7.2 GB, 82% of it in `loaded_modules` (163k rows, 46 KB each) and 1.74M `results` rows. 326 rounds gives that store's `loaded_modules` row count; 70 rounds gives its rows per test file, scaled to 500 test files. The code store (`code.sqlite`, coverage and complexity) gets the same history: for every new key, a copy of that test file's real coverage record, dated like its results, and an 8 KB part that no record lists, standing for the larger records of a real repository. At 326 rounds that is about 1.4 GB; Squeal's own `code.sqlite` was 1.5 GB (coverage 193k rows) on 2026-11-20.
 
 The churn cell measures the daily upkeep of a large store. Its history spans 8 days, so about one day of it is past the 7-day retention, as after a day with no daemon running. `age-store.mjs --churn` also clears the store's record of the last prune and the last full integrity check. The restart then checks the whole file, and the first prune (prune runs at most once an hour per repository and is asked every 6 minutes) has to delete that day. The cell records, from the restart, when old results start to go and when none is left (`prune-watch.json`), and when the daemon logs "full integrity check: ok".
 
 The last three cells separate a large store from its module lists (`loaded_modules`, 82% of Squeal's own store), after feedback of 2026-11-20: the lists' cost is lock time that other worktrees and their hooks wait for, so two of them run 3 worktrees. `age-store.mjs --lists 7d|1d|none` sets which aged keys get a list. Every cell also times `squeal reach`, which reads every stored list with no daemon, and records its peak memory.
+
+The `ff` cells measure issue 261: an agent's worktree brings in a large commit from its base branch (`git merge --ff-only`, a pull, or a rebase), and Squeal queues every test file it affects while the agent keeps working. After the full run, the cell commits a change to 125 of the 500 modules (every module with i % 4 == 3, five of them group roots) on a branch `upstream` in a worktree of its own. At step 6 the session in the main worktree brings it in; the session never edits those 125 modules, so its uncommitted edits never block the merge and a rebase never conflicts. In `ff-known`, the upstream worktree's own daemon runs every test file first, as the base branch's CI would, so the shared store holds the incoming commit's results and the fast-forward should cost almost nothing. Before each later step the session reads how many test files still wait.
 
 Ambient load (`load.mjs`) is busy-loop threads at normal priority on that share of the vCPUs. It stands for another agent's build or test run.
 
@@ -168,6 +175,11 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | **Store** | | | |
 | `store.longWrite.maxMs`, `store.longWrite.totalS` | report | | The longest logged lock hold and the sum of all logged holds (Squeal logs only holds over 250 ms) |
 | `cmd.reach.s`, `res.reach.rss` | report | | `squeal reach --json` after the sessions: time and peak memory |
+| `ff.queued` | report | | Fast-forward cells: test files queued 3 s after it |
+| `ff.drainS` | ≤ 120 s | ≤ 600 s | Fast-forward cells: until no test file waits, read before each later step (so to within one step, 5–10 s) |
+| `ff.lateNotices` | 0 | ≤ 3 | Fast-forward cells: hook outputs after it that report late or queued results; issue 261's agent saw one almost every turn for 9 hours |
+| `ff.editVerdict.p50` | ≤ 3 s | ≤ 10 s | Fast-forward cells: the agent's own edits after it until their verdict; incoming files must not push the agent's work back |
+| `ff.gitFailed` | 0 (gate) | | The fast-forward or rebase that git refused; the cell then measured no fast-forward |
 | `store.longWrites` | 0 | ≤ 3 | Writes the daemon logs as held over 250 ms (`LONG_WRITE_MS`) |
 | `store.lockFailures` | 0 | ≤ 3 | `SQLITE_BUSY` or "database is locked" in the daemon logs |
 | `store.size`, `store.results` | report | | `store.sqlite` + WAL + `code.sqlite` in MiB, and rows in `results` |
