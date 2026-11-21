@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { squealVersion } from "../daemon/version.js";
 import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
+import { isRefined } from "../scheduler/refined.js";
 import { listImports, sourceLabel } from "../store/imports.js";
 import { decodeBundle, type ResultsBundle } from "../store/transfer-bundle.js";
 import {
@@ -9,6 +10,7 @@ import {
   importSliced,
   otherKeyFormat,
 } from "../store/transfer-import.js";
+import type { Rekeying } from "../store/transfer-rekey.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
@@ -54,8 +56,8 @@ import { importIdHere, triedHere } from "./served.js";
  * export whose imports do not serve this worktree is imported again for it
  * (`served.ts`); one that serves it reaches no remote. Row 018-70
  * (`look-again.ts`): while the start point's own export is missing, the
- * reader lists again on a timer, and an import waits for the closure lists
- * of the revision it lands in.
+ * reader lists again on a timer, and an import into a revision whose
+ * closure lists are not stored yet is made again once they are.
  */
 
 /** The kill timer of the listing (`transport.md` Q3: 0.45 to 0.6 s to GitHub). */
@@ -316,28 +318,47 @@ class Reader implements SharedReader {
     }
     const fileHash = createHash("sha256").update(bytes).digest("hex");
     const blobs = await this.#live((signal) => blobsAt(this.o.root, commit, signal));
-    // Row 018-70: the import re-keys over the closure lists of the revision that moved the start point.
     const { store, worktreeId } = this.o;
     const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+    const refined = isRefined(store, worktreeId, revision);
+    const added = await this.#import(bundle, fileHash, blobs);
+    this.o.log(`CI results: imported ${added} results from ${sourceLabel(bundle.header)}`);
+    this.o.imported();
+    if (refined) return;
+    // Row 018-70 (`look-again.ts`, option 2): the revision that moved the start point had not
+    // stored its closure lists, so a file whose closure gained a path kept CI's key. Once they
+    // are stored, the same export is imported again and re-keys over them.
     const pollMs = this.o.refinedPollMs ?? REFINED_POLL_MS;
     await this.#live((signal) => closuresStored(store, worktreeId, revision, { pollMs, signal }));
+    const more = await this.#import(bundle, fileHash, blobs);
+    this.o.log(
+      `CI results: imported ${more} more results from ${sourceLabel(bundle.header)} over revision ${revision}'s closure lists`,
+    );
+    if (more > 0) this.o.imported();
+  }
+
+  /** Imports `bundle` into the store, re-keyed here where D11 proves it: the results added. */
+  async #import(
+    bundle: ResultsBundle,
+    fileHash: string,
+    blobs: Rekeying["blobs"],
+  ): Promise<number> {
+    const { store, worktreeId } = this.o;
     this.o.step?.(IMPORT_STEP, true);
-    let added: number;
     try {
       // D21: an export of this Squeal's key format ends a refusal for another.
-      writeSquealMismatch(this.o.store, this.o.worktreeId, null);
+      writeSquealMismatch(store, worktreeId, null);
       // Spec 021 D3 (row 021-20): in slices, each tried again on a busy store; the import's
       // record is written last, so one stopped between slices is fetched and imported again.
-      added = (
-        await importSliced(this.o.store, bundle, {
-          importId: importIdHere(this.o.store, this.o.worktreeId, fileHash),
-          fileHash,
-          now: this.o.now(),
-          clock: this.o.now,
-          rekeying: { worktreeId: this.o.worktreeId, blobs },
-          stopped: () => this.#stop.signal.aborted,
-        })
-      ).results;
+      const counts = await importSliced(store, bundle, {
+        importId: importIdHere(store, worktreeId, fileHash),
+        fileHash,
+        now: this.o.now(),
+        clock: this.o.now,
+        rekeying: { worktreeId, blobs },
+        stopped: () => this.#stop.signal.aborted,
+      });
+      return counts.results;
     } catch (error) {
       // A busy store: the next nudge tries this start point again.
       this.#start = null;
@@ -346,8 +367,6 @@ class Reader implements SharedReader {
     } finally {
       this.o.step?.(IMPORT_STEP, false);
     }
-    this.o.log(`CI results: imported ${added} results from ${sourceLabel(bundle.header)}`);
-    this.o.imported();
   }
 
   /**

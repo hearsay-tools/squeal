@@ -18,8 +18,12 @@ import type { Store } from "../types/store.js";
  * it holds every exported path (`transfer-rekey.ts`). A revision stores its
  * closure lists when its runner part is applied, seconds after the batch
  * that nudged the reader; an import before that keeps CI's keys for every
- * file whose closure gained a path. So the import waits for that revision's
- * refinement (`scheduler/refined.ts`).
+ * file whose closure gained a path. The import still lands at once, so the
+ * refinement adopts every other file before a tier starts; once that
+ * revision is refined (`scheduler/refined.ts`), the same export is imported
+ * again and re-keys those files over the new lists (the coordinator,
+ * 2026-11-21: an import that waited let the first catch-up tier start
+ * first).
  */
 
 /** Starts `fire` after `ms`; the function it returns cancels it. */

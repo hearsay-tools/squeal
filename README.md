@@ -215,6 +215,12 @@ Set it up once:
    { "shared": { "ref": "refs/squeal" } }
    ```
 
+   CI publishes a main commit's results a minute or two after main moves. When a developer's branch starts from a main commit whose results are not published yet, their Squeal looks again every 30 s for up to 10 min, and imports the results as soon as they appear. If they do not appear, the tests run on the developer's machine, and `squeal status` says so once. `shared.lookAgain` sets both times, in seconds; `"forSeconds": 0` looks only once for each main commit:
+
+   ```json
+   { "shared": { "ref": "refs/squeal", "lookAgain": { "everySeconds": 30, "forSeconds": 600 } } }
+   ```
+
 3. Add the action and an export job to the workflow that tests main:
 
 ```yaml
