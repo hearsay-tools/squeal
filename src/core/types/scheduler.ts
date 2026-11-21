@@ -243,6 +243,18 @@ export interface NarrowRunRequest extends SlowSuiteRequest {
   readonly narrow: NarrowRun;
 }
 
+/**
+ * Spec 023 D4.11 (row 023-34, T1): what a `take-back` did with the files
+ * its narrow runs queued themselves: taken out of the queue, left running,
+ * or kept queued (forced, queued again by an edit, or held by another
+ * promotion).
+ */
+export interface TakeBackResult {
+  readonly takenBack: number;
+  readonly running: number;
+  readonly kept: number;
+}
+
 /** `Scheduler.slowWaiting`: what a departure drain's waiting slow lane would leave queued (row 011-163). */
 export interface SlowWaiting {
   /** Since when no slow file ran and the drain's fast work was done, or the drain began. */
@@ -376,6 +388,13 @@ export interface Scheduler {
     group: string,
     paths: readonly RelativePath[],
   ): Promise<NarrowRunRequest | null>;
+  /**
+   * Spec 023 D4.11 (row 023-34, T1): takes out of the queue the files the
+   * narrow runs whose covered-files ids are `coveredIds` queued themselves
+   * and that have not started (`takeBackRequest`). Absent: a scheduler
+   * before it.
+   */
+  takeBack?(coveredIds: readonly string[]): Promise<TakeBackResult>;
   /**
    * Row 011-302: tells `listener` what holds the scheduler's lock at once,
    * then at each change, `null` while nothing does, until the returned
