@@ -5,13 +5,20 @@ import { afterEach, describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
-import type { AbsolutePath, RelativePath, RevisionNumber } from "../../src/core/types/common.js";
+import {
+  AT_RUN_TTL_MS,
+  AtRunRequests,
+  flagAccepted,
+} from "../../src/core/daemon/run-groups-watch.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 /*
- * Row 023-36 (spec 023 D4 step 11, T3): `status --at --run` marks its
- * `run-group-paths` request with `at`, and the daemon's main thread hears
- * the paths (`onAtRun`) before the request reaches the scheduler, so the
- * first run of them is already flagged. Without `at`, it hears nothing.
+ * Row 023-36 (spec 023 D4 step 11, T3; review wave-20 B8): `status --at
+ * --run` marks its `run-group-paths` request with `at`, which reaches the
+ * daemon's main thread with the request. Only a request the scheduler
+ * accepted flags its selected files, by project and path; a refused one
+ * flags nothing, and a take-back or an hour ends the flag.
  */
 
 const cleanups: (() => unknown)[] = [];
@@ -27,6 +34,17 @@ describe("run-group-paths with at (023-36)", () => {
     expect(
       parseRequest('{"type":"run-group-paths","group":"e2e","paths":["a.test.ts"],"at":"yes"}'),
     ).toBe('"at" must be true when given');
+    expect(
+      parseRequest(
+        '{"type":"run-group-paths","group":"e2e","paths":["a.test.ts"],"at":true,"owner":"o-1"}',
+      ),
+    ).toEqual({
+      type: "run-group-paths",
+      group: "e2e",
+      paths: ["a.test.ts"],
+      at: true,
+      owner: "o-1",
+    });
     expect(
       parseRequest('{"type":"run-group-paths","group":"e2e","paths":["a.test.ts"]}'),
     ).not.toHaveProperty("at");
@@ -44,7 +62,7 @@ describe("run-group-paths with at (023-36)", () => {
   for (const inWorker of [false, true]) {
     const where = inWorker ? "in its worker thread" : "on the main thread";
 
-    it(`tells the main thread the paths before the request ${where}`, async () => {
+    it(`hands \`at\` to the main thread with its request only ${where}`, async () => {
       const heard: string[] = [];
       const dir = mkdtempSync("/tmp/sq-at-run-");
       cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
@@ -60,11 +78,12 @@ describe("run-group-paths with at (023-36)", () => {
         },
         {
           onActivity: () => {},
-          onAtRun: (paths: readonly RelativePath[]) => heard.push(`at ${paths.join(",")}`),
           requestFullSuite: () => new Promise(() => {}),
           requestSlowSuite: () => new Promise(() => {}),
-          requestGroup: (group, _held, paths) => {
-            heard.push(`group ${group} ${paths?.join(",")}`);
+          requestGroup: (group, _held, paths, options) => {
+            heard.push(
+              `group ${group} ${paths?.join(",")}${options?.at === true ? ` at ${options.owner}` : ""}`,
+            );
             return Promise.resolve({ revision: 1 as RevisionNumber, queued: 1 });
           },
           requestSync: () => new Promise(() => {}),
@@ -77,10 +96,68 @@ describe("run-group-paths with at (023-36)", () => {
       desk.setPhase("ready");
       const plain = { type: "run-group-paths", group: "e2e", paths: ["b.test.ts"] } as const;
       await requestDaemon(socketPath, plain, 2_000);
-      await requestDaemon(socketPath, { ...plain, paths: ["a.test.ts"], at: true }, 2_000);
-      for (let i = 0; heard.length < 3 && i < 200; i++)
+      const at = { ...plain, paths: ["a.test.ts"], at: true, owner: "call-1" } as const;
+      await requestDaemon(socketPath, at, 2_000);
+      for (let i = 0; heard.length < 2 && i < 200; i++)
         await new Promise((resolve) => setTimeout(resolve, 10));
-      expect(heard).toEqual(["group e2e b.test.ts", "at a.test.ts", "group e2e a.test.ts"]);
+      expect(heard).toEqual(["group e2e b.test.ts", "group e2e a.test.ts at call-1"]);
     });
   }
+});
+
+const A: TestFileRef = { project: "unit", path: "a.test.ts" };
+const A_ELSEWHERE: TestFileRef = { project: "e2e", path: "a.test.ts" };
+const B: TestFileRef = { project: "unit", path: "b.test.ts" };
+const narrow = (selected: readonly TestFileRef[]) => ({
+  selected,
+  reached: 0,
+  others: [],
+  unmatched: [],
+  current: 0,
+  notRun: [],
+});
+
+describe("which runs an at request flags (023-36, B8)", () => {
+  it("flags nothing for a refused, unknown or plain request", () => {
+    const requests = new AtRunRequests();
+    flagAccepted(requests, null, { at: true, owner: "call-1" });
+    flagAccepted(requests, { coveredId: "c1" }, { at: true, owner: "call-1" });
+    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c3" }, { owner: "call-1" });
+    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c2" }, undefined);
+    expect(requests.flagged([A])).toBe(false);
+  });
+
+  it("flags an accepted request's files by project and path, a mixed batch included", () => {
+    const requests = new AtRunRequests();
+    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c1" }, { at: true });
+    expect(requests.flagged([A])).toBe(true);
+    expect(requests.flagged([A_ELSEWHERE])).toBe(false);
+    expect(requests.flagged([B, A])).toBe(true);
+    expect(requests.flagged([B])).toBe(false);
+  });
+
+  it("keys a call's requests by its owner, which one take-back ends", () => {
+    const requests = new AtRunRequests();
+    flagAccepted(requests, { narrow: narrow([A]), coveredId: "c1" }, { at: true, owner: "call-1" });
+    flagAccepted(requests, { narrow: narrow([B]), coveredId: "c2" }, { at: true, owner: "call-1" });
+    requests.takenBack(["c1"]);
+    expect(requests.flagged([A])).toBe(true);
+    requests.takenBack(["call-1"]);
+    expect(requests.flagged([A])).toBe(false);
+    expect(requests.flagged([B])).toBe(false);
+  });
+
+  it("ends the flag when the files ran, at the request's take-back, or after the hour", () => {
+    let now = 0;
+    const requests = new AtRunRequests(() => now);
+    requests.accepted("c1", [A]);
+    requests.ran([A]);
+    expect(requests.flagged([A])).toBe(false);
+    requests.accepted("c2", [A]);
+    requests.takenBack(["c2"]);
+    expect(requests.flagged([A])).toBe(false);
+    requests.accepted("c3", [A]);
+    now = AT_RUN_TTL_MS;
+    expect(requests.flagged([A])).toBe(false);
+  });
 });
