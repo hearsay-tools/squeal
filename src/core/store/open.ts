@@ -39,6 +39,14 @@ export interface OpenStoreOptions {
    * Default `new Connection(db)`.
    */
   readonly connection?: (db: DatabaseSync) => Connection;
+  /**
+   * Spec 024 D5: this connection never checkpoints at a commit
+   * (`wal_autocheckpoint = 0`), so a short write such as a heartbeat never
+   * runs a 1,000-page checkpoint under the write lock. Its owner checkpoints
+   * outside its transactions (`PassiveCheckpoint`,
+   * `src/core/daemon/idle-checkpoint.ts`). The daemon passes `true`.
+   */
+  readonly managedCheckpoint?: boolean;
 }
 
 /** Fits inside the 2 s hook budget (spec 001 D9); the daemon may pass more. */
@@ -52,6 +60,14 @@ export const DEFAULT_BUSY_TIMEOUT_MS = 1_000;
  * 422 MB. Per connection, so every opener sets it.
  */
 export const JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Spec 024 D5: the page cache of each connection, in KiB as SQLite counts a
+ * negative `cache_size` (16 MiB, where SQLite's default is 2 MiB), and its
+ * temporary tables and sorts in memory, so a large write spills no pages
+ * to disk under the write lock.
+ */
+export const CONNECTION_PRAGMAS = ["PRAGMA cache_size = -16384", "PRAGMA temp_store = MEMORY"];
 
 /**
  * `meta` key written into a fresh store that replaced a corrupt one. Value:
@@ -115,13 +131,20 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
         return { corrupt: mark.problem, mark };
       }
     }
+    // Spec 024 D5: an opener that may not create the file and finds it
+    // current, a hook's, reads two pragmas and writes nothing.
+    const current = options.create === false && found === SCHEMA_VERSION;
     // Takes effect only before the first table exists, so only on a new file;
     // on any other it still writes the header, under the write lock (task 001-141).
-    if (pragmaNumber(db, "page_count") === 0) db.exec("PRAGMA auto_vacuum = INCREMENTAL");
-    switchToWal(db, busyTimeout(options));
+    if (!current && pragmaNumber(db, "page_count") === 0) {
+      db.exec("PRAGMA auto_vacuum = INCREMENTAL");
+    }
+    if (!current || journalMode(db) !== "wal") switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     db.exec(`PRAGMA journal_size_limit = ${JOURNAL_SIZE_LIMIT_BYTES}`);
-    const version = migrate(db);
+    for (const pragma of CONNECTION_PRAGMAS) db.exec(pragma);
+    if (options.managedCheckpoint === true) db.exec("PRAGMA wal_autocheckpoint = 0");
+    const version = current ? found : migrate(db);
     if (options.create !== false) makeIndexes(db);
     return createStore(options.connection?.(db) ?? new Connection(db), version, paths);
   } catch (error) {
@@ -172,6 +195,10 @@ export function switchToWal(db: DatabaseSync, ms: number): void {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
     }
   }
+}
+
+function journalMode(db: DatabaseSync): unknown {
+  return db.prepare("PRAGMA journal_mode").get()?.journal_mode;
 }
 
 function pragmaNumber(db: DatabaseSync, name: string): number {
@@ -277,5 +304,8 @@ export function inspectConnection(store: Store) {
     journalMode: pragma("journal_mode"),
     synchronous: pragma("synchronous"),
     busyTimeoutMs: pragma("busy_timeout"),
+    cacheSize: pragma("cache_size"),
+    tempStore: pragma("temp_store"),
+    walAutocheckpoint: pragma("wal_autocheckpoint"),
   };
 }

@@ -70,6 +70,13 @@ const COPY_SET = `
     last_used_at
   FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
 
+/**
+ * Spec 024 D5: a hit moves a key's `last_used_at` only when it is older than
+ * this, so a key read at every lookup writes once an hour, not each time.
+ * Retention and eviction count in days, so the hour costs them nothing.
+ */
+export const RESULT_TOUCH_INTERVAL_MS = 3_600_000;
+
 export function createResultRepo(conn: Connection): ResultRepo {
   return {
     byKey: (key, usedAt = Date.now()) => {
@@ -78,7 +85,7 @@ export function createResultRepo(conn: Connection): ResultRepo {
           "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
           usedAt,
           key,
-          usedAt,
+          Math.max(0, usedAt - RESULT_TOUCH_INTERVAL_MS),
         );
       }
       return conn

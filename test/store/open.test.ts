@@ -82,7 +82,7 @@ describe("openStore", () => {
     const store = openStore(commonDir, { busyTimeoutMs: 1234 });
     if (isStoreOpenFailure(store)) throw new Error("open failed");
     try {
-      expect(inspectConnection(store)).toEqual({
+      expect(inspectConnection(store)).toMatchObject({
         journalMode: "wal",
         synchronous: 1,
         busyTimeoutMs: 1234,

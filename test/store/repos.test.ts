@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { RESULT_TOUCH_INTERVAL_MS } from "../../src/core/store/repos/results.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { connectionOf, readTransaction } from "../../src/core/store/store.js";
 import type { FileCheckId } from "../../src/core/types/check.js";
@@ -299,6 +300,22 @@ describe("results", () => {
     expect(store.results.listForCheck(check, 2).map((r) => r.key)).toEqual(["new", "mid"]);
     expect(store.results.listForCheck(testCheck("none"), 10)).toEqual([]);
     expect(lastUsed()).toEqual(before);
+  });
+
+  it("moves a key's last-used time at most once an hour (spec 024 D5)", () => {
+    const store = open(fakeCommonDir());
+    store.results.putMany([result(testCheck("one"), "k", { recordedAt: 1 })]);
+    const lastUsed = () => connectionOf(store).get("SELECT last_used_at AS t FROM results")?.t;
+    const start = 10 * RESULT_TOUCH_INTERVAL_MS;
+    store.results.byKey("k", start);
+    expect(lastUsed()).toBe(start);
+    store.results.byKey("k", start + RESULT_TOUCH_INTERVAL_MS);
+    expect(lastUsed()).toBe(start);
+    store.results.byKey("k", start + RESULT_TOUCH_INTERVAL_MS + 1);
+    expect(lastUsed()).toBe(start + RESULT_TOUCH_INTERVAL_MS + 1);
+    // An earlier hit never moves it back.
+    store.results.byKey("k", start);
+    expect(lastUsed()).toBe(start + RESULT_TOUCH_INTERVAL_MS + 1);
   });
 
   it("reads a key with `usedAt` 0 without a write, in a read transaction beside a writer (011-01)", () => {
