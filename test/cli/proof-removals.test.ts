@@ -107,7 +107,8 @@ describe("squeal proof: test-side removals and stops before the case (row 023-21
         'import { it, expect } from "vitest";',
         'import { readdirSync } from "node:fs";',
         'import { value } from "../src/value";',
-        'it("value", () => expect(value).toBeGreaterThanOrEqual(readdirSync("test/fixtures").length));',
+        // Row 023-42: relative to the test file; a commit daemon in this test process keeps its cwd.
+        'it("value", () => expect(value).toBeGreaterThanOrEqual(readdirSync(new URL("./fixtures", import.meta.url)).length));',
       ),
     });
     const base = git(f.root, "rev-parse", "HEAD").trim();

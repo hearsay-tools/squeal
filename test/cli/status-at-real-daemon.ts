@@ -15,8 +15,16 @@ import { keyedNow } from "./status-at-now-stand-in.js";
  * process, with the production commit worktree functions (its claim, its
  * whole-checkout check, its removal) and the fixture's linked install. The
  * working tree's side answers nothing and runs nothing. Each daemon stops
- * when the test ends.
+ * when the test ends. Row 023-42: `inProcessCommitDaemons` is the commit
+ * side alone, with its own stop, for `squeal proof`'s green side.
  */
+
+export interface CommitDaemonOptions {
+  /** The install in the commit worktree; the fixture's link by default. */
+  readonly install?: (tree: AbsolutePath) => Promise<InstallResult>;
+  /** Replaces commit worktree functions (a red control drops `check`). */
+  readonly worktrees?: Partial<CommitWorktrees>;
+}
 
 export interface RealCommitDaemon {
   readonly daemons: AtDaemons;
@@ -24,25 +32,23 @@ export interface RealCommitDaemon {
   readonly started: AbsolutePath[];
 }
 
-export function realCommitDaemon(
-  root: string,
-  options: {
-    /** The install in the commit worktree; the fixture's link by default. */
-    readonly install?: (tree: AbsolutePath) => Promise<InstallResult>;
-    /** Replaces commit worktree functions (a red control drops `check`). */
-    readonly worktrees?: Partial<CommitWorktrees>;
-  } = {},
-): RealCommitDaemon {
+export interface InProcessDaemons extends RealCommitDaemon {
+  /** Stops every daemon started here; each exit removes its commit worktree. */
+  stop(): Promise<void>;
+}
+
+/**
+ * Real commit daemons in this process. A daemon started in a test keeps the
+ * test process's working directory (`adoptScratch` is the daemon process's
+ * only), so a fixture's test reads its own folders relative to its file.
+ */
+export function inProcessCommitDaemons(options: CommitDaemonOptions = {}): InProcessDaemons {
   const runtime = realpathSync(mkdtempSync("/tmp/sq-at-"));
   const running: RunningDaemon[] = [];
   const started: AbsolutePath[] = [];
-  onTestFinished(async () => {
-    for (const daemon of running) await daemon.stop("stop-requested");
-    rmSync(runtime, { recursive: true, force: true });
-  });
   const link = options.install ?? linkInstall().install;
   const install = (tree: AbsolutePath) => installCommitWorktree(tree, { install: link });
-  const real = realDaemons({
+  const daemons = realDaemons({
     start: async (tree) => {
       started.push(tree);
       const daemon = await startDaemon({
@@ -59,6 +65,23 @@ export function realCommitDaemon(
       return { lives: async () => !exited };
     },
   });
+  return {
+    daemons,
+    started,
+    async stop() {
+      for (const daemon of running.splice(0)) await daemon.stop("stop-requested");
+      rmSync(runtime, { recursive: true, force: true });
+    },
+  };
+}
+
+export function realCommitDaemon(
+  root: string,
+  options: CommitDaemonOptions = {},
+): RealCommitDaemon {
+  const commit = inProcessCommitDaemons(options);
+  onTestFinished(() => commit.stop());
+  const real = commit.daemons;
   const daemons: AtDaemons = {
     ...real,
     worktree: async () => null,
@@ -67,5 +90,5 @@ export function realCommitDaemon(
       at === root ? "taken" : real.ask(at, group, paths, deadline, call),
     wait: async (at, files, deadline) => (at === root ? null : real.wait(at, files, deadline)),
   };
-  return { daemons, started };
+  return { daemons, started: commit.started };
 }

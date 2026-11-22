@@ -7,8 +7,8 @@ import type { AtOptions } from "../../src/cli/status-at.js";
 import type { InstallResult } from "../../src/core/checkout/install.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { type Fixture, linkInstall } from "../commit/at-keys-fixture.js";
-import { kitDaemons } from "./proof-daemons.js";
 import { RELAUNCH } from "./status-at-kit.js";
+import { inProcessCommitDaemons } from "./status-at-real-daemon.js";
 
 /*
  * Row 023-08: one `squeal proof` call on a fixture, with its output and
@@ -74,7 +74,9 @@ export async function prove(
   // so its worktree is gone as the temporary checkout was and the next call starts afresh.
   const kit =
     options.daemons === undefined
-      ? kitDaemons(daemonInstall ?? options.install ?? linkInstall().install)
+      ? inProcessCommitDaemons({
+          install: daemonInstall ?? options.install ?? linkInstall().install,
+        })
       : null;
   let code: number;
   try {

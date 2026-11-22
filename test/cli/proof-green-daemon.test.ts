@@ -16,9 +16,9 @@ import { sideKeys } from "../../src/core/commit/at-keys-side.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, keying, link, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { kitDaemons } from "./proof-daemons.js";
 import { prove } from "./proof-kit.js";
 import { clean, testOf } from "./status-at-kit.js";
+import { inProcessCommitDaemons } from "./status-at-real-daemon.js";
 
 /*
  * Row 023-42 (spec 023 D7.6): a proof's green side with no condition and
@@ -46,7 +46,7 @@ function sourceFix() {
 
 /** Commit daemons in this process that live across the test's calls; stopped at its end. */
 function kept(install = linkInstall().install) {
-  const kit = kitDaemons(install);
+  const kit = inProcessCommitDaemons({ install });
   onTestFinished(() => kit.stop());
   return kit;
 }
@@ -156,7 +156,7 @@ describe("squeal proof's green side on the commit daemon (row 023-42, D7.6)", SL
       return { ok: true as const, command: "held", ms: 0 };
     };
     // The install is released before the daemon stops, so its stop does not wait on it.
-    const kit = kitDaemons(held);
+    const kit = inProcessCommitDaemons({ install: held });
     onTestFinished(async () => {
       writeFileSync(barrier, "");
       await kit.stop();
