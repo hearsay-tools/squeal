@@ -49,6 +49,11 @@ for (const dir of process.argv.slice(2)) {
       `| ${phase} | ${kind} | ${ck} | ${rs.length} | ${q(hold, 0.5)} | ${q(hold, 0.95)} | ${max(hold)} | ${over(hold, 100)} | ${over(hold, 150)} | ${over(hold, 250)} | ${max(rs.map((r) => r.work))} | ${q(rs.map((r) => r.commit), 0.5)} | ${max(rs.map((r) => r.commit))} | ${max(rs.flatMap((r) => r.ops))} | ${q(frames, 0.5)} | ${max(frames)} |`,
     );
   }
+  const wal = prune.filter((r) => r.kind !== "checkpoint").map((r) => r.walBefore);
+  const restarts = wal.filter((w, i) => i > 0 && w < wal[i - 1]).length;
+  console.log(
+    `\nWAL: largest ${max(wal)} frames (${Math.round((Math.max(0, ...wal) * 4120) / 1048576)} MB) before a write slice; ${restarts} restarts seen.`,
+  );
   if (writer.length > 0) {
     const wait = writer.map((w) => w.wait);
     const commit = writer.map((w) => w.commit);

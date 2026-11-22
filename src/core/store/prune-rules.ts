@@ -19,11 +19,13 @@ export const DELETE_BATCH = 256;
  * Row 022-08: pages freed per `incremental_vacuum` step, and the time one
  * vacuum slice (one write transaction) runs steps for. Once 0.1.591 emptied
  * the lists, a step of 512 pages held a 7 GB store's lock 0.76 s on average,
- * up to 2.4 s (about 1.5 ms a page, 4.7 ms at worst); a step of 16 costs
- * about 0.1 ms beside its pages, so a slice ends within about 75 ms past
- * the budget on that store (`tasks/022-08/notes.md`).
+ * up to 2.4 s (about 1.5 ms a page, 4.7 ms at worst); a step costs about
+ * 0.1 ms beside its pages. Row 022-08r measured both sizes on an 8.6 GB
+ * store with a cold cache: a step of 16 took up to 269 ms (p99 63 ms), so a
+ * slice up to 270 ms; a step of 8 took up to 52 ms (p99 27 ms), so a slice
+ * up to 132 ms (`tasks/022-08/notes.md`, "Repair 022-08r").
  */
-export const VACUUM_PAGES = 16;
+export const VACUUM_PAGES = 8;
 export const VACUUM_SLICE_MS = 100;
 
 /**
