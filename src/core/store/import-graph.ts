@@ -1,9 +1,9 @@
 import { inflateRawSync } from "node:zlib";
 import { testFileId } from "../keys/reverse-index.js";
-import type { RelativePath } from "../types/common.js";
+import type { EpochMs, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Store } from "../types/store.js";
-import { str } from "./codec.js";
+import { num, str } from "./codec.js";
 import type { Connection, Row } from "./connection.js";
 import { hasImportGraphTables } from "./import-edges.js";
 import { connectionOf } from "./store.js";
@@ -12,7 +12,8 @@ import { connectionOf } from "./store.js";
  * Spec 015 D11: the import edges Squeal stored, as one worktree reads them
  * now (review 0.1.415-r2, R2): only through a test file's current key in
  * this worktree, so a chain is exactly as valid as the file's result. The
- * contract `squeal reach` (row 015-109) codes against.
+ * contract `squeal impact` (row 015-109) codes against. `newestStoredWalk`
+ * is the one exception, and only `squeal impact` reads it (row 015-128).
  */
 
 /** One walk's direct imports, by importer. */
@@ -54,12 +55,7 @@ export function readImportGraph(store: Store, worktreeId: string): ImportGraph {
   const keys = new Map(
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row.key]),
   );
-  const environments = new Map<string, EnvironmentWalk | undefined>();
-  const environment = (project: string, hash: string) => {
-    const id = `${project}\0${hash}`;
-    if (!environments.has(id)) environments.set(id, environmentOf(conn, project, hash));
-    return environments.get(id);
-  };
+  const environment = environments(conn);
   return {
     walk(testFile) {
       const key = keys.get(testFileId(testFile));
@@ -76,6 +72,50 @@ export function readImportGraph(store: Store, worktreeId: string): ImportGraph {
         environment: environment(testFile.project, str(row, "environment")),
       };
     },
+  };
+}
+
+/** A walk stored at some key of a test file, and when it was recorded. */
+export interface StoredWalk extends TestWalk {
+  readonly recordedAt: EpochMs;
+}
+
+/**
+ * Spec 015 D11 as amended 2026-11-22 (row 015-128): each test file's
+ * newest stored walk at any key, with the environment its row names. Only
+ * `squeal impact` reads it, for a test file with no walk at this
+ * worktree's current key, and it labels every such read as stale. It never
+ * makes a chain valid for scheduling, keys or results: those read
+ * `readImportGraph`, strict at the current key. Undefined without one, or
+ * without the tables.
+ */
+export function newestStoredWalk(store: Store): (testFile: TestFileRef) => StoredWalk | undefined {
+  const conn = connectionOf(store);
+  const tables = hasImportGraphTables(conn);
+  const environment = environments(conn);
+  return (testFile) => {
+    if (!tables) return undefined;
+    const row = conn.get(
+      "SELECT environment, imports, recorded_at FROM test_file_imports WHERE project = ? AND path = ? ORDER BY recorded_at DESC, key DESC LIMIT 1",
+      testFile.project,
+      testFile.path,
+    );
+    if (row === null) return undefined;
+    return {
+      imports: decodeImports(row),
+      environment: environment(testFile.project, str(row, "environment")),
+      recordedAt: num(row, "recorded_at"),
+    };
+  };
+}
+
+/** Each project's environment walk at a hash, read once. */
+function environments(conn: Connection) {
+  const known = new Map<string, EnvironmentWalk | undefined>();
+  return (project: string, hash: string) => {
+    const id = `${project}\0${hash}`;
+    if (!known.has(id)) known.set(id, environmentOf(conn, project, hash));
+    return known.get(id);
   };
 }
 

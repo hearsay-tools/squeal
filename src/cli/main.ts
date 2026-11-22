@@ -24,7 +24,7 @@ import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
 import { parseProof, proofCommand } from "./proof.js";
 import { psCommand } from "./ps.js";
-import { reachCommand } from "./reach.js";
+import { impactCommand, reachCommand } from "./reach.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
@@ -189,15 +189,20 @@ Usage:
                                 block; --json: the squeal-code-gate/1 report; exit 0
                                 pass, 1 violations, 3 incomplete, 2 on a usage or
                                 setup error
-  squeal reach [<path>...] [--limit <n>] [--json]
-                                What one edit of each file re-runs, from the stores,
-                                with no daemon and no test run: files and test files
-                                ranked by the seconds their tests load but do not
-                                call, then by seconds re-run; each file's share of
-                                the suite, edits in the window, coverage split, path
-                                kinds, gateway and one suggestion; paths give those
+  squeal impact [<path>...] [--limit <n>] [--json]
+                                What edits re-run, from the stores, with no daemon
+                                and no test run: with edits recorded, first the
+                                gateways (setup files, test helpers, barrels, inputs,
+                                shared modules, runtime reads) and the files ranked
+                                by the seconds the window's edits re-ran; then files
+                                and test files ranked by the seconds their tests load
+                                but do not call, then by seconds re-run; each file's
+                                share of the suite, coverage split, path kinds,
+                                gateway and one suggestion or note; paths give those
                                 files in full; --limit lists more than 10 per part;
-                                without history it proposes squeal warmup
+                                a test file with no closure at its current inputs
+                                reads its newest stored one, named as stale; without
+                                history it proposes squeal warmup
   squeal lint [<path>...] [--changed] [--json]
                                 With lint.enabled: every file with ESLint findings,
                                 newest first, each finding with its line, severity,
@@ -415,6 +420,8 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   checks: checksCommand,
   failures: failuresCommand,
   code: codeCommand,
+  impact: impactCommand,
+  // Spec 015 D11 as amended 2026-11-22 (row 015-128): hidden, deprecated; `squeal impact`'s help.
   reach: reachCommand,
   lint: lintCommand,
   init,
@@ -437,6 +444,9 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   // Spec 021 D22 (row 021-36): hidden, a daemon starts it.
   "store-process": storeProcessCommand,
 };
+
+/** Hidden commands whose help is another command's (row 015-128). */
+const HELP_OF: Readonly<Record<string, string>> = { reach: "impact" };
 
 /** Usage beyond the command's lines in `HELP`: the setup choices `HELP` only names. */
 const MORE_USAGE: Readonly<Record<string, string>> = { setup: SETUP_USAGE };
@@ -464,7 +474,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
   const end = rest.indexOf("--");
   const own = end === -1 ? rest : rest.slice(0, end);
   if (own.includes("--help") || own.includes("-h")) {
-    io.stdout(commandHelp(first));
+    io.stdout(commandHelp(HELP_OF[first] ?? first));
     return 0;
   }
   return command(rest, io);

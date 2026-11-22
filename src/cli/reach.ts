@@ -8,18 +8,23 @@ import type { ReachReport } from "../core/reach/report-types.js";
 import { CLI_READ_RETRY_MS, withStatusStore } from "../core/status/open.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
-import { formatReach } from "./reach-format.js";
+import { formatImpact } from "./reach-format.js";
 import { statusCommand } from "./status-command.js";
 
 /*
- * Spec 015 D11: `squeal reach [<path>...] [--limit <n>] [--json]`, the
- * on-demand edit-reach report. Pull only: it reads the stores, needs no
+ * Spec 015 D11: `squeal impact [<path>...] [--limit <n>] [--json]`, the
+ * on-demand edit-impact report. Pull only: it reads the stores, needs no
  * daemon, runs no test and writes nothing. Exit 0 with an answer, the
  * proposal included; 1 when there is no store; 2 on a usage error, as in
- * `squeal code`.
+ * `squeal code`. `squeal reach` is its hidden deprecated alias (amended
+ * 2026-11-22, row 015-128).
  */
 
-export const REACH_USAGE = "squeal reach [<path>...] [--limit <n>] [--json]";
+export const IMPACT_USAGE = "squeal impact [<path>...] [--limit <n>] [--json]";
+
+/** What the deprecated alias prints to stderr before a text answer; `--json` stays quiet. */
+export const REACH_DEPRECATED =
+  "squeal reach is deprecated: use squeal impact, which gives the same answer.\n";
 
 /** Entries per part in the text, D11's default. */
 export const REACH_LIMIT = 10;
@@ -48,11 +53,17 @@ function parseArgs(args: readonly string[]): Parsed | { readonly error: string }
   return { json, limit, paths };
 }
 
-/** `squeal reach`. Async only to compile the lexer, which reads barrels. */
-export async function reachCommand(args: readonly string[], io: CliIo): Promise<number> {
+/** `squeal reach`, hidden and deprecated: `squeal impact`, with a notice on stderr unless `--json`. */
+export function reachCommand(args: readonly string[], io: CliIo): Promise<number> {
+  if (!args.includes("--json")) io.stderr(REACH_DEPRECATED);
+  return impactCommand(args, io);
+}
+
+/** `squeal impact`. Async only to compile the lexer, which reads barrels. */
+export async function impactCommand(args: readonly string[], io: CliIo): Promise<number> {
   const parsed = parseArgs(args);
   if ("error" in parsed) {
-    io.stderr(`squeal reach: ${parsed.error}\n\nUsage: ${REACH_USAGE}\n`);
+    io.stderr(`squeal impact: ${parsed.error}\n\nUsage: ${IMPACT_USAGE}\n`);
     return 2;
   }
   await lexerReady;
@@ -80,6 +91,6 @@ export async function reachCommand(args: readonly string[], io: CliIo): Promise<
     io.stdout(parsed.json ? `${JSON.stringify(answer, null, 2)}\n` : `${read.message}\n`);
     return 1;
   }
-  io.stdout(parsed.json ? `${JSON.stringify(read, null, 2)}\n` : formatReach(read));
+  io.stdout(parsed.json ? `${JSON.stringify(read, null, 2)}\n` : formatImpact(read, command));
   return 0;
 }

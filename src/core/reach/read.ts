@@ -8,12 +8,11 @@ import { compare } from "../fs/compare.js";
 import { worktreeIdFor } from "../fs/git-layout.js";
 import { createDeclaredInputs, type DeclaredInputs } from "../keys/closure.js";
 import { createInputMatcher } from "../keys/glob.js";
-import { ModuleSets } from "../keys/modules.js";
 import { ObservedSets } from "../keys/observed.js";
 import { durationOf } from "../scheduler/files.js";
 import { groupView, runnerOf } from "../scheduler/slow.js";
 import { hasImportGraphTables } from "../store/import-edges.js";
-import { type ImportGraph, readImportGraph } from "../store/import-graph.js";
+import { readImportGraph, type TestWalk } from "../store/import-graph.js";
 import { readEdits } from "../store/repos/edits.js";
 import { connectionOf } from "../store/store.js";
 import type { FunctionCount } from "../types/code.js";
@@ -23,12 +22,15 @@ import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
 import { sourceCalls } from "./called.js";
 import { moduleFacts } from "./modules.js";
+import { staleReader } from "./stale.js";
 import type { CoverageView, DeclaredPattern, ReachSnapshot, ReachTestFile } from "./types.js";
 
 /*
- * Spec 015 D11: the snapshot `squeal reach` analyses, read from one read
+ * Spec 015 D11: the snapshot `squeal impact` analyses, read from one read
  * transaction of each store. It runs no test and writes nothing: result
- * reads pass `usedAt` 0, and the observed maps are read, never merged.
+ * reads pass `usedAt` 0, and the observed maps are read, never merged. A
+ * test file with no closure or walk at its current key reads its newest
+ * stored ones, and the snapshot counts them (row 015-128, `stale.ts`).
  */
 
 export interface SnapshotSource {
@@ -48,27 +50,36 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
   const rows = store.testFileKeys.list(id);
   const closure = closureFor(store, id);
   // Row 015-108's edges: a store no daemon of that version wrote has no tables, and import reads unsplit.
-  const graph = hasImportGraphTables(connectionOf(store)) ? readImportGraph(store, id) : null;
+  const strict = hasImportGraphTables(connectionOf(store)) ? readImportGraph(store, id) : null;
+  const stale = staleReader(store, strict);
+  const graph = stale.graph;
   const observed = new ObservedSets(store);
-  const modules = new ModuleSets(store);
   const groups = groupView(policy);
   const on = coverageOn(policy);
   const counted = countedFunctions(code, id);
-  const walked = walkedClosure(store, id, policy, graph);
+  const walkPaths = closureOfWalk(store, id, policy);
   const testFiles = rows.map(({ testFile: ref, key }): ReachTestFile => {
     const runner = runnerOf(policy, ref.project);
     // `usedAt` 0: reading a duration is not a lookup hit (spec 001 D8) and writes nothing.
     const atKey = store.results.byKey(key, 0);
     const ms = durationOf(atKey) ?? durationOf(store.results.newestForTestFile(ref));
-    const childProcess = new Set([...modules.of(ref), ...observed.directOf(ref)]);
+    // Row 015-128: `observedModules.` holds the worker's own loads too, so only `observedDirect.` is a child's.
+    const childProcess = new Set(observed.directOf(ref));
     const runtimeRead = new Set(observed.of(ref));
+    const reads = [...childProcess, ...runtimeRead];
+    const exact = strict?.walk(ref);
+    // Counts a stale walk now, so the summary holds every test file that reads one.
+    graph?.walk(ref);
     return {
       ref,
       runner,
       inSuite: groups.of(ref).at !== "manual",
       seconds: ms === null ? null : ms / 1000,
       current: atKey.length > 0,
-      closure: closure(ref) ?? walked(ref, [...childProcess, ...runtimeRead]),
+      closure:
+        closure(ref) ??
+        (exact === undefined ? null : walkPaths(ref, exact, reads)) ??
+        stale.closure(ref, (walk) => walkPaths(ref, walk, reads)),
       childProcess,
       runtimeRead,
       coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key, counted),
@@ -86,30 +97,32 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
     modules: moduleFacts(root, graph),
     declared: declaredPatterns(policy.inputs),
     onStart: policy.baseline.onStart,
+    stale: stale.summary(),
   };
   return { snapshot, listed: rows.length === 0 ? null : rows.length };
 }
 
 /**
- * R1 0.1.416 (review 0.1.416 B1): a test file's closure from the walk
- * stored at this worktree's current key, when `closureFor` gives none: a
- * peer wrote the shared closure last, at its own key. That walk was
- * written with the closure the key was set from (spec 015 D11's one rule),
- * so it is trusted evidence of the closure, as valid as the result. Its
- * paths are the test file, every walked file and its targets, and what the
- * key's closure adds to the runner's: the declared inputs and the observed
- * paths. `null` without such a walk.
+ * R1 0.1.416 (review 0.1.416 B1): a test file's closure from a stored
+ * walk, when `closureFor` gives none: a peer wrote the shared closure last,
+ * at its own key. The walk at this worktree's current key was written with
+ * the closure the key was set from (spec 015 D11's one rule), so it is
+ * trusted evidence of the closure, as valid as the result; a newer one is
+ * the stale fallback's (row 015-128). Its paths are the test file, every
+ * walked file and its targets, and what the key's closure adds to the
+ * runner's: the declared inputs and the observed paths.
  */
-function walkedClosure(
+function closureOfWalk(
   store: Store,
   id: WorktreeId,
   policy: Policy,
-  graph: ImportGraph | null,
-): (ref: TestFileRef, observed: readonly RelativePath[]) => readonly RelativePath[] | null {
+): (
+  ref: TestFileRef,
+  walk: TestWalk,
+  observed: readonly RelativePath[],
+) => readonly RelativePath[] {
   let declared: DeclaredInputs | undefined;
-  return (ref, observed) => {
-    const walk = graph?.walk(ref);
-    if (walk === undefined) return null;
+  return (ref, walk, observed) => {
     declared ??= createDeclaredInputs(
       policy.inputs,
       store.fileHashes.list(id).map((row) => row.path),
