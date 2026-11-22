@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.597";
+  if (true) return "0.1.598";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -10513,6 +10513,28 @@ var init_link_target = __esm({
   }
 });
 
+// src/core/scheduler/rewritten-reads.ts
+async function trackedRewrites(root, observed2) {
+  const asked = [...new Set(observed2.flatMap((o) => o.rewritten ?? []))];
+  if (asked.length === 0) return observed2.map(() => []);
+  const out2 = await runGit(root, [
+    "--literal-pathspecs",
+    "ls-files",
+    "-z",
+    "--cached",
+    "--",
+    ...asked
+  ]);
+  const tracked = new Set(splitNul(out2));
+  return observed2.map((o) => (o.rewritten ?? []).filter((path) => tracked.has(path)));
+}
+var init_rewritten_reads = __esm({
+  "src/core/scheduler/rewritten-reads.ts"() {
+    "use strict";
+    init_git();
+  }
+});
+
 // src/core/scheduler/observed.ts
 async function observedGrowth(context, report4, run7) {
   const out2 = /* @__PURE__ */ new Map();
@@ -10565,12 +10587,16 @@ function ignoredListings(paths, ignored) {
 async function inputsOfReads(root, reads2, below3) {
   const candidates = /* @__PURE__ */ new Set();
   const fresh2 = [];
-  for (const { closure, observed: observed2 } of reads2) {
+  const rewrites = await trackedRewrites(
+    root,
+    reads2.map((r) => r.observed)
+  );
+  for (const [at2, { closure, observed: observed2 }] of reads2.entries()) {
     const listed12 = new Set(observed2.directories.map(listingPath));
     for (const directory of observed2.recursive ?? []) {
       for (const path of below3(directory)) listed12.add(path);
     }
-    const read7 = observed2.paths.filter((path) => !closure.has(path));
+    const read7 = [...observed2.paths, ...rewrites[at2] ?? []].filter((path) => !closure.has(path));
     const targets2 = await linkTargets(root, read7);
     const paths = [.../* @__PURE__ */ new Set([...read7, ...targets2, ...listed12])].filter(
       (path) => !closure.has(path)
@@ -10609,6 +10635,7 @@ var init_observed2 = __esm({
     init_reverse_index();
     init_git2();
     init_link_target();
+    init_rewritten_reads();
     NOTHING_OBSERVED = {
       growth: /* @__PURE__ */ new Map(),
       changed: /* @__PURE__ */ new Set(),
@@ -12657,7 +12684,7 @@ var init_runtime = __esm({
     "use strict";
     init_node_options();
     init_recorders();
-    RECORDER_VERSION = "6";
+    RECORDER_VERSION = "7";
     OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
     CANDIDATES = ["../observe/", "./observe/", "./"];
   }
@@ -26102,7 +26129,8 @@ function observedInputs(recorded2, completed2, paths) {
     const read7 = relative40(entry4.paths, (abs) => abs === git || !isDirectory5(abs));
     const listed12 = relative40(entry4.listed, () => true);
     const recursive = relative40(entry4.recursive, () => true);
-    if (read7.length > 0 || listed12.length > 0) {
+    const rewritten = rewrittenOf(entry4, paths, isDirectory5);
+    if (read7.length > 0 || listed12.length > 0 || rewritten.length > 0) {
       const written2 = writtenAbove([...read7, ...listed12], entry4.written, paths);
       const direct = read7.filter((path) => entry4.direct.has(paths.toAbsolute(path)));
       const modules = read7.filter((path) => entry4.modules.has(paths.toAbsolute(path)));
@@ -26112,12 +26140,22 @@ function observedInputs(recorded2, completed2, paths) {
         directories: listed12,
         ...recursive.length > 0 ? { recursive } : {},
         ...written2.length > 0 ? { written: written2 } : {},
+        ...rewritten.length > 0 ? { rewritten } : {},
         ...direct.length > 0 ? { direct } : {},
         ...modules.length > 0 ? { modules } : {}
       });
     }
   }
   return out2;
+}
+function rewrittenOf(entry4, paths, isDirectory5) {
+  const out2 = /* @__PURE__ */ new Set();
+  for (const abs of entry4.paths) {
+    if (!entry4.written.has(abs) || !paths.isProjectFile(abs) || isDirectory5(abs)) continue;
+    const path = paths.toRelative(abs);
+    if (path !== null) out2.add(path);
+  }
+  return [...out2].sort(compare);
 }
 function writtenAbove(kept6, written2, paths) {
   if (written2.size === 0) return [];
