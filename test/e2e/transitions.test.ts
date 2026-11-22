@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { expectAgrees, headerRevision } from "./agree.js";
 import { e2eSuite, HOOK_BUDGET_MS } from "./harness.js";
-import { PLUGINS } from "./plugins.js";
+import { ALL_PLUGINS } from "./plugins.js";
 import { MATH } from "./sources.js";
 import { hasNodeModulesAbove } from "./support.js";
 
@@ -10,7 +10,8 @@ import { hasNodeModulesAbove } from "./support.js";
  * FAIL -> PASS, on PostToolBatch, and no change for PASS -> PASS, for a
  * failure that keeps its diagnostic, or for a break and recovery between two
  * deliveries. Every delivery agrees with `squeal status --json`. Spec 002:
- * the same for Codex, on PostToolUse. The session's first edit gets the
+ * the same for Codex, on PostToolUse; spec 024: for Antigravity, on
+ * PreInvocation after a tool batch. The session's first edit gets the
  * once-per-session line (tasks 001-223 and 001-224, merged once its file is
  * current); later edits that change nothing stay silent.
  */
@@ -27,7 +28,7 @@ const failing = (s: { knownFailures: readonly { validity: string }[] }) =>
 const SAW_EDIT = "Squeal saw your edit; passes stay silent unless they follow a failure.";
 const RAN = ": the 1 test file your edits affect has run.";
 
-describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
+describe.each(ALL_PLUGINS)("transitions on $boundary, $name", (plugin) => {
   it("delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between", async (ctx) => {
     const e = fixture(ctx, plugin);
     expect(hasNodeModulesAbove(e.plugin)).toBe(false);

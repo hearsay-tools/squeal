@@ -20,8 +20,9 @@ import { publishRuntime } from "../../src/harness/codex/adapter/publish.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { hookText } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
+import { antigravityEnvironment } from "./antigravity-plugin.js";
 import { ROLLDOWN_VERSION, VITE_VERSION } from "./install.js";
-import { codexEnvironment, copyPlugin, type HookName, PLUGINS } from "./plugins.js";
+import { ALL_PLUGINS, codexEnvironment, copyPlugin, type HookName } from "./plugins.js";
 
 /*
  * Review wave 3, S5: the plugin exactly as a marketplace install copies it.
@@ -32,7 +33,9 @@ import { codexEnvironment, copyPlugin, type HookName, PLUGINS } from "./plugins.
  * reaches PostToolBatch as `PASS -> FAIL`. The worktree's tracked bundles
  * are what this tests. This proof does not rebuild committed artifacts.
  * Spec 002: the same for `plugins/codex`, on PostToolUse, each hook run as
- * Codex runs it (`plugins.ts`).
+ * Codex runs it (`plugins.ts`). Spec 024: the same for `plugins/antigravity`,
+ * on PreInvocation, each hook run as Antigravity runs it, from the plugin root
+ * (`antigravity-plugin.ts`); its `hooks.json` sits at the plugin root (D1).
  */
 
 const VITEST_VERSION = (
@@ -79,7 +82,10 @@ async function until<T>(what: string, ms: number, probe: () => Promise<T | null>
   }
 }
 
-const SHIPPED = PLUGINS.flatMap((kind) =>
+/** Where the plugin's harness reads its hooks: Antigravity at the plugin root (spec 024 D1). */
+const hooksJson = (name: string) => (name === "antigravity" ? "hooks.json" : "hooks/hooks.json");
+
+const SHIPPED = ALL_PLUGINS.flatMap((kind) =>
   (kind.name === "codex" ? ["seed", "current"] : ["bundled"]).map((runtime) => ({
     name: `${kind.name}/${runtime}`,
     kind,
@@ -160,6 +166,7 @@ describe.each(SHIPPED)(
       env = {
         XDG_RUNTIME_DIR: runtimeDir,
         ...(kind.name === "codex" ? codexEnvironment(plugin) : {}),
+        ...(kind.name === "antigravity" ? antigravityEnvironment(plugin) : {}),
       };
       if (runtime === "current") {
         const source = join(base, "current-runtime");
@@ -177,12 +184,14 @@ describe.each(SHIPPED)(
 
     it("has no node_modules above the plugin copy", () => {
       expect(hasNodeModulesAbove(plugin)).toBe(false);
-      expect(existsSync(join(plugin, "hooks/hooks.json"))).toBe(true);
+      expect(existsSync(join(plugin, hooksJson(kind.name)))).toBe(true);
     });
 
     it("runs bin/squeal --version", (ctx) => {
       if (!kind.bin)
-        ctx.skip("Codex exposes its retained runtime CLI after SessionStart (spec 002 D7)");
+        ctx.skip(
+          "Codex and Antigravity expose a retained CLI after SessionStart (spec 002 D7, 024 D1)",
+        );
       const bin = execFileSync(join(plugin, "bin/squeal"), ["--version"], {
         cwd: project,
         encoding: "utf8",

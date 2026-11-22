@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
   existsSync,
@@ -12,6 +12,8 @@ import { dirname, join } from "node:path";
 import { REPO_ROOT } from "../../src/harness/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
+import { ANTIGRAVITY } from "./antigravity-plugin.js";
+import { runShell } from "./shell.js";
 
 /*
  * Spec 002 Testing, end to end: the two shipped plugins, each copied from
@@ -21,13 +23,16 @@ import { recorded } from "../harness/helpers.js";
  * `hooks/hooks.json`, shell fast path included, under `bash -c` in the
  * thread's `cwd` with `PWD` and `PLUGIN_ROOT` set and no `CLAUDE_*`
  * variable (`research/wave-0-checks.md` 2), fed the recorded JSON of
- * `test/fixtures/codex-hooks/`.
+ * `test/fixtures/codex-hooks/`. Antigravity (spec 024): the command strings
+ * of the copied `hooks.json`, under `sh -c` in the plugin root
+ * (`antigravity-plugin.ts`).
  */
 
 /**
  * The events a scenario drives, named as Claude Code's. Codex has no
  * PostToolBatch: `post-tool-batch` runs its PostToolUse, the per-call
- * boundary with the same delivery.
+ * boundary with the same delivery; Antigravity's is PreInvocation after a
+ * tool batch, and it has no SessionEnd (spec 024 D2).
  */
 export type HookName =
   | "session-start"
@@ -36,15 +41,18 @@ export type HookName =
   | "stop"
   | "session-end";
 
-export type PluginName = "claude-code" | "codex";
+export type PluginName = "claude-code" | "codex" | "antigravity";
 
 export interface Plugin {
   readonly name: PluginName;
   /** The event `post-tool-batch` runs, for test names. */
-  readonly boundary: "PostToolBatch" | "PostToolUse";
+  readonly boundary: "PostToolBatch" | "PostToolUse" | "PreInvocation";
   /** The edit tool of the recorded PreToolUse, as a deny names it. */
   readonly editTool: string;
-  /** Whether the plugin ships `bin/squeal`; Codex hooks call the bundled CLI by path (D1). */
+  /**
+   * Whether the plugin ships `bin/squeal`; Codex and Antigravity hooks call the bundled CLI by
+   * path (002 D1, 024 D1).
+   */
   readonly bin: boolean;
   /** The CLI arguments of `squeal init` for this harness (spec 002 D1, 003 D1). */
   readonly init: readonly string[];
@@ -138,7 +146,7 @@ const CODEX: Plugin = {
         codexFixture("app-server", "session-start").transcript_path,
       ).replace(`${CODEX_SESSION}.jsonl`, `${String(input.session_id)}.jsonl`);
     }
-    return runShell(codexCommand(copy, CODEX_EVENT[hook]), JSON.stringify(input), root, {
+    return runShell("bash", codexCommand(copy, CODEX_EVENT[hook]), JSON.stringify(input), root, {
       // The `node` of the command is the one running this suite, so Node 22 and 24 each test themselves.
       PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
       PWD: root,
@@ -149,7 +157,11 @@ const CODEX: Plugin = {
   },
 };
 
+/** The runner-matrix e2e files' plugins: Antigravity would add half again to their CI time. */
 export const PLUGINS: readonly Plugin[] = [CLAUDE_CODE, CODEX];
+
+/** The core harness e2e files' plugins (spec 024 Testing): Antigravity beside Claude Code and Codex. */
+export const ALL_PLUGINS: readonly Plugin[] = [...PLUGINS, ANTIGRAVITY];
 
 /** Scratch-only state. Never let a replay provision or update the developer's runtime. */
 export function codexEnvironment(copy: string): Record<string, string> {
@@ -230,36 +242,4 @@ export function copyPlugin(
     // copyFileSync keeps the mode, so `bin/squeal` and the CLI stay executable.
     copyFileSync(from, to);
   }
-}
-
-/** `bash -c <command>` in `cwd` with HOME and `env` only, stdin piped, timed. */
-function runShell(
-  command: string,
-  stdin: string,
-  cwd: string,
-  env: Readonly<Record<string, string>>,
-): Promise<BundleRun> {
-  return new Promise((resolve, reject) => {
-    const started = performance.now();
-    const child = spawn("bash", ["-c", command], {
-      cwd,
-      env: { HOME: process.env.HOME ?? "", ...env },
-    });
-    const out: Buffer[] = [];
-    const err: Buffer[] = [];
-    child.stdout.on("data", (b: Buffer) => out.push(b));
-    child.stderr.on("data", (b: Buffer) => err.push(b));
-    child.on("error", reject);
-    child.on("close", (code) =>
-      resolve({
-        stdout: Buffer.concat(out).toString("utf8"),
-        stderr: Buffer.concat(err).toString("utf8"),
-        code,
-        ms: performance.now() - started,
-      }),
-    );
-    // A hook the fast path ends never reads its stdin.
-    child.stdin.on("error", () => {});
-    child.stdin.end(stdin);
-  });
 }

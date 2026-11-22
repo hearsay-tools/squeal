@@ -3,7 +3,7 @@ import { utcTimeText } from "../../src/core/text.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees } from "./agree.js";
 import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION } from "./harness.js";
-import { PLUGINS } from "./plugins.js";
+import { ALL_PLUGINS } from "./plugins.js";
 import { daemonProcesses, withRestartEvidence } from "./restart-evidence.js";
 import { MATH } from "./sources.js";
 import { until } from "./support.js";
@@ -14,7 +14,7 @@ import { until } from "./support.js";
  * tool boundary while no daemon validates hears it once, and once more when
  * one does again; a bad `squeal.config.json` is one note and a running daemon,
  * across a stop and a start.
- * Spec 002: each for both plugins.
+ * Spec 002 and 024: each for Claude Code, Codex and Antigravity.
  */
 
 const fixture = e2eSuite();
@@ -63,7 +63,7 @@ async function kill(e: E2E, pid: number): Promise<void> {
   );
 }
 
-describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
+describe.each(ALL_PLUGINS)("a dead daemon, $name", (plugin) => {
   it("is replaced by the next SessionStart", async (ctx) => {
     const e = fixture(ctx, plugin, { tmpfs: true });
     const first = await registered(e);
@@ -152,7 +152,7 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
   }, 240_000);
 });
 
-describe.each(PLUGINS)("a bad squeal.config.json, $name", (plugin) => {
+describe.each(ALL_PLUGINS)("a bad squeal.config.json, $name", (plugin) => {
   const BAD = `${JSON.stringify({ stop: { waitMs: "500" }, runner: { tierSzie: 2 } }, null, 2)}\n`;
   const policyNotes = (s: StatusSnapshot) =>
     s.daemonNotes.filter((n) => n.text.includes("squeal.config.json"));

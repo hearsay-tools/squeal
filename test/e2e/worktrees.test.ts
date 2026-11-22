@@ -4,14 +4,15 @@ import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees, headerRevision } from "./agree.js";
 import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION } from "./harness.js";
-import { PLUGINS } from "./plugins.js";
+import { ALL_PLUGINS } from "./plugins.js";
 import { STRINGS } from "./sources.js";
 
 /*
  * Spec 001 goals 4 and 7 and Testing, end to end: a second worktree's daemon
  * bootstraps from the shared store with zero runs and reports its results as
  * inherited; an edit there runs only its affected test files and tells the
- * first worktree's consumer nothing. Spec 002: each for both plugins.
+ * first worktree's consumer nothing. Spec 002 and 024: each for Claude Code,
+ * Codex and Antigravity.
  */
 
 const fixture = e2eSuite();
@@ -38,7 +39,7 @@ async function twoWorktrees(e: E2E) {
   return { main, wt2, second };
 }
 
-describe.each(PLUGINS)("a second worktree, $name", (plugin) => {
+describe.each(ALL_PLUGINS)("a second worktree, $name", (plugin) => {
   it("bootstraps with zero runs and inherited provenance", async (ctx) => {
     const e = fixture(ctx, plugin);
     const { main, wt2, second } = await twoWorktrees(e);
