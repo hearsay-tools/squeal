@@ -1,0 +1,54 @@
+{
+  "id": "s2-09",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/22c83153afc51889/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "104s +599s squeal status --at 20f03a431~1 --wait 600000 2>&1 | tail -15"
+  ],
+  "joins": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "104s +599s squeal status --at 20f03a431~1 --wait 600000 2>&1 | tail -15"
+  ],
+  "loadStart": "9.40",
+  "exit": 0,
+  "wallSeconds": 708.886,
+  "squeal": [
+    "3s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "104s squeal status --at 20f03a431~1 --wait 600000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "104s +599s Bash squeal status --at 20f03a431~1 --wait 600000 2>&1 | tail -15"
+  ],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0825859,
+  "usage": {
+    "cache_creation_input_tokens": 25724,
+    "cache_read_input_tokens": 86259,
+    "output_tokens": 963
+  },
+  "firstFinal": "I can't give a complete answer yet. Squeal compared the two commits, but most of the test files had no result when I stopped waiting.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. About 1,338 test files are affected by that change.\n\nAfter roughly 10 minutes, the comparison stood at:\n- **Changed result:** one file, `test/code/crap/pending-reason.test.ts`, went pass → fail. The failure is `Test timed out in 5000ms`, and the load average was 9.16 when it ran. That points to host load rather than the commit, because the test is about the \"pending reason\" for a queued loader and has no connection to `mark.ts` or the store. I haven't retried it, so that is a judgement.\n- **Unchanged:** 143 files had the same result on both sides.\n- **No result yet:** 1,818 files were still queued or running, or had no result on one side. Those include `test/store/open.test.ts`, the file the commit edited.\n\n`test/cli/group-pending-release.test.ts` also failed in my working tree. The error is that no `squeal--v*` tag is an ancestor of HEAD (the clone needs `git fetch --tags`). It has no earlier result, so it isn't a regression from this commit.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000` until the queued runs complete. Running `squeal status --at '20f03a431~1' test/store --run` would check the neighbourhood of the change much sooner. I can do either, and also retry the timed-out test with `squeal retry --reason load`.",
+  "final": "I can't give a complete answer yet. Squeal compared the two commits, but most of the test files had no result when I stopped waiting.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. About 1,338 test files are affected by that change.\n\nAfter roughly 10 minutes, the comparison stood at:\n- **Changed result:** one file, `test/code/crap/pending-reason.test.ts`, went pass → fail. The failure is `Test timed out in 5000ms`, and the load average was 9.16 when it ran. That points to host load rather than the commit, because the test is about the \"pending reason\" for a queued loader and has no connection to `mark.ts` or the store. I haven't retried it, so that is a judgement.\n- **Unchanged:** 143 files had the same result on both sides.\n- **No result yet:** 1,818 files were still queued or running, or had no result on one side. Those include `test/store/open.test.ts`, the file the commit edited.\n\n`test/cli/group-pending-release.test.ts` also failed in my working tree. The error is that no `squeal--v*` tag is an ancestor of HEAD (the clone needs `git fetch --tags`). It has no earlier result, so it isn't a regression from this commit.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000` until the queued runs complete. Running `squeal status --at '20f03a431~1' test/store --run` would check the neighbourhood of the change much sooner. I can do either, and also retry the timed-out test with `squeal retry --reason load`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431~1"
+  ]
+}

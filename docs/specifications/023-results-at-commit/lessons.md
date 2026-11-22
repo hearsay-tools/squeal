@@ -351,3 +351,95 @@ Not product defects, recorded for the coordinator:
 - After T2: s1 again; the full answer is then within reach of one call, except where Chrome is missing.
 - s1 on a host with Chrome and a model credential (a boat.dev sandbox once the account has one), to compare the 97 browser files too.
 - Codex, Pi and OpenCode are still not exercised.
+
+## Round 6 (023-44)
+
+Row 023-44, wave 27, worker 9016d863, 2026-11-22 16:42Z to 17:47Z, on the lab VM. A boat.dev sandbox was checked first: it has Claude Code but no Claude login, the account holds no model credential for sandboxes, and this host's credential is never forwarded. The human then allowed the lab VM this once ("Lab VM once", 2026-11-22), as for round 5. Squeal 0.1.597 as released (tag `squeal--v0.1.597`, hub entry `e74aa47`), which carries spec D7: `status --at --run` on the commit daemon and the worktree daemon, a 100 s wait and then a return with the rest still running, a later `--wait` that joins it, and `proof`'s passing side on the commit daemon. Claude Code 2.1.327, `--model sonnet`, prompts exactly as round 5, no hint. The brief is `tasks/wave-27.md`; scripts, per-session data and judgements are in `tasks/023-44/`.
+
+### Verdict
+
+- **Still no full answer, but every answer is now partial and right.** 0 of 20 sessions answered the whole question. 20 of 20 gave a partial answer that was right for the files they compared. 3 of them stated one sentence too strongly (s2-08, s2-10, and s2-02's "I stopped it"); 2 of them got a side fact wrong (s1-04, s1-10). 0 said only "cannot tell" (round 5: 7), and 0 were wrong (round 5: 0).
+- **Much faster.** The s1 median fell from 287 s to 109 s. The s2 median fell from 796 s to 263 s, and the longest s2 session took 709 s (round 5: 918 s). The wide first call now returns at the 100 s wait instead of the 300 s budget. A call narrowed to one file then gets both sides in 1 to 95 s, even with the wide queue still running: T1 is fixed for single files. No call went to the background (round 5: 8 s2 sessions).
+- **s1 (squawk): one call, about 100 s.** 10 of 10 sessions made one `--at <parent> --run` call. Each reported 0 flips, 11 unchanged and the new test file, and named "124 not selected: … this commit cannot change their result" right (T2). All 10 stopped short of a full answer for three reasons:
+  - 1,669 + 16 files had no result at the parent, and their runner "does not tell whether the static closure is complete".
+  - 97 browser files could not run on the VM (no Chrome).
+  - 2 files were reported "not comparable (needs .agents/skills/…)". That text is wrong: the path exists at the parent through a tracked symlink (V1). 9 of 10 sessions repeated it as fact.
+- **s2 (Squeal's own repository): the wide selection still decides.** For a 7-line change, `--run` queued 1,338 files on each side. Squeal estimated "about 3 to 11 min at this machine's rate". The measured rate was 90 to 157 parent results in 320 to 400 s, and 144 in 700 s, with up to 3 sessions at once: about an hour or more, not minutes (V2). 9 of 10 sessions then narrowed. Their narrowing worked in two different ways:
+  - **One file:** `test/store/open.test.ts` got both sides in 1 to 95 s. It passes at both commits.
+  - **A folder:** the 5 sessions that narrowed to `test/store` got all 38 working-tree results. At the parent, 35 of 36 were still running after 98 to 298 s (V3).
+  - **The one that did not narrow:** s2-09 joined with `--wait 600000` instead and got 143 unchanged and 1 flip. It judged the flip a timeout under load, which is right, and it did not retry it.
+- **The new D7 texts were read right, with two exceptions.** 15 sessions got a call back with work still running, and 13 read it right. s2-06 read the queued full run as never started ("would have queued about 1,338 runs"). s2-02 said it "stopped" the run, which goes on. 3 sessions joined the running work with a later `--wait` (s2-05, s2-09, s2-10). A narrowed `--wait` then reports the whole queue ("joined 1338 …") rather than the named files (V4).
+- **Kept from round 5:** the HEAD refusal (13 of 13 went on with `HEAD~1`); the browser setup failure named (10 of 10 s1 called it the environment); no swaps and no edits in any session. No session ran `proof`, so its D7 side was not exercised.
+- **What sessions leave behind:**
+  - Every session left its commit daemon and commit worktree after `squeal stop`, as D7.7 intends. The harness stopped each one with `squeal stop --at HEAD~1`; without that, each s2 commit daemon would have gone on with about 1,200 to 1,300 queued files (V5).
+  - squawk's e2e server and its lease watcher outlived the session in 10 of 10 s1 sessions (T3 is still open). A lease watcher started in the commit worktree outlived its removal in 9 of 10 (V7).
+  - s2 left no process.
+
+### Setup
+
+| Item | Value |
+|---|---|
+| Machine | The lab VM, 12 CPUs. At 16:42Z the load was 0.00, no user job ran and no throwaway user from an earlier round was left. Sessions started only while the 1-minute load was below 12, at most 3 at once (`bin/batch.mjs`). The 1-minute load at session start was 0.23 to 12.13, and it reached 19.5 at 17:07Z. The s2 commit daemons and worktree daemons ran about 1,330 files each, and all their CPU was the throwaway user's. |
+| Isolation | Throwaway OS user `squeal-w27`, case root `~squeal-w27/runs/w27`, `env -i`, cwd `/`; `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` passed by name only, as round 5. |
+| Squeal | The release's `install.sh` (`git show squeal--v0.1.597:install.sh`, `SQUEAL_VERSION=0.1.597`) with `SQUEAL_MARKETPLACE` at a clone of the hub at `e74aa47` ("squeal 0.1.597"). `squeal --version` and `claude plugin list` printed 0.1.597. |
+| Harness | Round 5's scripts with the changes in `tasks/023-44/notes.md`. New: after `squeal stop`, `squeal ps` and the session's checkout folders are recorded (`commit-left.txt`), then `squeal stop --at HEAD~1` and `--at HEAD` run. A new dry check (`setup.sh dryat`) ran `status --at HEAD~1 --run` with no model first. |
+| Repositories | As round 5: squawk at `8be977ad6` (s1), Squeal at `20f03a431` (s2), one fresh clone and install per session, empty store. |
+| Order | s1-01 alone as a trial (85 s), then s1-02..10 and s2-01..10 interleaved, 3 at once. |
+| Cost | 20 sessions, $1.19 (s1 $0.61, s2 $0.58). The boat.dev check cost $0.0001; the sandbox was deleted at once and ran no session. |
+| Cleanup | Each clone was removed after its session, and each commit daemon was stopped with `squeal stop --at`. At the end: every process of the user ended, the user and its home removed, `/opt/squeal-w27` and the user's `/tmp` entries removed, and the work folder deleted, streams and transcripts included (17:52Z). No uid-1002 file and no process left; the VM's load was 0.08. |
+
+### Per group
+
+Round 5's counts are in brackets. "Both sides" counts sessions that got a result on both sides for the files they compared. "Still running" counts sessions in which an `--at` call returned at its wait with work still running. "Joined" counts sessions with a later `--wait` that joined that work. "Past 120 s" counts sessions with a tool call of 120 s or longer; in brackets after it, the sessions in which Claude Code moved a call to the background.
+
+| Group (n) | `--run` | Both sides | Answer | `--at` on HEAD (refused) | Still running (read right) | Joined | Past 120 s (moved) | Swaps | Left after the session | Wall median (range) | Cost |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| s1 squawk, empty store (10) | 10 [10] | 10 [10]: 11 unchanged files and the new file | full 0 [0]; partial, right 10 [10] (s1-04, s1-10 with one wrong side fact); honest 0 [0]; wrong 0 [0] | 6 [3] (6) | 5 (5; s1-09 half): the 97 browser files "still running" in the working tree | 0 | 0 (0) [10 (0)] | 0 [0] | 10 of 10: the commit daemon (stopped by the harness); e2e server and lease watcher in the clone; 9 also a lease watcher of the removed commit worktree | 109 s (85 to 113) [287 s] | $0.61 [$0.74] |
+| s2 Squeal, empty store (10) | 10 [10] | 10 [3]: `open.test.ts` (9), 3 `test/store` files (5), 143 files (s2-09) | full 0 [0]; partial, right 10 [3] (s2-02, s2-08, s2-10 overstate one sentence); honest 0 [7]; wrong 0 [0] | 7 [10] (7) | 10 (8): about 1,330 per side | 3 | 4 (0) [10 (8)] | 0 [0] | 10 of 10: the commit daemon with about 1,200 to 1,330 files queued (stopped by the harness); no process | 263 s (121 to 709) [796 s] | $0.58 [$1.04] |
+
+Per session: `tasks/023-44/data/judgements.tsv` and `data/<id>/`. Each holds the timeline, summary, the Squeal calls with their full output in `squeal-results.txt`, the clone's state after `squeal stop`, `commit-left.txt` and `leftover.txt`.
+
+### Squeal text read wrong or not acted on
+
+| Text | Sessions | What the agent did |
+|---|---|---|
+| `.github/scripts/no-compat-policy.test.cjs: not comparable (needs .agents/skills/auto-merge/SKILL.md) -> no result` (and `lint-runner.test.ts`, needs `.agents/skills/check-code-quality/…`) | s1: 9 of 10 | Repeated it: "need files that are missing from the parent checkout". The text is wrong. At `d8abcfe46`, `.agents/skills/auto-merge` is a tracked symlink (mode 120000) to `../../.ai/skills/auto-merge`, and `.ai/skills/auto-merge/SKILL.md` is present (V1). |
+| `squeal: --run: 1338 test files … queued in its commit daemon, up to 11 at once: about 3 min` (s2-06) to `about 11 min` (s2-02, s2-04) `at this machine's rate` | s2: 10 of 10 | 9 final answers quote the minutes as the time to a full answer. At the measured rate the parent side needs about an hour or more (V2). |
+| `35 still running at a5c9b7223 (its worktree), 0 in the working tree`, after `HEAD~1 test/store --run --wait 100000` to `300000` | s2-03, 04, 05, 06, 10 | Read right as "the parent side is still running". 4 then narrowed to one file, which answered in 1 to 2 s; s2-10 joined it with `--wait` instead. The folder's files did not run ahead of the earlier queue at the parent (V3). |
+| `--wait: joined 1338 test files … 90 have a result now; 1248 still running`, for `status --at HEAD~1 test/store --wait` | s2-05, s2-10 (with `open.test.ts`) | Read the whole queue's count as the folder's state. The report does not say how many of the named files are still running (V4). |
+| `1338 still running at a5c9b7223 (its worktree), 1330 in the working tree; their runs go on in the daemons` | s2-06, s2-02 | s2-06: "a full comparison would have queued about 1,338 runs" (they were queued). s2-02: "too slow, so I stopped it", then "may still be going". The other 8 read it right. |
+| `0 still running at d8abcfe46 (its worktree), 97 in the working tree`, beside `97 not run: the batch's setup failed (browser …)` at the parent | s1-05, 07, 08, 09, 10 | 4 read it as the browser files still queued, which is true. s1-09: "more results may come in", for files whose setup had already failed on the other side (V6). |
+| `0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown` (a call narrowed to `open.test.ts`) | s2-08, s2-10 | "so no test file changed result" (s2-08); "No test file changed its result in commit 20f03a431" as the lead (s2-10). Both qualified it later. The summary line does not say it covers 1 named file out of 1,338 selected (V8). |
+
+Read right this time: the HEAD refusal (13 of 13); `124 test files not selected: none of their inputs differs …, so this commit cannot change their result` (10 of 10 s1, T2); R3's setup-failure line (10 of 10 s1); a flip under load (s2-09: "a 5000 ms timeout at load 9 … I haven't retried it, so that is a judgement"); `group-pending-release.test.ts` failing for a missing release tag (4 s2 sessions named it as the clone's state).
+
+### What went wrong, and the changes the evidence asks for
+
+Proposals, not code. The coordinator numbers rows.
+
+| # | Problem, with the evidence | Proposed change |
+|---|---|---|
+| V1 | **Inputs under a tracked symlink read as missing at a commit.** In s1, 2 selected files are "not comparable (needs .agents/skills/…/SKILL.md)" at `d8abcfe46`, and they have no result in the working tree either. At that commit `.agents/skills/auto-merge` is a tracked directory symlink to `.ai/skills/auto-merge`, whose `SKILL.md` exists. 9 of 10 agents repeated the claim. Round 5 reported the same 2 files as "not stored (read paths first seen during the run)". | When Squeal reads a path at a commit from git objects, resolve tracked symlinks inside the tree, as the working tree does, before it decides that a path is missing. Test it on a fixture with a directory symlink, both at a commit and in the working tree. |
+| V2 | **The time estimate is 5 to 15 times too low.** It said "about 3 to 11 min, up to 11 at once" for 1,338 files. Measured: 90 parent results after about 320 s (s2-05), 157 after about 394 s (s2-10), 144 after about 700 s (s2-09), with up to 3 sessions at once. Each session's commit daemon and worktree daemon ran about 1,330 files each, from the same user's pool of 11 permits. 9 answers quoted the estimate. | Base the estimate on both sides' runs (here about 2,670) and on the share of the pool that the user's other daemons leave, or on this call's measured rate. Say "both sides: 1,338 at a5c9b7223 and 1,330 here; about N min". |
+| V3 | **Named folders do not lead at the commit side.** After `--at HEAD~1 test/store --run`, the working-tree side had 38 of 38 results. The commit side had 0 or 1 of its 35 to 36 after 98 to 298 s, in 5 of 5 sessions. A single named file finished in 2 to 95 s. | Make every file a call names lead the commit daemon's queue, including files that an earlier call already queued, and test it with a folder of several files behind a queue of 1,000 or more. If a running batch cannot yield, say so in the report, as round 5's `--wait` did ("the tier does not yield"). |
+| V4 | **A narrowed `--wait` reports the whole queue.** `status --at HEAD~1 test/store --wait` printed "joined 1338 … 90 have a result now; 1248 still running". | Count the named files first ("test/store: 35 of 36 still running at a5c9b7223"), and give the rest of the queue on its own line. |
+| V5 | **A wide `--run` leaves about an hour of work on two daemons.** In each s2 session, after the call returned, the commit daemon and the user's worktree daemon each had about 1,200 to 1,330 files left, for a 7-line change. With 3 sessions the VM load reached 19.5 on 12 CPUs. "Finish everything" is the human's decision (D7.3). | Keep the decision, and state the cost before it is paid: the first call's line names both sides' runs and V2's honest time, and it suggests narrowing first. Whether to run the wide selection at all after a narrowed answer stays the human's question. |
+| V6 | **"Still running" for a group whose setup already failed.** The parent side says "97 not run: the batch's setup failed (browser …)", while the working-tree side says "97 in the working tree" are still running. | When one side's batch setup failed for a group in this call, name that next to the other side's count: "97 queued in the working tree (the browser group's setup failed at d8abcfe46)". |
+| V7 | **T3 is still open, and the commit worktree adds a case.** In 10 of 10 s1 sessions, squawk's e2e server and lease watcher outlived the session in the clone. In 9 of 10, a lease watcher whose command line names the commit worktree outlived `squeal stop --at`, which removed that worktree. Its working folder is a deleted `/tmp` folder, so D6's working-folder rule does not find it. | T3's proposal: record the process group of each run a daemon starts, the commit daemon's runs included, and end it when the run ends or the daemon stops. Name what was ended. |
+| V8 | **A narrowed summary line reads as the whole answer.** In 2 sessions, `0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown` for 1 named file became "no test file changed". | In a narrowed call, say what the counts cover: "of 1 named test file; the change selects 1,338 (`--at HEAD~1` without paths covers them)". |
+
+Not product defects, recorded for the coordinator:
+
+- **No Chrome on the VM**, as in rounds 4 and 5. The 97 browser files could not run on either side.
+- **The sessions share one OS user**, so `squeal ps` and the load the agents saw included other sessions' daemons, as in rounds 4 and 5.
+- **`/tmp` collects squawk's e2e folders**: 123 entries after 20 sessions (round 5: 170 after 21 runs).
+- **The s2 clone has no release tags.** `test/cli/group-pending-release.test.ts` failed in the working tree in 4 sessions, and each named the missing tag.
+- **No session ran `proof`.** The prompts ask a before/after question. Squeal suggested `proof` for the new s1 test file, and 8 answers named it as a next step. D7's `proof` side needs its own prompt.
+
+### Open for a later round
+
+- After V2 and V3: s2 again, 10 sessions. The question is whether a narrowed folder then gets both sides within the call, and whether the agents give the wide run's real cost.
+- After V1: s1 again. The 2 symlink files should then compare, and the answer stops at the 1,669 files whose runner cannot tell their closure.
+- A `proof` prompt (a red proof of a real fix), to exercise D7.6's green side on the commit daemon.
+- s1 on a host with Chrome and a model credential (a boat.dev sandbox once the account has a Claude credential).
+- Codex, Pi and OpenCode are still not exercised.

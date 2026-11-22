@@ -1,0 +1,46 @@
+{
+  "id": "s1-02",
+  "leftover": 2,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/a5de0b1fc0d31076/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [],
+  "joins": [
+    "3s +95s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "loadStart": "0.23",
+  "exit": 0,
+  "wallSeconds": 103.359,
+  "squeal": [
+    "3s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.054313299999999995,
+  "usage": {
+    "cache_creation_input_tokens": 16202,
+    "cache_read_input_tokens": 59363,
+    "output_tokens": 786
+  },
+  "firstFinal": "No. I found no test file that passes or fails differently, but the comparison is only partial.\n\nSqueal compared 8be977ad6 with its parent d8abcfe46:\n\n- **Changed results:** 0 went from pass to fail, and 0 went from fail to pass.\n- **Unchanged:** 11 test files that the commit touches have the same result on both sides.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. I didn't run `squeal proof` on it, so I haven't checked whether it fails on the parent's code.\n- **Not selected:** 124 test files have identical inputs at both commits, so this commit can't change their results.\n\nWhat the comparison could not cover:\n\n- **Browser e2e:** 97 files didn't run because the browser setup failed (installed Chrome failed to launch). That looks environmental, not caused by the commit, but it means no result for those files.\n- **Missing results:** 1,669 files weren't selected by the change, have no recorded result at the parent, and use a runner that can't confirm which files they depend on. 16 more have an incomplete dependency list.\n- **Not comparable:** two files, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts`, need files that the parent checkout lacks.\n\nI can run the rest with `--all-missing`. I'd also run `squeal proof` on the new test file.",
+  "final": "No. I found no test file that passes or fails differently, but the comparison is only partial.\n\nSqueal compared 8be977ad6 with its parent d8abcfe46:\n\n- **Changed results:** 0 went from pass to fail, and 0 went from fail to pass.\n- **Unchanged:** 11 test files that the commit touches have the same result on both sides.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. I didn't run `squeal proof` on it, so I haven't checked whether it fails on the parent's code.\n- **Not selected:** 124 test files have identical inputs at both commits, so this commit can't change their results.\n\nWhat the comparison could not cover:\n\n- **Browser e2e:** 97 files didn't run because the browser setup failed (installed Chrome failed to launch). That looks environmental, not caused by the commit, but it means no result for those files.\n- **Missing results:** 1,669 files weren't selected by the change, have no recorded result at the parent, and use a runner that can't confirm which files they depend on. 16 more have an incomplete dependency list.\n- **Not comparable:** two files, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts`, need files that the parent checkout lacks.\n\nI can run the rest with `--all-missing`. I'd also run `squeal proof` on the new test file.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}

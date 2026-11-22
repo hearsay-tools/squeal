@@ -1,0 +1,41 @@
+    1.9 TOOL Skill: squeal:squeal
+    2.0 RES  Launching skill: squeal:squeal
+    2.1 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    3.2 TOOL Bash: squeal status --at 20f03a431 --run 2>&1 | head -60; echo ---; git show --stat 20f03a431 | head -20
+    3.4 RES  squeal status --at: 20f03a431 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+             ---
+             commit 20f03a43139ea3e99e057b32dac3db3dffbb903d
+             Author: [redacted]
+             Date:   Wed Nov 18 01:56:09 2026 +0100
+             
+                 fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+                 
+                 A mark with no finder, or another, still reads as the full check's.
+                 
+     …[867 chars]
+    4.5 TOOL Bash: squeal status --at HEAD~1 --run 2>&1 | head -80
+  103.0 RES  squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+             squeal: --run: 1338 test files with no result at a5c9b7223 queued in its commit daemon, up to 11 at once: about 8 min at this machine's rate; they run on after the wait; name test files or folders to narrow it: squeal status --at HEAD~1 <path>... --run
+             squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             Now is this worktree's daemon at revision 0.
+             1138 test files: no result (queued) -> no  …[2469 chars]
+  103.1 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · first results in this worktree; complexity counted at revision 0\nRevision 0: 8 of 1962 test files are current (run on the files as they are now), and `squeal status` counts the rest.\n\nComplexity counted: 72 functions over 20; squeal code lists them."}}
+  104.7 TOOL Bash: squeal status --at HEAD~1 test/store/open.test.ts --run --wait 150000 2>&1 | tail -20
+  199.9 RES  squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+             squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             Now is this worktree's daemon at revision 0.
+             0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
+             --run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a  …[712 chars]
+  203.9 SAY  I can only partly answer this. The one file I compared shows no change, but Squeal's full before/after comparison hasn't finished.
+
+- **What I compared:** `test/store/open.test.ts`, the test file 20f03a431 edited (it added 27 lines). Against HEAD~1 (`a5c9b7223`), Squeal reports 1 unchanged, 0 pass→fail and 0 fail→pass. I didn't read the file's actual pass/fail state. The commit also changed `src/core/store/mark.ts`.
+- **What isn't finished:** the full comparison shows 0 pass→fail, 0 fail→pass and 1962 unknown. Squeal selects 1338 test files for this change. They were still queued in the commit daemon at HEAD~1, about 8 minutes of work, and haven't finished. Another 624 files aren't selected and have no result.
+
+So I can't say no other test file's result changed. In the narrow comparison, no test file's result changed. That leaves open whether other tests that depend on `mark.ts` changed. To close that, run `squeal status --at HEAD~1 --wait 100000`, or give it a narrower path such as `test/store/`.
+  204.0 END  success turns=6 duration=203655ms cost=$0.0503763 usage={"input_tokens":10,"cache_creation_input_tokens":12754,"cache_read_input_tokens":97813,"output_tokens":869,"output_tokens_details":{"thinking_tokens":126},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":12754},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+  204.0 FINAL I can only partly answer this. The one file I compared shows no change, but Squeal's full before/after comparison hasn't finished.
+
+- **What I compared:** `test/store/open.test.ts`, the test file 20f03a431 edited (it added 27 lines). Against HEAD~1 (`a5c9b7223`), Squeal reports 1 unchanged, 0 pass→fail and 0 fail→pass. I didn't read the file's actual pass/fail state. The commit also changed `src/core/store/mark.ts`.
+- **What isn't finished:** the full comparison shows 0 pass→fail, 0 fail→pass and 1962 unknown. Squeal selects 1338 test files for this change. They were still queued in the commit daemon at HEAD~1, about 8 minutes of work, and haven't finished. Another 624 files aren't selected and have no result.
+
+So I can't say no other test file's result changed. In the narrow comparison, no test file's result changed. That leaves open whether other tests that depend on `mark.ts` changed. To close that, run `squeal status --at HEAD~1 --wait 100000`, or give it a narrower path such as `test/store/`.

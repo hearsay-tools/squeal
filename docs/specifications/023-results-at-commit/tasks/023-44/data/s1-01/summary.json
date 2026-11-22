@@ -1,0 +1,49 @@
+{
+  "id": "s1-01",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/46c6e5a992620b89/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [],
+  "joins": [
+    "4s +0s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60",
+    "5s +73s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "loadStart": "3.33",
+  "exit": 0,
+  "wallSeconds": 84.682,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60",
+    "5s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0867571,
+  "usage": {
+    "cache_creation_input_tokens": 27621,
+    "cache_read_input_tokens": 73986,
+    "output_tokens": 1029
+  },
+  "firstFinal": "No test file changed from pass to fail or from fail to pass, but the comparison is only partial. Squeal reports 0 pass→fail and 0 fail→pass, and the evidence behind that is thin.\n\n- **Unchanged:** 11 test files have results on both sides and give the same result.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent (d8abcfe46) and passes now. The commit added it.\n- **Not selected (124 files):** none of their inputs differ between the two commits, so the commit can't have changed their result.\n- **Not comparable (2 files):** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` need `.agents/skills/...` files that are missing from the parent checkout.\n- **Unknown (about 1,785 files):**\n  - 1,669 have no result at the parent, and their runner can't confirm they're unaffected.\n  - 16 more have an incomplete static closure.\n  - Squeal queued only the 109 files the change selects, and 12 have results so far. Running the rest means `--all-missing`.\n- **Browser e2e (97 files):** none ran. The global setup failed because the installed Chrome wouldn't launch. This is an environment problem, so it says nothing about the commit.\n\nThe commit is a lint refactor, and the only test it selects and that has a result is the new file. I'd expect no real change, but I haven't confirmed that for every file. To close the gap, I can run `squeal status --at HEAD~1 --run --all-missing`, which is much heavier. I can also run `squeal proof` on the new test against d8abcfe46. Say which you want.",
+  "final": "No test file changed from pass to fail or from fail to pass, but the comparison is only partial. Squeal reports 0 pass→fail and 0 fail→pass, and the evidence behind that is thin.\n\n- **Unchanged:** 11 test files have results on both sides and give the same result.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent (d8abcfe46) and passes now. The commit added it.\n- **Not selected (124 files):** none of their inputs differ between the two commits, so the commit can't have changed their result.\n- **Not comparable (2 files):** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` need `.agents/skills/...` files that are missing from the parent checkout.\n- **Unknown (about 1,785 files):**\n  - 1,669 have no result at the parent, and their runner can't confirm they're unaffected.\n  - 16 more have an incomplete static closure.\n  - Squeal queued only the 109 files the change selects, and 12 have results so far. Running the rest means `--all-missing`.\n- **Browser e2e (97 files):** none ran. The global setup failed because the installed Chrome wouldn't launch. This is an environment problem, so it says nothing about the commit.\n\nThe commit is a lint refactor, and the only test it selects and that has a result is the new file. I'd expect no real change, but I haven't confirmed that for every file. To close the gap, I can run `squeal status --at HEAD~1 --run --all-missing`, which is much heavier. I can also run `squeal proof` on the new test against d8abcfe46. Say which you want.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "HEAD~1 --run"
+  ]
+}

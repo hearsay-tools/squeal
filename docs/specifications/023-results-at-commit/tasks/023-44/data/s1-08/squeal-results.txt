@@ -1,0 +1,39 @@
+## 4s +99s $ squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60
+squeal status --at: 8be977ad6 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+---
+squeal: asking the commit daemon at d8abcfe46 and this worktree's daemon
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cezar/src/activity/demand.test.ts and 1666 more
+96 test files: not run (the batch's setup failed: browser: setup failed: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings) -> no result (queued): packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts, packages/web/e2e/artifact-project-links.e2e.ts and 93 more
+16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more
+.github/scripts/no-compat-policy.test.cjs: not comparable (needs .agents/skills/auto-merge/SKILL.md) -> no result
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+packages/cezar/src/lint/lint-runner.test.ts: not comparable (needs .agents/skills/check-code-quality/scripts/changed-functions.test.mjs) -> no result
+packages/web/e2e/activity.e2e.ts: not run (the batch's setup failed: browser: setup failed: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings) -> no result (running)
+124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notSelected.excepted): .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 121 more
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 11 unchanged, 1785 unknown, 124 not selected
+--run: queued 108 test files with no result at d8abcfe46 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/fc983f483f77fe57/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 11 have a result now (98.3 s)
+1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them
+97 not run: the batch's setup failed (browser: setup failed: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings)
+--run, now: queued 109 test files the change selects with no result in the working tree in this worktree's daemon; 12 have a result now
+0 still running at d8abcfe46 (its worktree), 97 in the working tree; their runs go on in the daemons. squeal status --at '8be977ad6~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 109s SAY
+Based on what Squeal could run, no test file changed from pass to fail or from fail to pass. The comparison is incomplete, so this isn't proof that nothing changed.
+
+I compared `8be977ad6` with its parent `d8abcfe46`, using `squeal status --at`.
+
+- **Pass → fail:** none.
+- **Fail → pass:** none.
+- **Unchanged:** 11 test files had results on both sides and gave the same result.
+- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` didn't exist at the parent. It passes now. I didn't check whether it would fail on the parent's code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.
+- **Not comparable:** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` need `.agents/skills/...` files that aren't in the parent checkout, so neither has a result.
+- **Browser e2e (97 files):** none ran. The environment bootstrap failed because the installed Chrome wouldn't launch.
+- **Not selected (124 files):** none of their inputs differ between the two commits, so this commit can't change their results.
+- **No result at the parent (1,669 files):** these weren't selected by the change, and their runner can't confirm the dependency check is complete. I didn't run them, so they could in principle differ. `--all-missing` would run them.
+- **Same, for 16 more files:** these have an incomplete dependency check too, and I didn't run them either.
+
+The commit is a lint refactor in `packages/cezar/src/lint`, and 11 of the 12 files that did run are unchanged. The files Squeal didn't run are the ones that could differ. If you want a full answer, I can run `squeal status --at d8abcfe46 --all-missing --run`, which will take a while.

@@ -1,0 +1,48 @@
+{
+  "id": "s1-07",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/500bba719bca61aa/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 8be977ad~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 8be977ad~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "loadStart": "6.22",
+  "exit": 0,
+  "wallSeconds": 108.853,
+  "squeal": [
+    "4s squeal status --at 8be977ad~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.056409999999999995,
+  "usage": {
+    "cache_creation_input_tokens": 16234,
+    "cache_read_input_tokens": 59430,
+    "output_tokens": 987
+  },
+  "firstFinal": "**So far, no test file changed from pass to fail or from fail to pass between `8be977ad6` and its parent `d8abcfe46`. The comparison is not complete.**\n\nThe totals Squeal printed were 0 pass → fail, 0 fail → pass, 11 unchanged, 1785 unknown and 124 not selected.\n\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` did not exist at the parent and passes now. I did not run `squeal proof` on it, so I haven't checked whether it would fail on the parent's code.\n- **Unchanged:** 11 test files that the commit selects have results on both sides and are the same.\n- **Not selected:** 124 test files have no input that differs between the two commits, so this commit cannot change their results.\n- **Browser e2e not run:** 97 files under `packages/web/e2e/` did not run on either side, because the installed Chrome failed to launch. They are still queued. This is an environment problem, not a test result.\n- **Not comparable:** two files need `.agents/skills/...` files that aren't at the parent, so there is no result for them. They are `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts`.\n- **No result at the parent:** about 1,669 files outside the selection have no result there, and Squeal's static analysis can't say whether the commit could affect them. Another 16 are in the same position because Squeal's analysis of what they read is incomplete.\n\nThe commit only touched lint code (`perf(lint): share active-run owner syntax indexes`). That makes a real regression elsewhere unlikely, but I haven't confirmed it.\n\nTo check the 1,809 files with no parent result, run `squeal status --at '8be977ad~1' --all-missing --run`. It is a large run, and the browser files will keep failing until Chrome launches.",
+  "final": "**So far, no test file changed from pass to fail or from fail to pass between `8be977ad6` and its parent `d8abcfe46`. The comparison is not complete.**\n\nThe totals Squeal printed were 0 pass → fail, 0 fail → pass, 11 unchanged, 1785 unknown and 124 not selected.\n\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` did not exist at the parent and passes now. I did not run `squeal proof` on it, so I haven't checked whether it would fail on the parent's code.\n- **Unchanged:** 11 test files that the commit selects have results on both sides and are the same.\n- **Not selected:** 124 test files have no input that differs between the two commits, so this commit cannot change their results.\n- **Browser e2e not run:** 97 files under `packages/web/e2e/` did not run on either side, because the installed Chrome failed to launch. They are still queued. This is an environment problem, not a test result.\n- **Not comparable:** two files need `.agents/skills/...` files that aren't at the parent, so there is no result for them. They are `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts`.\n- **No result at the parent:** about 1,669 files outside the selection have no result there, and Squeal's static analysis can't say whether the commit could affect them. Another 16 are in the same position because Squeal's analysis of what they read is incomplete.\n\nThe commit only touched lint code (`perf(lint): share active-run owner syntax indexes`). That makes a real regression elsewhere unlikely, but I haven't confirmed it.\n\nTo check the 1,809 files with no parent result, run `squeal status --at '8be977ad~1' --all-missing --run`. It is a large run, and the browser files will keep failing until Chrome launches.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad~1 --run"
+  ]
+}

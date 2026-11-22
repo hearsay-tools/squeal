@@ -1,0 +1,52 @@
+{
+  "id": "s2-07",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +98s squeal status --at HEAD~1 --run 2>&1 | head -80"
+  ],
+  "joins": [
+    "105s +95s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 150000 2>&1 | tail -20"
+  ],
+  "loadStart": "11.11",
+  "exit": 0,
+  "wallSeconds": 204.352,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run 2>&1 | head -60; echo ---; git show --stat 20f03a431 | head -20",
+    "5s squeal status --at HEAD~1 --run 2>&1 | head -80",
+    "105s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 150000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0503763,
+  "usage": {
+    "cache_creation_input_tokens": 12754,
+    "cache_read_input_tokens": 97813,
+    "output_tokens": 869
+  },
+  "firstFinal": "I can only partly answer this. The one file I compared shows no change, but Squeal's full before/after comparison hasn't finished.\n\n- **What I compared:** `test/store/open.test.ts`, the test file 20f03a431 edited (it added 27 lines). Against HEAD~1 (`a5c9b7223`), Squeal reports 1 unchanged, 0 pass→fail and 0 fail→pass. I didn't read the file's actual pass/fail state. The commit also changed `src/core/store/mark.ts`.\n- **What isn't finished:** the full comparison shows 0 pass→fail, 0 fail→pass and 1962 unknown. Squeal selects 1338 test files for this change. They were still queued in the commit daemon at HEAD~1, about 8 minutes of work, and haven't finished. Another 624 files aren't selected and have no result.\n\nSo I can't say no other test file's result changed. In the narrow comparison, no test file's result changed. That leaves open whether other tests that depend on `mark.ts` changed. To close that, run `squeal status --at HEAD~1 --wait 100000`, or give it a narrower path such as `test/store/`.",
+  "final": "I can only partly answer this. The one file I compared shows no change, but Squeal's full before/after comparison hasn't finished.\n\n- **What I compared:** `test/store/open.test.ts`, the test file 20f03a431 edited (it added 27 lines). Against HEAD~1 (`a5c9b7223`), Squeal reports 1 unchanged, 0 pass→fail and 0 fail→pass. I didn't read the file's actual pass/fail state. The commit also changed `src/core/store/mark.ts`.\n- **What isn't finished:** the full comparison shows 0 pass→fail, 0 fail→pass and 1962 unknown. Squeal selects 1338 test files for this change. They were still queued in the commit daemon at HEAD~1, about 8 minutes of work, and haven't finished. Another 624 files aren't selected and have no result.\n\nSo I can't say no other test file's result changed. In the narrow comparison, no test file's result changed. That leaves open whether other tests that depend on `mark.ts` changed. To close that, run `squeal status --at HEAD~1 --wait 100000`, or give it a narrower path such as `test/store/`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

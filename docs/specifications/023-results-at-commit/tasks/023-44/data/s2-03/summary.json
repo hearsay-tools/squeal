@@ -1,0 +1,60 @@
+{
+  "id": "s2-03",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/0d52ed5123475813/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +98s squeal status --at HEAD~1 --run --wait 100000 2>&1 | head -80",
+    "104s +298s squeal status --at HEAD~1 test/store --run --wait 300000 2>&1 | tail -30"
+  ],
+  "joins": [
+    "3s +0s squeal status --at 20f03a4 --run --wait 100000 2>&1 | head -80; echo ---; git show --stat 20f03a4 | head -30",
+    "4s +98s squeal status --at HEAD~1 --run --wait 100000 2>&1 | head -80",
+    "104s +298s squeal status --at HEAD~1 test/store --run --wait 300000 2>&1 | tail -30",
+    "404s +2s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 200000 2>&1 | tail -15"
+  ],
+  "loadStart": "11.23",
+  "exit": 0,
+  "wallSeconds": 413.494,
+  "squeal": [
+    "3s squeal status --at 20f03a4 --run --wait 100000 2>&1 | head -80; echo ---; git show --stat 20f03a4 | head -30",
+    "4s squeal status --at HEAD~1 --run --wait 100000 2>&1 | head -80",
+    "104s squeal status --at HEAD~1 test/store --run --wait 300000 2>&1 | tail -30",
+    "404s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 200000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "104s +298s Bash squeal status --at HEAD~1 test/store --run --wait 300000 2>&1 | tail -30"
+  ],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.061085299999999995,
+  "usage": {
+    "cache_creation_input_tokens": 14260,
+    "cache_read_input_tokens": 122813,
+    "output_tokens": 1313
+  },
+  "firstFinal": "Partly answered. I have not compared the full suite, and nothing I did run shows a test whose result changed.\n\n**What I compared**\n- `test/store/open.test.ts` is the only test file the commit touched. It added 27 lines of tests next to the `src/core/store/mark.ts` fix. Squeal reports it unchanged between `HEAD~1` and `20f03a4`, so its file-level result did not change. The report doesn't say which result both sides had.\n- `test/store` has 39 files. The result there was 0 pass→fail and 0 fail→pass. 3 files were unchanged, and 36 had no result yet at the parent commit.\n\n**What I did not compare**\n- The full comparison covers 1962 test files, and at `a5c9b72` 1338 of them were still queued after about 98 s. Squeal estimated about 9 minutes for the queue.\n- The first full status call showed 0 pass→fail and 0 fail→pass, with all 1962 files unknown. That says nothing about the rest.\n\n**Failures that appeared, none attributed to this commit**\nThese four failed in this worktree's run. Squeal has no earlier result for them, so it can't say whether the commit caused them.\n- `test/cli/group-pending-release.test.ts` failed because no `squeal--v*` tag is an ancestor of HEAD. That is a missing tag in this checkout, not a code change. `git fetch --tags` would fix it.\n- `test/cli/remove.test.ts` timed out at 5000 ms with a load average of 16.\n- `test/cli/run-busy-reads.test.ts` timed out at 5000 ms with a load average of 16.\n- `test/cli/run-covered.test.ts` timed out at 5000 ms with a load average of 16.\n\nThe timeouts look like host load. None of these files is related to the changed `mark.ts` or `open.test.ts`. `squeal retry <file> --reason load` would settle them, and I haven't run it.\n\nFor a firm answer on all files, wait for the parent-commit runs with `squeal status --at HEAD~1 --wait 100000`. Say if you want me to do that.",
+  "final": "Partly answered. I have not compared the full suite, and nothing I did run shows a test whose result changed.\n\n**What I compared**\n- `test/store/open.test.ts` is the only test file the commit touched. It added 27 lines of tests next to the `src/core/store/mark.ts` fix. Squeal reports it unchanged between `HEAD~1` and `20f03a4`, so its file-level result did not change. The report doesn't say which result both sides had.\n- `test/store` has 39 files. The result there was 0 pass→fail and 0 fail→pass. 3 files were unchanged, and 36 had no result yet at the parent commit.\n\n**What I did not compare**\n- The full comparison covers 1962 test files, and at `a5c9b72` 1338 of them were still queued after about 98 s. Squeal estimated about 9 minutes for the queue.\n- The first full status call showed 0 pass→fail and 0 fail→pass, with all 1962 files unknown. That says nothing about the rest.\n\n**Failures that appeared, none attributed to this commit**\nThese four failed in this worktree's run. Squeal has no earlier result for them, so it can't say whether the commit caused them.\n- `test/cli/group-pending-release.test.ts` failed because no `squeal--v*` tag is an ancestor of HEAD. That is a missing tag in this checkout, not a code change. `git fetch --tags` would fix it.\n- `test/cli/remove.test.ts` timed out at 5000 ms with a load average of 16.\n- `test/cli/run-busy-reads.test.ts` timed out at 5000 ms with a load average of 16.\n- `test/cli/run-covered.test.ts` timed out at 5000 ms with a load average of 16.\n\nThe timeouts look like host load. None of these files is related to the changed `mark.ts` or `open.test.ts`. `squeal retry <file> --reason load` would settle them, and I haven't run it.\n\nFor a firm answer on all files, wait for the parent-commit runs with `squeal status --at HEAD~1 --wait 100000`. Say if you want me to do that.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

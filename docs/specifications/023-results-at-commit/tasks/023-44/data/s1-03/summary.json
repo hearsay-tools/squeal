@@ -1,0 +1,52 @@
+{
+  "id": "s1-03",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ebe521e06ad0e040/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [],
+  "joins": [
+    "3s +0s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60",
+    "4s +90s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60",
+    "97s +1s squeal status --at HEAD~1 --run --wait 120000 2>&1 | tail -15"
+  ],
+  "loadStart": "7.68",
+  "exit": 0,
+  "wallSeconds": 103.704,
+  "squeal": [
+    "3s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60",
+    "4s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60",
+    "97s squeal status --at HEAD~1 --run --wait 120000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.06655130000000001,
+  "usage": {
+    "cache_creation_input_tokens": 17864,
+    "cache_read_input_tokens": 112413,
+    "output_tokens": 1063
+  },
+  "firstFinal": "No test file passes or fails differently between `8be977ad6` and its parent `d8abcfe46`, as far as Squeal could measure. That is a partial answer, because only a small share of the suite could be compared.\n\n**Result:** 0 files went pass → fail, 0 went fail → pass, and 11 are unchanged.\n\n**One difference:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It passes now and did not exist at the parent, so it is an addition and not a changed result. I did not run `squeal proof` on it, so I can't say whether it would fail against the old code.\n\n**What could not be compared:**\n- **97 browser e2e files:** these did not run on either side. The browser setup failed because the installed Chrome would not launch in this environment, so their status is unknown.\n- **2 files not comparable:** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` need `.agents/skills/...` files that are missing from the parent checkout. Both show no result.\n- **1,669 files with no baseline:** these have no stored result at the parent. Squeal considers them not selected by the commit, but it can't verify that for these runners.\n- **16 more files** have no baseline, and their dependency analysis is incomplete.\n- **124 files** were excluded because none of their inputs differ between the two commits. They can't have changed.\n\nThe commit touches the lint ownership code (`perf(lint): share active-run owner syntax indexes`), so the test files most likely affected are the ones under `packages/cezar/src/lint/`. That is the area where I'd look first.\n\nTo compare the 1,669 unverified files, run `squeal status --at HEAD~1 --all-missing --run`. It will take a lot longer.",
+  "final": "No test file passes or fails differently between `8be977ad6` and its parent `d8abcfe46`, as far as Squeal could measure. That is a partial answer, because only a small share of the suite could be compared.\n\n**Result:** 0 files went pass → fail, 0 went fail → pass, and 11 are unchanged.\n\n**One difference:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It passes now and did not exist at the parent, so it is an addition and not a changed result. I did not run `squeal proof` on it, so I can't say whether it would fail against the old code.\n\n**What could not be compared:**\n- **97 browser e2e files:** these did not run on either side. The browser setup failed because the installed Chrome would not launch in this environment, so their status is unknown.\n- **2 files not comparable:** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` need `.agents/skills/...` files that are missing from the parent checkout. Both show no result.\n- **1,669 files with no baseline:** these have no stored result at the parent. Squeal considers them not selected by the commit, but it can't verify that for these runners.\n- **16 more files** have no baseline, and their dependency analysis is incomplete.\n- **124 files** were excluded because none of their inputs differ between the two commits. They can't have changed.\n\nThe commit touches the lint ownership code (`perf(lint): share active-run owner syntax indexes`), so the test files most likely affected are the ones under `packages/cezar/src/lint/`. That is the area where I'd look first.\n\nTo compare the 1,669 unverified files, run `squeal status --at HEAD~1 --all-missing --run`. It will take a lot longer.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

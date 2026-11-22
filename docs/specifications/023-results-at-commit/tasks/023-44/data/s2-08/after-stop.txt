@@ -1,0 +1,145 @@
+## head
+20f03a43139ea3e99e057b32dac3db3dffbb903d
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+20f03a4 HEAD@{2026-11-22 18:24:02 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree /home/squeal-w27/runs/w27/s2-08
+HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
+branch refs/heads/main
+
+worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+HEAD a5c9b7223b6550d249098754bfc6453b3853c2b7
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w27 squeal-w27    0 Nov 22 17:44 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/0d52ed5123475813:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:07 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/151c264dcad8a054:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:55 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/151fb660c32fe3e7:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:19 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/2f5064a31d0b13fd:
+total 12
+drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:24 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+drwxrwxr-x  4 squeal-w27 squeal-w27 4096 Nov 22 18:24 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/303868bd0bc99f05:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:11 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/3a69adefcc1b424f:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:10 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/46c6e5a992620b89:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:48 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/500bba719bca61aa:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:14 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/5664fe001fcb0578:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:22 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/7673a3c19cd8e049:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:59 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/8cdeac8f33ad3ab1:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:26 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/a5de0b1fc0d31076:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:54 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:25 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:25 c76537eee44e6298.json
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:24 e5937291ef414637.json
+
+home/.cache/squeal/checkouts/daf5e167ede3c71d:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:23 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/dfa658af3c0e4e12:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:17 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/e219ec3d2f13606b:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:46 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/e6cfe81a1af2ed1d:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:02 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/ebe521e06ad0e040:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:55 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/ed602e31a31d5456:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:59 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+home/.cache/squeal/checkouts/fc983f483f77fe57:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:19 .
+drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+ 688214       1       03:22 squeal s2-08 daemon @8016ffb2 /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs daemon /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+ 688367  688214       03:18 /opt/squeal-w27/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs runner-host /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+ 688509       1       02:55 squeal s2-08 store --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs store-process /home/squeal-w27/runs/w27/s2-08/.git --store code
+ 759992  688367       00:10 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 760652  688367       00:05 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 760866  688367       00:04 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 761129  688367       00:04 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 763898  761129       00:00 /bin/sh
+ 763919  760652       00:00 /bin/sh
+ 763952  688367       00:00 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 763994  760866       00:00 sh /tmp/squeal-1002/tmp/91413b5f7b93d891/squeal-update-MPaAfu/install.sh --pi
+ 764047  763898       00:00 /bin/sh
+ 764048  764047       00:00 node -e  const { existsSync, readFileSync, readdirSync } = require("node:fs"); const { join } = require("node:path"); const env = process.env; const home = env.HOME ?? ""; const want = process.argv[1]; const versionIn = (file) => {   try {     return JSON.parse(readFileSync(file, "utf8")).version;   } catch {} }; // A runtime root whose runtime.json and plugin manifest name one version, with its CLI. const runtime = (dir) => {   const v = versionIn(join(dir, "runtime.json"));   return typeof v === "string" && v === versionIn(join(dir, ".codex-plugin", "plugin.json")) &&     existsSync(join(dir, "dist", "cli", "squeal.mjs")) ? v : undefined; }; const isAdapter = (dir) => existsSync(join(dir, "hooks", "hooks.json")) && existsSync(join(dir, "seed")); const compare = (a, b) => {   const x = a.split(".").map(Number);   const y = b.split(".").map(Number);   for (let i = 0; i < Math.max(x.length, y.length); i++) {     const d = (x[i] ?? 0) - (y[i] ?? 0);     if (d !== 0) return d;   }   return 0; }; const found = []; if (want === "claude" || want === "any") {   try {     const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");     const file = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));     for (const e of file.plugins?.["squeal@hearsay"] ?? []) {       if (want === "claude" && e.scope !== "user") continue;       if (typeof e.version === "string" && typeof e.installPath === "string" && existsSync(e.installPath))         found.push([e.version, e.installPath]);     }   } catch {} } if (want !== "claude") {   const codex = env.CODEX_HOME ?? join(home, ".codex");   const cache = join(codex, "plugins", "cache", "hearsay", "squeal");   let dirs = [];   try {     dirs = readdirSync(cache).filter((v) => /^\d+(\.\d+)*$/.test(v));   } catch {}   for (const v of dirs) {     const dir = join(cache, v);     if (want === "codex" || (want === "adapter") === isAdapter(dir)) found.push([v, dir]);   }   if (want === "any") {     // Spec 002 D9: the current runtime, or a seed newer than it; the current one on a tie.     for (const v of dirs) {       const seed = join(cache, v, "seed");       if (isAdapter(join(cache, v)) && runtime(seed)) found.push([runtime(seed), seed]);     }     const data = join(codex, "plugins", "data", "squeal-hearsay");     const current = versionIn(join(data, "runtime", "current.json"));     // A plain release, so the version never names a path outside versions/.     const plain = typeof current === "string" && /^\d+\.\d+\.\d+$/.test(current);     if (plain && runtime(join(data, "versions", current)) === current) found.push([current, join(data, "versions", current)]);   } } if (want === "any") {   for (const packages of [env.PI_HOME, env.OPENCODE_HOME]) {     try {       for (const v of readdirSync(packages)) if (/^\d+(\.\d+)*$/.test(v)) found.push([v, join(packages, v)]);     } catch {}   } } const newest = found.sort((a, b) => compare(a[0], b[0])).at(-1); if (newest) console.log(`${newest[0]} ${newest[1]}`);  codex

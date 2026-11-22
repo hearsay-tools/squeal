@@ -1,0 +1,51 @@
+{
+  "id": "s2-08",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "104s +91s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 120000 2>&1 | tail -20"
+  ],
+  "loadStart": "10.45",
+  "exit": 0,
+  "wallSeconds": 199.545,
+  "squeal": [
+    "3s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "104s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 120000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0494697,
+  "usage": {
+    "cache_creation_input_tokens": 12475,
+    "cache_read_input_tokens": 98322,
+    "output_tokens": 843
+  },
+  "firstFinal": "Not for the test file the commit touched. I couldn't confirm the rest of the suite.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared `test/store/open.test.ts` at `20f03a431~1` (`a5c9b7223`) against the working tree (HEAD `20f03a431`) with `squeal status --at`. The result was 0 pass→fail, 0 fail→pass and 1 unchanged. The file's result is the same at both commits, so no test file changed result.\n\nThe full-suite comparison didn't finish in the time I waited. It left 1962 test files unknown, and 1338 were still queued or running when I stopped. So I can't say whether other tests that depend on `mark.ts` changed result. I didn't wait for the full run, and Squeal's own selection puts none of the ones I saw in the changed set.\n\n`squeal status --at '20f03a431~1' --wait 100000` will pick up the rest once the daemons finish, which Squeal estimated at about 9 minutes.",
+  "final": "Not for the test file the commit touched. I couldn't confirm the rest of the suite.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared `test/store/open.test.ts` at `20f03a431~1` (`a5c9b7223`) against the working tree (HEAD `20f03a431`) with `squeal status --at`. The result was 0 pass→fail, 0 fail→pass and 1 unchanged. The file's result is the same at both commits, so no test file changed result.\n\nThe full-suite comparison didn't finish in the time I waited. It left 1962 test files unknown, and 1338 were still queued or running when I stopped. So I can't say whether other tests that depend on `mark.ts` changed result. I didn't wait for the full run, and Squeal's own selection puts none of the ones I saw in the changed set.\n\n`squeal status --at '20f03a431~1' --wait 100000` will pick up the rest once the daemons finish, which Squeal estimated at about 9 minutes.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

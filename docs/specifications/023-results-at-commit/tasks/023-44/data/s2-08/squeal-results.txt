@@ -1,0 +1,33 @@
+## 3s +99s $ squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal: --run: 1338 test files with no result at a5c9b7223 queued in its commit daemon, up to 11 at once: about 9 min at this machine's rate; they run on after the wait; name test files or folders to narrow it: squeal status --at 20f03a431~1 <path>... --run
+squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1138 test files: no result (queued) -> no result (queued): test/cli/status-wait-unlisted-run.test.ts, test/cli/status-wait-window.test.ts, test/cli/status-wait.test.ts and 1135 more
+624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+188 test files: no result (running) -> no result (queued): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 185 more
+8 test files: no result (running) -> pass (now: run in this worktree): test/ci/export-keys.test.ts, test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts and 5 more
+4 test files: no result (running) -> no result (running): test/cli/ci-export.test.ts, test/cli/ci-publish.test.ts, test/cli/ci-record.test.ts and 1 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
+624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 8 have a result now
+1338 still running at a5c9b7223 (its worktree), 1330 in the working tree; their runs go on in the daemons. squeal status --at '20f03a431~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 104s +91s $ squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 120000 2>&1 | tail -20
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
+--run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (90.5 s)
+--run, now: every test file the change selects has a result in the working tree
+
+## 199s SAY
+Not for the test file the commit touched. I couldn't confirm the rest of the suite.
+
+The commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared `test/store/open.test.ts` at `20f03a431~1` (`a5c9b7223`) against the working tree (HEAD `20f03a431`) with `squeal status --at`. The result was 0 pass→fail, 0 fail→pass and 1 unchanged. The file's result is the same at both commits, so no test file changed result.
+
+The full-suite comparison didn't finish in the time I waited. It left 1962 test files unknown, and 1338 were still queued or running when I stopped. So I can't say whether other tests that depend on `mark.ts` changed result. I didn't wait for the full run, and Squeal's own selection puts none of the ones I saw in the changed set.
+
+`squeal status --at '20f03a431~1' --wait 100000` will pick up the rest once the daemons finish, which Squeal estimated at about 9 minutes.

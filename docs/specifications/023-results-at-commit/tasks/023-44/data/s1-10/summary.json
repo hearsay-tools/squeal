@@ -1,0 +1,49 @@
+{
+  "id": "s1-10",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/8cdeac8f33ad3ab1/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -50; echo ----; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -50"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -50; echo ----; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -50"
+  ],
+  "loadStart": "6.28",
+  "exit": 0,
+  "wallSeconds": 108.835,
+  "squeal": [
+    "4s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -50; echo ----; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -50"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0559683,
+  "usage": {
+    "cache_creation_input_tokens": 16357,
+    "cache_read_input_tokens": 59438,
+    "output_tokens": 912
+  },
+  "firstFinal": "I can't give a complete answer, because the comparison is only partly done. The part that finished shows no test file changing result.\n\n**Finished (12 test files with results in both trees):**\n- 0 went pass → fail and 0 went fail → pass.\n- 11 are unchanged.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit, so there is no earlier result to compare. It passes now.\n\n**Not comparable or not run:**\n- **Skipped as unaffected:** 124 test files have no changed inputs between the parent and this commit, so the commit can't change their result.\n- **No result on either side:** 1,669 files were not selected by the change, and their runner can't tell whether their static closure is complete. 16 more have an incomplete closure. Squeal didn't run any of these (`--all-missing` would).\n- **Browser e2e:** 97 files didn't run, because the browser setup failed. Chrome wouldn't launch here, and the 97 are still queued or running.\n- **Missing skill file:** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` can't be compared. They need skill files under `.agents/skills/` that this checkout doesn't have.\n\nThe commit changes lint code (it ports ast-grep rules to oxlint), so the lint test files are the ones most likely to be affected. They show no regression in what ran.\n\nI can run `squeal status --at HEAD~1 --run --all-missing` for the unselected files. Say so if you want that. The browser tests would still fail in this environment until Chrome launches.",
+  "final": "I can't give a complete answer, because the comparison is only partly done. The part that finished shows no test file changing result.\n\n**Finished (12 test files with results in both trees):**\n- 0 went pass → fail and 0 went fail → pass.\n- 11 are unchanged.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit, so there is no earlier result to compare. It passes now.\n\n**Not comparable or not run:**\n- **Skipped as unaffected:** 124 test files have no changed inputs between the parent and this commit, so the commit can't change their result.\n- **No result on either side:** 1,669 files were not selected by the change, and their runner can't tell whether their static closure is complete. 16 more have an incomplete closure. Squeal didn't run any of these (`--all-missing` would).\n- **Browser e2e:** 97 files didn't run, because the browser setup failed. Chrome wouldn't launch here, and the 97 are still queued or running.\n- **Missing skill file:** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` can't be compared. They need skill files under `.agents/skills/` that this checkout doesn't have.\n\nThe commit changes lint code (it ports ast-grep rules to oxlint), so the lint test files are the ones most likely to be affected. They show no regression in what ran.\n\nI can run `squeal status --at HEAD~1 --run --all-missing` for the unselected files. Say so if you want that. The browser tests would still fail in this environment until Chrome launches.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "8be977ad6 --run"
+  ]
+}

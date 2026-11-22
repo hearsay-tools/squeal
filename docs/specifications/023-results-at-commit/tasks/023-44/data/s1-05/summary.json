@@ -1,0 +1,48 @@
+{
+  "id": "s1-05",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/e6cfe81a1af2ed1d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "4s +99s squeal checks | tail -20 && squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "4s +99s squeal checks | tail -20 && squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "loadStart": "9.63",
+  "exit": 0,
+  "wallSeconds": 108.178,
+  "squeal": [
+    "4s squeal checks | tail -20 && squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.05506610000000001,
+  "usage": {
+    "cache_creation_input_tokens": 16455,
+    "cache_read_input_tokens": 59366,
+    "output_tokens": 798
+  },
+  "firstFinal": "**No test file changed from pass to fail or fail to pass.** The comparison covers 8be977ad6 against its parent d8abcfe46 and shows 0 pass→fail, 0 fail→pass, and 11 unchanged. The comparison is incomplete, though.\n\n- **Selected by the commit:** The commit selected 108 test files. 11 of those had results on both sides, and all 11 were unchanged.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It passes now, so it counts as absent→pass rather than a change.\n- **Not comparable (2):** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` need files that don't exist at the parent commit. Neither has a result there.\n- **Browser e2e (97 files):** These did not run. Chrome failed to launch in this environment, so they have no result on either side.\n- **Not selected (124):** None of their inputs differ between the two commits, so this commit can't change their result.\n- **No result (1,669 files):** These weren't selected, and their runner can't confirm the static closure is complete. Squeal didn't run them, and `--all-missing` would. Another 16 files in `.github/scripts/` are in the same position because their static closure is incomplete.\n\nThe commit only touches lint code, so a regression is unlikely. But the 1,669 unchecked files are not proven unchanged. For a definitive answer I can run `squeal status --at 8be977ad6~1 --all-missing --run`, which will be slow.",
+  "final": "**No test file changed from pass to fail or fail to pass.** The comparison covers 8be977ad6 against its parent d8abcfe46 and shows 0 pass→fail, 0 fail→pass, and 11 unchanged. The comparison is incomplete, though.\n\n- **Selected by the commit:** The commit selected 108 test files. 11 of those had results on both sides, and all 11 were unchanged.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent. It passes now, so it counts as absent→pass rather than a change.\n- **Not comparable (2):** `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/lint/lint-runner.test.ts` need files that don't exist at the parent commit. Neither has a result there.\n- **Browser e2e (97 files):** These did not run. Chrome failed to launch in this environment, so they have no result on either side.\n- **Not selected (124):** None of their inputs differ between the two commits, so this commit can't change their result.\n- **No result (1,669 files):** These weren't selected, and their runner can't confirm the static closure is complete. Squeal didn't run them, and `--all-missing` would. Another 16 files in `.github/scripts/` are in the same position because their static closure is incomplete.\n\nThe commit only touches lint code, so a regression is unlikely. But the 1,669 unchecked files are not proven unchanged. For a definitive answer I can run `squeal status --at 8be977ad6~1 --all-missing --run`, which will be slow.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}

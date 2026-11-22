@@ -1,0 +1,47 @@
+## 3s +99s $ squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal: --run: 1338 test files with no result at a5c9b7223 queued in its commit daemon, up to 11 at once: about 8 min at this machine's rate; they run on after the wait; name test files or folders to narrow it: squeal status --at 20f03a431~1 <path>... --run
+squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1138 test files: no result (queued) -> no result (queued): test/cli/status-wait-unlisted-run.test.ts, test/cli/status-wait-window.test.ts, test/cli/status-wait.test.ts and 1135 more
+624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+188 test files: no result (running) -> no result (queued): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 185 more
+8 test files: no result (running) -> pass (now: run in this worktree): test/ci/export-keys.test.ts, test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts and 5 more
+4 test files: no result (running) -> no result (running): test/cli/ci-export.test.ts, test/cli/ci-publish.test.ts, test/cli/ci-record.test.ts and 1 more
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/22c83153afc51889/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
+624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 8 have a result now
+1338 still running at a5c9b7223 (its worktree), 1330 in the working tree; their runs go on in the daemons. squeal status --at '20f03a431~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 104s +599s $ squeal status --at 20f03a431~1 --wait 600000 2>&1 | tail -15
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+test/code/crap/pending-reason.test.ts: pass -> fail (at a5c9b7223: run in the commit's worktree; now: a function the coverage step has not judged (row 015-104) > waits for a queued loader, with the command status names, in text and JSON (Q4 a); run in this worktree)
+847 test files: no result (queued) -> no result (queued): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 844 more
+624 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+170 test files: no result (running) -> no result (running): test/code/delivery/resume.test.ts, test/code/delivery/standing.test.ts, test/code/delivery/status.test.ts and 167 more
+118 test files: no result (queued) -> pass (now: run in this worktree): test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts, test/ci/export-wrapper.test.ts and 115 more
+30 test files: no result (running) -> pass (now: run in this worktree): test/code/crap/seed.test.ts, test/code/crap/skipped-pass.test.ts, test/code/crap/sliced.test.ts and 27 more
+29 test files: no result (queued) -> no result (running): test/daemon/start-short.test.ts, test/daemon/start-spawned.test.ts, test/daemon/step-down-keeps.test.ts and 26 more
+`--full` lists every file; `--json` gives each file's states.
+1 pass -> fail, 0 fail -> pass, 143 unchanged, 1818 unknown
+--wait: joined 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/22c83153afc51889/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 144 have a result now (598.2 s)
+--wait, now: joined 1330 test files the change selects with no result in the working tree in this worktree's daemon; 284 have a result now
+1194 still running at a5c9b7223 (its worktree), 1046 in the working tree; their runs go on in the daemons. squeal status --at '20f03a431~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 708s SAY
+I can't give a complete answer yet. Squeal compared the two commits, but most of the test files had no result when I stopped waiting.
+
+The commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. About 1,338 test files are affected by that change.
+
+After roughly 10 minutes, the comparison stood at:
+- **Changed result:** one file, `test/code/crap/pending-reason.test.ts`, went pass → fail. The failure is `Test timed out in 5000ms`, and the load average was 9.16 when it ran. That points to host load rather than the commit, because the test is about the "pending reason" for a queued loader and has no connection to `mark.ts` or the store. I haven't retried it, so that is a judgement.
+- **Unchanged:** 143 files had the same result on both sides.
+- **No result yet:** 1,818 files were still queued or running, or had no result on one side. Those include `test/store/open.test.ts`, the file the commit edited.
+
+`test/cli/group-pending-release.test.ts` also failed in my working tree. The error is that no `squeal--v*` tag is an ancestor of HEAD (the clone needs `git fetch --tags`). It has no earlier result, so it isn't a regression from this commit.
+
+To finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000` until the queued runs complete. Running `squeal status --at '20f03a431~1' test/store --run` would check the neighbourhood of the change much sooner. I can do either, and also retry the timed-out test with `squeal retry --reason load`.

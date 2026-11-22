@@ -1,0 +1,30 @@
+## squeal ps after squeal stop
+squeal ps · 1 daemon, 0 test processes · no flags
+Host    load 10.6 14.2 11.0 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 1.6% · memory pressure 0.0% (0.0% full) · memory 3.2 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 0.0 CPUs (0.0% of busy) · memory 1.3 GiB (39% of used) + 0 swap · pool 0 of 11 permits
+
+/home/squeal-w27/runs/w27/s1-06 (this repository) · 1 daemon · CPU 0.0 · memory 1.3 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            398598   e44e61db  0.1.597          1m    0%     0m14s  719M    0     idle
+    host vitest      398721   local                      1m    0%     0m50s  567M    0
+
+Store processes
+  407068  code.sqlite of /home/squeal-w27/runs/w27/s1-06/.git
+
+Temporary checkouts
+    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 398598  age 1m  at d8abcfe46bbe
+
+## checkout folders
+ls: cannot access '/home/squeal-w27/runs/w27/s1-06/.git/squeal/checkouts': No such file or directory
+/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05:
+total 12
+drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:09 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+drwxrwxr-x  4 squeal-w27 squeal-w27 4096 Nov 22 18:09 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:10 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:10 4b6e98d3be22289b.json
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:09 a224d64dcd7bae83.json

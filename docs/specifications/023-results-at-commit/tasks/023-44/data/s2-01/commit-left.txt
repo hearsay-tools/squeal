@@ -1,0 +1,46 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 1 test process · no flags
+Host    load 18.9 8.4 3.7 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 32% · memory pressure 0.0% (0.0% full) · memory 7.0 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 1.4 CPUs (at least 68% of busy) · memory 4.5 GiB (65% of used) + 0 swap · pool 3 of 11 permits
+
+/home/squeal-w27/runs/w27/s2-01 (this repository) · 1 daemon · CPU 0.0 · memory 1.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            76706    046b2c89  0.1.597          2m    1%     0m29s  1.1G    0     fast tier, 4 files; 1309 pending
+    host vitest      77155    local                      1m    1%     0m44s  462M    0
+    vitest           125839   fork worker               11s    3%     0m01s  87M     0     nice 10
+
+/home/squeal-w27/runs/w27/s1-03 · 2 daemons · CPU at least 1.3 · memory 2.8 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            81839    80593251  0.1.597          1m    0%     0m13s  425M    0     idle
+    host vitest      83359    local                      1m    0%     0m47s  744M    0
+  serving            80466    01311f2e  0.1.597          1m  115%     0m34s  616M    0     fast tier, 1 file; 96 pending; 1 session
+    host vitest      127504   local                      6s   18%     0m01s  309M    0
+    host vitest      80619    local                      1m    0%     0m42s  699M    0
+    host node-test   80620    local                      1m    0%     0m00s  48M     0
+    host node-test   80621    local                      1m    0%     0m00s  67M     0
+
+Store processes
+  80068  code.sqlite of /home/squeal-w27/runs/w27/s2-01/.git
+  98119  code.sqlite of /home/squeal-w27/runs/w27/s1-03/.git
+
+Temporary checkouts
+    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151c264dcad8a054/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 76706  age 2m  at a5c9b7223b65
+    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ebe521e06ad0e040/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 81839  age 1m  at d8abcfe46bbe
+
+Unknown: 1 value; --full names each
+
+## checkout folders
+ls: cannot access '/home/squeal-w27/runs/w27/s2-01/.git/squeal/checkouts': No such file or directory
+/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151c264dcad8a054:
+total 12
+drwxrwxr-x 3 squeal-w27 squeal-w27 4096 Nov 22 17:53 .
+drwxrwxr-x 8 squeal-w27 squeal-w27 4096 Nov 22 17:54 ..
+drwxrwxr-x 4 squeal-w27 squeal-w27 4096 Nov 22 17:53 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x 2 squeal-w27 squeal-w27 4096 Nov 22 17:55 .
+drwxrwxr-x 8 squeal-w27 squeal-w27 4096 Nov 22 17:54 ..
+-rw-rw-r-- 1 squeal-w27 squeal-w27  156 Nov 22 17:54 d02a2887ecc88fb5.json
+-rw-rw-r-- 1 squeal-w27 squeal-w27  156 Nov 22 17:52 dca78d508dbb1778.json
+-rw-rw-r-- 1 squeal-w27 squeal-w27  156 Nov 22 17:55 e87b938c020ceafa.json

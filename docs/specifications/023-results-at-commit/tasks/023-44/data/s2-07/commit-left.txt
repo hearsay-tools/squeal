@@ -1,0 +1,34 @@
+## squeal ps after squeal stop
+squeal ps · 1 daemon, 2 test processes · no flags
+Host    load 15.8 16.5 14.1 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 7.8% · memory pressure 0.0% (0.0% full) · memory 3.5 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 1.4 CPUs (98% of busy) · memory 2.2 GiB (64% of used) + 0 swap · pool 0 of 11 permits
+
+/home/squeal-w27/runs/w27/s2-07 (this repository) · 1 daemon · CPU 1.4 · memory 2.2 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            606523   630deb73  0.1.597          3m  122%     0m38s  1.1G    0     fast tier, 4 files; 1265 pending
+    host vitest      606676   local                      3m    7%     0m51s  828M    0
+    vitest           687149   fork worker                2s    2%     0m00s  143M    0     nice 10
+    vitest           687157   fork worker                2s   10%     0m01s  163M    0     nice 10, +1 child
+
+Store processes
+  606818  code.sqlite of /home/squeal-w27/runs/w27/s2-07/.git
+
+Temporary checkouts
+    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 606523  age 3m  at a5c9b7223b65
+
+Unknown: 2 values; --full names each
+
+## checkout folders
+ls: cannot access '/home/squeal-w27/runs/w27/s2-07/.git/squeal/checkouts': No such file or directory
+/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d:
+total 12
+drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:20 .
+drwxrwxr-x 20 squeal-w27 squeal-w27 4096 Nov 22 18:20 ..
+drwxrwxr-x  4 squeal-w27 squeal-w27 4096 Nov 22 18:20 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:21 .
+drwxrwxr-x 20 squeal-w27 squeal-w27 4096 Nov 22 18:20 ..
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:20 79ddb05f5dad677a.json
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:21 d29a736e92a1e093.json

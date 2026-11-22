@@ -1,0 +1,59 @@
+{
+  "id": "s2-10",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/21779f45a5019759/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at HEAD~1 --run 2>&1 | head -80",
+    "106s +168s squeal status --at HEAD~1 --run --wait 170000 test/store 2>&1 | tail -30",
+    "276s +118s squeal status --at HEAD~1 test/store/open.test.ts --wait 120000 2>&1 | tail -15"
+  ],
+  "joins": [
+    "106s +168s squeal status --at HEAD~1 --run --wait 170000 test/store 2>&1 | tail -30",
+    "276s +118s squeal status --at HEAD~1 test/store/open.test.ts --wait 120000 2>&1 | tail -15"
+  ],
+  "loadStart": "5.60",
+  "exit": 0,
+  "wallSeconds": 400.086,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run 2>&1 | head -60",
+    "5s squeal status --at HEAD~1 --run 2>&1 | head -80",
+    "106s squeal status --at HEAD~1 --run --wait 170000 test/store 2>&1 | tail -30",
+    "276s squeal status --at HEAD~1 test/store/open.test.ts --wait 120000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "106s +168s Bash squeal status --at HEAD~1 --run --wait 170000 test/store 2>&1 | tail -30"
+  ],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.06070009999999999,
+  "usage": {
+    "cache_creation_input_tokens": 13881,
+    "cache_read_input_tokens": 144896,
+    "output_tokens": 1148
+  },
+  "firstFinal": "No test file changed its result in commit 20f03a431. I only checked the two test files the commit touches or selects; I did not compare the whole suite.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** it passes at the parent (a5c9b7223) and passes now. Squeal reports `0 pass -> fail, 0 fail -> pass, 1 unchanged`. The new cases in that file pass at HEAD, but I did not confirm whether they fail at the parent, which `squeal proof` could show.\n- **Rest of `test/store/`:** all 39 files pass in the current tree, but the parent's results for 35 of them were still running when I stopped waiting. I could not compare them.\n- **Full suite:** I queued 1,338 files at the parent, about 9 minutes of work, and did not wait for them, so the rest of the suite is unknown.\n\nOne unrelated failure showed up in the current tree: `test/cli/group-pending-release.test.ts` (row 011-302, \"reads the new pending answer without error\"). It reports that no `squeal--v*` tag is an ancestor of HEAD, so `git fetch --tags` is probably needed. It has no earlier result, and it doesn't read the files this commit touched, so it looks like an environment problem.\n\nIf you want the full-suite comparison, I can wait for the queued parent runs to finish.",
+  "final": "No test file changed its result in commit 20f03a431. I only checked the two test files the commit touches or selects; I did not compare the whole suite.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** it passes at the parent (a5c9b7223) and passes now. Squeal reports `0 pass -> fail, 0 fail -> pass, 1 unchanged`. The new cases in that file pass at HEAD, but I did not confirm whether they fail at the parent, which `squeal proof` could show.\n- **Rest of `test/store/`:** all 39 files pass in the current tree, but the parent's results for 35 of them were still running when I stopped waiting. I could not compare them.\n- **Full suite:** I queued 1,338 files at the parent, about 9 minutes of work, and did not wait for them, so the rest of the suite is unknown.\n\nOne unrelated failure showed up in the current tree: `test/cli/group-pending-release.test.ts` (row 011-302, \"reads the new pending answer without error\"). It reports that no `squeal--v*` tag is an ancestor of HEAD, so `git fetch --tags` is probably needed. It has no earlier result, and it doesn't read the files this commit touched, so it looks like an environment problem.\n\nIf you want the full-suite comparison, I can wait for the queued parent runs to finish.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run",
+    "HEAD~1"
+  ]
+}

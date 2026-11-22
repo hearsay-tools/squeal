@@ -1,0 +1,51 @@
+{
+  "id": "s2-02",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "3s +98s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | head -80"
+  ],
+  "joins": [
+    "3s +98s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | head -80",
+    "105s +86s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "loadStart": "10.06",
+  "exit": 0,
+  "wallSeconds": 195.265,
+  "squeal": [
+    "3s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | head -80",
+    "105s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.04897699999999999,
+  "usage": {
+    "cache_creation_input_tokens": 12474,
+    "cache_read_input_tokens": 98320,
+    "output_tokens": 794
+  },
+  "firstFinal": "I only compared the test file the commit touched, `test/store/open.test.ts`, and its result did not change between `20f03a431~1` and `20f03a431` (0 pass→fail, 0 fail→pass, 1 unchanged). The earlier version of that file also had no recorded result in the daemon's cache, so Squeal ran it fresh at `a5c9b7223` for this comparison.\n\nThe commit changed two files: `src/core/store/mark.ts` (7 lines) and `test/store/open.test.ts` (27 added lines). A new test file doesn't count as a result change in the usual sense, since the added tests have no counterpart at the old commit.\n\nI did not finish checking every test that depends on `mark.ts`. A comparison across the whole suite was too slow, so I stopped it: Squeal estimated about 11 minutes for 1338 queued files and had no results yet when I looked. Those runs may still be going in the daemons, and `squeal status --at '20f03a431~1' --wait 100000` would pick them up. So I can't yet say that no other test file changed result.",
+  "final": "I only compared the test file the commit touched, `test/store/open.test.ts`, and its result did not change between `20f03a431~1` and `20f03a431` (0 pass→fail, 0 fail→pass, 1 unchanged). The earlier version of that file also had no recorded result in the daemon's cache, so Squeal ran it fresh at `a5c9b7223` for this comparison.\n\nThe commit changed two files: `src/core/store/mark.ts` (7 lines) and `test/store/open.test.ts` (27 added lines). A new test file doesn't count as a result change in the usual sense, since the added tests have no counterpart at the old commit.\n\nI did not finish checking every test that depends on `mark.ts`. A comparison across the whole suite was too slow, so I stopped it: Squeal estimated about 11 minutes for 1338 queued files and had no results yet when I looked. Those runs may still be going in the daemons, and `squeal status --at '20f03a431~1' --wait 100000` would pick them up. So I can't yet say that no other test file changed result.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

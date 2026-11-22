@@ -1,0 +1,51 @@
+{
+  "id": "s2-01",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151c264dcad8a054/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40"
+  ],
+  "joins": [
+    "105s +11s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 120000 2>&1 | tail -15"
+  ],
+  "loadStart": "5.51",
+  "exit": 0,
+  "wallSeconds": 121.388,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ----; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "105s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 120000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.049489899999999996,
+  "usage": {
+    "cache_creation_input_tokens": 12570,
+    "cache_read_input_tokens": 98549,
+    "output_tokens": 819
+  },
+  "firstFinal": "Not so far. No test file has changed result, but the comparison across all files is unfinished.\n\n- **Commit contents:** 20f03a4 changed `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`.\n- **`test/store/open.test.ts`:** it passes both before (a5c9b72) and after, so its file-level result is unchanged. The new tests pass, but the file-level result doesn't show them as a change.\n- **Other test files:** I ran `squeal status --at 20f03a4~1 --run` over the whole suite. It reported 0 pass→fail and 0 fail→pass. That count is not a verdict, because 1,338 test files that `mark.ts` can reach had no result at the parent commit. They were still queued, about 10 minutes of work, when I stopped waiting, so I can't say whether any of them changed.\n\nTo finish the comparison, run `squeal status --at 20f03a4~1 --wait 600000` once the queued runs complete. I can do that if you want.",
+  "final": "Not so far. No test file has changed result, but the comparison across all files is unfinished.\n\n- **Commit contents:** 20f03a4 changed `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`.\n- **`test/store/open.test.ts`:** it passes both before (a5c9b72) and after, so its file-level result is unchanged. The new tests pass, but the file-level result doesn't show them as a change.\n- **Other test files:** I ran `squeal status --at 20f03a4~1 --run` over the whole suite. It reported 0 pass→fail and 0 fail→pass. That count is not a verdict, because 1,338 test files that `mark.ts` can reach had no result at the parent commit. They were still queued, about 10 minutes of work, when I stopped waiting, so I can't say whether any of them changed.\n\nTo finish the comparison, run `squeal status --at 20f03a4~1 --wait 600000` once the queued runs complete. I can do that if you want.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run",
+    "20f03a4~1 --run"
+  ]
+}

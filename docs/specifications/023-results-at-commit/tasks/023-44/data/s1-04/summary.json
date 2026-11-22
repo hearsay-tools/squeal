@@ -1,0 +1,47 @@
+{
+  "id": "s1-04",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/7673a3c19cd8e049/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [],
+  "joins": [
+    "4s +99s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "loadStart": "7.48",
+  "exit": 0,
+  "wallSeconds": 108.563,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.056595799999999995,
+  "usage": {
+    "cache_creation_input_tokens": 16416,
+    "cache_read_input_tokens": 59438,
+    "output_tokens": 960
+  },
+  "firstFinal": "Based on what ran, no. The comparison is only partial, so I can't say that for certain. Squeal compared 8be977ad6 with its parent d8abcfe46:\n\n- **Pass → fail:** none.\n- **Fail → pass:** none.\n- **Unchanged:** 11 test files had a result at both commits and the same one.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` didn't exist at the parent. It passes now. I didn't run `squeal proof` on it, so I haven't checked whether it would fail on the parent's code.\n- **Not selected:** 124 files have no inputs that differ between the two commits, so this commit can't change their results.\n\nMost of the suite has no result at either commit:\n\n- **1,669 files** have no result at the parent. Their runner doesn't say whether the static closure is complete, so Squeal didn't run them without `--all-missing`.\n- **16 files** have no result either, because their static closure is incomplete. Two of them, `no-compat-policy.test.cjs` and `lint-runner.test.ts`, need files under `.agents/skills/` that are missing at the parent.\n- **97 browser e2e files** didn't run on either side. The Chrome launch failed during global setup, and that failure is not caused by this commit.\n\nThe commit only touches lint code (`perf(lint): share active-run owner syntax indexes`). So a changed result in the lint tests would be the most likely one. Those lint tests are among the 11 unchanged files.\n\nFor a full comparison, run `squeal status --at d8abcfe46 --all-missing --run`. The browser files will still fail until Chrome launches.",
+  "final": "Based on what ran, no. The comparison is only partial, so I can't say that for certain. Squeal compared 8be977ad6 with its parent d8abcfe46:\n\n- **Pass → fail:** none.\n- **Fail → pass:** none.\n- **Unchanged:** 11 test files had a result at both commits and the same one.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` didn't exist at the parent. It passes now. I didn't run `squeal proof` on it, so I haven't checked whether it would fail on the parent's code.\n- **Not selected:** 124 files have no inputs that differ between the two commits, so this commit can't change their results.\n\nMost of the suite has no result at either commit:\n\n- **1,669 files** have no result at the parent. Their runner doesn't say whether the static closure is complete, so Squeal didn't run them without `--all-missing`.\n- **16 files** have no result either, because their static closure is incomplete. Two of them, `no-compat-policy.test.cjs` and `lint-runner.test.ts`, need files under `.agents/skills/` that are missing at the parent.\n- **97 browser e2e files** didn't run on either side. The Chrome launch failed during global setup, and that failure is not caused by this commit.\n\nThe commit only touches lint code (`perf(lint): share active-run owner syntax indexes`). So a changed result in the lint tests would be the most likely one. Those lint tests are among the 11 unchanged files.\n\nFor a full comparison, run `squeal status --at d8abcfe46 --all-missing --run`. The browser files will still fail until Chrome launches.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6~1 --run"
+  ]
+}

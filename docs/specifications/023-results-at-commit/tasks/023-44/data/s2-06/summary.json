@@ -1,0 +1,55 @@
+{
+  "id": "s2-06",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151fb660c32fe3e7/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 20f03a431 --run 2>&1 | tail -60; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -60",
+    "104s +98s squeal status --at 20f03a431~1 test/store src/core/store --run --wait 100000 2>&1 | tail -30"
+  ],
+  "joins": [
+    "104s +98s squeal status --at 20f03a431~1 test/store src/core/store --run --wait 100000 2>&1 | tail -30",
+    "204s +1s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 180000 2>&1 | tail -15"
+  ],
+  "loadStart": "11.28",
+  "exit": 0,
+  "wallSeconds": 210.426,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run 2>&1 | tail -60; echo ----; squeal status --at 20f03a431~1 --run 2>&1 | tail -60",
+    "104s squeal status --at 20f03a431~1 test/store src/core/store --run --wait 100000 2>&1 | tail -30",
+    "204s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 180000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.055286499999999995,
+  "usage": {
+    "cache_creation_input_tokens": 13183,
+    "cache_read_input_tokens": 122250,
+    "output_tokens": 1008
+  },
+  "firstFinal": "Partly answered: I found no test file whose result changed, but I couldn't confirm this for the whole suite.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** it passes both before and after the commit. Squeal reports it as unchanged, with 0 pass→fail and 0 fail→pass. Its result didn't change, though the file now contains the new tests.\n- **Other `test/store` files:** all 38 files the change selects pass in the current tree. The parent commit (`a5c9b7223`) hadn't finished running them, so I can't compare those directly. Squeal counted 3 unchanged and 36 unknown, with no regressions.\n- **Rest of the suite (about 1,900 files):** not compared. A full comparison would have queued about 1,338 runs at the parent commit, roughly 3 minutes or more by Squeal's estimate. Say if you want me to wait for it.\n\nSo the commit changed no test result that I could see, and the only change confirmed against the parent is `open.test.ts`, which was green both times.",
+  "final": "Partly answered: I found no test file whose result changed, but I couldn't confirm this for the whole suite.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** it passes both before and after the commit. Squeal reports it as unchanged, with 0 pass→fail and 0 fail→pass. Its result didn't change, though the file now contains the new tests.\n- **Other `test/store` files:** all 38 files the change selects pass in the current tree. The parent commit (`a5c9b7223`) hadn't finished running them, so I can't compare those directly. Squeal counted 3 unchanged and 36 unknown, with no regressions.\n- **Rest of the suite (about 1,900 files):** not compared. A full comparison would have queued about 1,338 runs at the parent commit, roughly 3 minutes or more by Squeal's estimate. Say if you want me to wait for it.\n\nSo the commit changed no test result that I could see, and the only change confirmed against the parent is `open.test.ts`, which was green both times.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

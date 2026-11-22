@@ -1,0 +1,60 @@
+{
+  "id": "s2-05",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +98s squeal status --at HEAD~1 --run 2>&1 | tail -60",
+    "105s +118s squeal status --at HEAD~1 test/store --run --wait 120000 2>&1 | tail -30",
+    "225s +98s squeal status --at HEAD~1 test/store --wait 100000 2>&1 | tail -15"
+  ],
+  "joins": [
+    "105s +118s squeal status --at HEAD~1 test/store --run --wait 120000 2>&1 | tail -30",
+    "225s +98s squeal status --at HEAD~1 test/store --wait 100000 2>&1 | tail -15",
+    "326s +2s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -12"
+  ],
+  "loadStart": "9.72",
+  "exit": 0,
+  "wallSeconds": 336.785,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run 2>&1 | tail -40; echo ---; git show --stat 20f03a431 | head -20",
+    "4s squeal status --at HEAD~1 --run 2>&1 | tail -60",
+    "105s squeal status --at HEAD~1 test/store --run --wait 120000 2>&1 | tail -30",
+    "225s squeal status --at HEAD~1 test/store --wait 100000 2>&1 | tail -15",
+    "326s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -12"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.064319,
+  "usage": {
+    "cache_creation_input_tokens": 14461,
+    "cache_read_input_tokens": 147285,
+    "output_tokens": 1341
+  },
+  "firstFinal": "Commit 20f03a431 changed no test results that I could find, but I only compared part of the suite.\n\nThe commit touched `src/core/store/mark.ts` and `test/store/open.test.ts`. The comparison covers only those two paths, not the whole repo.\n\n- **`test/store/open.test.ts`:** unchanged, with the same result at `a5c9b7223` and at HEAD. The commit added 27 lines to this file, so I did not compare the new test cases against the old file's results.\n- **Rest of `test/store/`:** the result at `a5c9b7223` was still running when I looked. Squeal reported 0 pass→fail, 0 fail→pass, 3 unchanged and 36 with no earlier result yet. Every file in the folder passes at HEAD, so nothing there is known to have gone red.\n- **Everything else:** the comparison against the earlier commit is still pending. It was queued for 1,338 test files and had finished about 90 when I stopped. I did not run the other 624 files that the change doesn't select.\n\nOne failure turned up at HEAD, in `test/cli/group-pending-release.test.ts` (\"reads the new pending answer without error\"). It is probably not caused by this commit. The error says no `squeal--v*` tag is an ancestor of HEAD, which points to missing git tags in this checkout. Squeal has no earlier result for it, so it cannot confirm that. `git fetch --tags` should fix it.\n\n`squeal status --at HEAD~1 --wait 100000` will wait for the rest. The full comparison takes about 8 minutes, and I can wait for it if you want a definitive answer.",
+  "final": "Commit 20f03a431 changed no test results that I could find, but I only compared part of the suite.\n\nThe commit touched `src/core/store/mark.ts` and `test/store/open.test.ts`. The comparison covers only those two paths, not the whole repo.\n\n- **`test/store/open.test.ts`:** unchanged, with the same result at `a5c9b7223` and at HEAD. The commit added 27 lines to this file, so I did not compare the new test cases against the old file's results.\n- **Rest of `test/store/`:** the result at `a5c9b7223` was still running when I looked. Squeal reported 0 pass→fail, 0 fail→pass, 3 unchanged and 36 with no earlier result yet. Every file in the folder passes at HEAD, so nothing there is known to have gone red.\n- **Everything else:** the comparison against the earlier commit is still pending. It was queued for 1,338 test files and had finished about 90 when I stopped. I did not run the other 624 files that the change doesn't select.\n\nOne failure turned up at HEAD, in `test/cli/group-pending-release.test.ts` (\"reads the new pending answer without error\"). It is probably not caused by this commit. The error says no `squeal--v*` tag is an ancestor of HEAD, which points to missing git tags in this checkout. Squeal has no earlier result for it, so it cannot confirm that. `git fetch --tags` should fix it.\n\n`squeal status --at HEAD~1 --wait 100000` will wait for the rest. The full comparison takes about 8 minutes, and I can wait for it if you want a definitive answer.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 5,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run",
+    "HEAD~1",
+    "HEAD~1 --run"
+  ]
+}

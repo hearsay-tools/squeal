@@ -1,0 +1,46 @@
+{
+  "id": "s1-06",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [],
+  "joins": [
+    "3s +99s squeal checks 2>&1 | tail -30; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -40"
+  ],
+  "loadStart": "10.24",
+  "exit": 0,
+  "wallSeconds": 108.534,
+  "squeal": [
+    "3s squeal checks 2>&1 | tail -30; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0566451,
+  "usage": {
+    "cache_creation_input_tokens": 16728,
+    "cache_read_input_tokens": 59431,
+    "output_tokens": 887
+  },
+  "firstFinal": "No test result changed between 8be977ad6 and its parent d8abcfe46, but the comparison is only partial.\n\n- **Pass to fail:** none.\n- **Fail to pass:** none.\n- **Unchanged:** 11 test files had a result on both sides and are the same.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is added by this commit and passes now. I didn't check whether it would fail on the parent's code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n- **Not selected:** 124 test files have identical inputs on both commits, so this commit can't change their results.\n- **Not run:** 97 browser e2e files didn't run on either side, because the installed Chrome failed to launch (`[e2e] (global setup)` failed). That failure is environmental.\n- **No result:** about 1,669 test files have no result at the parent, and Squeal can't tell whether this commit touches them. It also couldn't compare `no-compat-policy.test.cjs` and `lint-runner.test.ts`, because the parent checkout lacks files they need. `--all-missing` would run all of those, but I didn't, because it is a full-suite run.\n\nThe commit is a lint refactor, so I'd expect no test changes. Only a full run (`squeal status --at d8abcfe46 --all-missing --run`) would confirm that for the unchecked files.",
+  "final": "No test result changed between 8be977ad6 and its parent d8abcfe46, but the comparison is only partial.\n\n- **Pass to fail:** none.\n- **Fail to pass:** none.\n- **Unchanged:** 11 test files had a result on both sides and are the same.\n- **New file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is added by this commit and passes now. I didn't check whether it would fail on the parent's code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n- **Not selected:** 124 test files have identical inputs on both commits, so this commit can't change their results.\n- **Not run:** 97 browser e2e files didn't run on either side, because the installed Chrome failed to launch (`[e2e] (global setup)` failed). That failure is environmental.\n- **No result:** about 1,669 test files have no result at the parent, and Squeal can't tell whether this commit touches them. It also couldn't compare `no-compat-policy.test.cjs` and `lint-runner.test.ts`, because the parent checkout lacks files they need. `--all-missing` would run all of those, but I didn't, because it is a full-suite run.\n\nThe commit is a lint refactor, so I'd expect no test changes. Only a full run (`squeal status --at d8abcfe46 --all-missing --run`) would confirm that for the unchecked files.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}

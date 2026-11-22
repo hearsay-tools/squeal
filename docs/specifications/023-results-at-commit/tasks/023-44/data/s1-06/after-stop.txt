@@ -1,0 +1,99 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-22 18:09:30 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree /home/squeal-w27/runs/w27/s1-06
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+HEAD d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w27 squeal-w27    0 Nov 22 17:44 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/0d52ed5123475813:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:07 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/151c264dcad8a054:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:55 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/303868bd0bc99f05:
+total 12
+drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:09 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+drwxrwxr-x  4 squeal-w27 squeal-w27 4096 Nov 22 18:09 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/3a69adefcc1b424f:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:10 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/46c6e5a992620b89:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:48 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/7673a3c19cd8e049:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:59 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/a5de0b1fc0d31076:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:54 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:10 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:10 4b6e98d3be22289b.json
+-rw-rw-r--  1 squeal-w27 squeal-w27  156 Nov 22 18:09 a224d64dcd7bae83.json
+
+home/.cache/squeal/checkouts/e219ec3d2f13606b:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:46 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/e6cfe81a1af2ed1d:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 18:02 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/ebe521e06ad0e040:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:55 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+home/.cache/squeal/checkouts/ed602e31a31d5456:
+total 8
+drwxrwxr-x  2 squeal-w27 squeal-w27 4096 Nov 22 17:59 .
+drwxrwxr-x 14 squeal-w27 squeal-w27 4096 Nov 22 18:09 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+ 398598       1       01:47 squeal s1-06 daemon @e44e61db /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs daemon /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+ 398721  398598       01:45 /opt/squeal-w27/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs runner-host /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+ 407068       1       01:06 squeal s1-06 store --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs store-process /home/squeal-w27/runs/w27/s1-06/.git --store code
+ 428636       1       00:34 /opt/squeal-w27/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+ 428637       1       00:34 /opt/squeal-w27/node24/bin/node /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease.mjs watch-app 428636 8a6442c4-4191-43a9-976a-e178884237b2:6870380 /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/303868bd0bc99f05/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+ 430807       1       00:14 /opt/squeal-w27/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo /home/squeal-w27/runs/w27/s1-06/.ai/qa/served/s1-06
+ 430808       1       00:14 /opt/squeal-w27/node24/bin/node /home/squeal-w27/runs/w27/s1-06/.ai/scripts/test-env-lease.mjs watch-app 430807 8a6442c4-4191-43a9-976a-e178884237b2:6872389 /home/squeal-w27/runs/w27/s1-06 /home/squeal-w27/runs/w27/s1-06/.ai/qa/served/s1-06

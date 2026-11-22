@@ -1,0 +1,58 @@
+{
+  "id": "s2-04",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "107s +198s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25"
+  ],
+  "joins": [
+    "107s +198s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25",
+    "307s +2s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15"
+  ],
+  "loadStart": "11.57",
+  "exit": 0,
+  "wallSeconds": 314.632,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
+    "105s cd /home/squeal-w27/runs/w27/s2-04; git show --stat --format=%s 20f03a4 | head -20",
+    "107s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25",
+    "307s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "107s +198s Bash cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25"
+  ],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0587854,
+  "usage": {
+    "cache_creation_input_tokens": 13552,
+    "cache_read_input_tokens": 123114,
+    "output_tokens": 1257
+  },
+  "firstFinal": "Partly answered: no result changed so far, but I couldn't compare every test file.\n\nCommit 20f03a4 touched `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** unchanged. It has a result at both the parent (a5c9b72) and the commit, with no pass → fail or fail → pass. The 27 new lines are part of the commit, so the old and new versions of this file aren't identical. I didn't run a per-test comparison of the added tests.\n- **Other `test/store/` files:** unknown. The 38 files in that folder have a result at the commit. At the parent, 35 were still running in the commit daemon when I stopped waiting, so those compare as unknown for now.\n- **Whole suite:** unknown. A full parent-side run would take about 11 minutes. The 8 files that did compare were all unchanged, and none went pass → fail or fail → pass. That sample is too small to rule out a change elsewhere.\n\nSo no test file is known to have changed result, but I haven't confirmed that none did. Rerun `squeal status --at '20f03a4~1' test/store --wait 100000` once the parent-side runs finish to close the store folder. `mark.ts` could also affect tests outside `test/store/`. If you want, I can wait for the full comparison.",
+  "final": "Partly answered: no result changed so far, but I couldn't compare every test file.\n\nCommit 20f03a4 touched `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** unchanged. It has a result at both the parent (a5c9b72) and the commit, with no pass → fail or fail → pass. The 27 new lines are part of the commit, so the old and new versions of this file aren't identical. I didn't run a per-test comparison of the added tests.\n- **Other `test/store/` files:** unknown. The 38 files in that folder have a result at the commit. At the parent, 35 were still running in the commit daemon when I stopped waiting, so those compare as unknown for now.\n- **Whole suite:** unknown. A full parent-side run would take about 11 minutes. The 8 files that did compare were all unchanged, and none went pass → fail or fail → pass. That sample is too small to rule out a change elsewhere.\n\nSo no test file is known to have changed result, but I haven't confirmed that none did. Rerun `squeal status --at '20f03a4~1' test/store --wait 100000` once the parent-side runs finish to close the store folder. `mark.ts` could also affect tests outside `test/store/`. If you want, I can wait for the full comparison.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run",
+    "20f03a4~1 --run",
+    "20f03a4~1 --run"
+  ]
+}
