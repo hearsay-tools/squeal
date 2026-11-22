@@ -215,4 +215,98 @@ describe("runtime-read notes state recorded facts, never a blanket by design", (
       "4 test files read package.json at run time, outside their imports: 2 in their own process; 2 among many source modules, as tests that start or bundle the program from source do: test/daemon/* (2, 10 modules)",
     );
   });
+
+  it("keeps every project instance of a shared test path in window.rerunSeconds and shares (review 0.1.602 B1)", () => {
+    const path = "test/shared.test.ts";
+    const pair = [
+      testFile(path, [path, "src/a.ts"], { project: "node", seconds: 2 }),
+      testFile(path, [path, "src/a.ts"], { project: "browser", seconds: 5 }),
+    ];
+    for (const order of [pair, [...pair].reverse()]) {
+      const out = buildReport(
+        snapshot(order, {
+          edits: [
+            { at: 1, paths: [path] },
+            { at: 2, paths: ["src/a.ts"] },
+          ],
+        }),
+        { ...OPTIONS, listed: 2 },
+      );
+      expect(out.suite.seconds).toBe(7);
+      expect(out.window?.rerunSeconds).toBe(14);
+      expect(out.byEdits[0]?.editShare).toBe(0.5);
+    }
+    // A multi-file edit touching both the shared test path and its source counts each project once.
+    const both = buildReport(snapshot(pair, { edits: [{ at: 1, paths: [path, "src/a.ts"] }] }), {
+      ...OPTIONS,
+      listed: 2,
+    });
+    expect(both.window?.rerunSeconds).toBe(7);
+  });
+
+  it("does not collapse files with differing child-process and runtime-read observations (review 0.1.602 B2)", () => {
+    const paths = ["src/a.ts", "src/b.ts"];
+    const mixed = [
+      testFile("test/x.test.ts", ["test/x.test.ts", ...paths], {
+        seconds: 4,
+        childProcess: new Set(paths),
+      }),
+      testFile("test/y.test.ts", ["test/y.test.ts", ...paths], {
+        seconds: 2,
+        runtimeRead: new Set(paths),
+      }),
+      testFile("test/z.test.ts", ["test/z.test.ts", ...paths], {
+        seconds: 1,
+        childProcess: new Set(["src/a.ts"]),
+        runtimeRead: new Set(["src/b.ts"]),
+      }),
+    ];
+    const snapMixed = snapshot(mixed, { edits: [{ at: 1, paths }] });
+    const ranked = buildReport(snapMixed, { ...OPTIONS, listed: 3 });
+    const named = buildReport(snapMixed, { ...OPTIONS, paths, listed: 3 });
+    expect(ranked.files.map((e) => e.files)).toEqual([["src/a.ts"], ["src/b.ts"]]);
+    for (const p of paths) {
+      const fromRanked = ranked.files.find((e) => e.files[0] === p)?.note;
+      const fromNamed = named.named?.find((e) => e.path === p)?.note;
+      expect(fromRanked).toBe(fromNamed);
+    }
+    expect(ranked.files[0]?.note).toContain("1 test file reads src/a.ts at run time");
+    expect(ranked.files[0]?.note).toContain("2 test files load src/a.ts in a process they start");
+    expect(ranked.files[1]?.note).toContain("2 test files read src/b.ts at run time");
+    expect(ranked.files[1]?.note).toContain("1 test file loads src/b.ts in a process it starts");
+  });
+
+  it("preserves project identity for broad readers in ranked, named and gateway notes (review 0.1.602 B2)", () => {
+    const path = "test/daemon/shared.test.ts";
+    const obs = [...modules, "package.json"];
+    const pair = [
+      testFile(path, [path, ...obs], { project: "node", seconds: 2, runtimeRead: new Set(obs) }),
+      testFile(path, [path, ...obs], { project: "browser", seconds: 5, runtimeRead: new Set(obs) }),
+    ];
+    const snapPair = snapshot(pair, {
+      edits: [
+        { at: 1, paths: ["src/m0.ts"] },
+        { at: 2, paths: ["package.json"] },
+      ],
+    });
+    const out = buildReport(snapPair, {
+      ...OPTIONS,
+      paths: ["src/m0.ts", "package.json"],
+      listed: 2,
+    });
+    const modEntry = out.files.find((e) => e.files.includes("src/m0.ts"));
+    expect(modEntry?.testFiles).toBe(2);
+    expect(modEntry?.note).toContain("2 test files read these files among many source modules");
+    expect(modEntry?.note).toContain("test/daemon/shared.test.ts (2, 10 modules)");
+    const namedMod = out.named?.find((e) => e.path === "src/m0.ts");
+    expect(namedMod?.note).toContain("2 test files read src/m0.ts among many source modules");
+    const pkgGw = out.gateways.find((g) => g.gateway === "package.json");
+    expect(pkgGw?.testFiles).toBe(2);
+    expect(pkgGw?.note).toBe(
+      "2 test files read package.json at run time, outside their imports: 2 among many source modules, as tests that start or bundle the program from source do: test/daemon/shared.test.ts (2, 10 modules)",
+    );
+    const broadGw = out.gateways.find((g) => g.mode === "broad test reader");
+    expect(broadGw).toMatchObject({ gateway: path, testFiles: 2 });
+    expect(broadGw?.note).toContain("test/daemon/shared.test.ts (2, 10 modules)");
+  });
 });

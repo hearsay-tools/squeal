@@ -43,14 +43,18 @@ export function rerunSeconds(
   reaches: ReadonlyMap<RelativePath, { readonly reach: readonly number[] }>,
   suite: readonly ReachTestFile[],
 ): number {
-  const indexOf = new Map(suite.map((t, i) => [t.ref.path, i]));
+  const indexesOf = new Map<RelativePath, number[]>();
+  for (const [index, test] of suite.entries()) {
+    const known = indexesOf.get(test.ref.path);
+    if (known === undefined) indexesOf.set(test.ref.path, [index]);
+    else known.push(index);
+  }
   let total = 0;
   for (const edit of kept) {
     const rerun = new Set<number>();
     for (const path of edit.paths) {
       for (const index of reaches.get(path)?.reach ?? []) rerun.add(index);
-      const own = indexOf.get(path);
-      if (own !== undefined) rerun.add(own);
+      for (const index of indexesOf.get(path) ?? []) rerun.add(index);
     }
     for (const index of rerun) total += suite[index]?.seconds ?? 0;
   }
