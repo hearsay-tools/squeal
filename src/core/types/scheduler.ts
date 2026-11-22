@@ -432,7 +432,7 @@ export interface Scheduler {
    * daemon's clock or until their keys settle. Changes only the order of
    * queued files; nothing running is cancelled.
    */
-  promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void>;
+  promote(testFiles: readonly TestFileRef[], withinMs: number, wakeCatchUp?: true): Promise<void>;
   /**
    * Spec 011 C15, focused checks (row 011-145): a named wait with `--check`
    * asks for the checks of each of `testFiles` whose full name holds one of
