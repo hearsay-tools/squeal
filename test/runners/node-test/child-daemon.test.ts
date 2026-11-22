@@ -1,6 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import type { CliIo } from "../../../src/cli/main.js";
-import { reachCommand } from "../../../src/cli/reach.js";
+import { impactCommand } from "../../../src/cli/reach.js";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
 import type { ReachReport } from "../../../src/core/reach/report-types.js";
 import { createFixtureRepo, readNotes, SLOW, waitFor, withStore } from "../../daemon/helpers.js";
@@ -11,8 +11,10 @@ import { runMissingConfig } from "../../helpers/baseline.js";
  * G6): a node:test file that runs a script only in a process it starts, under
  * a real daemon with `coverage.children`. Before the row the module recorder
  * reached no child, so the daemon named the file as loading nothing beyond
- * itself and `squeal reach` found no test file for the script; now the child's
- * load is in the file's observed set, and reach names the route.
+ * itself and `squeal reach` (now `squeal impact`) found no test file for the
+ * script; now the child's load is in the file's `observedDirect.` set, the
+ * only one `squeal impact` reads as a child process (row 015-128), and
+ * impact names the route.
  */
 
 const lines = (...text: string[]) => `${text.join("\n")}\n`;
@@ -65,7 +67,7 @@ async function reach(root: string, env: NodeJS.ProcessEnv, path: string) {
     cwd: root,
     env,
   };
-  expect(await reachCommand([path, "--json"], io)).toBe(0);
+  expect(await impactCommand([path, "--json"], io)).toBe(0);
   return JSON.parse(stdout) as ReachReport;
 }
 

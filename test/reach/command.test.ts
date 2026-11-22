@@ -15,13 +15,13 @@ import { A, B, closeStores, ON, open, records, run, seeded } from "./store-fixtu
 import { ANSWER, answerRecord } from "./v8-payload.js";
 
 /*
- * Row 015-109 (spec 015 D11): `squeal reach` from a real store: exit codes
+ * Row 015-109 (spec 015 D11): `squeal impact` from a real store: exit codes
  * 0, 1 and 2, `--json`, `--limit`, named paths, the proposals, and no write.
  */
 
 afterEach(closeStores);
 
-describe("squeal reach", () => {
+describe("squeal impact", () => {
   it("exits 2 on a usage error", async () => {
     const { repo } = seeded(ON);
     for (const args of [["--nope"], ["--limit"], ["--limit", "0"], ["--limit=x"]]) {

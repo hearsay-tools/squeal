@@ -53,7 +53,9 @@ describe("the list by the window's edits", () => {
         "     paths: import 100%\n",
     );
     // Row 015-128: with edits recorded, the edit sections lead the per-edit list.
-    expect(text.indexOf("Top gateways")).toBeLessThan(text.indexOf("Files, by seconds re-run over"));
+    expect(text.indexOf("Top gateways")).toBeLessThan(
+      text.indexOf("Files, by seconds re-run over"),
+    );
     expect(text.indexOf("Files, by seconds re-run over")).toBeLessThan(
       text.indexOf("Files, by avoidable seconds per edit"),
     );

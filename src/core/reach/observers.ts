@@ -124,7 +124,7 @@ export function observedNote(
   const share =
     editShare === null
       ? ""
-      : `; its edits re-ran ${pctText(editShare)} of the window's re-run seconds`;
+      : `; ${path === "these files" ? "their" : "its"} edits re-ran ${pctText(editShare)} of the window's re-run seconds`;
   const facts =
     parts.length === 1
       ? `${parts[0]}, outside ${total === 1 ? "its" : "their"} imports`

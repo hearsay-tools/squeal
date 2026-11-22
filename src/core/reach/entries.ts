@@ -65,7 +65,7 @@ export function routeOf(route: Route): ReachRoute {
  * (row 015-128).
  */
 export function noteOf(
-  file: FileReach,
+  files: readonly FileReach[],
   kinds: Seconds<PathKind>,
   analysis: Analysis,
   editShare: number,
@@ -78,7 +78,10 @@ export function noteOf(
   }
   if (observed <= imports) return {};
   const share = analysis.kept.length === 0 ? null : editShare;
-  return { note: observedNote(file.path, file.observers, analysis.readers, share) };
+  // Files of one entry share their reach, so the first one's observers stand for all.
+  const [first] = files as [FileReach];
+  const name = files.length === 1 ? first.path : "these files";
+  return { note: observedNote(name, first.observers, analysis.readers, share) };
 }
 
 /** The window edits that changed one of `files`, each once, and the share of the window's re-run seconds. */
@@ -177,7 +180,7 @@ function entryOf(
     gateway: route?.gateway == null ? null : routeOf(route),
     second: route === null ? null : secondGateway(paths, route, snapshot, lead),
     suggestion: route === null ? null : suggestionFor(paths, route, snapshot, lead),
-    ...noteOf(lead, kinds, analysis, edits.editShare),
+    ...noteOf(files, kinds, analysis, edits.editShare),
   };
 }
 

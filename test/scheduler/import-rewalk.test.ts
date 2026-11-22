@@ -181,6 +181,8 @@ describe("the once-after-upgrade re-walk (015-117)", SLOW, () => {
     const { snapshot, listed } = readSnapshot({ store: shared, root: repo.main, code: null });
     const report = buildReport(snapshot, { paths: null, limit: null, command: "squeal", listed });
     expect(report.suite.withoutClosure).toBe(0);
+    // Row 015-128: a walk at the current key is no stale fallback.
+    expect(report.stale).toBeNull();
     const entry = (file: string) => report.files.find((e) => e.files.includes(file));
     for (const file of ["src/gateway.ts", "src/a.ts", "src/leaf.ts"]) {
       expect(entry(file), file).toMatchObject({ testFiles: 1 });
