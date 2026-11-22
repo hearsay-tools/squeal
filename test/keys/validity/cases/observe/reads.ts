@@ -36,4 +36,19 @@ export const OBSERVED_READS: readonly Case[] = [
       script: 'require("node:fs").readdirSync("fixtures", { recursive: true });',
     },
   },
+  {
+    kind: "observe",
+    name: "a read through a symlink",
+    why: "011 C3, 025-04: reading a symlink inside the worktree keeps both the link path and its resolved target",
+    input: {
+      files,
+      testFile: "test/reads.test.js",
+      script: [
+        'const fs = require("node:fs");',
+        'const { execFileSync } = require("node:child_process");',
+        'execFileSync("ln", ["-s", "src/value.txt", "link.txt"]);',
+        'fs.readFileSync("link.txt", "utf8");',
+      ].join("\n"),
+    },
+  },
 ];
