@@ -69,3 +69,33 @@ describe("inputsOfReadsHere (row 020-20)", () => {
     ]);
   });
 });
+
+describe("inputsOfReads: tracked files the run rewrote (row 023-47)", () => {
+  it("keys a tracked file the run read and rewrote, and leaves out an untracked or ignored one", async () => {
+    const root = repo();
+    writeFile(root, "data/x.txt", "changed\n");
+    writeFile(root, "data/new.txt", "n\n");
+    writeFile(root, "out/run.json", "{}\n");
+    const observed = {
+      paths: ["src/a.ts"],
+      directories: [],
+      rewritten: ["data/x.txt", "data/new.txt", "out/run.json", "fixtures/deleted/b.txt"],
+    };
+    rmSync(join(root, "fixtures/deleted/b.txt"));
+
+    const inputs = await inputsOfReadsHere(root, [{ closure: new Set(["src/a.ts"]), observed }]);
+
+    // a tracked file the run removed is still git's: its read moved, so nothing is kept
+    expect([...(inputs[0] ?? [])].sort()).toEqual(["data/x.txt", "fixtures/deleted/b.txt"]);
+  });
+
+  it("leaves out a rewritten file the closure holds", async () => {
+    const root = repo();
+    const observed = { paths: [], directories: [], rewritten: ["data/x.txt"] };
+    const inputs = await inputsOfReadsHere(root, [
+      { closure: new Set(["data/x.txt"]), observed },
+      { closure: new Set(), observed: { paths: [], directories: [] } },
+    ]);
+    expect(inputs).toEqual([[], []]);
+  });
+});

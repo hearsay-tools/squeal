@@ -84,6 +84,7 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
             directories: o.directories ?? [],
             ...(o.recursive === undefined ? {} : { recursive: o.recursive }),
             ...(o.written === undefined ? {} : { written: o.written }),
+            ...(o.rewritten === undefined ? {} : { rewritten: o.rewritten }),
             ...(o.modules === undefined ? {} : { modules: o.modules }),
           })),
         };

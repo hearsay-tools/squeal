@@ -36,8 +36,10 @@ import { PNPM_KEYS } from "./key/pnpm.js";
 import { IGNORED_LISTING } from "./listing/ignored.js";
 import { LEAVING_LISTING } from "./listing/leaves.js";
 import { RECURSIVE_LISTING } from "./listing/recursive.js";
+import { REWRITTEN_SCRATCH } from "./listing/rewritten.js";
 import { FAILED_IMPORTS } from "./observe/failed-import.js";
 import { OBSERVED_READS } from "./observe/reads.js";
+import { OBSERVED_REWRITES } from "./observe/rewrites.js";
 import { OBSERVED_STARTED } from "./observe/started.js";
 import { OBSERVED_WRITTEN } from "./observe/written.js";
 import { PRUNE_KEYS } from "./prune/keys.js";
@@ -59,6 +61,7 @@ export const CASES: readonly Case[] = [
   ...GOLDEN_ROWS,
   ...OBSERVED_READS,
   ...OBSERVED_WRITTEN,
+  ...OBSERVED_REWRITES,
   ...OBSERVED_STARTED,
   ...FAILED_IMPORTS,
   ...INHERIT,
@@ -92,6 +95,7 @@ export const CASES: readonly Case[] = [
   ...NODE_TEST_RUNS,
   ...LEAVING_LISTING,
   ...RECURSIVE_LISTING,
+  ...REWRITTEN_SCRATCH,
   ...REFUSED_WRITES,
   ...PRUNE_SLICES,
   ...PRUNE_KEYS,
