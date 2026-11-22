@@ -18,6 +18,7 @@ import { realCommitDaemon } from "./status-at-real-daemon.js";
 
 const GEN = ref("test/gen.test.ts");
 const PLAIN = ref("test/plain.test.ts");
+const LISTS = ref("test/lists.test.ts");
 
 type Side = { state: string; reason?: string };
 const atOf = (out: string, path: string) =>
@@ -55,6 +56,36 @@ describe("the commit daemon refuses what is not the commit's (row 023-40c)", SLO
     });
     expect(atOf(called.out, PLAIN.path)).toMatchObject({ state: "pass" });
     expect(JSON.parse(called.out).run.commit).toMatchObject({ files: 1, known: 1 });
+  });
+
+  it("row 023-42: runs a file whose recorded reads list a folder the commit tracks (D4.9)", {
+    timeout: 240_000,
+  }, async () => {
+    const lists = [
+      'import { readdirSync } from "node:fs";',
+      'import { expect, it } from "vitest";',
+      'import { value } from "../src/plain";',
+      'it("lists", () => expect(readdirSync(new URL("./fixtures", import.meta.url)).length).toBe(value));',
+      "",
+    ].join("\n");
+    const f = fixture({
+      "squeal.config.json": "{}\n",
+      "src/plain.ts": "export const value = 1;\n",
+      "test/fixtures/a.json": "{}\n",
+      [LISTS.path]: lists,
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    const b = f.commit({ "src/plain.ts": "export const value = 1; // b\n" });
+    f.commit({ "src/plain.ts": "export const value = 1; // c\n" });
+    const real = realCommitDaemon(f.root);
+    const options = { cacheRoot: f.cacheRoot, daemons: real.daemons };
+    const ask = { json: true, run: { allMissing: true }, waitMs: 120_000 } as const;
+
+    // The first run records the folder it lists; the next commit's daemon keys with that read.
+    const first = await run(f, { commit: a, ...ask }, options);
+    expect(atOf(first.out, LISTS.path), first.err).toMatchObject({ state: "pass" });
+    const second = await run(f, { commit: b, ...ask }, options);
+    expect(atOf(second.out, LISTS.path), second.err).toMatchObject({ state: "pass" });
   });
 
   it("runs nothing on a tree the install changed, and says which path", {

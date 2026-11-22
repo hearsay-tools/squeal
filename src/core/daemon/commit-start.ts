@@ -77,11 +77,16 @@ export class CommitStart {
         const scheduler = ports.scheduler();
         if (scheduler?.closureReads === undefined) return new Map();
         const atCommit = await committedBlobs(ports.root, "HEAD");
+        const tracked = [...atCommit.keys()];
         const caller = request.root;
         const atHead =
           caller === undefined ? null : await committedBlobs(caller, "HEAD").catch(() => null);
         return scheduler.closureReads((path) => {
           if (atCommit.has(path)) return false;
+          // Row 023-42: an observed folder read (`test/fixtures/`, `./`) the commit tracks files
+          // under is held by git; the folder exists in the tree, but it is no untracked input.
+          if (path.endsWith("/") && (path === "./" || tracked.some((p) => p.startsWith(path))))
+            return false;
           if (existsSync(join(ports.root, path))) return true;
           return (
             caller !== undefined &&
