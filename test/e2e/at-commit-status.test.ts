@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { RUN_WAIT_MS, waitAgain } from "../../src/cli/status-at-report-queued.js";
 import { REPO_ROOT } from "../../src/harness/build.js";
 import {
   AT_E2E,
@@ -56,6 +57,7 @@ interface AtReport {
     readonly commit: Queued & { readonly tree: string | null; readonly setup?: string | null };
     readonly now: Queued;
     readonly again: string | null;
+    readonly retry: string | null;
   } | null;
   readonly files: readonly FileRow[];
 }
@@ -141,6 +143,10 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
         // 2. --run --all-missing queues every file with no result: at the parent in its commit
         // daemon, which runs them in its own worktree, and in the working tree in this worktree's
         // daemon. The call waits for them (D7.3); a result is read at the key it was stored under.
+        // A finite wait always names the call that waits again (`run.again`), even when every file
+        // is known; nothing still runs and nothing needs queueing again (`retry`).
+        const waitCall = waitAgain("HEAD~1", paths);
+        expect(waitCall).toContain(` ${paths.join(" ")} --wait ${RUN_WAIT_MS}`);
         const parent = git(b, dir, ["rev-parse", "HEAD~1"]);
         const short = parent.slice(0, 9);
         const run = at(dir, ["HEAD~1", ...paths, "--run", "--all-missing", "--wait", "300000"]);
@@ -148,13 +154,18 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
           mode: "queue",
           commit: { reached: true, files: existing.length, known: existing.length, running: 0 },
           now: { reached: true, files: paths.length, known: paths.length, running: 0 },
-          again: null,
+          again: waitCall,
+          retry: null,
         });
         expect(run.report.run?.commit.tree).toEqual(expect.any(String));
-        for (const path of existing) {
-          expect(run.row(path).at.state, path).toBe("pass");
-          expect(run.row(path).at.origin?.kind, path).toBe("commit");
-        }
+        for (const path of existing) expect(run.row(path).at.state, path).toBe("pass");
+        // A changed key at the parent has only the commit daemon's result. An equal key is shared
+        // with the working tree: whichever valid result the store holds answers, this worktree's
+        // (`own`) or the commit daemon's (`commit`); review 0.1.596 B1.
+        const changed = pair.newTest ? [pair.affected] : [pair.test, pair.affected];
+        for (const path of changed) expect(run.row(path).at.origin?.kind, path).toBe("commit");
+        expect(run.row(pair.unaffected).at.key).toBe(run.row(pair.unaffected).now.key);
+        expect(["own", "commit"]).toContain(run.row(pair.unaffected).at.origin?.kind);
         for (const path of paths) expect(run.row(path).now.state, path).toBe("pass");
 
         // 3. A second --run queues nothing on either side and reads every file from the store.
@@ -163,7 +174,8 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
           mode: "queue",
           commit: { files: 0 },
           now: { files: 0 },
-          again: null,
+          again: waitCall,
+          retry: null,
         });
         for (const path of existing) {
           expect(again.row(path).at.state, path).toBe("pass");
