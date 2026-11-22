@@ -66,6 +66,10 @@ export class SendingConnection extends HoldingConnection {
   #depth = 0;
   #batch: Statement[] = [];
   #held: Statement[] | null = null;
+  /** Spec 024 D2: a batch ended in `unit`'s synchronous run of its work, sent once that run ends. */
+  #deferred: Statement[] | null = null;
+  /** Whether `unit` runs its work synchronously now: a batch ended now is deferred (`#run`). */
+  #deferring = false;
   /** Batches sent outside a hold and not yet written. */
   #unsent = 0;
   readonly #sending = new Set<Promise<unknown>>();
@@ -98,7 +102,7 @@ export class SendingConnection extends HoldingConnection {
   async unit<T>(work: () => T | Promise<T>, acquire: () => Promise<boolean>): Promise<T> {
     for (let tries = 0; ; tries++) {
       try {
-        const result = await work();
+        const result = await this.#run(work);
         await this.settle();
         return result;
       } catch (error) {
@@ -109,6 +113,37 @@ export class SendingConnection extends HoldingConnection {
         if (!(await acquire())) this.#becomeDirect();
       }
     }
+  }
+
+  /**
+   * Spec 024 D2: runs `work`, sending the batch its synchronous run ends once that run ends:
+   * when it returns, or at its first `await`, before which nothing else ran. Work that
+   * returned without awaiting, in no other unit's work, writes nothing after that batch, so
+   * the batch ends the lease as it is written (`release`): one request, not a write and then a
+   * release. Any other batch is sent as before, and `settle` ends the lease.
+   */
+  #run<T>(work: () => T | Promise<T>): T | Promise<T> {
+    const outer = this.#deferring;
+    this.#deferring = true;
+    let result: T | Promise<T>;
+    try {
+      result = work();
+    } catch (error) {
+      this.#deferring = outer;
+      this.#flush(false);
+      throw error;
+    }
+    this.#deferring = outer;
+    this.#flush(!outer && !isThenable(result));
+    return result;
+  }
+
+  /** Sends the deferred batch, if any; `release` ends the lease once it is written. */
+  #flush(release: boolean): void {
+    const batch = this.#deferred;
+    if (batch === null) return;
+    this.#deferred = null;
+    this.#track(this.#send(batch, release), true);
   }
 
   /** Writes the store here from now on: no daemon serves. Before any write. */
@@ -128,11 +163,12 @@ export class SendingConnection extends HoldingConnection {
 
   /** Row 021-36: whether a batch sent is not written yet (or a failed one not yet told). */
   get unsettled(): boolean {
-    return this.#sending.size > 0 || this.#failure !== null;
+    return this.#sending.size > 0 || this.#failure !== null || this.#deferred !== null;
   }
 
   /** Waits until every batch sent so far is written; rethrows the first that failed. */
   async sent(): Promise<void> {
+    this.#flush(false);
     while (this.#sending.size > 0) await Promise.allSettled([...this.#sending]);
     this.#rethrow();
   }
@@ -259,6 +295,7 @@ export class SendingConnection extends HoldingConnection {
    * a live process keeps its lease until then (review 0.1.442 B3).
    */
   override close(): void {
+    this.#flush(false);
     if (this.#held !== null || (this.#sender.leased && !this.#direct)) {
       this.#held = null;
       this.#track(this.#sender.release(), false);
@@ -274,7 +311,7 @@ export class SendingConnection extends HoldingConnection {
 
   /** A read now would miss writes not yet written: it must wait for them (`sent`). */
   #readable(): void {
-    if (this.#unsent > 0) {
+    if (this.#unsent > 0 || this.#deferred !== null) {
       throw new Error("squeal: a store read before this hook's writes were written (await sent())");
     }
   }
@@ -290,6 +327,8 @@ export class SendingConnection extends HoldingConnection {
     if (batch.length === 0) return;
     if (this.#sender.post !== undefined) this.#track(this.#sender.post(batch), false);
     else if (this.#held !== null) this.#held.push(...batch);
+    // A second batch cannot end while one is deferred: its transaction is not `#readable`.
+    else if (this.#deferring) this.#deferred = batch;
     else this.#track(this.#send(batch, false), true);
   }
 
@@ -327,4 +366,8 @@ export class SendingConnection extends HoldingConnection {
     this.#direct = true;
     this.db.exec("PRAGMA query_only = 0");
   }
+}
+
+function isThenable(value: unknown): boolean {
+  return typeof (value as { then?: unknown } | null)?.then === "function";
 }

@@ -1,16 +1,12 @@
-import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
-import type { Statement } from "../../src/core/daemon/write-batch.js";
 import { createDelivery } from "../../src/core/delivery/delivery.js";
-import { SendingConnection, type WriteSender } from "../../src/core/delivery/sending-connection.js";
 import { tellUncovered, uncoveredTold } from "../../src/core/delivery/uncovered.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import { storePaths } from "../../src/core/store/paths.js";
 import type { Consumer } from "../../src/core/types/delivery.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { WT } from "../state/helpers.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { fixedStatus } from "./fakes.js";
+import { sentStore } from "./sent-fixture.js";
 
 /*
  * Spec 024 D2 (row 024-02): `tellUncovered` finds the paths read-only first and enters a
@@ -21,34 +17,6 @@ import { fixedStatus } from "./fakes.js";
 
 const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const file = (n: number): TestFileRef => ({ project: "", path: `src/t${n}.test.ts` });
-
-/** A sender that writes each batch to the store file as the daemon would, and logs each request. */
-function daemon(commonDir: string) {
-  const db = new DatabaseSync(storePaths(commonDir).database);
-  db.exec("PRAGMA busy_timeout = 10000");
-  const log: string[] = [];
-  const sender: WriteSender & { leased: boolean; acquire(): Promise<boolean> } = {
-    leased: false,
-    acquire: async () => {
-      log.push("lease");
-      sender.leased = true;
-      return true;
-    },
-    send: async (batch: readonly Statement[], release: boolean) => {
-      log.push(release ? "write+release" : "write");
-      db.exec("BEGIN IMMEDIATE");
-      for (const { sql, params } of batch) db.prepare(sql).run(...(params as never[]));
-      db.exec("COMMIT");
-      if (release) sender.leased = false;
-      return "written";
-    },
-    release: async () => {
-      log.push("release");
-      sender.leased = false;
-    },
-  };
-  return { sender, log, close: () => db.close() };
-}
 
 /**
  * A worktree with `files` listed (`closures[i]` the closure of file i, `null` none stored),
@@ -96,28 +64,11 @@ async function edited(closures: readonly (readonly string[] | null)[], changed: 
   revision(["seed.md"]);
   await createDelivery(setup, { status: fixedStatus(), now: () => 1_000 }).register(C1);
   revision(changed);
-  const fake = daemon(commonDir);
-  let made: SendingConnection | null = null;
-  const store = openStore(commonDir, {
-    create: false,
-    busyTimeoutMs: 10_000,
-    connection: (db) => {
-      made = new SendingConnection(db, fake.sender);
-      return made;
-    },
-  });
-  if (isStoreOpenFailure(store) || made === null) throw new Error("no store");
-  const connection: SendingConnection = made;
-  const tell = () =>
-    connection.unit(
-      () => tellUncovered(store, C1, () => true),
-      () => fake.sender.acquire(),
-    );
-  const close = () => {
-    store.close();
-    fake.close();
-  };
-  return { store, setup, tell, log: fake.log, close };
+  const sent = sentStore(commonDir);
+  const { store } = sent;
+  const tell = () => sent.write(() => tellUncovered(store, C1, () => true));
+  const close = () => sent.close();
+  return { store, setup, tell, log: sent.log, close };
 }
 
 describe("tellUncovered reads first (spec 024 D2)", () => {

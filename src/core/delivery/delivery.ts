@@ -468,14 +468,21 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
    * serving daemon under the worktree's write lease and are written before
    * it resolves (`Prepare.unit`); a delivery that tells keeps the lease
    * until its hand-off. Each waits first for a hold of this thread (`free`).
+   * With none to wait for, `work` runs synchronously, so a unit whose last
+   * write is a plain transaction sends it with the lease's release (spec 024
+   * D2, `SendingConnection.unit`).
    */
   const unit = <T>(work: () => T): Promise<T> => {
-    const freed = async () => {
+    const freed = (): T | Promise<T> => {
       const wait = free();
-      if (wait !== null) await wait;
-      return work();
+      return wait === null ? work() : wait.then(work);
     };
-    return options.prepare?.unit?.(freed) ?? freed();
+    if (options.prepare?.unit !== undefined) return options.prepare.unit(freed);
+    try {
+      return Promise.resolve(freed());
+    } catch (error) {
+      return Promise.reject(error);
+    }
   };
 
   return {
