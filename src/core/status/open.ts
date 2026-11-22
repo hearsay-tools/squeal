@@ -1,11 +1,14 @@
+import { existsSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { findWorktreeRoot, resolveCommonDir } from "../fs/git-layout.js";
-import { isBusy } from "../store/connection.js";
-import { isStoreOpenFailure, openStore } from "../store/open.js";
+import { Connection, isBusy } from "../store/connection.js";
+import { isCorruption, isStoreOpenFailure, openStore } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
-import { readTransaction } from "../store/store.js";
+import { SCHEMA_VERSION, userVersion } from "../store/schema.js";
+import { createStore, readTransaction } from "../store/store.js";
 import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION } from "../types/common.js";
 import type { StatusUnavailable } from "../types/status.js";
-import type { Store } from "../types/store.js";
+import type { Store, StoreOpenFailure } from "../types/store.js";
 
 /** Spec 001 D9 and goal 6: status never stalls; one busy timeout bounds every read. */
 export const STATUS_BUSY_TIMEOUT_MS = 1_000;
@@ -60,7 +63,9 @@ export function unavailable(
  * state of the store (lessons defect 23). Every failure becomes a `StatusUnavailable`: missing store,
  * newer schema (D8), unreadable file, or a lock held past the busy timeout
  * and `busyRetryMs`, whose message says how long it waited. Each attempt
- * opens the store again, so a retry reads in a new read transaction.
+ * opens the store again, so a retry reads in a new read transaction. Spec
+ * 024 D2: a store at this Squeal's schema is opened read-only, so a read
+ * never writes, migrates or checkpoints the store (`openReadOnly`).
  */
 export function withStatusStore<T>(
   cwd: AbsolutePath,
@@ -103,7 +108,7 @@ function readOnce<T>(
 ): T | StatusUnavailable | typeof BUSY {
   let store: Store | undefined;
   try {
-    const opened = openStore(commonDir, { create: false, busyTimeoutMs });
+    const opened = openReadOnly(commonDir, busyTimeoutMs);
     if (isStoreOpenFailure(opened)) {
       switch (opened.reason) {
         case "missing":
@@ -128,5 +133,35 @@ function readOnce<T>(
     return unavailable("store-unreadable", `store unreadable: ${String(error)}`);
   } finally {
     store?.close();
+  }
+}
+
+/**
+ * Spec 024 D2: the store at `commonDir` opened read-only, as `openStore` with
+ * `create: false` reports it: missing, newer, or corrupt. Nothing is written:
+ * no WAL switch, no `synchronous` or size pragmas, no migration, and its close
+ * runs no checkpoint. A store at an older schema, which a read here could not
+ * read, is opened by `openStore`, which migrates it, as before this spec.
+ */
+function openReadOnly(commonDir: AbsolutePath, busyTimeoutMs: number): Store | StoreOpenFailure {
+  const paths = storePaths(commonDir);
+  if (!existsSync(paths.database)) return { reason: "missing" };
+  let db: DatabaseSync | undefined;
+  try {
+    db = new DatabaseSync(paths.database, { readOnly: true });
+    db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
+    const found = userVersion(db);
+    if (found !== SCHEMA_VERSION) {
+      db.close();
+      if (found > SCHEMA_VERSION) {
+        return { reason: "newer-schema", found, supported: SCHEMA_VERSION };
+      }
+      return openStore(commonDir, { create: false, busyTimeoutMs });
+    }
+    return createStore(new Connection(db), found, paths);
+  } catch (error) {
+    db?.close();
+    if (isCorruption(error)) return { reason: "corrupt", movedTo: null };
+    throw error;
   }
 }

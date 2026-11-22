@@ -5,11 +5,8 @@ import type {
   readHeader as ReadHeader,
 } from "../../src/core/state/header.js";
 import { buildSnapshot, readStatus } from "../../src/core/status/snapshot.js";
-import {
-  isStoreOpenFailure,
-  type openStore as OpenStore,
-  openStore,
-} from "../../src/core/store/open.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { createStore as CreateStore } from "../../src/core/store/store.js";
 import type { StatusHeader } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
@@ -20,7 +17,9 @@ import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js
  * Lessons defect 23, task 001-116: a status read is one committed state of the
  * store. Every store the code under test opens runs `afterRead` once, right
  * after its next read of known states or test-file keys, so a test commits a
- * revision with its re-key between two reads of one status read.
+ * revision with its re-key between two reads of one status read. Each store is
+ * made by `createStore`, which `openStore` and, since spec 024 D2, status's
+ * read-only open call.
  */
 
 const hooks = vi.hoisted(() => ({
@@ -36,22 +35,22 @@ function fire(): void {
   hook?.();
 }
 
-vi.mock("../../src/core/store/open.js", async (importOriginal) => {
-  const original = await importOriginal<{ openStore: typeof OpenStore }>();
-  const openStore: typeof OpenStore = (commonDir, options) => {
-    const opened = original.openStore(commonDir, options);
-    if (!("knownStates" in opened)) return opened;
-    const store = opened as { -readonly [K in keyof Store]: Store[K] };
+vi.mock("../../src/core/store/store.js", async (importOriginal) => {
+  const original = await importOriginal<{ createStore: typeof CreateStore }>();
+  const createStore: typeof CreateStore = (conn, schemaVersion, paths) => {
+    const store = original.createStore(conn, schemaVersion, paths) as {
+      -readonly [K in keyof Store]: Store[K];
+    };
     const { knownStates, testFileKeys } = store;
-    store.knownStates = { ...knownStates, list: (id) => after(knownStates.list(id)) };
-    store.testFileKeys = { ...testFileKeys, list: (id) => after(testFileKeys.list(id)) };
+    store.knownStates = { ...knownStates, list: (...a) => after(knownStates.list(...a)) };
+    store.testFileKeys = { ...testFileKeys, list: (...a) => after(testFileKeys.list(...a)) };
     return store;
   };
   const after = <T>(value: T): T => {
     fire();
     return value;
   };
-  return { ...original, openStore };
+  return { ...original, createStore };
 });
 
 // Row 011-345: the fallback `--wait` poll reads the header through `headerWith`, with a kept part.

@@ -106,29 +106,48 @@ describe("status reads beside a store writer (011-113, 011 C6, C7)", () => {
     }
   });
 
-  /** A read that writes: SQLite fails its upgrade at once, without the busy handler, while another process writes. */
+  /*
+   * Spec 024 D2 (row 024-02): status opens the store read-only, so a read that writes, the
+   * defect of 011-113, is refused outright where it was a busy store beside a writer.
+   */
   const writes = ({ store }: StatusContext) => {
     store.meta.get("probe");
     store.meta.set("probe", "written");
     return "read";
   };
+  const reads = ({ store }: StatusContext) => (store.meta.get("probe") === null ? "read" : "probe");
 
-  it("tries again a read SQLite fails at once, and reads once the writer commits", async () => {
+  it("refuses a read that would write, beside a writer or not: the store is read-only", async () => {
     const { root, database } = seeded();
-    const holder = await holdLock(database, "immediate", 300);
+    const alone = withStatusStore(root, {}, writes);
+    expect(alone).toMatchObject({ available: false, reason: "store-unreadable" });
+    expect(typeof alone !== "string" && !alone.available && alone.message).toMatch(/readonly/);
+    const holder = await holdLock(database, "immediate", 3_000);
     try {
-      expect(withStatusStore(root, { busyTimeoutMs: 5_000 }, writes)).toBe("read");
+      expect(withStatusStore(root, { busyTimeoutMs: 500 }, writes)).toMatchObject({
+        reason: "store-unreadable",
+      });
     } finally {
       await release(holder);
     }
   });
 
-  it("gives up such a read only at its busy timeout, and says how long it waited", async () => {
+  it("tries again a read the store's exclusive lock refuses, and reads once it is released", async () => {
     const { root, database } = seeded();
-    const holder = await holdLock(database, "immediate", 5_000);
+    const holder = await holdLock(database, "exclusive-locking", 300);
+    try {
+      expect(withStatusStore(root, { busyTimeoutMs: 50, busyRetryMs: 5_000 }, reads)).toBe("read");
+    } finally {
+      await release(holder);
+    }
+  });
+
+  it("gives up such a read only at its bound, and says how long it waited", async () => {
+    const { root, database } = seeded();
+    const holder = await holdLock(database, "exclusive-locking", 5_000);
     try {
       const started = Date.now();
-      const read = withStatusStore(root, { busyTimeoutMs: 500 }, writes);
+      const read = withStatusStore(root, { busyTimeoutMs: 500 }, reads);
       const elapsed = Date.now() - started;
 
       if (typeof read === "string" || read.available) throw new Error("expected unavailable");
