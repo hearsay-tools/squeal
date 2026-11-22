@@ -1,0 +1,5 @@
+squeal status --at c7ca2de4c: 1 test files at c7ca2de4c against the working tree (HEAD dd245530e); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
+--run: queued 1 test files with no result at c7ca2de4c in its commit daemon (its worktree ~/.cache/squeal/checkouts/e1b2b09ca2250a1a/commit-c7ca2de4ca378cd972156b4ff4eaf7a009fc42b7-689b346b5e4535af/tree); 1 have a result now (9.5 s)
+--run, now: queued 1 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now

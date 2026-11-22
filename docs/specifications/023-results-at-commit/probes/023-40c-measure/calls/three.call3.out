@@ -1,0 +1,6 @@
+squeal status --at 5014bf634: 1 test files at 5014bf634 against the working tree (HEAD dd245530e); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+test/daemon/commit-removal.test.ts: not determined (the call's wait ended before a commit worktree was free (waiting for a place: 2 of 2 commit worktrees live (9807c08300a3, c7ca2de4ca37))) -> pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown
+--run: nothing queued at 5014bf634: the call's wait ended before a commit worktree was free (waiting for a place: 2 of 2 commit worktrees live (9807c08300a3, c7ca2de4ca37)); squeal status --at 'HEAD~3' test/daemon/commit-removal.test.ts --run queues them again
+--run, now: queued 1 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now

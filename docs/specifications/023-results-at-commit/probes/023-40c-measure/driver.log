@@ -1,0 +1,57 @@
+00:13:43 installs done
+00:13:43 rep quiet-1: store warm, worktree daemon first 1, group 0, at HEAD~1
+00:13:45 reset: 1 squeal processes left; killing
+00:14:16 worktree daemon serving after 18295 ms, quiet after 30325 ms
+00:15:00 rep quiet-1 done: call 9646 ms exit 0; second call 499 ms exit 0; stop 643 ms, gone 644 ms
+00:15:00 rep quiet-2: store warm, worktree daemon first 1, group 0, at HEAD~1
+00:15:47 worktree daemon serving after 18265 ms, quiet after 44313 ms
+00:16:33 rep quiet-2 done: call 11900 ms exit 0; second call 466 ms exit 0; stop 645 ms, gone 646 ms
+00:16:33 rep quiet-3: store warm, worktree daemon first 1, group 0, at HEAD~1
+00:17:06 worktree daemon serving after 17817 ms, quiet after 29847 ms
+00:17:53 rep quiet-3 done: call 12788 ms exit 0; second call 441 ms exit 0; stop 150 ms, gone 754 ms
+00:17:53 rep group-1: store warm, worktree daemon first 1, group 1, at HEAD~1
+00:18:25 worktree daemon serving after 17769 ms, quiet after 29804 ms
+00:24:28 rep group-1 done: call 10557 ms exit 0; second call 445 ms exit 0; stop 652 ms, gone 653 ms
+00:24:28 rep group-2: store warm, worktree daemon first 1, group 1, at HEAD~1
+00:25:01 worktree daemon serving after 18355 ms, quiet after 30385 ms
+00:31:06 rep group-2 done: call 11267 ms exit 0; second call 472 ms exit 0; stop 649 ms, gone 651 ms
+00:31:06 rep group-3: store warm, worktree daemon first 1, group 1, at HEAD~1
+00:31:38 worktree daemon serving after 17775 ms, quiet after 29806 ms
+00:37:42 rep group-3 done: call 10326 ms exit 0; second call 448 ms exit 0; stop 140 ms, gone 744 ms
+00:37:42 rep cold-1: store cold, worktree daemon first 1, group 0, at HEAD~1
+00:38:15 worktree daemon serving after 17772 ms, quiet after 29803 ms
+00:39:02 rep cold-1 done: call 12905 ms exit 0; second call 461 ms exit 0; stop 149 ms, gone 753 ms
+00:39:02 rep cold-2: store cold, worktree daemon first 1, group 0, at HEAD~1
+00:39:41 worktree daemon serving after 18284 ms, quiet after 36320 ms
+00:40:29 rep cold-2 done: call 13530 ms exit 0; second call 444 ms exit 0; stop 648 ms, gone 649 ms
+00:40:29 rep cold-3: store cold, worktree daemon first 1, group 0, at HEAD~1
+00:41:02 worktree daemon serving after 17839 ms, quiet after 29868 ms
+00:41:47 rep cold-3 done: call 11090 ms exit 0; second call 452 ms exit 0; stop 651 ms, gone 652 ms
+00:41:47 rep both-1: store warm, worktree daemon first 0, group 0, at HEAD~1
+00:42:55 rep both-1 done: call 31544 ms exit 0; second call 450 ms exit 0; stop 199 ms, gone 803 ms
+00:42:55 rep both-2: store warm, worktree daemon first 0, group 0, at HEAD~1
+00:44:02 rep both-2 done: call 29993 ms exit 0; second call 457 ms exit 0; stop 201 ms, gone 604 ms
+00:44:02 rep both-3: store warm, worktree daemon first 0, group 0, at HEAD~1
+00:45:11 rep both-3 done: call 32768 ms exit 0; second call 451 ms exit 0; stop 197 ms, gone 801 ms
+00:45:11 profile prof
+00:45:45 worktree daemon serving after 19280 ms, quiet after 31311 ms
+00:46:15 profile prof done
+00:46:15 profile prof-both
+00:47:06 profile prof-both done
+00:47:06 three daemons
+00:47:42 worktree daemon serving after 17816 ms, quiet after 33851 ms
+00:56:40 three done
+00:56:40 ALL-DONE
+00:57:32 rep quiet-1: store warm, worktree daemon first 1, group 0, at HEAD~1
+00:57:35 reset: 2 squeal processes left; killing
+00:58:12 worktree daemon serving after 24390 ms, quiet after 36423 ms
+00:58:58 rep quiet-1 done: call 11222 ms exit 0; second call 486 ms exit 0; stop 155 ms, gone 760 ms
+00:58:58 ALL-DONE
+00:58:58 rep quiet-2: store warm, worktree daemon first 1, group 0, at HEAD~1
+00:59:44 worktree daemon serving after 23366 ms, quiet after 43406 ms
+01:00:26 rep quiet-2 done: call 8452 ms exit 0; second call 507 ms exit 0; stop 149 ms, gone 754 ms
+01:00:26 ALL-DONE
+01:00:26 rep quiet-3: store warm, worktree daemon first 1, group 0, at HEAD~1
+01:01:06 worktree daemon serving after 23378 ms, quiet after 37410 ms
+01:01:52 rep quiet-3 done: call 11163 ms exit 0; second call 486 ms exit 0; stop 213 ms, gone 819 ms
+01:01:52 ALL-DONE
