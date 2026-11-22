@@ -51,7 +51,7 @@ describe("the setup skill", () => {
 
   // Review wave 3 B3: "no" to every harness is a flag too, not an omitted one.
   it("passes every value an answer can take, none included", () => {
-    expect(SETUP_USAGE).toContain("[--harness <claude-code|codex|none>]...");
+    expect(SETUP_USAGE).toContain("[--harness <claude-code|codex|antigravity|none>]...");
     for (const flag of ["--harness", "--block", "--slow"]) {
       expect(body).toContain(`\`${flag} none\` when none`);
     }
