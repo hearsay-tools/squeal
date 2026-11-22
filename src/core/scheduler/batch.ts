@@ -1,8 +1,10 @@
 import { compare } from "../fs/compare.js";
+import type { CacheUpdate, StatCache } from "../hash/stat-cache.js";
 import { ancestorListings } from "../keys/observed.js";
 import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/reconcile.js";
-import type { RelativePath } from "../types/common.js";
+import type { RelativePath, WorktreeId } from "../types/common.js";
 import type { Revision } from "../types/revision.js";
+import type { Store } from "../types/store.js";
 import type { CandidateBatch } from "../types/watcher.js";
 import type { SchedulerContext } from "./context.js";
 import { isEditorScratch } from "./editor-scratch.js";
@@ -33,6 +35,11 @@ import { touchedUnchanged } from "./stability.js";
  * move of `HEAD` (task 001-406). Every pass that is not a watch batch
  * reports a commit `HEAD` moved to (spec 019 D5, row 019-13), after the
  * revision it made, if any.
+ *
+ * Spec 024 D5: a batch with more than `WRITE_SLICE_FILES` stat-cache updates
+ * of paths whose bytes did not change writes those first, in slices
+ * (`flushStatsAhead`), so the revision's transaction holds the write lock
+ * only for what the revision needs.
  */
 export async function reconcileBatch(
   context: SchedulerContext,
@@ -59,6 +66,7 @@ export async function reconcileBatch(
     if (batch.trigger !== "watch") await reportHeadMove(context, ledger);
     return { applied: null, touched };
   }
+  diff = await flushStatsAhead(store, keys.cache, worktreeId, diff);
   const applied = store.transaction(() => {
     const revision = commitBatch(diff, keys.cache, {
       worktreeId,
@@ -89,6 +97,41 @@ export async function reconcileBatch(
   if (applied === null && batch.trigger !== "watch") await recordHeadMove(context, ledger);
   if (batch.trigger !== "watch") await reportHeadMove(context, ledger);
   return { applied, touched };
+}
+
+/** Spec 024 D5: the most files one write transaction of a bulk scheduler write takes. */
+export const WRITE_SLICE_FILES = 200;
+
+/**
+ * Spec 024 D5: with more than `WRITE_SLICE_FILES` updates of paths no
+ * change of `diff` names (a stat moved, the bytes did not), writes those to
+ * the stat cache in transactions of `WRITE_SLICE_FILES` each, one event-loop
+ * turn between two, and returns `diff` with the rest, which go with the
+ * revision. A crash between two slices leaves only fresher stats of files
+ * that did not change: the next pass makes the same revision, once. With as
+ * many or fewer, `diff` as it was and nothing written.
+ */
+export async function flushStatsAhead(
+  store: Pick<Store, "transaction" | "fileHashes">,
+  cache: StatCache,
+  worktreeId: WorktreeId,
+  diff: BatchDiff,
+): Promise<BatchDiff> {
+  const changed = new Set(diff.changes.map((change) => change.path));
+  const path = (update: CacheUpdate) => (update.kind === "set" ? update.record.path : update.path);
+  const ahead = diff.updates.filter((update) => !changed.has(path(update)));
+  if (ahead.length <= WRITE_SLICE_FILES) return diff;
+  for (let at = 0; at < ahead.length; at += WRITE_SLICE_FILES) {
+    if (at > 0) await nextTurn();
+    const slice = ahead.slice(at, at + WRITE_SLICE_FILES);
+    store.transaction(() => cache.flush(store.fileHashes, worktreeId, slice));
+  }
+  await nextTurn();
+  return { ...diff, updates: diff.updates.filter((update) => changed.has(path(update))) };
+}
+
+function nextTurn(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 /**

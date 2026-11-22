@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { RESULT_TOUCH_INTERVAL_MS } from "../../src/core/store/repos/results.js";
 import { storePaths } from "../../src/core/store/paths.js";
+import { RESULT_TOUCH_INTERVAL_MS } from "../../src/core/store/repos/results.js";
 import { connectionOf, readTransaction } from "../../src/core/store/store.js";
 import type { FileCheckId } from "../../src/core/types/check.js";
 import type { Consumer } from "../../src/core/types/delivery.js";

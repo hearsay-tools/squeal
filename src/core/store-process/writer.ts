@@ -10,7 +10,12 @@ import { logLongWrites, longWriteLine } from "../store/long-write.js";
 import { CONNECTION_PRAGMAS } from "../store/open.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { SentBatch } from "../types/daemon-writes.js";
-import { type GuardedEnd, type GuardedSlice, type GuardedStatement, GuardedWriter } from "./guard.js";
+import {
+  type GuardedEnd,
+  type GuardedSlice,
+  type GuardedStatement,
+  GuardedWriter,
+} from "./guard.js";
 
 /*
  * Spec 021 D22.3 (row 021-36): the store process's one write connection,
