@@ -46,3 +46,66 @@ Paired run, 0.1.591 vs `cand/0.1.593` (`93524ae1c`), cells `store-7g` and `store
 | store-7g-wt3 | Hook at session start (slowest) | 203 ms | 140 ms |
 
 Prune slices still over 250 ms in 0.1.593: 15 and 23 list deletes of 32 rows, 14 and 16 vacuum slices; the longest prune slice 883 and 1,095 ms. The rest of the long holds are result writes (`#record`) present in both versions. The tail looks like disk stalls on single steps; the bulk of the cost is gone.
+
+## Repair 022-08r (worker, 2026-11-22)
+
+Review 0.1.593 B1: the bench logged prune transactions up to 883 ms (vacuum) and 1,095 ms (32-list delete) against the 100 ms outcome. This section splits those holds into their parts, names the cause, and gives the repair and its measured result.
+
+### Where the time goes
+
+Probe: `research/probes/vacuum-tail/` (README there). It builds a store shaped like the bench's aged store (326 rounds, 163,000 lists of 46 KB between small result rows, `auto_vacuum = INCREMENTAL`, 8.6 GB), drops the page cache, and runs the real `emptyLoadedModules` and then the real `vacuum` on a traced connection. Per write transaction it times each `DELETE` or `incremental_vacuum` step, the work before `COMMIT`, and the `COMMIT`, and reads the wal-index header to see whether SQLite ran a WAL checkpoint inside the commit. A second process writes one small row every 20 ms and records how long it waits for the lock. Each run: one boat.dev sandbox, 4 vCPU Ryzen 7 9700X (the bench's CPU), Node 24.22.1; the list phase to its end, the vacuum phase 8 minutes (of about 45). Raw records: `research/probes/vacuum-tail/runs-2026-11-22.tgz`.
+
+Cause: **the long holds are WAL checkpoints that SQLite runs inside `COMMIT`.** With `wal_autocheckpoint` at its default of 1,000 pages, a commit that leaves the WAL above that copies the WAL into the database file and syncs it before `COMMIT` returns. SQLite does this after it has released the write lock, so other writers go on; but the daemon's thread is blocked for the whole copy, and the long-write log, which measures from `BEGIN IMMEDIATE` to the return of `COMMIT`, counts it as lock time.
+
+First run (0.1.593's code, slices back to back with no pause):
+
+| Slices | Work before `COMMIT`: p99, max | `COMMIT` with a checkpoint: p50, max | Longest whole transaction |
+|---|---:|---:|---:|
+| 32-list delete (5,094) | 22, 246 ms | 41, 803 ms | 807 ms |
+| vacuum, 16-page steps (3,473) | 138, 190 ms | 42, 930 ms | 1,031 ms |
+
+During the 807 ms list-delete transaction the other writer completed 37 transactions and waited at most 8 ms: the checkpoint did not keep it out. Its waits over 100 ms (p95 129 ms) match the vacuum slices' real work, the budget plus one step.
+
+This run had no pauses between slices, unlike the daemon (`turnGapMs`). Without them the WAL never restarted and grew to 2.0 GB (498,000 frames). With the daemon's pauses (all runs below) it restarts every few seconds (212 to 275 restarts in 13 minutes) and stays under 28 MB, well inside the 64 MB limit of spec 021 D4.
+
+### The repair
+
+1. `src/core/store/prune-checkpoint.ts` (new), `checkpointAfterWrites`: a list-delete or vacuum slice commits with the connection's automatic checkpoint off (`PRAGMA wal_autocheckpoint = 0`, restored after the slice, also when it throws), and a slice that wrote is followed by a slice that runs `PRAGMA wal_checkpoint(PASSIVE)`, what SQLite's automatic checkpoint runs. A slice wrote when `total_changes()` or the page count moved. A passive checkpoint takes no write lock and never waits. As its own slice, the driver's pause follows it. `emptyLoadedModules` and `vacuum` (both stores) wrap their slices in it. `open.ts` is unchanged: the setting is per slice, not per connection.
+2. `VACUUM_PAGES` 16 → 8. On the cold store a 16-page step took up to 269 ms (p99 63 ms); an 8-page step up to 52 ms (p99 27 ms).
+
+Not changed: `sliced-prune.ts`, the delete predicates, `LIST_DELETE_BATCH` (32: the delete's own work is 4 to 5 ms at p50, 17 to 25 ms at p99), the other prune rules (their commits still checkpoint as before).
+
+### Measured on the probe, with the daemon's pauses
+
+All times in ms. "Write transaction" is `BEGIN IMMEDIATE` to the return of `COMMIT`, what the long-write log measures.
+
+| Slices | Run | Write transaction: p50, p99, max | Over 150 | Over 250 | Checkpoint slice: p50, p99, max |
+|---|---|---:|---:|---:|---:|
+| 32-list delete (5,094) | 0.1.593 | 6, 86, 368 | 22 | 6 | (inside `COMMIT`) |
+| | repair, 16 pages | 5, 23, 111 | 0 | 0 | 17, 118, 341 |
+| | repair, 8 pages (head) | 6, 36, 205 | 1 | 0 | 17, 84, 517 |
+| vacuum | 0.1.593 (2,045 in 8 min) | 112, 162, 242 | 57 | 0 | (inside `COMMIT`) |
+| | repair, 16 pages (1,474) | 112, 151, 270 | 17 | 1 | 30, 356, 1,011 |
+| | repair, 8 pages (head, 1,664) | 105, 123, 198 | 1 | 0 | 20, 347, 996 |
+
+At the head, the work before `COMMIT` is at most 133 ms for a list delete and 132 ms for a vacuum slice (vacuum p99 123 ms). The two transactions over 150 ms (205 and 198 ms) are commits that wrote while the other process ran its own checkpoint: their `COMMIT` took 199 and 87 ms with this connection's checkpoint off, which looks like waiting on the same disk.
+
+Other writer, the hook's view (waits for the lock and its own commits, ms):
+
+| Run | Wait p99, max | Own commit p99, max | Own commits over 100 ms |
+|---|---:|---:|---:|
+| 0.1.593 | 131, 332 | 74, 363 | 70 of 18,200 |
+| repair, 16 pages | 129, 330 | 58, 568 | 59 of 26,200 |
+| repair, 8 pages (head) | 129, 230 | 61, 399 | 53 of 26,600 |
+
+The other writer's waits are the vacuum slices' real hold (budget plus one step), not the checkpoints. Its own slow commits are checkpoints it runs itself when the WAL passed 1,000 pages; there are somewhat fewer once the prune's checkpoint follows its write at once.
+
+### What it costs, and what stays
+
+- **The checkpoint is not shorter, only out of the write transaction.** A checkpoint slice takes up to 1 s on this store during the vacuum (p99 about 350 ms). It holds no write lock, but the daemon's thread is blocked for it, as it was inside `COMMIT` before. Copying the pages a vacuum slice moved into an 8 GB file with a cold cache costs that much; a smaller slice would make fewer pages per checkpoint but more slices and pauses.
+- **The prune takes longer by the clock.** Every checkpoint slice gets a pause of at least 10 ms. The list phase took 331 to 352 s against 233 s; in 8 minutes the vacuum freed 142,000 (16 pages) and 158,000 (8 pages) pages against 196,000. The work is the same; the pauses are more.
+- **The WAL limit holds**: the largest WAL before a write was 28 MB (repair) against 19 MB (0.1.593).
+
+### For the coordinator
+
+The write lock of each prune slice now stays near the budget on this store: list deletes at most 133 ms of work, vacuum slices at most 132 ms, with a few commits slower while another process checkpoints. The checkpoints themselves still block the daemon for up to about 1 s each, outside the lock. If the outcome also means the daemon's thread, that cost cannot be split further by the prune: one `wal_checkpoint` call copies every page the WAL holds, and it is one SQLite call.
