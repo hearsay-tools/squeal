@@ -7,6 +7,7 @@ import { baselineFindings } from "../state/baseline.js";
 import { splitByValidity } from "../status/checks.js";
 import { importSourceOf } from "../store/imports.js";
 import { type ChangeMarker, changeMarker } from "../store/store.js";
+import { relevantStates } from "../store/view-seed.js";
 import type { CodeNews } from "../types/code-delivery.js";
 import {
   type AbsolutePath,
@@ -75,7 +76,7 @@ import {
   waitedFor,
   writeTurn,
 } from "./turn.js";
-import { markedView, markedWrites } from "./view-mark.js";
+import { markedView, markedWrites, trustedMark } from "./view-mark.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -171,6 +172,22 @@ function acknowledged(
   read: LintNewsRead | null,
 ): void {
   if (read?.ack != null) acknowledgeLint(source, consumer, read.ack);
+}
+
+/**
+ * Spec 024 D2: the states a delivery plans on, and every state, read once when needed. A
+ * consumer with a trusted mark plans on those it can be told (`relevantStates`); every state is
+ * read only for the live header and the annotation, so a silent boundary never reads it. The
+ * waiter (`idle`) trims its turn state by every state.
+ */
+function deliveryStates(
+  store: Store,
+  consumer: Consumer,
+  idle: boolean,
+): { readonly states: readonly KnownState[]; readonly all: () => readonly KnownState[] } {
+  const all = once(() => store.knownStates.list(consumer.worktreeId));
+  const mark = idle ? null : trustedMark(store, consumer);
+  return { states: mark === null ? all() : relevantStates(store, consumer, mark.mark), all };
 }
 
 const isEmpty = (plan: DeltaPlan) =>
@@ -284,7 +301,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Task 001-416: a consumer heard from after its SubagentStop marked it leaving goes on.
       if (heardFrom && !stop) markLeaving(store, consumer, null);
       const at = now();
-      const states = store.knownStates.list(consumer.worktreeId);
+      const { states, all } = deliveryStates(store, consumer, idle);
       const selection = select(states);
       if (selection === "silent") return null;
       const view = store.views.list(consumer);
@@ -332,7 +349,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         withTold(
           readLiveHeader(store, consumer.worktreeId, at, {
             commonDir: options.commonDir,
-            states,
+            states: all(),
             since: toldRevision(store, consumer),
           }),
           toldLiveness(store, consumer),
@@ -360,7 +377,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         consumer,
         delta.entries,
         live(),
-        states,
+        all(),
       );
       // Task 001-407: a change delivery shows the slow-tier line when it changed; Stop always does.
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);

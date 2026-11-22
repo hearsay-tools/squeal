@@ -35,7 +35,9 @@ export interface Own extends OwnRead {
  * revision's runner part is applied (`isRefined`), the files it adds have no key, so none is
  * counted (`refined: false`, which only the late state reads). A file is owed while its re-key
  * has no result at its key (row 005-93); its edit is that re-key, or the first revision after
- * `since` for one made before it.
+ * `since` for one made before it. `states` need hold only the states not `pass`: only an
+ * `unknown` one counts (`unknownFiles`), so a marked consumer's narrow read (spec 024 D2,
+ * `relevantStates`) counts as the full list does.
  */
 export function readOwn(
   store: Store,

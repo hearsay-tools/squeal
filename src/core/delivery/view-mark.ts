@@ -127,7 +127,7 @@ export function recordViewMark(store: Store, consumer: Consumer, mark: ViewMark 
 }
 
 /** The mark a reader may trust: `consumer`'s, while the store still keeps marks. */
-function trustedMark(store: Store, consumer: Consumer): ViewMark | null {
+export function trustedMark(store: Store, consumer: Consumer): ViewMark | null {
   const mark = viewMarkOf(store, consumer);
   return mark === null || currentBirthMark(store) === null ? null : mark;
 }

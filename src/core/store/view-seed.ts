@@ -95,6 +95,29 @@ export function checksBornAfter(
 }
 
 /**
+ * Spec 024 D2: of `consumer`'s worktree's known states, those a delivery to a consumer that holds
+ * `mark` can tell: each not `pass`, each its view holds, and each born after the mark. Any other
+ * is a pass with no entry born at or before the mark, which `markedView` reads as a told pass, so
+ * `planDelta` plans nothing for it: no entry, no write, no removal. In `knownStates.list` order.
+ */
+export function relevantStates(store: Store, consumer: Consumer, mark: number): KnownState[] {
+  return connectionOf(store)
+    .all(
+      `${SELECT_STATES} WHERE s.worktree_id = ? AND (s.outcome != 'pass'
+         OR EXISTS (SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+         OR EXISTS (SELECT 1 FROM state_born b WHERE b.worktree_id = s.worktree_id
+           AND b.check_id = s.check_id AND b.id > ?))
+       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      consumer.worktreeId,
+      consumer.sessionId,
+      consumer.agentId,
+      mark,
+    )
+    .map(toKnownState);
+}
+
+/**
  * `KnownStateRepo.untold` for a consumer whose registration kept `mark`: the states with no
  * view entry that were born after it. One born at or before it was a pass told at the
  * registration.
