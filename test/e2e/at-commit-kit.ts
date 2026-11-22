@@ -220,13 +220,35 @@ export function leftovers(root: string): string[] {
   return found;
 }
 
-/** Checkouts still under Squeal's checkout folder in this HOME (D6: a finished command leaves none). */
+/** The folder `commit-places/` holds commit worktree registrations, not checkouts (D7.4). */
+const PLACES = "commit-places";
+
+/**
+ * Checkouts still under Squeal's checkout folder in this HOME (D6: a finished command leaves none).
+ * A registration stays after its worktree goes, and the next count drops it (review wave-22 B3),
+ * so only one whose folder is still there counts: a worktree in a repository's git folder.
+ */
 export function checkoutsLeft(b: Bench): string[] {
   const top = join(b.home, ".cache", "squeal", "checkouts");
   if (!existsSync(top)) return [];
   return readdirSync(top, { withFileTypes: true })
     .filter((d) => d.isDirectory())
-    .flatMap((d) => readdirSync(join(top, d.name)).map((c) => join(d.name, c)));
+    .flatMap((d) =>
+      d.name === PLACES
+        ? placesLeft(join(top, PLACES))
+        : readdirSync(join(top, d.name)).map((c) => join(d.name, c)),
+    );
+}
+
+function placesLeft(dir: string): string[] {
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".json"))
+    .flatMap((name) => {
+      const folder: unknown = JSON.parse(readFileSync(join(dir, name), "utf8")).folder;
+      return typeof folder === "string" && existsSync(folder)
+        ? [`${PLACES}/${name}: ${folder}`]
+        : [];
+    });
 }
 
 /** Fails when a process or a checkout outlived the cases, then removes everything. */
