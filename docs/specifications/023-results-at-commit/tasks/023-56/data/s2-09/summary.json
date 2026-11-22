@@ -1,0 +1,59 @@
+{
+  "id": "s2-09",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/1a5eabec30ec3db0/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "105s +99s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "joins": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "105s +99s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15",
+    "205s +42s squeal status --at 20f03a431~1 test/store/open.test.ts --wait 120000 2>&1 | tail -8"
+  ],
+  "estimates": [
+    "3s +99s Still to run, at a5c9b7223: about 5 min for 1338 test files, up to 6 at once, times 1.48 for the host's load per CPU; a guess: 1 of them have a stored duration, the others count at their median; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no ",
+    "105s +99s Still to run, at a5c9b7223: about 2 s for 1 test file, up to 1 at once, from their stored durations, times 1.3 for the host's load per CPU"
+  ],
+  "loadStart": "6.90",
+  "exit": 0,
+  "wallSeconds": 250.971,
+  "squeal": [
+    "3s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "105s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15",
+    "205s squeal status --at 20f03a431~1 test/store/open.test.ts --wait 120000 2>&1 | tail -8"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0530273,
+  "usage": {
+    "cache_creation_input_tokens": 13300,
+    "cache_read_input_tokens": 122233,
+    "output_tokens": 753
+  },
+  "firstFinal": "Not for the one test file the commit touched. Squeal compared `test/store/open.test.ts` before and after the commit, and it has the same result both times: 0 pass→fail, 0 fail→pass, 1 unchanged. Both runs passed.\n\n- **What the commit changed:** `src/core/store/mark.ts` and `test/store/open.test.ts`, which gained 27 lines, so this file now checks more than before.\n- **What I didn't check:** `mark.ts` selects 1338 test files in total. I didn't compare the other 1337, because they were still queued in the daemons. A flip in one of them wouldn't show here. To compare them, run `squeal status --at '20f03a431~1' --wait 100000` once they finish.",
+  "final": "Not for the one test file the commit touched. Squeal compared `test/store/open.test.ts` before and after the commit, and it has the same result both times: 0 pass→fail, 0 fail→pass, 1 unchanged. Both runs passed.\n\n- **What the commit changed:** `src/core/store/mark.ts` and `test/store/open.test.ts`, which gained 27 lines, so this file now checks more than before.\n- **What I didn't check:** `mark.ts` selects 1338 test files in total. I didn't compare the other 1337, because they were still queued in the daemons. A flip in one of them wouldn't show here. To compare them, run `squeal status --at '20f03a431~1' --wait 100000` once they finish.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "id": "s1-05",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/28c607def49839ed/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "3s +119s squeal status --at 8be977ad~1 --run --wait 120000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "3s +119s squeal status --at 8be977ad~1 --run --wait 120000 2>&1 | tail -60",
+    "124s +29s git show --stat --format=%s 8be977ad6 | cat; squeal status --at '8be977ad~1' packages/cezar/src/lint --run --wait 100000 2>&1 | tail -20"
+  ],
+  "estimates": [
+    "3s +119s Still to run, at d8abcfe46: about 22 s for 2 test files, at this call's rate there (11 results in 119 s); in the working tree: about 35 min for 103 test files, up to 7 at once, times 1.29 for the host's load per CPU; a guess: 4 of them have a stored duration, the others count at their median; name t"
+  ],
+  "loadStart": "7.48",
+  "exit": 0,
+  "wallSeconds": 159.988,
+  "squeal": [
+    "3s squeal status --at 8be977ad~1 --run --wait 120000 2>&1 | tail -60",
+    "124s git show --stat --format=%s 8be977ad6 | cat; squeal status --at '8be977ad~1' packages/cezar/src/lint --run --wait 100000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.06256759999999999,
+  "usage": {
+    "cache_creation_input_tokens": 17526,
+    "cache_read_input_tokens": 86866,
+    "output_tokens": 1005
+  },
+  "firstFinal": "No test result changed between 8be977ad6 and its parent (d8abcfe46) in anything Squeal could compare. The comparison is incomplete, though.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` (the refactor) and a new test, `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\n- **Passes → fails:** none.\n- **Fails → passes:** none.\n- **New test file:** `active-run-write-index.test.ts` didn't exist at the parent and now passes. I haven't run `squeal proof` on it, so I can't say whether it would fail on the parent's code.\n- **Unchanged:** 9 of the 29 lint test files had results on both sides. These include `ast-rules-owners.test.ts`, `lint-runner.test.ts` and `plugin.test.ts`, which passed at the parent and are still running in this worktree. `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` were still running on both sides.\n- **No result on the parent:** 19 other lint test files, such as `ast-rules-launch-read*.test.ts`, only have a result in this worktree, where they pass. Squeal didn't select them for this change and didn't run them at the parent, so they aren't a before/after comparison. `--all-missing` would run them there.\n- **Browser e2e:** the 97 browser e2e files didn't run on either side. Chrome fails to launch in this environment, which fails the `[e2e]` global setup. That failure isn't caused by this commit.\n- **Not selected:** Squeal found that 124 test files have identical inputs in both commits, so this commit can't change their results.\n- **Run-loop group:** I did not run these 319 files.\n\nSqueal's selection for this commit covers 110 test files. I only compared the lint folder (29 files) to keep the wait short. A full comparison would need `squeal status --at '8be977ad~1' --wait 100000` once the remaining runs finish. The browser files would still be unrunnable until Chrome works here.",
+  "final": "No test result changed between 8be977ad6 and its parent (d8abcfe46) in anything Squeal could compare. The comparison is incomplete, though.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` (the refactor) and a new test, `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\n- **Passes → fails:** none.\n- **Fails → passes:** none.\n- **New test file:** `active-run-write-index.test.ts` didn't exist at the parent and now passes. I haven't run `squeal proof` on it, so I can't say whether it would fail on the parent's code.\n- **Unchanged:** 9 of the 29 lint test files had results on both sides. These include `ast-rules-owners.test.ts`, `lint-runner.test.ts` and `plugin.test.ts`, which passed at the parent and are still running in this worktree. `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` were still running on both sides.\n- **No result on the parent:** 19 other lint test files, such as `ast-rules-launch-read*.test.ts`, only have a result in this worktree, where they pass. Squeal didn't select them for this change and didn't run them at the parent, so they aren't a before/after comparison. `--all-missing` would run them there.\n- **Browser e2e:** the 97 browser e2e files didn't run on either side. Chrome fails to launch in this environment, which fails the `[e2e]` global setup. That failure isn't caused by this commit.\n- **Not selected:** Squeal found that 124 test files have identical inputs in both commits, so this commit can't change their results.\n- **Run-loop group:** I did not run these 319 files.\n\nSqueal's selection for this commit covers 110 test files. I only compared the lint folder (29 files) to keep the wait short. A full comparison would need `squeal status --at '8be977ad~1' --wait 100000` once the remaining runs finish. The browser files would still be unrunnable until Chrome works here.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad~1 --run",
+    "'8be977ad~1' --run"
+  ]
+}

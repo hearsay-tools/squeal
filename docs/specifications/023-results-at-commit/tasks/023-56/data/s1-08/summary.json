@@ -1,0 +1,54 @@
+{
+  "id": "s1-08",
+  "leftover": 2,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/64696e351b2aaecf/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 8be977ad~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 8be977ad~1 --run --wait 100000 2>&1 | tail -60",
+    "105s +26s squeal status --at '8be977ad~1' packages/cezar/src/lint --run --wait 120000 2>&1 | tail -30"
+  ],
+  "estimates": [
+    "4s +99s Still to run, at d8abcfe46: about 18 s for 2 test files, at this call's rate there (11 results in 99 s); in the working tree: about 20 min for 103 test files, up to 7 at once, times 1.1 for the host's load per CPU; a guess: 4 of them have a stored duration, the others count at their median; name tes"
+  ],
+  "loadStart": "10.86",
+  "exit": 0,
+  "wallSeconds": 136.681,
+  "squeal": [
+    "4s squeal status --at 8be977ad~1 --run --wait 100000 2>&1 | tail -60",
+    "105s squeal status --at '8be977ad~1' packages/cezar/src/lint --run --wait 120000 2>&1 | tail -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.061851300000000005,
+  "usage": {
+    "cache_creation_input_tokens": 17485,
+    "cache_read_input_tokens": 86928,
+    "output_tokens": 943
+  },
+  "firstFinal": "No test result changed between 8be977ad6 and its parent d8abcfe46, as far as Squeal could check. The comparison is incomplete, though.\n\n**Compared so far (lint tests):**\n- 0 test files went pass → fail.\n- 0 test files went fail → pass.\n- 9 lint test files gave the same result on both commits.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It is absent at the parent and passes now, which is an addition and not a changed result.\n\n**Not compared:**\n- 19 lint test files have no result at the parent, so I can't say whether they differ. They pass now.\n- 4 files that passed at the parent (`ast-rules-owners.test.ts`, `lint-runner.test.ts`, `plugin.test.ts` and one more) were still running in the current tree when I checked. `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` were also still running.\n- About 1,670 other test files have no parent result. Squeal doesn't select them for this change, and `--all-missing` would run them.\n- The 97 browser e2e files could not run. The global setup fails because Chrome won't launch here, so that failure is an environment problem and not something the commit caused.\n\nThe commit is a lint refactor, and the files Squeal selected are all in `packages/cezar/src/lint`. It's unlikely to affect tests elsewhere.\n\nIf you want the remaining lint results, `squeal status --at '8be977ad~1' --wait 100000` waits for the runs still in progress.",
+  "final": "No test result changed between 8be977ad6 and its parent d8abcfe46, as far as Squeal could check. The comparison is incomplete, though.\n\n**Compared so far (lint tests):**\n- 0 test files went pass → fail.\n- 0 test files went fail → pass.\n- 9 lint test files gave the same result on both commits.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It is absent at the parent and passes now, which is an addition and not a changed result.\n\n**Not compared:**\n- 19 lint test files have no result at the parent, so I can't say whether they differ. They pass now.\n- 4 files that passed at the parent (`ast-rules-owners.test.ts`, `lint-runner.test.ts`, `plugin.test.ts` and one more) were still running in the current tree when I checked. `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` were also still running.\n- About 1,670 other test files have no parent result. Squeal doesn't select them for this change, and `--all-missing` would run them.\n- The 97 browser e2e files could not run. The global setup fails because Chrome won't launch here, so that failure is an environment problem and not something the commit caused.\n\nThe commit is a lint refactor, and the files Squeal selected are all in `packages/cezar/src/lint`. It's unlikely to affect tests elsewhere.\n\nIf you want the remaining lint results, `squeal status --at '8be977ad~1' --wait 100000` waits for the runs still in progress.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad~1 --run",
+    "'8be977ad~1' --run"
+  ]
+}

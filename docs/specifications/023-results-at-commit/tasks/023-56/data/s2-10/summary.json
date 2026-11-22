@@ -1,0 +1,62 @@
+{
+  "id": "s2-10",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/cb5a8b73e1a9f9b3/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60",
+    "107s +99s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -20; git show HEAD -- test/store/open.test.ts | head -50"
+  ],
+  "joins": [
+    "3s +0s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60",
+    "5s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60",
+    "107s +99s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -20; git show HEAD -- test/store/open.test.ts | head -50",
+    "206s +62s squeal status --at HEAD~1 test/store/open.test.ts --wait 100000 2>&1 | tail -8"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at a5c9b7223: about 6 min for 1338 test files, up to 6 at once, times 1.3 for the host's load per CPU; a guess: 1 of them have a stored duration, the others count at their median; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no r",
+    "107s +99s Still to run, at a5c9b7223: about 3 s for 1 test file, up to 1 at once, from their stored durations, times 1.36 for the host's load per CPU"
+  ],
+  "loadStart": "8.90",
+  "exit": 0,
+  "wallSeconds": 272.922,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60",
+    "5s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60",
+    "107s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -20; git show HEAD -- test/store/open.test.ts | head -50",
+    "206s squeal status --at HEAD~1 test/store/open.test.ts --wait 100000 2>&1 | tail -8"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.0602215,
+  "usage": {
+    "cache_creation_input_tokens": 14490,
+    "cache_read_input_tokens": 145685,
+    "output_tokens": 940
+  },
+  "firstFinal": "No test file changed its result in the one I could compare, and I haven't compared the other 1,337 files that commit's change selects.\n\nCommit `20f03a431` touched `src/core/store/mark.ts` and added one test to `test/store/open.test.ts`. That file passes at the parent commit `a5c9b7223` and at `20f03a431`, so Squeal reports it as unchanged: 0 pass → fail, 0 fail → pass.\n\nThe file's overall result stays the same, but it now contains one more test. That test checks that a parsed mark saying `found: \"unknown\"` keeps the unknown finder. I didn't run the old file against the new source, so I haven't shown that the new test fails without the `mark.ts` fix.\n\nThe comparison across all 1,338 selected files is still queued in the daemons. Those results will arrive as `SQUEAL ·` messages if any of them changed. To check the rest, run `squeal status --at HEAD~1 --wait 100000`. It should take about 6 minutes.",
+  "final": "No test file changed its result in the one I could compare, and I haven't compared the other 1,337 files that commit's change selects.\n\nCommit `20f03a431` touched `src/core/store/mark.ts` and added one test to `test/store/open.test.ts`. That file passes at the parent commit `a5c9b7223` and at `20f03a431`, so Squeal reports it as unchanged: 0 pass → fail, 0 fail → pass.\n\nThe file's overall result stays the same, but it now contains one more test. That test checks that a parsed mark saying `found: \"unknown\"` keeps the unknown finder. I didn't run the old file against the new source, so I haven't shown that the new test fails without the `mark.ts` fix.\n\nThe comparison across all 1,338 selected files is still queued in the daemons. Those results will arrive as `SQUEAL ·` messages if any of them changed. To check the rest, run `squeal status --at HEAD~1 --wait 100000`. It should take about 6 minutes.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run",
+    "HEAD~1"
+  ]
+}

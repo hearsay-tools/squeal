@@ -1,0 +1,54 @@
+{
+  "id": "s1-09",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/625f5155f13b0e32/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "3s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "104s +2s git show --stat --format=%s 8be977ad6 | tail -15; squeal status --at '8be977ad6~1' --wait 100000 packages/cezar/src/lint 2>&1 | grep -E \"^packages|pass ->|fail ->|unchanged\" | head -30"
+  ],
+  "estimates": [
+    "3s +99s Still to run, in the working tree: about 14 min for 99 test files, at this call's rate there (12 results in 98 s); name test files or folders to narrow it: squeal status --at '8be977ad6~1' <path>... --run"
+  ],
+  "loadStart": "10.19",
+  "exit": 0,
+  "wallSeconds": 112.099,
+  "squeal": [
+    "3s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "104s git show --stat --format=%s 8be977ad6 | tail -15; squeal status --at '8be977ad6~1' --wait 100000 packages/cezar/src/lint 2>&1 | grep -E \"^packages|pass ->|fail ->|unchanged\" | head -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.06092639999999999,
+  "usage": {
+    "cache_creation_input_tokens": 16834,
+    "cache_read_input_tokens": 86754,
+    "output_tokens": 1015
+  },
+  "firstFinal": "As far as Squeal has finished, 8be977ad6 changed no test results. Some comparisons are still unfinished, though, and I haven't confirmed the commit is clean.\n\nThe commit edits only `packages/cezar/src/lint/active-run-write.ts` and adds `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\n- **Newly added:** `active-run-write-index.test.ts` didn't exist at the parent (d8abcfe46) and passes now. It is a new test, not a status change. I didn't check whether it would fail on the parent's code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n- **Pass to fail or fail to pass:** none. Squeal counted 0 and 0 with 11 unchanged, and 9 unchanged among the 29 lint-folder files I asked about.\n- **Still unresolved:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent. Their runs in this worktree hadn't finished when I stopped, so I don't know whether they still pass.\n- **Not run:**\n  - The 97 browser e2e files couldn't run. Chrome failed to launch in this environment.\n  - 319 run-loop files and about 1,700 other files have no result on either side. The change doesn't select them.\n\nTo settle the two lint-ast-grep files, run `squeal status --at '8be977ad6~1' --wait 100000 packages/cezar/src/lint`.",
+  "final": "As far as Squeal has finished, 8be977ad6 changed no test results. Some comparisons are still unfinished, though, and I haven't confirmed the commit is clean.\n\nThe commit edits only `packages/cezar/src/lint/active-run-write.ts` and adds `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\n- **Newly added:** `active-run-write-index.test.ts` didn't exist at the parent (d8abcfe46) and passes now. It is a new test, not a status change. I didn't check whether it would fail on the parent's code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n- **Pass to fail or fail to pass:** none. Squeal counted 0 and 0 with 11 unchanged, and 9 unchanged among the 29 lint-folder files I asked about.\n- **Still unresolved:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent. Their runs in this worktree hadn't finished when I stopped, so I don't know whether they still pass.\n- **Not run:**\n  - The 97 browser e2e files couldn't run. Chrome failed to launch in this environment.\n  - 319 run-loop files and about 1,700 other files have no result on either side. The change doesn't select them.\n\nTo settle the two lint-ast-grep files, run `squeal status --at '8be977ad6~1' --wait 100000 packages/cezar/src/lint`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "'8be977ad6~1'"
+  ]
+}

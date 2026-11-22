@@ -1,0 +1,55 @@
+{
+  "id": "s1-06",
+  "leftover": 2,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/a26c49b3ba3fbfff/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 8be977ad6^ --run --wait 100000 2>&1 | tail -40; echo ======; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -40"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 8be977ad6^ --run --wait 100000 2>&1 | tail -40; echo ======; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -40",
+    "105s +37s git diff --stat 8be977ad6^ 8be977ad6 | tail -20; squeal status --at 8be977ad6^ --run --wait 100000 packages/cezar/src/lint packages/cezar/src/core/runner-closure.test.ts 2>&1 | tail -25"
+  ],
+  "estimates": [
+    "4s +99s Still to run, at d8abcfe46: about 17 s for 10 test files, up to 6 at once, times 1.27 for the host's load per CPU; a guess: 4 of them have a stored duration, the others count at their median; in the working tree: 103 test files, time unknown: none has a stored duration and this call measured no rate"
+  ],
+  "loadStart": "11.71",
+  "exit": 0,
+  "wallSeconds": 148.243,
+  "squeal": [
+    "4s squeal status --at 8be977ad6^ --run --wait 100000 2>&1 | tail -40; echo ======; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -40",
+    "105s git diff --stat 8be977ad6^ 8be977ad6 | tail -20; squeal status --at 8be977ad6^ --run --wait 100000 packages/cezar/src/lint packages/cezar/src/core/runner-closure.test.ts 2>&1 | tail -25"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0638517,
+  "usage": {
+    "cache_creation_input_tokens": 17977,
+    "cache_read_input_tokens": 87232,
+    "output_tokens": 1017
+  },
+  "firstFinal": "**No test file changed from pass to fail or from fail to pass between 8be977ad6 and its parent d8abcfe46.** The comparison is complete for the lint tests but not for the browser e2e tests.\n\nThe commit touched two files: `packages/cezar/src/lint/active-run-write.ts` (modified) and `packages/cezar/src/lint/active-run-write-index.test.ts` (new).\n\n- **Lint tests:** I compared 30 test files under `packages/cezar/src/lint`, plus `core/runner-closure.test.ts`. All 10 that ran on both sides gave the same result. 0 went pass to fail and 0 went fail to pass.\n- **New test file:** `active-run-write-index.test.ts` did not exist at the parent and passes now. I did not run `squeal proof` against the parent, so I haven't checked whether it would fail on the old code.\n- **Not compared:** 19 lint test files have no result at the parent, because Squeal did not select them for that commit. They all pass now, but I can't say how they behaved at the parent.\n- **Browser e2e:** The 97 browser e2e specs did not run on either side. The browser setup failed because the installed Chrome would not launch. That failure is an environment problem, not a result of this commit.\n- **Rest of the suite:** Squeal found no input difference for 124 test files, so this commit cannot change their results. About 1,800 other files had no stored result at the parent and were not run, because Squeal does not select them for this change. I didn't run them with `--all-missing`.",
+  "final": "**No test file changed from pass to fail or from fail to pass between 8be977ad6 and its parent d8abcfe46.** The comparison is complete for the lint tests but not for the browser e2e tests.\n\nThe commit touched two files: `packages/cezar/src/lint/active-run-write.ts` (modified) and `packages/cezar/src/lint/active-run-write-index.test.ts` (new).\n\n- **Lint tests:** I compared 30 test files under `packages/cezar/src/lint`, plus `core/runner-closure.test.ts`. All 10 that ran on both sides gave the same result. 0 went pass to fail and 0 went fail to pass.\n- **New test file:** `active-run-write-index.test.ts` did not exist at the parent and passes now. I did not run `squeal proof` against the parent, so I haven't checked whether it would fail on the old code.\n- **Not compared:** 19 lint test files have no result at the parent, because Squeal did not select them for that commit. They all pass now, but I can't say how they behaved at the parent.\n- **Browser e2e:** The 97 browser e2e specs did not run on either side. The browser setup failed because the installed Chrome would not launch. That failure is an environment problem, not a result of this commit.\n- **Rest of the suite:** Squeal found no input difference for 124 test files, so this commit cannot change their results. About 1,800 other files had no stored result at the parent and were not run, because Squeal does not select them for this change. I didn't run them with `--all-missing`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6^ --run",
+    "8be977ad6 --run",
+    "8be977ad6^ --run"
+  ]
+}

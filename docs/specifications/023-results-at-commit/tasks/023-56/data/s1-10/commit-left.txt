@@ -1,0 +1,50 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 9 test processes · no flags
+Host    load 15.0 14.1 14.3 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 34% · memory pressure 0.0% (0.0% full) · memory 7.5 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 11.1 CPUs (at least 100% of busy) · memory 4.9 GiB (66% of used) + 0 swap · pool 9 of 11 permits
+
+~squeal-w29/runs/w29/s1-10 (this repository) · 1 daemon · CPU 0.0 · memory 1.2 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            615036   1d9004ad  0.1.599          2m    0%     0m21s  633M    0     idle
+    host vitest      617274   local                      2m    0%     1m04s  560M    0
+
+~squeal-w29/runs/w29/s2-10 · 2 daemons · CPU at least 11.1 · memory 3.8 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            618887   45329c7f  0.1.599          1m    2%     0m18s  565M    0     fast tier, 200 files; 1138 pending
+    host vitest      619587   local                      1m   93%     1m01s  604M    0
+    vitest           642087   fork worker               12s   96%     0m03s  134M    0     nice 10, +1 child
+    vitest           643602   fork worker                7s     ?     0m05s  214M    0     nice 10, +6 children
+    vitest           645240   fork worker                3s     ?     0m02s  85M     0     nice 10, +2 children
+    vitest           645452   fork worker                2s   83%     0m04s  211M    0     nice 10, +2 children
+    vitest           645800   fork worker                1s  101%     0m02s  184M    0     nice 10
+    vitest           645812   fork worker                1s   99%     0m01s  110M    0     nice 10
+    vitest           645933   fork worker                0s     ?     0m00s  ?       ?     nice 10
+    vitest           646171   fork worker                0s   86%     0m01s  127M    0     nice 10
+    vitest           646185   fork worker                0s  105%     0m02s  137M    0     nice 10
+  serving            618495   9c0633b1  0.1.599          1m  256%     0m47s  786M    0     fast tier, 4 files; 1333 pending; 1 session
+    host vitest      618644   local                      1m   34%     0m54s  707M    0
+
+Store processes
+  618928  code.sqlite of ~squeal-w29/runs/w29/s1-10/.git
+  640479  code.sqlite of ~squeal-w29/runs/w29/s2-10/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/af494b2ead09c9ed/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 615036  age 2m  at d8abcfe46bbe
+    commit worktree  ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/cb5a8b73e1a9f9b3/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 618887  age 1m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w29/runs/w29/s1-10/.git/squeal/checkouts': No such file or directory
+~squeal-w29/runs/w29/home/.cache/squeal/checkouts/af494b2ead09c9ed:
+total 12
+drwxrwxr-x  3 squeal-w29 squeal-w29 4096 Nov 23 00:28 .
+drwxrwxr-x 24 squeal-w29 squeal-w29 4096 Nov 23 00:29 ..
+drwxrwxr-x  4 squeal-w29 squeal-w29 4096 Nov 23 00:28 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 23 00:30 .
+drwxrwxr-x 24 squeal-w29 squeal-w29 4096 Nov 23 00:29 ..
+-rw-rw-r--  1 squeal-w29 squeal-w29  156 Nov 23 00:30 0ea5e24f1931f929.json
+-rw-rw-r--  1 squeal-w29 squeal-w29  156 Nov 23 00:29 e0d6faec3c6e2db1.json

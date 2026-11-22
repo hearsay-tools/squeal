@@ -1,0 +1,56 @@
+{
+  "id": "s1-04",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/85c8e59aa4410844/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "5s +99s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "106s +74s squeal status --at 8be977ad6~1 --wait 280000 2>&1 | tail -25",
+    "183s +3s squeal status --at 8be977ad6~1 --wait 120000 --run 2>&1 | grep -v '^1809' | tail -15"
+  ],
+  "estimates": [],
+  "loadStart": "11.60",
+  "exit": 0,
+  "wallSeconds": 191.45,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "106s squeal status --at 8be977ad6~1 --wait 280000 2>&1 | tail -25",
+    "183s squeal status --at 8be977ad6~1 --wait 120000 --run 2>&1 | grep -v '^1809' | tail -15"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.07449,
+  "usage": {
+    "cache_creation_input_tokens": 19428,
+    "cache_read_input_tokens": 115500,
+    "output_tokens": 1435
+  },
+  "firstFinal": "I can't say yet. Squeal found no test that passes or fails differently, but it also never got a result for most of the files, so the comparison is incomplete.\n\n**Where the comparison stands (8be977ad6 against its parent d8abcfe46)**\n- **Changed results:** 0 files went pass → fail and 0 went fail → pass.\n- **Result at both commits:** 0 files have one, so nothing could be compared directly.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` was added by this commit and passes at 8be977ad6. It doesn't exist at the parent, so there is nothing to compare it with.\n- **13 files with no parent result:** Squeal selected them because their inputs changed. They pass at 8be977ad6, but the parent run hadn't produced a result when I stopped. They include `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs`, `packages/cezar/src/core/runner-closure.test.ts` and 10 more. This is the set most likely to differ.\n- **97 browser e2e files:** None ran, at either commit. Browser setup failed with \"installed Chrome failed to launch with resolved settings\". That is an environment problem, not a test failure, but it means those files are unverified.\n- **124 files:** Squeal says none of their inputs differ between the two commits, so this commit can't change their results.\n- **1,685 files:** These have no result at the parent. The runner can't tell whether the commit affects them (1,669 with an unknown closure, 16 with an incomplete one). `--all-missing` would run them.\n\nThe commit is a lint refactor, so the files it most plausibly affects are the 13 selected ones and the new test.\n\nTo finish the comparison, run `squeal status --at 8be977ad6~1 --wait 100000` once the parent run completes. You could also run `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` for the new file. I can do either if you want.",
+  "final": "I can't say yet. Squeal found no test that passes or fails differently, but it also never got a result for most of the files, so the comparison is incomplete.\n\n**Where the comparison stands (8be977ad6 against its parent d8abcfe46)**\n- **Changed results:** 0 files went pass → fail and 0 went fail → pass.\n- **Result at both commits:** 0 files have one, so nothing could be compared directly.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` was added by this commit and passes at 8be977ad6. It doesn't exist at the parent, so there is nothing to compare it with.\n- **13 files with no parent result:** Squeal selected them because their inputs changed. They pass at 8be977ad6, but the parent run hadn't produced a result when I stopped. They include `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs`, `packages/cezar/src/core/runner-closure.test.ts` and 10 more. This is the set most likely to differ.\n- **97 browser e2e files:** None ran, at either commit. Browser setup failed with \"installed Chrome failed to launch with resolved settings\". That is an environment problem, not a test failure, but it means those files are unverified.\n- **124 files:** Squeal says none of their inputs differ between the two commits, so this commit can't change their results.\n- **1,685 files:** These have no result at the parent. The runner can't tell whether the commit affects them (1,669 with an unknown closure, 16 with an incomplete one). `--all-missing` would run them.\n\nThe commit is a lint refactor, so the files it most plausibly affects are the 13 selected ones and the new test.\n\nTo finish the comparison, run `squeal status --at 8be977ad6~1 --wait 100000` once the parent run completes. You could also run `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` for the new file. I can do either if you want.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "8be977ad6~1 --run",
+    "8be977ad6~1",
+    "8be977ad6~1 --run"
+  ]
+}

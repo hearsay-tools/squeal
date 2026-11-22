@@ -1,0 +1,81 @@
+## head
+20f03a43139ea3e99e057b32dac3db3dffbb903d
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+20f03a4 HEAD@{2026-11-22 23:54:52 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w29/runs/w29/s2-03
+HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
+branch refs/heads/main
+
+worktree ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/71a26a87a27ccf8b/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+HEAD a5c9b7223b6550d249098754bfc6453b3853c2b7
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w29 squeal-w29    0 Nov 22 23:43 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/0469eb923f419335:
+total 8
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:44 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+
+home/.cache/squeal/checkouts/5a2a810e0f5bff5c:
+total 8
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:53 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+
+home/.cache/squeal/checkouts/681000f1c5447d4d:
+total 8
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:47 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+
+home/.cache/squeal/checkouts/71a26a87a27ccf8b:
+total 12
+drwxrwxr-x  3 squeal-w29 squeal-w29 4096 Nov 22 23:55 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+drwxrwxr-x  4 squeal-w29 squeal-w29 4096 Nov 22 23:55 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/85c8e59aa4410844:
+total 8
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:59 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+
+home/.cache/squeal/checkouts/8edd1fbd0670a14f:
+total 8
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:52 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+
+home/.cache/squeal/checkouts/a9fe7e5bd6c19e2f:
+total 8
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:56 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+
+home/.cache/squeal/checkouts/b32452d4360687a1:
+total 8
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:53 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 22 23:59 .
+drwxrwxr-x 11 squeal-w29 squeal-w29 4096 Nov 22 23:56 ..
+-rw-rw-r--  1 squeal-w29 squeal-w29  156 Nov 22 23:59 6c2f02b7b05b837d.json
+-rw-rw-r--  1 squeal-w29 squeal-w29  156 Nov 22 23:56 ef799ec079577aa5.json
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+ 138938       1       05:33 squeal s2-03 daemon @8cbfbbd3 ~squeal-w29/runs/w29/claude/plugins/cache/hearsay/squeal/0.1.599/dist/cli/squeal.mjs daemon ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/71a26a87a27ccf8b/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+ 141263  138938       05:23 /opt/squeal-w29/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w29/runs/w29/claude/plugins/cache/hearsay/squeal/0.1.599/dist/cli/squeal.mjs runner-host ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/71a26a87a27ccf8b/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+ 160344       1       04:30 squeal s2-03 store --disable-warning=ExperimentalWarning ~squeal-w29/runs/w29/claude/plugins/cache/hearsay/squeal/0.1.599/dist/cli/squeal.mjs store-process ~squeal-w29/runs/w29/s2-03/.git --store code
+ 226559  141263       00:09 /opt/squeal-w29/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/71a26a87a27ccf8b/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/71a26a87a27ccf8b/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js

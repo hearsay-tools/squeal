@@ -1,0 +1,59 @@
+{
+  "id": "s2-04",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/4bf8426ca7d4bfba/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "112s +299s squeal status --at HEAD~1 --run --wait 300000 2>&1 | tail -30"
+  ],
+  "joins": [
+    "112s +299s squeal status --at HEAD~1 --run --wait 300000 2>&1 | tail -30",
+    "414s +20s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 200000 2>&1 | tail -15"
+  ],
+  "estimates": [
+    "112s +299s Still to run, at a5c9b7223: about 76 min for 1338 test files, up to 3 at once, times 1.84 for the host's load per CPU; a guess: 26 of them have a stored duration, the others count at their median; in the working tree: about 4.2 h for 1312 test files, at this call's rate there (26 results in 298 s); "
+  ],
+  "loadStart": "12.01",
+  "exit": 0,
+  "wallSeconds": 440.178,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a4~1 2>&1 | tail -15",
+    "112s squeal status --at HEAD~1 --run --wait 300000 2>&1 | tail -30",
+    "414s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 200000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "112s +299s Bash squeal status --at HEAD~1 --run --wait 300000 2>&1 | tail -30"
+  ],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0580296,
+  "usage": {
+    "cache_creation_input_tokens": 13421,
+    "cache_read_input_tokens": 122331,
+    "output_tokens": 1222
+  },
+  "firstFinal": "I can only confirm part of this. The full comparison didn't finish.\n\n**What I checked:** commit `20f03a431` changed `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`. Squeal compared that test file between `a5c9b7223` and `20f03a431` and reported it as unchanged. The file has the same result on both sides, with no pass→fail or fail→pass. Squeal only says \"unchanged\", and I didn't read the pass/fail state itself. The commit adds tests to this file, so the new cases exist only on the newer side. The unchanged verdict covers the file as a whole.\n\n**What I didn't finish:** the change touches `mark.ts`, so Squeal selects 1338 test files as possibly affected. I started that comparison, but at the current rate it would take about 4 hours in this worktree and about 76 minutes at the old commit. I stopped waiting. The 26 files that did finish passed, and none of them showed a changed result. The other 1312 are still queued or running in the background. Another 624 files weren't selected by the change and weren't run.\n\nSo I can't say whether any other test file changed result. I found no test file whose result changed, but only one file is fully compared. To finish, run `squeal status --at HEAD~1 --wait 100000` later, once the queue drains. I can also narrow it to the tests that import `mark.ts`, such as `test/store/`.",
+  "final": "I can only confirm part of this. The full comparison didn't finish.\n\n**What I checked:** commit `20f03a431` changed `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`. Squeal compared that test file between `a5c9b7223` and `20f03a431` and reported it as unchanged. The file has the same result on both sides, with no pass→fail or fail→pass. Squeal only says \"unchanged\", and I didn't read the pass/fail state itself. The commit adds tests to this file, so the new cases exist only on the newer side. The unchanged verdict covers the file as a whole.\n\n**What I didn't finish:** the change touches `mark.ts`, so Squeal selects 1338 test files as possibly affected. I started that comparison, but at the current rate it would take about 4 hours in this worktree and about 76 minutes at the old commit. I stopped waiting. The 26 files that did finish passed, and none of them showed a changed result. The other 1312 are still queued or running in the background. Another 624 files weren't selected by the change and weren't run.\n\nSo I can't say whether any other test file changed result. I found no test file whose result changed, but only one file is fully compared. To finish, run `squeal status --at HEAD~1 --wait 100000` later, once the queue drains. I can also narrow it to the tests that import `mark.ts`, such as `test/store/`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

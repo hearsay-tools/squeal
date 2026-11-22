@@ -1,0 +1,51 @@
+{
+  "id": "s1-07",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/f933ba8dfc76eff6/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "estimates": [
+    "4s +99s Still to run, at d8abcfe46: 103 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: about 35 min for 106 test files, up to 3 at once, times 2.42 for the host's load per CPU; a guess: 3 of them have a stored duration, the others count at their med"
+  ],
+  "loadStart": "10.71",
+  "exit": 0,
+  "wallSeconds": 109.832,
+  "squeal": [
+    "4s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0553907,
+  "usage": {
+    "cache_creation_input_tokens": 16062,
+    "cache_read_input_tokens": 59437,
+    "output_tokens": 928
+  },
+  "firstFinal": "I can't give a full answer yet. The comparison is still running, and so far no test file has gone from pass to fail or from fail to pass.\n\nSqueal compared `8be977ad6` with its parent `d8abcfe46`:\n\n- **Pass → fail:** none so far.\n- **Fail → pass:** none so far.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` didn't exist at the parent and passes now.\n- **Unchanged:** 4 files.\n- **Still running or queued:** about 106 test files in the working tree and 103 at the parent. Squeal estimates roughly 35 minutes for the working-tree side. These include `packages/cezar/src/lint/ast-rules-owners.test.ts`, `lint-ast-grep-1.test.ts`, `lint-ast-grep-2.test.ts`, `lint/plugin.test.ts` and `lint/run-history-reader.test.ts`. They're the likeliest to differ, since the commit changes lint code.\n- **Not selected:** 124 files can't change, because none of their inputs differ between the two commits.\n- **No result at the parent:** 1,669 further files weren't selected and weren't run. Squeal can't confirm their dependencies are fully covered, so they could in principle differ.\n\nThree files (`.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `scripts/test-inputs.test.mjs`) passed at the parent but have no result yet for the new commit.\n\nTo wait for the rest, run `squeal status --at '8be977ad6~1' --wait 100000`. To narrow it to the lint area, pass `packages/cezar/src/lint` as a path with `--run`. I can do either if you want.",
+  "final": "I can't give a full answer yet. The comparison is still running, and so far no test file has gone from pass to fail or from fail to pass.\n\nSqueal compared `8be977ad6` with its parent `d8abcfe46`:\n\n- **Pass → fail:** none so far.\n- **Fail → pass:** none so far.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` didn't exist at the parent and passes now.\n- **Unchanged:** 4 files.\n- **Still running or queued:** about 106 test files in the working tree and 103 at the parent. Squeal estimates roughly 35 minutes for the working-tree side. These include `packages/cezar/src/lint/ast-rules-owners.test.ts`, `lint-ast-grep-1.test.ts`, `lint-ast-grep-2.test.ts`, `lint/plugin.test.ts` and `lint/run-history-reader.test.ts`. They're the likeliest to differ, since the commit changes lint code.\n- **Not selected:** 124 files can't change, because none of their inputs differ between the two commits.\n- **No result at the parent:** 1,669 further files weren't selected and weren't run. Squeal can't confirm their dependencies are fully covered, so they could in principle differ.\n\nThree files (`.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `scripts/test-inputs.test.mjs`) passed at the parent but have no result yet for the new commit.\n\nTo wait for the rest, run `squeal status --at '8be977ad6~1' --wait 100000`. To narrow it to the lint area, pass `packages/cezar/src/lint` as a path with `--run`. I can do either if you want.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 1,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run"
+  ]
+}

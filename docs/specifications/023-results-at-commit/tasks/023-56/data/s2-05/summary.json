@@ -1,0 +1,65 @@
+{
+  "id": "s2-05",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/b1be2a14dfe4a1ba/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +120s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 2>&1 | tail -20",
+    "126s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -40",
+    "227s +109s git show --stat --format=%s 20f03a431 | tail -15; squeal status --at HEAD~1 --wait 110000 2>&1 | tail -15"
+  ],
+  "joins": [
+    "4s +120s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 2>&1 | tail -20",
+    "126s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -40",
+    "227s +109s git show --stat --format=%s 20f03a431 | tail -15; squeal status --at HEAD~1 --wait 110000 2>&1 | tail -15",
+    "338s +46s squeal status --at HEAD~1 test/store --run --wait 110000 2>&1 | tail -15"
+  ],
+  "estimates": [
+    "227s +109s Still to run, at a5c9b7223: 1329 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: about 80 min for 1333 test files, up to 5 at once, times 1.82 for the host's load per CPU; a guess: 4 of them have a stored duration, the others count at their m"
+  ],
+  "loadStart": "7.49",
+  "exit": 0,
+  "wallSeconds": 390.225,
+  "squeal": [
+    "4s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 2>&1 | tail -20",
+    "126s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -40",
+    "227s git show --stat --format=%s 20f03a431 | tail -15; squeal status --at HEAD~1 --wait 110000 2>&1 | tail -15",
+    "338s squeal status --at HEAD~1 test/store --run --wait 110000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [
+    "4s +120s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 2>&1 | tail -20"
+  ],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0607157,
+  "usage": {
+    "cache_creation_input_tokens": 14555,
+    "cache_read_input_tokens": 123142,
+    "output_tokens": 1199
+  },
+  "firstFinal": "**Partial answer: no result changed in the part I could check. The full comparison is not finished.**\n\nCommit `20f03a431` touches two files: `src/core/store/mark.ts`, with 7 lines added, and `test/store/open.test.ts`, with 27 lines added.\n\n- **`test/store/` (39 files):** I compared the parent commit (`a5c9b7223`) with the working tree. The result was 0 pass→fail, 0 fail→pass and 38 unchanged. `key-shadow.test.ts` has no result at the parent, and it passes now.\n- **Rest of the suite:** Squeal says the change selects 1338 test files in total, because `mark.ts` is widely imported. Those runs were still queued at about 1330 files when I stopped, with an estimate of roughly 80 minutes. I haven't seen results for them, so I can't say none of them changed.\n- **Caveat on `open.test.ts`:** This comparison runs the current version of the file on both sides, so it only shows whether the new behaviour changes outcomes. It doesn't show how the old version of that file fared. The commit adds 27 lines to `open.test.ts`, probably new tests, so that file likely has new passing tests. I didn't verify that.\n\nThe full comparison keeps running in the daemons. `squeal status --at HEAD~1 --wait 100000` will pick it up when you want the complete answer.",
+  "final": "**Partial answer: no result changed in the part I could check. The full comparison is not finished.**\n\nCommit `20f03a431` touches two files: `src/core/store/mark.ts`, with 7 lines added, and `test/store/open.test.ts`, with 27 lines added.\n\n- **`test/store/` (39 files):** I compared the parent commit (`a5c9b7223`) with the working tree. The result was 0 pass→fail, 0 fail→pass and 38 unchanged. `key-shadow.test.ts` has no result at the parent, and it passes now.\n- **Rest of the suite:** Squeal says the change selects 1338 test files in total, because `mark.ts` is widely imported. Those runs were still queued at about 1330 files when I stopped, with an estimate of roughly 80 minutes. I haven't seen results for them, so I can't say none of them changed.\n- **Caveat on `open.test.ts`:** This comparison runs the current version of the file on both sides, so it only shows whether the new behaviour changes outcomes. It doesn't show how the old version of that file fared. The commit adds 27 lines to `open.test.ts`, probably new tests, so that file likely has new passing tests. I didn't verify that.\n\nThe full comparison keeps running in the daemons. `squeal status --at HEAD~1 --wait 100000` will pick it up when you want the complete answer.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 5,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1",
+    "HEAD~1 --run",
+    "HEAD~1",
+    "HEAD~1 --run"
+  ]
+}

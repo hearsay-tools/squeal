@@ -1,0 +1,36 @@
+## squeal ps after squeal stop
+squeal ps · 2 daemons, 0 test processes · no flags
+Host    load 12.4 14.8 13.2 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 2.2% · memory pressure 0.0% (0.0% full) · memory 5.4 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 0.0 CPUs (0.4% of busy) · memory 2.2 GiB (41% of used) + 0 swap · pool 0 of 11 permits
+
+~squeal-w29/runs/w29/s1-06 (this repository) · 1 daemon · CPU 0.0 · memory 1.0 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            338485   12db6e47  0.1.599          2m    0%     0m23s  300M    0     idle
+    host vitest      338608   local                      2m    0%     1m11s  772M    0
+
+~squeal-w29/runs/w29/s2-06 · 1 daemon · CPU 0.0 · memory 1.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            339062   b9670a84  0.1.599          1m    0%     0m38s  727M    0     1 session
+    host vitest      339212   local                      1m    0%     0m54s  439M    0
+
+Store processes
+  339496  code.sqlite of ~squeal-w29/runs/w29/s1-06/.git
+  360664  code.sqlite of ~squeal-w29/runs/w29/s2-06/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/a26c49b3ba3fbfff/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 338485  age 2m  at d8abcfe46bbe
+    ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/a65fc201f0453345/mwsgaohr-2b4b4bf6/tree  pid 339326  age 44s  at a5c9b7223b65
+
+## checkout folders
+ls: cannot access '~squeal-w29/runs/w29/s1-06/.git/squeal/checkouts': No such file or directory
+~squeal-w29/runs/w29/home/.cache/squeal/checkouts/a26c49b3ba3fbfff:
+total 12
+drwxrwxr-x  3 squeal-w29 squeal-w29 4096 Nov 23 00:09 .
+drwxrwxr-x 16 squeal-w29 squeal-w29 4096 Nov 23 00:11 ..
+drwxrwxr-x  4 squeal-w29 squeal-w29 4096 Nov 23 00:09 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 12
+drwxrwxr-x  2 squeal-w29 squeal-w29 4096 Nov 23 00:11 .
+drwxrwxr-x 16 squeal-w29 squeal-w29 4096 Nov 23 00:11 ..
+-rw-rw-r--  1 squeal-w29 squeal-w29  156 Nov 23 00:11 c55d3e0a81d55b12.json

@@ -1,0 +1,52 @@
+{
+  "id": "s1-02",
+  "leftover": 2,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/8edd1fbd0670a14f/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "104s +101s squeal status --at 8be977ad6~1 --wait 300000 2>&1 | tail -25"
+  ],
+  "estimates": [],
+  "loadStart": "3.34",
+  "exit": 0,
+  "wallSeconds": 210.982,
+  "squeal": [
+    "4s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "104s squeal status --at 8be977ad6~1 --wait 300000 2>&1 | tail -25"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.06003629999999999,
+  "usage": {
+    "cache_creation_input_tokens": 17262,
+    "cache_read_input_tokens": 86253,
+    "output_tokens": 824
+  },
+  "firstFinal": "No test file changed from passing to failing, or the reverse. But the comparison is incomplete, so I can't say the commit is neutral.\n\n**What Squeal compared** (`8be977ad6` against its parent `d8abcfe46`):\n- 0 files went pass → fail, and 0 went fail → pass.\n- 13 files have a result on both sides and are unchanged.\n- One file is new in this commit and passes: `packages/cezar/src/lint/active-run-write-index.test.ts`. There's no parent result, so it is listed as absent → pass. I haven't run `squeal proof` on it to see whether it would fail on the parent's code.\n- 124 files are not selected. None of their inputs differ between the two commits, so the commit can't change their results.\n\n**What is still unknown:**\n- 97 browser e2e files (`packages/web/e2e/*.e2e.ts`) did not run on either side. The browser global setup failed because the installed Chrome would not launch in this environment. This looks like an environment problem, not something the commit caused.\n- About 1,669 other test files have no result on either side. Squeal doesn't run them unless asked, because it can't tell whether their static closure is complete (`--all-missing` would run them). 16 more have an incomplete static closure.\n- The commit is a lint refactor touching the `packages/cezar/src/lint/` tests, and those files only had partial coverage in this comparison. If you want a firmer answer, I can run `squeal status --at 8be977ad6~1 packages/cezar/src/lint --run` or use `--all-missing`.",
+  "final": "No test file changed from passing to failing, or the reverse. But the comparison is incomplete, so I can't say the commit is neutral.\n\n**What Squeal compared** (`8be977ad6` against its parent `d8abcfe46`):\n- 0 files went pass → fail, and 0 went fail → pass.\n- 13 files have a result on both sides and are unchanged.\n- One file is new in this commit and passes: `packages/cezar/src/lint/active-run-write-index.test.ts`. There's no parent result, so it is listed as absent → pass. I haven't run `squeal proof` on it to see whether it would fail on the parent's code.\n- 124 files are not selected. None of their inputs differ between the two commits, so the commit can't change their results.\n\n**What is still unknown:**\n- 97 browser e2e files (`packages/web/e2e/*.e2e.ts`) did not run on either side. The browser global setup failed because the installed Chrome would not launch in this environment. This looks like an environment problem, not something the commit caused.\n- About 1,669 other test files have no result on either side. Squeal doesn't run them unless asked, because it can't tell whether their static closure is complete (`--all-missing` would run them). 16 more have an incomplete static closure.\n- The commit is a lint refactor touching the `packages/cezar/src/lint/` tests, and those files only had partial coverage in this comparison. If you want a firmer answer, I can run `squeal status --at 8be977ad6~1 packages/cezar/src/lint --run` or use `--all-missing`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "8be977ad6~1"
+  ]
+}

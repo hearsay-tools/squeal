@@ -1,0 +1,67 @@
+## 4s +120s $ squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40; echo ---; squeal status --at 20f03a431~1 2>&1 | tail -20
+squeal status --at: 20f03a431 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+---
+Command did not complete within its 120s timeout and was moved to the background (ID: blgclr4l2). Output is being written to: ~squeal-w29/runs/w29/tmp/claude-1002/-home-squeal-w29-runs-w29-s2-05/c5c11f4c-01b7-485d-826e-e5bbf4c92fbc/tasks/blgclr4l2.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. It is running now: do not start a second copy while it runs. If it is no longer needed, stop it with TaskStop. To check interim output, use Read on that file path.
+
+## 126s +99s $ squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -40
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1332 test files: no result (queued) -> no result (queued): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 1329 more
+624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+test/ci/export-keys.test.ts: no result (running) -> no result (running)
+test/ci/export-loaded.test.ts: no result (running) -> no result (running)
+test/ci/export-snapshot.test.ts: no result (running) -> no result (running)
+test/ci/export-formats.test.ts: no result (running) -> no result (queued)
+test/ci/export-wrapper.test.ts: no result (queued) -> no result (running)
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 1961 unknown
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/b1be2a14dfe4a1ba/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (98.3 s)
+624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now
+Still to run, at a5c9b7223: 1337 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>... --run
+1337 still running at a5c9b7223 (its worktree), 1337 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 227s +109s $ git show --stat --format=%s 20f03a431 | tail -15; squeal status --at HEAD~1 --wait 110000 2>&1 | tail -15
+fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+
+ src/core/store/mark.ts  |  7 ++++++-
+ test/store/open.test.ts | 27 +++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+), 1 deletion(-)
+624 test files: no result -> no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+197 test files: no result (running) -> no result (running): test/cli/ci-export-children.test.ts, test/cli/ci-export.test.ts, test/cli/ci-publish.test.ts and 194 more
+test/ci/export.test.ts: pass -> no result (running) (at a5c9b7223: run in the commit's worktree)
+test/ci/glob-import.test.ts: pass -> no result (running) (at a5c9b7223: run in the commit's worktree)
+test/ci/resolution-import.test.ts: pass -> no result (running) (at a5c9b7223: run in the commit's worktree)
+test/cli/subcommand-help.test.ts: no result (running) -> no result (queued)
+test/cli/transfer.test.ts: no result (running) -> no result (queued)
+test/cli/update-codex-runtime.test.ts: no result (running) -> no result (queued)
+test/ci/export-formats.test.ts: pass -> no result (queued) (at a5c9b7223: run in the commit's worktree)
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 5 unchanged, 1957 unknown
+--wait: joined 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/b1be2a14dfe4a1ba/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 9 have a result now (108.3 s)
+--wait, now: joined 1337 test files the change selects with no result in the working tree in this worktree's daemon; 4 have a result now
+Still to run, at a5c9b7223: 1329 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: about 80 min for 1333 test files, up to 5 at once, times 1.82 for the host's load per CPU; a guess: 4 of them have a stored duration, the others count at their median; name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>... --run
+1329 still running at a5c9b7223 (its worktree), 1333 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 338s +46s $ squeal status --at HEAD~1 test/store --run --wait 110000 2>&1 | tail -15
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 39 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+test/store/key-shadow.test.ts: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 38 unchanged, 1 unknown, of 39 named test files; the change selects 1338 test files at a5c9b7223 (`squeal status --at 'HEAD~1'`, without paths, compares them)
+--run: queued 35 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/b1be2a14dfe4a1ba/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 35 have a result now (45.9 s)
+1 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs it
+--run, now: queued 38 test files the change selects with no result in the working tree in this worktree's daemon; 38 have a result now
+The rest of the queue, outside these paths: 1286 more test files queued or running at a5c9b7223 (its worktree), 1284 in the working tree
+
+## 390s SAY
+**Partial answer: no result changed in the part I could check. The full comparison is not finished.**
+
+Commit `20f03a431` touches two files: `src/core/store/mark.ts`, with 7 lines added, and `test/store/open.test.ts`, with 27 lines added.
+
+- **`test/store/` (39 files):** I compared the parent commit (`a5c9b7223`) with the working tree. The result was 0 pass→fail, 0 fail→pass and 38 unchanged. `key-shadow.test.ts` has no result at the parent, and it passes now.
+- **Rest of the suite:** Squeal says the change selects 1338 test files in total, because `mark.ts` is widely imported. Those runs were still queued at about 1330 files when I stopped, with an estimate of roughly 80 minutes. I haven't seen results for them, so I can't say none of them changed.
+- **Caveat on `open.test.ts`:** This comparison runs the current version of the file on both sides, so it only shows whether the new behaviour changes outcomes. It doesn't show how the old version of that file fared. The commit adds 27 lines to `open.test.ts`, probably new tests, so that file likely has new passing tests. I didn't verify that.
+
+The full comparison keeps running in the daemons. `squeal status --at HEAD~1 --wait 100000` will pick it up when you want the complete answer.

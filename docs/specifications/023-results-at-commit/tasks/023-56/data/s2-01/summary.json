@@ -1,0 +1,62 @@
+{
+  "id": "s2-01",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/5a2a810e0f5bff5c/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60",
+    "106s +99s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -15",
+    "205s +99s squeal status --at '20f03a431~1' test/store/open.test.ts --wait 100000 2>&1 | tail -8"
+  ],
+  "joins": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60",
+    "106s +99s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -15",
+    "205s +99s squeal status --at '20f03a431~1' test/store/open.test.ts --wait 100000 2>&1 | tail -8"
+  ],
+  "estimates": [
+    "3s +99s Still to run, at a5c9b7223: about 5 min for 1338 test files, up to 6 at once, times 1.29 for the host's load per CPU; a guess: 1 of them have a stored duration, the others count at their median; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no ",
+    "106s +99s Still to run, at a5c9b7223: about 6 s for 1 test file, up to 1 at once, from their stored durations, times 2.8 for the host's load per CPU",
+    "205s +99s Still to run, at a5c9b7223: about 4 s for 1 test file, up to 1 at once, from their stored durations, times 1.82 for the host's load per CPU"
+  ],
+  "loadStart": "3.95",
+  "exit": 0,
+  "wallSeconds": 310.315,
+  "squeal": [
+    "3s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60",
+    "106s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -15",
+    "205s squeal status --at '20f03a431~1' test/store/open.test.ts --wait 100000 2>&1 | tail -8"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.05723110000000001,
+  "usage": {
+    "cache_creation_input_tokens": 13533,
+    "cache_read_input_tokens": 122546,
+    "output_tokens": 1112
+  },
+  "firstFinal": "I can't yet say whether any test result changed. The comparison is still running.\n\n**What I have:**\n- Commit `20f03a431` touches only `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n- `test/store/open.test.ts` is the only file whose result could differ because of the test edit. It passes at `20f03a431` in this worktree.\n- At the parent commit (`a5c9b7223`) it has no result yet. The run is still going in the commit daemon, so I can't tell whether the new 27 lines of tests fail without the `mark.ts` fix. Squeal's tally so far is 0 pass→fail, 0 fail→pass, 1 unknown.\n\n**Why it's slow:** the `mark.ts` change selects 1338 test files, and my first full comparison queued all of them at the parent commit. They are ahead of this one file in the queue, and the host is loaded. I queued that full run before narrowing to the one file, which was a mistake on my part. I haven't confirmed that any of the other 1337 files are unchanged.\n\n**What I can't tell you:** whether the other 1337 selected files changed result. Squeal has no result for them at the parent commit, and a bare `squeal status --at 20f03a431~1` will show that comparison once they finish.\n\n**Next:** I can keep waiting on `test/store/open.test.ts` with `squeal status --at '20f03a431~1' test/store/open.test.ts --wait 100000`. Alternatively, `squeal proof test/store/open.test.ts --base 20f03a431~1` would show directly whether the new tests fail without the fix. Which do you want, or should I wait for the full set?",
+  "final": "I can't yet say whether any test result changed. The comparison is still running.\n\n**What I have:**\n- Commit `20f03a431` touches only `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n- `test/store/open.test.ts` is the only file whose result could differ because of the test edit. It passes at `20f03a431` in this worktree.\n- At the parent commit (`a5c9b7223`) it has no result yet. The run is still going in the commit daemon, so I can't tell whether the new 27 lines of tests fail without the `mark.ts` fix. Squeal's tally so far is 0 pass→fail, 0 fail→pass, 1 unknown.\n\n**Why it's slow:** the `mark.ts` change selects 1338 test files, and my first full comparison queued all of them at the parent commit. They are ahead of this one file in the queue, and the host is loaded. I queued that full run before narrowing to the one file, which was a mistake on my part. I haven't confirmed that any of the other 1337 files are unchanged.\n\n**What I can't tell you:** whether the other 1337 selected files changed result. Squeal has no result for them at the parent commit, and a bare `squeal status --at 20f03a431~1` will show that comparison once they finish.\n\n**Next:** I can keep waiting on `test/store/open.test.ts` with `squeal status --at '20f03a431~1' test/store/open.test.ts --wait 100000`. Alternatively, `squeal proof test/store/open.test.ts --base 20f03a431~1` would show directly whether the new tests fail without the fix. Which do you want, or should I wait for the full set?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431 --run",
+    "'20f03a431~1' --run",
+    "'20f03a431~1'"
+  ]
+}

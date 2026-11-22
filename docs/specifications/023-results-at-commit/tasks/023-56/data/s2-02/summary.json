@@ -1,0 +1,60 @@
+{
+  "id": "s2-02",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/b32452d4360687a1/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +100s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "106s +99s squeal status --at 20f03a4~1 --wait 100000 2>&1 | tail -30"
+  ],
+  "joins": [
+    "4s +100s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "106s +99s squeal status --at 20f03a4~1 --wait 100000 2>&1 | tail -30",
+    "208s +14s squeal status --at '20f03a4~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "estimates": [
+    "4s +100s Still to run, in the working tree: about 9 s for 1 test file, up to 1 at once, from their stored durations, times 2.73 for the host's load per CPU; name test files or folders to narrow it: squeal status --at '20f03a4~1' <path>... --run",
+    "106s +99s Still to run, at a5c9b7223: about 17 min for 1334 test files, up to 5 at once, times 1.94 for the host's load per CPU; a guess: 1 of them have a stored duration, the others count at their median; name test files or folders to narrow it: squeal status --at '20f03a4~1' <path>... --run"
+  ],
+  "loadStart": "11.37",
+  "exit": 0,
+  "wallSeconds": 225.867,
+  "squeal": [
+    "4s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "106s squeal status --at 20f03a4~1 --wait 100000 2>&1 | tail -30",
+    "208s squeal status --at '20f03a4~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0555003,
+  "usage": {
+    "cache_creation_input_tokens": 13339,
+    "cache_read_input_tokens": 122188,
+    "output_tokens": 991
+  },
+  "firstFinal": "Commit 20f03a431 changed no test results, as far as I've been able to check. That check is partial.\n\n- **Checked:** `test/store/open.test.ts` is the only test file the commit touched. It passes at the parent commit (a5c9b7223) and passes at 20f03a431. The result is unchanged: 0 pass→fail, 0 fail→pass. The commit added 27 lines of tests to this file, so the file has more tests now, but its overall result is the same.\n- **Not checked:** Squeal says the source change in `src/core/store/mark.ts` selects 1338 test files. The full comparison against the parent was still running when I stopped, about 17 minutes more by its estimate. I did not wait for it, so I can't confirm the other 1337 files are unchanged.\n\nTo see the full comparison once it finishes, run `squeal status --at '20f03a4~1' --wait 100000`. Repeat it if it times out.",
+  "final": "Commit 20f03a431 changed no test results, as far as I've been able to check. That check is partial.\n\n- **Checked:** `test/store/open.test.ts` is the only test file the commit touched. It passes at the parent commit (a5c9b7223) and passes at 20f03a431. The result is unchanged: 0 pass→fail, 0 fail→pass. The commit added 27 lines of tests to this file, so the file has more tests now, but its overall result is the same.\n- **Not checked:** Squeal says the source change in `src/core/store/mark.ts` selects 1338 test files. The full comparison against the parent was still running when I stopped, about 17 minutes more by its estimate. I did not wait for it, so I can't confirm the other 1337 files are unchanged.\n\nTo see the full comparison once it finishes, run `squeal status --at '20f03a4~1' --wait 100000`. Repeat it if it times out.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4~1 --run",
+    "20f03a4 --run",
+    "20f03a4~1",
+    "'20f03a4~1' --run"
+  ]
+}

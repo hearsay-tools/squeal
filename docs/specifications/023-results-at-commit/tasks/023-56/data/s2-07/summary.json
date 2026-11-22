@@ -1,0 +1,57 @@
+{
+  "id": "s2-07",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/d978c19c2f70bc73/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | head -80"
+  ],
+  "joins": [
+    "3s +0s squeal status --at 20f03a4 --run --wait 100000 2>&1 | head -60; echo ----; git show --stat 20f03a4 | head -20",
+    "5s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | head -80",
+    "105s +9s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 120000 2>&1 | head -30"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at a5c9b7223: about 35 min for 1338 test files, up to 4 at once, times 2.47 for the host's load per CPU; a guess: 1 of them have a stored duration, the others count at their median; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no"
+  ],
+  "loadStart": "8.80",
+  "exit": 0,
+  "wallSeconds": 120.212,
+  "squeal": [
+    "3s squeal status --at 20f03a4 --run --wait 100000 2>&1 | head -60; echo ----; git show --stat 20f03a4 | head -20",
+    "5s squeal status --at HEAD~1 --run --wait 100000 2>&1 | head -80",
+    "105s squeal status --at HEAD~1 test/store/open.test.ts --run --wait 120000 2>&1 | head -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.048674100000000005,
+  "usage": {
+    "cache_creation_input_tokens": 12683,
+    "cache_read_input_tokens": 97566,
+    "output_tokens": 719
+  },
+  "firstFinal": "**Not that I could find.** I only confirmed this for the one test file the commit edited. The full comparison is unfinished.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared that test file between `a5c9b7223` (the parent) and the current tree:\n\n- `test/store/open.test.ts` passed at both commits, so its result is unchanged: 0 pass→fail, 0 fail→pass.\n\nSqueal selects 1338 test files as affected by the `mark.ts` change. Comparing all of them would take about 35 minutes, so I didn't wait for it. Those runs were still going in the Squeal daemons when I stopped, so the result for those files is unknown. I also didn't check the 624 files that Squeal doesn't select for this change.\n\nTo finish the full comparison, run `squeal status --at HEAD~1 --wait 100000`. It waits on the queued runs.",
+  "final": "**Not that I could find.** I only confirmed this for the one test file the commit edited. The full comparison is unfinished.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared that test file between `a5c9b7223` (the parent) and the current tree:\n\n- `test/store/open.test.ts` passed at both commits, so its result is unchanged: 0 pass→fail, 0 fail→pass.\n\nSqueal selects 1338 test files as affected by the `mark.ts` change. Comparing all of them would take about 35 minutes, so I didn't wait for it. Those runs were still going in the Squeal daemons when I stopped, so the result for those files is unknown. I also didn't check the 624 files that Squeal doesn't select for this change.\n\nTo finish the full comparison, run `squeal status --at HEAD~1 --wait 100000`. It waits on the queued runs.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

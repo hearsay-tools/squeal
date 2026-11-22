@@ -1,0 +1,54 @@
+{
+  "id": "s1-01",
+  "leftover": 2,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/681000f1c5447d4d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "3s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "103s +17s squeal status --at '8be977ad6~1' packages/cezar/src/lint --run --wait 100000 2>&1 | tail -25"
+  ],
+  "estimates": [
+    "3s +99s Still to run, in the working tree: about 14 min for 99 test files, at this call's rate there (12 results in 98 s); name test files or folders to narrow it: squeal status --at '8be977ad6~1' <path>... --run"
+  ],
+  "loadStart": "5.30",
+  "exit": 0,
+  "wallSeconds": 124.767,
+  "squeal": [
+    "3s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60",
+    "103s squeal status --at '8be977ad6~1' packages/cezar/src/lint --run --wait 100000 2>&1 | tail -25"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.08629420000000002,
+  "usage": {
+    "cache_creation_input_tokens": 28367,
+    "cache_read_input_tokens": 75607,
+    "output_tokens": 780
+  },
+  "firstFinal": "**So far, no test file's result differs between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though.**\n\nSqueal's comparison against d8abcfe46 shows 0 pass → fail and 0 fail → pass. The commit's change selects 110 test files, and most of them don't have results on both sides yet.\n\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is absent at the parent and passes now. That is an addition, not a changed result.\n- **Lint tests:** The 9 test files in `packages/cezar/src/lint/` that have results at both commits are unchanged. 19 more there had no result at the parent and pass now. They weren't selected by the change, so a differing result is unlikely.\n- **Still running at the parent:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent. Their result at the commit hadn't arrived when I stopped.\n- **Browser e2e:** 97 files have not run on either side. Their global setup fails because Chrome won't launch in this environment, so they say nothing about this commit.\n- **Unknown:** The rest of the 1920 test files have no result at the parent or at the commit.\n\nTo finish the comparison, run `squeal status --at '8be977ad6~1' --wait 100000`. It waits for the remaining runs, and about 14 minutes were still queued when I stopped.",
+  "final": "**So far, no test file's result differs between 8be977ad6 and its parent d8abcfe46. The comparison is incomplete, though.**\n\nSqueal's comparison against d8abcfe46 shows 0 pass → fail and 0 fail → pass. The commit's change selects 110 test files, and most of them don't have results on both sides yet.\n\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is absent at the parent and passes now. That is an addition, not a changed result.\n- **Lint tests:** The 9 test files in `packages/cezar/src/lint/` that have results at both commits are unchanged. 19 more there had no result at the parent and pass now. They weren't selected by the change, so a differing result is unlikely.\n- **Still running at the parent:** `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` passed at the parent. Their result at the commit hadn't arrived when I stopped.\n- **Browser e2e:** 97 files have not run on either side. Their global setup fails because Chrome won't launch in this environment, so they say nothing about this commit.\n- **Unknown:** The rest of the 1920 test files have no result at the parent or at the commit.\n\nTo finish the comparison, run `squeal status --at '8be977ad6~1' --wait 100000`. It waits for the remaining runs, and about 14 minutes were still queued when I stopped.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "'8be977ad6~1' --run"
+  ]
+}
