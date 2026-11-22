@@ -13,6 +13,8 @@ import { LS_TREE_TIMEOUT_MS, lsTreeArgs } from "./tree.js";
  * commit holds it as `.ai/skills/a/SKILL.md`. The link is resolved at the
  * commit's tree, from the link's own blob: a target that leaves the
  * repository, an absolute one, or one the commit does not hold is not held.
+ * Components resolve in file-system order, so `bridge/..` first follows
+ * `bridge` (review 0.1.599 B1).
  */
 
 /** A commit's tree as D4.9 reads it. */
@@ -49,7 +51,12 @@ export async function heldAt(
   // Both git reads end by `timeoutMs` together (row 023-42, review 0.1.597 B3).
   const left = Math.max(1, by - Date.now());
   const links = linkBlobs.size === 0 ? new Map() : await targets(root, linkBlobs, left);
-  return { blobs, has: (path) => holds(blobs, links, path, 0) };
+  let folders: Set<RelativePath> | undefined;
+  const foldersOnce = () => {
+    folders ??= foldersOf(blobs);
+    return folders;
+  };
+  return { blobs, has: (path) => holds(blobs, links, foldersOnce, path) };
 }
 
 /** Each link's target text, read from its blob with one `git cat-file --batch`. */
@@ -91,28 +98,64 @@ export function parseBatch(out: Buffer): Map<string, string> {
   return texts;
 }
 
-/** Whether `path` is listed, or a link on its way leads to a path that is, inside the repository. */
+/**
+ * Whether `path` is listed, or reaches a listed blob inside the repository,
+ * resolved one component at a time in file-system order (review 0.1.599 B1):
+ * a tracked link on the way is replaced by its target, read relative to the
+ * link's folder, before any `..` after it applies. Not held: a `..` past the
+ * root, an absolute target, a component before more components that is no
+ * folder of the commit (missing, a file, or a link that resolves to neither),
+ * or more than `MAX_HOPS` links. The last component, a link included, is held
+ * when the commit lists it.
+ */
 function holds(
   blobs: ReadonlyMap<RelativePath, FileHash>,
   links: ReadonlyMap<RelativePath, string>,
+  folders: () => ReadonlySet<RelativePath>,
   path: RelativePath,
-  hops: number,
 ): boolean {
   if (blobs.has(path)) return true;
-  if (hops >= MAX_HOPS) return false;
-  const parts = path.split("/");
-  for (let i = 1; i < parts.length; i++) {
-    const prefix = parts.slice(0, i).join("/");
-    const target = links.get(prefix);
-    if (target === undefined) {
-      if (blobs.has(prefix)) return false; // a file, not a folder: nothing is under it
+  if (links.size === 0 || posix.isAbsolute(path)) return false;
+  const pending = path.split("/");
+  const resolved: string[] = [];
+  let hops = 0;
+  while (pending.length > 0) {
+    const part = pending.shift() as string;
+    const last = pending.length === 0;
+    if (part === "" || part === ".") {
+      if (last) return false; // `dir/` or `dir/.`: a folder, never a blob
       continue;
     }
-    if (posix.isAbsolute(target)) return false;
-    const rest = parts.slice(i).join("/");
-    const resolved = posix.normalize(posix.join(posix.dirname(prefix), target, rest));
-    if (resolved === ".." || resolved.startsWith("../")) return false;
-    return holds(blobs, links, resolved, hops + 1);
+    if (part === "..") {
+      if (resolved.length === 0) return false; // leaves the repository
+      resolved.pop();
+      if (last) return false;
+      continue;
+    }
+    const at = [...resolved, part].join("/");
+    if (last && blobs.has(at)) return true;
+    const target = links.get(at);
+    if (target !== undefined) {
+      hops += 1;
+      if (hops > MAX_HOPS || target === "" || posix.isAbsolute(target)) return false;
+      pending.unshift(...target.split("/"));
+      continue;
+    }
+    if (last || !folders().has(at)) return false;
+    resolved.push(part);
   }
   return false;
+}
+
+/** Each folder the commit lists a blob under. */
+function foldersOf(blobs: ReadonlyMap<RelativePath, FileHash>): Set<RelativePath> {
+  const folders = new Set<RelativePath>();
+  for (const path of blobs.keys()) {
+    for (let at = path.lastIndexOf("/"); at > 0; at = path.lastIndexOf("/", at - 1)) {
+      const folder = path.slice(0, at);
+      if (folders.has(folder)) break;
+      folders.add(folder);
+    }
+  }
+  return folders;
 }
