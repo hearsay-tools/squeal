@@ -106,6 +106,43 @@ The other writer's waits are the vacuum slices' real hold (budget plus one step)
 - **The prune takes longer by the clock.** Every checkpoint slice gets a pause of at least 10 ms. The list phase took 331 to 352 s against 233 s; in 8 minutes the vacuum freed 142,000 (16 pages) and 158,000 (8 pages) pages against 196,000. The work is the same; the pauses are more.
 - **The WAL limit holds**: the largest WAL before a write was 28 MB (repair) against 19 MB (0.1.593).
 
+### Bench pairs (store-7g, store-7g-wt3)
+
+`bench/boat-run.sh --ref squeal--v0.1.591 --ref . --cells store-7g,store-7g-wt3 --repeat 1`, each pair in one 4 vCPU Ryzen 7 9700X sandbox. `.` is the worktree's plugin, built for the run and not committed (this row leaves `plugins/*/dist` alone), so the scorecards name it 0.1.593, the package version:
+
+- `-2`: `ce9a0ec41`, checkpoint slices with 16-page steps.
+- `-3`: the head, checkpoint slices with 8-page steps.
+
+Both pairs pass correctness. The long-write log names only transactions over 250 ms, so the bench cannot show a prune slice between 100 and 250 ms; the probe above does.
+
+| Cell | Run | Score | Lock holds over 250 ms, count and total | Hook after each batch (slowest 5%) |
+|---|---|---:|---:|---:|
+| store-7g | 0.1.591 (`-3`) | 54 | 615, 364 s | 682 ms |
+| store-7g | `cand/0.1.593` (first bench) | 54 | 38, 18 s | 255 ms |
+| store-7g | 16-page repair (`-2`) | 56 | 17, 7.8 s | |
+| store-7g | head (`-3`) | 61 | 5, 3.6 s | 227 ms |
+| store-7g-wt3 | 0.1.591 (`-3`) | 58 | 595, 370 s | 895 ms |
+| store-7g-wt3 | `cand/0.1.593` (first bench) | 55 | 60, 29 s | 393 ms |
+| store-7g-wt3 | 16-page repair (`-2`) | 50 | 77, 39 s | |
+| store-7g-wt3 | head (`-3`) | 67 | 11, 6.2 s | 170 ms |
+
+Prune slices over 250 ms, longest per kind:
+
+| Cell | Run | Vacuum | 32-list delete | Other prune rules |
+|---|---|---:|---:|---:|
+| store-7g | `cand/0.1.593` | 14, longest 883 ms | 15, longest 596 ms | |
+| store-7g | 16-page repair | 0 | 14, longest 818 ms | 0 |
+| store-7g | head | 0 | 1, 253 ms | 1, 251 ms (`dropPrunable`, 256 results) |
+| store-7g-wt3 | `cand/0.1.593` | 16, longest 623 ms | 23, longest 1,095 ms | |
+| store-7g-wt3 | 16-page repair | 0 | 48, longest 798 ms | 0 |
+| store-7g-wt3 | head | 0 | 0 | 0 |
+
+The remaining long holds at the head are result writes (`#record`, 6,003 rows, up to 1,890 ms) and `reconcileBatch`, present in 0.1.591 as well and not prune.
+
+**Vacuum** stays under 250 ms in both repair runs. **List deletes** do not show one picture. The two repair runs have the same list code, yet the first logged 14 and 48 deletes over 250 ms (about 1% of 5,100) and the second 1 and 0. In the first run the long deletes came in the sandbox's busiest seconds. At them the machine was 64% busy (`store-7g`) and 44% (`store-7g-wt3`) at the median, against 9% and 24% over the list phase (`samples.json`). Their checkpoint was off. In the quiet probe the same deletes never took over 205 ms. So the list-delete tail is most likely the daemon held up by test runs inside its transaction (CPU, disk or a GC pause), and not SQLite work the prune could split. It is not proven: the long-write line gives only the total of a transaction.
+
 ### For the coordinator
 
-The write lock of each prune slice now stays near the budget on this store: list deletes at most 133 ms of work, vacuum slices at most 132 ms, with a few commits slower while another process checkpoints. The checkpoints themselves still block the daemon for up to about 1 s each, outside the lock. If the outcome also means the daemon's thread, that cost cannot be split further by the prune: one `wal_checkpoint` call copies every page the WAL holds, and it is one SQLite call.
+- On the bench store a prune slice's write transaction now stays near the budget: vacuum at most 132 ms in the probe and none over 250 ms in either bench pair. List deletes are at most 133 ms of work in the probe.
+- The bench still shows list deletes over 250 ms in one of two runs (14 and 48, up to 818 ms), at the sandbox's busiest moments. A smaller `LIST_DELETE_BATCH` would not help much against a stall of the whole process. Splitting the cause further needs the long-write log to time the parts of a transaction; this row does not own it.
+- The checkpoints still block the daemon's thread, outside the lock, for up to about 1 s each during the vacuum. That cannot be split further by the prune: one `wal_checkpoint` call copies every page the WAL holds, and SQLite gives it no page limit.
