@@ -25,7 +25,9 @@ export function windowEdits(snapshot: ReachSnapshot): {
   for (const [at, edit] of kept.entries()) {
     for (const path of edit.paths) {
       edits.set(path, (edits.get(path) ?? 0) + 1);
-      editsOf.set(path, [...(editsOf.get(path) ?? []), at]);
+      const known = editsOf.get(path);
+      if (known === undefined) editsOf.set(path, [at]);
+      else known.push(at);
     }
   }
   return { kept, edits, editsOf };

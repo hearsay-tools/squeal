@@ -10,9 +10,9 @@ import type { ReachSnapshot } from "./types.js";
 /*
  * Spec 015 D11 "Suggestions": one per entry, by the path kind of its main
  * route, never by a threshold. A suggestion is evidence and an option, not
- * an instruction. Child processes and runtime reads get a note instead:
- * Squeal re-runs those tests by design, and their seconds are never called
- * avoidable.
+ * an instruction. Child processes and runtime reads get a note of their
+ * recorded facts instead (`observers.ts`, row 015-128), and their seconds
+ * are never called avoidable.
  */
 
 export interface Suggestion {
@@ -25,9 +25,6 @@ export interface SecondGateway {
   readonly gateway: RelativePath;
   readonly suggestion: Suggestion;
 }
-
-/** The note for a route Squeal re-runs by design. */
-export const BY_DESIGN = "these tests start the program from source; Squeal re-runs them by design";
 
 /** `a → b → c`. */
 export const chainText = (chain: readonly RelativePath[]) => chain.join(" → ");
