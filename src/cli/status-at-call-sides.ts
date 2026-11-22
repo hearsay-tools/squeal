@@ -138,20 +138,26 @@ export async function joinedCommit(
   input: CommitDaemonInput,
   commonDir: AbsolutePath,
   paths: readonly RelativePath[] | null,
-  bound: number,
+  bounds: { readonly bound: number; readonly askBy: number },
 ): Promise<CommitAsked> {
+  const { bound, askBy } = bounds;
   const tree = await joinedTree(daemons, input, commonDir);
   // Review 0.1.599 B4: the change's count is read only from an ask of this call's change.
   const changed = await changedPaths(input.root, input.commit).catch(() => null);
   const change = changed === null ? null : changeOf(changed);
   if (tree === null) return joinCommit(daemons, null, bound);
-  const listed = await withStores(commonDir, async (main) =>
-    (main?.testFileKeys.list(idOf(tree)) ?? [])
-      .filter((row) => row.pending !== null && row.pending !== undefined)
-      .map((row) => row.testFile)
-      .filter((ref) => paths === null || selects(paths, ref.path)),
+  const rows = await withStores(
+    commonDir,
+    async (main) => main?.testFileKeys.list(idOf(tree)) ?? [],
   );
-  return joinCommit(daemons, tree, bound, { listed, paths, change });
+  const listed = rows
+    .filter((row) => row.pending !== null && row.pending !== undefined)
+    .map((row) => row.testFile);
+  // Review 0.1.599 B2: a named path no listed test file is at or under is a source path.
+  const sources = (paths ?? []).filter(
+    (path) => !rows.some((row) => selects([path], row.testFile.path)),
+  );
+  return joinCommit(daemons, tree, bound, { listed, paths, sources, change, askBy });
 }
 
 /** A commit worktree of this commit and environment whose tree is gone, if the store still holds its daemon's rows. */

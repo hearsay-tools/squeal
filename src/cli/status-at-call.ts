@@ -99,7 +99,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
   const [atQueue, nowQueue] =
     run === null
       ? await Promise.all([
-          joinedCommit(daemons, commitInput, commonDir, place.paths, bound),
+          joinedCommit(daemons, commitInput, commonDir, place.paths, { bound, askBy }),
           nowRead.then(({ side }) =>
             joinNow({ daemons, root, refs: side.refs, now: side.state, deadline: bound }),
           ),

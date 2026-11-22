@@ -36,6 +36,8 @@ export interface CommitAsked extends SideQueue {
   readonly asks: readonly CommitAskState[];
   /** Review 0.1.599 B4: the identity of this call's change (`changeOf`); `null`: not known. */
   readonly change: string | null;
+  /** Review 0.1.599 B2: `--wait` alone, the readers of its named paths the commit daemon told. */
+  readonly readers?: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
 }
 
 /** Each file's group, as the commit's own policy places it (R3's setup line names it). */
@@ -87,12 +89,16 @@ export async function askCommit(input: AskInput): Promise<CommitAsked> {
 
 /** What `--wait` alone joins at the commit, beside the daemon's kept asks. */
 export interface CommitJoin {
-  /** The call's files the daemon lists pending. */
+  /** The files the daemon lists pending; the call's paths narrow them here. */
   readonly listed: readonly TestFileRef[];
   /** The call's paths; `null` for every file. */
   readonly paths: readonly RelativePath[] | null;
+  /** Of `paths`, those that select no test file the daemon lists: their readers are asked. */
+  readonly sources: readonly RelativePath[];
   /** Review 0.1.599 B4: the identity of this call's change (`changeOf`); `null`: not known. */
   readonly change: string | null;
+  /** Epoch ms by which the readers' query ends (the call's `askBy`). */
+  readonly askBy: number;
 }
 
 /**
@@ -104,26 +110,50 @@ export async function joinCommit(
   daemons: AtDaemons,
   tree: AbsolutePath | null,
   bound: number,
-  join: CommitJoin = { listed: [], paths: null, change: null },
+  join: CommitJoin = { listed: [], paths: null, sources: [], change: null, askBy: bound },
 ): Promise<CommitAsked> {
   if (tree === null) return { ...NOTHING, setup: null, asks: [], change: join.change };
   const read = await readUntilQueued(daemons, tree, undefined, bound, bound);
-  const joined = await waitFor(daemons, tree, narrowed(read, join.paths), bound, join.listed);
-  return { ...joined, change: join.change };
+  const readers = await readersAt(daemons, tree, read, join);
+  const keep = keeper(join.paths, read, readers);
+  const asks = read.asks.map((ask) => ({ ...ask, files: ask.files.filter(keep) }));
+  const joined = await waitFor(daemons, tree, { ...read, asks }, bound, join.listed.filter(keep));
+  return { ...joined, change: join.change, readers };
 }
 
 /**
- * Row 023-51 (V4): a narrowed `--wait` joins only the asks' files its
- * paths select (by path, or as a named path's readers), so it waits for
- * and counts its own files, not another call's whole queue.
+ * Review 0.1.599 B2: the readers of the call's paths that are no test file,
+ * from the commit daemon's own key index (its `sync` with the paths, as the
+ * working tree's side asks its daemon); it queues nothing. An earlier wide
+ * ask named no path and kept no readers, so a narrowed `--wait` cannot read
+ * them there. None while the daemon sets up: it has queued nothing yet.
  */
-function narrowed(read: Read, paths: readonly RelativePath[] | null): Read {
-  if (paths === null) return read;
-  const readers = new Set(
-    read.asks.flatMap((ask) => paths.flatMap((path) => ask.readers[path] ?? [])).map(testFileId),
-  );
-  const keep = (ref: TestFileRef) => selects(paths, ref.path) || readers.has(testFileId(ref));
-  return { ...read, asks: read.asks.map((ask) => ({ ...ask, files: ask.files.filter(keep) })) };
+async function readersAt(
+  daemons: AtDaemons,
+  tree: AbsolutePath,
+  read: Read,
+  join: CommitJoin,
+): Promise<ReadonlyMap<RelativePath, readonly TestFileRef[]>> {
+  if (join.sources.length === 0 || read.setup?.phase !== "ready") return new Map();
+  const asked = await daemons.now(tree, join.sources, join.askBy).catch(() => null);
+  return asked?.kind === "read" ? (asked.readers ?? new Map()) : new Map();
+}
+
+/**
+ * Row 023-51 (V4): a narrowed `--wait` joins only the files its paths
+ * select, by path or as a named path's readers (the daemon's, review
+ * 0.1.599 B2, and those an ask kept), so it waits for and counts its own
+ * files, not another call's whole queue.
+ */
+function keeper(
+  paths: readonly RelativePath[] | null,
+  read: Read,
+  readers: ReadonlyMap<RelativePath, readonly TestFileRef[]>,
+): (ref: TestFileRef) => boolean {
+  if (paths === null) return () => true;
+  const kept = read.asks.flatMap((ask) => paths.flatMap((path) => ask.readers[path] ?? []));
+  const ids = new Set([...kept, ...[...readers.values()].flat()].map(testFileId));
+  return (ref) => selects(paths, ref.path) || ids.has(testFileId(ref));
 }
 
 export interface Read {
@@ -179,8 +209,11 @@ async function waitFor(
   }
   for (const ref of listed) files.set(testFileId(ref), ref);
   const queued = [
-    ...read.asks.filter((a) => a.phase === "queued").flatMap((a) => a.files),
-    ...listed,
+    ...new Map(
+      [...read.asks.filter((a) => a.phase === "queued").flatMap((a) => a.files), ...listed].map(
+        (ref) => [testFileId(ref), ref],
+      ),
+    ).values(),
   ];
   if (queued.length > 0) {
     const ended = await daemons.wait(tree, queued, bound).catch((error: unknown) => String(error));
