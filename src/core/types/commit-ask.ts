@@ -76,6 +76,13 @@ export interface CommitAskState {
   readonly problems: readonly string[];
   /** D4.9: chosen files that do not run, with why (`needs <path>`); absent when none. */
   readonly refused?: readonly CommitRefusal[];
+  /**
+   * Row 023-53 (V8): how many test files the change selects at the commit
+   * (D4.5), with a result there or not, before the call's paths narrow
+   * them: what the same call without paths compares. Absent until
+   * `queued`, and from a daemon before this field.
+   */
+  readonly selects?: number;
 }
 
 /** D4.9: a file the commit daemon does not run: its closure reads a path git does not hold there. */

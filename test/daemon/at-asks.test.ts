@@ -122,6 +122,13 @@ describe("D4.5 at the commit daemon (row 023-40c)", () => {
     expect(paths(folderChanged?.rest ?? [])).toEqual([C.path]);
   });
 
+  it("counts the change's whole selection, results and the call's paths aside (row 023-53, V8)", async () => {
+    // A is read by src/a.ts and has a result; B has no key; D is not selected.
+    const p = ports([row(A), row(B, null), row(D)], new Set(["k-test/a.test.ts"]));
+    expect((await choose(ask({ named: [D.path] }), p.value))?.selects).toBe(2);
+    expect((await choose(ask({ allMissing: true }), p.value))?.selects).toBe(2);
+  });
+
   it("refuses a chosen file whose closure reads a path git does not hold, and its path's other projects (D4.9)", async () => {
     const other: TestFileRef = { project: "other", path: A.path };
     const p = ports(
