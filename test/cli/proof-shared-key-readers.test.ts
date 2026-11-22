@@ -59,8 +59,8 @@ describe(
       expect(result.files[0], result.why).toMatchObject({ verdict: "proven" });
 
       // `status --at` refuses the clean tree's own HEAD: a later commit leaves the test's inputs as they are.
-    f.commit({ "notes.md": "later\n" });
-    const stored = await run(f, { commit: head, json: true });
+      f.commit({ "notes.md": "later\n" });
+      const stored = await run(f, { commit: head, json: true });
       expect(atOf(stored.out, TEST.path)?.state, stored.out + stored.err).not.toBe("fail");
 
       const real = realCommitDaemon(f.root);
