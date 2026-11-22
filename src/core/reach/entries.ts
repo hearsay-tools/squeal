@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { compare } from "../fs/compare.js";
+import { testFileId } from "../keys/reverse-index.js";
 import type { RelativePath } from "../types/common.js";
 import {
   type Analysis,
@@ -9,7 +10,7 @@ import {
   rankedSeconds,
   type Seconds,
 } from "./analyze.js";
-import { OBSERVED_KINDS, observedNote } from "./observers.js";
+import { OBSERVED_KINDS, observedNote, observerKey } from "./observers.js";
 import { IMPORT_KINDS, type PathKind } from "./pairs.js";
 import type { FileEntry, GatewayEntry, ReachRoute, Split, TestEntry } from "./report-types.js";
 import { secondGateway, suggestionFor, typesOnlyThrough } from "./suggest.js";
@@ -58,6 +59,16 @@ export function routeOf(route: Route): ReachRoute {
   return { kind, gateway, chain, testFiles, seconds, coverage: split(route.coverage, seconds) };
 }
 
+function observedOutweighsImports(kinds: Seconds<PathKind>): boolean {
+  let observed = 0;
+  let imports = 0;
+  for (const [kind, seconds] of Object.entries(kinds) as [PathKind, number][]) {
+    if (OBSERVED_KINDS.has(kind)) observed += seconds;
+    if (IMPORT_KINDS.has(kind)) imports += seconds;
+  }
+  return observed > imports;
+}
+
 /**
  * The note, when child-process and runtime-read seconds outweigh import
  * seconds (015-116, P3): who re-runs on the file outside their imports and
@@ -70,15 +81,9 @@ export function noteOf(
   analysis: Analysis,
   editShare: number,
 ): { readonly note?: string } {
-  let observed = 0;
-  let imports = 0;
-  for (const [kind, seconds] of Object.entries(kinds) as [PathKind, number][]) {
-    if (OBSERVED_KINDS.has(kind)) observed += seconds;
-    if (IMPORT_KINDS.has(kind)) imports += seconds;
-  }
-  if (observed <= imports) return {};
+  if (!observedOutweighsImports(kinds)) return {};
   const share = analysis.kept.length === 0 ? null : editShare;
-  // Files of one entry share their reach, so the first one's observers stand for all.
+  // Review 0.1.602 B2: `groups()` only collapses files whose observer facts match.
   const [first] = files as [FileReach];
   const name = files.length === 1 ? first.path : "these files";
   return { note: observedNote(name, first.observers, analysis.readers, share) };
@@ -138,9 +143,13 @@ function groups(files: readonly FileReach[], snapshot: ReachSnapshot): Group[] {
     // Without a gateway (no stored edges, a declared input, a runtime read) the kind and its pattern stand in.
     const via = route?.gateway ?? `${route?.declared?.tests}\0${route?.declared?.input}`;
     // P4 and P6: a types-only file, and the files of a second gateway, get their own entry and text.
+    // Review 0.1.602 B2: keep files apart when their factual observer notes differ.
     const typesOnly = route !== null && typesOnlyThrough(file.path, route, snapshot);
     const second = route === null ? null : secondGateway([file.path], route, snapshot, file);
-    const apart = `${typesOnly}\0${second?.gateway ?? ""}`;
+    const observed = observedOutweighsImports(file.kinds)
+      ? createHash("sha1").update(observerKey(file.observers)).digest("hex")
+      : "";
+    const apart = `${typesOnly}\0${second?.gateway ?? ""}\0${observed}`;
     const key = route === null ? `\0${file.path}` : `${route.kind}\0${via}\0${reach}\0${apart}`;
     const group = out.get(key) ?? { files: [], route, lead: file };
     group.files.push(file);
@@ -244,6 +253,7 @@ export function gatewayEntries(analysis: Analysis): GatewayEntry[] {
     tests: (index) => {
       const test = analysis.tests[index];
       return {
+        id: test === undefined ? String(index) : testFileId(test.test.ref),
         path: test?.test.ref.path ?? "",
         seconds: test?.test.seconds ?? 0,
         outside: test?.outside ?? 0,

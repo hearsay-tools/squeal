@@ -22,8 +22,9 @@ export interface GatewayInput {
   readonly rerunSeconds: number;
   /** Each broad reader's group (`broadGroups`). */
   readonly readers: ReadonlyMap<RelativePath, string>;
-  /** The suite's test file at an index: its path, recorded seconds, and modules outside its walk. */
+  /** The suite's test file at an index: its `(project, path)` id, path, recorded seconds, and modules outside its walk. */
   readonly tests: (index: number) => {
+    readonly id: string;
     readonly path: RelativePath;
     readonly seconds: number;
     readonly outside: number;
@@ -178,7 +179,7 @@ function groupOf(pair: Pair, test: RelativePath, outside: number): Group | null 
 function adviceOf(
   group: Group,
   edited: readonly RelativePath[],
-  tests: readonly { readonly path: RelativePath; readonly outside: number }[],
+  tests: readonly { readonly id: string; readonly path: RelativePath; readonly outside: number }[],
   readers: ReadonlyMap<RelativePath, string>,
 ): { readonly suggestion: GatewayEntry["suggestion"]; readonly note?: string } {
   const one = edited.length === 1;
@@ -219,11 +220,13 @@ function adviceOf(
 function observedText(
   group: Group,
   edited: readonly RelativePath[],
-  tests: readonly { readonly path: RelativePath; readonly outside: number }[],
+  tests: readonly { readonly id: string; readonly path: RelativePath; readonly outside: number }[],
   readers: ReadonlyMap<RelativePath, string>,
 ): string {
   const broad = new Map(
-    tests.filter((t) => t.outside >= BROAD_READS).map((t) => [t.path, t.outside]),
+    tests
+      .filter((t) => t.outside >= BROAD_READS)
+      .map((t) => [t.id, { path: t.path, outside: t.outside }] as const),
   );
   const like = "as tests that start or bundle the program from source do";
   if (group.kind === "child process") {

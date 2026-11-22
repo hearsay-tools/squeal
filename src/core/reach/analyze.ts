@@ -154,7 +154,7 @@ export function analyze(
     const outside = outsideModules(pairs);
     for (const pair of pairs) {
       const file = addPair(files, pair, test, index, detail(pair.path));
-      addObserver(file.observers, pair, test.ref.path, outside);
+      addObserver(file.observers, pair, test.ref, outside);
       if (edits.has(pair.path)) gateways.add(pair, test.ref.path, index, outside);
     }
     return { ...testReach(test, pairs, kept), outside };
