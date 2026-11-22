@@ -88,7 +88,11 @@ export class GatewayPairs {
     }
     const files = new Map<string, RelativePath[]>();
     for (const [path, byKey] of byPath) {
-      for (const key of byKey.keys()) files.set(key, [...(files.get(key) ?? []), path]);
+      for (const key of byKey.keys()) {
+        const known = files.get(key);
+        if (known === undefined) files.set(key, [path]);
+        else known.push(path);
+      }
     }
     const entries = [...totals].map(([key, total]): GatewayEntry => {
       const group = groups.get(key) as Group;
