@@ -1,5 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -50,6 +58,51 @@ function repo(): AbsolutePath {
   return root;
 }
 
+/*
+ * Review 0.1.599 B1: a link target such as `folder/bridge/../held` must
+ * resolve `bridge` before its `..`, as the file system does. Here `bridge`
+ * leads out of the repository, so the read reaches a `held` folder beside
+ * it, not the commit's `folder/held`.
+ */
+function dotdotRepo(): { dir: string; root: AbsolutePath } {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "sq-held-dotdot-")));
+  onCleanUp(() => rmSync(dir, { recursive: true, force: true }));
+  const root = join(dir, "repo") as AbsolutePath;
+  for (const path of ["folder/held/file.txt", "folder/sub/keep.txt", "held/file.txt", "regular"]) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), "commit content\n");
+  }
+  mkdirSync(join(dir, "outside"));
+  mkdirSync(join(dir, "held"));
+  writeFileSync(join(dir, "held/file.txt"), "outside content\n");
+  const links: Record<string, string> = {
+    "folder/bridge": "../../outside",
+    "outside-via-dotdot": "folder/bridge/../held",
+    "via-gone": "gone/../held",
+    "via-regular": "regular/../held",
+    loop: "loop",
+    "via-loop": "loop/../held",
+    // Each of these stays inside: a real folder, or a link that resolves to one, before `..`.
+    "folder/inner": "held",
+    "inside-via-sub": "folder/sub/../held",
+    "inside-via-link": "folder/inner/../held",
+  };
+  for (const [path, target] of Object.entries(links)) symlinkSync(target, join(root, path));
+  git(root, "init", "-q", "-b", "main");
+  git(root, "add", "-A");
+  git(root, "commit", "-qm", "A");
+  return { dir, root };
+}
+
+/** What the file system gives for `path` under `root`: its text, or the error code. */
+function disk(root: string, path: string): string {
+  try {
+    return readFileSync(join(root, path), "utf8");
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code ?? "error";
+  }
+}
+
 describe("heldAt (row 023-48, V1)", () => {
   it("holds a path under a tracked directory symlink and refuses one that leaves the tree", async () => {
     const root = repo();
@@ -79,6 +132,37 @@ describe("heldAt (row 023-48, V1)", () => {
     expect(needs(file([".agents/skills/a/SKILL.md", ".agents/out/outside.md"]))).toBe(
       ".agents/out/outside.md",
     );
+  });
+
+  it("resolves each link before the `..` after it, as the file system does (review 0.1.599 B1)", async () => {
+    const { root } = dotdotRepo();
+    const held = await heldAt(root, "HEAD");
+    // The fixture reads on disk as the review found.
+    expect(disk(root, "outside-via-dotdot/file.txt")).toBe("outside content\n");
+    expect(disk(root, "via-gone/file.txt")).toBe("ENOENT");
+    expect(disk(root, "via-regular/file.txt")).toBe("ENOTDIR");
+    expect(disk(root, "via-loop/file.txt")).toBe("ELOOP");
+    expect(held.has("outside-via-dotdot/file.txt")).toBe(false);
+    expect(held.has("via-gone/file.txt")).toBe(false);
+    expect(held.has("via-regular/file.txt")).toBe(false);
+    expect(held.has("via-loop/file.txt")).toBe(false);
+    // A `..` after a real folder, or after a link that stays inside, still holds.
+    expect(disk(root, "inside-via-sub/file.txt")).toBe("commit content\n");
+    expect(disk(root, "inside-via-link/file.txt")).toBe("commit content\n");
+    expect(held.has("inside-via-sub/file.txt")).toBe(true);
+    expect(held.has("inside-via-link/file.txt")).toBe(true);
+    expect(held.has("folder/held/file.txt")).toBe(true);
+  });
+
+  it("needsOf names a read whose link leaves the repository before its `..` (review 0.1.599 B1)", async () => {
+    const { root } = dotdotRepo();
+    const needs = await needsOf({ root, commit: "HEAD", tree: root });
+    const file = (loads: string[]) =>
+      ({ ref: { project: "", path: "t.test.ts" }, at: { key: "k", loads } }) as never;
+    expect(needs(file(["inside-via-link/file.txt", "outside-via-dotdot/file.txt"]))).toBe(
+      "outside-via-dotdot/file.txt",
+    );
+    expect(needs(file(["inside-via-sub/file.txt", "inside-via-link/file.txt"]))).toBeNull();
   });
 
   it("parses a batch with a missing object and multibyte content", () => {
