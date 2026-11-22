@@ -47,7 +47,8 @@ export async function setupCommand(
     return 1;
   }
   const env = io.env ?? process.env;
-  const { plan, testFiles } = await readPlan(root, { env, codexTrust: true });
+  const requestedHarnesses = parsed.mode === "apply" ? (parsed.given.harnesses ?? []) : [];
+  const { plan, testFiles } = await readPlan(root, { env, codexTrust: true, requestedHarnesses });
   if (parsed.mode === "apply") {
     // Row 005-40: a test glob that selects nothing is refused before any question.
     let { given } = parsed;

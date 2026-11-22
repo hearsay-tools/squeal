@@ -71,16 +71,18 @@ describe("squeal status in an Antigravity shell (spec 024 D6)", () => {
     expect(stdout).toMatch(LINE);
   });
 
-  it("says the plugin is disabled when config.json disables it, and nothing more when it is enabled", () => {
+  it("says when the plugin is disabled and names the install command for installed plugins too (review 0.1.603 S1)", () => {
     const repo = storeRepo([]);
     const disabled = geminiHome("0.1.602", { plugins: { squeal: { enabled: false } } });
     const off = run(["status"], repo.main, { ANTIGRAVITY_CONVERSATION_ID: ID, HOME: disabled });
     expect(LINE.exec(off.stdout)?.[1]).toBe(
-      " Its hooks do not run: the Squeal plugin is disabled in ~/.gemini/config/config.json (agy plugin enable squeal enables it).",
+      ` Its hooks do not run: the Squeal plugin is disabled in ~/.gemini/config/config.json (agy plugin enable squeal enables it); to reinstall, run ${ANTIGRAVITY_INSTALL_COMMAND}.`,
     );
     const enabled = geminiHome("0.1.602", { plugins: { squeal: { enabled: true } } });
     const on = run(["status"], repo.main, { ANTIGRAVITY_CONVERSATION_ID: ID, HOME: enabled });
-    expect(LINE.exec(on.stdout)?.[1]).toBe("");
+    expect(LINE.exec(on.stdout)?.[1]).toBe(
+      ` If the hooks do not run, reinstall the plugin with ${ANTIGRAVITY_INSTALL_COMMAND}, then start Antigravity again.`,
+    );
   });
 
   it("stays silent when the conversation is registered, outside Antigravity, and in --json", () => {

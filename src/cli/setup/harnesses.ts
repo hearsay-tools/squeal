@@ -37,7 +37,11 @@ export interface HarnessFact {
 
 type Env = Readonly<Record<string, string | undefined>>;
 
-export function readHarnesses(root: string, env: Env): HarnessFact[] {
+export function readHarnesses(
+  root: string,
+  env: Env,
+  requested: readonly HarnessId[] = [],
+): HarnessFact[] {
   return [
     {
       id: "claude-code",
@@ -57,15 +61,18 @@ export function readHarnesses(root: string, env: Env): HarnessFact[] {
         `codex plugin add ${PLUGIN_ID}`,
       ],
     },
-    ...antigravityFact(env),
+    ...antigravityFact(env, requested.includes("antigravity")),
   ];
 }
 
-/** Antigravity's fact when its CLI passes detection or its plugin is installed; none otherwise. */
-function antigravityFact(env: Env): HarnessFact[] {
+/**
+ * Antigravity's fact when its CLI passes detection, its plugin is installed,
+ * or the caller explicitly requested `--harness antigravity` (review 0.1.603 B1).
+ */
+function antigravityFact(env: Env, includeWhenAbsent = false): HarnessFact[] {
   const cli = antigravityCli(env) !== null;
   const installed = antigravityPlugin(env);
-  if (!cli && installed === null) return [];
+  if (!cli && installed === null && !includeWhenAbsent) return [];
   const plugin =
     installed === null
       ? null

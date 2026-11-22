@@ -33,8 +33,8 @@ export function antigravityStatusLine(cwd: AbsolutePath, env: Env): string | nul
     plugin === null
       ? ` No Squeal plugin is in ~/.gemini/config/plugins/squeal: install it with ${ANTIGRAVITY_INSTALL_COMMAND}, then start Antigravity again.`
       : plugin.disabled
-        ? ` Its hooks do not run: ${ANTIGRAVITY_DISABLED}.`
-        : "";
+        ? ` Its hooks do not run: ${ANTIGRAVITY_DISABLED}; to reinstall, run ${ANTIGRAVITY_INSTALL_COMMAND}.`
+        : ` If the hooks do not run, reinstall the plugin with ${ANTIGRAVITY_INSTALL_COMMAND}, then start Antigravity again.`;
   return (
     `Antigravity: no Squeal consumer is registered for this conversation in this worktree (ANTIGRAVITY_CONVERSATION_ID ${conversation}). ` +
     "Either Squeal's hooks do not run in it, or none has registered it yet: hooks that ran before " +

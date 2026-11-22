@@ -1,10 +1,18 @@
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ANTIGRAVITY_INSTALL_COMMAND } from "../../../src/cli/antigravity/install.js";
 import { main } from "../../../src/cli/main.js";
 import type { SetupPlan } from "../../../src/cli/setup/plan.js";
-import { capture, cleanupFixtures, harnessEnv, squealShaped } from "./fixture.js";
+import { initRepo } from "../../hash/git-repo.js";
+import { capture, cleanupFixtures, harnessEnv, json, scratch, squealShaped } from "./fixture.js";
 
 /*
  * Spec 024 D6: `squeal setup` lists Antigravity when its CLI passes
@@ -17,6 +25,15 @@ afterEach(cleanupFixtures);
 
 /** `squealShaped` with an `AGENTS.md` of its own, not the symlink to `CLAUDE.md`. */
 const withAgents = () => squealShaped({ "AGENTS.md": "# Agents\n" });
+
+/** A minimal tracked git repo with neither `squeal.config.json` nor instruction files. */
+function bareRepo(): string {
+  const root = scratch("squeal-agy-bare-");
+  initRepo(root, {
+    "package.json": json({ name: "demo", devDependencies: { vitest: "^3.0.0" } }),
+  });
+  return root;
+}
 
 /** The Antigravity CLI as `agy`: a bare semver, and `help plugin` listing uninstall and validate. */
 const AGY = `#!/bin/sh
@@ -136,6 +153,32 @@ describe("squeal setup with Antigravity (spec 024 D6)", () => {
       "Write the Squeal block to AGENTS.md (read by Antigravity)?\n  write it (default, --yes)\n",
     );
     expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("<!-- squeal:begin v1");
+  });
+
+  it("sets Antigravity up with --harness antigravity even when neither CLI nor plugin is detected (review 0.1.603 B1)", async () => {
+    const root = bareRepo();
+    const env = harnessEnv();
+    const { io, out } = capture(root, env);
+    const code = await main(["setup", "--yes", "--no-warmup", "--harness", "antigravity"], io);
+    expect(code).toBe(0);
+    expect(out.stderr).toBe("");
+    expect(existsSync(join(root, "squeal.config.json"))).toBe(true);
+    expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("<!-- squeal:begin v1");
+    expect(out.stdout).toContain(ANTIGRAVITY_INSTALL_COMMAND);
+    expect(out.stdout).toContain("Write the Squeal block to AGENTS.md (read by Antigravity;");
+    expect(readdirSync(env.HOME as string)).toEqual(["bin"]);
+  });
+
+  it("sets Antigravity up with explicit --harness antigravity and --block AGENTS.md when undetected", async () => {
+    const root = bareRepo();
+    const env = harnessEnv();
+    const { io, out } = capture(root, env);
+    const args = ["setup", "--yes", "--no-warmup", "--harness", "antigravity"];
+    expect(await main([...args, "--block", "AGENTS.md"], io)).toBe(0);
+    expect(out.stderr).toBe("");
+    expect(existsSync(join(root, "squeal.config.json"))).toBe(true);
+    expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("<!-- squeal:begin v1");
+    expect(out.stdout).toContain(ANTIGRAVITY_INSTALL_COMMAND);
   });
 
   it("refuses an unknown --harness, naming antigravity among the values", async () => {
