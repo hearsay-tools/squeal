@@ -18,9 +18,12 @@ import {
 
 /*
  * Spec 023 Testing, end to end: `squeal status --at HEAD~1` on a copy whose
- * HEAD changes one source file and its test (D1, D3), `--run` (D4), and a
- * second call that reads the stored results with no run. The commits are named
- * in `docs/specifications/023-results-at-commit/tasks/023-09-notes.md`.
+ * HEAD changes one source file and its test (D1, D3); `--run --all-missing`
+ * (D7.3: it queues the files with no result in the commit daemon and in
+ * this worktree's daemon, and waits for them); a second `--run` that queues
+ * nothing; and plain calls that read the stored results. Row 023-41: the
+ * in-call run these steps once checked is gone. The commits are named in
+ * `docs/specifications/023-results-at-commit/tasks/023-09-notes.md`.
  */
 
 interface Side {
@@ -34,12 +37,26 @@ interface FileRow {
   readonly at: Side;
   readonly now: Side;
 }
+/** One side of the call's part (`QueuedSide`). */
+interface Queued {
+  readonly files: number;
+  readonly reached: boolean;
+  readonly known: number;
+  readonly running: number;
+  readonly problem: string | null;
+}
 interface AtReport {
   readonly commit: string;
   readonly head: string;
   readonly dirty: boolean;
   readonly counts: Record<string, number>;
-  readonly run?: { readonly selected: number; readonly ran: number; readonly stored: number };
+  /** Row 023-40 (D7.3): what the call queued in the daemons (`QueuedRun`); `null` without `--run`. */
+  readonly run: {
+    readonly mode: string;
+    readonly commit: Queued & { readonly tree: string | null; readonly setup?: string | null };
+    readonly now: Queued;
+    readonly again: string | null;
+  } | null;
   readonly files: readonly FileRow[];
 }
 
@@ -121,35 +138,68 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
         for (const path of existing) expect(first.row(path).at.state, path).toBe("no result");
         for (const path of paths) expect(first.row(path).now.state, path).toBe("no result");
 
-        // 2. The current side: HEAD's keys are the clean working tree's, so a run at HEAD fills them.
-        // Each result is shown at the key it was stored under, which the run's own reads can move
-        // past the key keyed before it (row 023-18 D1); the next call keys the working tree there.
-        const head = at(dir, ["HEAD", ...paths, "--run", "--all-missing"]);
-        expect(head.report.run, head.text).toMatchObject({ selected: 3, ran: 3, stored: 3 });
-        for (const path of paths) expect(head.row(path).at.state, path).toBe("pass");
-
-        // 3. --run at the parent runs what the diff selects and has no result; the rest is read.
-        const run = at(dir, ["HEAD~1", ...paths, "--run"]);
-        for (const path of paths) {
-          expect(run.row(path).now.key, path).toBe(head.row(path).at.key);
-          expect(run.row(path).now.state, path).toBe("pass");
+        // 2. --run --all-missing queues every file with no result: at the parent in its commit
+        // daemon, which runs them in its own worktree, and in the working tree in this worktree's
+        // daemon. The call waits for them (D7.3); a result is read at the key it was stored under.
+        const parent = git(b, dir, ["rev-parse", "HEAD~1"]);
+        const short = parent.slice(0, 9);
+        const run = at(dir, ["HEAD~1", ...paths, "--run", "--all-missing", "--wait", "300000"]);
+        expect(run.report.run, run.text).toMatchObject({
+          mode: "queue",
+          commit: { reached: true, files: existing.length, known: existing.length, running: 0 },
+          now: { reached: true, files: paths.length, known: paths.length, running: 0 },
+          again: null,
+        });
+        expect(run.report.run?.commit.tree).toEqual(expect.any(String));
+        for (const path of existing) {
+          expect(run.row(path).at.state, path).toBe("pass");
+          expect(run.row(path).at.origin?.kind, path).toBe("commit");
         }
-        const ran = pair.newTest ? 1 : 2;
-        expect(run.report.run, run.text).toMatchObject({ selected: ran, ran });
-        expect(run.report.run?.stored).toBe(ran);
-        for (const path of existing) expect(run.row(path).at.state, path).toBe("pass");
-        expect(run.row(pair.unaffected).at.origin?.kind).not.toBe("run");
+        for (const path of paths) expect(run.row(path).now.state, path).toBe("pass");
 
-        // 4. A second call reads every file from the store and runs nothing.
+        // 3. A second --run queues nothing on either side and reads every file from the store.
         const again = at(dir, ["HEAD~1", ...paths, "--run"]);
-        expect(again.report.run, again.text).toMatchObject({ selected: 0, ran: 0 });
+        expect(again.report.run, again.text).toMatchObject({
+          mode: "queue",
+          commit: { files: 0 },
+          now: { files: 0 },
+          again: null,
+        });
         for (const path of existing) {
           expect(again.row(path).at.state, path).toBe("pass");
-          expect(again.row(path).at.origin?.kind, path).not.toBe("run");
+          expect(again.row(path).at.key, path).toBe(run.row(path).at.key);
           expect(again.row(path).change, path).toBe("unchanged");
+        }
+        for (const path of paths) {
           expect(again.row(path).now.state, path).toBe("pass");
+          expect(again.row(path).now.key, path).toBe(run.row(path).now.key);
         }
         expect(again.code, again.text).toBe(pair.newTest ? 3 : 0);
+        // Its text: the daemons asked, nothing to queue on either side.
+        const text = squeal(b, dir, ["status", "--at", "HEAD~1", ...paths, "--run"]);
+        expect(text.stderr).toContain(
+          `squeal: asking the commit daemon at ${short} and this worktree's daemon\n`,
+        );
+        expect(text.stdout).toContain(
+          `--run: no file with no result at ${short} that the change selects to run\n`,
+        );
+        expect(text.stdout).toContain(
+          "--run, now: every test file the change selects has a result in the working tree\n",
+        );
+
+        // 4. A plain call keys the parent in a temporary checkout and reads the commit daemon's
+        // results at those keys (D2): the same keys, nothing run.
+        const plain = at(dir, ["HEAD~1", ...paths]);
+        expect(plain.report.run).toBeNull();
+        for (const path of existing) {
+          expect(plain.row(path).at.key, path).toBe(again.row(path).at.key);
+          expect(plain.row(path).at.state, path).toBe("pass");
+        }
+        expect(plain.code, plain.text).toBe(pair.newTest ? 3 : 0);
+
+        // The daemons the calls started stop, and the commit worktree goes with its daemon.
+        expect(squeal(b, dir, ["stop", "--at", parent]).code).toBe(0);
+        expect(squeal(b, dir, ["stop"]).code).toBe(0);
 
         // 5. The keys at the parent are the ones a worktree at the parent computes: there the
         // parent is "now", read from the store at the same keys, and HEAD's results are "at".
