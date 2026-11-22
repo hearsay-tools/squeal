@@ -197,7 +197,37 @@ describe("status --at --run on the daemons (row 023-40, D7.3; row 023-40c)", SLO
     const at = a.slice(0, 9);
     // The group's name, then the setup's own text, as the in-call run said it (row 023-29, R3).
     expect(text.out).toContain(`${TEST.path}: not run (the batch's setup failed: tests: boom)`);
-    expect(text.out).toContain("1 not run: the batch's setup failed (tests: boom)");
+    expect(text.out).toContain(`1 not run at ${at}: the batch's setup failed (tests: boom)`);
     expect(text.out).not.toContain(`still running at ${at}`);
+  });
+
+  it("names a failed setup beside the same files still queued on the other side (row 023-52, V6)", async () => {
+    const { f, a, tree } = changed();
+    const setup = { kind: "setup", project: "", testPath: "test/setup.ts" as never } as const;
+    const failing = standIn(
+      tree,
+      (root, files) => {
+        // Round 6 (s1): the browser group's setup failed at the parent; here its files stay queued.
+        if (root !== tree) return pending(f, root, files, "queued");
+        withStore(f, (store) =>
+          store.knownStates.upsertMany([knownState(worktreeIdFor(tree), setup)]),
+        );
+        pending(f, tree, files, null);
+      },
+      { select: () => [TEST], rows: (at, files) => pending(f, at, files, "queued") },
+    );
+    const options = {
+      cacheRoot: f.cacheRoot,
+      install: linkInstall().install,
+      daemons: failing.ports,
+    };
+    const text = await run(f, { commit: a, run: { allMissing: false }, waitMs: 5000 }, options);
+    const at = a.slice(0, 9);
+    expect(text.out).toContain(
+      `1 not run at ${at}: the batch's setup failed (tests: boom); in the working tree, of them: 1 still queued or running (the same setup may fail)`,
+    );
+    expect(text.out).toContain(
+      `0 still running at ${at} (its worktree), 1 in the working tree (1 of them in a batch whose setup failed at ${at}); their runs go on`,
+    );
   });
 });

@@ -121,6 +121,8 @@ export interface StandInCommit {
   readonly select?: (ask: Omit<CommitAskRequest, "type">) => readonly TestFileRef[];
   /** Writes its rows for the files it queued (as the daemon's listing and queue would). */
   readonly rows?: (tree: AbsolutePath, files: readonly TestFileRef[]) => void;
+  /** Row 023-53 (V8): the change's whole selection it tells in each ask (`selects`); absent: none. */
+  readonly selects?: number;
 }
 
 /** Stand-in daemons: each records what it is asked; `onWait` plays what the daemon did meanwhile. */
@@ -157,6 +159,7 @@ export function standIn(
           files,
           readers: {},
           problems: [],
+          ...(commitDaemon.selects === undefined ? {} : { selects: commitDaemon.selects }),
         }));
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,

@@ -1,7 +1,10 @@
+import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import { type CallEstimate, estimateLine } from "./status-at-estimate.js";
 import type { SideQueue } from "./status-at-queue.js";
 import type { SideState } from "./status-at-report.js";
+import { elsewhereText, failedThere, namedLine, restLine } from "./status-at-report-narrow.js";
 
 /*
  * Spec 023 D7.3 (row 023-40, research `run-wait-model.md` Q7): what a
@@ -26,12 +29,25 @@ export interface QueuedSide {
   readonly known: number;
   /** Of those, the ones still queued or running. */
   readonly running: number;
-  /** R3: each failed setup, `<group>: <failure>`, with the files it left not run. */
-  readonly setupFailed: readonly { readonly setup: string; readonly files: number }[];
+  /**
+   * R3: each failed setup, `<group>: <failure>`, with the files it left not
+   * run; row 023-52 (V6): `elsewhere`, the same files on the other side,
+   * still queued or running there, and with a result there.
+   */
+  readonly setupFailed: readonly {
+    readonly setup: string;
+    readonly files: number;
+    readonly elsewhere?: { readonly running: number; readonly known: number };
+  }[];
   /** Why the daemon gave no answer for some files; `null` when none. */
   readonly problem: string | null;
   /** Review wave-23 B1: not queued because the call's wait ended first (waiting for a place, starting). */
   readonly late: boolean;
+  /**
+   * Row 023-51 (V4): the daemon's other files still queued or running,
+   * outside this call's (another call's, an edit's); absent when not read.
+   */
+  readonly rest?: number;
 }
 
 /** D7.3: the call's part of the report, `run` in JSON. */
@@ -63,24 +79,59 @@ export interface QueuedRun {
   readonly again: string | null;
   /** Review wave-23 B1: the call that queues what the wait's end left not queued; `null` when none. */
   readonly retry: string | null;
+  /** Row 023-51 (V4): the paths a narrowed call gave; its counts are of their files only. Absent without. */
+  readonly paths?: readonly string[];
+  /** Row 023-49 (V2): per side, the time what still runs takes; absent when nothing does. */
+  readonly estimate?: CallEstimate;
+  /** Row 023-49: with `estimate`, the call that narrows a wide one; `null` for a narrowed call. */
+  readonly narrow?: string | null;
 }
 
-/** One side's counts, from its queue and its states after the wait. */
-export function queuedSide(queue: SideQueue, state: (ref: TestFileRef) => SideState): QueuedSide {
-  const states = queue.files.map(state);
-  const setups = new Map<string, number>();
-  for (const s of states)
+const isKnown = (s: SideState) => s.state === "pass" || s.state === "fail";
+const isRunning = (s: SideState) => s.state === "no result" && s.pending !== undefined;
+
+/**
+ * One side's counts, from its queue and its states after the wait. With
+ * `other`, the other side's states (row 023-52, V6): each failed setup
+ * says what its files are there.
+ */
+export function queuedSide(
+  queue: SideQueue,
+  state: (ref: TestFileRef) => SideState,
+  other?: (ref: TestFileRef) => SideState,
+): QueuedSide {
+  const states = queue.files.map((ref) => ({ ref, s: state(ref) }));
+  const setups = new Map<string, TestFileRef[]>();
+  for (const { ref, s } of states)
     if (s.state === "not run" && s.reason === "setup")
-      setups.set(s.setup ?? "no text", (setups.get(s.setup ?? "no text") ?? 0) + 1);
+      setups.set(s.setup ?? "no text", [...(setups.get(s.setup ?? "no text") ?? []), ref]);
+  const elsewhere = (refs: readonly TestFileRef[]) => {
+    if (other === undefined) return {};
+    const there = refs.map(other);
+    return {
+      elsewhere: { running: there.filter(isRunning).length, known: there.filter(isKnown).length },
+    };
+  };
   return {
     files: queue.files.length,
     reached: queue.root !== null,
-    known: states.filter((s) => s.state === "pass" || s.state === "fail").length,
-    running: states.filter((s) => s.state === "no result" && s.pending !== undefined).length,
-    setupFailed: [...setups].map(([setup, files]) => ({ setup, files })),
+    known: states.filter(({ s }) => isKnown(s)).length,
+    running: states.filter(({ s }) => isRunning(s)).length,
+    setupFailed: [...setups].map(([setup, refs]) => ({
+      setup,
+      files: refs.length,
+      ...elsewhere(refs),
+    })),
     problem: queue.problems.length === 0 ? null : queue.problems.join("; "),
     late: queue.late === true,
   };
+}
+
+/** Row 023-51 (V4): `queue` with only the files of `call` (a narrowed call's), every file without. */
+export function narrowQueue(queue: SideQueue, call: readonly TestFileRef[] | null): SideQueue {
+  if (call === null) return queue;
+  const ids = new Set(call.map(testFileId));
+  return { ...queue, files: queue.files.filter((ref) => ids.has(testFileId(ref))) };
 }
 
 /** Q7's call: the same commit and paths, `--wait` for the default bound. */
@@ -108,21 +159,28 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 /** The report's lines for the call's part, ending with Q7's line while work runs. */
 export function queuedLines(run: QueuedRun, at: string): string[] {
   const { commit, now } = run;
-  const lines = [...commitLines(run, at), ...nowLines(run)];
+  const named = namedLine(run, at);
+  const lines = [...(named === null ? [] : [named]), ...commitLines(run, at), ...nowLines(run, at)];
   if (run.mode === "join" && commit.files + now.files === 0)
     lines.push(
       `--wait: nothing is queued or running for these files at ${at} or in the working tree`,
     );
+  const rest = restLine(run, at);
+  if (rest !== null) lines.push(rest);
+  const estimate = estimateLine(run.estimate, at, run.narrow ?? null);
+  if (estimate !== null) lines.push(estimate);
   const setup = commit.setup ?? null;
   const nowSetup = now.setup === true;
   if ((setup !== null || nowSetup || commit.running + now.running > 0) && run.again !== null) {
+    const failedHere = failedThere(now, "in the working tree");
+    const failedAt = failedThere(commit, `at ${at}`);
     const there =
       setup === null
-        ? `${commit.running} still running at ${at} (its worktree)`
+        ? `${commit.running} still running at ${at} (its worktree${failedHere === "" ? "" : `; ${failedHere}`})`
         : `still setting up at ${at} (${setup})`;
     const here = nowSetup
       ? "still setting up in the working tree (its daemon starts or loads its configuration)"
-      : `${now.running} in the working tree`;
+      : `${now.running} in the working tree${failedAt === "" ? "" : ` (${failedAt})`}`;
     lines.push(
       `${there}, ${here}; their runs go on in the daemons. ${run.again} waits for them; squeal ps shows them.`,
     );
@@ -161,11 +219,11 @@ function commitLines(run: QueuedRun, at: string): string[] {
     lines.push(
       `${run.notSelected} more with no result at ${at} not selected by the change did not run; \`--all-missing\` runs ${run.notSelected === 1 ? "it" : "them"}`,
     );
-  return [...lines, ...sideLines(commit, "")];
+  return [...lines, ...sideLines(commit, "", `at ${at}`, "in the working tree")];
 }
 
 /** The working tree's side's lines. */
-function nowLines(run: QueuedRun): string[] {
+function nowLines(run: QueuedRun, at: string): string[] {
   const { now } = run;
   const flag = flagOf(run);
   const lines: string[] = [];
@@ -183,14 +241,19 @@ function nowLines(run: QueuedRun): string[] {
     );
   else if (run.mode === "queue")
     lines.push("--run, now: every test file the change selects has a result in the working tree");
-  return [...lines, ...sideLines(now, "now: ")];
+  return [...lines, ...sideLines(now, "now: ", "in the working tree", `at ${at}`)];
 }
 
-/** R3's setup lines, then what the daemon did not answer. */
-function sideLines(side: QueuedSide, prefix: string): string[] {
+/**
+ * R3's setup lines, then what the daemon did not answer. Row 023-52 (V6):
+ * each names the side it failed on (`here`) and what its files are on the
+ * other side (`there`).
+ */
+function sideLines(side: QueuedSide, prefix: string, here: string, there: string): string[] {
   if (!side.reached) return [];
   const lines = side.setupFailed.map(
-    (f) => `${prefix}${f.files} not run: the batch's setup failed (${f.setup})`,
+    (f) =>
+      `${prefix}${f.files} not run ${here}: the batch's setup failed (${f.setup})${elsewhereText(f, there)}`,
   );
   const setup = side.setupFailed.reduce((n, f) => n + f.files, 0);
   const without = side.files - side.known - side.running - setup;

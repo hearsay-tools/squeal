@@ -130,7 +130,7 @@ describe("squeal status --at --run (row 023-07, D4; row 023-40, D7.3; row 023-40
     clean(f);
   });
 
-  it("--all-missing asks for every file with no result and tells the estimate of what it queued", async () => {
+  it("--all-missing asks for every file with no result and tells the estimate of what still runs", async () => {
     const { f, a } = changed();
     const tree = standInTree(f);
     const daemons = standIn(tree, () => undefined, {
@@ -146,10 +146,9 @@ describe("squeal status --at --run (row 023-07, D4; row 023-40, D7.3; row 023-40
     const all = await run(f, { commit: a, run: { allMissing: true }, waitMs: 3000 }, options);
     const at = a.slice(0, 9);
     expect(daemons.commitAsks).toEqual([expect.objectContaining({ allMissing: true })]);
-    expect(all.err).toMatch(
-      new RegExp(
-        `squeal: --all-missing: 2 test files with no result at ${at} queued in its commit daemon, up to \\d+ at once: no stored duration, so the time is unknown; they run on after the wait\n`,
-      ),
+    // Row 023-49 (V2): the estimate of what still runs is the report's, per side, and says when unknown.
+    expect(all.out).toContain(
+      `Still to run, at ${at}: 2 test files, time unknown: none has a stored duration and this call measured no rate`,
     );
     expect(all.out).toContain(
       `--run: queued 2 test files with no result at ${at} in its commit daemon`,

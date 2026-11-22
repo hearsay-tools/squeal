@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { selects } from "../core/commit/at-keys-narrow.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { groupView } from "../core/scheduler/slow.js";
@@ -91,10 +92,25 @@ export async function joinCommit(
   tree: AbsolutePath | null,
   bound: number,
   listed: readonly TestFileRef[] = [],
+  paths: readonly RelativePath[] | null = null,
 ): Promise<CommitAsked> {
   if (tree === null) return { ...NOTHING, setup: null, asks: [] };
   const read = await readUntilQueued(daemons, tree, undefined, bound, bound);
-  return waitFor(daemons, tree, read, bound, listed);
+  return waitFor(daemons, tree, narrowed(read, paths), bound, listed);
+}
+
+/**
+ * Row 023-51 (V4): a narrowed `--wait` joins only the asks' files its
+ * paths select (by path, or as a named path's readers), so it waits for
+ * and counts its own files, not another call's whole queue.
+ */
+function narrowed(read: Read, paths: readonly RelativePath[] | null): Read {
+  if (paths === null) return read;
+  const readers = new Set(
+    read.asks.flatMap((ask) => paths.flatMap((path) => ask.readers[path] ?? [])).map(testFileId),
+  );
+  const keep = (ref: TestFileRef) => selects(paths, ref.path) || readers.has(testFileId(ref));
+  return { ...read, asks: read.asks.map((ask) => ({ ...ask, files: ask.files.filter(keep) })) };
 }
 
 export interface Read {
