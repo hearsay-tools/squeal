@@ -51,7 +51,9 @@ export interface StopRules {
  * checks Stop requires while its turn has holds left, counted by Squeal; a
  * subagent while `stop_hook_active` is off (004 D7). Task 001-297: a main
  * agent's open required checks are the waiting entry's once it is known to
- * run for this session at this version.
+ * run for this session at this version. Spec 024 D3: Antigravity runs its
+ * Stop entries in order and ships both in one plugin, so its waiting entry
+ * always runs after a silent `stop` for the main agent, with no record.
  */
 export function stopRules(
   context: HookContext,
@@ -65,7 +67,9 @@ export function stopRules(
   const main = consumer.agentId === MAIN_AGENT;
   const holds = budget(context, required, stopHookActive);
   const version = deps.squealVersion ?? squealVersion();
-  const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
+  const elsewhere =
+    main &&
+    (input.harness === "antigravity" || stopWaitRuns(store, consumer, input.harness, version));
   const decides = holds !== null && !elsewhere;
   const others = othersBlock(project);
   // A lint group Stop requires may fail `lint.blocking`, which this entry holds for itself.
@@ -136,7 +140,10 @@ export async function waitingEntryRecorded(
   deadline: number,
 ): Promise<boolean> {
   const { store, consumer } = context;
-  if (harness === "pi" || consumer.agentId !== MAIN_AGENT) return false;
+  // Pi has no waiting entry; Antigravity's needs no record (spec 024 D3, `stopRules`).
+  if (harness === "pi" || harness === "antigravity" || consumer.agentId !== MAIN_AGENT) {
+    return false;
+  }
   if (readStopHolds(store, consumer) > 0) return false;
   const version = deps.squealVersion ?? squealVersion();
   for (;;) {

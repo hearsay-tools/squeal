@@ -114,9 +114,10 @@ export function stopSlowWaitMs(policy: Policy): number | null {
 
 /**
  * The harnesses whose Stop asks after a waiting Stop entry: Claude Code and
- * Codex have one; Pi has none, so its entry never runs (spec 009 D3).
+ * Codex have one; Pi has none, so its entry never runs (spec 009 D3);
+ * Antigravity's always runs after a silent `stop`, in order (spec 024 D3).
  */
-export type StopWaitHarness = "claude-code" | "codex" | "pi";
+export type StopWaitHarness = "claude-code" | "codex" | "pi" | "antigravity";
 
 /** `meta` key of a worktree's waiting-entry record. */
 export function stopWaitMetaKey(worktreeId: WorktreeId): string {

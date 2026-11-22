@@ -36,8 +36,8 @@ export interface Out {
 export type HookRoot = Pick<SquealRepo, "root">;
 
 export interface Harness {
-  /** A harness with a waiting Stop entry: Pi has none. */
-  readonly name: Exclude<StopWaitHarness, "pi">;
+  /** A harness with a recorded waiting Stop entry: Pi has none, Antigravity's needs no record (024 D3). */
+  readonly name: Exclude<StopWaitHarness, "pi" | "antigravity">;
   startTurn(r: HookRoot, overrides?: object, hookDeps?: HookDeps): Promise<void>;
   stop(r: HookRoot, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
   stopSlow(r: HookRoot, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
