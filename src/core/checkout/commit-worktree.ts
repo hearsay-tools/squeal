@@ -37,6 +37,7 @@ import {
   cacheCheckoutsRoot,
   gitCheckoutsDir,
   locateCheckouts,
+  PACKAGE_STORE_TIMEOUT_MS,
   packageStore,
 } from "./location.js";
 import {
@@ -113,6 +114,12 @@ export interface EnsureCommitWorktreeOptions {
   readonly placeWaitMs?: number;
   readonly pollMs?: number;
   readonly lockWaitMs?: number;
+  /**
+   * Spec 023 D7.3 (review wave-23-third B1): epoch ms by which the package
+   * store's query and git's worktree steps end (a call's bound); absent:
+   * their own timeouts.
+   */
+  readonly deadline?: number;
   /** Told once when the ceiling makes the call wait, and of processes a removal ended. */
   readonly note?: (text: string) => void;
 }
@@ -126,7 +133,9 @@ export async function ensureCommitWorktree(
   const commit = await resolveCommit(options.root, options.commit);
   const fingerprint = environmentFingerprint(options.environment);
   const cacheRoot = options.cacheRoot ?? cacheCheckoutsRoot();
-  const dir = options.dir ?? (await locatedDir(options.root, commonDir, cacheRoot, options.note));
+  const dir =
+    options.dir ??
+    (await locatedDir(options.root, commonDir, cacheRoot, options.note, options.deadline));
   // Review wave-22 B1: a commit worktree lies only where `commitIdentity` looks for one.
   if (!isCheckoutLocation(dir, commonDir))
     throw new Error(`squeal: ${dir} is not a checkout location of ${commonDir} (D4.2)`);
@@ -144,8 +153,12 @@ async function locatedDir(
   commonDir: AbsolutePath,
   cacheRoot: AbsolutePath,
   note?: (text: string) => void,
+  deadline?: number,
 ): Promise<AbsolutePath> {
-  const store = await packageStore(root, await installCommand(root, await manifestOf(root)));
+  const command = await installCommand(root, await manifestOf(root));
+  const left =
+    deadline === undefined ? undefined : Math.min(PACKAGE_STORE_TIMEOUT_MS, deadline - Date.now());
+  const store = await packageStore(root, command, left);
   const location = locateCheckouts({ commonDir, cacheRoot, store, root });
   if (location.warning !== null) note?.(location.warning);
   return location.dir;
@@ -187,7 +200,8 @@ async function placeFor(
           if (live.length >= ceiling) return waitsLine(live, ceiling);
           registerPlace(cacheRoot, join(options.dir, name));
           const extra = { fingerprint };
-          return addCheckout({ root, commonDir, commit, dir: options.dir, name, extra });
+          const until = options.deadline === undefined ? {} : { deadline: options.deadline };
+          return addCheckout({ root, commonDir, commit, dir: options.dir, name, extra, ...until });
         });
       },
       options.lockWaitMs,
