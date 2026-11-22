@@ -26,7 +26,7 @@
              squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
              Now is this worktree's daemon at revision 0.
              0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown, of 1 named test file; the change selects 1338 test files at a5c9b7223 (`squeal status --at '20f03a431~1'`, without paths, compares them)
-             --wait: joined 1 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w …[908 chars]
+             --wait: joined 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w …[908 chars]
   250.4 SAY  Not for the one test file the commit touched. Squeal compared `test/store/open.test.ts` before and after the commit, and it has the same result both times: 0 pass→fail, 0 fail→pass, 1 unchanged. Both runs passed.
 
 - **What the commit changed:** `src/core/store/mark.ts` and `test/store/open.test.ts`, which gained 27 lines, so this file now checks more than before.

@@ -56,6 +56,6 @@ home/.cache/squeal/checkouts/commit-places/6b89dd436316a506.json
 == leftover  2026-11-22T22:45:01Z load 7.29 3.17 1.18
 23974	/tmp/squeal-1002/tmp/98abe903f01443a7 (deleted)	/opt/squeal-w29/node24/bin/node ~squeal-w29/runs/w29/home/.cache/squeal/checkouts/0469eb923f419335/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease
 26625	~squeal-w29/runs/w29/dryat	/opt/squeal-w29/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w29/runs/w29/dryat/.ai/qa/served/dryat 
-26626	/tmp/squeal-1002/tmp/791076083c1f2c5c (deleted)	/opt/squeal-w29/node24/bin/node ~squeal-w29/runs/w29/dryat/.ai/scripts/test-env-lease.mjs watch-app 26625 c294d61d-2b74-4f72-9b10-2d9fc754e380:1161825 ~squeal-w29/runs/w29/dryat /home/squeal
+26626	/tmp/squeal-1002/tmp/791076083c1f2c5c (deleted)	/opt/squeal-w29/node24/bin/node ~squeal-w29/runs/w29/dryat/.ai/scripts/test-env-lease.mjs watch-app 26625 c294d61d-2b74-4f72-9b10-2d9fc754e380:1161825 ~squeal-w29/runs/w29/dryat ~squeal
 processes of squeal-w29: 3
 /tmp entries of squeal-w29: 2
