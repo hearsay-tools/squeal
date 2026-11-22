@@ -54,7 +54,7 @@ export function namedFiles(
           moreRoutes: Math.max(0, routes.length - limit),
           second: route === null ? null : secondGateway([file.path], route, snapshot, file),
           suggestion: route === null ? null : suggestionFor([file.path], route, snapshot, file),
-          ...noteOf(file, file.kinds, analysis, edits.editShare),
+          ...noteOf([file], file.kinds, analysis, edits.editShare),
         };
       }),
     ...absent.map((path) => ({

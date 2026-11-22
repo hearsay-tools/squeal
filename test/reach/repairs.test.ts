@@ -392,7 +392,7 @@ describe("a collapsed entry without a gateway is named by its main route's kind"
       files: ["src/a.ts", "src/b.ts"],
       kind: "import",
       kinds: { "runtime read": 5 / 6, import: 1 / 6 },
-      note: "1 test file reads src/a.ts at run time in its own process, outside its imports",
+      note: "1 test file reads these files at run time in its own process, outside its imports",
     });
     expect(formatImpact(r)).toContain("  1. 2 files in src/ (import)\n");
   });
