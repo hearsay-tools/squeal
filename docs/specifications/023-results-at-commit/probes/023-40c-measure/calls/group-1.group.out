@@ -1,0 +1,13 @@
+Selected test files of group tests completed at revision 0: no known failures; 40 test files, 40 queued by this request
+Group tests at revision 0: these paths select 40 test files; 40 queued, promoted ahead of the other queued files, which run now.
+
+Revision: 0
+Squeal has not yet read edits made after 00:20:08 UTC; these results cover revision 0 and earlier. `squeal status --wait 60000 <path>...` asks it to read them and waits for the files your paths select.
+Known failures: 0; not current: 2064 of 2105 test files (2064 unknown)
+Affected checks: 206 passed (165 tests, 41 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  2064 test files never run at their inputs, nothing queued them (the baseline is lookup-only): test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 2061 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 2064 test files not current here
+Complexity: no file counted yet.
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+More: `squeal status --full` adds the worktree and daemon, the 2064 test files without a result one by one and 1 note

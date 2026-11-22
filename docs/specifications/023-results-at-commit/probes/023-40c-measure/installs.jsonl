@@ -1,0 +1,6 @@
+{"kind":"cold","i":1,"addMs":826,"installMs":2692}
+{"kind":"cold","i":2,"addMs":838,"installMs":2784}
+{"kind":"cold","i":3,"addMs":785,"installMs":2887}
+{"kind":"warm","i":1,"addMs":928,"installMs":386}
+{"kind":"warm","i":2,"addMs":829,"installMs":231}
+{"kind":"warm","i":3,"addMs":1117,"installMs":218}

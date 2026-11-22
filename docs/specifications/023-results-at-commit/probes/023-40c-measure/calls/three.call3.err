@@ -1,0 +1,2 @@
+squeal: keying test files at 5014bf634 in a temporary checkout
+squeal: waiting for a place: 2 of 2 commit worktrees live (9807c08300a3, c7ca2de4ca37); one frees when its daemon exits or `squeal stop --at <commit>` stops it

@@ -1,0 +1,87 @@
+profile 39.8 s wall, window 39.8 s
+
+by area
+  34.09 s  (idle)
+   2.24 s  squeal.mjs
+   0.67 s  node:zlib
+   0.53 s  native:lstat
+   0.51 s  (gc)
+   0.27 s  (program)
+   0.25 s  node:crypto/hash
+   0.12 s  native:openFileHandle
+   0.12 s  native:fstat
+   0.12 s  node:child_process
+   0.12 s  native:read
+   0.11 s  native:close
+   0.10 s  node:fs/promises
+   0.06 s  node:path
+   0.05 s  node:buffer
+
+by nearest named squeal function (busy only)
+   1.49 s  (none)
+   0.90 s  encodeImports
+   0.31 s  matches3
+   0.29 s  set
+   0.28 s  changes
+   0.27 s  push
+   0.23 s  blobHash
+   0.17 s  stat
+   0.14 s  lstatOrNull2
+   0.14 s  runGit
+   0.12 s  acquire
+   0.09 s  setClosure
+   0.08 s  transaction
+   0.07 s  hashOf
+   0.05 s  isLinkedDir
+   0.05 s  hasGitEntry
+   0.05 s  toAbsolute
+   0.04 s  readCleanIndexHashes
+   0.03 s  assembleClosure
+   0.03 s  keyFromSegments
+   0.03 s  put
+   0.03 s  write
+   0.03 s  all
+   0.03 s  for
+   0.03 s  of
+   0.02 s  splitNul
+   0.02 s  normalizeRelativePath
+   0.02 s  checkoutChange
+   0.02 s  pick
+   0.02 s  include
+
+by self function
+  34.09 s  (idle) :-1
+   0.67 s  processChunkSync node:zlib:420
+   0.53 s  lstat :-1
+   0.51 s  (garbage collector) :-1
+   0.29 s  set squeal.mjs:744
+   0.28 s  changes squeal.mjs:1082
+   0.27 s  (program) :-1
+   0.27 s  push squeal.mjs:69384
+   0.23 s  update hash:185
+   0.20 s  encodeImports squeal.mjs:14690
+   0.12 s  openFileHandle :-1
+   0.12 s  fstat :-1
+   0.12 s  read :-1
+   0.12 s  acquire squeal.mjs:28001
+   0.11 s  spawn child_process:384
+   0.11 s  close :-1
+   0.08 s  transaction squeal.mjs:1099
+   0.07 s  hashOf squeal.mjs:10629
+   0.05 s  join node:path:1328
+   0.05 s  compileSourceTextModule utils:316
+   0.04 s  (anon) squeal.mjs:27906
+   0.04 s  readCleanIndexHashes squeal.mjs:25989
+   0.03 s  assembleClosure squeal.mjs:2946
+   0.03 s  setClosure squeal.mjs:27902
+   0.03 s  put squeal.mjs:6143
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 3.2 | (none) 0.8 | matches3 0.3 | blobHash 0.2
+   5 s: (idle) 4.6 | (none) 0.1 | push 0.1 | set 0.0
+  10 s: (idle) 4.5 | set 0.1 | (none) 0.1 | push 0.1
+  15 s: (idle) 4.6 | (none) 0.1 | set 0.1 | push 0.1
+  20 s: (idle) 3.1 | encodeImports 0.9 | changes 0.3 | (none) 0.2
+  25 s: (idle) 4.4 | (none) 0.1 | lstatOrNull2 0.1 | runGit 0.0
+  30 s: (idle) 5.0 | (none) 0.0 | all 0.0
+  35 s: (idle) 4.7 | (none) 0.0 | runGit 0.0 | withFileLock 0.0
