@@ -117,7 +117,11 @@ export async function daemonCall(input: CallInput): Promise<number> {
     side: { at: after.at, probe: null, state: after.at.state },
     queued: queuedRun(input, waitMs, [atQueue, nowQueue], after, run !== null),
     // Row 023-53 (V8): a narrowed call's counts say what they cover.
-    scope: { given: args.commit, paths: args.paths, selects: selectsOf(atQueue.asks) },
+    scope: {
+      given: args.commit,
+      paths: args.paths,
+      selects: selectsOf(atQueue.asks, atQueue.change),
+    },
   });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, input.startedMs, args.full === true));
   // A side its daemon did not answer is not known, even with no file to list.

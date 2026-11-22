@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { selects } from "../commit/at-keys-narrow.js";
 import { changedText } from "../commit/at-keys-walk.js";
 import { testFileId } from "../keys/reverse-index.js";
@@ -26,6 +27,19 @@ import type { NarrowRunOptions } from "../types/scheduler.js";
 
 /** Asks kept for reads; older ones are dropped. */
 const MAX_ASKS = 32;
+
+/**
+ * Review 0.1.599 B4: the identity of an ask's change, its changed paths as a
+ * set. The change's selection (`selects`) at one commit depends on that set
+ * only, so a caller whose change has the same identity may read the count
+ * as its own; another caller's count, or one from before an edit that
+ * changed the set, is not.
+ */
+export function changeOf(changed: readonly RelativePath[]): string {
+  const hash = createHash("sha256");
+  for (const path of [...new Set(changed)].sort()) hash.update(`${path}\0`);
+  return hash.digest("hex").slice(0, 16);
+}
 
 /** What a commit daemon gives its asks. */
 export interface AtAskPorts {
@@ -69,6 +83,8 @@ export interface AtRow {
 
 interface Kept {
   readonly owner: string;
+  /** Review 0.1.599 B4: the identity of the ask's change (`changeOf`). */
+  readonly change: string;
   phase: CommitAskState["phase"];
   text?: string;
   files: TestFileRef[];
@@ -94,6 +110,7 @@ export class AtAsks {
     if (this.#asks.has(request.owner)) return;
     const kept: Kept = {
       owner: request.owner,
+      change: changeOf(request.changed),
       phase: "waiting",
       files: [],
       readers: {},
@@ -174,6 +191,7 @@ function stateOf(ask: Kept, setup: CommitSetup): CommitAskState {
   const phase = ask.phase === "waiting" && setup.phase === "ready" ? "selecting" : ask.phase;
   return {
     owner: ask.owner,
+    change: ask.change,
     phase,
     ...(ask.text === undefined ? {} : { text: ask.text }),
     files: [...ask.files],

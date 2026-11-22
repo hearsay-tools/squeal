@@ -38,11 +38,17 @@ export function scopeOf(
   return { paths, files, selects, command: `squeal status --at ${shellWord(given)}` };
 }
 
-/** The change's whole selection as the newest ask that counted it says; `null` when none did. */
-export function selectsOf(asks: readonly CommitAskState[]): number | null {
+/**
+ * The change's whole selection as the newest ask of this call's change
+ * (`change`, `changeOf`) counted it; `null` when none did. Review 0.1.599
+ * B4: the commit daemon is shared, and another caller's ask, or this
+ * worktree's ask from before an edit, counts another change.
+ */
+export function selectsOf(asks: readonly CommitAskState[], change: string | null): number | null {
+  if (change === null) return null;
   for (let i = asks.length - 1; i >= 0; i--) {
-    const selects = asks[i]?.selects;
-    if (selects !== undefined) return selects;
+    const ask = asks[i];
+    if (ask?.change === change && ask.selects !== undefined) return ask.selects;
   }
   return null;
 }
