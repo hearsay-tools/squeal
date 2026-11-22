@@ -245,7 +245,9 @@ describe("the launcher", () => {
 
   // The build writes these copies from the Claude Code plugin's launcher (005-76,
   // test/harness/launcher-copy.test.ts); this catches a committed copy the build did not write.
-  it.each([["codex"], ["pi"], ["opencode"]])(
+  // The fixed Codex plugin (`plugins/codex`) keeps a frozen copy (spec 002 D7); the routine build
+  // writes `plugins/codex-runtime`.
+  it.each([["codex-runtime"], ["pi"], ["opencode"]])(
     "is the same executable file in the %s plugin, and carries its format line",
     (plugin) => {
       const copy = join(REPO_ROOT, "plugins", plugin, "bin", "squeal-launcher");
