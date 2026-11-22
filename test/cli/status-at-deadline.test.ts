@@ -15,6 +15,7 @@ import type { AbsolutePath } from "../../src/core/types/common.js";
 import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { run, standIn, standInTree, testOf } from "./status-at-kit.js";
+import { keyedNow } from "./status-at-now-stand-in.js";
 
 /*
  * Review wave-23 B1 and its re-review (spec 023 D7.3 as amended, row
@@ -62,6 +63,7 @@ function commitSide(root: string, start: (tree: AbsolutePath) => Promise<Started
   const daemons: AtDaemons = {
     ...real,
     worktree: async () => null,
+    now: keyedNow,
     ask: async (at, group, paths, bound, call) =>
       at === root ? "taken" : real.ask(at, group, paths, bound, call),
     wait: async () => null,

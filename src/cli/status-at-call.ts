@@ -15,7 +15,8 @@ import type { CommitAsked } from "./status-at-commit-ask.js";
 import { rowsSide } from "./status-at-commit-rows.js";
 import { type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
 import { joinNow } from "./status-at-join.js";
-import { listLate, type NowInput, type NowSide, nowSide } from "./status-at-now.js";
+import type { NowSide } from "./status-at-now.js";
+import { type NowPlace, type NowRead, nowAgain, worktreeNow } from "./status-at-now-ask.js";
 import { RECORD_WAIT_MS, type SideQueue } from "./status-at-queue.js";
 import { unionRefs } from "./status-at-refs.js";
 import { exitCode, formatAt, jsonAt } from "./status-at-report.js";
@@ -61,10 +62,6 @@ export interface CallPlace {
 export interface CallInput {
   readonly args: AtArgs;
   readonly place: CallPlace;
-  /** What reads the working tree's side again. */
-  readonly read: Omit<NowInput, "main">;
-  /** The working tree's side as read at the call's start. */
-  readonly now: NowSide;
   readonly env: NodeJS.ProcessEnv;
   /** Epoch ms when the call started: the wait's bound counts from it. */
   readonly startedMs: number;
@@ -97,16 +94,28 @@ export async function daemonCall(input: CallInput): Promise<number> {
     }),
   };
   const daemons = options.daemons ?? realDaemons({ note });
-  const listed = await listLate(input.read, input.now, input.now.refs);
+  // Review wave-23-third B1 (D7.3 as amended 2026-11-22): the working tree's side is asked of its
+  // daemon, started when none runs, by the call's `askBy`; the call keys nothing there.
+  const nowPlace: NowPlace = {
+    daemons,
+    root,
+    commonDir,
+    worktreeId: place.worktreeId,
+    paths: place.paths,
+  };
+  const nowRead = worktreeNow(nowPlace, askBy, run !== null);
   const [atQueue, nowQueue] =
     run === null
       ? await Promise.all([
           joinedCommit(daemons, commitInput, commonDir, place.paths, bound),
-          joinNow({ daemons, root, refs: listed.refs, now: listed.state, deadline: bound }),
+          nowRead.then(({ side }) =>
+            joinNow({ daemons, root, refs: side.refs, now: side.state, deadline: bound }),
+          ),
         ])
-      : await queueBoth(input, { daemons, commit: commitInput, now: listed, bound, askBy, run });
+      : await queueBoth(input, { daemons, commit: commitInput, now: nowRead, bound, askBy, run });
   if (run !== null) tellEstimate(atQueue.files, args, waitMs, root, commit, note);
-  const after = await readAfter(input, atQueue, nowQueue, run !== null);
+  const first = await nowRead;
+  const after = await readAfter(input, atQueue, nowQueue, run !== null, nowPlace, first);
   const report = await assembleReport({
     root,
     commit,
@@ -119,7 +128,10 @@ export async function daemonCall(input: CallInput): Promise<number> {
     queued: queuedRun(input, waitMs, [atQueue, nowQueue], after, run !== null),
   });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, input.startedMs, args.full === true));
-  return after.unmatched.length === 0 ? exitCode(report.files) : 3;
+  // A side its daemon did not answer is not known, even with no file to list.
+  const answered =
+    after.current.source.kind !== "setting up" && after.current.source.kind !== "unserved";
+  return after.unmatched.length === 0 && answered ? exitCode(report.files) : 3;
 }
 
 /** The report's part for the call (D7.3, Q7). */
@@ -137,7 +149,10 @@ function queuedRun(
     usedMs: Date.now() - input.startedMs,
     commit: { ...queuedSide(atQueue, after.at.state), tree: atQueue.root, setup: setupOf(atQueue) },
     notSelected: notSelectedOf(after.at),
-    now: queuedSide(nowQueue, after.current.state),
+    now: {
+      ...queuedSide(nowQueue, after.current.state),
+      setup: after.current.source.kind === "setting up",
+    },
     again: finite ? waitAgain(input.args.commit, input.args.paths) : null,
     retry:
       atQueue.late === true || nowQueue.late === true
@@ -170,19 +185,24 @@ async function readAfter(
   atQueue: CommitAsked,
   nowQueue: SideQueue,
   selection: boolean,
+  nowPlace: NowPlace,
+  first: NowRead,
 ): Promise<{
   readonly at: CommitSide;
   readonly current: NowSide;
   readonly refs: readonly TestFileRef[];
   readonly unmatched: readonly RelativePath[];
 }> {
-  const { read, place } = input;
+  const { place } = input;
   const { root, commit, paths, worktreeId } = place;
-  const fresh = await withStores(place.commonDir, (main) => nowSide({ ...read, main }));
+  // Review wave-23-third B1: the daemon's rows again, never a keying here.
+  const fresh = await nowAgain(nowPlace, first);
+  const unread = first.asked.kind !== "read";
   return withStores(place.commonDir, async (main) => {
     const rows = { root, commit, paths, own: worktreeId, asked: atQueue, selection };
     const { at: live } = await rowsSide(main, rows);
-    const sides = { now: fresh.sources, at: live.sources, failed: false };
+    // A side not read cannot say a named path selects nothing: each is answered as a file.
+    const sides = { now: fresh.sources, at: live.sources, failed: unread };
     const { refs, unmatched } = unionRefs(fresh.refs, live.refs, paths, sides, root, commit);
     // The store closes after this read: each file's state is read now, not later.
     const fixed = new Map(
@@ -192,9 +212,8 @@ async function readAfter(
       ...live,
       state: (ref: TestFileRef) => fixed.get(testFileId(ref)) ?? live.state(ref),
     };
-    const current = await listLate(read, fresh, refs);
-    const state = nowAfter(main, current.state, nowQueue);
-    return { at, current: { ...current, state }, refs, unmatched };
+    const state = nowAfter(main, fresh.state, nowQueue);
+    return { at, current: { ...fresh, state }, refs, unmatched };
   });
 }
 

@@ -21,6 +21,7 @@ import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
 import { liveDaemon } from "./status-at-daemon.js";
 import { check, run, standInTree, testOf, withStore } from "./status-at-kit.js";
+import { keyedNow } from "./status-at-now-stand-in.js";
 
 /*
  * Review wave-23 B2 (spec 023 D7.3, research `run-wait-model.md` Q7; row
@@ -153,6 +154,7 @@ describe(
         ...real,
         commit: async () => tree,
         find: () => tree,
+        now: keyedNow,
         worktree: async () => null,
         async ask(root, group, paths, _deadline, call) {
           const request = {
@@ -193,6 +195,7 @@ describe(
           return null;
         },
         find: () => tree,
+        now: keyedNow,
         worktree: async () => {
           asked.push("start");
           return null;
@@ -265,6 +268,7 @@ describe(
         commit: async () => ({ problem: "must not start" }),
         commitAsk: async () => "must not ask",
         find: () => tree,
+        now: keyedNow,
         worktree: async () => "must not start",
         ask: async () => ({ problem: "must not ask" }),
         wait: async (root) => {

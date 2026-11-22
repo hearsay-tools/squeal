@@ -73,15 +73,34 @@ export async function nowSide(input: NowInput): Promise<NowSide> {
   return keyedSide(input);
 }
 
-/** D3: the daemon's keys and the results at them; no re-keying. */
-function daemonSide(input: NowInput, main: Store, rows: readonly TestFileKeyRecord[]): NowSide {
+/**
+ * D3: the daemon's keys and the results at them; no re-keying. Spec 023
+ * D7.3 as amended 2026-11-22 (review wave-23-third B1): also `--run`'s and
+ * `--wait`'s read once the daemon answered its `sync`, with the readers it
+ * named (`readers`) for a source path before the stored closures, and the
+ * revision it answered (`revision`).
+ */
+export function daemonSide(
+  input: Pick<NowInput, "root" | "worktreeId" | "paths">,
+  main: Store,
+  rows: readonly TestFileKeyRecord[],
+  answered: {
+    readonly readers?: ReadonlyMap<RelativePath, readonly TestFileRef[]> | undefined;
+    readonly revision?: number;
+  } = {},
+): NowSide {
   const byId = new Map(rows.map((r) => [testFileId(r.testFile), r]));
   const listed = rows.map((r) => r.testFile);
   const sources = new Map<RelativePath, readonly TestFileRef[]>();
   const named = sourcePaths(input.root, listed, input.paths);
-  if (named.length > 0) {
+  const asked = named.filter((path) => answered.readers?.has(path) !== true);
+  for (const path of named) {
+    const told = answered.readers?.get(path);
+    if (told !== undefined) sources.set(path, told);
+  }
+  if (asked.length > 0) {
     const closures = new StoredClosures().read(main);
-    for (const path of named) {
+    for (const path of asked) {
       const readers = storedReaders(main, input.worktreeId, rows, closures, path);
       sources.set(
         path,
@@ -90,7 +109,8 @@ function daemonSide(input: NowInput, main: Store, rows: readonly TestFileKeyReco
     }
   }
   const refs = union(select(listed, input.paths), sources);
-  const revision = rows.reduce<number | null>((n, r) => Math.max(n ?? 0, r.revision), null);
+  const revision =
+    answered.revision ?? rows.reduce<number | null>((n, r) => Math.max(n ?? 0, r.revision), null);
   // Review wave-13 B4: a path that selects no listed file by path may select, at the commit, a
   // file the daemon lists outside this side's selection; each listed file's state is read then.
   const bySource = (input.paths ?? []).some(
@@ -200,7 +220,7 @@ export async function listLate(
 }
 
 /** A named file not listed now: absent when the working tree lacks it. */
-function unlisted(root: AbsolutePath, ref: TestFileRef, why: string): SideState {
+export function unlisted(root: AbsolutePath, ref: TestFileRef, why: string): SideState {
   if (!existsSync(join(root, ref.path))) return { state: "absent" };
   return { state: "not determined", reason: why };
 }

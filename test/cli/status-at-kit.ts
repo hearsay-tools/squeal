@@ -19,6 +19,7 @@ import {
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { Store } from "../../src/core/types/store.js";
 import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
+import { keyedNow } from "./status-at-now-stand-in.js";
 
 /*
  * Row 023-06: what the `status --at` fixture tests share: a test file's
@@ -69,6 +70,7 @@ export const NO_DAEMONS: AtDaemons = {
   commitRead: async () => "no daemon in this test",
   find: () => null,
   worktree: async () => "no daemon in this test",
+  now: async () => ({ kind: "unserved", problem: "no daemon in this test" }),
   ask: async () => ({ problem: "no daemon in this test" }),
   wait: async () => null,
 };
@@ -202,6 +204,8 @@ export function standIn(
       };
     },
     find: () => tree,
+    // Review wave-23-third B1: the working tree's side is the daemon's answer, keyed by the stand-in.
+    now: keyedNow,
     async worktree(root) {
       started.push(root);
       return null;
