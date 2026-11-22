@@ -44,9 +44,9 @@ const CLI = join("dist", "cli", "squeal.mjs");
 
 describe("Antigravity's layout (spec 024 D1)", () => {
   it("names the installed plugin and its data directory under HOME", () => {
-    const env = { HOME: "/home/u" };
-    expect(antigravityPluginDir(env)).toBe("/home/u/.gemini/config/plugins/squeal");
-    expect(antigravityDataDir(env)).toBe("/home/u/.gemini/antigravity-cli/plugin_data/squeal");
+    const env = { HOME: "/opt/u" };
+    expect(antigravityPluginDir(env)).toBe("/opt/u/.gemini/config/plugins/squeal");
+    expect(antigravityDataDir(env)).toBe("/opt/u/.gemini/antigravity-cli/plugin_data/squeal");
     expect(ANTIGRAVITY_MANIFEST).toBe("plugin.json");
     expect(ANTIGRAVITY_COPIED).toEqual(["dist", "skills", "plugin.json"]);
   });

@@ -9,7 +9,7 @@ import { antigravityCommand } from "../../../src/harness/antigravity/command.js"
  */
 
 const NODE = "node --disable-warning=ExperimentalWarning";
-const ROOT = "/home/u/.gemini/config/plugins/squeal";
+const ROOT = "/opt/u/.gemini/config/plugins/squeal";
 
 describe("antigravityCommand", () => {
   it("names the CLI under PLUGIN_ROOT before the launcher exists", () => {
