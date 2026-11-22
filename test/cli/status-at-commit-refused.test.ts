@@ -1,3 +1,5 @@
+import { mkdirSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, link, ref, write } from "../commit/at-keys-fixture.js";
@@ -19,6 +21,7 @@ import { realCommitDaemon } from "./status-at-real-daemon.js";
 const GEN = ref("test/gen.test.ts");
 const PLAIN = ref("test/plain.test.ts");
 const LISTS = ref("test/lists.test.ts");
+const READS = ref("test/reads.test.ts");
 
 type Side = { state: string; reason?: string };
 const atOf = (out: string, path: string) =>
@@ -91,6 +94,39 @@ describe("the commit daemon refuses what is not the commit's (row 023-40c)", SLO
       state: "not comparable",
       reason: "needs test/fixtures/",
     });
+  });
+
+  it("row 023-48 (V1): runs a file that reads a path under a tracked directory symlink", {
+    timeout: 240_000,
+  }, async () => {
+    const reads = [
+      'import { readFileSync } from "node:fs";',
+      'import { expect, it } from "vitest";',
+      'import { value } from "../src/plain";',
+      'const url = new URL("../.agents/skills/a/SKILL.md", import.meta.url);',
+      'it("reads", () => expect(readFileSync(url, "utf8").length).toBe(value));',
+      "",
+    ].join("\n");
+    const f = fixture({
+      "squeal.config.json": "{}\n",
+      "src/plain.ts": "export const value = 1;\n",
+      ".ai/skills/a/SKILL.md": "a",
+      [READS.path]: reads,
+    });
+    mkdirSync(join(f.root, ".agents/skills"), { recursive: true });
+    symlinkSync("../../.ai/skills/a", join(f.root, ".agents/skills/a"));
+    const a = f.commit({ "src/plain.ts": "export const value = 1; // a\n" });
+    const b = f.commit({ "src/plain.ts": "export const value = 1; // b\n" });
+    f.commit({ "src/plain.ts": "export const value = 1; // c\n" });
+    const real = realCommitDaemon(f.root);
+    const options = { cacheRoot: f.cacheRoot, daemons: real.daemons };
+    const ask = { json: true, run: { allMissing: true }, waitMs: 120_000 } as const;
+
+    // The first run records the read through the link; the next commit's daemon holds it there.
+    const first = await run(f, { commit: a, ...ask }, options);
+    expect(atOf(first.out, READS.path), first.err).toMatchObject({ state: "pass" });
+    const second = await run(f, { commit: b, ...ask }, options);
+    expect(atOf(second.out, READS.path), second.err).toMatchObject({ state: "pass" });
   });
 
   it("runs nothing on a tree the install changed, and says which path", {

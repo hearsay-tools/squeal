@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { KeyedFile, WhileOpen } from "../core/commit/at-keys-checkout.js";
-import { committedBlobs } from "../core/commit/tree.js";
+import { heldAt } from "../core/commit/held.js";
 import { runGit } from "../core/fs/git.js";
 import { createDeclaredInputs } from "../core/keys/closure.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -160,8 +160,9 @@ export async function needsOf(input: {
   readonly within?: () => number;
 }): Promise<(file: KeyedFile) => string | null> {
   const { root, tree } = input;
-  const atCommit = await committedBlobs(root, input.commit, input.within?.());
-  const atHead = await committedBlobs(root, "HEAD", input.within?.());
+  // Row 023-48 (V1): a path under a tracked symlink is held as the link resolves at each commit.
+  const atCommit = await heldAt(root, input.commit, input.within?.());
+  const atHead = await heldAt(root, "HEAD", input.within?.());
   return (file) => {
     if (!("key" in file.at)) return null;
     for (const path of file.at.loads ?? []) {
