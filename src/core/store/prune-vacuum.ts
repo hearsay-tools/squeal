@@ -1,4 +1,5 @@
 import type { Connection } from "./connection.js";
+import { checkpointAfterWrites } from "./prune-checkpoint.js";
 import { VACUUM_PAGES, VACUUM_SLICE_MS } from "./prune-rules.js";
 
 /** One write transaction of a prune; the same shape as `PruneSlice` in `prune.ts`. */
@@ -14,11 +15,17 @@ export type VacuumClock = () => number;
  * nothing; so a slice holds the lock about the budget, whatever a page costs
  * on this store. The next slice continues where it stopped. The prune stops
  * when a slice freed nothing, as on a store created without `auto_vacuum`.
+ * Row 022-08r: the WAL checkpoint of each slice runs as the slice after it
+ * (`checkpointAfterWrites`).
  */
-export function* vacuum(
+export function vacuum(
   conn: Connection,
   clock: VacuumClock = () => performance.now(),
 ): Generator<Slice, void, undefined> {
+  return checkpointAfterWrites(conn, vacuumSlices(conn, clock));
+}
+
+function* vacuumSlices(conn: Connection, clock: VacuumClock): Generator<Slice, void, undefined> {
   let free = freePages(conn);
   while (free > 0) {
     yield () => conn.transaction(() => vacuumFor(conn, clock));

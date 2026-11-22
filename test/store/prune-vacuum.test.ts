@@ -48,9 +48,10 @@ describe("the prune's vacuum slices (row 022-08)", () => {
       const before = freePages(conn);
       slice();
       freed.push(before - freePages(conn));
-      if (freed.length === 2) break;
+      if (freed.length === 4) break;
     }
-    expect(freed).toEqual([2 * VACUUM_PAGES, 2 * VACUUM_PAGES]);
+    // Row 022-08r: each vacuum slice is followed by its checkpoint slice, which frees nothing.
+    expect(freed).toEqual([2 * VACUUM_PAGES, 0, 2 * VACUUM_PAGES, 0]);
     expect(freePages(conn)).toBe(start - 4 * VACUUM_PAGES);
   });
 

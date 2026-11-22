@@ -1,4 +1,5 @@
 import type { Connection } from "./connection.js";
+import { checkpointAfterWrites } from "./prune-checkpoint.js";
 import { deleteByKey } from "./prune-keyed.js";
 import { LIST_DELETE_BATCH } from "./prune-rules.js";
 
@@ -16,16 +17,18 @@ export const LOADED_MODULES_TABLE = "loaded_modules";
 /**
  * The prune: every stored list, `LIST_DELETE_BATCH` per slice (row 022-08). Row 021-33 shape:
  * the keys are read outside the write lock, and each slice deletes them in
- * one write transaction. Nothing on a store without the table.
+ * one write transaction. Nothing on a store without the table. Row 022-08r:
+ * each delete's WAL checkpoint runs as the slice after it.
  */
 export function* emptyLoadedModules(conn: Connection): Generator<() => void, void, undefined> {
   if (!conn.read(() => hasLoadedModulesTable(conn))) return;
-  yield* deleteByKey(conn, {
+  const deletes = deleteByKey(conn, {
     table: LOADED_MODULES_TABLE,
     key: ["project", "path", "key"],
     search: "1",
     batch: LIST_DELETE_BATCH,
   });
+  yield* checkpointAfterWrites(conn, deletes);
 }
 
 /** Whether `conn`'s database holds the table. */
