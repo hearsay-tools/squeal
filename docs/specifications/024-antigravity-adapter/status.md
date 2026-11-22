@@ -1,6 +1,6 @@
 # 024 Antigravity adapter: status
 
-Stage: Wave 1 running (2026-11-22; Wave 0 checks complete)
+Stage: Wave 2 running (2026-11-22; Wave 1 landed in 0.1.601)
 Started: 2026-11-22
 
 ## Decisions so far
