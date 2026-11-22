@@ -13144,7 +13144,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.600";
+  if (true) return "0.1.601";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -19212,7 +19212,7 @@ function stopRules(context, project, input, deps) {
   const main = consumer.agentId === MAIN_AGENT;
   const holds2 = budget(context, required, stopHookActive);
   const version = deps.squealVersion ?? squealVersion();
-  const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
+  const elsewhere = main && (input.harness === "antigravity" || stopWaitRuns(store, consumer, input.harness, version));
   const decides = holds2 !== null && !elsewhere;
   const others = othersBlock(project);
   const failing = holds2 !== null && holds2.required.lintGroups.length > 0;
@@ -19239,7 +19239,9 @@ var STOP_RECORD_WAIT_MS = 500;
 var STOP_RECORD_POLL_MS = 25;
 async function waitingEntryRecorded(context, harness, deps, deadline) {
   const { store, consumer } = context;
-  if (harness === "pi" || consumer.agentId !== MAIN_AGENT) return false;
+  if (harness === "pi" || harness === "antigravity" || consumer.agentId !== MAIN_AGENT) {
+    return false;
+  }
   if (readStopHolds(store, consumer) > 0) return false;
   const version = deps.squealVersion ?? squealVersion();
   for (; ; ) {
@@ -19783,6 +19785,8 @@ var LAUNCHER = join33("bin", "squeal");
 var VERSION2 = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join33("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join33("plugins", "data", "squeal-hearsay");
+var ANTIGRAVITY_PLUGIN = join33(".gemini", "config", "plugins", "squeal");
+var ANTIGRAVITY_DATA = join33(".gemini", "antigravity-cli", "plugin_data", "squeal");
 var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
 var KEEP_MS = 24 * 60 * 60 * 1e3;
 function dataLauncher(data) {
@@ -19791,8 +19795,8 @@ function dataLauncher(data) {
 function copyOf(data, version) {
   return join33(data, "versions", version);
 }
-function manifestVersion2(dir) {
-  const named2 = versionIn(join33(dir, MANIFEST));
+function manifestVersion2(dir, manifest = MANIFEST) {
+  const named2 = versionIn(join33(dir, manifest));
   if (!existsSync14(join33(dir, RUNTIME_MANIFEST2))) return named2;
   return versionIn(join33(dir, RUNTIME_MANIFEST2)) === named2 ? named2 : null;
 }
@@ -19804,35 +19808,39 @@ function versionIn(path) {
     return null;
   }
 }
-function kept2(data, version, file) {
+function kept2(data, version, file, layout) {
   const dir = copyOf(data, version);
   const path = join33(dir, file);
-  return existsSync14(path) && manifestVersion2(dir) === version ? path : null;
+  return existsSync14(path) && manifestVersion2(dir, layout.manifest) === version ? path : null;
 }
-function keptCli(data, version) {
-  return kept2(data, version, CLI);
+function keptCli(data, version, layout = {}) {
+  return kept2(data, version, CLI, layout);
 }
 function dataOfCopy(cli) {
   const versions = dirname15(dirname15(dirname15(dirname15(cli))));
   return cli.endsWith(`/${CLI}`) && basename6(versions) === "versions" ? dirname15(versions) : null;
 }
-function keptSkill(data, version) {
-  return kept2(data, version, SKILL);
+function keptSkill(data, version, layout = {}) {
+  return kept2(data, version, SKILL, layout);
 }
-function keepVersion({ root, data, version }) {
+function keepVersion(options) {
+  const { root, data, version, manifest = MANIFEST, copied = COPIED } = options;
+  const layout = { manifest };
   const dir = copyOf(data, version);
   if (!VERSION2.test(version) || !existsSync14(join33(root, CLI))) return null;
   try {
     const versions = join33(data, "versions");
-    const whole = keptCli(data, version) !== null;
-    if (!whole && existsSync14(dir) && manifestVersion2(dir) !== version) remove(versions, version);
-    if (manifestVersion2(root) !== version) return whole ? dir : null;
+    const whole = keptCli(data, version, layout) !== null;
+    if (!whole && existsSync14(dir) && manifestVersion2(dir, manifest) !== version) {
+      remove(versions, version);
+    }
+    if (manifestVersion2(root, manifest) !== version) return whole ? dir : null;
     let made = false;
     if (!whole) {
       mkdirSync13(versions, { recursive: true });
       const part = join33(versions, `.${version}.${process.pid}.tmp`);
       rmSync8(part, { recursive: true, force: true });
-      for (const name2 of COPIED) {
+      for (const name2 of copied) {
         if (existsSync14(join33(root, name2))) {
           cpSync(join33(root, name2), join33(part, name2), { recursive: true, dereference: true });
         }
@@ -19846,7 +19854,7 @@ function keepVersion({ root, data, version }) {
     }
     writeLauncher(root, data, version);
     if (made) pruneVersions(data, version);
-    return keptCli(data, version) === null ? null : dir;
+    return keptCli(data, version, layout) === null ? null : dir;
   } catch {
     return null;
   }

@@ -1,5 +1,5 @@
 #!/bin/sh
-# squeal-launcher format 8
+# squeal-launcher format 9
 # Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
 # ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
 # it with Node, so a plugin update needs no launcher update. Claude Code's
@@ -8,12 +8,15 @@
 # (research/wave-0-checks.md 5); the Codex plugin cache gives its newest version;
 # the Pi and OpenCode packages install.sh unpacks under
 # ${XDG_DATA_HOME:-~/.local/share}/squeal/pi and .../squeal/opencode give theirs
-# (spec 009 D1, 008 D1). When they differ it runs the newest, since no hook
+# (spec 009 D1, 008 D1); Antigravity's plugin at ~/.gemini/config/plugins/squeal
+# gives its plugin.json version (spec 024 D1). When they differ it runs the newest, since no hook
 # of an older plugin can replace a newer daemon. As <PLUGIN_DATA>/bin/squeal,
 # which Codex's SessionStart writes, it also sees Squeal's copies beside it in
 # <PLUGIN_DATA>/versions/<version>/, which a Codex install does not delete, and
 # runs a copy over an installed plugin of the same version (spec 005 D3 as
-# amended 2026-10-21). Spec 002 D7 to D9: a fixed Codex plugin, one with
+# amended 2026-10-21). As <PLUGIN_DATA>/bin/squeal in another data directory,
+# as Antigravity's SessionStart writes it, its copies count even beside the
+# fixed Codex plugin below (spec 024 D1). Spec 002 D7 to D9: a fixed Codex plugin, one with
 # hooks/hooks.json and seed/, names an adapter version, never a runtime's.
 # Its runtime comes from Squeal's Codex data directory, this launcher's own
 # as <PLUGIN_DATA>/bin/squeal once it holds runtime/, else the one under
@@ -98,6 +101,10 @@ try {
   self = dirname(dirname(realpathSync(process.argv[1])));
 } catch {}
 const data = self !== undefined && existsSync(join(self, "runtime")) ? self : join(codexHome, "plugins", "data", "squeal-hearsay");
+let inCodexData = self === data;
+try {
+  inCodexData ||= self === realpathSync(data);
+} catch {}
 let adapter;
 let codex;
 try {
@@ -148,20 +155,28 @@ for (const [harness, name] of [["Pi", "pi"], ["OpenCode", "opencode"]]) {
     if (version) found.push({ harness, version, dir: join(packages, version) });
   } catch {}
 }
-// Spec 005 D3 copies decide only without the managed runtimes of spec 002 D9.
+try {
+  const dir = join(home, ".gemini", "config", "plugins", "squeal");
+  const version = versionIn(join(dir, "plugin.json"));
+  if (typeof version === "string" && /^\d+(\.\d+)*$/.test(version) && existsSync(cliOf(dir)))
+    found.push({ harness: "Antigravity", version, dir });
+} catch {}
+// Spec 005 D3 copies in the Codex data directory decide only without the
+// managed runtimes of spec 002 D9; those of another data directory, such as
+// the Antigravity one, always do (spec 024 D1).
 let kept;
 try {
   const versions = join(self, "versions");
-  const version = managed ? undefined : newestIn(versions);
+  const version = managed && inCodexData ? undefined : newestIn(versions);
   if (version) kept = { version, dir: join(versions, version) };
 } catch {}
 if (found.length === 0 && kept === undefined && pinned === undefined) {
   if (problem) fail(problem);
   process.stderr.write(
-    "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode. Install it:\n" +
+    "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi, OpenCode or Antigravity. Install it:\n" +
       "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +
       "  codex plugin marketplace add hearsay-tools/marketplace && codex plugin add squeal@hearsay\n" +
-      "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi and OpenCode.\n",
+      "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi, OpenCode and Antigravity.\n",
   );
   process.exit(1);
 }
@@ -173,7 +188,12 @@ const run = pinned ?? (newest === undefined || (kept && compare(kept.version, ne
 // written prints each time.
 const notice = (line) => {
   const scope =
-    env.CLAUDE_CODE_SESSION_ID || env.CODEX_SESSION_ID || env.OPENCODE_SESSION_ID || env.PI_SESSION_ID || "";
+    env.CLAUDE_CODE_SESSION_ID ||
+    env.CODEX_SESSION_ID ||
+    env.OPENCODE_SESSION_ID ||
+    env.PI_SESSION_ID ||
+    env.ANTIGRAVITY_CONVERSATION_ID ||
+    "";
   const dir = kept
     ? dirname(dirname(kept.dir))
     : data === self
@@ -196,7 +216,8 @@ const notice = (line) => {
   process.stderr.write(line);
 };
 // One line names each version apart: the CLI this command runs, the plugin
-// of each harness, and the version Codex sessions started before an update keep.
+// of each harness, and the version the sessions started before an update keep:
+// Codex sessions for copies in the Codex data directory, Antigravity ones for others.
 const skewed = found.some((f) => f.version !== newest.version);
 const older = kept && compare(kept.version, run.version) < 0;
 const behind = pinned && newest && compare(newest.version, pinned.version) > 0;
@@ -205,7 +226,9 @@ if (skewed || older || behind) {
   const listed = plugins.length > 1 ? `${plugins.slice(0, -1).join(", ")} and ${plugins.at(-1)}` : plugins[0];
   notice(
     `squeal: this command runs squeal ${run.version}; plugins: ${listed}` +
-      (older ? `; Codex sessions started on ${kept.version} keep ${kept.version} until they restart` : "") +
+      (older
+        ? `; ${inCodexData ? "Codex" : "Antigravity"} sessions started on ${kept.version} keep ${kept.version} until they restart`
+        : "") +
       (behind ? `; this Codex session started on ${pinned.version} and keeps it until it restarts` : "") +
       (skewed ? ". Run squeal update to bring the plugins to one version.\n" : ".\n"),
   );
