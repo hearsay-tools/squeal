@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.601";
+  if (true) return "0.1.602";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -6952,7 +6952,7 @@ function createStateSink(store, options = {}) {
     const keys = new Map(
       store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k])
     );
-    const keyOf3 = (state) => keys.get(testFileKeyOf(state.check));
+    const keyOf4 = (state) => keys.get(testFileKeyOf(state.check));
     const prior = (state) => previous.get(checkIdentity(state.check)) ?? null;
     const commit = (revision, next, checkpointId) => {
       const at2 = now();
@@ -6981,27 +6981,27 @@ function createStateSink(store, options = {}) {
       recordBaselineFindings(store, worktreeId, checkpointId, recorded2);
       return recorded2;
     };
-    return { previous, keys, keyOf: keyOf3, prior, commit };
+    return { previous, keys, keyOf: keyOf4, prior, commit };
   }
   return {
     applyResults: (worktreeId, revision, results3, provenance) => store.transaction(() => {
-      const { keyOf: keyOf3, prior, commit } = begin2(worktreeId);
+      const { keyOf: keyOf4, prior, commit } = begin2(worktreeId);
       const next = results3.map(
-        (r) => stateFromResult(worktreeId, revision, r, keyOf3(r), prior(r))
+        (r) => stateFromResult(worktreeId, revision, r, keyOf4(r), prior(r))
       );
       recordFailureKeys(store, worktreeId, failureKeys(results3));
       recordFailureProducers(store, worktreeId, results3);
       return commit(revision, next, provenance.checkpointId);
     }),
     markUnknown: (worktreeId, revision, testFiles3, reason2) => store.transaction(() => {
-      const { previous, keyOf: keyOf3, commit } = begin2(worktreeId);
+      const { previous, keyOf: keyOf4, commit } = begin2(worktreeId);
       const files5 = new Set(testFiles3.map(testFileId));
       const head2 = store.revisions.get(worktreeId, revision)?.head ?? null;
-      const next = [...previous.values()].filter((s) => files5.has(testFileKeyOf(s.check))).map((s) => unknownState(s, revision, keyOf3(s), reason2, head2));
+      const next = [...previous.values()].filter((s) => files5.has(testFileKeyOf(s.check))).map((s) => unknownState(s, revision, keyOf4(s), reason2, head2));
       return commit(revision, next, null);
     }),
     refresh: (worktreeId, revision, provenance, testFiles3) => store.transaction(() => {
-      const { previous, keys, keyOf: keyOf3, prior, commit } = begin2(worktreeId);
+      const { previous, keys, keyOf: keyOf4, prior, commit } = begin2(worktreeId);
       const only2 = testFiles3 === void 0 ? null : new Set(testFiles3.map(testFileId));
       const included = (file) => only2 === null || only2.has(file);
       const at2 = now();
@@ -7023,7 +7023,7 @@ function createStateSink(store, options = {}) {
       recordFailureKeys(store, worktreeId, failureKeys(hits));
       recordFailureProducers(store, worktreeId, hits);
       for (const [id, state] of previous) {
-        const key3 = keyOf3(state);
+        const key3 = keyOf4(state);
         if (key3 === void 0 || next.has(id)) continue;
         if (included(testFileId(key3.testFile))) next.set(id, stateWithoutResult(state, key3));
       }
@@ -10195,8 +10195,8 @@ async function rekeyEnvironments(context, report4, tier) {
     return paths.some((path) => !held4.has(path));
   });
   if (!stale) return { files: files5, changes: [] };
-  const environments2 = await tryRunner(context, "environment", () => context.runner.environment());
-  return { files: files5, changes: environments2 === null ? [] : await keys.setEnvironments(environments2) };
+  const environments3 = await tryRunner(context, "environment", () => context.runner.environment());
+  return { files: files5, changes: environments3 === null ? [] : await keys.setEnvironments(environments3) };
 }
 function rerunGrown(ledger, growth, files5) {
   for (const file of files5) {
@@ -14754,19 +14754,19 @@ function recordImportGraph(source2, fetched) {
     const environment = keys.index.environment(closure.testFile.project);
     return key3 === null || environment === void 0 || closure.imports === void 0 ? [] : [{ testFile: closure.testFile, key: key3, environment, imports: closure.imports }];
   });
-  const environments2 = (fetched.environments ?? []).flatMap(({ project, roots, imports: imports2 }) => {
+  const environments3 = (fetched.environments ?? []).flatMap(({ project, roots, imports: imports2 }) => {
     const hash4 = keys.index.environment(project);
     const files5 = keys.environmentFiles(project);
     return hash4 === void 0 ? [] : [{ project, hash: hash4, files: files5, roots: roots ?? [], imports: imports2 ?? [] }];
   });
-  if (walks.length === 0 && environments2.length === 0) return;
+  if (walks.length === 0 && environments3.length === 0) return;
   let conn;
   try {
     conn = connectionOf(source2.store);
   } catch {
     return;
   }
-  const write4 = { now: source2.now(), walks, environments: environments2 };
+  const write4 = { now: source2.now(), walks, environments: environments3 };
   conn.transaction(() => writeImportGraph(conn, write4));
 }
 function writeImportGraph(conn, write4) {
@@ -15378,7 +15378,7 @@ async function fetchRunnerRetry(context, ledger) {
   if (!ledger.broken) return null;
   const bound = runnerPartBound(context);
   const failures = /* @__PURE__ */ new Map();
-  const environments2 = await tryRunner(
+  const environments3 = await tryRunner(
     context,
     "environment",
     () => bound.call(() => context.runner.environment()),
@@ -15405,7 +15405,7 @@ async function fetchRunnerRetry(context, ledger) {
   }
   return {
     failures,
-    environments: environments2,
+    environments: environments3,
     listed: listed12,
     omitted: listed12 === null ? null : omitted,
     refs: refs2,
@@ -15414,8 +15414,8 @@ async function fetchRunnerRetry(context, ledger) {
 }
 async function keyRunnerRetry(context, retry2, retouched = []) {
   const { keys } = context;
-  const environments2 = retry2.environments;
-  const touched2 = (environments2 === null ? keys.unverifyRuntime([null]) : await keys.setEnvironments(environments2)).map((change3) => change3.testFile);
+  const environments3 = retry2.environments;
+  const touched2 = (environments3 === null ? keys.unverifyRuntime([null]) : await keys.setEnvironments(environments3)).map((change3) => change3.testFile);
   for (const closure of retry2.closures) {
     touched2.push(...keys.setClosure(closure).map((change3) => change3.testFile));
   }
@@ -15437,15 +15437,15 @@ function storeRunnerRetry(context, ledger, retry2, touched2) {
 }
 async function readEnvironments(context, failures, bound) {
   const read7 = () => context.runner.environment();
-  const environments2 = await tryRunner(
+  const environments3 = await tryRunner(
     context,
     "environment",
     () => bound === void 0 ? read7() : bound.call(read7),
     (reason2) => failed(failures, null, reason2)
   );
-  if (environments2 === null) return context.keys.unverifyRuntime([null]);
-  const changes = await context.keys.setEnvironments(environments2);
-  recordImportGraph(context, { environments: environments2 });
+  if (environments3 === null) return context.keys.unverifyRuntime([null]);
+  const changes = await context.keys.setEnvironments(environments3);
+  recordImportGraph(context, { environments: environments3 });
   return changes;
 }
 function applyListing(context, ledger, listed12) {
@@ -17578,8 +17578,8 @@ function driftedProjects(before5, after3, all2) {
   if (before5 === null) return [];
   return [...names9].filter((name3) => was.get(name3) !== now.get(name3)).sort();
 }
-function byProject(environments2) {
-  return new Map(environments2.map((e) => [e.project, JSON.stringify(e)]));
+function byProject(environments3) {
+  return new Map(environments3.map((e) => [e.project, JSON.stringify(e)]));
 }
 var IdleClock;
 var init_runner_idle = __esm({
@@ -25004,16 +25004,16 @@ var init_imports_waiting = __esm({
 });
 
 // src/core/store/environments.ts
-function putEnvironments(store, environments2, now) {
+function putEnvironments(store, environments3, now) {
   const conn = connectionOf(store);
-  conn.transaction(() => insertEnvironments(conn, environments2, now));
+  conn.transaction(() => insertEnvironments(conn, environments3, now));
 }
-function recordWorktreeEnvironments(store, worktreeId, environments2, now) {
+function recordWorktreeEnvironments(store, worktreeId, environments3, now) {
   const conn = openedConnection(store);
   if (conn === null) return;
   conn.transaction(() => {
-    insertEnvironments(conn, environments2, now);
-    for (const { hash: hash4, descriptor } of environments2) {
+    insertEnvironments(conn, environments3, now);
+    for (const { hash: hash4, descriptor } of environments3) {
       conn.run(
         `INSERT INTO worktree_environment_hashes (worktree_id, project, hash, recorded_at)
          VALUES (?, ?, ?, ?) ON CONFLICT (worktree_id, project)
@@ -25029,7 +25029,7 @@ function recordWorktreeEnvironments(store, worktreeId, environments2, now) {
       `DELETE FROM worktree_environment_hashes
        WHERE worktree_id = ? AND project NOT IN (SELECT value FROM json_each(?))`,
       worktreeId,
-      JSON.stringify(environments2.map((e) => e.descriptor.project))
+      JSON.stringify(environments3.map((e) => e.descriptor.project))
     );
   });
 }
@@ -25093,9 +25093,9 @@ function parseDescriptor(text3) {
   const sound = typeof d.keyFormat === "number" && strings8.every((name3) => typeof d[name3] === "string") && typeof env === "object" && env !== null && Array.isArray(env.names) && typeof env.hash === "string" && typeof d.config === "object" && d.config !== null && Array.isArray(d.files) && typeof d.ci === "boolean";
   return sound ? value : null;
 }
-function insertEnvironments(conn, environments2, now) {
+function insertEnvironments(conn, environments3, now) {
   ensureTables2(conn);
-  for (const { hash: hash4, descriptor } of environments2) {
+  for (const { hash: hash4, descriptor } of environments3) {
     conn.run(
       `INSERT INTO environments (hash, descriptor, recorded_at) VALUES (?, ?, ?)
        ON CONFLICT (hash) DO UPDATE SET descriptor = excluded.descriptor, recorded_at = excluded.recorded_at
@@ -27996,16 +27996,16 @@ var init_key_index = __esm({
        * passes through a mix of old and new inputs (task 001-105). `readAsOne`
        * holds each project's hashes at the formats read as one (task 011-38).
        */
-      setInstalled(environments2, dependenciesOf, readAsOne = /* @__PURE__ */ new Map()) {
+      setInstalled(environments3, dependenciesOf, readAsOne = /* @__PURE__ */ new Map()) {
         const moved4 = /* @__PURE__ */ new Set();
-        for (const [project, envHash] of environments2) {
+        for (const [project, envHash] of environments3) {
           if (this.environments.get(project) !== envHash) moved4.add(project);
           this.environments.set(project, envHash);
           this.readAsOne.set(project, readAsOne.get(project) ?? []);
         }
         const changed2 = this.reverse.testFiles().filter((ref3) => {
           const keyed = this.keyed.get(testFileId(ref3));
-          if (!keyed || !environments2.has(ref3.project)) return false;
+          if (!keyed || !environments3.has(ref3.project)) return false;
           const dependencies = dependenciesOf(ref3);
           if (dependencies === keyed.dependencies) return moved4.has(ref3.project);
           keyed.dependencies = dependencies;
@@ -28078,11 +28078,11 @@ var init_key_index = __esm({
         if (keyed === void 0 || keyed.key !== key3) return null;
         const { testFile } = keyed.closure;
         if (keyed.runtime) return { testFile, keys: [] };
-        const environments2 = this.readAsOne.get(testFile.project) ?? [];
+        const environments3 = this.readAsOne.get(testFile.project) ?? [];
         let memo2 = keyed.readAsOne;
-        if (memo2?.key !== key3 || memo2.environments !== environments2) {
-          const keys = environments2.flatMap((entry4) => this.keyOf(keyed, entry4.environment, entry4.segment) ?? []).filter((readKey) => readKey !== key3);
-          memo2 = { key: key3, environments: environments2, keys: [...new Set(keys)] };
+        if (memo2?.key !== key3 || memo2.environments !== environments3) {
+          const keys = environments3.flatMap((entry4) => this.keyOf(keyed, entry4.environment, entry4.segment) ?? []).filter((readKey) => readKey !== key3);
+          memo2 = { key: key3, environments: environments3, keys: [...new Set(keys)] };
           keyed.readAsOne = memo2;
         }
         return { testFile, keys: memo2.keys };
@@ -28227,12 +28227,12 @@ var init_lockfiles = __esm({
        * dependencies enter its keys (D3, task 001-105). A lockfile several
        * projects share is read once.
        */
-      async set(environments2) {
+      async set(environments3) {
         this.#projects.clear();
         this.#moved.clear();
         const read7 = /* @__PURE__ */ new Map();
         const keys = /* @__PURE__ */ new Map();
-        for (const environment of environments2) {
+        for (const environment of environments3) {
           const root = environment.root === void 0 || environment.root === "" ? this.root : join61(this.root, environment.root);
           const lockfile = await this.#find(root);
           this.#projects.set(environment.project, { root, lockfile });
@@ -28573,16 +28573,16 @@ var init_keying = __esm({
       async setEnvironments(read7) {
         const { squealVersion: squealVersion2, env } = this.options;
         const policy = this.#policy;
-        const environments2 = this.#withStartup(read7);
+        const environments3 = this.#withStartup(read7);
         const observedBefore = this.#observedBefore ?? new Map([...this.#environments.keys()].map((p) => [p, this.observes(p)]));
         this.#observedBefore = observedBefore;
         this.#environments.clear();
         this.#environmentFiles.clear();
-        for (const environment of environments2) {
+        for (const environment of environments3) {
           this.#environments.set(environment.project, environment);
           for (const path of environment.files) this.#environmentFiles.add(path);
         }
-        this.#dependencies = await this.#lockfiles.set(environments2);
+        this.#dependencies = await this.#lockfiles.set(environments3);
         const lockPaths = this.#lockfiles.paths();
         await this.track([...this.#environmentFiles, ...lockPaths]);
         await this.#watchIgnored(lockPaths);
@@ -28594,7 +28594,7 @@ var init_keying = __esm({
         const readAsOne = /* @__PURE__ */ new Map();
         const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
         const ci = sawCi(env ?? process.env);
-        for (const environment of environments2) {
+        for (const environment of environments3) {
           const dependencies = this.#dependencies.get(environment.project);
           const core = coreEnvironmentInputs({
             squealVersion: squealVersion2,
@@ -28643,9 +28643,9 @@ var init_keying = __esm({
        * its files, as `setClosure` adds the observed paths to a closure. Another
        * worktree's are read here, at each read of the environments.
        */
-      #withStartup(environments2) {
-        this.#startup.refresh(environments2.map((e) => e.project));
-        return environments2.map((environment) => {
+      #withStartup(environments3) {
+        this.#startup.refresh(environments3.map((e) => e.project));
+        return environments3.map((environment) => {
           const startup = this.#startup.of(environment.project);
           if (startup.length === 0) return environment;
           return { ...environment, files: [.../* @__PURE__ */ new Set([...environment.files, ...startup])] };
@@ -29266,10 +29266,10 @@ function exportedRows(conn, worktreeId) {
 function holdsKey(conn, key3) {
   return conn.get("SELECT 1 AS found FROM results WHERE key = ? LIMIT 1", key3) !== null;
 }
-function groupBy(items, keyOf3) {
+function groupBy(items, keyOf4) {
   const groups3 = /* @__PURE__ */ new Map();
   for (const item of items) {
-    const key3 = keyOf3(item);
+    const key3 = keyOf4(item);
     const group = groups3.get(key3);
     if (group === void 0) groups3.set(key3, [item]);
     else group.push(item);
@@ -47028,8 +47028,8 @@ function closedTargets(vitest) {
   const listed12 = Array.isArray(vitest.projects) ? vitest.projects : [];
   const projects2 = /* @__PURE__ */ new Set([vitest.getRootProject(), ...listed12]);
   const servers2 = /* @__PURE__ */ new Set([vitest.vite, ...[...projects2].map((project) => project.vite)]);
-  const environments2 = [...servers2].flatMap((server) => Object.values(server?.environments ?? {}));
-  const targets3 = [...environments2, ...servers2, ...projects2, vitest.logger, vitest];
+  const environments3 = [...servers2].flatMap((server) => Object.values(server?.environments ?? {}));
+  const targets3 = [...environments3, ...servers2, ...projects2, vitest.logger, vitest];
   return [...new Set(targets3)].filter((t) => typeof t === "object" && t !== null);
 }
 function emptyClosed(targets3) {
@@ -48469,9 +48469,9 @@ function mayHaveReadTouched(vitest, touched2, testFiles3, paths) {
   for (const project of vitest.projects) {
     const files5 = testFiles3.filter((ref3) => ref3.project === project.name);
     if (files5.length === 0) continue;
-    const environments2 = Object.values(project.vite.environments);
+    const environments3 = Object.values(project.vite.environments);
     for (const file of touched2.modules) {
-      const queue = environments2.flatMap((environment) => index.start(environment, file));
+      const queue = environments3.flatMap((environment) => index.start(environment, file));
       if (queue.length === 0) continue;
       const reached = /* @__PURE__ */ new Set();
       const seen = /* @__PURE__ */ new Set();
@@ -58105,7 +58105,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     (reason2) => failed(failures, null, reason2)
   ) : { recreatedProjects: rechecked };
   const recreated = new Set(invalidated?.recreatedProjects ?? []);
-  const environments2 = recreated.size > 0 || content.environment || retrying ? await tryRunner(
+  const environments3 = recreated.size > 0 || content.environment || retrying ? await tryRunner(
     context,
     "environment",
     () => bound.call(() => runner.environment()),
@@ -58169,7 +58169,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     revision,
     retrying,
     failures,
-    environments: environments2,
+    environments: environments3,
     listed: listed12,
     direct: new Set((affected2?.direct ?? []).map(testFileId)),
     ...contentFields(content),
@@ -59367,12 +59367,7 @@ function readImportGraph(store, worktreeId) {
   const keys = new Map(
     store.testFileKeys.list(worktreeId).map((row2) => [testFileId(row2.testFile), row2.key])
   );
-  const environments2 = /* @__PURE__ */ new Map();
-  const environment = (project, hash4) => {
-    const id = `${project}\0${hash4}`;
-    if (!environments2.has(id)) environments2.set(id, environmentOf3(conn, project, hash4));
-    return environments2.get(id);
-  };
+  const environment = environments2(conn);
   return {
     walk(testFile) {
       const key3 = keys.get(testFileId(testFile));
@@ -59389,6 +59384,33 @@ function readImportGraph(store, worktreeId) {
         environment: environment(testFile.project, str(row2, "environment"))
       };
     }
+  };
+}
+function newestStoredWalk(store) {
+  const conn = connectionOf(store);
+  const tables = hasImportGraphTables(conn);
+  const environment = environments2(conn);
+  return (testFile) => {
+    if (!tables) return void 0;
+    const row2 = conn.get(
+      "SELECT environment, imports, recorded_at FROM test_file_imports WHERE project = ? AND path = ? ORDER BY recorded_at DESC, key DESC LIMIT 1",
+      testFile.project,
+      testFile.path
+    );
+    if (row2 === null) return void 0;
+    return {
+      imports: decodeImports(row2),
+      environment: environment(testFile.project, str(row2, "environment")),
+      recordedAt: num(row2, "recorded_at")
+    };
+  };
+}
+function environments2(conn) {
+  const known4 = /* @__PURE__ */ new Map();
+  return (project, hash4) => {
+    const id = `${project}\0${hash4}`;
+    if (!known4.has(id)) known4.set(id, environmentOf3(conn, project, hash4));
+    return known4.get(id);
   };
 }
 function decodeImports(row2) {
@@ -59983,7 +60005,7 @@ var init_covered_files2 = __esm({
 // src/core/scheduler/narrow-run.ts
 async function selectNarrow(context, ledger, paths) {
   const { of } = groupView(context.policy);
-  const groupOf4 = new Map([...ledger.files.values()].map((f) => [f.id, of(f.ref).name]));
+  const groupOf5 = new Map([...ledger.files.values()].map((f) => [f.id, of(f.ref).name]));
   const selection = {
     selected: /* @__PURE__ */ new Map(),
     paths: /* @__PURE__ */ new Map(),
@@ -59991,7 +60013,7 @@ async function selectNarrow(context, ledger, paths) {
     unmatched: []
   };
   const add3 = (id, path) => {
-    const group = groupOf4.get(id);
+    const group = groupOf5.get(id);
     if (group === void 0) return;
     selection.selected.set(group, (selection.selected.get(group) ?? /* @__PURE__ */ new Set()).add(id));
     selection.paths.set(group, (selection.paths.get(group) ?? /* @__PURE__ */ new Set()).add(path));
@@ -60015,10 +60037,10 @@ async function selectNarrow(context, ledger, paths) {
     const changed2 = /* @__PURE__ */ new Set([path]);
     const { reached } = editWork(context, ledger, cut, changed2, direct, observed2);
     for (const id of reached) selection.reached.add(id);
-    const groups3 = new Set([...reached].flatMap((id) => groupOf4.get(id) ?? []));
+    const groups3 = new Set([...reached].flatMap((id) => groupOf5.get(id) ?? []));
     let any = false;
     for (const group of groups3) {
-      const within4 = (id) => groupOf4.get(id) === group;
+      const within4 = (id) => groupOf5.get(id) === group;
       const { kept: kept6 } = editWork(context, ledger, cut, changed2, direct, observed2, within4);
       for (const id of kept6) add3(id, path);
       any ||= kept6.size > 0;
@@ -79059,8 +79081,8 @@ function triedHere(store, worktreeId, imports2, candidates, nearestHeld) {
   return servesHere(store, worktreeId, held4) ? nearestHeld : nearestHeld + 1;
 }
 function servesHere(store, worktreeId, imports2) {
-  const environments2 = environmentsOf(store, worktreeId);
-  if (imports2.some((i3) => i3.id === ownId(i3.fileHash, environments2))) return true;
+  const environments3 = environmentsOf(store, worktreeId);
+  if (imports2.some((i3) => i3.id === ownId(i3.fileHash, environments3))) return true;
   const byProject2 = importEnvironments(
     store,
     imports2.map((i3) => i3.id)
@@ -79081,9 +79103,9 @@ function importIdHere(store, worktreeId, fileHash) {
 function environmentsOf(store, worktreeId) {
   return JSON.stringify(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash]));
 }
-function ownId(fileHash, environments2) {
+function ownId(fileHash, environments3) {
   return createHash47("sha256").update(`${fileHash}
-${environments2}`).digest("hex").slice(0, 16);
+${environments3}`).digest("hex").slice(0, 16);
 }
 var init_served = __esm({
   "src/core/shared/served.ts"() {
@@ -83618,7 +83640,7 @@ init_state();
 init_reverse_index();
 function closureTrust(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
-  const keyOf3 = (id, ref3) => {
+  const keyOf4 = (id, ref3) => {
     let byFile = keys.get(id);
     if (byFile === void 0) {
       byFile = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
@@ -83628,8 +83650,8 @@ function closureTrust(store, worktreeId) {
   };
   return (record2) => {
     if (record2.updatedBy === worktreeId) return true;
-    const key3 = keyOf3(worktreeId, record2.testFile);
-    return key3 !== null && key3 === keyOf3(record2.updatedBy, record2.testFile);
+    const key3 = keyOf4(worktreeId, record2.testFile);
+    return key3 !== null && key3 === keyOf4(record2.updatedBy, record2.testFile);
   };
 }
 function closureFor(store, worktreeId) {
@@ -84101,13 +84123,13 @@ init_reverse_index();
 init_reverse_index();
 var UNKNOWN = { kind: "unknown" };
 function retryWaitOf(ref3, reads2) {
-  const { isSlow, activity, runs: runs2, groupOf: groupOf4 } = reads2;
+  const { isSlow, activity, runs: runs2, groupOf: groupOf5 } = reads2;
   const id = testFileId(ref3);
   const own = runs2.find((run7) => run7.testFiles.some((f) => testFileId(f) === id));
   if (own !== void 0) return { kind: "running", since: own.startedAt };
-  const group = groupOf4?.(ref3) ?? null;
+  const group = groupOf5?.(ref3) ?? null;
   if (group !== null) return groupWaitOf(group);
-  const fastFile = (f) => !isSlow(f) && (groupOf4?.(f) ?? null) === null;
+  const fastFile = (f) => !isSlow(f) && (groupOf5?.(f) ?? null) === null;
   if (!isSlow(ref3)) {
     const since = earliest2(runs2, (f) => f.project === ref3.project && fastFile(f));
     return since === null ? UNKNOWN : { kind: "tier", since };
@@ -87965,10 +87987,10 @@ async function openDaemonKeys(options) {
 // src/core/scheduler/daemon-keying.ts
 init_observed2();
 var DaemonKeying = class {
-  constructor(input, keys, hasher, environments2) {
+  constructor(input, keys, hasher, environments3) {
     this.keys = keys;
     this.hasher = hasher;
-    this.environments = environments2;
+    this.environments = environments3;
     this.#root = input.root;
     this.#adapters = input.adapters;
   }
@@ -88038,17 +88060,17 @@ var DaemonKeying = class {
 };
 async function openDaemonKeying(input) {
   const { adapters, observedFrom, store } = input;
-  const environments2 = (await Promise.all(adapters.map((a) => a.environment()))).flat();
+  const environments3 = (await Promise.all(adapters.map((a) => a.environment()))).flat();
   if (observedFrom !== void 0) {
-    for (const project of new Set(environments2.map((e) => e.project))) {
+    for (const project of new Set(environments3.map((e) => e.project))) {
       for (const key3 of OBSERVED_META_KEYS) copyMeta(observedFrom, store, key3(project));
     }
   }
   const { root, worktreeId, policy, squealVersion: squealVersion2, env } = input;
   const opened3 = { root, worktreeId, store, policy, squealVersion: squealVersion2, env };
   const { keys, hasher } = await openDaemonKeys(opened3);
-  await keys.setEnvironments(environments2);
-  return new DaemonKeying(input, keys, hasher, environments2);
+  await keys.setEnvironments(environments3);
+  return new DaemonKeying(input, keys, hasher, environments3);
 }
 function copyMeta(from, to, key3) {
   const value = from.meta.get(key3);
@@ -88872,7 +88894,7 @@ function nodeOf(environment) {
   if (typeof nodeBuild !== "string") return null;
   return { version: environment.runnerVersion, nodeBuild };
 }
-async function withStartup(root, keys, environments2, assignment) {
+async function withStartup(root, keys, environments3, assignment) {
   const loaded = /* @__PURE__ */ new Map();
   for (const { part: part2 } of assignment.parts) {
     for (const project of projectsOf2(part2)) {
@@ -88883,7 +88905,7 @@ async function withStartup(root, keys, environments2, assignment) {
   }
   if ([...loaded.values()].every((paths) => paths.size === 0)) return assignment;
   for (const [project, paths] of loaded) keys.seeStartup(project, [...paths].sort(compare));
-  await keys.setEnvironments(environments2);
+  await keys.setEnvironments(environments3);
   const here = hereOf2(root, (path) => keys.cache.hashOf(path));
   const refused = /* @__PURE__ */ new Map();
   for (const { file, part: part2 } of assignment.parts) {
@@ -88922,8 +88944,8 @@ function filesText4(count4) {
 init_reverse_index();
 init_lockfiles();
 init_refused_observed();
-async function keyPartsOf(input, keys, environments2, closures) {
-  const dependencies = await new Lockfiles(input.root).set(environments2);
+async function keyPartsOf(input, keys, environments3, closures) {
+  const dependencies = await new Lockfiles(input.root).set(environments3);
   const refused = new RefusedObserved(
     () => {
     },
@@ -89014,14 +89036,14 @@ function namedAsDaemon(file) {
 async function exportWith(input, nodeTestParts, runners2) {
   const { worktreeId, store, header: header2 } = input;
   const keying = await openDaemonKeying({ ...input, adapters: runners2 });
-  const { keys, environments: environments2 } = keying;
-  const environment = environmentRefusal2(input, environments2);
+  const { keys, environments: environments3 } = keying;
+  const environment = environmentRefusal2(input, environments3);
   if (environment !== null) return { refused: environment };
   const entries3 = await nodeTestEntries(runners2, input.policy, input.env);
   const assignment = await withStartup(
     input.root,
     keys,
-    environments2,
+    environments3,
     assignNodeTest(nodeTestParts, entries3, header2.commit)
   );
   const parts3 = [...input.parts, ...assignment.parts];
@@ -89038,7 +89060,7 @@ async function exportWith(input, nodeTestParts, runners2) {
   const covered = new Set(ran.flatMap((p) => p.part.testFiles.map(fileId)));
   const inspects = (file, closure) => covered.has(fileId(file)) && (closure.packages?.builtins ?? []).includes(INSPECTOR);
   const { closures, report: report4, inspected } = await keyFiles(keying, kept6, inspects);
-  const parted = await keyPartsOf(input, keys, environments2, closures);
+  const parted = await keyPartsOf(input, keys, environments3, closures);
   const certify = certifier(input.root, keys, parts3);
   const uncertified = [];
   const onEnds = /* @__PURE__ */ new Set();
@@ -89092,10 +89114,10 @@ async function exportWith(input, nodeTestParts, runners2) {
     nodeTestLines: assignment.lines
   };
 }
-function environmentRefusal2(input, environments2) {
+function environmentRefusal2(input, environments3) {
   const { store, worktreeId, parts: parts3 } = input;
   const runs2 = /* @__PURE__ */ new Map();
-  for (const { project, resolvedConfig } of environments2) {
+  for (const { project, resolvedConfig } of environments3) {
     const descriptor = worktreeEnvironment(store, worktreeId, project)?.descriptor ?? null;
     if (descriptor === null) continue;
     runs2.set(project, { descriptor, snapshotOptions: snapshotFields(resolvedConfig) });
@@ -95362,9 +95384,9 @@ function fitBudget(run7, budget2) {
   const fit = { leftSeconds, seconds: seconds7, known: known4, ...load === void 0 ? {} : { load } };
   if (seconds7 === null || seconds7 <= leftSeconds) return fit;
   const spent = Math.max(0, budget2.budgetSeconds - leftSeconds);
-  const rerunSeconds = Math.ceil((spent + RERUN_FACTOR * seconds7) / 60) * 60;
+  const rerunSeconds2 = Math.ceil((spent + RERUN_FACTOR * seconds7) / 60) * 60;
   const early = seconds7 >= EARLY_FACTOR * leftSeconds && known4 >= EARLY_KNOWN;
-  return { ...fit, rerunSeconds, ...early ? { early: true } : {} };
+  return { ...fit, rerunSeconds: rerunSeconds2, ...early ? { early: true } : {} };
 }
 
 // src/core/code/gate/order.ts
@@ -95478,9 +95500,9 @@ async function stoppedEarly(runner, run7, children) {
 }
 var defaultRerun = (ref3) => (seconds7) => `squeal code --base ${shellWord(ref3)} --timeout ${seconds7}`;
 function budgetTold(fit, runs2, command) {
-  const { rerunSeconds } = fit;
-  if (rerunSeconds === void 0) return { fit };
-  const rerun = { seconds: rerunSeconds, command: command(rerunSeconds) };
+  const { rerunSeconds: rerunSeconds2 } = fit;
+  if (rerunSeconds2 === void 0) return { fit };
+  const rerun = { seconds: rerunSeconds2, command: command(rerunSeconds2) };
   if (fit.early !== true) return { fit, rerun };
   const overBudget = runs2.flatMap((r) => (r.overBudget ?? []).map((ref3) => ref3.path));
   const run7 = runs2.reduce((sum2, r) => sum2 + r.files.length, 0);
@@ -96211,8 +96233,8 @@ async function projectInputs2(picked) {
   const inputs2 = [];
   for (const { kind, adapter, run: run7 } of picked) {
     if (run7.length === 0) continue;
-    const environments2 = await Promise.resolve().then(() => adapter.environment()).catch(() => []);
-    for (const environment of environments2) {
+    const environments3 = await Promise.resolve().then(() => adapter.environment()).catch(() => []);
+    for (const environment of environments3) {
       inputs2.push({
         runner: kind,
         project: environment.project,
@@ -97865,9 +97887,9 @@ async function environmentCheck(runners2, gate2) {
 }
 async function gatePlace(runners2, gate2) {
   if (runners2 === void 0) return "the gate's runner gave no environment to compare";
-  let environments2;
+  let environments3;
   try {
-    environments2 = await runners2();
+    environments3 = await runners2();
   } catch (error) {
     return `the gate's runner gave no environment (${error instanceof Error ? error.message : String(error)})`;
   }
@@ -97880,7 +97902,7 @@ async function gatePlace(runners2, gate2) {
   const ci = sawCi(gate2.env);
   const runs2 = /* @__PURE__ */ new Map();
   const suffix = gate2.observedSuffix;
-  for (const runner of environments2) {
+  for (const runner of environments3) {
     const { adapterVersion: adapterVersion2 } = runner;
     const observed2 = {
       ...runner,
@@ -114629,10 +114651,10 @@ async function worktreeQueue(input, root) {
 async function queueSide(input) {
   const { daemons, root, files: files5, deadline, call: call2 } = input;
   const view = groupView(readPolicy(root));
-  const groupOf4 = (ref3) => view.of(ref3).name;
+  const groupOf5 = (ref3) => view.of(ref3).name;
   const byGroup2 = /* @__PURE__ */ new Map();
   for (const ref3 of files5) {
-    const group = groupOf4(ref3);
+    const group = groupOf5(ref3);
     byGroup2.set(group, [...byGroup2.get(group) ?? [], ref3]);
   }
   const pending = /* @__PURE__ */ new Set();
@@ -114654,12 +114676,12 @@ async function queueSide(input) {
     else if (asked === "pending") for (const ref3 of refs2) pending.add(testFileId(ref3));
     else problems.push(`group ${group}: ${asked.problem}`);
   }
-  if (input.waits === false) return { root, files: files5, pending, problems, groupOf: groupOf4, taken: waited };
+  if (input.waits === false) return { root, files: files5, pending, problems, groupOf: groupOf5, taken: waited };
   if (waited.length > 0) {
     const ended2 = await daemons.wait(root, waited, deadline).catch((error) => String(error));
     if (ended2 !== null) problems.push(ended2);
   }
-  return { root, files: files5, pending, problems, groupOf: groupOf4 };
+  return { root, files: files5, pending, problems, groupOf: groupOf5 };
 }
 async function worktreeTwice(input, root, later) {
   const first2 = await worktreeQueue({ ...input, waits: false }, root);
@@ -114679,8 +114701,8 @@ async function worktreeTwice(input, root, later) {
     if (ended2 !== null) problems.push(ended2);
   }
   const view = groupView(readPolicy(reached));
-  const groupOf4 = (ref3) => view.of(ref3).name;
-  return { root: reached, files: files5, pending, problems, groupOf: groupOf4, ...late ? { late } : {} };
+  const groupOf5 = (ref3) => view.of(ref3).name;
+  return { root: reached, files: files5, pending, problems, groupOf: groupOf5, ...late ? { late } : {} };
 }
 
 // src/cli/status-at-commit-ask.ts
@@ -116002,8 +116024,8 @@ async function joinSide(daemons, root, without2, listed12, { deadline, askBy }) 
   if (without2.length === 0) return NOTHING;
   const recorded2 = await daemons.recorded?.(root, askBy()).catch(() => []) ?? [];
   const view = groupView(readPolicy(root));
-  const groupOf4 = (ref3) => view.of(ref3).name;
-  const covers2 = (request, ref3) => groupOf4(ref3) === request.group && selects3(request.paths, ref3.path);
+  const groupOf5 = (ref3) => view.of(ref3).name;
+  const covers2 = (request, ref3) => groupOf5(ref3) === request.group && selects3(request.paths, ref3.path);
   const joined2 = recorded2.filter((request) => without2.some((ref3) => covers2(request, ref3)));
   const files5 = without2.filter((ref3) => listed12(ref3) || joined2.some((r) => covers2(r, ref3)));
   if (files5.length === 0) return NOTHING;
@@ -116026,7 +116048,7 @@ async function joinSide(daemons, root, without2, listed12, { deadline, askBy }) 
     const ended2 = await daemons.wait(root, waited, deadline).catch((error) => String(error));
     if (ended2 !== null) problems.push(ended2);
   }
-  return { root, files: files5, pending, problems, groupOf: groupOf4 };
+  return { root, files: files5, pending, problems, groupOf: groupOf5 };
 }
 var problemOf = (error) => ({ problem: String(error) });
 async function recordedAt(socketPath, deadline) {
@@ -121258,7 +121280,6 @@ init_compare();
 init_git_layout();
 init_closure();
 init_glob();
-init_modules();
 init_observed();
 init_files();
 init_slow();
@@ -121319,32 +121340,92 @@ function sourceCalls(source2, firstLineFunction) {
   return firstLineFunction === false ? "loaded only" : "uncertain";
 }
 
+// src/core/reach/stale.ts
+init_reverse_index();
+init_import_graph();
+function staleReader(store, strict) {
+  const newest = newestStoredWalk(store);
+  const exacts = /* @__PURE__ */ new Map();
+  const walks = /* @__PURE__ */ new Map();
+  const walkTimes = /* @__PURE__ */ new Map();
+  const closureTimes = /* @__PURE__ */ new Map();
+  const exactWalk = (ref3) => {
+    if (strict === null) return void 0;
+    const id = testFileId(ref3);
+    if (!exacts.has(id)) exacts.set(id, strict.walk(ref3));
+    return exacts.get(id);
+  };
+  const staleWalk = (ref3) => {
+    const id = testFileId(ref3);
+    if (!walks.has(id)) {
+      const found4 = newest(ref3);
+      if (found4 !== void 0) walkTimes.set(id, found4.recordedAt);
+      walks.set(id, found4);
+    }
+    return walks.get(id);
+  };
+  const graph = strict === null ? null : { walk: (ref3) => exactWalk(ref3) ?? staleWalk(ref3) };
+  return {
+    graph,
+    closure(ref3, paths) {
+      const record2 = store.testFiles.get(ref3);
+      if (record2 !== null) {
+        closureTimes.set(testFileId(ref3), record2.updatedAt);
+        return record2.closure.paths;
+      }
+      const walk7 = strict === null ? void 0 : staleWalk(ref3);
+      if (walk7 === void 0) return null;
+      closureTimes.set(testFileId(ref3), walkTimes.get(testFileId(ref3)));
+      return paths(walk7);
+    },
+    summary() {
+      const times = [...walkTimes.values(), ...closureTimes.values()];
+      if (times.length === 0) return null;
+      return {
+        closures: closureTimes.size,
+        walks: walkTimes.size,
+        oldestAt: Math.min(...times),
+        newestAt: Math.max(...times)
+      };
+    }
+  };
+}
+
 // src/core/reach/read.ts
 function readSnapshot({ store, root, code }) {
   const policy = readPolicy(root);
   const id = worktreeIdFor(root);
   const rows = store.testFileKeys.list(id);
   const closure = closureFor(store, id);
-  const graph = hasImportGraphTables(connectionOf(store)) ? readImportGraph(store, id) : null;
+  const strict = hasImportGraphTables(connectionOf(store)) ? readImportGraph(store, id) : null;
+  const stale = staleReader(store, strict);
+  const graph = stale.graph;
   const observed2 = new ObservedSets(store);
-  const modules = new ModuleSets(store);
   const groups3 = groupView(policy);
   const on = coverageOn(policy);
   const counted3 = countedFunctions(code, id);
-  const walked = walkedClosure(store, id, policy, graph);
+  const walkPaths = closureOfWalk(store, id, policy);
   const testFiles3 = rows.map(({ testFile: ref3, key: key3 }) => {
     const runner = runnerOf(policy, ref3.project);
     const atKey = store.results.byKey(key3, 0);
     const ms2 = durationOf(atKey) ?? durationOf(store.results.newestForTestFile(ref3));
-    const childProcess = /* @__PURE__ */ new Set([...modules.of(ref3), ...observed2.directOf(ref3)]);
+    const inSuite = groups3.of(ref3).at !== "manual";
+    const childProcess = new Set(observed2.directOf(ref3));
     const runtimeRead = new Set(observed2.of(ref3));
+    const reads2 = [...childProcess, ...runtimeRead];
+    let fileClosure = null;
+    if (inSuite) {
+      const exact = strict?.walk(ref3);
+      graph?.walk(ref3);
+      fileClosure = closure(ref3) ?? (exact === void 0 ? null : walkPaths(ref3, exact, reads2)) ?? stale.closure(ref3, (walk7) => walkPaths(ref3, walk7, reads2));
+    }
     return {
       ref: ref3,
       runner,
-      inSuite: groups3.of(ref3).at !== "manual",
+      inSuite,
       seconds: ms2 === null ? null : ms2 / 1e3,
       current: atKey.length > 0,
-      closure: closure(ref3) ?? walked(ref3, [...childProcess, ...runtimeRead]),
+      closure: fileClosure,
       childProcess,
       runtimeRead,
       coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key3, counted3)
@@ -121361,15 +121442,14 @@ function readSnapshot({ store, root, code }) {
     graph,
     modules: moduleFacts(root, graph),
     declared: declaredPatterns(policy.inputs),
-    onStart: policy.baseline.onStart
+    onStart: policy.baseline.onStart,
+    stale: stale.summary()
   };
   return { snapshot: snapshot3, listed: rows.length === 0 ? null : rows.length };
 }
-function walkedClosure(store, id, policy, graph) {
+function closureOfWalk(store, id, policy) {
   let declared;
-  return (ref3, observed2) => {
-    const walk7 = graph?.walk(ref3);
-    if (walk7 === void 0) return null;
+  return (ref3, walk7, observed2) => {
     declared ??= createDeclaredInputs(
       policy.inputs,
       store.fileHashes.list(id).map((row2) => row2.path)
@@ -121428,6 +121508,251 @@ function declaredPatterns(inputs2) {
 
 // src/core/reach/report.ts
 init_compare();
+
+// src/core/reach/gateways.ts
+init_compare();
+init_text();
+
+// src/core/reach/observers.ts
+init_compare();
+init_text();
+import { posix as posix29 } from "node:path";
+var BROAD_READS = 10;
+var OBSERVED_KINDS = /* @__PURE__ */ new Set(["child process", "runtime read"]);
+function outsideModules(pairs) {
+  return pairs.filter((p) => OBSERVED_KINDS.has(p.kind) && isModulePath(p.path)).length;
+}
+function isBroadPair(pair2, outside2) {
+  return OBSERVED_KINDS.has(pair2.kind) && outside2 >= BROAD_READS && isModulePath(pair2.path);
+}
+var noObservers = () => ({ inProcess: 0, child: 0, broad: /* @__PURE__ */ new Map() });
+function addObserver(observers, pair2, test, outside2) {
+  if (pair2.kind === "child process") observers.child++;
+  else if (pair2.kind === "runtime read" && outside2 >= BROAD_READS)
+    observers.broad.set(test, outside2);
+  else if (pair2.kind === "runtime read") observers.inProcess++;
+}
+function broadGroups(readers) {
+  const byFolder = /* @__PURE__ */ new Map();
+  for (const test of readers) {
+    const folder = posix29.dirname(test);
+    byFolder.set(folder, [...byFolder.get(folder) ?? [], test]);
+  }
+  const out2 = /* @__PURE__ */ new Map();
+  for (const [folder, tests2] of byFolder) {
+    for (const test of tests2) out2.set(test, tests2.length > 1 ? `${folder}/*` : test);
+  }
+  return out2;
+}
+function readerText(broad, groups3) {
+  const byGroup2 = /* @__PURE__ */ new Map();
+  for (const [test, modules] of broad) {
+    const group = groups3.get(test) ?? test;
+    byGroup2.set(group, [...byGroup2.get(group) ?? [], modules]);
+  }
+  const ranked = [...byGroup2].sort((a, b) => b[1].length - a[1].length || compare(a[0], b[0]));
+  const parts3 = ranked.slice(0, 3).map(([group, counts]) => {
+    const low = Math.min(...counts);
+    const high = Math.max(...counts);
+    const modules = low === high ? plural(low, "module") : `${low} to ${high} modules each`;
+    return counts.length === 1 ? `${group} (${modules})` : `${group} (${counts.length}, ${modules})`;
+  });
+  const more2 = ranked.length > 3 ? ` and ${ranked.length - 3} more` : "";
+  return `${parts3.join(", ")}${more2}`;
+}
+function observedNote(path, observers, groups3, editShare) {
+  const { inProcess, broad, child } = observers;
+  const verb = (n, base) => `${plural(n, "test file")} ${n === 1 ? `${base}s` : base}`;
+  const parts3 = [
+    ...inProcess === 0 ? [] : [
+      `${verb(inProcess, "read")} ${path} at run time in ${inProcess === 1 ? "its" : "their"} own process`
+    ],
+    ...broad.size === 0 ? [] : [
+      `${verb(broad.size, "read")} ${path} among many source modules, as tests that start or bundle the program from source do: ${readerText(broad, groups3)}`
+    ],
+    ...child === 0 ? [] : [
+      `${verb(child, "load")} ${path} in a process ${child === 1 ? "it starts" : "they start"}`
+    ]
+  ];
+  const total = inProcess + broad.size + child;
+  const share2 = editShare === null ? "" : `; ${path === "these files" ? "their" : "its"} edits re-ran ${pctText(editShare)} of the window's re-run seconds`;
+  const facts = parts3.length === 1 ? `${parts3[0]}, outside ${total === 1 ? "its" : "their"} imports` : `${plural(total, "test file")} re-run on it outside their imports: ${parts3.join("; ")}`;
+  return `${facts}${share2}`;
+}
+var pctText = (share2) => share2 > 0 && share2 < 5e-3 ? "<1%" : `${Math.round(share2 * 100)}%`;
+
+// src/core/reach/gateways.ts
+var GatewayPairs = class {
+  /** Per edited path, per gateway key, the suite's indexes of its test files there. */
+  #byPath = /* @__PURE__ */ new Map();
+  #groups = /* @__PURE__ */ new Map();
+  /** Adds `pair` of the suite's test file at `index`, which re-runs on `outside` modules outside its walk. */
+  add(pair2, test, index, outside2) {
+    const group = groupOf4(pair2, test, outside2);
+    if (group === null) return;
+    const key3 = keyOf2(group);
+    this.#groups.set(key3, group);
+    let byKey = this.#byPath.get(pair2.path);
+    if (byKey === void 0) {
+      byKey = /* @__PURE__ */ new Map();
+      this.#byPath.set(pair2.path, byKey);
+    }
+    byKey.set(key3, (byKey.get(key3) ?? /* @__PURE__ */ new Set()).add(index));
+  }
+  /**
+   * The entries, by edit seconds; `readers` names each broad reader's
+   * group, `tests` gives each test file of the suite, `edits` each path's
+   * edits in the window.
+   */
+  entries(input) {
+    const { byPath: byPath3, groups: groups3 } = this.#merged(input.readers);
+    const totals = /* @__PURE__ */ new Map();
+    for (const edit of input.kept) {
+      const sets2 = /* @__PURE__ */ new Map();
+      for (const path of edit.paths) {
+        for (const [key3, set] of byPath3.get(path) ?? [])
+          sets2.set(key3, [...sets2.get(key3) ?? [], set]);
+      }
+      for (const [key3, parts3] of sets2) {
+        const union3 = parts3.length === 1 ? parts3[0] : new Set(parts3.flatMap((p) => [...p]));
+        const total = totals.get(key3) ?? { seconds: 0, edits: 0, tests: /* @__PURE__ */ new Set() };
+        for (const index of union3) {
+          total.seconds += input.tests(index).seconds;
+          total.tests.add(index);
+        }
+        total.edits++;
+        totals.set(key3, total);
+      }
+    }
+    const files5 = /* @__PURE__ */ new Map();
+    for (const [path, byKey] of byPath3) {
+      for (const key3 of byKey.keys()) {
+        const known4 = files5.get(key3);
+        if (known4 === void 0) files5.set(key3, [path]);
+        else known4.push(path);
+      }
+    }
+    const entries3 = [...totals].map(([key3, total]) => {
+      const group = groups3.get(key3);
+      const edited = (files5.get(key3) ?? []).sort(
+        (a, b) => (input.edits.get(b) ?? 0) - (input.edits.get(a) ?? 0) || compare(a, b)
+      );
+      const advice2 = adviceOf(group, edited, [...total.tests].map(input.tests), input.readers);
+      return {
+        kind: group.kind,
+        gateway: group.gateway,
+        ...group.mode === void 0 ? {} : { mode: group.mode },
+        ...group.declared === void 0 ? {} : { declared: group.declared },
+        editedFiles: edited.length,
+        edits: total.edits,
+        testFiles: total.tests.size,
+        editSeconds: total.seconds,
+        editShare: input.rerunSeconds > 0 ? total.seconds / input.rerunSeconds : 0,
+        sampleFiles: edited.slice(0, 3),
+        suggestion: advice2.suggestion,
+        ...advice2.note === void 0 ? {} : { note: advice2.note }
+      };
+    });
+    return entries3.sort(
+      (a, b) => b.editSeconds - a.editSeconds || b.testFiles - a.testFiles || compare(a.gateway, b.gateway)
+    );
+  }
+  /** The broad readers' keys merged into their groups'. */
+  #merged(readers) {
+    const rename3 = /* @__PURE__ */ new Map();
+    const groups3 = /* @__PURE__ */ new Map();
+    for (const [key3, group] of this.#groups) {
+      if (group.reader === void 0) {
+        groups3.set(key3, group);
+        continue;
+      }
+      const resolved2 = {
+        kind: group.kind,
+        gateway: readers.get(group.reader) ?? group.reader,
+        mode: "broad test reader"
+      };
+      const merged4 = keyOf2(resolved2);
+      rename3.set(key3, merged4);
+      groups3.set(merged4, resolved2);
+    }
+    const byPath3 = /* @__PURE__ */ new Map();
+    for (const [path, byKey] of this.#byPath) {
+      const out2 = /* @__PURE__ */ new Map();
+      for (const [key3, set] of byKey) {
+        const to = rename3.get(key3) ?? key3;
+        out2.set(to, /* @__PURE__ */ new Set([...out2.get(to) ?? [], ...set]));
+      }
+      byPath3.set(path, out2);
+    }
+    return { byPath: byPath3, groups: groups3 };
+  }
+};
+var keyOf2 = (g2) => `${g2.kind}\0${g2.mode ?? ""}\0${g2.reader ?? g2.gateway}\0${g2.declared?.tests ?? ""}`;
+function groupOf4(pair2, test, outside2) {
+  switch (pair2.kind) {
+    case "setup":
+      return { kind: "setup", gateway: pair2.chain[0] ?? pair2.path };
+    case "test helper":
+    case "barrel":
+    case "transitive":
+      return pair2.gateway === null ? null : { kind: pair2.kind, gateway: pair2.gateway };
+    case "declared input":
+      return pair2.declared === void 0 ? null : { kind: pair2.kind, gateway: pair2.declared.input, declared: pair2.declared };
+    default:
+      if (!OBSERVED_KINDS.has(pair2.kind)) return null;
+      return isBroadPair(pair2, outside2) ? { kind: pair2.kind, gateway: test, mode: "broad test reader", reader: test } : { kind: pair2.kind, gateway: pair2.path, mode: "observed path" };
+  }
+}
+function adviceOf(group, edited, tests2, readers) {
+  const one = edited.length === 1;
+  const them = one ? edited[0] : "these files";
+  const it = one ? "it" : "them";
+  const suggest = (text3) => ({ suggestion: { kind: group.kind, text: text3 } });
+  const { gateway } = group;
+  switch (group.kind) {
+    case "setup":
+      return isConfigPath(gateway) ? suggest(`${gateway} imports ${them}: name ${it} by path, or load ${it} only where used`) : suggest(
+        `keep the imports of ${gateway} leaf-only, or load ${them} only in the tests that use ${it}`
+      );
+    case "test helper":
+      return suggest(`split ${gateway}, so each test file loads only the parts it uses`);
+    case "barrel":
+      return suggest(
+        `import ${them} from ${one ? "its own path" : "their own paths"}, or split ${gateway}`
+      );
+    case "transitive":
+      return suggest(
+        `load ${them} only where used: each test file that loads ${gateway} loads ${it} too`
+      );
+    case "declared input": {
+      const tests3 = group.declared?.tests ?? null;
+      const scope2 = tests3 === null ? "every test file" : `the test files "${tests3}" matches`;
+      return suggest(
+        `narrow the input "${gateway}" in squeal.config.json, which gives ${them} to ${scope2}`
+      );
+    }
+    default:
+      return { suggestion: null, note: observedText(group, edited, tests2, readers) };
+  }
+}
+function observedText(group, edited, tests2, readers) {
+  const broad = new Map(
+    tests2.filter((t) => t.outside >= BROAD_READS).map((t) => [t.path, t.outside])
+  );
+  const like = "as tests that start or bundle the program from source do";
+  if (group.kind === "child process") {
+    return `${plural(tests2.length, "test file")} load ${group.mode === "broad test reader" ? plural(edited.length, "edited module") : group.gateway} in a process they start, outside their imports`;
+  }
+  if (group.mode === "broad test reader") {
+    return `${readerText(broad, readers)} read source modules at run time, outside their imports, ${like}; ${plural(edited.length, "edited module")} re-ran them`;
+  }
+  const own = tests2.length - broad.size;
+  const parts3 = [
+    ...own === 0 ? [] : [`${own} in their own process`],
+    ...broad.size === 0 ? [] : [`${broad.size} among many source modules, ${like}: ${readerText(broad, readers)}`]
+  ];
+  return `${plural(tests2.length, "test file")} read ${group.gateway} at run time, outside their imports: ${parts3.join("; ")}`;
+}
 
 // src/core/reach/pairs.ts
 var PATH_KINDS = [
@@ -121521,24 +121846,20 @@ function pairsOf(test, context) {
 function closurePair(test, path, context, walked, importWalk) {
   const declared = context.snapshot.declared(test.ref.path, path);
   if (declared !== null) return { ...pair(test, path, "declared input", [], null), declared };
+  const imports2 = walked === void 0 ? void 0 : importWalk(walked);
+  const chain = imports2?.chain(path) ?? null;
+  if (chain !== null) return importPair(test, path, chain, context);
   if (test.childProcess.has(path)) return pair(test, path, "child process", [], null);
   if (test.runtimeRead.has(path)) return pair(test, path, "runtime read", [], null);
-  if (walked !== void 0) return importPair(test, path, importWalk(walked), context);
   if (!isModulePath(path)) return pair(test, path, "runtime read", [], null);
   const unsplit = pair(test, path, "import", [], null);
-  const walks = context.snapshot.graph !== null && test.runner === "vitest";
-  return walks ? { ...unsplit, notRecorded: true } : unsplit;
+  const gap = imports2 === void 0 ? context.snapshot.graph !== null && test.runner === "vitest" : imports2.incomplete;
+  return gap ? { ...unsplit, notRecorded: true } : unsplit;
 }
 function pair(test, path, kind, chain, gateway) {
   return { path, kind, coverage: coverageOf3(test.coverage, path, kind), chain, gateway };
 }
-function importPair(test, path, imports2, context) {
-  const chain = imports2.chain(path);
-  if (chain === null) {
-    if (!isModulePath(path)) return pair(test, path, "runtime read", [], null);
-    const unsplit = pair(test, path, "import", [], null);
-    return imports2.incomplete ? { ...unsplit, notRecorded: true } : unsplit;
-  }
+function importPair(test, path, chain, context) {
   const between = chain.slice(1, -1);
   for (let at2 = between.length - 1; at2 >= 0; at2--) {
     const module2 = between[at2];
@@ -121570,6 +121891,39 @@ function coverageOf3(view, path, kind) {
   return OUTSIDE2.has(kind) ? "outside the test's process" : "not loaded";
 }
 
+// src/core/reach/window.ts
+function windowEdits(snapshot3) {
+  const kept6 = snapshot3.edits.flatMap((edit) => {
+    const paths = [...new Set(edit.paths)].filter((p) => snapshot3.modules.hasBytes(p));
+    return paths.length === 0 ? [] : [{ at: edit.at, paths }];
+  });
+  const edits = /* @__PURE__ */ new Map();
+  const editsOf3 = /* @__PURE__ */ new Map();
+  for (const [at2, edit] of kept6.entries()) {
+    for (const path of edit.paths) {
+      edits.set(path, (edits.get(path) ?? 0) + 1);
+      const known4 = editsOf3.get(path);
+      if (known4 === void 0) editsOf3.set(path, [at2]);
+      else known4.push(at2);
+    }
+  }
+  return { kept: kept6, edits, editsOf: editsOf3 };
+}
+function rerunSeconds(kept6, reaches2, suite) {
+  const indexOf = new Map(suite.map((t, i3) => [t.ref.path, i3]));
+  let total = 0;
+  for (const edit of kept6) {
+    const rerun = /* @__PURE__ */ new Set();
+    for (const path of edit.paths) {
+      for (const index of reaches2.get(path)?.reach ?? []) rerun.add(index);
+      const own = indexOf.get(path);
+      if (own !== void 0) rerun.add(own);
+    }
+    for (const index of rerun) total += suite[index]?.seconds ?? 0;
+  }
+  return total;
+}
+
 // src/core/reach/analyze.ts
 var zero = (keys) => Object.fromEntries(keys.map((k) => [k, 0]));
 var UNCALLED = /* @__PURE__ */ new Set(["loaded only", "not loaded"]);
@@ -121583,20 +121937,22 @@ var MEASURED3 = /* @__PURE__ */ new Set(["called", "loaded only", "not loaded"])
 function analyze(snapshot3, detail2 = () => false) {
   const context = new PairContext(snapshot3);
   const suite = snapshot3.testFiles.filter((t) => t.inSuite);
-  const kept6 = snapshot3.edits.flatMap((edit) => {
-    const paths = [...new Set(edit.paths)].filter((p) => snapshot3.modules.hasBytes(p));
-    return paths.length === 0 ? [] : [{ at: edit.at, paths }];
-  });
-  const edits = /* @__PURE__ */ new Map();
-  for (const edit of kept6) {
-    for (const path of edit.paths) edits.set(path, (edits.get(path) ?? 0) + 1);
-  }
+  const { kept: kept6, edits, editsOf: editsOf3 } = windowEdits(snapshot3);
   const files5 = /* @__PURE__ */ new Map();
+  const gateways = new GatewayPairs();
   const tests2 = suite.map((test, index) => {
     const pairs = test.closure === null ? [] : pairsOf(test, context);
-    for (const pair2 of pairs) addPair(files5, pair2, test, index, detail2(pair2.path));
-    return testReach(test, pairs, kept6);
+    const outside2 = outsideModules(pairs);
+    for (const pair2 of pairs) {
+      const file = addPair(files5, pair2, test, index, detail2(pair2.path));
+      addObserver(file.observers, pair2, test.ref.path, outside2);
+      if (edits.has(pair2.path)) gateways.add(pair2, test.ref.path, index, outside2);
+    }
+    return { ...testReach(test, pairs, kept6), outside: outside2 };
   });
+  const readers = broadGroups(
+    tests2.filter((t) => t.outside >= BROAD_READS).map((t) => t.test.ref.path)
+  );
   return {
     suite: {
       testFiles: suite.length,
@@ -121608,7 +121964,11 @@ function analyze(snapshot3, detail2 = () => false) {
     files: files5,
     tests: tests2,
     edits,
-    kept: kept6
+    kept: kept6,
+    editsOf: editsOf3,
+    rerunSeconds: rerunSeconds(kept6, files5, suite),
+    readers,
+    gateways
   };
 }
 function addPair(files5, pair2, test, index, detail2) {
@@ -121626,7 +121986,8 @@ function addPair(files5, pair2, test, index, detail2) {
       routes: /* @__PURE__ */ new Map(),
       reach: [],
       notRecorded: 0,
-      through: /* @__PURE__ */ new Map()
+      through: /* @__PURE__ */ new Map(),
+      observers: noObservers()
     };
     files5.set(pair2.path, file);
   }
@@ -121669,6 +122030,7 @@ function addPair(files5, pair2, test, index, detail2) {
   route.coverage[pair2.coverage] += seconds7;
   count3(route, pair2.coverage);
   route.tests?.push({ path: test.ref.path, seconds: test.seconds, coverage: pair2.coverage });
+  return file;
 }
 function count3(evidence, coverage) {
   evidence.testFiles++;
@@ -121699,11 +122061,10 @@ function testReach(test, pairs, edits) {
 // src/core/reach/entries.ts
 init_compare();
 import { createHash as createHash52 } from "node:crypto";
-import { posix as posix29 } from "node:path";
+import { posix as posix30 } from "node:path";
 
 // src/core/reach/suggest.ts
 init_text();
-var BY_DESIGN = "these tests start the program from source; Squeal re-runs them by design";
 var chainText = (chain) => chain.join(" \u2192 ");
 function typesOnlyThrough(file, route, snapshot3) {
   const { modules } = snapshot3;
@@ -121819,15 +122180,24 @@ function routeOf(route) {
   const { kind, gateway, chain, testFiles: testFiles3, seconds: seconds7 } = route;
   return { kind, gateway, chain, testFiles: testFiles3, seconds: seconds7, coverage: split4(route.coverage, seconds7) };
 }
-var BY_DESIGN_KINDS = /* @__PURE__ */ new Set(["child process", "runtime read"]);
-function noteOf(kinds2) {
-  let byDesign = 0;
+function noteOf(files5, kinds2, analysis, editShare) {
+  let observed2 = 0;
   let imports2 = 0;
   for (const [kind, seconds7] of Object.entries(kinds2)) {
-    if (BY_DESIGN_KINDS.has(kind)) byDesign += seconds7;
+    if (OBSERVED_KINDS.has(kind)) observed2 += seconds7;
     if (IMPORT_KINDS.has(kind)) imports2 += seconds7;
   }
-  return byDesign > imports2 ? { note: BY_DESIGN } : {};
+  if (observed2 <= imports2) return {};
+  const share2 = analysis.kept.length === 0 ? null : editShare;
+  const [first2] = files5;
+  const name3 = files5.length === 1 ? first2.path : "these files";
+  return { note: observedNote(name3, first2.observers, analysis.readers, share2) };
+}
+function editsOf2(files5, analysis) {
+  const edits = new Set(files5.flatMap((f) => analysis.editsOf.get(f.path) ?? [])).size;
+  const editSeconds = edits * (files5[0]?.seconds ?? 0);
+  const { rerunSeconds: rerunSeconds2 } = analysis;
+  return { edits, editSeconds, editShare: rerunSeconds2 > 0 ? editSeconds / rerunSeconds2 : 0 };
 }
 function fileEntries(analysis, snapshot3) {
   const present3 = [...analysis.files.values()].filter((f) => snapshot3.modules.hasBytes(f.path));
@@ -121866,6 +122236,7 @@ function entryOf3({ files: files5, route, lead }, analysis, snapshot3) {
   const kinds2 = sum(files5.map((f) => f.kinds));
   const seconds7 = mean((f) => f.seconds);
   const total = analysis.suite.seconds;
+  const edits = editsOf2(files5, analysis);
   return {
     files: paths,
     folder: paths.length > 1 ? commonFolder(paths) : null,
@@ -121874,15 +122245,14 @@ function entryOf3({ files: files5, route, lead }, analysis, snapshot3) {
     share: total > 0 ? seconds7 / total : 0,
     avoidableSeconds: mean((f) => f.avoidable),
     unknownSeconds: mean((f) => f.unknown),
-    edits: files5.reduce((n, f) => n + (analysis.edits.get(f.path) ?? 0), 0),
-    editSeconds: files5.reduce((s, f) => s + (analysis.edits.get(f.path) ?? 0) * f.seconds, 0),
+    ...edits,
     coverage: split4(sum(files5.map((f) => f.coverage)), seconds7 * files5.length),
     kinds: split4(kinds2, seconds7 * files5.length),
     kind: route?.kind ?? "import",
     gateway: route?.gateway == null ? null : routeOf(route),
     second: route === null ? null : secondGateway(paths, route, snapshot3, lead),
     suggestion: route === null ? null : suggestionFor(paths, route, snapshot3, lead),
-    ...noteOf(kinds2)
+    ...noteOf(files5, kinds2, analysis, edits.editShare)
   };
 }
 function sum(parts3) {
@@ -121893,9 +122263,9 @@ function sum(parts3) {
   return out2;
 }
 function commonFolder(paths) {
-  let folder = posix29.dirname(paths[0] ?? "");
+  let folder = posix30.dirname(paths[0] ?? "");
   while (folder !== "." && !paths.every((p) => p.startsWith(`${folder}/`))) {
-    folder = posix29.dirname(folder);
+    folder = posix30.dirname(folder);
   }
   return folder;
 }
@@ -121926,6 +122296,22 @@ function testEntries(analysis) {
   entries3.sort((a, b) => b.rank - a.rank || b.all - a.all || compare(a.entry.path, b.entry.path));
   return entries3.map(({ entry: entry4 }) => entry4);
 }
+function gatewayEntries(analysis) {
+  return analysis.gateways.entries({
+    kept: analysis.kept,
+    rerunSeconds: analysis.rerunSeconds,
+    readers: analysis.readers,
+    tests: (index) => {
+      const test = analysis.tests[index];
+      return {
+        path: test?.test.ref.path ?? "",
+        seconds: test?.test.seconds ?? 0,
+        outside: test?.outside ?? 0
+      };
+    },
+    edits: analysis.edits
+  });
+}
 
 // src/core/reach/named.ts
 init_compare();
@@ -121940,12 +122326,13 @@ function namedFiles(analysis, snapshot3, paths, limit) {
     ...files5.sort((a, b) => compare(a.path, b.path)).map((file) => {
       const route = mainRoute(file);
       const routes = [...file.routes.values()].sort((a, b) => b.seconds - a.seconds);
+      const edits = editsOf2([file], analysis);
       return {
         path: file.path,
         testFiles: file.testFiles,
         seconds: file.seconds,
         share: total > 0 ? file.seconds / total : 0,
-        edits: analysis.edits.get(file.path) ?? 0,
+        ...edits,
         coverage: split4(file.coverage, file.seconds),
         routes: routes.slice(0, limit).map((r) => {
           const tests2 = [...r.tests ?? []].sort(
@@ -121960,7 +122347,7 @@ function namedFiles(analysis, snapshot3, paths, limit) {
         moreRoutes: Math.max(0, routes.length - limit),
         second: route === null ? null : secondGateway([file.path], route, snapshot3, file),
         suggestion: route === null ? null : suggestionFor([file.path], route, snapshot3, file),
-        ...noteOf(file.kinds)
+        ...noteOf([file], file.kinds, analysis, edits.editShare)
       };
     }),
     ...absent4.map((path) => ({
@@ -121969,6 +122356,8 @@ function namedFiles(analysis, snapshot3, paths, limit) {
       seconds: 0,
       share: 0,
       edits: analysis.edits.get(path) ?? 0,
+      editSeconds: 0,
+      editShare: 0,
       coverage: {},
       routes: [],
       moreRoutes: 0,
@@ -122023,7 +122412,7 @@ function proposals(snapshot3, analysis, history2, { command, listed: listed12 })
 }
 
 // src/core/reach/report-types.ts
-var REACH_REPORT_VERSION = 1;
+var REACH_REPORT_VERSION = 2;
 
 // src/core/reach/report.ts
 function buildReport2(snapshot3, options) {
@@ -122034,18 +122423,27 @@ function buildReport2(snapshot3, options) {
   const times = analysis.kept.map((e) => e.at);
   const { files: files5, byEdits, absent: absent4 } = history2 ? fileEntries(analysis, snapshot3) : { files: [], byEdits: [], absent: 0 };
   const tests2 = history2 ? testEntries(analysis) : [];
+  const gateways = history2 ? gatewayEntries(analysis) : [];
   const limit = options.limit ?? Number.POSITIVE_INFINITY;
   const unmeasured = snapshot3.coverage.on ? analysis.tests.filter((t) => t.test.coverage.kind === "unknown").map((t) => RUNNER_NAMES2[t.test.runner]) : [];
   return {
     v: REACH_REPORT_VERSION,
     history: history2,
     suite,
-    window: times.length === 0 ? null : { from: Math.min(...times), to: Math.max(...times), edits: times.length },
+    window: times.length === 0 ? null : {
+      from: Math.min(...times),
+      to: Math.max(...times),
+      edits: times.length,
+      rerunSeconds: analysis.rerunSeconds
+    },
+    stale: snapshot3.stale ?? null,
     coverage: snapshot3.coverage.on ? "on" : "off",
     unmeasured: [...new Set(unmeasured)].sort(compare),
     edges: snapshot3.graph !== null,
     notRecorded: [...analysis.files.values()].reduce((n, f) => n + f.notRecorded, 0),
     absent: absent4,
+    gateways: gateways.slice(0, limit),
+    moreGateways: Math.max(0, gateways.length - limit),
     files: files5.slice(0, limit),
     moreFiles: Math.max(0, files5.length - limit),
     byEdits: byEdits.slice(0, limit),
@@ -122090,16 +122488,16 @@ function proposalLines(proposal, coverage) {
     case "start": {
       const lookups = proposal.runsMissing ? "looks up the results stored for their inputs, and runs the test files it finds none for (baseline.onStart is lookup-then-run-missing), up to one run of the whole suite" : "looks up the results stored for their inputs, in any worktree of this repository, and runs no test";
       return [
-        "Reach: no daemon has listed this worktree's test files yet, so Squeal cannot tell what an edit re-runs.",
-        `Proposal: ${proposal.command} lists them and ${lookups}. squeal reach then answers, or names what is still missing. squeal reach starts nothing.`
+        "Impact: no daemon has listed this worktree's test files yet, so Squeal cannot tell what an edit re-runs.",
+        `Proposal: ${proposal.command} lists them and ${lookups}. squeal impact then answers, or names what is still missing. squeal impact starts nothing.`
       ];
     }
     case "warmup": {
       const count4 = proposal.testFiles === null ? "" : ` (${plural(proposal.testFiles, "test file")} listed)`;
       const extra = coverage === "on" ? "; with coverage on, each test file's coverage record costs about a tenth more CPU in each run" : "";
       return [
-        "Reach: no test file of this worktree has a recorded result, so Squeal cannot tell yet what an edit re-runs.",
-        `Proposal: ${proposal.command} runs every test file without a current result${count4}. It costs about one run of the whole suite${extra}. squeal reach starts nothing.`
+        "Impact: no test file of this worktree has a recorded result, so Squeal cannot tell yet what an edit re-runs.",
+        `Proposal: ${proposal.command} runs every test file without a current result${count4}. It costs about one run of the whole suite${extra}. squeal impact starts nothing.`
       ];
     }
     case "seconds":
@@ -122109,7 +122507,7 @@ function proposalLines(proposal, coverage) {
     case "coverage": {
       const keys = proposal.keys.map((k) => `\`${k}\``).join(" and ");
       return [
-        `Proposal: set ${keys} in squeal.config.json, then run ${proposal.command}, so Squeal can tell which tests call each file. Cost: every Vitest and node:test file runs once more, because turning coverage on changes their keys, and each later run takes about a tenth more CPU; turning it off again re-runs them once more. squeal reach does not turn coverage on.`
+        `Proposal: set ${keys} in squeal.config.json, then run ${proposal.command}, so Squeal can tell which tests call each file. Cost: every Vitest and node:test file runs once more, because turning coverage on changes their keys, and each later run takes about a tenth more CPU; turning it off again re-runs them once more. squeal impact does not turn coverage on.`
       ];
     }
     case "records":
@@ -122118,23 +122516,64 @@ function proposalLines(proposal, coverage) {
 }
 
 // src/cli/reach-text.ts
+init_text();
 var pct2 = (share2) => share2 > 0 && share2 < 5e-3 ? "<1%" : `${Math.round(share2 * 100)}%`;
 var secs = (s) => `${s < 10 ? Math.round(s * 10) / 10 : Math.round(s)} s`;
+var day = (at2) => new Date(at2).toISOString().slice(0, 10);
+function staleLine(stale, command) {
+  const uses = (n) => n === 1 ? "uses" : "use";
+  const read7 = [
+    ...stale.closures === 0 ? [] : [
+      `${plural(stale.closures, "test file")} ${uses(stale.closures)} the newest stored closure`
+    ],
+    ...stale.walks === 0 ? [] : [`${plural(stale.walks, "test file")} ${uses(stale.walks)} the newest stored import walk`]
+  ].join(" and ");
+  const span = day(stale.oldestAt) === day(stale.newestAt) ? `stored on ${day(stale.oldestAt)}` : `stored from ${day(stale.oldestAt)} to ${day(stale.newestAt)}`;
+  return `Stale: this worktree has no closure or walk at its current inputs for some test files, so ${read7}, ${span}; ${command} start or ${command} warmup refreshes them.`;
+}
+function gatewayName(entry4) {
+  const mode = entry4.mode === void 0 ? "" : ` (${entry4.mode})`;
+  return `${entry4.kind}${mode} ${entry4.gateway}`;
+}
+function gatewayLines(entry4, at2) {
+  const files5 = entry4.editedFiles === 1 ? "" : ` of ${plural(entry4.editedFiles, "file")}`;
+  return [
+    `  ${at2}. ${gatewayName(entry4)}: ${plural(entry4.edits, "edit")}${files5} re-ran ${secs(entry4.editSeconds)}, ${pct2(entry4.editShare)} of the window's re-run seconds, through ${plural(entry4.testFiles, "test file")}`,
+    ...entry4.editedFiles === 1 ? [] : [`     for example ${entry4.sampleFiles.join(", ")}`],
+    ...entry4.suggestion === null ? [] : [`     suggestion: ${entry4.suggestion.text}`],
+    ...entry4.note === void 0 ? [] : [`     note: ${entry4.note}`]
+  ];
+}
+function gatewaysPart(report4) {
+  const title = "Top gateways, by seconds re-run over the window's edits";
+  if (report4.window === null) return [`${title}: none ranked, because no edits are recorded yet.`];
+  if (report4.gateways.length === 0) {
+    return [
+      `${title}: none; no edit in the window went through a setup file, helper, barrel, input, shared module or runtime read.`
+    ];
+  }
+  const more2 = report4.moreGateways;
+  return [
+    `${title}:`,
+    ...report4.gateways.flatMap((e, i3) => gatewayLines(e, i3 + 1)),
+    ...more2 === 0 ? [] : [`  \u2026 and ${more2} more; --limit lists more.`]
+  ];
+}
 
 // src/cli/reach-format.ts
-var day = (at2) => new Date(at2).toISOString().slice(0, 10);
 function splitText(split5) {
   const parts3 = Object.entries(split5).sort((a, b) => b[1] - a[1]);
   if (parts3.length === 1 && parts3[0]?.[0] === "unknown") return "called: unknown";
   return parts3.map(([k, v]) => `${k} ${pct2(v)}`).join(", ") || "none";
 }
 var COVERAGE_OFF = "Coverage is off, so called reads unknown: Squeal cannot tell which of these tests call the file; the path kinds are a proxy.";
-function head(report4) {
+function head(report4, command) {
   const { suite, window: window2 } = report4;
   const left = suite.leftOut === 0 ? "" : `; ${plural(suite.leftOut, "test file")} of manual groups left out`;
   return [
-    `Reach: what one edit of each file re-runs, of ${plural(suite.testFiles, "test file")} and ${secs(suite.seconds)} recorded${left}.`,
-    window2 === null ? "Edits: none recorded of files this worktree has (watch revisions in which HEAD did not move)." : `Edits: ${window2.edits} from ${day(window2.from)} to ${day(window2.to)}, every worktree's watch revisions in which HEAD did not move, of files this worktree has.`,
+    `Impact: what edits of each file re-run, of ${plural(suite.testFiles, "test file")} and ${secs(suite.seconds)} recorded${left}.`,
+    window2 === null ? "Edits: none recorded of files this worktree has (watch revisions in which HEAD did not move)." : `Edits: ${window2.edits} from ${day(window2.from)} to ${day(window2.to)}, every worktree's watch revisions in which HEAD did not move, of files this worktree has; they re-ran ${secs(window2.rerunSeconds)} in all.`,
+    ...report4.stale === null ? [] : [staleLine(report4.stale, command)],
     ...report4.absent === 0 ? [] : [
       `${plural(report4.absent, "path")} with no bytes in this worktree ${report4.absent === 1 ? "is" : "are"} left out of the lists: files of other worktrees or commits, or paths tests look for at run time.`
     ],
@@ -122197,7 +122636,11 @@ function fileLines5(entry4) {
 function editLines(entry4, at2) {
   const each = entry4.files.length === 1 ? "each" : "each file";
   return [
-    `  ${at2}. ${entryName2(entry4)}: ${plural(entry4.edits, "edit")} re-ran ${secs(entry4.editSeconds)}, ${secs(entry4.seconds)} ${each}; ${ordered(entry4)}; rank ${entry4.rank} above`,
+    `  ${at2}. ${entryName2(entry4)}: ${plural(entry4.edits, "edit")} re-ran ${secs(entry4.editSeconds)}, ${pct2(entry4.editShare)} of the window's re-run seconds, ${secs(entry4.seconds)} ${each}; ${ordered(entry4)}; rank ${entry4.rank} below`,
+    `     paths: ${splitText(entry4.kinds)}`,
+    ...entry4.gateway === null ? [] : [
+      `     gateway: ${routeLine(entry4.gateway)}, for example ${chainText(entry4.gateway.chain)}`
+    ],
     ...advice(entry4, "     ")
   ];
 }
@@ -122239,12 +122682,17 @@ function titles(report4) {
     tests: `Test files, by avoidable pair-seconds (seconds times the source files they load on import paths and never call${some ? ", or every one where called is unknown" : ""}), then seconds re-run:`
   };
 }
+function namedEdits(file) {
+  const edits = `${plural(file.edits, "edit")} in the window`;
+  if (file.editSeconds === 0) return edits;
+  return `${edits} re-ran ${secs(file.editSeconds)}, ${pct2(file.editShare)} of the window's re-run seconds`;
+}
 function namedLines(file) {
   if (file.testFiles === 0) {
     return [`${file.path}: no test file of the suite re-runs on an edit of it.`];
   }
   return [
-    `${file.path}: re-runs ${pct2(file.share)} of the suite: ${plural(file.testFiles, "test file")}, ${secs(file.seconds)}; ${plural(file.edits, "edit")} in the window`,
+    `${file.path}: re-runs ${pct2(file.share)} of the suite: ${plural(file.testFiles, "test file")}, ${secs(file.seconds)}; ${namedEdits(file)}`,
     `  coverage: ${splitText(file.coverage)}`,
     ...file.routes.flatMap((route) => [
       `  ${routeLine(route)}: ${plural(route.testFiles, "test file")}, ${secs(route.seconds)}; ${splitText(route.coverage)}`,
@@ -122258,32 +122706,33 @@ function namedLines(file) {
     ...advice(file, "  ")
   ];
 }
-function formatReach(report4) {
+function formatImpact(report4, command = "squeal") {
   if (!report4.history) {
     return `${report4.proposals.flatMap((p) => proposalLines(p, report4.coverage)).join("\n")}
 `;
   }
   const named4 = report4.named;
   const title = titles(report4);
-  const body2 = named4 === void 0 ? [
-    "",
+  const perEdit = [
     title.files,
     ...report4.files.flatMap(fileLines5),
     ...more(report4.moreFiles),
     "",
-    ...editsPart(report4),
-    "",
     title.tests,
     ...report4.testFiles.flatMap((e, i3) => testLines(e, i3 + 1)),
     ...more(report4.moreTestFiles)
-  ] : ["", ...named4.flatMap(namedLines)];
+  ];
+  const byEdits = [...gatewaysPart(report4), "", ...editsPart(report4)];
+  const ranked = report4.window === null || report4.byEdits.length === 0 ? [...perEdit, "", ...byEdits] : [...byEdits, "", ...perEdit];
+  const body2 = named4 === void 0 ? ["", ...ranked] : ["", ...named4.flatMap(namedLines)];
   const proposals2 = report4.proposals.flatMap((p) => proposalLines(p, report4.coverage));
-  return `${[...head(report4), ...body2, ...proposals2.length === 0 ? [] : ["", ...proposals2]].join("\n")}
+  return `${[...head(report4, command), ...body2, ...proposals2.length === 0 ? [] : ["", ...proposals2]].join("\n")}
 `;
 }
 
 // src/cli/reach.ts
-var REACH_USAGE = "squeal reach [<path>...] [--limit <n>] [--json]";
+var IMPACT_USAGE = "squeal impact [<path>...] [--limit <n>] [--json]";
+var REACH_DEPRECATED = "squeal reach is deprecated: use squeal impact, which gives the same answer.\n";
 var REACH_LIMIT = 10;
 function parseArgs2(args2) {
   let json3 = false;
@@ -122306,12 +122755,16 @@ function parseArgs2(args2) {
   }
   return { json: json3, limit, paths };
 }
-async function reachCommand(args2, io) {
+function reachCommand(args2, io) {
+  if (!args2.includes("--json")) io.stderr(REACH_DEPRECATED);
+  return impactCommand(args2, io);
+}
+async function impactCommand(args2, io) {
   const parsed3 = parseArgs2(args2);
   if ("error" in parsed3) {
-    io.stderr(`squeal reach: ${parsed3.error}
+    io.stderr(`squeal impact: ${parsed3.error}
 
-Usage: ${REACH_USAGE}
+Usage: ${IMPACT_USAGE}
 `);
     return 2;
   }
@@ -122343,7 +122796,7 @@ Usage: ${REACH_USAGE}
     return 1;
   }
   io.stdout(parsed3.json ? `${JSON.stringify(read7, null, 2)}
-` : formatReach(read7));
+` : formatImpact(read7, command));
   return 0;
 }
 
@@ -122610,8 +123063,8 @@ function queueReads(store, worktreeId, states) {
   if (policy === null) return { isSlow, activity: tier?.activity ?? null, runs: runs2 };
   const groups3 = groupView(policy);
   const tiers = readGroupTiers(store, worktreeId, states, keys, policy);
-  const groupOf4 = groupLanesOf(tiers, (ref3) => groups3.of(ref3).name);
-  return { isSlow, activity: tier?.activity ?? null, runs: runs2, groupOf: groupOf4 };
+  const groupOf5 = groupLanesOf(tiers, (ref3) => groups3.of(ref3).name);
+  return { isSlow, activity: tier?.activity ?? null, runs: runs2, groupOf: groupOf5 };
 }
 
 // src/cli/retry.ts
@@ -124540,10 +124993,10 @@ var Batches = class {
     this.#queue = queue;
   }
   queued(worktreeId, seq, queued) {
-    this.#waiting.set(keyOf2(worktreeId, seq), queued);
+    this.#waiting.set(keyOf3(worktreeId, seq), queued);
   }
   ended(worktreeId, seq, written2) {
-    const key3 = keyOf2(worktreeId, seq);
+    const key3 = keyOf3(worktreeId, seq);
     this.#waiting.delete(key3);
     this.#ended.set(key3, written2);
     for (const old of this.#ended.keys()) {
@@ -124553,7 +125006,7 @@ var Batches = class {
   }
   /** Withdraws the batch when the writer has not begun it; else says where it stands. */
   cancel(request) {
-    const key3 = keyOf2(request.worktreeId, request.seq);
+    const key3 = keyOf3(request.worktreeId, request.seq);
     const answer4 = (state) => ({
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
       ok: true,
@@ -124571,7 +125024,7 @@ var Batches = class {
     return answer4(written2 === void 0 ? "unknown" : written2 ? "written" : "failed");
   }
 };
-function keyOf2(worktreeId, seq) {
+function keyOf3(worktreeId, seq) {
   return `${worktreeId} ${seq}`;
 }
 
@@ -125598,15 +126051,20 @@ Usage:
                                 block; --json: the squeal-code-gate/1 report; exit 0
                                 pass, 1 violations, 3 incomplete, 2 on a usage or
                                 setup error
-  squeal reach [<path>...] [--limit <n>] [--json]
-                                What one edit of each file re-runs, from the stores,
-                                with no daemon and no test run: files and test files
-                                ranked by the seconds their tests load but do not
-                                call, then by seconds re-run; each file's share of
-                                the suite, edits in the window, coverage split, path
-                                kinds, gateway and one suggestion; paths give those
+  squeal impact [<path>...] [--limit <n>] [--json]
+                                What edits re-run, from the stores, with no daemon
+                                and no test run: with edits recorded, first the
+                                gateways (setup files, test helpers, barrels, inputs,
+                                shared modules, runtime reads) and the files ranked
+                                by the seconds the window's edits re-ran; then files
+                                and test files ranked by the seconds their tests load
+                                but do not call, then by seconds re-run; each file's
+                                share of the suite, coverage split, path kinds,
+                                gateway and one suggestion or note; paths give those
                                 files in full; --limit lists more than 10 per part;
-                                without history it proposes squeal warmup
+                                a test file with no closure at its current inputs
+                                reads its newest stored one, named as stale; without
+                                history it proposes squeal warmup
   squeal lint [<path>...] [--changed] [--json]
                                 With lint.enabled: every file with ESLint findings,
                                 newest first, each finding with its line, severity,
@@ -125794,6 +126252,8 @@ var COMMANDS = {
   checks: checksCommand,
   failures: failuresCommand,
   code: codeCommand,
+  impact: impactCommand,
+  // Spec 015 D11 as amended 2026-11-22 (row 015-128): hidden, deprecated; `squeal impact`'s help.
   reach: reachCommand,
   lint: lintCommand,
   init: init3,
@@ -125816,6 +126276,7 @@ var COMMANDS = {
   // Spec 021 D22 (row 021-36): hidden, a daemon starts it.
   "store-process": storeProcessCommand
 };
+var HELP_OF = { reach: "impact" };
 var MORE_USAGE = { setup: SETUP_USAGE };
 function main(argv, io) {
   const [first2, ...rest2] = argv;
@@ -125838,7 +126299,7 @@ ${HELP}`);
   const end = rest2.indexOf("--");
   const own = end === -1 ? rest2 : rest2.slice(0, end);
   if (own.includes("--help") || own.includes("-h")) {
-    io.stdout(commandHelp(first2));
+    io.stdout(commandHelp(HELP_OF[first2] ?? first2));
     return 0;
   }
   return command(rest2, io);
