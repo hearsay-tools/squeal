@@ -119,11 +119,11 @@ Both pairs pass correctness. The long-write log names only transactions over 250
 |---|---|---:|---:|---:|
 | store-7g | 0.1.591 (`-3`) | 54 | 615, 364 s | 682 ms |
 | store-7g | `cand/0.1.593` (first bench) | 54 | 38, 18 s | 255 ms |
-| store-7g | 16-page repair (`-2`) | 56 | 17, 7.8 s | |
+| store-7g | 16-page repair (`-2`) | 56 | 17, 7.8 s | 295 ms |
 | store-7g | head (`-3`) | 61 | 5, 3.6 s | 227 ms |
 | store-7g-wt3 | 0.1.591 (`-3`) | 58 | 595, 370 s | 895 ms |
 | store-7g-wt3 | `cand/0.1.593` (first bench) | 55 | 60, 29 s | 393 ms |
-| store-7g-wt3 | 16-page repair (`-2`) | 50 | 77, 39 s | |
+| store-7g-wt3 | 16-page repair (`-2`) | 50 | 77, 39 s | 509 ms |
 | store-7g-wt3 | head (`-3`) | 67 | 11, 6.2 s | 170 ms |
 
 Prune slices over 250 ms, longest per kind:
