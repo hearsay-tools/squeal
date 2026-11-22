@@ -82,6 +82,7 @@ export async function run(
   args: Partial<AtArgs> & Pick<AtArgs, "commit">,
   options: AtOptions = { cacheRoot: f.cacheRoot, install: linkInstall().install },
   now?: number,
+  env?: NodeJS.ProcessEnv,
 ) {
   const out: string[] = [];
   const err: string[] = [];
@@ -91,6 +92,7 @@ export async function run(
     cwd: f.root,
     relaunch: RELAUNCH,
     ...(now === undefined ? {} : { now: () => now }),
+    ...(env === undefined ? {} : { env }),
   };
   const code = await statusAtCommand({ paths: [], json: false, ...args }, io, {
     daemons: NO_DAEMONS,
