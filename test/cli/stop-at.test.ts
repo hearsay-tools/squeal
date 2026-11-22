@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { stopCommand } from "../../src/cli/stop.js";
@@ -45,8 +46,13 @@ const ensure = (commit: string) =>
     install: countingInstall([]),
   });
 
-/** A stand-in commit daemon for `tree`: a child that claimed it, and a socket whose `stop` ends it. */
-function commitDaemon(tree: AbsolutePath): Promise<number> {
+/**
+ * A stand-in commit daemon for `tree`: a child that claimed it, and a socket whose `stop` ends it.
+ * With `slowExit`, the stop first closes the socket, then removes the tree as the real daemon's
+ * exit does, slowly: its `.git` file first, so the marker no longer reads, the rest after
+ * `slowExit` ms, and only then the process ends (review 0.1.596 B1).
+ */
+function commitDaemon(tree: AbsolutePath, slowExit?: number): Promise<number> {
   const child = spawn("sleep", ["60"], { stdio: "ignore" });
   const pid = child.pid as number;
   const folder = join(tree, "..");
@@ -62,13 +68,20 @@ function commitDaemon(tree: AbsolutePath): Promise<number> {
         socket.end(`${JSON.stringify(answer)}\n`);
         if (type === "stop") {
           server.close();
-          child.kill("SIGTERM");
+          if (slowExit === undefined) child.kill("SIGTERM");
+          else void removeSlowly(tree, slowExit).then(() => child.kill("SIGTERM"));
         }
       });
     });
     servers.push(server);
     server.listen(socketPathFor(worktreeIdFor(tree)), () => resolve(pid));
   });
+}
+
+async function removeSlowly(tree: AbsolutePath, ms: number): Promise<void> {
+  rmSync(join(tree, ".git"));
+  await sleep(ms);
+  rmSync(join(tree, ".."), { recursive: true, force: true });
 }
 
 async function stop(args: string[]) {
@@ -102,6 +115,19 @@ describe("squeal stop --at <commit> (row 023-38)", () => {
     });
     expect(existsSync(at.folder)).toBe(false);
     expect(existsSync(other.tree)).toBe(true);
+  });
+
+  it("waits for the daemon whose exit is still removing its worktree (review 0.1.596 B1)", async () => {
+    const at = await ensure("HEAD~1");
+    const pid = await commitDaemon(at.tree, 1_000);
+
+    expect(await stop(["--at", "HEAD~1"])).toEqual({
+      code: 0,
+      stdout: `Commit daemon stopped at ${fx.first.slice(0, 12)}; removed ${at.tree}\n`,
+      stderr: "",
+    });
+    expect(existsSync(at.folder)).toBe(false);
+    expect(() => process.kill(pid, 0)).toThrow();
   });
 
   it("removes a worktree whose daemon is not running, and says when there is none", async () => {
