@@ -124,6 +124,10 @@ describe("the ceiling (D7.4)", () => {
     expect(commitWorktreeCeiling({ freeBytes: 100 })).toBe(1);
     expect(commitWorktreeCeiling({ configured: 3, freeBytes: 100 })).toBe(3);
     expect(commitWorktreeCeiling({ configured: 0, freeBytes: 4 * 1024 ** 3 })).toBe(2);
+    // Free memory leaves out the live daemons: two live with 5.9 GB free admit two more, not none.
+    expect(commitWorktreeCeiling({ freeBytes: 5.9 * 1024 ** 3, live: 2 })).toBe(4);
+    expect(commitWorktreeCeiling({ freeBytes: 1 * 1024 ** 3, live: 2 })).toBe(2);
+    expect(commitWorktreeCeiling({ configured: 2, freeBytes: 64 * 1024 ** 3, live: 2 })).toBe(2);
   });
 
   it("makes a new commit's creator wait, say so, and go on once a place frees", async () => {

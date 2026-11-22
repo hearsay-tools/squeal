@@ -55,15 +55,22 @@ export interface CeilingInputs {
   /** `os.freemem()` by default. */
   readonly freeBytes?: number | undefined;
   readonly perDaemonBytes?: number | undefined;
+  /**
+   * The commit worktrees live now. Free memory already leaves out what they
+   * use, so the memory-derived ceiling is these plus one per 2 GB still free
+   * (row 023-40c measurement, `tasks/023-40c-measure.md`, finding 1).
+   */
+  readonly live?: number | undefined;
 }
 
-/** D7.4: how many commit worktrees may live at once: free memory over 2 GB, at least 1. */
+/** D7.4: how many commit worktrees may live at once: the live ones plus free memory over 2 GB, at least 1. */
 export function commitWorktreeCeiling(inputs: CeilingInputs = {}): number {
   const { configured } = inputs;
   if (configured !== undefined && Number.isInteger(configured) && configured >= 1)
     return configured;
   const free = inputs.freeBytes ?? freemem();
-  return Math.max(1, Math.floor(free / (inputs.perDaemonBytes ?? COMMIT_DAEMON_BYTES)));
+  const room = Math.floor(free / (inputs.perDaemonBytes ?? COMMIT_DAEMON_BYTES));
+  return Math.max(1, (inputs.live ?? 0) + room);
 }
 
 /**
