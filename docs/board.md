@@ -2785,6 +2785,38 @@ Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16,
 | 023-45 the slow e2e scenarios pin `slow.trigger: "idle"`: a race that 0.1.586's slower CI cases raised from about 0.1% to 14% of runs (test only) | done (worker ef5ea65b; notes `tasks/023-45-notes.md`), landed 2026-11-21 in 0.1.590 with wave 22 (reviewed in `wave-22-rereview.md`). released in 0.1.590 (tag `squeal--v0.1.590` at `0c9f20891`, hub `ba3b2a9`) | Testing | none |
 | 023-46 the commit daemon starts in seconds: its lookup pass keys only the files a call asks for, not every test file (`tasks/023-40-measure.md`: 80% of a 31 s start is the import walk over 2,105 files) | done (worker e97bc36b; repair 4a11190a, strict rule only), landed 2026-11-22 in 0.1.594 (main `4fee78b44`; candidate CI 44997901440 green on `2b8d9297c`; reviews `wave-23.md`, `wave-23-rereview.md`, `wave-23-third.md`, `wave-23-fourth.md` FAIL, `wave-23-fifth.md` PASS on `2b8d9297c`; the human: "A: daemon owns setup", "Ask the daemon", "Strict rule only"; measurements `tasks/023-40-measure.md`, `tasks/023-40c-measure.md`). superseded unreleased by 0.1.595 (a pending sync let a second call exit 13; `reviews/0.1.595.md` PASS on `b245be4d0`); released in 0.1.595 (tag `squeal--v0.1.595` at `b245be4d0`, hub `862993e`) | D7 | after 023-39 |
 
+## Feature 024: Antigravity adapter
+
+Spec folder `specifications/024-antigravity-adapter/` (stage: approved 2026-11-22; CLI on Linux in v1; `agy plugin install` + `$PLUGIN_DATA` copies; `fullyIdle: false` stays silent). Research: `research/antigravity-hooks-and-plugins.md`. Coordinator `795abf3c`.
+
+### Wave 0: coordinator checks (brief `specifications/024-antigravity-adapter/tasks/wave-0.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 024-01 research: wave 0 checks (binary detection, installed `PLUGIN_DATA` path, `hooks/run` large stdin, sanitized fixtures) | running (wave 0; `research/README.md`) | Open questions 2, 3, 4; Testing fixtures | `research/wave-0-checks.md` committed with tagged verdicts for all four questions |
+
+### Wave 1: shared foundations, installer and launcher
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 024-02 shared/core wiring and `antigravityCommand`: `StopWaitHarness`, sequential `stop-decide`, parameterized `version-copies` + `keptCacheCli`, `waitConsumer` (`ANTIGRAVITY_CONVERSATION_ID`), `src/harness/antigravity/command.ts` | planned | D1, D2, D3, D5; `src/core/slow/stop-wait.ts`, `src/harness/shared/{stop-decide,version-copies}.ts`, `src/cli/status-wait.ts`, `src/harness/antigravity/command.ts` | Unit tests pass for `"antigravity"` stop-wait handoff, parameterized version copies, `waitConsumer`, and `antigravityCommand`; lint and typecheck pass |
+| 024-06 `install.sh` and `squeal-launcher` for Antigravity (`--antigravity`, `--uninstall`, `SQUEAL_ANTIGRAVITY_BIN`, launcher format 9 discovering `~/.gemini/config/plugins/squeal` and `$PLUGIN_DATA/versions/`) | planned | D1; `install.sh`, `plugins/claude-code/bin/squeal-launcher`, installer and launcher tests | Isolated `HOME` tests pass for install, update, `--antigravity`, `--uninstall`, ownership record, and launcher discovery |
+
+### Wave 2: Antigravity adapter, plugin build and CLI integration
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 024-03 Antigravity adapter (`input`, `output`, `kept`, `handlers`, `hooks`, `run`, `main`, `entries/*`) and recorded hook JSON fixtures | planned | D2, D3, D4, D5, D8; `src/harness/antigravity/*` (except `command.ts`, `build.ts`), `test/fixtures/antigravity-hooks/*`, `test/harness/antigravity/*` | Unit tests pass for all 4 hook events, `invocationNum` 0 vs >0, 5 edit tool names + `run_command` deny, empty stdout on allow/error, 1,500 ms fail-open deadline, `Stop` guards + `stop-slow` handoff, `$PLUGIN_DATA` copies, and `writeThenCommit` |
+| 024-04 plugin scaffold, `hooks/run` fast path, build and CI wiring (`plugins/antigravity/`, `src/harness/antigravity/build.ts`, `package.json`, `scripts/check-version-bump.ts`, `.github/workflows/ci.yml`) | planned | D1, D4, D5; `plugins/antigravity/*`, `src/harness/antigravity/build.ts`, build/CI scripts, fast-path and schema tests | `hooks/run --if-squeal` passes < 10 ms p95, large-payload, fake-`"cwd"` and linked-worktree tests; `antigravity plugin validate --json` reports 0 errors and 0 warnings; version-bump and repository-inputs tests pass |
+| 024-05 CLI and `ps` integration (`squeal status` diagnostic line, `status-command`, `setup/harnesses`, `init --harness antigravity`, `update`, `ps` discovery and `older` flag) | planned | D5, D6; `src/cli/antigravity/*`, `src/cli/{main,status-command,init,update,setup/*}.ts`, `src/core/ps/{discover,flags}.ts`, tests | Unit tests pass for `squeal status` diagnostic, `statusCommand`, `readHarnesses`, `init --harness antigravity`, `squeal update`, and `squeal ps` |
+
+### Waves 3–4: proof and dogfooding
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 024-07 end-to-end suite (`plugins/antigravity` archived from `HEAD`, recorded hook JSON against a real daemon, bundled Node hook < 80 ms p95 budget, `antigravity plugin validate`) | planned | Testing; `test/e2e/*` | E2E suite green beside Claude Code and Codex; latency test green at calm load |
+| 024-08 live Antigravity CLI proof (`antigravity -p` and `--input-format stream-json`) and dogfooding report in `lessons.md` | planned | Proof, Goals 1–8; `docs/specifications/024-antigravity-adapter/lessons.md` | All 8 goals proven live with no blocker; `lessons.md` committed; spec ready to move to `shipped` |
+
 ## Later
 
 - Main CI timing sighting (coordinator 3d192245, 2026-11-14): `test/cli/wait-stale-start.test.ts` "with a spawn mark alone: named and pathless read as with no mark" timed out at its 5 s limit on Node 26 (3/3), main CI 43621729125 attempt 1 on `e4a8d981a` (0.1.496); attempt 2 passed, and it passed locally 6/6 at load 7.4. The test runs several `status --wait 1500` commands in sequence, close to the limit. No row yet.
