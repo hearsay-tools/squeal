@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { VACANT_LOCK_WAIT_MS } from "../daemon/lock-wait.js";
 import { socketWorktreeId } from "../daemon/paths.js";
@@ -33,6 +33,13 @@ const HOLDERS = "daemon lock holders";
 const CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
 /** The npm packages of the Pi and OpenCode plugins carry no version in their path. */
 const PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
+/**
+ * Spec 024 D1: Antigravity's installed plugin, `<.gemini>/config/plugins/squeal/`,
+ * and a copy Squeal retained in its plugin data directory,
+ * `<.gemini>/antigravity-cli/plugin_data/squeal/versions/<version>/`.
+ */
+const ANTIGRAVITY_INSTALL =
+  /^(.*\/\.gemini)\/(?:config\/plugins\/squeal|antigravity-cli\/plugin_data\/squeal\/versions\/([^/]+))\/dist\//;
 
 export const discover: Discover = (source, table, places, locks = source.locks()) => {
   const unknown: PsUnknown[] = [];
@@ -255,8 +262,38 @@ function installOf(
     const [, plugins = null, harness = null, marketplace = null, version = null] = cache;
     return { harness, version, plugins, marketplace };
   }
+  const antigravity = ANTIGRAVITY_INSTALL.exec(script);
+  if (antigravity !== null) {
+    return {
+      harness: "antigravity",
+      version: antigravity[2] ?? null,
+      plugins: null,
+      marketplace: null,
+    };
+  }
   const harness = PACKAGE_INSTALL.exec(script)?.[1] ?? null;
   return { harness, version: null, plugins: null, marketplace: null };
+}
+
+/**
+ * The installed Antigravity plugin's `plugin.json` for a daemon whose script
+ * lies under `<.gemini>/`, Antigravity's install or a copy of it (D1), and
+ * the version it names (`null` when it cannot be read); `null` for any
+ * other script.
+ */
+export function antigravityInstalled(
+  script: string,
+): { readonly manifest: AbsolutePath; readonly version: string | null } | null {
+  const gemini = ANTIGRAVITY_INSTALL.exec(script)?.[1];
+  if (gemini === undefined) return null;
+  const manifest = join(gemini, "config", "plugins", "squeal", "plugin.json");
+  try {
+    const version: unknown = JSON.parse(readFileSync(manifest, "utf8")).version;
+    return { manifest, version: typeof version === "string" && version !== "" ? version : null };
+  } catch {
+    // Missing or not JSON: the caller names the rule unknown.
+    return { manifest, version: null };
+  }
 }
 
 /**

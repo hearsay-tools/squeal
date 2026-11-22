@@ -1,12 +1,12 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { codexRuntimeVersion } from "../daemon/codex-runtime-version.js";
 import { claudeLoaded, isNewerVersion } from "../daemon/version.js";
 import { linkedWorktreeDir } from "../fs/git-layout.js";
 import { beatBetween, heartbeatGraceMs, heartbeatLateBy } from "../presence/heartbeat.js";
 import { shellWord } from "../text.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
-import { phaseOn } from "./discover.js";
+import { antigravityInstalled, phaseOn } from "./discover.js";
 import { fileFlags } from "./flags-files.js";
 import { orphans, overdue, type ProcessContext } from "./flags-processes.js";
 import type { DaemonWork, FlagFindings, FoundDaemon, PhaseOf, PsModel } from "./model.js";
@@ -212,16 +212,15 @@ function olderOf(
   d: FoundDaemon,
   work: DaemonWork | null,
 ): { readonly reason: string } | string | null {
-  const { plugins, marketplace, harness } = d;
-  if (plugins === null || marketplace === null || d.version === null) return null;
-  const newest =
-    harness === "claude"
-      ? (claudeLoaded(plugins, marketplace, d.root)?.version ?? null)
-      : codexRuntimeVersion(plugins, marketplace);
+  if (d.version === null) return null;
+  const installed = installedOf(d);
+  if (installed === null) return null;
+  const { newest, where } = installed;
+  const { harness } = d;
   if (newest === null) {
     c.name(
       `daemon ${d.row.pid} flag older`,
-      `no installed ${harness} version can be read under ${plugins}`,
+      `no installed ${harness} version can be read under ${where}`,
     );
     return null;
   }
@@ -238,6 +237,24 @@ function olderOf(
     return null;
   }
   return { reason: `version ${d.version}; ${harness} installs ${newest}` };
+}
+
+/**
+ * The version its harness installs now and where it is read: the plugin
+ * cache its script lies in, or Antigravity's installed plugin for a copy in
+ * its plugin data directory (spec 024 D1). `null` for no such install.
+ */
+function installedOf(d: FoundDaemon): { newest: string | null; where: string } | null {
+  const antigravity = antigravityInstalled(d.script);
+  if (antigravity !== null)
+    return { newest: antigravity.version, where: dirname(antigravity.manifest) };
+  const { plugins, marketplace } = d;
+  if (plugins === null || marketplace === null) return null;
+  const newest =
+    d.harness === "claude"
+      ? (claudeLoaded(plugins, marketplace, d.root)?.version ?? null)
+      : codexRuntimeVersion(plugins, marketplace);
+  return { newest, where: plugins };
 }
 
 /** D7 `hung`: serving, with a heartbeat past two intervals, on both readings. */
