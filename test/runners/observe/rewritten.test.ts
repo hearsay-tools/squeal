@@ -44,6 +44,35 @@ describe("observedInputs: files the run read and wrote (row 023-47)", { timeout:
     expect(seen.inputs[0]).not.toHaveProperty("rewritten");
   });
 
+  it("names a file read, removed and replaced with a directory (review 0.1.598 B1)", () => {
+    const seen = observe({
+      "main.mjs": [
+        'import { mkdirSync, readFileSync, rmSync } from "node:fs";',
+        'readFileSync("data.txt", "utf8");',
+        'rmSync("data.txt");',
+        'mkdirSync("data.txt");',
+      ].join("\n"),
+      "data.txt": "1",
+    });
+    expect(seen.paths).toContain("data.txt");
+    expect(seen.written).toContain("data.txt");
+    expect(seen.inputs[0]?.rewritten).toEqual(["data.txt"]);
+    expect(seen.inputs[0]?.paths).not.toContain("data.txt");
+  });
+
+  it("names no directory the run only listed and wrote below", () => {
+    const seen = observe({
+      "main.mjs": [
+        'import { readdirSync, writeFileSync } from "node:fs";',
+        'readdirSync("dir");',
+        'writeFileSync("dir/out.txt", "o");',
+      ].join("\n"),
+      "dir/in.txt": "i",
+    });
+    expect(seen.inputs[0]?.directories).toEqual(["dir"]);
+    expect(seen.inputs[0]).not.toHaveProperty("rewritten");
+  });
+
   it("names a file a CommonJS run read and rewrote in one statement", () => {
     const seen = observe(
       {

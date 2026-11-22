@@ -1,4 +1,4 @@
-import { rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { inputsOfReadsHere, listingsBelowHere } from "../../src/core/ci/inputs.js";
@@ -87,6 +87,23 @@ describe("inputsOfReads: tracked files the run rewrote (row 023-47)", () => {
 
     // a tracked file the run removed is still git's: its read moved, so nothing is kept
     expect([...(inputs[0] ?? [])].sort()).toEqual(["data/x.txt", "fixtures/deleted/b.txt"]);
+  });
+
+  it("keys a tracked file the run replaced with a directory, and no directory (review 0.1.598 B1)", async () => {
+    const root = repo();
+    rmSync(join(root, "data/x.txt"));
+    mkdirSync(join(root, "data/x.txt"));
+    mkdirSync(join(root, "out/scratch"), { recursive: true });
+    mkdirSync(join(root, "made"));
+    rmSync(join(root, "fixtures/deleted"), { recursive: true });
+    // `fixtures/tracked` and the removed `fixtures/deleted` hold tracked files but are no file git tracks
+    const observed = {
+      paths: [],
+      directories: [],
+      rewritten: ["data/x.txt", "fixtures/deleted", "fixtures/tracked", "made", "out/scratch"],
+    };
+    const inputs = await inputsOfReadsHere(root, [{ closure: new Set(), observed }]);
+    expect(inputs).toEqual([["data/x.txt"]]);
   });
 
   it("leaves out a rewritten file the closure holds", async () => {

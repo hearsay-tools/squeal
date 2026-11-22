@@ -18,9 +18,9 @@ import type { RecordedFile } from "./read.js";
  * (`mkdtemp` too) or removed that hold a kept path or listing, for the core's
  * written-directory bound (spec 016 D4). `direct` names the kept paths a
  * process the test file started loaded, which put the file in `direct`
- * (spec 016 D4, row 016-22). `rewritten` names the files the run read and
- * also wrote, which `paths` leaves out, for the core to key the tracked ones
- * (row 023-47).
+ * (spec 016 D4, row 016-22). `rewritten` names the paths the run read and
+ * also wrote, which `paths` leaves out, whatever stands there after the run,
+ * for the core to key the ones git tracks as files (row 023-47).
  * Files of two projects at one path share their observations: the recorder
  * attributes by path.
  */
@@ -56,7 +56,7 @@ export function observedInputs(
     const read = relative(entry.paths, (abs) => abs === git || !isDirectory(abs));
     const listed = relative(entry.listed, () => true);
     const recursive = relative(entry.recursive, () => true);
-    const rewritten = rewrittenOf(entry, paths, isDirectory);
+    const rewritten = rewrittenOf(entry, paths);
     if (read.length > 0 || listed.length > 0 || rewritten.length > 0) {
       const written = writtenAbove([...read, ...listed], entry.written, paths);
       const direct = read.filter((path) => entry.direct.has(paths.toAbsolute(path)));
@@ -77,18 +77,18 @@ export function observedInputs(
 }
 
 /**
- * Row 023-47: the project files `entry` both read and wrote, created or
- * removed, worktree-relative and sorted. Whether the read
- * came before the write is not recorded.
+ * Row 023-47: the project paths `entry` both read and wrote, created or
+ * removed, worktree-relative and sorted. Whether the read came before the
+ * write is not recorded, nor what kind the path was when read: a file the
+ * run read, removed and replaced with a directory is a directory now (review
+ * 0.1.598 B1), so what stands there after the run decides nothing. The core
+ * keys the ones git tracks as files; a directory the run stat'ed and wrote
+ * is none, a listing is not here.
  */
-function rewrittenOf(
-  entry: RecordedFile,
-  paths: WorktreePaths,
-  isDirectory: (abs: AbsolutePath) => boolean,
-): RelativePath[] {
+function rewrittenOf(entry: RecordedFile, paths: WorktreePaths): RelativePath[] {
   const out = new Set<RelativePath>();
   for (const abs of entry.paths) {
-    if (!entry.written.has(abs) || !paths.isProjectFile(abs) || isDirectory(abs)) continue;
+    if (!entry.written.has(abs) || !paths.isProjectFile(abs)) continue;
     const path = paths.toRelative(abs);
     if (path !== null) out.add(path);
   }
