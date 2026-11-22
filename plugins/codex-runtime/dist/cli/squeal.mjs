@@ -85367,7 +85367,7 @@ function antigravityStatusLine(cwd, env) {
   if (registered3 === true) return null;
   if (registered3 !== false && registered3.reason !== "no-store") return null;
   const plugin = antigravityPlugin(env);
-  const cause = plugin === null ? ` No Squeal plugin is in ~/.gemini/config/plugins/squeal: install it with ${ANTIGRAVITY_INSTALL_COMMAND}, then start Antigravity again.` : plugin.disabled ? ` Its hooks do not run: ${ANTIGRAVITY_DISABLED}.` : "";
+  const cause = plugin === null ? ` No Squeal plugin is in ~/.gemini/config/plugins/squeal: install it with ${ANTIGRAVITY_INSTALL_COMMAND}, then start Antigravity again.` : plugin.disabled ? ` Its hooks do not run: ${ANTIGRAVITY_DISABLED}; to reinstall, run ${ANTIGRAVITY_INSTALL_COMMAND}.` : ` If the hooks do not run, reinstall the plugin with ${ANTIGRAVITY_INSTALL_COMMAND}, then start Antigravity again.`;
   return `Antigravity: no Squeal consumer is registered for this conversation in this worktree (ANTIGRAVITY_CONVERSATION_ID ${conversation}). Either Squeal's hooks do not run in it, or none has registered it yet: hooks that ran before the store existed register nothing, and the next prompt does.${cause}
 `;
 }
@@ -101908,7 +101908,7 @@ function hasManifest(root, dir2) {
 init_version();
 import { accessSync as accessSync3, constants as constants8 } from "node:fs";
 import { delimiter as delimiter5, join as join100 } from "node:path";
-function readHarnesses(root, env) {
+function readHarnesses(root, env, requested = []) {
   return [
     {
       id: "claude-code",
@@ -101928,13 +101928,13 @@ function readHarnesses(root, env) {
         `codex plugin add ${PLUGIN_ID}`
       ]
     },
-    ...antigravityFact(env)
+    ...antigravityFact(env, requested.includes("antigravity"))
   ];
 }
-function antigravityFact(env) {
+function antigravityFact(env, includeWhenAbsent = false) {
   const cli = antigravityCli(env) !== null;
   const installed2 = antigravityPlugin(env);
-  if (!cli && installed2 === null) return [];
+  if (!cli && installed2 === null && !includeWhenAbsent) return [];
   const plugin = installed2 === null ? null : { version: installed2.version, scope: "user", disabled: installed2.disabled };
   return [
     { id: "antigravity", onPath: cli, plugin, installCommands: [ANTIGRAVITY_INSTALL_COMMAND] }
@@ -111906,7 +111906,7 @@ async function readPlan(root, options) {
       ) ? ["vitest.exclude"] : []
     ]
   };
-  const harnesses = readHarnesses(root, options.env);
+  const harnesses = readHarnesses(root, options.env, options.requestedHarnesses);
   const instructions = instructionFiles(
     root,
     facts.tracked,
@@ -124350,6 +124350,11 @@ async function answerPlan(plan2, given2, pick) {
     if (await yes(`Set up ${HARNESS_NAMES[h.id]} here (${whereOf(h)})?`, found4))
       harnesses.push(h.id);
   }
+  if (given2.harnesses !== null) {
+    for (const id of given2.harnesses) {
+      if (!harnesses.includes(id)) harnesses.push(id);
+    }
+  }
   const blocks = [];
   if (given2.blocks !== null) blocks.push(...given2.blocks.filter((b) => b !== "none"));
   else {
@@ -124637,7 +124642,8 @@ ${SETUP_USAGE}`);
     return 1;
   }
   const env = io.env ?? process.env;
-  const { plan: plan2, testFiles: testFiles3 } = await readPlan(root, { env, codexTrust: true });
+  const requestedHarnesses = parsed3.mode === "apply" ? parsed3.given.harnesses ?? [] : [];
+  const { plan: plan2, testFiles: testFiles3 } = await readPlan(root, { env, codexTrust: true, requestedHarnesses });
   if (parsed3.mode === "apply") {
     let { given: given2 } = parsed3;
     if (given2.slow !== null) {
