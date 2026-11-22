@@ -7,6 +7,7 @@ import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
 import type { EnvironmentGrowth } from "./environment-growth.js";
 import { linkTargets } from "./link-target.js";
+import { trackedRewrites } from "./rewritten-reads.js";
 
 /** What one completed file's run adds to its closure (task 001-132). */
 export interface ObservedGrowth {
@@ -126,7 +127,8 @@ export type ListingsBelow = (directory: RelativePath) => readonly RelativePath[]
  * (`linkTargets`, task 001-148); each listing, a recursive listing as the
  * listing of each directory below it (`below`; B5, task 001-134); and none
  * of the run's own scratch, a git-ignored path below a directory it wrote,
- * created or removed (`scratchOf`, 016 D4). The daemon's record and the
+ * created or removed (`scratchOf`, 016 D4); with each tracked file it read
+ * and rewrote (`trackedRewrites`, row 023-47). The daemon's record and the
  * gate's `--parts` (`inputsOfReadsHere` in `ci/inputs.ts`; spec 020 D13.2,
  * row 020-20) both key by it. Reads links and asks git once for all of `reads`; changes
  * nothing. `ignored`: the inputs git ignores, a listing by its directory.
@@ -141,12 +143,16 @@ export async function inputsOfReads(
 }> {
   const candidates = new Set<RelativePath>();
   const fresh: RelativePath[][] = [];
-  for (const { closure, observed } of reads) {
+  const rewrites = await trackedRewrites(
+    root,
+    reads.map((r) => r.observed),
+  );
+  for (const [at, { closure, observed }] of reads.entries()) {
     const listed = new Set(observed.directories.map(listingPath));
     for (const directory of observed.recursive ?? []) {
       for (const path of below(directory)) listed.add(path);
     }
-    const read = observed.paths.filter((path) => !closure.has(path));
+    const read = [...observed.paths, ...(rewrites[at] ?? [])].filter((path) => !closure.has(path));
     const targets = await linkTargets(root, read);
     const paths = [...new Set([...read, ...targets, ...listed])].filter(
       (path) => !closure.has(path),
