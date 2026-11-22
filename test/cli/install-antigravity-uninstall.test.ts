@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -108,6 +108,25 @@ describe("install.sh --uninstall with Antigravity", { timeout: 30_000 }, () => {
     expect(existsSync(join(antigravityPluginOf(m), "plugin.json"))).toBe(true);
     expect(existsSync(antigravityDataOf(m))).toBe(true);
     expect(readFileSync(ownedOf(m), "utf8")).toBe("antigravity\n");
+  });
+
+  // Review 0.1.601 B1: updating a pre-existing plugin with a non-numeric or missing version must stay unowned on uninstall.
+  it.each([
+    ["a prerelease version", JSON.stringify({ name: "squeal", version: "0.1.599-local" })],
+    ["no version field", JSON.stringify({ name: "squeal" })],
+  ])("preserves a pre-existing plugin updated from %s", (_, manifest) => {
+    const m = machine([]);
+    antigravityCli(m);
+    mkdirSync(antigravityPluginOf(m), { recursive: true });
+    writeFileSync(join(antigravityPluginOf(m), "plugin.json"), `${manifest}\n`);
+    m.publish("0.1.600");
+    expect(install(m, "--antigravity").status).toBe(0);
+    expect(existsSync(ownedOf(m))).toBe(false);
+    m.clearLog();
+    const r = install(m, "--uninstall");
+    expect(r.status).toBe(0);
+    expect(m.calls().filter((c) => c.includes(" plugin "))).toEqual([]);
+    expect(existsSync(join(antigravityPluginOf(m), "plugin.json"))).toBe(true);
   });
 
   it("forgets a recorded plugin that is gone, and runs no uninstall", () => {

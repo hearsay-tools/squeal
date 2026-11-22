@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -112,6 +112,23 @@ describe("install.sh with Antigravity", { timeout: 30_000 }, () => {
     antigravityCli(m);
     scratchTmp(m);
     antigravityInstalls(m, "0.1.599");
+    m.publish("0.1.600");
+    const r = install(m, "--antigravity");
+    expect(r.status).toBe(0);
+    expect(pluginVersion(m)).toBe("0.1.600");
+    expect(existsSync(ownedOf(m))).toBe(false);
+  });
+
+  // Review 0.1.601 B1: ownership comes from pre-install plugin.json presence, not numeric version parsing.
+  it.each([
+    ["a prerelease version", JSON.stringify({ name: "squeal", version: "0.1.599-local" })],
+    ["no version field", JSON.stringify({ name: "squeal" })],
+  ])("does not claim a pre-existing plugin whose manifest has %s", (_, manifest) => {
+    const m = machine([]);
+    antigravityCli(m);
+    scratchTmp(m);
+    mkdirSync(antigravityPluginOf(m), { recursive: true });
+    writeFileSync(join(antigravityPluginOf(m), "plugin.json"), `${manifest}\n`);
     m.publish("0.1.600");
     const r = install(m, "--antigravity");
     expect(r.status).toBe(0);
