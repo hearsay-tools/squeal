@@ -6,6 +6,7 @@ import type { AbsolutePath, CommitSha, EpochMs, RelativePath } from "../types/co
 import type { RevisionTrigger } from "../types/revision.js";
 import {
   type CandidateBatch,
+  type CandidatePath,
   type DeliveredPass,
   WATCHER_TIMINGS,
   type WatcherBackend,
@@ -101,6 +102,49 @@ export function createChangeFeed(options: ChangeFeedOptions): ChangeFeed {
   return new Feed(options);
 }
 
+/** Row 024-04 (spec 024 D4.2): the longest gap between idle full passes while nothing changed. */
+export const MAX_IDLE_POLL_MS = 300_000;
+
+/**
+ * Row 024-04 (spec 024 D4.2): when the idle tick runs a full pass. The tick itself stays at the
+ * reconcile interval, so the feed's heartbeat keeps the late rule (`FEED_LATE_MS`); a tick before
+ * the next full pass is due only reads `HEAD`. Each idle full pass that found what the one before
+ * it found doubles the gap, up to `MAX_IDLE_POLL_MS`; any event, drop or asked pass resets it.
+ */
+class IdleBackoff {
+  private gap: number;
+  private lastFull = Number.NEGATIVE_INFINITY;
+  constructor(
+    private readonly baseMs: number,
+    readonly enabled: boolean,
+  ) {
+    this.gap = baseMs;
+  }
+
+  /** The gap before the next idle full pass; half a tick early counts as due (timer jitter). */
+  fullDue(at: EpochMs): boolean {
+    return !this.enabled || at - this.lastFull >= this.gap - this.baseMs / 2;
+  }
+
+  full(at: EpochMs): void {
+    this.lastFull = at;
+  }
+
+  /** After an idle full pass: `same` when it found what the pass before it found. */
+  idleFull(same: boolean): void {
+    this.gap = same ? Math.min(MAX_IDLE_POLL_MS, this.gap * 2) : this.baseMs;
+  }
+
+  reset(): void {
+    this.gap = this.baseMs;
+  }
+}
+
+/** A candidate list as one string: its paths and their stats, in order. */
+function candidatesKey(paths: readonly CandidatePath[]): string {
+  return JSON.stringify(paths.map(({ path, stat }) => [path, stat]));
+}
+
 /** Basenames whose change means the watch-time exclusions may be out of date. */
 const SPEC_INPUTS = new Set([".gitignore", ".git"]);
 
@@ -135,6 +179,10 @@ class Feed implements ChangeFeed {
   /** Made again by `start`, with the resolved root. */
   private unlisted: UnlistedDirs;
   private idleTimer: NodeJS.Timeout | null = null;
+  private readonly backoff: IdleBackoff;
+  /** The last full pass's candidate paths and whether it found what the one before did. */
+  private passPaths: string | null = null;
+  private passSame = false;
   private closed = false;
   private readonly retries: BatchRetries;
 
@@ -149,6 +197,9 @@ class Feed implements ChangeFeed {
       ...options.timings,
     };
     this.extraFiles = [...(options.extraFiles ?? [])];
+    // An interval the caller set keeps a full pass every tick, so timing tests stay exact.
+    const fixed = options.timings?.reconcileIntervalMs !== undefined;
+    this.backoff = new IdleBackoff(this.timings.reconcileIntervalMs, !fixed);
     this.debouncer = new Debouncer((paths) => this.onDebounced(paths), this.timings);
     this.tempHold = new TempHold(this.timings.atomicSaveHoldMs, (path) => {
       if (!this.closed) this.debouncer.push([toAbsolute(this.root, path)]);
@@ -174,6 +225,11 @@ class Feed implements ChangeFeed {
   }
 
   reconcile(trigger: RevisionTrigger): Promise<void> {
+    this.backoff.reset();
+    return this.queuePass(trigger);
+  }
+
+  private queuePass(trigger: RevisionTrigger): Promise<void> {
     if (this.pending) {
       // "interval" also checks the install (scheduler), so a joined pass keeps it.
       if (trigger === "interval") this.pending.trigger = trigger;
@@ -219,6 +275,7 @@ class Feed implements ChangeFeed {
   private onHints(hints: readonly WatchHint[]): void {
     if (this.closed) return;
     this.debouncer.push(hints.map((h) => h.path));
+    this.backoff.reset();
     this.armIdle();
   }
 
@@ -285,6 +342,11 @@ class Feed implements ChangeFeed {
     await this.linked?.update(linkedDirs);
     const batch = { trigger, paths: this.tempHold.filter(paths, this.trackedPaths) };
     if (!(await this.emit(batch, pass.startedAt))) return;
+    this.backoff.full(pass.startedAt);
+    // Only a feed that backs off compares: a fixed interval never reads `passSame`.
+    const found = this.backoff.enabled ? candidatesKey(batch.paths) : null;
+    this.passSame = found !== null && head === this.passHead && found === this.passPaths;
+    this.passPaths = found;
     this.passHead = head;
     this.deliveredPass = pass;
   }
@@ -370,8 +432,40 @@ class Feed implements ChangeFeed {
     if (this.closed) return;
     this.idleTimer = setTimeout(() => {
       if (this.debouncer.pending) this.armIdle();
-      else void this.reconcile("interval");
+      else void this.idleTick();
     }, this.timings.reconcileIntervalMs);
     this.idleTimer.unref();
+  }
+
+  /**
+   * Row 024-04 (spec 024 D4.2): the idle tick. A full pass when one is due, the watch is not at
+   * the system's limit, or `HEAD` moved; otherwise only the heartbeat a delivered batch gives.
+   */
+  private idleTick(): Promise<void> {
+    if (this.pending) return this.pending.done;
+    const healthy = this.sub !== null && !this.atWatchLimit;
+    if (!healthy || this.backoff.fullDue(this.now())) return this.idleFull();
+    return this.enqueue(
+      async () => {
+        const startedAt = this.now();
+        if ((await gitHead(this.root)) !== this.passHead) {
+          this.backoff.reset();
+          await this.reconcileNow("interval");
+        } else if (!this.closed) this.options.onDelivered?.(startedAt);
+      },
+      () => "interval",
+    );
+  }
+
+  private idleFull(): Promise<void> {
+    if (!this.backoff.enabled) return this.queuePass("interval");
+    return this.enqueue(
+      async () => {
+        const before = this.deliveredPass;
+        await this.reconcileNow("interval");
+        if (this.deliveredPass !== before) this.backoff.idleFull(this.passSame);
+      },
+      () => "interval",
+    );
   }
 }
