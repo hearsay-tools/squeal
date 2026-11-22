@@ -39,7 +39,8 @@
     "test/harness/antigravity/**/*.test.ts": [
       "plugins/antigravity/**",
       "package.json",
-      "src/**/*.ts"
+      "src/**/*.ts",
+      "test/fixtures/antigravity-hooks/**"
     ],
     "test/runners/node-test/**/*.test.ts": [
       "test/fixtures/node-test/**",
