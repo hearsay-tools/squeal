@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ANTIGRAVITY_INSTALL_COMMAND } from "../../src/cli/antigravity/install.js";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { cleanupFixtures, scratch } from "./setup/fixture.js";
 
 /*
@@ -55,9 +56,9 @@ describe("squeal init --harness antigravity (spec 024 D6)", () => {
     const r = await init(["--harness", "antigravity"], root, { HOME });
     expect(r.stderr).toBe("");
     expect(r.code).toBe(0);
-    expect(JSON.parse(readFileSync(join(root, "squeal.config.json"), "utf8"))).toMatchObject({
-      nodeTest: [],
-    });
+    expect(JSON.parse(readFileSync(join(root, "squeal.config.json"), "utf8"))).toEqual(
+      DEFAULT_POLICY,
+    );
     expect(r.stdout).toBe(
       [
         "squeal init: wrote squeal.config.json with every default policy key",

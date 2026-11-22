@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { cpSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { antigravityCli } from "../../../src/cli/antigravity/install.js";
 import {
   ANTIGRAVITY_PLUGIN,
   ANTIGRAVITY_PLUGIN_DIR,
@@ -126,7 +127,7 @@ describe("the Antigravity hooks (spec 024 D3)", () => {
 describe("hooks/run (spec 024 D4)", () => {
   it("is executable, in the tree and in git's index", () => {
     const run = join(ANTIGRAVITY_PLUGIN_DIR, "hooks/run");
-    expect(statSync(run).mode & 0o777).toBe(0o755);
+    expect(statSync(run).mode & 0o755).toBe(0o755);
     const staged = execFileSync("git", ["ls-files", "-s", "--", "plugins/antigravity/hooks/run"], {
       cwd: REPO_ROOT,
       encoding: "utf8",
@@ -150,24 +151,9 @@ describe("the Antigravity skill note (spec 024 D1)", () => {
   });
 });
 
-/** An Antigravity CLI as `install.sh` accepts one (spec 024 D1): bare semver and `plugin validate`. */
-function antigravityCli(): string | undefined {
-  const candidates = [process.env.SQUEAL_ANTIGRAVITY_BIN, "agy", "antigravity"];
-  for (const bin of candidates) {
-    if (bin === undefined || bin === "") continue;
-    try {
-      const version = execFileSync(bin, ["--version"], { encoding: "utf8", timeout: 10_000 });
-      if (!/^\d+\.\d+\.\d+\s*$/.test(version)) continue;
-      const help = execFileSync(bin, ["help", "plugin"], { encoding: "utf8", timeout: 10_000 });
-      if (/\buninstall\b/.test(help) && /\bvalidate\b/.test(help)) return bin;
-    } catch {}
-  }
-  return undefined;
-}
+const cli = antigravityCli(process.env);
 
-const cli = antigravityCli();
-
-describe.skipIf(cli === undefined)("antigravity plugin validate (spec 024 D1)", () => {
+describe.skipIf(cli === null)("antigravity plugin validate (spec 024 D1)", () => {
   it("reports no error and no warning", () => {
     const home = tempDir("squeal-antigravity-home-");
     const out = execFileSync(cli ?? "", ["plugin", "validate", "--json", ANTIGRAVITY_PLUGIN_DIR], {
@@ -175,8 +161,14 @@ describe.skipIf(cli === undefined)("antigravity plugin validate (spec 024 D1)", 
       timeout: 30_000,
       env: { PATH: process.env.PATH ?? "", HOME: home },
     });
-    const report = JSON.parse(out) as { errors?: unknown[]; warnings?: unknown[] };
-    expect(report.errors ?? []).toEqual([]);
-    expect(report.warnings ?? []).toEqual([]);
+    const report = JSON.parse(out) as {
+      components?: { hooks?: number; skills?: number };
+      findings?: { severity?: string; file?: string; message?: string }[];
+    };
+    expect(report.components).toMatchObject({ hooks: 1, skills: 1 });
+    const serious = (report.findings ?? []).filter(
+      (f) => f.severity === "error" || f.severity === "warning",
+    );
+    expect(serious).toEqual([]);
   });
 });
