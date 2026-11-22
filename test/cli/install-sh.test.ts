@@ -103,13 +103,13 @@ describe("install.sh", { timeout: 30_000 }, () => {
     expect(r.stdout).not.toContain("not on your PATH");
   });
 
-  it("stops before any harness command when none of claude, codex, pi and opencode is on the PATH", () => {
+  it("stops before any harness command when none of claude, codex, pi, opencode and agy is on the PATH", () => {
     const m = machine([]);
     m.publish("0.1.134");
     const r = install(m);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain(
-      "none of claude, codex, pi and opencode is on the PATH: install Claude Code, Codex, Pi or OpenCode first",
+      "none of claude, codex, pi, opencode and agy is on the PATH: install Claude Code, Codex, Pi, OpenCode or Antigravity first",
     );
     expect(existsSync(launcherOf(m))).toBe(false);
   });
@@ -169,7 +169,7 @@ describe("install.sh", { timeout: 30_000 }, () => {
     const m = machine();
     const r = install(m, "--yes");
     expect(r.status).toBe(2);
-    expect(r.stderr).toBe("usage: install.sh [--uninstall | --pi | --opencode]\n");
+    expect(r.stderr).toBe("usage: install.sh [--uninstall | --pi | --opencode | --antigravity]\n");
     expect(m.calls()).toEqual([]);
   });
 

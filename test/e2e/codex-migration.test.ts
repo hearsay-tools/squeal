@@ -47,8 +47,8 @@ describe.skipIf(!CODEX_AVAILABLE)("released format-7 migration (002-33)", () => 
       hub.publish();
       const upgrade = m.run(terminal, ["update"]);
       expect(upgrade.status, upgrade.stderr + upgrade.stdout).toBe(0);
-      expect(upgrade.stdout).toContain("Copied the launcher (format 7, now 8)");
-      expect(readFileSync(terminal, "utf8")).toContain("# squeal-launcher format 8");
+      expect(upgrade.stdout).toContain("Copied the launcher (format 7, now 9)");
+      expect(readFileSync(terminal, "utf8")).toContain("# squeal-launcher format 9");
       expect(m.run(terminal, ["--version"]).stdout).toBe(`${SEED_VERSION}\n`);
       expect(existsSync(join(m.plugin, "seed/dist/cli/squeal.mjs"))).toBe(true);
       const ensured = m.cli(["codex-runtime", "ensure", "--plugin-root", m.plugin]);
