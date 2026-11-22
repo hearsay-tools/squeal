@@ -1,0 +1,69 @@
+{
+  "startedAt": "2026-11-21T22:55:52.584Z",
+  "squealVersion": "0.1.591 vs 0.1.593",
+  "plugins": [
+    {
+      "version": "0.1.591",
+      "label": "0.1.591"
+    },
+    {
+      "version": "0.1.593",
+      "label": "0.1.593"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    2351.6666666666665,
+    2420.6666666666665,
+    2440
+  ],
+  "loadavgAtStart": "0.81 0.25 0.09 1/392 6863",
+  "cells": [
+    {
+      "name": "store-7g@0.1.591",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.591",
+      "rep": 1
+    },
+    {
+      "name": "store-7g@0.1.593",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.593",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3@0.1.593",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.593",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3@0.1.591",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.591",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-22T00:27:04.122Z"
+}

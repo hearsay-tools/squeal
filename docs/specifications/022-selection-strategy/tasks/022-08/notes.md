@@ -29,3 +29,20 @@ List deletes: 256 lists held the lock up to 1.1 s (0.43 to 1.1 s in the log), ab
 ## Not measured here
 
 The bound on a large store is the bench's job: `store-7g` and `store-7g-wt3`, 0.1.591 vs this candidate (board row's done-when). Expected: vacuum slices about 100 to 175 ms, no long-write line over 250 ms from the vacuum, total vacuum time about the same as before.
+
+## Benchmark (coordinator, 2026-11-22)
+
+Paired run, 0.1.591 vs `cand/0.1.593` (`93524ae1c`), cells `store-7g` and `store-7g-wt3`, 1 repeat, one Ryzen 7 9700X sandbox: `bench/results/2026-11-22-0.1.591-vs-0.1.593-default-AMD-Ryzen-7-9700X-8-Core-Processor/`. Correctness PASS. Cell scores 54 vs 54 and 58 vs 55 (Commands −13, one metric moving a band).
+
+| Cell | Metric | 0.1.591 | 0.1.593 |
+|---|---|---:|---:|
+| store-7g | Lock holds over 250 ms, count and total | 601, 371 s | 38, 18 s |
+| store-7g | Longest lock hold | 2,108 ms | 1,649 ms |
+| store-7g | Hook after each batch (slowest 5%) | 881 ms | 255 ms |
+| store-7g | Hook at session start (slowest) | 211 ms | 100 ms |
+| store-7g-wt3 | Lock holds over 250 ms, count and total | 517, 417 s | 60, 29 s |
+| store-7g-wt3 | Longest lock hold | 4,156 ms | 1,754 ms |
+| store-7g-wt3 | Hook after each batch (slowest 5%) | 1,118 ms | 393 ms |
+| store-7g-wt3 | Hook at session start (slowest) | 203 ms | 140 ms |
+
+Prune slices still over 250 ms in 0.1.593: 15 and 23 list deletes of 32 rows, 14 and 16 vacuum slices; the longest prune slice 883 and 1,095 ms. The rest of the long holds are result writes (`#record`) present in both versions. The tail looks like disk stalls on single steps; the bulk of the cost is gone.

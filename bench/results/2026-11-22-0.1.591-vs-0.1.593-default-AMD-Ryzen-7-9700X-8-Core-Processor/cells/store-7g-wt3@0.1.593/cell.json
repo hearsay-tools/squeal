@@ -1,0 +1,208 @@
+{
+  "name": "store-7g-wt3@0.1.593",
+  "files": 500,
+  "worktrees": 3,
+  "load": 0,
+  "ageRounds": 326,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "phases": {
+    "startMain": {
+      "ms": 638.2432389999994,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/store-7g-wt3@0.1.593/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore"
+    },
+    "runAll": {
+      "ms": 43102.467779,
+      "code": 0,
+      "tail": "w\nCheckpoint 5fa1a2cd-30a4-4691-b83c-398672bfe202 started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 163 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.7885886494814112
+    },
+    "age": {
+      "ms": 292891,
+      "code": 0,
+      "rounds": 326,
+      "spanDays": 7,
+      "lists": "7d",
+      "churn": false,
+      "testFiles": 500,
+      "resultsAdded": 1141000,
+      "listsAdded": 163000,
+      "runsAdded": 20538,
+      "listBytes": 53027,
+      "storeBytes": 9610010624,
+      "codeStore": {
+        "filesWithCoverage": 437,
+        "coverageAdded": 142462,
+        "partsAdded": 142462,
+        "codeBytes": 1324376064
+      }
+    },
+    "startAged": {
+      "ms": 721.2388550000032,
+      "code": 0,
+      "at": 1795304844615
+    },
+    "firstStatusAged": {
+      "ms": 273.9710100000375,
+      "code": 0
+    },
+    "startOthers": [
+      {
+        "ms": 392.13275799999246,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        }
+      },
+      {
+        "ms": 497.66393299994525,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        }
+      }
+    ],
+    "idle": {
+      "ms": 60000,
+      "daemons": 3,
+      "storeProcessCpuPct": 0.03333333333333336,
+      "perDaemonCpuPct": [
+        2.3,
+        3.416666666666666,
+        3.3500000000000005
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 917152.5053419999,
+        "code": 0
+      },
+      {
+        "worktree": 1,
+        "ms": 726247.2691239999,
+        "code": 0
+      },
+      {
+        "worktree": 2,
+        "ms": 489293.45617099997,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.44472097023440477,
+    "sessionDaemonCpuS": [
+      348.11999999999995
+    ],
+    "edits": 57,
+    "sessionStoreProcessCpuS": 5.14,
+    "reach": {
+      "ms": 298.6834479998797,
+      "code": 0,
+      "peakRssBytes": 110473216
+    }
+  },
+  "store": {
+    "storeBytes": 8671563776,
+    "walBytes": 26491632,
+    "codeBytes": 1331998720,
+    "runsDirs": 104,
+    "rows": {
+      "results": 1155994,
+      "runs": 20626,
+      "revisions": 57,
+      "transitions": 672
+    },
+    "longWrites": 60,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      292,
+      758,
+      1213,
+      412,
+      352,
+      303,
+      340,
+      280,
+      833,
+      365,
+      795,
+      262,
+      361,
+      431,
+      329,
+      857,
+      405,
+      269,
+      271,
+      256,
+      711,
+      308,
+      345,
+      537,
+      252,
+      396,
+      753,
+      1095,
+      266,
+      285,
+      266,
+      252,
+      350,
+      609,
+      289,
+      377,
+      255,
+      336,
+      471,
+      250,
+      351,
+      260,
+      255,
+      333,
+      623,
+      263,
+      596,
+      1754,
+      335,
+      429,
+      302,
+      471,
+      386,
+      785,
+      1403,
+      598,
+      252,
+      255,
+      734,
+      496
+    ]
+  },
+  "storeProcess": {
+    "seen": 3,
+    "cpuS": 6.510000000000001,
+    "maxRssBytes": 168521728,
+    "written": 3215,
+    "failed": 0,
+    "queueWaitMaxMs": 455,
+    "busyMs": 12865,
+    "stops": 1,
+    "failedLines": 0,
+    "relay": {
+      "sent": 3215,
+      "direct": 89,
+      "failed": 0
+    }
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 566444032,
+    "maxTreeBytes": 1976967168
+  }
+}
