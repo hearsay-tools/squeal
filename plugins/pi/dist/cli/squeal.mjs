@@ -114613,6 +114613,7 @@ init_paths();
 import { existsSync as existsSync71 } from "node:fs";
 import { setTimeout as sleep28 } from "node:timers/promises";
 init_git_layout();
+init_paths();
 
 // src/cli/stop-waits.ts
 import { setTimeout as sleep27 } from "node:timers/promises";
@@ -114683,6 +114684,8 @@ async function stopAt(root, revision, io, bounds) {
   return code;
 }
 async function stopOne(tree, short6, io, bounds) {
+  const before5 = readCommitWorktree(tree);
+  const lockPath = before5 === null ? null : lockPathOf(tree, before5.commonDir);
   const socketPath = await daemonSocket(tree);
   const response = await askDaemon(socketPath, { type: "stop" }).catch(() => null);
   if (response !== null && !await socketClosed(socketPath, bounds.socketMs)) {
@@ -114692,7 +114695,7 @@ async function stopOne(tree, short6, io, bounds) {
     );
     return 1;
   }
-  const daemon = readCommitWorktree(tree)?.daemon;
+  const daemon = before5?.daemon ?? readCommitWorktree(tree)?.daemon;
   if (daemon !== void 0 && !await gone4(daemon, bounds.lockMs)) {
     io.stdout(
       `Stop requested; the commit daemon at ${short6}, pid ${daemon.pid}, is still running after ${seconds6(bounds.lockMs)}
@@ -114700,6 +114703,8 @@ async function stopOne(tree, short6, io, bounds) {
     );
     return 1;
   }
+  if (daemon === void 0 && response !== null && lockPath !== null)
+    await treeOrLockGone(tree, lockPath, bounds.lockMs);
   await removeCommitWorktree(tree, { note: (text3) => io.stdout(`${text3}
 `) });
   if (existsSync71(tree)) {
@@ -114711,6 +114716,29 @@ async function stopOne(tree, short6, io, bounds) {
   io.stdout(`${what} at ${short6}; removed ${tree}
 `);
   return 0;
+}
+function lockPathOf(tree, commonDir) {
+  try {
+    return lockFileFor(commonDir, worktreeIdFor(tree));
+  } catch {
+    return null;
+  }
+}
+async function treeOrLockGone(tree, path, ms2) {
+  const deadline = Date.now() + ms2;
+  while (existsSync71(tree) && existsSync71(path) && !lockFree2(path)) {
+    if (Date.now() > deadline) return;
+    await sleep28(50);
+  }
+}
+function lockFree2(path) {
+  try {
+    const lock2 = acquireDaemonLock(path);
+    lock2?.release();
+    return lock2 !== null;
+  } catch {
+    return false;
+  }
 }
 async function gone4(daemon, ms2) {
   const deadline = Date.now() + ms2;
