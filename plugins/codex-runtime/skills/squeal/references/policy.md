@@ -71,7 +71,7 @@ Stop also waits for the checks of the groups at `"stop"` in `checks`, and for th
 `~/.config/squeal/remote.json` (under `$XDG_CONFIG_HOME` when set), per user and never committed, sends one repository's background Vitest runs (the start and restart baselines and the backlog) to an SSH host you name. Edit tiers, named waits, slow files and check groups stay on your machine. Nothing goes remote until you name a repository here, and a repository's `remote.allowed: false` forbids it.
 
 ```json
-{ "repositories": { "/home/me/app": { "target": "build-box" } } }
+{ "repositories": { "/home/user/app": { "target": "build-box" } } }
 ```
 
 | Key | Default | Meaning |

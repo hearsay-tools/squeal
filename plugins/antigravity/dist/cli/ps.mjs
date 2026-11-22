@@ -1,0 +1,4689 @@
+#!/usr/bin/env node
+import { createRequire as __squealCreateRequire } from "node:module";
+const require = __squealCreateRequire(import.meta.url);
+
+// src/cli/ps.ts
+import { homedir as homedir3 } from "node:os";
+import { isAbsolute as isAbsolute10, resolve as resolve4 } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+
+// src/core/daemon/paths.ts
+import { dirname, isAbsolute, join } from "node:path";
+var SOCKET_NAME = /^squeal-([0-9a-f]{16})\.sock$/;
+function socketWorktreeId(name2) {
+  return SOCKET_NAME.exec(name2)?.[1] ?? null;
+}
+function userTmpDir(uid = currentUid()) {
+  return join("/tmp", `squeal-${uid}`);
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+
+// src/core/daemon/user-config.ts
+import { availableParallelism, homedir } from "node:os";
+import { dirname as dirname4, isAbsolute as isAbsolute3, join as join5, resolve as resolve2 } from "node:path";
+
+// src/core/capacity/background.ts
+var DEFAULT_BACKGROUND_SHARE = 0.75;
+function isBackgroundShare(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+function backgroundCeiling(share2, cpus3) {
+  return Math.round(share2 * cpus3 * 100) / 100;
+}
+
+// src/core/fs/git-layout.ts
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join2, resolve } from "node:path";
+
+// src/core/fs/errors.ts
+function isMissing(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
+}
+
+// src/core/fs/git-layout.ts
+var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
+function findWorktreeRoot(path) {
+  let dir = resolve(path);
+  if (existsSync(dir)) dir = realpathSync(dir);
+  for (; ; ) {
+    if (existsSync(join2(dir, ".git"))) return dir;
+    const parent = dirname2(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function worktreeIdFor(root) {
+  return worktreeIdOfRealPath(realpathSync(root));
+}
+function worktreeIdOfRealPath(realPath) {
+  return createHash("sha256").update(realPath).digest("hex").slice(0, 16);
+}
+function linkedWorktreeDir(root) {
+  const entry = dotGit(root);
+  return entry?.isFile ? entry.gitDir : null;
+}
+function resolveCommonDir(root) {
+  const entry = dotGit(root);
+  if (entry === null) return null;
+  if (!entry.isFile) return realpathSync(entry.gitDir);
+  const { gitDir } = entry;
+  if (lstatOrNull(gitDir) === null) return null;
+  const commondirFile = join2(gitDir, "commondir");
+  if (lstatOrNull(commondirFile) === null) return realpathSync(gitDir);
+  const commondir = readFileSync(commondirFile, "utf8").trim();
+  const common = isAbsolute2(commondir) ? commondir : resolve(gitDir, commondir);
+  return lstatOrNull(common) === null ? null : realpathSync(common);
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+function dotGit(root) {
+  const path = join2(root, ".git");
+  const stat = lstatOrNull(path);
+  if (stat === null) return null;
+  if (stat.isDirectory()) return { gitDir: path, isFile: false };
+  if (!stat.isFile()) return null;
+  const match = GITDIR_LINE.exec(readFileSync(path, "utf8"));
+  return match?.[1] ? { gitDir: resolve(root, match[1]), isFile: true } : null;
+}
+
+// src/core/fs/json.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// src/core/slow/slot-files.ts
+import { basename as basename2, join as join4 } from "node:path";
+
+// src/core/store/paths.ts
+import { basename, dirname as dirname3, join as join3 } from "node:path";
+function storePaths(commonDir) {
+  const dir = join3(commonDir, "squeal");
+  return {
+    dir,
+    database: join3(dir, "store.sqlite"),
+    runsDir: join3(dir, "runs"),
+    locksDir: join3(dir, "locks")
+  };
+}
+function lockFileFor(commonDir, worktreeId) {
+  return join3(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+}
+var LOCK_NAME = /^([0-9a-f]{16})\.sqlite$/;
+function lockFileWorktreeId(name2) {
+  return LOCK_NAME.exec(name2)?.[1] ?? null;
+}
+function lockFileParts(path) {
+  const worktreeId = lockFileWorktreeId(basename(path));
+  if (worktreeId === null) return null;
+  const commonDir = dirname3(dirname3(dirname3(path)));
+  return lockFileFor(commonDir, worktreeId) === path ? { commonDir, worktreeId } : null;
+}
+
+// src/core/slow/slot-files.ts
+var REPOSITORY_DIR = /^repo\.[0-9a-f]{16}$/;
+function isRepositorySlotDir(dir) {
+  return REPOSITORY_DIR.test(basename2(dir));
+}
+var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/daemon/config-file.ts
+import { readFileSync as readFileSync2 } from "node:fs";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+function loadConfigFile(path, shape, defaults) {
+  let text2;
+  try {
+    text2 = readFileSync2(path, "utf8");
+  } catch (error) {
+    if (isMissing(error)) return { value: defaults, problems: [] };
+    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
+  }
+  let parsed2;
+  try {
+    parsed2 = JSON.parse(text2);
+  } catch (error) {
+    const problem = `not valid JSON (${error.message})`;
+    return { value: defaults, problems: [problem], unparsed: true };
+  }
+  if (!isRecord(parsed2)) {
+    const got = Array.isArray(parsed2) ? "an array" : JSON.stringify(parsed2);
+    return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
+  }
+  const problems = [];
+  const unknownKeys = [];
+  const merged = merge(shape, defaults, parsed2, "", { problems, unknownKeys });
+  return {
+    value: merged,
+    problems,
+    ...unknownKeys.length === 0 ? {} : { unknownKeys }
+  };
+}
+function merge(shape, defaults, given, prefix, found2) {
+  const { problems } = found2;
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(unknownKey(path));
+      found2.unknownKeys.push(path);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isRecord(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, found2);
+    }
+  }
+  return result;
+}
+function unknownKey(path) {
+  return `unknown key "${path}"`;
+}
+
+// src/core/daemon/host-idle.ts
+var GIB = 2 ** 30;
+var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
+
+// src/core/daemon/user-config.ts
+function userConfigPath(env = process.env) {
+  const xdg = env.XDG_CONFIG_HOME;
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : join5(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
+  return join5(base, "squeal", "config.json");
+}
+function defaultHostSlots(cpus3 = availableParallelism()) {
+  return Math.max(1, cpus3 - 1);
+}
+var backgroundShare = (v) => isBackgroundShare(v) ? null : "a number from 0 to 1";
+
+// src/core/ps/darwin.ts
+import { availableParallelism as availableParallelism2, cpus, loadavg, totalmem, uptime } from "node:os";
+import { basename as basename3 } from "node:path";
+
+// src/core/ps/source.ts
+import { execFileSync } from "node:child_process";
+function ticksToMs(ticks, clockTicks) {
+  return ticks * 1e3 / clockTicks;
+}
+var runCommand = (command2, args) => {
+  try {
+    return execFileSync(command2, args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 2e3,
+      maxBuffer: 16 * 1024 * 1024
+    });
+  } catch {
+    return null;
+  }
+};
+
+// src/core/ps/darwin.ts
+var CLOCK_TICKS = 100;
+var PS = [
+  "-u",
+  "LC_ALL",
+  "LC_TIME=C",
+  "ps",
+  "-axww",
+  "-o",
+  "pid=,ppid=,pgid=,uid=,nice=,time=,rss=,lstart=,command="
+];
+var ROW = /^\s*(\d+)\s+(\d+)\s+\d+\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s+[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})(?:\s+(.*))?$/;
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var TIME = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d{2})(?:\.(\d+))?$/;
+function createDarwinSource(options = {}) {
+  return new DarwinSource(options);
+}
+var DarwinSource = class {
+  platform = "darwin";
+  memoryKind = "rss";
+  readsMarks = false;
+  #run;
+  #os;
+  /** Read once, so a process's start ticks are the same in every read: with its pid, its identity. */
+  #boot;
+  #last = /* @__PURE__ */ new Map();
+  constructor(options) {
+    this.#run = options.run ?? runCommand;
+    this.#os = options.os ?? { loadavg, totalmem, cpus, availableParallelism: availableParallelism2, uptime };
+    const boot = (options.now ?? Date.now)() - this.#os.uptime() * 1e3;
+    this.#boot = Number.isFinite(boot) ? Math.floor(boot / 1e3) * 1e3 : null;
+  }
+  clockTicks() {
+    return CLOCK_TICKS;
+  }
+  bootTime() {
+    return this.#boot;
+  }
+  processTable(pids3, since) {
+    if (pids3?.length === 0 && since === void 0) return /* @__PURE__ */ new Map();
+    this.#last = this.#read();
+    const wanted = pids3 === void 0 ? null : new Set(pids3);
+    const table = /* @__PURE__ */ new Map();
+    for (const [pid, line] of this.#last)
+      if ((wanted?.has(pid) ?? true) || since !== void 0 && !since.has(pid))
+        table.set(pid, line.row);
+    return table;
+  }
+  cmdline(pid) {
+    return this.#last.get(pid)?.args ?? null;
+  }
+  markOf() {
+    return null;
+  }
+  memory(pid) {
+    const line = this.#last.get(pid);
+    return line === void 0 ? null : { bytes: line.rssBytes, swapBytes: null };
+  }
+  fds() {
+    return null;
+  }
+  locks() {
+    return null;
+  }
+  fileKey() {
+    return null;
+  }
+  unixListeners() {
+    return null;
+  }
+  pidNamespace() {
+    return null;
+  }
+  host() {
+    const load = this.#os.loadavg();
+    const memTotal = this.#os.totalmem();
+    const used = usedMemory(this.#run("vm_stat", []));
+    const swap = swapUsage(this.#run("sysctl", ["-n", "vm.swapusage"]));
+    return {
+      load: load.length === 3 && load.every(Number.isFinite) ? [load[0] ?? 0, load[1] ?? 0, load[2] ?? 0] : null,
+      cpuPressure: null,
+      memoryPressure: null,
+      memTotal,
+      memAvailable: used === null ? null : Math.max(0, memTotal - used),
+      swapTotal: swap?.total ?? null,
+      swapUsed: swap?.used ?? null,
+      cpuTime: cpuTime(this.#os.cpus()),
+      cpus: this.#os.availableParallelism()
+    };
+  }
+  /**
+   * Rows by pid; a line that does not parse (a header, a cut line, a `-`
+   * value) is left out. A `ps` that failed throws: no table is no snapshot
+   * (D1's exit 3), never a host without daemons (`reviews/wave-2.md` B4).
+   */
+  #read() {
+    const output = this.#run("env", PS);
+    if (output === null)
+      throw new Error("the process table cannot be read: ps failed, is missing or timed out");
+    const lines = /* @__PURE__ */ new Map();
+    for (const text2 of output.split("\n")) {
+      const line = this.#line(text2);
+      if (line !== null) lines.set(line.row.pid, line);
+    }
+    return lines;
+  }
+  #line(text2) {
+    const m = ROW.exec(text2);
+    if (m === null) return null;
+    const [, pid, ppid, uid, nice, time = "", rss, month = "", day, h, min, s, year, command2 = ""] = m;
+    const cpuTicks = ticksOf(time);
+    const start = localTime(Number(year), month, Number(day), [h, min, s].map(Number));
+    if (cpuTicks === null || start === null) return null;
+    const args = command2 === "" ? null : command2.split(" ");
+    return {
+      row: {
+        pid: Number(pid),
+        ppid: Number(ppid),
+        comm: basename3(args?.[0] ?? ""),
+        state: null,
+        startTicks: Math.round((start - (this.#boot ?? 0)) * CLOCK_TICKS / 1e3),
+        cpuTicks,
+        // `time=` is the process's own; `-S`, which adds the children's, would hide it.
+        childTicks: null,
+        nice: Number(nice),
+        uid: Number(uid)
+      },
+      args,
+      rssBytes: Number(rss) * 1024
+    };
+  }
+};
+function ticksOf(time) {
+  const m = TIME.exec(time);
+  if (m === null) return null;
+  const [, days = "0", hours = "0", minutes = "0", seconds2 = "0", fraction = "0"] = m;
+  const total = ((Number(days) * 24 + Number(hours)) * 60 + Number(minutes)) * 60 + Number(seconds2);
+  return total * CLOCK_TICKS + Math.round(Number(`0.${fraction}`) * CLOCK_TICKS);
+}
+function localTime(year, month, day, time) {
+  const index = MONTHS.indexOf(month);
+  const [hours = 0, minutes = 0, seconds2 = 0] = time;
+  const date = new Date(year, index, day, hours, minutes, seconds2);
+  return index < 0 || date.getDate() !== day || date.getMonth() !== index ? null : date.getTime();
+}
+function usedMemory(text2) {
+  const pageSize = /page size of (\d+) bytes/.exec(text2 ?? "")?.[1];
+  const pages = /* @__PURE__ */ new Map();
+  for (const m of (text2 ?? "").matchAll(/^([^:\n]+):\s+(\d+)\.$/gm))
+    pages.set(m[1] ?? "", Number(m[2]));
+  const counts = [
+    "Anonymous pages",
+    "Pages purgeable",
+    "Pages wired down",
+    "Pages occupied by compressor"
+  ].map((name2) => pages.get(name2));
+  const [anonymous, purgeable, wired, compressed] = counts;
+  if (pageSize === void 0 || counts.some((n) => n === void 0)) return null;
+  return ((anonymous ?? 0) - (purgeable ?? 0) + (wired ?? 0) + (compressed ?? 0)) * Number(pageSize);
+}
+function swapUsage(text2) {
+  const bytes2 = (name2) => {
+    const m = new RegExp(`\\b${name2} = ([\\d.]+)([KMG])`).exec(text2 ?? "");
+    if (m === null) return null;
+    return Number(m[1]) * 1024 ** ("KMG".indexOf(m[2] ?? "") + 1);
+  };
+  const total = bytes2("total");
+  const used = bytes2("used");
+  return total === null || used === null ? null : { total, used };
+}
+function cpuTime(cpus3) {
+  if (cpus3.length === 0) return null;
+  let busy = 0;
+  let total = 0;
+  for (const { times } of cpus3) {
+    busy += times.user + times.nice + times.sys + times.irq;
+    total += times.user + times.nice + times.sys + times.irq + times.idle;
+  }
+  return { busy: busy * CLOCK_TICKS / 1e3, total: total * CLOCK_TICKS / 1e3 };
+}
+
+// src/core/ps/flags.ts
+import { existsSync as existsSync3 } from "node:fs";
+import { dirname as dirname8, join as join15 } from "node:path";
+
+// src/core/daemon/codex-runtime-version.ts
+import { existsSync as existsSync2 } from "node:fs";
+import { join as join10 } from "node:path";
+
+// src/harness/codex/adapter/store.ts
+import { readFileSync as readFileSync5, rmSync as rmSync2 } from "node:fs";
+import { join as join8 } from "node:path";
+
+// src/harness/codex/adapter/layout.ts
+import {
+  linkSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync as readFileSync3,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import { dirname as dirname5, join as join6 } from "node:path";
+var SCHEMA = 1;
+var VERSION = /^\d+\.\d+\.\d+$/;
+var runtimeRoot = (data, version) => join6(data, "versions", version);
+var currentFile = (data) => join6(data, "runtime", "current.json");
+var sessionsDir = (data) => join6(data, "runtime", "sessions");
+var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function readJson(path) {
+  let text2;
+  try {
+    text2 = readFileSync3(path, "utf8");
+  } catch (error) {
+    return error.code === "ENOENT" ? void 0 : null;
+  }
+  try {
+    return JSON.parse(text2);
+  } catch {
+    return null;
+  }
+}
+function readCurrent(data) {
+  const value = readJson(currentFile(data));
+  if (value === void 0) return null;
+  return isObject(value) && value.schema === SCHEMA && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, version: value.version } : "invalid";
+}
+function readPin(path) {
+  const value = readJson(path);
+  if (value === void 0) return null;
+  return isObject(value) && value.schema === SCHEMA && typeof value.sessionId === "string" && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, sessionId: value.sessionId, version: value.version } : "invalid";
+}
+function pinnedVersions(data) {
+  let names3;
+  try {
+    names3 = readdirSync(sessionsDir(data)).filter((n) => n.endsWith(".json"));
+  } catch {
+    return [];
+  }
+  const versions = /* @__PURE__ */ new Set();
+  for (const name2 of names3) {
+    const pin = readPin(join6(sessionsDir(data), name2));
+    if (pin !== null && pin !== "invalid") versions.add(pin.version);
+  }
+  return [...versions].sort();
+}
+
+// src/harness/codex/adapter/manifest.ts
+import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
+import { join as join7 } from "node:path";
+var RUNTIME_MANIFEST = "runtime.json";
+var PLUGIN_MANIFEST = ".codex-plugin/plugin.json";
+var RUNTIME_ENTRY = "dist/runtime.mjs";
+var RUNTIME_HOOKS = [
+  "session-start",
+  "user-prompt-submit",
+  "pre-tool-use",
+  "post-tool-use",
+  "stop",
+  "stop-slow",
+  "subagent-start",
+  "subagent-stop",
+  "interrupt",
+  "session-end"
+];
+var REQUIRED_ENTRIES = [
+  PLUGIN_MANIFEST,
+  RUNTIME_ENTRY,
+  "dist/cli/squeal.mjs",
+  ...RUNTIME_HOOKS.map((name2) => `dist/${name2}.mjs`),
+  "skills/squeal/SKILL.md",
+  "bin/squeal-launcher"
+];
+var MODES = /* @__PURE__ */ new Set([420, 493]);
+var SHA256 = /^[0-9a-f]{64}$/;
+var NODE_FLOOR = /^\d+\.\d+\.\d+$/;
+var LAUNCHER = "bin/squeal-launcher";
+var RuntimeError = class extends Error {
+  constructor(kind, message2) {
+    super(message2);
+    this.kind = kind;
+    this.name = "RuntimeError";
+  }
+  kind;
+};
+var invalid = (root, detail) => new RuntimeError("invalid-runtime", `${root} is no valid Squeal runtime: ${detail}`);
+var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function meetsFloor(node2, floor) {
+  const have = node2.split(".").map(Number);
+  const need = floor.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const a = have[i] ?? 0;
+    const b = need[i] ?? 0;
+    if (a !== b) return a > b;
+  }
+  return true;
+}
+function isInventoryPath(path) {
+  if (path === RUNTIME_MANIFEST || path.includes("\\") || path.startsWith("/")) return false;
+  return path.split("/").every((s) => s !== "" && s !== "." && s !== "..");
+}
+function parseManifest(root, text2) {
+  let value;
+  try {
+    value = JSON.parse(text2);
+  } catch {
+    throw invalid(root, `${RUNTIME_MANIFEST} is not JSON`);
+  }
+  if (!isObject2(value) || value.schema !== SCHEMA) {
+    throw invalid(root, `${RUNTIME_MANIFEST} has no supported schema`);
+  }
+  const { version, nodeFloor, files } = value;
+  if (typeof version !== "string" || !VERSION.test(version)) {
+    throw invalid(root, `${RUNTIME_MANIFEST} names no plain version`);
+  }
+  if (typeof nodeFloor !== "string" || !NODE_FLOOR.test(nodeFloor)) {
+    throw invalid(root, `${RUNTIME_MANIFEST} names no supported Node floor`);
+  }
+  const inventory = parseInventory(root, files);
+  for (const required of REQUIRED_ENTRIES) {
+    if (inventory[required] === void 0) throw invalid(root, `${required} is missing`);
+  }
+  if (inventory[LAUNCHER]?.mode !== 493) throw invalid(root, `${LAUNCHER} must have mode 0755`);
+  const manifest = { schema: SCHEMA, version, nodeFloor, files: inventory };
+  if (serializeManifest(manifest) !== text2) {
+    throw invalid(root, `${RUNTIME_MANIFEST} is not in its canonical form`);
+  }
+  return manifest;
+}
+function parseInventory(root, files) {
+  if (!isObject2(files)) throw invalid(root, `${RUNTIME_MANIFEST} has no file inventory`);
+  const inventory = {};
+  for (const [path, entry] of Object.entries(files)) {
+    if (!isInventoryPath(path)) {
+      throw invalid(root, `unsafe inventory path ${JSON.stringify(path)}`);
+    }
+    if (!isObject2(entry) || typeof entry.sha256 !== "string" || !SHA256.test(entry.sha256)) {
+      throw invalid(root, `${path} has no SHA-256`);
+    }
+    if (typeof entry.mode !== "number" || !MODES.has(entry.mode)) {
+      throw invalid(root, `${path} has a mode other than 0644 or 0755`);
+    }
+    inventory[path] = { sha256: entry.sha256, mode: entry.mode };
+  }
+  return inventory;
+}
+function serializeManifest(manifest) {
+  const files = {};
+  for (const path of Object.keys(manifest.files).sort()) {
+    const entry = manifest.files[path];
+    files[path] = { sha256: entry.sha256, mode: entry.mode };
+  }
+  const { schema, version, nodeFloor } = manifest;
+  return `${JSON.stringify({ schema, version, nodeFloor, files }, null, 2)}
+`;
+}
+function pluginVersion(root) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync4(join7(root, PLUGIN_MANIFEST), "utf8"));
+  } catch {
+    throw invalid(root, `${PLUGIN_MANIFEST} is missing or not JSON`);
+  }
+  if (!isObject2(value) || value.name !== "squeal" || typeof value.version !== "string") {
+    throw invalid(root, `${PLUGIN_MANIFEST} does not name squeal and a version`);
+  }
+  return value.version;
+}
+function readManifest(root) {
+  let text2;
+  try {
+    text2 = readFileSync4(join7(root, RUNTIME_MANIFEST), "utf8");
+  } catch {
+    throw invalid(root, `${RUNTIME_MANIFEST} is missing`);
+  }
+  return { manifest: parseManifest(root, text2), text: text2 };
+}
+function checkRoot(root, expected, node2) {
+  const { manifest } = readManifest(root);
+  const named2 = pluginVersion(root);
+  if (named2 !== manifest.version) {
+    throw invalid(
+      root,
+      `${PLUGIN_MANIFEST} names ${named2}, ${RUNTIME_MANIFEST} ${manifest.version}`
+    );
+  }
+  if (expected !== null && manifest.version !== expected) {
+    throw invalid(root, `it holds runtime ${manifest.version}, not ${expected}`);
+  }
+  if (!meetsFloor(node2, manifest.nodeFloor)) {
+    throw new RuntimeError(
+      "unsupported-node",
+      `Squeal runtime ${manifest.version} needs Node ${manifest.nodeFloor} or later; this hook runs Node ${node2}.`
+    );
+  }
+  for (const entry of REQUIRED_ENTRIES) {
+    if (!isRegularFile(join7(root, entry))) throw invalid(root, `${entry} is missing`);
+  }
+  return manifest;
+}
+function isRegularFile(path) {
+  try {
+    return lstatSync2(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+// src/harness/codex/adapter/selection.ts
+import { DatabaseSync } from "node:sqlite";
+
+// src/harness/codex/adapter/publish.ts
+var errorText = (error) => error instanceof Error ? error.message : String(error);
+
+// src/harness/codex/adapter/store.ts
+var SEED = "seed";
+function runtimeReadiness(options) {
+  const { pluginRoot, data } = options;
+  const node2 = options.node ?? process.versions.node;
+  const state = (root, expected) => {
+    try {
+      return { version: checkRoot(root, expected, node2).version, ready: true, problem: null };
+    } catch (error) {
+      return { version: expected, ready: false, problem: errorText(error) };
+    }
+  };
+  const record = readCurrent(data);
+  const current = record === null ? { version: null, ready: false, problem: "no runtime is selected" } : record === "invalid" ? { version: null, ready: false, problem: `${currentFile(data)} is unreadable` } : state(runtimeRoot(data, record.version), record.version);
+  const seed = state(join8(pluginRoot, SEED), null);
+  const pinned = pinnedVersions(data).map((version) => ({
+    version,
+    ready: state(runtimeRoot(data, version), version).ready
+  }));
+  return {
+    schema: SCHEMA,
+    adapter: { root: pluginRoot, version: adapterVersion(pluginRoot) },
+    current,
+    seed,
+    pinned,
+    ready: current.ready || seed.ready
+  };
+}
+function adapterVersion(pluginRoot) {
+  try {
+    const value = JSON.parse(readFileSync5(join8(pluginRoot, PLUGIN_MANIFEST), "utf8"));
+    return typeof value === "object" && value !== null && "version" in value ? typeof value.version === "string" ? value.version : null : null;
+  } catch {
+    return null;
+  }
+}
+
+// src/core/daemon/version.ts
+import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname6, join as join9 } from "node:path";
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
+}
+function claudeInstalls(plugins, marketplace) {
+  let file;
+  try {
+    file = JSON.parse(readFileSync6(join9(plugins, "installed_plugins.json"), "utf8"));
+  } catch {
+    return [];
+  }
+  const entries = isRecord(file) && isRecord(file.plugins) ? file.plugins[`squeal@${marketplace}`] : null;
+  const text2 = (value) => typeof value === "string" ? value : null;
+  return (Array.isArray(entries) ? entries : []).filter(isRecord).map((entry) => ({
+    scope: text2(entry.scope),
+    projectPath: text2(entry.projectPath),
+    version: text2(entry.version),
+    installPath: text2(entry.installPath)
+  }));
+}
+function claudeLoaded(plugins, marketplace, root) {
+  for (const { scope, projectPath, version } of claudeInstalls(plugins, marketplace)) {
+    if (version === null || scope === null) continue;
+    if (scope === "user" || scope === "project" && root !== null && projectPath === root)
+      return { version, scope };
+  }
+  return null;
+}
+function codexNewest(plugins, marketplace) {
+  let names3;
+  try {
+    names3 = readdirSync3(join9(plugins, "cache", marketplace, "squeal"));
+  } catch {
+    return null;
+  }
+  let newest = null;
+  for (const name2 of names3)
+    if (versionParts(name2) !== null && (newest === null || isNewerVersion(name2, newest)))
+      newest = name2;
+  return newest;
+}
+
+// src/core/daemon/codex-runtime-version.ts
+function codexRuntimeVersion(plugins, marketplace) {
+  const installed = codexNewest(plugins, marketplace);
+  if (installed === null) return null;
+  const root = join10(plugins, "cache", marketplace, "squeal", installed);
+  const fixed = existsSync2(join10(root, "hooks", "hooks.json")) && (existsSync2(join10(root, "seed")) || !existsSync2(join10(root, "dist", "cli", "squeal.mjs")));
+  if (!fixed) return installed;
+  const { current, seed } = runtimeReadiness({
+    pluginRoot: root,
+    data: join10(plugins, "data", `squeal-${marketplace}`)
+  });
+  if (current.ready && current.version !== null) {
+    return seed.ready && seed.version !== null && isNewerVersion(seed.version, current.version) ? seed.version : current.version;
+  }
+  return seed.ready ? seed.version : null;
+}
+
+// src/core/presence/heartbeat.ts
+var HEARTBEAT_GRACE_INTERVALS = 2;
+var DAEMON_START_GRACE_MS = 1e4;
+var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
+function heartbeatGraceMs(intervalMs) {
+  return HEARTBEAT_GRACE_INTERVALS * intervalMs;
+}
+function heartbeatAge(record, now) {
+  return now - record.heartbeatAt;
+}
+function heartbeatFresh(record, now) {
+  return heartbeatAge(record, now) <= heartbeatGraceMs(record.heartbeatIntervalMs);
+}
+function heartbeatLateBy(record, now) {
+  return heartbeatFresh(record, now) ? null : heartbeatAge(record, now);
+}
+function beatBetween(first, second) {
+  return second.heartbeatAt > first.heartbeatAt;
+}
+
+// src/core/text.ts
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellWord(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+
+// src/core/ps/discover.ts
+import { readFileSync as readFileSync7, statSync } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join13 } from "node:path";
+
+// src/core/daemon/lock-wait.ts
+var VACANT_LOCK_WAIT_MS = 3e4;
+
+// src/core/types/store.ts
+var WORKTREE_META_ROWS = {
+  runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
+  turn: { prefix: "turn:", owner: "delivery/turn" },
+  edits: { prefix: "edits:", owner: "delivery/edits" },
+  editsLate: { prefix: "edits-late:", owner: "delivery/late" },
+  editTimings: { prefix: "edit-timings:", owner: "scheduler/edit-timings" },
+  harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
+  departed: { prefix: "departed:", owner: "delivery/expiry" },
+  consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
+  registered: { prefix: "revision-registered:", owner: "delivery/registered" },
+  registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
+  registeredKeys: { prefix: "registered-keys:", owner: "state/before-edits" },
+  livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
+  revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
+  uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
+  slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  groupTiersTold: { prefix: "group-tiers-told:", owner: "delivery/slow-told" },
+  commitTold: { prefix: "commit-told:", owner: "delivery/commit-told" },
+  countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
+  holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
+  leaving: { prefix: "leaving:", owner: "delivery/leaving" },
+  registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
+  viewMark: { prefix: "view-mark:", owner: "delivery/view-mark" },
+  notes: { prefix: "notes.", owner: "notes" },
+  refined: { prefix: "refined.", owner: "scheduler/refined" },
+  awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
+  installCommand: { prefix: "install-command.", owner: "scheduler/install-wait" },
+  checkpoint: { prefix: "checkpoint.", owner: "scheduler/checkpoint-progress" },
+  checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
+  headMove: { prefix: "head-move.", owner: "scheduler/head-move-record" },
+  commitReports: { prefix: "commit-reports:", owner: "commit/store" },
+  feedDelivered: { prefix: "feed-delivered:", owner: "presence/stored" },
+  daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "daemon/bootstrapped" },
+  daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
+  daemonExit: { prefix: "daemon-exit:", owner: "presence/stored" },
+  daemonRest: { prefix: "daemon-rest:", owner: "presence/stored" },
+  daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
+  daemonStopped: { prefix: "daemon-stopped:", owner: "presence/stored" },
+  daemonHandoff: { prefix: "daemon-handoff:", owner: "presence/stored" },
+  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "presence/stored" },
+  slowTier: { prefix: "slow-tier:", owner: "slow/state" },
+  groupTiers: { prefix: "group-tier:", owner: "slow/state" },
+  slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
+  failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
+  failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
+  runners: { prefix: "runners:", owner: "store/repos/test-files" },
+  reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
+  interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
+  heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
+  promotions: { prefix: "promotions:", owner: "scheduler/promotions-row" },
+  focused: { prefix: "focused:", owner: "scheduler/focused-row" },
+  yields: { prefix: "yields:", owner: "scheduler/yields" },
+  quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
+  poolWait: { prefix: "pool-wait:", owner: "scheduler/pool-wait" },
+  mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },
+  commandHold: { prefix: "command-hold:", owner: "scheduler/hold-rows" },
+  rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
+  rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
+  statesMarker: { prefix: "states-marker.", owner: "store/write-markers" },
+  optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
+  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
+  testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" },
+  ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
+  omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
+  unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
+  importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
+  importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
+  sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }
+};
+function worktreeMetaKey(row2, worktreeId) {
+  return `${WORKTREE_META_ROWS[row2].prefix}${worktreeId}`;
+}
+
+// src/core/presence/stored.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/ps/reads.ts
+import { lstatSync as lstatSync3, readdirSync as readdirSync4 } from "node:fs";
+import { join as join12 } from "node:path";
+
+// src/core/slow/slot.ts
+import { dirname as dirname7, isAbsolute as isAbsolute4, join as join11 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
+
+// src/core/store/connection.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+var slices = new AsyncLocalStorage();
+
+// src/core/slow/slot.ts
+function slowSlotDir(env = process.env, userDir = userTmpDir()) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? join11(xdg, "squeal") : userDir;
+}
+function immutableUrl(path) {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
+}
+
+// src/core/ps/reads.ts
+var NODE_COMMS = /* @__PURE__ */ new Set(["node-MainThread", "MainThread", "node"]);
+function names(dir) {
+  try {
+    return readdirSync4(dir).sort();
+  } catch {
+    return [];
+  }
+}
+function lstatOrNull2(path) {
+  try {
+    return lstatSync3(path);
+  } catch {
+    return null;
+  }
+}
+function poolDirs(places) {
+  const userDir = join12(places.tempDir, `squeal-${places.uid}`);
+  const envs = places.runtimeDir === null ? [{}] : [{}, { XDG_RUNTIME_DIR: places.runtimeDir }];
+  return [...new Set(envs.map((env) => slowSlotDir(env, userDir)))];
+}
+
+// src/core/ps/store-processes.ts
+function storeProcessOf(pid, args) {
+  const at = args.indexOf("store-process");
+  if (at < 1 || !SCRIPT.test(args[at - 1] ?? "")) return null;
+  const flag3 = args.indexOf("--store", at);
+  return {
+    pid,
+    file: flag3 < 0 ? "code" : args[flag3 + 1] ?? "code",
+    commonDir: args[at + 1] ?? null
+  };
+}
+function storeProcessLines(stores) {
+  if (stores.length === 0) return [];
+  return [
+    "",
+    "Store processes",
+    ...stores.map((s) => `  ${s.pid}  ${s.file}.sqlite of ${s.commonDir ?? "an unknown clone"}`)
+  ];
+}
+
+// src/core/ps/discover.ts
+var START_MARGIN_MS = 1e3;
+var SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
+var BARE_OPTION = /^-[^=]*$/;
+var HOLDERS = "daemon lock holders";
+var CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
+var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
+var ANTIGRAVITY_INSTALL = /^(.*\/\.gemini)\/(?:config\/plugins\/squeal|antigravity-cli\/plugin_data\/squeal\/versions\/([^/]+))\/dist\//;
+var discover = (source, table, places, locks = source.locks()) => {
+  const unknown = [];
+  if (locks === null) {
+    const why = "they cannot be read: a phase is serving by its heartbeat, or unknown (D10)";
+    unknown.push({ what: HOLDERS, why });
+  }
+  const daemons = [];
+  const stores = [];
+  for (const row2 of table.values()) {
+    if (!NODE_COMMS.has(row2.comm)) continue;
+    if (row2.uid !== null && row2.uid !== places.uid) continue;
+    const args = source.cmdline(row2.pid);
+    const at = args === null ? -1 : daemonVerbAt(args);
+    const store = args === null || at >= 0 ? null : storeProcessOf(row2.pid, args);
+    if (store !== null) stores.push(store);
+    if (args === null || at < 0) continue;
+    const daemon = found(source, row2, args, at, locks);
+    if (daemon.worktreeId === null) {
+      const why = daemon.root === null ? "no lock file is open and the root in its arguments is relative" : `no lock file is open and its root ${daemon.root} cannot be read`;
+      unknown.push({ what: `daemon ${row2.pid} worktreeId`, why });
+    }
+    daemons.push(daemon);
+  }
+  const sockets = socketFiles(source, places, daemons);
+  return { daemons, sockets, unknown, ...stores.length === 0 ? {} : { storeProcesses: stores } };
+};
+function lockedAgain(source, discovery, [first, second]) {
+  const both = first !== null && second !== null;
+  if (first === null && second === null) return discovery;
+  if (both && discovery.daemons.every((d) => d.holdsLock !== false)) return discovery;
+  const daemons = discovery.daemons.map((d) => {
+    const shown = d.holdsLock === true || second !== null && holds(source, d.row.pid, d.lockPath, second) === true;
+    const held = shown ? true : both && d.holdsLock === false ? false : null;
+    return held === d.holdsLock ? d : { ...d, holdsLock: held };
+  });
+  const sockets = discovery.sockets.map(
+    (s) => s.daemonPid === null ? { ...s, daemonPid: holderOf(daemons, s.worktreeId) } : s
+  );
+  if (both) return { ...discovery, daemons, sockets };
+  const [lost, read] = first === null ? ["first", "second"] : ["second", "first"];
+  const why = `the window's ${lost} /proc/locks reading cannot be read, so a lock the ${read} misses is unknown, not absent: a phase is serving by its heartbeat, or unknown`;
+  const unknown = discovery.unknown.filter((u) => u.what !== HOLDERS);
+  return { daemons, sockets, unknown: [...unknown, { what: HOLDERS, why }] };
+}
+function ownStartOn(source) {
+  const boot = source.bootTime();
+  const ticks = source.clockTicks();
+  return (daemon, startedAt) => boot === null ? null : startedAt >= boot + ticksToMs(daemon.row.startTicks, ticks) - START_MARGIN_MS;
+}
+function phaseOn(source) {
+  const ownStart = ownStartOn(source);
+  return (daemon, work, now) => {
+    if (daemon.holdsLock === false) return "waiting";
+    if (work === null) return "unknown";
+    const own = (startedAt) => ownStart(daemon, startedAt);
+    const record = work.record;
+    if (daemon.holdsLock === null) {
+      const fresh = record !== null && heartbeatFresh(record, now);
+      return fresh && own(record.startedAt) === true ? "serving" : "unknown";
+    }
+    const recorded = work.recordedStartedAt;
+    if (recorded === null) return "starting";
+    const mine = own(recorded);
+    if (mine === null) return "unknown";
+    if (!mine) return "starting";
+    return record === null ? "stopping" : "serving";
+  };
+}
+function daemonVerbAt(args) {
+  for (let k = 1; k < args.length; k++) {
+    const entry = args[k - 1] ?? "";
+    if (args[k] === "daemon" && SCRIPT.test(entry)) return k;
+    const ofNode = entry.startsWith("-") || BARE_OPTION.test(args[k - 2] ?? "");
+    if (k >= 2 && !ofNode) return -1;
+  }
+  return -1;
+}
+function found(source, row2, args, at, locks) {
+  const script = args[at - 1] ?? "";
+  const given = args[at + 1];
+  const root = given !== void 0 && isAbsolute5(given) ? given : null;
+  const fromFd = lockFd(source.fds(row2.pid));
+  const lock = fromFd ?? (root === null ? null : lockOfRoot(root));
+  const commonDir = lock?.commonDir ?? null;
+  const lockPath = lock?.lockPath ?? null;
+  return {
+    row: row2,
+    script,
+    root,
+    lockWaitMs: lockWaitOf(args.slice(at + 2)),
+    ...installOf(script),
+    worktreeId: lock?.worktreeId ?? null,
+    lockPath,
+    commonDir,
+    storePath: commonDir === null ? null : storePaths(commonDir).database,
+    holdsLock: holds(source, row2.pid, lockPath, locks)
+  };
+}
+function lockWaitOf(options) {
+  const at = options.indexOf("--await-lock");
+  if (at < 0) return VACANT_LOCK_WAIT_MS;
+  const value = options[at + 1] ?? "";
+  return /^\d+$/.test(value) ? Number(value) : SUCCESSOR_LOCK_WAIT_MS;
+}
+function lockFd(fds) {
+  for (const target of fds ?? []) {
+    const lock = lockFileParts(target);
+    if (lock !== null) return { ...lock, lockPath: target };
+  }
+  return null;
+}
+function lockOfRoot(root) {
+  try {
+    const worktreeId = worktreeIdFor(root);
+    const commonDir = resolveCommonDir(root);
+    return {
+      worktreeId,
+      commonDir,
+      lockPath: commonDir === null ? null : lockFileFor(commonDir, worktreeId)
+    };
+  } catch {
+    return null;
+  }
+}
+function holds(source, pid, lockPath, locks) {
+  if (locks === null || lockPath === null) return null;
+  const file = source.fileKey(lockPath);
+  return locks.some((l) => l.pid === pid && l.file === file && l.access === "write" && !l.blocked);
+}
+function installOf(script) {
+  const cache = CACHE_INSTALL.exec(script);
+  if (cache !== null) {
+    const [, plugins = null, harness2 = null, marketplace = null, version = null] = cache;
+    return { harness: harness2, version, plugins, marketplace };
+  }
+  const antigravity = ANTIGRAVITY_INSTALL.exec(script);
+  if (antigravity !== null) {
+    return {
+      harness: "antigravity",
+      version: antigravity[2] ?? null,
+      plugins: null,
+      marketplace: null
+    };
+  }
+  const harness = PACKAGE_INSTALL.exec(script)?.[1] ?? null;
+  return { harness, version: null, plugins: null, marketplace: null };
+}
+function antigravityInstalled(script) {
+  const gemini = ANTIGRAVITY_INSTALL.exec(script)?.[1];
+  if (gemini === void 0) return null;
+  const manifest = join13(gemini, "config", "plugins", "squeal", "plugin.json");
+  try {
+    const version = JSON.parse(readFileSync7(manifest, "utf8")).version;
+    return { manifest, version: typeof version === "string" && version !== "" ? version : null };
+  } catch {
+    return { manifest, version: null };
+  }
+}
+function socketFiles(source, places, daemons) {
+  const listeners = source.unixListeners();
+  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join13(places.tempDir, `squeal-${places.uid}`)]);
+  const sockets = [];
+  for (const dir of dirs) {
+    if (dir === null) continue;
+    for (const name2 of names(dir)) {
+      const worktreeId = socketWorktreeId(name2);
+      if (worktreeId === null) continue;
+      const path = join13(dir, name2);
+      let stat;
+      try {
+        stat = statSync(path);
+      } catch {
+        continue;
+      }
+      sockets.push({
+        path,
+        worktreeId,
+        mtimeMs: stat.mtimeMs,
+        daemonPid: holderOf(daemons, worktreeId),
+        listening: listeners === null ? null : listeners.some((l) => l.fileInode === stat.ino)
+      });
+    }
+  }
+  return sockets;
+}
+function holderOf(daemons, worktreeId) {
+  return daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true))?.row.pid ?? null;
+}
+
+// src/core/ps/flags-files.ts
+import { join as join14 } from "node:path";
+
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB2 = MIB * 1024;
+var UNKNOWN = "?";
+var NO_BOOT = "the boot time cannot be read, so no process has an age";
+function dateOf(ms) {
+  return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+function count(n, one, many = `${one}s`) {
+  return `${thousands(n)} ${n === 1 ? one : many}`;
+}
+function thousands(n) {
+  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
+}
+function share(value) {
+  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
+}
+function percent(value) {
+  return value === null ? UNKNOWN : `${Math.round(value)}%`;
+}
+function cpus2(value) {
+  return (value / 100).toFixed(1);
+}
+function bytes(n, column = false) {
+  if (n === null) return column ? UNKNOWN : "unknown";
+  if (n === 0) return "0";
+  const [value, unit] = n >= GIB2 ? [(n / GIB2).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
+  return column ? `${value}${unit}` : `${value} ${unit}iB`;
+}
+function ofGib(part, whole) {
+  return `${(part / GIB2).toFixed(1)} of ${(whole / GIB2).toFixed(1)} GiB`;
+}
+function age(since, at) {
+  return since === null ? UNKNOWN : columnDuration(at - since);
+}
+function sentenceDuration(ms) {
+  const s = Math.floor(ms / 1e3);
+  if (s < 120) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 120) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
+function columnDuration(ms) {
+  const s = Math.max(0, Math.floor(ms / 1e3));
+  if (s < 60) return `${s}s`;
+  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
+  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+function cpuTime2(ms) {
+  if (ms === null) return UNKNOWN;
+  const s = Math.floor(ms / 1e3);
+  const two = (n) => String(n).padStart(2, "0");
+  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
+  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
+}
+
+// src/core/ps/flags-files.ts
+var WAITER_LOCK = /^waiter-.+\.sqlite$/;
+var PERMIT = /^pool\.(\d+)\.lock$/;
+var MARK = /^pool\.mark\.[^.]+$/;
+function fileFlags(model) {
+  const unknown = [];
+  return {
+    files: [...staleSockets(model, unknown), ...stalePoolMarks(model)],
+    unflagged: unflagged(model),
+    unknown
+  };
+}
+function staleSockets(model, unknown) {
+  const flags = [];
+  for (const socket of model.discovery.sockets) {
+    if (socket.daemonPid !== null) continue;
+    if (socket.listening === true) {
+      const why = `a process listens at it, but no daemon of worktree ${socket.worktreeId} was found`;
+      unknown.push({ what: `socket ${socket.path}`, why });
+      continue;
+    }
+    flags.push({
+      flag: "stale-socket",
+      reason: `no live daemon of worktree ${socket.worktreeId} holds its lock; changed ${dateOf(socket.mtimeMs)}`,
+      path: socket.path,
+      count: 1,
+      bytes: 0,
+      command: `rm ${shellWord(socket.path)}`
+    });
+  }
+  return flags;
+}
+function stalePoolMarks(model) {
+  const flags = [];
+  for (const dir of poolDirs(model.places)) {
+    for (const name2 of names(dir)) {
+      if (!MARK.test(name2)) continue;
+      const path = join14(dir, name2);
+      const stat = lstatOrNull2(path);
+      if (stat === null || !stat.isFile() || model.now - stat.mtimeMs <= SLOT_WAITER_FRESH_MS)
+        continue;
+      flags.push({
+        flag: "stale-pool-mark",
+        reason: `unchanged since ${dateOf(stat.mtimeMs)}; readers skip a mark older than ${SLOT_WAITER_FRESH_MS / 1e3} s`,
+        path,
+        count: 1,
+        bytes: stat.size,
+        command: `rm ${shellWord(path)}`
+      });
+    }
+  }
+  return flags;
+}
+function unflagged(model) {
+  const counts = /* @__PURE__ */ new Map();
+  const count2 = (kind) => counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  const commonDirs = new Set(
+    [...model.discovery.daemons.map((d) => d.commonDir), model.places.commonDir].filter(
+      (dir) => dir !== null
+    )
+  );
+  for (const dir of commonDirs) {
+    for (const name2 of names(storePaths(dir).locksDir)) {
+      if (lockFileWorktreeId(name2) !== null) count2("lock");
+      else if (WAITER_LOCK.test(name2)) count2("waiter-lock");
+    }
+  }
+  for (const dir of poolDirs(model.places)) {
+    for (const name2 of names(dir)) {
+      const i = PERMIT.exec(name2)?.[1];
+      if (i !== void 0 && Number(i) >= model.pool.pool.slots) count2("surplus-permit");
+    }
+  }
+  for (const dir of sessionDirs(model.places)) {
+    for (const _ of names(dir)) count2("session-root");
+  }
+  const kinds = [
+    "lock",
+    "waiter-lock",
+    "surplus-permit",
+    "session-root"
+  ];
+  return kinds.flatMap((kind) => {
+    const n = counts.get(kind) ?? 0;
+    return n === 0 ? [] : [{ kind, count: n }];
+  });
+}
+function sessionDirs(places) {
+  const dirs = [join14(places.tempDir, `squeal-${places.uid}`, "squeal-sessions")];
+  if (places.runtimeDir !== null) dirs.push(join14(places.runtimeDir, "squeal-sessions"));
+  return dirs;
+}
+
+// src/core/ps/flags-processes.ts
+var ORPHAN_WINDOW_MS = 1e3;
+var ORPHAN_AGE_MS = 6e4;
+var OVERDUE_MS = 6e4;
+var WAITER = /\/dist\/waiter\.mjs$/;
+function overdue(c) {
+  const { model } = c;
+  const out = /* @__PURE__ */ new Map();
+  if (!model.source.readsMarks) return out;
+  const table = model.second.sample.table;
+  for (const p of model.second.attribution.processes) {
+    const work = model.second.work.get(p.daemonPid) ?? model.first.work.get(p.daemonPid);
+    if (work === void 0 || !Number.isFinite(work.settings.timeoutMs)) continue;
+    const bound = work.settings.timeoutMs + OVERDUE_MS;
+    for (const pid of [p.pid, ...p.descendants]) {
+      const row2 = table.get(pid);
+      if (row2 === void 0 || row2.ppid === p.daemonPid) continue;
+      const age2 = c.ageOf(row2);
+      if (age2 === null) c.name("flag overdue-test-process", NO_BOOT);
+      if (age2 === null || age2 <= bound) continue;
+      if (pid !== p.pid && model.source.markOf(pid) === null) continue;
+      const who = pid === p.pid ? "it is" : `its descendant ${pid} (${row2.comm}) carries its mark, is not its daemon's child, and is`;
+      const reason = `${who} ${sentenceDuration(age2)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1e3} s`;
+      out.set(p.pid, [
+        ...out.get(p.pid) ?? [],
+        { flag: "overdue-test-process", reason, command: `kill ${pid}` }
+      ]);
+    }
+  }
+  return out;
+}
+function orphans(c) {
+  const { model } = c;
+  const table = model.second.sample.table;
+  const byPid = /* @__PURE__ */ new Map();
+  const add = (pid, flag3, reason) => byPid.set(pid, [...byPid.get(pid) ?? [], { flag: flag3, reason, command: `kill ${pid}` }]);
+  for (const { pid, reason } of orphanTestProcesses(c)) add(pid, "orphan-test-process", reason);
+  const host = model.first.sample.table;
+  for (const row2 of host.values()) {
+    if (!NODE_COMMS.has(row2.comm) || row2.uid !== null && row2.uid !== model.places.uid) continue;
+    if (!(model.source.cmdline(row2.pid) ?? []).some((a) => WAITER.test(a))) continue;
+    const parent = host.get(row2.ppid);
+    if (parent === void 0) add(row2.pid, "orphan-waiter", `its parent ${row2.ppid} is gone`);
+    else if (row2.ppid === 1 || parent.comm === "systemd")
+      add(
+        row2.pid,
+        "orphan-waiter",
+        `its parent is ${parent.comm} ${row2.ppid}: its session is gone`
+      );
+  }
+  for (const { pid, path } of model.pool.foreign)
+    if (table.has(pid) || host.has(pid))
+      add(pid, "foreign-permit", `it holds the pool permit ${path} and is no daemon`);
+  return [...byPid].sort(([a], [b]) => a - b).map(([pid, flags]) => {
+    const row2 = table.get(pid) ?? host.get(pid);
+    return {
+      pid,
+      comm: row2?.comm ?? "",
+      startedAt: row2 === void 0 ? null : c.startOf(row2),
+      flags
+    };
+  });
+}
+function orphanTestProcesses(c) {
+  const { model } = c;
+  if (!model.source.readsMarks) return [];
+  for (const d of model.discovery.daemons) {
+    const pid = d.row.pid;
+    if ([model.first, model.second].some((r) => (r.work.get(pid)?.token ?? null) === null)) {
+      c.name(
+        "flag orphan-test-process",
+        `the token of daemon ${pid} is unread, so a mark may be its`
+      );
+      return [];
+    }
+  }
+  const windowMs = model.second.sample.atMs - model.first.sample.atMs;
+  if (windowMs < ORPHAN_WINDOW_MS) {
+    c.name(
+      "flag orphan-test-process",
+      `the samples are ${Math.round(windowMs)} ms apart, under 1 s`
+    );
+    return [];
+  }
+  const before = new Map(model.first.attribution.unowned.map((u) => [u.pid, u.mark]));
+  const found2 = [];
+  for (const { pid, mark } of model.second.attribution.unowned) {
+    const a = model.first.sample.table.get(pid);
+    const b = model.second.sample.table.get(pid);
+    if (before.get(pid) !== mark || a === void 0 || a.startTicks !== b?.startTicks) continue;
+    const age2 = c.ageOf(a);
+    if (age2 === null || age2 < ORPHAN_AGE_MS) {
+      const why = age2 === null ? NO_BOOT : `process ${pid}'s mark names no live daemon, but it is ${sentenceDuration(age2)} old, under ${ORPHAN_AGE_MS / 1e3} s`;
+      c.name("flag orphan-test-process", why);
+      continue;
+    }
+    const token = mark.split(":")[0];
+    found2.push({ pid, reason: `its mark's token ${token} names no live daemon, on both samples` });
+  }
+  return found2;
+}
+
+// src/core/ps/flags.ts
+var NO_LOCK_MARGIN_MS = 1e4;
+var DEPARTURE_MS = 6e4;
+var NOT_INSTALLED_MS = 60 * 6e4;
+var NO_LOCKS = "the source has no lock state (D10)";
+var ONE_READING = "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
+var NO_MARKS = "the source reads no marks (D10)";
+var flag = (model) => {
+  const unknown = [];
+  const named2 = /* @__PURE__ */ new Set();
+  const name2 = (what, why) => {
+    if (named2.has(`${what}
+${why}`)) return;
+    named2.add(`${what}
+${why}`);
+    unknown.push({ what, why });
+  };
+  const { source } = model;
+  if (model.locksRead !== "both")
+    for (const what of ["flag no-lock", "flag hung", "flag foreign-permit", "phase stopping"])
+      name2(what, model.locksRead === "none" ? NO_LOCKS : ONE_READING);
+  if (!source.readsMarks)
+    for (const what of ["flag orphan-test-process", "flag overdue-test-process"])
+      name2(what, NO_MARKS);
+  const boot = source.bootTime();
+  const ticks = source.clockTicks();
+  const startOf = (row2) => boot === null ? null : boot + ticksToMs(row2.startTicks, ticks);
+  const ageOf = (row2) => {
+    const start = startOf(row2);
+    return start === null ? null : model.now - start;
+  };
+  const c = { model, phase: phaseOn(source), ageOf, startOf, name: name2 };
+  const daemons = /* @__PURE__ */ new Map();
+  const states = /* @__PURE__ */ new Map();
+  const drainLeftMs2 = /* @__PURE__ */ new Map();
+  const add = (pid, flags) => daemons.set(pid, [...daemons.get(pid) ?? [], ...flags]);
+  for (const d of model.discovery.daemons) {
+    const { flags, state, drainLeft } = daemonFlags(c, d);
+    add(d.row.pid, flags);
+    if (state !== null) states.set(d.row.pid, state);
+    if (drainLeft !== null) drainLeftMs2.set(d.row.pid, drainLeft);
+  }
+  for (const [pid, flags] of duplicates(c)) add(pid, flags);
+  const files = fileFlags(model);
+  return {
+    daemons,
+    states,
+    drainLeftMs: drainLeftMs2,
+    processes: overdue(c),
+    orphans: orphans(c),
+    files: files.files,
+    unflagged: files.unflagged,
+    unknown: [...unknown, ...files.unknown]
+  };
+};
+function drainLeftMs(work, now) {
+  const departed = ownDeparture(work);
+  if (work === null || departed === null) return null;
+  if (work.slowWaiting !== true && work.checkpoints.length === 0) return null;
+  const left = departed + work.settings.idleExitMinutes * 6e4 - now;
+  return left > 0 ? left : null;
+}
+function ownDeparture(work) {
+  if (work?.record == null || work.consumers.length > 0 || work.departedAt === null) return null;
+  return work.departedAt >= work.record.startedAt ? work.departedAt : null;
+}
+function daemonFlags(c, d) {
+  const { model } = c;
+  const pid = d.row.pid;
+  const work = model.second.work.get(pid) ?? model.first.work.get(pid) ?? null;
+  const phase = c.phase(d, work, model.now);
+  const flags = [];
+  const add = (flag3, reason, command2) => flags.push({ flag: flag3, reason, command: command2 });
+  const kill = `kill ${pid}`;
+  const stop = d.root === null ? kill : `squeal stop ${shellWord(d.root)}`;
+  if (d.root === null) c.name(`daemon ${pid} flag root-gone`, "its root argument is relative");
+  else {
+    const gone = rootGone(d.root);
+    if (gone !== null) add("root-gone", gone, kill);
+  }
+  const bundle = bundleOf(d.script);
+  if (!existsSync3(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
+  const older = olderOf(c, d, work);
+  const life = phase === "serving" && work?.record != null ? lifeOf(c, pid, work, work.record.heartbeatIntervalMs) : null;
+  let state = life?.state ?? null;
+  if (typeof older === "string") state ??= older;
+  else if (older !== null) {
+    if (state === null) add("older", older.reason, stop);
+    else state = `${state}, older`;
+  }
+  const age2 = c.ageOf(d.row);
+  if (phase === "waiting") {
+    const bound = noLockBound(d);
+    if (age2 === null) c.name(`daemon ${pid} flag no-lock`, NO_BOOT);
+    else if (age2 > bound)
+      add(
+        "no-lock",
+        `it has waited ${sentenceDuration(age2)} for its lock, past ${bound / 1e3} s`,
+        kill
+      );
+  }
+  const hung = hungOf(c, d);
+  if (hung !== null) add("hung", hung, `kill ${pid}; sleep 5; kill -9 ${pid}`);
+  if (life?.flag != null) add(life.flag.flag, life.flag.reason, stop);
+  for (const reason of deadConsumers(c, pid)) add("dead-consumer", reason, null);
+  const home = model.places.home;
+  const installed = d.harness !== null && within(d.script, home) || within(d.script, join15(home, ".local"));
+  if (!installed && d.root !== null && within(d.root, model.places.tempDir)) {
+    if (age2 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
+    else if (age2 > NOT_INSTALLED_MS)
+      add(
+        "not-installed",
+        `its bundle is in no plugin cache, its root is under ${model.places.tempDir}, and it has run ${sentenceDuration(age2)}`,
+        kill
+      );
+  }
+  return { flags, state, drainLeft: life?.drainLeft ?? null };
+}
+function noLockBound(d) {
+  return d.lockWaitMs + NO_LOCK_MARGIN_MS;
+}
+function rootGone(root) {
+  if (!existsSync3(root)) return `its root ${root} is missing`;
+  let linked;
+  try {
+    linked = linkedWorktreeDir(root);
+  } catch {
+    return null;
+  }
+  return linked !== null && !existsSync3(linked) ? `the gitdir ${linked} its .git names is missing` : null;
+}
+function bundleOf(script) {
+  const at = script.lastIndexOf("/dist/");
+  return at < 0 ? script : script.slice(0, at + "/dist".length);
+}
+function olderOf(c, d, work) {
+  if (d.version === null) return null;
+  const installed = installedOf(d);
+  if (installed === null) return null;
+  const { newest, where } = installed;
+  const { harness } = d;
+  if (newest === null) {
+    c.name(
+      `daemon ${d.row.pid} flag older`,
+      `no installed ${harness} version can be read under ${where}`
+    );
+    return null;
+  }
+  if (!isNewerVersion(newest, d.version)) return null;
+  const old = (work?.consumers ?? []).filter(
+    (x) => x.version === null || isNewerVersion(newest, x.version)
+  );
+  const holder = old.find((x) => x.alive === true);
+  if (holder?.harness != null) return `older (session ${holder.harness.pid} holds it)`;
+  if (old.some((x) => x.alive === null && x.harness !== null)) {
+    const why = "a consumer of an older version has a harness process this PID namespace cannot see";
+    c.name(`daemon ${d.row.pid} flag older`, why);
+    return null;
+  }
+  return { reason: `version ${d.version}; ${harness} installs ${newest}` };
+}
+function installedOf(d) {
+  const antigravity = antigravityInstalled(d.script);
+  if (antigravity !== null)
+    return { newest: antigravity.version, where: dirname8(antigravity.manifest) };
+  const { plugins, marketplace } = d;
+  if (plugins === null || marketplace === null) return null;
+  const newest = d.harness === "claude" ? claudeLoaded(plugins, marketplace, d.root)?.version ?? null : codexRuntimeVersion(plugins, marketplace);
+  return { newest, where: plugins };
+}
+function hungOf(c, d) {
+  const { model } = c;
+  let age2 = 0;
+  for (const reading of [model.first, model.second]) {
+    const work = reading.work.get(d.row.pid) ?? null;
+    const record = work?.record;
+    if (record == null || c.phase(d, work, model.now) !== "serving") return null;
+    const late = heartbeatLateBy(record, model.now);
+    if (late === null) return null;
+    age2 = late;
+  }
+  return `its heartbeat is ${sentenceDuration(age2)} old on both samples, past two intervals`;
+}
+function lifeOf(c, pid, work, intervalMs) {
+  const now = c.model.now;
+  const grace = heartbeatGraceMs(intervalMs);
+  const idleMs = work.settings.idleExitMinutes * 6e4;
+  const unusedMs = work.settings.unusedExitMinutes * 6e4;
+  const none = { flag: null, state: null };
+  const departed = ownDeparture(work);
+  if (departed !== null) {
+    const since = now - departed;
+    const left = drainLeftMs(work, now);
+    if (left !== null)
+      return { flag: null, state: `draining ${Math.ceil(left / 6e4)}m left`, drainLeft: left };
+    const drains = work.slowWaiting === true || work.checkpoints.length > 0;
+    if (!drains && work.slowWaiting === null) {
+      c.name(`daemon ${pid} flag past-departure`, "its slow-tier row cannot be read");
+      return none;
+    }
+    if (drains && since > idleMs + grace) {
+      const reason2 = `its last session left ${sentenceDuration(since)} ago, and its drain is past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
+      return { flag: { flag: "past-departure", reason: reason2 }, state: null };
+    }
+    if (!drains && since > DEPARTURE_MS) {
+      const reason2 = `its last session left ${sentenceDuration(since)} ago, and no slow work is left`;
+      return { flag: { flag: "past-departure", reason: reason2 }, state: null };
+    }
+    return none;
+  }
+  const consumers = work.consumers.length;
+  const rule = consumers === 0 ? "past-idle" : "past-unused";
+  if (work.lastUse === null) {
+    c.name(
+      `daemon ${pid} flag ${rule}`,
+      "its daemon records no last use: a release before D9 (D9)"
+    );
+    return none;
+  }
+  if (consumers === 0) {
+    const quiet2 = now - work.lastUse.activeAt;
+    if (quiet2 <= idleMs + grace) return none;
+    const reason2 = `no consumer, and no request for ${sentenceDuration(quiet2)}, past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
+    return { flag: { flag: "past-idle", reason: reason2 }, state: null };
+  }
+  const quiet = now - work.lastUse.usedAt;
+  if (quiet <= unusedMs + grace) return none;
+  const reason = `${consumers === 1 ? "1 consumer" : `${consumers} consumers`}, and no edit, run, wait or request for ${sentenceDuration(quiet)}, past daemon.unusedExitMinutes (${work.settings.unusedExitMinutes})`;
+  return { flag: { flag: "past-unused", reason }, state: null };
+}
+function deadConsumers(c, pid) {
+  const first = c.model.first.work.get(pid) ?? null;
+  const second = c.model.second.work.get(pid) ?? null;
+  if (first?.record == null || second?.record == null) return [];
+  const beat = beatBetween(first.record, second.record);
+  const reasons = [];
+  for (const x of second.consumers) {
+    if (x.harness === null) continue;
+    if (x.alive === null) {
+      const why = `consumer ${x.sessionId}: its harness process ${x.harness.pid} is in another PID namespace`;
+      c.name(`daemon ${pid} flag dead-consumer`, why);
+      continue;
+    }
+    const before = first.consumers.find(
+      (y) => y.sessionId === x.sessionId && y.agentId === x.agentId
+    );
+    if (x.alive || before?.alive !== false || !beat) continue;
+    reasons.push(
+      `consumer ${x.sessionId}: its harness process ${x.harness.pid} is gone, and the heartbeat between the samples kept it`
+    );
+  }
+  return reasons;
+}
+function duplicates(c) {
+  const byRoot = /* @__PURE__ */ new Map();
+  for (const d of c.model.discovery.daemons)
+    if (d.root !== null) byRoot.set(d.root, [...byRoot.get(d.root) ?? [], d]);
+  const out = /* @__PURE__ */ new Map();
+  const add = (d, reason, command2) => out.set(d.row.pid, [{ flag: "duplicate", reason, command: command2 }]);
+  for (const [root, group] of byRoot) {
+    if (group.length < 2) continue;
+    const waited = (d) => {
+      const age2 = c.ageOf(d.row);
+      if (age2 === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
+      return age2 !== null && age2 > noLockBound(d);
+    };
+    if (c.model.locksRead === "none") {
+      if (!group.every(waited)) continue;
+      for (const d of group) {
+        const others = pids(group.filter((o) => o !== d));
+        add(
+          d,
+          `daemon ${others} has its root ${root} too; which holds the lock is unknown`,
+          `kill ${d.row.pid}  # or ${others}: whichever holds no lock`
+        );
+      }
+      continue;
+    }
+    const byLock = /* @__PURE__ */ new Map();
+    for (const d of group)
+      if (d.holdsLock === true) byLock.set(d.lockPath, [...byLock.get(d.lockPath) ?? [], d]);
+    for (const d of group) {
+      if (d.holdsLock === null)
+        c.name(
+          `daemon ${d.row.pid} flag duplicate`,
+          `whether it holds a lock of its root ${root} is unknown`
+        );
+      else if (d.holdsLock) {
+        const others = [...byLock].flatMap(([lock, ds]) => lock === d.lockPath ? [] : ds);
+        if (others.length > 0)
+          add(
+            d,
+            `${heldBy(others)} a lock of its root ${root} too`,
+            `kill ${d.row.pid}  # or ${pids(others)}: keep one`
+          );
+      } else if (byLock.size > 0 && waited(d)) {
+        const mine = byLock.get(d.lockPath);
+        const by = mine ?? [...byLock.values()].flat();
+        const turn = (mine?.length ?? 0) > 1 ? " in turn" : "";
+        add(d, `${heldBy(by)} the lock of its root ${root}${turn}`, `kill ${d.row.pid}`);
+      }
+    }
+  }
+  return out;
+}
+function pids(daemons) {
+  return daemons.map((d) => d.row.pid).join(", ");
+}
+function heldBy(daemons) {
+  return daemons.length === 1 ? `daemon ${pids(daemons)} holds` : `daemons ${pids(daemons)} held`;
+}
+function within(path, dir) {
+  return path.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
+}
+
+// src/core/ps/locks.ts
+import { existsSync as existsSync5 } from "node:fs";
+import { join as join17 } from "node:path";
+
+// src/core/store/lock-holders.ts
+import { existsSync as existsSync4 } from "node:fs";
+import { basename as basename4 } from "node:path";
+
+// src/core/ps/proc.ts
+import { readdirSync as readdirSync7, readFileSync as readFileSync10, readlinkSync, statSync as statSync2 } from "node:fs";
+import { availableParallelism as availableParallelism3 } from "node:os";
+import { join as join16 } from "node:path";
+
+// src/core/daemon/terminate.ts
+import { readdirSync as readdirSync5, readFileSync as readFileSync8 } from "node:fs";
+import { readFile } from "node:fs/promises";
+var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+async function commandLine(pid) {
+  try {
+    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+  } catch {
+    return "";
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync8("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
+
+// src/core/daemon/outlived.ts
+import { execFile } from "node:child_process";
+import { readdirSync as readdirSync6, readFileSync as readFileSync9 } from "node:fs";
+import { readFile as readFile2 } from "node:fs/promises";
+import { promisify } from "node:util";
+
+// src/runners/process/recorders.ts
+var UNOBSERVED = JSON.stringify({ out: "" });
+
+// src/core/daemon/outlived.ts
+var PF_EXITING = 4;
+var CHUNK = 64;
+function procRow(pid) {
+  let text2;
+  try {
+    text2 = readFileSync9(`/proc/${pid}/stat`, "latin1");
+  } catch {
+    return null;
+  }
+  const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
+  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING) !== 0) return null;
+  return {
+    pid,
+    ppid: Number(fields[1]),
+    pgrp: Number(fields[2]),
+    session: Number(fields[3]),
+    start: Number(fields[19])
+  };
+}
+var PROC = {
+  mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
+  async list() {
+    const names3 = readdirSync6("/proc").filter((name2) => /^\d+$/.test(name2));
+    const rows = [];
+    for (let at = 0; at < names3.length; at += CHUNK) {
+      if (at > 0) await new Promise((done) => setImmediate(done));
+      for (const name2 of names3.slice(at, at + CHUNK)) {
+        const row2 = procRow(Number(name2));
+        if (row2 !== null) rows.push(row2);
+      }
+    }
+    return rows;
+  },
+  async variable(pid, variable) {
+    let environ;
+    try {
+      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
+    } catch {
+      return null;
+    }
+    const needle = `\0${variable}=`;
+    const at = environ.indexOf(needle);
+    if (at < 0) return null;
+    const end = environ.indexOf("\0", at + needle.length);
+    return environ.slice(at + needle.length, end < 0 ? void 0 : end);
+  },
+  running: async (found2) => found2.flatMap(({ pid, start }) => {
+    const row2 = procRow(pid);
+    return row2?.start === start ? [row2] : [];
+  }),
+  command: commandLine
+};
+var run = promisify(execFile);
+var COMMAND_CHARS2 = 120;
+var PS_TIMEOUT_MS = 2e3;
+var PS_MAX_BYTES = 16 * 1024 * 1024;
+var PS_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(.*)$/;
+function psLines(text2) {
+  return text2.split("\n").flatMap((line) => {
+    const [, pid, ppid, pgrp, state, month, day, time, year, shown] = PS_LINE.exec(line) ?? [];
+    if (state === void 0 || state.startsWith("Z")) return [];
+    const start = Date.parse(`${month} ${day} ${year} ${time}`) / 1e3;
+    if (!Number.isInteger(start)) return [];
+    const row2 = { pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start };
+    return [{ row: row2, shown: shown ?? "" }];
+  });
+}
+function shownValue(shown, name2) {
+  const needle = ` ${name2}=`;
+  const at = shown.indexOf(needle);
+  if (at < 0 || shown.includes(needle, at + 1)) return null;
+  const end = shown.indexOf(" ", at + needle.length);
+  return shown.slice(at + needle.length, end < 0 ? void 0 : end);
+}
+function psTable(calls) {
+  let shown = /* @__PURE__ */ new Map();
+  async function list() {
+    let lines;
+    try {
+      lines = psLines(await calls.listing());
+    } catch (error) {
+      shown = /* @__PURE__ */ new Map();
+      throw error;
+    }
+    shown = new Map(lines.map((line) => [line.row.pid, line.shown]));
+    return lines.map(({ row: row2 }) => row2);
+  }
+  return {
+    mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
+    list,
+    variable: async (pid, name2) => {
+      const line = shown.get(pid);
+      return line === void 0 ? null : shownValue(line, name2);
+    },
+    running: async (found2) => (await list()).filter(
+      (row2) => found2.some(({ pid, start }) => row2.pid === pid && row2.start === start)
+    ),
+    command: calls.command
+  };
+}
+var PS2 = psTable({
+  async listing() {
+    const args = ["-A", "-E", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart=,command="];
+    const { stdout } = await run("ps", args, {
+      env: { ...process.env, LC_ALL: "C" },
+      timeout: PS_TIMEOUT_MS,
+      maxBuffer: PS_MAX_BYTES
+    });
+    return stdout;
+  },
+  async command(pid) {
+    try {
+      const args = ["-ww", "-o", "command=", "-p", String(pid)];
+      const { stdout } = await run("ps", args, { timeout: PS_TIMEOUT_MS });
+      const text2 = stdout.trim();
+      return text2.length > COMMAND_CHARS2 ? `${text2.slice(0, COMMAND_CHARS2 - 3)}...` : text2;
+    } catch {
+      return "";
+    }
+  }
+});
+var NONE = {
+  mark: () => 0,
+  list: async () => [],
+  variable: async () => null,
+  running: async () => [],
+  command: async () => ""
+};
+var HOST = process.platform === "linux" ? PROC : process.platform === "darwin" ? PS2 : NONE;
+
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
+// src/core/ps/proc.ts
+var MARK2 = Buffer.from(`${CHILD_VARIABLE}=`);
+function createProcSource(options = {}) {
+  return new ProcSource(options);
+}
+var ProcSource = class {
+  platform = "linux";
+  memoryKind = "private";
+  readsMarks = true;
+  #proc;
+  #cpus;
+  #run;
+  constructor(options) {
+    this.#proc = join16(options.root ?? "/", "proc");
+    this.#cpus = options.availableParallelism ?? availableParallelism3;
+    this.#run = options.run ?? runCommand;
+  }
+  clockTicks() {
+    return TICKS_PER_SECOND;
+  }
+  bootTime() {
+    const seconds2 = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
+    return seconds2 === void 0 ? null : Number(seconds2) * 1e3;
+  }
+  processTable(pids3, since) {
+    const table = /* @__PURE__ */ new Map();
+    const born = since === void 0 ? [] : this.#pids().filter((pid) => !since.has(pid));
+    for (const pid of pids3 === void 0 ? this.#pids() : /* @__PURE__ */ new Set([...pids3, ...born])) {
+      const row2 = this.#row(pid);
+      if (row2 !== null) table.set(pid, row2);
+    }
+    return table;
+  }
+  cmdline(pid) {
+    const text2 = this.#read(`${pid}/cmdline`);
+    if (text2 === null) return null;
+    const args = text2.split("\0");
+    if (args.at(-1) === "") args.pop();
+    return args;
+  }
+  markOf(pid) {
+    const bytes2 = this.#bytes(`${pid}/environ`);
+    if (bytes2 === null) return null;
+    for (let at = bytes2.indexOf(MARK2); at >= 0; at = bytes2.indexOf(MARK2, at + 1)) {
+      if (at > 0 && bytes2[at - 1] !== 0) continue;
+      const start = at + MARK2.length;
+      const end = bytes2.indexOf(0, start);
+      return bytes2.toString("utf8", start, end < 0 ? bytes2.length : end);
+    }
+    return null;
+  }
+  memory(pid) {
+    const status = kilobytes(this.#read(`${pid}/status`));
+    const anon = status.get("RssAnon");
+    const shmem = status.get("RssShmem");
+    if (anon === void 0 || shmem === void 0) return null;
+    const swap = status.get("VmSwap");
+    return { bytes: anon + shmem, swapBytes: swap ?? null };
+  }
+  fds(pid) {
+    const dir = join16(this.#proc, String(pid), "fd");
+    let names3;
+    try {
+      names3 = readdirSync7(dir);
+    } catch {
+      return null;
+    }
+    const targets = [];
+    for (const fd of names3.filter(isPid).map(Number).sort((a, b) => a - b)) {
+      const target = this.#link(`${pid}/fd/${fd}`);
+      if (target !== null) targets.push(target);
+    }
+    return targets;
+  }
+  locks() {
+    const text2 = this.#read("locks");
+    if (text2 === null) return null;
+    const locks = [];
+    for (const line of text2.split("\n")) {
+      const m = /^\s*\d+:\s+((?:->\s*)+)?(\S+)\s+\S+\s+(READ|WRITE)\s+(-?\d+)\s+([0-9a-f]+):([0-9a-f]+):(\d+)\s(?:\s*(\d+)\s+(\d+|EOF)\b)?/i.exec(
+        line
+      );
+      if (m === null) continue;
+      const [, arrow, kind = "", access = "", pid = "", major = "", minor = "", inode = ""] = m;
+      const [start, end] = [m[8], m[9]];
+      locks.push({
+        kind,
+        access: access.toUpperCase() === "WRITE" ? "write" : "read",
+        pid: Number(pid) > 0 ? Number(pid) : null,
+        file: `${hex(BigInt(`0x${major}`))}:${hex(BigInt(`0x${minor}`))}:${inode}`,
+        blocked: arrow !== void 0,
+        // Spec 021 D5: the byte range, which names SQLite's WAL write lock (byte 120 of `-shm`).
+        ...start === void 0 ? {} : { start: Number(start), end: end === "EOF" ? null : Number(end) }
+      });
+    }
+    return locks;
+  }
+  fileKey(path) {
+    let dev;
+    let ino;
+    try {
+      ({ dev, ino } = statSync2(path, { bigint: true }));
+    } catch {
+      return null;
+    }
+    const major = (dev & 0xfff00n) >> 8n | (dev & 0xfffff00000000000n) >> 32n;
+    const minor = dev & 0xffn | (dev & 0xffffff00000n) >> 12n;
+    return `${hex(major)}:${hex(minor)}:${ino}`;
+  }
+  unixListeners() {
+    const text2 = this.#run("ss", ["-xle"]);
+    if (text2 === null) return null;
+    const listeners = [];
+    for (const line of text2.split("\n")) {
+      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+-?\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
+      if (m !== null) listeners.push({ fileInode: Number(m[1]) });
+    }
+    return listeners;
+  }
+  pidNamespace() {
+    return this.#link("self/ns/pid");
+  }
+  host() {
+    const load = (this.#read("loadavg") ?? "").split(" ").slice(0, 3).map(Number);
+    const cpu = pressure(this.#read("pressure/cpu"));
+    const memory = pressure(this.#read("pressure/memory"));
+    const meminfo = kilobytes(this.#read("meminfo"));
+    const swapTotal = meminfo.get("SwapTotal") ?? null;
+    const swapFree = meminfo.get("SwapFree");
+    return {
+      load: load.length === 3 && load.every(Number.isFinite) ? [load[0] ?? 0, load[1] ?? 0, load[2] ?? 0] : null,
+      cpuPressure: cpu.get("some") ?? null,
+      memoryPressure: memory.has("some") && memory.has("full") ? { some: memory.get("some") ?? 0, full: memory.get("full") ?? 0 } : null,
+      memTotal: meminfo.get("MemTotal") ?? null,
+      memAvailable: meminfo.get("MemAvailable") ?? null,
+      swapTotal,
+      swapUsed: swapTotal !== null && swapFree !== void 0 ? swapTotal - swapFree : null,
+      cpuTime: cpuTime3(this.#read("stat")),
+      cpus: this.#cpus()
+    };
+  }
+  #pids() {
+    try {
+      return readdirSync7(this.#proc).filter(isPid).map(Number);
+    } catch {
+      return [];
+    }
+  }
+  /** Fields are counted after the last `)`, since the command name may hold spaces and parentheses. */
+  #row(pid) {
+    const text2 = this.#read(`${pid}/stat`);
+    if (text2 === null) return null;
+    const open = text2.indexOf("(");
+    const close = text2.lastIndexOf(")");
+    if (open < 0 || close < open) return null;
+    const f = text2.slice(close + 2).split(" ");
+    const [ppid, utime, stime, cutime, cstime, nice, startTicks] = [
+      f[1],
+      f[11],
+      f[12],
+      f[13],
+      f[14],
+      f[16],
+      f[19]
+    ].map(Number);
+    const numbers = [ppid, utime, stime, cutime, cstime, nice, startTicks];
+    if (!numbers.every(Number.isInteger)) return null;
+    return {
+      pid,
+      ppid: ppid ?? 0,
+      comm: text2.slice(open + 1, close),
+      state: f[0] ?? null,
+      startTicks: startTicks ?? 0,
+      cpuTicks: (utime ?? 0) + (stime ?? 0),
+      childTicks: (cutime ?? 0) + (cstime ?? 0),
+      nice: nice ?? 0,
+      uid: this.#uid(pid)
+    };
+  }
+  #uid(pid) {
+    try {
+      return statSync2(join16(this.#proc, String(pid))).uid;
+    } catch {
+      return null;
+    }
+  }
+  #read(path) {
+    try {
+      return readFileSync10(join16(this.#proc, path), "utf8");
+    } catch {
+      return null;
+    }
+  }
+  #bytes(path) {
+    try {
+      return readFileSync10(join16(this.#proc, path));
+    } catch {
+      return null;
+    }
+  }
+  #link(path) {
+    try {
+      return readlinkSync(join16(this.#proc, path));
+    } catch {
+      return null;
+    }
+  }
+};
+function isPid(name2) {
+  return /^\d+$/.test(name2);
+}
+function hex(n) {
+  return n.toString(16).padStart(2, "0");
+}
+function kilobytes(text2) {
+  const values = /* @__PURE__ */ new Map();
+  for (const m of (text2 ?? "").matchAll(/^(\w+):\s+(\d+) kB$/gm))
+    values.set(m[1] ?? "", Number(m[2]) * 1024);
+  return values;
+}
+function pressure(text2) {
+  const values = /* @__PURE__ */ new Map();
+  for (const m of (text2 ?? "").matchAll(/^(\w+) avg10=([\d.]+)/gm))
+    values.set(m[1] ?? "", Number(m[2]));
+  return values;
+}
+function cpuTime3(text2) {
+  const line = /^cpu\s+(.*)$/m.exec(text2 ?? "")?.[1];
+  if (line === void 0) return null;
+  const ticks = line.trim().split(/\s+/).slice(0, 8).map(Number);
+  if (ticks.length < 5 || !ticks.every(Number.isFinite)) return null;
+  const total = ticks.reduce((a, b) => a + b, 0);
+  return { busy: total - (ticks[3] ?? 0) - (ticks[4] ?? 0), total };
+}
+
+// src/core/store/lock-holders.ts
+var WRITE_LOCK_BYTE = 120;
+var COMMAND_CHARS3 = 160;
+var NO_COMMAND = "command unknown";
+function holdersFrom(source, databasePath) {
+  try {
+    const shm = `${databasePath}-shm`;
+    const key = source.fileKey(shm);
+    if (key === null) return existsSync4(shm) ? void 0 : [];
+    const locks = source.locks();
+    if (locks === null) return void 0;
+    const entries = onWriteLock(locks, key);
+    const held = entries.filter((e) => !e.blocked && e.access === "write");
+    const waiting = entries.filter((e) => e.blocked);
+    return [...named(source, held, false), ...named(source, waiting, true)];
+  } catch {
+    return void 0;
+  }
+}
+var PAUSE = new Int32Array(new SharedArrayBuffer(4));
+function onWriteLock(locks, key) {
+  const inode = inodeOf(key);
+  const onByte = locks.filter(
+    (e) => e.kind === "POSIX" && e.pid !== null && e.start !== void 0 && e.start <= WRITE_LOCK_BYTE && (e.end === null || e.end !== void 0 && e.end >= WRITE_LOCK_BYTE) && inodeOf(e.file) === inode
+  );
+  const exact = onByte.filter((e) => e.file === key);
+  return exact.length > 0 ? exact : onByte;
+}
+function inodeOf(key) {
+  return key.slice(key.lastIndexOf(":") + 1);
+}
+function named(source, entries, waiting) {
+  const holders = [];
+  for (const { pid } of entries) {
+    if (pid === null || holders.some((h) => h.pid === pid)) continue;
+    const args = source.cmdline(pid);
+    holders.push({ pid, command: args === null ? NO_COMMAND : shortCommand(args), waiting });
+  }
+  return holders;
+}
+function shortCommand(args) {
+  const words = args.map(
+    (arg, at) => arg.startsWith("/") && (at === 0 || /\.[cm]?[jt]s$/.test(arg)) ? basename4(arg) : arg
+  );
+  const line = words.join(" ").replace(/\s+/g, " ").trim();
+  if (line === "") return NO_COMMAND;
+  return line.length > COMMAND_CHARS3 ? `${line.slice(0, COMMAND_CHARS3 - 3)}...` : line;
+}
+function describeHolders(holders) {
+  const holder = holders?.find((entry) => !entry.waiting);
+  return holder === void 0 ? "the holder is not known" : `held by pid ${holder.pid} (${holder.command})`;
+}
+
+// src/core/ps/locks.ts
+var PS_LOCKS_VERSION = 1;
+function readLocks(source, places, repo) {
+  const others = repo ? [] : discover(source, source.processTable(), places).daemons.flatMap((d) => d.commonDir === null ? [] : [d.commonDir]).filter((dir) => dir !== places.commonDir);
+  const current = places.commonDir === null ? [] : [places.commonDir];
+  const repositories = [...current, ...[...new Set(others)].sort()].map((commonDir) => ({
+    commonDir,
+    current: commonDir === places.commonDir,
+    store: lockedFile(source, storePaths(commonDir).database),
+    codeStore: lockedFile(source, codeStoreOf(commonDir))
+  }));
+  return { version: PS_LOCKS_VERSION, repositories };
+}
+function codeStoreOf(commonDir) {
+  return join17(storePaths(commonDir).dir, "code.sqlite");
+}
+function lockedFile(source, path) {
+  return { path, exists: existsSync5(path), holders: holdersFrom(source, path) ?? null };
+}
+function renderLocks(locks, cwd) {
+  if (locks.repositories.length === 0) {
+    return `No Squeal store to show: no daemon of this user runs, and ${cwd} is not inside a git repository.
+`;
+  }
+  const lines = ["Write locks of each Squeal store, from /proc/locks:", ""];
+  for (const r of locks.repositories) {
+    lines.push(`${join17(r.commonDir, "squeal")}${r.current ? " (this repository)" : ""}`);
+    lines.push(...fileLines("store.sqlite", r.store), ...fileLines("code.sqlite", r.codeStore));
+  }
+  const files = locks.repositories.flatMap((r) => [r.store, r.codeStore]);
+  if (files.every((f) => f.holders !== null && f.holders.length === 0)) {
+    lines.push("", "No process holds or waits for a store's write lock.");
+  }
+  return `${lines.join("\n")}
+`;
+}
+var NAME_WIDTH = "store.sqlite".length + 2;
+function fileLines(name2, file) {
+  const label = `  ${name2.padEnd(NAME_WIDTH)}`;
+  const indent = " ".repeat(label.length);
+  if (!file.exists) return [`${label}no file`];
+  if (file.holders === null) return [`${label}holders unknown: /proc/locks cannot be read`];
+  if (file.holders.length === 0) return [`${label}not held`];
+  const clauses = file.holders.map(
+    (h) => h.waiting ? `pid ${h.pid} waits (${h.command})` : describeHolders([h])
+  );
+  if (file.holders.every((h) => h.waiting)) clauses.unshift("not held");
+  return clauses.map((clause, at) => `${at === 0 ? label : indent}${clause}`);
+}
+
+// src/core/ps/render.ts
+var STATE_WIDTH = 19;
+var DETAIL = "      ";
+var render = (snapshot, { full }) => {
+  const lines = [
+    firstLine(snapshot),
+    hostLine(snapshot.host, snapshot.squeal.pool),
+    squealLine(snapshot)
+  ];
+  if (snapshot.repositories.length === 0) lines.push("", "No Squeal daemon runs.");
+  for (const repository of snapshot.repositories)
+    lines.push("", ...repositoryBlock(repository, snapshot, full));
+  if (snapshot.orphans.length > 0) {
+    lines.push("", "Processes no live daemon owns");
+    for (const orphan of snapshot.orphans) lines.push(...orphanLines(orphan, snapshot.at));
+  }
+  if (snapshot.files.length > 0) {
+    lines.push("", "Files no live process uses");
+    for (const file of snapshot.files) lines.push(...fileLines2(file));
+  }
+  lines.push(...storeProcessLines(snapshot.storeProcesses ?? []));
+  const checkouts = snapshot.checkouts ?? [];
+  if (checkouts.length > 0) {
+    lines.push("", "Temporary checkouts");
+    for (const checkout of checkouts) lines.push(...checkoutLines(checkout, snapshot.at));
+  }
+  if (snapshot.unflaggedFiles !== null) {
+    const counts = snapshot.unflaggedFiles.map((f) => `${f.kind} ${thousands(f.count)}`);
+    lines.push(
+      "",
+      `Files that never get a flag: ${counts.length === 0 ? "none" : counts.join(", ")}`
+    );
+  }
+  if (snapshot.unknown.length > 0 && !full)
+    lines.push("", `Unknown: ${count(snapshot.unknown.length, "value")}; --full names each`);
+  if (snapshot.unknown.length > 0 && full) {
+    lines.push("", "Unknown");
+    for (const u of snapshot.unknown) lines.push(`  ${u.what}: ${u.why}`);
+  }
+  return `${lines.join("\n")}
+`;
+};
+function firstLine(s) {
+  const names3 = /* @__PURE__ */ new Map();
+  const daemons = s.repositories.flatMap((r) => r.daemons);
+  const all2 = [
+    ...daemons.flatMap((d) => [...d.flags, ...d.processes.flatMap((p) => p.flags)]),
+    ...s.orphans.flatMap((o) => o.flags),
+    ...s.files,
+    ...(s.checkouts ?? []).flatMap((c) => c.flags)
+  ];
+  for (const f of all2) names3.set(f.flag, (names3.get(f.flag) ?? 0) + 1);
+  const listed = [...names3].map(([name2, n]) => n === 1 ? name2 : `${name2} \xD7${n}`).join(", ");
+  const flags = s.flags === 0 ? "no flags" : `${count(s.flags, "flag")}: ${listed}`;
+  const processes = count(s.squeal.testProcesses, "test process", "test processes");
+  return `squeal ps \xB7 ${count(s.squeal.daemons, "daemon")}, ${processes} \xB7 ${flags}`;
+}
+function hostLine(h, pool) {
+  const load = h.load === null ? "load unknown" : `load ${h.load.map((l) => l.toFixed(1)).join(" ")}`;
+  const ceiling = pool.ceiling === void 0 ? [] : [`background ceiling ${Math.round(pool.ceiling * 10) / 10} busy CPUs`];
+  const pressure2 = h.memoryPressure === null ? "memory pressure unknown" : `memory pressure ${share(h.memoryPressure.some)} (${share(h.memoryPressure.full)} full)`;
+  const used = h.memTotal === null || h.memAvailable === null ? null : h.memTotal - h.memAvailable;
+  const swap = h.swapUsed === null || h.swapTotal === null ? "swap unknown" : `swap ${ofGib(h.swapUsed, h.swapTotal)}`;
+  return [
+    `Host    ${load} on ${count(h.cpus, "CPU")}`,
+    ...ceiling,
+    `CPU pressure ${h.cpuPressure === null ? "unknown" : share(h.cpuPressure)}`,
+    pressure2,
+    `${used === null || h.memTotal === null ? "memory unknown" : `memory ${ofGib(used, h.memTotal)} used`}, ${swap}`
+  ].join(" \xB7 ");
+}
+function squealLine(s) {
+  const q = s.squeal;
+  const out = q.skipped;
+  const ofBusy = lower(q.cpuShare, out.cpuPct, (v) => `${share(v)} of busy`);
+  const cpu = lower(q.cpuPct, out.cpuPct, (v) => `${cpus2(v)} CPUs`);
+  const used = lower(q.memoryShare, out.privateBytes, (v) => `${share(v)} of used`);
+  const kind = s.memory === "rss" ? "RSS" : "memory";
+  const rss = s.memory === "rss" ? ", shared pages counted more than once" : "";
+  const amount = lower(q.privateBytes, out.privateBytes, (v) => bytes(v)) ?? "unknown";
+  const memory = `${kind} ${amount} (${used ?? "share of used unknown"})${rss}`;
+  const swap = lower(q.swapBytes, out.swapBytes, (v) => `${bytes(v)} swap`) ?? "swap unknown";
+  const pool = q.pool.held === null ? `pool ${q.pool.slots} permits, held unknown` : `pool ${q.pool.held} of ${count(q.pool.slots, "permit")}`;
+  const busy = ofBusy ?? "share of busy unknown";
+  return `Squeal  ${cpu === null ? "CPU unknown" : `CPU ${cpu} (${busy})`} \xB7 ${memory} + ${swap} \xB7 ${pool}`;
+}
+function repositoryBlock(r, s, full) {
+  const name2 = r.commonDir === null ? "repository unknown" : r.commonDir.replace(/\/\.git$/, "");
+  const cpu = lower(r.cpuPct, r.skipped.cpuPct, cpus2) ?? "unknown";
+  const memory = lower(r.privateBytes, r.skipped.privateBytes, (v) => bytes(v)) ?? "unknown";
+  const lines = [
+    [
+      `${name2}${r.current ? " (this repository)" : ""}`,
+      count(r.daemons.length, "daemon"),
+      `CPU ${cpu}`,
+      `${s.memory === "rss" ? "RSS" : "memory"} ${memory}`
+    ].join(" \xB7 "),
+    row("  ", {
+      state: "STATE",
+      pid: "PID",
+      worktree: "WORKTREE",
+      version: "VERSION",
+      up: "UP",
+      cpu: "CPU",
+      time: "CPU TIME",
+      memory: s.memory === "rss" ? "RSS" : "MEMORY",
+      swap: "SWAP",
+      work: "WORK"
+    })
+  ];
+  for (const d of r.daemons) {
+    lines.push(...daemonLines(d, s.at));
+    for (const h of d.hosts ?? []) lines.push(runnerHostLine(h, s.at));
+    for (const p of d.processes) lines.push(...processLines(p, s.at, full));
+  }
+  return lines;
+}
+function daemonLines(d, at) {
+  const margin = d.flags.length > 0 ? "! " : "  ";
+  const own = d.state.length < STATE_WIDTH;
+  const version = [d.version ?? UNKNOWN, d.harness].filter((v) => v !== null).join(" ");
+  return [
+    ...own ? [] : [`${margin}${d.state}`],
+    row(own ? margin : "  ", {
+      state: own ? d.state : "",
+      pid: String(d.pid),
+      worktree: d.worktreeId?.slice(0, 8) ?? UNKNOWN,
+      version,
+      up: age(d.startedAt, at),
+      cpu: percent(d.cpuPct),
+      time: cpuTime2(d.cpuMs),
+      memory: bytes(d.privateBytes, true),
+      swap: bytes(d.swapBytes, true),
+      work: workOf(d, at)
+    }),
+    ...flagLines(d.flags)
+  ];
+}
+function runnerHostLine(h, at) {
+  return row("  ", {
+    state: `  host ${h.runner ?? "runner"}`,
+    pid: String(h.pid),
+    detail: h.target === null ? "local" : `remote ${h.target} (ssh)`,
+    up: age(h.startedAt, at),
+    cpu: percent(h.cpuPct),
+    time: cpuTime2(h.cpuMs),
+    memory: bytes(h.privateBytes, true),
+    swap: bytes(h.swapBytes, true),
+    work: ""
+  });
+}
+function processLines(p, at, full) {
+  const d = p.descendants;
+  const and = (own, sum) => d.count === 0 ? own : own === null || sum === null ? null : own + sum;
+  const plus = (text2, out) => out > 0 && text2 !== UNKNOWN ? `${text2}+` : text2;
+  const children = d.count === 0 ? [] : [`+${count(d.count, "child", "children")}`];
+  const lines = [
+    row(p.flags.length > 0 ? "! " : "  ", {
+      state: `  ${p.lane ?? p.runner ?? "test"}`,
+      pid: String(p.pid),
+      detail: detailOf(p),
+      up: age(p.startedAt, at),
+      cpu: plus(percent(and(p.cpuPct, d.cpuPct)), d.skipped.cpuPct),
+      time: cpuTime2(and(p.cpuMs, d.cpuMs)),
+      memory: plus(bytes(and(p.privateBytes, d.privateBytes), true), d.skipped.privateBytes),
+      swap: plus(bytes(and(p.swapBytes, d.swapBytes), true), d.skipped.swapBytes),
+      work: [...p.escaped ? ["escaped"] : [], `nice ${p.nice}`, ...children].join(", ")
+    }),
+    ...flagLines(p.flags)
+  ];
+  if (!full) return lines;
+  for (const c of d.list ?? [])
+    lines.push(
+      row("  ", {
+        state: `    ${c.comm}`,
+        pid: String(c.pid),
+        detail: "",
+        up: "",
+        cpu: percent(c.cpuPct),
+        time: cpuTime2(c.cpuMs),
+        memory: bytes(c.privateBytes, true),
+        swap: bytes(c.swapBytes, true),
+        work: ""
+      })
+    );
+  return lines;
+}
+function orphanLines(o, at) {
+  return o.flags.flatMap((f) => [
+    `  ! ${f.flag}  pid ${o.pid} ${o.comm}, up ${age(o.startedAt, at)} (${f.reason})`,
+    `${DETAIL}ends it: ${f.command ?? "none"}`
+  ]);
+}
+function fileLines2(f) {
+  return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
+}
+function checkoutLines(c, at) {
+  const mark = c.flags.length > 0 ? "!" : " ";
+  const commit = c.commit === null ? UNKNOWN : c.commit.slice(0, 12);
+  const pid = c.pid === null ? UNKNOWN : String(c.pid);
+  const owner = c.owner === "live" ? "" : `  owner ${c.owner}`;
+  const kind = c.kind === "commit" ? "commit worktree  " : "";
+  const who = c.daemon === true ? "daemon pid" : "pid";
+  return [
+    `  ${mark} ${kind}${c.path}  ${who} ${pid}  age ${age(c.createdAt, at)}  at ${commit}${owner}`,
+    ...flagLines(c.flags)
+  ];
+}
+function flagLines(flags) {
+  return flags.flatMap((f) => [
+    `${DETAIL}${f.flag}: ${f.reason}`,
+    `${DETAIL}ends it: ${f.command ?? "none"}`
+  ]);
+}
+function workOf(d, at) {
+  if (d.phase === "waiting") return "waits for its lock";
+  const w = d.work;
+  const parts = w.tiers.map(
+    (t) => `${t.lane === null ? "" : `${t.lane} `}tier, ${count(t.files, "file")}`
+  );
+  if (w.tiers.length === 0)
+    for (const c of w.checkpoints) parts.push(`checkpoint, ${count(c.files, "file")}`);
+  if (w.pending === null) parts.push("work unknown");
+  else if (w.pending > 0) parts.push(`${w.pending} pending`);
+  if (d.consumers.length > 0) parts.push(count(d.consumers.length, "session"));
+  if (ownDeparture2(d)) parts.push(`session left ${age(w.departedAt, at)} ago`);
+  return parts.length === 0 ? "idle" : parts.join("; ");
+}
+function ownDeparture2(d) {
+  const left = d.work.departedAt;
+  return left !== null && d.consumers.length === 0 && d.startedAt !== null && left >= d.startedAt;
+}
+function lower(value, out, text2) {
+  return value === null ? null : `${out > 0 ? "at least " : ""}${text2(value)}`;
+}
+function detailOf(p) {
+  if (p.runner === "vitest" && p.files === null) return "fork worker";
+  if (p.files === null) return p.runner ?? "";
+  const [only2] = p.files;
+  return p.files.length === 1 && only2 !== void 0 ? only2 : `${p.runner ?? "test"}, ${count(p.files.length, "file")}`;
+}
+function row(margin, r) {
+  const left = r.detail === void 0 ? (r.worktree ?? "").padEnd(10) + (r.version ?? "").padEnd(15) : clip(r.detail, 24).padEnd(25);
+  const line = margin + r.state.padEnd(STATE_WIDTH) + r.pid.padEnd(9) + left + r.up.padStart(4) + r.cpu.padStart(6) + r.time.padStart(10) + "  " + r.memory.padEnd(8) + r.swap.padEnd(6) + r.work;
+  return line.trimEnd();
+}
+function clip(text2, width) {
+  return text2.length <= width ? text2 : `\u2026${text2.slice(text2.length - width + 1)}`;
+}
+
+// src/core/ps/checkouts.ts
+import { basename as basename6, dirname as dirname11 } from "node:path";
+
+// src/core/checkout/commit-identity.ts
+import { lstatSync as lstatSync4, readdirSync as readdirSync8, readFileSync as readFileSync13, realpathSync as realpathSync2, rmdirSync, rmSync as rmSync3 } from "node:fs";
+import { basename as basename5, dirname as dirname10, isAbsolute as isAbsolute7, join as join20, resolve as resolve3 } from "node:path";
+
+// src/core/delivery/harness-process.ts
+import { readFileSync as readFileSync11, readlinkSync as readlinkSync2 } from "node:fs";
+function readProcStat(pid) {
+  let text2;
+  try {
+    text2 = readFileSync11(`/proc/${pid}/stat`, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const open = text2.indexOf("(");
+  const close = text2.lastIndexOf(")");
+  const rest2 = text2.slice(close + 2).split(" ");
+  const ppid = Number(rest2[1]);
+  const startTime = Number(rest2[19]);
+  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+    throw new Error(`unreadable /proc/${pid}/stat`);
+  }
+  return { comm: text2.slice(open + 1, close), state: rest2[0] ?? "", ppid, startTime };
+}
+function pidNamespace() {
+  try {
+    return readlinkSync2("/proc/self/ns/pid");
+  } catch {
+    return null;
+  }
+}
+function harnessAlive(harness, namespace, statOf2) {
+  if (namespace === null || harness.pidNamespace !== namespace) return null;
+  const stat = statOf2(harness.pid);
+  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
+}
+function toHarness(value) {
+  if (!isRecord(value)) return void 0;
+  const { pid, startTime, pidNamespace: pidNamespace2 } = value;
+  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace2 === "string" ? { pid, startTime, pidNamespace: pidNamespace2 } : void 0;
+}
+
+// src/core/daemon/lease-process.ts
+function leaseProcessAlive(holder) {
+  const { pid, startTime, pidNamespace: namespace } = holder;
+  if (startTime !== null && namespace !== null) {
+    try {
+      return harnessAlive(
+        { pid, startTime, pidNamespace: namespace },
+        pidNamespace(),
+        readProcStat
+      );
+    } catch {
+      return null;
+    }
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const code = error.code;
+    return code === "ESRCH" ? false : code === "EPERM" ? true : null;
+  }
+}
+
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
+
+// src/core/checkout/marker.ts
+import { readFileSync as readFileSync12, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join18 } from "node:path";
+var MARKER_VERSION = 1;
+function markerPath(folder) {
+  return join18(folder, "marker.json");
+}
+function treePath(folder) {
+  return join18(folder, "tree");
+}
+function readMarker(folder) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync12(markerPath(folder), "utf8"));
+  } catch {
+    return null;
+  }
+  if (!isRecord(value) || value.v !== MARKER_VERSION || !isRecord(value.owner)) return null;
+  const { owner, commit, commonDir, createdAt, group, fingerprint, daemon, installed } = value;
+  if (typeof owner.pid !== "number") return null;
+  if (typeof commit !== "string" || typeof commonDir !== "string") return null;
+  if (typeof createdAt !== "number") return null;
+  return {
+    v: MARKER_VERSION,
+    owner: leaseOf(owner),
+    commit,
+    commonDir,
+    createdAt,
+    ...isRecord(group) && typeof group.pid === "number" ? { group: leaseOf(group) } : {},
+    ...typeof fingerprint === "string" ? { fingerprint } : {},
+    ...isRecord(daemon) && typeof daemon.pid === "number" ? { daemon: leaseOf(daemon) } : {},
+    ...installed === true ? { installed } : {}
+  };
+}
+function leaseOf(value) {
+  return {
+    pid: value.pid,
+    startTime: typeof value.startTime === "number" ? value.startTime : null,
+    pidNamespace: typeof value.pidNamespace === "string" ? value.pidNamespace : null
+  };
+}
+function ownerOf(marker) {
+  return marker.daemon ?? marker.owner;
+}
+function ownerState(marker) {
+  const alive = leaseProcessAlive(ownerOf(marker));
+  return alive === null ? "unknown" : alive ? "live" : "dead";
+}
+
+// src/core/checkout/location.ts
+import { homedir as homedir2 } from "node:os";
+import { dirname as dirname9, isAbsolute as isAbsolute6, join as join19 } from "node:path";
+function cacheCheckoutsRoot(env = process.env, platform = process.platform) {
+  return join19(cacheHome(env, platform), "squeal", "checkouts");
+}
+function cacheHome(env, platform) {
+  const xdg = env.XDG_CACHE_HOME;
+  if (xdg !== void 0 && xdg !== "" && isAbsolute6(xdg)) return xdg;
+  const home = env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2();
+  return platform === "darwin" ? join19(home, "Library", "Caches") : join19(home, ".cache");
+}
+function gitCheckoutsDir(commonDir) {
+  return join19(commonDir, "squeal", "checkouts");
+}
+
+// src/core/checkout/commit-identity.ts
+function commitFolderName(commit, fingerprint) {
+  return `commit-${commit}-${fingerprint}`;
+}
+function commitIdentity(tree) {
+  try {
+    return identityOf(tree);
+  } catch {
+    return null;
+  }
+}
+function identityOf(given) {
+  if (basename5(given) !== "tree" || lstatOrNull(given)?.isDirectory() !== true) return null;
+  const tree = realpathSync2(given);
+  const folder = dirname10(tree);
+  const marker = readMarker(folder);
+  if (marker?.fingerprint === void 0) return null;
+  const { commonDir, commit, fingerprint } = marker;
+  if (basename5(folder) !== commitFolderName(commit, fingerprint)) return null;
+  if (!isCheckoutLocation(dirname10(folder), commonDir)) return null;
+  if (!isSqueals(tree, commonDir)) return null;
+  return { tree, folder, marker: { ...marker, fingerprint } };
+}
+function isCheckoutLocation(dir, commonDir) {
+  return dir === gitCheckoutsDir(commonDir) || basename5(dir) === worktreeIdOfRealPath(commonDir);
+}
+function isSqueals(tree, commonDir) {
+  const dotGit2 = join20(tree, ".git");
+  if (lstatOrNull(dotGit2)?.isFile() !== true) return false;
+  const line = /^gitdir: (.+)$/m.exec(readFileSync13(dotGit2, "utf8"))?.[1]?.trim();
+  if (line === void 0) return false;
+  const admin = realpathSync2(isAbsolute7(line) ? line : resolve3(tree, line));
+  if (dirname10(admin) !== join20(commonDir, "worktrees")) return false;
+  const back = readFileSync13(join20(admin, "gitdir"), "utf8").trim();
+  if (realpathSync2(isAbsolute7(back) ? back : resolve3(admin, back)) !== realpathSync2(dotGit2))
+    return false;
+  return readFileSync13(join20(admin, "locked"), "utf8").trim() === "squeal";
+}
+var IDENTITY_FAILED = "its tree is not a commit worktree Squeal made; check it and remove it by hand";
+
+// src/core/checkout/sweep.ts
+import { readdirSync as readdirSync9 } from "node:fs";
+import { join as join21 } from "node:path";
+function listCheckouts(dirs) {
+  const listed = [];
+  for (const dir of dirs) {
+    for (const name2 of entriesOf(dir)) {
+      const folder = join21(dir, name2);
+      const marker = readMarker(folder);
+      listed.push({
+        folder,
+        tree: treePath(folder),
+        marker,
+        owner: marker === null ? "unknown" : ownerState(marker)
+      });
+    }
+  }
+  return listed.sort((a, b) => a.folder.localeCompare(b.folder));
+}
+function cacheRepositoryDirs(cacheRoot) {
+  return entriesOf(cacheRoot).map((name2) => join21(cacheRoot, name2));
+}
+function entriesOf(dir) {
+  try {
+    return readdirSync9(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  } catch (error) {
+    if (isMissing(error) || error.code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+
+// src/core/ps/checkouts.ts
+function readCheckouts(places, repo) {
+  const cacheRoot = places.checkoutsRoot ?? cacheCheckoutsRoot({ HOME: places.home, XDG_CACHE_HOME: process.env.XDG_CACHE_HOME });
+  const dirs = cacheRepositoryDirs(cacheRoot);
+  if (places.commonDir !== null) dirs.push(gitCheckoutsDir(places.commonDir));
+  return listCheckouts(dirs).filter((c) => !repo || c.marker !== null && c.marker.commonDir === places.commonDir).map(shapeOf);
+}
+function shapeOf(listed) {
+  const { marker, owner } = listed;
+  const dead = owner === "dead" && marker !== null;
+  return {
+    path: listed.tree,
+    folder: listed.folder,
+    commit: marker?.commit ?? null,
+    commonDir: marker?.commonDir ?? null,
+    pid: marker === null ? null : ownerOf(marker).pid,
+    createdAt: marker?.createdAt ?? null,
+    ...marker?.fingerprint === void 0 ? {} : { kind: "commit", daemon: marker.daemon !== void 0 },
+    owner,
+    flags: dead ? [deadFlag(listed, marker)] : []
+  };
+}
+function deadFlag(listed, marker) {
+  const reason = `its owner, pid ${ownerOf(marker).pid}, is gone`;
+  if (marker.fingerprint === void 0)
+    return { flag: "dead-checkout", reason, command: removal(marker.commonDir, listed) };
+  if (commitIdentity(listed.tree) === null)
+    return { flag: "dead-checkout", reason: `${reason}; ${IDENTITY_FAILED}`, command: null };
+  const repo = basename6(marker.commonDir) === ".git" ? dirname11(marker.commonDir) : listed.tree;
+  const command2 = `cd ${shellWord(repo)} && squeal stop --at ${marker.commit}`;
+  return { flag: "dead-checkout", reason, command: command2 };
+}
+function removal(commonDir, listed) {
+  const git = `git -C ${shellWord(commonDir)} worktree`;
+  return [
+    `${git} unlock ${shellWord(listed.tree)}`,
+    `${git} remove --force ${shellWord(listed.tree)}`,
+    `rm -rf ${shellWord(listed.folder)}`
+  ].join("; ");
+}
+
+// src/core/ps/host.ts
+import { join as join22 } from "node:path";
+var hostTotals = (first, second) => {
+  const a = first.cpuTime;
+  const b = second.cpuTime;
+  const total = a === null || b === null ? 0 : b.total - a.total;
+  return {
+    load: second.load,
+    cpus: second.cpus,
+    cpuPressure: second.cpuPressure,
+    memoryPressure: second.memoryPressure,
+    memTotal: second.memTotal,
+    memAvailable: second.memAvailable,
+    swapTotal: second.swapTotal,
+    swapUsed: second.swapUsed,
+    busyCpuPct: a === null || b === null || total <= 0 ? null : (b.busy - a.busy) / total * 100
+  };
+};
+function cpuShare(cpuPct, first, second, clockTicks) {
+  const windowMs = second.atMs - first.atMs;
+  const a = first.host?.cpuTime ?? null;
+  const b = second.host?.cpuTime ?? null;
+  if (cpuPct === null || a === null || b === null || windowMs <= 0) return null;
+  const busyPct = ticksToMs(b.busy - a.busy, clockTicks) / windowMs * 100;
+  return busyPct <= 0 ? null : cpuPct / busyPct * 100;
+}
+function memoryShare(privateBytes, host) {
+  if (privateBytes === null || host.memTotal === null || host.memAvailable === null) return null;
+  const used = host.memTotal - host.memAvailable;
+  return used <= 0 ? null : privateBytes / used * 100;
+}
+var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
+var REPOSITORY_PERMIT = /^(slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
+var readPool = (source, places, daemons, readings = [source.locks()], cpus3 = source.host().cpus) => {
+  const { slots, ceiling } = capacityOf(places.userConfig, cpus3);
+  const holders = /* @__PURE__ */ new Map();
+  for (const locks of readings)
+    for (const [file, pids3] of holdersOf(locks ?? [])) holders.set(file, pids3);
+  let held = 0;
+  const permits = /* @__PURE__ */ new Map();
+  const foreign = [];
+  for (const path of permitFiles(places)) {
+    const key = source.fileKey(path);
+    const pids3 = key === null ? void 0 : holders.get(key);
+    if (pids3 === void 0) continue;
+    held++;
+    for (const pid of pids3) {
+      if (daemons.has(pid)) permits.set(pid, (permits.get(pid) ?? 0) + 1);
+      else foreign.push({ pid, path });
+    }
+  }
+  if (readings.some((locks) => locks === null))
+    return { pool: { slots, held: null, ceiling }, permits: /* @__PURE__ */ new Map(), foreign };
+  return { pool: { slots, held, ceiling }, permits, foreign };
+};
+function holdersOf(locks) {
+  const holders = /* @__PURE__ */ new Map();
+  for (const lock of locks) {
+    if (lock.blocked || lock.access !== "write" || lock.pid === null) continue;
+    const pids3 = holders.get(lock.file) ?? /* @__PURE__ */ new Set();
+    holders.set(lock.file, pids3.add(lock.pid));
+  }
+  return holders;
+}
+function capacityOf(path, cpus3) {
+  const shape = { capacity: { hostSlots: positiveInteger, backgroundShare, projects: () => null } };
+  const defaults = {
+    capacity: { hostSlots: defaultHostSlots(cpus3), backgroundShare: DEFAULT_BACKGROUND_SHARE }
+  };
+  const { capacity } = loadConfigFile(path, shape, defaults).value;
+  return { slots: capacity.hostSlots, ceiling: backgroundCeiling(capacity.backgroundShare, cpus3) };
+}
+function permitFiles(places) {
+  const files = [];
+  const add = (dir, permit) => {
+    for (const name2 of names(dir)) if (permit.test(name2)) files.push(join22(dir, name2));
+  };
+  for (const base of poolDirs(places)) {
+    add(base, PERMIT2);
+    for (const name2 of names(base)) {
+      const dir = join22(base, name2);
+      if (isRepositorySlotDir(dir)) add(dir, REPOSITORY_PERMIT);
+    }
+  }
+  return files;
+}
+
+// src/core/ps/measure.ts
+var takeSample = (source, pids3, since) => {
+  const before = performance.now();
+  const table = source.processTable(pids3, since);
+  const host = source.host();
+  return { atMs: (before + performance.now()) / 2, table, host };
+};
+function below(table, pids3) {
+  const children = /* @__PURE__ */ new Map();
+  for (const row2 of table.values())
+    children.set(row2.ppid, [...children.get(row2.ppid) ?? [], row2.pid]);
+  const all2 = /* @__PURE__ */ new Set();
+  const next = [...pids3];
+  for (let pid = next.pop(); pid !== void 0; pid = next.pop()) {
+    if (all2.has(pid)) continue;
+    all2.add(pid);
+    next.push(...children.get(pid) ?? []);
+  }
+  return [...all2];
+}
+var measure = (source, first, second, pids3) => {
+  const windowMs = second.atMs - first.atMs;
+  const clockTicks = source.clockTicks();
+  const rows = new Set(pids3);
+  const tree = below(first.table, pids3);
+  const inTree = new Set(tree);
+  const lived = (pid) => {
+    const before = first.table.get(pid);
+    return before !== void 0 && second.table.get(pid)?.startTicks === before.startTicks;
+  };
+  const steps = inTree.size + second.table.size;
+  const homeOf = (pid) => {
+    let p = pid;
+    for (let n = 0; p !== void 0 && inTree.has(p) && n <= steps; n++) {
+      if (rows.has(p) && lived(p)) return p;
+      p = first.table.get(p)?.ppid;
+    }
+    return null;
+  };
+  const homeAfter = (pid) => {
+    let p = pid;
+    for (let n = 0; p !== void 0 && n <= steps; n++) {
+      if (lived(p)) return homeOf(p);
+      const row2 = second.table.get(p);
+      if (row2 === void 0) return null;
+      if (rows.has(p) && !first.table.has(p)) return p;
+      p = row2.ppid;
+    }
+    return null;
+  };
+  const counted2 = /* @__PURE__ */ new Map();
+  const count2 = (home, ticks) => {
+    if (home !== null) counted2.set(home, (counted2.get(home) ?? 0) + ticks);
+  };
+  const endedUnder = /* @__PURE__ */ new Map();
+  for (const pid of tree) {
+    const before = first.table.get(pid);
+    if (before === void 0) continue;
+    const after = second.table.get(pid);
+    if (after !== void 0 && after.startTicks === before.startTicks) {
+      const home = homeOf(pid);
+      if (!rows.has(pid)) count2(home, after.cpuTicks - before.cpuTicks);
+      count2(home, (after.childTicks ?? 0) - (before.childTicks ?? 0));
+      continue;
+    }
+    endedUnder.set(before.ppid, [...endedUnder.get(before.ppid) ?? [], before]);
+  }
+  const reapedBy = /* @__PURE__ */ new Map();
+  const unsure = /* @__PURE__ */ new Set();
+  for (const [ppid, ended] of endedUnder) {
+    const parent = first.table.get(ppid);
+    const home = homeOf(ppid);
+    if (parent === void 0 || parent.childTicks === null || home === null) continue;
+    const had = ended.reduce((n, p) => n + p.cpuTicks + (p.childTicks ?? 0), 0);
+    count2(home, -had);
+    const later = second.table.get(ppid);
+    const grew = later === void 0 || later.childTicks === null ? null : later.childTicks - parent.childTicks;
+    const waited = lived(ppid) && later?.state !== "Z" && grew !== null && grew >= had;
+    for (const p of ended) {
+      if (waited) reapedBy.set(p.pid, home);
+      else unsure.add(rows.has(p.pid) ? p.pid : home);
+    }
+  }
+  for (const [pid, after] of second.table) {
+    if (first.table.get(pid)?.startTicks === after.startTicks) continue;
+    count2(homeAfter(pid), after.cpuTicks + (after.childTicks ?? 0));
+  }
+  const costs = /* @__PURE__ */ new Map();
+  for (const pid of pids3) {
+    const before = first.table.get(pid);
+    const after = second.table.get(pid);
+    const now = before === void 0 || after?.startTicks === before.startTicks ? after : void 0;
+    const last = now ?? before;
+    if (last === void 0) continue;
+    const own = now === void 0 ? null : now.cpuTicks - (before?.cpuTicks ?? now.cpuTicks);
+    const ticks = own === null || own < 0 ? null : own + Math.max(0, counted2.get(pid) ?? 0);
+    const ended = now === void 0 || now.state === "Z";
+    const memory = ended ? null : source.memory(pid);
+    costs.set(pid, {
+      cpuPct: ticks === null || windowMs <= 0 ? null : ticksToMs(ticks, clockTicks) / windowMs * 100,
+      cpuMs: ticksToMs(last.cpuTicks, clockTicks),
+      privateBytes: memory?.bytes ?? null,
+      swapBytes: memory?.swapBytes ?? null,
+      reapedBy: reapedBy.get(pid) ?? null,
+      reaperUnknown: unsure.has(pid),
+      left: ended,
+      childCpuUnread: ticks !== null && now?.childTicks === null
+    });
+  }
+  return costs;
+};
+function sumCosts(costs) {
+  const sum = (value, out) => {
+    const known = costs.flatMap((c) => value(c) ?? []);
+    const skipped = costs.filter(out).length;
+    const total = known.length === 0 && skipped > 0 ? null : known.reduce((a, b) => a + b, 0);
+    return { total, skipped };
+  };
+  const cpu = sum(
+    (c) => c.cpuPct,
+    (c) => c.cpuPct === null ? c.reapedBy === null : c.reaperUnknown || c.childCpuUnread
+  );
+  const memory = sum(
+    (c) => c.privateBytes,
+    (c) => c.privateBytes === null && !c.left
+  );
+  const swap = sum(
+    (c) => c.swapBytes,
+    (c) => c.swapBytes === null && !c.left
+  );
+  return {
+    cpuPct: cpu.total,
+    cpuMs: costs.reduce((a, c) => a + c.cpuMs, 0),
+    privateBytes: memory.total,
+    swapBytes: swap.total,
+    skipped: { cpuPct: cpu.skipped, privateBytes: memory.skipped, swapBytes: swap.skipped }
+  };
+}
+
+// src/core/ps/processes.ts
+function parseMark(mark) {
+  const colon = mark.indexOf(":");
+  if (colon < 0) return { token: mark, lane: null, runId: null };
+  const rest2 = mark.slice(colon + 1);
+  const hash = rest2.indexOf("#");
+  const lane = hash < 0 ? rest2 : rest2.slice(0, hash);
+  return {
+    token: mark.slice(0, colon),
+    lane: lane === "" ? null : lane,
+    runId: hash < 0 ? null : rest2.slice(hash + 1)
+  };
+}
+var attribute = (source, table, owners) => {
+  const owner = new Map(owners.map((o) => [o.pid, o]));
+  const marks = /* @__PURE__ */ new Map();
+  if (source.readsMarks) {
+    for (const pid of table.keys()) {
+      if (owner.has(pid)) continue;
+      const mark = source.markOf(pid);
+      if (mark !== null) marks.set(pid, mark);
+    }
+  }
+  const hosts = runnerHosts(source, table, owner, marks);
+  const hostPids = new Set(hosts.map((h) => h.pid));
+  const isHead = (pid) => {
+    if (owner.has(pid) || hostPids.has(pid)) return false;
+    const parent = table.get(pid)?.ppid;
+    if (!source.readsMarks) return parent !== void 0 && owner.has(parent);
+    if (!marks.has(pid)) return false;
+    const above = nearest(table, parent, (p) => owner.has(p) || marks.has(p));
+    return above === null || owner.has(above);
+  };
+  const pids3 = [...table.keys()].sort((a, b) => a - b);
+  const heads = new Set(pids3.filter(isHead));
+  const descendants = new Map([...heads].map((h) => [h, []]));
+  for (const pid of pids3) {
+    if (owner.has(pid) || heads.has(pid)) continue;
+    const head = nearest(table, table.get(pid)?.ppid, (p) => owner.has(p) || heads.has(p));
+    if (head !== null) descendants.get(head)?.push(pid);
+  }
+  const byToken = /* @__PURE__ */ new Map();
+  for (const o of owners) if (o.token !== null && !byToken.has(o.token)) byToken.set(o.token, o);
+  const tokensKnown = owners.every((o) => o.token !== null);
+  const processes = [];
+  const unowned = [];
+  for (const head of heads) {
+    const mark = marks.get(head);
+    const parsed2 = mark === void 0 ? null : parseMark(mark);
+    const ancestor = nearest(table, table.get(head)?.ppid, (p) => owner.has(p));
+    const by = ancestor !== null ? owner.get(ancestor) : parsed2 === null ? void 0 : byToken.get(parsed2.token);
+    if (by === void 0) {
+      if (mark === void 0 || !tokensKnown) continue;
+      for (const pid of [head, ...descendants.get(head) ?? []]) {
+        const carried = marks.get(pid);
+        if (carried !== void 0) unowned.push({ pid, mark: carried });
+      }
+      continue;
+    }
+    const args = source.cmdline(head);
+    processes.push({
+      pid: head,
+      daemonPid: by.pid,
+      escaped: ancestor === null,
+      lane: parsed2?.lane ?? null,
+      runId: parsed2 === null ? null : runOf(parsed2, by),
+      runner: args === null ? null : runnerOf(args),
+      files: args === null ? null : filesOf(args),
+      descendants: descendants.get(head) ?? []
+    });
+  }
+  return { processes, unowned, ...hosts.length === 0 ? {} : { hosts } };
+};
+function runnerHosts(source, table, owner, marks) {
+  const hosts = [];
+  if (!source.readsMarks) return hosts;
+  for (const [pid, row2] of table) {
+    if (!owner.has(row2.ppid) || owner.has(pid) || marks.has(pid)) continue;
+    const args = source.cmdline(pid);
+    const host = args === null ? null : hostOf(args);
+    if (host !== null) hosts.push({ pid, daemonPid: row2.ppid, ...host });
+  }
+  return hosts;
+}
+function hostOf(args) {
+  const at = args.indexOf("runner-host");
+  if (at > 0 && !/(^|\/)ssh$/.test(args[0] ?? "")) {
+    const flag3 = args.indexOf("--runner", at);
+    return { runner: flag3 < 0 ? null : args[flag3 + 1] ?? null, target: null };
+  }
+  const command2 = args.at(-1) ?? "";
+  if (!/(^|\/)ssh$/.test(args[0] ?? "") || !/ runner-host /.test(command2)) return null;
+  return { runner: /--runner (\S+)/.exec(command2)?.[1] ?? null, target: args.at(-2) ?? null };
+}
+function nearest(table, pid, is) {
+  for (let at = pid, steps = 0; at !== void 0 && steps <= table.size; steps++) {
+    if (is(at)) return at;
+    const row2 = table.get(at);
+    if (row2 === void 0 || row2.ppid === at) return null;
+    at = row2.ppid;
+  }
+  return null;
+}
+function runOf(mark, owner) {
+  if (mark.runId !== null) return mark.runId;
+  const lane = mark.lane?.startsWith("slow:") === true ? "slow" : "fast";
+  const ofLane = owner.tiers.filter((t) => t.lane === lane);
+  if (ofLane.length > 0) return ofLane.length === 1 ? ofLane[0]?.runId ?? null : null;
+  const [only2] = owner.tiers;
+  return owner.tiers.length === 1 && only2?.lane === null ? only2.runId : null;
+}
+var VITEST_WORKER = /\/vitest\/dist\/workers\/[^/]+\.js$/;
+function runnerOf(args) {
+  if (args.some((a) => VITEST_WORKER.test(a))) return "vitest";
+  if (args.some((a) => a.startsWith("--basetemp=")) && isPytest(args)) return "pytest";
+  if (args.includes("--test")) return "node-test";
+  return null;
+}
+function isPytest(args) {
+  return args.some((a, i) => a === "-m" && args[i + 1] === "pytest" || /(^|\/)pytest$/.test(a));
+}
+function filesOf(args) {
+  const runner = runnerOf(args);
+  if (runner === "pytest")
+    return args.slice(args.findLastIndex((a) => a.startsWith("--basetemp=")) + 1);
+  if (runner === "node-test")
+    return args.slice(args.indexOf("--test") + 1).filter((a) => !a.startsWith("-"));
+  return null;
+}
+
+// src/core/ps/snapshot-shape.ts
+import { basename as basename7 } from "node:path";
+
+// src/core/fs/compare.ts
+function compare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// src/core/ps/shape.ts
+var PS_SHAPE_VERSION = 1;
+
+// src/core/ps/snapshot-unknown.ts
+var LISTED = 10;
+function unknownOf({ shape, named: named2, costs }) {
+  const all2 = /* @__PURE__ */ new Map();
+  const name2 = (what, why) => {
+    if (!all2.has(what)) all2.set(what, { what, why });
+  };
+  for (const u of named2) name2(u.what, u.why);
+  const { host, squeal } = shape;
+  if (host.load === null) name2("host load", "the source cannot read it on this host");
+  if (host.cpuPressure === null || host.memoryPressure === null)
+    name2("host pressure", "the source cannot read it on this host");
+  if (host.memTotal === null || host.memAvailable === null)
+    name2("host memory", "the source cannot read it on this host");
+  if (host.swapTotal === null || host.swapUsed === null)
+    name2("host swap", "the source cannot read it on this host");
+  if (host.busyCpuPct === null)
+    name2(
+      "host busyCpuPct",
+      "the host's CPU times cannot be read, or did not change over the window"
+    );
+  if (squeal.cpuShare === null && squeal.cpuPct !== null && host.busyCpuPct !== null)
+    name2("squeal cpuShare", "the host's busy CPU over the window was none");
+  if (squeal.memoryShare === null && squeal.privateBytes !== null && host.memTotal !== null)
+    name2("squeal memoryShare", "the host's used memory reads none");
+  if (squeal.pool.held === null)
+    name2("pool permits", "the lock holders cannot be read, so no daemon's permits are known");
+  const entries = [...costs];
+  const seenOnce = entries.filter(([, c]) => c === null || c.cpuPct === null);
+  const reaped = seenOnce.filter(([, c]) => (c?.reapedBy ?? null) !== null);
+  if (seenOnce.length > 0)
+    name2(
+      "processes cpuPct",
+      `${were(seenOnce)} in one sample of the window only: ${pids2(seenOnce)}${waitedFor(reaped.length, seenOnce.length)}`
+    );
+  const lost = seenOnce.filter(([, c]) => (c?.reapedBy ?? null) === null);
+  const unsure = entries.filter(([, c]) => c?.reaperUnknown === true);
+  const outside = lost.filter(([, c]) => c?.reaperUnknown !== true);
+  const ended = unsure.filter(([, c]) => c?.cpuPct === null);
+  const holding = unsure.filter(([, c]) => c?.cpuPct !== null);
+  const parts = [
+    ...outside.length === 0 ? [] : [
+      `${counted(outside)} in one sample only, which no process ps measures waited for: ${pids2(outside)}`
+    ],
+    ...ended.length === 0 ? [] : [`${counted(ended)} that ended ${afterParent(ended.length)}: ${pids2(ended)}`],
+    ...holding.length === 0 ? [] : [`processes below ${counted(holding)} that ended ${afterParent(2)}: ${pids2(holding)}`]
+  ];
+  if (parts.length > 0)
+    name2(
+      "squeal cpuPct",
+      `a lower bound: it leaves out the CPU in the window of ${parts.join("; and of ")}`
+    );
+  const noMemory = entries.filter(([, c]) => c === null || c.privateBytes === null);
+  const left = noMemory.filter(([, c]) => c?.left === true);
+  if (left.length > 0)
+    name2(
+      "processes privateBytes",
+      `${counted(left)} ended in the window, so ${left.length === 1 ? "it holds" : "they hold"} none: ${pids2(left)}`
+    );
+  const unread = noMemory.filter(([, c]) => c?.left !== true);
+  if (unread.length > 0)
+    name2(
+      "squeal privateBytes",
+      `a lower bound: it leaves out the memory of ${counted(unread)} whose status could not be read: ${pids2(unread)}`
+    );
+  const noSwap = entries.filter(
+    ([, c]) => c !== null && c.privateBytes !== null && c.swapBytes === null
+  );
+  if (noSwap.length > 0)
+    name2(
+      "processes swapBytes",
+      shape.memory === "rss" ? "the source reads no swap per process on this platform (D10)" : `${counted(noSwap)} show no swap: ${pids2(noSwap)}`
+    );
+  const daemons = shape.repositories.flatMap((r) => r.daemons);
+  const starts = [...daemons, ...daemons.flatMap((d) => d.processes)];
+  if (starts.some((p) => p.startedAt === null))
+    name2("processes startedAt", "the boot time cannot be read");
+  for (const d of daemons) daemonOf(d, all2, name2);
+  const elsewhere = daemons.flatMap((d) => d.consumers).filter((c) => c.harnessPid !== null && c.alive === null);
+  if (elsewhere.length > 0)
+    name2(
+      "consumers alive",
+      `${elsewhere.length === 1 ? "1 consumer's harness process is" : `${elsewhere.length} consumers' harness processes are`} in another PID namespace`
+    );
+  return [...all2.values()];
+}
+function daemonOf(d, all2, name2) {
+  const of = `daemon ${d.pid}`;
+  if (d.worktreeId === null)
+    name2(`${of} worktreeId`, "its lock file is not open and its root cannot be read");
+  if (d.root === null) name2(`${of} root`, "its arguments name a relative root");
+  if (d.version === null)
+    name2(`${of} version`, "its script path names none, and its store records no daemon of its own");
+  if (d.work.pending === null)
+    name2(
+      `${of} work`,
+      d.phase === "waiting" ? "it waits for its lock, and its worktree's row is the holder's" : "its store cannot be found"
+    );
+  else if (d.work.lastUsedAt === null && !all2.has(`${of} work`))
+    name2(`${of} lastUsedAt`, "its store records no last use of its own (D9)");
+}
+function waitedFor(reaped, once) {
+  if (reaped === 0) return "";
+  const whom = reaped < once ? `${reaped} of them` : once === 1 ? "it" : "them";
+  return `; the ancestor that waited for ${whom} counts ${once === 1 ? "its" : "their"} CPU`;
+}
+function afterParent(n) {
+  return n === 1 ? "after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it" : "after their parents did, or under ones whose children's times grew too little, so no sample shows which processes waited for them";
+}
+function counted(entries) {
+  return entries.length === 1 ? "1 process" : `${entries.length} processes`;
+}
+function were(entries) {
+  return `${counted(entries)} ${entries.length === 1 ? "was" : "were"}`;
+}
+function pids2(entries) {
+  const listed = entries.slice(0, LISTED).map(([pid]) => pid);
+  const more = entries.length - listed.length;
+  return `pid ${listed.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+}
+
+// src/core/ps/snapshot-shape.ts
+function shapeOf2(r, findings, o) {
+  const { model, costs } = r;
+  const { first, second } = model;
+  const ticks = model.source.clockTicks();
+  const startOf = (startTicks) => r.bootTime === null ? null : r.bootTime + ticksToMs(startTicks, ticks);
+  const phase = phaseOn(model.source);
+  const table = first.sample.table;
+  const processOf = (p) => {
+    const row2 = table.get(p.pid);
+    const sum = sumCosts(p.descendants.flatMap((pid) => costs.get(pid) ?? []));
+    return {
+      pid: p.pid,
+      lane: p.lane,
+      runner: p.runner,
+      runId: p.runId,
+      files: p.files,
+      escaped: p.escaped,
+      ...costOf(costs.get(p.pid)),
+      // `attribute` takes its processes from this table.
+      nice: row2?.nice ?? 0,
+      startedAt: row2 === void 0 ? null : startOf(row2.startTicks),
+      descendants: {
+        count: p.descendants.length,
+        ...sum,
+        list: !o.full ? null : p.descendants.map((pid) => ({
+          pid,
+          comm: table.get(pid)?.comm ?? "",
+          ...costOf(costs.get(pid))
+        }))
+      },
+      flags: findings.processes.get(p.pid) ?? []
+    };
+  };
+  const daemonOf2 = (d) => {
+    const pid = d.row.pid;
+    const work = first.work.get(pid) ?? second.work.get(pid) ?? null;
+    const own = phase(d, work, model.now);
+    const state = findings.states.get(pid) ?? own;
+    return {
+      pid,
+      phase: own,
+      state,
+      worktreeId: d.worktreeId,
+      root: d.root,
+      // A checkout's `dist` names no version; its store row's own record does (D2).
+      version: d.version ?? work?.record?.squealVersion ?? null,
+      harness: d.harness,
+      startedAt: startOf(d.row.startTicks),
+      ...costOf(costs.get(pid)),
+      permits: model.pool.pool.held === null ? null : model.pool.permits.get(pid) ?? 0,
+      work: workOf2(work, findings.drainLeftMs.get(pid) ?? null),
+      consumers: (work?.consumers ?? []).map((c) => ({
+        harnessPid: c.harness?.pid ?? null,
+        alive: c.alive,
+        version: c.version
+      })),
+      processes: first.attribution.processes.filter((p) => p.daemonPid === pid).map(processOf),
+      flags: findings.daemons.get(pid) ?? [],
+      ...hostsOf(pid)
+    };
+  };
+  const hostsOf = (pid) => {
+    const hosts = (first.attribution.hosts ?? []).filter((h) => h.daemonPid === pid);
+    if (hosts.length === 0) return {};
+    return {
+      hosts: hosts.map((h) => {
+        const row2 = table.get(h.pid);
+        return {
+          pid: h.pid,
+          runner: h.runner,
+          target: h.target,
+          startedAt: row2 === void 0 ? null : startOf(row2.startTicks),
+          ...costOf(costs.get(h.pid))
+        };
+      })
+    };
+  };
+  const below2 = new Map(first.attribution.processes.map((p) => [p.pid, p.descendants]));
+  const pidsOf = (daemons2) => [
+    ...daemons2.map((d) => d.pid),
+    ...daemons2.flatMap((d) => d.processes).flatMap((p) => [p.pid, ...below2.get(p.pid) ?? []]),
+    ...daemons2.flatMap((d) => d.hosts ?? []).map((h) => h.pid)
+  ];
+  const totalOf = (daemons2) => sumCosts(pidsOf(daemons2).flatMap((pid) => costs.get(pid) ?? []));
+  const current = model.places.commonDir;
+  const blocks = /* @__PURE__ */ new Map();
+  for (const d of model.discovery.daemons) {
+    const group = blocks.get(d.commonDir) ?? [];
+    blocks.set(d.commonDir, [...group, daemonOf2(d)]);
+  }
+  const repositories = [...blocks].map(([commonDir, daemons2]) => {
+    const { cpuPct, privateBytes, swapBytes, skipped } = totalOf(daemons2);
+    return {
+      commonDir,
+      current: commonDir !== null && commonDir === current,
+      cpuPct,
+      privateBytes,
+      swapBytes,
+      skipped,
+      daemons: daemons2.sort((a, b) => byPath(a.root, b.root) || a.pid - b.pid)
+    };
+  }).filter((repository) => !o.repo || repository.current).sort((a, b) => Number(b.current) - Number(a.current) || byPath(a.commonDir, b.commonDir));
+  const daemons = repositories.flatMap((repository) => repository.daemons);
+  const processes = daemons.flatMap((d) => d.processes);
+  const pids3 = pidsOf(daemons);
+  const total = totalOf(daemons);
+  const ids = !o.repo ? null : current === null ? /* @__PURE__ */ new Set() : worktreeIdsOf(current);
+  const files = ids === null ? findings.files : findings.files.filter((f) => ids.has(socketIdOf(f.path)));
+  const orphans2 = o.repo ? [] : findings.orphans;
+  const kept2 = new Set(daemons.flatMap((d) => [d.pid, ...d.processes.map((p) => p.pid)]));
+  const shape = {
+    v: PS_SHAPE_VERSION,
+    at: model.now,
+    sampleMs: Math.round(second.sample.atMs - first.sample.atMs),
+    platform: model.source.platform,
+    memory: model.source.memoryKind,
+    host: r.host,
+    squeal: {
+      daemons: daemons.length,
+      testProcesses: processes.length,
+      cpuPct: total.cpuPct,
+      cpuShare: cpuShare(total.cpuPct, first.sample, second.sample, ticks),
+      privateBytes: total.privateBytes,
+      memoryShare: memoryShare(total.privateBytes, r.host),
+      swapBytes: total.swapBytes,
+      skipped: total.skipped,
+      pool: model.pool.pool
+    },
+    repositories,
+    orphans: orphans2,
+    files,
+    unflaggedFiles: o.full ? findings.unflagged : null,
+    flags: daemons.reduce((n, d) => n + d.flags.length, 0) + processes.reduce((n, p) => n + p.flags.length, 0) + orphans2.reduce((n, p) => n + p.flags.length, 0) + files.length
+  };
+  const named2 = [...r.unknown, ...findings.unknown].filter((u) => !o.repo || ofKept(u.what, kept2));
+  const covered = new Map(pids3.map((pid) => [pid, costs.get(pid) ?? null]));
+  return { ...shape, unknown: unknownOf({ shape, named: named2, costs: covered }) };
+}
+function costOf(cost) {
+  if (cost === void 0) return { cpuPct: null, cpuMs: null, privateBytes: null, swapBytes: null };
+  const { cpuPct, cpuMs, privateBytes, swapBytes } = cost;
+  return { cpuPct, cpuMs, privateBytes, swapBytes };
+}
+function workOf2(work, drainLeftMs2) {
+  return {
+    pending: work?.pending ?? null,
+    running: work?.running ?? null,
+    tiers: work?.tiers ?? [],
+    checkpoints: work?.checkpoints ?? [],
+    departedAt: work?.departedAt ?? null,
+    drainLeftMs: drainLeftMs2,
+    lastUsedAt: work?.lastUse?.usedAt ?? null
+  };
+}
+function byPath(a, b) {
+  if (a === null || b === null) return Number(a === null) - Number(b === null);
+  return compare(a, b);
+}
+function worktreeIdsOf(commonDir) {
+  const locks = names(storePaths(commonDir).locksDir);
+  return new Set(locks.flatMap((n) => lockFileWorktreeId(n) ?? []));
+}
+function socketIdOf(path) {
+  return socketWorktreeId(basename7(path)) ?? "";
+}
+function ofKept(what, kept2) {
+  const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
+  return pid === void 0 || kept2.has(Number(pid));
+}
+
+// src/core/ps/work.ts
+import { existsSync as existsSync6, statSync as statSync3 } from "node:fs";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
+// src/core/daemon/last-use.ts
+function daemonUsedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonUsed", worktreeId);
+}
+function readDaemonUsed(value, startedAt) {
+  if (value === null) return null;
+  let parsed2;
+  try {
+    parsed2 = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (!isRecord(parsed2) || parsed2.v !== 1) return null;
+  const { usedAt, activeAt } = parsed2;
+  if (!isEpochMs(usedAt) || !isEpochMs(activeAt) || usedAt < startedAt) return null;
+  return { usedAt, activeAt };
+}
+function isEpochMs(value) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+// src/core/daemon/policy.ts
+import { join as join23 } from "node:path";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false,
+    slowWaitMs: 12e4,
+    maxHolds: 1
+  },
+  checks: [],
+  testCommand: { denyWhenCurrent: false },
+  baseline: { onStart: "lookup-only" },
+  inputs: [],
+  runtimeFiles: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
+  nodeTest: [],
+  pytest: [],
+  vitest: { excludeProjects: [], exclude: [] },
+  slow: {
+    include: [],
+    maxWorkers: 2,
+    maxLoadPerCpu: 1,
+    maxDeferMs: 6e5,
+    maxParallel: 4,
+    rank: "tokens",
+    trigger: "continuous",
+    quietMs: 3e3
+  },
+  delivery: { uncoveredEdits: true },
+  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
+  store: { retentionDays: 7, maxSizeMb: null },
+  complexity: {
+    enabled: true,
+    threshold: 20,
+    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+    maxFileBytes: 524288,
+    blocking: false
+  },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
+  crap: { enabled: true, threshold: 30 },
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  },
+  gate: { groups: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
+  node: "project",
+  requires: { commands: [] },
+  remote: { allowed: true, needsRepository: [] }
+};
+
+// src/core/keys/glob.ts
+function globToRegExp(glob) {
+  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
+  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  return new RegExp(`^${compile(source, glob)}$`, "s");
+}
+function compile(glob, original) {
+  let out = "";
+  let i = 0;
+  while (i < glob.length) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        const atStart = i === 0 || glob[i - 1] === "/";
+        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
+        if (atStart && atEnd) {
+          if (i + 2 === glob.length) out += ".+";
+          else out += "(?:.+/)?";
+          i += 3;
+          continue;
+        }
+      }
+      out += "[^/]*";
+      i += glob[i + 1] === "*" ? 2 : 1;
+    } else if (char === "?") {
+      out += "[^/]";
+      i++;
+    } else if (char === "[") {
+      const end = glob.indexOf("]", i + 2);
+      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
+      let body = glob.slice(i + 1, end);
+      const negated = body.startsWith("!");
+      if (negated) body = body.slice(1);
+      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
+      i = end + 1;
+    } else if (char === "{") {
+      const end = matchingBrace(glob, i, original);
+      const alternatives = splitTopLevel(glob.slice(i + 1, end));
+      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
+      i = end + 1;
+    } else {
+      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
+      i++;
+    }
+  }
+  return out;
+}
+function matchingBrace(glob, open, original) {
+  let depth = 0;
+  for (let i = open; i < glob.length; i++) {
+    if (glob[i] === "{") depth++;
+    else if (glob[i] === "}" && --depth === 0) return i;
+  }
+  throw new Error(`squeal: unclosed { in input glob: ${original}`);
+}
+function splitTopLevel(body) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "{") depth++;
+    else if (body[i] === "}") depth--;
+    else if (body[i] === "," && depth === 0) {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts;
+}
+
+// src/core/daemon/check-groups.ts
+var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
+var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
+var DEFAULT_GROUP_NAMES = ["tests", "slow"];
+var NO_LIMITS = {
+  maxParallel: null,
+  maxWorkers: null,
+  priority: "normal",
+  deferUnderLoad: null
+};
+function defaultGroups(policy) {
+  const { slow, stop } = policy;
+  const marked = (isSlow) => ({
+    kind: "marked",
+    slow: isSlow,
+    include: slow.include,
+    projects: [
+      ...policy.nodeTest.filter((p) => p.slow === true).map((p) => ({ runner: "nodeTest", name: p.name })),
+      ...policy.pytest.filter((p) => p.slow === true).map((p) => ({ runner: "pytest", name: p.name }))
+    ]
+  });
+  const continuous = slow.trigger === "continuous";
+  const slowAt = continuous ? "edit" : stop.requireSlowSuite ? "stop" : "pause";
+  return [
+    {
+      name: "tests",
+      index: null,
+      at: "edit",
+      stopRequires: false,
+      after: [],
+      quietMs: 0,
+      limits: NO_LIMITS,
+      select: marked(false)
+    },
+    {
+      name: "slow",
+      index: null,
+      at: slowAt,
+      stopRequires: stop.requireSlowSuite,
+      after: ["tests"],
+      quietMs: continuous ? slow.quietMs : 0,
+      limits: {
+        maxParallel: slow.maxParallel,
+        maxWorkers: slow.maxWorkers,
+        priority: "low",
+        deferUnderLoad: { maxLoadPerCpu: slow.maxLoadPerCpu, maxDeferMs: slow.maxDeferMs }
+      },
+      select: marked(true)
+    }
+  ];
+}
+
+// src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute8, posix } from "node:path";
+function compiles(globs4) {
+  for (const glob of globs4) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${error.message}` };
+    }
+  }
+  return null;
+}
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
+var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
+var insideRoot = (v) => {
+  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
+  const normal = posix.normalize(v.replaceAll("\\", "/"));
+  return isAbsolute8(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+};
+var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
+var prepare = (v) => {
+  if (!isRecord(v)) return PREPARE_SHAPE;
+  const unknown = Object.keys(v).find((key) => key !== "command" && key !== "timeoutSeconds");
+  if (unknown !== void 0) {
+    return { problem: `has an unknown key "${unknown}"; it takes ${PREPARE_SHAPE}` };
+  }
+  const { command: command2, timeoutSeconds } = v;
+  const list = Array.isArray(command2) && command2.every((s) => typeof s === "string");
+  if (!list || command2.length === 0 || command2[0] === "") {
+    return {
+      problem: `has a command that is not a list with an executable first: ${JSON.stringify(command2)}; it takes ${PREPARE_SHAPE}`
+    };
+  }
+  const positive = typeof timeoutSeconds === "number" && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0;
+  if (timeoutSeconds !== void 0 && !positive) {
+    return {
+      problem: `has a timeoutSeconds that is not a positive number: ${JSON.stringify(timeoutSeconds)}`
+    };
+  }
+  return null;
+};
+var FIELDS = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  node: nonEmptyString,
+  argv: strings,
+  env: variables,
+  include: globs,
+  exclude: globs,
+  slow: boolean,
+  prepare
+};
+var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+function nodeTestProjects(value, path) {
+  return projectEntries(value, path, FIELDS, REQUIRED, withDefaults);
+}
+function withDefaults(entry) {
+  return { ...entry, argv: entry.argv ?? [], env: entry.env ?? {} };
+}
+function projectEntries(value, path, fields, required, withDefaults3, check) {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept2 = [];
+  const problems = [];
+  value.forEach((entry, index) => {
+    const at = `${path}[${index}]`;
+    const problem = entryProblem(entry, at, kept2, fields, required, check);
+    if (problem === null) kept2.push(withDefaults3(entry));
+    else problems.push(problem);
+  });
+  return { kept: kept2, problems };
+}
+function entryProblem(entry, at, kept2, fields, required, check) {
+  if (!isRecord(entry))
+    return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
+  const named2 = nonEmptyString(entry.name) === null ? entry.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
+  for (const key of Object.keys(entry)) {
+    if (!Object.hasOwn(fields, key)) return `unknown key "${at}.${key}"; ${skipped}`;
+  }
+  for (const [key, field] of Object.entries(fields)) {
+    const given = entry[key];
+    if (given === void 0 && !required.has(key)) continue;
+    const expected = field(given);
+    if (expected === null) continue;
+    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
+    return `"${at}.${key}" ${why}; ${skipped}`;
+  }
+  const across = check?.(entry) ?? null;
+  if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
+  if (kept2.some((project) => project.name === named2)) {
+    return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
+  }
+  return null;
+}
+
+// src/core/daemon/policy-checks.ts
+var show = (value) => value === void 0 ? "undefined" : JSON.stringify(value);
+var must = (expected, ok) => (value, path) => ok(value) ? null : `"${path}" must be ${expected}, got ${show(value)}`;
+var oneOf = (values) => must(`one of ${values.map((v) => `"${v}"`).join(", ")}`, (v) => values.includes(v));
+var isNumber = (v) => typeof v === "number" && Number.isFinite(v);
+var positiveInteger2 = must("a positive integer", (v) => Number.isInteger(v) && v > 0);
+var atLeastZero = must("a number >= 0", (v) => isNumber(v) && v >= 0);
+var aboveZero = must("a number > 0", (v) => isNumber(v) && v > 0);
+var NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+var name = must(
+  "a name of letters, digits, - and _",
+  (v) => typeof v === "string" && NAME.test(v)
+);
+var names2 = must(
+  "an array of group names",
+  (v) => Array.isArray(v) && v.every((s) => typeof s === "string")
+);
+var DESCRIPTION_MAX_CHARS = 200;
+var description = must(
+  `one line of 1 to ${DESCRIPTION_MAX_CHARS} characters`,
+  (v) => typeof v === "string" && v.trim().length > 0 && v.length <= DESCRIPTION_MAX_CHARS && !/[\r\n]/.test(v)
+);
+var tests = (value, path) => {
+  const wrong = must(
+    "a non-empty array of strings",
+    (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string")
+  )(value, path);
+  if (wrong !== null) return wrong;
+  const bad = compiles(value);
+  return bad === null ? null : `"${path}" ${bad.problem}`;
+};
+var lint = must(
+  `true, or a non-empty array of "eslint" and "oxlint"`,
+  (v) => v === true || Array.isArray(v) && v.length > 0 && v.every((s) => s === "eslint" || s === "oxlint")
+);
+var object = (rules) => (value, path) => {
+  if (!isRecord(value)) return `"${path}" must be an object, got ${show(value)}`;
+  for (const key of Object.keys(value)) {
+    if (!Object.hasOwn(rules, key)) return `unknown key "${path}.${key}"`;
+  }
+  for (const [key, rule] of Object.entries(rules)) {
+    if (value[key] === void 0) continue;
+    const problem = rule(value[key], `${path}.${key}`);
+    if (problem !== null) return problem;
+  }
+  return null;
+};
+var limits = object({
+  maxParallel: positiveInteger2,
+  maxWorkers: positiveInteger2,
+  priority: oneOf(["normal", "low"]),
+  deferUnderLoad: object({ maxLoadPerCpu: aboveZero, maxDeferMs: atLeastZero })
+});
+var moment = oneOf(CHECK_MOMENTS);
+var COMMON = {
+  name,
+  at: moment,
+  description,
+  after: names2,
+  quietMs: atLeastZero,
+  limits
+};
+var TEST_RULES = object({
+  ...COMMON,
+  runner: oneOf(CHECK_RUNNERS),
+  project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
+  tests
+});
+var LINT_RULES = object({ name, at: moment, description, lint });
+var TEST_ONLY = ["project", "tests"];
+var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
+function checkGroups(value) {
+  if (!Array.isArray(value)) return "an array of check groups";
+  const kept2 = [];
+  const problems = [];
+  value.forEach((entry, index) => {
+    const at = `checks[${index}]`;
+    const problem = entryProblem2(entry, at) ?? nameProblem(entry, at, kept2);
+    if (problem === null) kept2.push(entry);
+    else problems.push(problem);
+  });
+  return { kept: kept2, problems };
+}
+function nameProblem(entry, at, kept2) {
+  if (DEFAULT_GROUP_NAMES.includes(entry.name)) {
+    return `"${at}.name" is "${entry.name}", the name of a default group; it is left out`;
+  }
+  if (kept2.some((group) => group.name === entry.name)) {
+    return `"${at}.name" repeats "${entry.name}" of an earlier group; it is left out`;
+  }
+  return null;
+}
+function entryProblem2(entry, at) {
+  if (!isRecord(entry)) return `"${at}" must be an object, got ${show(entry)}; it is left out`;
+  const problem = shapeProblem(entry, at);
+  return problem === null ? null : `${problem}; ${leftOut(entry)}`;
+}
+function shapeProblem(entry, at) {
+  const isTest = entry.runner !== void 0;
+  const isLint = entry.lint !== void 0;
+  if (isTest && isLint) return `"${at}" has both "runner" and "lint"; a group has one`;
+  if (!isTest && !isLint) return `"${at}" has neither "runner" nor "lint"; a group needs one`;
+  if (isLint) {
+    const testKey = TEST_ONLY.find((key) => entry[key] !== void 0);
+    if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
+    const unbuilt = TEST_GROUP_ONLY.find((key) => entry[key] !== void 0);
+    if (unbuilt !== void 0) {
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint", "at" and "description"`;
+    }
+  }
+  for (const key of ["name", "at"]) {
+    if (entry[key] === void 0) return `"${at}.${key}" is missing; every group needs one`;
+  }
+  return (isTest ? TEST_RULES : LINT_RULES)(entry, at);
+}
+function leftOut(entry) {
+  return typeof entry.name === "string" && NAME.test(entry.name) ? `group "${entry.name}" is left out` : "it is left out";
+}
+
+// src/core/daemon/policy-checks-settle.ts
+function settleChecks(policy) {
+  const why = /* @__PURE__ */ new Map();
+  for (const group of policy.checks) {
+    const problem = keyProblem(policy, group);
+    if (problem !== null) why.set(group, problem);
+  }
+  const defaults = new Map(defaultGroups(policy).map((group) => [group.name, group.at]));
+  for (let changed2 = true; changed2; ) {
+    const alive = policy.checks.filter((group) => !why.has(group));
+    const byName = new Map(alive.map((group) => [group.name, group]));
+    const found2 = /* @__PURE__ */ new Map();
+    for (const group of alive) {
+      const problem = afterProblem(group, byName, defaults, policy.checks) ?? cycleOf(group, byName);
+      if (problem !== null) found2.set(group, problem);
+    }
+    for (const [group, problem] of found2) why.set(group, problem);
+    changed2 = found2.size > 0;
+  }
+  return {
+    checks: policy.checks.filter((group) => !why.has(group)),
+    problems: policy.checks.flatMap((group) => {
+      const problem = why.get(group);
+      return problem === void 0 ? [] : [`"checks" group "${group.name}": ${problem}; it is left out`];
+    })
+  };
+}
+function keyProblem(policy, group) {
+  if ("lint" in group) {
+    if (group.lint === true) return null;
+    const missing = group.lint.find((tool) => !policy.lint.tools.includes(tool));
+    return missing === void 0 ? null : `"lint" names "${missing}", which "lint.tools" does not run`;
+  }
+  if (group.project === void 0 || group.runner === "vitest") return null;
+  const projects = group.runner === "nodeTest" ? policy.nodeTest : policy.pytest;
+  return projects.some((project) => project.name === group.project) ? null : `"project" names no ${group.runner} project "${group.project}"`;
+}
+function afterProblem(group, byName, defaults, all2) {
+  for (const name2 of group.after ?? []) {
+    const named2 = byName.get(name2);
+    if (named2 !== void 0 && "lint" in named2) {
+      return `"after" names "${name2}", a lint group; a group follows test groups only`;
+    }
+    const at = named2?.at ?? defaults.get(name2);
+    if (at === void 0) {
+      return all2.some((other) => other.name === name2) ? `"after" names "${name2}", a group that is left out` : `"after" names no group "${name2}"`;
+    }
+    if (CHECK_MOMENTS.indexOf(at) > CHECK_MOMENTS.indexOf(group.at)) {
+      return `"after" names "${name2}", a group at "${at}", later than its own "${group.at}"`;
+    }
+  }
+  return null;
+}
+function cycleOf(group, byName) {
+  const seen = /* @__PURE__ */ new Set();
+  const paths = [[group.name]];
+  for (let path = paths.pop(); path !== void 0; path = paths.pop()) {
+    for (const next of byName.get(path.at(-1))?.after ?? []) {
+      if (next === group.name) return `"after" makes a cycle (${[...path, next].join(" after ")})`;
+      if (seen.has(next) || !byName.has(next)) continue;
+      seen.add(next);
+      paths.push([...path, next]);
+    }
+  }
+  return null;
+}
+
+// src/core/daemon/policy-code.ts
+var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var aboveZero2 = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? null : "a number > 0";
+var CODE_SHAPE = {
+  complexity: {
+    enabled: boolean2,
+    threshold: positiveInteger,
+    include: globs2,
+    exclude: globs2,
+    maxFileBytes: positiveInteger,
+    blocking: boolean2
+  },
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2, children: boolean2 },
+  crap: { enabled: boolean2, threshold: aboveZero2 }
+};
+
+// src/core/daemon/policy-gate.ts
+var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
+var GATE_SHAPE = { gate: { groups } };
+
+// src/core/daemon/policy-lint.ts
+var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var TOOL_NAMES = ["eslint", "oxlint"];
+var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
+var LINT_SHAPE = {
+  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
+};
+
+// src/core/daemon/policy-node.ts
+var node = (v) => v === "project" || v === "session" ? null : '"project" or "session"';
+var NODE_SHAPE = { node };
+
+// src/core/daemon/policy-pytest.ts
+import { isAbsolute as isAbsolute9, posix as posix2 } from "node:path";
+var FIELDS2 = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  python: nonEmptyString,
+  args: strings,
+  env: variables,
+  include: globs,
+  exclude: globs,
+  slow: boolean,
+  batchSize: positiveInteger3
+};
+var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger3(value) {
+  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
+function pytestProjects(value, path) {
+  return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
+}
+function withDefaults2(entry) {
+  return { ...entry, args: entry.args ?? [], env: entry.env ?? {} };
+}
+var pythonInsideRoot = (entry) => {
+  const python = entry.python;
+  if (python === void 0 || isAbsolute9(python)) return null;
+  const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
+  if (insideRoot(path) === null) return null;
+  return {
+    key: "python",
+    problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
+  };
+};
+
+// src/core/daemon/policy-remote.ts
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var kept = (key, bad) => (value) => {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) {
+    return "an array of strings";
+  }
+  const good = [];
+  const problems = [];
+  value.forEach((entry, index) => {
+    const why = bad(entry);
+    if (why === null) good.push(entry);
+    else problems.push(`"${key}[${index}]" ${why}; it is left out`);
+  });
+  return { kept: good, problems };
+};
+function commandName(entry) {
+  return /^[^-\s/\\][^\s/\\]*$/.test(entry) && !new RegExp("\\p{Cc}", "u").test(entry);
+}
+var commands = kept(
+  "requires.commands",
+  (entry) => commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`
+);
+var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
+var REMOTE_SHAPE = {
+  requires: { commands },
+  remote: { allowed: boolean4, needsRepository }
+};
+
+// src/core/keys/observed.ts
+import { createHash as createHash2 } from "node:crypto";
+var ABSENT_LISTING = createHash2("sha1").update("\0absent").digest("hex");
+var EMPTY_LISTING = createHash2("sha1").update("\0empty").digest("hex");
+
+// src/core/keys/runtime-files.ts
+function normalizeRuntimePath(given) {
+  const path = given.replaceAll("\\", "/").replace(/^(\.\/)+/, "");
+  const parts = path.split("/");
+  if (!path || path === "." || path.startsWith("/") || /^[a-z]:/i.test(path) || path.includes("\0") || /[*?{}[\]!]/.test(path) || parts.some((part) => ["..", ".git", "node_modules"].includes(part)) || path.endsWith("/"))
+    throw new Error(`invalid exact runtime file: ${given}`);
+  return parts.filter((part) => part !== "" && part !== ".").join("/");
+}
+
+// src/core/daemon/policy-runtime.ts
+var runtimeFiles = (value) => {
+  if (!Array.isArray(value)) return "an array of runtime-file rules";
+  const kept2 = [];
+  const problems = [];
+  for (const [i, rule] of value.entries()) {
+    try {
+      if (!isRecord(rule)) throw new Error("must be an object");
+      const unknown = Object.keys(rule).filter(
+        (key) => !["project", "tests", "paths"].includes(key)
+      );
+      if (unknown.length) throw new Error(`unknown fields: ${unknown.join(", ")}`);
+      if (typeof rule.project !== "string") throw new Error("project must be a string");
+      for (const key of ["tests", "paths"]) {
+        if (!Array.isArray(rule[key]) || rule[key].length === 0 || !rule[key].every((v) => typeof v === "string" && v.length > 0))
+          throw new Error(`${key} must be a nonempty array of nonempty strings`);
+      }
+      const tests2 = rule.tests.map(
+        (glob) => glob.replaceAll("\\", "/").replace(/^(\.\/)+/, "")
+      );
+      if (tests2.some((glob) => glob.startsWith("!") || glob.includes("\0")))
+        throw new Error("invalid test glob");
+      const problem = compiles(tests2);
+      if (problem !== null)
+        throw new Error(typeof problem === "string" ? problem : problem.problem);
+      kept2.push({
+        project: rule.project,
+        tests: tests2,
+        paths: [...new Set(rule.paths.map(normalizeRuntimePath))].sort()
+      });
+    } catch (error) {
+      problems.push(`runtimeFiles[${i}]: ${error.message}`);
+    }
+  }
+  return { kept: kept2, problems };
+};
+
+// src/core/daemon/policy-shared.ts
+var RESERVED = ["refs/heads", "refs/tags", "refs/remotes"];
+var COMPONENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+function isSharedRef(prefix) {
+  const parts = prefix.split("/");
+  if (parts[0] !== "refs" || parts.length < 2) return false;
+  if (RESERVED.some((r) => prefix === r || prefix.startsWith(`${r}/`))) return false;
+  return parts.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
+}
+var ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
+var MAX_LOOK_AGAIN_SECONDS = 2147483;
+var seconds = (min) => (v) => Number.isInteger(v) && v >= min && v <= MAX_LOOK_AGAIN_SECONDS ? null : `a whole number from ${min} to ${MAX_LOOK_AGAIN_SECONDS}`;
+var SHARED_SHAPE = {
+  shared: { ref, lookAgain: { everySeconds: seconds(1), forSeconds: seconds(0) } }
+};
+
+// src/core/daemon/policy-slow.ts
+function slowInclude(value) {
+  if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
+    return "an array of strings";
+  }
+  const kept2 = [];
+  const problems = [];
+  value.forEach((glob, index) => {
+    const bad = compiles([glob]);
+    if (bad === null) kept2.push(glob);
+    else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
+  });
+  return { kept: kept2, problems };
+}
+
+// src/core/daemon/policy.ts
+var POLICY_FILE = "squeal.config.json";
+var boolean5 = (v) => typeof v === "boolean" ? null : "true or false";
+var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings2(v) === null;
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs5) => strings2(globs5) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs4 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs4);
+};
+var atLeastZero2 = (v) => isNumber2(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero3 = (v) => isNumber2(v) && v > 0 ? null : "a number > 0";
+var orNull = (leaf) => (v) => {
+  const expected = v === null ? null : leaf(v);
+  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
+};
+var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var SHAPE = {
+  interrupt: { onRegression: boolean5 },
+  stop: {
+    blockOnKnownFailures: boolean5,
+    requireFullSuite: boolean5,
+    waitMs: atLeastZero2,
+    requireSlowSuite: boolean5,
+    slowWaitMs: atLeastZero2,
+    // Spec 019 D4 step 3.
+    maxHolds: positiveInteger
+  },
+  // Spec 019 D1.
+  checks: checkGroups,
+  testCommand: { denyWhenCurrent: boolean5 },
+  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
+  inputs,
+  runtimeFiles,
+  observe: { runtimeInputs: boolean5 },
+  env: { allowlist: strings2 },
+  runner: {
+    tierSize: positiveInteger,
+    backlogTierSize: positiveInteger,
+    timeoutMs: orNull(positiveInteger),
+    // Spec 021 D20.4 (row 021-26).
+    hostIdleMinutes: orNull(hostIdleMinutes)
+  },
+  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  pytest: (v) => pytestProjects(v, "pytest"),
+  vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
+  slow: {
+    include: slowInclude,
+    maxWorkers: positiveInteger,
+    maxLoadPerCpu: aboveZero3,
+    maxDeferMs: atLeastZero2,
+    maxParallel: positiveInteger,
+    rank: oneOf2("tokens", "duration"),
+    // Spec 004 D2, D7 as amended 2026-10-18 (row 004-80).
+    trigger: oneOf2("continuous", "idle"),
+    quietMs: atLeastZero2
+  },
+  delivery: { uncoveredEdits: boolean5 },
+  daemon: {
+    idleExitMinutes: aboveZero3,
+    unusedExitMinutes: aboveZero3,
+    // Spec 023 D7.4 (row 023-40).
+    maxCommitDaemons: orNull(positiveInteger)
+  },
+  store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
+  ...CODE_SHAPE,
+  ...LINT_SHAPE,
+  ...SHARED_SHAPE,
+  ...REMOTE_SHAPE,
+  ...GATE_SHAPE,
+  ...NODE_SHAPE
+};
+function loadPolicy(root) {
+  const loaded = loadConfigFile(join23(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const settled = settleChecks(loaded.value);
+  return {
+    policy: settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
+    problems: [...loaded.problems, ...settled.problems],
+    ...loaded.unparsed === true ? { unparsed: true } : {},
+    ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
+  };
+}
+function readPolicy(root) {
+  return loadPolicy(root).policy;
+}
+function isNumber2(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+// src/core/slow/state.ts
+var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
+function toSlowActivity(value) {
+  if (value === null) return null;
+  if (typeof value !== "object") return void 0;
+  const v = value;
+  if (v.kind === "waiting" && WAITS.has(v.for)) {
+    return { kind: "waiting", for: v.for };
+  }
+  if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
+    const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
+    const paths = Array.isArray(v.paths) ? v.paths : [];
+    const several = paths.length > 1 && paths.every((p) => typeof p === "string");
+    return {
+      kind: "running",
+      path: v.path,
+      ...several ? { paths } : {},
+      since: v.since,
+      lastDurationMs: last
+    };
+  }
+  return void 0;
+}
+
+// src/core/store/repos/runs.ts
+function toCheckpointLanes(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const lanes = {};
+  for (const [id, lane] of Object.entries(value)) {
+    if (lane === "fast" || lane === "slow") lanes[id] = lane;
+  }
+  return lanes;
+}
+
+// src/core/store/repos/worktrees.ts
+function toDaemonToken(value, startedAt, version) {
+  if (!isRecord(value) || typeof value.token !== "string") return void 0;
+  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
+}
+
+// src/core/ps/work.ts
+var BUSY_TIMEOUT_MS = 100;
+var READS_SCHEMA = 1;
+var readWork = (source, table, daemons) => {
+  const work = /* @__PURE__ */ new Map();
+  const unknown = [];
+  const namespace = source.pidNamespace();
+  const ownStart = ownStartOn(source);
+  for (const [path, group] of byStore(daemons)) {
+    const store = openReadOnly(path);
+    if (typeof store === "string") {
+      for (const d of group) unknown.push({ what: `daemon ${d.row.pid} work`, why: store });
+      continue;
+    }
+    const { db, file } = store;
+    const read = /* @__PURE__ */ new Map();
+    const named2 = [];
+    let runs;
+    const runsOf = (id) => {
+      runs ??= openRuns(db);
+      return runs.get(id) ?? [];
+    };
+    try {
+      db.exec("BEGIN");
+      for (const d of group) {
+        try {
+          read.set(d.row.pid, readOne(db, d, runsOf, table, namespace, ownStart, named2));
+        } catch (error) {
+          const why = `its store ${path} cannot be read: ${message(error)}`;
+          named2.push({ what: `daemon ${d.row.pid} work`, why });
+        }
+      }
+      db.exec("COMMIT");
+    } finally {
+      db.close();
+    }
+    if (file !== null && changed(path, file)) {
+      const why = `its store ${path} changed while it was read without its WAL`;
+      for (const d of group) unknown.push({ what: `daemon ${d.row.pid} work`, why });
+      continue;
+    }
+    for (const [pid, w] of read) work.set(pid, w);
+    unknown.push(...named2);
+  }
+  return { work, unknown };
+};
+function byStore(daemons) {
+  const stores = /* @__PURE__ */ new Map();
+  for (const d of daemons) {
+    if (d.storePath === null || d.worktreeId === null || d.holdsLock === false) continue;
+    stores.set(d.storePath, [...stores.get(d.storePath) ?? [], d]);
+  }
+  return stores;
+}
+function openReadOnly(path) {
+  let db;
+  try {
+    const file = statSync3(path, { bigint: true });
+    const wal = statSync3(`${path}-wal`, { throwIfNoEntry: false });
+    const held = wal !== void 0 && existsSync6(`${path}-shm`);
+    if (!held && (wal?.size ?? 0) > 0)
+      return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
+    db = new DatabaseSync4(held ? path : immutableUrl(path), { readOnly: true });
+    db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+    const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
+    if (version >= READS_SCHEMA) return { db, file: held ? null : file };
+    db.close();
+    return `its store ${path} is at schema ${version}, which has no tables yet`;
+  } catch (error) {
+    db?.close();
+    return `its store ${path} cannot be read: ${message(error)}`;
+  }
+}
+function changed(path, before) {
+  try {
+    const after = statSync3(path, { bigint: true });
+    return after.ino !== before.ino || after.size !== before.size || after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs;
+  } catch {
+    return true;
+  }
+}
+function openRuns(db) {
+  const byWorktree = /* @__PURE__ */ new Map();
+  for (const r of all(db, OPEN_RUNS)) {
+    const rows = byWorktree.get(str2(r, "worktree_id"));
+    if (rows === void 0) byWorktree.set(str2(r, "worktree_id"), [r]);
+    else rows.push(r);
+  }
+  return byWorktree;
+}
+function readOne(db, d, runsOf, table, namespace, ownStart, unknown) {
+  const id = d.worktreeId;
+  const name2 = (what, why) => unknown.push({ what: `daemon ${d.row.pid} ${what}`, why });
+  const meta = (row3, what, decode, absent) => {
+    const key = worktreeMetaKey(row3, id);
+    const text2 = get(db, "SELECT value FROM meta WHERE key = ?", key)?.value;
+    if (typeof text2 !== "string") return absent;
+    const value = decode(parsed(text2));
+    if (value !== void 0) return value;
+    name2(what, `its ${key} ${UNKNOWN2}`);
+    return null;
+  };
+  const row2 = get(db, "SELECT * FROM worktrees WHERE id = ?", id);
+  const startedAt = row2 === null ? null : numOrNull2(row2, "daemon_started_at");
+  const version = row2 === null ? null : strOrNull2(row2, "daemon_version");
+  const theirs = startedAt !== null && ownStart(d, startedAt) === false;
+  if (theirs)
+    name2(
+      "work",
+      `its row is a predecessor's: its record, token and last use are ${UNKNOWN2} until it registers`
+    );
+  const token = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version), null);
+  const record = row2 === null || theirs ? null : recordOf(row2, token);
+  const counts = new Map(
+    all(db, PENDING, id).map((r) => [str2(r, "pending"), num2(r, "n")])
+  );
+  const slow = meta("slowTier", "slowWaiting", (v) => slowOf(toSlowActivity(v)), NO_SLOW);
+  let lanes;
+  const laneOf = (checkpointId) => {
+    if (lanes === void 0)
+      lanes = meta("checkpointLanes", "checkpoint lanes", toCheckpointLanes, {});
+    return lanes?.[checkpointId] ?? null;
+  };
+  const since = theirs ? Number.POSITIVE_INFINITY : startedAt ?? Number.POSITIVE_INFINITY;
+  const tiers = runsOf(id).filter((r) => num2(r, "started_at") >= since).map((r) => {
+    const checkpointId = strOrNull2(r, "checkpoint_id");
+    const paths = testFiles(r).map((f) => isRecord(f) ? f.path : void 0);
+    const slowRun = paths.some((p) => typeof p === "string" && slow?.running.includes(p));
+    const lane = slow === null ? null : slowRun ? "slow" : "fast";
+    return {
+      runId: str2(r, "id"),
+      lane: (checkpointId === null ? null : laneOf(checkpointId)) ?? lane,
+      files: paths.length,
+      startedAt: num2(r, "started_at"),
+      checkpointId
+    };
+  });
+  const checkpoints = all(db, OPEN_CHECKPOINTS, id, since).map(
+    (r) => ({
+      id: str2(r, "id"),
+      startedAt: num2(r, "started_at"),
+      lane: laneOf(str2(r, "id")),
+      files: testFiles(r).length
+    })
+  );
+  const harnesses = meta("harnessProcess", "consumer harnesses", slotsOf, {});
+  const versions = meta("consumerVersion", "consumer versions", slotsOf, {});
+  const slot2 = (slots, of, what, decode) => {
+    const value = slots?.[of];
+    const decoded = value === void 0 ? null : decode(value);
+    if (decoded === void 0) name2(what, `its slot ${UNKNOWN2}`);
+    return decoded ?? null;
+  };
+  const consumers = all(db, CONSUMERS, id).map((r) => {
+    const sessionId = str2(r, "session_id");
+    const agentId = str2(r, "agent_id");
+    const of = `${sessionId}
+${agentId}`;
+    const harness = slot2(harnesses, of, `consumer ${sessionId} harness`, toHarness);
+    return {
+      sessionId,
+      agentId,
+      harness,
+      // `harnessGone`'s rule, over the process table.
+      alive: harness === null ? null : harnessAlive(harness, namespace, statIn(table)),
+      version: slot2(versions, of, `consumer ${sessionId} version`, text)
+    };
+  });
+  const usedText = get(db, "SELECT value FROM meta WHERE key = ?", daemonUsedMetaKey(id))?.value;
+  const lastUse = startedAt === null || theirs ? null : readDaemonUsed(typeof usedText === "string" ? usedText : null, startedAt);
+  if (lastUse === null && record !== null)
+    name2(
+      "lastUsedAt",
+      typeof usedText === "string" ? `its ${daemonUsedMetaKey(id)} is a predecessor's or ${UNKNOWN2} (D9)` : "its daemon records no last use: a release before D9 (D9)"
+    );
+  const root = d.root ?? (row2 === null ? null : strOrNull2(row2, "root"));
+  if (root === null) name2("settings", "its root is unknown: the defaults stand in");
+  return {
+    record,
+    recordedStartedAt: startedAt,
+    token,
+    pending: counts.get("queued") ?? 0,
+    running: counts.get("running") ?? 0,
+    tiers,
+    checkpoints,
+    consumers,
+    departedAt: meta("departed", "departedAt", finiteNumber, null),
+    slowWaiting: slow === null ? null : slow.waits,
+    lastUse,
+    settings: settingsOf(root)
+  };
+}
+var PENDING = `SELECT pending, count(*) AS n FROM test_file_keys
+  WHERE worktree_id = ? AND pending IS NOT NULL GROUP BY pending`;
+var OPEN_RUNS = `SELECT worktree_id, id, test_files, checkpoint_id, started_at FROM runs
+  WHERE end_state IS NULL ORDER BY started_at, rowid`;
+var OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
+  WHERE worktree_id = ? AND completed_at IS NULL AND started_at >= ? ORDER BY started_at, rowid`;
+var CONSUMERS = `SELECT session_id, agent_id FROM consumers
+  WHERE worktree_id = ? ORDER BY session_id, agent_id`;
+var UNKNOWN2 = "has a format this release does not know";
+function recordOf(row2, token) {
+  const socketPath = strOrNull2(row2, "daemon_socket");
+  if (socketPath === null) return null;
+  return {
+    socketPath,
+    startedAt: num2(row2, "daemon_started_at"),
+    heartbeatAt: num2(row2, "daemon_heartbeat_at"),
+    heartbeatIntervalMs: num2(row2, "daemon_heartbeat_interval_ms"),
+    squealVersion: str2(row2, "daemon_version"),
+    ...token === null ? {} : { token }
+  };
+}
+var NO_SLOW = { waits: false, running: [] };
+function slowOf(activity) {
+  if (activity === void 0) return void 0;
+  if (activity === null) return NO_SLOW;
+  return {
+    waits: true,
+    running: activity.kind === "running" ? activity.paths ?? [activity.path] : []
+  };
+}
+var slotsOf = (v) => isRecord(v) ? v : void 0;
+var text = (v) => typeof v === "string" ? v : void 0;
+var finiteNumber = (v) => typeof v === "number" && Number.isFinite(v) ? v : void 0;
+var statIn = (table) => (pid) => {
+  const row2 = table.get(pid);
+  return row2 === void 0 ? null : { startTime: row2.startTicks, state: row2.state };
+};
+function settingsOf(root) {
+  const { daemon, runner } = root === null ? DEFAULT_POLICY : readPolicy(root);
+  return {
+    idleExitMinutes: daemon.idleExitMinutes,
+    unusedExitMinutes: daemon.unusedExitMinutes,
+    // `null` is no limit, which no process outlives.
+    timeoutMs: runner.timeoutMs ?? Number.POSITIVE_INFINITY
+  };
+}
+function get(db, sql, ...params) {
+  return db.prepare(sql).get(...params) ?? null;
+}
+function all(db, sql, ...params) {
+  return db.prepare(sql).all(...params);
+}
+function testFiles(row2) {
+  const files = JSON.parse(str2(row2, "test_files"));
+  if (!Array.isArray(files)) throw new TypeError("test_files is not a list");
+  return files;
+}
+function parsed(text2) {
+  try {
+    return JSON.parse(text2);
+  } catch {
+    return void 0;
+  }
+}
+function num2(row2, column) {
+  if (typeof row2[column] === "number") return row2[column];
+  throw new TypeError(`${column} is not a number`);
+}
+function str2(row2, column) {
+  if (typeof row2[column] === "string") return row2[column];
+  throw new TypeError(`${column} is not text`);
+}
+var orNull2 = (read) => (row2, column) => row2[column] === null ? null : read(row2, column);
+var numOrNull2 = orNull2(num2);
+var strOrNull2 = orNull2(str2);
+function message(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+// src/core/ps/snapshot.ts
+var SAMPLE_MS = 2e3;
+async function takeSnapshot(options) {
+  const read = await readWindow(options);
+  const shape = shapeOf2(read, options.flag(read.model), options);
+  let checkouts = [];
+  let unknown = shape.unknown;
+  try {
+    checkouts = readCheckouts(options.places, options.repo);
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    unknown = [...unknown, { what: "checkouts", why: `not read: ${why}` }];
+  }
+  const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
+  const storeProcesses = read.model.discovery.storeProcesses ?? [];
+  return { ...shape, checkouts, storeProcesses, flags: shape.flags + flags, unknown };
+}
+async function readWindow(o) {
+  const { source, places } = o;
+  const first = takeSample(source);
+  const now = o.now();
+  const locks = source.locks();
+  const found2 = discover(source, first.table, places, locks);
+  const work = readWork(source, first.table, found2.daemons);
+  const attribution = attribute(source, first.table, ownersOf(found2.daemons, work.work));
+  const bootTime = source.bootTime();
+  await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
+  const pids3 = followed(found2, work.work, attribution);
+  const tree = below(first.table, measured(found2, attribution));
+  const read = takeSample(
+    source,
+    [.../* @__PURE__ */ new Set([...pids3, ...tree])],
+    tree.length > 0 ? first.table : void 0
+  );
+  const costs = measure(source, first, read, measured(found2, attribution));
+  const locksAgain = source.locks();
+  const discovery = lockedAgain(source, found2, [locks, locksAgain]);
+  const readable = [locks, locksAgain].filter((l) => l !== null).length;
+  const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
+  const pool = readPool(source, places, daemonPids, [locks, locksAgain], read.host.cpus);
+  const second = { ...read, table: only(read.table, pids3) };
+  const live = discovery.daemons.filter(
+    (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks
+  );
+  const again = readWork(source, second.table, live);
+  const model = {
+    now,
+    places,
+    source,
+    locksRead: readable === 2 ? "both" : readable === 1 ? "one" : "none",
+    discovery,
+    first: { sample: first, work: work.work, attribution },
+    second: {
+      sample: second,
+      work: again.work,
+      attribution: attribute(source, second.table, ownersOf(live, again.work))
+    },
+    pool
+  };
+  return {
+    model,
+    host: hostTotals(first.host, second.host),
+    costs,
+    bootTime,
+    unknown: [...discovery.unknown, ...work.unknown, ...again.unknown, ...blind(first.table, tree)]
+  };
+}
+function blind(table, pids3) {
+  if (!pids3.some((pid) => table.get(pid)?.childTicks === null)) return [];
+  const why = "a lower bound: the source reads no children's CPU on this platform (D10), so a process that ends in the window adds none";
+  return [{ what: "squeal cpuPct", why }];
+}
+function ownersOf(daemons, work) {
+  return daemons.map((d) => {
+    const own = work.get(d.row.pid);
+    return { pid: d.row.pid, token: own?.token ?? null, tiers: own?.tiers ?? [] };
+  });
+}
+function measured(discovery, attribution) {
+  return [
+    ...discovery.daemons.map((d) => d.row.pid),
+    ...attribution.processes.flatMap((p) => [p.pid, ...p.descendants]),
+    // Spec 021 D17: a daemon's runner hosts, local, or the ssh that reaches a remote one.
+    ...(attribution.hosts ?? []).map((h) => h.pid)
+  ];
+}
+function followed(discovery, work, attribution) {
+  const pids3 = new Set(measured(discovery, attribution));
+  for (const u of attribution.unowned) pids3.add(u.pid);
+  for (const w of work.values())
+    for (const c of w.consumers) if (c.harness !== null) pids3.add(c.harness.pid);
+  return [...pids3].sort((a, b) => a - b);
+}
+function only(table, pids3) {
+  const kept2 = /* @__PURE__ */ new Map();
+  for (const pid of pids3) {
+    const row2 = table.get(pid);
+    if (row2 !== void 0) kept2.set(pid, row2);
+  }
+  return kept2;
+}
+
+// src/cli/ps.ts
+var USAGE = "usage: squeal ps [--repo] [--full] [--json] [--locks]\n";
+var SOURCES = {
+  linux: () => createProcSource(),
+  // Built untested: nobody has run it on a Mac (the human, 2026-10-21).
+  darwin: () => createDarwinSource()
+};
+async function psCommand(args, io, options = {}) {
+  const parsed2 = parseArgs(args);
+  if (typeof parsed2 === "string") {
+    io.stderr(`squeal ps: ${parsed2}
+
+${USAGE}`);
+    return 2;
+  }
+  const platform = options.platform ?? process.platform;
+  const source = (options.sourceFor ?? ((p) => SOURCES[p]?.() ?? null))(platform);
+  if (source === null) {
+    io.stderr(`squeal ps: ${platform} is not covered; squeal ps runs on Linux and macOS
+`);
+    return 3;
+  }
+  const cwd = io.cwd ?? process.cwd();
+  const commonDir = commonDirOf(cwd);
+  if (parsed2.repo && commonDir === null) {
+    io.stderr(`squeal ps --repo: ${resolve4(cwd)} is not inside a git repository
+
+${USAGE}`);
+    return 2;
+  }
+  if (parsed2.locks) return locksCommand(parsed2, io, { platform, source, commonDir, options });
+  let shape;
+  try {
+    shape = await takeSnapshot({
+      source,
+      places: placesOf(io.env ?? process.env, commonDir, options),
+      flag: options.flag ?? flag,
+      full: parsed2.full,
+      repo: parsed2.repo,
+      sampleMs: SAMPLE_MS,
+      now: io.now ?? Date.now,
+      wait: options.wait ?? ((ms) => sleep(ms))
+    });
+  } catch (error) {
+    io.stderr(
+      `squeal ps: no snapshot: ${error instanceof Error ? error.message : String(error)}
+`
+    );
+    return 3;
+  }
+  io.stdout(parsed2.json ? `${JSON.stringify(shape)}
+` : render(shape, { full: parsed2.full }));
+  return shape.flags === 0 ? 0 : 1;
+}
+function parseArgs(args) {
+  const known = /* @__PURE__ */ new Set(["--repo", "--full", "--json", "--locks"]);
+  const unknown = args.find((a) => !known.has(a));
+  if (unknown !== void 0) return `unknown option "${unknown}"`;
+  if (args.includes("--locks") && args.includes("--full"))
+    return "--full does not apply to --locks";
+  return {
+    repo: args.includes("--repo"),
+    full: args.includes("--full"),
+    json: args.includes("--json"),
+    locks: args.includes("--locks")
+  };
+}
+function locksCommand(parsed2, io, at) {
+  if (at.platform !== "linux") {
+    io.stderr(
+      `squeal ps --locks: ${at.platform} has no /proc/locks; lock holders are read on Linux only
+`
+    );
+    return 3;
+  }
+  const cwd = resolve4(io.cwd ?? process.cwd());
+  try {
+    const locks = readLocks(
+      at.source,
+      placesOf(io.env ?? process.env, at.commonDir, at.options),
+      parsed2.repo
+    );
+    io.stdout(parsed2.json ? `${JSON.stringify(locks)}
+` : renderLocks(locks, cwd));
+    return 0;
+  } catch (error) {
+    io.stderr(
+      `squeal ps --locks: no answer: ${error instanceof Error ? error.message : String(error)}
+`
+    );
+    return 3;
+  }
+}
+function commonDirOf(cwd) {
+  try {
+    const root = findWorktreeRoot(resolve4(cwd));
+    return root === null ? null : resolveCommonDir(root);
+  } catch {
+    return null;
+  }
+}
+function placesOf(env, commonDir, options) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return {
+    uid: options.uid ?? currentUid(),
+    home: env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir3(),
+    userConfig: userConfigPath(env),
+    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute10(xdg) ? xdg : null,
+    tempDir: options.tempDir ?? "/tmp",
+    commonDir
+  };
+}
+
+// src/cli/ps-index.ts
+var [command, ...rest] = process.argv.slice(2);
+if (command !== "ps" || rest.includes("--help") || rest.includes("-h")) {
+  await import(new URL("squeal.mjs", import.meta.url).href);
+} else {
+  process.stdout.on("error", (error) => {
+    if (error.code !== "EPIPE") throw error;
+  });
+  process.exitCode = await psCommand(rest, {
+    stdout: (text2) => process.stdout.write(text2),
+    stderr: (text2) => process.stderr.write(text2),
+    cwd: process.cwd()
+  });
+}

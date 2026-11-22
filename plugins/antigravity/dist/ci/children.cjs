@@ -1,0 +1,273 @@
+// The CI hook in each child process and Worker the run starts with an
+// environment of its own (spec 018 D9; row 018-23, reviews
+// `wave-5-0.1.421-r3.md` N1 and `018-23-0.1.424.md` B2). The hook
+// (`vitest-ci.cjs`) rides in `NODE_OPTIONS` and its settings in
+// `SQUEAL_CI_RECORD`; an `env` that drops them would start a Node the
+// evidence never sees, whose writes could leave the parent's evidence of a
+// path standing. So at every spawn, sync or async, and every Worker, both go
+// back into the env the caller passed (`env: {}` too), as the daemon's
+// recorder does for itself (`observe/spawn.cjs`). That recorder loads first,
+// so its wrappers run inside these and still put its own preload first. The
+// hooks are the files the settings name in `hooks`, in their order: Vitest's
+// (`vitest-ci.cjs`), node:test's (`node-test-ci.cjs` and the module recorder,
+// spec 018 D24, row 018-47), or both. Each is an `--import` of its `file:`
+// URL, or a `--require` where that env already runs a `--require`, as
+// `squeal ci record` chose for the command (`recorderOption`). Each other
+// `SQUEAL_CI_` variable of this process the env lacks goes with them, so a
+// child a node:test file starts keeps that file's name (D24.2).
+//
+// An env whose `SQUEAL_CI_RECORD` is another value (a test that runs
+// `squeal ci record` itself) keeps it, and the hook cannot follow that
+// child: its writes never reach this run's evidence, and it can write any
+// test's input. So this process withholds every path (`evidence.withhold`),
+// which leaves this command's whole part out of the export (spec 018 D9;
+// review `018-23-0.1.424.md` B2 and its re-review). A `SHARE_ENV` Worker
+// shares this process's env, so the same holds when that env has another
+// value. A call Node would reject passes through untouched, so Node's own
+// validation runs.
+//
+// At each spawn, before the child starts, the hook reads each file the
+// spawn's arguments name (`evidence.argument`), as the daemon's recorder
+// keys it (`observe/spawn.cjs`, `recordArguments`; row 018-43): a child that
+// never opens a file it is given, or reads it outside Node, leaves the key
+// holding it, so the run's evidence must hold it too. The same calls, the
+// same arguments: the command and each one that is no option and holds a
+// `/`, `\` or `.`, from the spawn's `cwd`; `execSync`'s shell command none.
+//
+// Below a Vitest run, in its CLI process (`markNested`) and in its test
+// workers (`__vitest_worker__`), the settings each child gets say `nested`:
+// a Vitest run that a test starts is not the project's, so its hook takes
+// the evidence and writes no run (row 018-27). The mark rides in the
+// settings, so it passes through a shell, a package manager and an env of
+// the caller's own; a child's `VITEST_WORKER_ID` cannot tell it, since a
+// command `squeal ci record` runs from a Vitest test inherits one too.
+"use strict";
+const childProcess = require("node:child_process");
+const path = require("node:path");
+const workerThreads = require("node:worker_threads");
+const { pathToFileURL } = require("node:url");
+const { ownMap } = require("./own-map.cjs");
+
+const VARIABLE = "SQUEAL_CI_RECORD";
+/** The prefix of the variables a child keeps from this process (D24.2). */
+const CARRIED = "SQUEAL_CI_";
+/** A `--require` or `-r` token in `NODE_OPTIONS`. */
+const REQUIRE = /(^|\s)(-r|--require)(=|\s|$)/;
+/** Vitest's own name for a test worker's state on `globalThis`. */
+const WORKER_STATE = "__vitest_worker__";
+
+/** Whether this process is a Vitest CLI process of the recording (`vitest-ci.cjs`). */
+let inVitest = false;
+/** Marks every child this process starts from now on as below a Vitest run. */
+const markNested = () => {
+  inVitest = true;
+};
+
+/** `settings` with `nested: true`; `settings` itself when it has it or does not parse. */
+function nestedOf(settings) {
+  try {
+    const value = JSON.parse(settings);
+    if (value === null || typeof value !== "object" || value.nested === true) return settings;
+    return JSON.stringify({ ...value, nested: true });
+  } catch {
+    return settings;
+  }
+}
+
+/** The hooks `settings` names, absolute paths, in their order; none when it names none. */
+function hooksOf(settings) {
+  try {
+    const hooks = JSON.parse(settings)?.hooks;
+    return Array.isArray(hooks)
+      ? hooks.filter((h) => typeof h === "string" && path.isAbsolute(h))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** A value as `NODE_OPTIONS` reads it (`quoteNodeOption`). */
+const quote = (value) => `"${value.replace(/["\\]/g, "\\$&")}"`;
+const isOptions = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const ownEnv = (options) =>
+  Object.prototype.propertyIsEnumerable.call(options, "env") ? options.env : undefined;
+/** `options` with its own `key` set to `value`; its prototype and other properties kept. */
+const withOwn = (options, key, value) => {
+  const next =
+    options == null
+      ? {}
+      : Object.create(Object.getPrototypeOf(options), Object.getOwnPropertyDescriptors(options));
+  Object.defineProperty(next, key, { value, enumerable: true, writable: true, configurable: true });
+  return next;
+};
+
+/** Where a sync call's options sit, as Node reads them, or -1 (`optionsAt` in `observe/spawn.cjs`). */
+function optionsAt(name, args) {
+  const [command, second] = args;
+  if (typeof command !== "string") return -1;
+  if (name === "execSync") return second == null || isOptions(second) ? 1 : -1;
+  if (Array.isArray(second) || second == null) {
+    const options = args[2];
+    if (options === undefined || isOptions(options)) return 2;
+    return options === null && name === "execFileSync" ? 2 : -1;
+  }
+  return isOptions(second) ? 1 : -1;
+}
+
+/**
+ * Evidence of the files `command` and `args` name from `cwd`, as the
+ * daemon's recorder takes them (`recordArguments` in `observe/spawn.cjs`).
+ */
+function takeArguments(evidence, command, args, cwd) {
+  try {
+    const base = typeof cwd === "string" ? cwd : process.cwd();
+    for (const arg of [command, ...(Array.isArray(args) ? args : [])]) {
+      if (typeof arg !== "string" || arg.startsWith("-") || !/[/\\.]/.test(arg)) continue;
+      evidence.argument(path.resolve(base, arg));
+    }
+  } catch {}
+}
+
+/**
+ * Puts the hook and this process's `SQUEAL_CI_RECORD`, `nested` below a
+ * Vitest run, into the env of every child and Worker; withholds every path (`evidence.withhold`) for one the
+ * hook cannot follow.
+ */
+function wrapChildren(replace, evidence) {
+  const settings = process.env[VARIABLE];
+  if (typeof settings !== "string") return;
+  const nested = nestedOf(settings);
+  const hooks = hooksOf(settings).map((file) => ({ file, url: pathToFileURL(file).href }));
+  /** This process's `SQUEAL_CI_` variables but the settings, read at each spawn. */
+  const carriedNames = () =>
+    Object.keys(process.env).filter((name) => name.startsWith(CARRIED) && name !== VARIABLE);
+  /** Whether `env` names another recording, whose child this run cannot follow. */
+  const foreign = (env) => {
+    const own = env[VARIABLE];
+    return own !== undefined && own !== settings && own !== nested;
+  };
+  /** The settings for a child with `env`: nested below a Vitest run, and never un-nested. */
+  const settingsFor = (env) =>
+    inVitest || globalThis[WORKER_STATE] != null || env[VARIABLE] === nested ? nested : settings;
+  const withhold = () => evidence.withhold(null);
+  /**
+   * `env` with the hook and its settings, as a copy: what Node reads of it,
+   * its prototype's keys too for a spawn (`inherited`), its own for a
+   * Worker. `env` itself when it has both; with another recording's
+   * settings, `env` itself, and every path withheld.
+   */
+  const carried = (env, inherited) => {
+    const own = env[VARIABLE];
+    if (foreign(env)) {
+      withhold();
+      return env;
+    }
+    const want = settingsFor(env);
+    const options = typeof env.NODE_OPTIONS === "string" ? env.NODE_OPTIONS : "";
+    const missing = hooks.filter(
+      ({ file, url }) => !options.includes(file) && !options.includes(url),
+    );
+    const lacking = carriedNames().filter((name) => env[name] === undefined);
+    if (missing.length === 0 && lacking.length === 0 && own === want) return env;
+    const read = [];
+    if (inherited) for (const key in env) read.push([key, env[key]]);
+    else read.push(...Object.entries(env));
+    const byRequire = REQUIRE.test(options);
+    const added = missing
+      .map(({ file, url }) => (byRequire ? `--require ${quote(file)}` : `--import ${quote(url)}`))
+      .join(" ");
+    const preload = options.trim() === "" ? added : `${added} ${options}`;
+    return ownMap([
+      ...read,
+      [VARIABLE, want],
+      ...lacking.map((name) => [name, process.env[name]]),
+      ...(missing.length > 0 ? [["NODE_OPTIONS", preload]] : []),
+    ]);
+  };
+
+  // Async spawns, fork and exec all reach this with Node's validated options.
+  replace(
+    childProcess.ChildProcess.prototype,
+    "spawn",
+    (fn) =>
+      function (options) {
+        try {
+          if (options && Array.isArray(options.envPairs)) {
+            const env = ownMap(
+              options.envPairs.flatMap((pair) => {
+                const at = pair.indexOf("=");
+                return at > 0 ? [[pair.slice(0, at), pair.slice(at + 1)]] : [];
+              }),
+            );
+            const next = carried(env, true);
+            if (next !== env) options.envPairs = Object.entries(next).map(([k, v]) => `${k}=${v}`);
+          }
+        } catch {}
+        // `args[0]` is the command again; a shell's `-c` string names no file.
+        takeArguments(evidence, options?.file, options?.args?.slice(1), options?.cwd);
+        return fn.call(this, options);
+      },
+  );
+
+  for (const name of ["spawnSync", "execSync", "execFileSync"]) {
+    replace(
+      childProcess,
+      name,
+      (fn) =>
+        function (...args) {
+          let call = args;
+          try {
+            const at = optionsAt(name, args);
+            const options = at === -1 ? undefined : args[at];
+            // Node's own `options.env || process.env`; any other env passes through.
+            const env = options == null ? undefined : ownEnv(options);
+            if (at !== -1 && (!env || typeof env === "object")) {
+              const from = env || process.env;
+              const next = carried(from, true);
+              if (next !== from) {
+                call = [...args];
+                while (call.length < at) call.push(undefined);
+                call[at] = withOwn(options, "env", next);
+              }
+              if (name !== "execSync") {
+                takeArguments(
+                  evidence,
+                  args[0],
+                  Array.isArray(args[1]) ? args[1] : [],
+                  options?.cwd,
+                );
+              }
+            }
+          } catch {
+            call = args;
+          }
+          return fn.apply(this, call);
+        },
+    );
+  }
+
+  // Node reads a Worker's `options.env` through the prototype; null or undefined is `process.env`.
+  const Worker = workerThreads.Worker;
+  workerThreads.Worker = class Worker_ extends Worker {
+    constructor(filename, ...rest) {
+      let next = rest;
+      try {
+        const options = rest[0];
+        const env = options === undefined ? undefined : isOptions(options) ? options.env : null;
+        const replaced =
+          env !== workerThreads.SHARE_ENV && (env == null || typeof env === "object");
+        if (replaced && (options === undefined || isOptions(options))) {
+          const from = env ?? process.env;
+          const env_ = carried(from, false);
+          if (env_ !== from) next = [withOwn(options, "env", env_), ...rest.slice(1)];
+        } else if (env === workerThreads.SHARE_ENV && foreign(process.env)) withhold();
+      } catch {
+        next = rest;
+      }
+      super(filename, ...next);
+    }
+  };
+  Object.defineProperty(workerThreads.Worker, "name", { value: "Worker" });
+}
+
+module.exports = { markNested, wrapChildren };
