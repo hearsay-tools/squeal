@@ -1,0 +1,25 @@
+2026-11-22T22:23:27.594Z [222610] squeal daemon: serving /home/user/results/cells/store-7g-wt3@0.1.600/work/wt1 on /home/user/results/cells/store-7g-wt3@0.1.600/work/run/squeal-5d3eb574fea4d68b.sock
+2026-11-22T22:24:23.879Z [222610] squeal daemon: code store: last minute: 0 batches through the store process, 42 written here (none running 42, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T22:24:28.999Z [222610] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 195 to 129 MiB in a 69 ms pause
+2026-11-22T22:25:23.883Z [222610] squeal daemon: code store: last minute: 52 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T22:25:28.185Z [222610] squeal daemon: long write: store.sqlite write lock held 395 ms by #write < #record; 96 rows written
+2026-11-22T22:25:36.045Z [222610] squeal daemon: busy, heap in use 45 MiB over twice the last live size of 20 MiB: a last-resort GC took private memory from 202 to 133 MiB in a 55 ms pause; 24 MiB of heap in use after it
+2026-11-22T22:25:46.257Z [222610] squeal daemon: the store was busy for 0.7 s (another connection held its write lock); ran once it was free: the results of 4 files
+2026-11-22T22:26:23.883Z [222610] squeal daemon: code store: last minute: 106 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T22:26:47.505Z [222610] squeal daemon: busy, heap in use 54 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 261 to 137 MiB in a 43 ms pause; 25 MiB of heap in use after it
+2026-11-22T22:27:23.885Z [222610] squeal daemon: code store: last minute: 125 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T22:27:56.816Z [222610] squeal daemon: the background ceiling refused a backlog tier: 3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-22T22:27:56.816Z [222610] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-22T22:28:09.097Z [222610] squeal daemon: the background ceiling let a backlog tier start after 12 s and 6 refused looks
+2026-11-22T22:28:09.098Z [222610] squeal daemon: the pool granted the vitest lane's tier after 12 s of waiting for CPU
+2026-11-22T22:28:23.886Z [222610] squeal daemon: code store: last minute: 50 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T22:28:55.053Z [222610] squeal daemon: long write: store.sqlite write lock held 1277 ms by #write < #record; 4603 rows written
+2026-11-22T22:28:58.221Z [222610] squeal daemon: the store was busy for 2.2 s (another connection held its write lock); ran once it was free: the next tier
+2026-11-22T22:29:23.886Z [222610] squeal daemon: code store: last minute: 23 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T22:29:25.838Z [222610] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-22T22:29:49.373Z [222610] squeal daemon: long write: store.sqlite write lock held 708 ms by #write < #record; 4603 rows written
+2026-11-22T22:29:50.944Z [222610] squeal daemon: the store was busy for 0.9 s (another connection held its write lock); ran once it was free: the next tier
+2026-11-22T22:30:04.056Z [222610] squeal daemon: long write: store.sqlite write lock held 387 ms by #write < #record; 2211 rows written
+2026-11-22T22:30:09.074Z [222610] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-22T22:30:09.083Z [222610] squeal daemon: code store: last minute: 23 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T22:30:09.271Z [222610] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

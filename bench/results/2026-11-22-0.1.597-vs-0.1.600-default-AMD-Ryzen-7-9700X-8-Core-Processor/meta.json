@@ -1,0 +1,103 @@
+{
+  "startedAt": "2026-11-22T21:00:38.722Z",
+  "squealVersion": "0.1.597 vs 0.1.600",
+  "plugins": [
+    {
+      "version": "0.1.597",
+      "label": "0.1.597"
+    },
+    {
+      "version": "0.1.600",
+      "label": "0.1.600"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    2494,
+    2425.3333333333335,
+    2446.6666666666665
+  ],
+  "loadavgAtStart": "0.23 0.19 0.10 1/381 9684",
+  "cells": [
+    {
+      "name": "ref@0.1.597",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.597",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.600",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.600",
+      "rep": 1
+    },
+    {
+      "name": "size-l@0.1.600",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.600",
+      "rep": 1
+    },
+    {
+      "name": "size-l@0.1.597",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.597",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.597",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.597",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.600",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.600",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3@0.1.600",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.600",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-wt3@0.1.597",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g-wt3",
+      "plugin": "0.1.597",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-22T22:51:28.536Z"
+}

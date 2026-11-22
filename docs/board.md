@@ -2824,7 +2824,7 @@ Spec folder `specifications/024-antigravity-adapter/` (stage: approved 2026-11-2
 
 ## Feature 025: performance
 
-Spec folder `specifications/025-performance/` (stage: in-progress; originally drafted as `024-performance` and renumbered before landing because `024-antigravity-adapter` landed first; approved by the human 2026-11-22). Coordinator `201d84ee`. Wave 1 landed 2026-11-22 in `0.1.600` (candidate CI `45074688588` green on `7633b6de4`, private CI `45074688553` green, reviews `0.1.600-r2.md` PASS and `0.1.600-r3.md` PASS; paired boat.dev benchmark `0.1.597` vs `0.1.600` running, `ref` 71→88, `size-l` 46→61, `wt-3` 70→75).
+Spec folder `specifications/025-performance/` (stage: in-progress; originally drafted as `024-performance` and renumbered before landing because `024-antigravity-adapter` landed first; approved by the human 2026-11-22). Coordinator `201d84ee`. Wave 1 landed 2026-11-22 in `0.1.600` (candidate CI `45074688588` green on `7633b6de4`, private CI `45074688553` green, reviews `0.1.600-r2.md`, `0.1.600-r3.md`, and `0.1.600-validity.md` PASS; paired boat.dev benchmark `bench/results/2026-11-22-0.1.597-vs-0.1.600-default-AMD-Ryzen-7-9700X-8-Core-Processor/scorecard.md` Correctness PASS: `ref` 71→88, `size-l` 46→61, `wt-3` 70→75, `store-7g-wt3` 63→68).
 
 ### Wave 1: hot-path and SQLite throughput (brief `specifications/025-performance/tasks/wave-1.md`)
 

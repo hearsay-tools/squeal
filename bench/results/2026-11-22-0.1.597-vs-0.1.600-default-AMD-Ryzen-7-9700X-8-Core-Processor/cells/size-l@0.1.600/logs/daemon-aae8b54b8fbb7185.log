@@ -1,0 +1,28 @@
+2026-11-22T21:26:05.033Z [65730] squeal daemon: serving /home/user/results/cells/size-l@0.1.600/work/wt0 on /home/user/results/cells/size-l@0.1.600/work/run/squeal-aae8b54b8fbb7185.sock
+2026-11-22T21:26:05.068Z [65730] squeal daemon: full integrity check: ok
+2026-11-22T21:26:56.853Z [65730] squeal daemon: code store: last minute: 228 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:27:56.855Z [65730] squeal daemon: code store: last minute: 93 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:28:25.598Z [65730] squeal daemon: long write: store.sqlite write lock held 298 ms by #write < #record; 7602 rows written
+2026-11-22T21:28:42.573Z [65730] squeal daemon: long write: store.sqlite write lock held 380 ms by #write < #record; 7603 rows written
+2026-11-22T21:28:56.855Z [65730] squeal daemon: code store: last minute: 70 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:29:42.700Z [65730] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 428 to 257 MiB in a 67 ms pause
+2026-11-22T21:29:56.855Z [65730] squeal daemon: code store: last minute: 8 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:30:54.880Z [65730] squeal daemon: busy, heap in use 88 MiB over twice the last live size of 44 MiB: a last-resort GC took private memory from 313 to 226 MiB in a 43 ms pause; 46 MiB of heap in use after it
+2026-11-22T21:30:56.877Z [65730] squeal daemon: code store: last minute: 73 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:31:56.876Z [65730] squeal daemon: code store: last minute: 95 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:32:25.636Z [65730] squeal daemon: busy, heap in use 98 MiB over twice the last live size of 46 MiB: a last-resort GC took private memory from 541 to 221 MiB in a 47 ms pause; 46 MiB of heap in use after it
+2026-11-22T21:32:56.877Z [65730] squeal daemon: code store: last minute: 58 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:33:02.148Z [65730] squeal daemon: long write: store.sqlite write lock held 1262 ms by reconcileBatch < #pass < withBusySlice; 32005 rows written
+2026-11-22T21:33:17.540Z [65730] squeal daemon: long write: store.sqlite write lock held 315 ms by #write < #record; 4603 rows written
+2026-11-22T21:33:32.195Z [65730] squeal daemon: busy, heap in use 128 MiB over twice the last live size of 46 MiB: a last-resort GC took private memory from 443 to 264 MiB in a 64 ms pause; 49 MiB of heap in use after it
+2026-11-22T21:33:32.557Z [65730] squeal daemon: long write: store.sqlite write lock held 352 ms by #write < #record; 4603 rows written
+2026-11-22T21:33:47.576Z [65730] squeal daemon: long write: store.sqlite write lock held 323 ms by #write < #record; 4603 rows written
+2026-11-22T21:33:56.877Z [65730] squeal daemon: code store: last minute: 49 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:34:02.486Z [65730] squeal daemon: long write: store.sqlite write lock held 343 ms by #write < #record; 4603 rows written
+2026-11-22T21:34:17.450Z [65730] squeal daemon: long write: store.sqlite write lock held 348 ms by #write < #record; 4603 rows written
+2026-11-22T21:34:32.176Z [65730] squeal daemon: long write: store.sqlite write lock held 344 ms by #write < #record; 4603 rows written
+2026-11-22T21:34:47.536Z [65730] squeal daemon: long write: store.sqlite write lock held 353 ms by #write < #record; 4603 rows written
+2026-11-22T21:34:56.877Z [65730] squeal daemon: code store: last minute: 61 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T21:35:03.527Z [65730] squeal daemon: long write: store.sqlite write lock held 410 ms by #write < #record; 4603 rows written
+2026-11-22T21:35:21.338Z [65730] squeal daemon: long write: store.sqlite write lock held 406 ms by #write < #record; 4603 rows written
+2026-11-22T21:35:37.860Z [65730] squeal daemon: long write: store.sqlite write lock held 361 ms by #write < #record; 4511 rows written

@@ -1,0 +1,104 @@
+{
+  "name": "size-l@0.1.600",
+  "files": 2000,
+  "worktrees": 1,
+  "load": 0,
+  "ageRounds": 0,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "phases": {
+    "plainVitest": {
+      "ms": 123189.042809,
+      "code": 0
+    },
+    "startMain": {
+      "ms": 1195.021975999989,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/size-l@0.1.600/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `squ"
+    },
+    "runAll": {
+      "ms": 166038.79876699997,
+      "code": 0,
+      "tail": "ckpoint bc1dc6d6-16b6-4231-824d-27582697cc74 started at revision 0: 2000 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 2000 test files current\nAffected checks: 14000 passed (12000 tests, 2000 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 419 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.7499280665486753
+    },
+    "startOthers": [],
+    "idle": {
+      "ms": 60000,
+      "daemons": 1,
+      "storeProcessCpuPct": 0.20000000000000018,
+      "perDaemonCpuPct": [
+        1.5166666666666686
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 355488.581564,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.41190904855907895,
+    "sessionDaemonCpuS": [
+      49.04
+    ],
+    "edits": 19,
+    "sessionStoreProcessCpuS": 2.5300000000000002,
+    "reach": {
+      "ms": 542.9914339999668,
+      "code": 0,
+      "peakRssBytes": 224202752
+    }
+  },
+  "store": {
+    "storeBytes": 23760896,
+    "walBytes": 7638512,
+    "codeBytes": 29032448,
+    "runsDirs": 72,
+    "rows": {
+      "results": 28994,
+      "runs": 72,
+      "revisions": 19,
+      "transitions": 168
+    },
+    "longWrites": 14,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      298,
+      380,
+      1262,
+      315,
+      352,
+      323,
+      343,
+      348,
+      344,
+      353,
+      410,
+      406,
+      361,
+      324
+    ]
+  },
+  "storeProcess": {
+    "seen": 1,
+    "cpuS": 5.03,
+    "maxRssBytes": 257355776,
+    "written": 747,
+    "failed": 0,
+    "queueWaitMaxMs": 2,
+    "busyMs": 17896,
+    "stops": 0,
+    "failedLines": 0,
+    "relay": {
+      "sent": 735,
+      "direct": 1,
+      "failed": 0
+    }
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 688300032,
+    "maxTreeBytes": 1695240192
+  }
+}
