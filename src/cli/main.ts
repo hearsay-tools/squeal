@@ -212,6 +212,9 @@ Usage:
                                 trust as thread/start config for a launcher; --trust
                                 then shows the hooks Codex has not trusted and, on
                                 your yes (--yes: without asking), has Codex trust them
+  squeal init --harness antigravity
+                                Write squeal.config.json and print the Antigravity
+                                plugin install command; writes nothing under ~/.gemini
   squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
               [--slow <glob>]... [--input <test glob>=<input glob|none>]...
                                 Set the harness up, then apply these setup choices

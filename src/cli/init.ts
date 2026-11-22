@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { findWorktreeRoot } from "../core/fs/git-layout.js";
 import { isRecord } from "../core/fs/json.js";
 import { DEFAULT_POLICY } from "../core/types/policy.js";
+import { initAntigravity } from "./antigravity/init.js";
 import { initCodex, printLauncherConfig } from "./codex/init.js";
 import type { CliIo } from "./main.js";
 import { type NodeTestSeed, seedNodeTest } from "./node-test-seed.js";
@@ -37,7 +38,8 @@ type JsonObject = Record<string, unknown>;
  * when settings cannot be read or written or the directory is not in a git
  * worktree, 2 on a usage error. Settings are written first and restored when
  * the config cannot be written, so a failure changes nothing. With
- * `--harness codex`, see `initCodex`.
+ * `--harness codex`, see `initCodex`; with `--harness antigravity`, see
+ * `initAntigravity`.
  */
 export function init(args: readonly string[], io: CliIo): number | Promise<number> {
   const setup = takeSetupFlags(args);
@@ -64,15 +66,17 @@ function initHarness(parsed: InitArgs, io: CliIo): number | Promise<number> {
       ? printLauncherConfig(io)
       : initCodex(io, { trust: parsed.trust, yes: parsed.yes });
   }
+  if (parsed.harness === "antigravity") return initAntigravity(io);
   return initClaudeCode(io);
 }
 
 const INIT_USAGE = `Usage: squeal init [--harness claude-code]
        squeal init --harness codex [--print-launcher-config | --trust [--yes]]
+       squeal init --harness antigravity
 ${SETUP_FLAGS_USAGE}`;
 
 interface InitArgs {
-  readonly harness: "claude-code" | "codex";
+  readonly harness: "claude-code" | "codex" | "antigravity";
   readonly printLauncherConfig: boolean;
   /** Row 002-17: have Codex trust the plugin's hooks; `yes` without asking. */
   readonly trust: boolean;
@@ -93,12 +97,12 @@ function parseInitArgs(args: readonly string[]): InitArgs | string {
     else if (arg.startsWith("--harness=")) harness = arg.slice("--harness=".length);
     else if (arg === "--harness") {
       const value = args[++i];
-      if (value === undefined) return "--harness takes claude-code or codex";
+      if (value === undefined) return "--harness takes claude-code, codex or antigravity";
       harness = value;
     } else return `unknown argument "${arg}"`;
   }
-  if (harness !== "claude-code" && harness !== "codex") {
-    return `unknown harness "${harness}": claude-code or codex`;
+  if (harness !== "claude-code" && harness !== "codex" && harness !== "antigravity") {
+    return `unknown harness "${harness}": claude-code, codex or antigravity`;
   }
   if (printLauncher && harness !== "codex") return "--print-launcher-config needs --harness codex";
   if (trust && harness !== "codex") return "--trust needs --harness codex";
