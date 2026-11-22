@@ -418,6 +418,7 @@ find_antigravity() {
 # plugin is recorded only when none was there before. This script never edits
 # ~/.gemini/config/config.json or import_manifest.json.
 install_antigravity() {
+  [ -f "$ANTIGRAVITY_PLUGIN/plugin.json" ] && existed=yes || existed=no
   current=$(installed antigravity)
   if [ "${current%% *}" = "$SQUEAL_VERSION" ]; then
     say "Antigravity has Squeal $SQUEAL_VERSION from $ANTIGRAVITY_PLUGIN"
@@ -431,7 +432,7 @@ install_antigravity() {
   STAGE=
   [ "$(installed antigravity)" = "$SQUEAL_VERSION $ANTIGRAVITY_PLUGIN" ] ||
     fail "$ANTIGRAVITY plugin install did not leave Squeal $SQUEAL_VERSION in $ANTIGRAVITY_PLUGIN"
-  [ -n "$current" ] || record antigravity
+  [ "$existed" = yes ] || record antigravity
 }
 
 # The newest recorded directory other than $1, by its version, which an update keeps.
