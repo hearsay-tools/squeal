@@ -13,33 +13,37 @@ import { clean } from "./status-at-kit.js";
 
 const TEST = ref("test/a.test.ts");
 
-/** Tries to read `src/package.json`, which no commit holds: a path first seen during the run. */
-const writing = (value: number) =>
-  [
-    'import { readFileSync } from "node:fs";',
-    'import { expect, it } from "vitest";',
-    'import { value } from "../src/a";',
-    "let manifest = null;",
-    'try { manifest = readFileSync(new URL("../src/package.json", import.meta.url), "utf8"); } catch {}',
-    `it("value", () => { expect(manifest).toBeNull(); expect(value).toBe(${value}); });`,
-    "",
-  ].join("\n");
+/**
+ * The base's code tries to read `src/package.json`, which no commit holds: a
+ * path first seen during the red side's run. Row 023-42: HEAD's code does
+ * not read it, so the green side's run on the commit daemon, asked before
+ * the red side runs, does not see it first.
+ */
+const reading = [
+  'import { readFileSync } from "node:fs";',
+  "let manifest = null;",
+  'try { manifest = readFileSync(new URL("./package.json", import.meta.url), "utf8"); } catch {}',
+  "export const value = manifest === null ? 1 : 0;",
+  "",
+].join("\n");
+
+const TEST_TEXT = [
+  'import { expect, it } from "vitest";',
+  'import { value } from "../src/a";',
+  'it("value", () => { expect(value).toBe(2); });',
+  "",
+].join("\n");
 
 function notKeptFix() {
-  const f = fixture({
-    "squeal.config.json": "{}\n",
-    "src/a.ts": "export const value = 1;\n",
-    [TEST.path]: writing(1),
-  });
+  const f = fixture({ "squeal.config.json": "{}\n", "src/a.ts": reading });
   const a = git(f.root, "rev-parse", "HEAD").trim();
-  f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: writing(2) });
+  f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: TEST_TEXT });
   return { f, a, options: { cacheRoot: f.cacheRoot, install: linkInstall().install } };
 }
 
 describe("a run file the gate does not keep names the gate's reason (row 023-18 D2)", SLOW, () => {
   it("squeal proof", async () => {
-    const { f, options } = notKeptFix();
-    const a = git(f.root, "rev-parse", "HEAD~1").trim();
+    const { f, a, options } = notKeptFix();
     const first = await prove(f, { files: [TEST.path], base: a }, options);
     expect(first.code, first.why).toBe(0);
     expect(first.files[0]?.red).toMatchObject({ end: "fail", stored: false });

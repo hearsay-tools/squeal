@@ -85,9 +85,13 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
   });
 
   it("reads not red when the test passes on the old code (exit 1)", async () => {
-    const f = fixture({ ...ON, "src/a.ts": "export const value = 2;\n" });
-    const a = git(f.root, "rev-parse", "HEAD").trim();
-    f.commit({ "src/a.ts": "export const value = 2; // tidied\n", [TEST.path]: testOf("a", 2) });
+    const tidied = () => {
+      const f = fixture({ ...ON, "src/a.ts": "export const value = 2;\n" });
+      const a = git(f.root, "rev-parse", "HEAD").trim();
+      f.commit({ "src/a.ts": "export const value = 2; // tidied\n", [TEST.path]: testOf("a", 2) });
+      return { f, a };
+    };
+    const { f, a } = tidied();
     const result = await prove(f, { files: [TEST.path], base: a });
     expect(result.code, result.why).toBe(1);
     expect(result.files[0]).toMatchObject({
@@ -97,17 +101,19 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
       greenNotRun: "red passed: nothing to prove",
     });
     clean(f);
-    // Row 023-20 (lessons P7): the text says why green did not run, never "not read".
-    const text = await prove(f, { files: [TEST.path], base: a, json: false });
+    // Row 023-20 (lessons P7): the text says why green did not run, never "not read". Row 023-42:
+    // on a fresh repository, since the first call's commit daemon stored HEAD's green pass.
+    const fresh = tidied();
+    const text = await prove(fresh.f, { files: [TEST.path], base: fresh.a, json: false });
     // Row 023-24 (Q6): what the proof does not show; Q5: the changed test's red side is not its result at a.
     expect(text.out).toContain(
       "  green: not run. Red passed, so this proof says nothing about HEAD; `squeal status test/a.test.ts` gives its result now.\n",
     );
     expect(text.out).toContain(
-      `not the file's own result at ${a.slice(0, 9)}; that is \`squeal status --at ${a.slice(0, 9)} test/a.test.ts --run\`.\n`,
+      `not the file's own result at ${fresh.a.slice(0, 9)}; that is \`squeal status --at ${fresh.a.slice(0, 9)} test/a.test.ts --run\`.\n`,
     );
     expect(text.out).not.toContain("not read");
-    clean(f);
+    clean(fresh.f);
   });
 
   it("reads red for another reason when the red side fails on a missing export (exit 3)", async () => {

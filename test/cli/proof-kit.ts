@@ -4,7 +4,10 @@ import { DatabaseSync } from "node:sqlite";
 import { proofCommand } from "../../src/cli/proof.js";
 import { PROOF_TIMEOUT_SECONDS, type ProofArgs } from "../../src/cli/proof-args.js";
 import type { AtOptions } from "../../src/cli/status-at.js";
+import type { InstallResult } from "../../src/core/checkout/install.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { type Fixture, linkInstall } from "../commit/at-keys-fixture.js";
+import { kitDaemons } from "./proof-daemons.js";
 import { RELAUNCH } from "./status-at-kit.js";
 
 /*
@@ -54,6 +57,8 @@ export async function prove(
   args: Partial<ProofArgs> & Pick<ProofArgs, "files" | "base">,
   options: AtOptions = { cacheRoot: f.cacheRoot, install: linkInstall().install },
   env?: NodeJS.ProcessEnv,
+  /** Row 023-42: the commit daemon's install, when it differs from the red side's checkout's. */
+  daemonInstall?: (tree: AbsolutePath) => Promise<InstallResult>,
 ) {
   const out: string[] = [];
   const err: string[] = [];
@@ -65,7 +70,22 @@ export async function prove(
     ...(env === undefined ? {} : { env }),
   };
   const full = { case: null, timeoutSeconds: PROOF_TIMEOUT_SECONDS, json: true, ...args };
-  const code = await proofCommand(full, io, options);
+  // Row 023-42 (D7.6): the green side's commit daemon, in this process; stopped after the call,
+  // so its worktree is gone as the temporary checkout was and the next call starts afresh.
+  const kit =
+    options.daemons === undefined
+      ? kitDaemons(daemonInstall ?? options.install ?? linkInstall().install)
+      : null;
+  let code: number;
+  try {
+    code = await proofCommand(
+      full,
+      io,
+      kit === null ? options : { ...options, daemons: kit.daemons },
+    );
+  } finally {
+    await kit?.stop();
+  }
   const text = out.join("");
   const report = full.json && text !== "" ? JSON.parse(text) : null;
   const stderr = err.join("");

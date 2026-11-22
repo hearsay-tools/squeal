@@ -1,4 +1,4 @@
-import { symlinkSync } from "node:fs";
+import { symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { fixture, git, link } from "../commit/at-keys-fixture.js";
@@ -23,6 +23,8 @@ const VALUE = "src/value.ts";
 const MAIN = { "src/main.ts": 'import { value } from "./value";\nexport const main = value;\n' };
 const ON = { "squeal.config.json": "{}\n", ...MAIN };
 const short = (sha: string) => sha.slice(0, 9);
+/** npm's installed lockfile with the local package linked. */
+const INSTALLED = `${JSON.stringify({ name: "fixture", lockfileVersion: 3, packages: { "node_modules/review-api": { resolved: "packages/api", link: true } } })}\n`;
 const lines = (...l: string[]) => [...l, ""].join("\n");
 
 /** An unchanged thin test over `support/rows.ts`, which imports `it` and `expect` from `api`. */
@@ -151,8 +153,12 @@ const CASES: readonly Case[] = [
     head: DATA_CHANGE.head,
     unsettled: [VALUE, DATA],
     control: { with: [DATA], source: [VALUE] },
-    install: (tree) =>
-      symlinkSync(join(tree, "packages/api"), join(tree, "node_modules/review-api")),
+    // Row 023-42: an installed lockfile, as a real install writes; a commit daemon waits for
+    // one when the manifest declares dependencies (spec 001 D5, `missingInstall`).
+    install: (tree) => {
+      symlinkSync(join(tree, "packages/api"), join(tree, "node_modules/review-api"));
+      writeFileSync(join(tree, "node_modules/.package-lock.json"), INSTALLED);
+    },
   },
 ];
 

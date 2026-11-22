@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { runGateFiles } from "../../src/cli/code-gate-files.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { quiet } from "../code/gate/host-load.js";
-import { fixture, git, link, ref, write } from "../commit/at-keys-fixture.js";
+import { fixture, git, link, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
 import { PNPM } from "../runner-host/remote/pnpm-project.js";
 import { prove } from "./proof-kit.js";
 import { clean } from "./status-at-kit.js";
@@ -81,10 +81,13 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
       write(tree, { "vitest.config.mjs": `${PROJECTS}// rewritten by the install\n` });
       return { ok: true as const, command: "rewrites", ms: 0 };
     };
+    // Row 023-42 (D7.6): the commit daemon's install is clean; the red side's checkout changes.
     const result = await prove(
       f,
       { files: [TEST.path], base: a },
       { cacheRoot: f.cacheRoot, install: rewrites },
+      undefined,
+      linkInstall().install,
     );
     expect(result.code, result.why).toBe(3);
     expect(result.files.map((x) => [x.project, x.verdict])).toEqual(NOT_COMPARABLE);
@@ -172,7 +175,7 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
     },
   );
 
-  it("reads every file not comparable, with the reason, when the green checkout's install fails", async () => {
+  it("reads every file not comparable, with the reason, when the commit daemon's install fails", async () => {
     const { f, a } = sameKind(ON);
     const broken = async () => ({
       ok: false as const,
@@ -192,7 +195,9 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
       expect.objectContaining({
         path: TEST.path,
         verdict: "not comparable",
-        reason: "install: exit 1",
+        reason: expect.stringMatching(
+          /^the commit daemon's setup at \w{9} failed: install: .*exit 1$/,
+        ),
       }),
     ]);
     clean(f);

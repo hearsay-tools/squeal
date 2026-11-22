@@ -45,7 +45,7 @@ export const SETTING_UP =
  * nothing else ref'd a `status --at` call exited 13 ("unsettled top-level
  * await") with no output (`tasks/023-40e-measure.md`: 4 of 16 second calls).
  */
-async function keptAlive<T>(pending: Promise<T>): Promise<T> {
+export async function keptAlive<T>(pending: Promise<T>): Promise<T> {
   const keep = setInterval(() => {}, 60_000);
   try {
     return await pending;

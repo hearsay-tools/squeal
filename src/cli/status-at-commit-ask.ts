@@ -97,7 +97,7 @@ export async function joinCommit(
   return waitFor(daemons, tree, read, bound, listed);
 }
 
-interface Read {
+export interface Read {
   readonly setup: CommitSetup | null;
   readonly asks: readonly CommitAskState[];
   readonly problem: string | null;
@@ -109,7 +109,7 @@ interface Read {
  * `deadline`; the last read. Each read ends by `askBy`, so one read is
  * made even when the wait is over.
  */
-async function readUntilQueued(
+export async function readUntilQueued(
   daemons: AtDaemons,
   tree: AbsolutePath,
   owners: readonly string[] | undefined,

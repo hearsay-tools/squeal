@@ -1,6 +1,7 @@
 import { join, relative, sep } from "node:path";
 import { commitEntries } from "../core/commit/at-keys-verify.js";
 import { changedPaths } from "../core/commit/tree.js";
+import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -16,12 +17,15 @@ import type { CliIo } from "./main.js";
 import { type ProofArgs, parseProof } from "./proof-args.js";
 import { caseOf } from "./proof-case.js";
 import { endOf, provedFiles } from "./proof-files.js";
+import { withGreenDaemon } from "./proof-green.js";
 import { seenReads } from "./proof-inputs.js";
 import { dirtyPaths, locate } from "./proof-locate.js";
 import { formatProof, jsonProof, type ProofReport } from "./proof-report.js";
 import { rerunCommand, stopReruns } from "./proof-rerun.js";
-import { runSide, withSide } from "./proof-side.js";
+import { type OpenSide, runSide, withSide } from "./proof-side.js";
 import type { AtOptions } from "./status-at.js";
+import { commitAllowlist, environmentOf } from "./status-at-call.js";
+import { type AtDaemons, type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
 
 /*
  * Spec 023 D5 (row 023-08): `squeal proof <test file>... --base <commit>
@@ -59,6 +63,11 @@ export async function proofCommand(
   const { root, cwd, base, head, paths, conditions } = at;
   const env = { ...(io.env ?? process.env) } as NodeJS.ProcessEnv;
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
+  const repeat = args.repeat ?? 1;
+  const onDaemon =
+    hasConditions(conditions) || repeat > 1
+      ? null
+      : await greenDaemon(root, head, env, note, options);
   const common: Common = {
     root,
     own: worktreeIdFor(root),
@@ -68,12 +77,15 @@ export async function proofCommand(
     deadline,
     forward: (text) => (args.json ? undefined : io.stderr(text)),
     conditions,
-    repeat: args.repeat ?? 1,
+    repeat,
+    onDaemon,
   };
   const named = new Set(paths);
   if (!args.json)
     note(
-      `proving ${plural(paths.length, "test file")} against ${base.slice(0, 9)} in temporary checkouts`,
+      onDaemon === null
+        ? `proving ${plural(paths.length, "test file")} against ${base.slice(0, 9)} in temporary checkouts`
+        : `proving ${plural(paths.length, "test file")} against ${base.slice(0, 9)}: the green side on the commit daemon at ${head.slice(0, 9)}, the red side in a temporary checkout`,
     );
   const proved = await prove(common, args, base, head, named, at);
   if ("usage" in proved) return fail(proved.usage);
@@ -153,7 +165,8 @@ async function prove(
   const headEntries = await commitEntries(common.root, head);
   const greenSide = { tests: head, code: head };
   const asked = [...named].map((path) => ({ project: "", path }));
-  const green = await withSide(
+  const green = await withGreen(
+    common,
     {
       ...common,
       side: greenSide,
@@ -239,6 +252,26 @@ const NO_IMPORTS = {
   sourceUnused: [] as RelativePath[],
 } as const;
 
+/**
+ * D7.6 (row 023-42): the green side with no condition and no repeat on
+ * the commit daemon at `HEAD`; under a condition, or repeated, in its
+ * temporary checkout as before (D5.3, D5.4).
+ */
+function withGreen<T>(
+  common: Common,
+  input: Parameters<typeof withSide>[0],
+  body: (open: OpenSide) => Promise<T>,
+) {
+  if (common.onDaemon === null) return withSide(input, body);
+  const { daemons, commit } = common.onDaemon;
+  const { root, deadline } = common;
+  const head = input.side.code;
+  return withGreenDaemon(
+    { root, head, files: input.files, named: input.named, daemons, commit, deadline },
+    body,
+  );
+}
+
 interface Common {
   readonly root: AbsolutePath;
   readonly own: ReturnType<typeof worktreeIdFor>;
@@ -249,6 +282,29 @@ interface Common {
   readonly forward: (text: string) => void;
   readonly conditions: Conditions;
   readonly repeat: number;
+  /** D7.6: the commit daemon the green side reads and runs on; `null` when it stays in the call. */
+  readonly onDaemon: { readonly daemons: AtDaemons; readonly commit: CommitDaemonInput } | null;
+}
+
+/** D7.6: the commit daemon at `head` and its worktree's input (D7.1's fingerprint, D7.4's ceiling). */
+async function greenDaemon(
+  root: AbsolutePath,
+  head: string,
+  env: NodeJS.ProcessEnv,
+  note: (text: string) => void,
+  options: AtOptions,
+): Promise<NonNullable<Common["onDaemon"]>> {
+  const limit = readPolicy(root).daemon.maxCommitDaemons;
+  const commit: CommitDaemonInput = {
+    root,
+    commit: head,
+    environment: environmentOf(await commitAllowlist(root, head), env),
+    note,
+    ...(limit === null || limit === undefined ? {} : { limit }),
+    ...(options.cacheRoot === undefined ? {} : { cacheRoot: options.cacheRoot }),
+    ...(options.placeWaitMs === undefined ? {} : { placeWaitMs: options.placeWaitMs }),
+  };
+  return { daemons: options.daemons ?? realDaemons({ note }), commit };
 }
 
 /** One side of `refs` in its checkout: D5.2's copies are the test-side files the versions hold otherwise. */

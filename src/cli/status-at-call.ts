@@ -255,7 +255,10 @@ function tellEstimate(
 }
 
 /** D7.1: the commit's own `env.allowlist`, which its daemon reads; none when it has no such config. */
-async function commitAllowlist(root: AbsolutePath, commit: string): Promise<readonly string[]> {
+export async function commitAllowlist(
+  root: AbsolutePath,
+  commit: string,
+): Promise<readonly string[]> {
   try {
     const text = await runGit(root, ["show", `${commit}:squeal.config.json`]);
     const list = (JSON.parse(text) as { env?: { allowlist?: unknown } }).env?.allowlist;

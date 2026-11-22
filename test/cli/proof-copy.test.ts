@@ -1,8 +1,8 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { fixture, git, link, ref } from "../commit/at-keys-fixture.js";
-import { prove } from "./proof-kit.js";
+import { fixture, git, link, linkInstall, ref } from "../commit/at-keys-fixture.js";
+import { prove, resultRows } from "./proof-kit.js";
 import { clean, testOf } from "./status-at-kit.js";
 
 /*
@@ -77,7 +77,10 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
       return { ok: true as const, command: "rewrites", ms: 0 };
     };
     const options = { cacheRoot: f.cacheRoot, install };
-    const first = await prove(f, { files: [TEST.path], base: a }, options);
+    // Row 023-42 (D7.6): the green side is on the commit daemon, whose install is clean here; the
+    // red side's checkout is the one the install changes.
+    const cleanInstall = linkInstall().install;
+    const first = await prove(f, { files: [TEST.path], base: a }, options, undefined, cleanInstall);
     expect(first.code, first.why).toBe(0);
     expect(first.files[0]).toMatchObject({
       verdict: "proven",
@@ -88,8 +91,38 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
         notStored: "install changed the checkout: squeal.config.json",
       },
     });
-    const second = await prove(f, { files: [TEST.path], base: a }, options);
+    const second = await prove(
+      f,
+      { files: [TEST.path], base: a },
+      options,
+      undefined,
+      cleanInstall,
+    );
     expect(second.files[0]?.red).toMatchObject({ from: "run", stored: false });
+    clean(f);
+  });
+
+  it("row 023-42: reads every file not comparable when the install changes the commit daemon's tree", async () => {
+    const f = fixture({ ...ON, "src/a.ts": "export const value = 1;\n" });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: testOf("a", 2) });
+    const install = async (tree: string) => {
+      link(tree);
+      writeFileSync(join(tree, "squeal.config.json"), '{ "coverage": { "enabled": true } }\n');
+      return { ok: true as const, command: "rewrites", ms: 0 };
+    };
+    const result = await prove(
+      f,
+      { files: [TEST.path], base: a },
+      { cacheRoot: f.cacheRoot, install },
+    );
+    expect(result.code, result.why).toBe(3);
+    expect(result.report).toMatchObject({ case: null, red: null, runs: 0 });
+    expect(result.files[0]).toMatchObject({
+      verdict: "not comparable",
+      reason: "install changed the checkout: squeal.config.json",
+    });
+    expect(resultRows(f)).toBe(0);
     clean(f);
   });
 
