@@ -1,6 +1,6 @@
 import type { Ask } from "./ask.js";
 import { excludeKeys } from "./exclude.js";
-import type { HarnessId } from "./harnesses.js";
+import type { HarnessFact, HarnessId } from "./harnesses.js";
 import type { ExcludeProposal, SetupPlan, SlowGroup } from "./plan.js";
 
 /*
@@ -51,7 +51,11 @@ export const NO_ANSWERS: GivenAnswers = {
   warmup: null,
 };
 
-const HARNESS_NAMES: Record<HarnessId, string> = { "claude-code": "Claude Code", codex: "Codex" };
+const HARNESS_NAMES: Record<HarnessId, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+  antigravity: "Antigravity",
+};
 
 export async function answerPlan(
   plan: SetupPlan,
@@ -70,8 +74,8 @@ export async function answerPlan(
       continue;
     }
     const found = h.onPath || h.plugin !== null;
-    const where = `${h.onPath ? "on the PATH" : "not on the PATH"}, ${h.plugin === null ? "plugin not installed" : `plugin ${h.plugin.version}`}`;
-    if (await yes(`Set up ${HARNESS_NAMES[h.id]} here (${where})?`, found)) harnesses.push(h.id);
+    if (await yes(`Set up ${HARNESS_NAMES[h.id]} here (${whereOf(h)})?`, found))
+      harnesses.push(h.id);
   }
 
   const blocks: string[] = [];
@@ -163,6 +167,15 @@ export async function answerPlan(
     ));
 
   return { harnesses, blocks, gates, slow, inputs, exclude, trust, warmup };
+}
+
+/** Where a harness stands: on the PATH or not, and its plugin, disabled or not (spec 024 D6). */
+function whereOf(h: HarnessFact): string {
+  const plugin =
+    h.plugin === null
+      ? "plugin not installed"
+      : `plugin ${h.plugin.version}${h.plugin.disabled === true ? ", disabled" : ""}`;
+  return `${h.onPath ? "on the PATH" : "not on the PATH"}, ${plugin}`;
 }
 
 /**

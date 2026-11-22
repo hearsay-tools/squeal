@@ -14,6 +14,12 @@ import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { claudeInstalls } from "../core/daemon/version.js";
 import { isAdapterRoot } from "../harness/codex/runtime-update/paths.js";
+import { antigravityPluginDir } from "./antigravity/install.js";
+import {
+  type AntigravityUpdate,
+  antigravityUpdate,
+  antigravityVersion,
+} from "./antigravity/update.js";
 import { type CodexRuntimeDeps, codexAdapterRoot } from "./codex/runtime.js";
 import type { CliIo } from "./main.js";
 import { MARKETPLACE_NAME, PLUGIN_ID, PLUGIN_NAME } from "./plugin-id.js";
@@ -34,10 +40,15 @@ import { openCodePackage, packagesHome, piPackage } from "./update-packages.js";
  * config lists it. Row 002-34 (spec 002 D8): with the fixed Codex plugin, it
  * then updates the runtime, whose version, not the adapter's, is compared
  * with the other harnesses'. Then it re-copies the launcher when an installed
- * copy has a newer format.
+ * copy has a newer format. Antigravity (spec 024 D1) runs `install.sh
+ * --antigravity` when its CLI passes detection and the plugin is installed.
  */
 
-const NAMES: Record<HarnessId, string> = { "claude-code": "Claude Code", codex: "Codex" };
+const NAMES: Record<HarnessId, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+  antigravity: "Antigravity",
+};
 
 const LATEST_INSTALL_SH =
   "https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh";
@@ -50,6 +61,8 @@ interface Target {
   readonly versionAfter: () => string | null;
   /** Whether the version after names the fixed Codex plugin's adapter, not a runtime. */
   readonly adapter?: (version: string | null) => boolean;
+  /** A line after its own, such as Antigravity's disabled plugin. */
+  readonly note?: string | null;
 }
 
 const UPDATE_COMMANDS: Record<HarnessId, readonly (readonly string[])[]> = {
@@ -58,6 +71,8 @@ const UPDATE_COMMANDS: Record<HarnessId, readonly (readonly string[])[]> = {
     ["claude", "plugin", "update", PLUGIN_ID],
   ],
   codex: [["codex", "plugin", "marketplace", "upgrade", MARKETPLACE_NAME]],
+  // Spec 024 D1: through install.sh --antigravity instead (`updateTargets`).
+  antigravity: [],
 };
 
 /** A harness command can fetch a marketplace over the network. */
@@ -81,7 +96,9 @@ export async function updateCommand(
   }
   const env = io.env ?? process.env;
   const cwd = io.cwd ?? process.cwd();
-  const targets = updateTargets(cwd, env, io);
+  const agy = antigravityUpdate(env);
+  const targets = updateTargets(cwd, env, io, agy);
+  if (agy.state === "blocked") io.stderr(`squeal update: ${agy.problem}\n`);
   if (targets.length === 0 && codexAdapterRoot(env) === null) {
     const commands = [
       ...readHarnesses(cwd, env).flatMap((h) => h.installCommands),
@@ -93,7 +110,7 @@ export async function updateCommand(
     return 1;
   }
   const failed = new Set(targets.filter((t) => !t.update()));
-  let ok = failed.size === 0;
+  let ok = failed.size === 0 && agy.state !== "blocked";
   const versions = reportTargets(targets, failed, io);
   const runtime = await updateCodexRuntime(env, deps.codexRuntime ?? {});
   if (runtime !== null) {
@@ -145,16 +162,20 @@ function reportTargets(
           ? "not updated"
           : "up to date";
     io.stdout(`${target.name}${adapter ? " adapter" : ""} ${now ?? "not installed"}, ${how}\n`);
+    if (target.note != null) io.stdout(`${target.note}\n`);
   }
   return versions;
 }
 
-/** Claude Code and Codex when on the PATH with the plugin, then Pi and OpenCode when on the PATH with a package. */
-function updateTargets(cwd: string, env: Env, io: CliIo): Target[] {
+/**
+ * Claude Code and Codex when on the PATH with the plugin, then Pi and
+ * OpenCode when on the PATH with a package, then Antigravity when `agy` is ready.
+ */
+function updateTargets(cwd: string, env: Env, io: CliIo, agy: AntigravityUpdate): Target[] {
   const after = () =>
     new Map(readHarnesses(cwd, env).map((h) => [h.id, h.plugin?.version ?? null]));
   const targets: Target[] = readHarnesses(cwd, env).flatMap((h) =>
-    h.onPath && h.plugin !== null
+    h.id !== "antigravity" && h.onPath && h.plugin !== null
       ? [
           {
             name: `${NAMES[h.id]}: ${PLUGIN_ID}`,
@@ -187,6 +208,15 @@ function updateTargets(cwd: string, env: Env, io: CliIo): Target[] {
       version: openCode.version,
       update: () => runInstallSh("--opencode", cwd, env, io),
       versionAfter: () => openCodePackage(env)?.version ?? null,
+    });
+  }
+  if (agy.state === "ready") {
+    targets.push({
+      name: "Antigravity: Squeal",
+      version: agy.version,
+      note: agy.note,
+      update: () => runInstallSh("--antigravity", cwd, env, io),
+      versionAfter: () => antigravityVersion(env),
     });
   }
   return targets;
@@ -275,7 +305,8 @@ const codexCache = (env: Env): string =>
 /**
  * Every installed plugin directory: each Claude Code entry, each Codex cache
  * version before the fixed plugin, the fixed plugin's selected runtime
- * (`codexLauncherDir`), each Pi and OpenCode package.
+ * (`codexLauncherDir`), each Pi and OpenCode package, and Antigravity's
+ * installed plugin (spec 024 D1).
  */
 function pluginDirs(env: Env): string[] {
   const home = env.HOME ?? "";
@@ -294,6 +325,7 @@ function pluginDirs(env: Env): string[] {
     if (existsSync(packages))
       for (const version of readdirSync(packages)) dirs.push(join(packages, version));
   }
+  if (existsSync(antigravityPluginDir(env))) dirs.push(antigravityPluginDir(env));
   return dirs;
 }
 

@@ -1,22 +1,36 @@
 import { accessSync, constants } from "node:fs";
 import { delimiter, join } from "node:path";
 import { claudeLoaded, codexNewest } from "../../core/daemon/version.js";
+import {
+  ANTIGRAVITY_INSTALL_COMMAND,
+  antigravityCli,
+  antigravityPlugin,
+} from "../antigravity/install.js";
 import { MARKETPLACE_NAME, MARKETPLACE_REPO, PLUGIN_ID } from "../plugin-id.js";
 
 /*
  * Spec 005 D3 step 1: the harnesses on the PATH and whether each has the
  * plugin. Read from the harnesses' own files, which Squeal never writes
  * (002 D1): Claude Code's `installed_plugins.json` and the Codex plugin cache.
+ * Antigravity (spec 024 D6) is listed only when its CLI or plugin is found,
+ * from `~/.gemini/config/`.
  */
 
-export type HarnessId = "claude-code" | "codex";
+export type HarnessId = "claude-code" | "codex" | "antigravity";
 
 export interface HarnessFact {
   readonly id: HarnessId;
-  /** The harness's CLI, `claude` or `codex`, is on the PATH. */
+  /** The harness's CLI, `claude`, `codex` or Antigravity's (`antigravityCli`), is on the PATH. */
   readonly onPath: boolean;
-  /** The plugin this directory loads; `null` when none is installed for it. */
-  readonly plugin: { readonly version: string; readonly scope: string } | null;
+  /**
+   * The plugin this directory loads; `null` when none is installed for it.
+   * `disabled` only for Antigravity: its `config.json` disables the plugin.
+   */
+  readonly plugin: {
+    readonly version: string;
+    readonly scope: string;
+    readonly disabled?: boolean;
+  } | null;
   /** What installs the plugin through the harness's own CLI (D3, `install.sh` step 2). */
   readonly installCommands: readonly string[];
 }
@@ -43,6 +57,21 @@ export function readHarnesses(root: string, env: Env): HarnessFact[] {
         `codex plugin add ${PLUGIN_ID}`,
       ],
     },
+    ...antigravityFact(env),
+  ];
+}
+
+/** Antigravity's fact when its CLI passes detection or its plugin is installed; none otherwise. */
+function antigravityFact(env: Env): HarnessFact[] {
+  const cli = antigravityCli(env) !== null;
+  const installed = antigravityPlugin(env);
+  if (!cli && installed === null) return [];
+  const plugin =
+    installed === null
+      ? null
+      : { version: installed.version, scope: "user", disabled: installed.disabled };
+  return [
+    { id: "antigravity", onPath: cli, plugin, installCommands: [ANTIGRAVITY_INSTALL_COMMAND] },
   ];
 }
 
