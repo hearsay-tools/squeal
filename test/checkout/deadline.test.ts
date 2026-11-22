@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { addCheckout } from "../../src/core/checkout/checkout.js";
 import { packageStore } from "../../src/core/checkout/location.js";
@@ -37,9 +37,13 @@ function scratch(): string {
   return dir;
 }
 
-/** A shell script that waits until `release` exists. */
+/** A shell script that waits until `release` exists, or its folder is gone (the test's cleanup). */
 function waiter(path: string, release: string): void {
-  writeFileSync(path, `#!/bin/sh\nwhile [ ! -e "${release}" ]; do sleep 0.05; done\n`);
+  const dir = dirname(release);
+  writeFileSync(
+    path,
+    `#!/bin/sh\nwhile [ ! -e "${release}" ] && [ -d "${dir}" ]; do sleep 0.05; done\n`,
+  );
   chmodSync(path, 0o755);
 }
 
