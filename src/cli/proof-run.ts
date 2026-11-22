@@ -154,7 +154,6 @@ async function runOnce(
     commit: input.side.code,
     own: input.own,
     run: toRun,
-    siblings: [],
     answer,
     changed: change,
     stored: forced === null,

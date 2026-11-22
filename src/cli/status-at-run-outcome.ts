@@ -11,7 +11,7 @@ import type { RunAnswer } from "./status-at-run-child.js";
 
 /*
  * Spec 023 D3, D4.7 (row 023-07, review wave-7 B2 and B7): each file's
- * state after `--run`. The gate answers by path, and runs a path under
+ * state after a run in its child (`squeal proof` since row 023-41). The gate answers by path, and runs a path under
  * every project that lists it, so a project's own outcome is read from the
  * shared store at that project's key, where the gate kept it: that also
  * proves it was stored. A file the gate did not store (coverage off at
@@ -25,12 +25,6 @@ export interface OutcomeInput {
   readonly own: WorktreeId;
   /** The files that ran. */
   readonly run: readonly KeyedFile[];
-  /**
-   * Files with no result the selection did not choose that share a path
-   * with one that ran: the gate ran them too, and they read as run only
-   * when the store holds their result.
-   */
-  readonly siblings: readonly KeyedFile[];
   readonly answer: RunAnswer;
   /**
    * Row 023-07 ("Whole-checkout check"): the first path the install
@@ -72,7 +66,6 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
     }
     return states;
   }
-  const chosen = new Set(input.run.map((f) => testFileId(f.ref)));
   // Review wave-11 B1: a file's outcome is read only at the key the gate kept this run's result
   // at, never at a key computed after the run, which a test that wrote its inputs can move.
   const kept = new Map(
@@ -82,14 +75,14 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
     ]),
   );
   await withStores(input.commonDir, async (main) => {
-    for (const file of [...input.run, ...input.siblings]) {
+    for (const file of input.run) {
       if (!("key" in file.at)) continue;
       const id = testFileId(file.ref);
       const at = kept.get(id);
       const records = main === null || at === undefined ? [] : resultsAt(main, file.ref, at);
       if (at !== undefined && records.length > 0) {
         states.set(id, asRun(stateOf(at, records, input.own), commit, true));
-      } else if (chosen.has(id)) {
+      } else {
         const runs = answer.result.runs.filter((r) => runOf(r, file.ref));
         const why =
           at === undefined
