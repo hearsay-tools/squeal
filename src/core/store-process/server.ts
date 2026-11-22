@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { codeStorePath } from "../code/store/open.js";
 import { acquireDaemonLock } from "../daemon/lock.js";
@@ -247,10 +247,11 @@ export async function startStoreProcess(
   );
 
   const graceMs = options.graceMs ?? STORE_PROCESS_GRACE_MS;
+  const fileSchema = fileSchemaReader(codeStorePath(commonDir));
   const check = () => {
     if ([...desks.values()].some((desk) => desk.leased) || queue.size > 0) lastClient = now();
     else if (now() - lastClient >= graceMs) void stop("idle");
-    if (fileSchema(commonDir) > ready.schema) void stop("newer-schema");
+    if (fileSchema() > ready.schema) void stop("newer-schema");
     // A repository removed under it (a harness's temp checkout, a test's) leaves nothing to serve.
     if (!existsSync(codeStorePath(commonDir))) void stop("removed");
   };
@@ -328,15 +329,45 @@ async function runOne(
   }
 }
 
+/** What a file's `stat` says changed it: its identity, time and size; `null` when missing. */
+function statKey(path: string): string | null {
+  try {
+    const { dev, ino, mtimeMs, size } = statSync(path);
+    return `${dev}:${ino}:${mtimeMs}:${size}`;
+  } catch {
+    return null;
+  }
+}
+
 /** The file's `user_version`; 0 when it cannot be read. */
-function fileSchema(commonDir: AbsolutePath): number {
+function readUserVersion(path: string): number {
   let db: DatabaseSync | null = null;
   try {
-    db = new DatabaseSync(codeStorePath(commonDir), { readOnly: true });
+    db = new DatabaseSync(path, { readOnly: true });
     return Number(Object.values(db.prepare("PRAGMA user_version").get() ?? {})[0] ?? 0);
   } catch {
     return 0;
   } finally {
     db?.close();
   }
+}
+
+/**
+ * Row 024-04 (spec 024 D4.3): the file's `user_version`, read again only when the file or its
+ * WAL changed. In WAL mode a schema change lands in `-wal` before a checkpoint copies it into
+ * the file, so both stats make the key. An idle store process opens no connection per check.
+ */
+export function fileSchemaReader(
+  path: string,
+  read: (path: string) => number = readUserVersion,
+): () => number {
+  let seen: { key: string; schema: number } | null = null;
+  return () => {
+    const key = `${statKey(path)}|${statKey(`${path}-wal`)}`;
+    if (seen?.key === key) return seen.schema;
+    const schema = read(path);
+    // A missing file reads 0 and is read again: it may be made at any time.
+    seen = schema === 0 ? null : { key, schema };
+    return schema;
+  };
 }

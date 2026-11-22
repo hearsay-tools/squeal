@@ -51,7 +51,7 @@ export interface DaemonTimings {
    */
   readonly pruneMs: number;
   readonly firstPruneMs: number;
-  /** How often the daemon counts its worktree's consumers. Default 250 ms. */
+  /** How often the daemon counts its worktree's consumers. Default 1 s (row 024-04). */
   readonly presenceMs: number;
   /**
    * How long a daemon that had a consumer runs with none before it exits, so
@@ -278,7 +278,7 @@ export function startTimers(context: TimerContext): () => void {
   const checkMs = timings.checkMs ?? Math.min(5_000, Math.max(50, idleMs / 10));
   const expireMs = timings.expireMs ?? 60_000;
   const pruneMs = timings.pruneMs ?? 60 * 60_000;
-  const presenceMs = timings.presenceMs ?? 250;
+  const presenceMs = timings.presenceMs ?? 1_000;
   const graceMs = timings.departureGraceMs ?? 3_000;
   const { presence } = context;
   const { locksDir } = storePaths(context.commonDir);
