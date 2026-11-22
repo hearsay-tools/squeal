@@ -2,7 +2,7 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/core/daemon/front-desk.ts
-import { randomUUID as randomUUID6 } from "node:crypto";
+import { randomUUID as randomUUID5 } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 
 // src/core/types/common.ts
@@ -62,7 +62,7 @@ var CommitDesk = class {
 };
 
 // src/core/daemon/handlers.ts
-import { randomUUID as randomUUID5 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 
 // src/core/types/daemon.ts
 function daemonIncarnation(daemon) {
@@ -692,9 +692,6 @@ function parseRequest(line) {
     case "hold-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "hold-status", requestId: request.requestId };
-    case "take-back":
-    case "take-back-status":
-      return parseTakeBack(request);
     case "commit-ask":
     case "commit-read":
       return parseCommitAsk(request);
@@ -752,17 +749,6 @@ function parseCommitAsk(request) {
     ...root === void 0 ? {} : { root }
   };
 }
-function parseTakeBack(request) {
-  if (request.type === "take-back-status") {
-    if (typeof request.requestId !== "string") return '"requestId" must be a string';
-    return { type: "take-back-status", requestId: request.requestId };
-  }
-  const { owners } = request;
-  if (!Array.isArray(owners) || !owners.every(isText3)) {
-    return '"owners" must be a list of non-empty strings';
-  }
-  return { type: "take-back", owners: [...owners] };
-}
 function parseSync(paths) {
   if (paths === void 0) return { type: "sync" };
   if (!Array.isArray(paths) || !paths.every(isText3)) {
@@ -771,28 +757,25 @@ function parseSync(paths) {
   return { type: "sync", paths: [...paths] };
 }
 function parseGroupPaths(request) {
-  const { group, paths, at, owner, lead } = request;
+  const { group, paths, at, lead } = request;
   if (!isText3(group)) return '"group" must be a non-empty string';
   if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText3)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
   if (at !== void 0 && at !== true) return '"at" must be true when given';
-  if (owner !== void 0 && !isText3(owner)) return '"owner" must be a non-empty string';
   if (lead !== void 0 && lead !== true) return '"lead" must be true when given';
   return {
     type: "run-group-paths",
     group,
     paths: [...paths],
     ...at === true ? { at } : {},
-    ...owner === void 0 ? {} : { owner },
     ...lead === true ? { lead } : {}
   };
 }
 function narrowOptionsOf(request) {
   return {
-    ...request.owner === void 0 ? {} : { owner: request.owner },
     ...request.lead === true ? { lead: true } : {},
-    // Row 023-36 (T3): beside the owner, so the daemon flags the accepted request's files.
+    // Row 023-36 (T3): so the daemon flags the accepted request's files.
     ...request.at === true ? { at: true } : {}
   };
 }
@@ -968,45 +951,6 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
 // src/core/daemon/run-slow.ts
 var SLOW_NOT_SUPPORTED = "run --slow is not supported by this daemon";
 
-// src/core/daemon/take-back-requests.ts
-import { randomUUID as randomUUID3 } from "node:crypto";
-function takeBackRequests(takeBack, max) {
-  const requests = /* @__PURE__ */ new Map();
-  const answer2 = (requestId, state) => ({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    ok: true,
-    type: "take-back",
-    requestId,
-    result: state.result,
-    error: state.error
-  });
-  return {
-    take(owners) {
-      if (takeBack === void 0) return errorResponse("this daemon cannot take back");
-      const requestId = randomUUID3();
-      const state = { result: null, error: null };
-      requests.set(requestId, state);
-      for (const old of requests.keys()) {
-        if (requests.size <= max) break;
-        requests.delete(old);
-      }
-      takeBack(owners).then(
-        (result) => {
-          state.result = result;
-        },
-        (error) => {
-          state.error = error instanceof Error ? error.message : String(error);
-        }
-      );
-      return answer2(requestId, state);
-    },
-    status(requestId) {
-      const state = requests.get(requestId);
-      return state === void 0 ? errorResponse(`unknown request id ${requestId}`) : answer2(requestId, state);
-    }
-  };
-}
-
 // src/core/daemon/version.ts
 function isNewerVersion(version, than) {
   const a = versionParts(version);
@@ -1023,7 +967,7 @@ function versionParts(version) {
 }
 
 // src/core/daemon/write-desk.ts
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync, readlinkSync } from "node:fs";
@@ -1120,7 +1064,7 @@ var WriteDesk = class {
     if (other !== null) return other;
     const current = this.#current();
     if (current !== null) return this.#leaseAnswer(null, current.holder);
-    const token = randomUUID4();
+    const token = randomUUID3();
     this.#lease = {
       token,
       holder: request.holder,
@@ -1160,7 +1104,7 @@ var WriteDesk = class {
       lease.pending++;
       if (request.release) lease.releasing = true;
     }
-    const requestId = randomUUID4();
+    const requestId = randomUUID3();
     const state = { written: null, error: null };
     this.#writes.set(requestId, state);
     for (const old of this.#writes.keys()) {
@@ -1278,7 +1222,6 @@ function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
   const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
-  const takeBacks = takeBackRequests(context.requestTakeBack, MAX_REQUESTS);
   const syncRequests = /* @__PURE__ */ new Map();
   const holdRequests = /* @__PURE__ */ new Map();
   const { requestWrite, storeSchema } = context;
@@ -1354,7 +1297,7 @@ function createHandlers(context) {
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID5();
+        const requestId = randomUUID4();
         const state = { checkpoint: null, error: null };
         remember2(requests, requestId, state);
         const full = {
@@ -1380,7 +1323,7 @@ function createHandlers(context) {
       case "run-slow": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID5();
+        const requestId = randomUUID4();
         const state = { requested: null, error: null };
         remember2(slowRequests, requestId, state);
         const request2 = context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
@@ -1413,15 +1356,11 @@ function createHandlers(context) {
       case "commit-ask":
       case "commit-read":
         return atAnswer(context, request);
-      case "take-back":
-        return takeBacks.take(request.owners);
-      case "take-back-status":
-        return takeBacks.status(request.requestId);
       case "sync": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         context.onActivity();
-        const requestId = randomUUID5();
+        const requestId = randomUUID4();
         const state = { revision: null, readers: null, error: null };
         remember2(syncRequests, requestId, state);
         context.requestSync(request.paths).then(
@@ -1443,7 +1382,7 @@ function createHandlers(context) {
       case "hold": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestHold === void 0) return errorResponse("this daemon cannot hold");
-        const requestId = randomUUID5();
+        const requestId = randomUUID4();
         const state = { holding: null, error: null };
         remember2(holdRequests, requestId, state);
         context.requestHold().then(
@@ -1623,7 +1562,6 @@ var waitingGroup = /* @__PURE__ */ new Map();
 var steps = new MainSteps();
 var waitingSync = /* @__PURE__ */ new Map();
 var waitingHold = /* @__PURE__ */ new Map();
-var waitingTakeBack = /* @__PURE__ */ new Map();
 var waitingWrite = /* @__PURE__ */ new Map();
 var waitingImport = /* @__PURE__ */ new Map();
 var waitingKeep = /* @__PURE__ */ new Map();
@@ -1639,17 +1577,17 @@ function bind(identity) {
     token: identity.token,
     phase: () => phase,
     requestFullSuite: (request) => new Promise((resolve, reject) => {
-      const id = randomUUID6();
+      const id = randomUUID5();
       waiting.set(id, { resolve, reject });
       post({ type: "run-all", id, request });
     }),
     requestSlowSuite: () => new Promise((resolve, reject) => {
-      const id = randomUUID6();
+      const id = randomUUID5();
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
     requestGroup: (group, held, paths, options) => new Promise((resolve, reject) => {
-      const id = randomUUID6();
+      const id = randomUUID5();
       waitingGroup.set(id, { resolve, reject, held });
       const narrow = {
         ...paths === void 0 ? {} : { paths },
@@ -1659,21 +1597,16 @@ function bind(identity) {
     }),
     mainStep: () => steps.current(),
     requestSync: (paths) => new Promise((resolve, reject) => {
-      const id = randomUUID6();
+      const id = randomUUID5();
       waitingSync.set(id, { resolve, reject });
       post({ type: "sync", id, ...paths === void 0 ? {} : { paths } });
     }),
     requestHold: () => new Promise((resolve, reject) => {
-      const id = randomUUID6();
+      const id = randomUUID5();
       waitingHold.set(id, { resolve, reject });
       post({ type: "hold", id });
     }),
     requestResume: async () => post({ type: "resume" }),
-    requestTakeBack: (owners) => new Promise((resolve, reject) => {
-      const id = randomUUID6();
-      waitingTakeBack.set(id, { resolve, reject });
-      post({ type: "take-back", id, owners });
-    }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
@@ -1686,17 +1619,17 @@ function bind(identity) {
     ...identity.storeSchema === void 0 ? {} : {
       storeSchema: identity.storeSchema,
       requestWrite: (batch) => new Promise((resolve, reject) => {
-        const id = randomUUID6();
+        const id = randomUUID5();
         waitingWrite.set(id, { resolve, reject });
         post({ type: "write", id, batch });
       }),
       requestImport: (request) => new Promise((resolve) => {
-        const id = randomUUID6();
+        const id = randomUUID5();
         waitingImport.set(id, resolve);
         post({ type: "import", id, request });
       }),
       requestKeep: (request) => new Promise((resolve) => {
-        const id = randomUUID6();
+        const id = randomUUID5();
         waitingKeep.set(id, resolve);
         post({ type: "keep", id, request });
       })
@@ -1767,13 +1700,6 @@ function receive(message) {
       waitingHold.delete(message.id);
       if (message.holding !== null) entry?.resolve(message.holding);
       else entry?.reject(new Error(message.error ?? "hold failed"));
-      return;
-    }
-    case "take-back-result": {
-      const entry = waitingTakeBack.get(message.id);
-      waitingTakeBack.delete(message.id);
-      if (message.result !== null) entry?.resolve(message.result);
-      else entry?.reject(new Error(message.error ?? "take-back failed"));
       return;
     }
     case "write-result": {
