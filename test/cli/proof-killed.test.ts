@@ -15,7 +15,8 @@ import { alive, gone, stateOf, waitFor } from "./status-at-processes.js";
  * with SIGKILL while its red side runs a test leaves no process running, a
  * process the test started included, and its checkouts are gone after the
  * next command's sweep: the red side's, and the green side's at HEAD, open
- * around it. Row 023-11: under a condition too, with the run's own `HOME`
+ * around it (row 023-42: the commit worktree at HEAD, whose daemon the
+ * child ran in its own process, so it died with it). Row 023-11: under a condition too, with the run's own `HOME`
  * inside the red checkout, whose links the sweep removes without their
  * targets. The test writes its worker's pid and its started process's pid
  * where `HOLD_OUT` says, then holds.
@@ -24,12 +25,15 @@ import { alive, gone, stateOf, waitFor } from "./status-at-processes.js";
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 const CHILD = resolve(import.meta.dirname, "proof-cli-child.ts");
 
+// Row 023-42: it holds on the red side only (A's code); the green side at HEAD, asked of the
+// commit daemon first, passes at once.
 const HOLD_TEST = [
   'import { spawn } from "node:child_process";',
   'import { writeFileSync } from "node:fs";',
   'import { it } from "vitest";',
   'import { value } from "../src/a";',
   'it("holds", async () => {',
+  "  if (value === 2) return;",
   '  const held = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });',
   "  const pids = { worker: process.pid, held: held.pid };",
   "  writeFileSync(process.env.HOLD_OUT ?? '', JSON.stringify(pids));",
@@ -62,7 +66,8 @@ async function killed(more: object, env: NodeJS.ProcessEnv, home?: string) {
     pids = [marks.worker, marks.held];
     expect(marks.worker).not.toBe(child.pid);
     for (const pid of pids) expect(await gone(pid, 15_000), stateOf(pid)).toBe(true);
-    // The green side's checkout at HEAD stays open while the red side runs in its own.
+    // The green side's checkout at HEAD (row 023-42: its commit worktree, whose daemon ran in the
+    // killed process) stays while the red side runs in its own.
     const open = f.checkouts();
     expect(open).toHaveLength(2);
     // Row 023-11: the run's own HOME lies in the red side's checkout folder.

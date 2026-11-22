@@ -21,7 +21,9 @@ import { clean } from "./status-at-kit.js";
  *    holds A's failure for every later reader (a temporary checkout at
  *    HEAD here; `status --at`, `proof` and a worktree daemon at HEAD key
  *    it alike, D2). The `it.fails` case states the right result and fails
- *    while the defect stands; drop `.fails` with the fix.
+ *    while the defect stands: the known defect "rewritten first-seen input
+ *    kept at the pre-run key", the board row beside issue #264 that the
+ *    coordinator adds; drop `.fails` with its fix.
  */
 
 const TEST = ref("test/a.test.ts");
