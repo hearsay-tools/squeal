@@ -7,6 +7,7 @@ import { nextOf } from "./status-at-next.js";
 import type { NowSide } from "./status-at-now.js";
 import { type AtReport, compareSides } from "./status-at-report.js";
 import type { QueuedRun } from "./status-at-report-queued.js";
+import { scopeOf } from "./status-at-report-scope.js";
 
 /*
  * Spec 023 D1, D3 (rows 023-06, 023-07, 023-24; row 023-29 moved it out
@@ -27,12 +28,26 @@ export interface AssembleInput {
   readonly side: Pick<CommitRun, "at" | "probe" | "state">;
   /** Row 023-40 (D7.3): what the call queued in the daemons or joined; absent without either. */
   readonly queued?: QueuedRun;
+  /**
+   * Row 023-53 (V8): the call's commit and paths as given, and the change's
+   * whole selection at the commit when its daemon counted it (`null` when not).
+   */
+  readonly scope?: {
+    readonly given: string;
+    readonly paths: readonly string[];
+    readonly selects: number | null;
+  };
 }
 
 export async function assembleReport(input: AssembleInput): Promise<AtReport> {
   const { root, commit, side, current, unmatched } = input;
   const { at } = side;
   const head = await readHead(root);
+  const given = input.scope;
+  const scope =
+    given === undefined
+      ? undefined
+      : scopeOf(given.given, given.paths, input.refs.length, given.selects);
   return {
     commit,
     commitTimeMs: await commitTime(root, commit),
@@ -45,6 +60,7 @@ export async function assembleReport(input: AssembleInput): Promise<AtReport> {
     failure: at.failure,
     files: compareSides(input.refs, side.state, current.state),
     ...(unmatched.length === 0 ? {} : { unmatched }),
+    ...(scope === undefined ? {} : { scope }),
     ...(input.queued === undefined ? {} : { run: input.queued }),
     ...nextOf(side.probe, at),
   };

@@ -257,7 +257,9 @@ export async function statusAtCommand(
   const { refs, unmatched } = unionRefs(now.refs, side.at.refs, paths, sides, root, commit);
   // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
   const current = await listLate(read, now, refs);
-  const report = await assembleReport({ root, commit, refs, unmatched, current, side });
+  // Row 023-53 (V8): a narrowed call's counts say what they cover.
+  const scope = { given: args.commit, paths: args.paths, selects: null };
+  const report = await assembleReport({ root, commit, refs, unmatched, current, side, scope });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
   return side.at.failure === null && unmatched.length === 0 ? exitCode(report.files) : 3;

@@ -16,6 +16,7 @@ import {
   unchangeable,
 } from "./status-at-report-files.js";
 import { type QueuedRun, queuedLines } from "./status-at-report-queued.js";
+import { type NarrowScope, scopeText } from "./status-at-report-scope.js";
 
 /*
  * Spec 023 D1 and D3 (row 023-06): one test file's state at a commit and
@@ -236,6 +237,8 @@ export interface AtReport {
    * closure, at the commit or now; absent when none.
    */
   readonly unmatched?: readonly string[];
+  /** Row 023-53 (V8): with paths, what the counts cover; absent without paths. */
+  readonly scope?: NarrowScope;
   /**
    * Row 023-40 (D7.3): what `--run` queued in the daemons, or `--wait`
    * joined, and what stands when the wait ended; absent without either.
@@ -310,7 +313,7 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
   const fixed = report.files.filter(unchangeable).length;
   const apart = fixed === 0 ? "" : `, ${fixed} not selected`;
   lines.push(
-    `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown - fixed} unknown${apart}`,
+    `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown - fixed} unknown${apart}${scopeText(report.scope, at)}`,
   );
   // A failed checkout ran nothing; its line above says why.
   if (report.run !== undefined && report.failure === null)
@@ -346,6 +349,7 @@ export function jsonAt(report: AtReport): string {
     // Row 023-35 (T2): `counts.unknown` keeps them; this splits them out.
     notSelected: notSelectedJson(report.files),
     unmatched: report.unmatched ?? [],
+    scope: report.scope ?? null,
     run: report.run ?? null,
     next: report.next ?? null,
     files: report.files.map((f) => ({
