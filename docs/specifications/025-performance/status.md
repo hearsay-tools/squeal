@@ -1,8 +1,8 @@
 # 025: Performance improvements - status
 
-- **Stage:** in-progress (approved by the human 2026-11-22: `/coordinator get it done`)
+- **Stage:** in-progress (Wave 1 landed in `0.1.600`, 2026-11-22; approved by the human 2026-11-22: `/coordinator get it done`)
 - **Coordinator:** `201d84ee`
-- **Target candidate:** `0.1.600` (on `0.1.599`, coordinated with spec 023 coordinator `d36c4d53` and spec 024 coordinator `795abf3c`)
+- **Landed:** Wave 1 (`025-01`..`025-05`) in `0.1.600` (candidate CI `45074688588` green on `7633b6de4`, private CI `45074688553` green, Codex reviews `0.1.600-r2.md` PASS and `0.1.600-r3.md` PASS)
 
 ## Amendments
 
