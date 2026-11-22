@@ -57,6 +57,28 @@ const VARIABLE = "SQUEAL_OBSERVE";
 const SELF = __filename;
 const KINDS = ["f", "l", "r", "w", "d", "m"];
 
+/** Row 024-04 (spec 024 D4.4): the most targets one process keeps before it starts over. */
+const REALPATH_CACHE_LIMIT = 16_384;
+
+/**
+ * `realpath` with its answers kept, so the `f`, `m` and `d` of one load, and every test file
+ * of a worker, ask the system once per path. A path that throws keeps nothing: it is asked
+ * again, so a file made later resolves.
+ */
+function realpathCache(realpath, limit = REALPATH_CACHE_LIMIT) {
+  const targets = new Map();
+  return (abs) => {
+    let target = targets.get(abs);
+    if (target === undefined) {
+      target = realpath(abs);
+      if (targets.size >= limit) targets.clear();
+      targets.set(abs, target);
+    }
+    return target;
+  };
+}
+module.exports = { realpathCache };
+
 function readSettings() {
   try {
     const value = JSON.parse(process.env[VARIABLE] ?? "");
@@ -86,6 +108,7 @@ if (settings !== null && !workerThreads.isInternalThread && !globalThis.__squeal
 function install(settings) {
   const { appendFileSync } = fs;
   const realpath = fs.realpathSync.native;
+  const cachedRealpath = realpathCache(realpath);
   const realSetImmediate = setImmediate;
   const root = settings.root.endsWith(path.sep) ? settings.root : settings.root + path.sep;
   let realRoot = root;
@@ -183,7 +206,7 @@ function install(settings) {
       if (abs === null || !add(file, kind, abs) || real) return;
       let target;
       try {
-        target = realpath(abs);
+        target = cachedRealpath(abs);
       } catch {
         return;
       }
