@@ -7,11 +7,13 @@ import { clearHandoff } from "../presence/events.js";
 import { markStart } from "../presence/lock-events.js";
 import { isBusy } from "../store/connection.js";
 import { isStoreOpenFailure, openStore } from "../store/open.js";
-import { lockFileFor } from "../store/paths.js";
+import { lockFileFor, storePaths } from "../store/paths.js";
+import { connectionOf } from "../store/store.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import type { DaemonExit, DaemonExitReason } from "../types/daemon.js";
 import type { Store, StoreOpenFailure } from "../types/store.js";
 import { liveDaemonRecorded, recordedDaemon } from "./ensure.js";
+import { checkpointPassively } from "./idle-checkpoint.js";
 import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
 import { VACANT_LOCK_WAIT_MS } from "./lock-wait.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
@@ -63,8 +65,9 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
  * too (review 001-347, B2), and one that cannot read it within
  * `decideWithinMs` lets go of the lock and exits as a timed-out wait
  * (review 001-351, B1);
- * the store, moved aside on a found fault's mark or on its open's own
- * corruption error (D12; no whole-store check, row 011-391; the full check
+ * the store, its commits never checkpointing while a timer checkpoints
+ * passively between them (spec 024 D5), moved aside on a found fault's
+ * mark or on its open's own corruption error (D12; no whole-store check, row 011-391; the full check
  * runs after serving, row 011-226) and the start's busy timeout
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
@@ -138,6 +141,8 @@ export async function openDaemon(
       return exit("store-unusable", 1, `store unusable: ${JSON.stringify(opened)}`);
     }
     ({ store, storeFile } = opened);
+    // Spec 024 D5: its commits never checkpoint, so the WAL is checkpointed between them.
+    checkpointPassively(connectionOf(store).db, `${storePaths(commonDir).database}-wal`);
   } catch (error) {
     lock.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
@@ -229,6 +234,7 @@ function openStoreFile(
     const before = storeFileOf(commonDir);
     const store = openStore(commonDir, {
       recoverFaults: true,
+      managedCheckpoint: true,
       busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
       now,
     });

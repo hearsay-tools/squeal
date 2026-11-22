@@ -2,13 +2,15 @@ import { existsSync } from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/open.js";
+import { codeStorePath, isCodeStoreOpenFailure, openCodeStore } from "../code/store/open.js";
+import { passiveCheckpoint } from "../daemon/idle-checkpoint.js";
 import { decodeBatch } from "../daemon/write-batch.js";
 import { Connection } from "../store/connection.js";
 import { logLongWrites, longWriteLine } from "../store/long-write.js";
+import { CONNECTION_PRAGMAS } from "../store/open.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { SentBatch } from "../types/daemon-writes.js";
-import { type GuardedEnd, GuardedWriter } from "./guard.js";
+import { type GuardedEnd, type GuardedSlice, type GuardedStatement, GuardedWriter } from "./guard.js";
 
 /*
  * Spec 021 D22.3 (row 021-36): the store process's one write connection,
@@ -43,6 +45,54 @@ export interface WriterScript {
   readonly execArgv?: readonly string[];
 }
 
+/** The writer looks at the WAL for a passive checkpoint at most this often (spec 024 D5). */
+export const WRITER_CHECKPOINT_MS = 1_000;
+
+/**
+ * Spec 024 D5: a writer whose connection never checkpoints at a commit
+ * (`wal_autocheckpoint = 0`), so no batch holds the write lock through a
+ * 1,000-page checkpoint. After a write, outside its transaction, it runs a
+ * passive checkpoint while the WAL is large (`passiveCheckpoint`), so the
+ * WAL stays bounded under sustained writes.
+ */
+export class CheckpointingWriter extends GuardedWriter {
+  readonly #db: DatabaseSync;
+  readonly #walPath: string;
+  readonly #now: () => number;
+  #looked = Number.NEGATIVE_INFINITY;
+
+  constructor(db: DatabaseSync, walPath: string, now: () => number = () => performance.now()) {
+    super(db);
+    this.#db = db;
+    this.#walPath = walPath;
+    this.#now = now;
+  }
+
+  override write(
+    worktreeId: WorktreeId,
+    seq: string,
+    statements: readonly GuardedStatement[],
+    slice: GuardedSlice = {},
+  ): GuardedEnd {
+    try {
+      return super.write(worktreeId, seq, statements, slice);
+    } finally {
+      this.#checkpoint();
+    }
+  }
+
+  #checkpoint(): void {
+    const at = this.#now();
+    if (at - this.#looked < WRITER_CHECKPOINT_MS) return;
+    this.#looked = at;
+    try {
+      passiveCheckpoint(this.#db, this.#walPath);
+    } catch {
+      // The next write's look tries again.
+    }
+  }
+}
+
 /** Opens the code store of `commonDir` for writing: the writer and the file's schema. */
 export function openWriteConnection(
   commonDir: AbsolutePath,
@@ -62,8 +112,10 @@ export function openWriteConnection(
     return `the code store did not open: ${JSON.stringify(opened)}`;
   const raw = db as DatabaseSync | null;
   if (raw === null) return "the code store did not open: no connection";
+  for (const pragma of CONNECTION_PRAGMAS) raw.exec(pragma);
+  raw.exec("PRAGMA wal_autocheckpoint = 0");
   return {
-    writer: new GuardedWriter(raw),
+    writer: new CheckpointingWriter(raw, `${codeStorePath(commonDir)}-wal`),
     schema: opened.schemaVersion,
     close: () => opened.close(),
   };

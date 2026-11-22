@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
 import type { EpochMs } from "../types/common.js";
 
@@ -46,6 +47,70 @@ export function truncateWal(db: DatabaseSync, busyMs: number): Checkpointed | nu
   } finally {
     db.exec(`PRAGMA busy_timeout = ${own}`);
   }
+}
+
+/*
+ * Spec 024 D5: a connection opened with `managedCheckpoint` (the daemon's,
+ * the store process's writer) never checkpoints at a commit, so its owner
+ * runs a `PASSIVE` checkpoint between its transactions while the WAL is
+ * large. A passive checkpoint takes no write lock and never waits: it copies
+ * what no reader still needs, and writers go on appending meanwhile.
+ */
+
+/**
+ * A passive checkpoint runs while the `-wal` file holds at least this much:
+ * about SQLite's default auto-checkpoint of 1,000 pages at 4 KiB, so the
+ * connections that still checkpoint at their commits (hooks) seldom reach it.
+ */
+export const PASSIVE_CHECKPOINT_BYTES = 4 * 1024 * 1024;
+
+/** How often the daemon looks at its store's WAL for a passive checkpoint. */
+export const PASSIVE_CHECKPOINT_MS = 15_000;
+
+/**
+ * `PRAGMA wal_checkpoint(PASSIVE)` on `db` when the file at `walPath` holds
+ * at least `minBytes`; `null`, with nothing run, while `db` has a
+ * transaction open or the file is smaller or missing.
+ */
+export function passiveCheckpoint(
+  db: DatabaseSync,
+  walPath: string,
+  minBytes = PASSIVE_CHECKPOINT_BYTES,
+): Checkpointed | null {
+  if (db.isTransaction) return null;
+  const wal = statSync(walPath, { throwIfNoEntry: false });
+  if (wal === undefined || wal.size < minBytes) return null;
+  const row = db.prepare("PRAGMA wal_checkpoint(PASSIVE)").get() ?? {};
+  return {
+    busy: Number(row.busy) !== 0,
+    log: Number(row.log),
+    checkpointed: Number(row.checkpointed),
+  };
+}
+
+/**
+ * Runs `passiveCheckpoint` on `db` every `everyMs` on an unreferenced timer,
+ * which ends once `db` is closed, or when the returned stop is called. A
+ * failed check is tried again at the next one.
+ */
+export function checkpointPassively(
+  db: DatabaseSync,
+  walPath: string,
+  everyMs = PASSIVE_CHECKPOINT_MS,
+): () => void {
+  const timer = setInterval(() => {
+    if (!db.isOpen) {
+      clearInterval(timer);
+      return;
+    }
+    try {
+      passiveCheckpoint(db, walPath);
+    } catch {
+      // The next check tries again; the idle checkpoint still cuts the file.
+    }
+  }, everyMs);
+  timer.unref();
+  return () => clearInterval(timer);
 }
 
 /** The daemon's work as a check sees it (`TimerContext.work`); `null` before its scheduler starts. */
