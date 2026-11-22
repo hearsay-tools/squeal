@@ -13,7 +13,7 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
 import type { CatchUpFile } from "./catch-up-fixture.js";
 import { ranPaths } from "./group-lanes-fixture.js";
-import { heldSide } from "./take-back-fixture.js";
+import { heldSide } from "./held-side-fixture.js";
 
 /*
  * Row 023-36 (T3; review wave-20 third look): a `status --at --run`

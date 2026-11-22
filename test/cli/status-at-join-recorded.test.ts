@@ -156,14 +156,8 @@ describe(
         find: () => tree,
         now: keyedNow,
         worktree: async () => null,
-        async ask(root, group, paths, _deadline, call) {
-          const request = {
-            type: "run-group-paths",
-            group,
-            paths,
-            at: true,
-            owner: call.owner,
-          } as const;
+        async ask(root, group, paths) {
+          const request = { type: "run-group-paths", group, paths, at: true } as const;
           await requestDaemon(socketOf(root), { ...request, lead: true }, 2_000);
           return "pending";
         },

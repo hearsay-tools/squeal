@@ -34,7 +34,6 @@ import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
   NarrowRunOptions,
-  TakeBackResult,
 } from "../types/scheduler.js";
 import type { CommitDesk } from "./commit-desk.js";
 import { errorResponse, narrowOptionsOf } from "./protocol.js";
@@ -42,7 +41,6 @@ import { RequestDesk } from "./request-desk.js";
 import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
-import { takeBackRequests } from "./take-back-requests.js";
 import { isNewerVersion } from "./version.js";
 import { WriteDesk } from "./write-desk.js";
 import {
@@ -171,12 +169,6 @@ export interface HandlerContext {
    */
   readonly requestKeep?: (request: KeepRequest) => Promise<KeepOutcome>;
   /**
-   * Row 023-34 (T1): `status --at --run` gives back what its narrow runs
-   * queued (`Scheduler.takeBack`), never awaited. Absent: this daemon
-   * answers that it cannot take back.
-   */
-  readonly requestTakeBack?: (owners: readonly string[]) => Promise<TakeBackResult>;
-  /**
    * Spec 023 D7.3 as amended (row 023-40c): a commit daemon's asks of
    * `status --at --run`, answered from memory. Absent: this daemon serves
    * no commit worktree.
@@ -246,7 +238,6 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
   const slowRequests = new Map<string, RunSlowState>();
   const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
-  const takeBacks = takeBackRequests(context.requestTakeBack, MAX_REQUESTS);
   const syncRequests = new Map<string, SyncState>();
   const holdRequests = new Map<string, HoldState>();
   const { requestWrite, storeSchema } = context;
@@ -397,10 +388,6 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
       case "commit-ask":
       case "commit-read":
         return atAnswer(context, request);
-      case "take-back":
-        return takeBacks.take(request.owners);
-      case "take-back-status":
-        return takeBacks.status(request.requestId);
       case "sync": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === undefined) return errorResponse("this daemon cannot sync");

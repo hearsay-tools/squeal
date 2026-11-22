@@ -9,7 +9,6 @@ import {
   AT_RUN_TTL_MS,
   AtRunRequests,
   flagAccepted,
-  TAKEN_BACK_MAX,
 } from "../../src/core/daemon/run-groups-watch.js";
 import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
@@ -19,7 +18,8 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
  * --run` marks its `run-group-paths` request with `at`, which reaches the
  * daemon's main thread with the request. Only a request the scheduler
  * accepted flags its selected files, by project and path; a refused one
- * flags nothing, and a take-back or an hour ends the flag.
+ * flags nothing, and its run or an hour ends the flag. Row 023-41 removed
+ * the take-back and the call's `owner`; the covered-files id keys a flag.
  */
 
 const cleanups: (() => unknown)[] = [];
@@ -35,17 +35,6 @@ describe("run-group-paths with at (023-36)", () => {
     expect(
       parseRequest('{"type":"run-group-paths","group":"e2e","paths":["a.test.ts"],"at":"yes"}'),
     ).toBe('"at" must be true when given');
-    expect(
-      parseRequest(
-        '{"type":"run-group-paths","group":"e2e","paths":["a.test.ts"],"at":true,"owner":"o-1"}',
-      ),
-    ).toEqual({
-      type: "run-group-paths",
-      group: "e2e",
-      paths: ["a.test.ts"],
-      at: true,
-      owner: "o-1",
-    });
     expect(
       parseRequest('{"type":"run-group-paths","group":"e2e","paths":["a.test.ts"]}'),
     ).not.toHaveProperty("at");
@@ -82,9 +71,7 @@ describe("run-group-paths with at (023-36)", () => {
           requestFullSuite: () => new Promise(() => {}),
           requestSlowSuite: () => new Promise(() => {}),
           requestGroup: (group, _held, paths, options) => {
-            heard.push(
-              `group ${group} ${paths?.join(",")}${options?.at === true ? ` at ${options.owner}` : ""}`,
-            );
+            heard.push(`group ${group} ${paths?.join(",")}${options?.at === true ? " at" : ""}`);
             return Promise.resolve({ revision: 1 as RevisionNumber, queued: 1 });
           },
           requestSync: () => new Promise(() => {}),
@@ -97,11 +84,11 @@ describe("run-group-paths with at (023-36)", () => {
       desk.setPhase("ready");
       const plain = { type: "run-group-paths", group: "e2e", paths: ["b.test.ts"] } as const;
       await requestDaemon(socketPath, plain, 2_000);
-      const at = { ...plain, paths: ["a.test.ts"], at: true, owner: "call-1" } as const;
+      const at = { ...plain, paths: ["a.test.ts"], at: true } as const;
       await requestDaemon(socketPath, at, 2_000);
       for (let i = 0; heard.length < 2 && i < 200; i++)
         await new Promise((resolve) => setTimeout(resolve, 10));
-      expect(heard).toEqual(["group e2e b.test.ts", "group e2e a.test.ts at call-1"]);
+      expect(heard).toEqual(["group e2e b.test.ts", "group e2e a.test.ts at"]);
     });
   }
 });
@@ -112,9 +99,9 @@ const B: TestFileRef = { project: "unit", path: "b.test.ts" };
 describe("which runs an at request flags (023-36, B8)", () => {
   it("flags nothing for a refused, unknown or plain request", () => {
     const requests = new AtRunRequests();
-    flagAccepted(requests, null, { at: true, owner: "call-1" });
-    flagAccepted(requests, { coveredId: "c1" }, { at: true, owner: "call-1" });
-    flagAccepted(requests, { newlyQueued: [A], coveredId: "c3" }, { owner: "call-1" });
+    flagAccepted(requests, null, { at: true });
+    flagAccepted(requests, { coveredId: "c1" }, { at: true });
+    flagAccepted(requests, { newlyQueued: [A], coveredId: "c3" }, { lead: true });
     flagAccepted(requests, { newlyQueued: [A], coveredId: "c2" }, undefined);
     expect(requests.flagged([A])).toBe(false);
   });
@@ -125,17 +112,6 @@ describe("which runs an at request flags (023-36, B8)", () => {
     expect(requests.flagged([A])).toBe(true);
     expect(requests.flagged([A_ELSEWHERE])).toBe(false);
     expect(requests.flagged([B, A])).toBe(true);
-    expect(requests.flagged([B])).toBe(false);
-  });
-
-  it("keys a call's requests by its owner, which one take-back ends", () => {
-    const requests = new AtRunRequests();
-    flagAccepted(requests, { newlyQueued: [A], coveredId: "c1" }, { at: true, owner: "call-1" });
-    flagAccepted(requests, { newlyQueued: [B], coveredId: "c2" }, { at: true, owner: "call-1" });
-    requests.takenBack(["c1"]);
-    expect(requests.flagged([A])).toBe(true);
-    requests.takenBack(["call-1"]);
-    expect(requests.flagged([A])).toBe(false);
     expect(requests.flagged([B])).toBe(false);
   });
 
@@ -150,31 +126,11 @@ describe("which runs an at request flags (023-36, B8)", () => {
     expect(requests.flagged([B])).toBe(true);
   });
 
-  it("never flags a request whose owner was taken back before its answer, for the hour", () => {
-    let now = 0;
-    const requests = new AtRunRequests(() => now);
-    requests.takenBack(["late"]);
-    flagAccepted(requests, { newlyQueued: [A], coveredId: "c1" }, { at: true, owner: "late" });
-    expect(requests.flagged([A])).toBe(false);
-    now = AT_RUN_TTL_MS;
-    expect(requests.wasTakenBack("late")).toBe(false);
-  });
-
-  it("keeps a bounded memory of taken-back owners", () => {
-    const requests = new AtRunRequests();
-    requests.takenBack(Array.from({ length: TAKEN_BACK_MAX + 5 }, (_, i) => `o${i}`));
-    expect(requests.wasTakenBack("o0")).toBe(false);
-    expect(requests.wasTakenBack(`o${TAKEN_BACK_MAX + 4}`)).toBe(true);
-  });
-
-  it("ends the flag when the files ran, at the request's take-back, or after the hour", () => {
+  it("ends the flag when the files ran, or after the hour", () => {
     let now = 0;
     const requests = new AtRunRequests(() => now);
     requests.accepted("c1", [A]);
     requests.ran([A]);
-    expect(requests.flagged([A])).toBe(false);
-    requests.accepted("c2", [A]);
-    requests.takenBack(["c2"]);
     expect(requests.flagged([A])).toBe(false);
     requests.accepted("c3", [A]);
     now = AT_RUN_TTL_MS;

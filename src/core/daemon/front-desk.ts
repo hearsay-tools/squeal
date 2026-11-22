@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
 import type { ImportOutcome, KeepOutcome } from "../types/daemon-writes.js";
-import type { FullSuiteCheckpoint, TakeBackResult } from "../types/scheduler.js";
+import type { FullSuiteCheckpoint } from "../types/scheduler.js";
 import { CommitDesk } from "./commit-desk.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
@@ -52,12 +52,6 @@ const waitingSync = new Map<
 const waitingHold = new Map<
   string,
   { resolve: (holding: boolean) => void; reject: (error: Error) => void }
->();
-
-/** Row 023-34 (T1): `take-back` requests the main thread has not answered. */
-const waitingTakeBack = new Map<
-  string,
-  { resolve: (result: TakeBackResult) => void; reject: (error: Error) => void }
 >();
 
 const waitingWrite = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
@@ -120,12 +114,6 @@ function bind(identity: DeskIdentity): void {
         post({ type: "hold", id });
       }),
     requestResume: async () => post({ type: "resume" }),
-    requestTakeBack: (owners) =>
-      new Promise((resolve, reject) => {
-        const id = randomUUID();
-        waitingTakeBack.set(id, { resolve, reject });
-        post({ type: "take-back", id, owners });
-      }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
@@ -228,13 +216,6 @@ function receive(message: ToDesk): void {
       waitingHold.delete(message.id);
       if (message.holding !== null) entry?.resolve(message.holding);
       else entry?.reject(new Error(message.error ?? "hold failed"));
-      return;
-    }
-    case "take-back-result": {
-      const entry = waitingTakeBack.get(message.id);
-      waitingTakeBack.delete(message.id);
-      if (message.result !== null) entry?.resolve(message.result);
-      else entry?.reject(new Error(message.error ?? "take-back failed"));
       return;
     }
     case "write-result": {

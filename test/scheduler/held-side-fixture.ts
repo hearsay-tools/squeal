@@ -13,7 +13,7 @@ import {
 import { groupPolicy, inTurn, runnerLane } from "./group-lanes-fixture.js";
 
 /*
- * Row 023-34 (T1, review wave-20 B1-B3): a started scheduler over `files`
+ * Row 023-34 (review wave-20 B2), row 023-36: a started scheduler over `files`
  * with the default baseline (lookup-only, as a user's daemon has it: a
  * miss is not queued until asked), one file a tier, and a gate that holds
  * every run until the test lets it go.

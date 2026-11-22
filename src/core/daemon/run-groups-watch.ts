@@ -17,65 +17,30 @@ import { runStopNote, stopRuns, type WorkerRule, workersOf } from "./run-groups-
  * groups that live carriers lead, are stopped (`stopRuns`) and named.
  * Which runs: those holding a file of a request the scheduler accepted
  * (`AtRunRequests`), by project and path. A request that failed, was
- * refused or queued nothing flags nothing; a taken-back request, or one
- * an hour old, no longer flags, and a request of an owner already taken
- * back never flags, though its intake ends after the take-back (review
- * wave-20 re-review B8). A batch that mixes such a file with others is that
- * request's run: its processes share one env, so the whole run is marked.
+ * refused or queued nothing flags nothing; one an hour old no longer
+ * flags. Row 023-41 removed the take-back, which also ended a request's
+ * flags. A batch that mixes such a file with others is that request's run:
+ * its processes share one env, so the whole run is marked.
  */
 
-/** How long an accepted request flags its files, unless a run ran them or it was taken back. */
+/** How long an accepted request flags its files, unless a run ran them. */
 export const AT_RUN_TTL_MS = 60 * 60 * 1_000;
-/** The most taken-back ids kept; the oldest goes first. A call's budget is minutes, the TTL an hour. */
-export const TAKEN_BACK_MAX = 1_024;
 
 /** The files of accepted `--run` requests, by request. */
 export class AtRunRequests {
   readonly #requests = new Map<string, { until: number; files: Set<string> }>();
-  /** Ids taken back, until when: a later acceptance of one flags nothing. */
-  readonly #takenBack = new Map<string, number>();
   readonly #now: () => number;
 
   constructor(now: () => number = Date.now) {
     this.#now = now;
   }
 
-  /**
-   * The scheduler accepted a request of `id`, its call's owner or its
-   * covered-files id, selecting `files`; an owner's requests add up.
-   */
+  /** The scheduler accepted a request of `id`, its covered-files id, selecting `files`. */
   accepted(id: string, files: readonly TestFileRef[]): void {
-    if (files.length === 0 || this.wasTakenBack(id)) return;
+    if (files.length === 0) return;
     const known = this.#requests.get(id)?.files ?? new Set<string>();
     for (const file of files) known.add(testFileId(file));
     this.#requests.set(id, { until: this.#now() + AT_RUN_TTL_MS, files: known });
-  }
-
-  /**
-   * The requests of `ids` (owners or covered-files ids) were taken back:
-   * they flag nothing more, and a request of theirs the scheduler answers
-   * later flags nothing either. A run already started keeps its token.
-   */
-  takenBack(ids: readonly string[]): void {
-    const until = this.#now() + AT_RUN_TTL_MS;
-    for (const id of ids) {
-      this.#requests.delete(id);
-      this.#takenBack.delete(id);
-      this.#takenBack.set(id, until);
-    }
-    for (const id of this.#takenBack.keys()) {
-      if (this.#takenBack.size <= TAKEN_BACK_MAX) break;
-      this.#takenBack.delete(id);
-    }
-  }
-
-  /** Whether `id` was taken back within the hour. */
-  wasTakenBack(id: string): boolean {
-    const until = this.#takenBack.get(id);
-    if (until === undefined) return false;
-    if (until > this.#now()) return true;
-    this.#takenBack.delete(id);
-    return false;
   }
 
   flagged(testFiles: readonly TestFileRef[]): boolean {
@@ -101,14 +66,13 @@ export class AtRunRequests {
 /**
  * After the scheduler answered a `status --at --run` request
  * (`options.at`): exactly the files it put in the queue itself
- * (`newlyQueued`) are flagged under its call's owner (row 023-34), else its
- * covered-files id, which a take-back names. A selected file that was
+ * (`newlyQueued`) are flagged under its covered-files id (row 023-41: the
+ * call's owner, the take-back's key, is gone). A selected file that was
  * current, already queued by another or running is not this request's
  * work and is never flagged, so a later ordinary run of it is left alone
- * (review wave-20 third look). A refused or unknown request, one taken
- * back before the scheduler took it, one without `at`, an answer from a
- * scheduler that does not say what it queued, or a request whose owner
- * was already taken back (`AtRunRequests.accepted`), flags nothing.
+ * (review wave-20 third look). A refused or unknown request, one
+ * without `at`, or an answer from a scheduler that does not say what it
+ * queued, flags nothing.
  */
 export function flagAccepted(
   requests: Pick<AtRunRequests, "accepted">,
@@ -117,7 +81,7 @@ export function flagAccepted(
 ): void {
   const files = requested?.newlyQueued ?? [];
   if (options?.at !== true || requested === null || files.length === 0) return;
-  requests.accepted(options.owner ?? requested.coveredId ?? randomUUID(), files);
+  requests.accepted(requested.coveredId ?? randomUUID(), files);
 }
 
 export interface RunGroupsOptions {
