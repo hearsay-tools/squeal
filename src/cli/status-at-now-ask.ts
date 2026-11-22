@@ -40,6 +40,21 @@ export const SETTING_UP =
   "the call's wait ended while this worktree's daemon set up (it starts or loads its configuration)";
 
 /**
+ * Awaits `pending` with a ref'd timer held, so the process lives until it
+ * settles: `syncDaemon` polls a pending answer on unref'd sleeps, and with
+ * nothing else ref'd a `status --at` call exited 13 ("unsettled top-level
+ * await") with no output (`tasks/023-40d-measure.md`: 4 of 16 second calls).
+ */
+export async function keptAlive<T>(pending: Promise<T>): Promise<T> {
+  const keep = setInterval(() => {}, 60_000);
+  try {
+    return await pending;
+  } finally {
+    clearInterval(keep);
+  }
+}
+
+/**
  * The real `AtDaemons.now`: one `sync` of the daemon of `root`, with the
  * named paths for their readers, polled until it answers or `deadline`
  * (epoch ms; `Infinity` for a bare `--wait`). A request on the wire is cut
@@ -53,7 +68,7 @@ export async function askNow(
   const until = performance.now() + Math.max(0, deadline - Date.now());
   const sync = syncDaemon(root, SYNC_POLL_MS, paths, until);
   try {
-    await sync.answered;
+    if (sync.answered !== undefined) await keptAlive(sync.answered);
   } finally {
     sync.stop();
   }
