@@ -115,6 +115,35 @@ const at = (dir: string, args: readonly string[]) => {
   return { code: r.code, report: parsed, row, text: `${r.stderr}\n${r.stdout}` };
 };
 
+/** Step 2's report (D7.3): both sides queued and known, nothing running, each row's origin. */
+function checkQueued(run: ReturnType<typeof at>, pair: Pair, waitCall: string): void {
+  const paths = [pair.test, pair.affected, pair.unaffected];
+  const existing = pair.newTest ? [pair.affected, pair.unaffected] : paths;
+  expect(run.report.run, run.text).toMatchObject({
+    mode: "queue",
+    commit: { reached: true, running: 0 },
+    now: { reached: true, files: paths.length, known: paths.length, running: 0 },
+    again: waitCall,
+    retry: null,
+  });
+  expect(run.report.run?.commit.tree).toEqual(expect.any(String));
+  // The commit side queues the files with no result at the parent's keys. The unaffected file
+  // shares its key with the working tree, so this worktree's daemon may store it first and the
+  // commit daemon then has it already: the changed files alone or every existing file, all known.
+  const changed = pair.newTest ? [pair.affected] : [pair.test, pair.affected];
+  const queuedAt = run.report.run?.commit.files ?? -1;
+  expect([changed.length, existing.length], run.text).toContain(queuedAt);
+  expect(run.report.run?.commit.known, run.text).toBe(queuedAt);
+  for (const path of existing) expect(run.row(path).at.state, path).toBe("pass");
+  // A changed key at the parent has only the commit daemon's result. An equal key is shared
+  // with the working tree: whichever valid result the store holds answers, this worktree's
+  // (`own`) or the commit daemon's (`commit`); review 0.1.596 B1.
+  for (const path of changed) expect(run.row(path).at.origin?.kind, path).toBe("commit");
+  expect(run.row(pair.unaffected).at.key).toBe(run.row(pair.unaffected).now.key);
+  expect(["own", "commit"]).toContain(run.row(pair.unaffected).at.origin?.kind);
+  for (const path of paths) expect(run.row(path).now.state, path).toBe("pass");
+}
+
 describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (pair) => {
   const skip = pair.source === SQUAWK && !SQUAWK_PRESENT;
   it.skipIf(skip)(
@@ -150,23 +179,7 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
         const parent = git(b, dir, ["rev-parse", "HEAD~1"]);
         const short = parent.slice(0, 9);
         const run = at(dir, ["HEAD~1", ...paths, "--run", "--all-missing", "--wait", "300000"]);
-        expect(run.report.run, run.text).toMatchObject({
-          mode: "queue",
-          commit: { reached: true, files: existing.length, known: existing.length, running: 0 },
-          now: { reached: true, files: paths.length, known: paths.length, running: 0 },
-          again: waitCall,
-          retry: null,
-        });
-        expect(run.report.run?.commit.tree).toEqual(expect.any(String));
-        for (const path of existing) expect(run.row(path).at.state, path).toBe("pass");
-        // A changed key at the parent has only the commit daemon's result. An equal key is shared
-        // with the working tree: whichever valid result the store holds answers, this worktree's
-        // (`own`) or the commit daemon's (`commit`); review 0.1.596 B1.
-        const changed = pair.newTest ? [pair.affected] : [pair.test, pair.affected];
-        for (const path of changed) expect(run.row(path).at.origin?.kind, path).toBe("commit");
-        expect(run.row(pair.unaffected).at.key).toBe(run.row(pair.unaffected).now.key);
-        expect(["own", "commit"]).toContain(run.row(pair.unaffected).at.origin?.kind);
-        for (const path of paths) expect(run.row(path).now.state, path).toBe("pass");
+        checkQueued(run, pair, waitCall);
 
         // 3. A second --run queues nothing on either side and reads every file from the store.
         const again = at(dir, ["HEAD~1", ...paths, "--run"]);
@@ -210,8 +223,10 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
         expect(plain.code, plain.text).toBe(pair.newTest ? 3 : 0);
 
         // The daemons the calls started stop, and the commit worktree goes with its daemon.
-        expect(squeal(b, dir, ["stop", "--at", parent]).code).toBe(0);
-        expect(squeal(b, dir, ["stop"]).code).toBe(0);
+        const stopAt = squeal(b, dir, ["stop", "--at", parent]);
+        expect(stopAt.code, `${stopAt.stderr}\n${stopAt.stdout}`).toBe(0);
+        const stop = squeal(b, dir, ["stop"]);
+        expect(stop.code, `${stop.stderr}\n${stop.stdout}`).toBe(0);
 
         // 5. The keys at the parent are the ones a worktree at the parent computes: there the
         // parent is "now", read from the store at the same keys, and HEAD's results are "at".
