@@ -13400,7 +13400,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.600";
+  if (true) return "0.1.601";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -19116,7 +19116,7 @@ function stopRules(context, project, input, deps) {
   const main = consumer.agentId === MAIN_AGENT;
   const holds2 = budget(context, required, stopHookActive);
   const version = deps.squealVersion ?? squealVersion();
-  const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
+  const elsewhere = main && (input.harness === "antigravity" || stopWaitRuns(store, consumer, input.harness, version));
   const decides = holds2 !== null && !elsewhere;
   const others = othersBlock(project);
   const failing = holds2 !== null && holds2.required.lintGroups.length > 0;
@@ -19143,7 +19143,9 @@ var STOP_RECORD_WAIT_MS = 500;
 var STOP_RECORD_POLL_MS = 25;
 async function waitingEntryRecorded(context, harness, deps, deadline) {
   const { store, consumer } = context;
-  if (harness === "pi" || consumer.agentId !== MAIN_AGENT) return false;
+  if (harness === "pi" || harness === "antigravity" || consumer.agentId !== MAIN_AGENT) {
+    return false;
+  }
   if (readStopHolds(store, consumer) > 0) return false;
   const version = deps.squealVersion ?? squealVersion();
   for (; ; ) {

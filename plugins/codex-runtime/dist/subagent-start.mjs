@@ -12916,7 +12916,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.600";
+  if (true) return "0.1.601";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -17477,6 +17477,8 @@ var LAUNCHER = join32("bin", "squeal");
 var VERSION2 = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join32("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join32("plugins", "data", "squeal-hearsay");
+var ANTIGRAVITY_PLUGIN = join32(".gemini", "config", "plugins", "squeal");
+var ANTIGRAVITY_DATA = join32(".gemini", "antigravity-cli", "plugin_data", "squeal");
 var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
 var KEEP_MS = 24 * 60 * 60 * 1e3;
 function dataLauncher(data) {
@@ -17485,8 +17487,8 @@ function dataLauncher(data) {
 function copyOf(data, version) {
   return join32(data, "versions", version);
 }
-function manifestVersion2(dir) {
-  const named2 = versionIn(join32(dir, MANIFEST));
+function manifestVersion2(dir, manifest = MANIFEST) {
+  const named2 = versionIn(join32(dir, manifest));
   if (!existsSync13(join32(dir, RUNTIME_MANIFEST2))) return named2;
   return versionIn(join32(dir, RUNTIME_MANIFEST2)) === named2 ? named2 : null;
 }
@@ -17498,35 +17500,39 @@ function versionIn(path) {
     return null;
   }
 }
-function kept2(data, version, file) {
+function kept2(data, version, file, layout) {
   const dir = copyOf(data, version);
   const path = join32(dir, file);
-  return existsSync13(path) && manifestVersion2(dir) === version ? path : null;
+  return existsSync13(path) && manifestVersion2(dir, layout.manifest) === version ? path : null;
 }
-function keptCli(data, version) {
-  return kept2(data, version, CLI);
+function keptCli(data, version, layout = {}) {
+  return kept2(data, version, CLI, layout);
 }
 function dataOfCopy(cli) {
   const versions = dirname15(dirname15(dirname15(dirname15(cli))));
   return cli.endsWith(`/${CLI}`) && basename6(versions) === "versions" ? dirname15(versions) : null;
 }
-function keptSkill(data, version) {
-  return kept2(data, version, SKILL);
+function keptSkill(data, version, layout = {}) {
+  return kept2(data, version, SKILL, layout);
 }
-function keepVersion({ root, data, version }) {
+function keepVersion(options) {
+  const { root, data, version, manifest = MANIFEST, copied = COPIED } = options;
+  const layout = { manifest };
   const dir = copyOf(data, version);
   if (!VERSION2.test(version) || !existsSync13(join32(root, CLI))) return null;
   try {
     const versions = join32(data, "versions");
-    const whole = keptCli(data, version) !== null;
-    if (!whole && existsSync13(dir) && manifestVersion2(dir) !== version) remove(versions, version);
-    if (manifestVersion2(root) !== version) return whole ? dir : null;
+    const whole = keptCli(data, version, layout) !== null;
+    if (!whole && existsSync13(dir) && manifestVersion2(dir, manifest) !== version) {
+      remove(versions, version);
+    }
+    if (manifestVersion2(root, manifest) !== version) return whole ? dir : null;
     let made = false;
     if (!whole) {
       mkdirSync13(versions, { recursive: true });
       const part = join32(versions, `.${version}.${process.pid}.tmp`);
       rmSync8(part, { recursive: true, force: true });
-      for (const name2 of COPIED) {
+      for (const name2 of copied) {
         if (existsSync13(join32(root, name2))) {
           cpSync(join32(root, name2), join32(part, name2), { recursive: true, dereference: true });
         }
@@ -17540,7 +17546,7 @@ function keepVersion({ root, data, version }) {
     }
     writeLauncher(root, data, version);
     if (made) pruneVersions(data, version);
-    return keptCli(data, version) === null ? null : dir;
+    return keptCli(data, version, layout) === null ? null : dir;
   } catch {
     return null;
   }

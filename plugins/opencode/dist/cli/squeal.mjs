@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.600";
+  if (true) return "0.1.601";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -86210,6 +86210,8 @@ function retainSeedCli(root, data2, version2) {
 // src/harness/shared/version-copies.ts
 var COPIED = ["dist", "skills", ".codex-plugin"];
 var MANIFEST = join45(".codex-plugin", "plugin.json");
+var ANTIGRAVITY_MANIFEST = "plugin.json";
+var ANTIGRAVITY_COPIED = ["dist", "skills", "plugin.json"];
 var RUNTIME_MANIFEST2 = "runtime.json";
 var CLI = join45("dist", "cli", "squeal.mjs");
 var SKILL = join45("skills", "squeal", "SKILL.md");
@@ -86218,16 +86220,24 @@ var LAUNCHER2 = join45("bin", "squeal");
 var VERSION2 = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join45("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join45("plugins", "data", "squeal-hearsay");
+var ANTIGRAVITY_PLUGIN = join45(".gemini", "config", "plugins", "squeal");
+var ANTIGRAVITY_DATA = join45(".gemini", "antigravity-cli", "plugin_data", "squeal");
 var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
 var KEEP_MS = 24 * 60 * 60 * 1e3;
+function antigravityPluginDir(env = process.env) {
+  return resolve12(env.HOME || homedir3(), ANTIGRAVITY_PLUGIN);
+}
+function antigravityDataDir(env = process.env) {
+  return resolve12(env.HOME || homedir3(), ANTIGRAVITY_DATA);
+}
 function dataLauncher(data2) {
   return join45(data2, LAUNCHER2);
 }
 function copyOf(data2, version2) {
   return join45(data2, "versions", version2);
 }
-function manifestVersion2(dir2) {
-  const named4 = versionIn(join45(dir2, MANIFEST));
+function manifestVersion2(dir2, manifest = MANIFEST) {
+  const named4 = versionIn(join45(dir2, manifest));
   if (!existsSync18(join45(dir2, RUNTIME_MANIFEST2))) return named4;
   return versionIn(join45(dir2, RUNTIME_MANIFEST2)) === named4 ? named4 : null;
 }
@@ -86239,32 +86249,36 @@ function versionIn(path) {
     return null;
   }
 }
-function kept3(data2, version2, file) {
+function kept3(data2, version2, file, layout2) {
   const dir2 = copyOf(data2, version2);
   const path = join45(dir2, file);
-  return existsSync18(path) && manifestVersion2(dir2) === version2 ? path : null;
+  return existsSync18(path) && manifestVersion2(dir2, layout2.manifest) === version2 ? path : null;
 }
-function keptCli(data2, version2) {
-  return kept3(data2, version2, CLI);
+function keptCli(data2, version2, layout2 = {}) {
+  return kept3(data2, version2, CLI, layout2);
 }
 function dataOfCopy(cli) {
   const versions2 = dirname24(dirname24(dirname24(dirname24(cli))));
   return cli.endsWith(`/${CLI}`) && basename9(versions2) === "versions" ? dirname24(versions2) : null;
 }
-function keepVersion({ root, data: data2, version: version2 }) {
+function keepVersion(options) {
+  const { root, data: data2, version: version2, manifest = MANIFEST, copied = COPIED } = options;
+  const layout2 = { manifest };
   const dir2 = copyOf(data2, version2);
   if (!VERSION2.test(version2) || !existsSync18(join45(root, CLI))) return null;
   try {
     const versions2 = join45(data2, "versions");
-    const whole = keptCli(data2, version2) !== null;
-    if (!whole && existsSync18(dir2) && manifestVersion2(dir2) !== version2) remove(versions2, version2);
-    if (manifestVersion2(root) !== version2) return whole ? dir2 : null;
+    const whole = keptCli(data2, version2, layout2) !== null;
+    if (!whole && existsSync18(dir2) && manifestVersion2(dir2, manifest) !== version2) {
+      remove(versions2, version2);
+    }
+    if (manifestVersion2(root, manifest) !== version2) return whole ? dir2 : null;
     let made = false;
     if (!whole) {
       mkdirSync13(versions2, { recursive: true });
       const part2 = join45(versions2, `.${version2}.${process.pid}.tmp`);
       rmSync9(part2, { recursive: true, force: true });
-      for (const name3 of COPIED) {
+      for (const name3 of copied) {
         if (existsSync18(join45(root, name3))) {
           cpSync(join45(root, name3), join45(part2, name3), { recursive: true, dereference: true });
         }
@@ -86278,7 +86292,7 @@ function keepVersion({ root, data: data2, version: version2 }) {
     }
     writeLauncher(root, data2, version2);
     if (made) pruneVersions(data2, version2);
-    return keptCli(data2, version2) === null ? null : dir2;
+    return keptCli(data2, version2, layout2) === null ? null : dir2;
   } catch {
     return null;
   }
@@ -86286,6 +86300,9 @@ function keepVersion({ root, data: data2, version: version2 }) {
 function keptCacheCli(cli, version2, env = process.env) {
   const codex = resolve12(env.CODEX_HOME || join45(env.HOME || homedir3(), ".codex"));
   const root = dirname24(dirname24(dirname24(cli)));
+  if (cli.endsWith(`/${CLI}`) && root === antigravityPluginDir(env)) {
+    return keptAntigravityCli(root, version2, env) ?? cli;
+  }
   const data2 = join45(codex, CODEX_DATA);
   if (cli.endsWith(`/${CLI}`) && basename9(root) === "seed" && dirname24(dirname24(root)) === join45(codex, CODEX_CACHE)) {
     const retainedData = env.PLUGIN_DATA && isAbsolute13(env.PLUGIN_DATA) ? env.PLUGIN_DATA : data2;
@@ -86296,6 +86313,12 @@ function keptCacheCli(cli, version2, env = process.env) {
   }
   if (!cli.endsWith(`/${CLI}`) || dirname24(root) !== join45(codex, CODEX_CACHE)) return cli;
   return keepVersion({ root, data: data2, version: version2 }) === null ? cli : keptCli(data2, version2) ?? cli;
+}
+function keptAntigravityCli(root, version2, env) {
+  const data2 = env.PLUGIN_DATA && isAbsolute13(env.PLUGIN_DATA) ? env.PLUGIN_DATA : antigravityDataDir(env);
+  const layout2 = { manifest: ANTIGRAVITY_MANIFEST, copied: ANTIGRAVITY_COPIED };
+  if (keepVersion({ root, data: data2, version: version2, ...layout2 }) === null) return null;
+  return keptCli(data2, version2, layout2);
 }
 function writeLauncher(root, data2, version2) {
   const target = dataLauncher(data2);
@@ -93647,6 +93670,8 @@ function waitForStatus(cwd, options) {
 function waitConsumer(env) {
   const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
   if (session !== null) return { session, agent: null };
+  const antigravity = env.ANTIGRAVITY_CONVERSATION_ID;
+  if (antigravity !== void 0 && antigravity !== "") return { session: antigravity, agent: null };
   const opencode = env.OPENCODE_SESSION_ID;
   if (opencode === void 0 || opencode === "") return { session: null, agent: null };
   const agent = env.OPENCODE_AGENT_ID;
