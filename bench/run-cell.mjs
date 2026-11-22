@@ -307,14 +307,17 @@ cell.phases.sessionDaemonCpuS = [...cpu1].map(([root, s]) => {
 cell.phases.edits = edits.length;
 cell.phases.sessionStoreProcessCpuS = storeMeter.cpuS() - sessionStore0;
 
-// 7b. `squeal reach`: reads every stored module list (loaded_modules) with no daemon; the store's worst size cost.
+// 7b. `squeal impact`: reads every stored module list (loaded_modules) with no daemon; the store's worst size cost.
+// A release before `impact` (spec 015 D11, 2026-11-22) exits 2 on it as an unknown command: run `reach` there.
 {
-  const r = await timedPeak(NODE, [...cli, "reach", "--json"], {
-    env,
-    cwd: main,
-    timeoutMs: 600_000,
-  });
-  cell.phases.reach = { ms: r.ms, code: r.code, peakRssBytes: r.peakRssBytes };
+  const opts = { env, cwd: main, timeoutMs: 600_000 };
+  let command = "impact";
+  let r = await timedPeak(NODE, [...cli, command, "--json"], opts);
+  if (r.code === 2) {
+    command = "reach";
+    r = await timedPeak(NODE, [...cli, command, "--json"], opts);
+  }
+  cell.phases.impact = { command, ms: r.ms, code: r.code, peakRssBytes: r.peakRssBytes };
 }
 
 // 8. Store, logs, stop.

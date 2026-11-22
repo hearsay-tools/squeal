@@ -343,12 +343,12 @@ export const METRICS = [
   },
   { id: "store.process.stops", what: "Store process: times it stopped", unit: "", group: "Store" },
   {
-    id: "cmd.reach.s",
-    what: "`squeal reach` (reads every stored module list)",
+    id: "cmd.impact.s",
+    what: "`squeal impact` (reads every stored module list)",
     unit: "s",
     group: "Commands",
   },
-  { id: "res.reach.rss", what: "`squeal reach` memory, peak", unit: "MiB", group: "Resources" },
+  { id: "res.impact.rss", what: "`squeal impact` memory, peak", unit: "MiB", group: "Resources" },
   {
     id: "store.longWrite.maxMs",
     what: "Longest logged lock hold (only holds over 250 ms are logged)",
@@ -617,6 +617,8 @@ function storeValues(cell, cellDir) {
   const holds = holdsOf(cell, cellDir);
   const churn = churnFromWatch(cellDir, cell);
   const doneS = churn?.pruneDoneAfterS ?? null;
+  // Runs before spec 015 D11's 2026-11-22 rename saved the same timing as `phases.reach`.
+  const impact = cell.phases.impact ?? cell.phases.reach;
   return {
     "store.longWrites": st.longWrites,
     "store.lockFailures": st.lockFailures,
@@ -627,8 +629,8 @@ function storeValues(cell, cellDir) {
     "store.fullCheck.s": churn?.fullCheckS ?? null,
     "store.longWrite.maxMs": holds ? maxOrNull(holds) : null,
     "store.longWrite.totalS": holds ? holds.reduce((a, b) => a + b, 0) / 1000 : null,
-    "cmd.reach.s": cell.phases.reach ? cell.phases.reach.ms / 1000 : null,
-    "res.reach.rss": cell.phases.reach ? cell.phases.reach.peakRssBytes / 2 ** 20 : null,
+    "cmd.impact.s": impact ? impact.ms / 1000 : null,
+    "res.impact.rss": impact ? impact.peakRssBytes / 2 ** 20 : null,
     ...storeProcessValues(cell.storeProcess),
   };
 }
@@ -689,8 +691,8 @@ const RAW = [
   "store.longWrites",
   "store.longWrite.maxMs",
   "store.longWrite.totalS",
-  "cmd.reach.s",
-  "res.reach.rss",
+  "cmd.impact.s",
+  "res.impact.rss",
 ];
 
 const AREAS = ["Hooks", "Commands", "Verdicts", "Resources", "Store"];
