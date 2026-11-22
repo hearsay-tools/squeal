@@ -1,19 +1,9 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Vitest } from "vitest/node";
-import { scriptPath } from "../../core/code/coverage/record.js";
 import type {
   CoveredFile,
   ExecutedSource,
-  V8Payload,
   VitestCoverageOptions,
 } from "../../core/code/coverage/types.js";
 import { compare } from "../../core/fs/compare.js";
@@ -44,6 +34,8 @@ export interface CoverageBatch {
   readonly projectName: string;
   /** Spec 022 D1: the files the worker's module runner held for the batch (`loadedFiles`). */
   readonly loaded?: readonly string[];
+  /** Spec 024 D3: the project script paths the worker's V8 coverage kept (`provider.mjs`). */
+  readonly scripts?: readonly AbsolutePath[];
 }
 
 /** Spec 015 D8 Fidelity: a test file whose closure imports `node:inspector` can read V8 coverage itself. */
@@ -258,7 +250,7 @@ export function coveredFiles(
   children = false,
 ): CoveredFile[] {
   const kept: { batch: CoverageBatch; ref: TestFileRef; environment: Environment }[] = [];
-  const payloads = new Map<Environment, string[]>();
+  const scriptsByEnv = new Map<Environment, Set<AbsolutePath>>();
   for (const batch of batches) {
     const project = vitest.projects.find((p) => p.name === batch.projectName);
     const environment = project?.vite.environments[batch.environment];
@@ -268,11 +260,13 @@ export function coveredFiles(
       continue;
     }
     kept.push({ batch, ref, environment });
-    payloads.set(environment, [...(payloads.get(environment) ?? []), batch.coverage]);
+    const set = scriptsByEnv.get(environment) ?? new Set<AbsolutePath>();
+    for (const script of batch.scripts ?? []) set.add(script);
+    scriptsByEnv.set(environment, set);
   }
   const executed = new Map<Environment, ReadonlyMap<AbsolutePath, ExecutedSource>>();
-  for (const [environment, files] of payloads) {
-    executed.set(environment, executedSources(environment, scriptPaths(files), stamps, paths));
+  for (const [environment, files] of scriptsByEnv) {
+    executed.set(environment, executedSources(environment, files, stamps, paths));
   }
   return kept.map(({ batch, ref, environment }): CoveredFile => {
     const sources = executed.get(environment) ?? new Map();
@@ -281,28 +275,6 @@ export function coveredFiles(
       : {};
     return { testFile: ref, payload: batch.coverage, sources, ...child };
   });
-}
-
-/**
- * Row 024-03: the files the scripts of `payloads` name, as the record reads
- * them (`scriptPath`). A payload that does not read gives none: its record
- * fails to map in any case.
- */
-function scriptPaths(payloads: readonly string[]): Set<AbsolutePath> {
-  const found = new Set<AbsolutePath>();
-  for (const payload of payloads) {
-    let result: V8Payload["result"];
-    try {
-      ({ result } = JSON.parse(readFileSync(payload, "utf8")) as V8Payload);
-    } catch {
-      continue;
-    }
-    for (const script of result ?? []) {
-      const path = typeof script?.url === "string" ? scriptPath(script.url) : null;
-      if (path !== null) found.add(path);
-    }
-  }
-  return found;
 }
 
 /**

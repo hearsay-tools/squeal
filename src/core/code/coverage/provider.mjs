@@ -149,10 +149,13 @@ export default {
     if (session === undefined || coverageFilesDirectory === undefined) return undefined;
     const { result } = await session.post("Profiler.takePreciseCoverage");
     const scripts = [];
+    const executed = new Set();
     for (const script of result) {
       if (!kept(script)) continue;
       // The evaluator's wrapper before the module's code (Vitest 4 and 5).
-      const info = moduleExecutionInfo?.get(fileURLToPath(script.url));
+      const path = fileURLToPath(script.url);
+      executed.add(path);
+      const info = moduleExecutionInfo?.get(path);
       scripts.push({ ...script, startOffset: info?.startOffset ?? 0 });
     }
     mkdirSync(coverageFilesDirectory, { recursive: true });
@@ -160,7 +163,7 @@ export default {
     const file = join(coverageFilesDirectory, `coverage-${children ?? randomUUID()}.json`);
     writeFileSync(file, JSON.stringify({ result: scripts }));
     if (children !== undefined) pointChildren(coverageFilesDirectory);
-    return { file, loaded: loadedFiles() };
+    return { file, loaded: loadedFiles(), scripts: [...executed] };
   },
 
   async stopCoverage() {
@@ -190,7 +193,8 @@ export default {
         const taken = meta.coverage;
         if (typeof taken?.file !== "string") return;
         const loaded = Array.isArray(taken.loaded) ? taken.loaded : [];
-        this.batches.push({ ...meta, coverage: taken.file, loaded });
+        const scripts = Array.isArray(taken.scripts) ? taken.scripts : [];
+        this.batches.push({ ...meta, coverage: taken.file, loaded, scripts });
       },
       /** The batches since the last call, for the daemon's adapter. */
       takeBatches() {

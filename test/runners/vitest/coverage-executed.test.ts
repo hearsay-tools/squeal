@@ -59,6 +59,7 @@ describe("coveredFiles: the sources the run executed", () => {
       testFiles: [`test/${name}.test.ts`],
       environment: "ssr",
       projectName: "",
+      scripts: files,
     });
     const covered = coveredFiles(
       vitest as unknown as Vitest,
@@ -82,7 +83,7 @@ describe("coveredFiles: the sources the run executed", () => {
     expect(a?.sources.get("/w/src/m7.ts")).toMatchObject({ path: "src/m7.ts", code: "m7" });
   });
 
-  it("gives no sources for a payload that does not read", () => {
+  it("gives no sources for a batch without scripts", () => {
     const vitest = {
       projects: [
         {
