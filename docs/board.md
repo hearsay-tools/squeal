@@ -2697,7 +2697,7 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 022-08 each prune vacuum step and list-delete step holds the store lock briefly | bench, then review (`cand/0.1.593` at `93524ae1c`, CI 44959216512; worker 53a099a3 `70d4e3b6a`; coordinator da243dbd, 2026-11-21) | The 022-05 bench: after 0.1.591 empties the lists, `incremental_vacuum(512)` slices held the lock 0.76 s on average, up to 2.4 s, about 6 min per 13-minute cell (estimated an hour once on a 7 GB store); hook after each batch slowest 5% 860-950 ms vs 215 ms. Time-bounded vacuum slices (about 100 ms) in both stores, smaller list-delete batches. | Brief's done-when; bench `store-7g` and `store-7g-wt3` pair 0.1.591 vs candidate |
-| 022-09 review of candidate 0.1.593 (row 022-08) | planned (after the bench pair; codex gpt-6.1-sol high; brief `tasks/wave-4.md`) | The brief's four checks on `cand/0.1.593`. | `reviews/0.1.593.md` committed with PASS or FAIL |
+| 022-09 review of candidate 0.1.593 (row 022-08) | running (codex gpt-6.1-sol high; brief `tasks/wave-4.md`; bench in `tasks/022-08/notes.md`) | The brief's four checks on `cand/0.1.593`. | `reviews/0.1.593.md` committed with PASS or FAIL |
 
 ## Feature 023: results at a commit
 
