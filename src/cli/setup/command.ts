@@ -71,6 +71,8 @@ export async function setupCommand(
   return parsed.mode === "check" && plan.outdated.length > 0 ? 1 : 0;
 }
 
+const HARNESS_VALUES: readonly string[] = ["claude-code", "codex", "antigravity", "none"];
+
 type SetupArgs =
   | { readonly mode: "plan" | "check"; readonly json: boolean }
   | { readonly mode: "apply"; readonly yes: boolean; readonly given: GivenAnswers };
@@ -97,9 +99,8 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
     const value = arg === flag ? args[++i] : arg.slice(flag.length + 1);
     if (value === undefined || value === "") return `${flag} takes a value`;
     if (flag === "--block") blocks.push(value);
-    else if (value === "claude-code" || value === "codex" || value === "none")
-      harnesses.push(value);
-    else return `--harness takes claude-code, codex or none, not "${value}"`;
+    else if (HARNESS_VALUES.includes(value)) harnesses.push(value as HarnessId | "none");
+    else return `--harness takes claude-code, codex, antigravity or none, not "${value}"`;
   }
   const setup = takeSetupFlags(rest);
   if (typeof setup === "string") return setup;

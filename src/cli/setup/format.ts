@@ -1,19 +1,14 @@
 import { vitestBelowRootReason } from "../../core/daemon/runner.js";
+import { ANTIGRAVITY_DISABLED } from "../antigravity/install.js";
 import { codexRuntimeLine } from "./codex-runtime.js";
 import { excludeKeys } from "./exclude.js";
+import type { HarnessFact } from "./harnesses.js";
 import type { CodexTrust, Runners, SetupPlan, Warmup } from "./plan.js";
 
 /** The plan for a human: one section per D3 step 2 fact, then what is outdated. */
 export function formatPlan(plan: SetupPlan): string {
   const lines = [`Squeal setup plan for ${plan.root}`, "", "Harnesses:"];
-  for (const h of plan.harnesses) {
-    const plugin =
-      h.plugin === null ? "plugin not installed" : `plugin ${h.plugin.version} (${h.plugin.scope})`;
-    lines.push(`  ${h.id}: ${h.onPath ? "on the PATH" : "not on the PATH"}, ${plugin}`);
-    if (h.onPath && h.plugin === null) {
-      lines.push(...h.installCommands.map((c) => `    install: ${c}`));
-    }
-  }
+  for (const h of plan.harnesses) lines.push(...harnessLines(h));
   const nodeTest = plan.runners.nodeTest.map(
     (p) => `${p.name}${p.source === "seed" ? " (squeal init would seed it)" : ""}`,
   );
@@ -118,6 +113,18 @@ export function formatPlan(plan: SetupPlan): string {
   if (plan.outdated.length === 0) lines.push("Nothing is outdated.");
   else lines.push("Outdated:", ...plan.outdated.map((line) => `  ${line}`));
   return `${lines.join("\n")}\n`;
+}
+
+/** One harness: where it stands, then why its plugin does not run or how to install it. */
+function harnessLines(h: HarnessFact): string[] {
+  const plugin =
+    h.plugin === null ? "plugin not installed" : `plugin ${h.plugin.version} (${h.plugin.scope})`;
+  return [
+    `  ${h.id}: ${h.onPath ? "on the PATH" : "not on the PATH"}, ${plugin}`,
+    // Spec 024 D6: Antigravity runs no hook of a plugin its config.json disables.
+    ...(h.plugin?.disabled === true ? [`    disabled: ${ANTIGRAVITY_DISABLED}`] : []),
+    ...(h.onPath && h.plugin === null ? h.installCommands.map((c) => `    install: ${c}`) : []),
+  ];
 }
 
 /**

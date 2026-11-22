@@ -143,17 +143,21 @@ export function withoutBlock(text: string): string | null | { readonly untermina
 const CLAUDE_FILES = ["CLAUDE.md", join(".claude", "CLAUDE.md"), "CLAUDE.local.md"];
 
 /**
- * D4: the file each harness reads, grouped by the file they resolve to
- * through symlinks. Codex reads `AGENTS.md`. Claude Code reads it only with
- * no Claude file at the root or above, or with an `@AGENTS.md` import;
- * otherwise `CLAUDE.md`.
+ * D4: the file each of `harnesses` reads, grouped by the file they resolve
+ * to through symlinks. Codex reads `AGENTS.md`, and so does Antigravity
+ * (spec 024 D6). Claude Code reads it only with no Claude file at the root
+ * or above, or with an `@AGENTS.md` import; otherwise `CLAUDE.md`.
  */
-export function instructionFiles(root: string, tracked: readonly string[]): InstructionFile[] {
+export function instructionFiles(
+  root: string,
+  tracked: readonly string[],
+  harnesses: readonly HarnessId[] = ["claude-code", "codex"],
+): InstructionFile[] {
   const claude = claudeReadsAgents(root) ? "AGENTS.md" : "CLAUDE.md";
-  const wanted: [HarnessId, string][] = [
-    ["claude-code", claude],
-    ["codex", "AGENTS.md"],
-  ];
+  const wanted = harnesses.map((h): [HarnessId, string] => [
+    h,
+    h === "claude-code" ? claude : "AGENTS.md",
+  ]);
   const files = new Map<string, { paths: string[]; harnesses: HarnessId[] }>();
   for (const [harness, path] of wanted) {
     const real = resolved(root, path);
