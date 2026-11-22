@@ -205,8 +205,9 @@ export function worktreeOf(
 /**
  * D1: exit 0 when every file is known on both sides, 3 when one is not, 2
  * on a usage or setup error. The order: HEAD's refusal before any keying
- * (`locate`), the current side, the commit side's keys, then, with `--run`
- * or `--wait`, the daemons' part (`daemonCall`, row 023-40), else the report.
+ * (`locate`); with `--run` or `--wait`, the daemons' part (`daemonCall`,
+ * row 023-40), which keys nothing; else the current side, the commit
+ * side's keys in a temporary checkout, and the report.
  */
 export async function statusAtCommand(
   args: AtArgs,
@@ -226,15 +227,21 @@ export async function statusAtCommand(
   const env = { ...(io.env ?? process.env) } as NodeJS.ProcessEnv;
   const nowMs = (io.now ?? Date.now)();
   const worktreeId = worktreeIdFor(root);
+  if ((args.run ?? null) !== null || (args.waitMs ?? null) !== null) {
+    // Spec 023 D7.3 as amended 2026-11-22 (review wave-23-third B1): both sides come from their
+    // daemons; the call keys nothing, here or at the commit. Review wave-23-third N1: no checkout line.
+    if (!args.json)
+      io.stderr(
+        `squeal: asking the commit daemon at ${commit.slice(0, 9)} and this worktree's daemon\n`,
+      );
+    const place = { root, commonDir, worktreeId, commit, paths };
+    return daemonCall({ args, place, env, startedMs, io, options });
+  }
   const keying = { adapters: daemonAdapters, squealVersion: squealVersion(), env };
   const read = { ...keying, root, commonDir, worktreeId, paths, now: nowMs };
   const now = await withStores(commonDir, (main) => nowSide({ ...read, main }));
   if (!args.json)
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
-  if ((args.run ?? null) !== null || (args.waitMs ?? null) !== null) {
-    const place = { root, commonDir, worktreeId, commit, paths };
-    return daemonCall({ args, place, read, now, env, startedMs, io, options });
-  }
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
   const side = await commitRun({
     root,

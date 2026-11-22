@@ -53,8 +53,12 @@ export interface QueuedRun {
   };
   /** R8: files with no result at the commit the change did not select, which were not queued. */
   readonly notSelected: number;
-  /** The working tree's side, in this worktree's daemon. */
-  readonly now: QueuedSide;
+  /**
+   * The working tree's side, in this worktree's daemon. Review
+   * wave-23-third B1: `setup`, the daemon had not answered when the wait
+   * ended (it starts or loads its configuration); absent from earlier reports.
+   */
+  readonly now: QueuedSide & { readonly setup?: boolean };
   /** Q7: the call that waits for what still runs; `null` when nothing does. */
   readonly again: string | null;
   /** Review wave-23 B1: the call that queues what the wait's end left not queued; `null` when none. */
@@ -110,13 +114,17 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
       `--wait: nothing is queued or running for these files at ${at} or in the working tree`,
     );
   const setup = commit.setup ?? null;
-  if ((setup !== null || commit.running + now.running > 0) && run.again !== null) {
+  const nowSetup = now.setup === true;
+  if ((setup !== null || nowSetup || commit.running + now.running > 0) && run.again !== null) {
     const there =
       setup === null
         ? `${commit.running} still running at ${at} (its worktree)`
         : `still setting up at ${at} (${setup})`;
+    const here = nowSetup
+      ? "still setting up in the working tree (its daemon starts or loads its configuration)"
+      : `${now.running} in the working tree`;
     lines.push(
-      `${there}, ${now.running} in the working tree; their runs go on in the daemons. ${run.again} waits for them; squeal ps shows them.`,
+      `${there}, ${here}; their runs go on in the daemons. ${run.again} waits for them; squeal ps shows them.`,
     );
   }
   return lines;
@@ -168,6 +176,10 @@ function nowLines(run: QueuedRun): string[] {
   else if (now.files > 0)
     lines.push(
       `${flag}, now: ${verbOf(run)} ${now.files} test files the change selects with no result in the working tree in this worktree's daemon; ${now.known} have a result now`,
+    );
+  else if (now.setup === true)
+    lines.push(
+      `${flag}, now: this worktree's daemon is still setting up (it starts or loads its configuration); nothing is known or queued in the working tree yet`,
     );
   else if (run.mode === "queue")
     lines.push("--run, now: every test file the change selects has a result in the working tree");
