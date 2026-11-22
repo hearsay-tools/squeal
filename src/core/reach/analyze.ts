@@ -1,5 +1,14 @@
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
+import { GatewayPairs } from "./gateways.js";
+import {
+  addObserver,
+  BROAD_READS,
+  broadGroups,
+  noObservers,
+  type Observers,
+  outsideModules,
+} from "./observers.js";
 import {
   AVOIDABLE_KINDS,
   COVERAGE_STATES,
@@ -12,6 +21,7 @@ import {
   pairsOf,
 } from "./pairs.js";
 import type { DeclaredPattern, ReachEdit, ReachSnapshot, ReachTestFile } from "./types.js";
+import { rerunSeconds, windowEdits } from "./window.js";
 
 /*
  * Spec 015 D11: every pair of the suite summed per source file and per test
@@ -65,6 +75,8 @@ export interface FileReach {
   notRecorded: number;
   /** By the module that imports it on a pair's chain (not the test file itself), its import pairs (015-121). */
   readonly through: Map<RelativePath, Evidence>;
+  /** How its runtime-read and child-process pairs reach their test files (row 015-128). */
+  readonly observers: Observers;
 }
 
 export interface TestReach {
@@ -81,6 +93,8 @@ export interface TestReach {
   readonly uncalledVia: Map<RelativePath, number>;
   /** Window edits that changed it or a file of its reach. */
   edits: number;
+  /** Module paths it re-runs on outside its import walk: runtime reads and child loads (row 015-128). */
+  outside: number;
 }
 
 export interface Analysis {
@@ -99,6 +113,14 @@ export interface Analysis {
   readonly edits: ReadonlyMap<RelativePath, number>;
   /** The window's edits, each of the paths this worktree has; an edit of none is left out (015-122). */
   readonly kept: readonly ReachEdit[];
+  /** Per path, the indexes in `kept` of the edits that changed it (row 015-128). */
+  readonly editsOf: ReadonlyMap<RelativePath, readonly number[]>;
+  /** Over `kept`, the seconds of the suite's test files each edit re-ran, each once per edit (row 015-128). */
+  readonly rerunSeconds: number;
+  /** Each broad reader's group: `<dir>/*`, or the test file (row 015-128). */
+  readonly readers: ReadonlyMap<RelativePath, string>;
+  /** The pairs of edited files, by gateway (row 015-128). */
+  readonly gateways: GatewayPairs;
 }
 
 const UNCALLED: ReadonlySet<CoverageState> = new Set(["loaded only", "not loaded"]);
@@ -124,21 +146,22 @@ export function analyze(
 ): Analysis {
   const context = new PairContext(snapshot);
   const suite = snapshot.testFiles.filter((t) => t.inSuite);
-  // 015-122: a path other worktrees edited that this one does not have costs nothing here.
-  const kept = snapshot.edits.flatMap((edit) => {
-    const paths = [...new Set(edit.paths)].filter((p) => snapshot.modules.hasBytes(p));
-    return paths.length === 0 ? [] : [{ at: edit.at, paths }];
-  });
-  const edits = new Map<RelativePath, number>();
-  for (const edit of kept) {
-    for (const path of edit.paths) edits.set(path, (edits.get(path) ?? 0) + 1);
-  }
+  const { kept, edits, editsOf } = windowEdits(snapshot);
   const files = new Map<RelativePath, FileReach>();
+  const gateways = new GatewayPairs();
   const tests = suite.map((test, index) => {
     const pairs = test.closure === null ? [] : pairsOf(test, context);
-    for (const pair of pairs) addPair(files, pair, test, index, detail(pair.path));
-    return testReach(test, pairs, kept);
+    const outside = outsideModules(pairs);
+    for (const pair of pairs) {
+      const file = addPair(files, pair, test, index, detail(pair.path));
+      addObserver(file.observers, pair, test.ref.path, outside);
+      if (edits.has(pair.path)) gateways.add(pair, test.ref.path, index, outside);
+    }
+    return { ...testReach(test, pairs, kept), outside };
   });
+  const readers = broadGroups(
+    tests.filter((t) => t.outside >= BROAD_READS).map((t) => t.test.ref.path),
+  );
   return {
     suite: {
       testFiles: suite.length,
@@ -151,6 +174,10 @@ export function analyze(
     tests,
     edits,
     kept,
+    editsOf,
+    rerunSeconds: rerunSeconds(kept, files, suite),
+    readers,
+    gateways,
   };
 }
 
@@ -160,7 +187,7 @@ function addPair(
   test: ReachTestFile,
   index: number,
   detail: boolean,
-) {
+): FileReach {
   let file = files.get(pair.path);
   if (file === undefined) {
     file = {
@@ -176,6 +203,7 @@ function addPair(
       reach: [],
       notRecorded: 0,
       through: new Map(),
+      observers: noObservers(),
     };
     files.set(pair.path, file);
   }
@@ -219,6 +247,7 @@ function addPair(
   route.coverage[pair.coverage] += seconds;
   count(route, pair.coverage);
   route.tests?.push({ path: test.ref.path, seconds: test.seconds, coverage: pair.coverage });
+  return file;
 }
 
 function count(evidence: Evidence, coverage: CoverageState) {
@@ -227,7 +256,11 @@ function count(evidence: Evidence, coverage: CoverageState) {
   if (MEASURED.has(coverage)) evidence.measured++;
 }
 
-function testReach(test: ReachTestFile, pairs: readonly Pair[], edits: readonly ReachEdit[]) {
+function testReach(
+  test: ReachTestFile,
+  pairs: readonly Pair[],
+  edits: readonly ReachEdit[],
+): Omit<TestReach, "outside"> {
   const imports = pairs.filter((p) => IMPORT_KINDS.has(p.kind));
   const uncalled = imports.filter((p) => UNCALLED.has(p.coverage));
   const uncalledVia = new Map<RelativePath, number>();

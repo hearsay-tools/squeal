@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatReach } from "../../src/cli/reach-format.js";
+import { formatImpact } from "../../src/cli/reach-format.js";
 import { buildReport, type ReportOptions } from "../../src/core/reach/report.js";
 import type { ReachSnapshot } from "../../src/core/reach/types.js";
 import { fakeGraph, record, snapshot, testFile, UNKNOWN } from "./fixture.js";
@@ -74,7 +74,7 @@ describe("015-120: setupFiles pairs in the test's process can be avoidable", () 
         text: "keep the setup's imports leaf-only: test/setup.ts → src/run-exits.ts → src/waits.ts",
       },
     });
-    expect(formatReach(r)).toContain(
+    expect(formatImpact(r)).toContain(
       "     paths: setup 98%, barrel 2%\n" +
         "     gateway: setup through src/run-exits.ts, for example test/setup.ts → src/run-exits.ts → src/waits.ts\n",
     );
@@ -175,22 +175,22 @@ describe("015-122: paths with no bytes in this worktree are left out of the list
       [["src/kept.ts"], 2, 8],
     ]);
     expect(r.absent).toBe(2);
-    expect(formatReach(r)).toContain(
+    expect(formatImpact(r)).toContain(
       "2 paths with no bytes in this worktree are left out of the lists: files of other worktrees or commits, or paths tests look for at run time.\n",
     );
   });
 
   it("counts only edits of paths the worktree has", () => {
-    expect(r.window).toEqual({ from: 10, to: 20, edits: 2 });
+    expect(r.window).toEqual({ from: 10, to: 20, edits: 2, rerunSeconds: 8 });
     expect(r.testFiles[0]?.edits).toBe(2);
-    expect(formatReach(r)).toContain(
-      "Edits: 2 from 1970-01-01 to 1970-01-01, every worktree's watch revisions in which HEAD did not move, of files this worktree has.\n",
+    expect(formatImpact(r)).toContain(
+      "Edits: 2 from 1970-01-01 to 1970-01-01, every worktree's watch revisions in which HEAD did not move, of files this worktree has; they re-ran 8 s in all.\n",
     );
   });
 
   it("prints no such line when every path is present", () => {
     const all = report(snapshot([t], { edits }));
     expect(all.absent).toBe(0);
-    expect(formatReach(all)).not.toContain("no bytes in this worktree");
+    expect(formatImpact(all)).not.toContain("no bytes in this worktree");
   });
 });

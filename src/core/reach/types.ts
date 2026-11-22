@@ -5,7 +5,7 @@ import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 
 /*
- * Spec 015 D11 (row 015-109): what `squeal reach` reads, as plain data. The
+ * Spec 015 D11 (row 015-109): what `squeal impact` reads, as plain data. The
  * analysis in this folder is pure over a `ReachSnapshot`; only `read.ts`
  * touches the stores and the files.
  */
@@ -40,7 +40,11 @@ export interface ReachTestFile {
   readonly current: boolean;
   /** Its trusted closure (`closureFor`); `null` when none is. */
   readonly closure: readonly RelativePath[] | null;
-  /** Paths a process it started imported (`observedModules.`, `observedDirect.`). */
+  /**
+   * Paths a process it started imported (`observedDirect.`). Not
+   * `observedModules.`, which holds every module its own worker loaded too
+   * (row 015-128).
+   */
   readonly childProcess: ReadonlySet<RelativePath>;
   /** Paths its runs read beyond its imports (`observed.`). */
   readonly runtimeRead: ReadonlySet<RelativePath>;
@@ -83,6 +87,19 @@ export interface ReachCoverage {
   readonly complexityEnabled: boolean;
 }
 
+/**
+ * Row 015-128: the test files that read their newest stored closure or walk,
+ * at no current key of this worktree, and when those were stored.
+ */
+export interface StaleFallback {
+  /** Test files whose closure is the newest stored one, not this worktree's. */
+  readonly closures: number;
+  /** Test files whose walk is the newest stored one, at another key. */
+  readonly walks: number;
+  readonly oldestAt: EpochMs;
+  readonly newestAt: EpochMs;
+}
+
 /** Everything the report reads from the stores, the policy and the files. */
 export interface ReachSnapshot {
   readonly testFiles: readonly ReachTestFile[];
@@ -95,4 +112,6 @@ export interface ReachSnapshot {
   declared(testPath: RelativePath, path: RelativePath): DeclaredPattern | null;
   /** `baseline.onStart`: whether `squeal start` runs the test files its lookups find no result for (015-116, P9). */
   readonly onStart: Policy["baseline"]["onStart"];
+  /** Row 015-128: what read the newest stored closures and walks; absent or `null` when nothing did. */
+  readonly stale?: StaleFallback | null;
 }
