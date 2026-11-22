@@ -8,16 +8,15 @@ import { recordGroup } from "../core/checkout/marker.js";
 import { leaseProcess } from "../core/daemon/lease-process.js";
 import type { HostLoad } from "../core/retry/load.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
-import type { TestFileRef } from "../core/types/keys.js";
-import { ADAPTERS } from "./code-gate.js";
 import { type GateFilesProgress, type GateFilesResult, runGateFiles } from "./code-gate-files.js";
 import { PARENT_PID_VARIABLE, takeParentPid, watchParent } from "./code-gate-parent.js";
-import { onlyThese } from "./status-at-run-only.js";
-import { type SetupFailure, setupOf } from "./status-at-run-setup.js";
 
 /*
- * Spec 023 D4.4, D6 (row 023-07, review wave-7 B1 and B3): `--run` runs
- * 020's gate (`runGateFiles`) in a child of the CLI that leads a process
+ * Row 023-41: the in-call `status --at --run` that also ran here is gone
+ * (D7.3); only `squeal proof`'s sides use this child now.
+ *
+ * Spec 023 D4.4, D6 (row 023-07, review wave-7 B1 and B3): `squeal proof`
+ * runs 020's gate (`runGateFiles`) in a child of the CLI that leads a process
  * group of its own. Its group is recorded in the checkout's marker, so the
  * checkout's removal and the next sweep stop it, with every process a test
  * started in it; the child ends its group, and its descendants' groups, as
@@ -36,12 +35,6 @@ const GRACE_SECONDS = 60;
 interface RunRequest {
   readonly tree: AbsolutePath;
   readonly files: readonly RelativePath[];
-  /**
-   * Row 023-29 (review wave-18 B3): the batch's own files by project and
-   * path; the gate lists no other (`onlyThese`). Absent: every project
-   * that lists a path runs it (`squeal proof`).
-   */
-  readonly refs?: readonly TestFileRef[];
   readonly budgetSeconds: number;
   readonly tempDir: AbsolutePath;
   readonly answer: string;
@@ -77,22 +70,11 @@ export function noLoadRetry(): HostLoad {
  * child kept as it went: what completed, and what was kept at which key.
  */
 export type RunAnswer =
-  | {
-      readonly result: GateFilesResult;
-      /** Row 023-29 (R3): the runs that failed to start, as the gate's notes told them. */
-      readonly setup?: readonly SetupFailure[];
-    }
+  | { readonly result: GateFilesResult }
   | {
       readonly error: string;
       readonly stopped?: true;
       readonly record?: GateFilesProgress;
-      /**
-       * Row 023-29 (review wave-18 B2): the gate rejected before it ran a
-       * file (a runner that cannot start, a config that throws): its setup
-       * notes, else its error's first line. Absent for a stop or a child
-       * that gave no answer.
-       */
-      readonly setup?: readonly SetupFailure[];
     };
 
 /** The request file this process was given, taken out of `env` at once; `undefined` when none. */
@@ -109,31 +91,22 @@ export async function runChild(request: string): Promise<number> {
   if (parent !== undefined) watchParent(parent);
   const asked = JSON.parse(readFileSync(request, "utf8")) as RunRequest;
   let answer: RunAnswer;
-  const setup: SetupFailure[] = [];
   try {
     const result = await runGateFiles({
       root: asked.tree,
       files: asked.files,
-      ...(asked.refs === undefined ? {} : { adapters: onlyThese(ADAPTERS, asked.refs) }),
       budgetSeconds: asked.budgetSeconds,
       tempDir: asked.tempDir,
       store: asked.store,
       ...(asked.rerunFailures === true ? { rerunFailures: true } : {}),
       ...(asked.retry === false ? { hostLoad: noLoadRetry } : {}),
       ...(asked.progress === undefined ? {} : { progress: keeper(asked.progress) }),
-      note: (text) => {
-        const failed = setupOf(text);
-        if (failed !== null) setup.push(failed);
-        process.stderr.write(`squeal: ${text}\n`);
-      },
+      note: (text) => process.stderr.write(`squeal: ${text}\n`),
       output: () => {},
     });
-    answer = setup.length === 0 ? { result } : { result, setup };
+    answer = { result };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    // Review wave-18 B2: the gate's own setup error; the notes it told first are kept.
-    const told = setup.length > 0 ? setup : [{ runner: "", text: message.split("\n")[0] ?? "" }];
-    answer = { error: message, setup: told };
+    answer = { error: error instanceof Error ? error.message : String(error) };
   }
   writeFileSync(asked.answer, JSON.stringify(answer));
   return 0;
@@ -169,8 +142,6 @@ export interface ChildRun {
   readonly relaunch: readonly string[] | undefined;
   readonly checkout: Checkout;
   readonly files: readonly RelativePath[];
-  /** Review wave-18 B3: the batch's own files by project and path; absent: every project. */
-  readonly refs?: readonly TestFileRef[];
   readonly budgetSeconds: number;
   /** Row 023-07: `false` when the install changed the checkout: the gate stores nothing. */
   readonly store: boolean;
@@ -178,11 +149,6 @@ export interface ChildRun {
   readonly retry?: boolean;
   /** Review wave-14 B2: each stored failure runs once more and its rerun is kept. */
   readonly rerunFailures?: boolean;
-  /**
-   * Row 023-19 (P3): seconds from the child's start to the parent's hard
-   * stop of its group; default the budget plus 60 s.
-   */
-  readonly stopAfterSeconds?: number;
   /** The child's whole environment: the command's, as it started. */
   readonly env: NodeJS.ProcessEnv;
   /** The child's stdout and stderr, as they come. */
@@ -204,7 +170,6 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
   const asked: RunRequest = {
     tree: checkout.tree,
     files: run.files,
-    ...(run.refs === undefined ? {} : { refs: run.refs }),
     budgetSeconds: run.budgetSeconds,
     tempDir: checkout.run,
     answer,
@@ -248,7 +213,7 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
       stopped = true;
       if (pid !== undefined) void stopGroup(pid).catch(() => {});
     },
-    (run.stopAfterSeconds ?? run.budgetSeconds + GRACE_SECONDS) * 1000,
+    (run.budgetSeconds + GRACE_SECONDS) * 1000,
   );
   const how = await exited;
   clearTimeout(limit);

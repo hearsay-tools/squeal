@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { prove } from "./proof-kit.js";
-import { clean, runCommit } from "./status-at-kit.js";
+import { clean } from "./status-at-kit.js";
 
 /*
  * Row 023-18 D2 (`tasks/023-09-notes.md`): with coverage on, a run file the
@@ -37,22 +37,6 @@ function notKeptFix() {
 }
 
 describe("a run file the gate does not keep names the gate's reason (row 023-18 D2)", SLOW, () => {
-  it("the in-call run at its boundary, until row 023-41 removes it (row 023-40)", async () => {
-    const json = notKeptFix();
-    const out = await runCommit(
-      json.f,
-      { commit: json.a, run: { allMissing: false, timeoutSeconds: 600 } },
-      json.options,
-    );
-    const report = JSON.parse(out.out);
-    expect(report.files[0].at.origin, out.err).toMatchObject({ kind: "run", stored: false });
-    expect(report.files[0].at.origin.notStored).toBe(
-      "the gate did not keep it: it read paths first seen during the run (src/package.json)",
-    );
-    expect(report.run.notStored).toEqual([report.files[0].at.origin.notStored]);
-    clean(json.f);
-  });
-
   it("squeal proof", async () => {
     const { f, options } = notKeptFix();
     const a = git(f.root, "rev-parse", "HEAD~1").trim();

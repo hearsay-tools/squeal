@@ -7,13 +7,12 @@ import { nextOf } from "./status-at-next.js";
 import type { NowSide } from "./status-at-now.js";
 import { type AtReport, compareSides } from "./status-at-report.js";
 import type { QueuedRun } from "./status-at-report-queued.js";
-import type { NowPart } from "./status-at-run.js";
 
 /*
  * Spec 023 D1, D3 (rows 023-06, 023-07, 023-24; row 023-29 moved it out
  * of `statusAtCommand`): the report of one call, from both sides once
  * every run ended: each file compared, the commit's and HEAD's facts, the
- * checkout's, `--run`'s budget use with the working tree's part, and Q1's
+ * checkout's, what the call queued in the daemons or joined, and Q1's
  * next step.
  */
 
@@ -25,16 +24,14 @@ export interface AssembleInput {
   readonly unmatched: readonly RelativePath[];
   /** The current side as last read: after the working tree's run, when it ran. */
   readonly current: NowSide;
-  readonly side: Pick<CommitRun, "at" | "ran" | "probe" | "state">;
-  /** R1: the working tree's part of `--run`; `null` when it did not run. */
-  readonly part: NowPart | null;
+  readonly side: Pick<CommitRun, "at" | "probe" | "state">;
   /** Row 023-40 (D7.3): what the call queued in the daemons or joined; absent without either. */
   readonly queued?: QueuedRun;
 }
 
 export async function assembleReport(input: AssembleInput): Promise<AtReport> {
   const { root, commit, side, current, unmatched } = input;
-  const { at, ran } = side;
+  const { at } = side;
   const head = await readHead(root);
   return {
     commit,
@@ -48,11 +45,7 @@ export async function assembleReport(input: AssembleInput): Promise<AtReport> {
     failure: at.failure,
     files: compareSides(input.refs, side.state, current.state),
     ...(unmatched.length === 0 ? {} : { unmatched }),
-    ...(input.queued !== undefined
-      ? { run: input.queued }
-      : ran === null
-        ? {}
-        : { run: ran.use(input.part ?? undefined) }),
+    ...(input.queued === undefined ? {} : { run: input.queued }),
     ...nextOf(side.probe, at),
   };
 }

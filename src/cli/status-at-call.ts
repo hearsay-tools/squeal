@@ -123,8 +123,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
     unmatched: after.unmatched,
     current: after.current,
     // Review wave-23 S2: Q1's step was read before the wait; the call's own lines say what is next.
-    side: { at: after.at, ran: null, probe: null, state: after.at.state },
-    part: null,
+    side: { at: after.at, probe: null, state: after.at.state },
     queued: queuedRun(input, waitMs, [atQueue, nowQueue], after, run !== null),
   });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, input.startedMs, args.full === true));

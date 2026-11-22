@@ -35,7 +35,6 @@ import { runChild, takeRunRequest } from "./status-at-run-child.js";
  * waits for a place under the ceiling.
  */
 export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install"> & {
-  readonly batchFiles?: number;
   readonly daemons?: AtDaemons;
   readonly placeWaitMs?: number;
 };
@@ -245,24 +244,20 @@ export async function statusAtCommand(
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
   const side = await commitRun({
     root,
-    commonDir,
     worktreeId,
     commit,
     given: args.commit,
     givenPaths: args.paths,
     paths,
-    run: null,
     env,
-    relaunch: io.relaunch,
     note,
-    forward: () => undefined,
     options,
   });
   const sides = { now: now.sources, at: side.at.sources, failed: side.at.failure !== null };
   const { refs, unmatched } = unionRefs(now.refs, side.at.refs, paths, sides, root, commit);
   // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
   const current = await listLate(read, now, refs);
-  const report = await assembleReport({ root, commit, refs, unmatched, current, side, part: null });
+  const report = await assembleReport({ root, commit, refs, unmatched, current, side });
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
   return side.at.failure === null && unmatched.length === 0 ? exitCode(report.files) : 3;

@@ -4,11 +4,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect } from "vitest";
 import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
-import { commitRun } from "../../src/cli/status-at-commit-run.js";
 import type { AtDaemons, NarrowCall } from "../../src/cli/status-at-daemons.js";
-import type { RunArgs } from "../../src/cli/status-at-run.js";
-import { resolveCommit } from "../../src/core/commit/at-keys-checkout.js";
-import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { CommitAskRequest } from "../../src/core/types/commit-ask.js";
 import {
@@ -31,7 +27,7 @@ import { keyedNow } from "./status-at-now-stand-in.js";
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 
 /**
- * Row 023-07: this repository's CLI from source through tsx, so `--run`'s child is a real one;
+ * Row 023-07: this repository's CLI from source through tsx, so `squeal proof`'s child is a real one;
  * row 011-425: at the worker's version, so it reads no `package.json` for one.
  */
 export const RELAUNCH: readonly string[] = [
@@ -106,44 +102,6 @@ export async function run(
 export function clean(f: Fixture): void {
   expect(f.checkouts()).toEqual([]);
   expect(git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
-}
-
-/**
- * Row 023-29 (review wave-18 note 3): the commit side's run alone, at the
- * commit-run boundary (`commitRun` with no working tree's turn), for tests
- * of that run: its batches, stops, stores and records. `out` is JSON with
- * the fields of the command's report those tests read: each file's commit
- * side, `run` and `failure`. `root`: the worktree it runs from.
- */
-export async function runCommit(
-  f: Fixture,
-  args: { readonly commit: string; readonly paths?: readonly string[]; readonly run: RunArgs },
-  options: AtOptions = { cacheRoot: f.cacheRoot, install: linkInstall().install },
-  root: string = f.root,
-): Promise<{ readonly out: string; readonly err: string }> {
-  const tree = realpathSync(root) as AbsolutePath;
-  const commonDir = resolveCommonDir(tree);
-  if (commonDir === null) throw new Error(`${tree} is not in a git worktree`);
-  const err: string[] = [];
-  const paths = args.paths ?? [];
-  const side = await commitRun({
-    root: tree,
-    commonDir,
-    worktreeId: worktreeIdFor(tree),
-    commit: await resolveCommit(tree, args.commit),
-    given: args.commit,
-    givenPaths: paths,
-    paths: paths.length === 0 ? null : paths,
-    run: args.run,
-    env: { ...process.env },
-    relaunch: RELAUNCH,
-    note: (text) => err.push(`squeal: ${text}\n`),
-    forward: (text) => err.push(text),
-    options,
-  });
-  const files = side.at.refs.map((ref) => ({ ...ref, at: side.state(ref) }));
-  const out = JSON.stringify({ files, run: side.ran?.use() ?? null, failure: side.at.failure });
-  return { out, err: err.join("") };
 }
 
 /*

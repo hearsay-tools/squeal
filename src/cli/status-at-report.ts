@@ -16,9 +16,6 @@ import {
   unchangeable,
 } from "./status-at-report-files.js";
 import { type QueuedRun, queuedLines } from "./status-at-report-queued.js";
-import { type RunUse, runLines } from "./status-at-report-run.js";
-
-export type { RunUse };
 
 /*
  * Spec 023 D1 and D3 (row 023-06): one test file's state at a commit and
@@ -242,9 +239,8 @@ export interface AtReport {
   /**
    * Row 023-40 (D7.3): what `--run` queued in the daemons, or `--wait`
    * joined, and what stands when the wait ended; absent without either.
-   * `RunUse` is the in-call run's, which row 023-41 removes.
    */
-  readonly run?: QueuedRun | RunUse;
+  readonly run?: QueuedRun;
   /** Row 023-24 (Q1): without `--run`, the command that runs the files with no result; absent when none. */
   readonly next?: AtNext;
 }
@@ -318,7 +314,7 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
   );
   // A failed checkout ran nothing; its line above says why.
   if (report.run !== undefined && report.failure === null)
-    lines.push(...("mode" in report.run ? queuedLines(report.run, at) : runLines(report.run, at)));
+    lines.push(...queuedLines(report.run, at));
   if (pastRetention(report.files, report.commitTimeMs, nowMs)) {
     const days = Math.floor((nowMs - report.commitTimeMs) / DAY_MS);
     lines.push(
