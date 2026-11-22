@@ -1,6 +1,7 @@
 import { chmodSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { ANTIGRAVITY_PLUGIN } from "../../src/harness/antigravity/build.js";
 import {
   copyPluginTrees,
   LAUNCHER_COPY,
@@ -16,7 +17,7 @@ import { tempDir } from "../store/helpers.js";
 
 /*
  * 005-76: `plugins/claude-code/bin/squeal-launcher` is the launcher's one
- * source; the Codex, Pi and OpenCode builds copy it into their `bin/`, so a
+ * source; the Codex, Pi, OpenCode and Antigravity builds copy it into their `bin/`, so a
  * launcher change edits one file. CI's `Bundles match the build` diff covers
  * each plugin's `bin/`, so a hand edit to a copy fails there.
  */
@@ -25,6 +26,7 @@ const COPIED: [string, PluginBuild][] = [
   ["codex", CODEX_RUNTIME],
   ["pi", PI_PLUGIN],
   ["opencode", OPENCODE_PLUGIN],
+  ["antigravity", ANTIGRAVITY_PLUGIN],
 ];
 
 function modeOf(path: string): number {

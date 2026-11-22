@@ -20,6 +20,7 @@ const BUNDLES = [
   "plugins/codex-runtime",
   "plugins/pi/dist",
   "plugins/opencode/dist",
+  "plugins/antigravity/dist",
 ] as const;
 
 /** The fixed Codex plugin, every file of it, and the manifest that names its version. */
