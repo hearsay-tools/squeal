@@ -1,5 +1,5 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { availableParallelism, tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -80,8 +80,10 @@ describe("the estimate at the daemon's limits (review 0.1.599 B3)", () => {
         { id: "worktree", want: 100 },
       ];
       expect(widthsOf(readPoolView(env, [], repository), sides)).toEqual([1, 1]);
-      // Without the cap's repository, the two share the host's 8.
-      expect(widthsOf(readPoolView(env, []), sides)).toEqual([4, 4]);
+      // Without the cap's repository, the two share the host's 8, cut to the CPU count
+      // (loadUserConfig), so the expected width follows the machine (review 0.1.599-rereview T1).
+      const half = Math.max(1, Math.floor(Math.min(8, availableParallelism()) / 2));
+      expect(widthsOf(readPoolView(env, []), sides)).toEqual([half, half]);
     } finally {
       rmSync(runtime, { recursive: true, force: true });
     }
