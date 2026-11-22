@@ -41,3 +41,21 @@ Check:
 Write `reviews/0.1.593.md` with PASS or FAIL; a FAIL names a proven break. Run tests through `squeal status --wait` or explicit vitest paths; no full suite.
 
 Use /reviewer.
+
+## 022-08r repair of B1 (review `reviews/0.1.593.md`)
+
+**Outcome.** Either every prune slice in the paired `store-7g` / `store-7g-wt3` bench stays near the 100 ms budget, or the notes prove which single SQLite operation or commit cannot be split, with its measured cost, for the human to decide.
+
+**Read.** `reviews/0.1.593.md` B1 and its repair paragraph; `tasks/022-08/notes.md` (both benchmark sections); `src/core/store/prune-vacuum.ts`, `loaded-modules.ts`, `prune-rules.ts`; `src/core/store/open.ts` (WAL mode, `synchronous = NORMAL`, the WAL size limit of spec 021 D4).
+
+**Shape.** Repair, with measurement first.
+
+**Leads.** On boat.dev (never this host), on the aged large store (`bench/age-store.mjs`, 326 rounds with lists), time each `incremental_vacuum` step, each 32-list delete, each `COMMIT`, and whether SQLite ran a WAL checkpoint inside that commit (`wal_autocheckpoint` defaults to 1,000 pages; compare `PRAGMA wal_checkpoint` counts before and after). If the tail is the checkpoint, measure whether a passive checkpoint run as its own prune slice, or a smaller page/list step, bounds it; the WAL size limit (021 D4) must still hold. Then rerun the pair: `bench/boat-run.sh --ref squeal--v0.1.591 --ref <your head> --cells store-7g,store-7g-wt3 --repeat 1`, and put the per-operation tails in the notes.
+
+**Owns.** As row 022-08, plus `src/core/store/open.ts` only if the checkpoint is the cause (say so in a commit of its own). Probe scripts under `docs/specifications/022-selection-strategy/research/probes/vacuum-tail/`.
+
+**Leave alone.** `src/core/daemon/sliced-prune.ts`, the delete predicates, `plugins/*/dist`, `package.json` version, `docs/board.md`.
+
+**Done when.** The fake-clock and completion tests still pass; any new rule has a test; the bench pair is in `tasks/022-08/notes.md` with the longest prune slice per kind; lint, typecheck, key-format tests, `squeal status --wait 60000 <changed paths>` clean. If the bound cannot hold, stop after the measurement and report the evidence.
+
+Use /worker.
