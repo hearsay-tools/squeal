@@ -43,6 +43,23 @@ describe("findHarnessProcess", () => {
     expect(findHarnessProcess({ ppid: 50, read, namespace: NS })).toEqual(found(40, 400));
   });
 
+  it("walks past Antigravity's hooks/run script and its shells (spec 024 D2, D4)", () => {
+    // `hooks/run --if-squeal` pipes to the hook, so the hook's parent is the script, named `run`.
+    const read = table({
+      60: ["run", 50, 600],
+      50: ["sh", 45, 500],
+      45: ["bash", 40, 450],
+      40: ["antigravity", 2, 400],
+    });
+    expect(findHarnessProcess({ ppid: 60, read, namespace: NS })).toEqual(found(40, 400));
+    const direct = table({
+      60: ["run", 50, 600],
+      50: ["sh", 40, 500],
+      40: ["antigravity", 2, 400],
+    });
+    expect(findHarnessProcess({ ppid: 60, read: direct, namespace: NS })).toEqual(found(40, 400));
+  });
+
   it("names no process when the harness died first, the walk runs out, or there is no /proc", () => {
     const orphan = table({ 50: ["sh", 9, 500], 9: ["systemd", 1, 90] });
     expect(findHarnessProcess({ ppid: 50, read: orphan, namespace: NS })).toBeNull();

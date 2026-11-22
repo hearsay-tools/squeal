@@ -1,8 +1,14 @@
 import { type ProcStat, pidNamespace, readProcStat } from "../../core/delivery/harness-process.js";
 import type { HarnessProcess } from "../../core/types/store-records.js";
 
-/** Shells and launchers a hook's ancestor chain passes before the harness. */
+/**
+ * Shells and launchers a hook's ancestor chain passes before the harness.
+ * `run` is `plugins/antigravity/hooks/run` (spec 024 D4): Linux names a
+ * shebang script's process after its file, and under `--if-squeal` it pipes
+ * the payload to the hook instead of exec'ing it, so it stays the hook's parent.
+ */
 const SKIPPED: ReadonlySet<string> = new Set([
+  "run",
   "sh",
   "dash",
   "bash",
