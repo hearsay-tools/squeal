@@ -1,14 +1,14 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CliIo } from "../../src/cli/main.js";
-import { reachCommand } from "../../src/cli/reach.js";
+import { impactCommand } from "../../src/cli/reach.js";
 import { COVERAGE_RECORD_VERSION, encodeRecord } from "../../src/core/code/coverage/record.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/open.js";
 import type { Store } from "../../src/core/types/store.js";
 import { ON as CODE_ON } from "../code/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
 
-/* `squeal reach` against a real store (row 015-109): a seeded worktree and the command's output. */
+/* `squeal impact` against a real store (row 015-109): a seeded worktree and the command's output. */
 
 export const A = "test/a.test.ts";
 export const B = "test/b.test.ts";
@@ -33,7 +33,7 @@ export function run(cwd: string, args: string[]) {
     cwd,
     env: {},
   };
-  return reachCommand(args, io).then((code) => ({ code, stdout, stderr }));
+  return impactCommand(args, io).then((code) => ({ code, stdout, stderr }));
 }
 
 /**
