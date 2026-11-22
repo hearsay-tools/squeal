@@ -19,6 +19,7 @@ import {
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { Store } from "../../src/core/types/store.js";
 import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
+import { VERSION_ARGS } from "../fixed-version.js";
 import { keyedNow } from "./status-at-now-stand-in.js";
 
 /*
