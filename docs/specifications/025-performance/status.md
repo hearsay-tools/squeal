@@ -1,12 +1,13 @@
-# 024: Performance improvements - status
+# 025: Performance improvements - status
 
 - **Stage:** in-progress (approved by the human 2026-11-22: `/coordinator get it done`)
 - **Coordinator:** `201d84ee`
-- **Target candidate:** `0.1.600` (coordinated with spec 023 coordinator `d36c4d53`, which holds `0.1.598` and `0.1.599`)
+- **Target candidate:** `0.1.600` (on `0.1.599`, coordinated with spec 023 coordinator `d36c4d53` and spec 024 coordinator `795abf3c`)
 
 ## Amendments
 
-- 2026-11-22: Initial spec (`D1` to `D5`) created from full repository performance audit against `bench/results/TREND.md` and `0.1.598` (`22be8a3c4`). Wave 1 rows `024-01` through `024-05` dispatched in parallel.
+- 2026-11-22: Renumbered from `024-performance` (rows `024-01`..`024-05`) to `025-performance` (rows `025-01`..`025-05`) before landing on `main` because `024-antigravity-adapter` (`54e28826b`, `a7f479fdd`) landed on `main` first. Earlier Wave 1 worker notes, code comments, and review files (`0.1.600.md`, `0.1.600-r2.md`, `0.1.600-r3.md`) refer to the original `024` numbering. Rebased cleanly onto `0.1.599` (`3e30055c1`, zero shared `src/` or `test/` files with `0.1.599`).
+- 2026-11-22: Initial spec (`D1` to `D5`) created from full repository performance audit against `bench/results/TREND.md` and `0.1.598` (`22be8a3c4`). Wave 1 rows `025-01` through `025-05` (originally `024-01`..`024-05`) dispatched in parallel.
 - 2026-11-22 (coordinator `201d84ee`, during Wave 1 and review `0.1.600.md` repair):
   - **D2.4 (review B2):** `withStatusStore` stays strictly read-only for every schema version (older schemas report unavailable so a writer migrates them; never double-closes raw handles or masks `SQLITE_BUSY`).
   - **D3.1 & D3.3 (integration & review S1):** `provider.mjs` carries executed script paths directly on coverage batches so `coveredFiles` avoids disk JSON reads; `putPartsBatch` commits in two transactions separated by a `sent()` barrier (parts then manifests) so manifests never precede their parts under the store process.

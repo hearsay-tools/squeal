@@ -2577,6 +2577,7 @@ var COPY_SET = `
     fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
     last_used_at
   FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
+var RESULT_TOUCH_INTERVAL_MS = 36e5;
 function createResultRepo(conn) {
   return {
     byKey: (key, usedAt = Date.now()) => {
@@ -2585,7 +2586,7 @@ function createResultRepo(conn) {
           "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
           usedAt,
           key,
-          usedAt
+          Math.max(0, usedAt - RESULT_TOUCH_INTERVAL_MS)
         );
       }
       return conn.all(
@@ -3354,6 +3355,7 @@ function createMetaRepo(conn) {
 // src/core/store/open.ts
 var DEFAULT_BUSY_TIMEOUT_MS = 1e3;
 var JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
+var CONNECTION_PRAGMAS = ["PRAGMA cache_size = -16384", "PRAGMA temp_store = MEMORY"];
 var META_STORE_RECOVERED = "store.recovered";
 function isStoreOpenFailure(value) {
   return "reason" in value;
@@ -3387,11 +3389,16 @@ function connect(paths, options) {
         return { corrupt: mark.problem, mark };
       }
     }
-    if (pragmaNumber2(db, "page_count") === 0) db.exec("PRAGMA auto_vacuum = INCREMENTAL");
-    switchToWal(db, busyTimeout(options));
+    const current2 = options.create === false && found2 === SCHEMA_VERSION;
+    if (!current2 && pragmaNumber2(db, "page_count") === 0) {
+      db.exec("PRAGMA auto_vacuum = INCREMENTAL");
+    }
+    if (!current2 || journalMode(db) !== "wal") switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     db.exec(`PRAGMA journal_size_limit = ${JOURNAL_SIZE_LIMIT_BYTES}`);
-    const version = migrate(db);
+    for (const pragma of CONNECTION_PRAGMAS) db.exec(pragma);
+    if (options.managedCheckpoint === true) db.exec("PRAGMA wal_autocheckpoint = 0");
+    const version = current2 ? found2 : migrate(db);
     if (options.create !== false) makeIndexes(db);
     return createStore(options.connection?.(db) ?? new Connection(db), version, paths);
   } catch (error) {
@@ -3430,6 +3437,9 @@ function switchToWal(db, ms) {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
     }
   }
+}
+function journalMode(db) {
+  return db.prepare("PRAGMA journal_mode").get()?.journal_mode;
 }
 function pragmaNumber2(db, name2) {
   return Number(db.prepare(`PRAGMA ${name2}`).get()?.[name2]);
@@ -3814,6 +3824,10 @@ var SendingConnection = class extends HoldingConnection {
   #depth = 0;
   #batch = [];
   #held = null;
+  /** Spec 024 D2: a batch ended in `unit`'s synchronous run of its work, sent once that run ends. */
+  #deferred = null;
+  /** Whether `unit` runs its work synchronously now: a batch ended now is deferred (`#run`). */
+  #deferring = false;
   /** Batches sent outside a hold and not yet written. */
   #unsent = 0;
   #sending = /* @__PURE__ */ new Set();
@@ -3842,7 +3856,7 @@ var SendingConnection = class extends HoldingConnection {
   async unit(work, acquire) {
     for (let tries = 0; ; tries++) {
       try {
-        const result = await work();
+        const result = await this.#run(work);
         await this.settle();
         return result;
       } catch (error) {
@@ -3854,6 +3868,35 @@ var SendingConnection = class extends HoldingConnection {
         if (!await acquire()) this.#becomeDirect();
       }
     }
+  }
+  /**
+   * Spec 024 D2: runs `work`, sending the batch its synchronous run ends once that run ends:
+   * when it returns, or at its first `await`, before which nothing else ran. Work that
+   * returned without awaiting, in no other unit's work, writes nothing after that batch, so
+   * the batch ends the lease as it is written (`release`): one request, not a write and then a
+   * release. Any other batch is sent as before, and `settle` ends the lease.
+   */
+  #run(work) {
+    const outer = this.#deferring;
+    this.#deferring = true;
+    let result;
+    try {
+      result = work();
+    } catch (error) {
+      this.#deferring = outer;
+      this.#flush(false);
+      throw error;
+    }
+    this.#deferring = outer;
+    this.#flush(!outer && !isThenable(result));
+    return result;
+  }
+  /** Sends the deferred batch, if any; `release` ends the lease once it is written. */
+  #flush(release2) {
+    const batch = this.#deferred;
+    if (batch === null) return;
+    this.#deferred = null;
+    this.#track(this.#send(batch, release2), true);
   }
   /** Writes the store here from now on: no daemon serves. Before any write. */
   writeDirectly() {
@@ -3869,10 +3912,11 @@ var SendingConnection = class extends HoldingConnection {
   }
   /** Row 021-36: whether a batch sent is not written yet (or a failed one not yet told). */
   get unsettled() {
-    return this.#sending.size > 0 || this.#failure !== null;
+    return this.#sending.size > 0 || this.#failure !== null || this.#deferred !== null;
   }
   /** Waits until every batch sent so far is written; rethrows the first that failed. */
   async sent() {
+    this.#flush(false);
     while (this.#sending.size > 0) await Promise.allSettled([...this.#sending]);
     this.#rethrow();
   }
@@ -3988,6 +4032,7 @@ var SendingConnection = class extends HoldingConnection {
    * a live process keeps its lease until then (review 0.1.442 B3).
    */
   close() {
+    this.#flush(false);
     if (this.#held !== null || this.#sender.leased && !this.#direct) {
       this.#held = null;
       this.#track(this.#sender.release(), false);
@@ -4002,7 +4047,7 @@ var SendingConnection = class extends HoldingConnection {
   }
   /** A read now would miss writes not yet written: it must wait for them (`sent`). */
   #readable() {
-    if (this.#unsent > 0) {
+    if (this.#unsent > 0 || this.#deferred !== null) {
       throw new Error("squeal: a store read before this hook's writes were written (await sent())");
     }
   }
@@ -4016,6 +4061,7 @@ var SendingConnection = class extends HoldingConnection {
     if (batch.length === 0) return;
     if (this.#sender.post !== void 0) this.#track(this.#sender.post(batch), false);
     else if (this.#held !== null) this.#held.push(...batch);
+    else if (this.#deferring) this.#deferred = batch;
     else this.#track(this.#send(batch, false), true);
   }
   /** Sends `batch`; when no daemon takes it, writes it here and stays direct. */
@@ -4052,6 +4098,9 @@ var SendingConnection = class extends HoldingConnection {
     this.db.exec("PRAGMA query_only = 0");
   }
 };
+function isThenable(value) {
+  return typeof value?.then === "function";
+}
 
 // src/core/code/store/counts.ts
 var LANGUAGES = [
@@ -4344,6 +4393,70 @@ function createCoverageRepo(conn, sent) {
     );
     return row === null ? null : num(row, "recorded_at");
   };
+  const writeParts = ({ key, record, at }) => {
+    const before = storedAt2(key);
+    const stored4 = before === null ? at : Math.max(at, before + 1);
+    const known = /* @__PURE__ */ new Map();
+    for (const row of conn.all(
+      `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+      JSON.stringify(record.parts.map((p) => p.hash))
+    )) {
+      known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
+    }
+    for (const part of record.parts) {
+      if (known.has(part.hash)) continue;
+      known.set(part.hash, stored4);
+      conn.run(
+        `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
+         ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
+        part.hash,
+        part.bytes,
+        stored4
+      );
+    }
+    const stale = [...known].filter(([, usedAt]) => usedAt < stored4 - PART_REFRESH_MS);
+    if (stale.length > 0) {
+      conn.run(
+        `UPDATE coverage_parts SET used_at = ?
+         WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
+        stored4,
+        JSON.stringify(stale.map(([hash2]) => hash2)),
+        stored4 - PART_REFRESH_MS
+      );
+    }
+    return stored4;
+  };
+  const writeManifest = ({ key, record }, stored4) => {
+    const ids = /* @__PURE__ */ new Map();
+    for (const row of conn.all(
+      `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+      JSON.stringify(record.parts.map((p) => p.hash))
+    )) {
+      ids.set(str(row, "hash"), num(row, "id"));
+    }
+    const listed3 = record.parts.map((part) => ids.get(part.hash));
+    if (listed3.some((id) => id === void 0)) {
+      throw new Error("squeal code store: a coverage part is missing after its insert");
+    }
+    conn.run(
+      UPSERT,
+      key.resultKey,
+      key.providerVersion,
+      manifestBytes(record, listed3),
+      stored4
+    );
+  };
+  const putPartsBatch = async (items) => {
+    if (items.length === 0) return;
+    const stored4 = conn.transaction(() => items.map(writeParts));
+    if (sent !== void 0) await sent();
+    conn.transaction(() => {
+      items.forEach((item, i) => {
+        writeManifest(item, stored4[i] ?? item.at);
+      });
+    });
+    if (sent !== void 0) await sent();
+  };
   return {
     get(key) {
       return conn.read(() => {
@@ -4364,64 +4477,8 @@ function createCoverageRepo(conn, sent) {
     put(key, record, at) {
       conn.run(UPSERT, key.resultKey, key.providerVersion, record, at);
     },
-    async putParts(key, record, at) {
-      const hashes = JSON.stringify(record.parts.map((p) => p.hash));
-      const stored4 = conn.transaction(() => {
-        const before = storedAt2(key);
-        const stored5 = before === null ? at : Math.max(at, before + 1);
-        const known = /* @__PURE__ */ new Map();
-        for (const row of conn.all(
-          `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
-          hashes
-        )) {
-          known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
-        }
-        for (const part of record.parts) {
-          if (known.has(part.hash)) continue;
-          known.set(part.hash, stored5);
-          conn.run(
-            `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
-             ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
-            part.hash,
-            part.bytes,
-            stored5
-          );
-        }
-        const stale = [...known].filter(([, usedAt]) => usedAt < stored5 - PART_REFRESH_MS);
-        if (stale.length > 0) {
-          conn.run(
-            `UPDATE coverage_parts SET used_at = ?
-             WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
-            stored5,
-            JSON.stringify(stale.map(([hash2]) => hash2)),
-            stored5 - PART_REFRESH_MS
-          );
-        }
-        return stored5;
-      });
-      if (sent !== void 0) await sent();
-      conn.transaction(() => {
-        const ids = /* @__PURE__ */ new Map();
-        for (const row of conn.all(
-          `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
-          hashes
-        )) {
-          ids.set(str(row, "hash"), num(row, "id"));
-        }
-        const listed3 = record.parts.map((part) => ids.get(part.hash));
-        if (listed3.some((id) => id === void 0)) {
-          throw new Error("squeal code store: a coverage part is missing after its insert");
-        }
-        conn.run(
-          UPSERT,
-          key.resultKey,
-          key.providerVersion,
-          manifestBytes(record, listed3),
-          stored4
-        );
-      });
-      if (sent !== void 0) await sent();
-    }
+    putParts: (key, record, at) => putPartsBatch([{ key, record, at }]),
+    putPartsBatch
   };
 }
 
@@ -7893,6 +7950,74 @@ function isHeader(value) {
   const h = value;
   const source = h.source;
   return typeof h.squealVersion === "string" && typeof h.keyFormat === "number" && (typeof h.commit === "string" || h.commit === null) && typeof h.dirty === "boolean" && typeof h.createdAt === "number" && typeof source === "object" && source !== null && (source.kind === "local" || source.kind === "github");
+}
+
+// src/core/store/view-seed.ts
+function statesToSeed(store, worktreeId) {
+  const rows = connectionOf(store).all(
+    `${SELECT_STATES} WHERE s.worktree_id = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+    worktreeId
+  );
+  const states = [];
+  const seed2 = [];
+  for (const row of rows) {
+    const state = toKnownState(row);
+    states.push(state);
+    seed2.push({
+      checkId: num(row, "check_id"),
+      outcome: state.outcome,
+      fingerprint: state.fingerprint
+    });
+  }
+  return { states, seed: seed2 };
+}
+function seedView(store, consumer, rows, toldAt) {
+  connectionOf(store).run(
+    `INSERT OR REPLACE INTO consumer_views
+       (worktree_id, session_id, agent_id, check_id, outcome, fingerprint, told_at)
+     SELECT ?, ?, ?, j.value ->> 0, j.value ->> 1, j.value ->> 2, ? FROM json_each(?) j`,
+    consumer.worktreeId,
+    consumer.sessionId,
+    consumer.agentId,
+    toldAt,
+    JSON.stringify(rows.map((r) => [r.checkId, r.outcome, r.fingerprint]))
+  );
+}
+function checksBornAfter(store, worktreeId, mark) {
+  const rows = connectionOf(store).all(
+    `SELECT ${CHECK_COLUMNS} FROM state_born b JOIN checks c ON c.id = b.check_id
+     WHERE b.worktree_id = ? AND b.id > ?`,
+    worktreeId,
+    mark
+  );
+  return new Set(rows.map((row) => checkIdentity(checkFrom(row))));
+}
+function relevantStates(store, consumer, mark) {
+  return connectionOf(store).all(
+    `${SELECT_STATES} WHERE s.worktree_id = ? AND (s.outcome != 'pass'
+         OR EXISTS (SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+         OR EXISTS (SELECT 1 FROM state_born b WHERE b.worktree_id = s.worktree_id
+           AND b.check_id = s.check_id AND b.id > ?))
+       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+    consumer.worktreeId,
+    consumer.sessionId,
+    consumer.agentId,
+    mark
+  ).map(toKnownState);
+}
+function untoldBornAfter(store, consumer, mark) {
+  return connectionOf(store).all(
+    `${SELECT_STATES} JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id
+       WHERE s.worktree_id = ? AND b.id > ? AND NOT EXISTS (
+         SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+    consumer.worktreeId,
+    mark,
+    consumer.sessionId,
+    consumer.agentId
+  ).map(toKnownState);
 }
 
 // src/core/types/common.ts
@@ -12731,7 +12856,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.599";
+  if (true) return "0.1.600";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12921,60 +13046,6 @@ function currentBirthMark(store) {
   if (conn === null || !armed(conn)) return null;
   const row = conn.get("SELECT seq FROM sqlite_sequence WHERE name = 'state_born'");
   return row === null ? 0 : num(row, "seq");
-}
-
-// src/core/store/view-seed.ts
-function statesToSeed(store, worktreeId) {
-  const rows = connectionOf(store).all(
-    `${SELECT_STATES} WHERE s.worktree_id = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-    worktreeId
-  );
-  const states = [];
-  const seed2 = [];
-  for (const row of rows) {
-    const state = toKnownState(row);
-    states.push(state);
-    seed2.push({
-      checkId: num(row, "check_id"),
-      outcome: state.outcome,
-      fingerprint: state.fingerprint
-    });
-  }
-  return { states, seed: seed2 };
-}
-function seedView(store, consumer, rows, toldAt) {
-  connectionOf(store).run(
-    `INSERT OR REPLACE INTO consumer_views
-       (worktree_id, session_id, agent_id, check_id, outcome, fingerprint, told_at)
-     SELECT ?, ?, ?, j.value ->> 0, j.value ->> 1, j.value ->> 2, ? FROM json_each(?) j`,
-    consumer.worktreeId,
-    consumer.sessionId,
-    consumer.agentId,
-    toldAt,
-    JSON.stringify(rows.map((r) => [r.checkId, r.outcome, r.fingerprint]))
-  );
-}
-function checksBornAfter(store, worktreeId, mark) {
-  const rows = connectionOf(store).all(
-    `SELECT ${CHECK_COLUMNS} FROM state_born b JOIN checks c ON c.id = b.check_id
-     WHERE b.worktree_id = ? AND b.id > ?`,
-    worktreeId,
-    mark
-  );
-  return new Set(rows.map((row) => checkIdentity(checkFrom(row))));
-}
-function untoldBornAfter(store, consumer, mark) {
-  return connectionOf(store).all(
-    `${SELECT_STATES} JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id
-       WHERE s.worktree_id = ? AND b.id > ? AND NOT EXISTS (
-         SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
-           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
-       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-    consumer.worktreeId,
-    mark,
-    consumer.sessionId,
-    consumer.agentId
-  ).map(toKnownState);
 }
 
 // src/core/delivery/view-mark.ts
@@ -13930,6 +14001,11 @@ function sideParts(code, lint2, states) {
 function acknowledged(source, consumer, read4) {
   if (read4?.ack != null) acknowledgeLint(source, consumer, read4.ack);
 }
+function deliveryStates(store, consumer, idle) {
+  const all = once(() => store.knownStates.list(consumer.worktreeId));
+  const mark = idle ? null : trustedMark(store, consumer);
+  return { states: mark === null ? all() : relevantStates(store, consumer, mark.mark), all };
+}
 var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
 function createDelivery(store, options) {
   const now = options.now ?? Date.now;
@@ -13989,7 +14065,7 @@ function createDelivery(store, options) {
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
       if (heardFrom && !stop) markLeaving(store, consumer, null);
       const at = now();
-      const states = store.knownStates.list(consumer.worktreeId);
+      const { states, all } = deliveryStates(store, consumer, idle);
       const selection = select(states);
       if (selection === "silent") return null;
       const view = store.views.list(consumer);
@@ -14026,7 +14102,7 @@ function createDelivery(store, options) {
         () => withTold(
           readLiveHeader(store, consumer.worktreeId, at, {
             commonDir: options.commonDir,
-            states,
+            states: all(),
             since: toldRevision(store, consumer)
           }),
           toldLiveness(store, consumer),
@@ -14053,7 +14129,7 @@ function createDelivery(store, options) {
         consumer,
         delta2.entries,
         live(),
-        states
+        all()
       );
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
@@ -14110,12 +14186,16 @@ function createDelivery(store, options) {
   }
   const free = () => holdFree(options.prepare?.connection, HOOK_TIMEOUT_MS);
   const unit = (work) => {
-    const freed = async () => {
+    const freed = () => {
       const wait2 = free();
-      if (wait2 !== null) await wait2;
-      return work();
+      return wait2 === null ? work() : wait2.then(work);
     };
-    return options.prepare?.unit?.(freed) ?? freed();
+    if (options.prepare?.unit !== void 0) return options.prepare.unit(freed);
+    try {
+      return Promise.resolve(freed());
+    } catch (error) {
+      return Promise.reject(error);
+    }
   };
   return {
     register: (consumer, registerOptions = {}) => unit(() => registerNow(store, options, now, consumer, registerOptions)),
@@ -14416,6 +14496,7 @@ function openSentStore(commonDir, options) {
 }
 
 // src/core/status/open.ts
+import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function unavailable(reason, detail) {
   return {

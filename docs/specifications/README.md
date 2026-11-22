@@ -38,3 +38,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 021 | Remote store and remote execution (a live shared store and its engine; test runs on another machine over SSH, then on demand; the human, 2026-11-11) | approved; wave 1 building |
 | 022 | Selection strategy (an option to re-run a test file by the modules it loaded, beside today's import closure; the human, 2026-11-14) | approved; phase 1 shipped (0.1.496); phase 2 closed, stored lists dropped (022-05, 2026-11-21) |
 | 024 | Antigravity adapter (CLI on Linux: hooks, native plugin, install and updates; the human, 2026-11-22) | approved |
+| 025 | Performance improvements (source-path status promotion, narrow hook delivery and read-only status, coverage wire and batching, idle daemon and observer tuning, SQLite WAL and write-lock slicing; the human, 2026-11-22) | in-progress (Wave 1 candidate `0.1.600`) |

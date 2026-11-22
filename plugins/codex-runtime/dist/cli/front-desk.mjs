@@ -695,17 +695,8 @@ function parseRequest(line) {
     case "commit-ask":
     case "commit-read":
       return parseCommitAsk(request);
-    case "promote": {
-      const { testFiles, withinMs } = request;
-      if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
-        return '"testFiles" must be a list of { project, path } strings';
-      }
-      if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
-        return '"withinMs" must be a number of milliseconds';
-      }
-      const refs = testFiles.map(({ project, path }) => ({ project, path }));
-      return { type: "promote", testFiles: refs, withinMs };
-    }
+    case "promote":
+      return parsePromote(request);
     case "focus": {
       const { testFiles, texts, withinMs } = request;
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
@@ -723,6 +714,21 @@ function parseRequest(line) {
     default:
       return parseWriteRequest(request) ?? `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+function parsePromote(request) {
+  const { testFiles, withinMs, wakeCatchUp } = request;
+  if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
+    return '"testFiles" must be a list of { project, path } strings';
+  }
+  if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
+    return '"withinMs" must be a number of milliseconds';
+  }
+  if (wakeCatchUp !== void 0 && typeof wakeCatchUp !== "boolean") {
+    return '"wakeCatchUp" must be a boolean';
+  }
+  const refs = testFiles.map(({ project, path }) => ({ project, path }));
+  const wake = wakeCatchUp === true ? { wakeCatchUp: true } : {};
+  return { type: "promote", testFiles: refs, withinMs, ...wake };
 }
 function parseCommitAsk(request) {
   if (request.type === "commit-read") {
@@ -1409,7 +1415,7 @@ function createHandlers(context) {
         if (context.requestPromotion === void 0)
           return errorResponse("this daemon cannot promote");
         context.onActivity();
-        context.requestPromotion(request.testFiles, request.withinMs).catch(() => {
+        context.requestPromotion(request.testFiles, request.withinMs, request.wakeCatchUp).catch(() => {
         });
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "promote" };
       case "focus":
@@ -1610,7 +1616,7 @@ function bind(identity) {
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
-    requestPromotion: async (testFiles, withinMs) => post({ type: "promote", testFiles, withinMs }),
+    requestPromotion: async (testFiles, withinMs, wakeCatchUp) => post({ type: "promote", testFiles, withinMs, ...wakeCatchUp ? { wakeCatchUp } : {} }),
     requestFocus: async (testFiles, texts, withinMs) => post({ type: "focus", testFiles, texts, withinMs }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),

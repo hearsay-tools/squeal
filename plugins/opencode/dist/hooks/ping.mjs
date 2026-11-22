@@ -1730,6 +1730,7 @@ function endInOrder(items, end, undo) {
 }
 
 // src/core/status/open.ts
+import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/keys/environment-descriptor.ts

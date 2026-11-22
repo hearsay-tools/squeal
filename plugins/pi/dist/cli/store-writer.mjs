@@ -606,6 +606,7 @@ var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN check
 // src/core/store/open.ts
 var DEFAULT_BUSY_TIMEOUT_MS = 1e3;
 var JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
+var CONNECTION_PRAGMAS = ["PRAGMA cache_size = -16384", "PRAGMA temp_store = MEMORY"];
 function switchToWal(db, ms) {
   const deadline = Date.now() + ms;
   for (; ; ) {
@@ -916,6 +917,10 @@ var SendingConnection = class extends HoldingConnection {
   #depth = 0;
   #batch = [];
   #held = null;
+  /** Spec 024 D2: a batch ended in `unit`'s synchronous run of its work, sent once that run ends. */
+  #deferred = null;
+  /** Whether `unit` runs its work synchronously now: a batch ended now is deferred (`#run`). */
+  #deferring = false;
   /** Batches sent outside a hold and not yet written. */
   #unsent = 0;
   #sending = /* @__PURE__ */ new Set();
@@ -944,7 +949,7 @@ var SendingConnection = class extends HoldingConnection {
   async unit(work, acquire) {
     for (let tries = 0; ; tries++) {
       try {
-        const result = await work();
+        const result = await this.#run(work);
         await this.settle();
         return result;
       } catch (error) {
@@ -956,6 +961,35 @@ var SendingConnection = class extends HoldingConnection {
         if (!await acquire()) this.#becomeDirect();
       }
     }
+  }
+  /**
+   * Spec 024 D2: runs `work`, sending the batch its synchronous run ends once that run ends:
+   * when it returns, or at its first `await`, before which nothing else ran. Work that
+   * returned without awaiting, in no other unit's work, writes nothing after that batch, so
+   * the batch ends the lease as it is written (`release`): one request, not a write and then a
+   * release. Any other batch is sent as before, and `settle` ends the lease.
+   */
+  #run(work) {
+    const outer = this.#deferring;
+    this.#deferring = true;
+    let result;
+    try {
+      result = work();
+    } catch (error) {
+      this.#deferring = outer;
+      this.#flush(false);
+      throw error;
+    }
+    this.#deferring = outer;
+    this.#flush(!outer && !isThenable(result));
+    return result;
+  }
+  /** Sends the deferred batch, if any; `release` ends the lease once it is written. */
+  #flush(release2) {
+    const batch = this.#deferred;
+    if (batch === null) return;
+    this.#deferred = null;
+    this.#track(this.#send(batch, release2), true);
   }
   /** Writes the store here from now on: no daemon serves. Before any write. */
   writeDirectly() {
@@ -971,10 +1005,11 @@ var SendingConnection = class extends HoldingConnection {
   }
   /** Row 021-36: whether a batch sent is not written yet (or a failed one not yet told). */
   get unsettled() {
-    return this.#sending.size > 0 || this.#failure !== null;
+    return this.#sending.size > 0 || this.#failure !== null || this.#deferred !== null;
   }
   /** Waits until every batch sent so far is written; rethrows the first that failed. */
   async sent() {
+    this.#flush(false);
     while (this.#sending.size > 0) await Promise.allSettled([...this.#sending]);
     this.#rethrow();
   }
@@ -1090,6 +1125,7 @@ var SendingConnection = class extends HoldingConnection {
    * a live process keeps its lease until then (review 0.1.442 B3).
    */
   close() {
+    this.#flush(false);
     if (this.#held !== null || this.#sender.leased && !this.#direct) {
       this.#held = null;
       this.#track(this.#sender.release(), false);
@@ -1104,7 +1140,7 @@ var SendingConnection = class extends HoldingConnection {
   }
   /** A read now would miss writes not yet written: it must wait for them (`sent`). */
   #readable() {
-    if (this.#unsent > 0) {
+    if (this.#unsent > 0 || this.#deferred !== null) {
       throw new Error("squeal: a store read before this hook's writes were written (await sent())");
     }
   }
@@ -1118,6 +1154,7 @@ var SendingConnection = class extends HoldingConnection {
     if (batch.length === 0) return;
     if (this.#sender.post !== void 0) this.#track(this.#sender.post(batch), false);
     else if (this.#held !== null) this.#held.push(...batch);
+    else if (this.#deferring) this.#deferred = batch;
     else this.#track(this.#send(batch, false), true);
   }
   /** Sends `batch`; when no daemon takes it, writes it here and stays direct. */
@@ -1154,6 +1191,9 @@ var SendingConnection = class extends HoldingConnection {
     this.db.exec("PRAGMA query_only = 0");
   }
 };
+function isThenable(value) {
+  return typeof value?.then === "function";
+}
 
 // src/core/code/store/counts.ts
 var LANGUAGES = [
@@ -1453,6 +1493,70 @@ function createCoverageRepo(conn, sent) {
     );
     return row === null ? null : num(row, "recorded_at");
   };
+  const writeParts = ({ key, record, at }) => {
+    const before = storedAt(key);
+    const stored2 = before === null ? at : Math.max(at, before + 1);
+    const known = /* @__PURE__ */ new Map();
+    for (const row of conn.all(
+      `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+      JSON.stringify(record.parts.map((p) => p.hash))
+    )) {
+      known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
+    }
+    for (const part of record.parts) {
+      if (known.has(part.hash)) continue;
+      known.set(part.hash, stored2);
+      conn.run(
+        `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
+         ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
+        part.hash,
+        part.bytes,
+        stored2
+      );
+    }
+    const stale = [...known].filter(([, usedAt]) => usedAt < stored2 - PART_REFRESH_MS);
+    if (stale.length > 0) {
+      conn.run(
+        `UPDATE coverage_parts SET used_at = ?
+         WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
+        stored2,
+        JSON.stringify(stale.map(([hash]) => hash)),
+        stored2 - PART_REFRESH_MS
+      );
+    }
+    return stored2;
+  };
+  const writeManifest = ({ key, record }, stored2) => {
+    const ids = /* @__PURE__ */ new Map();
+    for (const row of conn.all(
+      `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+      JSON.stringify(record.parts.map((p) => p.hash))
+    )) {
+      ids.set(str(row, "hash"), num(row, "id"));
+    }
+    const listed = record.parts.map((part) => ids.get(part.hash));
+    if (listed.some((id) => id === void 0)) {
+      throw new Error("squeal code store: a coverage part is missing after its insert");
+    }
+    conn.run(
+      UPSERT,
+      key.resultKey,
+      key.providerVersion,
+      manifestBytes(record, listed),
+      stored2
+    );
+  };
+  const putPartsBatch = async (items) => {
+    if (items.length === 0) return;
+    const stored2 = conn.transaction(() => items.map(writeParts));
+    if (sent !== void 0) await sent();
+    conn.transaction(() => {
+      items.forEach((item, i) => {
+        writeManifest(item, stored2[i] ?? item.at);
+      });
+    });
+    if (sent !== void 0) await sent();
+  };
   return {
     get(key) {
       return conn.read(() => {
@@ -1473,64 +1577,8 @@ function createCoverageRepo(conn, sent) {
     put(key, record, at) {
       conn.run(UPSERT, key.resultKey, key.providerVersion, record, at);
     },
-    async putParts(key, record, at) {
-      const hashes = JSON.stringify(record.parts.map((p) => p.hash));
-      const stored2 = conn.transaction(() => {
-        const before = storedAt(key);
-        const stored3 = before === null ? at : Math.max(at, before + 1);
-        const known = /* @__PURE__ */ new Map();
-        for (const row of conn.all(
-          `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
-          hashes
-        )) {
-          known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
-        }
-        for (const part of record.parts) {
-          if (known.has(part.hash)) continue;
-          known.set(part.hash, stored3);
-          conn.run(
-            `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
-             ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
-            part.hash,
-            part.bytes,
-            stored3
-          );
-        }
-        const stale = [...known].filter(([, usedAt]) => usedAt < stored3 - PART_REFRESH_MS);
-        if (stale.length > 0) {
-          conn.run(
-            `UPDATE coverage_parts SET used_at = ?
-             WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
-            stored3,
-            JSON.stringify(stale.map(([hash]) => hash)),
-            stored3 - PART_REFRESH_MS
-          );
-        }
-        return stored3;
-      });
-      if (sent !== void 0) await sent();
-      conn.transaction(() => {
-        const ids = /* @__PURE__ */ new Map();
-        for (const row of conn.all(
-          `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
-          hashes
-        )) {
-          ids.set(str(row, "hash"), num(row, "id"));
-        }
-        const listed = record.parts.map((part) => ids.get(part.hash));
-        if (listed.some((id) => id === void 0)) {
-          throw new Error("squeal code store: a coverage part is missing after its insert");
-        }
-        conn.run(
-          UPSERT,
-          key.resultKey,
-          key.providerVersion,
-          manifestBytes(record, listed),
-          stored2
-        );
-      });
-      if (sent !== void 0) await sent();
-    }
+    putParts: (key, record, at) => putPartsBatch([{ key, record, at }]),
+    putPartsBatch
   };
 }
 
@@ -2193,6 +2241,21 @@ function makeIndexes(db) {
   }
 }
 
+// src/core/daemon/idle-checkpoint.ts
+import { statSync } from "node:fs";
+var PASSIVE_CHECKPOINT_BYTES = 4 * 1024 * 1024;
+function passiveCheckpoint(db, walPath, minBytes = PASSIVE_CHECKPOINT_BYTES) {
+  if (db.isTransaction) return null;
+  const wal = statSync(walPath, { throwIfNoEntry: false });
+  if (wal === void 0 || wal.size < minBytes) return null;
+  const row = db.prepare("PRAGMA wal_checkpoint(PASSIVE)").get() ?? {};
+  return {
+    busy: Number(row.busy) !== 0,
+    log: Number(row.log),
+    checkpointed: Number(row.checkpointed)
+  };
+}
+
 // src/core/daemon/write-batch.ts
 function decodeBatch(batch) {
   return batch.rows.map(([at, ...params]) => ({
@@ -2279,6 +2342,35 @@ var GuardedWriter = class {
 };
 
 // src/core/store-process/writer.ts
+var WRITER_CHECKPOINT_MS = 1e3;
+var CheckpointingWriter = class extends GuardedWriter {
+  #db;
+  #walPath;
+  #now;
+  #looked = Number.NEGATIVE_INFINITY;
+  constructor(db, walPath, now = () => performance.now()) {
+    super(db);
+    this.#db = db;
+    this.#walPath = walPath;
+    this.#now = now;
+  }
+  write(worktreeId, seq, statements, slice = {}) {
+    try {
+      return super.write(worktreeId, seq, statements, slice);
+    } finally {
+      this.#checkpoint();
+    }
+  }
+  #checkpoint() {
+    const at = this.#now();
+    if (at - this.#looked < WRITER_CHECKPOINT_MS) return;
+    this.#looked = at;
+    try {
+      passiveCheckpoint(this.#db, this.#walPath);
+    } catch {
+    }
+  }
+};
 function openWriteConnection(commonDir) {
   let db = null;
   const opened = openCodeStore(
@@ -2295,8 +2387,10 @@ function openWriteConnection(commonDir) {
     return `the code store did not open: ${JSON.stringify(opened)}`;
   const raw = db;
   if (raw === null) return "the code store did not open: no connection";
+  for (const pragma of CONNECTION_PRAGMAS) raw.exec(pragma);
+  raw.exec("PRAGMA wal_autocheckpoint = 0");
   return {
-    writer: new GuardedWriter(raw),
+    writer: new CheckpointingWriter(raw, `${codeStorePath(commonDir)}-wal`),
     schema: opened.schemaVersion,
     close: () => opened.close()
   };
