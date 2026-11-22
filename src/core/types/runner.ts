@@ -485,6 +485,14 @@ export interface ObservedInputs {
    */
   readonly written?: readonly RelativePath[];
   /**
+   * Row 023-47: files the run read and also wrote, created or removed, left
+   * out of `paths`. The core keys those git tracks as reads (`inputsOfReads`),
+   * so a run that rewrote a tracked input it read is not kept at a key
+   * without it; a scratch file the run wrote and read back stays out.
+   * Absent: none, or the runner records no writes.
+   */
+  readonly rewritten?: readonly RelativePath[];
+  /**
    * Of `paths`, those that put the test file in `direct` when they change, as
    * a one-hop import does: what a process the test file started imported
    * (spec 016 D4, row 007-56). The core keeps them beside the paths, so a

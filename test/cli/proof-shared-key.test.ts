@@ -14,16 +14,15 @@ import { clean } from "./status-at-kit.js";
  *    run is kept at the key taken after it, which covers the file it read;
  *    the sides' results land at different keys, and over two calls and
  *    `--env` the red side always fails from A's code.
- * 2. A test that rewrites the input it reads for the first time: yes, a
- *    wrong result. Under a condition, the red side's control run (P9, no
- *    condition, stored) is kept at the key the file has at both commits
- *    before any run, and the input it read is not recorded, so HEAD's key
- *    holds A's failure for every later reader (a temporary checkout at
- *    HEAD here; `status --at`, `proof` and a worktree daemon at HEAD key
- *    it alike, D2). The `it.fails` case states the right result and fails
- *    while the defect stands: the known defect "rewritten first-seen input
- *    kept at the pre-run key", the board row beside issue #264 that the
- *    coordinator adds; drop `.fails` with its fix.
+ * 2. A test that rewrites the input it reads for the first time: a wrong
+ *    result until row 023-47. Under a condition, the red side's control
+ *    run (P9, no condition, stored) was kept at the key the file has at
+ *    both commits before any run, and the input it read was not recorded
+ *    (the recorder left out a path the run wrote), so HEAD's key held A's
+ *    failure for every later reader (a temporary checkout at HEAD here;
+ *    `status --at`, `proof` and a worktree daemon at HEAD key it alike,
+ *    D2). Since row 023-47 the runner names the rewritten file and the core
+ *    keys it as a read: the run is not kept, and its read is recorded.
  */
 
 const TEST = ref("test/a.test.ts");
@@ -94,7 +93,7 @@ describe(
       },
     );
 
-    it.fails("a control run of a test that rewrites its first-seen input leaves no failure at HEAD's key", async () => {
+    it("a control run of a test that rewrites its first-seen input leaves no failure at HEAD's key", async () => {
       const f = fixture({
         "squeal.config.json": "{}\n",
         "data/a.txt": "1\n",
