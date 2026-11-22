@@ -59,3 +59,17 @@ Use /reviewer.
 **Done when.** The fake-clock and completion tests still pass; any new rule has a test; the bench pair is in `tasks/022-08/notes.md` with the longest prune slice per kind; lint, typecheck, key-format tests, `squeal status --wait 60000 <changed paths>` clean. If the bound cannot hold, stop after the measurement and report the evidence.
 
 Use /worker.
+
+## 022-09 round 2: re-review of `cand/0.1.593` against `reviews/0.1.593.md`
+
+Pinned to `cand/0.1.593` at `60150362303a45878c6a12c1e248be9f63ec5d7a` (rebased onto main 0.1.591 `71e2d9e5b`; row 022-08 plus repair 022-08r, bundles rebuilt). Round 1 FAILed `93524ae1c` on B1 only. Read `reviews/0.1.593.md`, the 022-08r brief above and `tasks/022-08/notes.md`, "Repair 022-08r".
+
+Check:
+1. B1: the repair's evidence (probe and the bench pair `bench/results/2026-11-22-0.1.591-vs-*-3*` or the run the notes name) shows prune slices near the budget; the checkpoint now runs as its own slice and the WAL size limit of spec 021 D4 still holds (`src/core/store/open.ts` unchanged).
+2. The new checkpoint rule (`src/core/store/prune-checkpoint.ts`) changes nothing outside prune slices, restores `wal_autocheckpoint` after its slices, and is safe when another process writes during them.
+3. Checks 1 to 3 of round 1 still hold at this SHA.
+4. The notes' open points (list-delete tail under load, checkpoint time outside the lock, slower prune by the clock): say whether each is a break, a should-fix or a note.
+
+Write `reviews/0.1.593-r2.md` with PASS or FAIL; a FAIL names a proven break. This is the last round for this row. Run tests through `squeal status --wait` or explicit vitest paths; no full suite.
+
+Use /reviewer.
