@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { expect } from "vitest";
 import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
 import type { AtDaemons, NarrowCall } from "../../src/cli/status-at-daemons.js";
+import { changeOf } from "../../src/core/daemon/at-asks.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { CommitAskRequest } from "../../src/core/types/commit-ask.js";
 import {
@@ -137,6 +138,8 @@ export function standIn(
   const waits: string[] = [];
   const commitAsks: Omit<CommitAskRequest, "type">[] = [];
   const queued = new Map<string, readonly TestFileRef[]>();
+  // Review 0.1.599 B4: each ask's change identity, as the daemon keeps it.
+  const changes = new Map<string, string>();
   const ports: AtDaemons = {
     async commit(input) {
       commits.push(input.commit);
@@ -147,6 +150,7 @@ export function standIn(
       const files =
         commitDaemon.select?.(ask) ?? ask.named.map((path): TestFileRef => ({ project: "", path }));
       queued.set(ask.owner, files);
+      changes.set(ask.owner, changeOf(ask.changed));
       commitDaemon.rows?.(tree, files);
       return null;
     },
@@ -155,6 +159,7 @@ export function standIn(
         .filter(([owner]) => owners === undefined || owners.includes(owner))
         .map(([owner, files]) => ({
           owner,
+          change: changes.get(owner) ?? "",
           phase: "queued" as const,
           files,
           readers: {},

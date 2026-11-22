@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { selects } from "../core/commit/at-keys-narrow.js";
+import { changeOf } from "../core/daemon/at-asks.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { groupView } from "../core/scheduler/slow.js";
@@ -33,6 +34,8 @@ export interface CommitAsked extends SideQueue {
   readonly incomplete?: Readonly<Record<string, readonly RelativePath[]>>;
   /** The asks read (the call's own with `--run`, every kept one with `--wait`). */
   readonly asks: readonly CommitAskState[];
+  /** Review 0.1.599 B4: the identity of this call's change (`changeOf`); `null`: not known. */
+  readonly change: string | null;
 }
 
 /** Each file's group, as the commit's own policy places it (R3's setup line names it). */
@@ -43,7 +46,7 @@ function groupsOf(tree: AbsolutePath): (ref: TestFileRef) => string {
 
 /** No commit daemon was reached: nothing was asked. */
 function notReached(problem: string, late: boolean): CommitAsked {
-  return { ...unreached([], problem, late), setup: null, asks: [] };
+  return { ...unreached([], problem, late), setup: null, asks: [], change: null };
 }
 
 export interface AskInput {
@@ -79,7 +82,17 @@ export async function askCommit(input: AskInput): Promise<CommitAsked> {
   const read = await readUntilQueued(daemons, tree, [owner], askBy, deadline);
   const own = read.asks.find((a) => a.owner === owner);
   input.queued?.(own?.phase === "queued" ? own.files : []);
-  return waitFor(daemons, tree, read, deadline);
+  return { ...(await waitFor(daemons, tree, read, deadline)), change: changeOf(input.changed) };
+}
+
+/** What `--wait` alone joins at the commit, beside the daemon's kept asks. */
+export interface CommitJoin {
+  /** The call's files the daemon lists pending. */
+  readonly listed: readonly TestFileRef[];
+  /** The call's paths; `null` for every file. */
+  readonly paths: readonly RelativePath[] | null;
+  /** Review 0.1.599 B4: the identity of this call's change (`changeOf`); `null`: not known. */
+  readonly change: string | null;
 }
 
 /**
@@ -91,12 +104,12 @@ export async function joinCommit(
   daemons: AtDaemons,
   tree: AbsolutePath | null,
   bound: number,
-  listed: readonly TestFileRef[] = [],
-  paths: readonly RelativePath[] | null = null,
+  join: CommitJoin = { listed: [], paths: null, change: null },
 ): Promise<CommitAsked> {
-  if (tree === null) return { ...NOTHING, setup: null, asks: [] };
+  if (tree === null) return { ...NOTHING, setup: null, asks: [], change: join.change };
   const read = await readUntilQueued(daemons, tree, undefined, bound, bound);
-  return waitFor(daemons, tree, narrowed(read, paths), bound, listed);
+  const joined = await waitFor(daemons, tree, narrowed(read, join.paths), bound, join.listed);
+  return { ...joined, change: join.change };
 }
 
 /**
@@ -155,7 +168,7 @@ async function waitFor(
   read: Read,
   bound: number,
   listed: readonly TestFileRef[] = [],
-): Promise<CommitAsked> {
+): Promise<Omit<CommitAsked, "change">> {
   const files = new Map<string, TestFileRef>();
   const pending = new Set<string>();
   const problems: string[] = read.problem === null ? [] : [read.problem];

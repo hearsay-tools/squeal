@@ -64,6 +64,12 @@ export type CommitSetup =
 /** One kept ask. */
 export interface CommitAskState {
   readonly owner: string;
+  /**
+   * Review 0.1.599 B4: the identity of the ask's change, its changed paths
+   * as a set (`changeOf`); `selects` counts that change. Absent from a
+   * daemon before it, and on an ask not taken yet.
+   */
+  readonly change?: string;
   /** `waiting`: for the setup; `selecting`: keyed, choosing; `queued`: its files are queued (or done); `failed`. */
   readonly phase: "waiting" | "selecting" | "queued" | "failed";
   /** Why it failed. */

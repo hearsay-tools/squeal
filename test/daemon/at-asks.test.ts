@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { type AtAskPorts, AtAsks, type AtRow, choose } from "../../src/core/daemon/at-asks.js";
+import {
+  type AtAskPorts,
+  AtAsks,
+  type AtRow,
+  changeOf,
+  choose,
+} from "../../src/core/daemon/at-asks.js";
 import { CommitDesk } from "../../src/core/daemon/commit-desk.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
@@ -183,6 +189,20 @@ describe("a commit daemon's asks (row 023-40c)", () => {
       { group: "tests", paths: [D.path, A.path], lead: true },
       { group: "slow", paths: [C.path], lead: true },
     ]);
+  });
+
+  it("review 0.1.599 B4: keeps each ask's change identity beside its count, the changed paths as a set", async () => {
+    const p = ports([row(A), row(B, null), row(D)]);
+    const asks = new AtAsks(p.value);
+    asks.ask(ask({ owner: "one", changed: ["src/a.ts"] }));
+    asks.ask(ask({ owner: "two", changed: ["src/b.ts", "src/a.ts", "src/b.ts"] }));
+    p.ready();
+    await expect.poll(() => asks.snapshot().asks.map((a) => a.phase)).toEqual(["queued", "queued"]);
+    const [one, two] = asks.snapshot().asks;
+    expect(one?.change).toBe(changeOf(["src/a.ts"]));
+    expect(two?.change).toBe(changeOf(["src/a.ts", "src/b.ts"]));
+    expect(one?.change).not.toBe(two?.change);
+    expect(changeOf([])).not.toBe(changeOf(["src/a.ts"]));
   });
 
   it("leads with nothing in a call that names no path", async () => {

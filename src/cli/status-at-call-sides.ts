@@ -11,6 +11,7 @@ import {
 import { treePath } from "../core/checkout/marker.js";
 import { withStores } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
+import { changeOf } from "../core/daemon/at-asks.js";
 import { runGit } from "../core/fs/git.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
@@ -140,6 +141,9 @@ export async function joinedCommit(
   bound: number,
 ): Promise<CommitAsked> {
   const tree = await joinedTree(daemons, input, commonDir);
+  // Review 0.1.599 B4: the change's count is read only from an ask of this call's change.
+  const changed = await changedPaths(input.root, input.commit).catch(() => null);
+  const change = changed === null ? null : changeOf(changed);
   if (tree === null) return joinCommit(daemons, null, bound);
   const listed = await withStores(commonDir, async (main) =>
     (main?.testFileKeys.list(idOf(tree)) ?? [])
@@ -147,7 +151,7 @@ export async function joinedCommit(
       .map((row) => row.testFile)
       .filter((ref) => paths === null || selects(paths, ref.path)),
   );
-  return joinCommit(daemons, tree, bound, listed, paths);
+  return joinCommit(daemons, tree, bound, { listed, paths, change });
 }
 
 /** A commit worktree of this commit and environment whose tree is gone, if the store still holds its daemon's rows. */
