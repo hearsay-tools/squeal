@@ -18,11 +18,12 @@
  * reads the real version.
  *
  * The value is fixed: it need not follow releases. It sits between the older
- * versions tests write (up to `0.1.451`) and the newer ones (`0.1.899` up). It
- * differed from the real version (0.1.591) when it was set, so a test that
- * mixed the two failed then, not at a later raise.
+ * versions tests write (up to `0.1.451`) and the newer ones (`0.1.899` up), and
+ * below every later release (the real version was 0.1.591 when it was set), so
+ * the real version never equals it and a test that mixes the two always fails
+ * (review 011-425).
  */
-export const TEST_VERSION = "0.1.600";
+export const TEST_VERSION = "0.1.590";
 
 /** Node arguments that give a process `TEST_VERSION` as a build would: no file, no read. */
 export const VERSION_ARGS: readonly string[] = [

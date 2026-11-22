@@ -50,7 +50,7 @@ These read the root `package.json` on purpose and keep the dependency:
 
 ## 4. The slice
 
-- `test/fixed-version.ts`: `TEST_VERSION = "0.1.600"` and `VERSION_ARGS`, the Node arguments `--import data:text/javascript,globalThis.__SQUEAL_VERSION__='0.1.600'`. A `data:` URL means no file is read.
+- `test/fixed-version.ts`: `TEST_VERSION = "0.1.590"` (first `0.1.600`; changed in the repair of review 011-425) and `VERSION_ARGS`, the Node arguments `--import data:text/javascript,globalThis.__SQUEAL_VERSION__='0.1.590'`. A `data:` URL means no file is read.
 - `vitest.config.ts`: `define: { __SQUEAL_VERSION__: JSON.stringify(TEST_VERSION) }`. Vitest sets defines as globals in the worker at run time. `typeof __SQUEAL_VERSION__` in `version.ts` then reads `"string"`.
 - `test/daemon/helpers.ts`: `buildCli` writes `{ name: "squeal", version: TEST_VERSION, type: "module" }` instead of copying the root manifest. Its daemons report the worker's version, and a test that wants an older daemon still writes its own manifest.
 - `test/runner-host/process-helpers.ts` (`SOURCE_LAUNCH`) and `test/runner-host/source-launch.test.ts`: the runner host from the sources gets `VERSION_ARGS` before `--import tsx`. A host refuses a daemon of another version, and these tests pair a host child with the worker's daemon.
@@ -79,8 +79,11 @@ These read the root `package.json` on purpose and keep the dependency:
 
 ## 5. What stays
 
-- **Children started from the sources without `VERSION_ARGS`**, left as they are: the CI record children (`test/ci/endpoints-child.test.ts`, `test/ci/record-exit.test.ts`, `test/cli/ci-usage.test.ts`), whose Node flags the recorded parts hold; the Codex adapter and runtime-update children (`test/harness/codex/adapter/*`, `test/harness/codex/runtime-update/*`); the hook runners (`test/harness/hand-off.test.ts`, `test/harness/subagent-leaving.test.ts`); and the child entry scripts `test/cli/proof-cli-child.ts`, `test/cli/status-at-cli-child.ts` and `test/commit/at-keys-killed.test.ts`. A child entry runs Squeal at the real version, so its relaunch must too. They read the real version and re-key on a raise, as they should while they read it.
-- **Bundle builds and `manifestFloor`** read the root manifest for real.
+Corrected in the repair of review 011-425 (S1): three kinds, not one.
+
+- **Children from the sources at the real version** (no `VERSION_ARGS`; they read the root manifest and re-key on a raise): the CI record children (`test/ci/endpoints-child.test.ts`, `test/ci/record-exit.test.ts`, `test/cli/ci-usage.test.ts`), whose Node flags the recorded parts hold; the hook runners (`test/harness/hand-off.test.ts`, `test/harness/subagent-leaving.test.ts`); the child entry scripts `test/cli/proof-cli-child.ts`, `test/cli/status-at-cli-child.ts` and `test/commit/at-keys-killed-child.ts`, the first two with their own unpinned relaunch arrays; and the `--version` child of `test/cli/main.test.ts`, which reads the real version on purpose (review B1).
+- **Children at a fixture version** (they do not report the root version): `test/harness/codex/adapter/runtime.test.ts` builds its runtime at `0.1.950`; `adapter/fixture.ts` builds an adapter bundle with fixture runtime versions; `runtime-update/selection-process.ts` and `lock-owner.ts` use the fixture store and updater.
+- **Build-time manifest readers**: bundle builds, `nodeFloor()` and `manifestFloor` read the root manifest for real. A test that builds a bundle keeps `package.json` in its closure.
 - **Cross-file attribution** in shared workers (section 2) can put `package.json` back into a closure whenever an earlier file's read lands late.
 
 ## 6. After
@@ -97,3 +100,9 @@ These read the root `package.json` on purpose and keep the dependency:
 The one file is `test/harness/codex/version-copies-start.test.ts` (`nodeFloor` of a bundle build). Every file exits as at base. `test/cli/code-gate-prerun.test.ts` fails in the copy at base and after, as it does not in the worktree. By size class: under 3 s, 1 of 25 left; 3 to 20 s, 0 of 15; 20 s or more, 0 of 5. *Verified by experiment.*
 
 Command, per sampled file: `PROBE=<dir> probes/run-obs.sh <label> probes/sample.txt`, then `node probes/classify.cjs <dir>/<label>`. The copy needs `git archive` of the commit, a copied `node_modules` and a `git init`.
+
+## 7. Repair after review 011-425 (coordinator c57d5feb, 2026-11-22)
+
+- **B1.** `test/cli/main.test.ts` "still prints the version" ran `main` in the worker and expected the root version. It now expects `TEST_VERSION` there, and a second test starts `src/cli/index.ts --version` from the sources with no `VERSION_ARGS` and compares it with `rootVersion()`. That file keeps `package.json` in its closure on purpose.
+- **Value.** `TEST_VERSION` is `0.1.590`, below every later release, so the real version never equals it. With `0.1.600`, B1 would have passed by accident at release 0.1.600.
+- **S1 and nits.** Section 5 rewritten; the PostCSS comment no longer says no fixture has CSS; trailing spaces removed from `probes/before.txt` and `probes/after.txt`.

@@ -1,13 +1,19 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { rootVersion } from "../../src/harness/build.js";
+import { TEST_VERSION } from "../fixed-version.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { seedLogin as seedWhyLogin } from "../status/why-seed.js";
 
 const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);
+const CLI = resolve(import.meta.dirname, "../../src/cli/index.ts");
+const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 
 function run(argv: string[], cwd: string, env: CliIo["env"] = {}) {
   let stdout = "";
@@ -237,6 +243,19 @@ describe("squeal", () => {
     const { code, stdout } = run(["--version"], fakeRepo().main);
 
     expect(code).toBe(0);
-    expect(stdout).toBe(`${rootVersion()}\n`);
+    expect(stdout).toBe(`${TEST_VERSION}\n`);
+  });
+
+  // Review 011-425 B1: the worker's version is fixed, so the root manifest's
+  // version is read by a child from the sources, which no build or test pins.
+  it("prints the root manifest's version when run from the sources", () => {
+    const child = spawnSync(process.execPath, ["--import", TSX, CLI, "--version"], {
+      cwd: fakeRepo().main,
+      encoding: "utf8",
+      timeout: 60_000,
+    });
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toBe(`${rootVersion()}\n`);
   });
 });
