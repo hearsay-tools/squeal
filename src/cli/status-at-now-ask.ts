@@ -43,9 +43,9 @@ export const SETTING_UP =
  * Awaits `pending` with a ref'd timer held, so the process lives until it
  * settles: `syncDaemon` polls a pending answer on unref'd sleeps, and with
  * nothing else ref'd a `status --at` call exited 13 ("unsettled top-level
- * await") with no output (`tasks/023-40d-measure.md`: 4 of 16 second calls).
+ * await") with no output (`tasks/023-40e-measure.md`: 4 of 16 second calls).
  */
-export async function keptAlive<T>(pending: Promise<T>): Promise<T> {
+async function keptAlive<T>(pending: Promise<T>): Promise<T> {
   const keep = setInterval(() => {}, 60_000);
   try {
     return await pending;
