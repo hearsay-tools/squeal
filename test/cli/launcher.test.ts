@@ -236,7 +236,7 @@ describe("the launcher", () => {
     expect(r.status).toBe(1);
     expect(r.stdout).toBe("");
     expect(r.stderr).toContain(
-      "no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode",
+      "no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi, OpenCode or Antigravity",
     );
     expect(r.stderr).toContain("claude plugin install squeal@hearsay");
     expect(r.stderr).toContain("codex plugin add squeal@hearsay");

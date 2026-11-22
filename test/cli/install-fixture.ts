@@ -136,15 +136,18 @@ process.exit(i >= 0 ? Number(args[i + 1]) : 0);
 `;
 }
 
-/** Writes a plugin directory as the harness installs it, or the Pi or OpenCode package: manifest, launcher, CLI. */
+/** Writes a plugin directory as the harness installs it, or the Pi, OpenCode or Antigravity package: manifest, launcher, CLI. */
 export function writePlugin(
   dir: string,
-  harness: "claude-code" | "codex" | "pi" | "opencode",
+  harness: "claude-code" | "codex" | "pi" | "opencode" | "antigravity",
   version: string,
   launcher = readFileSync(LAUNCHER, "utf8"),
 ): void {
   mkdirSync(dir, { recursive: true });
-  if (harness === "pi" || harness === "opencode") {
+  if (harness === "antigravity") {
+    // Spec 024 D1: Antigravity's native manifest sits at the plugin root.
+    writeFileSync(join(dir, "plugin.json"), JSON.stringify({ name: "squeal", version }));
+  } else if (harness === "pi" || harness === "opencode") {
     writeFileSync(
       join(dir, "package.json"),
       JSON.stringify({ name: `squeal-${harness}`, version }),
@@ -296,13 +299,14 @@ export function machine(harnesses: readonly Harness[] = ["claude", "codex"]): Ma
 /**
  * The tag's source archive as GitHub serves it: one top directory, here named
  * as GitHub names it for `squeal--v<version>`, holding the repository, of which
- * only `plugins/pi/` and `plugins/opencode/` are written.
+ * only `plugins/pi/`, `plugins/opencode/` and `plugins/antigravity/` are written.
  */
 function writeArchive(dir: string, version: string, launcher?: string): void {
   const staging = join(dir, `staging-${version}`);
   const top = `squeal-squeal-v${version}`;
   writePlugin(join(staging, top, "plugins", "pi"), "pi", version, launcher);
   writePlugin(join(staging, top, "plugins", "opencode"), "opencode", version, launcher);
+  writePlugin(join(staging, top, "plugins", "antigravity"), "antigravity", version, launcher);
   const r = spawnSync("tar", ["-czf", join(dir, `squeal--v${version}.tar.gz`), "-C", staging, top]);
   if (r.status !== 0) throw new Error(`tar failed: ${r.stderr}`);
   rmSync(staging, { recursive: true });

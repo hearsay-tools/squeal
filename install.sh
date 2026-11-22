@@ -25,7 +25,12 @@
 # current beside it there, and runs opencode plugin file:<...>/current -g
 # once, which makes every write under OpenCode's config (spec 008 D1); an
 # update repoints current, and removes older directories as for Pi.
-# `sh -s -- --opencode` updates only OpenCode.
+# `sh -s -- --opencode` updates only OpenCode. With the Antigravity CLI
+# (SQUEAL_ANTIGRAVITY_BIN, else agy, else antigravity on the PATH) it unpacks
+# the Antigravity plugin of this release into a staging directory and runs
+# <cli> plugin install on it, which copies it into
+# ~/.gemini/config/plugins/squeal (spec 024 D1); an update installs over it.
+# `sh -s -- --antigravity` updates only Antigravity.
 # SQUEAL_SOURCE overrides where the archives are. Each plugin, Pi package and
 # launcher it creates is recorded in ${XDG_STATE_HOME:-~/.local/state}/squeal/installed,
 # and `sh -s -- --uninstall` removes only those, so one that was there before stays.
@@ -60,7 +65,8 @@ has() { command -v "$1" >/dev/null 2>&1; }
 
 # The ownership record: one line per resource this script created, `claude`,
 # `codex`, `pi <dir>`, `opencode <dir>`, `opencode` (the config entry opencode
-# plugin wrote) or `launcher <path>`, written right after it, so a run that
+# plugin wrote), `antigravity` (the plugin <cli> plugin install wrote) or
+# `launcher <path>`, written right after it, so a run that
 # fails halfway still owns what it made.
 owns() { [ -f "$OWNED" ] && grep -qxF "$1" "$OWNED"; }
 record() {
@@ -95,8 +101,9 @@ process.exit(a > x || (a === x && b >= y) ? 0 : 1);
 # scope only), codex (any plugin in the Codex cache), adapter (a fixed Codex
 # plugin: hooks/hooks.json and seed/), or any (every Claude Code entry, the
 # Codex runtime a new session selects in place of a fixed plugin's adapter
-# version, any other Codex plugin, and the Pi and OpenCode packages under
-# $PI_HOME and $OPENCODE_HOME).
+# version, any other Codex plugin, the Pi and OpenCode packages under
+# $PI_HOME and $OPENCODE_HOME, and the Antigravity plugin), or antigravity
+# (the plugin under $ANTIGRAVITY_PLUGIN, by its plugin.json).
 installed() {
   node -e '
 const { existsSync, readFileSync, readdirSync } = require("node:fs");
@@ -137,7 +144,12 @@ if (want === "claude" || want === "any") {
     }
   } catch {}
 }
-if (want !== "claude") {
+if (want === "antigravity" || want === "any") {
+  const dir = env.ANTIGRAVITY_PLUGIN;
+  const v = versionIn(join(dir, "plugin.json"));
+  if (typeof v === "string" && /^\d+(\.\d+)*$/.test(v)) found.push([v, dir]);
+}
+if (want !== "claude" && want !== "antigravity") {
   const codex = env.CODEX_HOME ?? join(home, ".codex");
   const cache = join(codex, "plugins", "cache", "hearsay", "squeal");
   let dirs = [];
@@ -269,7 +281,8 @@ provision_codex() {
 }
 
 # Unpacks this release's plugins/$1/ into $3, under $2, from the tag's source
-# archive; $4 names the harness.
+# archive; $4 names the harness, $5 the manifest whose version it checks,
+# package.json by default.
 unpack() {
   has curl || fail "installing Squeal in $4 needs curl, and curl is not on the PATH"
   archive="$SOURCE/squeal--v$SQUEAL_VERSION.tar.gz"
@@ -280,7 +293,7 @@ unpack() {
   run tar -xzf "$TMP_DIR/source.tar.gz" -C "$TMP_DIR/source" --strip-components=1 ||
     fail "unpacking $archive failed"
   package="$TMP_DIR/source/plugins/$1"
-  version=$(node -e 'try { console.log(require(process.argv[1]).version ?? "") } catch { console.log("") }' "$package/package.json")
+  version=$(node -e 'try { console.log(require(process.argv[1]).version ?? "") } catch { console.log("") }' "$package/${5:-package.json}")
   [ "$version" = "$SQUEAL_VERSION" ] ||
     fail "$archive holds no $4 package of squeal $SQUEAL_VERSION at plugins/$1"
   run mv "$package" "$3"
@@ -377,6 +390,50 @@ install_opencode() {
   fi
 }
 
+# Finds the Antigravity CLI into ANTIGRAVITY: SQUEAL_ANTIGRAVITY_BIN, then
+# agy, then antigravity on the PATH. A candidate counts only when --version
+# prints a bare x.y.z and help plugin lists uninstall and validate, which the
+# Antigravity IDE launcher does not (research/wave-0-checks.md 1). The usage
+# line follows argv[0], so it is never matched, and no plugin subcommand gets
+# --help, which plugin uninstall takes as a plugin's name. Stdin is the script
+# under a pipe, so no candidate reads it.
+find_antigravity() {
+  [ -z "$ANTIGRAVITY" ] || return 0
+  for cli in ${SQUEAL_ANTIGRAVITY_BIN:+"$SQUEAL_ANTIGRAVITY_BIN"} agy antigravity; do
+    has "$cli" || continue
+    v=$("$cli" --version </dev/null 2>/dev/null) || continue
+    expr "x$v" : 'x[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null || continue
+    help=$("$cli" help plugin </dev/null 2>&1) || true
+    case "$help" in *uninstall*) ;; *) continue ;; esac
+    case "$help" in *validate*) ;; *) continue ;; esac
+    ANTIGRAVITY=$cli
+    return 0
+  done
+  return 1
+}
+
+# Installs this release in Antigravity: <cli> plugin install copies the
+# staged plugin over any earlier one in place, and Squeal's copies in its
+# PLUGIN_DATA keep the daemons of open sessions running (spec 024 D1). The
+# plugin is recorded only when none was there before. This script never edits
+# ~/.gemini/config/config.json or import_manifest.json.
+install_antigravity() {
+  current=$(installed antigravity)
+  if [ "${current%% *}" = "$SQUEAL_VERSION" ]; then
+    say "Antigravity has Squeal $SQUEAL_VERSION from $ANTIGRAVITY_PLUGIN"
+    return 0
+  fi
+  STAGE=$(mktemp -d "${TMPDIR:-/tmp}/squeal-antigravity.XXXXXX")
+  unpack antigravity "$STAGE" "$STAGE/squeal" Antigravity plugin.json
+  run "$ANTIGRAVITY" plugin install "$STAGE/squeal" </dev/null ||
+    fail "$ANTIGRAVITY plugin install $STAGE/squeal failed"
+  rm -rf "$STAGE"
+  STAGE=
+  [ "$(installed antigravity)" = "$SQUEAL_VERSION $ANTIGRAVITY_PLUGIN" ] ||
+    fail "$ANTIGRAVITY plugin install did not leave Squeal $SQUEAL_VERSION in $ANTIGRAVITY_PLUGIN"
+  [ -n "$current" ] || record antigravity
+}
+
 # The newest recorded directory other than $1, by its version, which an update keeps.
 previous() {
   node -e '
@@ -440,8 +497,8 @@ copy_launcher() {
 
 install() {
   check_node
-  has claude || has codex || has pi || has opencode ||
-    fail "none of claude, codex, pi and opencode is on the PATH: install Claude Code, Codex, Pi or OpenCode first"
+  has claude || has codex || has pi || has opencode || find_antigravity ||
+    fail "none of claude, codex, pi, opencode and agy is on the PATH: install Claude Code, Codex, Pi, OpenCode or Antigravity first"
   if has claude; then install_in claude "Claude Code" install; fi
   if has codex; then
     install_in codex Codex add
@@ -449,6 +506,7 @@ install() {
   fi
   if has pi; then install_pi; fi
   if has opencode; then install_opencode; fi
+  if find_antigravity; then install_antigravity; fi
   copy_launcher
   say "Next, in each repository: squeal setup"
 }
@@ -465,6 +523,14 @@ install_opencode_only() {
   check_node
   has opencode || fail "opencode is not on the PATH"
   install_opencode
+}
+
+# squeal update's Antigravity step, as the Pi one.
+install_antigravity_only() {
+  check_node
+  find_antigravity ||
+    fail "no Antigravity CLI is on the PATH: neither agy nor antigravity is one; set SQUEAL_ANTIGRAVITY_BIN to the CLI's path"
+  install_antigravity
 }
 
 # $1: claude or codex; $2: its name; $3: its remove subcommand.
@@ -541,6 +607,32 @@ uninstall_opencode() {
   rmdir "$OPENCODE_HOME" "${OPENCODE_HOME%/*}" 2>/dev/null || true
 }
 
+# Removes the Antigravity plugin this script installed, then Squeal's
+# PLUGIN_DATA, which plugin uninstall keeps, once no plugin remains and no
+# running process uses it. plugin uninstall exits 0 with nothing installed,
+# so presence is its plugin.json (research/wave-0-checks.md 1 and 2).
+uninstall_antigravity() {
+  if [ ! -f "$ANTIGRAVITY_PLUGIN/plugin.json" ]; then
+    forget antigravity
+  elif ! owns antigravity; then
+    say "Antigravity had Squeal before install.sh ran, so it stays; agy plugin uninstall squeal removes it"
+  elif find_antigravity; then
+    run "$ANTIGRAVITY" plugin uninstall squeal </dev/null || fail "$ANTIGRAVITY plugin uninstall squeal failed"
+    [ ! -f "$ANTIGRAVITY_PLUGIN/plugin.json" ] ||
+      fail "$ANTIGRAVITY plugin uninstall squeal left Squeal in $ANTIGRAVITY_PLUGIN"
+    forget antigravity
+  else
+    say "no Antigravity CLI is on the PATH, so Squeal stays in Antigravity and in $OWNED; set SQUEAL_ANTIGRAVITY_BIN to the CLI's path to remove it"
+  fi
+  if [ -d "$ANTIGRAVITY_DATA" ] && [ ! -f "$ANTIGRAVITY_PLUGIN/plugin.json" ]; then
+    if in_use "$ANTIGRAVITY_DATA"; then
+      say "Kept $ANTIGRAVITY_DATA: a running process uses it; once it ends, rm -rf $ANTIGRAVITY_DATA removes it"
+    else
+      run rm -rf "$ANTIGRAVITY_DATA"
+    fi
+  fi
+}
+
 uninstall() {
   to="$BIN_DIR/squeal"
   if ! is_launcher "$to"; then
@@ -561,6 +653,7 @@ uninstall() {
   fi
   uninstall_pi
   uninstall_opencode
+  uninstall_antigravity
   say "The hearsay marketplace stays added; claude plugin marketplace remove hearsay and codex plugin marketplace remove hearsay remove it."
 }
 
@@ -575,17 +668,23 @@ main() {
   SOURCE=${SQUEAL_SOURCE:-$SOURCE}
   PI_HOME=${XDG_DATA_HOME:-$HOME/.local/share}/squeal/pi
   OPENCODE_HOME=${XDG_DATA_HOME:-$HOME/.local/share}/squeal/opencode
-  export PI_HOME OPENCODE_HOME
-  # A failed unpack leaves no download behind.
+  # Antigravity's paths for Squeal: PLUGIN_ROOT and PLUGIN_DATA of its hooks.
+  ANTIGRAVITY_PLUGIN=$HOME/.gemini/config/plugins/squeal
+  ANTIGRAVITY_DATA=$HOME/.gemini/antigravity-cli/plugin_data/squeal
+  ANTIGRAVITY=
+  export PI_HOME OPENCODE_HOME ANTIGRAVITY_PLUGIN
+  # A failed unpack or plugin install leaves no download or staging behind.
   TMP_DIR=
-  trap '[ -z "$TMP_DIR" ] || rm -rf "$TMP_DIR"' EXIT
+  STAGE=
+  trap '[ -z "$TMP_DIR" ] || rm -rf "$TMP_DIR"; [ -z "$STAGE" ] || rm -rf "$STAGE"' EXIT
   case "$*" in
   "$COMPLETE") install ;;
   "--uninstall $COMPLETE") uninstall ;;
   "--pi $COMPLETE") install_pi_only ;;
   "--opencode $COMPLETE") install_opencode_only ;;
+  "--antigravity $COMPLETE") install_antigravity_only ;;
   *)
-    say "usage: install.sh [--uninstall | --pi | --opencode]" >&2
+    say "usage: install.sh [--uninstall | --pi | --opencode | --antigravity]" >&2
     exit 2
     ;;
   esac
