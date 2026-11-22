@@ -4736,6 +4736,41 @@ var init_codec = __esm({
   }
 });
 
+// src/core/store/prune-checkpoint.ts
+function* checkpointAfterWrites(conn, slices2) {
+  for (const slice of slices2) {
+    let wrote = false;
+    yield () => {
+      const before5 = writeMark(conn);
+      withoutAutoCheckpoint(conn, slice);
+      wrote = writeMark(conn) !== before5;
+    };
+    if (wrote) yield () => checkpoint(conn);
+  }
+}
+function withoutAutoCheckpoint(conn, fn) {
+  const own = Number(conn.get("PRAGMA wal_autocheckpoint")?.wal_autocheckpoint);
+  conn.db.exec("PRAGMA wal_autocheckpoint = 0");
+  try {
+    fn();
+  } finally {
+    conn.db.exec(`PRAGMA wal_autocheckpoint = ${own}`);
+  }
+}
+function checkpoint(conn) {
+  conn.get("PRAGMA wal_checkpoint(PASSIVE)");
+}
+function writeMark(conn) {
+  const changes = conn.get("SELECT total_changes() AS n")?.n;
+  const pages = conn.get("PRAGMA page_count")?.page_count;
+  return `${String(changes)}:${String(pages)}`;
+}
+var init_prune_checkpoint = __esm({
+  "src/core/store/prune-checkpoint.ts"() {
+    "use strict";
+  }
+});
+
 // src/core/store/repos/meta-list.ts
 function readMetaList(conn, key3, guard) {
   const row2 = conn.get("SELECT value FROM meta WHERE key = ?", key3);
@@ -4922,7 +4957,7 @@ var init_prune_rules = __esm({
     DAY_MS = 24 * 60 * 60 * 1e3;
     EVICTION_BATCH = 32;
     DELETE_BATCH = 256;
-    VACUUM_PAGES = 16;
+    VACUUM_PAGES = 8;
     VACUUM_SLICE_MS = 100;
     LIST_DELETE_BATCH = 32;
     LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -5005,12 +5040,13 @@ var init_prune_keyed = __esm({
 // src/core/store/loaded-modules.ts
 function* emptyLoadedModules(conn) {
   if (!conn.read(() => hasLoadedModulesTable(conn))) return;
-  yield* deleteByKey(conn, {
+  const deletes = deleteByKey(conn, {
     table: LOADED_MODULES_TABLE,
     key: ["project", "path", "key"],
     search: "1",
     batch: LIST_DELETE_BATCH
   });
+  yield* checkpointAfterWrites(conn, deletes);
 }
 function hasLoadedModulesTable(conn) {
   const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
@@ -5020,6 +5056,7 @@ var LOADED_MODULES_TABLE;
 var init_loaded_modules = __esm({
   "src/core/store/loaded-modules.ts"() {
     "use strict";
+    init_prune_checkpoint();
     init_prune_keyed();
     init_prune_rules();
     LOADED_MODULES_TABLE = "loaded_modules";
@@ -5106,7 +5143,10 @@ var init_prune_unused = __esm({
 });
 
 // src/core/store/prune-vacuum.ts
-function* vacuum(conn, clock = () => performance.now()) {
+function vacuum(conn, clock = () => performance.now()) {
+  return checkpointAfterWrites(conn, vacuumSlices(conn, clock));
+}
+function* vacuumSlices(conn, clock) {
   let free = freePages(conn);
   while (free > 0) {
     yield () => conn.transaction(() => vacuumFor(conn, clock));
@@ -5132,6 +5172,7 @@ function freePages(conn) {
 var init_prune_vacuum = __esm({
   "src/core/store/prune-vacuum.ts"() {
     "use strict";
+    init_prune_checkpoint();
     init_prune_rules();
   }
 });
@@ -13666,7 +13707,7 @@ function markPath(dir2, worktreeId) {
   const name3 = createHash8("sha256").update(worktreeId).digest("hex").slice(0, 16);
   return join19(dir2, `${MARK_PREFIX}${name3}`);
 }
-function writeMark(dir2, mark) {
+function writeMark2(dir2, mark) {
   const path = markPath(dir2, mark.id);
   const body2 = {
     v: 1,
@@ -14318,7 +14359,7 @@ var init_pool = __esm({
           background: this.#backgroundHeld(),
           ...project === void 0 ? {} : { project }
         };
-        writeMark(dir2, this.#mark);
+        writeMark2(dir2, this.#mark);
       }
       /**
        * After a lease shrank or went, or an edit's tier started or ended: the
@@ -14352,7 +14393,7 @@ var init_pool = __esm({
           const cores = this.#cores();
           if (cores !== null) this.#mark = { ...this.#mark, cores };
           try {
-            writeMark(this.#options.dir, this.#mark);
+            writeMark2(this.#options.dir, this.#mark);
           } catch {
           }
         }, this.#options.refreshMs ?? MARK_REFRESH_MS);
@@ -62984,13 +63025,13 @@ function readIgnoredReads(store, worktreeId) {
   }
   return { checkpoint: value.checkpoint, revision: value.revision, files: files5 };
 }
-function startIgnoredReads(store, worktreeId, checkpoint, revision) {
-  const record2 = { checkpoint, revision, files: {} };
+function startIgnoredReads(store, worktreeId, checkpoint2, revision) {
+  const record2 = { checkpoint: checkpoint2, revision, files: {} };
   store.meta.set(ignoredReadsMetaKey(worktreeId), JSON.stringify(record2));
 }
-function addIgnoredReads(store, worktreeId, checkpoint, read7) {
+function addIgnoredReads(store, worktreeId, checkpoint2, read7) {
   const record2 = readIgnoredReads(store, worktreeId);
-  if (record2 === null || record2.checkpoint !== checkpoint || read7.size === 0) return;
+  if (record2 === null || record2.checkpoint !== checkpoint2 || read7.size === 0) return;
   const files5 = { ...record2.files };
   for (const [id, paths] of read7) files5[id] = capped3(paths);
   store.meta.set(ignoredReadsMetaKey(worktreeId), JSON.stringify({ ...record2, files: files5 }));
@@ -82444,11 +82485,11 @@ function lockedText(daemon) {
   return daemon.state === "down" && daemon.startMark === "spawn" ? SPAWNED_TEXT : LOCKED_TEXT;
 }
 function checkpointText(s, now, command) {
-  const checkpoint = s.checkpoint;
-  if (checkpoint === void 0) return "a checkpoint in progress";
-  const what = checkpoint.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint.revision}` : `the baseline from revision ${checkpoint.revision}`;
-  const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
-  return `a checkpoint in progress: ${what}, started ${ageText2(now - checkpoint.startedAt)} ago: ${done}; \`${command} run --all --wait\` waits for it`;
+  const checkpoint2 = s.checkpoint;
+  if (checkpoint2 === void 0) return "a checkpoint in progress";
+  const what = checkpoint2.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint2.revision}` : `the baseline from revision ${checkpoint2.revision}`;
+  const done = `${checkpoint2.done} of ${plural(checkpoint2.total, "test file")} done`;
+  return `a checkpoint in progress: ${what}, started ${ageText2(now - checkpoint2.startedAt)} ago: ${done}; \`${command} run --all --wait\` waits for it`;
 }
 function retryText2(standing4, files5, s, now, command) {
   const asked = standing4.noResult ? "no result at its inputs" : standing4.reason;
@@ -82693,10 +82734,10 @@ function excludedLine(s) {
   ];
 }
 function owedLine(s) {
-  const checkpoint = s.checkpoint;
-  if (checkpoint === void 0 || !checkpoint.owed) return [];
-  const what = checkpoint.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint.revision}` : `the baseline from revision ${checkpoint.revision}`;
-  const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
+  const checkpoint2 = s.checkpoint;
+  if (checkpoint2 === void 0 || !checkpoint2.owed) return [];
+  const what = checkpoint2.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint2.revision}` : `the baseline from revision ${checkpoint2.revision}`;
+  const done = `${checkpoint2.done} of ${plural(checkpoint2.total, "test file")} done`;
   return [`Checkpoint owed: ${what}, ${done} when its daemon stopped; the next daemon resumes it`];
 }
 function formatUnavailable(result, command = "squeal") {
@@ -84314,7 +84355,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
   );
   const load = once2(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs2);
-  const checkpoint = openCheckpoint(store, worktreeId, daemon);
+  const checkpoint2 = openCheckpoint(store, worktreeId, daemon);
   const at2 = worktree?.root ?? root;
   const phases = pendingPhasesOf(states, keys, held4);
   const focused = readStatusFocused(store, worktreeId, phases);
@@ -84332,7 +84373,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
       holds: holds4,
       slowSlot: slowSlot ?? null,
       ...retries,
-      ...checkpoint
+      ...checkpoint2
     },
     now,
     load
@@ -84355,7 +84396,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     storeSchemaVersion: store.schemaVersion,
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
-    ...checkpoint,
+    ...checkpoint2,
     ...vitestExcluded(at2),
     ...configProblemsOf(at2),
     // Row 011-275 (gh-120): beside the live daemon's version, the keys a runtime here leaves out.
@@ -92159,8 +92200,8 @@ function runLanes(flags3) {
   return flags3.has("--all") ? "both" : null;
 }
 var LANE_FLAGS = ["--all", "--fast", "--slow"];
-function laneText2(checkpoint, asked) {
-  const lane = checkpoint.lane;
+function laneText2(checkpoint2, asked) {
+  const lane = checkpoint2.lane;
   if (lane !== void 0) {
     const other = lane === "fast" ? "slow" : "fast";
     return ` (the ${lane} lane only, not a full-suite checkpoint: ${other} test files are not in it)`;
@@ -93021,10 +93062,10 @@ function newsText(wait, files5) {
   return parts3.join(" and ");
 }
 function checkpointText2(snapshot3, command) {
-  const checkpoint = snapshot3.checkpoint;
-  if (checkpoint === void 0 || checkpoint.owed) return "";
-  const what = checkpoint.kind === "run-all" ? "a `run --all` checkpoint" : "the baseline checkpoint";
-  return `; ${what} is still running (${checkpoint.done} of ${plural(checkpoint.total, "test file")} done), which this wait does not hold for: \`${command} run --all --wait\` waits for it`;
+  const checkpoint2 = snapshot3.checkpoint;
+  if (checkpoint2 === void 0 || checkpoint2.owed) return "";
+  const what = checkpoint2.kind === "run-all" ? "a `run --all` checkpoint" : "the baseline checkpoint";
+  return `; ${what} is still running (${checkpoint2.done} of ${plural(checkpoint2.total, "test file")} done), which this wait does not hold for: \`${command} run --all --wait\` waits for it`;
 }
 function slowText(slow) {
   if (slow.held === 0) return "";
@@ -102025,7 +102066,7 @@ import { mkdirSync as mkdirSync23, renameSync as renameSync8, rmSync as rmSync26
 init_terminate();
 function markStart(lockFile2, lock2) {
   const own = { pid: process.pid, startTime: startTimeOf(process.pid) };
-  writeMark2(startMarkFor(lockFile2), own);
+  writeMark3(startMarkFor(lockFile2), own);
   let held4 = true;
   return {
     release() {
@@ -102041,7 +102082,7 @@ function clearStartMark(lockFile2) {
   removeMark(startMarkFor(lockFile2));
   removeMark(spawnMarkFor(lockFile2));
 }
-function writeMark2(path, mark) {
+function writeMark3(path, mark) {
   try {
     const temp = `${path}.${process.pid}`;
     writeFileSync16(temp, JSON.stringify(mark));
@@ -103249,8 +103290,8 @@ function createHandlers(context) {
       error: state.error
     };
     if (state.checkpoint === null) return { ...answer4, checkpoint: null };
-    const { owner: owner2, coveredId, ...checkpoint } = state.checkpoint;
-    return { ...answer4, checkpoint, owner: owner2, ...coveredId === void 0 ? {} : { coveredId } };
+    const { owner: owner2, coveredId, ...checkpoint2 } = state.checkpoint;
+    return { ...answer4, checkpoint: checkpoint2, owner: owner2, ...coveredId === void 0 ? {} : { coveredId } };
   };
   const runSlow = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -103319,8 +103360,8 @@ function createHandlers(context) {
           ...request.lane === void 0 ? {} : { lane: request.lane }
         };
         context.requestFullSuite(full).then(
-          (checkpoint) => {
-            state.checkpoint = checkpoint;
+          (checkpoint2) => {
+            state.checkpoint = checkpoint2;
           },
           (error) => {
             state.error = error instanceof Error ? error.message : String(error);
@@ -103703,7 +103744,7 @@ async function inWorker(worker, identity4, events) {
           return;
         case "run-all":
           events.requestFullSuite(message3.request).then(
-            (checkpoint) => post({ type: "run-all-result", id: message3.id, checkpoint, error: null }),
+            (checkpoint2) => post({ type: "run-all-result", id: message3.id, checkpoint: checkpoint2, error: null }),
             (error) => post({
               type: "run-all-result",
               id: message3.id,
@@ -105392,7 +105433,7 @@ function startTimers(context) {
   };
   const retries = new SlicedWrites(context);
   const unlog = logLongWrites((write4) => context.log(longWriteLine(write4)));
-  const checkpoint = new IdleCheckpoint();
+  const checkpoint2 = new IdleCheckpoint();
   const check3 = () => {
     if (!existsSync43(context.root)) {
       context.shutdown("root-removed", `daemon stopped: worktree root ${context.root} was deleted`);
@@ -105430,7 +105471,7 @@ function startTimers(context) {
     attempt("unused check", () => unused(at2));
     attempt("idle GC", () => context.idleGc?.());
     attempt("idle checkpoint", () => {
-      if (checkpoint.due(at2, context.work?.() ?? null)) {
+      if (checkpoint2.due(at2, context.work?.() ?? null)) {
         truncateWal(connectionOf(store).db, CHECKPOINT_BUSY_MS);
       }
     });
@@ -109531,14 +109572,14 @@ function compound(line, pattern2) {
 }
 function reword(line, pattern2 = commandPattern(true)) {
   const command = commandOf(line, pattern2);
-  const checkpoint = `squeal run --all --wait ${GATE_WAIT_MS}`;
+  const checkpoint2 = `squeal run --all --wait ${GATE_WAIT_MS}`;
   let replaced = line.replace(
     /`([^`]+)`/g,
-    (span, inner) => pattern2.test(inner) ? `\`${checkpoint}\`` : span
+    (span, inner) => pattern2.test(inner) ? `\`${checkpoint2}\`` : span
   );
-  if (replaced === line) replaced = line.replace(pattern2, checkpoint);
+  if (replaced === line) replaced = line.replace(pattern2, checkpoint2);
   const fallback2 = `If it exits 3 at its deadline, run it again; if it exits 3 for another reason, \`squeal\` is unavailable, or you doubt its result, run \`${command}\` instead.`;
-  const end = sentenceEnd(replaced, replaced.indexOf(checkpoint));
+  const end = sentenceEnd(replaced, replaced.indexOf(checkpoint2));
   if (end !== null) return `${replaced.slice(0, end)} ${fallback2}${replaced.slice(end)}`;
   const body2 = replaced.trimEnd();
   return `${body2}${endsSentence(body2) ? "" : "."} ${fallback2}`;
@@ -120291,15 +120332,15 @@ ${USAGE9}`);
 `);
     return 1;
   }
-  const { checkpoint } = state;
+  const { checkpoint: checkpoint2 } = state;
   const bound = deadline ?? Number.POSITIVE_INFINITY;
   const { files: files5 } = requestFiles(
     { root, coveredId: state.coveredId, deadline: bound },
-    { kind: "lane", lane: checkpoint.lane ?? null }
+    { kind: "lane", lane: checkpoint2.lane ?? null }
   );
-  const joined2 = joinedCheckpoint(root, checkpoint, state.owner, bound);
-  const named4 = `Checkpoint ${checkpoint.id}${laneText2(checkpoint, lane)}`;
-  const started2 = `${named4} started at revision ${checkpoint.revision}: ${filesText6(root, checkpoint, files5, bound)}${joinedText(joined2)}
+  const joined2 = joinedCheckpoint(root, checkpoint2, state.owner, bound);
+  const named4 = `Checkpoint ${checkpoint2.id}${laneText2(checkpoint2, lane)}`;
+  const started2 = `${named4} started at revision ${checkpoint2.revision}: ${filesText6(root, checkpoint2, files5, bound)}${joinedText(joined2)}
 `;
   if (deadline === null) {
     io.stdout(started2);
@@ -120311,15 +120352,15 @@ ${USAGE9}`);
     socketPath,
     deadline,
     checkpoint: {
-      id: checkpoint.id,
-      worktreeId: checkpoint.worktreeId,
-      revision: checkpoint.revision
+      id: checkpoint2.id,
+      worktreeId: checkpoint2.worktreeId,
+      revision: checkpoint2.revision
     },
     files: files5
   });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
-  const [line, code] = checkpointVerdictLine(root, checkpoint, outcome2, joined2, command, deadline);
+  const [line, code] = checkpointVerdictLine(root, checkpoint2, outcome2, joined2, command, deadline);
   const status3 = readStatus(root, { now });
   const gap = outcome2.kind === "abandoned" || code === 3 ? gapText2(status3) : "";
   io.stdout(`${named4} ${line}${gap}
@@ -120344,7 +120385,7 @@ function takeAllWait(args2) {
   if (at2 === -1 || /^\d+$/.test(args2[at2 + 1] ?? "")) return takeWait(args2);
   return { waitMs: Number.POSITIVE_INFINITY, rest: args2.filter((_, i3) => i3 !== at2) };
 }
-function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command, deadline = Number.POSITIVE_INFINITY) {
+function checkpointVerdictLine(root, checkpoint2, outcome2, joined2, command, deadline = Number.POSITIVE_INFINITY) {
   const none3 = (why2) => [`has no verdict: ${why2}`, 3];
   switch (outcome2.kind) {
     case "on-hold":
@@ -120358,19 +120399,19 @@ function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command, dea
       );
     case "stopped":
       return none3(
-        `the daemon stopped before it ended (${stoppedText(outcome2.daemon, command)})${owedText(root, checkpoint, deadline)}`
+        `the daemon stopped before it ended (${stoppedText(outcome2.daemon, command)})${owedText(root, checkpoint2, deadline)}`
       );
     // Row 011-327: the store did not open, or was busy at the deadline's read.
     case "unopened":
       return none3(outcome2.unavailable);
     case "moved":
       return none3(
-        `revision ${outcome2.revision} was recorded after the checkpoint's revision ${checkpoint.revision}`
+        `revision ${outcome2.revision} was recorded after the checkpoint's revision ${checkpoint2.revision}`
       );
     case "deadline": {
       const pending = plural(outcome2.verdict.byClass.pending, "test file");
       return none3(
-        `the deadline passed with ${pending} pending at revision ${checkpoint.revision}; the checkpoint goes on in the daemon`
+        `the deadline passed with ${pending} pending at revision ${checkpoint2.revision}; the checkpoint goes on in the daemon`
       );
     }
     case "ended": {
@@ -120378,7 +120419,7 @@ function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command, dea
       const why2 = noVerdictText(verdict);
       if (why2 !== null) return none3(why2);
       const files5 = plural(verdict.testFiles, "test file");
-      const owner2 = joined2 === null ? checkpoint : "unread" in joined2 ? null : joined2.record;
+      const owner2 = joined2 === null ? checkpoint2 : "unread" in joined2 ? null : joined2.record;
       const ran = owner2 === null ? 0 : Math.min(owner2.testFiles.length, verdict.testFiles);
       const by = joined2 === null || "unread" in joined2 ? "run now" : `run by the ${joined2.what} checkpoint ${joined2.id} it joined`;
       const counts = owner2 === null ? files5 : `${files5}, ${verdict.testFiles - ran} already current, ${ran} ${by}`;
@@ -120394,8 +120435,8 @@ async function recorded(socketPath, first2, deadline) {
 }
 function recordedOf(outcome2) {
   if (outcome2.kind === "taken" && outcome2.answer.checkpoint !== null) {
-    const { checkpoint, owner: owner2, coveredId } = outcome2.answer;
-    return { checkpoint, owner: owner2, coveredId };
+    const { checkpoint: checkpoint2, owner: owner2, coveredId } = outcome2.answer;
+    return { checkpoint: checkpoint2, owner: owner2, coveredId };
   }
   if (outcome2.kind === "failed") return `run --all failed: ${outcome2.error}`;
   if (outcome2.kind === "pending") return null;
@@ -120404,34 +120445,34 @@ function recordedOf(outcome2) {
   }
   return "the daemon stopped before recording the checkpoint";
 }
-function filesText6(root, checkpoint, files5, deadline) {
-  const toRun2 = plural(checkpoint.testFiles.length, "test file");
+function filesText6(root, checkpoint2, files5, deadline) {
+  const toRun2 = plural(checkpoint2.testFiles.length, "test file");
   const current2 = readBeside(root, besideBound(deadline), (store) => {
-    const requested = new Set(checkpoint.testFiles.map(testFileId));
-    const listed12 = checkpointFiles(store, checkpoint.worktreeId, files5) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row2) => row2.testFile);
+    const requested = new Set(checkpoint2.testFiles.map(testFileId));
+    const listed12 = checkpointFiles(store, checkpoint2.worktreeId, files5) ?? store.testFileKeys.list(checkpoint2.worktreeId).map((row2) => row2.testFile);
     const rest2 = listed12.filter((file) => !requested.has(testFileId(file)));
-    return readClasses(store, checkpoint.worktreeId, rest2).byClass.current;
+    return readClasses(store, checkpoint2.worktreeId, rest2).byClass.current;
   });
   if ("unread" in current2) {
     return `${toRun2} to run, ${notReadText("the count already current", current2.unread)}`;
   }
   return `${toRun2} to run, ${current2.read} already current`;
 }
-function owedText(root, checkpoint, deadline) {
+function owedText(root, checkpoint2, deadline) {
   const owed = readBeside(
     root,
     besideBound(deadline),
-    (store) => openCheckpoint2(store, checkpoint.worktreeId)?.owed?.ids ?? []
+    (store) => openCheckpoint2(store, checkpoint2.worktreeId)?.owed?.ids ?? []
   );
   if ("unread" in owed)
     return `; ${notReadText("whether the next daemon resumes it", owed.unread)}`;
-  return owed.read.includes(checkpoint.id) ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
+  return owed.read.includes(checkpoint2.id) ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
 }
-function joinedCheckpoint(root, checkpoint, owner2, deadline) {
-  if (owner2 === void 0 || owner2 === checkpoint.id) return null;
+function joinedCheckpoint(root, checkpoint2, owner2, deadline) {
+  if (owner2 === void 0 || owner2 === checkpoint2.id) return null;
   const joined2 = readBeside(root, besideBound(deadline), (store) => {
     const record2 = store.checkpoints.get(owner2);
-    const open7 = openCheckpoint2(store, checkpoint.worktreeId);
+    const open7 = openCheckpoint2(store, checkpoint2.worktreeId);
     return {
       id: owner2,
       open: open7?.id === owner2 ? open7 : null,

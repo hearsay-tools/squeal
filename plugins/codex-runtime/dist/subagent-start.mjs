@@ -1658,6 +1658,36 @@ function flag(value) {
 import { existsSync as existsSync2, rmSync as rmSync2 } from "node:fs";
 import { join as join4, resolve, sep } from "node:path";
 
+// src/core/store/prune-checkpoint.ts
+function* checkpointAfterWrites(conn, slices2) {
+  for (const slice of slices2) {
+    let wrote = false;
+    yield () => {
+      const before = writeMark(conn);
+      withoutAutoCheckpoint(conn, slice);
+      wrote = writeMark(conn) !== before;
+    };
+    if (wrote) yield () => checkpoint(conn);
+  }
+}
+function withoutAutoCheckpoint(conn, fn) {
+  const own = Number(conn.get("PRAGMA wal_autocheckpoint")?.wal_autocheckpoint);
+  conn.db.exec("PRAGMA wal_autocheckpoint = 0");
+  try {
+    fn();
+  } finally {
+    conn.db.exec(`PRAGMA wal_autocheckpoint = ${own}`);
+  }
+}
+function checkpoint(conn) {
+  conn.get("PRAGMA wal_checkpoint(PASSIVE)");
+}
+function writeMark(conn) {
+  const changes = conn.get("SELECT total_changes() AS n")?.n;
+  const pages = conn.get("PRAGMA page_count")?.page_count;
+  return `${String(changes)}:${String(pages)}`;
+}
+
 // src/core/store/repos/meta-list.ts
 function readMetaList(conn, key, guard) {
   const row = conn.get("SELECT value FROM meta WHERE key = ?", key);
@@ -1812,7 +1842,7 @@ function isEntry2(value) {
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var DELETE_BATCH = 256;
-var VACUUM_PAGES = 16;
+var VACUUM_PAGES = 8;
 var VACUUM_SLICE_MS = 100;
 var LIST_DELETE_BATCH = 32;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -1890,12 +1920,13 @@ function hasIndexes(conn, ...names3) {
 var LOADED_MODULES_TABLE = "loaded_modules";
 function* emptyLoadedModules(conn) {
   if (!conn.read(() => hasLoadedModulesTable(conn))) return;
-  yield* deleteByKey(conn, {
+  const deletes = deleteByKey(conn, {
     table: LOADED_MODULES_TABLE,
     key: ["project", "path", "key"],
     search: "1",
     batch: LIST_DELETE_BATCH
   });
+  yield* checkpointAfterWrites(conn, deletes);
 }
 function hasLoadedModulesTable(conn) {
   const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
@@ -1973,7 +2004,10 @@ function keptTexts(conn) {
 }
 
 // src/core/store/prune-vacuum.ts
-function* vacuum(conn, clock = () => performance.now()) {
+function vacuum(conn, clock = () => performance.now()) {
+  return checkpointAfterWrites(conn, vacuumSlices(conn, clock));
+}
+function* vacuumSlices(conn, clock) {
   let free = freePages(conn);
   while (free > 0) {
     yield () => conn.transaction(() => vacuumFor(conn, clock));
@@ -16077,7 +16111,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
   );
   const load = once2(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
-  const checkpoint = openCheckpoint(store, worktreeId, daemon);
+  const checkpoint2 = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;
   const phases = pendingPhasesOf(states, keys, held);
   const focused = readStatusFocused(store, worktreeId, phases);
@@ -16095,7 +16129,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
       holds: holds2,
       slowSlot: slowSlot ?? null,
       ...retries,
-      ...checkpoint
+      ...checkpoint2
     },
     now,
     load
@@ -16118,7 +16152,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     storeSchemaVersion: store.schemaVersion,
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
-    ...checkpoint,
+    ...checkpoint2,
     ...vitestExcluded(at),
     ...configProblemsOf(at),
     // Row 011-275 (gh-120): beside the live daemon's version, the keys a runtime here leaves out.
@@ -16811,9 +16845,9 @@ function markSpawn(lockFile, at, heartbeatAt) {
     mkdirSync11(dirname13(lockFile), { recursive: true });
   } catch {
   }
-  writeMark2(spawnMarkFor(lockFile), { at });
+  writeMark3(spawnMarkFor(lockFile), { at });
 }
-function writeMark2(path, mark) {
+function writeMark3(path, mark) {
   try {
     const temp = `${path}.${process.pid}`;
     writeFileSync3(temp, JSON.stringify(mark));
