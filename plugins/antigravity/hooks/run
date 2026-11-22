@@ -1,0 +1,60 @@
+#!/bin/sh
+# Every Antigravity hooks.json command (spec 024 D4). Antigravity runs a plugin
+# hook with the plugin root as its working directory, so the workspace comes
+# from the top-level "cwd" of the hook payload on stdin. Without arguments it
+# exits 0 before it reads anything. Without --if-squeal it execs its arguments.
+# With --if-squeal, the per-invocation and per-tool hooks': it buffers stdin
+# byte-exact (a sentinel keeps trailing newlines), takes the first "cwd":"..."
+# value, and exits 0 silently when that directory has no squeal.config.json and
+# no store, with no git or other process. Anything unclear (no cwd, an empty
+# cwd, a backslash escape, a cwd key past 4 KB) passes the payload to the hook.
+[ "$#" -gt 0 ] || exit 0
+if [ "$1" = --if-squeal ]; then
+  shift
+  # bash converts every expansion of a large UTF-8 string to wide characters
+  # (about 3 ms each at 100 KB); parse bytes under C and give the hook the
+  # caller's locale back. dash ignores locales.
+  lc=${LC_ALL-unset}
+  LC_ALL=C
+  payload=$(cat; printf x)
+  payload=${payload%x}
+  s() {
+    [ -n "$1" ] || return 1
+    d=$1
+    [ -f "$d/squeal.config.json" ] && return 0
+    while [ ! -e "$d/.git" ]; do
+      [ -n "$d" ] || return 1
+      d=${d%/*}
+    done
+    [ -f "$d/squeal.config.json" ] && return 0
+    g=$d/.git
+    if [ -f "$g" ]; then
+      l=
+      IFS= read -r l <"$g"
+      g=${l#gitdir:}
+      g=${g#"${g%%[! ]*}"}
+      case $g in /*) ;; *) g=$d/$g ;; esac
+      c=
+      [ -f "$g/commondir" ] && IFS= read -r c <"$g/commondir"
+      case $c in "") ;; /*) g=$c ;; *) g=$g/$c ;; esac
+    fi
+    [ -e "$g/squeal" ]
+  }
+  # Everything before the first "cwd":" (JSON escapes every quote inside a
+  # string, so this is a key). %% scans once; the # below costs the square of
+  # the key's offset, so a key past 4 KB goes to the hook instead of risking
+  # the timeout (Antigravity's alphabetical order puts it under 400 bytes).
+  head=${payload%%\"cwd\":\"*}
+  if [ "${#head}" -lt 4096 ] && [ "$head" != "$payload" ]; then
+    cwd=${payload#*\"cwd\":\"}
+    cwd=${cwd%%\"*}
+    case $cwd in
+      "" | *\\*) ;;
+      *) s "$cwd" 2>/dev/null || exit 0 ;;
+    esac
+  fi
+  if [ "$lc" = unset ]; then unset LC_ALL; else LC_ALL=$lc; fi
+  printf '%s' "$payload" | "$@"
+  exit
+fi
+exec "$@"

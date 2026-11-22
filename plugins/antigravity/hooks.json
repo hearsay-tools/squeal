@@ -1,0 +1,37 @@
+{
+  "squeal": {
+    "SessionStart": [
+      {
+        "command": "./hooks/run node --disable-warning=ExperimentalWarning ./dist/session-start.mjs",
+        "timeout": 2
+      }
+    ],
+    "PreInvocation": [
+      {
+        "command": "./hooks/run --if-squeal node --disable-warning=ExperimentalWarning ./dist/pre-invocation.mjs",
+        "timeout": 2
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "write_file|edit_file|write_to_file|replace_file_content|multi_replace_file_content|run_command",
+        "hooks": [
+          {
+            "command": "./hooks/run --if-squeal node --disable-warning=ExperimentalWarning ./dist/pre-tool-use.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "command": "./hooks/run --if-squeal node --disable-warning=ExperimentalWarning ./dist/stop.mjs",
+        "timeout": 2
+      },
+      {
+        "command": "./hooks/run --if-squeal node --disable-warning=ExperimentalWarning ./dist/stop-slow.mjs",
+        "timeout": 3600
+      }
+    ]
+  }
+}
