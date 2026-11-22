@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { findWorktreeRoot, resolveCommonDir } from "../fs/git-layout.js";
 import { Connection, isBusy } from "../store/connection.js";
-import { isCorruption, isStoreOpenFailure, openStore } from "../store/open.js";
+import { isCorruption } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
 import { SCHEMA_VERSION, userVersion } from "../store/schema.js";
 import { createStore, readTransaction } from "../store/store.js";
@@ -109,7 +109,7 @@ function readOnce<T>(
   let store: Store | undefined;
   try {
     const opened = openReadOnly(commonDir, busyTimeoutMs);
-    if (isStoreOpenFailure(opened)) {
+    if ("reason" in opened) {
       switch (opened.reason) {
         case "missing":
           return unavailable("no-store", `no Squeal store at ${storePaths(commonDir).database}`);
@@ -117,6 +117,11 @@ function readOnce<T>(
           return unavailable(
             "store-newer",
             `store version newer than this Squeal (store ${opened.found}, supported ${opened.supported})`,
+          );
+        case "older-schema":
+          return unavailable(
+            "store-unreadable",
+            `store schema ${opened.found} is older than supported ${opened.supported}; start a daemon to migrate it`,
           );
         case "corrupt":
           return unavailable(
@@ -136,14 +141,18 @@ function readOnce<T>(
   }
 }
 
+type ReadOnlyFailure =
+  | StoreOpenFailure
+  | { readonly reason: "older-schema"; readonly found: number; readonly supported: number };
+
 /**
- * Spec 024 D2: the store at `commonDir` opened read-only, as `openStore` with
- * `create: false` reports it: missing, newer, or corrupt. Nothing is written:
- * no WAL switch, no `synchronous` or size pragmas, no migration, and its close
- * runs no checkpoint. A store at an older schema, which a read here could not
- * read, is opened by `openStore`, which migrates it, as before this spec.
+ * Spec 024 D2 (review 0.1.600 B2): the store at `commonDir` opened strictly
+ * read-only for every schema version. Nothing is written: no WAL switch, no
+ * `synchronous` or size pragmas, no migration, and closing runs no checkpoint.
+ * An older schema is reported unavailable so a writer (such as a daemon start)
+ * migrates it instead of a status read taking a write lock.
  */
-function openReadOnly(commonDir: AbsolutePath, busyTimeoutMs: number): Store | StoreOpenFailure {
+function openReadOnly(commonDir: AbsolutePath, busyTimeoutMs: number): Store | ReadOnlyFailure {
   const paths = storePaths(commonDir);
   if (!existsSync(paths.database)) return { reason: "missing" };
   let db: DatabaseSync | undefined;
@@ -152,15 +161,25 @@ function openReadOnly(commonDir: AbsolutePath, busyTimeoutMs: number): Store | S
     db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
     const found = userVersion(db);
     if (found !== SCHEMA_VERSION) {
-      db.close();
+      const handle = db;
+      db = undefined;
+      handle.close();
       if (found > SCHEMA_VERSION) {
         return { reason: "newer-schema", found, supported: SCHEMA_VERSION };
       }
-      return openStore(commonDir, { create: false, busyTimeoutMs });
+      return { reason: "older-schema", found, supported: SCHEMA_VERSION };
     }
-    return createStore(new Connection(db), found, paths);
+    const handle = db;
+    db = undefined;
+    return createStore(new Connection(handle), found, paths);
   } catch (error) {
-    db?.close();
+    if (db !== undefined) {
+      try {
+        db.close();
+      } catch {
+        // Cleanup never replaces the original error (for example SQLITE_BUSY).
+      }
+    }
     if (isCorruption(error)) return { reason: "corrupt", movedTo: null };
     throw error;
   }

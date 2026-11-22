@@ -57,27 +57,27 @@ const VARIABLE = "SQUEAL_OBSERVE";
 const SELF = __filename;
 const KINDS = ["f", "l", "r", "w", "d", "m"];
 
-/** Row 024-04 (spec 024 D4.4): the most targets one process keeps before it starts over. */
-const REALPATH_CACHE_LIMIT = 16_384;
-
 /**
- * `realpath` with its answers kept, so the `f`, `m` and `d` of one load, and every test file
- * of a worker, ask the system once per path. A path that throws keeps nothing: it is asked
- * again, so a file made later resolves.
+ * Row 024-04 (spec 024 D4.4, review 0.1.600 B1): resolves a path's symlink target once per
+ * multi-kind load (`f`, `m`, `d`) without retaining targets across separate observations,
+ * filesystem mutations, or test files.
  */
-function realpathCache(realpath, limit = REALPATH_CACHE_LIMIT) {
-  const targets = new Map();
-  return (abs) => {
-    let target = targets.get(abs);
-    if (target === undefined) {
-      target = realpath(abs);
-      if (targets.size >= limit) targets.clear();
-      targets.set(abs, target);
+function resolveOnce(realpath, abs) {
+  let resolved = false;
+  let value = null;
+  return () => {
+    if (!resolved) {
+      resolved = true;
+      try {
+        value = realpath(abs);
+      } catch {
+        value = null;
+      }
     }
-    return target;
+    return value;
   };
 }
-module.exports = { realpathCache };
+module.exports = { resolveOnce };
 
 function readSettings() {
   try {
@@ -108,7 +108,6 @@ if (settings !== null && !workerThreads.isInternalThread && !globalThis.__squeal
 function install(settings) {
   const { appendFileSync } = fs;
   const realpath = fs.realpathSync.native;
-  const cachedRealpath = realpathCache(realpath);
   const realSetImmediate = setImmediate;
   const root = settings.root.endsWith(path.sep) ? settings.root : settings.root + path.sep;
   let realRoot = root;
@@ -197,34 +196,35 @@ function install(settings) {
     return true;
   };
 
-  /** Records `p`, and the kept target of any symlink on its way; `real` when it is one already. */
-  const record = (kind, p, real = false) => {
+  /** Records `p` under each of `kinds`, resolving any symlink target at most once for the call. */
+  const recordKinds = (kinds, p, real = false) => {
     try {
       const file = current();
       if (typeof file !== "string") return;
       const abs = scoped(p);
-      if (abs === null || !add(file, kind, abs) || real) return;
-      let target;
-      try {
-        target = cachedRealpath(abs);
-      } catch {
-        return;
-      }
+      if (abs === null) return;
+      const added = [];
+      for (const kind of kinds) if (add(file, kind, abs)) added.push(kind);
+      if (added.length === 0 || real) return;
+      let target = resolveOnce(realpath, abs)();
+      if (target === null) return;
       if (realRoot !== root && target.startsWith(realRoot)) {
         target = root + target.slice(realRoot.length);
       }
-      if (target !== abs && kept(target)) add(file, kind, target);
+      if (target !== abs && kept(target)) {
+        for (const kind of added) add(file, kind, target);
+      }
     } catch {
       // never the test's failure
     }
   };
 
+  /** Records `p`, and the kept target of any symlink on its way; `real` when it is one already. */
+  const record = (kind, p, real = false) => recordKinds([kind], p, real);
+
   /** A module load or the entry point: in a process the test file started, `d` too. */
-  const load = (p, real = false) => {
-    record("f", p, real);
-    record("m", p, real);
-    if (settings.started) record("d", p, real);
-  };
+  const load = (p, real = false) =>
+    recordKinds(settings.started ? ["f", "m", "d"] : ["f", "m"], p, real);
 
   const Worker = workerThreads.Worker; // before `wrapChildren` replaces it
   wrapFs({ scoped, record });

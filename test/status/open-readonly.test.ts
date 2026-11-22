@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { withStatusStore } from "../../src/core/status/open.js";
@@ -70,14 +70,65 @@ describe("status opens the store read-only (spec 024 D2)", () => {
     expect(existsSync(wal) && readFileSync(wal).equals(before.wal)).toBe(true);
   });
 
-  it("opens a store at an older schema read-write, which migrates it, as before", () => {
+  it("leaves an older-schema store untouched and reports it unavailable without migrating (review 0.1.600 B2)", () => {
     const repo = fakeRepo();
     seedStore(repo).close();
     const { database } = storePaths(repo.commonDir);
-    writeFileSync(database, "");
-    expect(withStatusStore(repo.main, {}, ({ store }) => store.meta.get("absent"))).toBeNull();
-    const db = new DatabaseSync(database);
-    expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(SCHEMA_VERSION);
-    db.close();
+    const writer = new DatabaseSync(database);
+    writer.exec("PRAGMA journal_mode = WAL; PRAGMA user_version = 0;");
+    writer.close();
+    const wal = `${database}-wal`;
+    const beforeFile = readFileSync(database);
+
+    const read = withStatusStore(repo.main, {}, ({ store }) => store.meta.get("absent"));
+    expect(read).toMatchObject({ available: false, reason: "store-unreadable" });
+    expect("message" in (read as object) && (read as { message: string }).message).toContain(
+      `older than supported ${SCHEMA_VERSION}`,
+    );
+    expect(readFileSync(database).equals(beforeFile)).toBe(true);
+    expect(existsSync(wal) ? statSync(wal).size : 0).toBe(0);
+    const check = new DatabaseSync(database, { readOnly: true });
+    try {
+      expect(check.prepare("PRAGMA user_version").get()?.user_version).toBe(0);
+    } finally {
+      check.close();
+    }
+  });
+
+  it("reads an older-schema WAL store beside BEGIN IMMEDIATE without masking errors (review 0.1.600 B2)", () => {
+    const repo = fakeRepo();
+    seedStore(repo).close();
+    const { database } = storePaths(repo.commonDir);
+    const writer = new DatabaseSync(database);
+    writer.exec("PRAGMA journal_mode = WAL; PRAGMA user_version = 0; BEGIN IMMEDIATE;");
+    try {
+      const read = withStatusStore(repo.main, { busyTimeoutMs: 20, busyRetryMs: 80 }, () => "read");
+      expect(read).toMatchObject({ available: false, reason: "store-unreadable" });
+      expect((read as { message: string }).message).not.toContain("database is not open");
+      expect((read as { message: string }).message).toContain("older than supported");
+    } finally {
+      writer.exec("ROLLBACK");
+      writer.close();
+    }
+  });
+
+  it("retries for busyRetryMs on an older-schema store under an exclusive lock (review 0.1.600 B2)", () => {
+    const repo = fakeRepo();
+    seedStore(repo).close();
+    const { database } = storePaths(repo.commonDir);
+    const writer = new DatabaseSync(database);
+    writer.exec(
+      "PRAGMA journal_mode = DELETE; PRAGMA user_version = 0; PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE; CREATE TABLE lock_probe (x);",
+    );
+    try {
+      const started = Date.now();
+      const read = withStatusStore(repo.main, { busyTimeoutMs: 20, busyRetryMs: 80 }, () => "read");
+      const elapsed = Date.now() - started;
+      expect(read).toMatchObject({ available: false, reason: "timeout" });
+      expect(elapsed).toBeGreaterThanOrEqual(70);
+    } finally {
+      writer.exec("ROLLBACK");
+      writer.close();
+    }
   });
 });
