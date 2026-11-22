@@ -75,6 +75,8 @@ interface Kept {
   readers: Record<RelativePath, readonly TestFileRef[]>;
   problems: string[];
   refused: readonly CommitRefusal[];
+  /** Row 023-53 (V8): the files the change selects at the commit, before the call's paths narrow them. */
+  selects?: number;
 }
 
 /** The asks of one commit daemon. */
@@ -138,6 +140,7 @@ export class AtAsks {
     }
     kept.readers = chosen.readers;
     kept.refused = chosen.refused;
+    kept.selects = chosen.selects;
     kept.files = [...chosen.named, ...chosen.rest];
     // Row 023-50 (round 6 V3): a call that names paths leads with every file it queues, those
     // under a named folder and the readers of a named path too, named files first, in one
@@ -177,6 +180,7 @@ function stateOf(ask: Kept, setup: CommitSetup): CommitAskState {
     readers: { ...ask.readers },
     problems: [...ask.problems],
     ...(ask.refused.length === 0 ? {} : { refused: [...ask.refused] }),
+    ...(ask.selects === undefined ? {} : { selects: ask.selects }),
   };
 }
 
@@ -187,6 +191,8 @@ interface Chosen {
   readonly readers: Record<RelativePath, readonly TestFileRef[]>;
   /** D4.9: the chosen files that do not run, and why. */
   readonly refused: readonly CommitRefusal[];
+  /** Row 023-53 (V8): the files the change selects, with a result or not, whatever the call names. */
+  readonly selects: number;
 }
 
 /**
@@ -201,7 +207,8 @@ interface Chosen {
  */
 export async function choose(request: CommitAskRequest, ports: AtAskPorts): Promise<Chosen | null> {
   const rows = ports.rows();
-  const changed = request.allMissing ? [] : await ports.changedSelects(request.changed);
+  // Row 023-53 (V8): the change's selection is read with `--all-missing` too, for its count.
+  const changed = (await ports.changedSelects(request.changed)) ?? (request.allMissing ? [] : null);
   if (changed === null) return null;
   const readers: Record<RelativePath, readonly TestFileRef[]> = {};
   for (const path of request.named) {
@@ -213,13 +220,16 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
     request.named.length === 0 || selects(request.named, ref.path) || read.has(testFileId(ref));
   const own = new Set(request.named);
   const selected = new Set(changed.map(testFileId));
+  // 023-46's seam: a file with no key is in no closure index, so it is selected, never unaffected.
+  const selectedCount = rows.filter(
+    (r) => r.key === null || selected.has(testFileId(r.testFile)),
+  ).length;
   const first: TestFileRef[] = [];
   const rest: TestFileRef[] = [];
   for (const { testFile, key } of rows) {
     if (!candidate(testFile) || (key !== null && ports.stored(testFile, key))) continue;
     const id = testFileId(testFile);
     if (own.has(testFile.path)) first.push(testFile);
-    // 023-46's seam: a file with no key is in no closure index, so it is selected, never unaffected.
     else if (request.allMissing || selected.has(id) || key === null) rest.push(testFile);
   }
   const needs = await ports.needs(request);
@@ -230,6 +240,7 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
     rest: rest.filter(runs),
     readers,
     refused: [...refused.values()],
+    selects: selectedCount,
   };
 }
 
