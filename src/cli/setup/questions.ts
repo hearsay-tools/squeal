@@ -77,6 +77,11 @@ export async function answerPlan(
     if (await yes(`Set up ${HARNESS_NAMES[h.id]} here (${whereOf(h)})?`, found))
       harnesses.push(h.id);
   }
+  if (given.harnesses !== null) {
+    for (const id of given.harnesses) {
+      if (!harnesses.includes(id)) harnesses.push(id);
+    }
+  }
 
   const blocks: string[] = [];
   if (given.blocks !== null) blocks.push(...given.blocks.filter((b) => b !== "none"));

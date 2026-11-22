@@ -11,7 +11,7 @@ import type { BuildOutputCandidate } from "./build-outputs.js";
 import { slowCandidates } from "./candidates.js";
 import { type CodexRuntimeFact, codexRuntimeOutdated, readCodexRuntime } from "./codex-runtime.js";
 import { scanGates, squealLine } from "./gates.js";
-import { type HarnessFact, readHarnesses } from "./harnesses.js";
+import { type HarnessFact, type HarnessId, readHarnesses } from "./harnesses.js";
 import { type PytestRunner, pytestRunners } from "./pytest.js";
 import { otherWorktrees, readJson, readRepoFacts } from "./repo.js";
 import { nodeTestProjects, readRunners, warmupOf } from "./runners.js";
@@ -223,6 +223,8 @@ export interface PlanOptions {
   readonly env: Readonly<Record<string, string | undefined>>;
   /** Read Codex trust through `codex app-server` (`readCodexTrust`); default not checked. */
   readonly codexTrust?: boolean;
+  /** Harnesses explicitly selected via `--harness` (review 0.1.603 B1); included even when undetected. */
+  readonly requestedHarnesses?: readonly HarnessId[];
 }
 
 const TRUST_COMMAND = "squeal init --harness codex --trust";
@@ -274,7 +276,7 @@ export async function readPlan(
         : []),
     ],
   };
-  const harnesses = readHarnesses(root, options.env);
+  const harnesses = readHarnesses(root, options.env, options.requestedHarnesses);
   const instructions = instructionFiles(
     root,
     facts.tracked,
