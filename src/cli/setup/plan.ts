@@ -274,11 +274,15 @@ export async function readPlan(
         : []),
     ],
   };
-  const instructions = instructionFiles(root, facts.tracked);
+  const harnesses = readHarnesses(root, options.env);
+  const instructions = instructionFiles(
+    root,
+    facts.tracked,
+    harnesses.map((h) => h.id),
+  );
   const { gates, mentions } = scanGates(root, facts.tracked, {
     nodeTest: runners.nodeTest.length > 0,
   });
-  const harnesses = readHarnesses(root, options.env);
   const universe = testFileUniverse(facts, [...projects, ...pytest]);
   const codexRuntime = readCodexRuntime(options.env);
   const plan: SetupPlan = {
