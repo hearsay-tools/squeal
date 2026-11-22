@@ -8,6 +8,7 @@ import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { linkInstall } from "../commit/at-keys-fixture.js";
 import { childEnv } from "../daemon/helpers.js";
+import { keyedNow } from "./status-at-now-stand-in.js";
 
 /*
  * Row 023-40c: a real commit daemon for a `status --at --run` test, in this
@@ -61,6 +62,7 @@ export function realCommitDaemon(
   const daemons: AtDaemons = {
     ...real,
     worktree: async () => null,
+    now: keyedNow,
     ask: async (at, group, paths, deadline, call) =>
       at === root ? "taken" : real.ask(at, group, paths, deadline, call),
     wait: async (at, files, deadline) => (at === root ? null : real.wait(at, files, deadline)),

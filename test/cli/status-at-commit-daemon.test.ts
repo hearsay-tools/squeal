@@ -9,6 +9,7 @@ import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { childEnv, SLOW } from "../daemon/helpers.js";
 import { run, testOf } from "./status-at-kit.js";
+import { keyedNow } from "./status-at-now-stand-in.js";
 
 /*
  * Row 023-40a (spec 023 D7.1 to D7.4; row 023-40c, D7.3 as amended) with a
@@ -51,6 +52,7 @@ function commitOnly(root: string, started: AbsolutePath[], daemons: RunningDaemo
   return {
     ...real,
     worktree: async () => null,
+    now: keyedNow,
     ask: async (at, group, paths, deadline, call) =>
       at === root ? "taken" : real.ask(at, group, paths, deadline, call),
     wait: async (at, files, deadline) => (at === root ? null : real.wait(at, files, deadline)),

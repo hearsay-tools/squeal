@@ -209,7 +209,16 @@ export type NowSource =
       readonly kind: "stored";
       /** Row 023-19 (P5): `listing`, a daemon runs and has listed no test file yet. */
       readonly why?: "listing";
-    };
+    }
+  /**
+   * Spec 023 D7.3 as amended 2026-11-22 (review wave-23-third B1): with
+   * `--run` or `--wait`, the call keys nothing in the working tree. `setting
+   * up`: this worktree's daemon had not answered when the call's wait
+   * ended (it starts, or loads its configuration); `unserved`: no daemon
+   * answers, and `why` says why (stopped, held, its start failed).
+   */
+  | { readonly kind: "setting up" }
+  | { readonly kind: "unserved"; readonly why: string };
 
 export interface AtReport {
   readonly commit: string;
@@ -244,6 +253,10 @@ const short = (sha: string | null) => (sha === null ? "none" : sha.slice(0, 9));
 
 /** D3: what the current side was read from (row 023-19, P5: a daemon still listing). */
 function nowText(now: NowSource): string {
+  if (now.kind === "setting up")
+    return "This worktree's daemon is still setting up (it starts or loads its configuration): now is not known yet.";
+  if (now.kind === "unserved")
+    return `No daemon answers in this worktree (${now.why}): now is not known.`;
   const stored = "now is the stored results at the working tree's keys";
   if (now.kind === "stored" && now.why === "listing")
     return `This worktree's daemon has not listed its test files yet: ${stored}.`;

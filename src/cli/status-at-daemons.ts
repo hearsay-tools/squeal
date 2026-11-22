@@ -21,6 +21,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { daemonSocket } from "./daemon-access.js";
 import { takenRequest } from "./run-group.js";
 import { joinRequestAt, type RecordedJoins, recordedAt } from "./status-at-join.js";
+import { askNow, type NowAsked } from "./status-at-now-ask.js";
 import {
   quietStart,
   type StartCommit,
@@ -100,6 +101,12 @@ export interface AtDaemons extends RecordedJoins {
   find(input: CommitDaemonInput): AbsolutePath | null;
   /** The worktree's own daemon, started when none runs, its start ending by `bound`; `null`, or why none serves. */
   worktree(root: AbsolutePath, bound?: number): Promise<string | null>;
+  /**
+   * Spec 023 D7.3 as amended 2026-11-22 (review wave-23-third B1): the
+   * working tree's side, asked of the daemon of `root` (its `sync`, with
+   * `paths` for their readers) by `deadline`; the call keys nothing there.
+   */
+  now(root: AbsolutePath, paths: readonly RelativePath[], deadline: number): Promise<NowAsked>;
   /** One narrow request of `paths` of `group` to the daemon of `root`. */
   ask(
     root: AbsolutePath,
@@ -180,6 +187,7 @@ export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
       return answer.type === "commit-read" ? answer : "the daemon reads no asks (an older Squeal)";
     },
     find: findCommitWorktree,
+    now: askNow,
     async worktree(root, bound = Number.POSITIVE_INFINITY) {
       if (await alive(root)) return null;
       // Review wave-23 S1: the user's stop and command holds stay; nothing is started over them.
@@ -255,7 +263,8 @@ function withinCall(input: CommitDaemonInput, deadline: number) {
     note: input.note,
     installs: false,
     placeWaitMs: Math.min(input.placeWaitMs ?? PLACE_WAIT_MS, left()),
-    ...(Number.isFinite(deadline) ? { lockWaitMs: left() } : {}),
+    // Review wave-23-third B1: the package store's query and git's worktree steps end by it too.
+    ...(Number.isFinite(deadline) ? { lockWaitMs: left(), deadline } : {}),
     ...(input.limit === undefined ? {} : { limit: input.limit }),
     ...(input.cacheRoot === undefined ? {} : { cacheRoot: input.cacheRoot }),
   };

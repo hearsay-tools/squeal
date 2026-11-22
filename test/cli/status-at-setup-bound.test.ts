@@ -12,6 +12,7 @@ import type { AbsolutePath } from "../../src/core/types/common.js";
 import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { childEnv, SLOW } from "../daemon/helpers.js";
 import { run, standIn, standInTree, testOf } from "./status-at-kit.js";
+import { keyedNow } from "./status-at-now-stand-in.js";
 
 /*
  * Review wave-23 re-review B1, the required regressions (spec 023 D7.3 as
@@ -87,6 +88,7 @@ function commitDaemons(
   const daemons: AtDaemons = {
     ...real,
     worktree: async () => null,
+    now: keyedNow,
     ask: async (at, group, paths, deadline, call) =>
       at === root ? "taken" : real.ask(at, group, paths, deadline, call),
     wait: async (at, files, deadline) => (at === root ? null : real.wait(at, files, deadline)),

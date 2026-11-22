@@ -69,6 +69,8 @@ export interface QueueInput {
   readonly ask: boolean;
   /** Row 023-40c: `false` asks and does not wait; the caller waits once over every step's files. */
   readonly waits?: false;
+  /** Review wave-23-third B1: the call already started the daemon and it answered; no start here. */
+  readonly started?: true;
 }
 
 /** The commit side: its worktree and daemon first (D7.1, D7.2), then its requests and wait. */
@@ -87,7 +89,7 @@ export async function commitQueue(
 /** The working tree's side: its daemon, started when none runs, then its requests and wait. */
 export async function worktreeQueue(input: QueueInput, root: AbsolutePath): Promise<SideQueue> {
   if (input.files.length === 0) return NOTHING;
-  if (input.ask) {
+  if (input.ask && input.started !== true) {
     // Review wave-23 B1: no daemon is started once the call's requests are over.
     if (Date.now() >= input.askBy())
       return unreached(

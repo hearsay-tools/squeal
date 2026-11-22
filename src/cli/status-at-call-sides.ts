@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { commitFolderName } from "../core/checkout/commit-identity.js";
 import { environmentFingerprint } from "../core/checkout/commit-places.js";
@@ -11,6 +12,7 @@ import { treePath } from "../core/checkout/marker.js";
 import { withStores } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
 import { runGit } from "../core/fs/git.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { AtArgs } from "./status-at.js";
@@ -19,8 +21,8 @@ import type { CallInput } from "./status-at-call.js";
 import { askCommit, type CommitAsked, joinCommit } from "./status-at-commit-ask.js";
 import type { AtDaemons, CommitDaemonInput } from "./status-at-daemons.js";
 import { uncommitted } from "./status-at-dirty.js";
-import type { NowSide } from "./status-at-now.js";
-import { type SideQueue, worktreeTwice } from "./status-at-queue.js";
+import { type NowRead, SETTING_UP } from "./status-at-now-ask.js";
+import { NOTHING, type SideQueue, unreached, worktreeTwice } from "./status-at-queue.js";
 
 /*
  * Spec 023 D7.3 as amended 2026-11-21 (row 023-40c): the two sides of a
@@ -36,40 +38,59 @@ import { type SideQueue, worktreeTwice } from "./status-at-queue.js";
  * `--run`: the commit side's ask and the working tree's side together. The
  * working tree runs at once the files the change and the call name with no
  * result now, then those the commit daemon selected, once it queued them
- * (R1).
+ * (R1). Review wave-23-third B1: "now" is what the worktree's daemon
+ * answered (`now`); a side it did not answer by `askBy` queues nothing,
+ * and its files read not queued with why.
  */
 export async function queueBoth(
   input: CallInput,
   side: {
     readonly daemons: AtDaemons;
     readonly commit: CommitDaemonInput;
-    readonly now: NowSide;
+    readonly now: Promise<NowRead>;
     readonly bound: number;
     readonly askBy: number;
     readonly run: NonNullable<AtArgs["run"]>;
   },
 ): Promise<[CommitAsked, SideQueue]> {
   const { root, commit, paths } = input.place;
-  const { daemons, bound, askBy, now } = side;
+  const { daemons, bound, askBy } = side;
   const changed = await changedPaths(root, commit);
   const owner = randomUUID();
-  const withoutNow = now.refs.filter((ref) => now.state(ref).state === "no result");
-  const named = (ref: TestFileRef) => paths !== null && selects(paths, ref.path);
-  const first = side.run.allMissing
-    ? withoutNow
-    : withoutNow.filter((ref) => changed.includes(ref.path) || named(ref));
   let selected: (files: readonly TestFileRef[]) => void = () => {};
   const later = new Promise<readonly TestFileRef[]>((resolve) => {
     selected = resolve;
   });
-  const atPaths = new Set<string>();
+  const atFiles = new Map<string, TestFileRef>();
   const queue = {
     daemons,
     deadline: bound,
     askBy: () => askBy,
     call: { owner, lead: paths !== null },
     ask: true,
-    files: first,
+    started: true as const,
+  };
+  const worktree = async (): Promise<SideQueue> => {
+    const read = await side.now;
+    const now = read.side;
+    const withoutNow = now.refs.filter((ref) => now.state(ref).state === "no result");
+    const named = (ref: TestFileRef) => paths !== null && selects(paths, ref.path);
+    const first = side.run.allMissing
+      ? withoutNow
+      : withoutNow.filter((ref) => changed.includes(ref.path) || named(ref));
+    const atPaths = later.then((files) => new Set(files.map((ref) => ref.path)));
+    if (read.asked.kind === "read") {
+      const chosen = atPaths.then((at) => withoutNow.filter((ref) => at.has(ref.path)));
+      return worktreeTwice({ ...queue, files: first }, root, chosen);
+    }
+    // Not answered: the files it would have taken, the commit daemon's present here among them.
+    const ids = new Set(first.map(testFileId));
+    const extra = (await later).filter(
+      (ref) => !ids.has(testFileId(ref)) && existsSync(join(root, ref.path)),
+    );
+    const files = [...first, ...extra];
+    const problem = read.asked.kind === "unserved" ? read.asked.problem : SETTING_UP;
+    return files.length === 0 ? NOTHING : unreached(files, problem, read.late);
   };
   return Promise.all([
     askCommit({
@@ -82,11 +103,11 @@ export async function queueBoth(
       askBy,
       deadline: bound,
       queued: (files) => {
-        for (const ref of files) atPaths.add(ref.path);
-        selected(withoutNow.filter((ref) => atPaths.has(ref.path)));
+        for (const ref of files) atFiles.set(testFileId(ref), ref);
+        selected([...atFiles.values()]);
       },
     }).finally(() => selected([])),
-    worktreeTwice(queue, root, later),
+    worktree(),
   ]);
 }
 
