@@ -6,6 +6,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
 import { CODEX_RUNTIME } from "../../src/harness/codex/build.js";
+import { TEST_VERSION } from "../fixed-version.js";
 import { runBundle } from "../harness/bundle-helpers.js";
 import { codexRecorded, sessionOf } from "../harness/codex/helpers.js";
 import { recorded } from "../harness/helpers.js";
@@ -44,8 +45,9 @@ beforeAll(async () => {
   const claude = mkdtempSync("/tmp/sq-claude-");
   const codex = mkdtempSync("/tmp/sq-codex-");
   const metafiles = await Promise.all([
-    buildDist(CLAUDE_CODE_PLUGIN, claude),
-    buildDist(CODEX_RUNTIME, codex),
+    // Row 011-425: at the daemon's version (`buildCli`), so a hook does not replace it as older.
+    buildDist(CLAUDE_CODE_PLUGIN, claude, TEST_VERSION),
+    buildDist(CODEX_RUNTIME, codex, TEST_VERSION),
   ]);
   for (const metafile of metafiles) observeMetafile(metafile);
   bundles = { claude, codex };
