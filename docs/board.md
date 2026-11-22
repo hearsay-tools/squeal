@@ -2795,14 +2795,14 @@ Spec folder `specifications/024-antigravity-adapter/` (stage: approved 2026-11-2
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 024-01 research: wave 0 checks (binary detection, installed `PLUGIN_DATA` path, `hooks/run` large stdin, sanitized fixtures) | running (wave 0; `research/README.md`) | Open questions 2, 3, 4; Testing fixtures | `research/wave-0-checks.md` committed with tagged verdicts for all four questions |
+| 024-01 research: wave 0 checks (binary detection, installed `PLUGIN_DATA` path, `hooks/run` large stdin, sanitized fixtures) | done (researcher `cb7911ff`, `937ef0f98`, `research/wave-0-checks.md`: OQ2 `SQUEAL_ANTIGRAVITY_BIN` -> `agy` -> `antigravity` with identity check; OQ3 `PLUGIN_DATA` `~/.gemini/antigravity-cli/plugin_data/squeal`, disabled `plugins.squeal.enabled === false`; OQ4 4 KB head bound + `LC_ALL=C` + sentinel, 32/32 byte-exact, dash 6.7 ms p95 at 100 KB; payload shapes recorded; folded into `spec.md` and `status.md`) | Open questions 2, 3, 4; Testing fixtures | `research/wave-0-checks.md` committed with tagged verdicts for all four questions |
 
-### Wave 1: shared foundations, installer and launcher
+### Wave 1: shared foundations, installer and launcher (brief `specifications/024-antigravity-adapter/tasks/wave-1.md`)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 024-02 shared/core wiring and `antigravityCommand`: `StopWaitHarness`, sequential `stop-decide`, parameterized `version-copies` + `keptCacheCli`, `waitConsumer` (`ANTIGRAVITY_CONVERSATION_ID`), `src/harness/antigravity/command.ts` | planned | D1, D2, D3, D5; `src/core/slow/stop-wait.ts`, `src/harness/shared/{stop-decide,version-copies}.ts`, `src/cli/status-wait.ts`, `src/harness/antigravity/command.ts` | Unit tests pass for `"antigravity"` stop-wait handoff, parameterized version copies, `waitConsumer`, and `antigravityCommand`; lint and typecheck pass |
-| 024-06 `install.sh` and `squeal-launcher` for Antigravity (`--antigravity`, `--uninstall`, `SQUEAL_ANTIGRAVITY_BIN`, launcher format 9 discovering `~/.gemini/config/plugins/squeal` and `$PLUGIN_DATA/versions/`) | planned | D1; `install.sh`, `plugins/claude-code/bin/squeal-launcher`, installer and launcher tests | Isolated `HOME` tests pass for install, update, `--antigravity`, `--uninstall`, ownership record, and launcher discovery |
+| 024-02 shared/core wiring and `antigravityCommand`: `StopWaitHarness`, sequential `stop-decide`, parameterized `version-copies` + `keptCacheCli`, `waitConsumer` (`ANTIGRAVITY_CONVERSATION_ID`), `src/harness/antigravity/command.ts` | running (wave 1) | D1, D2, D3, D5; `src/core/slow/stop-wait.ts`, `src/harness/shared/{stop-decide,version-copies}.ts`, `src/cli/status-wait.ts`, `src/harness/antigravity/command.ts` | Unit tests pass for `"antigravity"` stop-wait handoff, parameterized version copies, `waitConsumer`, and `antigravityCommand`; lint and typecheck pass |
+| 024-06 `install.sh` and `squeal-launcher` for Antigravity (`--antigravity`, `--uninstall`, `SQUEAL_ANTIGRAVITY_BIN`, launcher format 9 discovering `~/.gemini/config/plugins/squeal` and `$PLUGIN_DATA/versions/`) | running (wave 1) | D1; `install.sh`, `plugins/claude-code/bin/squeal-launcher`, installer and launcher tests | Isolated `HOME` tests pass for install, update, `--antigravity`, `--uninstall`, ownership record, and launcher discovery |
 
 ### Wave 2: Antigravity adapter, plugin build and CLI integration
 
