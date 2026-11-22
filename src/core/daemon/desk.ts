@@ -17,7 +17,6 @@ import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
   NarrowRunOptions,
-  TakeBackResult,
 } from "../types/scheduler.js";
 import { CommitDesk } from "./commit-desk.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
@@ -84,8 +83,6 @@ export interface DeskEvents {
   readonly requestHold?: () => Promise<boolean>;
   /** `squeal hold` ended, or `squeal start`: the command holds read again. */
   readonly requestResume?: () => Promise<void>;
-  /** Row 023-34 (T1): `Scheduler.takeBack`; absent: the daemon answers it cannot take back. */
-  readonly requestTakeBack?: (owners: readonly string[]) => Promise<TakeBackResult>;
   /** Row 023-40c (spec 023 D7.3 as amended): a commit daemon's ask; absent: no commit daemon. */
   readonly commitAsk?: (request: CommitAskRequest) => void;
   /**
@@ -221,7 +218,6 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestGroup,
     requestHold,
     requestResume,
-    requestTakeBack,
     commitAsk,
     requestWrite,
     requestImport,
@@ -239,7 +235,6 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestSync: asked(events.requestSync),
     ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
-    ...(requestTakeBack === undefined ? {} : { requestTakeBack: asked(requestTakeBack) }),
     ...(commitAsk === undefined ? {} : { commitAsk: safe(commitAsk) }),
     ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
     ...(requestImport === undefined ? {} : { requestImport: asked(requestImport) }),
@@ -375,21 +370,6 @@ async function inWorker(
         case "resume":
           events.requestResume?.().catch(() => {});
           return;
-        case "take-back":
-          (
-            events.requestTakeBack?.(message.owners) ??
-            Promise.reject(new Error("this daemon cannot take back"))
-          ).then(
-            (result) => post({ type: "take-back-result", id: message.id, result, error: null }),
-            (error: unknown) =>
-              post({
-                type: "take-back-result",
-                id: message.id,
-                result: null,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-          );
-          return;
         case "commit-ask":
           events.commitAsk?.(message.request);
           return;
@@ -479,7 +459,6 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestSync: events.requestSync,
       ...(events.requestHold === undefined ? {} : { requestHold: events.requestHold }),
       ...(events.requestResume === undefined ? {} : { requestResume: events.requestResume }),
-      ...(events.requestTakeBack === undefined ? {} : { requestTakeBack: events.requestTakeBack }),
       ...(commitDesk === null ? {} : { commitDesk }),
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),

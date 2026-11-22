@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
 import type { CatchUpFile } from "./catch-up-fixture.js";
 import { ranPaths } from "./group-lanes-fixture.js";
-import { heldSide } from "./take-back-fixture.js";
+import { heldSide } from "./held-side-fixture.js";
 
 /*
  * Review wave-20 B2 (row 023-34; spec 023 D4.11): "files a later call
@@ -49,18 +49,15 @@ describe("an overlapping wide call, then a call that names a file (B2)", {
   it("runs the named file next, after the tier in flight only", async () => {
     const { side, gate } = await heldSide(FILES);
     const all = FILES.map((f) => f.path);
-    const wide = await side.scheduler.requestGroupPaths?.("browser", all, { owner: "wide" });
+    const wide = await side.scheduler.requestGroupPaths?.("browser", all);
     expect(wide).toMatchObject({ queued: all.length });
     await expect.poll(() => side.runner.runs.length, { timeout: 20_000 }).toBe(1);
     const [first] = ranPaths(side);
     // The file shortest-first would run last, named by a later call.
     const named = all.at(-1) ?? "";
-    const request = await side.scheduler.requestGroupPaths?.("browser", [named], {
-      owner: "narrow",
-      lead: true,
-    });
+    const request = await side.scheduler.requestGroupPaths?.("browser", [named], { lead: true });
     expect(request).toMatchObject({ queued: 1 });
-    // The tier in flight is not taken back or cut: it ends first.
+    // The tier in flight is not cut: it ends first.
     gate.release();
     await expect.poll(() => side.runner.runs.length, { timeout: 20_000 }).toBe(2);
     expect(ranPaths(side)).toEqual([first, named]);

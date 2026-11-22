@@ -154,17 +154,6 @@ export class Promotions {
   }
 
   /**
-   * Row 023-34 (T1): whether a promotion not of `own` holds `id` at
-   * `now`: as a member of its batch, or as a selected file of a wait open
-   * then. A take-back leaves such a file queued.
-   */
-  heldElsewhere(id: string, own: readonly number[], now: number): boolean {
-    return this.#promotions.some(
-      (p) => !own.includes(p.seq) && (p.members.has(id) || (p.until > now && p.files.has(id))),
-    );
-  }
-
-  /**
    * The order of the batch of `id` at `now`, by default a fresh reading of
    * this clock; `null` when none holds it. No live batch reads no clock.
    */

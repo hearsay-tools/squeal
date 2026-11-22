@@ -66,7 +66,7 @@ export async function queueBoth(
     daemons,
     deadline: bound,
     askBy: () => askBy,
-    call: { owner, lead: paths !== null },
+    call: { lead: paths !== null },
     ask: true,
     started: true as const,
   };

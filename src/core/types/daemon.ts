@@ -30,7 +30,7 @@ import type {
   WriteStatusRequest,
 } from "./daemon-writes.js";
 import type { TestFileRef } from "./keys.js";
-import type { NarrowRun, TakeBackResult } from "./scheduler.js";
+import type { NarrowRun } from "./scheduler.js";
 import type { CheckpointLane, CheckpointRecord, DaemonRecord } from "./store-records.js";
 
 /*
@@ -139,35 +139,8 @@ export interface RunGroupPathsRequest {
    * ends. A daemon before it ignores it.
    */
   readonly at?: true;
-  /**
-   * Row 023-34 (review wave-20 B1-B3): the calling `status --at --run`'s
-   * own identity, the same for each of its requests: its take-back names
-   * it (`TakeBackRequest.owners`). A daemon before it ignores it.
-   */
-  readonly owner?: string;
   /** Row 023-34 (B2): the call named its files: they lead every earlier batch. */
   readonly lead?: true;
-}
-
-/**
- * Spec 023 D4.11 (row 023-34, T1; review wave-20 B3): `status --at --run`
- * gives back what it queued. The narrow runs whose
- * `RunGroupPathsRequest.owner` is one of `owners` are cancelled, so one
- * the scheduler has not taken yet queues nothing, and the files they
- * queued that no one else needs and that have not started leave the
- * queue. Answered at once with a request id, like `sync`; ask what it did
- * with `TakeBackStatusRequest`. A daemon from before it answers "unknown
- * request type", and nothing is taken back.
- */
-export interface TakeBackRequest {
-  readonly type: "take-back";
-  readonly owners: readonly string[];
-}
-
-/** What a `take-back` request did, once the scheduler took it. */
-export interface TakeBackStatusRequest {
-  readonly type: "take-back-status";
-  readonly requestId: string;
 }
 
 /** What a `run-group` request queued, once the scheduler took it. */
@@ -304,8 +277,6 @@ export type DaemonRequest =
   | ImportStatusRequest
   | KeepRequest
   | KeepStatusRequest
-  | TakeBackRequest
-  | TakeBackStatusRequest
   | CommitAskRequest
   | CommitReadRequest;
 
@@ -469,16 +440,6 @@ export type GroupHolder = (
  * is ignored: with no `rekeyed` in the answer it takes its path for a
  * daemon before task 001-186 (task 001-258).
  */
-/** Row 023-34 (T1): a `take-back`'s answer; `result` `null` until the scheduler took it. */
-export interface TakeBackResponse {
-  readonly schemaVersion: PayloadSchemaVersion;
-  readonly ok: true;
-  readonly type: "take-back";
-  readonly requestId: string;
-  readonly result: TakeBackResult | null;
-  readonly error: string | null;
-}
-
 export interface SyncResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
@@ -635,7 +596,6 @@ export type DaemonResponse =
   | WriteCancelResponse
   | ImportResponse
   | KeepResponse
-  | TakeBackResponse
   | CommitAskResponse
   | CommitReadResponse
   | DaemonErrorResponse;

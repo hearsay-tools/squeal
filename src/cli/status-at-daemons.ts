@@ -72,8 +72,6 @@ export interface CommitDaemonInput {
 
 /** One call's daemon requests, as their daemons see them (rows 023-34, 023-36). */
 export interface NarrowCall {
-  /** The call's own id: the `at` run's key in the daemon. */
-  readonly owner: string;
   /** The call named its files: they lead the queue. */
   readonly lead: boolean;
 }
@@ -205,7 +203,6 @@ export function realDaemons(starts: DaemonStarts = {}): AtDaemons {
         group,
         paths,
         at: true,
-        owner: call.owner,
         ...(call.lead ? { lead: true } : {}),
       };
       const first = await askWithin(socketPath, request, bound);

@@ -251,32 +251,19 @@ export interface NarrowRunRequest extends SlowSuiteRequest {
 }
 
 /**
- * Row 023-34 (review wave-20 B1-B3): a narrow run of `status --at --run`.
- * `owner`, the call's own identity, lets its take-back remove what it
- * queued and cancel what the scheduler has not taken yet; `lead`, the
- * call named its files, puts them ahead of every earlier batch.
+ * Row 023-34 (review wave-20 B2): a narrow run of `status --at --run`.
+ * `lead`, the call named its files, puts them ahead of every earlier
+ * batch. Row 023-41 removed `owner`, the take-back's key.
  */
 export interface NarrowRunOptions {
-  readonly owner?: string;
   readonly lead?: boolean;
   /**
    * Row 023-36 (T3): a `status --at --run` request; the daemon flags its
-   * accepted files, keyed by `owner`, so what their runs start is stopped.
+   * accepted files, keyed by the request's covered-files id, so what their
+   * runs start is stopped.
    * The scheduler reads nothing of it.
    */
   readonly at?: true;
-}
-
-/**
- * Spec 023 D4.11 (row 023-34, T1): what a `take-back` did with the files
- * its narrow runs queued themselves: taken out of the queue, left running,
- * or kept queued (forced, queued again by an edit, or held by another
- * promotion).
- */
-export interface TakeBackResult {
-  readonly takenBack: number;
-  readonly running: number;
-  readonly kept: number;
 }
 
 /** `Scheduler.slowWaiting`: what a departure drain's waiting slow lane would leave queued (row 011-163). */
@@ -413,13 +400,6 @@ export interface Scheduler {
     paths: readonly RelativePath[],
     options?: NarrowRunOptions,
   ): Promise<NarrowRunRequest | null>;
-  /**
-   * Spec 023 D4.11 (row 023-34, T1; review wave-20 B3): cancels `owners`
-   * at once, so a narrow run of theirs not taken yet queues nothing, then
-   * takes out of the queue what their narrow runs queued and no one else
-   * needs (`takeBackRequest`). Absent: a scheduler before it.
-   */
-  takeBack?(owners: readonly string[]): Promise<TakeBackResult>;
   /**
    * Row 011-302: tells `listener` what holds the scheduler's lock at once,
    * then at each change, `null` while nothing does, until the returned

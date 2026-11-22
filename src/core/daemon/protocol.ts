@@ -98,9 +98,6 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "hold-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "hold-status", requestId: request.requestId };
-    case "take-back":
-    case "take-back-status":
-      return parseTakeBack(request);
     case "commit-ask":
     case "commit-read":
       return parseCommitAsk(request);
@@ -161,19 +158,6 @@ function parseCommitAsk(request: Record<string, unknown>): DaemonRequest | strin
   };
 }
 
-/** Row 023-34 (T1): `take-back` with the calls' identities, or its status by request id. */
-function parseTakeBack(request: Record<string, unknown>): DaemonRequest | string {
-  if (request.type === "take-back-status") {
-    if (typeof request.requestId !== "string") return '"requestId" must be a string';
-    return { type: "take-back-status", requestId: request.requestId };
-  }
-  const { owners } = request;
-  if (!Array.isArray(owners) || !owners.every(isText)) {
-    return '"owners" must be a list of non-empty strings';
-  }
-  return { type: "take-back", owners: [...owners] };
-}
-
 /** Row 011-234: a sync with a named wait's source paths, whose readers its answer names. */
 function parseSync(paths: unknown): SyncRequest | string {
   if (paths === undefined) return { type: "sync" };
@@ -185,21 +169,20 @@ function parseSync(paths: unknown): SyncRequest | string {
 
 /** Row 019-49: a narrow run names its group and at least one path. */
 function parseGroupPaths(request: Record<string, unknown>): RunGroupPathsRequest | string {
-  const { group, paths, at, owner, lead } = request;
+  const { group, paths, at, lead } = request;
   if (!isText(group)) return '"group" must be a non-empty string';
   if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
   if (at !== undefined && at !== true) return '"at" must be true when given';
-  // Row 023-34 (review wave-20 B1-B3): the calling `status --at --run`'s identity, and its lead.
-  if (owner !== undefined && !isText(owner)) return '"owner" must be a non-empty string';
+  // Row 023-34 (review wave-20 B2): the call named its files. Row 023-41: an `owner` an
+  // older CLI sends is ignored; the covered-files id keys the `at` flag.
   if (lead !== undefined && lead !== true) return '"lead" must be true when given';
   return {
     type: "run-group-paths",
     group,
     paths: [...paths],
     ...(at === true ? { at } : {}),
-    ...(owner === undefined ? {} : { owner }),
     ...(lead === true ? { lead } : {}),
   };
 }
@@ -207,9 +190,8 @@ function parseGroupPaths(request: Record<string, unknown>): RunGroupPathsRequest
 /** Row 023-34: a narrow request's options for the scheduler (`NarrowRunOptions`). */
 export function narrowOptionsOf(request: RunGroupPathsRequest): NarrowRunOptions {
   return {
-    ...(request.owner === undefined ? {} : { owner: request.owner }),
     ...(request.lead === true ? { lead: true } : {}),
-    // Row 023-36 (T3): beside the owner, so the daemon flags the accepted request's files.
+    // Row 023-36 (T3): so the daemon flags the accepted request's files.
     ...(request.at === true ? { at: true } : {}),
   };
 }

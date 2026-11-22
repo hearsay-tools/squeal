@@ -139,7 +139,7 @@ export class AtAsks {
     kept.readers = chosen.readers;
     kept.refused = chosen.refused;
     kept.files = [...chosen.named, ...chosen.rest];
-    const options = { owner: request.owner, at: true } as const;
+    const options = { at: true } as const;
     await this.#queue(chosen.named, { ...options, lead: true }, kept);
     await this.#queue(chosen.rest, options, kept);
     kept.phase = "queued";

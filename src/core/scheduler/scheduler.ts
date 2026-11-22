@@ -32,7 +32,6 @@ import {
   type SlowSuiteRequest,
   type SlowWaiting,
   type StepSeen,
-  type TakeBackResult,
 } from "../types/scheduler.js";
 import type { CandidateBatch } from "../types/watcher.js";
 import { type Admission, admit, checkTurn, type StartFacts } from "./admission.js";
@@ -91,7 +90,6 @@ import type { SchedulerEvent } from "./step-events.js";
 import { STEP_OPERATION, StepLive, unplaced } from "./step-live.js";
 import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
-import { TakeBacks, takeBackRequest } from "./take-back.js";
 import { cancels, endTier, executeTier, laneOf, type Tier } from "./tiers.js";
 import { type WakeSlot, Wakes } from "./wakes.js";
 import { WarmUp } from "./warm-up.js";
@@ -185,8 +183,6 @@ class TierScheduler implements Scheduler {
   readonly #warmUp = new WarmUp();
   /** Row 018-12: the files explicit requests queued, whose ends are activity. */
   readonly #requests = new RequestProgress();
-  /** Row 023-34 (T1): what each narrow run queued itself, for its take-back. */
-  readonly #takeBacks = new TakeBacks();
   /** Row 011-322: the one place a request is taken; each request method is one call into it. */
   readonly #intake = new RequestIntake({
     lock: this.#lock,
@@ -836,18 +832,8 @@ class TierScheduler implements Scheduler {
     paths: readonly RelativePath[],
     options: NarrowRunOptions = {},
   ): Promise<NarrowRunRequest | null> {
-    const request = narrowRequest(group, paths, this.#groups, this.#takeBacks, options);
+    const request = narrowRequest(group, paths, this.#groups, options);
     return this.#intake.take(request);
-  }
-
-  /**
-   * Spec 023 D4.11 (row 023-34, T1): `takeBackRequest`. Review wave-20 B3:
-   * the owners are cancelled now, before the intake, so a narrow run of
-   * theirs that waits for it queues nothing when it is taken.
-   */
-  takeBack(owners: readonly string[]): Promise<TakeBackResult> {
-    this.#takeBacks.cancel(owners);
-    return this.#intake.take(takeBackRequest(owners, this.#takeBacks));
   }
 
   /** `squeal retry` (001-368): queues the requests in the store that may run now. */

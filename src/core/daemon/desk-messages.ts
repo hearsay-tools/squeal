@@ -13,7 +13,6 @@ import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
   NarrowRunOptions,
-  TakeBackResult,
 } from "../types/scheduler.js";
 import type { GroupRequested, HeldBy } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -83,13 +82,6 @@ export type ToDesk =
       readonly error: string | null;
     }
   | {
-      /** Row 023-34 (T1): a `take-back`'s result, `null` with its `error`. */
-      readonly type: "take-back-result";
-      readonly id: string;
-      readonly result: TakeBackResult | null;
-      readonly error: string | null;
-    }
-  | {
       /** Spec 021 D15: how sent write `id` went; `error` `null` once written. */
       readonly type: "write-result";
       readonly id: string;
@@ -129,7 +121,6 @@ export type FromDesk =
     }
   | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
-  | { readonly type: "take-back"; readonly id: string; readonly owners: readonly string[] }
   /** Row 023-40c: a `status --at --run` call's ask of a commit daemon. */
   | { readonly type: "commit-ask"; readonly request: CommitAskRequest }
   | { readonly type: "resume" }
