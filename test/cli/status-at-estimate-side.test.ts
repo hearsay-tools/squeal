@@ -6,6 +6,7 @@ import {
   estimateLine,
   estimateSide,
   MEASURED_LEAST,
+  oneGroup,
   readPoolView,
   sideText,
   widthsOf,
@@ -43,7 +44,7 @@ describe("the estimate per side (row 023-49, V2)", () => {
   });
 
   it("from stored durations: round 6's 1,338 files at 2 s are about 36 min, not about 4", () => {
-    const e = estimateSide({ seconds: files(1338, 2), measured: null }, 2, 1.6);
+    const e = estimateSide({ groups: [oneGroup(files(1338, 2))], measured: null }, 2, 1.6);
     // The old rule: 1,338 x 2 s over 11 at once, no load: 244 s.
     expect(e).toMatchObject({ files: 1338, width: 2, basis: "durations", known: 1338, load: 1.6 });
     expect(e?.seconds).toBe(Math.ceil(1338 * 1.6));
@@ -54,34 +55,38 @@ describe("the estimate per side (row 023-49, V2)", () => {
 
   it("prefers this call's measured rate once it saw enough results there", () => {
     const measured = { done: 90, ms: 98_000 };
-    const e = estimateSide({ seconds: files(1248, 2), measured }, 2, 1.6);
+    const e = estimateSide({ groups: [oneGroup(files(1248, 2))], measured }, 2, 1.6);
     expect(e).toMatchObject({ basis: "measured", seconds: Math.ceil((1248 * 98) / 90) });
     expect(e === null ? "" : sideText(e)).toBe(
       "about 23 min for 1248 test files, at this call's rate there (90 results in 98 s)",
     );
     // Too few results: the stored durations decide.
     const few = { done: MEASURED_LEAST - 1, ms: 98_000 };
-    const fallback = estimateSide({ seconds: files(100, 2), measured: few }, 2, null);
+    const fallback = estimateSide({ groups: [oneGroup(files(100, 2))], measured: few }, 2, null);
     expect(fallback?.basis).toBe("durations");
   });
 
   it("says when it is a guess, and when the time is unknown", () => {
-    const guess = estimateSide({ seconds: [10, 10, ...files(8, null)], measured: null }, 2, null);
+    const guess = estimateSide(
+      { groups: [oneGroup([10, 10, ...files(8, null)])], measured: null },
+      2,
+      null,
+    );
     expect(guess).toMatchObject({ basis: "guess", known: 2, seconds: 50 });
     expect(guess === null ? "" : sideText(guess)).toBe(
       "about 50 s for 10 test files, up to 2 at once; a guess: 2 of them have a stored duration, the others count at their median",
     );
-    const unknown = estimateSide({ seconds: files(10, null), measured: null }, 2, null);
+    const unknown = estimateSide({ groups: [oneGroup(files(10, null))], measured: null }, 2, null);
     expect(unknown).toMatchObject({ basis: "unknown", seconds: null, known: 0 });
     expect(unknown === null ? "" : sideText(unknown)).toBe(
       "10 test files, time unknown: none has a stored duration and this call measured no rate",
     );
-    expect(estimateSide({ seconds: [], measured: null }, 2, null)).toBeNull();
+    expect(estimateSide({ groups: [oneGroup([])], measured: null }, 2, null)).toBeNull();
   });
 
   it("names each side, and how to narrow a wide call", () => {
-    const at = estimateSide({ seconds: files(1338, 3), measured: null }, 3, null);
-    const now = estimateSide({ seconds: files(4, 30), measured: null }, 3, null);
+    const at = estimateSide({ groups: [oneGroup(files(1338, 3))], measured: null }, 3, null);
+    const now = estimateSide({ groups: [oneGroup(files(4, 30))], measured: null }, 3, null);
     const narrow = "squeal status --at HEAD~1 <path>... --run";
     expect(estimateLine({ commit: at, now }, "a5c9b7223", narrow)).toBe(
       "Still to run, at a5c9b7223: about 22 min for 1338 test files, up to 3 at once, from their stored durations; in the working tree: about 40 s for 4 test files, up to 3 at once, from their stored durations; name test files or folders to narrow it: squeal status --at HEAD~1 <path>... --run",

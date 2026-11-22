@@ -1,3 +1,4 @@
+import { repositoryRootOf } from "../core/daemon/user-config.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
 import type { WorktreeId } from "../core/types/common.js";
@@ -16,6 +17,7 @@ import {
   type SideWork,
   widthsOf,
 } from "./status-at-estimate.js";
+import { workGroups } from "./status-at-estimate-groups.js";
 import type { NowSide } from "./status-at-now.js";
 import type { SideQueue } from "./status-at-queue.js";
 import type { SideState } from "./status-at-report.js";
@@ -150,28 +152,37 @@ function estimateOf(
   ]);
   if (todo.every((files) => files.length === 0)) return null;
   const ids = sides.map((side) => side.id);
+  const { root, commonDir } = input.place;
+  // Review 0.1.599 B3: both daemons are the repository's, and share its `capacity.projects` cap.
   const pool = readPoolView(
     input.env,
     ids.filter((id) => id !== null),
+    repositoryRootOf(root, commonDir),
   );
   const widths = widthsOf(
     pool,
     sides.map((side, i) => ({ id: side.id, want: todo[i]?.length ?? 0 })),
   );
-  const durations = storedDurations(input.place.root);
+  const durations = storedDurations(root);
   try {
     const factor = loadNow();
+    const seconds = (ref: TestFileRef) => durations?.of(ref) ?? null;
+    // Review 0.1.599 B3: each side's files by group, at the limits its daemon runs them at.
+    const work = workGroups(
+      sides.map((side, i) => ({ root: side.queue.root, files: todo[i] ?? [] })),
+      seconds,
+    );
     const [commit, now] = sides.map((side, i) => {
-      const files = todo[i] ?? [];
       const done = side.queue.files.filter((ref) => {
         const s = side.state(ref);
         return s.state === "pass" || s.state === "fail";
       }).length;
-      const work: SideWork = {
-        seconds: files.map((ref) => durations?.of(ref) ?? null),
+      const one: SideWork = {
+        groups: work.groups[i] ?? [],
         measured: measured === null ? null : { done, ms: measured },
+        ...(work.unknown[i] === true ? { limitsUnknown: true } : {}),
       };
-      return estimateSide(work, widths[i] ?? 1, factor);
+      return estimateSide(one, widths[i] ?? 1, factor);
     });
     return { commit: commit ?? null, now: now ?? null };
   } finally {

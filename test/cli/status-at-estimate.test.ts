@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
@@ -28,6 +30,14 @@ function queued(f: ReturnType<typeof fixture>, root: string, files: readonly Tes
       })),
     ),
   );
+}
+
+/** An environment whose pool is 8 host slots and no other daemon's mark. */
+function ownPool(f: ReturnType<typeof fixture>): NodeJS.ProcessEnv {
+  const config = join(f.dir, "config");
+  mkdirSync(join(config, "squeal"), { recursive: true });
+  writeFileSync(join(config, "squeal", "config.json"), '{"capacity":{"hostSlots":8}}');
+  return { ...process.env, XDG_CONFIG_HOME: config, XDG_RUNTIME_DIR: join(f.dir, "run") };
 }
 
 const A1 = ref("test/a1.test.ts");
@@ -66,14 +76,68 @@ describe("status --at --run: the queueing estimate (row 023-40)", SLOW, () => {
       install: linkInstall().install,
       daemons: daemons.ports,
     };
-    const cut = await run(f, { commit: a, run: { allMissing: false }, waitMs: 3000 }, options);
+    // Review 0.1.599 B3: the pool is this test's own, not the host's daemons' marks.
+    const cut = await run(
+      f,
+      { commit: a, run: { allMissing: false }, waitMs: 3000 },
+      options,
+      undefined,
+      ownPool(f),
+    );
     const at = a.slice(0, 9);
     expect(cut.out).toMatch(
       new RegExp(
-        `\nStill to run, at ${at}: about \\d+ (s|min|h) for 4 test files, up to \\d+ at once, from their stored durations[^;\n]*;.*name test files or folders to narrow it: squeal status --at ${a} <path>\\.\\.\\. --run\n`,
+        `\nStill to run, at ${at}: about [\\d.]+ (s|min|h) for 4 test files, up to \\d+ at once, from their stored durations[^;\n]*;.*name test files or folders to narrow it: squeal status --at ${a} <path>\\.\\.\\. --run\n`,
       ),
     );
     expect(cut.err).not.toContain("this machine's rate");
+    clean(f);
+  });
+
+  it("review 0.1.599 B3: estimates a maxParallel 1 group one file at a time, at 8 host slots", async () => {
+    const browser = {
+      checks: [
+        {
+          name: "browser",
+          runner: "vitest",
+          tests: ["test/**"],
+          at: "manual",
+          limits: { maxParallel: 1 },
+        },
+      ],
+    };
+    const twelve = Array.from({ length: 12 }, (_, i) => ref(`test/b${i}.test.ts`));
+    const f = fixture({
+      "squeal.config.json": `${JSON.stringify(browser)}\n`,
+      "src/a.ts": "export const value = 2;\n",
+      ...Object.fromEntries(twelve.map((file) => [file.path, testOf("a", 2)])),
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "src/a.ts": "export const value = 2; // b\n" });
+    withStore(f, (store) =>
+      store.results.putMany(
+        twelve.map((file) => ({ ...result(check(file.path), "elsewhere"), durationMs: 10_000 })),
+      ),
+    );
+    // The commit worktree holds the commit's squeal.config.json, as a real one does.
+    const tree = standInTree(f);
+    writeFileSync(join(tree, "squeal.config.json"), JSON.stringify(browser));
+    const daemons = standIn(tree, () => undefined, {
+      select: () => twelve,
+      rows: (at, files) => queued(f, at, files),
+    });
+    const env = ownPool(f);
+    const options = {
+      cacheRoot: f.cacheRoot,
+      install: linkInstall().install,
+      daemons: daemons.ports,
+    };
+    const args = { commit: a, run: { allMissing: false }, waitMs: 2000, json: true };
+    const cut = await run(f, args, options, undefined, env);
+    const estimate = JSON.parse(cut.out).run.estimate.commit;
+    expect(estimate).toMatchObject({ files: 12, width: 1, basis: "durations", known: 12 });
+    // 120 s of serial work, times the host's load per CPU when it is over 1.
+    expect(estimate.seconds).toBe(Math.ceil(120 * (estimate.load ?? 1)));
     clean(f);
   });
 });
