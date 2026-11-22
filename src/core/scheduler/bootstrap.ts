@@ -42,7 +42,8 @@ import { runnerPartBound } from "./runner-work-bound.js";
  *    that recheck, and the recheck commits again (011 C9 as amended
  *    2026-10-25, row 011-227): a file the recheck finds current is never
  *    queued for its first key. A miss is not walked again when the store
- *    holds a walk of it at the key the list gives here (row 023-46,
+ *    holds a walk of it at the key the list gives here and the list holds
+ *    no import unresolved here (row 023-46, review wave-23-third B2,
  *    `proven-walks.ts`): that walk's closure is this one's.
  * 4. One checkpoint of kind `baseline` over the misses and the unkeyed
  *    files, run in tiers or, with `baseline.onStart: "lookup-only"` (the
