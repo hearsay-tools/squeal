@@ -121,6 +121,8 @@ export interface AssembleInput {
       readonly directories?: readonly string[];
       readonly recursive?: readonly string[];
       readonly written?: readonly string[];
+      /** Files it read and wrote (`ObservedInputs.rewritten`, row 023-47); absent: none. */
+      readonly rewritten?: readonly string[];
     }[];
     readonly observed?: readonly {
       readonly path: string;
