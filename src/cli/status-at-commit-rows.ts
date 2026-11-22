@@ -49,8 +49,14 @@ export async function rowsSide(
   const rows = main === null || tree === null ? [] : main.testFileKeys.list(idOf(tree));
   const byId = new Map(rows.map((row) => [testFileId(row.testFile), row]));
   const sources = new Map<RelativePath, TestFileRef[]>();
+  const add = (path: RelativePath, refs: readonly TestFileRef[]) =>
+    sources.set(path, [
+      ...new Map([...(sources.get(path) ?? []), ...refs].map((r) => [testFileId(r), r])).values(),
+    ]);
   for (const ask of asked.asks)
-    for (const [path, refs] of Object.entries(ask.readers)) sources.set(path, [...refs]);
+    for (const [path, refs] of Object.entries(ask.readers)) add(path as RelativePath, refs);
+  // Review 0.1.599 B2: `--wait` alone, the readers of its paths the commit daemon told.
+  for (const [path, refs] of asked.readers ?? []) add(path, refs);
   const read = new Set([...sources.values()].flat().map(testFileId));
   const refs = rows
     .map((row) => row.testFile)
