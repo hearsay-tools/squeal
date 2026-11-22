@@ -95,6 +95,12 @@ const INSTALL_TIMEOUT_MS = 300_000;
 export interface OpenSide {
   /** The files keyed in the checkout. */
   readonly keyed: readonly KeyedFile[];
+  /**
+   * D5.2 decided (the stop, the case): `refs` may run. The commit daemon's
+   * green side asks for them now, before the red side runs (row 023-42);
+   * a temporary checkout runs nothing until `run`.
+   */
+  admit(refs: readonly TestFileRef[]): Promise<void>;
   /** Runs those of `refs` that need a run, in this checkout, within the budget left. */
   run(refs: readonly TestFileRef[]): Promise<void>;
 }
@@ -166,6 +172,7 @@ export async function withSide<T>(
     };
     const open: OpenSide = {
       keyed,
+      admit: async () => {},
       run,
     };
     value = await body(open);

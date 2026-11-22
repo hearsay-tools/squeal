@@ -8,7 +8,7 @@ import type { CommitSetup } from "../core/types/commit-ask.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonKeyed } from "./proof-green-rows.js";
-import { askGreen, type RunInput, readGreen } from "./proof-green-run.js";
+import { askGreen, type GreenAsk, type RunInput, readGreen } from "./proof-green-run.js";
 import { endOfRecords } from "./proof-run.js";
 import type { OpenSide, SideAnswer, SideFile } from "./proof-side.js";
 import type { AtDaemons, CommitDaemonInput } from "./status-at-daemons.js";
@@ -22,8 +22,8 @@ import { needsOf } from "./status-at-run-select.js";
  * starts its daemon when none serves it, waits for its setup (the daemon
  * installs and keys), then reads each named file's row there: its live
  * key, the result stored at it, its stored closure. A stored result is
- * read, not run (D5.1). A file with none is asked of
- * the daemon by its own path at once, before the red side runs, and read
+ * read, not run (D5.1). A file with none is asked of the daemon by its
+ * own path once D5.2 admits it, before the red side runs, and read
  * only when the red side decides (`proof-green-run.ts`). Every step ends
  * by the proof's one deadline; what is not done then reads `not run
  * (budget)` with the rerun line, and goes on in the daemon. The daemon's
@@ -90,11 +90,19 @@ export async function withGreenDaemon<T>(
   }
   let ran = 0;
   const run: RunInput = { daemons: input.daemons, root: input.root, tree, commonDir, by, at };
-  // Asked now, before the red side runs (`proof-green-run.ts`); read only when it decides.
+  // Asked once D5.2 admits the files (the stop, the case), before the red side runs
+  // (`proof-green-run.ts`); read only when it decides. A stopped proof asks nothing (review
+  // 0.1.597 B2).
   const owner = randomUUID();
-  const asked = pending.size === 0 ? null : await askGreen(run, [...pending.values()], owner);
+  let asked: GreenAsk | null = null;
   const open: OpenSide = {
     keyed,
+    admit: async (refs) => {
+      const toAsk = refs
+        .map((ref) => pending.get(testFileId(ref)))
+        .filter((f): f is KeyedFile => f !== undefined);
+      if (toAsk.length > 0 && asked === null) asked = await askGreen(run, toAsk, owner);
+    },
     run: async (refs) => {
       const toRun = refs
         .map((ref) => pending.get(testFileId(ref)))

@@ -17,8 +17,9 @@ import { keptAlive } from "./status-at-now-ask.js";
  * Spec 023 D7.6 (row 023-42): the green side's runs on the commit daemon
  * at HEAD. One `commit-ask` names the files' own paths with no change, so
  * the daemon runs those with no result at their live key first, and only
- * those. The call sends it as soon as the side is keyed, before the red
- * side runs (`askGreen`): a red run whose test rewrote an input its key
+ * those. The call sends it once D5.2 admits the files (the stop and the
+ * case are decided; a stopped proof asks nothing, review 0.1.597 B2), and
+ * before the red side runs (`askGreen`): a red run whose test rewrote an input its key
  * did not cover yet can be kept at the key HEAD's file has before its
  * first run, and a daemon asked after it would read that result as the
  * green side's (`proof-mutated.test.ts`). It is read only when the red

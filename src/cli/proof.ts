@@ -201,6 +201,8 @@ async function prove(
         return { kind: args.case, red: null, control: null, imports, unused, sourceUnused };
       const kind = args.case ?? caseOf(base, proving, loadsOf, changed, testSide, source);
       if (typeof kind === "object") return kind;
+      // D5.2 admits these: the green side on the commit daemon is asked for them now, before red.
+      await open.admit(proving);
       const sides = sidesOf(kind, base, head);
       const red =
         proving.length === 0 ? null : await sideOf(common, sides.red, proving, testSide, source);
