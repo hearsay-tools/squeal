@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { commonDirOf, type KeyedFile, withStores } from "../core/commit/at-keys-checkout.js";
 import { changedText } from "../core/commit/at-keys-walk.js";
+import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { NOT_RUN_BUDGET } from "../core/proof/verdict.js";
 import type { CommitSetup } from "../core/types/commit-ask.js";
@@ -11,7 +12,9 @@ import { daemonKeyed } from "./proof-green-rows.js";
 import { askGreen, type GreenAsk, type RunInput, readGreen } from "./proof-green-run.js";
 import { endOfRecords } from "./proof-run.js";
 import type { OpenSide, SideAnswer, SideFile } from "./proof-side.js";
-import type { AtDaemons, CommitDaemonInput } from "./status-at-daemons.js";
+import type { AtOptions } from "./status-at.js";
+import { commitAllowlist, environmentOf } from "./status-at-call.js";
+import { type AtDaemons, type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
 import { keptAlive } from "./status-at-now-ask.js";
 import { needsOf } from "./status-at-run-select.js";
 
@@ -50,6 +53,46 @@ export interface GreenInput {
   readonly commit: CommitDaemonInput | null;
   /** `performance.now()` when the proof's budget ends. */
   readonly deadline: number;
+}
+
+/**
+ * D7.6: the commit daemon the green side reads and runs on, its worktree's input `null` when
+ * the budget ended before it was read.
+ */
+export interface GreenDaemon {
+  readonly daemons: AtDaemons;
+  readonly commit: CommitDaemonInput | null;
+}
+
+/**
+ * D7.6: the commit daemon at `head` and its worktree's input (D7.1's fingerprint, D7.4's
+ * ceiling); its input `null` when the commit's allowlist is not read by `deadline` (review
+ * 0.1.597 B3: an allowlist not read would name another worktree).
+ */
+export async function greenDaemon(
+  root: AbsolutePath,
+  head: string,
+  env: NodeJS.ProcessEnv,
+  note: (text: string) => void,
+  options: AtOptions,
+  deadline: number,
+): Promise<GreenDaemon> {
+  const daemons = options.daemons ?? realDaemons({ note });
+  const allowlist = await keptAlive(
+    commitAllowlist(root, head, deadline - performance.now()),
+  ).catch(() => null);
+  if (allowlist === null) return { daemons, commit: null };
+  const limit = readPolicy(root).daemon.maxCommitDaemons;
+  const commit: CommitDaemonInput = {
+    root,
+    commit: head,
+    environment: environmentOf(allowlist, env),
+    note,
+    ...(limit === null || limit === undefined ? {} : { limit }),
+    ...(options.cacheRoot === undefined ? {} : { cacheRoot: options.cacheRoot }),
+    ...(options.placeWaitMs === undefined ? {} : { placeWaitMs: options.placeWaitMs }),
+  };
+  return { daemons, commit };
 }
 
 /** The commit daemon's tree once its setup is done, or why the side reads none. */
