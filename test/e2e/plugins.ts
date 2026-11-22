@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -221,6 +222,9 @@ export function selectCodexRuntime(copy: string, stage: (dest: string) => void):
  * result under the keys of the committed state. Untracked files still do not
  * ship, as a marketplace install would not have them; a tracked file deleted
  * in the worktree is left out, as its commit would leave it out.
+ * `SQUEAL_TEST_ANTIGRAVITY_DIST` replaces the Antigravity copy's `dist/` with
+ * bundles built elsewhere, as `SQUEAL_TEST_DIST` does for the bundle tests: a
+ * worker that may not rebuild `plugins/` runs its source change end to end.
  */
 export function copyPlugin(
   name: PluginName | "pi" | "opencode" | "codex-runtime",
@@ -241,5 +245,10 @@ export function copyPlugin(
     mkdirSync(dirname(to), { recursive: true });
     // copyFileSync keeps the mode, so `bin/squeal` and the CLI stay executable.
     copyFileSync(from, to);
+  }
+  const dist = process.env.SQUEAL_TEST_ANTIGRAVITY_DIST;
+  if (name === "antigravity" && dist !== undefined && dist !== "") {
+    rmSync(join(dest, "dist"), { recursive: true, force: true });
+    cpSync(dist, join(dest, "dist"), { recursive: true });
   }
 }
