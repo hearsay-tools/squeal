@@ -16,7 +16,9 @@ export function staleLine(stale: StaleFallback, command: string): string {
   const read = [
     ...(stale.closures === 0
       ? []
-      : [`${plural(stale.closures, "test file")} ${uses(stale.closures)} the newest stored closure`]),
+      : [
+          `${plural(stale.closures, "test file")} ${uses(stale.closures)} the newest stored closure`,
+        ]),
     ...(stale.walks === 0
       ? []
       : [`${plural(stale.walks, "test file")} ${uses(stale.walks)} the newest stored import walk`]),
