@@ -30,12 +30,21 @@ export function recorded(name: string, cwd: string, overrides: object = {}): str
   return JSON.stringify({ ...input, cwd, ...overrides });
 }
 
-/** What a Claude Code or Codex hook delivered as context; `""` for no output. */
+/** What a Claude Code, Codex or Antigravity hook delivered as context; `""` for no output. */
 export function hookText(out: string | { readonly stdout: string }): string {
   const stdout = typeof out === "string" ? out : out.stdout;
   if (stdout === "") return "";
-  return (JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
+  const json = JSON.parse(stdout) as {
+    hookSpecificOutput?: { additionalContext?: string };
+    injectSteps?: { systemMessage: { systemMessage: string } }[];
+    reason?: string;
+  };
+  if (json.hookSpecificOutput !== undefined)
+    return json.hookSpecificOutput.additionalContext as string;
+  // Antigravity (spec 024 D3): an injected system message, or a deny or continue reason.
+  const text = json.injectSteps?.[0]?.systemMessage.systemMessage ?? json.reason;
+  if (text === undefined) throw new Error(`no hook text in ${stdout}`);
+  return text;
 }
 
 /**

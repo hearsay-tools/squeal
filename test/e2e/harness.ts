@@ -21,6 +21,11 @@ import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { RUN_MISSING, runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
 import { quietPoint } from "./agree.js";
+import {
+  type AntigravityHook,
+  antigravityEnvironment,
+  runAntigravity,
+} from "./antigravity-plugin.js";
 import { FixtureCli } from "./fixture-cli.js";
 import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
 import {
@@ -45,7 +50,9 @@ import { metric, type RunRow, readRuns, registeredSessions, until } from "./supp
  * ran; untracked files still do not ship, as a marketplace install would not
  * have them. Build before trusting a local result. Spec 002 runs every scenario for the Codex plugin too, each
  * hook as its harness runs it (`plugins.ts`), on this worktree's Codex
- * runtime, not the plugin's frozen seed (row 019-31, `codexSeed`).
+ * runtime, not the plugin's frozen seed (row 019-31, `codexSeed`). Spec 024
+ * runs them for Antigravity too, its daemons from the version copies in its
+ * `PLUGIN_DATA`, which cleanup stops and kills as well (`FixtureCli`, `kept`).
  */
 
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
@@ -61,14 +68,22 @@ const SETTLE_WAIT_MS = 120_000;
 export const OTHER_SESSION = "0d7c5b1e-3f0a-4b8e-9a51-2c6e8f4d7a90";
 
 export interface Hooked extends BundleRun {
-  /** additionalContext, permissionDecisionReason or a block reason; `null` when the hook printed nothing. */
+  /**
+   * additionalContext, permissionDecisionReason, a block, deny or continue reason, or
+   * Antigravity's injected system message; `null` when the hook printed nothing.
+   */
   readonly text: string | null;
   readonly json: HookJson | null;
 }
 
 interface HookJson {
+  /** Claude Code's and Codex's Stop `block`; Antigravity's PreToolUse `deny` and Stop `continue`. */
   readonly decision?: string;
   readonly reason?: string;
+  /** Antigravity's SessionStart and PreInvocation text (spec 024 D3). */
+  readonly injectSteps?: readonly {
+    readonly systemMessage?: { readonly systemMessage?: string };
+  }[];
   readonly hookSpecificOutput?: {
     readonly additionalContext?: string;
     readonly permissionDecision?: string;
@@ -165,8 +180,11 @@ export class E2E {
     this.#env = {
       XDG_RUNTIME_DIR: runtime,
       ...(kind.name === "codex" ? codexEnvironment(this.plugin) : {}),
+      ...(kind.name === "antigravity" ? antigravityEnvironment(this.plugin) : {}),
     };
-    this.cliIdentity = new FixtureCli(this.plugin, this.#env.PLUGIN_DATA);
+    // Antigravity's daemons run from the version copy a hook keeps in PLUGIN_DATA (024 D1).
+    const layout = kind.name === "antigravity" ? "kept" : "runtime";
+    this.cliIdentity = new FixtureCli(this.plugin, this.#env.PLUGIN_DATA, layout);
   }
 
   static create(kind: Plugin, install: string, options: BuildOptions = {}): E2E {
@@ -331,9 +349,33 @@ export class E2E {
     env: Readonly<Record<string, string>> = {},
   ): Promise<Hooked> {
     const run = await this.kind.run(this.plugin, name, root, overrides, { ...this.#env, ...env });
+    return this.#hooked(name, run);
+  }
+
+  /**
+   * `hook` for the events only Antigravity has (`AntigravityHook`): the
+   * user turn's first PreInvocation and the waiting Stop entry (spec 024 D3).
+   */
+  async antigravityHook(
+    name: AntigravityHook,
+    root: string,
+    overrides: object = {},
+    env: Readonly<Record<string, string>> = {},
+  ): Promise<Hooked> {
+    if (this.kind.name !== "antigravity") throw new Error(`${name} is Antigravity's only`);
+    const run = await runAntigravity(this.plugin, name, root, overrides, { ...this.#env, ...env });
+    return this.#hooked(name, run);
+  }
+
+  #hooked(name: string, run: BundleRun): Hooked {
     const json = run.stdout === "" ? null : (JSON.parse(run.stdout) as HookJson);
     const out = json?.hookSpecificOutput;
-    const text = out?.additionalContext ?? out?.permissionDecisionReason ?? json?.reason ?? null;
+    const text =
+      out?.additionalContext ??
+      out?.permissionDecisionReason ??
+      json?.injectSteps?.[0]?.systemMessage?.systemMessage ??
+      json?.reason ??
+      null;
     metric({
       plugin: this.kind.name,
       hook: name,
@@ -341,6 +383,11 @@ export class E2E {
       delivered: text !== null,
     });
     return { ...run, json, text };
+  }
+
+  /** The fixture's hook environment: XDG_RUNTIME_DIR, and the plugin's data folder and HOME. */
+  get env(): Readonly<Record<string, string>> {
+    return this.#env;
   }
 
   /** The shipped CLI, as `bin/squeal` runs it. */
@@ -451,7 +498,8 @@ export class E2E {
 
   /**
    * Ends every session still registered with the plugin's SessionEnd, as its
-   * harness would, so no daemon keeps a consumer; then `squeal stop` in every
+   * harness would, so no daemon keeps a consumer (Antigravity has none, spec
+   * 024 D2: its call is a no-op); then `squeal stop` in every
    * worktree, SIGKILL for any daemon of this plugin copy still alive, and the
    * fixture removed whatever failed before (lessons, defect 24: a fixture
    * daemon outlived its suite by 10 hours). Daemons a hook spawned meanwhile

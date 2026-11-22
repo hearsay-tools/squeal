@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import { formatCheck } from "../../src/core/state/check-name.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees } from "./agree.js";
-import { type E2E, e2eSuite, HOOK_BUDGET_MS } from "./harness.js";
-import { PLUGINS } from "./plugins.js";
+import { type E2E, e2eSuite, HOOK_BUDGET_MS, type Hooked } from "./harness.js";
+import { ALL_PLUGINS, type Plugin } from "./plugins.js";
 import { MATH, SLOW } from "./sources.js";
 import { until } from "./support.js";
 
@@ -16,7 +16,9 @@ import { until } from "./support.js";
  * Stop with `stop.blockOnKnownFailures` blocks only on failures current at
  * the revision and names failures whose re-run is in flight as pending.
  * Spec 002: each for both plugins; Codex denies `apply_patch` and has its
- * tool boundary on PostToolUse.
+ * tool boundary on PostToolUse. Spec 024: Antigravity denies `write_file`
+ * with `decision: "deny"`, has its tool boundary on PreInvocation and
+ * blocks a Stop with `decision: "continue"`.
  */
 
 const fixture = e2eSuite();
@@ -24,6 +26,12 @@ const ADDS = "test/math.test.ts > math > adds";
 const MULTIPLIES = "test/math.test.ts > math > multiplies";
 const SLOWLY = "test/slow.test.ts > doubles slowly";
 const TEST_FILES = ["test/math.test.ts", "test/strings.test.ts"];
+
+/** Claude Code's and Codex's PreToolUse deny, or Antigravity's (spec 024 D3). */
+const denied = (hooked: Hooked) =>
+  (hooked.json?.hookSpecificOutput?.permissionDecision ?? hooked.json?.decision) === "deny";
+/** The decision of a Stop that keeps the agent going: Antigravity's continues the turn (024 D3). */
+const blocking = (plugin: Plugin) => (plugin.name === "antigravity" ? "continue" : "block");
 
 const names = (s: StatusSnapshot) => s.knownFailures.map((f) => formatCheck(f.check));
 const failingOnly =
@@ -40,7 +48,7 @@ async function registered(e: E2E): Promise<void> {
   expect(first.text).toMatch(/^SQUEAL · registered at revision \d+\n/);
 }
 
-describe.each(PLUGINS)("PreToolUse with interrupt.onRegression, $name", (plugin) => {
+describe.each(ALL_PLUGINS)("PreToolUse with interrupt.onRegression, $name", (plugin) => {
   it(`denies once on a regression and leaves the recovery for ${plugin.boundary}`, async (ctx) => {
     const e = fixture(ctx, plugin);
     await registered(e);
@@ -53,7 +61,7 @@ describe.each(PLUGINS)("PreToolUse with interrupt.onRegression, $name", (plugin)
     const deny = await e.hook("pre-tool-use", e.main);
     expect(deny).toMatchObject({ code: 0, stderr: "" });
     expect(deny.ms).toBeLessThan(HOOK_BUDGET_MS);
-    expect(deny.json?.hookSpecificOutput?.permissionDecision).toBe("deny");
+    expect(denied(deny)).toBe(true);
     expect(deny.text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(deny.text).toContain(`FAIL  ${ADDS}\n      PASS -> FAIL`);
     expect(deny.text).not.toContain(MULTIPLIES);
@@ -92,7 +100,7 @@ describe.each(PLUGINS)("PreToolUse with interrupt.onRegression, $name", (plugin)
   }, 240_000);
 });
 
-describe.each(PLUGINS)("Stop with stop.blockOnKnownFailures, $name", (plugin) => {
+describe.each(ALL_PLUGINS)("Stop with stop.blockOnKnownFailures, $name", (plugin) => {
   it("blocks only on current failures and names pending ones as pending", async (ctx) => {
     const e = fixture(ctx, plugin, {
       slow: true,
@@ -109,7 +117,7 @@ describe.each(PLUGINS)("Stop with stop.blockOnKnownFailures, $name", (plugin) =>
     const stop = await e.hook("stop", e.main);
     expect(stop).toMatchObject({ code: 0, stderr: "" });
     expect(stop.ms).toBeLessThan(HOOK_BUDGET_MS);
-    expect(stop.json?.decision).toBe("block");
+    expect(stop.json?.decision).toBe(blocking(plugin));
     const at = pending.revision;
     expect(stop.text).toContain(
       `Squeal policy stop.blockOnKnownFailures is on and 1 known failure exists at revision ${at}: ${ADDS}.`,
@@ -138,7 +146,7 @@ describe.each(PLUGINS)("Stop with stop.blockOnKnownFailures, $name", (plugin) =>
   }, 300_000);
 });
 
-describe.each(PLUGINS)("baseline.onStart, the shipped default, $name", (plugin) => {
+describe.each(ALL_PLUGINS)("baseline.onStart, the shipped default, $name", (plugin) => {
   it("with no baseline key, the start runs no test file (row 011-159)", async (ctx) => {
     const e = fixture(ctx, plugin, { shippedBaseline: true });
     expect(readFileSync(join(e.main, "squeal.config.json"), "utf8")).toBe("{}\n");
