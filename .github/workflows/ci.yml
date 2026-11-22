@@ -75,7 +75,7 @@ jobs:
         # `plugins/*/bin` (shell-expanded): the build writes the launcher's copies from the Claude
         # Code plugin's (005-76), so a hand edit to a copy differs here. Spec 002 D7, D8 (002-31):
         # the build writes the Codex runtime tree whole and never the fixed plugin in plugins/codex.
-        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/codex-runtime plugins/codex plugins/*/bin
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/antigravity/dist plugins/codex-runtime plugins/codex plugins/*/bin
       - name: The build adds no plugin file
         if: matrix.shard == 1
         # A file the build writes that is not committed, such as a new bundle, ships nowhere.
@@ -112,7 +112,7 @@ jobs:
       - name: Build
         run: pnpm run build
       - name: Bundles match the build
-        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/codex-runtime plugins/codex plugins/*/bin
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/antigravity/dist plugins/codex-runtime plugins/codex plugins/*/bin
       - name: The build adds no plugin file
         run: test -z "$(git status --porcelain --untracked-files=all -- plugins)" || { git status --short --untracked-files=all -- plugins; exit 1; }
 
