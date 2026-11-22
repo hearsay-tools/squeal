@@ -1,0 +1,19 @@
+Command: bash docs/specifications/011-core/research/probes/issue-263/run.sh
+2026-11-22T04:37:55.947Z
+Node: v26.13.0
+CPUs: 16
+Load averages (1, 5, 15 minute): 4.71, 3.36, 2.95
+Source: squeal--v0.1.591
+Source commit: 1d9d54fabca43a7082c46f58aeec0dd22df79d80
+Vitest: 5.0.3
+
+same regression: deny, allow, allow
+new batches, revisions 13/13/13: deny alpha, deny beta, deny gamma, allow; identical content bytes=16384
+new batches, revisions 13/14/14: deny alpha, deny beta, deny gamma, allow; identical content bytes=16384
+one batch containing alpha/beta/gamma: deny all, allow
+interrupt.onRegression=false: allow; failed states=1
+
+Test Files  1 passed (1)
+Tests       5 passed (5)
+Duration    2.18s (transform 77%, import 14%, tests 9%)
+Exit code   0
