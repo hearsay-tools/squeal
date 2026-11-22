@@ -244,17 +244,18 @@ JSON report: squeal code --base origin/main --exceptions exceptions.json --json
 `squeal impact [<path>...] [--limit <n>] [--json]` says what your edits re-run, from the stores. You ask for it; no message pushes it. It needs no daemon, runs no test, and writes nothing. Use it when you want to know why an edit re-runs much of the suite, or which change would cut that. Every number is relative to this repository's own suite, recorded seconds and edits. `squeal reach` is a deprecated name for the same command: it is not in `--help`, prints one deprecation line on stderr with text output, and prints nothing extra with `--json`.
 
 ```text
-Impact: what your edits re-run, of 1490 test files and 6696 s recorded.
-Edits: 1523 from 2026-10-06 to 2026-11-07, every worktree's watch revisions in which HEAD did not move, of files this worktree has; they re-ran 412300 s.
+Impact: what edits of each file re-run, of 1490 test files and 6696 s recorded.
+Edits: 1523 from 2026-10-06 to 2026-11-07, every worktree's watch revisions in which HEAD did not move, of files this worktree has; they re-ran 412300 s in all.
 
 Top gateways, by seconds re-run over the window's edits:
-  1. barrel src/core/state/index.ts: 14 edited files, 38 edits re-ran 61200 s, 15% of the window's re-run seconds; 959 test files
+  1. barrel src/core/state/index.ts: 38 edits of 14 files re-ran 61200 s, 15% of the window's re-run seconds, through 959 test files
      for example src/core/state/slow.ts, src/core/state/view.ts, src/core/state/keys.ts
      suggestion: import these files from their own paths in the files that use them, or split src/core/state/index.ts
 
 Files, by seconds re-run over the window's edits:
-  1. src/core/state/slow.ts: 6 edits re-ran 34152 s, 8% of the window's re-run seconds; paths: barrel 80%, runtime read 20%
-     gateway: barrel through src/core/state/index.ts
+  1. src/core/state/slow.ts: 6 edits re-ran 34152 s, 8% of the window's re-run seconds, 5692 s each; avoidable 3700 s; rank 1 below
+     paths: barrel 80%, runtime read 20%
+     gateway: barrel through src/core/state/index.ts, for example test/a.test.ts → src/core/state/index.ts → src/core/state/slow.ts
      suggestion: import src/core/state/slow.ts from its own path in the files that use it, or split src/core/state/index.ts
 
 Files, by avoidable seconds per edit, then seconds re-run:

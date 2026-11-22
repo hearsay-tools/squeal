@@ -33,9 +33,16 @@ export interface StaleReader {
 
 export function staleReader(store: Store, strict: ImportGraph | null): StaleReader {
   const newest = newestStoredWalk(store);
+  const exacts = new Map<string, TestWalk | undefined>();
   const walks = new Map<string, TestWalk | undefined>();
   const walkTimes = new Map<string, EpochMs>();
   const closureTimes = new Map<string, EpochMs>();
+  const exactWalk = (ref: TestFileRef) => {
+    if (strict === null) return undefined;
+    const id = testFileId(ref);
+    if (!exacts.has(id)) exacts.set(id, strict.walk(ref));
+    return exacts.get(id);
+  };
   const staleWalk = (ref: TestFileRef) => {
     const id = testFileId(ref);
     if (!walks.has(id)) {
@@ -46,7 +53,7 @@ export function staleReader(store: Store, strict: ImportGraph | null): StaleRead
     return walks.get(id);
   };
   const graph: ImportGraph | null =
-    strict === null ? null : { walk: (ref) => strict.walk(ref) ?? staleWalk(ref) };
+    strict === null ? null : { walk: (ref) => exactWalk(ref) ?? staleWalk(ref) };
   return {
     graph,
     closure(ref, paths) {

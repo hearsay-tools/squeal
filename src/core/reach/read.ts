@@ -64,22 +64,27 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
     const atKey = store.results.byKey(key, 0);
     const ms = durationOf(atKey) ?? durationOf(store.results.newestForTestFile(ref));
     // Row 015-128: `observedModules.` holds the worker's own loads too, so only `observedDirect.` is a child's.
+    const inSuite = groups.of(ref).at !== "manual";
     const childProcess = new Set(observed.directOf(ref));
     const runtimeRead = new Set(observed.of(ref));
     const reads = [...childProcess, ...runtimeRead];
-    const exact = strict?.walk(ref);
-    // Counts a stale walk now, so the summary holds every test file that reads one.
-    graph?.walk(ref);
+    let fileClosure: readonly RelativePath[] | null = null;
+    if (inSuite) {
+      const exact = strict?.walk(ref);
+      // Counts a stale walk now for suite files only, so manual groups never trigger a stale notice.
+      graph?.walk(ref);
+      fileClosure =
+        closure(ref) ??
+        (exact === undefined ? null : walkPaths(ref, exact, reads)) ??
+        stale.closure(ref, (walk) => walkPaths(ref, walk, reads));
+    }
     return {
       ref,
       runner,
-      inSuite: groups.of(ref).at !== "manual",
+      inSuite,
       seconds: ms === null ? null : ms / 1000,
       current: atKey.length > 0,
-      closure:
-        closure(ref) ??
-        (exact === undefined ? null : walkPaths(ref, exact, reads)) ??
-        stale.closure(ref, (walk) => walkPaths(ref, walk, reads)),
+      closure: fileClosure,
       childProcess,
       runtimeRead,
       coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key, counted),

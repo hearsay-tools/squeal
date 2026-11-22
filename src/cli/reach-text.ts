@@ -12,19 +12,20 @@ export const day = (at: EpochMs) => new Date(at).toISOString().slice(0, 10);
 
 /** Row 015-128: the header line that names every test file read at no current key. */
 export function staleLine(stale: StaleFallback, command: string): string {
+  const uses = (n: number) => (n === 1 ? "uses" : "use");
   const read = [
     ...(stale.closures === 0
       ? []
-      : [`${plural(stale.closures, "test file")} the newest stored closure`]),
+      : [`${plural(stale.closures, "test file")} ${uses(stale.closures)} the newest stored closure`]),
     ...(stale.walks === 0
       ? []
-      : [`${plural(stale.walks, "test file")} the newest stored import walk`]),
+      : [`${plural(stale.walks, "test file")} ${uses(stale.walks)} the newest stored import walk`]),
   ].join(" and ");
   const span =
     day(stale.oldestAt) === day(stale.newestAt)
       ? `stored on ${day(stale.oldestAt)}`
       : `stored from ${day(stale.oldestAt)} to ${day(stale.newestAt)}`;
-  return `Stale: this worktree has no closure or walk at its current inputs for some test files, so ${read} ${stale.closures + stale.walks === 1 ? "is" : "are"} read instead, ${span}; ${command} start or ${command} warmup refreshes them.`;
+  return `Stale: this worktree has no closure or walk at its current inputs for some test files, so ${read}, ${span}; ${command} start or ${command} warmup refreshes them.`;
 }
 
 /** `setup test/setup.ts`, `runtime read (observed path) package.json`. */
