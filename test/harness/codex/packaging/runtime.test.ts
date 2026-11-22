@@ -184,7 +184,7 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
       scripts: Record<string, string>;
     };
     expect(pkg.scripts["build:plugin"]).toBe(
-      "tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts",
+      "tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts && tsx src/harness/antigravity/build.ts",
     );
   });
 });

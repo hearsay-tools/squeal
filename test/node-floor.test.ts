@@ -96,6 +96,7 @@ describe("Squeal's Node floor", () => {
     );
     const launchers = shipped().filter((file) => file.endsWith("/bin/squeal-launcher"));
     expect(launchers).toEqual([
+      "plugins/antigravity/bin/squeal-launcher",
       "plugins/claude-code/bin/squeal-launcher",
       "plugins/codex-runtime/bin/squeal-launcher",
       "plugins/codex/bin/squeal-launcher",
