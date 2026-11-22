@@ -1,0 +1,19 @@
+# Wave 26 (row 023-42): `proof`'s green side on the commit daemon. Use /worker.
+
+The human chose (2026-11-22) to release 0.1.596 and start row 023-42 ("Release + 023-42"). Spec D7.6: a `proof` side with no condition and no repeat reads and runs on a commit daemon, the green side at HEAD first; red sides with copied test files stay in the call unless row 023-43's measurements justify per-overlay worktrees; sides with `--env`, `--without`, an empty `HOME`, `--repeat`, and the `dependency` case stay in the call (D5.3, D5.4).
+
+Read `../spec.md` D5 (all of it) and D7 (as amended 2026-11-21/22), `research/run-wait-model.md` Q5, `tasks/023-40-notes.md` (Wave 24 and Round 4 sections: how `status --at --run` asks the commit daemon: `ensureCommitWorktree` without install, `commit-ask`/`commit-read`, the start owner in the marker, one deadline for every step, `keptAlive` around pending waits), `tasks/023-41-notes.md` (what `proof` still uses of the old run: the run child, `outcomesOf`), `tasks/023-40e-measure.md` (live-path numbers), and the `proof*` sources under `src/cli/`. Base: main at 0.1.596. Never write the lab VM host name, the company name, sandbox ids or home paths in committed files (`pnpm run check:private` with `set -o pipefail`; grep your diff). Host is shared: direct vitest only with `timeout 600 pnpm exec vitest run --maxWorkers=2 <paths>`; no full suite; no version, no build; nothing left running (`squeal stop` and `squeal stop --at` in every tree you made).
+
+## Scope
+
+- **Green side** (the test and code at HEAD) with no condition and no repeat: today `proof` keys it in a temporary checkout at HEAD with a frozen install and reads or runs it there (D5.1 "the green side is never read from the current worktree", the human 2026-11-18 "A: clean checkout"). Move it to the commit daemon at HEAD's commit: the same commit worktree `status --at` uses (D7.1), so a later `status --at HEAD~…` or `proof` reuses it. Read its stored result at the daemon's live key when present; else ask the daemon to run the named test file and wait within the call's bound. The whole-checkout check (the daemon refuses when its tree differs from the commit) and D4.9 refusals apply: they answer "not comparable" as D5.5 says.
+- **HEAD must be a commit:** the green side is the committed HEAD. If the named test file or its closure has uncommitted changes, say so and keep the current behaviour for that case (or refuse with the exact message D5 implies); do not read the dirty working tree as green. Decide and write the rule in the notes; if it changes what users see, send the coordinator a request first.
+- **Red side and conditioned sides:** unchanged (they stay in the call).
+- **One deadline:** the green side's daemon steps count against the call's existing bound; a side not ready reads as such, with the rerun command. Use `keptAlive` around pending waits.
+- **Keys:** the green side's key must equal what the temporary checkout gave (D2); add a test that reads the stored result at the same key both ways.
+- **Tests:** a proof whose green side is read from a commit daemon's stored result (no run); one that runs it there; a dirty-HEAD case; a conditioned case that still runs in the call; the exit codes of D5.6 unchanged. Each red without the change where feasible.
+- **Ownership:** `src/cli/proof*.ts`, `src/cli/status-at-daemons.ts` and the commit-ask client only for reuse (no behaviour change for `status --at`), tests beside them, `tasks/023-42-notes.md`. Not the daemon or scheduler (ask first if needed).
+
+## Done when
+
+Typecheck, lint, check:private pass; `proof*`, `status-at*` and `stop-at` tests pass when run directly; `squeal status --wait 60000 <changed paths>` read; notes with measured times from your own runs (green side from a stored result, and when run) on this host, load stated.
