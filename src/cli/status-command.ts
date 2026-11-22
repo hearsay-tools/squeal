@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { SQUEAL_COMMAND } from "../core/delivery/format.js";
+import { antigravityCommand } from "../harness/antigravity/command.js";
 import { codexCommand } from "../harness/codex/command.js";
 import { opencodeCliCommand } from "./opencode/status.js";
 import { piCliCommand } from "./pi/status.js";
@@ -12,8 +13,9 @@ import { piCliCommand } from "./pi/status.js";
  * version in the plugin data directory, which the launcher runs (spec 005 D3
  * as amended 2026-10-21); in a Pi shell (`PI_SESSION_ID` set, spec 009 D7) the Pi command,
  * this Node and this bundle by absolute path, and in an OpenCode shell the
- * plugin ran in (`OPENCODE_SESSION_ID` set, spec 008 D7) the same; `squeal`
- * otherwise. `cli` is for
+ * plugin ran in (`OPENCODE_SESSION_ID` set, spec 008 D7) the same; in an
+ * Antigravity shell (`ANTIGRAVITY_CONVERSATION_ID` set, spec 024 D6) the
+ * command its hooks name; `squeal` otherwise. `cli` is for
  * tests: bundled, this module is `dist/cli/squeal.mjs`.
  */
 export function statusCommand(
@@ -26,6 +28,9 @@ export function statusCommand(
   if (env.PI_SESSION_ID !== undefined && env.PI_SESSION_ID !== "") return piCliCommand(cli);
   if (env.OPENCODE_SESSION_ID !== undefined && env.OPENCODE_SESSION_ID !== "") {
     return opencodeCliCommand(cli);
+  }
+  if (env.ANTIGRAVITY_CONVERSATION_ID !== undefined && env.ANTIGRAVITY_CONVERSATION_ID !== "") {
+    return antigravityCommand(env, cli);
   }
   return SQUEAL_COMMAND;
 }

@@ -6,6 +6,7 @@ import { CLI_READ_RETRY_MS } from "../core/status/open.js";
 import { readStatus } from "../core/status/snapshot.js";
 import { readWhy } from "../core/status/why.js";
 import type { EpochMs } from "../core/types/common.js";
+import { antigravityStatusLine } from "./antigravity/status.js";
 import { checksCommand } from "./checks.js";
 import { ciCommand } from "./ci.js";
 import { codeCommand } from "./code.js";
@@ -523,7 +524,8 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
     ? null
     : (codexStatusLine(cwd, env) ??
       piStatusLine(cwd, env, fileURLToPath(import.meta.url)) ??
-      opencodeStatusLine(cwd, env));
+      opencodeStatusLine(cwd, env) ??
+      antigravityStatusLine(cwd, env));
   const base = result.available ? baseOf(result.worktreeRoot, cwd) : "";
   const human = () =>
     `${formatStatus(result, now(), statusCommand(env), { full, allNotes, base })}${harness ?? ""}`;
