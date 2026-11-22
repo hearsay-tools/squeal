@@ -95,7 +95,7 @@ describe("stale-key fallback", () => {
   it("names the fallback and the commands that refresh it in the text header", async () => {
     const { repo } = staleB();
     expect((await run(repo.main, [])).stdout).toContain(
-      "Stale: this worktree has no closure or walk at its current inputs for some test files, so 1 test file the newest stored closure and 1 test file the newest stored import walk are read instead, stored from 2026-11-04 to 2026-11-05; squeal start or squeal warmup refreshes them.\n",
+      "Stale: this worktree has no closure or walk at its current inputs for some test files, so 1 test file uses the newest stored closure and 1 test file uses the newest stored import walk, stored from 2026-11-04 to 2026-11-05; squeal start or squeal warmup refreshes them.\n",
     );
   });
 
