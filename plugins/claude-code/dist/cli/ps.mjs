@@ -417,7 +417,7 @@ function cpuTime(cpus3) {
 
 // src/core/ps/flags.ts
 import { existsSync as existsSync3 } from "node:fs";
-import { join as join15 } from "node:path";
+import { dirname as dirname8, join as join15 } from "node:path";
 
 // src/core/daemon/codex-runtime-version.ts
 import { existsSync as existsSync2 } from "node:fs";
@@ -784,7 +784,7 @@ function shellWord(word) {
 }
 
 // src/core/ps/discover.ts
-import { statSync } from "node:fs";
+import { readFileSync as readFileSync7, statSync } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join13 } from "node:path";
 
 // src/core/daemon/lock-wait.ts
@@ -942,6 +942,7 @@ var BARE_OPTION = /^-[^=]*$/;
 var HOLDERS = "daemon lock holders";
 var CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
 var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
+var ANTIGRAVITY_INSTALL = /^(.*\/\.gemini)\/(?:config\/plugins\/squeal|antigravity-cli\/plugin_data\/squeal\/versions\/([^/]+))\/dist\//;
 var discover = (source, table, places, locks = source.locks()) => {
   const unknown = [];
   if (locks === null) {
@@ -1077,8 +1078,28 @@ function installOf(script) {
     const [, plugins = null, harness2 = null, marketplace = null, version = null] = cache;
     return { harness: harness2, version, plugins, marketplace };
   }
+  const antigravity = ANTIGRAVITY_INSTALL.exec(script);
+  if (antigravity !== null) {
+    return {
+      harness: "antigravity",
+      version: antigravity[2] ?? null,
+      plugins: null,
+      marketplace: null
+    };
+  }
   const harness = PACKAGE_INSTALL.exec(script)?.[1] ?? null;
   return { harness, version: null, plugins: null, marketplace: null };
+}
+function antigravityInstalled(script) {
+  const gemini = ANTIGRAVITY_INSTALL.exec(script)?.[1];
+  if (gemini === void 0) return null;
+  const manifest = join13(gemini, "config", "plugins", "squeal", "plugin.json");
+  try {
+    const version = JSON.parse(readFileSync7(manifest, "utf8")).version;
+    return { manifest, version: typeof version === "string" && version !== "" ? version : null };
+  } catch {
+    return { manifest, version: null };
+  }
 }
 function socketFiles(source, places, daemons) {
   const listeners = source.unixListeners();
@@ -1503,13 +1524,15 @@ function bundleOf(script) {
   return at < 0 ? script : script.slice(0, at + "/dist".length);
 }
 function olderOf(c, d, work) {
-  const { plugins, marketplace, harness } = d;
-  if (plugins === null || marketplace === null || d.version === null) return null;
-  const newest = harness === "claude" ? claudeLoaded(plugins, marketplace, d.root)?.version ?? null : codexRuntimeVersion(plugins, marketplace);
+  if (d.version === null) return null;
+  const installed = installedOf(d);
+  if (installed === null) return null;
+  const { newest, where } = installed;
+  const { harness } = d;
   if (newest === null) {
     c.name(
       `daemon ${d.row.pid} flag older`,
-      `no installed ${harness} version can be read under ${plugins}`
+      `no installed ${harness} version can be read under ${where}`
     );
     return null;
   }
@@ -1525,6 +1548,15 @@ function olderOf(c, d, work) {
     return null;
   }
   return { reason: `version ${d.version}; ${harness} installs ${newest}` };
+}
+function installedOf(d) {
+  const antigravity = antigravityInstalled(d.script);
+  if (antigravity !== null)
+    return { newest: antigravity.version, where: dirname8(antigravity.manifest) };
+  const { plugins, marketplace } = d;
+  if (plugins === null || marketplace === null) return null;
+  const newest = d.harness === "claude" ? claudeLoaded(plugins, marketplace, d.root)?.version ?? null : codexRuntimeVersion(plugins, marketplace);
+  return { newest, where: plugins };
 }
 function hungOf(c, d) {
   const { model } = c;
@@ -1680,12 +1712,12 @@ import { existsSync as existsSync4 } from "node:fs";
 import { basename as basename4 } from "node:path";
 
 // src/core/ps/proc.ts
-import { readdirSync as readdirSync7, readFileSync as readFileSync9, readlinkSync, statSync as statSync2 } from "node:fs";
+import { readdirSync as readdirSync7, readFileSync as readFileSync10, readlinkSync, statSync as statSync2 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join16 } from "node:path";
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync5, readFileSync as readFileSync7 } from "node:fs";
+import { readdirSync as readdirSync5, readFileSync as readFileSync8 } from "node:fs";
 import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
@@ -1701,7 +1733,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync7("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync8("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -1710,7 +1742,7 @@ function uptimeTicks() {
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
-import { readdirSync as readdirSync6, readFileSync as readFileSync8 } from "node:fs";
+import { readdirSync as readdirSync6, readFileSync as readFileSync9 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { promisify } from "node:util";
 
@@ -1723,7 +1755,7 @@ var CHUNK = 64;
 function procRow(pid) {
   let text2;
   try {
-    text2 = readFileSync8(`/proc/${pid}/stat`, "latin1");
+    text2 = readFileSync9(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -2039,14 +2071,14 @@ var ProcSource = class {
   }
   #read(path) {
     try {
-      return readFileSync9(join16(this.#proc, path), "utf8");
+      return readFileSync10(join16(this.#proc, path), "utf8");
     } catch {
       return null;
     }
   }
   #bytes(path) {
     try {
-      return readFileSync9(join16(this.#proc, path));
+      return readFileSync10(join16(this.#proc, path));
     } catch {
       return null;
     }
@@ -2440,18 +2472,18 @@ function clip(text2, width) {
 }
 
 // src/core/ps/checkouts.ts
-import { basename as basename6, dirname as dirname10 } from "node:path";
+import { basename as basename6, dirname as dirname11 } from "node:path";
 
 // src/core/checkout/commit-identity.ts
-import { lstatSync as lstatSync4, readdirSync as readdirSync8, readFileSync as readFileSync12, realpathSync as realpathSync2, rmdirSync, rmSync as rmSync3 } from "node:fs";
-import { basename as basename5, dirname as dirname9, isAbsolute as isAbsolute7, join as join20, resolve as resolve3 } from "node:path";
+import { lstatSync as lstatSync4, readdirSync as readdirSync8, readFileSync as readFileSync13, realpathSync as realpathSync2, rmdirSync, rmSync as rmSync3 } from "node:fs";
+import { basename as basename5, dirname as dirname10, isAbsolute as isAbsolute7, join as join20, resolve as resolve3 } from "node:path";
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync10, readlinkSync as readlinkSync2 } from "node:fs";
+import { readFileSync as readFileSync11, readlinkSync as readlinkSync2 } from "node:fs";
 function readProcStat(pid) {
   let text2;
   try {
-    text2 = readFileSync10(`/proc/${pid}/stat`, "utf8");
+    text2 = readFileSync11(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -2516,7 +2548,7 @@ var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
 
 // src/core/checkout/marker.ts
-import { readFileSync as readFileSync11, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { readFileSync as readFileSync12, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join18 } from "node:path";
 var MARKER_VERSION = 1;
 function markerPath(folder) {
@@ -2528,7 +2560,7 @@ function treePath(folder) {
 function readMarker(folder) {
   let value;
   try {
-    value = JSON.parse(readFileSync11(markerPath(folder), "utf8"));
+    value = JSON.parse(readFileSync12(markerPath(folder), "utf8"));
   } catch {
     return null;
   }
@@ -2566,7 +2598,7 @@ function ownerState(marker) {
 
 // src/core/checkout/location.ts
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname8, isAbsolute as isAbsolute6, join as join19 } from "node:path";
+import { dirname as dirname9, isAbsolute as isAbsolute6, join as join19 } from "node:path";
 function cacheCheckoutsRoot(env = process.env, platform = process.platform) {
   return join19(cacheHome(env, platform), "squeal", "checkouts");
 }
@@ -2594,12 +2626,12 @@ function commitIdentity(tree) {
 function identityOf(given) {
   if (basename5(given) !== "tree" || lstatOrNull(given)?.isDirectory() !== true) return null;
   const tree = realpathSync2(given);
-  const folder = dirname9(tree);
+  const folder = dirname10(tree);
   const marker = readMarker(folder);
   if (marker?.fingerprint === void 0) return null;
   const { commonDir, commit, fingerprint } = marker;
   if (basename5(folder) !== commitFolderName(commit, fingerprint)) return null;
-  if (!isCheckoutLocation(dirname9(folder), commonDir)) return null;
+  if (!isCheckoutLocation(dirname10(folder), commonDir)) return null;
   if (!isSqueals(tree, commonDir)) return null;
   return { tree, folder, marker: { ...marker, fingerprint } };
 }
@@ -2609,14 +2641,14 @@ function isCheckoutLocation(dir, commonDir) {
 function isSqueals(tree, commonDir) {
   const dotGit2 = join20(tree, ".git");
   if (lstatOrNull(dotGit2)?.isFile() !== true) return false;
-  const line = /^gitdir: (.+)$/m.exec(readFileSync12(dotGit2, "utf8"))?.[1]?.trim();
+  const line = /^gitdir: (.+)$/m.exec(readFileSync13(dotGit2, "utf8"))?.[1]?.trim();
   if (line === void 0) return false;
   const admin = realpathSync2(isAbsolute7(line) ? line : resolve3(tree, line));
-  if (dirname9(admin) !== join20(commonDir, "worktrees")) return false;
-  const back = readFileSync12(join20(admin, "gitdir"), "utf8").trim();
+  if (dirname10(admin) !== join20(commonDir, "worktrees")) return false;
+  const back = readFileSync13(join20(admin, "gitdir"), "utf8").trim();
   if (realpathSync2(isAbsolute7(back) ? back : resolve3(admin, back)) !== realpathSync2(dotGit2))
     return false;
-  return readFileSync12(join20(admin, "locked"), "utf8").trim() === "squeal";
+  return readFileSync13(join20(admin, "locked"), "utf8").trim() === "squeal";
 }
 var IDENTITY_FAILED = "its tree is not a commit worktree Squeal made; check it and remove it by hand";
 
@@ -2679,7 +2711,7 @@ function deadFlag(listed, marker) {
     return { flag: "dead-checkout", reason, command: removal(marker.commonDir, listed) };
   if (commitIdentity(listed.tree) === null)
     return { flag: "dead-checkout", reason: `${reason}; ${IDENTITY_FAILED}`, command: null };
-  const repo = basename6(marker.commonDir) === ".git" ? dirname10(marker.commonDir) : listed.tree;
+  const repo = basename6(marker.commonDir) === ".git" ? dirname11(marker.commonDir) : listed.tree;
   const command2 = `cd ${shellWord(repo)} && squeal stop --at ${marker.commit}`;
   return { flag: "dead-checkout", reason, command: command2 };
 }
