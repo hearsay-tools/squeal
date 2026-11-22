@@ -44,8 +44,14 @@ import { retainSeedCli } from "./seed-cli.js";
  */
 
 /** What a copy holds of the plugin root: its manifest too, which names the code's version. */
-const COPIED = ["dist", "skills", ".codex-plugin"] as const;
+const COPIED: readonly string[] = ["dist", "skills", ".codex-plugin"];
 const MANIFEST = join(".codex-plugin", "plugin.json");
+/**
+ * Spec 024 D1 and D5: an Antigravity plugin's manifest sits at its root, so
+ * its copy holds `plugin.json` in place of `.codex-plugin/`.
+ */
+export const ANTIGRAVITY_MANIFEST = "plugin.json";
+export const ANTIGRAVITY_COPIED = ["dist", "skills", "plugin.json"] as const;
 /** A retained runtime's own manifest (spec 002 D9). */
 const RUNTIME_MANIFEST = "runtime.json";
 const CLI = join("dist", "cli", "squeal.mjs");
@@ -62,6 +68,13 @@ const VERSION = /^\d+\.\d+\.\d+$/;
 const CODEX_CACHE = join("plugins", "cache", "hearsay", "squeal");
 const CODEX_DATA = join("plugins", "data", "squeal-hearsay");
 /**
+ * Squeal's installed plugin and data directory under a home, as Antigravity
+ * names them to hooks as `PLUGIN_ROOT` and `PLUGIN_DATA`
+ * (spec 024 `research/wave-0-checks.md` 2).
+ */
+const ANTIGRAVITY_PLUGIN = join(".gemini", "config", "plugins", "squeal");
+const ANTIGRAVITY_DATA = join(".gemini", "antigravity-cli", "plugin_data", "squeal");
+/**
  * A copy in the making, `.<version>.<pid>.tmp`, renamed into place when
  * whole, or one being removed, `.<name>.<pid>.gone`: left behind only by a
  * process that was killed.
@@ -73,6 +86,29 @@ const LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
  * human's 24 h, a proposal for a session's life (`docs/triage/2026-10-25-digest.md`, D).
  */
 const KEEP_MS = 24 * 60 * 60 * 1000;
+
+type Env = Readonly<Record<string, string | undefined>>;
+
+/** Antigravity's installed Squeal plugin under `env`'s home (spec 024 D1). */
+export function antigravityPluginDir(env: Env = process.env): string {
+  return resolve(env.HOME || homedir(), ANTIGRAVITY_PLUGIN);
+}
+
+/** Antigravity's data directory for the installed Squeal plugin (spec 024 D1). */
+export function antigravityDataDir(env: Env = process.env): string {
+  return resolve(env.HOME || homedir(), ANTIGRAVITY_DATA);
+}
+
+/**
+ * Where a plugin keeps its manifest and what its copy holds: Codex's by
+ * default, Antigravity's with `ANTIGRAVITY_MANIFEST` and `ANTIGRAVITY_COPIED`.
+ */
+export interface CopyLayout {
+  /** The manifest naming the code's version, relative to the root. */
+  readonly manifest?: string;
+  /** The root's entries a copy holds, the manifest's among them. */
+  readonly copied?: readonly string[];
+}
 
 /** The launcher in the plugin data directory `data`. */
 export function dataLauncher(data: string): string {
@@ -88,8 +124,8 @@ export function copyOf(data: string, version: string): string {
  * The version a plugin root's or a copy's manifest names, `null` without one
  * readable. With a runtime manifest (row 002-29), both must name it.
  */
-function manifestVersion(dir: string): string | null {
-  const named = versionIn(join(dir, MANIFEST));
+function manifestVersion(dir: string, manifest = MANIFEST): string | null {
+  const named = versionIn(join(dir, manifest));
   if (!existsSync(join(dir, RUNTIME_MANIFEST))) return named;
   return versionIn(join(dir, RUNTIME_MANIFEST)) === named ? named : null;
 }
@@ -104,18 +140,18 @@ function versionIn(path: string): string | null {
 }
 
 /** `file` in `version`'s copy while the copy holds that version's code (row 011-140), else `null`. */
-function kept(data: string, version: string, file: string): string | null {
+function kept(data: string, version: string, file: string, layout: CopyLayout): string | null {
   const dir = copyOf(data, version);
   const path = join(dir, file);
-  return existsSync(path) && manifestVersion(dir) === version ? path : null;
+  return existsSync(path) && manifestVersion(dir, layout.manifest) === version ? path : null;
 }
 
 /**
  * The CLI of `version`'s copy, `null` when there is none or its manifest
  * names another version (row 011-140). A copy is whole once it exists.
  */
-export function keptCli(data: string, version: string): string | null {
-  return kept(data, version, CLI);
+export function keptCli(data: string, version: string, layout: CopyLayout = {}): string | null {
+  return kept(data, version, CLI, layout);
 }
 
 /** The plugin data directory whose copy holds the CLI `cli`; `null` for a CLI outside one. */
@@ -125,11 +161,11 @@ export function dataOfCopy(cli: string): string | null {
 }
 
 /** The skill of `version`'s copy, `null` when there is none or it holds other code. */
-export function keptSkill(data: string, version: string): string | null {
-  return kept(data, version, SKILL);
+export function keptSkill(data: string, version: string, layout: CopyLayout = {}): string | null {
+  return kept(data, version, SKILL, layout);
 }
 
-export interface KeepOptions {
+export interface KeepOptions extends CopyLayout {
   /** The running plugin's root: what is copied. */
   readonly root: string;
   /** The plugin data directory. */
@@ -150,22 +186,26 @@ export interface KeepOptions {
  * or `null` when none could be made: the caller then runs from `root`, or
  * from its own bundle, as before the first copy.
  */
-export function keepVersion({ root, data, version }: KeepOptions): string | null {
+export function keepVersion(options: KeepOptions): string | null {
+  const { root, data, version, manifest = MANIFEST, copied = COPIED } = options;
+  const layout = { manifest };
   const dir = copyOf(data, version);
   // A version that is no plain release, such as `UNKNOWN_VERSION`, is never pruned: no copy.
   if (!VERSION.test(version) || !existsSync(join(root, CLI))) return null;
   try {
     const versions = join(data, "versions");
-    const whole = keptCli(data, version) !== null;
+    const whole = keptCli(data, version, layout) !== null;
     // Read again just before: another session start may have renamed its whole copy in since.
-    if (!whole && existsSync(dir) && manifestVersion(dir) !== version) remove(versions, version);
-    if (manifestVersion(root) !== version) return whole ? dir : null;
+    if (!whole && existsSync(dir) && manifestVersion(dir, manifest) !== version) {
+      remove(versions, version);
+    }
+    if (manifestVersion(root, manifest) !== version) return whole ? dir : null;
     let made = false;
     if (!whole) {
       mkdirSync(versions, { recursive: true });
       const part = join(versions, `.${version}.${process.pid}.tmp`);
       rmSync(part, { recursive: true, force: true });
-      for (const name of COPIED) {
+      for (const name of copied) {
         if (existsSync(join(root, name))) {
           cpSync(join(root, name), join(part, name), { recursive: true, dereference: true });
         }
@@ -180,7 +220,7 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
     }
     writeLauncher(root, data, version);
     if (made) pruneVersions(data, version);
-    return keptCli(data, version) === null ? null : dir;
+    return keptCli(data, version, layout) === null ? null : dir;
   } catch {
     return null;
   }
@@ -195,17 +235,18 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
  * CLI retains the complete runtime through atomic publication, with no
  * selection or pin change. Retention failure throws so `start` can report
  * an action without spawning from the seed. An absolute `PLUGIN_DATA`
- * overrides the default data path for a seed, as for the adapter.
+ * overrides the default data path for a seed, as for the adapter. Spec 024
+ * D1: a CLI run from Antigravity's installed plugin keeps its copy the same
+ * way, in an absolute `PLUGIN_DATA` or Antigravity's data directory.
  * `cli` itself for a CLI elsewhere, such as Claude Code's cache, or a
  * legacy CLI when no copy could be made.
  */
-export function keptCacheCli(
-  cli: string,
-  version: string,
-  env: Readonly<Record<string, string | undefined>> = process.env,
-): string {
+export function keptCacheCli(cli: string, version: string, env: Env = process.env): string {
   const codex = resolve(env.CODEX_HOME || join(env.HOME || homedir(), ".codex"));
   const root = dirname(dirname(dirname(cli)));
+  if (cli.endsWith(`/${CLI}`) && root === antigravityPluginDir(env)) {
+    return keptAntigravityCli(root, version, env) ?? cli;
+  }
   const data = join(codex, CODEX_DATA);
   if (
     cli.endsWith(`/${CLI}`) &&
@@ -220,6 +261,15 @@ export function keptCacheCli(
   }
   if (!cli.endsWith(`/${CLI}`) || dirname(root) !== join(codex, CODEX_CACHE)) return cli;
   return keepVersion({ root, data, version }) === null ? cli : (keptCli(data, version) ?? cli);
+}
+
+/** The CLI of `version`'s copy of Antigravity's plugin `root`, kept now; `null` without one. */
+function keptAntigravityCli(root: string, version: string, env: Env): string | null {
+  const data =
+    env.PLUGIN_DATA && isAbsolute(env.PLUGIN_DATA) ? env.PLUGIN_DATA : antigravityDataDir(env);
+  const layout = { manifest: ANTIGRAVITY_MANIFEST, copied: ANTIGRAVITY_COPIED };
+  if (keepVersion({ root, data, version, ...layout }) === null) return null;
+  return keptCli(data, version, layout);
 }
 
 /** `<data>/bin/squeal` from the plugin's launcher: when missing, or from the newest copy. */

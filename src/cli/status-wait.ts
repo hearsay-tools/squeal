@@ -96,11 +96,12 @@ export function waitForStatus(cwd: AbsolutePath, options: StatusWaitOptions): Pr
 
 /**
  * The consumer a wait runs as, from its shell: the session from
- * `CLAUDE_CODE_SESSION_ID`, `CODEX_SESSION_ID` or `OPENCODE_SESSION_ID`, and,
+ * `CLAUDE_CODE_SESSION_ID`, `CODEX_SESSION_ID`, `ANTIGRAVITY_CONVERSATION_ID`
+ * (spec 024 D2) or `OPENCODE_SESSION_ID`, and,
  * for OpenCode alone, the agent from `OPENCODE_AGENT_ID` (`main` for a root
  * session, the child session's id for a child, spec 008 D2), so a child's pull
- * is credited to `(root, child)`. Codex's shell names no agent: every consumer
- * of its session counts.
+ * is credited to `(root, child)`. Codex's and Antigravity's shells name no
+ * agent: every consumer of the session counts.
  */
 export function waitConsumer(env: Readonly<Record<string, string | undefined>>): {
   readonly session: string | null;
@@ -108,6 +109,9 @@ export function waitConsumer(env: Readonly<Record<string, string | undefined>>):
 } {
   const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
   if (session !== null) return { session, agent: null };
+  // Spec 024 D2: Antigravity names the conversation in every `run_command` shell.
+  const antigravity = env.ANTIGRAVITY_CONVERSATION_ID;
+  if (antigravity !== undefined && antigravity !== "") return { session: antigravity, agent: null };
   const opencode = env.OPENCODE_SESSION_ID;
   if (opencode === undefined || opencode === "") return { session: null, agent: null };
   const agent = env.OPENCODE_AGENT_ID;
