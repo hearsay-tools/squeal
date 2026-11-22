@@ -147,7 +147,7 @@ export async function joinedCommit(
       .map((row) => row.testFile)
       .filter((ref) => paths === null || selects(paths, ref.path)),
   );
-  return joinCommit(daemons, tree, bound, listed);
+  return joinCommit(daemons, tree, bound, listed, paths);
 }
 
 /** A commit worktree of this commit and environment whose tree is gone, if the store still holds its daemon's rows. */
