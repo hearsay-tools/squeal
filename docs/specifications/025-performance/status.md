@@ -1,8 +1,8 @@
 # 025: Performance improvements - status
 
-- **Stage:** in-progress (Wave 1 landed in `0.1.600`, 2026-11-22; approved by the human 2026-11-22: `/coordinator get it done`)
+- **Stage:** in-progress (Wave 1 released in `0.1.600`, 2026-11-22; approved by the human 2026-11-22: `/coordinator get it done`)
 - **Coordinator:** `201d84ee`
-- **Landed:** Wave 1 (`025-01`..`025-05`) in `0.1.600` (candidate CI `45074688588` green on `7633b6de4`, private CI `45074688553` green, Codex reviews `0.1.600-r2.md`, `0.1.600-r3.md`, and `0.1.600-validity.md` PASS; paired boat.dev scorecard `bench/results/2026-11-22-0.1.597-vs-0.1.600-default-AMD-Ryzen-7-9700X-8-Core-Processor/scorecard.md`: `ref` 71→88, `size-l` 46→61, `wt-3` 70→75, `store-7g-wt3` 63→68, Correctness PASS)
+- **Released:** Wave 1 (`025-01`..`025-05`) in `0.1.600` (tag `squeal--v0.1.600` at `e9c4a490c`, `v0` and `v0.1.600` there, hub `225bd33`, GitHub latest release with `install.sh` and both Codex runtime assets; candidate CI `45074688588` green on `7633b6de4`, exact-main CI `45080260007` green on `e9c4a490c`, Codex reviews `0.1.600-r2.md`, `0.1.600-r3.md`, and `0.1.600-validity.md` PASS; paired boat.dev scorecard `bench/results/2026-11-22-0.1.597-vs-0.1.600-default-AMD-Ryzen-7-9700X-8-Core-Processor/scorecard.md`: `ref` 71→88, `size-l` 46→61, `wt-3` 70→75, `store-7g-wt3` 63→68, Correctness PASS)
 
 ## Amendments
 
