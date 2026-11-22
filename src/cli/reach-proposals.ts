@@ -2,7 +2,7 @@ import type { Proposal } from "../core/reach/report-types.js";
 import { plural } from "../core/text.js";
 
 /*
- * Spec 015 D11 "No history": the text of what `squeal reach` proposes. It
+ * Spec 015 D11 "No history": the text of what `squeal impact` proposes. It
  * names commands and their cost, and starts nothing.
  */
 
@@ -49,8 +49,8 @@ export function proposalLines(proposal: Proposal, coverage: "on" | "off"): strin
         ? "looks up the results stored for their inputs, and runs the test files it finds none for (baseline.onStart is lookup-then-run-missing), up to one run of the whole suite"
         : "looks up the results stored for their inputs, in any worktree of this repository, and runs no test";
       return [
-        "Reach: no daemon has listed this worktree's test files yet, so Squeal cannot tell what an edit re-runs.",
-        `Proposal: ${proposal.command} lists them and ${lookups}. squeal reach then answers, or names what is still missing. squeal reach starts nothing.`,
+        "Impact: no daemon has listed this worktree's test files yet, so Squeal cannot tell what an edit re-runs.",
+        `Proposal: ${proposal.command} lists them and ${lookups}. squeal impact then answers, or names what is still missing. squeal impact starts nothing.`,
       ];
     }
     case "warmup": {
@@ -61,8 +61,8 @@ export function proposalLines(proposal: Proposal, coverage: "on" | "off"): strin
           ? "; with coverage on, each test file's coverage record costs about a tenth more CPU in each run"
           : "";
       return [
-        "Reach: no test file of this worktree has a recorded result, so Squeal cannot tell yet what an edit re-runs.",
-        `Proposal: ${proposal.command} runs every test file without a current result${count}. It costs about one run of the whole suite${extra}. squeal reach starts nothing.`,
+        "Impact: no test file of this worktree has a recorded result, so Squeal cannot tell yet what an edit re-runs.",
+        `Proposal: ${proposal.command} runs every test file without a current result${count}. It costs about one run of the whole suite${extra}. squeal impact starts nothing.`,
       ];
     }
     case "seconds":
@@ -72,7 +72,7 @@ export function proposalLines(proposal: Proposal, coverage: "on" | "off"): strin
     case "coverage": {
       const keys = proposal.keys.map((k) => `\`${k}\``).join(" and ");
       return [
-        `Proposal: set ${keys} in squeal.config.json, then run ${proposal.command}, so Squeal can tell which tests call each file. Cost: every Vitest and node:test file runs once more, because turning coverage on changes their keys, and each later run takes about a tenth more CPU; turning it off again re-runs them once more. squeal reach does not turn coverage on.`,
+        `Proposal: set ${keys} in squeal.config.json, then run ${proposal.command}, so Squeal can tell which tests call each file. Cost: every Vitest and node:test file runs once more, because turning coverage on changes their keys, and each later run takes about a tenth more CPU; turning it off again re-runs them once more. squeal impact does not turn coverage on.`,
       ];
     }
     case "records":

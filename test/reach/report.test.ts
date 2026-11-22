@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatReach } from "../../src/cli/reach-format.js";
+import { formatImpact } from "../../src/cli/reach-format.js";
 import { buildReport, type ReportOptions } from "../../src/core/reach/report.js";
 import type { ReachSnapshot } from "../../src/core/reach/types.js";
 import { fakeGraph, NONE, record, snapshot, testFile } from "./fixture.js";
@@ -116,13 +116,13 @@ describe("suggestions by path kind", () => {
     });
   });
 
-  it("names the declared pattern, and calls child-process seconds by design, never avoidable", () => {
+  it("names the declared pattern, and notes child-process seconds by their facts, never avoidable", () => {
     expect(entry("fixtures/x.json")?.suggestion?.text).toBe(
       'the input "fixtures/**" in squeal.config.json gives fixtures/x.json to the test files "test/**" matches: 1 test file here',
     );
     expect(entry("dist/cli.js")).toMatchObject({
       suggestion: null,
-      note: "these tests start the program from source; Squeal re-runs them by design",
+      note: "1 test file loads dist/cli.js in a process it starts, outside its imports",
       avoidableSeconds: 0,
       coverage: { "outside the test's process": 1 },
     });
@@ -222,7 +222,7 @@ describe("limits, edits and seconds", () => {
   });
 
   it("names the window and each file's edits with their re-run seconds", () => {
-    expect(r.window).toEqual({ from: 10, to: 30, edits: 3 });
+    expect(r.window).toEqual({ from: 10, to: 30, edits: 3, rerunSeconds: 4 });
     expect(r.files[0]).toMatchObject({ edits: 2, editSeconds: 4 });
     expect(r.testFiles[0]).toMatchObject({ path: "test/x.test.ts", edits: 2 });
   });
@@ -235,7 +235,7 @@ describe("limits, edits and seconds", () => {
       [["src/a.ts"], null, null],
       [["src/b.ts", "src/c.ts"], "src", null],
     ]);
-    expect(formatReach(all)).toContain("  2. 2 files in src/ (import)\n");
+    expect(formatImpact(all)).toContain("  2. 2 files in src/ (import)\n");
   });
 });
 
@@ -285,7 +285,7 @@ describe("proposals", () => {
   it("counts and names test files with no trusted closure, whose reach is not counted", () => {
     const r = report(snapshot([{ ...t, closure: null }]));
     expect(r).toMatchObject({ history: true, files: [], suite: { withoutClosure: 1 } });
-    expect(formatReach(r)).toContain(
+    expect(formatImpact(r)).toContain(
       "1 test file has no import closure Squeal trusts at its current inputs, so its reach is not counted; its next run stores one.",
     );
     const two = report(
@@ -294,7 +294,7 @@ describe("proposals", () => {
         { ...t, closure: null },
       ]),
     );
-    expect(formatReach(two)).toContain(
+    expect(formatImpact(two)).toContain(
       "2 test files have no import closure Squeal trusts at their current inputs, so their reach is not counted; their next runs store them.",
     );
   });

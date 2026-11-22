@@ -153,7 +153,13 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
   return pairs;
 }
 
-/** D11's path of a closure path that is no setup file: declared, observed, else an import. */
+/**
+ * D11's path of a closure path that is no setup file, as amended
+ * 2026-11-22 (row 015-128): declared, then an import whenever the stored
+ * walk reaches it, then a child's load, a runtime read, else an unsplit
+ * import. A module the test file imports and also reads at run time is an
+ * import: its import gateway is what an edit goes through.
+ */
 function closurePair(
   test: ReachTestFile,
   path: RelativePath,
@@ -163,15 +169,21 @@ function closurePair(
 ): Pair {
   const declared = context.snapshot.declared(test.ref.path, path);
   if (declared !== null) return { ...pair(test, path, "declared input", [], null), declared };
+  const imports = walked === undefined ? undefined : importWalk(walked);
+  const chain = imports?.chain(path) ?? null;
+  if (chain !== null) return importPair(test, path, chain, context);
   if (test.childProcess.has(path)) return pair(test, path, "child process", [], null);
   if (test.runtimeRead.has(path)) return pair(test, path, "runtime read", [], null);
-  if (walked !== undefined) return importPair(test, path, importWalk(walked), context);
   if (!isModulePath(path)) return pair(test, path, "runtime read", [], null);
   const unsplit = pair(test, path, "import", [], null);
-  // A graph but no walk written with this key: the chain is not recorded yet. Only Vitest
-  // records walks; node:test and pytest pairs read import, unsplit (D11; 015-116, P2).
-  const walks = context.snapshot.graph !== null && test.runner === "vitest";
-  return walks ? { ...unsplit, notRecorded: true } : unsplit;
+  // With a walk, a module it does not reach is a gap only when the walk is incomplete. Without
+  // one under a graph, the chain is not recorded yet. Only Vitest records walks; node:test and
+  // pytest pairs read import, unsplit (D11; 015-116, P2).
+  const gap =
+    imports === undefined
+      ? context.snapshot.graph !== null && test.runner === "vitest"
+      : imports.incomplete;
+  return gap ? { ...unsplit, notRecorded: true } : unsplit;
 }
 
 function pair(
@@ -185,13 +197,12 @@ function pair(
 }
 
 /** D11 4: direct, barrel or test helper by the last such module on the chain, else transitive. */
-function importPair(test: ReachTestFile, path: RelativePath, imports: Walk, context: PairContext) {
-  const chain = imports.chain(path);
-  if (chain === null) {
-    if (!isModulePath(path)) return pair(test, path, "runtime read", [], null);
-    const unsplit = pair(test, path, "import", [], null);
-    return imports.incomplete ? { ...unsplit, notRecorded: true as const } : unsplit;
-  }
+function importPair(
+  test: ReachTestFile,
+  path: RelativePath,
+  chain: readonly RelativePath[],
+  context: PairContext,
+): Pair {
   const between = chain.slice(1, -1);
   for (let at = between.length - 1; at >= 0; at--) {
     const module = between[at] as RelativePath;

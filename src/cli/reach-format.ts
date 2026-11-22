@@ -9,16 +9,15 @@ import type {
 } from "../core/reach/report-types.js";
 import { chainText } from "../core/reach/suggest.js";
 import { plural } from "../core/text.js";
-import type { EpochMs } from "../core/types/common.js";
 import { proposalLines } from "./reach-proposals.js";
-import { pct, secs } from "./reach-text.js";
+import { day, gatewaysPart, pct, secs, staleLine } from "./reach-text.js";
 
 /*
- * Spec 015 D11: the human rendering of `squeal reach`. Every number is
- * relative to this repository's own suite, seconds and edits.
+ * Spec 015 D11: the human rendering of `squeal impact`. Every number is
+ * relative to this repository's own suite, seconds and edits. With edits
+ * recorded, the gateways and files by the window's edits lead (row
+ * 015-128).
  */
-
-const day = (at: EpochMs) => new Date(at).toISOString().slice(0, 10);
 
 /** `called 24%, loaded only 41%`; with coverage off, `called: unknown`. */
 function splitText<K extends string>(split: Split<K>): string {
@@ -30,15 +29,16 @@ function splitText<K extends string>(split: Split<K>): string {
 const COVERAGE_OFF =
   "Coverage is off, so called reads unknown: Squeal cannot tell which of these tests call the file; the path kinds are a proxy.";
 
-function head(report: ReachReport): string[] {
+function head(report: ReachReport, command: string): string[] {
   const { suite, window } = report;
   const left =
     suite.leftOut === 0 ? "" : `; ${plural(suite.leftOut, "test file")} of manual groups left out`;
   return [
-    `Reach: what one edit of each file re-runs, of ${plural(suite.testFiles, "test file")} and ${secs(suite.seconds)} recorded${left}.`,
+    `Impact: what edits of each file re-run, of ${plural(suite.testFiles, "test file")} and ${secs(suite.seconds)} recorded${left}.`,
     window === null
       ? "Edits: none recorded of files this worktree has (watch revisions in which HEAD did not move)."
-      : `Edits: ${window.edits} from ${day(window.from)} to ${day(window.to)}, every worktree's watch revisions in which HEAD did not move, of files this worktree has.`,
+      : `Edits: ${window.edits} from ${day(window.from)} to ${day(window.to)}, every worktree's watch revisions in which HEAD did not move, of files this worktree has; they re-ran ${secs(window.rerunSeconds)} in all.`,
+    ...(report.stale === null ? [] : [staleLine(report.stale, command)]),
     ...(report.absent === 0
       ? []
       : [
@@ -123,11 +123,21 @@ function fileLines(entry: FileEntry): string[] {
   ];
 }
 
-/** 015-118: the second list, short: what the window's edits re-ran, and where the entry ranks above. */
+/**
+ * 015-118: the list by the window's edits: what they re-ran and its share
+ * of the window's re-run seconds, the path kinds and main gateway (row
+ * 015-128), and where the entry ranks in the per-edit list.
+ */
 function editLines(entry: FileEntry, at: number): string[] {
   const each = entry.files.length === 1 ? "each" : "each file";
   return [
-    `  ${at}. ${entryName(entry)}: ${plural(entry.edits, "edit")} re-ran ${secs(entry.editSeconds)}, ${secs(entry.seconds)} ${each}; ${ordered(entry)}; rank ${entry.rank} above`,
+    `  ${at}. ${entryName(entry)}: ${plural(entry.edits, "edit")} re-ran ${secs(entry.editSeconds)}, ${pct(entry.editShare)} of the window's re-run seconds, ${secs(entry.seconds)} ${each}; ${ordered(entry)}; rank ${entry.rank} below`,
+    `     paths: ${splitText<PathKind>(entry.kinds)}`,
+    ...(entry.gateway === null
+      ? []
+      : [
+          `     gateway: ${routeLine(entry.gateway)}, for example ${chainText(entry.gateway.chain)}`,
+        ]),
     ...advice(entry, "     "),
   ];
 }
@@ -180,12 +190,19 @@ function titles(report: ReachReport): { readonly files: string; readonly tests: 
   };
 }
 
+/** `2 edits in the window re-ran 6 s, 40% of the window's re-run seconds`. */
+function namedEdits(file: NamedFile): string {
+  const edits = `${plural(file.edits, "edit")} in the window`;
+  if (file.editSeconds === 0) return edits;
+  return `${edits} re-ran ${secs(file.editSeconds)}, ${pct(file.editShare)} of the window's re-run seconds`;
+}
+
 function namedLines(file: NamedFile): string[] {
   if (file.testFiles === 0) {
     return [`${file.path}: no test file of the suite re-runs on an edit of it.`];
   }
   return [
-    `${file.path}: re-runs ${pct(file.share)} of the suite: ${plural(file.testFiles, "test file")}, ${secs(file.seconds)}; ${plural(file.edits, "edit")} in the window`,
+    `${file.path}: re-runs ${pct(file.share)} of the suite: ${plural(file.testFiles, "test file")}, ${secs(file.seconds)}; ${namedEdits(file)}`,
     `  coverage: ${splitText<CoverageState>(file.coverage)}`,
     ...file.routes.flatMap((route) => [
       `  ${routeLine(route)}: ${plural(route.testFiles, "test file")}, ${secs(route.seconds)}; ${splitText<CoverageState>(route.coverage)}`,
@@ -201,27 +218,29 @@ function namedLines(file: NamedFile): string[] {
   ];
 }
 
-export function formatReach(report: ReachReport): string {
+/** The text of `squeal impact`; `command` is how it names the CLI (`statusCommand`). */
+export function formatImpact(report: ReachReport, command = "squeal"): string {
   if (!report.history) {
     return `${report.proposals.flatMap((p) => proposalLines(p, report.coverage)).join("\n")}\n`;
   }
   const named = report.named;
   const title = titles(report);
-  const body =
-    named === undefined
-      ? [
-          "",
-          title.files,
-          ...report.files.flatMap(fileLines),
-          ...more(report.moreFiles),
-          "",
-          ...editsPart(report),
-          "",
-          title.tests,
-          ...report.testFiles.flatMap((e, i) => testLines(e, i + 1)),
-          ...more(report.moreTestFiles),
-        ]
-      : ["", ...named.flatMap(namedLines)];
+  const perEdit = [
+    title.files,
+    ...report.files.flatMap(fileLines),
+    ...more(report.moreFiles),
+    "",
+    title.tests,
+    ...report.testFiles.flatMap((e, i) => testLines(e, i + 1)),
+    ...more(report.moreTestFiles),
+  ];
+  const byEdits = [...gatewaysPart(report), "", ...editsPart(report)];
+  // Row 015-128: with edits recorded, what they re-ran leads; without, each edit section is one line.
+  const ranked =
+    report.window === null || report.byEdits.length === 0
+      ? [...perEdit, "", ...byEdits]
+      : [...byEdits, "", ...perEdit];
+  const body = named === undefined ? ["", ...ranked] : ["", ...named.flatMap(namedLines)];
   const proposals = report.proposals.flatMap((p) => proposalLines(p, report.coverage));
-  return `${[...head(report), ...body, ...(proposals.length === 0 ? [] : ["", ...proposals])].join("\n")}\n`;
+  return `${[...head(report, command), ...body, ...(proposals.length === 0 ? [] : ["", ...proposals])].join("\n")}\n`;
 }

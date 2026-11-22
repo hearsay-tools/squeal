@@ -27,7 +27,7 @@ describe("squeal reach", () => {
     for (const args of [["--nope"], ["--limit"], ["--limit", "0"], ["--limit=x"]]) {
       const r = await run(repo.main, args);
       expect(r.code, args.join(" ")).toBe(2);
-      expect(r.stderr).toContain("Usage: squeal reach [<path>...] [--limit <n>] [--json]");
+      expect(r.stderr).toContain("Usage: squeal impact [<path>...] [--limit <n>] [--json]");
     }
   });
 
@@ -38,8 +38,8 @@ describe("squeal reach", () => {
     const r = await run(repo.main, []);
     expect(r.code).toBe(0);
     expect(r.stdout).toBe(
-      "Reach: no daemon has listed this worktree's test files yet, so Squeal cannot tell what an edit re-runs.\n" +
-        "Proposal: squeal start lists them and looks up the results stored for their inputs, in any worktree of this repository, and runs no test. squeal reach then answers, or names what is still missing. squeal reach starts nothing.\n",
+      "Impact: no daemon has listed this worktree's test files yet, so Squeal cannot tell what an edit re-runs.\n" +
+        "Proposal: squeal start lists them and looks up the results stored for their inputs, in any worktree of this repository, and runs no test. squeal impact then answers, or names what is still missing. squeal impact starts nothing.\n",
     );
     expect(r.stdout).not.toContain("warmup");
     writeFileSync(
@@ -62,8 +62,8 @@ describe("squeal reach", () => {
     const r = await run(repo.main, []);
     expect(r.code).toBe(0);
     expect(r.stdout).toBe(
-      "Reach: no test file of this worktree has a recorded result, so Squeal cannot tell yet what an edit re-runs.\n" +
-        "Proposal: squeal warmup runs every test file without a current result (2 test files listed). It costs about one run of the whole suite; with coverage on, each test file's coverage record costs about a tenth more CPU in each run. squeal reach starts nothing.\n",
+      "Impact: no test file of this worktree has a recorded result, so Squeal cannot tell yet what an edit re-runs.\n" +
+        "Proposal: squeal warmup runs every test file without a current result (2 test files listed). It costs about one run of the whole suite; with coverage on, each test file's coverage record costs about a tenth more CPU in each run. squeal impact starts nothing.\n",
     );
   });
 
@@ -76,8 +76,9 @@ describe("squeal reach", () => {
     expect(changeMarker(store)).toEqual(before);
     const report = JSON.parse(r.stdout) as ReachReport;
     expect(report).toMatchObject({
-      v: 1,
+      v: 2,
       history: true,
+      stale: null,
       suite: { testFiles: 2, seconds: 3, withoutSeconds: 0, withoutClosure: 0, leftOut: 0 },
       window: { from: Date.UTC(2026, 10, 2), to: Date.UTC(2026, 10, 3), edits: 2 },
       coverage: "on",
@@ -103,7 +104,7 @@ describe("squeal reach", () => {
     const named = await run(join(repo.main, "src"), ["one.ts"]);
     expect(named.code).toBe(0);
     expect(named.stdout).toContain(
-      "src/one.ts: re-runs 100% of the suite: 2 test files, 3 s; 2 edits in the window\n" +
+      "src/one.ts: re-runs 100% of the suite: 2 test files, 3 s; 2 edits in the window re-ran 6 s, 100% of the window's re-run seconds\n" +
         "  coverage: loaded only 67%, called 33%\n" +
         "  import: 2 test files, 3 s; loaded only 67%, called 33%\n" +
         "    test/b.test.ts  2 s  loaded only\n" +

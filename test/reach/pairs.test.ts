@@ -79,7 +79,8 @@ describe("path kinds", () => {
       "src/deep.ts": "test helper",
       "src/app.ts": "direct",
       "src/registry.ts": "transitive",
-      "src/leaf.ts": "runtime read",
+      // Row 015-128: the walk reaches it, so its import route wins over the runtime read.
+      "src/leaf.ts": "transitive",
       "fixtures/data.json": "declared input",
       "dist/cli.js": "child process",
       "vitest.config.ts": "setup",
@@ -244,6 +245,46 @@ describe("path kinds", () => {
     const g = fakeGraph({ [T]: [], "src/lazy.ts": [] }, {}, { [T]: ["src/lazy.ts"] });
     const t = testFile(T, [T, "src/lazy.ts"]);
     expect(pairsOf(t, new PairContext(snapshot([t], { graph: g })))[0]?.kind).toBe("direct");
+  });
+});
+
+describe("import walk before child process and runtime read (row 015-128)", () => {
+  // Cezar: agent-runner.ts was imported through a setup helper and also in the worker's own module
+  // loads; it read "child process" and lost its gateway. Only a module the walk does not reach is observed.
+  const graph = fakeGraph({
+    [T]: ["test/kit.ts"],
+    "test/kit.ts": ["src/agent-runner.ts", "src/compose.ts"],
+    "src/agent-runner.ts": [],
+    "src/compose.ts": [],
+  });
+  const t = testFile(
+    T,
+    [T, "test/kit.ts", "src/agent-runner.ts", "src/compose.ts", "dist/cli.js", "src/spawned.ts"],
+    {
+      childProcess: new Set(["src/agent-runner.ts", "dist/cli.js"]),
+      runtimeRead: new Set(["src/compose.ts", "src/spawned.ts"]),
+    },
+  );
+  const kinds = (g: ReturnType<typeof fakeGraph> | null) =>
+    Object.fromEntries(
+      pairsOf(t, new PairContext(snapshot([t], { graph: g }))).map((p) => [p.path, p.kind]),
+    );
+
+  it("gives a module the walk reaches its import route, and observed kinds only to the rest", () => {
+    expect(kinds(graph)).toEqual({
+      "test/kit.ts": "direct",
+      "src/agent-runner.ts": "test helper",
+      "src/compose.ts": "test helper",
+      "dist/cli.js": "child process",
+      "src/spawned.ts": "runtime read",
+    });
+  });
+
+  it("without a walk, keeps the observed kinds", () => {
+    expect(kinds(null)).toMatchObject({
+      "src/agent-runner.ts": "child process",
+      "src/compose.ts": "runtime read",
+    });
   });
 });
 

@@ -1,7 +1,7 @@
 import { compare } from "../fs/compare.js";
 import type { RelativePath } from "../types/common.js";
 import { analyze } from "./analyze.js";
-import { fileEntries, testEntries } from "./entries.js";
+import { fileEntries, gatewayEntries, testEntries } from "./entries.js";
 import { named, namedFiles } from "./named.js";
 import { proposals } from "./proposals.js";
 import { REACH_REPORT_VERSION, type ReachReport } from "./report-types.js";
@@ -10,8 +10,9 @@ import type { ReachSnapshot } from "./types.js";
 /*
  * Spec 015 D11 "The report, with history": two parts ranked by avoidable
  * seconds per edit, then by reach seconds, and the files again by the
- * seconds the window's edits re-ran (015-118). `entries.ts` builds the
- * entries, `named.ts` the named files.
+ * seconds the window's edits re-ran (015-118), led by the gateways those
+ * edits went through (row 015-128). `entries.ts` builds the entries,
+ * `gateways.ts` the gateways, `named.ts` the named files.
  */
 
 export interface ReportOptions {
@@ -35,6 +36,7 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
     ? fileEntries(analysis, snapshot)
     : { files: [], byEdits: [], absent: 0 };
   const tests = history ? testEntries(analysis) : [];
+  const gateways = history ? gatewayEntries(analysis) : [];
   const limit = options.limit ?? Number.POSITIVE_INFINITY;
   const unmeasured = snapshot.coverage.on
     ? analysis.tests
@@ -48,12 +50,20 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
     window:
       times.length === 0
         ? null
-        : { from: Math.min(...times), to: Math.max(...times), edits: times.length },
+        : {
+            from: Math.min(...times),
+            to: Math.max(...times),
+            edits: times.length,
+            rerunSeconds: analysis.rerunSeconds,
+          },
+    stale: snapshot.stale ?? null,
     coverage: snapshot.coverage.on ? "on" : "off",
     unmeasured: [...new Set(unmeasured)].sort(compare),
     edges: snapshot.graph !== null,
     notRecorded: [...analysis.files.values()].reduce((n, f) => n + f.notRecorded, 0),
     absent,
+    gateways: gateways.slice(0, limit),
+    moreGateways: Math.max(0, gateways.length - limit),
     files: files.slice(0, limit),
     moreFiles: Math.max(0, files.length - limit),
     byEdits: byEdits.slice(0, limit),

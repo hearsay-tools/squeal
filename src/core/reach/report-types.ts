@@ -1,13 +1,17 @@
 import type { EpochMs, RelativePath } from "../types/common.js";
 import type { CoverageState, PathKind } from "./pairs.js";
 import type { SecondGateway, Suggestion } from "./suggest.js";
+import type { DeclaredPattern, StaleFallback } from "./types.js";
 
 /*
- * Spec 015 D11: the report `squeal reach` prints, and `--json` gives in
- * this versioned shape. Shares are fractions of recorded seconds.
+ * Spec 015 D11: the report `squeal impact` prints, and `--json` gives in
+ * this versioned shape. Shares are fractions of recorded seconds. Version
+ * 2 (row 015-128) adds `gateways`, `moreGateways`, `stale`,
+ * `window.rerunSeconds`, `FileEntry.editShare`, `NamedFile.editSeconds`
+ * and `NamedFile.editShare`.
  */
 
-export const REACH_REPORT_VERSION = 1;
+export const REACH_REPORT_VERSION = 2;
 
 /** Shares of seconds; a state or kind with none is absent. */
 export type Split<K extends string> = Partial<Record<K, number>>;
@@ -39,6 +43,8 @@ export interface FileEntry {
   /** Edits in the window that changed one of the files, and the seconds they re-ran. */
   readonly edits: number;
   readonly editSeconds: number;
+  /** `editSeconds` over the window's `rerunSeconds`; 0 with none (row 015-128). */
+  readonly editShare: number;
   readonly coverage: Split<CoverageState>;
   readonly kinds: Split<PathKind>;
   /** The kind of its main route: of the routes with avoidable seconds when it has any (015-116, P3). */
@@ -46,7 +52,39 @@ export interface FileEntry {
   readonly gateway: ReachRoute | null;
   readonly second: SecondGateway | null;
   readonly suggestion: Suggestion | null;
-  /** When child-process and runtime-read seconds outweigh import seconds: Squeal re-runs these by design. */
+  /** When child-process and runtime-read seconds outweigh import seconds: who reads it outside their imports, and how (row 015-128). */
+  readonly note?: string;
+}
+
+/** How an observed gateway reaches its test files (row 015-128). */
+export type GatewayMode =
+  /** One path the test files read or load, such as `package.json`. */
+  | "observed path"
+  /** Test files that read at least `BROAD_READS` source modules outside their import walk: `test/daemon/*`, or one test file. */
+  | "broad test reader";
+
+/** Row 015-128: one gateway, by the seconds the window's edits of the files behind it re-ran. */
+export interface GatewayEntry {
+  readonly kind: PathKind;
+  /** A setup root, a helper, a barrel, a hub, a declared input glob, an observed path, or a reader group. */
+  readonly gateway: string;
+  readonly mode?: GatewayMode;
+  /** For a declared input, its pattern. */
+  readonly declared?: DeclaredPattern;
+  /** Edited files behind it in the window. */
+  readonly editedFiles: number;
+  /** Window edits that changed one of them. */
+  readonly edits: number;
+  /** Test files those edits re-ran through it. */
+  readonly testFiles: number;
+  /** Seconds those edits re-ran through it, each test file once per edit. */
+  readonly editSeconds: number;
+  /** `editSeconds` over the window's `rerunSeconds`. */
+  readonly editShare: number;
+  /** Up to 3 of its edited files, the most edited first. */
+  readonly sampleFiles: readonly RelativePath[];
+  readonly suggestion: Suggestion | null;
+  /** For a runtime read or child process: who reads or loads what, and how. */
   readonly note?: string;
 }
 
@@ -73,6 +111,9 @@ export interface NamedFile {
   readonly seconds: number;
   readonly share: number;
   readonly edits: number;
+  /** Seconds its window edits re-ran, and their share of the window's `rerunSeconds` (row 015-128). */
+  readonly editSeconds: number;
+  readonly editShare: number;
   readonly coverage: Split<CoverageState>;
   /** `--limit` routes, by seconds, each with `--limit` test files (015-116, P10). */
   readonly routes: readonly (ReachRoute & {
@@ -130,8 +171,20 @@ export interface ReachReport {
     readonly withoutClosure: number;
     readonly leftOut: number;
   };
-  /** The edits the store keeps of paths this worktree has, by time; `null` with none (015-122). */
-  readonly window: { readonly from: EpochMs; readonly to: EpochMs; readonly edits: number } | null;
+  /**
+   * The edits the store keeps of paths this worktree has, by time; `null`
+   * with none (015-122). `rerunSeconds` sums, over those edits, the seconds
+   * of the suite's test files each re-ran, each test file once per edit
+   * (row 015-128).
+   */
+  readonly window: {
+    readonly from: EpochMs;
+    readonly to: EpochMs;
+    readonly edits: number;
+    readonly rerunSeconds: number;
+  } | null;
+  /** Row 015-128: test files that read their newest stored closure or walk, at no current key here; `null` when none did. */
+  readonly stale: StaleFallback | null;
   readonly coverage: "on" | "off";
   /** Runners of the suite whose runs give no coverage records, while coverage is on. */
   readonly unmeasured: readonly string[];
@@ -141,6 +194,9 @@ export interface ReachReport {
   readonly notRecorded: number;
   /** Paths with no bytes in this worktree, left out of `files` and `byEdits` (015-122). */
   readonly absent: number;
+  /** Row 015-128: the gateways the window's edits went through, by the seconds they re-ran; empty with no edits. */
+  readonly gateways: readonly GatewayEntry[];
+  readonly moreGateways: number;
   readonly files: readonly FileEntry[];
   readonly moreFiles: number;
   /** 015-118: the entries the window's edits changed, by the seconds those edits re-ran; empty with no edits. */

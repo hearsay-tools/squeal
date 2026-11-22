@@ -9,9 +9,10 @@ import {
   rankedSeconds,
   type Seconds,
 } from "./analyze.js";
+import { OBSERVED_KINDS, observedNote } from "./observers.js";
 import { IMPORT_KINDS, type PathKind } from "./pairs.js";
-import type { FileEntry, ReachRoute, Split, TestEntry } from "./report-types.js";
-import { BY_DESIGN, secondGateway, suggestionFor, typesOnlyThrough } from "./suggest.js";
+import type { FileEntry, GatewayEntry, ReachRoute, Split, TestEntry } from "./report-types.js";
+import { secondGateway, suggestionFor, typesOnlyThrough } from "./suggest.js";
 import type { ReachSnapshot } from "./types.js";
 
 /*
@@ -57,17 +58,39 @@ export function routeOf(route: Route): ReachRoute {
   return { kind, gateway, chain, testFiles, seconds, coverage: split(route.coverage, seconds) };
 }
 
-const BY_DESIGN_KINDS: ReadonlySet<PathKind> = new Set(["child process", "runtime read"]);
-
-/** The note, when child-process and runtime-read seconds outweigh import seconds (015-116, P3). */
-export function noteOf(kinds: Seconds<PathKind>): { readonly note?: string } {
-  let byDesign = 0;
+/**
+ * The note, when child-process and runtime-read seconds outweigh import
+ * seconds (015-116, P3): who re-runs on the file outside their imports and
+ * how, with the share of the window's re-run seconds its edits re-ran
+ * (row 015-128).
+ */
+export function noteOf(
+  file: FileReach,
+  kinds: Seconds<PathKind>,
+  analysis: Analysis,
+  editShare: number,
+): { readonly note?: string } {
+  let observed = 0;
   let imports = 0;
   for (const [kind, seconds] of Object.entries(kinds) as [PathKind, number][]) {
-    if (BY_DESIGN_KINDS.has(kind)) byDesign += seconds;
+    if (OBSERVED_KINDS.has(kind)) observed += seconds;
     if (IMPORT_KINDS.has(kind)) imports += seconds;
   }
-  return byDesign > imports ? { note: BY_DESIGN } : {};
+  if (observed <= imports) return {};
+  const share = analysis.kept.length === 0 ? null : editShare;
+  return { note: observedNote(file.path, file.observers, analysis.readers, share) };
+}
+
+/** The window edits that changed one of `files`, each once, and the share of the window's re-run seconds. */
+export function editsOf(
+  files: readonly FileReach[],
+  analysis: Analysis,
+): { readonly edits: number; readonly editSeconds: number; readonly editShare: number } {
+  const edits = new Set(files.flatMap((f) => analysis.editsOf.get(f.path) ?? [])).size;
+  // Files of one entry share their reach, so one edit re-runs the same seconds through any of them.
+  const editSeconds = edits * (files[0]?.seconds ?? 0);
+  const { rerunSeconds } = analysis;
+  return { edits, editSeconds, editShare: rerunSeconds > 0 ? editSeconds / rerunSeconds : 0 };
 }
 
 /**
@@ -138,6 +161,7 @@ function entryOf(
   const kinds = sum(files.map((f) => f.kinds));
   const seconds = mean((f) => f.seconds);
   const total = analysis.suite.seconds;
+  const edits = editsOf(files, analysis);
   return {
     files: paths,
     folder: paths.length > 1 ? commonFolder(paths) : null,
@@ -146,15 +170,14 @@ function entryOf(
     share: total > 0 ? seconds / total : 0,
     avoidableSeconds: mean((f) => f.avoidable),
     unknownSeconds: mean((f) => f.unknown),
-    edits: files.reduce((n, f) => n + (analysis.edits.get(f.path) ?? 0), 0),
-    editSeconds: files.reduce((s, f) => s + (analysis.edits.get(f.path) ?? 0) * f.seconds, 0),
+    ...edits,
     coverage: split(sum(files.map((f) => f.coverage)), seconds * files.length),
     kinds: split(kinds, seconds * files.length),
     kind: route?.kind ?? "import",
     gateway: route?.gateway == null ? null : routeOf(route),
     second: route === null ? null : secondGateway(paths, route, snapshot, lead),
     suggestion: route === null ? null : suggestionFor(paths, route, snapshot, lead),
-    ...noteOf(kinds),
+    ...noteOf(lead, kinds, analysis, edits.editShare),
   };
 }
 
@@ -207,4 +230,22 @@ export function testEntries(analysis: Analysis): TestEntry[] {
     });
   entries.sort((a, b) => b.rank - a.rank || b.all - a.all || compare(a.entry.path, b.entry.path));
   return entries.map(({ entry }) => entry);
+}
+
+/** Row 015-128: the gateways the window's edits went through, by the seconds they re-ran. */
+export function gatewayEntries(analysis: Analysis): GatewayEntry[] {
+  return analysis.gateways.entries({
+    kept: analysis.kept,
+    rerunSeconds: analysis.rerunSeconds,
+    readers: analysis.readers,
+    tests: (index) => {
+      const test = analysis.tests[index];
+      return {
+        path: test?.test.ref.path ?? "",
+        seconds: test?.test.seconds ?? 0,
+        outside: test?.outside ?? 0,
+      };
+    },
+    edits: analysis.edits,
+  });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatReach } from "../../src/cli/reach-format.js";
+import { formatImpact } from "../../src/cli/reach-format.js";
 import { buildReport, type ReportOptions } from "../../src/core/reach/report.js";
 import type { ReachSnapshot } from "../../src/core/reach/types.js";
 import { fakeGraph, NONE, record, snapshot, testFile, UNKNOWN } from "./fixture.js";
@@ -22,7 +22,7 @@ describe("P2: the not-recorded line names a cause that holds", () => {
     const node = testFile("test/n.test.js", ["test/n.test.js", "src/a.ts"], { runner: "pytest" });
     const r = report(snapshot([vitest, node], { graph: none }));
     expect(r.notRecorded).toBe(1);
-    expect(formatReach(r)).toContain(
+    expect(formatImpact(r)).toContain(
       "1 pair read import, path not recorded yet: Squeal stored no complete walk of their test files' imports at the current inputs; the daemon stores one when it reads those imports again.\n",
     );
   });
@@ -67,7 +67,7 @@ describe("P3: the main route is chosen among the routes with avoidable seconds",
     expect(entry?.note).toBeUndefined();
   });
 
-  it("notes by-design seconds only when they outweigh the import seconds", () => {
+  it("notes observed seconds only when they outweigh the import seconds", () => {
     const more = [2, 3, 4].map((i) =>
       testFile(`test/r${i}.test.ts`, [`test/r${i}.test.ts`, X], {
         seconds: 10,
@@ -79,7 +79,8 @@ describe("P3: the main route is chosen among the routes with avoidable seconds",
     expect(entry).toMatchObject({
       kind: "test helper",
       suggestion: { kind: "test helper" },
-      note: "these tests start the program from source; Squeal re-runs them by design",
+      // Row 015-128: recorded facts, no blanket "by design".
+      note: "5 test files read src/fs.ts at run time in their own process, outside their imports",
     });
   });
 });
@@ -193,7 +194,7 @@ describe("P6: a module that imports many siblings is a second gateway, even afte
       },
       suggestion: { kind: "test helper" },
     });
-    expect(formatReach(r)).toContain(
+    expect(formatImpact(r)).toContain(
       "     second gateway: src/core/runner-factory.ts\n     suggestion: load these files only where they are used",
     );
   });
@@ -213,7 +214,7 @@ describe("P7: the no-record proposal names its test files and the command for ea
     );
     const r = report(snapshot([...missing, testFile("test/x.test.ts", ["src/a.ts"])]));
     expect(r.proposals[0]).toMatchObject({ kind: "records", testFiles: 12, current: [] });
-    expect(formatReach(r)).toContain(
+    expect(formatImpact(r)).toContain(
       "12 test files have no result at the current inputs; `squeal retry <test file>...` runs each once: test/m00.test.ts, test/m01.test.ts, test/m02.test.ts, test/m03.test.ts, test/m04.test.ts, test/m05.test.ts, test/m06.test.ts, test/m07.test.ts, test/m08.test.ts, test/m09.test.ts and 2 more (--json lists every one).\n",
     );
   });
@@ -250,7 +251,7 @@ describe("P8: with coverage unknown, the order counts the seconds of import pair
   });
 
   it("says what it ranks by", () => {
-    const text = formatReach(r);
+    const text = formatImpact(r);
     expect(text).toContain(
       "Files, by seconds re-run on import paths per edit (called is unknown), then seconds re-run:\n",
     );
@@ -293,7 +294,7 @@ describe("P8: with coverage unknown, the order counts the seconds of import pair
       ["app/a.py", 0, 9],
       ["src/v.ts", 3, 0],
     ]);
-    expect(formatReach(mixed)).toContain(
+    expect(formatImpact(mixed)).toContain(
       "Files, by avoidable seconds per edit, or seconds on import paths where called is unknown, then seconds re-run:\n",
     );
   });
@@ -305,7 +306,7 @@ describe("P9: with no listing, the report names squeal start before any warm-up 
       { kind: "start", command: "squeal start", runsMissing: false },
     ]);
     const runs = snapshot([], { onStart: "lookup-then-run-missing" });
-    expect(formatReach(report(runs, { listed: null }))).toContain(
+    expect(formatImpact(report(runs, { listed: null }))).toContain(
       "Proposal: squeal start lists them and looks up the results stored for their inputs, and runs the test files it finds none for (baseline.onStart is lookup-then-run-missing), up to one run of the whole suite.",
     );
     expect(report(snapshot([]), { listed: 3 }).proposals).toEqual([
@@ -338,7 +339,7 @@ describe("P10: --limit bounds the named view", () => {
     expect(named?.routes).toHaveLength(1);
     expect(named?.moreRoutes).toBe(4);
     expect(named?.routes[0]).toMatchObject({ tests: [{ path: "test/a.test.ts" }], moreTests: 0 });
-    const text = formatReach(report(snap, { paths: ["src/x.ts"], limit: 1 }));
+    const text = formatImpact(report(snap, { paths: ["src/x.ts"], limit: 1 }));
     expect(text).toContain("  … and 4 more routes; --limit lists more.\n");
   });
 
@@ -350,7 +351,7 @@ describe("P10: --limit bounds the named view", () => {
       tests: [{ path: "test/a.test.ts" }, { path: "test/b.test.ts" }],
       moreTests: 1,
     });
-    expect(formatReach(one)).toContain("    … and 1 more test file; --limit lists more.\n");
+    expect(formatImpact(one)).toContain("    … and 1 more test file; --limit lists more.\n");
   });
 
   it("gives every route and test file without a limit", () => {
@@ -369,7 +370,7 @@ describe("P12: the test-file field is named as pair-seconds", () => {
     const r = report(snapshot([t]));
     expect(r.testFiles[0]).toMatchObject({ avoidablePairSeconds: 252, called: 1, sources: 3 });
     expect(r.testFiles[0]).not.toHaveProperty("avoidableSeconds");
-    expect(formatReach(r)).toContain(
+    expect(formatImpact(r)).toContain(
       "Test files, by avoidable pair-seconds (seconds times the source files they load on import paths and never call), then seconds re-run:\n",
     );
   });
@@ -391,8 +392,8 @@ describe("a collapsed entry without a gateway is named by its main route's kind"
       files: ["src/a.ts", "src/b.ts"],
       kind: "import",
       kinds: { "runtime read": 5 / 6, import: 1 / 6 },
-      note: "these tests start the program from source; Squeal re-runs them by design",
+      note: "1 test file reads src/a.ts at run time in its own process, outside its imports",
     });
-    expect(formatReach(r)).toContain("  1. 2 files in src/ (import)\n");
+    expect(formatImpact(r)).toContain("  1. 2 files in src/ (import)\n");
   });
 });

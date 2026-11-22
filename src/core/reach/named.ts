@@ -1,7 +1,7 @@
 import { compare } from "../fs/compare.js";
 import type { RelativePath } from "../types/common.js";
 import type { Analysis } from "./analyze.js";
-import { mainRoute, noteOf, routeOf, split } from "./entries.js";
+import { editsOf, mainRoute, noteOf, routeOf, split } from "./entries.js";
 import type { NamedFile } from "./report-types.js";
 import { secondGateway, suggestionFor } from "./suggest.js";
 import type { ReachSnapshot } from "./types.js";
@@ -33,12 +33,13 @@ export function namedFiles(
       .map((file): NamedFile => {
         const route = mainRoute(file);
         const routes = [...file.routes.values()].sort((a, b) => b.seconds - a.seconds);
+        const edits = editsOf([file], analysis);
         return {
           path: file.path,
           testFiles: file.testFiles,
           seconds: file.seconds,
           share: total > 0 ? file.seconds / total : 0,
-          edits: analysis.edits.get(file.path) ?? 0,
+          ...edits,
           coverage: split(file.coverage, file.seconds),
           routes: routes.slice(0, limit).map((r) => {
             const tests = [...(r.tests ?? [])].sort(
@@ -53,7 +54,7 @@ export function namedFiles(
           moreRoutes: Math.max(0, routes.length - limit),
           second: route === null ? null : secondGateway([file.path], route, snapshot, file),
           suggestion: route === null ? null : suggestionFor([file.path], route, snapshot, file),
-          ...noteOf(file.kinds),
+          ...noteOf(file, file.kinds, analysis, edits.editShare),
         };
       }),
     ...absent.map((path) => ({
@@ -62,6 +63,8 @@ export function namedFiles(
       seconds: 0,
       share: 0,
       edits: analysis.edits.get(path) ?? 0,
+      editSeconds: 0,
+      editShare: 0,
       coverage: {},
       routes: [],
       moreRoutes: 0,
