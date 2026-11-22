@@ -165,6 +165,28 @@ describe("a commit daemon's asks (row 023-40c)", () => {
     expect(p.changes()).toBeGreaterThanOrEqual(3);
   });
 
+  it("row 023-50 (V3): leads with the files under a named folder and a named path's readers, named files first", async () => {
+    const p = ports([row(A), row(B), row(C), row(D)]);
+    const asks = new AtAsks(p.value);
+    asks.ask(ask({ named: [D.path, "test/c", "src/a.ts"], changed: ["src/a.ts", "src/c.ts"] }));
+    p.ready();
+    await expect.poll(() => asks.snapshot().asks[0]?.phase).toBe("queued");
+    expect(paths(asks.snapshot().asks[0]?.files ?? [])).toEqual([D.path, A.path, C.path]);
+    expect(p.requests).toEqual([
+      { group: "tests", paths: [D.path, A.path], lead: true },
+      { group: "slow", paths: [C.path], lead: true },
+    ]);
+  });
+
+  it("leads with nothing in a call that names no path", async () => {
+    const p = ports([row(A), row(B)]);
+    const asks = new AtAsks(p.value);
+    asks.ask(ask());
+    p.ready();
+    await expect.poll(() => asks.snapshot().asks[0]?.phase).toBe("queued");
+    expect(p.requests).toEqual([{ group: "tests", paths: [A.path] }]);
+  });
+
   it("fails an ask with the setup's text when the install failed", async () => {
     const p = ports([row(A)]);
     const asks = new AtAsks(p.value);

@@ -19,7 +19,7 @@ import type { NarrowRunOptions } from "../types/scheduler.js";
  * then its keys), the files with no result at their live key that the
  * change selects (D4.5, from the key index: `changedSelects`) or the call
  * names are queued as narrow runs of the call's owner, the named files
- * first and leading. At each change the socket thread gets a snapshot of
+ * first; in a call that names paths every one leads (row 023-50). At each change the socket thread gets a snapshot of
  * the setup and the asks (`changed`), which it answers reads from
  * (`CommitDesk`).
  */
@@ -139,9 +139,12 @@ export class AtAsks {
     kept.readers = chosen.readers;
     kept.refused = chosen.refused;
     kept.files = [...chosen.named, ...chosen.rest];
-    const options = { at: true } as const;
-    await this.#queue(chosen.named, { ...options, lead: true }, kept);
-    await this.#queue(chosen.rest, options, kept);
+    // Row 023-50 (round 6 V3): a call that names paths leads with every file it queues, those
+    // under a named folder and the readers of a named path too, named files first, in one
+    // batch per group (a later leading batch ranks first). A call that names none leads none.
+    const options: NarrowRunOptions =
+      request.named.length > 0 ? { at: true, lead: true } : { at: true };
+    await this.#queue(kept.files, options, kept);
     kept.phase = "queued";
   }
 
