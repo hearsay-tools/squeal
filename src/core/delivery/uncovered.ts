@@ -24,28 +24,42 @@ export function uncoveredMetaKey(worktreeId: WorktreeId): string {
  * `dist/` and paths `exists` says are gone are left out. Empty until the
  * daemon has listed the worktree's test files, and while one of them has no
  * closure this worktree can trust, since what it reads is not known then.
+ *
+ * Spec 024 D2: the paths are found read-only first; the transaction, and with
+ * it a hook's write lease, is entered only when there are some to record, and
+ * they are found again inside it.
  */
 export function tellUncovered(
   store: Store,
   consumer: Consumer,
   exists: (path: RelativePath) => boolean,
 ): readonly RelativePath[] {
+  if (uncoveredNow(store, consumer, exists).length === 0) return [];
   return store.transaction(() => {
-    const r = registration(store, consumer);
-    const latest = store.revisions.latest(consumer.worktreeId);
-    if (r === null || latest === null) return [];
-    const { changed } = changedAfter(store, consumer.worktreeId, r, latest.number);
-    const code = [...changed].filter(
-      (p) => CODE.test(p) && !p.startsWith("dist/") && !p.includes("/dist/"),
-    );
-    if (code.length === 0) return [];
-    const read = readByTests(store, consumer.worktreeId);
-    if (read === null) return [];
-    const told = uncoveredTold(store, consumer);
-    const fresh = code.filter((p) => !read.has(p) && !told.includes(p) && exists(p));
-    if (fresh.length > 0) recordUncoveredTold(store, consumer, [...told, ...fresh]);
+    const fresh = uncoveredNow(store, consumer, exists);
+    if (fresh.length > 0) {
+      recordUncoveredTold(store, consumer, [...uncoveredTold(store, consumer), ...fresh]);
+    }
     return fresh;
   });
+}
+
+/** The code paths `tellUncovered` would tell `consumer` now: changed, not told, read by no test, on disk. */
+function uncoveredNow(
+  store: Store,
+  consumer: Consumer,
+  exists: (path: RelativePath) => boolean,
+): readonly RelativePath[] {
+  const r = registration(store, consumer);
+  const latest = store.revisions.latest(consumer.worktreeId);
+  if (r === null || latest === null) return [];
+  const { changed } = changedAfter(store, consumer.worktreeId, r, latest.number);
+  const told = new Set(uncoveredTold(store, consumer));
+  const code = [...changed].filter(
+    (p) => CODE.test(p) && !p.startsWith("dist/") && !p.includes("/dist/") && !told.has(p),
+  );
+  if (code.length === 0) return [];
+  return (unreadByTests(store, consumer.worktreeId, code) ?? []).filter(exists);
 }
 
 /** The paths `consumer` was told, for `park` to keep while it is away (review wave 13as, B2). */
@@ -69,17 +83,28 @@ export function recordUncoveredTold(
   else if (readSlot(store, key, consumer) !== undefined) writeSlot(store, key, consumer, null);
 }
 
-/** Every path a listed test file of the worktree is or reads; `null` while one is not known. */
-function readByTests(store: Store, worktreeId: WorktreeId): Set<RelativePath> | null {
+/**
+ * Of `paths`, those no listed test file of the worktree is or reads; `null`
+ * while what one reads is not known (no file listed, or a closure it cannot
+ * trust). The scan stops once every path is covered: a file it did not reach
+ * then cannot change the answer, which is empty either way. A path left
+ * uncovered at the end was checked against every listed file's closure.
+ */
+function unreadByTests(
+  store: Store,
+  worktreeId: WorktreeId,
+  paths: readonly RelativePath[],
+): RelativePath[] | null {
   const listed = store.testFileKeys.list(worktreeId);
   if (listed.length === 0) return null;
   const closureOf = closureFor(store, worktreeId);
-  const read = new Set<RelativePath>();
+  const unread = new Set(paths);
   for (const { testFile } of listed) {
     const closure = closureOf(testFile);
     if (closure === undefined) return null;
-    read.add(testFile.path);
-    for (const path of closure) read.add(path);
+    unread.delete(testFile.path);
+    for (const path of closure) unread.delete(path);
+    if (unread.size === 0) return [];
   }
-  return read;
+  return paths.filter((p) => unread.has(p));
 }
