@@ -105,10 +105,13 @@ describe("squeal proof: test-side removals and stops before the case (row 023-21
       "test/fixtures/b.json": "{}\n",
       [TEST]: lines(
         'import { it, expect } from "vitest";',
-        'import { readdirSync } from "node:fs";',
+        'import { existsSync } from "node:fs";',
         'import { value } from "../src/value";',
         // Row 023-42: relative to the test file; a commit daemon in this test process keeps its cwd.
-        'it("value", () => expect(value).toBeGreaterThanOrEqual(readdirSync(new URL("./fixtures", import.meta.url)).length));',
+        // Review 0.1.597 B1: a listed folder reads `needs test/fixtures/` (D4.9), so the test
+        // checks the fixture it counts instead of listing the folder.
+        'const fixtures = () => (existsSync(new URL("./fixtures/b.json", import.meta.url)) ? 2 : 1);',
+        'it("value", () => expect(value).toBeGreaterThanOrEqual(fixtures()));',
       ),
     });
     const base = git(f.root, "rev-parse", "HEAD").trim();
@@ -118,7 +121,7 @@ describe("squeal proof: test-side removals and stops before the case (row 023-21
     expect(stopped.files[0]).toMatchObject({
       changedImports: { unsettled: ["test/fixtures/b.json"] },
     });
-    // Test code: the red side lists one fixture, as HEAD's test does; 1 >= 1 passes.
+    // Test code: the red side sees one fixture, as HEAD's test does; 1 >= 1 passes.
     const asTest = await prove(f, {
       files: [TEST],
       base,

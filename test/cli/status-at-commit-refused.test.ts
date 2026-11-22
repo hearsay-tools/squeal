@@ -58,7 +58,7 @@ describe("the commit daemon refuses what is not the commit's (row 023-40c)", SLO
     expect(JSON.parse(called.out).run.commit).toMatchObject({ files: 1, known: 1 });
   });
 
-  it("row 023-42: runs a file whose recorded reads list a folder the commit tracks (D4.9)", {
+  it("review 0.1.597 B1: refuses a file whose recorded reads list a folder (D4.9)", {
     timeout: 240_000,
   }, async () => {
     const lists = [
@@ -81,11 +81,16 @@ describe("the commit daemon refuses what is not the commit's (row 023-40c)", SLO
     const options = { cacheRoot: f.cacheRoot, daemons: real.daemons };
     const ask = { json: true, run: { allMissing: true }, waitMs: 120_000 } as const;
 
-    // The first run records the folder it lists; the next commit's daemon keys with that read.
+    // The first run records the folder it lists. The folder's key hashes its tracked names
+    // only, so a result stored from a listing with ignored or untracked names would stand
+    // for the commit's: the next commit's daemon refuses the file (proof's green side too).
     const first = await run(f, { commit: a, ...ask }, options);
     expect(atOf(first.out, LISTS.path), first.err).toMatchObject({ state: "pass" });
     const second = await run(f, { commit: b, ...ask }, options);
-    expect(atOf(second.out, LISTS.path), second.err).toMatchObject({ state: "pass" });
+    expect(atOf(second.out, LISTS.path), second.err).toEqual({
+      state: "not comparable",
+      reason: "needs test/fixtures/",
+    });
   });
 
   it("runs nothing on a tree the install changed, and says which path", {

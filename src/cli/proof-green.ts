@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { commonDirOf, type KeyedFile, withStores } from "../core/commit/at-keys-checkout.js";
 import { changedText } from "../core/commit/at-keys-walk.js";
-import { committedBlobs } from "../core/commit/tree.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { NOT_RUN_BUDGET } from "../core/proof/verdict.js";
 import type { CommitSetup } from "../core/types/commit-ask.js";
@@ -146,23 +145,16 @@ async function readyTree(input: GreenInput, by: number): Promise<Ready> {
 
 /**
  * D4.9 over the daemon's stored closure, which holds the reads Squeal
- * observed too: a listed folder (`test/fixtures/`, or `./`) the commit
- * tracks files under is held by git, not a path git does not hold. The temporary
- * checkout's keyer gave the imports alone, where no folder arose.
+ * observed too. A listed folder (`test/fixtures/`, or `./`) is no blob, so
+ * it reads `needs <folder>`: its key hashes the tracked names only, so a
+ * result stored from a listing with ignored or untracked names would
+ * stand for the commit's (review 0.1.597 B1).
  */
 async function greenNeeds(
   input: GreenInput,
   tree: AbsolutePath,
 ): Promise<(file: KeyedFile) => string | null> {
-  const needs = await needsOf({ root: input.root, commit: input.head, tree, copied: input.named });
-  const committed = [...(await committedBlobs(input.root, input.head)).keys()];
-  const held = (path: RelativePath) =>
-    path.endsWith("/") && committed.some((blob) => path === "./" || blob.startsWith(path));
-  return (file) => {
-    if (!("key" in file.at)) return null;
-    const loads = (file.at.loads ?? []).filter((path) => !held(path));
-    return needs({ ref: file.ref, at: { ...file.at, loads } });
-  };
+  return needsOf({ root: input.root, commit: input.head, tree, copied: input.named });
 }
 
 /** The named files no runner at HEAD lists, each as it was named. */
