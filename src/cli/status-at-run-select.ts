@@ -156,10 +156,12 @@ export async function needsOf(input: {
   readonly commit: string;
   readonly tree: AbsolutePath;
   readonly copied?: ReadonlySet<RelativePath>;
+  /** Row 023-42 (review 0.1.597 B3): each git read ends by this many ms; the default ceiling otherwise. */
+  readonly within?: () => number;
 }): Promise<(file: KeyedFile) => string | null> {
   const { root, tree } = input;
-  const atCommit = await committedBlobs(root, input.commit);
-  const atHead = await committedBlobs(root, "HEAD");
+  const atCommit = await committedBlobs(root, input.commit, input.within?.());
+  const atHead = await committedBlobs(root, "HEAD", input.within?.());
   return (file) => {
     if (!("key" in file.at)) return null;
     for (const path of file.at.loads ?? []) {

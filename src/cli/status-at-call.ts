@@ -254,13 +254,28 @@ function tellEstimate(
   }
 }
 
-/** D7.1: the commit's own `env.allowlist`, which its daemon reads; none when it has no such config. */
+/**
+ * D7.1: the commit's own `env.allowlist`, which its daemon reads; none when it has no such config.
+ * With `timeoutMs` (row 023-42, review 0.1.597 B3), a read that does not end by then rejects:
+ * an allowlist not read is no empty one, whose fingerprint names another commit worktree.
+ */
 export async function commitAllowlist(
   root: AbsolutePath,
   commit: string,
+  timeoutMs?: number,
 ): Promise<readonly string[]> {
+  if (timeoutMs !== undefined && timeoutMs <= 0)
+    throw new Error("no time left to read the commit's squeal.config.json");
+  const started = performance.now();
+  let text: string;
   try {
-    const text = await runGit(root, ["show", `${commit}:squeal.config.json`]);
+    const bound = timeoutMs === undefined ? {} : { timeoutMs };
+    text = await runGit(root, ["show", `${commit}:squeal.config.json`], bound);
+  } catch (error) {
+    if (timeoutMs !== undefined && performance.now() - started >= timeoutMs) throw error;
+    return [];
+  }
+  try {
     const list = (JSON.parse(text) as { env?: { allowlist?: unknown } }).env?.allowlist;
     return Array.isArray(list) ? list.filter((name) => typeof name === "string") : [];
   } catch {

@@ -26,6 +26,7 @@ import { type OpenSide, runSide, withSide } from "./proof-side.js";
 import type { AtOptions } from "./status-at.js";
 import { commitAllowlist, environmentOf } from "./status-at-call.js";
 import { type AtDaemons, type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
+import { keptAlive } from "./status-at-now-ask.js";
 
 /*
  * Spec 023 D5 (row 023-08): `squeal proof <test file>... --base <commit>
@@ -67,7 +68,7 @@ export async function proofCommand(
   const onDaemon =
     hasConditions(conditions) || repeat > 1
       ? null
-      : await greenDaemon(root, head, env, note, options);
+      : await greenDaemon(root, head, env, note, options, deadline);
   const common: Common = {
     root,
     own: worktreeIdFor(root),
@@ -284,29 +285,45 @@ interface Common {
   readonly forward: (text: string) => void;
   readonly conditions: Conditions;
   readonly repeat: number;
-  /** D7.6: the commit daemon the green side reads and runs on; `null` when it stays in the call. */
-  readonly onDaemon: { readonly daemons: AtDaemons; readonly commit: CommitDaemonInput } | null;
+  /**
+   * D7.6: the commit daemon the green side reads and runs on, its worktree's input `null` when
+   * the budget ended before it was read; `null` when the side stays in the call.
+   */
+  readonly onDaemon: {
+    readonly daemons: AtDaemons;
+    readonly commit: CommitDaemonInput | null;
+  } | null;
 }
 
-/** D7.6: the commit daemon at `head` and its worktree's input (D7.1's fingerprint, D7.4's ceiling). */
+/**
+ * D7.6: the commit daemon at `head` and its worktree's input (D7.1's fingerprint, D7.4's
+ * ceiling); its input `null` when the commit's allowlist is not read by `deadline` (review
+ * 0.1.597 B3: an allowlist not read would name another worktree).
+ */
 async function greenDaemon(
   root: AbsolutePath,
   head: string,
   env: NodeJS.ProcessEnv,
   note: (text: string) => void,
   options: AtOptions,
+  deadline: number,
 ): Promise<NonNullable<Common["onDaemon"]>> {
+  const daemons = options.daemons ?? realDaemons({ note });
+  const allowlist = await keptAlive(
+    commitAllowlist(root, head, deadline - performance.now()),
+  ).catch(() => null);
+  if (allowlist === null) return { daemons, commit: null };
   const limit = readPolicy(root).daemon.maxCommitDaemons;
   const commit: CommitDaemonInput = {
     root,
     commit: head,
-    environment: environmentOf(await commitAllowlist(root, head), env),
+    environment: environmentOf(allowlist, env),
     note,
     ...(limit === null || limit === undefined ? {} : { limit }),
     ...(options.cacheRoot === undefined ? {} : { cacheRoot: options.cacheRoot }),
     ...(options.placeWaitMs === undefined ? {} : { placeWaitMs: options.placeWaitMs }),
   };
-  return { daemons: options.daemons ?? realDaemons({ note }), commit };
+  return { daemons, commit };
 }
 
 /** One side of `refs` in its checkout: D5.2's copies are the test-side files the versions hold otherwise. */

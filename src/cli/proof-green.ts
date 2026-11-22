@@ -43,8 +43,11 @@ export interface GreenInput {
   readonly files: readonly TestFileRef[];
   readonly named: ReadonlySet<RelativePath>;
   readonly daemons: AtDaemons;
-  /** The commit worktree's input (fingerprint, ceiling, cache root, notes), less its deadline. */
-  readonly commit: CommitDaemonInput;
+  /**
+   * The commit worktree's input (fingerprint, ceiling, cache root, notes), less its deadline;
+   * `null` when the budget ended before it was read.
+   */
+  readonly commit: CommitDaemonInput | null;
   /** `performance.now()` when the proof's budget ends. */
   readonly deadline: number;
 }
@@ -79,7 +82,11 @@ export async function withGreenDaemon<T>(
   const { tree } = ready;
   const commonDir = commonDirOf(input.root);
   const keyed = await withStores(commonDir, async (main) => daemonKeyed(main, tree, input.named));
-  const needs = await greenNeeds(input, tree);
+  const needs = await greenNeeds(input, tree, by);
+  if (typeof needs !== "function") {
+    for (const ref of input.files) files.set(testFileId(ref), needs);
+    return answer(input.files, 0, undefined);
+  }
   const pending = new Map<string, KeyedFile>();
   for (const file of keyed) {
     if (!("key" in file.at)) continue;
@@ -132,6 +139,7 @@ export async function withGreenDaemon<T>(
 async function readyTree(input: GreenInput, by: number): Promise<Ready> {
   const { daemons } = input;
   const at = input.head.slice(0, 9);
+  if (input.commit === null || Date.now() >= by) return { side: unknown(NOT_RUN_BUDGET) };
   const tree = await keptAlive(daemons.commit({ ...input.commit, deadline: by }));
   if (typeof tree !== "string") {
     const late = Date.now() >= by;
@@ -156,13 +164,23 @@ async function readyTree(input: GreenInput, by: number): Promise<Ready> {
  * observed too. A listed folder (`test/fixtures/`, or `./`) is no blob, so
  * it reads `needs <folder>`: its key hashes the tracked names only, so a
  * result stored from a listing with ignored or untracked names would
- * stand for the commit's (review 0.1.597 B1).
+ * stand for the commit's (review 0.1.597 B1). Its git reads end by `by`
+ * (B3); one that does not reads `not run (budget)` for every file.
  */
 async function greenNeeds(
   input: GreenInput,
   tree: AbsolutePath,
-): Promise<(file: KeyedFile) => string | null> {
-  return needsOf({ root: input.root, commit: input.head, tree, copied: input.named });
+  by: number,
+): Promise<((file: KeyedFile) => string | null) | SideFile> {
+  const within = () => by - Date.now();
+  if (within() <= 0) return unknown(NOT_RUN_BUDGET);
+  const copied = input.named;
+  return keptAlive(needsOf({ root: input.root, commit: input.head, tree, copied, within })).catch(
+    (error: unknown) =>
+      within() <= 0
+        ? unknown(NOT_RUN_BUDGET)
+        : unknown(`the commit's tree at ${input.head.slice(0, 9)}: ${String(error)}`),
+  );
 }
 
 /** The named files no runner at HEAD lists, each as it was named. */

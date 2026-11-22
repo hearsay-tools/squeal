@@ -15,8 +15,9 @@ export const LS_TREE_TIMEOUT_MS = 30_000;
 export async function committedBlobs(
   root: AbsolutePath,
   commit: string,
+  timeoutMs = LS_TREE_TIMEOUT_MS,
 ): Promise<Map<RelativePath, FileHash>> {
-  const out = await runGit(root, lsTreeArgs(commit), { timeoutMs: LS_TREE_TIMEOUT_MS });
+  const out = await runGit(root, lsTreeArgs(commit), { timeoutMs });
   return blobsOfTree(out);
 }
 
