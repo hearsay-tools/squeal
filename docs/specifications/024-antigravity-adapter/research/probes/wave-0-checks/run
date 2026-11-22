@@ -1,0 +1,55 @@
+#!/bin/sh
+# Throwaway candidate for plugins/antigravity/hooks/run (row 024-01, Q3). Not product code.
+# Antigravity runs hooks with the plugin root as working directory, so the workspace comes from
+# stdin's top-level "cwd". Without arguments: exit 0 before reading stdin. With --if-squeal:
+# buffer stdin byte-exact (sentinel keeps trailing newlines), take the first "cwd":"..." value,
+# and exit 0 silently when that directory has no squeal.config.json and no store. Anything
+# unclear (no cwd, empty cwd, a backslash escape) falls through to the command with the payload.
+[ "$#" -gt 0 ] || exit 0
+if [ "$1" = --if-squeal ]; then
+  shift
+  # bash converts every expansion of a 100 KB UTF-8 string to wide characters (about 3 ms each);
+  # parse bytes under C and give the command the caller's locale back. dash ignores locales.
+  lc=${LC_ALL-unset}
+  LC_ALL=C
+  payload=$(cat; printf x)
+  payload=${payload%x}
+  s() {
+    [ -n "$1" ] || return 1
+    d=$1
+    [ -f "$d/squeal.config.json" ] && return 0
+    while [ ! -e "$d/.git" ]; do
+      [ -n "$d" ] || return 1
+      d=${d%/*}
+    done
+    [ -f "$d/squeal.config.json" ] && return 0
+    g=$d/.git
+    if [ -f "$g" ]; then
+      l=
+      IFS= read -r l <"$g"
+      g=${l#gitdir:}
+      g=${g#"${g%%[! ]*}"}
+      case $g in /*) ;; *) g=$d/$g ;; esac
+      c=
+      [ -f "$g/commondir" ] && IFS= read -r c <"$g/commondir"
+      case $c in "") ;; /*) g=$c ;; *) g=$g/$c ;; esac
+    fi
+    [ -e "$g/squeal" ]
+  }
+  # Everything before the first "cwd":" (an unescaped quote never occurs inside a JSON string, so
+  # this is a key). %% scans once; the # below costs the square of the key's offset, so a key past
+  # 4 KB (not Antigravity's alphabetical order) goes to the command instead of risking the timeout.
+  head=${payload%%\"cwd\":\"*}
+  if [ "${#head}" -lt 4096 ] && [ "$head" != "$payload" ]; then
+    cwd=${payload#*\"cwd\":\"}
+    cwd=${cwd%%\"*}
+    case $cwd in
+      "" | *\\*) ;;
+      *) s "$cwd" 2>/dev/null || exit 0 ;;
+    esac
+  fi
+  if [ "$lc" = unset ]; then unset LC_ALL; else LC_ALL=$lc; fi
+  printf '%s' "$payload" | "$@"
+  exit
+fi
+exec "$@"

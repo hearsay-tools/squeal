@@ -1,0 +1,10 @@
+{
+  "sqprobe": {
+    "SessionStart": [{ "command": "./hooks/log SessionStart", "timeout": 10 }],
+    "PreInvocation": [{ "command": "./hooks/log PreInvocation", "timeout": 10 }],
+    "PostInvocation": [{ "command": "./hooks/log PostInvocation", "timeout": 10 }],
+    "PreToolUse": [{ "matcher": ".*", "hooks": [{ "command": "./hooks/log PreToolUse", "timeout": 10 }] }],
+    "PostToolUse": [{ "matcher": ".*", "hooks": [{ "command": "./hooks/log PostToolUse", "timeout": 10 }] }],
+    "Stop": [{ "command": "./hooks/log Stop", "timeout": 10 }]
+  }
+}

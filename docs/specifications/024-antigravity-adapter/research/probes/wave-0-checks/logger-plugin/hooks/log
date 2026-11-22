@@ -1,0 +1,28 @@
+#!/bin/sh
+# Writes one record per hook call to $AG_PROBE_LOG.d/; continues Stop once per turn (executionNum 0) when
+# $PLUGIN_DATA/continue-once exists or AG_PROBE_CONTINUE=1. Every other event: empty stdout.
+event=$1
+payload=$(cat; printf x); payload=${payload%x}
+log=${AG_PROBE_LOG:-/tmp/sqprobe.log}
+n=$(date +%s%N)
+# One file per record: parent and subagent hooks run at the same time.
+mkdir -p "$log.d"; out="$log.d/$n-$$.json"
+{
+  printf '{"event":"%s","t":%s,"pwd":"%s","ppid":%s,' "$event" "$n" "$PWD" "$PPID"
+  printf '"PLUGIN_ROOT":"%s","PLUGIN_DATA":"%s","PLUGIN_DATA_set":%s,' \
+    "${PLUGIN_ROOT-}" "${PLUGIN_DATA-}" "$( [ "${PLUGIN_DATA+x}" = x ] && echo true || echo false)"
+  printf '"PLUGIN_DATA_existed":%s,"env_names":"%s",' "$( [ -d "${PLUGIN_DATA-/nonexistent}" ] && echo true || echo false)" \
+    "$(env | cut -d= -f1 | grep -E '^(ANTIGRAVITY_|PLUGIN_|GEMINI)' | sort | tr '\n' ' ')"
+  printf '"stdin_bytes":%s,"stdin_last_byte":"%s","stdin":' "${#payload}" \
+    "$(printf '%s' "$payload" | tail -c 1 | od -An -c | tr -d ' ')"
+  printf '%s' "$payload"
+  printf '}\n'
+} > "$out"
+[ -n "${PLUGIN_DATA-}" ] && { mkdir -p "$PLUGIN_DATA" && echo "$event $n" >> "$PLUGIN_DATA/seen"; }
+if [ "$event" = Stop ] && [ "${AG_PROBE_CONTINUE-}" = 1 ]; then
+  case $payload in
+    *'"executionNum":'[1-9]*) ;;
+    *) printf '{"decision":"continue","reason":"Probe: reply with the single word AGAIN."}' ;;
+  esac
+fi
+exit 0
