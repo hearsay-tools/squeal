@@ -12,11 +12,11 @@ main
 20f03a4 HEAD@{2026-11-22 18:20:03 +0100}: checkout: moving from master to main
 
 ## worktrees
-worktree /home/squeal-w27/runs/w27/s2-07
+worktree ~squeal-w27/runs/w27/s2-07
 HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
 branch refs/heads/main
 
-worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
 HEAD a5c9b7223b6550d249098754bfc6453b3853c2b7
 detached
 locked squeal
@@ -120,9 +120,9 @@ drwxrwxr-x 20 squeal-w27 squeal-w27 4096 Nov 22 18:20 ..
 
 ## processes
     PID    PPID     ELAPSED COMMAND
- 606523       1       03:25 squeal s2-07 daemon @630deb73 /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs daemon /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
- 606676  606523       03:19 /opt/squeal-w27/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs runner-host /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
- 606818       1       03:01 squeal s2-07 store --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs store-process /home/squeal-w27/runs/w27/s2-07/.git --store code
- 687149  606676       00:02 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
- 687157  606676       00:02 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 606523       1       03:25 squeal s2-07 daemon @630deb73 ~squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs daemon ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+ 606676  606523       03:19 /opt/squeal-w27/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs runner-host ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+ 606818       1       03:01 squeal s2-07 store --disable-warning=ExperimentalWarning ~squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs store-process ~squeal-w27/runs/w27/s2-07/.git --store code
+ 687149  606676       00:02 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 687157  606676       00:02 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
  687294  687157       00:00 /opt/squeal-w27/node24/bin/node -e setTimeout(() => {}, 60_000)

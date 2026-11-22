@@ -2,25 +2,25 @@
   "id": "s2-04",
   "leftover": 0,
   "commitStop": {
-    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
     "HEAD": "No commit worktree at 20f03a43139e"
   },
   "stillRunning": [
     "4s +99s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
-    "107s +198s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25"
+    "107s +198s cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25"
   ],
   "joins": [
-    "107s +198s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25",
-    "307s +2s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15"
+    "107s +198s cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25",
+    "307s +2s cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15"
   ],
   "loadStart": "11.57",
   "exit": 0,
   "wallSeconds": 314.632,
   "squeal": [
     "4s squeal status --at 20f03a4 --run 2>&1 | tail -40; echo ---; squeal status --at 20f03a4~1 --run 2>&1 | tail -40",
-    "105s cd /home/squeal-w27/runs/w27/s2-04; git show --stat --format=%s 20f03a4 | head -20",
-    "107s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25",
-    "307s cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15"
+    "105s cd ~squeal-w27/runs/w27/s2-04; git show --stat --format=%s 20f03a4 | head -20",
+    "107s cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25",
+    "307s cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15"
   ],
   "skill": [
     "2s Skill squeal:squeal"
@@ -29,7 +29,7 @@
   "edits": [],
   "overruns": [],
   "long": [
-    "107s +198s Bash cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25"
+    "107s +198s Bash cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25"
   ],
   "results": 1,
   "turns": 7,

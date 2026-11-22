@@ -12,11 +12,11 @@ main
 20f03a4 HEAD@{2026-11-22 17:56:16 +0100}: checkout: moving from master to main
 
 ## worktrees
-worktree /home/squeal-w27/runs/w27/s2-02
+worktree ~squeal-w27/runs/w27/s2-02
 HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
 branch refs/heads/main
 
-worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
 HEAD a5c9b7223b6550d249098754bfc6453b3853c2b7
 detached
 locked squeal
@@ -70,7 +70,7 @@ drwxrwxr-x  4 squeal-w27 squeal-w27 4096 Nov 22 17:56 commit-a5c9b7223b6550d2490
 
 ## processes
     PID    PPID     ELAPSED COMMAND
- 132401       1       03:18 squeal s2-02 daemon @604bfa51 /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs daemon /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
- 132554  132401       03:13 /opt/squeal-w27/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs runner-host /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
- 132696       1       02:54 squeal s2-02 store --disable-warning=ExperimentalWarning /home/squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs store-process /home/squeal-w27/runs/w27/s2-02/.git --store code
- 213122  132554       00:06 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+ 132401       1       03:18 squeal s2-02 daemon @604bfa51 ~squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs daemon ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+ 132554  132401       03:13 /opt/squeal-w27/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs runner-host ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+ 132696       1       02:54 squeal s2-02 store --disable-warning=ExperimentalWarning ~squeal-w27/runs/w27/claude/plugins/cache/hearsay/squeal/0.1.597/dist/cli/squeal.mjs store-process ~squeal-w27/runs/w27/s2-02/.git --store code
+ 213122  132554       00:06 /opt/squeal-w27/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js

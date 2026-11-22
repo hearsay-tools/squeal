@@ -1,5 +1,5 @@
 == dryat  2026-11-22T16:44:53Z load 0.81 0.24 0.08
-Squeal daemon spawned for /home/squeal-w27/runs/w27/dryat
+Squeal daemon spawned for ~squeal-w27/runs/w27/dryat
 
 Revision: 0
 Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.
@@ -23,7 +23,7 @@ packages/cezar/src/lint/lint-runner.test.ts: not comparable (needs .agents/skill
 `--full` lists every file; `--json` gives each file's states.
 packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
 0 pass -> fail, 0 fail -> pass, 11 unchanged, 1785 unknown, 124 not selected
---run: queued 108 test files with no result at d8abcfe46 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 11 have a result now (79.1 s)
+--run: queued 108 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 11 have a result now (79.1 s)
 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them
 97 not run: the batch's setup failed (browser: setup failed: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings)
 --run, now: queued 109 test files the change selects with no result in the working tree in this worktree's daemon; 12 have a result now
@@ -33,7 +33,7 @@ squeal ps · 2 daemons, 0 test processes · no flags
 Host    load 5.8 2.1 0.8 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 2.3% · memory pressure 0.0% (0.0% full) · memory 5.0 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU 1.7 CPUs (96% of busy) · memory 2.5 GiB (49% of used) + 0 swap · pool 1 of 11 permits
 
-/home/squeal-w27/runs/w27/dryat (this repository) · 2 daemons · CPU 1.7 · memory 2.5 GiB
+~squeal-w27/runs/w27/dryat (this repository) · 2 daemons · CPU 1.7 · memory 2.5 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            6857     00899fb2  0.1.597          1m  167%     0m33s  968M    0     idle
     host vitest      6966     local                      1m    0%     0m33s  551M    0
@@ -43,10 +43,10 @@ Squeal  CPU 1.7 CPUs (96% of busy) · memory 2.5 GiB (49% of used) + 0 swap · p
     host vitest      7217     local                      1m    0%     0m35s  581M    0
 
 Store processes
-  7357  code.sqlite of /home/squeal-w27/runs/w27/dryat/.git
+  7357  code.sqlite of ~squeal-w27/runs/w27/dryat/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 7073  age 1m  at d8abcfe46bbe
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 7073  age 1m  at d8abcfe46bbe
 home/.cache/squeal/checkouts
 home/.cache/squeal/checkouts/e219ec3d2f13606b
 home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
@@ -67,23 +67,23 @@ dryat/.git/squeal/locks/9c8740c4b612cdc2.sqlite
 dryat/.git/squeal/locks/00899fb2e2ec9072.sqlite-journal
 dryat/.git/squeal/locks/store-code.sqlite-journal
 dryat/.git/squeal/locks/9c8740c4b612cdc2.sqlite-journal
-Squeal daemon stopped for /home/squeal-w27/runs/w27/dryat; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon stopped for ~squeal-w27/runs/w27/dryat; `squeal stop --until-start` keeps it stopped through edits and Git operations
 == after squeal stop
 squeal ps · 1 daemon, 0 test processes · no flags
 Host    load 5.4 2.1 0.8 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 1.5% · memory pressure 0.0% (0.0% full) · memory 3.1 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU 0.0 CPUs (14% of busy) · memory 891 MiB (28% of used) + 0 swap · pool 0 of 11 permits
 
-/home/squeal-w27/runs/w27/dryat (this repository) · 1 daemon · CPU 0.0 · memory 891 MiB
+~squeal-w27/runs/w27/dryat (this repository) · 1 daemon · CPU 0.0 · memory 891 MiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            7073     9c8740c4  0.1.597          1m    0%     0m11s  305M    0     idle
     host vitest      7217     local                      1m    0%     0m35s  586M    0
 
 Store processes
-  7357  code.sqlite of /home/squeal-w27/runs/w27/dryat/.git
+  7357  code.sqlite of ~squeal-w27/runs/w27/dryat/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 7073  age 1m  at d8abcfe46bbe
-Commit daemon stopped at d8abcfe46bbe; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 7073  age 1m  at d8abcfe46bbe
+Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/e219ec3d2f13606b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
 == after squeal stop --at HEAD~1
 squeal ps · 0 daemons, 0 test processes · no flags
 Host    load 4.9 2.1 0.8 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 0.8% · memory pressure 0.0% (0.0% full) · memory 1.2 of 31.3 GiB used, swap 0.0 of 4.0 GiB
@@ -96,7 +96,7 @@ home/.cache/squeal/checkouts/commit-places.lock
 home/.cache/squeal/checkouts/commit-places
 home/.cache/squeal/checkouts/commit-places/c1795e454ad5f828.json
 == leftover  2026-11-22T16:46:27Z load 4.93 2.06 0.76
-29706	/home/squeal-w27/runs/w27/dryat	/opt/squeal-w27/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo /home/squeal-w27/runs/w27/dryat/.ai/qa/served/dryat 
-29707	/tmp/squeal-1002/tmp/1906c40de5fb308a (deleted)	/opt/squeal-w27/node24/bin/node /home/squeal-w27/runs/w27/dryat/.ai/scripts/test-env-lease.mjs watch-app 29706 8a6442c4-4191-43a9-976a-e178884237b2:6722655 /home/squeal-w27/runs/w27/dryat /home/squeal
+29706	~squeal-w27/runs/w27/dryat	/opt/squeal-w27/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w27/runs/w27/dryat/.ai/qa/served/dryat 
+29707	/tmp/squeal-1002/tmp/1906c40de5fb308a (deleted)	/opt/squeal-w27/node24/bin/node ~squeal-w27/runs/w27/dryat/.ai/scripts/test-env-lease.mjs watch-app 29706 8a6442c4-4191-43a9-976a-e178884237b2:6722655 ~squeal-w27/runs/w27/dryat ~squeal-w27 (cut)
 processes of squeal-w27: 2
 /tmp entries of squeal-w27: 2

@@ -19,7 +19,7 @@
              squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
              Now is this worktree's daemon at revision 0.
              0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
-             --run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a  …[712 chars]
+             --run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a  …[712 chars]
   194.8 SAY  I only compared the test file the commit touched, `test/store/open.test.ts`, and its result did not change between `20f03a431~1` and `20f03a431` (0 pass→fail, 0 fail→pass, 1 unchanged). The earlier version of that file also had no recorded result in the daemon's cache, so Squeal ran it fresh at `a5c9b7223` for this comparison.
 
 The commit changed two files: `src/core/store/mark.ts` (7 lines) and `test/store/open.test.ts` (27 added lines). A new test file doesn't count as a result change in the usual sense, since the added tests have no counterpart at the old commit.

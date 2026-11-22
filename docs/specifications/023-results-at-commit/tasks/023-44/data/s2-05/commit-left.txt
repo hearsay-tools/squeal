@@ -3,7 +3,7 @@ squeal ps · 5 daemons, 15 test processes · no flags
 Host    load 13.0 14.7 12.4 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 20% · memory pressure 0.0% (0.0% full) · memory 8.2 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU at least 10.5 CPUs (at least 98% of busy) · memory 5.4 GiB (67% of used) + 0 swap · pool 8 of 11 permits
 
-/home/squeal-w27/runs/w27/s2-05 (this repository) · 1 daemon · CPU at least 3.5 · memory 1.8 GiB
+~squeal-w27/runs/w27/s2-05 (this repository) · 1 daemon · CPU at least 3.5 · memory 1.8 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            432759   2d87dab9  0.1.597          5m    8%     1m04s  427M    0     fast tier, 200 files; 1048 pending
     host vitest      432913   local                      5m  131%     1m10s  773M    0
@@ -17,7 +17,7 @@ Squeal  CPU at least 10.5 CPUs (at least 98% of busy) · memory 5.4 GiB (67% of 
     vitest           541941   fork worker                0s   70%     0m01s  110M    0     nice 10
     vitest           542017   fork worker                0s     ?     0m00s  ?       ?     nice 10
 
-/home/squeal-w27/runs/w27/s1-08 · 2 daemons · CPU 2.1 · memory 915 MiB
+~squeal-w27/runs/w27/s1-08 · 2 daemons · CPU 2.1 · memory 915 MiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            541982   76e43b78  0.1.597          0s  114%     0m01s  92M     0     idle
   serving            540737   b0a47a07  0.1.597          4s   18%     0m02s  177M    0     1 session
@@ -25,7 +25,7 @@ Squeal  CPU at least 10.5 CPUs (at least 98% of busy) · memory 5.4 GiB (67% of 
     host node-test   541032   local                      3s    0%     0m00s  48M     0
     host node-test   541039   local                      3s    0%     0m00s  64M     0
 
-/home/squeal-w27/runs/w27/s2-06 · 2 daemons · CPU 5.0 · memory 2.7 GiB
+~squeal-w27/runs/w27/s2-06 · 2 daemons · CPU 5.0 · memory 2.7 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            530725   4d799cbd  0.1.597          1m    0%     0m13s  569M    0     fast tier, 4 files; 1334 pending
     host vitest      532008   local                      1m   31%     0m39s  508M    0
@@ -39,19 +39,19 @@ Squeal  CPU at least 10.5 CPUs (at least 98% of busy) · memory 5.4 GiB (67% of 
     vitest           541509   fork worker                1s   93%     0m00s  80M     0     nice 10
 
 Store processes
-  433059  code.sqlite of /home/squeal-w27/runs/w27/s2-05/.git
-  538707  code.sqlite of /home/squeal-w27/runs/w27/s2-06/.git
+  433059  code.sqlite of ~squeal-w27/runs/w27/s2-05/.git
+  538707  code.sqlite of ~squeal-w27/runs/w27/s2-06/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151fb660c32fe3e7/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 530725  age 1m  at a5c9b7223b65
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 432759  age 5m  at a5c9b7223b65
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/fc983f483f77fe57/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 541982  age 0s  at d8abcfe46bbe
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/151fb660c32fe3e7/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 530725  age 1m  at a5c9b7223b65
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 432759  age 5m  at a5c9b7223b65
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/fc983f483f77fe57/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 541982  age 0s  at d8abcfe46bbe
 
 Unknown: 4 values; --full names each
 
 ## checkout folders
-ls: cannot access '/home/squeal-w27/runs/w27/s2-05/.git/squeal/checkouts': No such file or directory
-/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12:
+ls: cannot access '~squeal-w27/runs/w27/s2-05/.git/squeal/checkouts': No such file or directory
+~squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12:
 total 12
 drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:11 .
 drwxrwxr-x 18 squeal-w27 squeal-w27 4096 Nov 22 18:17 ..

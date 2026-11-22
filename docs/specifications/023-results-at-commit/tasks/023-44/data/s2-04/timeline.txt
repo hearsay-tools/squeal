@@ -8,19 +8,19 @@
              squeal: --run: 1338 test files with no result at a5c9b7223 queued in its commit daemon, up to 11 at once: about 11 min at this machine's rate; they run on after the wait; name test files or folders to narrow it: squeal status --at 20f03a4~1 <path>... --run
              squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against  …[2920 chars]
   103.2 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · first results in this worktree; complexity counted at revision 0\nRevision 0: 8 of 1962 test files are current (run on the files as they are now), and `squeal status` counts the rest.\n\nComplexity counted: 72 functions over 20; squeal code lists them."}}
-  105.0 TOOL Bash: cd /home/squeal-w27/runs/w27/s2-04; git show --stat --format=%s 20f03a4 | head -20
+  105.0 TOOL Bash: cd ~squeal-w27/runs/w27/s2-04; git show --stat --format=%s 20f03a4 | head -20
   105.1 RES  fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
              
               src/core/store/mark.ts  |  7 ++++++-
               test/store/open.test.ts | 27 +++++++++++++++++++++++++++
               2 files changed, 33 insertions(+), 1 deletion(-)
-  106.7 TOOL Bash: cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25
+  106.7 TOOL Bash: cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25
   305.1 RES  squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
              squeal status --at a5c9b7223: 39 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
              Now is this worktree's daemon at revision 0.
              35 test files: no result (queued) -> pass (now: run in this worktree): test/store/busy-slice.test.ts, test/store/check-runner.test.ts, test/store/checkpoint-lanes.test.ts and 32 more
              test/store/key-shadow.test.ts: no result at a5c9b7223, not selected by the change, and its runner does not tell wh …[1590 chars]
-  307.2 TOOL Bash: cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15
+  307.2 TOOL Bash: cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15
   309.3 RES  squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
              squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
              Now is this worktree's daemon at revision 0.

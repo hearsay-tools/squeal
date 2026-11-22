@@ -2,7 +2,7 @@
   "id": "s2-02",
   "leftover": 0,
   "commitStop": {
-    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ed602e31a31d5456/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
     "HEAD": "No commit worktree at 20f03a43139e"
   },
   "stillRunning": [

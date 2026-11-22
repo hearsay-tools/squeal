@@ -3,20 +3,20 @@ squeal ps · 1 daemon, 0 test processes · no flags
 Host    load 6.2 3.2 1.3 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 2.0% · memory pressure 0.0% (0.0% full) · memory 3.1 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU 0.0 CPUs (0.0% of busy) · memory 855 MiB (27% of used) + 0 swap · pool 0 of 11 permits
 
-/home/squeal-w27/runs/w27/s1-01 (this repository) · 1 daemon · CPU 0.0 · memory 855 MiB
+~squeal-w27/runs/w27/s1-01 (this repository) · 1 daemon · CPU 0.0 · memory 855 MiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            31380    7e74c79c  0.1.597          1m    0%     0m12s  300M    0     idle
     host vitest      31503    local                      1m    0%     0m39s  555M    0
 
 Store processes
-  31692  code.sqlite of /home/squeal-w27/runs/w27/s1-01/.git
+  31692  code.sqlite of ~squeal-w27/runs/w27/s1-01/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/46c6e5a992620b89/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 31380  age 1m  at d8abcfe46bbe
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/46c6e5a992620b89/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 31380  age 1m  at d8abcfe46bbe
 
 ## checkout folders
-ls: cannot access '/home/squeal-w27/runs/w27/s1-01/.git/squeal/checkouts': No such file or directory
-/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/46c6e5a992620b89:
+ls: cannot access '~squeal-w27/runs/w27/s1-01/.git/squeal/checkouts': No such file or directory
+~squeal-w27/runs/w27/home/.cache/squeal/checkouts/46c6e5a992620b89:
 total 12
 drwxrwxr-x 3 squeal-w27 squeal-w27 4096 Nov 22 17:46 .
 drwxrwxr-x 5 squeal-w27 squeal-w27 4096 Nov 22 17:46 ..

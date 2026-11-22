@@ -13,7 +13,7 @@ packages/web/e2e/activity.e2e.ts: not run (the batch's setup failed: browser: se
 `--full` lists every file; `--json` gives each file's states.
 packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
 0 pass -> fail, 0 fail -> pass, 11 unchanged, 1785 unknown, 124 not selected
---run: queued 108 test files with no result at d8abcfe46 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/8cdeac8f33ad3ab1/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 11 have a result now (98.3 s)
+--run: queued 108 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/8cdeac8f33ad3ab1/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 11 have a result now (98.3 s)
 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them
 97 not run: the batch's setup failed (browser: setup failed: Browser E2E environment bootstrap failed; cause: Browser E2E could not run: installed Chrome failed to launch with resolved settings)
 --run, now: queued 109 test files the change selects with no result in the working tree in this worktree's daemon; 12 have a result now

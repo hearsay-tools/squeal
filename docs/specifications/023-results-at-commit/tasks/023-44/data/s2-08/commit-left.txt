@@ -3,7 +3,7 @@ squeal ps · 1 daemon, 5 test processes · no flags
 Host    load 15.0 16.2 14.4 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 2.8% · memory pressure 0.0% (0.0% full) · memory 3.8 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU at least 3.9 CPUs (at least 100% of busy) · memory 2.0 GiB (54% of used) + 0 swap · pool 5 of 11 permits
 
-/home/squeal-w27/runs/w27/s2-08 (this repository) · 1 daemon · CPU at least 3.9 · memory 2.0 GiB
+~squeal-w27/runs/w27/s2-08 (this repository) · 1 daemon · CPU at least 3.9 · memory 2.0 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            688214   8016ffb2  0.1.597          3m  111%     0m39s  1.1G    0     fast tier, 200 files; 1072 pending
     host vitest      688367   local                      3m  241%     1m00s  729M    0
@@ -14,16 +14,16 @@ Squeal  CPU at least 3.9 CPUs (at least 100% of busy) · memory 2.0 GiB (54% of 
     vitest           763952   fork worker                0s   38%     0m01s  143M    0     nice 10
 
 Store processes
-  688509  code.sqlite of /home/squeal-w27/runs/w27/s2-08/.git
+  688509  code.sqlite of ~squeal-w27/runs/w27/s2-08/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 688214  age 3m  at a5c9b7223b65
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 688214  age 3m  at a5c9b7223b65
 
 Unknown: 3 values; --full names each
 
 ## checkout folders
-ls: cannot access '/home/squeal-w27/runs/w27/s2-08/.git/squeal/checkouts': No such file or directory
-/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd:
+ls: cannot access '~squeal-w27/runs/w27/s2-08/.git/squeal/checkouts': No such file or directory
+~squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd:
 total 12
 drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:24 .
 drwxrwxr-x 22 squeal-w27 squeal-w27 4096 Nov 22 18:24 ..

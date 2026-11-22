@@ -17,19 +17,19 @@ test/ci/export-formats.test.ts: pass -> no result (queued) (at a5c9b7223: run in
 test/cli/ci-usage.test.ts: no result (running) -> no result (running)
 `--full` lists every file; `--json` gives each file's states.
 0 pass -> fail, 0 fail -> pass, 8 unchanged, 1954 unknown
---run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 12 have a result now (98.2 s)
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 12 have a result now (98.2 s)
 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
 --run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 8 have a result now
 1326 still running at a5c9b7223 (its worktree), 1330 in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' --wait 100000 waits for them; squeal ps shows them.
 
-## 105s +0s $ cd /home/squeal-w27/runs/w27/s2-04; git show --stat --format=%s 20f03a4 | head -20
+## 105s +0s $ cd ~squeal-w27/runs/w27/s2-04; git show --stat --format=%s 20f03a4 | head -20
 fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
 
  src/core/store/mark.ts  |  7 ++++++-
  test/store/open.test.ts | 27 +++++++++++++++++++++++++++
  2 files changed, 33 insertions(+), 1 deletion(-)
 
-## 107s +198s $ cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25
+## 107s +198s $ cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store --run --wait 200000 2>&1 | tail -25
 squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
 squeal status --at a5c9b7223: 39 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
 Now is this worktree's daemon at revision 0.
@@ -37,12 +37,12 @@ Now is this worktree's daemon at revision 0.
 test/store/key-shadow.test.ts: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
 `--full` lists every file; `--json` gives each file's states.
 0 pass -> fail, 0 fail -> pass, 3 unchanged, 36 unknown
---run: queued 35 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (198.1 s)
+--run: queued 35 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (198.1 s)
 1 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs it
 --run, now: queued 38 test files the change selects with no result in the working tree in this worktree's daemon; 38 have a result now
 35 still running at a5c9b7223 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' test/store --wait 100000 waits for them; squeal ps shows them.
 
-## 307s +2s $ cd /home/squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15
+## 307s +2s $ cd ~squeal-w27/runs/w27/s2-04; squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 300000 2>&1 | tail -15
 squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
 squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
 Now is this worktree's daemon at revision 0.

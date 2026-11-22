@@ -3,12 +3,12 @@ squeal ps · 5 daemons, 13 test processes · no flags
 Host    load 12.5 4.5 2.1 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 22% · memory pressure 0.0% (0.0% full) · memory 9.4 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU at least 11.4 CPUs (at least 100% of busy) · memory 5.7 GiB (60% of used) + 0 swap · pool 10 of 11 permits
 
-/home/squeal-w27/runs/w27/s1-02 (this repository) · 1 daemon · CPU 0.0 · memory 882 MiB
+~squeal-w27/runs/w27/s1-02 (this repository) · 1 daemon · CPU 0.0 · memory 882 MiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            55812    72eefae0  0.1.597          1m    0%     0m12s  308M    0     idle
     host vitest      55935    local                      1m    0%     0m38s  574M    0
 
-/home/squeal-w27/runs/w27/s1-03 · 2 daemons · CPU 2.0 · memory 1.4 GiB
+~squeal-w27/runs/w27/s1-03 · 2 daemons · CPU 2.0 · memory 1.4 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            81839    80593251  0.1.597          3s   29%     0m02s  140M    0     idle
     host vitest      83359    local                      0s   85%     0m01s  319M    0
@@ -17,7 +17,7 @@ Squeal  CPU at least 11.4 CPUs (at least 100% of busy) · memory 5.7 GiB (60% of
     host node-test   80620    local                      8s    0%     0m00s  47M     0
     host node-test   80621    local                      8s    0%     0m00s  65M     0
 
-/home/squeal-w27/runs/w27/s2-01 · 2 daemons · CPU at least 9.4 · memory 3.4 GiB
+~squeal-w27/runs/w27/s2-01 · 2 daemons · CPU at least 9.4 · memory 3.4 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            76706    046b2c89  0.1.597         47s    1%     0m11s  579M    0     fast tier, 200 files; 1138 pending
     host vitest      77155    local                     42s  304%     0m35s  615M    0
@@ -38,19 +38,19 @@ Squeal  CPU at least 11.4 CPUs (at least 100% of busy) · memory 5.7 GiB (60% of
     vitest           82785    fork worker                1s   65%     0m00s  76M     0     nice 10
 
 Store processes
-  56071  code.sqlite of /home/squeal-w27/runs/w27/s1-02/.git
-  80068  code.sqlite of /home/squeal-w27/runs/w27/s2-01/.git
+  56071  code.sqlite of ~squeal-w27/runs/w27/s1-02/.git
+  80068  code.sqlite of ~squeal-w27/runs/w27/s2-01/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151c264dcad8a054/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 76706  age 48s  at a5c9b7223b65
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/a5de0b1fc0d31076/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 55812  age 1m  at d8abcfe46bbe
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/ebe521e06ad0e040/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 81839  age 4s  at d8abcfe46bbe
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/151c264dcad8a054/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 76706  age 48s  at a5c9b7223b65
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/a5de0b1fc0d31076/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 55812  age 1m  at d8abcfe46bbe
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/ebe521e06ad0e040/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 81839  age 4s  at d8abcfe46bbe
 
 Unknown: 3 values; --full names each
 
 ## checkout folders
-ls: cannot access '/home/squeal-w27/runs/w27/s1-02/.git/squeal/checkouts': No such file or directory
-/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/a5de0b1fc0d31076:
+ls: cannot access '~squeal-w27/runs/w27/s1-02/.git/squeal/checkouts': No such file or directory
+~squeal-w27/runs/w27/home/.cache/squeal/checkouts/a5de0b1fc0d31076:
 total 12
 drwxrwxr-x 3 squeal-w27 squeal-w27 4096 Nov 22 17:52 .
 drwxrwxr-x 8 squeal-w27 squeal-w27 4096 Nov 22 17:54 ..

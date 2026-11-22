@@ -19,7 +19,7 @@
              squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
              Now is this worktree's daemon at revision 0.
              0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
-             --run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151c264dcad8a054/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a  …[712 chars]
+             --run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/151c264dcad8a054/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a  …[712 chars]
   120.5 SAY  Not so far. No test file has changed result, but the comparison across all files is unfinished.
 
 - **Commit contents:** 20f03a4 changed `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`.

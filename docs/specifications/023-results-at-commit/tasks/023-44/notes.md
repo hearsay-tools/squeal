@@ -36,7 +36,3 @@ The streams and transcripts were deleted with the work folder. The `git show` li
 - `squeal ps` lists every daemon of the OS user, so with 3 sessions at once `commit-left.txt` shows other sessions' daemons too. Count a session's own commit daemon from `meta.commitStop` (one "Commit daemon stopped at …" per session here).
 - `git cat-file -e <commit>:<path>` fails for a path under a tracked directory symlink (`.agents/skills/auto-merge` is mode 120000 in squawk). Use `git ls-tree` on the symlink and check the target path.
 - A wide s2 `--run` keeps two daemons of the same user busy (the commit daemon and the worktree daemon, about 1,330 files each). The batch's load gate then holds new starts, so 20 sessions took 54 minutes.
-</content>
-</invoke>
-<invoke name="Bash">
-<parameter name="command">cd /home/agent/projects/squeal/.ai/squawk/worktrees/9016d863-9481-49ad-9ced-ce16d466e6d3; tail -5 docs/specifications/023-results-at-commit/lessons.md; grep -n "pending-reason\|group-pending-release" docs/specifications/023-results-at-commit/tasks/023-44/data/s2-09/squeal-results.txt | head -3

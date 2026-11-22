@@ -3,7 +3,7 @@ squeal ps · 3 daemons, 10 test processes · no flags
 Host    load 19.9 16.3 10.6 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 11% · memory pressure 0.0% (0.0% full) · memory 6.5 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU at least 6.6 CPUs (at least 93% of busy) · memory 4.3 GiB (66% of used) + 0 swap · pool 7 of 11 permits
 
-/home/squeal-w27/runs/w27/s2-03 (this repository) · 1 daemon · CPU at least 1.5 · memory 1.6 GiB
+~squeal-w27/runs/w27/s2-03 (this repository) · 1 daemon · CPU at least 1.5 · memory 1.6 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            214910   63b72010  0.1.597          7m    6%     1m01s  442M    0     fast tier, 200 files; 1044 pending
     host vitest      215063   local                      7m    8%     1m09s  732M    0
@@ -11,7 +11,7 @@ Squeal  CPU at least 6.6 CPUs (at least 93% of busy) · memory 4.3 GiB (66% of u
     vitest           345844   fork worker               44s    0%     0m04s  271M    0     nice 10, +2 children
     vitest           346295   fork worker               43s  130%     0m03s  150M    0     nice 10, +1 child
 
-/home/squeal-w27/runs/w27/s2-04 · 2 daemons · CPU at least 5.1 · memory 2.7 GiB
+~squeal-w27/runs/w27/s2-04 · 2 daemons · CPU at least 5.1 · memory 2.7 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            321501   b956466c  0.1.597          2m    0%     0m30s  802M    0     fast tier, 4 files; 1313 pending
     host vitest      322910   local                      2m    1%     0m45s  467M    0
@@ -26,18 +26,18 @@ Squeal  CPU at least 6.6 CPUs (at least 93% of busy) · memory 4.3 GiB (66% of u
     vitest           360535   fork worker                6s     ?     0m00s  ?       ?     nice 10
 
 Store processes
-  215211  code.sqlite of /home/squeal-w27/runs/w27/s2-03/.git
-  327268  code.sqlite of /home/squeal-w27/runs/w27/s2-04/.git
+  215211  code.sqlite of ~squeal-w27/runs/w27/s2-03/.git
+  327268  code.sqlite of ~squeal-w27/runs/w27/s2-04/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/0d52ed5123475813/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 214910  age 7m  at a5c9b7223b65
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 321501  age 2m  at a5c9b7223b65
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/0d52ed5123475813/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 214910  age 7m  at a5c9b7223b65
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/3a69adefcc1b424f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 321501  age 2m  at a5c9b7223b65
 
 Unknown: 3 values; --full names each
 
 ## checkout folders
-ls: cannot access '/home/squeal-w27/runs/w27/s2-03/.git/squeal/checkouts': No such file or directory
-/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/0d52ed5123475813:
+ls: cannot access '~squeal-w27/runs/w27/s2-03/.git/squeal/checkouts': No such file or directory
+~squeal-w27/runs/w27/home/.cache/squeal/checkouts/0d52ed5123475813:
 total 12
 drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:00 .
 drwxrwxr-x 13 squeal-w27 squeal-w27 4096 Nov 22 18:05 ..

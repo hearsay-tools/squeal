@@ -3,7 +3,7 @@ squeal ps · 1 daemon, 5 test processes · no flags
 Host    load 15.3 16.4 13.5 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 5.0% · memory pressure 0.0% (0.0% full) · memory 2.9 of 31.3 GiB used, swap 0.0 of 4.0 GiB
 Squeal  CPU 5.6 CPUs (99% of busy) · memory 1.3 GiB (46% of used) + 0 swap · pool 6 of 11 permits
 
-/home/squeal-w27/runs/w27/s2-06 (this repository) · 1 daemon · CPU 5.6 · memory 1.3 GiB
+~squeal-w27/runs/w27/s2-06 (this repository) · 1 daemon · CPU 5.6 · memory 1.3 GiB
   STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
   serving            530725   4d799cbd  0.1.597          3m   14%     0m30s  542M    0     fast tier, 200 files; 1137 pending
     host vitest      532008   local                      3m  548%     0m55s  670M    0
@@ -14,16 +14,16 @@ Squeal  CPU 5.6 CPUs (99% of busy) · memory 1.3 GiB (46% of used) + 0 swap · p
     vitest           604522   fork worker                0s     ?     0m00s  ?       ?     nice 10
 
 Store processes
-  538707  code.sqlite of /home/squeal-w27/runs/w27/s2-06/.git
+  538707  code.sqlite of ~squeal-w27/runs/w27/s2-06/.git
 
 Temporary checkouts
-    commit worktree  /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151fb660c32fe3e7/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 530725  age 3m  at a5c9b7223b65
+    commit worktree  ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/151fb660c32fe3e7/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 530725  age 3m  at a5c9b7223b65
 
 Unknown: 2 values; --full names each
 
 ## checkout folders
-ls: cannot access '/home/squeal-w27/runs/w27/s2-06/.git/squeal/checkouts': No such file or directory
-/home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/151fb660c32fe3e7:
+ls: cannot access '~squeal-w27/runs/w27/s2-06/.git/squeal/checkouts': No such file or directory
+~squeal-w27/runs/w27/home/.cache/squeal/checkouts/151fb660c32fe3e7:
 total 12
 drwxrwxr-x  3 squeal-w27 squeal-w27 4096 Nov 22 18:16 .
 drwxrwxr-x 18 squeal-w27 squeal-w27 4096 Nov 22 18:17 ..

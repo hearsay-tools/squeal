@@ -27,7 +27,7 @@ Now is this worktree's daemon at revision 0.
 4 test files: no result (running) -> no result (running): test/ci/export.test.ts, test/ci/glob-import.test.ts, test/ci/resolution-import.test.ts and 1 more
 `--full` lists every file; `--json` gives each file's states.
 0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown
---run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
 --run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 5 have a result now
 1338 still running at a5c9b7223 (its worktree), 1333 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them.
@@ -40,7 +40,7 @@ Now is this worktree's daemon at revision 0.
 test/store/key-shadow.test.ts: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
 `--full` lists every file; `--json` gives each file's states.
 0 pass -> fail, 0 fail -> pass, 3 unchanged, 36 unknown
---run: queued 36 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (118.1 s)
+--run: queued 36 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (118.1 s)
 1 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs it
 --run, now: queued 38 test files the change selects with no result in the working tree in this worktree's daemon; 38 have a result now
 35 still running at a5c9b7223 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' test/store --wait 100000 waits for them; squeal ps shows them.
@@ -53,7 +53,7 @@ Now is this worktree's daemon at revision 0.
 test/store/key-shadow.test.ts: no result -> pass (now: run in this worktree)
 `--full` lists every file; `--json` gives each file's states.
 0 pass -> fail, 0 fail -> pass, 3 unchanged, 36 unknown
---wait: joined 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 90 have a result now (98.1 s)
+--wait: joined 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/dfa658af3c0e4e12/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 90 have a result now (98.1 s)
 1248 still running at a5c9b7223 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' test/store --wait 100000 waits for them; squeal ps shows them.
 
 ## 326s +2s $ squeal status --at HEAD~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -12

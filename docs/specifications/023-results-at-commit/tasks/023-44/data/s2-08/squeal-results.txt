@@ -10,7 +10,7 @@ Now is this worktree's daemon at revision 0.
 4 test files: no result (running) -> no result (running): test/cli/ci-export.test.ts, test/cli/ci-publish.test.ts, test/cli/ci-record.test.ts and 1 more
 `--full` lists every file; `--json` gives each file's states.
 0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown
---run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
 --run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 8 have a result now
 1338 still running at a5c9b7223 (its worktree), 1330 in the working tree; their runs go on in the daemons. squeal status --at '20f03a431~1' --wait 100000 waits for them; squeal ps shows them.
@@ -20,7 +20,7 @@ squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
 squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
 Now is this worktree's daemon at revision 0.
 0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
---run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (90.5 s)
+--run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/2f5064a31d0b13fd/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (90.5 s)
 --run, now: every test file the change selects has a result in the working tree
 
 ## 199s SAY

@@ -25,7 +25,7 @@
              squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
              Now is this worktree's daemon at revision 0.
              0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
-             --run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree /home/squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a  …[712 chars]
+             --run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w27/runs/w27/home/.cache/squeal/checkouts/daf5e167ede3c71d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a  …[712 chars]
   203.9 SAY  I can only partly answer this. The one file I compared shows no change, but Squeal's full before/after comparison hasn't finished.
 
 - **What I compared:** `test/store/open.test.ts`, the test file 20f03a431 edited (it added 27 lines). Against HEAD~1 (`a5c9b7223`), Squeal reports 1 unchanged, 0 pass→fail and 0 fail→pass. I didn't read the file's actual pass/fail state. The commit also changed `src/core/store/mark.ts`.
