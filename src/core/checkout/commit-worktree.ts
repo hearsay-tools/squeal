@@ -183,7 +183,7 @@ async function placeFor(
           const live = liveCommitWorktrees(cacheRoot, dirs);
           const configured = options.limit;
           const freeBytes = options.freeBytes?.();
-          const ceiling = commitWorktreeCeiling({ configured, freeBytes });
+          const ceiling = commitWorktreeCeiling({ configured, freeBytes, live: live.length });
           if (live.length >= ceiling) return waitsLine(live, ceiling);
           registerPlace(cacheRoot, join(options.dir, name));
           const extra = { fingerprint };
