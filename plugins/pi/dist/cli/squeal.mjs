@@ -26129,7 +26129,7 @@ function observedInputs(recorded2, completed2, paths) {
     const read7 = relative40(entry4.paths, (abs) => abs === git || !isDirectory5(abs));
     const listed12 = relative40(entry4.listed, () => true);
     const recursive = relative40(entry4.recursive, () => true);
-    const rewritten = rewrittenOf(entry4, paths, isDirectory5);
+    const rewritten = rewrittenOf(entry4, paths);
     if (read7.length > 0 || listed12.length > 0 || rewritten.length > 0) {
       const written2 = writtenAbove([...read7, ...listed12], entry4.written, paths);
       const direct = read7.filter((path) => entry4.direct.has(paths.toAbsolute(path)));
@@ -26148,10 +26148,10 @@ function observedInputs(recorded2, completed2, paths) {
   }
   return out2;
 }
-function rewrittenOf(entry4, paths, isDirectory5) {
+function rewrittenOf(entry4, paths) {
   const out2 = /* @__PURE__ */ new Set();
   for (const abs of entry4.paths) {
-    if (!entry4.written.has(abs) || !paths.isProjectFile(abs) || isDirectory5(abs)) continue;
+    if (!entry4.written.has(abs) || !paths.isProjectFile(abs)) continue;
     const path = paths.toRelative(abs);
     if (path !== null) out2.add(path);
   }
