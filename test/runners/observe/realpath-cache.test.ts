@@ -51,12 +51,12 @@ describe("the recorder's per-load realpath resolution", () => {
 
   it("still records a module loaded through a link with its target", { timeout: 60_000 }, () => {
     const seen = observe(
-      { "main.mjs": 'import "./linked/lib.mjs";\n', "real/lib.mjs": "export {};\n" },
-      "main.mjs",
+      { "main.cjs": 'require("./linked/lib.cjs");\n', "real/lib.cjs": "module.exports = {};\n" },
+      "main.cjs",
       { links: { linked: "real" } },
     );
     expect(seen.paths).toEqual(
-      expect.arrayContaining(["linked/lib.mjs", "main.mjs", "real/lib.mjs"]),
+      expect.arrayContaining(["linked/lib.cjs", "main.cjs", "real/lib.cjs"]),
     );
   });
 

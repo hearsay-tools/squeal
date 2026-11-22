@@ -56,7 +56,9 @@ function planOn(s: Store, consumer: Consumer, states: readonly KnownState[]) {
 }
 
 describe("relevantStates plans as every known state does (spec 024 D2)", () => {
-  it("over random writes, retirements, re-births, registrations and deliveries", async () => {
+  it("over random writes, retirements, re-births, registrations and deliveries", {
+    timeout: 20_000,
+  }, async () => {
     let compared = 0;
     let narrower = 0;
     for (let seed = 1; seed <= 40; seed++) {

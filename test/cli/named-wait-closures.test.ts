@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { selectNamedFiles } from "../../src/cli/named-selection.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import type { openStore as OpenStore } from "../../src/core/store/open.js";
+import type { createStore as CreateStore } from "../../src/core/store/store.js";
 import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
 import { armMarkers, recordClosures } from "./closure-trust.js";
@@ -28,15 +28,15 @@ const { polls, hooks } = vi.hoisted(() => ({
   hooks: { opened: (_n: number) => {} },
 }));
 
-vi.mock("../../src/core/store/open.js", async (importOriginal) => {
-  const original = await importOriginal<{ openStore: typeof OpenStore }>();
-  const openStore: typeof OpenStore = (commonDir, options) => {
-    const opened = original.openStore(commonDir, options);
-    if (!("testFiles" in opened)) return opened;
+vi.mock("../../src/core/store/store.js", async (importOriginal) => {
+  const original = await importOriginal<{ createStore: typeof CreateStore }>();
+  const createStore: typeof CreateStore = (conn, schemaVersion, paths) => {
+    const store = original.createStore(conn, schemaVersion, paths) as {
+      -readonly [K in keyof Store]: Store[K];
+    };
     const poll = { lists: 0 };
     polls.push(poll);
     hooks.opened(polls.length);
-    const store = opened as { -readonly [K in keyof Store]: Store[K] };
     const { testFiles } = store;
     store.testFiles = {
       ...testFiles,
@@ -47,7 +47,7 @@ vi.mock("../../src/core/store/open.js", async (importOriginal) => {
     };
     return store;
   };
-  return { ...original, openStore };
+  return { ...original, createStore };
 });
 
 /** The reader whose run the wait holds for; the one whose closure a write changes. */

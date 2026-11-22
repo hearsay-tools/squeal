@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { FAILURES_LIMIT } from "../../src/core/status/failures.js";
-import type { openStore as OpenStore } from "../../src/core/store/open.js";
+import type { createStore as CreateStore } from "../../src/core/store/store.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { FailureEntry, FailuresReport } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -21,12 +21,12 @@ import { keyTestFiles } from "./failures-keys.js";
 /** `test_file_keys` lookups of named files, by every store the command opens. */
 const lookups = vi.hoisted(() => ({ count: 0 }));
 
-vi.mock("../../src/core/store/open.js", async (importOriginal) => {
-  const original = await importOriginal<{ openStore: typeof OpenStore }>();
-  const openStore: typeof OpenStore = (commonDir, options) => {
-    const opened = original.openStore(commonDir, options);
-    if (!("testFileKeys" in opened)) return opened;
-    const store = opened as { -readonly [K in keyof Store]: Store[K] };
+vi.mock("../../src/core/store/store.js", async (importOriginal) => {
+  const original = await importOriginal<{ createStore: typeof CreateStore }>();
+  const createStore: typeof CreateStore = (conn, schemaVersion, paths) => {
+    const store = original.createStore(conn, schemaVersion, paths) as {
+      -readonly [K in keyof Store]: Store[K];
+    };
     const { testFileKeys } = store;
     store.testFileKeys = {
       ...testFileKeys,
@@ -37,7 +37,7 @@ vi.mock("../../src/core/store/open.js", async (importOriginal) => {
     };
     return store;
   };
-  return { ...original, openStore };
+  return { ...original, createStore };
 });
 
 const MINUTE = 60_000;

@@ -6,7 +6,7 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_POLL_MS, waitForStatus } from "../../src/cli/status-wait.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import type { openStore as OpenStore } from "../../src/core/store/open.js";
+import type { createStore as CreateStore } from "../../src/core/store/store.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { sessions } from "./counting-store.js";
@@ -26,18 +26,18 @@ import { A, answering, B, key, NOW, repoWith, SLOW_FILE } from "./status-wait-fi
 /** Row 019-42: when each counted store opened, on `performance.now()`, the clock a wait counts on. */
 const openedAt = vi.hoisted(() => new WeakMap<object, number>());
 
-vi.mock("../../src/core/store/open.js", async (importOriginal) => {
-  const original = await importOriginal<{ openStore: typeof OpenStore }>();
+vi.mock("../../src/core/store/store.js", async (importOriginal) => {
+  const original = await importOriginal<{ createStore: typeof CreateStore }>();
   const { counting, sessions: counted } = await import("./counting-store.js");
-  const open = counting(original.openStore);
-  const timed: typeof OpenStore = (commonDir, options) => {
+  const open = counting(original.createStore);
+  const timed: typeof CreateStore = (conn, schemaVersion, paths) => {
     const before = counted.length;
-    const store = open(commonDir, options);
+    const store = open(conn, schemaVersion, paths);
     const session = counted[before];
     if (session !== undefined) openedAt.set(session, performance.now());
     return store;
   };
-  return { ...original, openStore: timed };
+  return { ...original, createStore: timed };
 });
 
 const WAIT_MS = 2_500;

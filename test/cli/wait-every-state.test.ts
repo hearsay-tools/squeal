@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { readHeld, startView } from "../../src/cli/status-wait-held.js";
 import { type Every, keptAtStart, readEvery } from "../../src/cli/wait/every-state.js";
-import type { openStore as OpenStore } from "../../src/core/store/open.js";
-import { connectionOf } from "../../src/core/store/store.js";
+import { type createStore as CreateStore, connectionOf } from "../../src/core/store/store.js";
 import { statesMarkerMetaKey } from "../../src/core/store/write-markers.js";
 import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions } from "../status/helpers.js";
@@ -56,16 +55,15 @@ function counted(opened: Store, reads: Read[]): Store {
   return store;
 }
 
-vi.mock("../../src/core/store/open.js", async (importOriginal) => {
-  const original = await importOriginal<{ openStore: typeof OpenStore }>();
-  const counting: typeof OpenStore = (commonDir, opts) => {
-    const opened = original.openStore(commonDir, opts);
-    if (!("knownStates" in opened)) return opened;
+vi.mock("../../src/core/store/store.js", async (importOriginal) => {
+  const original = await importOriginal<{ createStore: typeof CreateStore }>();
+  const counting: typeof CreateStore = (conn, schemaVersion, paths) => {
+    const opened = original.createStore(conn, schemaVersion, paths);
     const reads: Read[] = [];
     sessions.push(reads);
     return counted(opened, reads);
   };
-  return { ...original, openStore: counting };
+  return { ...original, createStore: counting };
 });
 
 const saved = { ...process.env };

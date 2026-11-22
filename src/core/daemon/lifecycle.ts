@@ -379,12 +379,27 @@ export function startTimers(context: TimerContext): () => void {
     }
     return true;
   };
+  let graceTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearGrace = () => {
+    if (graceTimer === null) return;
+    clearTimeout(graceTimer);
+    graceTimer = null;
+  };
   const departure = () =>
     attempt("departure check", () => {
+      clearGrace();
       const at = now();
       if (!countPresence(at) || presence.lastPresentAt === null) return;
       const gone = at - presence.lastPresentAt;
-      if (gone < graceMs) return;
+      if (gone < graceMs) {
+        const left = graceMs - gone;
+        if (left < presenceMs) {
+          // Row 024-04: idle presence polls every 1 s, so arm one timer for the end of the grace.
+          graceTimer = setTimeout(departure, Math.max(1, left + 5));
+          graceTimer.unref();
+        }
+        return;
+      }
       const pending = drainable(context);
       if (pending === null) {
         context.shutdown(
@@ -516,6 +531,7 @@ export function startTimers(context: TimerContext): () => void {
   return () => {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
+    clearGrace();
     retries.stop();
     pruning.stop();
     unlog();
