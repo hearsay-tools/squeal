@@ -2,6 +2,7 @@ import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION, type RelativePath } from "..
 import type {
   DaemonErrorResponse,
   DaemonRequest,
+  PromoteRequest,
   RunGroupPathsRequest,
   SyncRequest,
 } from "../types/daemon.js";
@@ -101,17 +102,8 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "commit-ask":
     case "commit-read":
       return parseCommitAsk(request);
-    case "promote": {
-      const { testFiles, withinMs } = request;
-      if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
-        return '"testFiles" must be a list of { project, path } strings';
-      }
-      if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
-        return '"withinMs" must be a number of milliseconds';
-      }
-      const refs = testFiles.map(({ project, path }) => ({ project, path }));
-      return { type: "promote", testFiles: refs, withinMs };
-    }
+    case "promote":
+      return parsePromote(request);
     case "focus": {
       const { testFiles, texts, withinMs } = request;
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
@@ -129,6 +121,24 @@ export function parseRequest(line: string): DaemonRequest | string {
     default:
       return parseWriteRequest(request) ?? `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+
+/** Spec 011 C15: a named wait's promotion; row 024-01, its optional `wakeCatchUp`. */
+function parsePromote(request: Record<string, unknown>): PromoteRequest | string {
+  const { testFiles, withinMs, wakeCatchUp } = request;
+  if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
+    return '"testFiles" must be a list of { project, path } strings';
+  }
+  if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
+    return '"withinMs" must be a number of milliseconds';
+  }
+  if (wakeCatchUp !== undefined && typeof wakeCatchUp !== "boolean") {
+    return '"wakeCatchUp" must be a boolean';
+  }
+  const refs = testFiles.map(({ project, path }) => ({ project, path }));
+  // Row 024-01: present only when true.
+  const wake = wakeCatchUp === true ? { wakeCatchUp: true as const } : {};
+  return { type: "promote", testFiles: refs, withinMs, ...wake };
 }
 
 /** Row 023-40c (spec 023 D7.3 as amended): a commit daemon's ask, or a read of its asks. */

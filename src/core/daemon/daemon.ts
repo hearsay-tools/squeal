@@ -1221,7 +1221,8 @@ class Daemon {
         },
         onNudge: () => this.#loop?.scheduler.nudge(),
         requestRetries: () => this.#requestRetries(),
-        requestPromotion: (testFiles, withinMs) => this.#requestPromotion(testFiles, withinMs),
+        requestPromotion: (testFiles, withinMs, wakeCatchUp) =>
+          this.#requestPromotion(testFiles, withinMs, wakeCatchUp),
         requestFocus: (testFiles, texts, withinMs) =>
           this.#requestFocus(testFiles, texts, withinMs),
         requestHold: watch(() => this.#requestHold()),
@@ -1314,10 +1315,14 @@ class Daemon {
   }
 
   /** Spec 011 C15: a named wait promotes its test files for `withinMs`. */
-  async #requestPromotion(testFiles: readonly TestFileRef[], withinMs: number): Promise<void> {
+  async #requestPromotion(
+    testFiles: readonly TestFileRef[],
+    withinMs: number,
+    wakeCatchUp?: true,
+  ): Promise<void> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
-    await this.#loop.scheduler.promote(testFiles, withinMs);
+    await this.#loop.scheduler.promote(testFiles, withinMs, wakeCatchUp);
   }
 
   /** Spec 011 C15 (row 011-145): a named wait's focused checks of its test files for `withinMs`. */

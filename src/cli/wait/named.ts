@@ -1,3 +1,4 @@
+import { selects } from "../../core/commit/at-keys-narrow.js";
 import { worktreeIdFor } from "../../core/fs/git-layout.js";
 import { testFileId } from "../../core/keys/reverse-index.js";
 import { daemonLiveness } from "../../core/presence/heartbeat.js";
@@ -8,6 +9,7 @@ import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import { withUnlisted } from "../named-listing.js";
 import {
+  folderPath,
   type NamedSelection,
   selectNamedFiles,
   sourcePaths,
@@ -181,7 +183,11 @@ export function namedPoll(
           promoted = true;
           // On the clock the daemon adds it to, so the promotion lasts at least to `deadline`. The
           // daemon keeps it until then, so an asked file it queues later joins (row 011-283).
-          promote(root, own, deadline - options.now());
+          // Row 024-01 (spec 024 D1): with the files its source paths select, up to a cap.
+          const promotion = promotedWaitFiles(root, cwd, paths, selection);
+          promote(root, promotion.files, deadline - options.now(), {
+            wakeCatchUp: promotion.wakeCatchUp,
+          });
           const focusing = (focus?.files ?? []).filter((f) => f.whole === undefined);
           if (focus !== undefined && focusing.length > 0) {
             const send = options.focus ?? focusNamed;
@@ -293,8 +299,9 @@ function livenessOf(daemon: WaitLiveness): {
 
 /**
  * The selected test files named by their own paths, as the worktree names
- * them: the ones a wait promotes and focuses (spec 011 C15). A source path
- * selects the files whose closure holds it, which are not promoted.
+ * them: the ones a wait focuses (spec 011 C15) and asks runs of (row
+ * 011-207). A source path selects the files whose closure holds it, which
+ * `promotedWaitFiles` adds to the promotion only.
  */
 export function ownNamedFiles(
   root: AbsolutePath,
@@ -304,4 +311,51 @@ export function ownNamedFiles(
 ): TestFileRef[] {
   const named = new Set(paths.map((p) => worktreePath(root, cwd, p)));
   return selection.files.filter((file) => named.has(file.path));
+}
+
+/**
+ * The most test files a named wait promotes with the files its source paths
+ * select (row 024-01, spec 024 D1). Past it, the wait would put more files
+ * ahead of other edits than one tier plan runs soon.
+ */
+export const SOURCE_PROMOTE_CAP = 50;
+
+/** What a named wait promotes (`promotedWaitFiles`). */
+export interface PromotedWaitFiles {
+  readonly files: readonly TestFileRef[];
+  /** The source paths select more than `SOURCE_PROMOTE_CAP`: the daemon ends catch-up's waits instead. */
+  readonly wakeCatchUp: boolean;
+}
+
+/**
+ * Row 024-01 (spec 024 D1): the files a named wait promotes. The files named
+ * by their own paths, and the files its `source` paths select, at most
+ * `SOURCE_PROMOTE_CAP` in all; past the cap, its own files with
+ * `wakeCatchUp`, so the selected files leave catch-up's 120 s wait without
+ * going ahead of other edits. A folder promotes nothing (row 011-406): a
+ * file under a named folder is never promoted for a source path. The
+ * selection keeps no list per path, so the files a `not-run` path selects
+ * beside a source path count as the source path's.
+ */
+export function promotedWaitFiles(
+  root: AbsolutePath,
+  cwd: AbsolutePath,
+  paths: readonly string[],
+  selection: NamedSelection,
+): PromotedWaitFiles {
+  const own = ownNamedFiles(root, cwd, paths, selection);
+  if (!selection.paths.some((p) => p.kind === "source")) return { files: own, wakeCatchUp: false };
+  const folders = paths.flatMap((p) => {
+    const folder = folderPath(root, cwd, p);
+    return folder === null ? [] : [folder];
+  });
+  const ownIds = new Set(own.map(testFileId));
+  const fromSources = selection.files.filter(
+    (file) => !ownIds.has(testFileId(file)) && !selects(folders, file.path),
+  );
+  const files = [...own, ...fromSources];
+  if (fromSources.length === 0 || files.length <= SOURCE_PROMOTE_CAP) {
+    return { files, wakeCatchUp: false };
+  }
+  return { files: own, wakeCatchUp: true };
 }

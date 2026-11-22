@@ -14,8 +14,9 @@ import { later } from "./wait-clock.js";
 /*
  * Spec 011 C15 (task 011-11): a named wait sends `promote` once, beside the
  * first read whose selection is decided, with the test files named by their
- * own paths and what is left of the wait. A source path's selection is not
- * promoted, and a daemon that does not know the request changes nothing.
+ * own paths and what is left of the wait. Row 024-01 (spec 024 D1): with a
+ * source path's selection up to a cap (`status-wait-source-promote.test.ts`).
+ * A daemon that does not know the request changes nothing.
  */
 
 const cleanups: (() => unknown)[] = [];
@@ -60,7 +61,7 @@ describe("a named wait's promote request (spec 011 C15)", () => {
     expect(first?.withinMs).toBeLessThanOrEqual(5_000);
   });
 
-  it("promotes nothing for a source path, whose selection is its consumers", async () => {
+  it("row 024-01: promotes a source path's consumers beside the named file", async () => {
     const { repo, store } = repoWith([A, B]);
     for (const path of [A, B]) {
       store.testFiles.put({
@@ -83,8 +84,8 @@ describe("a named wait's promote request (spec 011 C15)", () => {
     );
     if (wait.outcome === "unavailable") throw new Error("unavailable");
     expect(wait.selection.files.map((f) => f.path).sort()).toEqual([A, B]);
-    // Only A, named by its own path; B is selected through the source path alone.
-    expect(sent.map((s) => s.files)).toEqual([[ref(A)]]);
+    // A, named by its own path, then B, selected through the source path (before row 024-01: A only).
+    expect(sent.map((s) => s.files)).toEqual([[ref(A), ref(B)]]);
   });
 
   it("sends nothing when the first decided read settles the wait", async () => {
@@ -164,5 +165,20 @@ describe("promoteNamed", () => {
     await expect.poll(() => requests.length).toBe(1);
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(unhandled).toEqual([]);
+  });
+
+  it("row 024-01: sends a wake with no files, and `wakeCatchUp` only when asked", async () => {
+    const socketPath = socketDir();
+    const requests: unknown[] = [];
+    await daemonAt(socketPath, (request) => {
+      requests.push(request);
+      return { schemaVersion: 1, ok: true, type: "promote" };
+    });
+    const root = recorded(socketPath) as never;
+    promoteNamed(root, [], 1_000, { wakeCatchUp: false });
+    promoteNamed(root, [], 1_000, { wakeCatchUp: true });
+    await expect
+      .poll(() => requests)
+      .toEqual([{ type: "promote", testFiles: [], withinMs: 1_000, wakeCatchUp: true }]);
   });
 });

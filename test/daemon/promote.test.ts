@@ -54,6 +54,30 @@ describe("the promote request (spec 011 C15)", () => {
     );
   });
 
+  it("row 024-01: keeps `wakeCatchUp` only when true, and refuses a non-boolean", () => {
+    const line = (wake: unknown) =>
+      JSON.stringify({ type: "promote", testFiles: [Z], withinMs: 5, wakeCatchUp: wake });
+    expect(parseRequest(line(true))).toEqual({
+      type: "promote",
+      testFiles: [Z],
+      withinMs: 5,
+      wakeCatchUp: true,
+    });
+    expect(parseRequest(line(false))).toEqual({ type: "promote", testFiles: [Z], withinMs: 5 });
+    expect(parseRequest(line("yes"))).toBe('"wakeCatchUp" must be a boolean');
+  });
+
+  it("row 024-01: hands `wakeCatchUp` to the scheduler", () => {
+    const wakes: (true | undefined)[] = [];
+    const handle = handler((_files, _withinMs, wake) => {
+      wakes.push(wake);
+      return new Promise(() => {});
+    });
+    handle({ type: "promote", testFiles: [], withinMs: 1, wakeCatchUp: true });
+    handle({ type: "promote", testFiles: [Z], withinMs: 1 });
+    expect(wakes).toEqual([true, undefined]);
+  });
+
   it("answers at once and hands the files to the scheduler", () => {
     const calls: [readonly TestFileRef[], number][] = [];
     const handle = handler((files, withinMs) => {
@@ -84,6 +108,7 @@ describe("promote through the front desk", () => {
     cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
     const socketPath = join(dir, "d.sock") as AbsolutePath;
     const calls: [readonly TestFileRef[], number][] = [];
+    const wakes: (true | undefined)[] = [];
     const prepared = prepareFrontDesk(
       worker
         ? {
@@ -110,8 +135,9 @@ describe("promote through the front desk", () => {
         requestFullSuite: () => new Promise(() => {}),
         requestSlowSuite: () => new Promise(() => {}),
         requestSync: () => new Promise(() => {}),
-        requestPromotion: async (files, withinMs) => {
+        requestPromotion: async (files, withinMs, wake) => {
           calls.push([files, withinMs]);
+          wakes.push(wake);
         },
         onStop: () => {},
         onStepDown: () => {},
@@ -127,5 +153,8 @@ describe("promote through the front desk", () => {
       type: "promote",
     });
     await expect.poll(() => calls).toEqual([[[Z], 30_000]]);
+    // Row 024-01: `wakeCatchUp` crosses the desk, absent when not sent.
+    await requestDaemon(socketPath, { ...request, testFiles: [], wakeCatchUp: true }, 2_000);
+    await expect.poll(() => wakes).toEqual([undefined, true]);
   });
 });

@@ -117,7 +117,8 @@ function bind(identity: DeskIdentity): void {
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
-    requestPromotion: async (testFiles, withinMs) => post({ type: "promote", testFiles, withinMs }),
+    requestPromotion: async (testFiles, withinMs, wakeCatchUp) =>
+      post({ type: "promote", testFiles, withinMs, ...(wakeCatchUp ? { wakeCatchUp } : {}) }),
     requestFocus: async (testFiles, texts, withinMs) =>
       post({ type: "focus", testFiles, texts, withinMs }),
     onStop: () => post({ type: "stop" }),

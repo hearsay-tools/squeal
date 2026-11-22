@@ -852,8 +852,8 @@ class TierScheduler implements Scheduler {
   }
 
   /** Spec 011 C15: a named wait promotes `testFiles` for `withinMs` (`promoteRequest`). */
-  promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void> {
-    return this.#intake.take(promoteRequest(testFiles, withinMs));
+  promote(testFiles: readonly TestFileRef[], withinMs: number, wakeCatchUp?: true): Promise<void> {
+    return this.#intake.take(promoteRequest(testFiles, withinMs, wakeCatchUp));
   }
 
   /** Spec 011 C15, focused checks (row 011-145): `focusRequest`. */

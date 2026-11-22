@@ -97,6 +97,17 @@ export class BacklogQuiet {
   }
 
   /**
+   * Row 024-01 (spec 024 D1): a named wait on a source path selected more
+   * files than it promotes: every lane's catch-up starts now. The waits after
+   * a cancel (`#until`) stay; an edit's revision starts catch-up's wait again.
+   */
+  endCatchUp(now: EpochMs): void {
+    if (this.#catchUp.size === 0) return;
+    this.#catchUp.clear();
+    this.#told(now);
+  }
+
+  /**
    * Row 011-377: the calendar stepped `ms` (`CalendarSteps`) at `at`: each
    * end moves with it, so each wait keeps its elapsed time left, and status
    * reads the ends again.

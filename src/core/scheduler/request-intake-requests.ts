@@ -31,7 +31,11 @@ const QUEUES_NO_FILE: Skip = {
  * promoted file at the next tier boundary of a free lane, and the tier in
  * flight there may yield to it (C4 step 5 as amended 2026-10-21, row 011-51).
  */
-export function promoteRequest(testFiles: readonly TestFileRef[], withinMs: number): Request<void> {
+export function promoteRequest(
+  testFiles: readonly TestFileRef[],
+  withinMs: number,
+  wakeCatchUp?: true,
+): Request<void> {
   return {
     operation: "promoting the test files of a named wait",
     start: { closed: undefined },
@@ -43,6 +47,8 @@ export function promoteRequest(testFiles: readonly TestFileRef[], withinMs: numb
       apply: (context, ledger) => {
         // Row 011-283 (review 0.1.384 B1): `Promotions` asks which selected file has its answer.
         ledger.queue.promote(testFiles, context.now() + withinMs, answeredOf(context, ledger));
+        // Row 024-01 (spec 024 D1): a wait whose source paths select more than it promotes.
+        if (wakeCatchUp === true) context.quiet?.endCatchUp(context.now());
       },
     },
     wake: { checkYields: true },

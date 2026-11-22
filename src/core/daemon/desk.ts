@@ -52,6 +52,7 @@ export interface DeskEvents {
   readonly requestPromotion?: (
     testFiles: readonly TestFileRef[],
     withinMs: number,
+    wakeCatchUp?: true,
   ) => Promise<void>;
   /** A named wait's focused checks (C15, row 011-145); absent: the daemon answers it cannot focus. */
   readonly requestFocus?: (
@@ -293,7 +294,9 @@ async function inWorker(
           events.requestRetries?.().catch(() => {});
           return;
         case "promote":
-          events.requestPromotion?.(message.testFiles, message.withinMs).catch(() => {});
+          events
+            .requestPromotion?.(message.testFiles, message.withinMs, message.wakeCatchUp)
+            .catch(() => {});
           return;
         case "focus":
           events.requestFocus?.(message.testFiles, message.texts, message.withinMs).catch(() => {});

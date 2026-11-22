@@ -8,20 +8,25 @@ export type PromoteNamed = (
   root: AbsolutePath,
   testFiles: readonly TestFileRef[],
   withinMs: number,
+  options?: { readonly wakeCatchUp?: boolean },
 ) => void;
 
 /**
  * Spec 011 C15: asks the daemon of `root` to promote `testFiles` for
  * `withinMs`, in the background. Nothing waits for the answer: an older
  * daemon answers an unknown request, and with no daemon or an error the
- * wait reads only, the order as it was. No files, no request.
+ * wait reads only, the order as it was. Row 024-01 (spec 024 D1): with
+ * `wakeCatchUp`, the daemon also ends its waits for catch-up quiet, which
+ * an older daemon ignores. No files and no wake, no request.
  */
-export const promoteNamed: PromoteNamed = (root, testFiles, withinMs) => {
-  if (testFiles.length === 0) return;
+export const promoteNamed: PromoteNamed = (root, testFiles, withinMs, options) => {
+  const wake = options?.wakeCatchUp === true;
+  if (testFiles.length === 0 && !wake) return;
   const request: PromoteRequest = {
     type: "promote",
     testFiles,
     withinMs: Math.max(0, Math.round(withinMs)),
+    ...(wake ? { wakeCatchUp: true as const } : {}),
   };
   void daemonSocket(root)
     .then((socketPath) => askDaemon(socketPath, request))

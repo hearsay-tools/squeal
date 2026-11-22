@@ -113,6 +113,7 @@ export interface HandlerContext {
   readonly requestPromotion?: (
     testFiles: readonly TestFileRef[],
     withinMs: number,
+    wakeCatchUp?: true,
   ) => Promise<void>;
   /**
    * A named wait's focused checks (spec 011 C15, row 011-145), like
@@ -441,7 +442,9 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         if (context.requestPromotion === undefined)
           return errorResponse("this daemon cannot promote");
         context.onActivity();
-        context.requestPromotion(request.testFiles, request.withinMs).catch(() => {});
+        context
+          .requestPromotion(request.testFiles, request.withinMs, request.wakeCatchUp)
+          .catch(() => {});
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "promote" };
       case "focus":
         if (context.requestFocus === undefined) return errorResponse("this daemon cannot focus");

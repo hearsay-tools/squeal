@@ -184,6 +184,12 @@ export interface PromoteRequest {
   readonly type: "promote";
   readonly testFiles: readonly TestFileRef[];
   readonly withinMs: number;
+  /**
+   * Row 024-01 (spec 024 D1): the wait's source paths select more files than
+   * it promotes, so the daemon ends each lane's wait for catch-up quiet
+   * (`BacklogQuiet.endCatchUp`). An older daemon ignores it.
+   */
+  readonly wakeCatchUp?: true;
 }
 
 /**

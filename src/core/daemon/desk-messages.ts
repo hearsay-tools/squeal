@@ -131,6 +131,8 @@ export type FromDesk =
       readonly type: "promote";
       readonly testFiles: readonly TestFileRef[];
       readonly withinMs: number;
+      /** Row 024-01: `PromoteRequest.wakeCatchUp`. */
+      readonly wakeCatchUp?: true;
     }
   | {
       readonly type: "focus";
