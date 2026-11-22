@@ -1,0 +1,82 @@
+profile 12.9 s wall, window 12.8 s
+
+by area
+  12.63 s  (idle)
+   0.07 s  squeal.mjs
+   0.05 s  node:modules/esm
+   0.02 s  (gc)
+   0.02 s  (program)
+   0.02 s  node:child_process
+   0.01 s  node:events
+   0.00 s  node:bootstrap/realm
+   0.00 s  native:mkdir
+   0.00 s  node:async_hooks
+   0.00 s  native:decodeUTF8
+   0.00 s  node:streams/writable
+   0.00 s  node:streams/destroy
+   0.00 s  node:net
+   0.00 s  native:close
+
+by nearest named squeal function (busy only)
+   0.12 s  (none)
+   0.02 s  runGit
+   0.01 s  all
+   0.01 s  __init
+   0.01 s  close
+   0.00 s  pragmaNumber2
+   0.00 s  compile
+   0.00 s  settle3
+   0.00 s  listed12
+   0.00 s  blobsOfTree
+   0.00 s  untilTaken
+   0.00 s  connect
+   0.00 s  userVersion
+   0.00 s  toTestFileKey
+   0.00 s  requestDaemon
+   0.00 s  daemonCall
+   0.00 s  spawnLogging
+   0.00 s  lockDatabase
+   0.00 s  rowsSide
+   0.00 s  splitNul
+   0.00 s  declaredManager
+   0.00 s  reasonOf4
+   0.00 s  #statement
+   0.00 s  loadPolicy
+   0.00 s  queueBoth
+   0.00 s  originOf2
+   0.00 s  openDaemonLog
+   0.00 s  addCheckout
+   0.00 s  openStore
+   0.00 s  packageStore
+
+by self function
+  12.63 s  (idle) :-1
+   0.05 s  compileSourceTextModule utils:316
+   0.02 s  (garbage collector) :-1
+   0.02 s  (program) :-1
+   0.01 s  spawn child_process:384
+   0.01 s  all squeal.mjs:1088
+   0.01 s  __init squeal.mjs:15
+   0.01 s  close squeal.mjs:1142
+   0.00 s  pragmaNumber2 squeal.mjs:20136
+   0.00 s  cloneEventListenerArray node:events:897
+   0.00 s  compile squeal.mjs:1906
+   0.00 s  compileForInternalLoader realm:382
+   0.00 s  blobsOfTree squeal.mjs:25555
+   0.00 s  untilTaken squeal.mjs:92976
+   0.00 s  connect squeal.mjs:20074
+   0.00 s  mkdir :-1
+   0.00 s  decodeUTF8 :-1
+   0.00 s  _destroy destroy:89
+   0.00 s  userVersion squeal.mjs:19833
+   0.00 s  (anon) squeal.mjs:92324
+   0.00 s  toTestFileKey squeal.mjs:6245
+   0.00 s  daemonCall squeal.mjs:115860
+   0.00 s  Socket._writeGeneric node:net:1292
+   0.00 s  emit node:events:488
+   0.00 s  _addListener node:events:544
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 4.8 | (none) 0.1 | runGit 0.0 | __init 0.0
+   5 s: (idle) 5.0 | (none) 0.0 | settle3 0.0
+  10 s: (idle) 2.8 | (none) 0.0 | all 0.0 | compile 0.0

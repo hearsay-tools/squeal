@@ -1,0 +1,84 @@
+profile 22.4 s wall, window 22.4 s
+
+by area
+  19.11 s  (idle)
+   1.22 s  squeal.mjs
+   0.44 s  native:lstat
+   0.25 s  node:crypto/hash
+   0.21 s  (program)
+   0.19 s  (gc)
+   0.14 s  native:fstat
+   0.12 s  native:openFileHandle
+   0.11 s  native:close
+   0.11 s  native:read
+   0.08 s  node:child_process
+   0.08 s  node:fs/promises
+   0.07 s  node:path
+   0.05 s  node:modules/esm
+   0.03 s  node:buffer
+
+by nearest named squeal function (busy only)
+   0.99 s  (none)
+   0.29 s  matches3
+   0.22 s  blobHash
+   0.16 s  changes
+   0.16 s  stat
+   0.15 s  set
+   0.11 s  lstatOrNull2
+   0.10 s  runGit
+   0.09 s  transaction
+   0.06 s  isLinkedDir
+   0.05 s  toAbsolute
+   0.05 s  keyFromSegments
+   0.04 s  put
+   0.04 s  acquire
+   0.03 s  normalizeRelativePath
+   0.03 s  hashOf
+   0.03 s  of
+   0.03 s  setClosure
+   0.03 s  checkoutChange
+   0.03 s  include
+   0.03 s  get
+   0.03 s  assembleClosure
+   0.03 s  unlink
+   0.03 s  encodeImports
+   0.02 s  readCleanIndexHashes
+   0.02 s  isNodeModules
+   0.02 s  hasGitEntry
+   0.02 s  pick
+   0.02 s  all
+   0.02 s  isInside
+
+by self function
+  19.11 s  (idle) :-1
+   0.44 s  lstat :-1
+   0.23 s  update hash:185
+   0.21 s  (program) :-1
+   0.19 s  (garbage collector) :-1
+   0.16 s  changes squeal.mjs:1082
+   0.14 s  set squeal.mjs:744
+   0.14 s  fstat :-1
+   0.12 s  openFileHandle :-1
+   0.11 s  close :-1
+   0.11 s  read :-1
+   0.08 s  spawn child_process:384
+   0.08 s  transaction squeal.mjs:1099
+   0.06 s  join node:path:1328
+   0.05 s  compileSourceTextModule utils:316
+   0.04 s  put squeal.mjs:6143
+   0.04 s  acquire squeal.mjs:28001
+   0.04 s  lstat promises:1734
+   0.03 s  hashOf squeal.mjs:10629
+   0.03 s  include squeal.mjs:2948
+   0.03 s  assembleClosure squeal.mjs:2946
+   0.03 s  unlink squeal.mjs:794
+   0.03 s  RegExp: ^(?![A-Za-z]:)(?!\.\.?(?:\/|$))[^/\\]+(?:\/(?!\.\.?(?:\/|$))[^/\\]+)*$ :-1
+   0.02 s  readCleanIndexHashes squeal.mjs:25989
+   0.02 s  get squeal.mjs:1085
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 2.8 | (none) 0.8 | matches3 0.3 | blobHash 0.2
+   5 s: (idle) 3.9 | (none) 0.2 | changes 0.1 | lstatOrNull2 0.1
+  10 s: (idle) 5.0 | (none) 0.0 | lifeOf 0.0 | stat 0.0
+  15 s: (idle) 5.0 | (none) 0.0
+  20 s: (idle) 2.4 | (none) 0.0 | runGit 0.0 | ownerOf 0.0
