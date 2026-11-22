@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.592";
+  if (true) return "0.1.594";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -57784,25 +57784,25 @@ async function fetchEditCut(context, testFiles3, paths, affected2, bound, closur
   const fallback2 = new Set(own === null ? direct : own.direct.map(testFileId));
   return { namesakes, bare: bare3, fallback: fallback2, transitive };
 }
-function editWork(context, ledger, cut, changed2, direct, observedDirect = /* @__PURE__ */ new Set(), within5 = () => true) {
+function editWork(context, ledger, cut, changed2, direct, observedDirect = /* @__PURE__ */ new Set(), within4 = () => true) {
   const importers = /* @__PURE__ */ new Set([...direct, ...observedDirect]);
   const reached = ledger.recentOf(changed2, importers);
   const kept6 = /* @__PURE__ */ new Set();
   for (const file of ledger.files.values()) {
-    if (changed2.has(file.ref.path) && within5(file.id)) kept6.add(file.id);
+    if (changed2.has(file.ref.path) && within4(file.id)) kept6.add(file.id);
   }
   for (const [source2, ids] of cut.namesakes) {
-    const own = ids.filter((id) => reached.has(id) && within5(id));
+    const own = ids.filter((id) => reached.has(id) && within4(id));
     const fallback2 = cut.bare.has(source2) ? cut.fallback : direct;
-    for (const id of own.length > 0 ? own : fallback2) if (within5(id)) kept6.add(id);
+    for (const id of own.length > 0 ? own : fallback2) if (within4(id)) kept6.add(id);
   }
   const beyond = heldBeyondInputs(context, changed2);
-  const rest2 = [...reached].filter((id) => !kept6.has(id) && !importers.has(id) && within5(id));
+  const rest2 = [...reached].filter((id) => !kept6.has(id) && !importers.has(id) && within4(id));
   const reads2 = rest2.filter((id) => cut.transitive.has(id) || beyond.has(id));
   const others = [
     ...shortest(
       ledger,
-      [...importers].filter((id) => !kept6.has(id) && within5(id))
+      [...importers].filter((id) => !kept6.has(id) && within4(id))
     ),
     ...shortest(ledger, reads2)
   ];
@@ -58431,42 +58431,20 @@ var init_handover = __esm({
 
 // src/core/scheduler/proven-walks.ts
 import { posix as posix16 } from "node:path";
-import { inflateRawSync as inflateRawSync5 } from "node:zlib";
 function storedWalks(context) {
   let conn;
   try {
     conn = connectionOf(context.store);
   } catch {
-    return NO_WALKS;
+    return () => false;
   }
-  if (!hasImportGraphTables(conn)) return NO_WALKS;
-  return {
-    at: (ref3, key3) => conn.get(
-      "SELECT 1 AS found FROM test_file_imports WHERE project = ? AND path = ? AND key = ?",
-      ref3.project,
-      ref3.path,
-      key3
-    ) !== null,
-    walkedPaths: (ref3) => {
-      const out2 = /* @__PURE__ */ new Set();
-      const rows = conn.all(
-        "SELECT imports FROM test_file_imports WHERE project = ? AND path = ?",
-        ref3.project,
-        ref3.path
-      );
-      for (const row2 of rows) {
-        const entries3 = JSON.parse(
-          inflateRawSync5(row2.imports).toString("utf8")
-        );
-        for (const [path, statics, dynamics] of entries3) {
-          out2.add(path);
-          for (const target of statics) out2.add(target);
-          for (const target of dynamics) out2.add(target);
-        }
-      }
-      return out2;
-    }
-  };
+  if (!hasImportGraphTables(conn)) return () => false;
+  return (ref3, key3) => conn.get(
+    "SELECT 1 AS found FROM test_file_imports WHERE project = ? AND path = ? AND key = ?",
+    ref3.project,
+    ref3.path,
+    key3
+  ) !== null;
 }
 function defaultSnapshotPath(path) {
   return posix16.join(posix16.dirname(path), "__snapshots__", `${posix16.basename(path)}.snap`);
@@ -58476,44 +58454,26 @@ function unresolvedHere(context) {
   const absent4 = (path) => listedDirectory(path) === null && hashOf2(path) === null;
   return (ref3, list2) => {
     const snapshot3 = defaultSnapshotPath(ref3.path);
-    return list2.filter((path) => path !== snapshot3 && absent4(path));
+    return list2.some((path) => path !== snapshot3 && absent4(path));
   };
 }
-function writerWalked(context, walks) {
-  const { store } = context;
-  return (ref3, key3, list2, unresolved) => {
-    const record2 = store.testFiles.get(ref3);
-    if (record2 === null || !within2(record2.closure.paths, list2)) return false;
-    const [row2] = store.testFileKeys.list(record2.updatedBy, [ref3]);
-    if (row2?.key !== key3) return false;
-    const walked = walks.walkedPaths(ref3);
-    return !unresolved.some((path) => walked.has(path));
-  };
-}
-function within2(paths, list2) {
-  const listed12 = new Set(list2);
-  return paths.every((path) => listed12.has(path));
-}
-function provenWalks(files5, proof2) {
+function provenWalks(files5, walkedAt, listOf, unresolved) {
   const proven2 = [];
   const unproven2 = [];
-  const proves = (ref3, key3) => {
-    const list2 = proof2.listOf(ref3);
-    if (key3 === null || list2 === void 0 || !proof2.walks.at(ref3, key3)) return false;
-    const unresolved = proof2.unresolved(ref3, list2);
-    return unresolved.length === 0 || proof2.writer(ref3, key3, list2, unresolved);
-  };
-  for (const file of files5) (proves(file.ref, file.key) ? proven2 : unproven2).push(file);
+  for (const file of files5) {
+    const list2 = listOf(file.ref);
+    const isProven = file.key !== null && list2 !== void 0 && !unresolved(file.ref, list2) && walkedAt(file.ref, file.key);
+    (isProven ? proven2 : unproven2).push(file);
+  }
   return { proven: proven2, unproven: unproven2 };
 }
 function unprovenWalks(context, misses) {
-  const walks = storedWalks(context);
-  const { proven: proven2, unproven: unproven2 } = provenWalks(misses, {
-    walks,
-    listOf: (ref3) => context.keys.index.closure(ref3)?.paths,
-    unresolved: unresolvedHere(context),
-    writer: writerWalked(context, walks)
-  });
+  const { proven: proven2, unproven: unproven2 } = provenWalks(
+    misses,
+    storedWalks(context),
+    (ref3) => context.keys.index.closure(ref3)?.paths,
+    unresolvedHere(context)
+  );
   if (proven2.length > 0) {
     storeClosures(
       context,
@@ -58522,7 +58482,6 @@ function unprovenWalks(context, misses) {
   }
   return unproven2.map((file) => file.ref);
 }
-var NO_WALKS;
 var init_proven_walks = __esm({
   "src/core/scheduler/proven-walks.ts"() {
     "use strict";
@@ -58530,7 +58489,6 @@ var init_proven_walks = __esm({
     init_import_edges();
     init_store2();
     init_revision();
-    NO_WALKS = { at: () => false, walkedPaths: () => /* @__PURE__ */ new Set() };
   }
 });
 
@@ -59313,7 +59271,7 @@ var init_ignored_marks = __esm({
 });
 
 // src/core/store/import-graph.ts
-import { inflateRawSync as inflateRawSync6 } from "node:zlib";
+import { inflateRawSync as inflateRawSync5 } from "node:zlib";
 function readImportGraph(store, worktreeId) {
   const conn = connectionOf(store);
   const tables = hasImportGraphTables(conn);
@@ -59346,7 +59304,7 @@ function readImportGraph(store, worktreeId) {
 }
 function decodeImports(row2) {
   const bytes2 = row2.imports;
-  const entries3 = JSON.parse(inflateRawSync6(bytes2).toString("utf8"));
+  const entries3 = JSON.parse(inflateRawSync5(bytes2).toString("utf8"));
   return new Map(entries3.map(([path, s, d]) => [path, { static: s, dynamic: d }]));
 }
 function environmentOf3(conn, project, hash4) {
@@ -59971,8 +59929,8 @@ async function selectNarrow(context, ledger, paths) {
     const groups3 = new Set([...reached].flatMap((id) => groupOf4.get(id) ?? []));
     let any = false;
     for (const group of groups3) {
-      const within5 = (id) => groupOf4.get(id) === group;
-      const { kept: kept6 } = editWork(context, ledger, cut, changed2, direct, observed2, within5);
+      const within4 = (id) => groupOf4.get(id) === group;
+      const { kept: kept6 } = editWork(context, ledger, cut, changed2, direct, observed2, within4);
       for (const id of kept6) add3(id, path);
       any ||= kept6.size > 0;
     }
@@ -92279,8 +92237,8 @@ function namedPoll(cwd, paths, options) {
           return {
             act: async () => {
               const ask2 = options.ask ?? askNamedRuns;
-              const within5 = deadline - options.now();
-              asks.asked(await ask2(root, toAsk, options.asker ?? "", within5, options.now));
+              const within4 = deadline - options.now();
+              asks.asked(await ask2(root, toAsk, options.asker ?? "", within4, options.now));
             }
           };
         }
@@ -99733,16 +99691,16 @@ function underRoot(root, cwd, paths) {
 function narrow(changed2, paths) {
   if (paths.length === 0) return changed2;
   const inside = (path) => paths.some((p) => p === "" || path === p || path.startsWith(`${p}/`));
-  const within5 = ({ path }) => inside(path);
+  const within4 = ({ path }) => inside(path);
   return {
     ...changed2,
     paths: changed2.paths.filter(inside),
-    functions: changed2.functions.filter(within5),
-    counted: changed2.counted.filter(within5),
-    inErrors: changed2.inErrors.filter(within5),
-    uncounted: changed2.uncounted.filter(within5),
-    ...changed2.baseCounted === void 0 ? {} : { baseCounted: changed2.baseCounted.filter(within5) },
-    ...changed2.omitted === void 0 ? {} : { omitted: changed2.omitted.filter(within5) }
+    functions: changed2.functions.filter(within4),
+    counted: changed2.counted.filter(within4),
+    inErrors: changed2.inErrors.filter(within4),
+    uncounted: changed2.uncounted.filter(within4),
+    ...changed2.baseCounted === void 0 ? {} : { baseCounted: changed2.baseCounted.filter(within4) },
+    ...changed2.omitted === void 0 ? {} : { omitted: changed2.omitted.filter(within4) }
   };
 }
 var versions = () => ({
@@ -103353,6 +103311,11 @@ async function locatedDir(root, commonDir, cacheRoot, note, deadline) {
   if (location2.warning !== null) note?.(location2.warning);
   return location2.dir;
 }
+function remainingWait(options) {
+  if (options.deadline === void 0) return options.lockWaitMs;
+  const left = Math.max(0, options.deadline - Date.now());
+  return options.lockWaitMs === void 0 ? left : Math.min(options.lockWaitMs, left);
+}
 async function placeFor(options) {
   const { root, commonDir, commit, fingerprint, cacheRoot } = options;
   const name3 = commitFolderName(commit, fingerprint);
@@ -103368,19 +103331,33 @@ async function placeFor(options) {
           registerPlace(cacheRoot, found4.folder);
           return found4;
         }
-        return withFileLock(placesLockPath(cacheRoot), "the commit worktrees' lock", async () => {
-          const live = liveCommitWorktrees(cacheRoot, dirs);
-          const configured = options.limit;
-          const freeBytes = options.freeBytes?.();
-          const ceiling = commitWorktreeCeiling({ configured, freeBytes, live: live.length });
-          if (live.length >= ceiling) return waitsLine(live, ceiling);
-          registerPlace(cacheRoot, join113(options.dir, name3));
-          const extra = { fingerprint };
-          const until = options.deadline === void 0 ? {} : { deadline: options.deadline };
-          return addCheckout({ root, commonDir, commit, dir: options.dir, name: name3, extra, ...until });
-        });
+        const placesWait = options.deadline === void 0 ? void 0 : Math.max(0, options.deadline - Date.now());
+        return withFileLock(
+          placesLockPath(cacheRoot),
+          "the commit worktrees' lock",
+          async () => {
+            const live = liveCommitWorktrees(cacheRoot, dirs);
+            const configured = options.limit;
+            const freeBytes = options.freeBytes?.();
+            const ceiling = commitWorktreeCeiling({ configured, freeBytes, live: live.length });
+            if (live.length >= ceiling) return waitsLine(live, ceiling);
+            registerPlace(cacheRoot, join113(options.dir, name3));
+            const extra = { fingerprint };
+            const until = options.deadline === void 0 ? {} : { deadline: options.deadline };
+            return addCheckout({
+              root,
+              commonDir,
+              commit,
+              dir: options.dir,
+              name: name3,
+              extra,
+              ...until
+            });
+          },
+          placesWait
+        );
       },
-      options.lockWaitMs
+      remainingWait(options)
     );
     if (typeof got !== "string") return got;
     if (performance.now() >= deadline)
@@ -112850,7 +112827,7 @@ var OutOfBudget = class extends Error {
   }
 };
 var over = (deadline) => deadline !== void 0 && performance.now() > deadline;
-function within3(path, folder) {
+function within2(path, folder) {
   return folder === "" || path === folder || path.startsWith(`${folder}/`);
 }
 function placeKeep(given2, cwd, home, hidden, deadline) {
@@ -112860,7 +112837,7 @@ function placeKeep(given2, cwd, home, hidden, deadline) {
   if (rel2 === ".." || rel2.startsWith(`..${sep37}`) || isAbsolute30(rel2))
     return problem("only a path under HOME can be kept");
   const path = rel2.split(sep37).join("/");
-  const hiding = hidden.find((h) => within3(path, h));
+  const hiding = hidden.find((h) => within2(path, h));
   if (hiding !== void 0)
     return problem(`it lies in the hidden path ${hiding === "" ? "HOME" : `~/${hiding}`}`);
   const link = linkIn(home, path, hidden, deadline);
@@ -112880,7 +112857,7 @@ function linkIn(home, path, hidden, deadline) {
   return linkBelow(home, path, hidden, deadline);
 }
 function linkBelow(home, path, hidden, deadline) {
-  if (hidden.some((h) => within3(path, h)) || over(deadline)) return null;
+  if (hidden.some((h) => within2(path, h)) || over(deadline)) return null;
   const stats = lstatSync10(join185(home, path), { throwIfNoEntry: false });
   if (stats === void 0) return void 0;
   if (stats.isSymbolicLink()) return path;
@@ -112894,7 +112871,7 @@ function linkBelow(home, path, hidden, deadline) {
 function ownHome(home, hidden, keep, into, deadline) {
   mkdirSync32(into, { recursive: true });
   const sorted4 = [...new Set(keep)].sort();
-  const roots = sorted4.filter((path, at2) => !sorted4.slice(0, at2).some((k) => within3(path, k)));
+  const roots = sorted4.filter((path, at2) => !sorted4.slice(0, at2).some((k) => within2(path, k)));
   for (const path of roots) {
     const parts3 = path === "" ? [] : path.split("/");
     for (let at2 = 1; at2 < parts3.length; at2++) {
@@ -112908,7 +112885,7 @@ function ownHome(home, hidden, keep, into, deadline) {
   }
 }
 function copyTree(home, into, path, hidden, deadline) {
-  if (hidden.some((h) => within3(path, h))) return;
+  if (hidden.some((h) => within2(path, h))) return;
   if (over(deadline)) throw new OutOfBudget();
   const from = join185(home, path);
   const stats = lstatSync10(from);
@@ -119322,8 +119299,8 @@ function daemonFlags(c, d) {
   if (life?.flag != null) add3(life.flag.flag, life.flag.reason, stop2);
   for (const reason2 of deadConsumers(c, pid)) add3("dead-consumer", reason2, null);
   const home = model.places.home;
-  const installed2 = d.harness !== null && within4(d.script, home) || within4(d.script, join203(home, ".local"));
-  if (!installed2 && d.root !== null && within4(d.root, model.places.tempDir)) {
+  const installed2 = d.harness !== null && within3(d.script, home) || within3(d.script, join203(home, ".local"));
+  if (!installed2 && d.root !== null && within3(d.root, model.places.tempDir)) {
     if (age3 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
     else if (age3 > NOT_INSTALLED_MS)
       add3(
@@ -119516,7 +119493,7 @@ function pids(daemons) {
 function heldBy3(daemons) {
   return daemons.length === 1 ? `daemon ${pids(daemons)} holds` : `daemons ${pids(daemons)} held`;
 }
-function within4(path, dir2) {
+function within3(path, dir2) {
   return path.startsWith(dir2.endsWith("/") ? dir2 : `${dir2}/`);
 }
 
@@ -122955,7 +122932,7 @@ var CLOSE_MS2 = 5e3;
 async function serveRunnerHost(options) {
   const send = (message3) => options.write(encodeLine(message3));
   const around = options.around ?? ((_, run8) => run8());
-  const within5 = options.within ?? ((call2) => call2());
+  const within4 = options.within ?? ((call2) => call2());
   let adapter = null;
   let building = null;
   let policy = null;
@@ -122982,7 +122959,7 @@ async function serveRunnerHost(options) {
   };
   const closeAdapter = async () => {
     const current2 = adapter ?? await building?.catch(() => null) ?? null;
-    if (current2 !== null) await within5(() => current2.close()).catch(() => {
+    if (current2 !== null) await within4(() => current2.close()).catch(() => {
     });
   };
   let stopping = null;
@@ -123175,7 +123152,7 @@ async function serveRunnerHost(options) {
       return;
     }
     const { id, m, a } = message3;
-    (m === "cancel" || m === "close" ? answer4(id, m, a) : within5(() => answer4(id, m, a))).then(
+    (m === "cancel" || m === "close" ? answer4(id, m, a) : within4(() => answer4(id, m, a))).then(
       (r) => {
         tellValues();
         send({ id, r: r === void 0 ? null : r });
