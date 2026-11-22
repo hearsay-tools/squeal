@@ -37,3 +37,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 020 | One quality gate: `squeal code --base`, a one-shot pass/fail check of changed functions for pre-PR and CI (#167; the human, 2026-11-09) | in-progress (first slice released in 0.1.423) |
 | 021 | Remote store and remote execution (a live shared store and its engine; test runs on another machine over SSH, then on demand; the human, 2026-11-11) | approved; wave 1 building |
 | 022 | Selection strategy (an option to re-run a test file by the modules it loaded, beside today's import closure; the human, 2026-11-14) | approved; phase 1 shipped (0.1.496); phase 2 closed, stored lists dropped (022-05, 2026-11-21) |
+| 024 | Antigravity adapter (CLI on Linux: hooks, native plugin, install and updates; the human, 2026-11-22) | approved |
