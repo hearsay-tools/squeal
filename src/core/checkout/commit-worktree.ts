@@ -166,6 +166,16 @@ async function locatedDir(
 
 type Place = Pick<Checkout, "folder" | "tree">;
 
+/** The checkout lock's wait: `lockWaitMs`, cut to what is left of `deadline` (review wave-23-fourth B1). */
+function remainingWait(options: {
+  readonly lockWaitMs?: number | undefined;
+  readonly deadline?: number | undefined;
+}): number | undefined {
+  if (options.deadline === undefined) return options.lockWaitMs;
+  const left = Math.max(0, options.deadline - Date.now());
+  return options.lockWaitMs === undefined ? left : Math.min(options.lockWaitMs, left);
+}
+
 /** Finds the worktree, takes over one whose owner is gone, or makes it when the ceiling has a place. */
 async function placeFor(
   options: EnsureCommitWorktreeOptions & {
@@ -191,20 +201,36 @@ async function placeFor(
           registerPlace(cacheRoot, found.folder);
           return found;
         }
-        return withFileLock(placesLockPath(cacheRoot), "the commit worktrees' lock", async () => {
-          // Review wave-22 B3: every repository's worktrees, the git-folder ones included.
-          const live = liveCommitWorktrees(cacheRoot, dirs);
-          const configured = options.limit;
-          const freeBytes = options.freeBytes?.();
-          const ceiling = commitWorktreeCeiling({ configured, freeBytes, live: live.length });
-          if (live.length >= ceiling) return waitsLine(live, ceiling);
-          registerPlace(cacheRoot, join(options.dir, name));
-          const extra = { fingerprint };
-          const until = options.deadline === undefined ? {} : { deadline: options.deadline };
-          return addCheckout({ root, commonDir, commit, dir: options.dir, name, extra, ...until });
-        });
+        // Review wave-23-fourth B1: the places lock waits only what is left of the call's deadline.
+        const placesWait =
+          options.deadline === undefined ? undefined : Math.max(0, options.deadline - Date.now());
+        return withFileLock(
+          placesLockPath(cacheRoot),
+          "the commit worktrees' lock",
+          async () => {
+            // Review wave-22 B3: every repository's worktrees, the git-folder ones included.
+            const live = liveCommitWorktrees(cacheRoot, dirs);
+            const configured = options.limit;
+            const freeBytes = options.freeBytes?.();
+            const ceiling = commitWorktreeCeiling({ configured, freeBytes, live: live.length });
+            if (live.length >= ceiling) return waitsLine(live, ceiling);
+            registerPlace(cacheRoot, join(options.dir, name));
+            const extra = { fingerprint };
+            const until = options.deadline === undefined ? {} : { deadline: options.deadline };
+            return addCheckout({
+              root,
+              commonDir,
+              commit,
+              dir: options.dir,
+              name,
+              extra,
+              ...until,
+            });
+          },
+          placesWait,
+        );
       },
-      options.lockWaitMs,
+      remainingWait(options),
     );
     if (typeof got !== "string") return got;
     if (performance.now() >= deadline)
