@@ -1,0 +1,32 @@
+2026-11-22T09:55:48.640Z [328591] squeal daemon: long write: store.sqlite write lock held 1942 ms by storeClosures < resolveClosures < process.processTicksAndRejections; 6315 rows written
+2026-11-22T09:55:51.603Z [329596] store process: serving ~/r/.git/squeal/code.sqlite at schema 1 on /run/user/1000/squeal-code-e1b2b09ca2250a1a.sock
+2026-11-22T09:55:53.909Z [328591] squeal daemon: serving ~/r on /run/user/1000/squeal-03b90b3d83f51152.sock
+2026-11-22T09:55:53.969Z [328591] squeal daemon: full integrity check: ok
+2026-11-22T09:55:57.259Z [329596] store process: long write: code.sqlite write lock held 574 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 201 rows written
+2026-11-22T09:55:58.013Z [329596] store process: long write: code.sqlite write lock held 289 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 201 rows written
+2026-11-22T09:55:59.074Z [329596] store process: long write: code.sqlite write lock held 439 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 201 rows written
+2026-11-22T09:55:59.767Z [329596] store process: long write: code.sqlite write lock held 351 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 201 rows written
+2026-11-22T09:56:00.761Z [329596] store process: long write: code.sqlite write lock held 276 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 201 rows written
+2026-11-22T09:56:02.028Z [329596] store process: long write: code.sqlite write lock held 498 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 201 rows written
+2026-11-22T09:56:02.357Z [329596] store process: long write: code.sqlite write lock held 318 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 201 rows written
+2026-11-22T09:56:02.993Z [329596] store process: long write: code.sqlite write lock held 534 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 849 rows written
+2026-11-22T09:56:03.464Z [329596] store process: long write: code.sqlite write lock held 319 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 1107 rows written
+2026-11-22T09:56:04.144Z [329596] store process: long write: code.sqlite write lock held 314 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 831 rows written
+2026-11-22T09:56:05.158Z [329596] store process: long write: code.sqlite write lock held 574 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 1125 rows written
+2026-11-22T09:56:06.406Z [329596] store process: long write: code.sqlite write lock held 507 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 883 rows written
+2026-11-22T09:56:07.585Z [329596] store process: long write: code.sqlite write lock held 731 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 1047 rows written
+2026-11-22T09:56:08.071Z [329596] store process: long write: code.sqlite write lock held 267 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 1055 rows written
+2026-11-22T09:56:08.962Z [329596] store process: long write: code.sqlite write lock held 696 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 1283 rows written
+2026-11-22T09:56:09.586Z [329596] store process: long write: code.sqlite write lock held 448 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 1419 rows written
+2026-11-22T09:56:10.316Z [329596] store process: long write: code.sqlite write lock held 414 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 35 rows written
+2026-11-22T09:56:12.511Z [329596] store process: long write: code.sqlite write lock held 271 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 821 rows written
+2026-11-22T09:56:13.159Z [329596] store process: long write: code.sqlite write lock held 555 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 62908 rows written
+2026-11-22T09:56:13.711Z [329596] store process: long write: code.sqlite write lock held 506 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 62906 rows written
+2026-11-22T09:56:15.421Z [328591] squeal daemon: code store: last minute: 163 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T09:56:41.846Z [330499] squeal daemon: long write: store.sqlite write lock held 1257 ms by #write < Ledger.commit < commitFirst; 4213 rows written
+2026-11-22T09:56:43.015Z [330499] squeal daemon: long write: store.sqlite write lock held 1081 ms by storeClosures < unprovenWalks < baseline; 3980 rows written
+2026-11-22T09:56:43.276Z [330499] squeal daemon: long write: store.sqlite write lock held 259 ms by beat < squeal.mjs:106569 < AsyncLocalStorage.run; 2 rows written
+2026-11-22T09:56:49.602Z [330499] squeal daemon: serving ~/.cache/squeal/checkouts/e1b2b09ca2250a1a/commit-2686326549c57809c3313dda77dec5afd6c8914a-689b346b5e4535af/tree on /run/user/1000/squeal-1467e28635b7e766.sock
+2026-11-22T09:56:51.608Z [329596] store process: last minute: edit: 163 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 12878 ms
+2026-11-22T09:57:06.134Z [330499] squeal daemon: daemon stopped: squeal stop
+2026-11-22T09:57:07.103Z [330499] squeal daemon: daemon stopped: squeal stop; the commit worktree is removed

@@ -1,0 +1,3 @@
+group-1 idle-after-GC (20 s before group) rss 639 pss 547 daemon rss 267 | after group rss 1356 pss 1059 {"daemon":267,"runner-host":372}
+group-2 idle-after-GC (20 s before group) rss 623 pss 530 daemon rss 251 | after group rss 1407 pss 1146 {"daemon":251,"runner-host":372}
+group-3 idle-after-GC (20 s before group) rss 637 pss 545 daemon rss 270 | after group rss 2191 pss 1390 {"daemon":270,"runner-host":367}

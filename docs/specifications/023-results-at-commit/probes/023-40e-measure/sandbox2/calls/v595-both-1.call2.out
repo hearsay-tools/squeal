@@ -1,0 +1,5 @@
+squeal status --at 268632654: 1 test files at 268632654 against the working tree (HEAD 5ca787002); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
+--run: no file with no result at 268632654 that the change selects to run
+--run, now: every test file the change selects has a result in the working tree

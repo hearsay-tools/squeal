@@ -1,0 +1,15 @@
+2026-11-22T09:18:38.710Z [160529] squeal daemon: long write: store.sqlite write lock held 1260 ms by storeClosures < resolveClosures < process.processTicksAndRejections; 6315 rows written
+2026-11-22T09:18:39.990Z [161357] store process: serving ~/r/.git/squeal/code.sqlite at schema 1 on /run/user/1000/squeal-code-e1b2b09ca2250a1a.sock
+2026-11-22T09:18:41.204Z [160529] squeal daemon: serving ~/r on /run/user/1000/squeal-03b90b3d83f51152.sock
+2026-11-22T09:18:41.246Z [160529] squeal daemon: full integrity check: ok
+2026-11-22T09:18:49.500Z [161357] store process: long write: code.sqlite write lock held 365 ms by GuardedWriter.write < runJob < MessagePort.<anonymous>; 62908 rows written
+2026-11-22T09:19:04.423Z [161664] squeal daemon: long write: store.sqlite write lock held 331 ms by storeClosures < unprovenWalks < baseline; 4048 rows written
+2026-11-22T09:19:08.387Z [161664] squeal daemon: serving ~/.cache/squeal/checkouts/e1b2b09ca2250a1a/commit-2686326549c57809c3313dda77dec5afd6c8914a-689b346b5e4535af/tree on /run/user/1000/squeal-1467e28635b7e766.sock
+2026-11-22T09:19:18.887Z [160529] squeal daemon: code store: last minute: 163 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T09:19:39.990Z [161357] store process: last minute: edit: 163 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 3346 ms
+2026-11-22T09:20:04.086Z [160529] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 803 to 495 MiB in a 151 ms pause
+2026-11-22T09:20:12.258Z [161664] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 385 to 216 MiB in a 58 ms pause
+2026-11-22T09:24:07.665Z [161664] squeal daemon: long write: store.sqlite write lock held 450 ms by beat < squeal.mjs:106459 < AsyncLocalStorage.run; 2 rows written
+2026-11-22T09:28:19.061Z [160529] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 343 to 312 MiB in a 92 ms pause
+2026-11-22T09:32:14.026Z [161664] squeal daemon: daemon stopped: squeal stop
+2026-11-22T09:32:14.812Z [161664] squeal daemon: daemon stopped: squeal stop; the commit worktree is removed

@@ -1,0 +1,5 @@
+squeal status --at 268632654: 1 test files at 268632654 against the working tree (HEAD 5ca787002); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown
+--run: queued 1 test files with no result at 268632654 in its commit daemon (its worktree ~/.cache/squeal/checkouts/e1b2b09ca2250a1a/commit-2686326549c57809c3313dda77dec5afd6c8914a-689b346b5e4535af/tree); 1 have a result now (16.8 s)
+--run, now: queued 1 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now

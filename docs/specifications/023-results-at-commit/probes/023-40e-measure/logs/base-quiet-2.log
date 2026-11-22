@@ -1,0 +1,11 @@
+2026-11-22T08:37:28.302Z [363387] squeal daemon: long write: store.sqlite write lock held 1289 ms by storeClosures < resolveClosures < baseline; 6315 rows written
+2026-11-22T08:37:30.041Z [363767] store process: serving ~/r/.git/squeal/code.sqlite at schema 1 on /run/user/1000/squeal-code-e1b2b09ca2250a1a.sock
+2026-11-22T08:37:31.817Z [363387] squeal daemon: serving ~/r on /run/user/1000/squeal-03b90b3d83f51152.sock
+2026-11-22T08:37:31.849Z [363387] squeal daemon: full integrity check: ok
+2026-11-22T08:37:53.699Z [363387] squeal daemon: long write: store.sqlite write lock held 290 ms by beat < squeal.mjs:106459 < AsyncLocalStorage.run; 2 rows written
+2026-11-22T08:37:58.434Z [364490] squeal daemon: long write: store.sqlite write lock held 335 ms by storeClosures < unprovenWalks < baseline; 4048 rows written
+2026-11-22T08:38:01.770Z [364490] squeal daemon: serving ~/.cache/squeal/checkouts/e1b2b09ca2250a1a/commit-2686326549c57809c3313dda77dec5afd6c8914a-689b346b5e4535af/tree on /run/user/1000/squeal-1467e28635b7e766.sock
+2026-11-22T08:38:08.130Z [363387] squeal daemon: code store: last minute: 163 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-22T08:38:30.042Z [363767] store process: last minute: edit: 163 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 2891 ms
+2026-11-22T08:38:38.641Z [364490] squeal daemon: daemon stopped: squeal stop
+2026-11-22T08:38:39.222Z [364490] squeal daemon: daemon stopped: squeal stop; the commit worktree is removed

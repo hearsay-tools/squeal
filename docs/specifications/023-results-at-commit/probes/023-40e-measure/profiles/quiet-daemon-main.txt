@@ -1,0 +1,84 @@
+profile 24.0 s wall, window 24.0 s
+
+by area
+  19.96 s  (idle)
+   1.84 s  squeal.mjs
+   0.40 s  native:lstat
+   0.27 s  node:crypto/hash
+   0.23 s  (gc)
+   0.21 s  (program)
+   0.12 s  native:close
+   0.11 s  native:openFileHandle
+   0.11 s  native:read
+   0.10 s  node:child_process
+   0.09 s  node:fs/promises
+   0.08 s  native:fstat
+   0.06 s  node:path
+   0.05 s  node:modules/esm
+   0.05 s  node:errors
+
+by nearest named squeal function (busy only)
+   1.03 s  (none)
+   0.40 s  transaction
+   0.27 s  matches3
+   0.24 s  blobHash
+   0.17 s  set
+   0.15 s  changes
+   0.15 s  stat
+   0.12 s  runGit
+   0.12 s  lstatOrNull2
+   0.06 s  release
+   0.06 s  acquire
+   0.05 s  put
+   0.05 s  isLinkedDir
+   0.05 s  unlink
+   0.05 s  keyFromSegments
+   0.04 s  encodeImports
+   0.04 s  get
+   0.04 s  hashOf
+   0.04 s  setClosure
+   0.04 s  of
+   0.04 s  run
+   0.04 s  toAbsolute
+   0.03 s  baseline
+   0.03 s  assembleClosure
+   0.03 s  checkoutChange
+   0.03 s  normalizeRelativePath
+   0.03 s  all
+   0.03 s  readCleanIndexHashes
+   0.03 s  clearMark
+   0.03 s  isInside
+
+by self function
+  19.96 s  (idle) :-1
+   0.40 s  lstat :-1
+   0.34 s  transaction squeal.mjs:1099
+   0.25 s  update hash:185
+   0.23 s  (garbage collector) :-1
+   0.21 s  (program) :-1
+   0.17 s  set squeal.mjs:744
+   0.15 s  changes squeal.mjs:1082
+   0.12 s  close :-1
+   0.11 s  openFileHandle :-1
+   0.11 s  read :-1
+   0.09 s  spawn child_process:384
+   0.08 s  fstat :-1
+   0.06 s  release squeal.mjs:79531
+   0.06 s  acquire squeal.mjs:28057
+   0.05 s  put squeal.mjs:6211
+   0.05 s  wrappedFn errors:537
+   0.05 s  join node:path:1328
+   0.05 s  compileSourceTextModule utils:316
+   0.05 s  unlink squeal.mjs:794
+   0.04 s  (anon) squeal.mjs:106650
+   0.04 s  get squeal.mjs:1085
+   0.04 s  hashOf squeal.mjs:10697
+   0.04 s  run squeal.mjs:1080
+   0.03 s  lstat promises:1734
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 2.1 | (none) 0.8 | matches3 0.3 | transaction 0.3
+   5 s: (idle) 4.0 | (none) 0.2 | transaction 0.1 | lstatOrNull2 0.1
+  10 s: (idle) 5.0 | (none) 0.0 | stat 0.0 | isSymlink 0.0
+  15 s: (idle) 5.0 | (none) 0.0
+  20 s: (idle) 3.9 | (none) 0.0 | clearMark 0.0 | release 0.0

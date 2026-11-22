@@ -1,0 +1,6 @@
+commit daemon pids 200522 200591 200678
+start (calls): 24 s, daemons 3; sum RSS median 2503 peak 3321 MiB; sum PSS median 2191 peak 2873 MiB; per daemon at peak RSS 1001, 1042, 1278; worktree daemon median 1773; MemAvailable min 2182 MiB; max processes 4
+idle after calls (first 55 s): 55 s, daemons 3; sum RSS median 2258 peak 2269 MiB; sum PSS median 1927 peak 1938 MiB; per daemon at peak RSS 784, 706, 779; worktree daemon median 1466; MemAvailable min 2907 MiB; max processes 2
+idle after calls (after 60 s): 23 s, daemons 3; sum RSS median 1751 peak 1752 MiB; sum PSS median 1420 peak 1421 MiB; per daemon at peak RSS 603, 536, 613; worktree daemon median 1010; MemAvailable min 4420 MiB; max processes 2
+groups: 602 s, daemons 3; sum RSS median 3895 peak 6025 MiB; sum PSS median 2895 peak 4014 MiB; per daemon at peak RSS 2415, 1654, 1956; worktree daemon median 516; MemAvailable min 2110 MiB; max processes 30
+idle after groups: 12 s, daemons 3; sum RSS median 3043 peak 3548 MiB; sum PSS median 2395 peak 2503 MiB; per daemon at peak RSS 626, 1259, 1662; worktree daemon median 520; MemAvailable min 4067 MiB; max processes 12

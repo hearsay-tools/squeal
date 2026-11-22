@@ -1,0 +1,82 @@
+profile 14.9 s wall, window 14.9 s
+
+by area
+  14.64 s  (idle)
+   0.15 s  squeal.mjs
+   0.05 s  node:modules/esm
+   0.02 s  (program)
+   0.02 s  (gc)
+   0.02 s  node:child_process
+   0.01 s  node:crypto/hash
+   0.01 s  node:process/task_queues
+   0.01 s  node:bootstrap/realm
+   0.00 s  node:streams/readable
+   0.00 s  node:fs/promises
+   0.00 s  node:errors
+   0.00 s  native:decodeUTF8
+   0.00 s  node:net
+   0.00 s  node:fs/utils
+
+by nearest named squeal function (busy only)
+   0.12 s  (none)
+   0.07 s  release
+   0.02 s  runGit
+   0.02 s  all
+   0.01 s  __init
+   0.01 s  close
+   0.01 s  blobsOfTree
+   0.00 s  requestDaemon
+   0.00 s  compile
+   0.00 s  toTestFileKey
+   0.00 s  connect
+   0.00 s  merge
+   0.00 s  settle
+   0.00 s  oneOfOrNull
+   0.00 s  globToRegExp
+   0.00 s  pragmaNumber2
+   0.00 s  entriesOf6
+   0.00 s  rowsSide
+   0.00 s  list
+   0.00 s  nodeSetting
+   0.00 s  writeMarker
+   0.00 s  fromRow
+   0.00 s  worktreeNow
+   0.00 s  wait
+   0.00 s  createFileRepo
+   0.00 s  testFileId
+   0.00 s  loadPolicy
+   0.00 s  shellWord
+   0.00 s  readHolds
+   0.00 s  settle3
+
+by self function
+  14.64 s  (idle) :-1
+   0.07 s  release squeal.mjs:79531
+   0.04 s  compileSourceTextModule utils:316
+   0.02 s  (program) :-1
+   0.02 s  (garbage collector) :-1
+   0.02 s  all squeal.mjs:1088
+   0.02 s  spawn child_process:384
+   0.01 s  __init squeal.mjs:15
+   0.01 s  blobsOfTree squeal.mjs:25611
+   0.00 s  close squeal.mjs:1142
+   0.00 s  nextTick task_queues:112
+   0.00 s  (anon) hash:0
+   0.00 s  compile squeal.mjs:1906
+   0.00 s  toTestFileKey squeal.mjs:6313
+   0.00 s  compileForInternalLoader realm:382
+   0.00 s  requestDaemon squeal.mjs:18168
+   0.00 s  connect squeal.mjs:20142
+   0.00 s  merge squeal.mjs:1835
+   0.00 s  defaultPrepareStackTrace errors:95
+   0.00 s  decodeUTF8 :-1
+   0.00 s  (anon) squeal.mjs:92475
+   0.00 s  internalConnect node:net:1403
+   0.00 s  oneOfOrNull squeal.mjs:4661
+   0.00 s  globToRegExp squeal.mjs:1895
+   0.00 s  processTicksAndRejections task_queues:71
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 4.8 | (none) 0.1 | release 0.1 | runGit 0.0
+   5 s: (idle) 5.0 | (none) 0.0 | requestDaemon 0.0
+  10 s: (idle) 4.9 | (none) 0.0 | all 0.0 | runGit 0.0

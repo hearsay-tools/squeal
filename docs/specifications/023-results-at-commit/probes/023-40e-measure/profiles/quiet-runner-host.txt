@@ -1,0 +1,84 @@
+profile 20.4 s wall, window 20.4 s
+
+by area
+  16.79 s  (idle)
+   0.74 s  node.js
+   0.73 s  parse-Bgfg7ZwM.mjs
+   0.53 s  squeal.mjs
+   0.24 s  (gc)
+   0.22 s  resolve-tsconfig-AhZdsp4x.mjs
+   0.17 s  (program)
+   0.13 s  normalize-string-or-regex-B8U5_Ikr.mjs
+   0.11 s  node:modules/esm
+   0.07 s  index.DpLw24bj.js
+   0.06 s  node:path
+   0.05 s  native:existsSync
+   0.04 s  native:readFileUtf8
+   0.04 s  node:fs/promises
+   0.03 s  native:close
+
+by nearest named squeal function (busy only)
+   1.61 s  (none)
+   0.56 s  jsonParseAst
+   0.22 s  transformSync
+   0.21 s  walk
+   0.15 s  visit2
+   0.13 s  invokeBuiltinHook
+   0.10 s  parseSync
+   0.07 s  loadVitest
+   0.04 s  depToPath
+   0.04 s  importTargets
+   0.03 s  get program
+   0.03 s  readSource
+   0.02 s  sourceLoads
+   0.02 s  fileImports
+   0.02 s  resolutionInputs
+   0.02 s  parse
+   0.02 s  encodeLine
+   0.02 s  statOrNull2
+   0.02 s  moduleLoads
+   0.02 s  readStamp
+   0.01 s  toRelative
+   0.01 s  moduleGlobs
+   0.01 s  isProjectFile
+   0.01 s  sameList2
+   0.01 s  packageRoot
+   0.01 s  send
+   0.01 s  builtinOf
+   0.01 s  specifierOf
+   0.01 s  applyFix
+   0.01 s  __init
+
+by self function
+  16.79 s  (idle) :-1
+   0.56 s  jsonParseAst parse-Bgfg7ZwM.mjs:25
+   0.24 s  (garbage collector) :-1
+   0.22 s  transformSync resolve-tsconfig-AhZdsp4x.mjs:101
+   0.21 s  walk squeal.mjs:48308
+   0.17 s  (program) :-1
+   0.13 s  invokeBuiltinHook normalize-string-or-regex-B8U5_Ikr.mjs:42
+   0.10 s  compileSourceTextModule utils:316
+   0.10 s  parseSync parse-Bgfg7ZwM.mjs:69
+   0.09 s  visit2 squeal.mjs:26653
+   0.08 s  visit node.js:15935
+   0.06 s  enter node.js:16571
+   0.06 s  addUneditedChunk node.js:3875
+   0.05 s  existsSync :-1
+   0.05 s  traceMappings node.js:1544
+   0.04 s  readFileUtf8 :-1
+   0.04 s  i node.js:7243
+   0.03 s  get program parse-Bgfg7ZwM.mjs:7
+   0.03 s  close :-1
+   0.03 s  importTargets squeal.mjs:26689
+   0.02 s  fileImports squeal.mjs:26740
+   0.02 s  parse parse-Bgfg7ZwM.mjs:54
+   0.02 s  openFileHandle :-1
+   0.02 s  lstat :-1
+   0.02 s  (anon) node.js:16555
+
+timeline (5 s buckets, top 3)
+   0 s: (idle) 2.0 | (none) 1.3 | jsonParseAst 0.5 | transformSync 0.2
+   5 s: (idle) 4.5 | (none) 0.3 | jsonParseAst 0.0 | visit2 0.0
+  10 s: (idle) 5.0 | (none) 0.0
+  15 s: (idle) 5.0
+  20 s: (idle) 0.3 | (none) 0.0

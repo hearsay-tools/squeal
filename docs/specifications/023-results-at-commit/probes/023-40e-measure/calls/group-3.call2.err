@@ -1,0 +1,7 @@
+squeal: asking the commit daemon at 268632654 and this worktree's daemon
+Warning: Detected unsettled top-level await at file://~/m/plugin/dist/cli/squeal.mjs:125693
+process.exitCode = await main(process.argv.slice(2), {
+                   ^
+
+
+

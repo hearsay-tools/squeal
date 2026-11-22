@@ -1,0 +1,37 @@
+Selected test files of group tests completed at revision 0: 6 known failures: 6 tests; 40 test files, 40 queued by this request
+Group tests at revision 0: these paths select 40 test files; 40 queued, promoted ahead of the other queued files, which run now.
+
+Revision: 0
+Squeal has not yet read edits made after 09:20:45 UTC; these results cover revision 0 and earlier. `squeal status --wait 60000 <path>...` asks it to read them and waits for the files your paths select.
+Known failures: 6 (6 tests); not current: 2064 of 2105 test files (2064 unknown)
+  FAIL  test/scheduler/backlog-wall.test.ts > scheduler: a backlog tier is budgeted by its wall time (C4 step 5, task 001-366) > caps the wall estimate at half of runner.timeoutMs when that is less than 120 s
+        Test timed out in 5000ms.
+        at test/scheduler/backlog-wall.test.ts:151:3, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 4 min ago in this worktree at revision 0, load 1.07 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry test/scheduler/backlog-wall.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  test/scheduler/backlog-wall.test.ts > scheduler: a backlog tier is budgeted by its wall time (C4 step 5, task 001-366) > fills one round of 4, then keeps each tier's wall estimate within 120 s
+        Test timed out in 5000ms.
+        at test/scheduler/backlog-wall.test.ts:28:3, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 4 min ago in this worktree at revision 0, load 1.07 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry test/scheduler/backlog-wall.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  test/scheduler/backlog-wall.test.ts > scheduler: a backlog tier is budgeted by its wall time (C4 step 5, task 001-366) > holds at most a node:test lane's width in permits, and the other lane runs beside it with the rest
+        Test timed out in 5000ms.
+        at test/scheduler/backlog-wall.test.ts:80:3, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 4 min ago in this worktree at revision 0, load 1.07 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry test/scheduler/backlog-wall.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  test/scheduler/backlog-wall.test.ts > scheduler: a backlog tier is budgeted by its wall time (C4 step 5, task 001-366) > runs 16 heavy files in one tier when the pool offers 23 workers
+        Test timed out in 5000ms.
+        at test/scheduler/backlog-wall.test.ts:21:3, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 4 min ago in this worktree at revision 0, load 1.07 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry test/scheduler/backlog-wall.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  test/scheduler/backlog-wall.test.ts > scheduler: a backlog tier is budgeted by its wall time (C4 step 5, task 001-366) > sums the estimates of parts that run one after another (review wave-3 B1)
+        Test timed out in 5000ms.
+        at test/scheduler/backlog-wall.test.ts:114:3, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 4 min ago in this worktree at revision 0, load 1.07 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry test/scheduler/backlog-wall.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  test/scheduler/backlog-wall.test.ts > scheduler: a backlog tier is budgeted by its wall time (C4 step 5, task 001-366) > trims a tier granted less than offered to the prefix that fits at the grant
+        Test timed out in 5000ms.
+        at test/scheduler/backlog-wall.test.ts:40:3, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 4 min ago in this worktree at revision 0, load 1.07 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry test/scheduler/backlog-wall.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+Affected checks: 200 passed (159 tests, 41 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  2064 test files never run at their inputs, nothing queued them (the baseline is lookup-only): test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 2061 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 2064 test files not current here
+Complexity: no file counted yet.
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+More: `squeal status --full` adds the worktree and daemon, the 2064 test files without a result one by one and 1 note
