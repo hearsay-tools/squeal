@@ -9,7 +9,7 @@ import {
   storedPart,
 } from "../coverage/parts.js";
 import { hasParts, PART_REFRESH_MS } from "./parts.js";
-import type { CodeCoverageRepo } from "./types.js";
+import type { CodeCoverageRepo, CoverageRecordPut } from "./types.js";
 
 /** `CODE_INDEXES`'s index of each record's stored time (row 015-44). */
 const INDEX = "coverage_stored";
@@ -74,6 +74,79 @@ export function createCoverageRepo(conn: Connection, sent?: () => Promise<void>)
     );
     return row === null ? null : num(row, "recorded_at");
   };
+  /** The record's parts, by hash, in a transaction: its stored time, at which each part is used. */
+  const writeParts = ({ key, record, at }: CoverageRecordPut): number => {
+    const before = storedAt(key);
+    const stored = before === null ? at : Math.max(at, before + 1);
+    const known = new Map<string, number>();
+    for (const row of conn.all(
+      `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+      JSON.stringify(record.parts.map((p) => p.hash)),
+    )) {
+      known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
+    }
+    for (const part of record.parts) {
+      if (known.has(part.hash)) continue;
+      known.set(part.hash, stored);
+      conn.run(
+        `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
+         ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
+        part.hash,
+        part.bytes,
+        stored,
+      );
+    }
+    const stale = [...known].filter(([, usedAt]) => usedAt < stored - PART_REFRESH_MS);
+    if (stale.length > 0) {
+      conn.run(
+        `UPDATE coverage_parts SET used_at = ?
+         WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
+        stored,
+        JSON.stringify(stale.map(([hash]) => hash)),
+        stored - PART_REFRESH_MS,
+      );
+    }
+    return stored;
+  };
+  /** The record's manifest, naming its written parts by id, in a transaction. */
+  const writeManifest = ({ key, record }: CoverageRecordPut, stored: number): void => {
+    const ids = new Map<string, number>();
+    for (const row of conn.all(
+      `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+      JSON.stringify(record.parts.map((p) => p.hash)),
+    )) {
+      ids.set(str(row, "hash"), num(row, "id"));
+    }
+    const listed = record.parts.map((part) => ids.get(part.hash));
+    if (listed.some((id) => id === undefined)) {
+      throw new Error("squeal code store: a coverage part is missing after its insert");
+    }
+    conn.run(
+      UPSERT,
+      key.resultKey,
+      key.providerVersion,
+      manifestBytes(record, listed as number[]),
+      stored,
+    );
+  };
+  /**
+   * Row 021-36 (D22.5): two transactions, since a batch sent to the store process cannot
+   * read back the ids its inserts made. The first writes the parts by hash, the second, once
+   * the first is written (`sent`), the manifests that name them by id. A part the first wrote
+   * or refreshed is used at its record's stored time, so no prune between the two takes it.
+   * Row 024-03: every record of `items` in the same two transactions.
+   */
+  const putPartsBatch = async (items: readonly CoverageRecordPut[]): Promise<void> => {
+    if (items.length === 0) return;
+    const stored = conn.transaction(() => items.map(writeParts));
+    if (sent !== undefined) await sent();
+    conn.transaction(() => {
+      items.forEach((item, i) => {
+        writeManifest(item, stored[i] ?? item.at);
+      });
+    });
+    if (sent !== undefined) await sent();
+  };
   return {
     get(key) {
       return conn.read(() => {
@@ -96,67 +169,7 @@ export function createCoverageRepo(conn: Connection, sent?: () => Promise<void>)
     put(key, record, at) {
       conn.run(UPSERT, key.resultKey, key.providerVersion, record, at);
     },
-    async putParts(key, record, at) {
-      // Row 021-36 (D22.5): two transactions, since a batch sent to the store process cannot
-      // read back the ids its inserts made. The first writes the parts by hash, the second, once
-      // the first is written (`sent`), the manifest that names them by id. A part the first wrote
-      // or refreshed is used at `stored`, so no prune between the two takes it.
-      const hashes = JSON.stringify(record.parts.map((p) => p.hash));
-      const stored = conn.transaction(() => {
-        const before = storedAt(key);
-        const stored = before === null ? at : Math.max(at, before + 1);
-        const known = new Map<string, number>();
-        for (const row of conn.all(
-          `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
-          hashes,
-        )) {
-          known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
-        }
-        for (const part of record.parts) {
-          if (known.has(part.hash)) continue;
-          known.set(part.hash, stored);
-          conn.run(
-            `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
-             ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
-            part.hash,
-            part.bytes,
-            stored,
-          );
-        }
-        const stale = [...known].filter(([, usedAt]) => usedAt < stored - PART_REFRESH_MS);
-        if (stale.length > 0) {
-          conn.run(
-            `UPDATE coverage_parts SET used_at = ?
-             WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
-            stored,
-            JSON.stringify(stale.map(([hash]) => hash)),
-            stored - PART_REFRESH_MS,
-          );
-        }
-        return stored;
-      });
-      if (sent !== undefined) await sent();
-      conn.transaction(() => {
-        const ids = new Map<string, number>();
-        for (const row of conn.all(
-          `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
-          hashes,
-        )) {
-          ids.set(str(row, "hash"), num(row, "id"));
-        }
-        const listed = record.parts.map((part) => ids.get(part.hash));
-        if (listed.some((id) => id === undefined)) {
-          throw new Error("squeal code store: a coverage part is missing after its insert");
-        }
-        conn.run(
-          UPSERT,
-          key.resultKey,
-          key.providerVersion,
-          manifestBytes(record, listed as number[]),
-          stored,
-        );
-      });
-      if (sent !== undefined) await sent();
-    },
+    putParts: (key, record, at) => putPartsBatch([{ key, record, at }]),
+    putPartsBatch,
   };
 }

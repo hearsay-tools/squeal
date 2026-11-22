@@ -15,7 +15,7 @@ import { commonDir, ON, open } from "../helpers.js";
  * each record it stores, says while it has work in hand, and a throw from
  * the callback is logged, never the writer's; `has` reads a record's
  * presence and writes nothing. Row 015-79: a write the store refused is
- * counted, never told as stored.
+ * counted, never told as stored. Row 024-03: told once per batch.
  */
 
 const dirs: string[] = [];
@@ -46,7 +46,7 @@ function payloadFile(test: string): CoveredFile {
 }
 
 describe("coverage records' writer, for the coverage step", () => {
-  it("calls onStored after each record, is busy until the last, and logs a callback's throw", async () => {
+  it("calls onStored after each batch, is busy until the last, and logs a callback's throw", async () => {
     const dir = commonDir();
     const logs: string[] = [];
     let calls = 0;
@@ -67,15 +67,19 @@ describe("coverage records' writer, for the coverage step", () => {
     expect(writer.busy()).toBe(true);
     await writer.idle();
     expect(writer.busy()).toBe(false);
+    // Row 024-03: the next run's record is a batch of its own, told again.
+    writer.collected({ runId: "r2", files: [payloadFile("c.test.js")] });
+    await writer.idle();
     await writer.close();
 
     expect(calls).toBe(2);
-    expect(logs).toEqual(["coverage: after storing a.test.js: Error: boom"]);
+    expect(logs).toEqual(["coverage: after storing a.test.js and 1 more: Error: boom"]);
     const store = open(dir);
     const key = (resultKey: string) => ({ resultKey, providerVersion: COVERAGE_RECORD_VERSION });
     expect(store.coverage.has(key("key-a.test.js"))).toBe(true);
     expect(store.coverage.has(key("key-b.test.js"))).toBe(true);
-    expect(store.coverage.has(key("key-c.test.js"))).toBe(false);
+    expect(store.coverage.has(key("key-c.test.js"))).toBe(true);
+    expect(store.coverage.has(key("key-d.test.js"))).toBe(false);
     expect(store.coverage.has({ resultKey: "key-a.test.js", providerVersion: 0 })).toBe(false);
   });
 

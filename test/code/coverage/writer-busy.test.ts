@@ -143,7 +143,8 @@ describe("the records' writer beside a busy code store (row 015-79)", () => {
       );
       expect(existsSync(file.payload)).toBe(false);
     }
-    expect(seen.stored).toBe(3);
+    // Row 024-03: the three records retry as one batch, told once.
+    expect(seen.stored).toBe(1);
     // A retry keeps the key it found, and the result waits stay its own: one look each.
     expect(asked).toEqual(["a.test.js", "b.test.js", "c.test.js"]);
     expect(made.dropped()).toEqual({});

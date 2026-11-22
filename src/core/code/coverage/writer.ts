@@ -35,6 +35,12 @@ export const RESULT_WAITS_MS = [0, 250, 1_000, 5_000, 30_000] as const;
  */
 export const BUSY_BUDGET_MS = 120_000;
 
+/** Spec 024 D3 (row 024-03): the most records one code store write holds. */
+export const MAX_BATCH_FILES = 25;
+
+/** Row 024-03: how long a record waits for others to share its write. */
+export const BATCH_WINDOW_MS = 200;
+
 export interface CoverageWriterOptions {
   readonly commonDir: AbsolutePath;
   /** Spec 021 D22 (row 021-36): the code store's connection, through the store process. */
@@ -53,8 +59,9 @@ export interface CoverageWriterOptions {
   /** Persists a note status lists (row 015-79): the drops by cause, bounded (`Drops`). */
   readonly note?: (text: string, topic: string) => void;
   /**
-   * After each record is stored (row 015-12): the code pass judges CRAP
-   * again. A throw is logged, never the writer's.
+   * After each write of records is stored (row 015-12; once per batch since
+   * row 024-03): the code pass judges CRAP again. A throw is logged, never
+   * the writer's.
    */
   readonly onStored?: () => void;
   /**
@@ -73,11 +80,11 @@ export interface CoverageWriter {
   collected(run: CoverageRun): void;
   /** Resolves once nothing is mapped or waits. */
   idle(): Promise<void>;
-  /** A payload is queued or mapped, or a record waits for its result or the store (row 015-12). */
+  /** A payload is queued or mapped, or a record waits for its result, its batch or the store (row 015-12). */
   busy(): boolean;
   /** The completed test files that got no record so far, by cause (row 015-79). */
   dropped(): Readonly<Partial<Record<DropCause, number>>>;
-  /** Stops waiting, deletes the payloads not mapped yet and closes the code store. */
+  /** Stops waiting, stores the records batched, deletes the payloads not mapped yet and closes the code store. */
   close(): Promise<void>;
 }
 
@@ -93,6 +100,9 @@ interface Job {
   busySince?: EpochMs;
 }
 
+/** A job with its record and key, waiting for its batch's write (row 024-03). */
+type Ready = Job & { readonly record: SharedRecord; readonly key: CheckKey };
+
 /**
  * Off the scheduler's path (D8): `collected` only queues. Each job is
  * mapped in the worker thread while one runs, then looks for its key at
@@ -103,6 +113,9 @@ interface Job {
  * kept. A write that meets a busy store waits at most `BUSY_SLICE_MS`; its
  * job keeps record and key and is retried after `busyBackoffMs`, paced, and
  * the jobs after it wait with it, so retries never stack (row 015-79).
+ * Spec 024 D3 (row 024-03): a record with its key waits in `ready` until
+ * `MAX_BATCH_FILES` do or `BATCH_WINDOW_MS` passed, and the batch is
+ * written at once, paced; `onStored` is told once per batch.
  */
 export function createCoverageWriter(options: CoverageWriterOptions): CoverageWriter {
   const now = options.now ?? Date.now;
@@ -116,6 +129,11 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   const stalled: Job[] = [];
   let retry: NodeJS.Timeout | null = null;
   let retries = 0;
+  /** Records with their keys, for the next write. */
+  const ready: Ready[] = [];
+  /** Ends the batch window; `due` once it ended. */
+  let window: NodeJS.Timeout | null = null;
+  let due = false;
   const drops = new Drops(options.note);
   let store: CodeStore | null = null;
   let running: Promise<void> | null = null;
@@ -181,35 +199,81 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     if (!isCodeStoreOpenFailure(opened)) store = opened;
     return opened;
   };
-  /** Its record at its key; a busy store keeps both for a retry, never mapping it again. */
-  const keep = async (job: Job, key: CheckKey, record: SharedRecord): Promise<void> => {
+  /**
+   * The batch's records at their keys, how many were stored; a busy store keeps
+   * each record and key for a retry, never mapping it again. Another error
+   * writes each record of a batch alone, so one record's error drops one.
+   */
+  const write = async (batch: readonly Ready[]): Promise<number> => {
     let cause: DropCause = "store-open";
     try {
       const opened = open();
       if (isCodeStoreOpenFailure(opened)) {
-        drop(job, cause, `the code store did not open: ${JSON.stringify(opened)}`);
-        return;
+        const why = `the code store did not open: ${JSON.stringify(opened)}`;
+        for (const job of batch) drop(job, cause, why);
+        return 0;
       }
       cause = "store-error";
-      const at = { resultKey: key, providerVersion: COVERAGE_RECORD_VERSION };
+      const items = batch.map(({ key, record }) => ({
+        key: { resultKey: key, providerVersion: COVERAGE_RECORD_VERSION },
+        record,
+        at: now(),
+      }));
       // Row 021-36: a record's parts may run twice, so the store process may write them in slices;
-      // `putParts` ends once they are written, so `onStored`'s step reads them.
+      // `putPartsBatch` ends once they are written, so `onStored`'s step reads them.
       await withWriteKind(
         "record",
-        () => withBusySlice(BUSY_SLICE_MS, () => opened.coverage.putParts(at, record, now())),
+        () => withBusySlice(BUSY_SLICE_MS, () => opened.coverage.putPartsBatch(items)),
         true,
       );
+      return batch.length;
     } catch (error) {
-      if (isBusy(error)) stall(job);
-      else drop(job, cause, String(error));
-      return;
+      if (isBusy(error)) for (const job of batch) stall(job);
+      else if (batch.length > 1) return alone(batch);
+      else for (const job of batch) drop(job, cause, String(error));
+      return 0;
     }
+  };
+  const alone = async (batch: readonly Ready[]): Promise<number> => {
+    let stored = 0;
+    for (const job of batch) {
+      if (stalled.length > 0) stall(job);
+      else stored += await write([job]);
+    }
+    return stored;
+  };
+  /** Writes the next batch of `ready`, then tells `onStored` once. */
+  const flush = async (): Promise<void> => {
+    const batch = ready.splice(0, MAX_BATCH_FILES);
+    if (ready.length === 0) endWindow();
+    if (batch.length === 0) return;
+    const stored = await pace.measure(() => write(batch));
+    if (stored === 0) return;
     retries = 0;
     try {
       options.onStored?.();
     } catch (error) {
-      options.log(`coverage: after storing ${job.file.testFile.path}: ${String(error)}`);
+      const more = stored > 1 ? ` and ${stored - 1} more` : "";
+      options.log(
+        `coverage: after storing ${batch[0]?.file.testFile.path}${more}: ${String(error)}`,
+      );
     }
+  };
+  const endWindow = (): void => {
+    if (window !== null) clearTimeout(window);
+    window = null;
+    due = false;
+  };
+  /** Keeps a record with its key for the next batch; the first of a batch opens its window. */
+  const batched = (job: Ready): void => {
+    ready.push(job);
+    if (window !== null || due) return;
+    window = setTimeout(() => {
+      window = null;
+      due = true;
+      start();
+    }, BATCH_WINDOW_MS);
+    window.unref();
   };
   /** Waits for the busy store's next retry, unless its budget is spent. */
   const stall = (job: Job): void => {
@@ -243,8 +307,8 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     timer.unref();
     held.set(timer, job);
   };
-  /** One paced unit: the job's key, kept once found, then its record, unless the store is busy. */
-  const place = (job: Job, record: SharedRecord): Promise<void> | undefined => {
+  /** One paced unit: the job's key, kept once found, then its record batched, unless the store is busy. */
+  const place = (job: Job, record: SharedRecord): void => {
     if (job.key === undefined) {
       job.attempt++;
       const key = options.resultKey(job.runId, job.file.testFile);
@@ -253,8 +317,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     if (job.key === undefined) later(job);
     // While a record waits for the store, the next waits with it: one retry, one slice.
     else if (stalled.length > 0) stall(job);
-    else return keep(job, job.key, record);
-    return undefined;
+    else batched({ ...job, record, key: job.key });
   };
   const step = async (job: Job): Promise<void> => {
     let record: SharedRecord;
@@ -268,17 +331,26 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       drop(job, "closed");
       return;
     }
-    let kept: Promise<void> | undefined;
     try {
-      kept = pace.measure(() => place(job, record));
+      pace.measure(() => place(job, record));
     } catch (error) {
-      // Only the result's lookup throws here: `keep` takes its own.
+      // Only the result's lookup throws here: `write` takes its own.
       drop(job, "no-result", String(error));
     }
-    await kept;
   };
+  /** A batch is full, or its window ended. */
+  const flushing = () => ready.length >= MAX_BATCH_FILES || (due && ready.length > 0);
+  const quiet = () =>
+    running === null && held.size === 0 && stalled.length === 0 && ready.length === 0;
   const loop = async () => {
-    for (let job = queue.shift(); job !== undefined; job = queue.shift()) {
+    for (;;) {
+      while (!closed && flushing()) {
+        do await pace.wait();
+        while (!closed && !pace.due());
+        if (!closed) await flush();
+      }
+      const job = queue.shift();
+      if (job === undefined) break;
       // One test file at a time, once the one before, or a coverage step, had its time back.
       do await pace.wait();
       while (!closed && !pace.due());
@@ -292,7 +364,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     // The worker stops with the queue, so it holds no memory between runs.
     void mapper?.close();
     mapper = null;
-    if (held.size === 0 && stalled.length === 0) settle?.();
+    if (quiet()) settle?.();
   };
   const start = () => {
     running ??= loop();
@@ -307,10 +379,10 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       }
       if (!closed) start();
     },
-    busy: () => running !== null || held.size > 0 || stalled.length > 0 || queue.length > 0,
+    busy: () => !quiet() || queue.length > 0,
     dropped: () => drops.counts(),
     idle() {
-      if (running === null && held.size === 0 && stalled.length === 0) return Promise.resolve();
+      if (quiet()) return Promise.resolve();
       settled ??= new Promise<void>((resolve) => {
         settle = () => {
           settle = null;
@@ -332,6 +404,12 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       for (const job of stalled.splice(0)) drop(job, "closed");
       await mapper?.close();
       await running;
+      // Row 024-03: the records mapped with their keys are stored, not dropped.
+      endWindow();
+      while (ready.length > 0) await flush();
+      if (retry !== null) clearTimeout(retry);
+      retry = null;
+      for (const job of stalled.splice(0)) drop(job, "closed");
       for (const job of queue.splice(0)) drop(job, "closed");
       store?.close();
       store = null;

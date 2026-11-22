@@ -184,6 +184,18 @@ export interface CodeCoverageRepo {
    * written (it names them by id); resolves once both are.
    */
   putParts(key: CoverageRecordKey, record: SharedRecord, at: EpochMs): Promise<void>;
+  /**
+   * Spec 024 D3 (row 024-03): `putParts` for several records at once, all
+   * parts in one transaction and all manifests in the next.
+   */
+  putPartsBatch(items: readonly CoverageRecordPut[]): Promise<void>;
+}
+
+/** Row 024-03: one record of `putPartsBatch`, as `putParts` takes it. */
+export interface CoverageRecordPut {
+  readonly key: CoverageRecordKey;
+  readonly record: SharedRecord;
+  readonly at: EpochMs;
 }
 
 export interface CodeMetaRepo {
