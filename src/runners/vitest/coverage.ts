@@ -1,9 +1,19 @@
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Vitest } from "vitest/node";
+import { scriptPath } from "../../core/code/coverage/record.js";
 import type {
   CoveredFile,
   ExecutedSource,
+  V8Payload,
   VitestCoverageOptions,
 } from "../../core/code/coverage/types.js";
 import { compare } from "../../core/fs/compare.js";
@@ -236,7 +246,8 @@ function childrenOf(payload: string): AbsolutePath {
  * run's end, before an edit drops a transform, and with `children` their
  * children's directories (020 D12). A batch of several files (`isolate:
  * false` gives none) or of a file not completed or not wanted is dropped
- * with its payload.
+ * with its payload. Spec 024 D3 (row 024-03): an environment's sources are
+ * only the files its kept payloads' scripts name, one map its files share.
  */
 export function coveredFiles(
   vitest: Vitest,
@@ -246,8 +257,8 @@ export function coveredFiles(
   paths: WorktreePaths,
   children = false,
 ): CoveredFile[] {
-  const executed = new Map<Environment, ReadonlyMap<AbsolutePath, ExecutedSource>>();
-  const files: CoveredFile[] = [];
+  const kept: { batch: CoverageBatch; ref: TestFileRef; environment: Environment }[] = [];
+  const payloads = new Map<Environment, string[]>();
   for (const batch of batches) {
     const project = vitest.projects.find((p) => p.name === batch.projectName);
     const environment = project?.vite.environments[batch.environment];
@@ -256,17 +267,42 @@ export function coveredFiles(
       dropPayloads([batch]);
       continue;
     }
-    let sources = executed.get(environment);
-    if (sources === undefined) {
-      sources = executedSources(environment, stamps, paths);
-      executed.set(environment, sources);
-    }
+    kept.push({ batch, ref, environment });
+    payloads.set(environment, [...(payloads.get(environment) ?? []), batch.coverage]);
+  }
+  const executed = new Map<Environment, ReadonlyMap<AbsolutePath, ExecutedSource>>();
+  for (const [environment, files] of payloads) {
+    executed.set(environment, executedSources(environment, scriptPaths(files), stamps, paths));
+  }
+  return kept.map(({ batch, ref, environment }): CoveredFile => {
+    const sources = executed.get(environment) ?? new Map();
     const child = children
       ? { children: { root: paths.root, dir: childrenOf(batch.coverage) } }
       : {};
-    files.push({ testFile: ref, payload: batch.coverage, sources, ...child });
+    return { testFile: ref, payload: batch.coverage, sources, ...child };
+  });
+}
+
+/**
+ * Row 024-03: the files the scripts of `payloads` name, as the record reads
+ * them (`scriptPath`). A payload that does not read gives none: its record
+ * fails to map in any case.
+ */
+function scriptPaths(payloads: readonly string[]): Set<AbsolutePath> {
+  const found = new Set<AbsolutePath>();
+  for (const payload of payloads) {
+    let result: V8Payload["result"];
+    try {
+      ({ result } = JSON.parse(readFileSync(payload, "utf8")) as V8Payload);
+    } catch {
+      continue;
+    }
+    for (const script of result ?? []) {
+      const path = typeof script?.url === "string" ? scriptPath(script.url) : null;
+      if (path !== null) found.add(path);
+    }
   }
-  return files;
+  return found;
 }
 
 /**
@@ -319,16 +355,21 @@ export function dropPayloads(batches: readonly CoverageBatch[]): void {
   }
 }
 
-/** Each project file with a transform in `environment`, by module ID: its code, map and stamp. */
+/**
+ * Each project file of `executed` with a transform in `environment`, by
+ * module ID: its code, map and stamp.
+ */
 function executedSources(
   environment: Environment,
+  executed: ReadonlySet<AbsolutePath>,
   stamps: SourceStamps,
   paths: WorktreePaths,
 ): Map<AbsolutePath, ExecutedSource> {
   const sources = new Map<AbsolutePath, ExecutedSource>();
-  for (const [id, module] of environment.moduleGraph.idToModuleMap) {
+  for (const id of executed) {
+    const module = environment.moduleGraph.idToModuleMap.get(id);
     const file = sourceOf(id, paths);
-    const transform = cachedTransform(module);
+    const transform = module === undefined ? null : cachedTransform(module);
     const path = file === null ? null : paths.toRelative(file);
     if (file !== id || transform === null || path === null) continue;
     sources.set(file, {
