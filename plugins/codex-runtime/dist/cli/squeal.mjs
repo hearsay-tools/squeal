@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.594";
+  if (true) return "0.1.595";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -114138,11 +114138,20 @@ function union2(selected2, sources) {
 
 // src/cli/status-at-now-ask.ts
 var SETTING_UP = "the call's wait ended while this worktree's daemon set up (it starts or loads its configuration)";
+async function keptAlive(pending) {
+  const keep = setInterval(() => {
+  }, 6e4);
+  try {
+    return await pending;
+  } finally {
+    clearInterval(keep);
+  }
+}
 async function askNow(root, paths, deadline) {
   const until = performance.now() + Math.max(0, deadline - Date.now());
   const sync = syncDaemon(root, SYNC_POLL_MS, paths, until);
   try {
-    await sync.answered;
+    if (sync.answered !== void 0) await keptAlive(sync.answered);
   } finally {
     sync.stop();
   }
