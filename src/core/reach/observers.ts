@@ -48,7 +48,9 @@ export function addObserver(
   outside: number,
 ): void {
   if (pair.kind === "child process") observers.child++;
-  else if (isBroadPair(pair, outside)) observers.broad.set(test, outside);
+  // By the test file, as the gateways' note splits an observed path's readers: package.json read by test/daemon/* too.
+  else if (pair.kind === "runtime read" && outside >= BROAD_READS)
+    observers.broad.set(test, outside);
   else if (pair.kind === "runtime read") observers.inProcess++;
 }
 

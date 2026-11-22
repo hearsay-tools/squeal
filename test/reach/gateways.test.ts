@@ -191,4 +191,28 @@ describe("runtime-read notes state recorded facts, never a blanket by design", (
     );
     expect(JSON.stringify(r)).not.toContain("by design");
   });
+
+  it("splits an observed path's readers by whether each test file reads broadly", () => {
+    // Squeal: package.json, read through version.ts by in-process tests and by test/daemon/*.
+    const both = tests.map((t) =>
+      t.ref.path.startsWith("test/daemon/")
+        ? {
+            ...t,
+            closure: [...(t.closure ?? []), "package.json"],
+            runtimeRead: new Set([...t.runtimeRead, "package.json"]),
+          }
+        : t,
+    );
+    const split = buildReport(
+      snapshot(both, { graph, edits: [{ at: 1, paths: ["package.json"] }] }),
+      OPTIONS,
+    );
+    const entry = split.files.find((e) => e.files.includes("package.json"));
+    expect(entry?.note).toBe(
+      "4 test files re-run on it outside their imports: 2 test files read package.json at run time in their own process; 2 test files read package.json among many source modules, as tests that start or bundle the program from source do: test/daemon/* (2, 10 modules); its edits re-ran 100% of the window's re-run seconds",
+    );
+    expect(split.gateways[0]?.note).toBe(
+      "4 test files read package.json at run time, outside their imports: 2 in their own process; 2 among many source modules, as tests that start or bundle the program from source do: test/daemon/* (2, 10 modules)",
+    );
+  });
 });
