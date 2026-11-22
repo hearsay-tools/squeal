@@ -108,12 +108,28 @@ export interface AddCheckoutOptions extends CreateCheckoutOptions {
   readonly name?: string;
   /** Marker fields beyond the plain checkout's (row 023-38: a commit worktree's fingerprint). */
   readonly extra?: Pick<CheckoutMarker, "fingerprint">;
+  /**
+   * Spec 023 D7.3 (review wave-23-third B1): epoch ms by which git's prune
+   * and worktree add end (a call's bound); absent: `GIT_TIMEOUT_MS` each.
+   */
+  readonly deadline?: number;
+}
+
+/** Each git step's timeout: `GIT_TIMEOUT_MS`, cut to what is left before `deadline`; throws when none is. */
+function gitTimeout(deadline: number | undefined, step: string): number {
+  if (deadline === undefined) return GIT_TIMEOUT_MS;
+  const left = Math.floor(deadline - Date.now());
+  if (left <= 0) throw new Error(`squeal: the call's wait ended before ${step}`);
+  return Math.min(GIT_TIMEOUT_MS, left);
 }
 
 /** `createCheckout`'s steps for a caller that holds the lock; `commit` is a full id. */
 export async function addCheckout(options: AddCheckoutOptions): Promise<Checkout> {
   const { root, commonDir, dir, commit } = options;
-  await runGit(commonDir, ["worktree", "prune"], { timeoutMs: GIT_TIMEOUT_MS });
+  const { deadline } = options;
+  await runGit(commonDir, ["worktree", "prune"], {
+    timeoutMs: gitTimeout(deadline, "git worktree prune"),
+  });
   const name = options.name ?? `${Date.now().toString(36)}-${randomBytes(4).toString("hex")}`;
   const folder = join(dir, name);
   mkdirSync(folder, { recursive: true });
@@ -131,7 +147,7 @@ export async function addCheckout(options: AddCheckoutOptions): Promise<Checkout
     await runGit(
       root,
       ["worktree", "add", "--detach", "--lock", "--reason", "squeal", checkout.tree, commit],
-      { timeoutMs: GIT_TIMEOUT_MS },
+      { timeoutMs: gitTimeout(deadline, "git worktree add") },
     );
   } catch (error) {
     await removeTree(checkout);

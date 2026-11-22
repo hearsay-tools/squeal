@@ -90,15 +90,24 @@ export function deviceOf(path: AbsolutePath): number | null {
   }
 }
 
+/** How long `pnpm store path` may take by default. */
+export const PACKAGE_STORE_TIMEOUT_MS = 10_000;
+
 /**
  * The package store the user's tree installs from: `pnpm store path` for a
  * pnpm project; `null` for the others and when it cannot be read, so the
- * user's tree stands in.
+ * user's tree stands in. Spec 023 D7.3 (review wave-23-third B1):
+ * `timeoutMs` is what is left of a call's wait; none left asks nothing.
  */
-export function packageStore(root: AbsolutePath, command: string): Promise<AbsolutePath | null> {
-  if (!command.startsWith("pnpm ")) return Promise.resolve(null);
+export function packageStore(
+  root: AbsolutePath,
+  command: string,
+  timeoutMs = PACKAGE_STORE_TIMEOUT_MS,
+): Promise<AbsolutePath | null> {
+  if (!command.startsWith("pnpm ") || timeoutMs <= 0) return Promise.resolve(null);
+  const timeout = Math.ceil(timeoutMs);
   return new Promise((resolve) => {
-    execFile("pnpm", ["store", "path"], { cwd: root, timeout: 10_000 }, (error, stdout) => {
+    execFile("pnpm", ["store", "path"], { cwd: root, timeout }, (error, stdout) => {
       const path = stdout.trim();
       resolve(error === null && isAbsolute(path) ? path : null);
     });
