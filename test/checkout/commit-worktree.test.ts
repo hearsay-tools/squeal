@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { commitWorktreeCeiling } from "../../src/core/checkout/commit-places.js";
+import { withFileLock } from "../../src/core/checkout/checkout.js";
+import { commitWorktreeCeiling, placesLockPath } from "../../src/core/checkout/commit-places.js";
 import {
   claimCommitWorktree,
   ensureCommitWorktree,
@@ -247,5 +248,31 @@ describe("removal (D7.2) and the sweep (D6)", () => {
     expect(existsSync(dead.folder)).toBe(false);
     expect(existsSync(kept.tree)).toBe(true);
     expect(worktrees()).toEqual([fx.repo, kept.tree]);
+  });
+});
+
+describe("the call's deadline over the commit worktrees' lock (review wave-23-fourth B1)", () => {
+  it("gives up by the deadline while another holder keeps the places lock, not 60 s later", async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let taken = () => {};
+    const isTaken = new Promise<void>((resolve) => {
+      taken = resolve;
+    });
+    const holder = withFileLock(placesLockPath(fx.cacheRoot), "a test's hold", async () => {
+      taken();
+      await held;
+    });
+    await isTaken;
+    const started = Date.now();
+    try {
+      await expect(ensure("HEAD", { deadline: Date.now() + 1_500 })).rejects.toThrow(/stayed held/);
+      expect(Date.now() - started).toBeLessThan(10_000);
+    } finally {
+      release();
+      await holder;
+    }
   });
 });
