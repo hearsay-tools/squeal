@@ -38,8 +38,20 @@ export function checkKey(
  */
 export function encodeSegment(path: RelativePath, hash: FileHash | null): string {
   if (hash === null) return "";
-  return Buffer.from(`${path}\0${hash}\0`).toString();
+  const mark = path.endsWith("/") ? LISTED_ON_DISK : "";
+  return Buffer.from(`${path}\0${mark}${hash}\0`).toString();
 }
+
+/**
+ * Row 023-76: a listing path's segment (`dir/`, `./`) carries the hash of
+ * the names on disk (`Listings`), where before that row a directory that
+ * held a tracked file entered by its tracked names only. The mark keeps
+ * every key that holds a listing apart from those earlier keys, so no
+ * result a run that listed an ignored name stored there is found at a key
+ * of equal tracked names (review 0.1.611-rereview N1). A key with no
+ * listing keeps its value.
+ */
+const LISTED_ON_DISK = "names on disk ";
 
 /** The key over pre-encoded segments, in closure order. `KeyIndex` reuses segments across closures. */
 export function keyFromSegments(

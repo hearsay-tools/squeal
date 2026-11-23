@@ -304,19 +304,22 @@ export const ABSENT_LISTING: FileHash = createHash("sha1").update("\0absent").di
 const EMPTY_LISTING: FileHash = createHash("sha1").update("\0empty").digest("hex");
 
 /**
- * The entry names of every directory, from the files the watcher tracks: a
- * directory's entries are the names of its files and of its subdirectories
- * that hold a tracked file. Built on first use, then kept by `apply`. A
- * directory the watcher sees no file in, a git-ignored one say, has the
- * names on disk below `root` instead, read when its key is computed (row
- * 016-23), and again at each revision (`apply`, row 016-24): no change the
- * watcher reports moves them. Absent or empty there, it hashes as a marker
- * of its own (row 016-26).
+ * The entry names of every listed directory, as a run lists them: the names
+ * on disk, with the names of the files the watcher tracks there (row
+ * 023-76). Before that row a directory that held a tracked file hashed its
+ * tracked names only, so a run that listed an ignored name there shared its
+ * key with a run that did not (review 0.1.611-rereview N1). The tracked
+ * names are built on first use, then kept by `apply`; the names on disk are
+ * read when a key is computed, and again at each revision (`apply`, row
+ * 016-24), since no change the watcher reports moves an ignored name.
+ * Absent or empty, a directory hashes as a marker of its own (row 016-26).
+ * With equal names on disk, a directory hashes as a commit's tree does
+ * (`namesHash` over the tracked names).
  */
 export class Listings {
   /** directory -> entry name -> tracked files below it. */
   #entries: Map<RelativePath, Map<string, number>> | null = null;
-  /** Each directory hashed from disk -> the hash of the names last seen there (row 016-24). */
+  /** Each listed directory hashed -> the hash of its names on disk last seen (rows 016-24, 023-76). */
   readonly #seen = new Map<RelativePath, FileHash>();
 
   constructor(
@@ -324,16 +327,13 @@ export class Listings {
     private readonly root: AbsolutePath,
   ) {}
 
-  /** The hash of `directory`'s sorted entry names; a marker when it holds none. */
+  /** The hash of `directory`'s sorted entry names, on disk and tracked; a marker when it holds none. */
   hashOf(directory: RelativePath): FileHash {
-    const names = this.#index().get(directory);
-    if (names !== undefined && names.size > 0) {
-      this.#seen.delete(directory);
-      return namesHash([...names.keys()]);
-    }
-    const hash = this.#onDisk(directory);
-    this.#seen.set(directory, hash);
-    return hash;
+    const disk = this.#namesOnDisk(directory);
+    this.#seen.set(directory, markerOr(disk));
+    const tracked = this.#index().get(directory);
+    if (tracked === undefined || tracked.size === 0) return markerOr(disk);
+    return namesHash([...new Set([...(disk ?? []), ...tracked.keys()])]);
   }
 
   /**
@@ -351,13 +351,16 @@ export class Listings {
 
   /** The hash of the names `directory` holds on disk, a marker when it holds none. */
   #onDisk(directory: RelativePath): FileHash {
-    let names: string[];
+    return markerOr(this.#namesOnDisk(directory));
+  }
+
+  /** The names `directory` holds on disk; `null` when it is absent. */
+  #namesOnDisk(directory: RelativePath): string[] | null {
     try {
-      names = readdirSync(join(this.root, directory));
+      return readdirSync(join(this.root, directory));
     } catch {
-      return ABSENT_LISTING;
+      return null;
     }
-    return names.length === 0 ? EMPTY_LISTING : namesHash(names);
   }
 
   /**
@@ -441,6 +444,12 @@ export class Listings {
       rest = rest.slice(at + 1);
     }
   }
+}
+
+/** The hash of a listing's names on disk: a marker when absent (`null`) or empty. */
+function markerOr(names: string[] | null): FileHash {
+  if (names === null) return ABSENT_LISTING;
+  return names.length === 0 ? EMPTY_LISTING : namesHash(names);
 }
 
 /** The hash of a listing's entry names, sorted; an import hashes a commit's listings with it (018 D11). */

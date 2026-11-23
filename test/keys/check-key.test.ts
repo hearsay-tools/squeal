@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkKey, encodeSegment } from "../../src/core/keys/check-key.js";
+import { checkKey, encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
 import { assembleClosure } from "../../src/core/keys/closure.js";
 import type { Closure } from "../../src/core/types/keys.js";
 
@@ -65,5 +65,24 @@ describe("checkKey", () => {
   it("does not confuse which path a hash belongs to", () => {
     const swapped = (p: string) => (p === "src/a.ts" ? "b1" : p === "src/b.ts" ? "a1" : hashOf(p));
     expect(checkKey("env1", closure, swapped)).not.toBe(key);
+  });
+
+  // Row 023-76 (review 0.1.611-rereview N1): a listing's segment carries the names on disk now,
+  // so its keys leave the earlier encoding; a key with no listing keeps its value.
+  const earlierKey = (c: Closure, hash: (p: string) => string | null) =>
+    keyFromSegments(
+      "env1",
+      c.testFile,
+      c.paths.flatMap((p) => (hash(p) === null ? [] : [`${p}\0${hash(p)}\0`])),
+    );
+
+  it("keeps the key of a test file that lists no folder (row 023-76)", () => {
+    expect(key).toBe(earlierKey(closure, hashOf));
+  });
+
+  it("moves the key of a test file that lists a folder off the earlier encoding (row 023-76)", () => {
+    const lists = { ...closure, paths: [...closure.paths, "test/fixtures/"].sort() };
+    const listed = (p: string) => (p === "test/fixtures/" ? "n1" : hashOf(p));
+    expect(checkKey("env1", lists, listed)).not.toBe(earlierKey(lists, listed));
   });
 });

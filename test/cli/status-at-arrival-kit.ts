@@ -1,50 +1,47 @@
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { expect, onTestFinished } from "vitest";
 import { type AtDaemons, realDaemons } from "../../src/cli/status-at-daemons.js";
 import { installCommitWorktree } from "../../src/core/checkout/commit-setup.js";
-import { storedReason } from "../../src/core/daemon/at-asks.js";
 import { COMMIT_WORKTREES } from "../../src/core/daemon/commit-mode.js";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { ResultRecord } from "../../src/core/types/store.js";
 import { type Fixture, fixture, git, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
 import { childEnv } from "../daemon/helpers.js";
-import { run, withStore } from "./status-at-kit.js";
+import { withStore } from "./status-at-kit.js";
 
 /*
- * Review 0.1.611 B1 (row 023-70, spec 023 D4.9): a result another worktree
- * writes after the commit daemon selected the file. Commit `a` tracks one
- * name in `test/fixtures/`; its test expects two, so a pristine `a` fails.
- * Commit `b` adds an unrelated file; the caller at `b` has an ignored
- * `extra.log` there, so its run passes, at the key `a` shares (a folder
- * read's key hashes the tracked names). An earlier run recorded the folder
- * read, so both daemons' closures list it. The caller's narrow run holds
- * the browser group's one slot until the test opens its gate, so the
- * commit's ask selects the file and queues it with no result stored yet;
- * then the caller's pass arrives. Before the fix, the commit side read that pass as its own:
- * "unchanged", exit 0. Now it reads not comparable, exit 3, during the
- * `--run` that waits (the reviewer's probe) and in a `--wait` that joins
- * the ask later. The pre-stored refusal, clean reuse and the commit
- * worktree's own folder run are `status-at-stored-refused.test.ts` and
- * `status-at-commit-listing.test.ts`.
+ * Review 0.1.611 B1 and 0.1.611-rereview N1 (rows 023-70, 023-76): a
+ * folder-listing result that arrives after the commit daemon selected the
+ * file. Commit `a` tracks one name in `test/fixtures/`; its test expects
+ * two, so a pristine `a` fails. Commit `b` adds an unrelated file; the
+ * caller at `b` has an ignored `extra.log` there, so its run passes. The
+ * caller's narrow run holds the browser group's one slot until the test
+ * opens its gate, so the commit's ask selects the file and queues it with
+ * no result stored yet; then the caller's pass arrives.
  */
 
-const LISTS = ref("test/lists.test.ts");
-const REASON = storedReason("test/fixtures/");
+export const LISTS = ref("test/lists.test.ts");
 
-interface Arrival {
+export interface Arrival {
   readonly f: Fixture;
   /** Commit `a`, the commit side. */
   readonly a: string;
+  /** The caller's daemon first, the commit's second once it started. */
   readonly live: RunningDaemon[];
   readonly real: AtDaemons;
   /** Lets the caller's run of the file end. */
   readonly open: () => void;
 }
 
-/** Both daemons, the caller's narrow run of the file started and holding the group's slot. */
-async function arrival(): Promise<Arrival> {
+/**
+ * Both daemons, the caller's narrow run of the file started and holding the
+ * group's slot. `seeded`: an earlier run recorded the folder read, so both
+ * closures list it at selection; otherwise each run observes it first (N1).
+ */
+export async function arrival(seeded: boolean): Promise<Arrival> {
   const runtime = realpathSync(mkdtempSync("/tmp/sq-arrival-"));
   const gate = join(runtime, "open");
   const f = fixture({
@@ -73,10 +70,10 @@ async function arrival(): Promise<Arrival> {
   });
   const a = git(f.root, "rev-parse", "HEAD").trim();
   f.commit({ "change.txt": "unrelated\n" });
-  // A previous run at another key recorded this read. Neither current key has a result yet.
-  withStore(f, (store) =>
-    store.meta.set(observedMetaKey(""), JSON.stringify({ [LISTS.path]: ["test/fixtures/"] })),
-  );
+  if (seeded)
+    withStore(f, (store) =>
+      store.meta.set(observedMetaKey(""), JSON.stringify({ [LISTS.path]: ["test/fixtures/"] })),
+    );
   write(f.root, { "test/fixtures/extra.log": "x" });
   const live: RunningDaemon[] = [];
   onTestFinished(async () => {
@@ -115,7 +112,7 @@ async function arrival(): Promise<Arrival> {
 }
 
 /** The file's pending mark in `daemon`'s rows. */
-function pending(f: Fixture, daemon: RunningDaemon | undefined): string | null {
+export function pending(f: Fixture, daemon: RunningDaemon | undefined): string | null {
   let mark: string | null = null;
   withStore(f, (store) => {
     if (daemon === undefined) return;
@@ -125,7 +122,7 @@ function pending(f: Fixture, daemon: RunningDaemon | undefined): string | null {
 }
 
 /** Whether the commit daemon's row of the file has a key with no result stored yet. */
-function noResultYet(f: Fixture, commit: RunningDaemon | undefined): boolean {
+export function noResultYet(f: Fixture, commit: RunningDaemon | undefined): boolean {
   let none = false;
   withStore(f, (store) => {
     if (commit === undefined) return;
@@ -136,11 +133,25 @@ function noResultYet(f: Fixture, commit: RunningDaemon | undefined): boolean {
   return none;
 }
 
+/** The results stored at `daemon`'s live key of the file, with that key. */
+export function resultsOf(
+  f: Fixture,
+  daemon: RunningDaemon | undefined,
+): { key: string | null; results: readonly ResultRecord[] } {
+  let out: { key: string | null; results: readonly ResultRecord[] } = { key: null, results: [] };
+  withStore(f, (store) => {
+    if (daemon === undefined) return;
+    const key = store.testFileKeys.list(daemon.worktreeId)[0]?.key ?? null;
+    out = { key, results: key === null ? [] : store.results.byKey(key, 0) };
+  });
+  return out;
+}
+
 /**
  * `real`, noting whether the commit's ask queued the file before any result
  * was stored; with `open`, the caller's run then ends.
  */
-function watched(arrived: Arrival, seen: { before: boolean }, open = false): AtDaemons {
+export function watched(arrived: Arrival, seen: { before: boolean }, open = false): AtDaemons {
   const { f, live, real } = arrived;
   return {
     ...real,
@@ -158,65 +169,11 @@ function watched(arrived: Arrival, seen: { before: boolean }, open = false): AtD
   };
 }
 
-interface Row {
+export interface Row {
   readonly path: string;
   readonly at: { readonly state: string; readonly reason?: string };
   readonly now: { readonly state: string };
 }
 
-const rowOf = (out: string): Row | undefined =>
+export const rowOf = (out: string): Row | undefined =>
   (JSON.parse(out) as { files: Row[] }).files.find((file) => file.path === LISTS.path);
-
-describe("a foreign folder result that arrives after selection (review 0.1.611 B1)", {
-  timeout: 180_000,
-}, () => {
-  it("is not the commit's in the --run call that waits for it", async () => {
-    const arrived = await arrival();
-    const seen = { before: false };
-    const out = await run(
-      arrived.f,
-      {
-        commit: arrived.a,
-        paths: [LISTS.path],
-        run: { allMissing: false },
-        json: true,
-        waitMs: 60_000,
-      },
-      { cacheRoot: arrived.f.cacheRoot, daemons: watched(arrived, seen, true) },
-    );
-    const row = rowOf(out.out);
-    expect(seen.before, "the commit selected the file before any result was stored").toBe(true);
-    expect(row?.now.state).toBe("pass");
-    expect(row?.at, "a pristine commit has one name; the foreign run saw two").toEqual({
-      state: "not comparable",
-      reason: REASON,
-    });
-    expect(out.code).toBe(3);
-  });
-
-  it("is not the commit's in a --wait that joins the queued ask after it arrived", async () => {
-    const arrived = await arrival();
-    const { f, a, live } = arrived;
-    const seen = { before: false };
-    const daemons = watched(arrived, seen);
-    // The `--run` call ends at its wait while its ask is queued behind the caller's run.
-    const first = await run(
-      f,
-      { commit: a, paths: [LISTS.path], run: { allMissing: false }, json: true, waitMs: 20_000 },
-      { cacheRoot: f.cacheRoot, daemons },
-    );
-    expect(seen.before).toBe(true);
-    expect(rowOf(first.out)?.at.state).toBe("no result");
-    // The caller's pass arrives at the key the commit shares; the ask stays as it was.
-    arrived.open();
-    await expect.poll(() => pending(f, live[0]), { timeout: 60_000 }).toBeNull();
-    await expect.poll(() => noResultYet(f, live[1]), { timeout: 20_000 }).toBe(false);
-    const joined = await run(
-      f,
-      { commit: a, paths: [LISTS.path], json: true, waitMs: 30_000 },
-      { cacheRoot: f.cacheRoot, daemons },
-    );
-    expect(rowOf(joined.out)?.at).toEqual({ state: "not comparable", reason: REASON });
-    expect(joined.code).toBe(3);
-  });
-});

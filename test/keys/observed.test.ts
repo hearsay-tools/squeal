@@ -10,6 +10,7 @@ import {
   Listings,
   listedDirectory,
   listingPath,
+  namesHash,
   ObservedSets,
   observedDirectMetaKey,
   observedMetaKey,
@@ -269,15 +270,40 @@ describe("listings", () => {
       expect(new Listings(() => ["src/x.ts"], bare).hashOf("ignored/list")).toBe(ABSENT_LISTING);
       expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"], bare).hashOf("src"));
 
-      // Residuals of 016-23 (tasks/016-23/notes.md). A tracked directory's
-      // ignored names on disk are no entries (R3).
-      mkdirSync(join(roots[0] as string, "src"));
-      writeFileSync(join(roots[0] as string, "src/y.log"), "1\n");
-      expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"], bare).hashOf("src"));
       // A recursive listing of an ignored directory keys its own names only (R2).
       expect(one?.below("ignored")).toEqual(["ignored/"]);
     } finally {
       for (const root of roots) rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("hash a tracked directory by every name on disk, ignored ones too, and move when one comes or goes (row 023-76)", () => {
+    const root = mkdtempSync(join(tmpdir(), "squeal-listings-"));
+    try {
+      mkdirSync(join(root, "test/fixtures"), { recursive: true });
+      writeFileSync(join(root, "test/fixtures/a.json"), "{}\n");
+      const files = ["test/fixtures/a.json", "test/a.test.ts"];
+      const listings = new Listings(() => files, root);
+      // Equal names on disk: the hash of the tracked names, as a commit's tree hashes them.
+      const clean = listings.hashOf("test/fixtures");
+      expect(clean).toBe(namesHash(["a.json"]));
+      // Review 0.1.611-rereview N1: an ignored name is listed by a run, so it keys too.
+      writeFileSync(join(root, "test/fixtures/extra.log"), "x");
+      expect(listings.apply([])).toEqual(["test/fixtures/"]);
+      const dirty = listings.hashOf("test/fixtures");
+      expect(dirty).toBe(namesHash(["a.json", "extra.log"]));
+      expect(new Listings(() => files, root).hashOf("test/fixtures")).toBe(dirty);
+      // Its delete moves the listing back to the clean key; no change moves none.
+      rmSync(join(root, "test/fixtures/extra.log"));
+      expect(listings.apply([])).toEqual(["test/fixtures/"]);
+      expect(listings.hashOf("test/fixtures")).toBe(clean);
+      expect(listings.apply([])).toEqual([]);
+      // A name a run of the only file that lists it wrote there moves none (row 016-24).
+      writeFileSync(join(root, "test/fixtures/run.log"), "x");
+      listings.ran(["test/fixtures"]);
+      expect(listings.apply([])).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 
