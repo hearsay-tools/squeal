@@ -170,16 +170,13 @@ interface Side {
 
 /** Row 023-71 (Y1): per side, why the call's files queued and not started wait, where published. */
 function waitsOf(input: CallInput, sides: readonly Side[]): (SideWaiting | null)[] {
-  const { root, commonDir } = input.place;
-  const slots = readPoolView(input.env, [], repositoryRootOf(root, commonDir)).slots;
   return sideWaits(
-    root,
+    input.place.root,
     sides.map((side) => ({
       root: side.queue.root,
       id: side.id,
       queued: side.queue.files.filter((ref) => notStarted(side.state(ref))),
     })),
-    slots,
   );
 }
 
