@@ -60,13 +60,19 @@ export function tellSlowTier(store: Store, consumer: Consumer, tier: SlowTierSta
  */
 
 /** A group's kind: what its line tells the agent to do, which a moving count does not change. */
-export type GroupKind = "current" | "waiting" | "not run";
+export type GroupKind = "current" | "waiting" | "queued" | "not run";
 
-/** `current` with every listed file current (or none listed), `waiting` with any pending, else `not run`. */
+/**
+ * `current` with every listed file current (or none listed), `queued`
+ * with any pending file a request queued (row 023-67, X2: the line no
+ * longer asks for `squeal run <group>`), `waiting` with any other pending,
+ * else `not run`.
+ */
 export function groupKind(
-  group: Pick<SlowTierState, "testFiles" | "current" | "pending">,
+  group: Pick<GroupTierState, "testFiles" | "current" | "pending" | "requested">,
 ): GroupKind {
   if (group.current >= group.testFiles) return "current";
+  if (group.pending > 0 && (group.requested ?? 0) > 0) return "queued";
   return group.pending > 0 ? "waiting" : "not run";
 }
 

@@ -202,6 +202,14 @@ export interface GroupTierState extends Omit<SlowTierState, "pausesOnly" | "maxH
   readonly after: readonly string[];
   /** At `edit`, how old the latest revision must be before it starts (D1). */
   readonly quietMs: number;
+  /**
+   * Row 023-67 (dogfood round 8, X2): at `commit` and `manual`, of
+   * `pending`, the files a request queued (`squeal status --at <commit>
+   * --run`, `squeal run <group> <path>...`), which the daemon holds in a
+   * batch it publishes; the line says so instead of a wait for a commit or
+   * `squeal run <group>`. Absent: none.
+   */
+  readonly requested?: number;
 }
 
 /**

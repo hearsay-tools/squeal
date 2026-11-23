@@ -1,10 +1,13 @@
 import { newestCommitReport } from "../commit/store.js";
 import { commitLine } from "../commit/text.js";
+import { heldUntilAsked } from "../daemon/check-groups.js";
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { publishedBatches } from "../scheduler/promotions-row.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
-import type { WorktreeId } from "../types/common.js";
+import type { CheckMoment } from "../types/check-groups.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import { TESTS_GROUP } from "../types/scheduler.js";
@@ -118,11 +121,42 @@ export function groupTiersOf(
   keys: readonly TestFileKeyRecord[],
   lanes: readonly GroupLaneCounts[],
 ): readonly GroupTierState[] {
-  return lanes.map(({ name, inLane, head, stopWaitMs }) => ({
-    ...head,
-    activity: liveActivity(store, worktreeId, keys, inLane, name),
-    ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
-  }));
+  const requested = requestedOf(store, worktreeId, keys, lanes);
+  return lanes.map(({ name, inLane, head, stopWaitMs }) => {
+    const asked = requested(head.at, inLane);
+    return {
+      ...head,
+      activity: liveActivity(store, worktreeId, keys, inLane, name),
+      ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
+      ...(asked === 0 ? {} : { requested: asked }),
+    };
+  });
+}
+
+/**
+ * Row 023-67 (dogfood round 8, X2): a group at `commit` or `manual`
+ * (`heldUntilAsked`) runs a queued file only when a request asked for it.
+ * A narrow request (`squeal status --at <commit> --run`, `squeal run
+ * <group> <path>...`) puts its files in a batch the live daemon publishes
+ * (`publishedBatches`), so a queued file in one is requested, not waiting
+ * for a commit or `squeal run <group>`. Round 8 told "97 pending, waiting
+ * for `squeal run browser`" after the call's `--run` had queued the 97.
+ */
+function requestedOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  keys: readonly TestFileKeyRecord[],
+  lanes: readonly GroupLaneCounts[],
+): (at: CheckMoment, inLane: (ref: TestFileRef) => boolean) => number {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (daemon === null || !lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
+  const batched = publishedBatches(store, worktreeId, daemon.startedAt, Date.now() as EpochMs);
+  if (batched.size === 0) return () => 0;
+  const queued = keys.filter(
+    (row) => row.key !== null && row.pending !== null && batched.has(testFileId(row.testFile)),
+  );
+  return (at, inLane) =>
+    heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;
 }
 
 /**

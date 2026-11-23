@@ -63,13 +63,29 @@ export function groupTierText(
  * publishes no wait for them: the line says what they wait for.
  */
 function groupPendingText(group: GroupTierState, late: boolean, command: string): string {
-  if (group.activity === null && group.at === "commit") {
-    return `${group.pending} pending, waiting for a commit`;
+  const held = group.at === "commit" || group.at === "manual";
+  if (group.activity !== null || !held)
+    return pendingText(group.pending, group.activity, late, groupWords(group));
+  const asked = requestedOf(group);
+  const waiting = group.pending - asked;
+  const parts: string[] = [];
+  // Row 023-67 (X2): files a request queued run now; only the rest wait.
+  if (asked > 0) parts.push(`${asked} queued by a request (${requestsText(group, command)})`);
+  if (waiting > 0) {
+    const what = group.at === "commit" ? "a commit" : `\`${command} run ${group.name}\``;
+    parts.push(`${waiting} pending, waiting for ${what}`);
   }
-  if (group.activity === null && group.at === "manual") {
-    return `${group.pending} pending, waiting for \`${command} run ${group.name}\``;
-  }
-  return pendingText(group.pending, group.activity, late, groupWords(group));
+  return parts.join(", ");
+}
+
+/** Row 023-67 (X2): of the group's pending files, those a request queued. */
+function requestedOf(group: GroupTierState): number {
+  return Math.min(group.pending, group.requested ?? 0);
+}
+
+/** The requests that queue a held group's files: `squeal status --at <commit> --run` and a narrow run. */
+function requestsText(group: GroupTierState, command: string): string {
+  return `\`${command} status --at <commit> --run\` or \`${command} run ${group.name} <path>...\``;
 }
 
 /**
@@ -106,17 +122,32 @@ function afterText(names: readonly string[]): string {
 /** When Squeal runs the group's files (D1 moments), and whether Stop waits for them (D4). */
 function groupDoes(group: GroupTierState): string {
   const when = groupWhenText(group);
+  const asked = requestedOf(group);
   const runs =
-    group.notRun === 0
-      ? `Squeal runs them ${when}`
-      : group.pending === 0
-        ? "Squeal has not queued them"
-        : `Squeal runs the pending ones ${when} and has not queued the rest`;
+    asked > 0
+      ? requestedDoes(group, asked, when)
+      : group.notRun === 0
+        ? `Squeal runs them ${when}`
+        : group.pending === 0
+          ? "Squeal has not queued them"
+          : `Squeal runs the pending ones ${when} and has not queued the rest`;
   const stop =
     group.stopWaitMs === undefined
       ? ""
       : `, and Stop waits up to ${durationText(group.stopWaitMs)} for them`;
   return `${runs}${stop}`;
+}
+
+/** Row 023-67 (X2): what Squeal does with a held group's requested files, and with the rest. */
+function requestedDoes(group: GroupTierState, asked: number, when: string): string {
+  const now = asked === group.pending ? "runs them now" : "runs the requested ones now";
+  const rest = group.pending - asked;
+  if (rest === 0 && group.notRun === 0) return `Squeal ${now}`;
+  if (rest === 0) return `Squeal ${now} and has not queued the rest`;
+  const queued = `the other pending ones ${when}`;
+  return group.notRun === 0
+    ? `Squeal ${now}, ${queued}`
+    : `Squeal ${now}, ${queued}, and has not queued the rest`;
 }
 
 /** When Squeal runs the group's queued files, by its moment and `after` (D1); `status --wait` says it too. */
@@ -147,7 +178,10 @@ export function groupWhenText(group: GroupTierState): string {
 export function groupRunText(group: GroupTierState, command: string, open: number): string {
   const one = open === 1;
   const results = one ? "its result" : "their results";
-  const waiting = group.at !== "edit" || group.notRun > 0 || group.activity?.kind === "waiting";
+  // Row 023-67 (X2): a held group whose every open file a request queued runs already.
+  const requested = group.notRun === 0 && requestedOf(group) === group.pending;
+  const waiting =
+    !requested && (group.at !== "edit" || group.notRun > 0 || group.activity?.kind === "waiting");
   const does = waiting
     ? `runs ${one ? "it" : "them"} now and waits for ${results}`
     : `waits for ${results}`;
