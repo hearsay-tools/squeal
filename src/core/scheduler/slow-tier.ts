@@ -8,6 +8,7 @@ import {
   othersWaitingForSlot,
   slotFiles,
 } from "../slow/slot-files.js";
+import { lastHolders, type SlotFile } from "../slow/slot-holding.js";
 import { publishGroupActivity, readGroupActivity } from "../slow/state.js";
 import type { DeferUnderLoad, ResolvedGroup } from "../types/check-groups.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
@@ -32,6 +33,7 @@ import {
 } from "./group-limits.js";
 import type { Ledger } from "./ledger.js";
 import type { SlowTierOptions } from "./options.js";
+import { followPartner } from "./slot-follow.js";
 import { groupView } from "./slow.js";
 import { momentHolds, quietLeftMs } from "./slow-trigger.js";
 import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
@@ -422,6 +424,8 @@ export class SlowTier {
         return "none";
       }
       if (picked === null) return "again";
+      // Rows 023-77, 023-78: what the slot's holder runs, for a waiter's line and its partner.
+      slot.holding(picked.tier.files.map(({ file }) => slotFileOf(file)));
       fly({ tier: picked.tier, slot, turn: picked.admitted.turn });
       flown = true;
       return "started";
@@ -510,7 +514,11 @@ export class SlowTier {
     }
     const triggered = queued.filter(this.#trigger(context, ledger, group, at));
     const claims = new Map(triggered.map((ref) => [ref, claimOf(ledger, ref, at)]));
-    const free = triggered.filter((ref) => claims.get(ref) === "free");
+    const free = this.#follow(
+      view,
+      group,
+      triggered.filter((ref) => claims.get(ref) === "free"),
+    );
     const first = free[0];
     if (first !== undefined) {
       const runner = runnerOf(context, first);
@@ -523,6 +531,20 @@ export class SlowTier {
     const quiet = quietLeftMs(context, group, at);
     this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
     return [];
+  }
+
+  /**
+   * Row 023-78: `free` with the file another worktree last ran under the
+   * group's shared slot first, when a `status --at --run` request queued it
+   * here (`followPartner`). A group without `maxParallel` shares no slot.
+   */
+  #follow(view: LaneView, group: ResolvedGroup, free: TestFileRef[]): readonly TestFileRef[] {
+    const permits = group.limits.maxParallel;
+    if (permits === null) return free;
+    const { at, context, ledger } = view;
+    return followPartner(free, ledger, at, context.worktreeId, () =>
+      lastHolders(this.#slotDir(), this.group, permits),
+    );
   }
 
   /**
@@ -862,10 +884,16 @@ function noSlot(want: number): SlowSlot {
     shrinkTo(count) {
       permits = Math.min(permits, Math.max(1, count));
     },
+    holding() {},
     release() {
       permits = 0;
     },
   };
+}
+
+/** A tier's file as the slot's record names it (`SlowSlot.holding`). */
+function slotFileOf(file: TierFile["file"]): SlotFile {
+  return { project: file.ref.project, path: file.ref.path, durationMs: file.durationMs };
 }
 
 /** The longest of the files' last known run times, `null` when none is known: a tier lasts its longest file. */

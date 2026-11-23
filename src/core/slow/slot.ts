@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { pathToFileURL } from "node:url";
 import { checkPrivateDir, currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
 import { isBusy } from "../store/connection.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import { isRepositorySlotDir, slotFiles } from "./slot-files.js";
+import { readRecord, recordHolding, type SlotFile } from "./slot-holding.js";
 
 /** Who takes the slot; recorded in the lock file as its last holder. */
 export interface SlowSlotOwner {
@@ -38,6 +38,12 @@ export interface SlowSlot {
   readonly permits: number;
   /** Keeps the first `count` permits, at least one, and frees the others. */
   shrinkTo(count: number): void;
+  /**
+   * Rows 023-77, 023-78: records in each held permit's lock file the files
+   * the tier runs under it (`recordHolding`), for a waiter's line and for
+   * the partner that runs the same file next. Best effort.
+   */
+  holding(files: readonly SlotFile[]): void;
   /** Idempotent. The OS also releases it when the process dies, however it dies. */
   release(): void;
 }
@@ -105,6 +111,9 @@ export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
       return held.length;
     },
     shrinkTo: (count) => keep(Math.max(1, count)),
+    holding: (files) => {
+      for (const db of held) recordHolding(db, files);
+    },
     release,
   };
 }
@@ -151,6 +160,8 @@ export type PermitRecord =
       readonly pid: number;
       readonly worktreeId: WorktreeId;
       readonly since: number;
+      /** Rows 023-77, 023-78: the files it runs under the permit, when its daemon recorded them. */
+      readonly files?: readonly SlotFile[];
     }
   | { readonly kind: "missing" | "unreadable" };
 
@@ -196,38 +207,10 @@ export function heldPermits(
   return held;
 }
 
-/** The `holder` row of permit `path`, read without a lock. */
+/** The `holder` row of permit `path` with the files it runs (`readRecord`), read without a lock. */
 function permitRecord(path: AbsolutePath): PermitRecord {
-  let db: DatabaseSync;
-  try {
-    db = new DatabaseSync(immutableUrl(path), { readOnly: true });
-  } catch {
-    return { kind: "unreadable" };
-  }
-  try {
-    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
-    if (row === undefined) return { kind: "missing" };
-    const { pid, worktree_id: worktreeId, since } = row;
-    if (!Number.isSafeInteger(pid) || typeof worktreeId !== "string") return { kind: "unreadable" };
-    if (!Number.isSafeInteger(since)) return { kind: "unreadable" };
-    return {
-      kind: "holder",
-      pid: pid as number,
-      worktreeId: worktreeId as WorktreeId,
-      since: since as number,
-    };
-  } catch (error) {
-    return { kind: String(error).includes("no such table") ? "missing" : "unreadable" };
-  } finally {
-    db.close();
-  }
-}
-
-/** SQLite's `immutable` URI of the database `path`: a reader of it takes no lock and opens no other file. */
-export function immutableUrl(path: AbsolutePath): URL {
-  const url = pathToFileURL(path);
-  url.search = "immutable=1";
-  return url;
+  const record = readRecord(path);
+  return typeof record === "string" ? { kind: record } : { kind: "holder", ...record };
 }
 
 /** Permit `path` is not held: its exclusive lock was taken and released. */

@@ -4,7 +4,7 @@ import { daemonUsedMetaKey, readDaemonUsed } from "../daemon/last-use.js";
 import { readPolicy } from "../daemon/policy.js";
 import { harnessAlive, toHarness } from "../delivery/harness-process.js";
 import { isRecord } from "../fs/json.js";
-import { immutableUrl } from "../slow/slot.js";
+import { immutableUrl } from "../slow/slot-holding.js";
 import { toSlowActivity } from "../slow/state.js";
 import { toCheckpointLanes } from "../store/repos/runs.js";
 import { toDaemonToken } from "../store/repos/worktrees.js";
