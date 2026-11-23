@@ -1,9 +1,10 @@
 import { testFileId } from "../core/keys/reverse-index.js";
-import { listPaths, shellWord } from "../core/text.js";
+import { shellWord } from "../core/text.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { type CallEstimate, estimateLine } from "./status-at-estimate.js";
 import type { SideQueue } from "./status-at-queue.js";
 import type { SideState } from "./status-at-report.js";
+import { idleLines, resolvedLines } from "./status-at-report-join.js";
 import { elsewhereText, failedThere, namedLine, restLine } from "./status-at-report-narrow.js";
 
 /*
@@ -281,36 +282,4 @@ function sideLines(
     // Row 023-58 (W1): a group the wait's end left not asked says how to ask it.
     lines.push(`${prefix}${without} without a result: ${side.problem}${retryText(side, retry)}`);
   return lines;
-}
-
-/**
- * Row 023-58 (W1): a join asks nothing, so the files one side has a result
- * for and the other side neither has nor runs say how to ask them.
- */
-function idleLines(run: QueuedRun, at: string): string[] {
-  const { idle } = run;
-  if (idle === undefined) return [];
-  const line = (n: number, there: string, here: string) =>
-    `${n} test file${n === 1 ? "" : "s"} with a result ${there} ${n === 1 ? "has" : "have"} none ${here}, and none is queued or running there; \`${idle.command}\` queues ${n === 1 ? "it" : "them"}`;
-  return [
-    ...(idle.commit === 0 ? [] : [line(idle.commit, "in the working tree", `at ${at}`)]),
-    ...(idle.now === 0 ? [] : [`now: ${line(idle.now, `at ${at}`, "in the working tree")}`]),
-  ];
-}
-
-/** Row 023-59 (W2): the most paths a `--wait` names per side as now having a result. */
-export const RESOLVED_SHOWN = 20;
-
-/** Row 023-59 (W2): a join names the files that went from running to a result, per side. */
-function resolvedLines(run: QueuedRun, at: string): string[] {
-  const { resolved } = run;
-  if (resolved === undefined) return [];
-  const line = (paths: readonly string[], where: string) =>
-    `${paths.length} test file${paths.length === 1 ? "" : "s"} went from running to a result ${where}: ${listPaths(paths, RESOLVED_SHOWN)}`;
-  return [
-    ...(resolved.commit.length === 0 ? [] : [`--wait: ${line(resolved.commit, `at ${at}`)}`]),
-    ...(resolved.now.length === 0
-      ? []
-      : [`--wait, now: ${line(resolved.now, "in the working tree")}`]),
-  ];
 }
