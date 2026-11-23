@@ -645,6 +645,11 @@ uninstall() {
   else
     say "$to was there before install.sh ran, so it stays; rm $to removes it"
   fi
+  # Read before uninstall_in forgets the records: the marketplace line names
+  # only the harnesses this machine has or had Squeal in.
+  marketplace_in=
+  if has claude || owns claude || [ -n "$(installed claude)" ]; then marketplace_in=claude; fi
+  if has codex || owns codex || [ -n "$(installed codex)" ]; then marketplace_in="$marketplace_in codex"; fi
   uninstall_in claude "Claude Code" uninstall
   uninstall_in codex Codex remove
   # Spec 002 D9: a Codex session still open keeps the runtime it started with.
@@ -655,7 +660,11 @@ uninstall() {
   uninstall_pi
   uninstall_opencode
   uninstall_antigravity
-  say "The hearsay marketplace stays added; claude plugin marketplace remove hearsay and codex plugin marketplace remove hearsay remove it."
+  case $marketplace_in in
+  "claude codex") say "The hearsay marketplace stays added; claude plugin marketplace remove hearsay and codex plugin marketplace remove hearsay remove it." ;;
+  claude) say "The hearsay marketplace stays added; claude plugin marketplace remove hearsay removes it." ;;
+  " codex") say "The hearsay marketplace stays added; codex plugin marketplace remove hearsay removes it." ;;
+  esac
 }
 
 main() {

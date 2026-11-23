@@ -62,7 +62,9 @@ describe("install.sh --uninstall", { timeout: 30_000 }, () => {
     ]);
     expect(claudeEntries(m)).toEqual({});
     expect(existsSync(join(m.home, ".local", "state", "squeal"))).toBe(false);
-    expect(r.stdout).toContain("claude plugin marketplace remove hearsay");
+    expect(r.stdout).toContain(
+      "The hearsay marketplace stays added; claude plugin marketplace remove hearsay and codex plugin marketplace remove hearsay remove it.\n",
+    );
     // A second uninstall finds nothing; an install afterwards works with the marketplace still added.
     m.clearLog();
     expect(install(m, "--uninstall").status).toBe(0);
@@ -92,6 +94,11 @@ describe("install.sh --uninstall", { timeout: 30_000 }, () => {
       );
       // The launcher it copied is its own.
       expect(existsSync(launcherOf(m))).toBe(false);
+      // Only the harness on this machine is named in the marketplace line.
+      expect(r.stdout).toContain(
+        `The hearsay marketplace stays added; ${h} plugin marketplace remove hearsay removes it.\n`,
+      );
+      expect(r.stdout).not.toContain(`${h === "claude" ? "codex" : "claude"} plugin marketplace`);
     },
   );
 
