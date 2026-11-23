@@ -119,6 +119,8 @@ export async function queueSide(
   const pending = new Set<string>();
   const problems: string[] = [];
   const waited: TestFileRef[] = [];
+  // Row 023-58 (W1): a group the wait's end left not asked is the call's to ask again (`--run`).
+  let late = false;
   for (const [group, refs] of byGroup) {
     if (!input.ask) {
       waited.push(...refs);
@@ -128,6 +130,7 @@ export async function queueSide(
     const bound = input.askBy();
     if (Date.now() >= bound) {
       problems.push(`group ${group}: not asked: the call's wait ended`);
+      late = true;
       continue;
     }
     const asked = await daemons
@@ -137,14 +140,16 @@ export async function queueSide(
     else if (asked === "pending") for (const ref of refs) pending.add(testFileId(ref));
     else problems.push(`group ${group}: ${asked.problem}`);
   }
-  if (input.waits === false) return { root, files, pending, problems, groupOf, taken: waited };
+  const lateness = late ? { late } : {};
+  if (input.waits === false)
+    return { root, files, pending, problems, groupOf, taken: waited, ...lateness };
   if (waited.length > 0) {
     const ended = await daemons
       .wait(root, waited, deadline)
       .catch((error: unknown) => String(error));
     if (ended !== null) problems.push(ended);
   }
-  return { root, files, pending, problems, groupOf };
+  return { root, files, pending, problems, groupOf, ...lateness };
 }
 
 /**

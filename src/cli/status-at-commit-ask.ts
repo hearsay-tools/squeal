@@ -62,7 +62,10 @@ export interface AskInput {
   readonly askBy: number;
   /** Epoch ms when the reads and the wait end (the call's wait less its report reserve). */
   readonly deadline: number;
-  /** Told the ask's files once the daemon queued them (R1: the working tree runs them too). */
+  /**
+   * Told the ask's files once the daemon queued them, and those it would run
+   * that have a result at the commit (R1, row 023-58: the working tree runs them too).
+   */
   readonly queued?: (files: readonly TestFileRef[]) => void;
 }
 
@@ -83,7 +86,8 @@ export async function askCommit(input: AskInput): Promise<CommitAsked> {
   if (refused !== null) return { ...notReached(refused, false), root: tree };
   const read = await readUntilQueued(daemons, tree, [owner], askBy, deadline);
   const own = read.asks.find((a) => a.owner === owner);
-  input.queued?.(own?.phase === "queued" ? own.files : []);
+  // Row 023-58 (W1): the files it would run with a result at the commit run in the working tree too.
+  input.queued?.(own?.phase === "queued" ? [...own.files, ...(own.withResult ?? [])] : []);
   return { ...(await waitFor(daemons, tree, read, deadline)), change: changeOf(input.changed) };
 }
 

@@ -81,6 +81,12 @@ export interface QueuedRun {
   readonly retry: string | null;
   /** Row 023-51 (V4): the paths a narrowed call gave; its counts are of their files only. Absent without. */
   readonly paths?: readonly string[];
+  /**
+   * Row 023-58 (W1): with `--wait` alone, per side, the call's files with a
+   * result on the other side and none here, none queued or running here,
+   * and the call that queues them; absent when none.
+   */
+  readonly idle?: { readonly commit: number; readonly now: number; readonly command: string };
   /** Row 023-49 (V2): per side, the time what still runs takes; absent when nothing does. */
   readonly estimate?: CallEstimate;
   /** Row 023-49: with `estimate`, the call that narrows a wide one; `null` for a narrowed call. */
@@ -165,6 +171,7 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
     lines.push(
       `--wait: nothing is queued or running for these files at ${at} or in the working tree`,
     );
+  lines.push(...idleLines(run, at));
   const rest = restLine(run, at);
   if (rest !== null) lines.push(rest);
   const estimate = estimateLine(run.estimate, at, run.narrow ?? null);
@@ -219,7 +226,7 @@ function commitLines(run: QueuedRun, at: string): string[] {
     lines.push(
       `${run.notSelected} more with no result at ${at} not selected by the change did not run; \`--all-missing\` runs ${run.notSelected === 1 ? "it" : "them"}`,
     );
-  return [...lines, ...sideLines(commit, "", `at ${at}`, "in the working tree")];
+  return [...lines, ...sideLines(commit, "", `at ${at}`, "in the working tree", run.retry)];
 }
 
 /** The working tree's side's lines. */
@@ -241,15 +248,22 @@ function nowLines(run: QueuedRun, at: string): string[] {
     );
   else if (run.mode === "queue")
     lines.push("--run, now: every test file the change selects has a result in the working tree");
-  return [...lines, ...sideLines(now, "now: ", "in the working tree", `at ${at}`)];
+  return [...lines, ...sideLines(now, "now: ", "in the working tree", `at ${at}`, run.retry)];
 }
 
 /**
- * R3's setup lines, then what the daemon did not answer. Row 023-52 (V6):
+ * R3's setup lines, then what the daemon did not answer (row 023-58:
+ * with the call that asks it again when the wait's end left it). Row 023-52 (V6):
  * each names the side it failed on (`here`) and what its files are on the
  * other side (`there`).
  */
-function sideLines(side: QueuedSide, prefix: string, here: string, there: string): string[] {
+function sideLines(
+  side: QueuedSide,
+  prefix: string,
+  here: string,
+  there: string,
+  retry: string | null,
+): string[] {
   if (!side.reached) return [];
   const lines = side.setupFailed.map(
     (f) =>
@@ -258,6 +272,22 @@ function sideLines(side: QueuedSide, prefix: string, here: string, there: string
   const setup = side.setupFailed.reduce((n, f) => n + f.files, 0);
   const without = side.files - side.known - side.running - setup;
   if (side.problem !== null && without > 0)
-    lines.push(`${prefix}${without} without a result: ${side.problem}`);
+    // Row 023-58 (W1): a group the wait's end left not asked says how to ask it.
+    lines.push(`${prefix}${without} without a result: ${side.problem}${retryText(side, retry)}`);
   return lines;
+}
+
+/**
+ * Row 023-58 (W1): a join asks nothing, so the files one side has a result
+ * for and the other side neither has nor runs say how to ask them.
+ */
+function idleLines(run: QueuedRun, at: string): string[] {
+  const { idle } = run;
+  if (idle === undefined) return [];
+  const line = (n: number, there: string, here: string) =>
+    `${n} test file${n === 1 ? "" : "s"} with a result ${there} ${n === 1 ? "has" : "have"} none ${here}, and none is queued or running there; \`${idle.command}\` queues ${n === 1 ? "it" : "them"}`;
+  return [
+    ...(idle.commit === 0 ? [] : [line(idle.commit, "in the working tree", `at ${at}`)]),
+    ...(idle.now === 0 ? [] : [`now: ${line(idle.now, `at ${at}`, "in the working tree")}`]),
+  ];
 }

@@ -109,6 +109,7 @@ export function queuedRun(
       rest: after.rest.now.length,
       setup: after.current.source.kind === "setting up",
     },
+    ...idleOf(after, queue, runAgain(input.args.commit, paths)),
     again: finite ? waitAgain(input.args.commit, paths) : null,
     retry:
       atQueue.late === true || nowQueue.late === true ? runAgain(input.args.commit, paths) : null,
@@ -122,6 +123,27 @@ export function queuedRun(
             : `squeal status --at ${shellWord(input.args.commit)} <path>... --run`,
         }),
   };
+}
+
+/**
+ * Row 023-58 (W1): with `--wait` alone, the call's files known on one side
+ * that the other side has no result for and does not run (the commit side
+ * leaves out what the change did not select); nothing with `--run`.
+ */
+function idleOf(
+  after: After,
+  queue: boolean,
+  command: string,
+): { idle?: NonNullable<QueuedRun["idle"]> } {
+  if (queue) return {};
+  const known = (s: SideState) => s.state === "pass" || s.state === "fail";
+  const idle = (s: SideState) =>
+    s.state === "no result" && s.pending === undefined && s.notSelected !== true;
+  const count = (here: (ref: TestFileRef) => SideState, there: (ref: TestFileRef) => SideState) =>
+    after.refs.filter((ref) => known(there(ref)) && idle(here(ref))).length;
+  const commit = count(after.at.state, after.current.state);
+  const now = count(after.current.state, after.at.state);
+  return commit + now === 0 ? {} : { idle: { commit, now, command } };
 }
 
 const rootId = (queue: SideQueue): WorktreeId | null =>
