@@ -96,29 +96,24 @@ export class CommitStart {
           );
         });
       },
-      // Row 023-70 (the coordinator agreed, request 47cad2c0): a stored result another tree
-      // wrote holds no folder read, since nothing records the names its run listed there.
-      storedNeeds: async (stored) => {
+      // Row 023-70 (the coordinator agreed, request 47cad2c0), review 0.1.611 B1: a result
+      // another tree wrote holds no folder read, since nothing records the names its run listed.
+      listings: async (refs) => {
         const scheduler = ports.scheduler();
-        if (scheduler?.closureReads === undefined) return new Map();
-        const foreign = new Set(
-          stored
-            .filter(({ ref, key }) =>
-              store.results
-                .byKey(key)
-                .some(
-                  (r) =>
-                    r.check.project === ref.project &&
-                    r.check.testPath === ref.path &&
-                    r.provenance.worktreeId !== worktreeId,
-                ),
-            )
-            .map(({ ref }) => testFileId(ref)),
-        );
-        if (foreign.size === 0) return new Map();
+        if (scheduler?.closureReads === undefined || refs.length === 0) return new Map();
+        const ids = new Set(refs.map(testFileId));
         const listings = await scheduler.closureReads((path) => listedDirectory(path) !== null);
-        return new Map([...listings].filter(([id]) => foreign.has(id)));
+        return new Map([...listings].filter(([id]) => ids.has(id)));
       },
+      ownResult: (ref, key) =>
+        store.results
+          .byKey(key)
+          .some(
+            (r) =>
+              r.check.project === ref.project &&
+              r.check.testPath === ref.path &&
+              r.provenance.worktreeId === worktreeId,
+          ),
       stored: (ref, key) =>
         store.results
           .byKey(key)

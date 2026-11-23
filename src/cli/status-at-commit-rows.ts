@@ -5,7 +5,7 @@ import { committedBlobs } from "../core/commit/tree.js";
 import { runGit } from "../core/fs/git.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
-import type { TestFileRef } from "../core/types/keys.js";
+import type { CheckKey, TestFileRef } from "../core/types/keys.js";
 import type { Store } from "../core/types/store.js";
 import { idOf, reasonOf } from "./status-at-after.js";
 import type { CommitSide } from "./status-at-commit.js";
@@ -92,6 +92,18 @@ export async function rowsSide(
   const refused = new Map(
     asked.asks.flatMap((ask) => ask.refused ?? []).map((r) => [testFileId(r.ref), r.reason]),
   );
+  // Review 0.1.611 B1 (row 023-70): a file that lists a folder holds only the commit worktree's
+  // own result, whenever it arrived; the reader judges each record by its writer.
+  const ownOnly = new Map(
+    asked.asks.flatMap((ask) => ask.ownOnly ?? []).map((r) => [testFileId(r.ref), r.reason]),
+  );
+  const recordsAt = (ref: TestFileRef, key: CheckKey) => {
+    const all = main === null ? [] : resultsAt(main, ref, key);
+    const only = ownOnly.get(testFileId(ref));
+    if (only === undefined) return { records: all, foreign: null };
+    const mine = all.filter((r) => r.provenance.worktreeId === treeId);
+    return { records: mine, foreign: mine.length === 0 && all.length > 0 ? only : null };
+  };
   // Row 023-35 (T2): a node:test project tells its incomplete static closures; Vitest tells none.
   const closureOf = (ref: TestFileRef): "complete" | "incomplete" | "unchecked" => {
     const list = asked.incomplete?.[ref.project];
@@ -113,7 +125,9 @@ export async function rowsSide(
     if (row === undefined) return unlisted(asked, committed.has(ref.path), input.commit);
     if (row.key === null)
       return { state: "not determined", reason: "its commit daemon could not key it" };
-    const now = stateOf(row.key, main === null ? [] : resultsAt(main, ref, row.key), input.own);
+    const { records, foreign } = recordsAt(ref, row.key);
+    if (foreign !== null) return { state: "not comparable", reason: foreign };
+    const now = stateOf(row.key, records, input.own);
     if ("origin" in now && now.origin.worktreeId === treeId)
       return { ...now, origin: { ...now.origin, kind: "commit" } };
     if (now.state !== "no result") return now;
