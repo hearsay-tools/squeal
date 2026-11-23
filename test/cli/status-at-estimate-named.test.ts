@@ -56,6 +56,7 @@ describe("the named file's time inside a wider batch (row 023-60, W3)", () => {
       files: 65,
       startedAt: NOW - 98_000,
       ran: 98,
+      known: 65,
       seconds: 63,
     });
     expect(namedRun([batch], [OPEN], [OPEN], seconds, { ...AT, factor: 2 })?.seconds).toBe(224);
@@ -78,6 +79,31 @@ describe("the named file's time inside a wider batch (row 023-60, W3)", () => {
     const batch = run("batch", [...others, OPEN], NOW - 98_000);
     expect(namedRun([batch], [OPEN], [OPEN], () => null, AT)?.seconds).toBeNull();
     expect(namedRun([batch], [OPEN], [OPEN], () => 1, AT)?.seconds).toBe(0);
+  });
+
+  it("keeps the batch's time unknown when too few of its files have a stored duration (review 0.1.607 B1)", () => {
+    const batch = run("batch", [...others, OPEN], NOW - 98_000);
+    const onlyOpen = (r: TestFileRef) => (r.path === OPEN.path ? 3 : null);
+    const got = namedRun([batch], [OPEN], [OPEN], onlyOpen, AT) as NamedRun;
+    expect(got).toMatchObject({ files: 65, known: 1, seconds: null });
+    expect(namedRunText(got, timeText)).toBe(
+      "test/store/open.test.ts runs in a batch of 65 test files started 98 s ago; its result comes when that batch ends (time unknown: too few runs stored (1 of its 65 files has a stored duration) and this call measured no rate)",
+    );
+    // A rate this call measured wins: 65 files at 10 results in 20 s is 130 s, 98 s of it run.
+    const rate = { done: 10, ms: 20_000 };
+    expect(namedRun([batch], [OPEN], [OPEN], onlyOpen, { ...AT, rate })?.seconds).toBe(32);
+    // Enough stored: a file without one counts at their median (10 s), as the side's estimate does.
+    const most = (r: TestFileRef) => (r === others[0] || r === others[1] ? null : seconds(r));
+    expect(namedRun([batch], [OPEN], [OPEN], most, AT)).toMatchObject({ known: 63, seconds: 63 });
+  });
+
+  it("never lets the call's own known time stand for a batch whose time is unknown (review 0.1.607 B1)", () => {
+    const batch = run("batch", [...others, OPEN], NOW - 98_000);
+    const got = namedRun([batch], [OPEN], [OPEN], (r) => (r === OPEN ? 3 : null), AT) as NamedRun;
+    const side = { files: 1, width: 1, seconds: null, basis: "durations", known: 1, batch: got };
+    expect(sideText(side as never)).toBe(
+      "1 test file, time unknown: its result waits for the batch that holds it; test/store/open.test.ts runs in a batch of 65 test files started 98 s ago; its result comes when that batch ends (time unknown: too few runs stored (1 of its 65 files has a stored duration) and this call measured no rate)",
+    );
   });
 
   it("reads the daemon's runs in flight from the store and writes the line", () => {

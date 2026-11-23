@@ -30,9 +30,10 @@ function ownPool(dir: string): NodeJS.ProcessEnv {
 
 /**
  * The commit daemon of `tree`, live, has the named file running in a run
- * that started 60 s ago and holds `inRun`; each of the twelve files took 10 s.
+ * that started 60 s ago and holds `inRun`; each of the twelve files took 10 s,
+ * or only the named one 3 s with `onlyNamed` (review 0.1.607 B1).
  */
-async function call(inRun: readonly TestFileRef[]) {
+async function call(inRun: readonly TestFileRef[], onlyNamed = false) {
   const f = fixture({
     "squeal.config.json": "{}\n",
     "src/a.ts": "export const value = 2;\n",
@@ -42,12 +43,16 @@ async function call(inRun: readonly TestFileRef[]) {
   f.commit({ "src/a.ts": "export const value = 2; // b\n" });
   withStore(f, (store) =>
     store.results.putMany(
-      twelve.map((file) => ({ ...result(check(file.path), "elsewhere"), durationMs: 10_000 })),
+      (onlyNamed ? [NAMED] : twelve).map((file) => ({
+        ...result(check(file.path), "elsewhere"),
+        durationMs: onlyNamed ? 3_000 : 10_000,
+      })),
     ),
   );
   const tree = standInTree(f);
   const id = worktreeIdFor(tree);
   const now = Date.now();
+  let started = false;
   const rows = (_: AbsolutePath, files: readonly TestFileRef[]) =>
     withStore(f, (store) => {
       store.worktrees.upsert({
@@ -74,6 +79,8 @@ async function call(inRun: readonly TestFileRef[]) {
           pending: "running" as const,
         })),
       );
+      if (started) return;
+      started = true;
       store.runs.start({
         id: "batch",
         worktreeId: id,
@@ -94,8 +101,9 @@ async function call(inRun: readonly TestFileRef[]) {
   const env = ownPool(f.dir);
   const json = await run(f, { ...args, json: true }, options, undefined, env);
   const estimate = JSON.parse(json.out).run.estimate.commit;
+  const text = await run(f, args, options, undefined, env);
   clean(f);
-  return { estimate, at: a.slice(0, 9) };
+  return { estimate, text: text.out, at: a.slice(0, 9) };
 }
 
 describe("status --at --run: the named file's time inside a wider batch (row 023-60)", SLOW, () => {
@@ -112,5 +120,17 @@ describe("status --at --run: the named file's time inside a wider batch (row 023
     const { estimate } = await call([NAMED]);
     expect(estimate.batch).toBeUndefined();
     expect(estimate.files).toBe(1);
+  });
+
+  it("keeps the time unknown when 1 of the batch's 12 files has a stored duration (review 0.1.607 B1)", async () => {
+    const { estimate, text } = await call(twelve, true);
+    // Own file: 3 s, known. Its batch: 1 of 12 stored, no rate measured: unknown, never 0.
+    expect(estimate.batch).toMatchObject({ files: 12, known: 1, seconds: null });
+    expect(estimate.seconds).toBeNull();
+    expect(text).toContain(
+      "1 test file, time unknown: its result waits for the batch that holds it",
+    );
+    expect(text).toContain("too few runs stored (1 of its 12 files has a stored duration)");
+    expect(text).not.toContain("any time now");
   });
 });
