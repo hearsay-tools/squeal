@@ -1,6 +1,6 @@
 # 024 Antigravity adapter
 
-Stage: approved (the human, 2026-11-22). Amendments: `status.md`. Research: `research/antigravity-hooks-and-plugins.md` (`antigravity` CLI `1.5.14`, Linux, official docs fetched 2026-11-22). Spec 011 (core: C5, C8, C9, C10), spec 005 (D3, D4, D6, D8) and spec 019 (D4) hold, and specs 002 (Codex), 008 (OpenCode) and 009 (Pi) are the precedents, unless a section here says otherwise.
+Stage: shipped (2026-11-23; 0.1.601–0.1.605; live proof in `lessons.md`; approved by the human 2026-11-22). Amendments: `status.md`. Research: `research/antigravity-hooks-and-plugins.md` (`antigravity` CLI `1.5.14`, Linux, official docs fetched 2026-11-22). Spec 011 (core: C5, C8, C9, C10), spec 005 (D3, D4, D6, D8) and spec 019 (D4) hold, and specs 002 (Codex), 008 (OpenCode) and 009 (Pi) are the precedents, unless a section here says otherwise.
 
 ## Problem
 
