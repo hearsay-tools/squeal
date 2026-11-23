@@ -24,6 +24,12 @@ import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
  * - and it says when it is a guess: fewer than half the files have a
  *   stored duration, or (unknown) none has and nothing was measured.
  *
+ * Row 023-62 (dogfood round 7, V2's rest): a guess from 1 stored duration
+ * of 1,338 said "about 4 to 11 min"; the files took 1.5 to 2.5 hours.
+ * Below a floor (`tooFew`) the time is unknown, "too few runs stored",
+ * unless this call measured a rate. A side's files whose batch's setup
+ * failed on the other side in this call are left out (`leftOut`) and named.
+ *
  * Review 0.1.599 B3: the pool share is not the width the daemon runs at.
  * Each group's files run at most its own width (`WorkGroup.cap`: its
  * `maxParallel`, which both sides' files of the group share, or a gated
@@ -36,6 +42,16 @@ import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 
 /** A side's rate counts once this call saw this many results arrive there. */
 export const MEASURED_LEAST = 10;
+
+/**
+ * Row 023-62 (V2's rest): too few of `files` have a stored duration to
+ * estimate the others from their median: under a fifth of them, or fewer
+ * than `MEASURED_LEAST` and under half.
+ */
+export function tooFew(known: number, files: number): boolean {
+  if (known >= files) return false;
+  return known * 5 < files || (known < MEASURED_LEAST && known * 2 < files);
+}
 
 /** One group's files still to run on a side, with the limits the daemon runs them at. */
 export interface WorkGroup {
@@ -86,6 +102,11 @@ export interface SideEstimate {
   readonly load?: number;
   /** Review 0.1.599 B3: the side's group limits were not read; its width assumes none. */
   readonly limits?: "unknown";
+  /**
+   * Row 023-62 (V2's rest): the call's files left out of `files` because
+   * their batch's setup failed on the other side in this call; absent: none.
+   */
+  readonly leftOut?: number;
 }
 
 /** The call's estimate per side; a side with nothing still to run is `null`. */
@@ -166,7 +187,7 @@ export function estimateSide(
     const rate = { done: measured.done, seconds: Math.round(measured.ms / 1000) };
     return { files, width: wide, seconds, basis: "measured", known, rate, ...limits };
   }
-  const run = groupedSeconds(runs, width);
+  const run = tooFew(known, files) ? null : groupedSeconds(runs, width);
   if (run === null)
     return { files, width: wide, seconds: null, basis: "unknown", known, ...limits };
   const basis = known * 2 < files ? "guess" : "durations";
@@ -223,8 +244,10 @@ export function timeText(seconds: number): string {
 /** One side's part of the line: `about 58 min for 1248 files, at this call's rate (90 results in 98 s)`. */
 export function sideText(e: SideEstimate): string {
   const files = `${e.files} test file${e.files === 1 ? "" : "s"}`;
-  if (e.seconds === null)
+  if (e.seconds === null && e.known === 0)
     return `${files}, time unknown: none has a stored duration and this call measured no rate`;
+  if (e.seconds === null)
+    return `${files}, time unknown: too few runs stored (${e.known} of them have a stored duration) and this call measured no rate`;
   const time = `${timeText(e.seconds)} for ${files}`;
   if (e.basis === "measured" && e.rate !== undefined)
     return `${time}, at this call's rate there (${e.rate.done} results in ${e.rate.seconds} s)`;
@@ -244,9 +267,22 @@ export function estimateLine(
 ): string | null {
   if (estimate === undefined) return null;
   const parts: string[] = [];
-  if (estimate.commit !== null) parts.push(`at ${at}: ${sideText(estimate.commit)}`);
-  if (estimate.now !== null) parts.push(`in the working tree: ${sideText(estimate.now)}`);
+  if (estimate.commit !== null)
+    parts.push(`at ${at}: ${withLeftOut(estimate.commit, "in the working tree")}`);
+  if (estimate.now !== null)
+    parts.push(`in the working tree: ${withLeftOut(estimate.now, `at ${at}`)}`);
   if (parts.length === 0) return null;
   const tail = narrow === null ? "" : `; name test files or folders to narrow it: ${narrow}`;
   return `Still to run, ${parts.join("; ")}${tail}`;
+}
+
+/**
+ * Row 023-62 (V2's rest): a side's part with the files it left out, whose
+ * batch's setup failed `there` in this call; only them when nothing else runs.
+ */
+function withLeftOut(e: SideEstimate, there: string): string {
+  const n = e.leftOut ?? 0;
+  if (n === 0) return sideText(e);
+  const them = `${n} test file${n === 1 ? "" : "s"} left out, ${n === 1 ? "its" : "their"} batch's setup failed ${there} in this call`;
+  return e.files === 0 ? them : `${sideText(e)}; ${them}`;
 }

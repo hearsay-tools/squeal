@@ -9,8 +9,10 @@ import {
   oneGroup,
   readPoolView,
   sideText,
+  tooFew,
   widthsOf,
 } from "../../src/cli/status-at-estimate.js";
+import { estimateOf as runEstimate } from "../../src/cli/status-at-run-batches.js";
 import { writeMark } from "../../src/core/capacity/marks.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 
@@ -68,13 +70,13 @@ describe("the estimate per side (row 023-49, V2)", () => {
 
   it("says when it is a guess, and when the time is unknown", () => {
     const guess = estimateSide(
-      { groups: [oneGroup([10, 10, ...files(8, null)])], measured: null },
+      { groups: [oneGroup([...files(12, 10), ...files(28, null)])], measured: null },
       2,
       null,
     );
-    expect(guess).toMatchObject({ basis: "guess", known: 2, seconds: 50 });
+    expect(guess).toMatchObject({ basis: "guess", known: 12, seconds: 200 });
     expect(guess === null ? "" : sideText(guess)).toBe(
-      "about 50 s for 10 test files, up to 2 at once; a guess: 2 of them have a stored duration, the others count at their median",
+      "about 3 min for 40 test files, up to 2 at once; a guess: 12 of them have a stored duration, the others count at their median",
     );
     const unknown = estimateSide({ groups: [oneGroup(files(10, null))], measured: null }, 2, null);
     expect(unknown).toMatchObject({ basis: "unknown", seconds: null, known: 0 });
@@ -82,6 +84,41 @@ describe("the estimate per side (row 023-49, V2)", () => {
       "10 test files, time unknown: none has a stored duration and this call measured no rate",
     );
     expect(estimateSide({ groups: [oneGroup([])], measured: null }, 2, null)).toBeNull();
+  });
+
+  it("row 023-62 (V2's rest): too few stored durations give no time, unless the call measured a rate", () => {
+    // Round 7's s2: 1 of 1,338 files had a stored duration; "about 4 to 11 min" took 1.5 to 2.5 h.
+    const one = { groups: [oneGroup([2, ...files(1337, null)])], measured: null };
+    const e = estimateSide(one, 11, null);
+    expect(e).toMatchObject({ basis: "unknown", seconds: null, known: 1, files: 1338 });
+    expect(e === null ? "" : sideText(e)).toBe(
+      "1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate",
+    );
+    const measured = { done: 65, ms: 300_000 };
+    expect(estimateSide({ ...one, measured }, 11, null)).toMatchObject({ basis: "measured" });
+    // The floor: under a fifth, or fewer than 10 and under half; every file known is never too few.
+    expect(tooFew(2, 10)).toBe(true);
+    expect(tooFew(7, 40)).toBe(true);
+    expect(tooFew(12, 40)).toBe(false);
+    expect(tooFew(5, 10)).toBe(false);
+    expect(tooFew(2, 2)).toBe(false);
+    // Q1's estimate of a `--run` not made yet keeps the same floor.
+    const refs = Array.from({ length: 20 }, (_, i) => ({ ref: { project: "", path: `t${i}` } }));
+    const first = (ref: { path: string }) => (ref.path === "t0" ? 3 : null);
+    expect(runEstimate(refs, first, 2).seconds).toBeNull();
+    expect(runEstimate(refs.slice(0, 1), first, 2).seconds).toBe(3);
+  });
+
+  it("row 023-62 (V2's rest): names the files left out for a setup failed on the other side", () => {
+    const now = estimateSide({ groups: [oneGroup(files(13, 10))], measured: null }, 2, null);
+    const line = estimateLine(
+      { commit: null, now: now && { ...now, leftOut: 97 } },
+      "d8abcfe46",
+      null,
+    );
+    expect(line).toBe(
+      "Still to run, in the working tree: about 65 s for 13 test files, up to 2 at once, from their stored durations; 97 test files left out, their batch's setup failed at d8abcfe46 in this call",
+    );
   });
 
   it("names each side, and how to narrow a wide call", () => {

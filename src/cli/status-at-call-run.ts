@@ -14,6 +14,7 @@ import {
   estimateSide,
   loadNow,
   readPoolView,
+  type SideEstimate,
   type SideWork,
   widthsOf,
 } from "./status-at-estimate.js";
@@ -168,11 +169,16 @@ function estimateOf(
   { sides, measured, ahead }: EstimateSides,
 ): CallEstimate | null {
   const running = (s: SideState) => s.state === "no result" && s.pending !== undefined;
-  const todo = sides.map((side) => [
-    ...side.queue.files.filter((ref) => running(side.state(ref))),
+  const failedSetup = (s: SideState) => s.state === "not run" && s.reason === "setup";
+  // Row 023-62 (V2's rest): a file whose batch's setup failed on the other side is left out.
+  const other = (i: number) => sides[1 - i]?.state ?? (() => ({ state: "absent" }) as const);
+  const still = sides.map((side) => side.queue.files.filter((ref) => running(side.state(ref))));
+  const left = still.map((files, i) => files.filter((ref) => failedSetup(other(i)(ref))).length);
+  const todo = sides.map((side, i) => [
+    ...(still[i] ?? []).filter((ref) => !failedSetup(other(i)(ref))),
     ...(ahead ? side.rest : []),
   ]);
-  if (todo.every((files) => files.length === 0)) return null;
+  if (todo.every((files) => files.length === 0) && left.every((n) => n === 0)) return null;
   const ids = sides.map((side) => side.id);
   const { root, commonDir } = input.place;
   // Review 0.1.599 B3: both daemons are the repository's, and share its `capacity.projects` cap.
@@ -204,12 +210,20 @@ function estimateOf(
         measured: measured === null ? null : { done, ms: measured },
         ...(work.unknown[i] === true ? { limitsUnknown: true } : {}),
       };
-      return estimateSide(one, widths[i] ?? 1, factor);
+      const leftOut = left[i] ?? 0;
+      const e = estimateSide(one, widths[i] ?? 1, factor);
+      if (leftOut === 0) return e;
+      return e === null ? onlyLeftOut(leftOut) : { ...e, leftOut };
     });
     return { commit: commit ?? null, now: now ?? null };
   } finally {
     durations?.close();
   }
+}
+
+/** Row 023-62: a side whose every file still to run was left out of the estimate. */
+function onlyLeftOut(leftOut: number): SideEstimate {
+  return { files: 0, width: 1, seconds: null, basis: "unknown", known: 0, leftOut };
 }
 
 /** Row 023-40c: what the commit daemon still sets up when the wait ends; `null` when none. */
