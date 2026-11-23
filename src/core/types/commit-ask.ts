@@ -70,6 +70,11 @@ export interface CommitAskState {
    * daemon before it, and on an ask not taken yet.
    */
   readonly change?: string;
+  /**
+   * Row 023-61 (W5): the paths the call named; empty for a wide ask, whose
+   * files are the change's whole selection. Absent from a daemon before it.
+   */
+  readonly named?: readonly RelativePath[];
   /** `waiting`: for the setup; `selecting`: keyed, choosing; `queued`: its files are queued (or done); `failed`. */
   readonly phase: "waiting" | "selecting" | "queued" | "failed";
   /** Why it failed. */
