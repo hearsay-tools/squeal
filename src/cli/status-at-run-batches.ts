@@ -1,7 +1,7 @@
 import { estimateRun, type RunEstimate } from "../core/code/gate/estimate.js";
 import type { KeyedFile } from "../core/commit/at-keys-checkout.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import { readPoolView, widthsOf } from "./status-at-estimate.js";
+import { readPoolView, tooFew, widthsOf } from "./status-at-estimate.js";
 
 /*
  * Row 023-19 (lessons P3), row 023-40 (D7.3): Q1's estimate of a `--run`
@@ -24,11 +24,16 @@ export function runWidth(files: number, env: NodeJS.ProcessEnv = process.env): n
   return widthsOf(readPoolView(env, []), sides)[0] ?? 1;
 }
 
-/** D17.1: the files' estimate from their stored durations, as one Vitest-wide run. */
+/**
+ * D17.1: the files' estimate from their stored durations, as one
+ * Vitest-wide run. Row 023-62 (V2's rest): no time when too few of them
+ * have one (`tooFew`).
+ */
 export function estimateOf(
   files: readonly Pick<KeyedFile, "ref">[],
   durationOf: (ref: TestFileRef) => number | null,
   width = runWidth(files.length),
 ): RunEstimate {
-  return estimateRun("vitest", [{ width, seconds: files.map((f) => durationOf(f.ref)) }]);
+  const run = estimateRun("vitest", [{ width, seconds: files.map((f) => durationOf(f.ref)) }]);
+  return tooFew(run.known, run.files) ? { ...run, seconds: null } : run;
 }
