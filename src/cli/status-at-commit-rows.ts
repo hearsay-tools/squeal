@@ -35,8 +35,27 @@ export interface RowsInput {
   /** The caller's worktree, for the origin of its own results. */
   readonly own: WorktreeId;
   readonly asked: CommitAsked;
-  /** `--run`: a file with no result that no queued ask holds was not selected by the change. */
+  /**
+   * `--run`, or (row 023-61, W5) `--wait` alone with a kept wide ask of
+   * the call's own change (`joinSelects`): a file with no result that no
+   * queued ask holds was not selected by the change.
+   */
   readonly selection: boolean;
+}
+
+/**
+ * Row 023-61 (W5): whether `--wait` alone knows the change's selection: a
+ * kept ask of the call's own change (`change`) named no path, so its files
+ * are every file the change selects with no result at the commit. An ask
+ * narrowed by paths, another caller's change, or a daemon that does not
+ * tell what an ask named proves nothing.
+ */
+export function joinSelects(asked: CommitAsked): boolean {
+  const { change } = asked;
+  if (change === null) return false;
+  return asked.asks.some(
+    (ask) => ask.phase === "queued" && ask.change === change && ask.named?.length === 0,
+  );
 }
 
 /** The commit side as its daemon keys it now, or as it stands while the daemon sets up. */

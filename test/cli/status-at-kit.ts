@@ -126,6 +126,8 @@ export interface StandInCommit {
   readonly rows?: (tree: AbsolutePath, files: readonly TestFileRef[]) => void;
   /** Row 023-53 (V8): the change's whole selection it tells in each ask (`selects`); absent: none. */
   readonly selects?: number;
+  /** Row 023-61 (W5): per project, the files with an incomplete static closure it tells (`incomplete`). */
+  readonly incomplete?: Readonly<Record<string, readonly RelativePath[]>>;
   /** Row 023-58 (W1): the files it would run that have a result at the commit (`withResult`). */
   readonly withResult?: (ask: Omit<CommitAskRequest, "type">) => readonly TestFileRef[];
 }
@@ -145,6 +147,7 @@ export function standIn(
   // Review 0.1.599 B4: each ask's change identity, as the daemon keeps it.
   const changes = new Map<string, string>();
   const withResult = new Map<string, readonly TestFileRef[]>();
+  const named = new Map<string, readonly RelativePath[]>();
   const ports: AtDaemons = {
     async commit(input) {
       commits.push(input.commit);
@@ -156,6 +159,7 @@ export function standIn(
         commitDaemon.select?.(ask) ?? ask.named.map((path): TestFileRef => ({ project: "", path }));
       queued.set(ask.owner, files);
       changes.set(ask.owner, changeOf(ask.changed));
+      named.set(ask.owner, ask.named);
       const kept = commitDaemon.withResult?.(ask);
       if (kept !== undefined) withResult.set(ask.owner, kept);
       commitDaemon.rows?.(tree, files);
@@ -167,6 +171,7 @@ export function standIn(
         .map(([owner, files]) => ({
           owner,
           change: changes.get(owner) ?? "",
+          named: named.get(owner) ?? [],
           phase: "queued" as const,
           files,
           readers: {},
@@ -180,6 +185,7 @@ export function standIn(
         type: "commit-read",
         setup: { phase: "ready" },
         asks,
+        ...(commitDaemon.incomplete === undefined ? {} : { incomplete: commitDaemon.incomplete }),
       };
     },
     find: () => tree,

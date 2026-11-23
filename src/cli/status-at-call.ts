@@ -11,7 +11,7 @@ import { assembleReport } from "./status-at-assemble.js";
 import { type After, queuedRun, restOf } from "./status-at-call-run.js";
 import { joinedCommit, queueBoth } from "./status-at-call-sides.js";
 import type { CommitAsked } from "./status-at-commit-ask.js";
-import { rowsSide } from "./status-at-commit-rows.js";
+import { joinSelects, rowsSide } from "./status-at-commit-rows.js";
 import { type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
 import { joinNow } from "./status-at-join.js";
 import { type NowPlace, type NowRead, nowAgain, worktreeNow } from "./status-at-now-ask.js";
@@ -145,7 +145,9 @@ async function readAfter(
   const fresh = await nowAgain(nowPlace, first);
   const unread = first.asked.kind !== "read";
   return withStores(place.commonDir, async (main) => {
-    const rows = { root, commit, paths, own: worktreeId, asked: atQueue, selection };
+    // Row 023-61 (W5): `--wait` alone keeps the categories of the wide `--run` it joins.
+    const chose = selection || joinSelects(atQueue);
+    const rows = { root, commit, paths, own: worktreeId, asked: atQueue, selection: chose };
     const { at: live } = await rowsSide(main, rows);
     // A side not read cannot say a named path selects nothing: each is answered as a file.
     const sides = { now: fresh.sources, at: live.sources, failed: unread };
