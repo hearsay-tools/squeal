@@ -18,6 +18,8 @@ import { groupPolicy, inTurn, runnerLane } from "./group-lanes-fixture.js";
  * sides in turn (spec 004 D2's handover); the side that takes it next runs
  * the file its partner just ran, so every two turns give one compared file.
  * A side whose partner has nothing queued runs its own order at full pace.
+ * Review 0.1.612 S2: no fixed leader; the side that takes the free slot
+ * first leads, and a late partner follows the leader's latest file.
  */
 
 const PATHS = ["a", "b", "c"].map((n) => `test/browser/${n}.test.ts`);
@@ -80,6 +82,17 @@ async function pair(recheckMs: number): Promise<Pair> {
   return { tree, commit, log };
 }
 
+/** Holds `side`'s run of `path` until the returned release is called. */
+function holdFirst(side: CatchUpSide, path: string): () => void {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  onTestFinished(() => release());
+  side.runner.holdOf = (run) => (run.files.some((f) => f.path === path) ? held : undefined);
+  return () => release();
+}
+
 describe("both sides take the shared slot file by file (row 023-78)", { timeout: 60_000 }, () => {
   it("runs each requested file on both sides before the next, in the request's order", async () => {
     const { tree, commit, log } = await pair(50);
@@ -112,6 +125,51 @@ describe("both sides take the shared slot file by file (row 023-78)", { timeout:
       `tree:${B}`,
       `commit:${C}`,
       `tree:${C}`,
+    ]);
+  });
+
+  it("lets the working tree lead when it takes the slot first, the commit side following", async () => {
+    // Review 0.1.612 S2: no side is the fixed leader; whichever takes the free slot first leads.
+    const { tree, commit, log } = await pair(50);
+    const release = holdFirst(tree, A);
+    await tree.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
+    await expect.poll(() => log.length, { timeout: 20_000 }).toBe(1);
+    // The commit side's own order is c, a, b.
+    await commit.scheduler.requestGroupPaths?.("browser", [C], { at: true });
+    await commit.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
+    await commit.rest();
+    expect(log).toEqual([`tree:${A}`]);
+    release();
+    await expect.poll(() => log.length, { timeout: 20_000 }).toBe(6);
+    expect(log).toEqual([
+      `tree:${A}`,
+      `commit:${A}`,
+      `tree:${B}`,
+      `commit:${B}`,
+      `tree:${C}`,
+      `commit:${C}`,
+    ]);
+  });
+
+  it("has a late partner follow the leader's latest file, then its own order", async () => {
+    // Review 0.1.612 S2, the recorded limit: files the leader ran before the partner came
+    // get the partner's run last.
+    const { tree, commit, log } = await pair(50);
+    const release = holdFirst(commit, C);
+    await commit.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
+    await expect.poll(() => log.length, { timeout: 20_000 }).toBe(3);
+    await tree.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
+    await tree.rest();
+    expect(log).toEqual([`commit:${A}`, `commit:${B}`, `commit:${C}`]);
+    release();
+    await expect.poll(() => log.length, { timeout: 20_000 }).toBe(6);
+    expect(log).toEqual([
+      `commit:${A}`,
+      `commit:${B}`,
+      `commit:${C}`,
+      `tree:${C}`,
+      `tree:${A}`,
+      `tree:${B}`,
     ]);
   });
 
