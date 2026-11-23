@@ -159,7 +159,7 @@ export class SlowTier {
    * group's moment, past the load guard and without a pool grant, as an
    * open request does; the group's other files keep waiting.
    */
-  readonly narrow = new CommitAsks(() => this.loop.narrowChanged?.());
+  readonly narrow = new CommitAsks(() => this.loop.narrowChanged?.(), true);
   /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
   #budgetMs: number | null = null;
   #slotMissedSince: EpochMs | null = null;

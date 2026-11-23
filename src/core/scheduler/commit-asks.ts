@@ -20,12 +20,21 @@ export interface CommitAsk {
  * an edit that re-keys it before it runs leaves it to the next commit. An
  * ask leaves once its file is no longer pending, or once neither its key
  * nor its run in flight is the asked key.
+ *
+ * Rows 023-72 and 023-74 (round 9 Y2; the coordinator agreed this edit):
+ * a lane's narrow asks `follow` their file. A request named the file, not
+ * a key, so a pending file re-keyed before it runs (an edit, or another
+ * worktree's run that grew its observed reads) keeps its ask, moved to its
+ * new key; an ended or removed file still leaves.
  */
 export class CommitAsks {
   readonly #keys = new Map<string, CheckKey>();
 
-  /** `changed`: told after an ask came or left (review 0.1.610 B1: a lane's narrow asks are published). */
-  constructor(private readonly changed?: () => void) {}
+  /** `changed`: told after an ask came, moved or left (review 0.1.610 B1: a lane's narrow asks are published). */
+  constructor(
+    private readonly changed?: () => void,
+    private readonly follow = false,
+  ) {}
 
   add(asks: readonly CommitAsk[], ledger: Ledger): void {
     let changed = false;
@@ -45,13 +54,15 @@ export class CommitAsks {
     return file !== undefined && file.key !== null && this.#keys.get(file.id) === file.key;
   }
 
-  /** Drops the asks that can no longer run (above). */
+  /** Drops the asks that can no longer run (above); with `follow`, moves a re-keyed pending file's. */
   prune(ledger: Ledger): void {
     let changed = false;
     for (const [id, key] of this.#keys) {
       const file = ledger.files.get(id);
       if (file !== undefined && mayRunAt(file, key)) continue;
-      this.#keys.delete(id);
+      if (this.follow && file !== undefined && file.phase !== null && file.key !== null)
+        this.#keys.set(id, file.key);
+      else this.#keys.delete(id);
       changed = true;
     }
     if (changed) this.changed?.();
