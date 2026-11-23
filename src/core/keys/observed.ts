@@ -341,7 +341,10 @@ export class Listings {
    * the names each one hashed from disk holds now are that run's own, a test
    * that writes into the directory it lists say. `apply` then moves its
    * listing only when its names differ from these; the keys keep the names
-   * the run began with.
+   * the run began with. A name another process wrote during the run is
+   * taken as the run's own too, so a key does not certify what the run
+   * listed: the commit side counts a folder reader's result only when the
+   * commit worktree wrote it (row 023-70, review 0.1.612 B1).
    */
   ran(directories: readonly RelativePath[]): void {
     for (const directory of directories) {
