@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { heldAt } from "../commit/held.js";
+import { listedDirectory } from "../keys/observed.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { groupView } from "../scheduler/slow.js";
 import type { CommitSetup } from "../types/commit-ask.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../types/common.js";
@@ -93,6 +95,29 @@ export class CommitStart {
             existsSync(join(caller, path))
           );
         });
+      },
+      // Row 023-70 (the coordinator agreed, request 47cad2c0): a stored result another tree
+      // wrote holds no folder read, since nothing records the names its run listed there.
+      storedNeeds: async (stored) => {
+        const scheduler = ports.scheduler();
+        if (scheduler?.closureReads === undefined) return new Map();
+        const foreign = new Set(
+          stored
+            .filter(({ ref, key }) =>
+              store.results
+                .byKey(key)
+                .some(
+                  (r) =>
+                    r.check.project === ref.project &&
+                    r.check.testPath === ref.path &&
+                    r.provenance.worktreeId !== worktreeId,
+                ),
+            )
+            .map(({ ref }) => testFileId(ref)),
+        );
+        if (foreign.size === 0) return new Map();
+        const listings = await scheduler.closureReads((path) => listedDirectory(path) !== null);
+        return new Map([...listings].filter(([id]) => foreign.has(id)));
       },
       stored: (ref, key) =>
         store.results
