@@ -93,6 +93,11 @@ function changeText(f: FileReport, at: string, many = false): string {
   }
   const parts = [detail(`at ${at}`, f.at), detail("now", f.now)].filter((p) => p !== null);
   const more = parts.length === 0 ? "" : ` (${parts.join("; ")})`;
+  if (f.at.state === "no result" && f.at.notSelected === true && f.at.closure === "complete") {
+    // Review 0.1.607 B3: T2's fact for one named file (or a group of them), with its state now.
+    const its = many ? "their" : "its";
+    return `no result at ${at}, not selected by the change: none of ${its} inputs differs between ${at} and the working tree, so this commit cannot change ${its} result; now ${word(f.now)}${more}`;
+  }
   if (f.at.state === "no result" && f.at.notSelected === true) {
     const runs = `\`--all-missing\` runs ${many ? "them" : "it"}`;
     // Row 023-35 (T2): not selected, yet its closure may hold a changed input.
@@ -124,11 +129,8 @@ export function fileLines(
   full: boolean,
   named = false,
 ): { readonly lines: string[]; readonly folded: boolean } {
-  if (named && !full) {
-    const fixed = notSelectedLines(files, at, full);
-    const own = namedLines(files, at);
-    return { lines: [...own.lines, ...fixed.lines], folded: own.folded || fixed.folded };
-  }
+  // Review 0.1.607 B3: a narrowed call names its not-selected files too, within the same limit.
+  if (named && !full) return namedLines(files, at);
   const lines: string[] = [];
   for (const kind of ["pass -> fail", "fail -> pass"] as const) {
     for (const f of files.filter((file) => file.change === kind))
@@ -166,17 +168,18 @@ export function fileLines(
  * them. A narrowed call names each of its files with both sides, changed
  * files first, then the unchanged, then the unknown by group, up to
  * `NAMED_SHOWN`; past it, the rest by group with its count and a few paths.
+ * Review 0.1.607 B3: the files the commit cannot change (T2) are among
+ * them, each with that fact and its state now, never folded below the limit.
  */
 function namedLines(
   files: readonly FileReport[],
   at: string,
 ): { readonly lines: string[]; readonly folded: boolean } {
   const rank = (f: FileReport) => (f.change === "unchanged" ? 1 : f.change === "unknown" ? 2 : 0);
-  const listed = files.filter((f) => !unchangeable(f));
   const sizes = new Map<string, number>();
-  for (const f of listed) sizes.set(changeText(f, at), (sizes.get(changeText(f, at)) ?? 0) + 1);
+  for (const f of files) sizes.set(changeText(f, at), (sizes.get(changeText(f, at)) ?? 0) + 1);
   // A stable sort: by rank, an unknown group by its size, then the files' own (path) order.
-  const ordered = [...listed].sort(
+  const ordered = [...files].sort(
     (a, b) =>
       rank(a) - rank(b) ||
       (rank(a) === 2

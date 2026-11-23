@@ -6,7 +6,7 @@ import {
   type SideState,
   stateOf,
 } from "../../src/cli/status-at-report.js";
-import { NAMED_SHOWN } from "../../src/cli/status-at-report-files.js";
+import { fileLines, NAMED_SHOWN } from "../../src/cli/status-at-report-files.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { result } from "../store/helpers.js";
 
@@ -88,5 +88,58 @@ describe("a narrowed call names its files (row 023-59, W2)", () => {
     const { scope: _, ...wideReport } = report(refs, () => pass);
     const wide = formatAt(wideReport, NOW);
     expect(wide).not.toContain("l00.test.ts");
+  });
+
+  it("names each not-selected file the commit cannot change, with its state now (review 0.1.607 B3)", () => {
+    // Five files under a named folder: no result at the commit, not selected, closure complete.
+    const fixed: SideState = {
+      state: "no result",
+      key: "k3",
+      notSelected: true,
+      closure: "complete",
+    };
+    const refs = lint(5);
+    const states = [running, pass, running, { state: "no result", key: "k4" } as const, pass];
+    const now = (r: TestFileRef) => states[refs.indexOf(r)] as SideState;
+    const files = compareSides(refs, () => fixed, now);
+    const { lines, folded } = fileLines(files, "c", false, true);
+    const cannot =
+      "no result at c, not selected by the change: none of its inputs differs between c and the working tree, so this commit cannot change its result; now";
+    // Larger groups of one state first; within a size, the files' own order.
+    expect(lines).toEqual([
+      `lint/l00.test.ts: ${cannot} no result (running)`,
+      `lint/l01.test.ts: ${cannot} pass (now: run in this worktree)`,
+      `lint/l02.test.ts: ${cannot} no result (running)`,
+      `lint/l04.test.ts: ${cannot} pass (now: run in this worktree)`,
+      `lint/l03.test.ts: ${cannot} no result`,
+    ]);
+    expect(folded).toBe(false);
+    // A wide call keeps T2's one grouped line.
+    const wide = fileLines(files, "c", false, false).lines;
+    expect(wide).toHaveLength(1);
+    expect(wide[0]).toMatch(/^5 test files not selected: none of their inputs differs/);
+  });
+
+  it("shares the 20-file limit between ordinary and not-selected files (review 0.1.607 B3)", () => {
+    const fixed: SideState = {
+      state: "no result",
+      key: "k3",
+      notSelected: true,
+      closure: "complete",
+    };
+    const plain = lint(18);
+    const cut = lint(5, 18);
+    const ids = new Set(cut.map((r) => r.path));
+    const at = (r: TestFileRef) => (ids.has(r.path) ? fixed : pass);
+    const files = compareSides([...plain, ...cut], at, () => running);
+    const { lines, folded } = fileLines(files, "c", false, true);
+    expect(lines).toHaveLength(NAMED_SHOWN + 1);
+    expect(lines.slice(0, 18).every((l) => l.includes("pass -> no result (running)"))).toBe(true);
+    expect(lines[18]).toMatch(/^lint\/l18\.test\.ts: no result at c, not selected by the change/);
+    expect(lines[19]).toMatch(/^lint\/l19\.test\.ts: no result at c, not selected by the change/);
+    expect(lines[20]).toBe(
+      "3 more test files: no result at c, not selected by the change: none of their inputs differs between c and the working tree, so this commit cannot change their result; now no result (running): lint/l20.test.ts, lint/l21.test.ts, lint/l22.test.ts\n".trimEnd(),
+    );
+    expect(folded).toBe(true);
   });
 });
