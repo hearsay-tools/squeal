@@ -1,6 +1,8 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { REPO_ROOT } from "../../../src/harness/build.js";
+import { ANTIGRAVITY_PLUGIN } from "../../../src/harness/antigravity/build.js";
+import { buildDist, REPO_ROOT } from "../../../src/harness/build.js";
+import { observeMetafile } from "../../helpers/build-inputs.js";
 
 const FIXTURES = join(REPO_ROOT, "test/fixtures/antigravity-hooks");
 
@@ -55,4 +57,15 @@ export function injected(out: string | { readonly stdout: string }): string {
   const [step, ...more] = parsed.injectSteps;
   if (step === undefined || more.length > 0) throw new Error("not one injected step");
   return step.systemMessage.systemMessage;
+}
+
+/**
+ * The Antigravity plugin's `dist/` built from this worktree's sources into a
+ * temporary directory, as `buildCodexBundles` builds Codex's: what a latency
+ * test runs is the source under test, not the committed bundles.
+ */
+export async function buildAntigravityBundles(): Promise<{ dir: string; cleanup: () => void }> {
+  const dir = mkdtempSync("/tmp/sq-antigravity-");
+  observeMetafile(await buildDist(ANTIGRAVITY_PLUGIN, dir));
+  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
