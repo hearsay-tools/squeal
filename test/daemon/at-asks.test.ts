@@ -149,6 +149,8 @@ describe("D4.5 at the commit daemon (row 023-40c)", () => {
     p.ready();
     await expect.poll(() => asks.snapshot().asks[0]?.phase).toBe("queued");
     expect(paths(asks.snapshot().asks[0]?.withResult ?? [])).toEqual([A.path]);
+    // Row 023-61 (W5): a wide ask says it named nothing.
+    expect(asks.snapshot().asks[0]?.named).toEqual([]);
   });
 
   it("refuses a chosen file whose closure reads a path git does not hold, and its path's other projects (D4.9)", async () => {
@@ -182,7 +184,7 @@ describe("a commit daemon's asks (row 023-40c)", () => {
     asks.ask(ask({ named: [B.path, C.path], changed: [] }));
     expect(asks.snapshot()).toMatchObject({
       setup: { phase: "install" },
-      asks: [{ owner: "call-1", phase: "waiting", files: [] }],
+      asks: [{ owner: "call-1", phase: "waiting", files: [], named: [B.path, C.path] }],
     });
     p.ready();
     await expect.poll(() => asks.snapshot().asks[0]?.phase).toBe("queued");

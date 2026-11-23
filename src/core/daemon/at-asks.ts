@@ -85,6 +85,8 @@ interface Kept {
   readonly owner: string;
   /** Review 0.1.599 B4: the identity of the ask's change (`changeOf`). */
   readonly change: string;
+  /** Row 023-61 (W5): the paths the call named. */
+  readonly named: readonly RelativePath[];
   phase: CommitAskState["phase"];
   text?: string;
   files: TestFileRef[];
@@ -113,6 +115,7 @@ export class AtAsks {
     const kept: Kept = {
       owner: request.owner,
       change: changeOf(request.changed),
+      named: [...request.named],
       phase: "waiting",
       files: [],
       readers: {},
@@ -195,6 +198,7 @@ function stateOf(ask: Kept, setup: CommitSetup): CommitAskState {
   return {
     owner: ask.owner,
     change: ask.change,
+    named: [...ask.named],
     phase,
     ...(ask.text === undefined ? {} : { text: ask.text }),
     files: [...ask.files],
