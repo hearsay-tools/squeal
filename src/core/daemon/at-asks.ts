@@ -80,6 +80,17 @@ export interface AtAskPorts {
    * caller's worktree), that path, by `testFileId`.
    */
   readonly needs: (request: CommitAskRequest) => Promise<ReadonlyMap<string, RelativePath>>;
+  /**
+   * Row 023-70 (review 0.1.610): of the files with a result stored at their
+   * live key, per file whose result another tree wrote and whose closure
+   * lists a folder, that folder's listing path, by `testFileId`. A folder
+   * read's key hashes the names git tracks, not the names the run saw, and
+   * nothing records those, so only the commit worktree's own run holds one
+   * (row 023-64). Absent: no stored result is refused for it.
+   */
+  readonly storedNeeds?: (
+    stored: readonly StoredAt[],
+  ) => Promise<ReadonlyMap<string, RelativePath>>;
   /** Whether a result of `ref` is stored at `key`. */
   readonly stored: (ref: TestFileRef, key: CheckKey) => boolean;
   /** The group `ref` runs in, by the policy in force. */
@@ -94,6 +105,12 @@ export interface AtAskPorts {
   readonly changed: () => void;
   /** T2: per node:test project, its files with an incomplete static closure; absent: none told. */
   readonly incomplete?: () => Record<string, readonly RelativePath[]>;
+}
+
+/** A test file with a result stored at its live key. */
+export interface StoredAt {
+  readonly ref: TestFileRef;
+  readonly key: CheckKey;
 }
 
 /** A row of the daemon's keys, as `TestFileKeyRecord` holds it. */
@@ -285,11 +302,13 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
   const first: TestFileRef[] = [];
   const rest: TestFileRef[] = [];
   const withResult: TestFileRef[] = [];
+  const stored: StoredAt[] = [];
   for (const { testFile, key } of rows) {
     if (!candidate(testFile)) continue;
     const id = testFileId(testFile);
     const runs = own.has(testFile.path) || request.allMissing || selected.has(id) || key === null;
     if (key !== null && ports.stored(testFile, key)) {
+      stored.push({ ref: testFile, key });
       if (runs) withResult.push(testFile);
       continue;
     }
@@ -298,6 +317,10 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
   }
   const needs = await ports.needs(request);
   const refused = refusals([...first, ...rest], needs);
+  // Row 023-70: a stored result is the commit's only when D4.9 holds for the tree that ran it.
+  const listed = (await ports.storedNeeds?.(stored)) ?? new Map<string, RelativePath>();
+  for (const refusal of storedRefusals(stored, needs, listed))
+    refused.set(testFileId(refusal.ref), refusal);
   const runs = (ref: TestFileRef) => !refused.has(testFileId(ref));
   return {
     named: first.filter(runs),
@@ -305,8 +328,31 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
     readers,
     refused: [...refused.values()],
     selects: selectedCount,
-    withResult,
+    withResult: withResult.filter(runs),
   };
+}
+
+/**
+ * Row 023-70 (review 0.1.610): D4.9 over the files with a stored result: a
+ * path git does not hold at the commit (`needs`) refuses it as it refuses a
+ * file to run; a folder read refuses it when another tree ran it (`listed`).
+ */
+function storedRefusals(
+  stored: readonly StoredAt[],
+  needs: ReadonlyMap<string, RelativePath>,
+  listed: ReadonlyMap<string, RelativePath>,
+): CommitRefusal[] {
+  return stored.flatMap(({ ref }) => {
+    const path = needs.get(testFileId(ref));
+    if (path !== undefined) return [{ ref, reason: `needs ${path}` }];
+    const listing = listed.get(testFileId(ref));
+    return listing === undefined ? [] : [{ ref, reason: storedReason(listing) }];
+  });
+}
+
+/** Row 023-70: why a stored result of a file that lists `listing` is not the commit's. */
+export function storedReason(listing: RelativePath): string {
+  return `needs ${listing}: its stored result ran in another worktree, whose listing of it is not recorded`;
 }
 
 /**
