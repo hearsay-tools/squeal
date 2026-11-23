@@ -5,7 +5,13 @@ import { type CallEstimate, estimateLine } from "./status-at-estimate.js";
 import type { SideQueue } from "./status-at-queue.js";
 import type { SideState } from "./status-at-report.js";
 import { idleLines, resolvedLines } from "./status-at-report-join.js";
-import { elsewhereText, failedThere, namedLine, restLine } from "./status-at-report-narrow.js";
+import {
+  elsewhereText,
+  failedThere,
+  namedLine,
+  restLine,
+  stillText,
+} from "./status-at-report-narrow.js";
 
 /*
  * Spec 023 D7.3 (row 023-40, research `run-wait-model.md` Q7): what a
@@ -30,6 +36,13 @@ export interface QueuedSide {
   readonly known: number;
   /** Of those, the ones still queued or running. */
   readonly running: number;
+  /** Row 023-71 (Y1): of `running`, the ones queued and not started; absent from earlier reports. */
+  readonly queued?: number;
+  /**
+   * Row 023-71 (Y1): why the queued ones wait, after "waiting for ", as the
+   * daemon publishes it for their groups' lanes; absent when it publishes none.
+   */
+  readonly waiting?: string;
   /**
    * R3: each failed setup, `<group>: <failure>`, with the files it left not
    * run; row 023-52 (V6): `elsewhere`, the same files on the other side,
@@ -137,6 +150,7 @@ export function queuedSide(
     reached: queue.root !== null,
     known: states.filter(({ s }) => isKnown(s)).length,
     running: states.filter(({ s }) => isRunning(s)).length,
+    queued: states.filter(({ s }) => s.state === "no result" && s.pending === "queued").length,
     setupFailed: [...setups].map(([setup, refs]) => ({
       setup,
       files: refs.length,
@@ -197,11 +211,11 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
     const failedAt = failedThere(commit, `at ${at}`);
     const there =
       setup === null
-        ? `${commit.running} still running at ${at} (its worktree${failedHere === "" ? "" : `; ${failedHere}`})`
+        ? `${stillText(commit, "still running")} at ${at} (its worktree${failedHere === "" ? "" : `; ${failedHere}`})`
         : `still setting up at ${at} (${setup})`;
     const here = nowSetup
       ? "still setting up in the working tree (its daemon starts or loads its configuration)"
-      : `${now.running} in the working tree${failedAt === "" ? "" : ` (${failedAt})`}`;
+      : `${stillText(now, "")} in the working tree${failedAt === "" ? "" : ` (${failedAt})`}`;
     lines.push(
       `${there}, ${here}; their runs go on in the daemons. ${run.again} waits for them; squeal ps shows them.`,
     );

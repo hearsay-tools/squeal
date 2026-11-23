@@ -280,7 +280,7 @@ describe(
       expect(text.out).not.toContain("nothing is queued");
       // Q7's line, with the commit daemon still setting up.
       expect(text.out).toContain(
-        `still setting up at ${a.slice(0, 9)} (install), 1 in the working tree; their runs go on in the daemons. squeal status --at ${a} ${TEST.path} --wait 100000 waits for them; squeal ps shows them.`,
+        `still setting up at ${a.slice(0, 9)} (install), 0 running and 1 queued in the working tree; their runs go on in the daemons. squeal status --at ${a} ${TEST.path} --wait 100000 waits for them; squeal ps shows them.`,
       );
     });
   },

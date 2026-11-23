@@ -111,7 +111,7 @@ describe("status --at --run on the daemons (row 023-40, D7.3; row 023-40c)", SLO
     expect(text.code).toBe(3);
     const at = a.slice(0, 9);
     expect(text.out.trimEnd().split("\n").at(-1)).toBe(
-      `1 still running at ${at} (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at ${a} ${TEST.path} --wait 100000 waits for them; squeal ps shows them.`,
+      `1 still running at ${at} (its worktree), 0 running and 1 queued in the working tree; their runs go on in the daemons. squeal status --at ${a} ${TEST.path} --wait 100000 waits for them; squeal ps shows them.`,
     );
     expect(text.out).toContain(
       `--run: queued 1 test files with no result at ${at} in its commit daemon (its worktree ${tree}); 0 have a result now`,
@@ -227,7 +227,7 @@ describe("status --at --run on the daemons (row 023-40, D7.3; row 023-40c)", SLO
       `1 not run at ${at}: the batch's setup failed (tests: boom); in the working tree, of them: 1 still queued or running (the same setup may fail)`,
     );
     expect(text.out).toContain(
-      `0 still running at ${at} (its worktree), 1 in the working tree (1 of them in a batch whose setup failed at ${at}); their runs go on`,
+      `0 still running at ${at} (its worktree), 0 running and 1 queued in the working tree (1 of them in a batch whose setup failed at ${at}); their runs go on`,
     );
   });
 });

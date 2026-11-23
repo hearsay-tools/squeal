@@ -33,21 +33,39 @@ export function failedThere(failed: QueuedSide, where: string): string {
 /**
  * Row 023-51 (V4): a narrowed call's files first, before the rest of the
  * queue: `test/store: 35 of 36 still running at <c>, 0 of 38 in the working
- * tree`; `null` without paths, or when nothing runs.
+ * tree`; `null` without paths, or when nothing runs. Row 023-71 (Y1): a
+ * file not started reads queued, with the wait its daemon publishes:
+ * `1 of 1 queued at <c>, waiting for the browser group's slot, …`.
  */
 export function namedLine(run: QueuedRun, at: string): string | null {
   if (run.paths === undefined || run.paths.length === 0) return null;
   const { commit, now } = run;
   const setup = commit.setup ?? null;
   if (setup === null && now.setup !== true && commit.running + now.running === 0) return null;
-  const of = (side: QueuedSide, where: string) =>
-    side.files === 0
-      ? `none queued ${where}`
-      : `${side.running} of ${side.files} still running ${where}`;
+  const of = (side: QueuedSide, where: string) => {
+    if (side.files === 0) return `none queued ${where}`;
+    const why = side.waiting === undefined ? "" : `, waiting for ${side.waiting}`;
+    const queued = side.queued ?? 0;
+    if (queued === 0) return `${side.running} of ${side.files} still running ${where}`;
+    const started = side.running - queued;
+    if (started === 0) return `${queued} of ${side.files} queued ${where}${why}`;
+    return `${started} of ${side.files} running and ${queued} queued ${where}${why}`;
+  };
   const there = setup === null ? of(commit, `at ${at}`) : `still setting up at ${at} (${setup})`;
   const here =
     now.setup === true ? "still setting up in the working tree" : of(now, "in the working tree");
   return `${run.paths.join(", ")}: ${there}, ${here}`;
+}
+
+/**
+ * Row 023-71 (Y1): a side's files still to run, `<n> <verb>` (`verb` may be
+ * empty) while none waits unstarted, else `<started> running and <queued>
+ * queued`: a queued file is not counted as running.
+ */
+export function stillText(side: QueuedSide, verb: string): string {
+  const queued = side.queued ?? 0;
+  if (queued === 0) return verb === "" ? `${side.running}` : `${side.running} ${verb}`;
+  return `${side.running - queued} running and ${queued} queued`;
 }
 
 /** Row 023-51 (V4): the rest of each daemon's queue, on its own line; `null` when none. */

@@ -92,7 +92,7 @@ describe("a narrowed wait on a source path (review 0.1.599 B2)", SLOW, () => {
     expect(join.out).not.toContain("--wait: nothing is queued or running");
     expect(waited.filter((w) => w.root === tree)).toEqual([{ root: tree, files: [A.path] }]);
     expect(asked).toEqual([["src/a.ts"]]);
-    expect(join.out).toContain(`src/a.ts: 1 of 1 still running at ${at}, `);
+    expect(join.out).toContain(`src/a.ts: 1 of 1 queued at ${at}, `);
     expect(join.out).toContain(
       `The rest of the queue, outside these paths: 1 more test files queued or running at ${at} (its worktree)`,
     );

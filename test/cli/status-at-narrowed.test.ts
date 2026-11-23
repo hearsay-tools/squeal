@@ -72,7 +72,7 @@ describe("a narrowed call behind a wide queue (rows 023-51, 023-53)", SLOW, () =
     const join = await run(f, { commit: a, paths: [A1.path], waitMs: 2000 }, options);
     const lines = join.out.split("\n");
     const named = lines.findIndex((line) =>
-      line.startsWith(`${A1.path}: 1 of 1 still running at ${at}, `),
+      line.startsWith(`${A1.path}: 1 of 1 queued at ${at}, `),
     );
     expect(named, join.out).toBeGreaterThan(-1);
     expect(lines.findIndex((line) => line.startsWith("--wait: joined"))).toBeGreaterThan(named);
@@ -83,7 +83,7 @@ describe("a narrowed call behind a wide queue (rows 023-51, 023-53)", SLOW, () =
     expect(join.out).toContain(
       `, of 1 named test file; the change selects 4 test files at ${at} (\`squeal status --at ${a}\`, without paths, compares them)`,
     );
-    expect(join.out).toContain(`1 still running at ${at} (its worktree)`);
+    expect(join.out).toContain(`0 running and 1 queued at ${at} (its worktree)`);
 
     // A narrowed `--run` the same; JSON names the scope.
     const runJson = await run(
