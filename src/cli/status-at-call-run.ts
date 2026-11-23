@@ -201,18 +201,25 @@ function estimateOf(
     const factor = loadNow();
     const seconds = (ref: TestFileRef) => durations?.of(ref) ?? null;
     // Review 0.1.599 B3: each side's files by group, at the limits its daemon runs them at.
+    const done = sides.map((side) =>
+      side.queue.files.filter((ref) => {
+        const s = side.state(ref);
+        return s.state === "pass" || s.state === "fail";
+      }),
+    );
+    // Row 023-66 (V2): the results are counted per group, so a rate counts only where it was measured.
     const work = workGroups(
-      sides.map((side, i) => ({ root: side.queue.root, files: todo[i] ?? [] })),
+      sides.map((side, i) => ({
+        root: side.queue.root,
+        files: todo[i] ?? [],
+        done: done[i] ?? [],
+      })),
       seconds,
     );
     const [commit, now] = sides.map((side, i) => {
-      const done = side.queue.files.filter((ref) => {
-        const s = side.state(ref);
-        return s.state === "pass" || s.state === "fail";
-      }).length;
       const one: SideWork = {
         groups: work.groups[i] ?? [],
-        measured: measured === null ? null : { done, ms: measured },
+        measured: measured === null ? null : { done: done[i]?.length ?? 0, ms: measured },
         ...(work.unknown[i] === true ? { limitsUnknown: true } : {}),
       };
       const leftOut = left[i] ?? 0;
@@ -220,7 +227,12 @@ function estimateOf(
       // Row 023-60 (W3): a narrowed call's file that still runs in a wider batch waits for it.
       const runs = ahead || estimate === null ? [] : (inFlight()[i] ?? []);
       const at = { width: widths[i] ?? 1, factor, now: Date.now(), rate: one.measured };
-      const batch = namedRun(runs, side.queue.files, todo[i] ?? [], seconds, at);
+      // Row 023-66 (V2): the batch's time at its group's rate, not the side's.
+      const rateIn = (ref: TestFileRef) => {
+        const own = work.doneIn[i]?.(ref) ?? null;
+        return own === null || measured === null ? one.measured : { done: own, ms: measured };
+      };
+      const batch = namedRun(runs, side.queue.files, todo[i] ?? [], seconds, { ...at, rateIn });
       let e = estimate;
       if (e !== null && batch !== null) {
         // Review 0.1.607 B1: the batch's unknown time leaves the side's time unknown.

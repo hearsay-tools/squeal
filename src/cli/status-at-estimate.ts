@@ -1,11 +1,18 @@
 import { readMarks } from "../core/capacity/marks.js";
 import { type Demand, fairShares } from "../core/capacity/share.js";
-import { loadFactor, median } from "../core/code/gate/estimate.js";
+import { loadFactor } from "../core/code/gate/estimate.js";
 import { loadUserConfig, resolveCapacity } from "../core/daemon/user-config.js";
 import { hostLoad } from "../core/retry/load.js";
 import { slowSlotDir } from "../core/slow/slot.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import { type NamedRun, namedRunText } from "./status-at-estimate-named.js";
+import {
+  byGroup,
+  groupedSeconds,
+  groupsText,
+  groupWidth,
+  measuredElsewhere,
+} from "./status-at-estimate-rate.js";
 
 /*
  * Row 023-49 (dogfood round 6, V2; spec 023 D7.3): the time what still
@@ -64,6 +71,13 @@ export interface WorkGroup {
   readonly perFile: number;
   /** The other side's files that hold the same `maxParallel` slot, by stored seconds. */
   readonly shared: readonly (number | null)[];
+  /** Row 023-66 (V2): the group's name in the side's policy; absent where it was not read. */
+  readonly name?: string;
+  /**
+   * Row 023-66 (V2): the call's results that arrived in this group on the
+   * side; absent: not counted per group (one group takes the side's).
+   */
+  readonly done?: number;
 }
 
 /** What one side still has to run, and what this call measured there. */
@@ -92,9 +106,10 @@ export interface SideEstimate {
   /**
    * `measured`: this call's rate there; `durations`: stored durations, most
    * files have one; `guess`: fewer than half have one, the others count at
-   * their median; `unknown`: none has, and nothing was measured.
+   * their median; `unknown`: none has, and nothing was measured; `groups`
+   * (row 023-66): each group alone, in `groups`, the side the longest.
    */
-  readonly basis: "measured" | "durations" | "guess" | "unknown";
+  readonly basis: "measured" | "durations" | "guess" | "unknown" | "groups";
   /** Of the files, those with a stored duration. */
   readonly known: number;
   /** With `measured`: the results that arrived and the seconds they took. */
@@ -113,6 +128,17 @@ export interface SideEstimate {
    * at least its time left, and `null` when the batch's time is unknown.
    */
   readonly batch?: NamedRun;
+  /** Row 023-66 (V2): the files' group, when this call measured results on the side in others. */
+  readonly group?: string;
+  /** Row 023-66 (V2): the side's results this call measured came from other groups than these files'. */
+  readonly elsewhere?: { readonly done: number; readonly own: number; readonly seconds: number };
+  /** Row 023-66 (V2), with basis `groups`: each group's estimate. */
+  readonly groups?: readonly GroupEstimate[];
+}
+
+/** Row 023-66 (V2): one group's part of a side's estimate. */
+export interface GroupEstimate extends SideEstimate {
+  readonly group: string;
 }
 
 /** The call's estimate per side; a side with nothing still to run is `null`. */
@@ -186,6 +212,9 @@ export function estimateSide(
   );
   const longest = Math.max(0, ...all.map((s) => s ?? 0));
   const { measured } = work;
+  // Row 023-66 (V2): a rate counts only for the group it was measured in.
+  const split = byGroup(runs, measured, width, factor);
+  if (split !== null) return { files, width: wide, known, ...limits, ...split };
   if (measured !== null && measured.done >= MEASURED_LEAST && measured.ms > 0) {
     const rated = Math.ceil((files * measured.ms) / 1000 / measured.done);
     // N1: short files first leave a long one; it takes its own time whatever the rate.
@@ -200,40 +229,6 @@ export function estimateSide(
   const at = { files, width: wide, basis, known, ...limits } as const;
   if (factor === null) return { ...at, seconds: run };
   return { ...at, seconds: Math.ceil(run * factor), load: factor };
-}
-
-/** The files of `group` that run at once at a pool share of `width`. */
-function groupWidth(group: WorkGroup, width: number): number {
-  const byPool = Math.max(1, Math.floor(width / group.perFile));
-  return Math.max(1, Math.min(group.cap ?? byPool, byPool));
-}
-
-/**
- * The seconds `groups` take at a pool share of `width`, a file without a
- * stored duration at the median of the stored ones; `null` when none has.
- * The groups run beside each other, so the side takes the longer of all
- * their work over the share and each group's own time: its longest file,
- * its work over its width, and, for a shared `maxParallel` slot, both
- * sides' work of it over the slot.
- */
-function groupedSeconds(groups: readonly WorkGroup[], width: number): number | null {
-  const middle = median(
-    groups.flatMap((g) => [...g.seconds, ...g.shared]).filter((s): s is number => s !== null),
-  );
-  if (middle === null) return null;
-  const sum = (list: readonly (number | null)[]) =>
-    list.reduce<number>((a, s) => a + (s ?? middle), 0);
-  let pool = 0;
-  let slowest = 0;
-  for (const group of groups) {
-    const own = sum(group.seconds);
-    pool += own * group.perFile;
-    const longest = Math.max(0, ...group.seconds.map((s) => s ?? middle));
-    const slot =
-      group.cap === null || group.shared.length === 0 ? 0 : (own + sum(group.shared)) / group.cap;
-    slowest = Math.max(slowest, longest, own / groupWidth(group, width), slot);
-  }
-  return Math.ceil(Math.max(pool / Math.max(1, width), slowest));
 }
 
 /** The host's load factor now (row 020-57): its one-minute load per CPU, when over 1. */
@@ -255,6 +250,7 @@ export function sideText(e: SideEstimate): string {
 
 function ownText(e: SideEstimate): string {
   const files = `${e.files} test file${e.files === 1 ? "" : "s"}`;
+  if (e.groups !== undefined) return groupsText(e, files, ownText);
   // Review 0.1.607 B1: the files wait for a batch whose time is unknown, whatever their own.
   if (
     e.seconds === null &&
@@ -263,13 +259,14 @@ function ownText(e: SideEstimate): string {
     e.batch.seconds === null
   )
     return `${files}, time unknown: ${e.files === 1 ? "its result waits" : "their results wait"} for the batch that holds ${e.files === 1 ? "it" : "them"}`;
+  const noRate = measuredElsewhere(e);
   if (e.seconds === null && e.known === 0)
-    return `${files}, time unknown: none has a stored duration and this call measured no rate`;
+    return `${files}, time unknown: none has a stored duration and ${noRate}`;
   if (e.seconds === null)
-    return `${files}, time unknown: too few runs stored (${e.known} of them have a stored duration) and this call measured no rate`;
+    return `${files}, time unknown: too few runs stored (${e.known} of them have a stored duration) and ${noRate}`;
   const time = `${timeText(e.seconds)} for ${files}`;
   if (e.basis === "measured" && e.rate !== undefined)
-    return `${time}, at this call's rate there (${e.rate.done} results in ${e.rate.seconds} s)`;
+    return `${time}, at this call's rate ${e.group === undefined ? "there" : `for the ${e.group} group`} (${e.rate.done} results in ${e.rate.seconds} s)`;
   const load = e.load === undefined ? "" : `, times ${e.load} for the host's load per CPU`;
   const unknown = e.limits === "unknown" ? " (its group limits not read)" : "";
   const width = `up to ${e.width} at once${unknown}`;

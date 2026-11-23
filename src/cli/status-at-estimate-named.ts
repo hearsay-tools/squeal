@@ -104,6 +104,8 @@ export function namedRun(
     readonly factor: number | null;
     readonly now: number;
     readonly rate?: NamedRate | null;
+    /** Row 023-66 (V2): the rate of a named file's group, which wins over `rate`. */
+    readonly rateIn?: (ref: TestFileRef) => NamedRate | null;
   },
 ): NamedRun | null {
   const own = new Set(call.map(testFileId));
@@ -124,7 +126,12 @@ export function namedRun(
   const files = all.length;
   const known = all.filter((s): s is number => s !== null);
   const ran = Math.max(0, Math.round((at.now - run.startedAt) / 1000));
-  const whole = wholeSeconds(all, known, Math.min(at.width, files), at);
+  const [first] = named;
+  const rate = first === undefined || at.rateIn === undefined ? at.rate : at.rateIn(first);
+  const whole = wholeSeconds(all, known, Math.min(at.width, files), {
+    factor: at.factor,
+    rate: rate ?? null,
+  });
   const left = whole === null ? null : Math.max(0, whole - ran);
   const { startedAt } = run;
   const out = { named, files, startedAt, ran, known: known.length, seconds: left };

@@ -26,6 +26,8 @@ import { oneGroup, type WorkGroup } from "./status-at-estimate.js";
 export interface SideFiles {
   readonly root: AbsolutePath | null;
   readonly files: readonly TestFileRef[];
+  /** Row 023-66 (V2): the call's files with a result that arrived during it, counted per group. */
+  readonly done?: readonly TestFileRef[];
 }
 
 interface Bucket {
@@ -34,18 +36,34 @@ interface Bucket {
   readonly refs: TestFileRef[];
 }
 
+/** Per side, its work by group, and what `workGroups` read of it. */
+export interface SideGroups {
+  readonly groups: WorkGroup[][];
+  /** Per side, whether its tree is gone and its limits were not read. */
+  readonly unknown: boolean[];
+  /**
+   * Row 023-66 (V2): per side, the call's results in the group of a file
+   * still to run; `null` where they were not counted per group.
+   */
+  readonly doneIn: ((ref: TestFileRef) => number | null)[];
+}
+
 /** Per side, its work by group; `unknown` where its tree is gone and its limits were not read. */
 export function workGroups(
   sides: readonly SideFiles[],
   seconds: (ref: TestFileRef) => number | null,
-): { readonly groups: WorkGroup[][]; readonly unknown: boolean[] } {
+): SideGroups {
   const read = sides.map((side) =>
     side.root === null || !existsSync(side.root) ? null : bucketsOf(readPolicy(side.root), side),
+  );
+  const counts = read.map((buckets, i) =>
+    buckets === null ? null : countsOf(buckets, sides[i]?.done),
   );
   const groups = sides.map((side, i) => {
     const buckets = read[i];
     if (buckets === null || buckets === undefined) return [oneGroup(side.files.map(seconds))];
     const normal = [...buckets.values()].some((b) => b.group.limits.priority !== "low");
+    const done = counts[i] ?? null;
     return [...buckets.values()].map(({ group, policy, refs }): WorkGroup => {
       const shared =
         group.limits.maxParallel === null
@@ -56,11 +74,39 @@ export function workGroups(
         cap: capOf(group, policy, normal),
         perFile: workersPerFile(group),
         shared: shared.map(seconds),
+        name: group.name,
+        ...(done === null ? {} : { done: done.get(group.name) ?? 0 }),
       };
     });
   });
   const unknown = read.map((buckets, i) => buckets === null && (sides[i]?.files.length ?? 0) > 0);
-  return { groups, unknown };
+  const doneIn = read.map((buckets, i) => {
+    const done = counts[i] ?? null;
+    const policy = buckets?.values().next().value?.policy;
+    if (done === null || policy === undefined) return () => null;
+    const view = groupView(policy);
+    return (ref: TestFileRef) => done.get(view.of(ref).name) ?? 0;
+  });
+  return { groups, unknown, doneIn };
+}
+
+/**
+ * Row 023-66 (V2): the side's results of this call per group name, by the
+ * side's policy; `null` when they were not given or the side has no work.
+ */
+function countsOf(
+  buckets: ReadonlyMap<string, Bucket>,
+  done: readonly TestFileRef[] | undefined,
+): Map<string, number> | null {
+  const policy = buckets.values().next().value?.policy;
+  if (done === undefined || policy === undefined) return null;
+  const view = groupView(policy);
+  const out = new Map<string, number>();
+  for (const ref of new Map(done.map((r) => [testFileId(r), r])).values()) {
+    const name = view.of(ref).name;
+    out.set(name, (out.get(name) ?? 0) + 1);
+  }
+  return out;
 }
 
 /** The most of a group's files that run at once whatever the pool gives; `null`: no such limit. */
