@@ -79,9 +79,8 @@ export async function queueBoth(
     const first = side.run.allMissing
       ? withoutNow
       : withoutNow.filter((ref) => changed.includes(ref.path) || named(ref));
-    const atPaths = later.then((files) => new Set(files.map((ref) => ref.path)));
     if (read.asked.kind === "read") {
-      const chosen = atPaths.then((at) => withoutNow.filter((ref) => at.has(ref.path)));
+      const chosen = later.then((files) => withoutNow.filter(takenBy(files)));
       return worktreeTwice({ ...queue, files: first }, root, chosen);
     }
     // Not answered: the files it would have taken, the commit daemon's present here among them.
@@ -110,6 +109,17 @@ export async function queueBoth(
     }).finally(() => selected([])),
     worktree(),
   ]);
+}
+
+/**
+ * R1: the working tree's files the commit daemon's selection (`files` and
+ * `withResult`) takes: those with one of its paths, in any project. Review
+ * 0.1.609 B2: the join's recovery count uses this rule too, so it counts
+ * what the `--run` it suggests queues.
+ */
+export function takenBy(selection: readonly TestFileRef[]): (ref: TestFileRef) => boolean {
+  const paths = new Set(selection.map((ref) => ref.path));
+  return (ref) => paths.has(ref.path);
 }
 
 /** D4.5's input: the paths `<commit>..HEAD` changes and the working tree's changes since HEAD. */

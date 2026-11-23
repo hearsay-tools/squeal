@@ -4,6 +4,7 @@ import type { CommitAskState } from "../core/types/commit-ask.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { After } from "./status-at-call-run.js";
+import { takenBy } from "./status-at-call-sides.js";
 import type { CommitAsked } from "./status-at-commit-ask.js";
 import type { SideState } from "./status-at-report.js";
 import type { QueuedRun } from "./status-at-report-queued.js";
@@ -62,20 +63,17 @@ export function idleOf(
   const now = them(after.current.state, after.at.state);
   if (commit.length + now.length === 0) return {};
   const ask = recoveryAsk(asked, paths ?? []);
-  const chosen = new Set(
-    ask === null ? [] : [...ask.files, ...(ask.withResult ?? [])].map(testFileId),
-  );
+  const selection = ask === null ? [] : [...ask.files, ...(ask.withResult ?? [])];
+  const chosen = new Set(selection.map(testFileId));
   const refused = new Set((ask?.refused ?? []).map((r) => testFileId(r.ref)));
   // The commit side queues the selection with no result there, less what D4.9 refuses.
   const atRuns = (ref: TestFileRef) =>
     ask === null ? null : chosen.has(testFileId(ref)) && !refused.has(testFileId(ref));
-  // The working tree queues the files under the call's paths, then the commit's selection.
+  // The working tree queues the files under the call's paths, then the commit's
+  // selection by path in any project, as `queueBoth` does (review 0.1.609 B2).
+  const taken = takenBy(selection);
   const nowRuns = (ref: TestFileRef) =>
-    paths !== null && selects(paths, ref.path)
-      ? true
-      : ask === null
-        ? null
-        : chosen.has(testFileId(ref));
+    paths !== null && selects(paths, ref.path) ? true : ask === null ? null : taken(ref);
   const queues = {
     commit: countOf(commit, atRuns),
     now: countOf(now, nowRuns),
