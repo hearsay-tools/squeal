@@ -1,0 +1,118 @@
+== variant manual
+SessionStart hook: 84 ms (starts the daemon)
+-- after start and first status --wait (22:41:45Z, load 3.69)
+  pid 964329 rss 172 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964390 rss 165 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  pid 964523 rss 105 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  processes 3, total rss 444 MB
+Revision: 0
+Known failures: 0; not current: 12 of 12 test files (12 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+unit: 12 test files; 12 not run at revision 0. Squeal has not queued them; `squeal run unit --wait 60000` runs them now and waits for their results.
+Complexity: 0 functions over 3; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 24 files wait for test runs, which squeal run --all makes; 2 files unknown (2 because no test Squeal runs loads them); squeal code lists them.
+Lint: 0 files with findings; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 12 test files without a result one by one and 3 notes
+== edit 1: src/m1.js (a test file's closure), adds an unused variable
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nKnown failures: 0; 0 of 12 test files are current (run on the files as they are now), and `squeal status` counts the rest.\nunit: 12 test files; 12 not run at revision 0. Squeal has not queued them; `squeal run unit --wait 60000` runs them now and waits for their results.\nComplexity: 0 functions over 3; squeal code lists them.\nLint: 0 files with findings; squeal lint lists them.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}PostToolBatch hook after edit 1: 109 ms
+Lint: 1 file with findings, 1 since the oldest registered session started; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 11 test files without a result one by one and 2 notes
+
+Returned on quiet: the edits since revision 1 affect no test file, at revision 1 after 0.3 s; this wait does not hold for the rest of the worktree; 12 unit test files are not current and Squeal runs the pending ones only on request; this repository does not require them before you finish; `squeal run unit --wait 60000` runs them now and waits for their results. Worktree: known failures 0; not current: 12 of 12 test files (1 queued, 11 unknown)
+-- after edit 1 settled (22:41:46Z, load 3.48)
+  pid 964329 rss 174 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964390 rss 165 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  pid 964523 rss 106 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  processes 3, total rss 446 MB
+== edit 2: src/complex.js gets more branches
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · 1 complexity change and 1 lint change; your edit affects 1 test file; unit group waiting at revision 2\nRevision 2 (changed src/m1.js, src/complex.js): the 1 test file your edits affect has not run.\nunit: 12 test files; 1 pending, waiting for `squeal run unit`; 11 not run at revision 2. Squeal runs the pending ones only on request and has not queued the rest; `squeal run unit --wait 60000` runs them now and waits for their results.\nSqueal saw your edit, which affects 1 test file; no test group runs after each edit, so silence between edits is not a pass; `squeal run <group> <path>... --wait 60000` runs the test files your paths select.\n\nFAIL complexity: classify (src/complex.js:1) is 6, over 3 (ESLint rule)\n\nFAIL lint: src/m1.js (oxlint): 1 finding, +1 eslint(no-unused-vars) (Variable 'unused' is declared but never used. Unused variables should start with a '_'.)\nNo result for src/complex.js: no test Squeal runs reads it. Run whatever tests it yourself."}}PostToolBatch hook after edit 2: 110 ms
+Complexity: 1 function over 3, 1 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 24 files wait for test runs, which squeal run --all makes; 2 files unknown (2 because no test Squeal runs loads them); squeal code lists them.
+Lint: 1 file with findings, 1 since the oldest registered session started; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 11 test files without a result one by one and 2 notes
+
+Returned on quiet: the edits since revision 2 affect no test file, at revision 2 after 0.3 s; this wait does not hold for the rest of the worktree; 12 unit test files are not current and Squeal runs the pending ones only on request; this repository does not require them before you finish; `squeal run unit --wait 60000` runs them now and waits for their results. Worktree: known failures 0; not current: 12 of 12 test files (1 queued, 11 unknown)
+Complexity: 1 function over 3
+  src/complex.js:1  classify  CC 6 (if 4, logical 1), over since revision 2
+CRAP: 0 functions over the threshold; 0 functions untested; squeal code <path> shows them by file
+  24 files not judged yet keep their last states
+  1 file not measured: no test Squeal runs loads them
+-- after edit 2 settled (22:41:50Z, load 3.48)
+  pid 964329 rss 174 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964390 rss 166 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  pid 964523 rss 106 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  processes 3, total rss 447 MB
+== 5 more edits, 2 s apart, PostToolBatch latency each
+PostToolBatch hook after edit m2: 98 ms
+PostToolBatch hook after edit m3: 109 ms
+PostToolBatch hook after edit m4: 109 ms
+PostToolBatch hook after edit m5: 123 ms
+PostToolBatch hook after edit m6: 104 ms
+-- after 5 more edits settled (22:42:02Z, load 4.61)
+  pid 964329 rss 176 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964390 rss 168 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  pid 964523 rss 106 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  processes 3, total rss 450 MB
+== squeal run unit src/m1.js --wait 120000 (narrow run)
+Selected test files of group unit completed at revision 7: 1 known failure: 1 test; 1 test file, 1 queued by this request
+Group unit at revision 7: these paths select 1 test file; 1 queued, promoted ahead of the other queued files, which run now.
+
+Revision: 7 · 9725ab5f + 7, dirty
+Known failures: 1 (1 test); not current: 11 of 12 test files (5 queued, 6 unknown)
+  FAIL  test/m1.test.ts > f1
+        expected 5 to be 4 // Object.is equality; diff (- Expected, + Received): - 4 | + 5
+        at test/m1.test.ts:3:37, observed at revision 7, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 7, load 0.29 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 7; `squeal run --all` requests one)
+unit: 12 test files; 1 current at revision 7; 5 pending, waiting for `squeal run unit`; 6 not run at revision 7. Squeal runs the pending ones only on request and has not queued the rest; `squeal run unit --wait 60000` runs them now and waits for their results.
+Queued: 5 test files: test/m2.test.ts, test/m3.test.ts, test/m4.test.ts, test/m5.test.ts, test/m6.test.ts
+Complexity: 1 function over 3, 1 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 22 files wait for test runs, which squeal run --all makes; 2 files unknown (2 because no test Squeal runs loads them); squeal code lists them.
+Lint: 1 file with findings, 1 since the oldest registered session started; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 6 test files without a result one by one and 2 notes
+narrow run: 1320 ms
+-- right after the narrow run (22:42:04Z, load 4.61)
+  pid 964329 rss 184 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964390 rss 168 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  pid 964523 rss 106 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  pid 973661 rss 173 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  processes 4, total rss 633 MB
+== squeal run unit --wait 120000 (whole group)
+Group unit completed at revision 7: 1 known failure: 1 test; 12 test files, 11 queued by this request
+Group unit requested at revision 7: 11 test files queued; they run now.
+
+Revision: 7 · 9725ab5f + 7, dirty
+Known failures: 1 (1 test); all 12 test files current
+  FAIL  test/m1.test.ts > f1
+        expected 5 to be 4 // Object.is equality; diff (- Expected, + Received): - 4 | + 5
+        at test/m1.test.ts:3:37, observed at revision 7, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 7, load 0.29 per CPU when it ran; no retry asked at these inputs
+Affected checks: 23 passed (11 tests, 12 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 7; `squeal run --all` requests one)
+Complexity: 1 function over 3, 1 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 6 files wait for coverage records; 2 files unknown (2 because no test Squeal runs loads them); squeal code lists them.
+Lint: 1 file with findings, 1 since the oldest registered session started; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon and 3 notes
+group run: 1313 ms
+-- right after the group run (22:42:06Z, load 4.61)
+  pid 964329 rss 190 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964390 rss 168 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  pid 964523 rss 107 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  processes 3, total rss 466 MB
+-- 80 s after the group run (22:43:26Z, load 6.80)
+  pid 964329 rss 163 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964523 rss 104 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  processes 2, total rss 267 MB
+== edit 3: README.md only (no test reads it)
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · 1 check changed (1 test) at revision 8\nRevision 8 (changed src/m2.js, src/m3.js, src/m4.js and 3 more): the 6 test files your edits affect have all run.\n\nFAIL  test/m1.test.ts > f1\n      first observed: FAIL; Squeal has no earlier result for this test, so it cannot tell whether your edits caused it; seen by Squeal's run at revision 7\n      expected 5 to be 4 // Object.is equality; diff (- Expected, + Received): - 4 | + 5\n      at test/m1.test.ts:3:37\n      its imports include files changed here since this session started: src/m1.js\n\nFull output: squeal why 'test/m1.test.ts > f1'\n\nCode: 1 function over 3 that this session was told about; squeal code --told lists them."}}
+PostToolBatch hook after edit 3: 126 ms
+-- after the README edit settled (22:43:35Z, load 6.98)
+  pid 964329 rss 165 MB: squeal fx daemon @c70969be <dist>/cli/squeal.mjs daemon $TMPDIR/tp-manual/fx 
+  pid 964523 rss 104 MB: squeal fx store <dist>/cli/squeal.mjs store-process $TMPDIR/tp-manual/fx/.git --store code 
+  pid 999438 rss 161 MB: node <dist>/cli/squeal.mjs runner-host $TMPDIR/tp-manual/fx --runner vitest 
+  processes 3, total rss 430 MB
+Squeal daemon stopped for $TMPDIR/tp-manual/fx; `squeal stop --until-start` keeps it stopped through edits and Git operations
+-- after squeal stop (22:43:38Z, load 7.22)
+  processes 0, total rss 0 MB

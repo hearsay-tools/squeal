@@ -1,0 +1,24 @@
+## squeal
+other worktrees: worktrees 251, file-runs grouped into 113496 (worktree, file) pairs
+  total 317.5 file-h; final 146.0 (46.0%), intermediate 166.0 (52.3%), repeat 5.5 (1.7%)
+  per worktree (> 60 file-s), churn share p25 2%, p50 8%, p75 25%, n 220
+  per worktree total file-s p25 516, p50 1720, p75 4872, p90 8972, mean 5193
+  per worktree final file-s p25 429, p50 1494, p75 3487, max 11860
+main checkout: worktrees 0, file-runs grouped into 0 (worktree, file) pairs
+  total 0.0 file-h; final 0.0 (0%), intermediate 0.0 (0%), repeat 0.0 (0%)
+  per worktree (> 60 file-s), churn share p25 -%, p50 -%, p75 -%, n 0
+  per worktree total file-s p25 -, p50 -, p75 -, p90 -, mean 0
+  per worktree final file-s p25 -, p50 -, p75 -, max -
+runs 28877, without report.json 11
+## cezar
+other worktrees: worktrees 272, file-runs grouped into 117377 (worktree, file) pairs
+  total 291.8 file-h; final 170.4 (58.4%), intermediate 115.0 (39.4%), repeat 6.4 (2.2%)
+  per worktree (> 60 file-s), churn share p25 2%, p50 17%, p75 42%, n 239
+  per worktree total file-s p25 479, p50 2236, p75 5816, p90 12058, mean 4393
+  per worktree final file-s p25 354, p50 1802, p75 4598, max 9538
+main checkout: worktrees 1, file-runs grouped into 1679 (worktree, file) pairs
+  total 3.7 file-h; final 1.9 (51.8%), intermediate 0.7 (19.4%), repeat 1.1 (28.8%)
+  per worktree (> 60 file-s), churn share p25 48%, p50 48%, p75 48%, n 1
+  per worktree total file-s p25 13384, p50 13384, p75 13384, p90 13384, mean 13384
+  per worktree final file-s p25 6932, p50 6932, p75 6932, max 6932
+runs 55496, without report.json 9708

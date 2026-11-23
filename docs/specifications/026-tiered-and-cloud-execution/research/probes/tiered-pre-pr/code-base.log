@@ -1,0 +1,48 @@
+== variant manual: squeal code --base main
+squeal code: Vitest: no test file to run
+squeal code: unit (manual) is left out: 1 of its 12 test files loads changed code; add --group unit to run it
+squeal code: no test Squeal runs loads src/complex.js: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+Code gate: violations. 2 changed functions against main (merge base 471d84c3): 1 violation, 1 incomplete. unit (manual) did not run: 1 test file loads changed code; add --group unit to run it.
+  src/complex.js:1  classify  CC 4 over 3: violation
+  src/m1.js:1  f1  CC 1: incomplete: a test file that loads it is in a check group this run left out
+JSON report: squeal code --base main --json
+[exit 0]
+== squeal code --base main --group unit
+squeal code: Vitest: 1 test file to run (unit 1)
+squeal code: no test Squeal runs loads src/complex.js: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+squeal code: Vitest: 1 test file to run here, up to 15 at once; no stored duration, so the time is unknown
+Code gate: violations. 2 changed functions against main (merge base 471d84c3): 1 violation, 1 incomplete.
+  src/complex.js:1  classify  CC 4 over 3: violation
+  src/m1.js:1  f1  CC 1, coverage 100%, CRAP 1: incomplete: a selected test failed
+  test/m1.test.ts: failed: f1
+JSON report: squeal code --base main --group unit --json
+squeal code: log of the failed or unfinished test files, kept until the next prune, within about 1 h while a daemon of this repository runs (none serves this worktree): Vitest <fx>/.git/squeal/runs/gate-a91fe802-362e-4e0f-883b-fde0949bd7fb
+squeal code: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+[exit 0]
+-- leftover processes (22:51:58Z, load 11.95)
+  processes 0, total rss 0 MB
+== variant stop: squeal code --base main
+squeal code: Vitest: 1 test file to run (unit 1)
+squeal code: no test Squeal runs loads src/complex.js: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+squeal code: Vitest: 1 test file to run here, up to 15 at once; no stored duration, so the time is unknown
+Code gate: violations. 2 changed functions against main (merge base 875ee00b): 1 violation, 1 incomplete.
+  src/complex.js:1  classify  CC 4 over 3: violation
+  src/m1.js:1  f1  CC 1, coverage 100%, CRAP 1: incomplete: a selected test failed
+  test/m1.test.ts: failed: f1
+JSON report: squeal code --base main --json
+squeal code: log of the failed or unfinished test files, kept until the next prune, within about 1 h while a daemon of this repository runs (none serves this worktree): Vitest <fx>/.git/squeal/runs/gate-d7baa830-3e6e-49a1-b5ae-37debbe277d3
+squeal code: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+[exit 0]
+== squeal code --base main --group unit
+squeal code: Vitest: 1 test file selected (unit 1): none to run, 1 read from the stores
+squeal code: no test Squeal runs loads src/complex.js: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+squeal code: 1 of 1 selected test files read from the stores
+Code gate: violations. 2 changed functions against main (merge base 875ee00b): 1 violation, 1 incomplete.
+  src/complex.js:1  classify  CC 4 over 3: violation
+  src/m1.js:1  f1  CC 1, coverage 100%, CRAP 1: incomplete: a selected test failed
+  test/m1.test.ts: failed: f1
+JSON report: squeal code --base main --group unit --json
+squeal code: 1 failed test file was read from the stores and did not run here (test/m1.test.ts). To run it once more: squeal code --base main --group unit --rerun-stored-failures
+[exit 0]
+-- leftover processes (22:52:01Z, load 11.95)
+  processes 0, total rss 0 MB
