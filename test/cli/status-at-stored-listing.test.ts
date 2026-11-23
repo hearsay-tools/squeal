@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type AtDaemons, realDaemons } from "../../src/cli/status-at-daemons.js";
 import { installCommitWorktree } from "../../src/core/checkout/commit-setup.js";
-import { storedReason } from "../../src/core/daemon/at-asks.js";
 import { COMMIT_WORKTREES } from "../../src/core/daemon/commit-mode.js";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
@@ -12,17 +11,22 @@ import { childEnv, SLOW } from "../daemon/helpers.js";
 import { run, testOf } from "./status-at-kit.js";
 
 /*
- * Row 023-70 (review 0.1.610, "outside this wave"; spec 023 D4.9 in the
- * commit daemon): a result the caller's worktree stored at a key the
- * commit shares is read as the commit side's only when D4.9 holds for the
- * tree that ran it. A folder read's key hashes the names git tracks there,
- * not the names the run saw; nothing records those, so a folder read holds
- * only for a result the commit worktree ran itself (row 023-64). Here the
- * caller stores a pass of `lists.test.ts` with an ignored `extra.log` in
- * the folder it lists, then deletes `extra.log`; the pristine commit fails
- * the file's two-name assertion. Before the fix the call read the caller's
- * pass as the commit's, "unchanged". A stored result with no folder read
- * still compares without a run at the commit.
+ * Rows 023-70 and 023-76 (spec 023 D4.9 in the commit daemon; review
+ * 0.1.611-rereview N1): a result the caller's worktree stored is read as
+ * the commit side's only at a key the commit shares, and a folder read is
+ * in that key by the names the run listed. `lists.test.ts` lists
+ * `test/fixtures/` and expects two names; the commit tracks one.
+ *
+ * - With an ignored `extra.log` there, the caller's pass is stored at a key
+ *   of two names, which the pristine commit does not share: the commit
+ *   runs the file itself and fails. Before row 023-70 the call read the
+ *   caller's pass as the commit's, "unchanged"; before row 023-76 it read
+ *   "not comparable", since no record held the listing.
+ * - With the commit's names on disk, the caller's failure is stored at the
+ *   commit's key and counts there, with no run at the commit. Before row
+ *   023-76 it read "not comparable", since another worktree wrote it.
+ *
+ * `plain.test.ts` reads no folder: its key and result are shared alike.
  */
 
 const LISTS = ref("test/lists.test.ts");
@@ -77,26 +81,29 @@ type Row = { path: string; at: Side; now: Side };
 const rowOf = (out: string, path: string) =>
   (JSON.parse(out).files as Row[]).find((row) => row.path === path);
 
-describe("a stored result passes D4.9 before the commit side reads it (row 023-70)", SLOW, () => {
-  it("reads the caller's stored pass of a folder-listing file as not comparable, and compares a clean one", {
+/** The fixture at `z`, then `a`, with both test files; `lists.test.ts` fails on a pristine `a`. */
+function atA() {
+  const f = fixture({
+    "squeal.config.json": "{}\n",
+    ".gitignore": "node_modules/\n*.log\n",
+    "src/plain.ts": "export const value = 1;\n",
+    "test/fixtures/a.json": "{}\n",
+    [LISTS.path]: lists,
+    [PLAIN.path]: testOf("plain", 1),
+  });
+  const z = git(f.root, "rev-parse", "HEAD").trim();
+  const a = f.commit({ "src/plain.ts": "export const value = 1; // a\n" });
+  return { f, z, a, paths: [LISTS.path, PLAIN.path] };
+}
+
+describe("the caller's stored folder result at the commit (rows 023-70, 023-76)", SLOW, () => {
+  it("is not the commit's when its run listed an ignored name: the commit runs and fails", {
     timeout: 400_000,
   }, async () => {
-    const f = fixture({
-      "squeal.config.json": "{}\n",
-      ".gitignore": "node_modules/\n*.log\n",
-      "src/plain.ts": "export const value = 1;\n",
-      "test/fixtures/a.json": "{}\n",
-      [LISTS.path]: lists,
-      [PLAIN.path]: testOf("plain", 1),
-    });
-    const z = git(f.root, "rev-parse", "HEAD").trim();
-    const a = f.commit({ "src/plain.ts": "export const value = 1; // a\n" });
-    const daemons = bothDaemons();
-    const options = { cacheRoot: f.cacheRoot, daemons };
-    const paths = [LISTS.path, PLAIN.path];
+    const { f, z, a, paths } = atA();
+    const options = { cacheRoot: f.cacheRoot, daemons: bothDaemons() };
 
-    // The caller at `a`, with an ignored name in the listed folder: its run of both files
-    // stores passes at the keys `a` has (the listing's key hashes the tracked names only).
+    // The caller at `a`, with an ignored name in the listed folder: its run passes.
     write(f.root, { "test/fixtures/extra.log": "x" });
     const seeded = await run(
       f,
@@ -106,7 +113,7 @@ describe("a stored result passes D4.9 before the commit side reads it (row 023-7
     expect(rowOf(seeded.out, LISTS.path)?.now, seeded.err).toMatchObject({ state: "pass" });
     expect(rowOf(seeded.out, PLAIN.path)?.now, seeded.err).toMatchObject({ state: "pass" });
 
-    // The caller deletes the name and moves on; nothing recorded what its run listed.
+    // The caller deletes the name and moves on.
     rmSync(join(f.root, "test/fixtures/extra.log"));
     f.commit({ "src/plain.ts": "export const value = 1; // b\n" });
     const asked = await run(
@@ -116,13 +123,39 @@ describe("a stored result passes D4.9 before the commit side reads it (row 023-7
     );
 
     // The pristine commit lists one name and fails; the caller's pass is not the commit's.
-    expect(rowOf(asked.out, LISTS.path)?.at, asked.err).toEqual({
-      state: "not comparable",
-      reason: storedReason("test/fixtures/"),
+    expect(rowOf(asked.out, LISTS.path)?.at, asked.err).toMatchObject({
+      state: "fail",
+      origin: { kind: "commit" },
     });
     // A stored result with no folder read is the commit's: read, not run there.
     const plain = rowOf(asked.out, PLAIN.path)?.at;
     expect(plain, asked.err).toMatchObject({ state: "pass" });
     expect(plain?.origin?.kind).not.toBe("commit");
+  });
+
+  it("is the commit's when its run listed the commit's names, whoever wrote it", {
+    timeout: 400_000,
+  }, async () => {
+    const { f, z, a, paths } = atA();
+    const options = { cacheRoot: f.cacheRoot, daemons: bothDaemons() };
+    // The caller at `a` lists the one name the commit tracks: its run fails, as the commit's would.
+    const seeded = await run(
+      f,
+      { commit: z, paths, run: RUN, json: true, waitMs: 120_000 },
+      options,
+    );
+    expect(rowOf(seeded.out, LISTS.path)?.now, seeded.err).toMatchObject({ state: "fail" });
+
+    f.commit({ "src/plain.ts": "export const value = 1; // b\n" });
+    const asked = await run(
+      f,
+      { commit: a, paths, run: RUN, json: true, waitMs: 120_000 },
+      options,
+    );
+    const lists = rowOf(asked.out, LISTS.path)?.at;
+    expect(lists, asked.err).toMatchObject({ state: "fail" });
+    expect(lists?.origin?.kind, "read from the caller's run, not run at the commit").not.toBe(
+      "commit",
+    );
   });
 });

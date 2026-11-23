@@ -80,16 +80,6 @@ export interface AtAskPorts {
    * caller's worktree), that path, by `testFileId`.
    */
   readonly needs: (request: CommitAskRequest) => Promise<ReadonlyMap<string, RelativePath>>;
-  /**
-   * Row 023-70 (review 0.1.610), review 0.1.611 B1: per test file of
-   * `refs` whose closure lists a folder, that folder's listing path, by
-   * `testFileId`. A folder read's key hashes the names git tracks, not the
-   * names the run saw, and nothing records those, so only the commit
-   * worktree's own run holds one (row 023-64). Absent: no file lists one.
-   */
-  readonly listings?: (refs: readonly TestFileRef[]) => Promise<ReadonlyMap<string, RelativePath>>;
-  /** Row 023-70: whether this commit worktree wrote a result of `ref` at `key`. Absent: none did. */
-  readonly ownResult?: (ref: TestFileRef, key: CheckKey) => boolean;
   /** Whether a result of `ref` is stored at `key`. */
   readonly stored: (ref: TestFileRef, key: CheckKey) => boolean;
   /** The group `ref` runs in, by the policy in force. */
@@ -137,8 +127,6 @@ interface Kept {
   selects?: number;
   /** Row 023-58 (W1): the files it would run that have a result at the commit already. */
   withResult?: readonly TestFileRef[];
-  /** Review 0.1.611 B1: the files whose result counts only when the commit worktree wrote it. */
-  ownOnly?: readonly CommitRefusal[];
 }
 
 /** The asks of one commit daemon. */
@@ -207,7 +195,6 @@ export class AtAsks {
     kept.refused = chosen.refused;
     kept.selects = chosen.selects;
     kept.withResult = chosen.withResult;
-    kept.ownOnly = chosen.ownOnly;
     // Row 023-68 (X3): the call's order, which the working tree's side queues in too.
     kept.files = atOrder(request.named, [...chosen.named, ...chosen.rest]);
     // Row 023-50 (round 6 V3): a call that names paths leads with every file it queues, those
@@ -253,7 +240,6 @@ function stateOf(ask: Kept, setup: CommitSetup): CommitAskState {
     ...(ask.refused.length === 0 ? {} : { refused: [...ask.refused] }),
     ...(ask.selects === undefined ? {} : { selects: ask.selects }),
     ...(ask.withResult === undefined ? {} : { withResult: [...ask.withResult] }),
-    ...(ask.ownOnly === undefined || ask.ownOnly.length === 0 ? {} : { ownOnly: [...ask.ownOnly] }),
   };
 }
 
@@ -271,8 +257,6 @@ interface Chosen {
    * have a result at the commit already: the working tree runs them too.
    */
   readonly withResult: readonly TestFileRef[];
-  /** Review 0.1.611 B1: the chosen files that list a folder (`CommitAskState.ownOnly`). */
-  readonly ownOnly: readonly CommitRefusal[];
 }
 
 /**
@@ -322,19 +306,11 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
   }
   const needs = await ports.needs(request);
   const refused = refusals([...first, ...rest], needs);
-  const chosen = [...first, ...rest, ...stored.map(({ ref }) => ref)];
   // Row 023-70: a stored result is the commit's only when D4.9 holds for the tree that ran it.
-  const listed = (await ports.listings?.(chosen)) ?? new Map<string, RelativePath>();
-  const wrote = (at: StoredAt) => ports.ownResult?.(at.ref, at.key) ?? false;
-  for (const refusal of storedRefusals(stored, needs, listed, wrote))
+  // Row 023-76: a folder read is in its key by the names the run listed, so any tree's holds.
+  for (const refusal of storedRefusals(stored, needs))
     refused.set(testFileId(refusal.ref), refusal);
   const runs = (ref: TestFileRef) => !refused.has(testFileId(ref));
-  // Review 0.1.611 B1: the same rule holds for a result that arrives after this selection,
-  // or one stored beside the commit worktree's own: the reader applies it (`ownOnly`).
-  const ownOnly = chosen.filter(runs).flatMap((ref) => {
-    const listing = listed.get(testFileId(ref));
-    return listing === undefined ? [] : [{ ref, reason: storedReason(listing) }];
-  });
   return {
     named: first.filter(runs),
     rest: rest.filter(runs),
@@ -342,34 +318,25 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
     refused: [...refused.values()],
     selects: selectedCount,
     withResult: withResult.filter(runs),
-    ownOnly,
   };
 }
 
 /**
  * Row 023-70 (review 0.1.610): D4.9 over the files with a stored result: a
  * path git does not hold at the commit (`needs`) refuses it as it refuses a
- * file to run; a folder read (`listed`) refuses it unless the commit
- * worktree wrote a result there (`own`).
+ * file to run. A folder read refuses none (row 023-76): its key holds the
+ * names the run listed (`Listings`), so a result at the commit's key, which
+ * the commit worktree lists as the commit tracks it (`needs`, row 023-64),
+ * ran over the commit's listing, whichever tree wrote it.
  */
 function storedRefusals(
   stored: readonly StoredAt[],
   needs: ReadonlyMap<string, RelativePath>,
-  listed: ReadonlyMap<string, RelativePath>,
-  own: (at: StoredAt) => boolean,
 ): CommitRefusal[] {
-  return stored.flatMap((at) => {
-    const { ref } = at;
+  return stored.flatMap(({ ref }) => {
     const path = needs.get(testFileId(ref));
-    if (path !== undefined) return [{ ref, reason: `needs ${path}` }];
-    const listing = listed.get(testFileId(ref));
-    return listing === undefined || own(at) ? [] : [{ ref, reason: storedReason(listing) }];
+    return path === undefined ? [] : [{ ref, reason: `needs ${path}` }];
   });
-}
-
-/** Row 023-70: why a result another worktree wrote of a file that lists `listing` is not the commit's. */
-export function storedReason(listing: RelativePath): string {
-  return `needs ${listing}: its stored result ran in another worktree, whose listing of it is not recorded`;
 }
 
 /**

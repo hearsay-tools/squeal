@@ -7,7 +7,7 @@ import { COMMIT_WORKTREES } from "../../src/core/daemon/commit-mode.js";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
-import type { ResultRecord } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { type Fixture, fixture, git, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
 import { childEnv } from "../daemon/helpers.js";
 import { withStore } from "./status-at-kit.js";

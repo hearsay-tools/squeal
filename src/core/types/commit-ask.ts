@@ -107,13 +107,6 @@ export interface CommitAskState {
    * Absent until `queued`, and from a daemon before this field.
    */
   readonly withResult?: readonly TestFileRef[];
-  /**
-   * Review 0.1.611 B1 (row 023-70, D4.9): the files the ask chose whose
-   * closure lists a folder. A result of one counts as the commit's only
-   * when the commit worktree wrote it, whenever it arrives; one another
-   * worktree wrote reads not comparable, for `reason`. Absent when none.
-   */
-  readonly ownOnly?: readonly CommitRefusal[];
 }
 
 /** D4.9: a file the commit daemon does not run: its closure reads a path git does not hold there. */
