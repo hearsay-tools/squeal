@@ -48,9 +48,10 @@ export function waitingText(waiting: NotStarted, files: number): string {
   if (reason === null)
     return `not started yet, and the daemon does not say what holds ${files === 1 ? "it" : "them"}`;
   if (!capacity) return `not started, waiting for ${reason}`;
-  // Row 023-77: the slot's holder is named; the files start in turn once its run ends.
+  // Row 023-77: the slot's holder is named. Review 0.1.612 S1: no turn is reserved (a third
+  // worktree or another limit can come first), so the file can start then, not will.
   if (waiting.holder === true)
-    return `waiting for ${reason}; ${files === 1 ? "it starts" : "the first starts"} when that run ends`;
+    return `waiting for ${reason}; ${files === 1 ? "it" : "the first"} can start after that run ends`;
   return reason === POOL_WAIT ? `waiting for ${reason}` : `waiting for capacity (${reason})`;
 }
 
@@ -121,9 +122,18 @@ function waitOf(
     const holder = activity?.kind === "waiting" && activity.for === "slot";
     waits.push(holder ? withHolder(store, wait, { group, id, ids }) : wait);
   }
+  return combined(waits);
+}
+
+/**
+ * The waits of a side's groups as one. Review 0.1.612 S1: a holder's run ends
+ * one group's wait only, so waits of several groups make no promise about
+ * when the files can start (`holder` is kept for one wait alone).
+ */
+export function combined(waits: readonly SideWaiting[]): SideWaiting {
   const reasons = [...new Set(waits.map((w) => w.reason))];
   const capacity = waits.every((w) => w.capacity);
-  const held = waits.some((w) => w.holder === true);
+  const held = reasons.length === 1 && waits.some((w) => w.holder === true);
   return { reason: reasons.join("; "), capacity, ...(held ? { holder: true as const } : {}) };
 }
 
