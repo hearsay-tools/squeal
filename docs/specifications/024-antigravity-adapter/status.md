@@ -34,6 +34,9 @@ Started: 2026-11-22
   - Closed the `stream-json` env note: hooks receive 3 variables (`ANTIGRAVITY_CONVERSATION_ID`, `PLUGIN_DATA`, `PLUGIN_ROOT`) in all modes (`-p`, `stream-json`, ACP, TUI); `run_command` shells receive 10 `ANTIGRAVITY_*` variables and no `PLUGIN_*` variables.
   - Non-blocking follow-ups proposed on the board: `024-09` (non-blocking wording/test polish from `lessons.md` and `reviews/0.1.605.md` S1) and `024-10` (verify Squawk non-default Antigravity account profile plugin loading under `antigravity acp`).
 
+- 2026-11-23, the human on release and follow-ups:
+  - Approved row `024-09` ("Do 024-09 polish first") and hub release afterwards (ships Spec 024 + `024-09` polish together once `024-09` passes review and exact-main CI). Row `024-10` remains proposed.
+
 ## Open questions
 
-None blocking v1 (shipped). Deferred v1 non-goals stay in `spec.md` (App/IDE `PLUGIN_DATA` and UI rendering, active terminal sandbox, idle wake, Marketplace submission, macOS/Windows). Non-blocking follow-ups `024-09` and `024-10` are proposed on `docs/board.md`.
+None blocking v1 (shipped). Deferred v1 non-goals stay in `spec.md` (App/IDE `PLUGIN_DATA` and UI rendering, active terminal sandbox, idle wake, Marketplace submission, macOS/Windows). Row `024-09` is running in Wave 5 before the hub release; row `024-10` remains proposed on `docs/board.md`.
