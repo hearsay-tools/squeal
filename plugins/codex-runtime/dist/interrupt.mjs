@@ -391,6 +391,9 @@ function excludedFilesText(globs4) {
 
 // src/core/daemon/check-groups.ts
 var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
+function heldUntilAsked(at) {
+  return at === "commit" || at === "manual";
+}
 var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
 var DEFAULT_GROUP_NAMES = ["tests", "slow"];
 var NO_LIMITS = {
@@ -9208,6 +9211,51 @@ function commitLine(report) {
   return count2 > 0 && files.length > 0 ? { ...line, notDetermined: { count: count2, files } } : line;
 }
 
+// src/core/scheduler/promotions-row.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function publishedBatches(store, worktreeId, daemonStartedAt, now) {
+  const places = /* @__PURE__ */ new Map();
+  const row = readRow(store, worktreeId);
+  if (row === null || row.at < daemonStartedAt) return places;
+  const batches = row.entries.filter(isBatch);
+  for (const p of row.entries) {
+    const position = batches.indexOf(p) + 1;
+    if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
+    const files = strings4(position === 0 ? p.files : p.batch?.files);
+    const end = p.batch?.estimatedEnd;
+    const place = position === 0 ? null : {
+      position,
+      of: batches.length,
+      files: files.length,
+      estimatedEnd: typeof end === "number" ? end : null
+    };
+    for (const f of files) if (!places.has(f)) places.set(f, place);
+  }
+  return places;
+}
+function readRow(store, worktreeId) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    const { at, promotions } = JSON.parse(raw);
+    if (typeof at !== "number" || !Array.isArray(promotions)) return null;
+    const entries = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
+    );
+    return { at, entries };
+  } catch {
+    return null;
+  }
+}
+function isBatch(p) {
+  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
+}
+function strings4(value) {
+  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
+}
+
 // src/core/daemon/client.ts
 import { statSync as statSync5 } from "node:fs";
 import { createConnection } from "node:net";
@@ -9502,11 +9550,27 @@ function groupLaneCounts(states, keys, policy) {
   });
 }
 function groupTiersOf(store, worktreeId, keys, lanes) {
-  return lanes.map(({ name: name2, inLane, head, stopWaitMs }) => ({
-    ...head,
-    activity: liveActivity(store, worktreeId, keys, inLane, name2),
-    ...stopWaitMs === void 0 ? {} : { stopWaitMs }
-  }));
+  const requested = requestedOf(store, worktreeId, keys, lanes);
+  return lanes.map(({ name: name2, inLane, head, stopWaitMs }) => {
+    const asked = requested(head.at, inLane);
+    return {
+      ...head,
+      activity: liveActivity(store, worktreeId, keys, inLane, name2),
+      ...stopWaitMs === void 0 ? {} : { stopWaitMs },
+      ...asked === 0 ? {} : { requested: asked }
+    };
+  });
+}
+function requestedOf(store, worktreeId, keys, lanes) {
+  if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (daemon === null) return () => 0;
+  const batched = publishedBatches(store, worktreeId, daemon.startedAt, Date.now());
+  if (batched.size === 0) return () => 0;
+  const queued = keys.filter(
+    (row) => row.key !== null && row.pending !== null && batched.has(testFileId(row.testFile))
+  );
+  return (at, inLane) => heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;
 }
 function classifyGroupFiles(states, keys, inLane) {
   const checks = laneChecks(states, inLane);
@@ -11477,51 +11541,6 @@ function isCommandHold(entry3) {
   return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
 }
 
-// src/core/scheduler/promotions-row.ts
-function promotionsMetaKey(worktreeId) {
-  return worktreeMetaKey("promotions", worktreeId);
-}
-function publishedBatches(store, worktreeId, daemonStartedAt, now) {
-  const places = /* @__PURE__ */ new Map();
-  const row = readRow(store, worktreeId);
-  if (row === null || row.at < daemonStartedAt) return places;
-  const batches = row.entries.filter(isBatch);
-  for (const p of row.entries) {
-    const position = batches.indexOf(p) + 1;
-    if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
-    const files = strings4(position === 0 ? p.files : p.batch?.files);
-    const end = p.batch?.estimatedEnd;
-    const place = position === 0 ? null : {
-      position,
-      of: batches.length,
-      files: files.length,
-      estimatedEnd: typeof end === "number" ? end : null
-    };
-    for (const f of files) if (!places.has(f)) places.set(f, place);
-  }
-  return places;
-}
-function readRow(store, worktreeId) {
-  const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  if (raw === null) return null;
-  try {
-    const { at, promotions } = JSON.parse(raw);
-    if (typeof at !== "number" || !Array.isArray(promotions)) return null;
-    const entries = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
-    );
-    return { at, entries };
-  } catch {
-    return null;
-  }
-}
-function isBatch(p) {
-  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
-}
-function strings4(value) {
-  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
-}
-
 // src/core/scheduler/queue.ts
 var Group = { first: 0, catchUp: 1, second: 2 };
 var GROUP_ORDER = {
@@ -12421,7 +12440,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.609";
+  if (true) return "0.1.610";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12546,6 +12565,7 @@ function tellSlowTier(store, consumer, tier) {
 }
 function groupKind(group) {
   if (group.current >= group.testFiles) return "current";
+  if (group.pending > 0 && (group.requested ?? 0) > 0) return "queued";
   return group.pending > 0 ? "waiting" : "not run";
 }
 function groupsToldMetaKey(worktreeId) {

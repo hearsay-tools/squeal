@@ -489,6 +489,9 @@ function excludedFilesText(globs4) {
 
 // src/core/daemon/check-groups.ts
 var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
+function heldUntilAsked(at) {
+  return at === "commit" || at === "manual";
+}
 var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
 var DEFAULT_GROUP_NAMES = ["tests", "slow"];
 var NO_LIMITS = {
@@ -2440,13 +2443,24 @@ function groupTierText(group, revision, late, command) {
   return `${group.name}: ${plural(group.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(groupDoes(group))}; ${groupRunText(group, command, open2)}.`;
 }
 function groupPendingText(group, late, command) {
-  if (group.activity === null && group.at === "commit") {
-    return `${group.pending} pending, waiting for a commit`;
+  const held = group.at === "commit" || group.at === "manual";
+  if (group.activity !== null || !held)
+    return pendingText(group.pending, group.activity, late, groupWords(group));
+  const asked = requestedOf(group);
+  const waiting = group.pending - asked;
+  const parts = [];
+  if (asked > 0) parts.push(`${asked} queued by a request (${requestsText(group, command)})`);
+  if (waiting > 0) {
+    const what = group.at === "commit" ? "a commit" : `\`${command} run ${group.name}\``;
+    parts.push(`${waiting} pending, waiting for ${what}`);
   }
-  if (group.activity === null && group.at === "manual") {
-    return `${group.pending} pending, waiting for \`${command} run ${group.name}\``;
-  }
-  return pendingText(group.pending, group.activity, late, groupWords(group));
+  return parts.join(", ");
+}
+function requestedOf(group) {
+  return Math.min(group.pending, group.requested ?? 0);
+}
+function requestsText(group, command) {
+  return `\`${command} status --at <commit> --run\` or \`${command} run ${group.name} <path>...\``;
 }
 function groupWords(group) {
   const waitingFor = (wait) => {
@@ -2467,9 +2481,18 @@ function afterText(names3) {
 }
 function groupDoes(group) {
   const when = groupWhenText(group);
-  const runs = group.notRun === 0 ? `Squeal runs them ${when}` : group.pending === 0 ? "Squeal has not queued them" : `Squeal runs the pending ones ${when} and has not queued the rest`;
+  const asked = requestedOf(group);
+  const runs = asked > 0 ? requestedDoes(group, asked, when) : group.notRun === 0 ? `Squeal runs them ${when}` : group.pending === 0 ? "Squeal has not queued them" : `Squeal runs the pending ones ${when} and has not queued the rest`;
   const stop2 = group.stopWaitMs === void 0 ? "" : `, and Stop waits up to ${durationText(group.stopWaitMs)} for them`;
   return `${runs}${stop2}`;
+}
+function requestedDoes(group, asked, when) {
+  const now = asked === group.pending ? "runs them now" : "runs the requested ones now";
+  const rest = group.pending - asked;
+  if (rest === 0 && group.notRun === 0) return `Squeal ${now}`;
+  if (rest === 0) return `Squeal ${now} and has not queued the rest`;
+  const queued = `the other pending ones ${when}`;
+  return group.notRun === 0 ? `Squeal ${now}, ${queued}` : `Squeal ${now}, ${queued}, and has not queued the rest`;
 }
 function groupWhenText(group) {
   const following = group.after.length === 0 ? "" : ` and after ${afterText(group.after)}`;
@@ -2490,7 +2513,8 @@ function groupWhenText(group) {
 function groupRunText(group, command, open2) {
   const one = open2 === 1;
   const results = one ? "its result" : "their results";
-  const waiting = group.at !== "edit" || group.notRun > 0 || group.activity?.kind === "waiting";
+  const requested = group.notRun === 0 && requestedOf(group) === group.pending;
+  const waiting = !requested && (group.at !== "edit" || group.notRun > 0 || group.activity?.kind === "waiting");
   const does = waiting ? `runs ${one ? "it" : "them"} now and waits for ${results}` : `waits for ${results}`;
   return `\`${command} run ${group.name} --wait 60000\` ${does}`;
 }
@@ -2953,7 +2977,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.609";
+  if (true) return "0.1.610";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4434,6 +4458,7 @@ function tellSlowTier(store, consumer, tier) {
 }
 function groupKind(group) {
   if (group.current >= group.testFiles) return "current";
+  if (group.pending > 0 && (group.requested ?? 0) > 0) return "queued";
   return group.pending > 0 ? "waiting" : "not run";
 }
 function groupsToldMetaKey(worktreeId) {
@@ -8628,11 +8653,27 @@ function groupLaneCounts(states, keys, policy) {
   });
 }
 function groupTiersOf(store, worktreeId, keys, lanes) {
-  return lanes.map(({ name: name2, inLane, head, stopWaitMs }) => ({
-    ...head,
-    activity: liveActivity(store, worktreeId, keys, inLane, name2),
-    ...stopWaitMs === void 0 ? {} : { stopWaitMs }
-  }));
+  const requested = requestedOf2(store, worktreeId, keys, lanes);
+  return lanes.map(({ name: name2, inLane, head, stopWaitMs }) => {
+    const asked = requested(head.at, inLane);
+    return {
+      ...head,
+      activity: liveActivity(store, worktreeId, keys, inLane, name2),
+      ...stopWaitMs === void 0 ? {} : { stopWaitMs },
+      ...asked === 0 ? {} : { requested: asked }
+    };
+  });
+}
+function requestedOf2(store, worktreeId, keys, lanes) {
+  if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (daemon === null) return () => 0;
+  const batched = publishedBatches(store, worktreeId, daemon.startedAt, Date.now());
+  if (batched.size === 0) return () => 0;
+  const queued = keys.filter(
+    (row) => row.key !== null && row.pending !== null && batched.has(testFileId(row.testFile))
+  );
+  return (at, inLane) => heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;
 }
 function classifyGroupFiles(states, keys, inLane) {
   const checks = laneChecks(states, inLane);
