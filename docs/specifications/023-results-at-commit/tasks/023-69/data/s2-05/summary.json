@@ -1,0 +1,63 @@
+{
+  "id": "s2-05",
+  "lines9": [],
+  "hooks9": [],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/1fe8e1857cbff8a9/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "3s +99s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "3s +99s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "105s +8s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -20"
+  ],
+  "estimates": [
+    "3s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (5 of them have a stored duration) and this call measured no rate; in the working tree: 1333 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "3s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "3s +99s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "3s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "105s +8s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "loadStart": "9.57",
+  "exit": 0,
+  "wallSeconds": 117.309,
+  "squeal": [
+    "3s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "105s squeal status --at 20f03a431~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.050216800000000006,
+  "usage": {
+    "cache_creation_input_tokens": 12752,
+    "cache_read_input_tokens": 105468,
+    "output_tokens": 777
+  },
+  "firstFinal": "**No result changed for the one file I could verify.** I couldn't check the whole suite.\n\n- **What the commit touched:** `src/core/store/mark.ts` (source) and `test/store/open.test.ts` (27 new lines).\n- **`test/store/open.test.ts`:** pass at the parent (`a5c9b72`) and pass at `20f03a4`. Squeal ran both sides.\n- **Other test files:** unknown. The commit's change to `mark.ts` selects 1338 test files. My broad comparison queued them, but they were still running when I stopped waiting, so none of those results are compared. As of that run, 0 files had gone pass to fail or fail to pass, but 1962 were unknown.\n\nFor the full comparison, run `squeal status --at '20f03a431~1' --wait 100000` once the queue drains. `squeal ps` shows what is still running.\n\nThe new tests in `open.test.ts` passing at both commits means the new assertions don't fail at the parent. That fits a fix whose tests were added alongside it, but I haven't run the proof. `squeal proof test/store/open.test.ts --base '20f03a431~1'` would show whether they fail without the fix.",
+  "final": "**No result changed for the one file I could verify.** I couldn't check the whole suite.\n\n- **What the commit touched:** `src/core/store/mark.ts` (source) and `test/store/open.test.ts` (27 new lines).\n- **`test/store/open.test.ts`:** pass at the parent (`a5c9b72`) and pass at `20f03a4`. Squeal ran both sides.\n- **Other test files:** unknown. The commit's change to `mark.ts` selects 1338 test files. My broad comparison queued them, but they were still running when I stopped waiting, so none of those results are compared. As of that run, 0 files had gone pass to fail or fail to pass, but 1962 were unknown.\n\nFor the full comparison, run `squeal status --at '20f03a431~1' --wait 100000` once the queue drains. `squeal ps` shows what is still running.\n\nThe new tests in `open.test.ts` passing at both commits means the new assertions don't fail at the parent. That fits a fix whose tests were added alongside it, but I haven't run the proof. `squeal proof test/store/open.test.ts --base '20f03a431~1'` would show whether they fail without the fix.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

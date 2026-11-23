@@ -1,0 +1,63 @@
+{
+  "id": "s2-02",
+  "lines9": [],
+  "hooks9": [],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/185a555a7b333cc8/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40",
+    "106s +6s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "estimates": [
+    "4s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (5 of them have a stored duration) and this call measured no rate; in the working tree: 1333 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "4s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "4s +99s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "4s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "106s +6s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "loadStart": "8.61",
+  "exit": 0,
+  "wallSeconds": 116.502,
+  "squeal": [
+    "4s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -40",
+    "106s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0502614,
+  "usage": {
+    "cache_creation_input_tokens": 12818,
+    "cache_read_input_tokens": 105664,
+    "output_tokens": 763
+  },
+  "firstFinal": "**Short answer:** I found no test file whose result changed. That covers only one file, though. The full comparison hasn't finished.\n\n- **What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`.\n- **`test/store/open.test.ts`:** pass at the parent (a5c9b7223) and pass at 20f03a431. The commit added 27 lines to this file, so the new tests pass with the fix.\n- **Rest of the suite:** Squeal says the change selects 1338 test files. Their runs are still queued at both commits, so for those files I have no result at either commit. I haven't checked whether any of them flipped.\n- **Another 624 files:** Squeal did not run these because the change doesn't select them. It also can't tell me whether its static dependency check is complete for them.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000` once the queue drains.",
+  "final": "**Short answer:** I found no test file whose result changed. That covers only one file, though. The full comparison hasn't finished.\n\n- **What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`.\n- **`test/store/open.test.ts`:** pass at the parent (a5c9b7223) and pass at 20f03a431. The commit added 27 lines to this file, so the new tests pass with the fix.\n- **Rest of the suite:** Squeal says the change selects 1338 test files. Their runs are still queued at both commits, so for those files I have no result at either commit. I haven't checked whether any of them flipped.\n- **Another 624 files:** Squeal did not run these because the change doesn't select them. It also can't tell me whether its static dependency check is complete for them.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000` once the queue drains.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431 --run",
+    "'20f03a431~1' --run"
+  ]
+}

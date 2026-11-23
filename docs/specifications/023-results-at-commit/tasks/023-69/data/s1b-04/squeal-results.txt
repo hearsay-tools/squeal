@@ -1,0 +1,117 @@
+## 4s +0s $ squeal checks; git show --stat --format=%H%n%P%n%s 8be977ad6 | head -50
+The checks Squeal runs in this repository (squeal.config.json):
+
+run-loop
+  Selects: Vitest test files matching packages/cezar/src/**/*parity*.test.ts, packages/cezar/src/**/worker-*.test.ts
+  Test files now: 0
+  Runs: between your turns: Squeal starts it when your turn ends, not after an edit
+  Run it now: `squeal run run-loop --wait 60000`
+
+browser
+  Selects: Vitest test files of project "e2e" matching packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `squeal run browser --wait 60000` does
+  Run it now: `squeal run browser --wait 60000`
+
+lint
+  Selects: lint with oxlint
+  Runs: after each edit
+  Run it now: `squeal run lint --wait 60000`
+
+slow
+  Selects: test files marked slow: slow.include packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `squeal run slow --wait 60000`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+8be977ad65ee8c46183e7dde9084b816215aa00c
+d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+perf(lint): share active-run owner syntax indexes (#3785)
+
+ .../cezar/src/lint/active-run-write-index.test.ts  |  72 ++++++++++++++
+ packages/cezar/src/lint/active-run-write.ts        | 107 ++++++++++++++-------
+ 2 files changed, 143 insertions(+), 36 deletions(-)
+
+## 6s +172s $ ls packages/web/e2e/thread-scroll.e2e.ts; squeal status --at d8abcfe4 --run --wait 100000 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts 2>&1 | tail -40; echo ----; squeal status --wait 100000 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts 2>&1 | tail -30
+packages/web/e2e/thread-scroll.e2e.ts
+squeal: asking the commit daemon at d8abcfe46 and this worktree's daemon
+squeal status --at d8abcfe46: 2 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> no result (running)
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 2 unknown, of 2 named test files; the change selects 110 test files at d8abcfe46 (`squeal status --at d8abcfe4`, without paths, compares them)
+packages/cezar/src/lint/active-run-write-index.test.ts, packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 still running at d8abcfe46, 1 of 2 still running in the working tree
+--run: queued 1 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/63819e59e546eaf7/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 0 have a result now (98.1 s)
+--run, now: queued 2 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now
+Still to run, at d8abcfe46: 1 test file, time unknown: none has a stored duration and this call measured no rate; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate for the browser group (0 of its 1 results there in 98 s were that group's); packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: it has no stored duration)
+1 still running at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at d8abcfe4 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.
+----
+Revision: 0
+Selected: packages/cezar/src/lint/active-run-write-index.test.ts, packages/web/e2e/thread-scroll.e2e.ts
+Named test files at revision 0: no known failures; 2 test files, each with a current result, after 73.2 s. Worktree: known failures 0; not current: 1918 of 1920 test files (1918 unknown)
+
+## 180s +98s $ squeal status --at d8abcfe4 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts --wait 100000 2>&1 | tail -15
+squeal: asking the commit daemon at d8abcfe46 and this worktree's daemon
+squeal status --at d8abcfe46: 2 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> pass (now: run in this worktree)
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 2 unknown, of 2 named test files; the change selects 110 test files at d8abcfe46 (`squeal status --at d8abcfe4`, without paths, compares them)
+packages/cezar/src/lint/active-run-write-index.test.ts, packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 still running at d8abcfe46, none queued in the working tree
+--wait: joined 1 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/63819e59e546eaf7/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 0 have a result now (98.0 s)
+Still to run, at d8abcfe46: about 2 min for 1 test file, up to 1 at once, from their stored durations, times 1.22 for the host's load per CPU
+1 still running at d8abcfe46 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at d8abcfe4 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.
+
+## 280s +148s $ squeal status --at d8abcfe4 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts --wait 150000 2>&1 | tail -12
+squeal: asking the commit daemon at d8abcfe46 and this worktree's daemon
+squeal status --at d8abcfe46: 2 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> pass (now: run in this worktree)
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 2 unknown, of 2 named test files; the change selects 110 test files at d8abcfe46 (`squeal status --at d8abcfe4`, without paths, compares them)
+packages/cezar/src/lint/active-run-write-index.test.ts, packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 still running at d8abcfe46, none queued in the working tree
+--wait: joined 1 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/63819e59e546eaf7/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 0 have a result now (148.1 s)
+Still to run, at d8abcfe46: about 3 min for 1 test file, up to 1 at once, from their stored durations, times 1.34 for the host's load per CPU
+1 still running at d8abcfe46 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at d8abcfe4 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.
+
+## 431s +198s $ squeal status --at d8abcfe4 packages/web/e2e/thread-scroll.e2e.ts --wait 200000 2>&1 | tail -8
+squeal status --at d8abcfe46: 1 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown, of 1 named test file; the change selects 110 test files at d8abcfe46 (`squeal status --at d8abcfe4`, without paths, compares them)
+packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 still running at d8abcfe46, none queued in the working tree
+--wait: joined 1 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/63819e59e546eaf7/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 0 have a result now (198.0 s)
+Still to run, at d8abcfe46: about 2 min for 1 test file, up to 1 at once, from their stored durations, times 1.16 for the host's load per CPU
+1 still running at d8abcfe46 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at d8abcfe4 packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.
+
+## 631s +298s $ squeal status --at d8abcfe4 packages/web/e2e/thread-scroll.e2e.ts --wait 300000 2>&1 | tail -6
+packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown, of 1 named test file; the change selects 110 test files at d8abcfe46 (`squeal status --at d8abcfe4`, without paths, compares them)
+packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 still running at d8abcfe46, none queued in the working tree
+--wait: joined 1 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/63819e59e546eaf7/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 0 have a result now (298.1 s)
+Still to run, at d8abcfe46: about 3 min for 1 test file, up to 1 at once, from their stored durations, times 1.58 for the host's load per CPU
+1 still running at d8abcfe46 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at d8abcfe4 packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.
+
+## 934s SAY
+I can't yet say whether 8be977ad6 changed any test results. The parent-commit run of `thread-scroll.e2e.ts` hasn't finished after about 5 minutes of waiting.
+
+**What the commit touched:** only `packages/cezar/src/lint/active-run-write.ts` and a new test file, `packages/cezar/src/lint/active-run-write-index.test.ts`. It changed no web or e2e code.
+
+**Results so far:**
+
+| Test file | At d8abcfe46 (parent) | At 8be977ad6 |
+|---|---|---|
+| `packages/cezar/src/lint/active-run-write-index.test.ts` | does not exist | pass |
+| `packages/web/e2e/thread-scroll.e2e.ts` | still running, no result | pass |
+
+- **New test:** it passes now. I haven't run `squeal proof` on it to see whether it would fail against the parent's code.
+- **`thread-scroll.e2e.ts`:** I expect no change, since nothing it depends on was edited. That is an inference, not a measurement.
+- **Other test files:** the full comparison would cover the 110 test files the change selects. I only compared the two you named. The other 108 have not been compared.
+- **Lint:** the lint check reports no files with findings.
+
+The parent-commit run is still going in Squeal's daemon. To pick up the result once it finishes, run `squeal status --at d8abcfe4 packages/web/e2e/thread-scroll.e2e.ts --wait 300000`.

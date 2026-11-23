@@ -1,0 +1,1 @@
+dpkg packages installed (ii) before the round: 877; after teardown: 877

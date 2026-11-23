@@ -1,0 +1,147 @@
+## head
+20f03a43139ea3e99e057b32dac3db3dffbb903d
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+20f03a4 HEAD@{2026-11-23 19:08:43 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w33/runs/w33/s2-10
+HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
+branch refs/heads/main
+
+worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+HEAD a5c9b7223b6550d249098754bfc6453b3853c2b7
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w33 squeal-w33    0 Nov 23 18:28 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/0a9e45cc7c9d161c:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:39 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/0fb3592e5e3ce58e:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:32 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/16549daeb9b84a9b:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:58 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/185a555a7b333cc8:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:41 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/1fe8e1857cbff8a9:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:51 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/2021c27dc59a0b52:
+total 12
+drwxrwxr-x  3 squeal-w33 squeal-w33 4096 Nov 23 19:08 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+drwxrwxr-x  4 squeal-w33 squeal-w33 4096 Nov 23 19:08 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/3810715339809d9e:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:36 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/4aec9de2dd9da699:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:44 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/5821b6af7959874c:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:30 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/63819e59e546eaf7:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 19:09 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/655b5f23c6e6fc33:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:44 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/68a19a609f9db149:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:53 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/6b3356d4ededb758:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 19:10 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/7634836dc2102b10:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 19:07 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/7de38fc266d5ea10:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:57 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/9ae84d81555e5a2f:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:38 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/bfeb51896b3741f4:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 19:01 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/c224b4ddac40b021:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:54 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 19:10 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 19:10 53daf4d37356bf30.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:54 91f01de1a0cdaa8a.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 19:09 b88493ed4665b94a.json
+
+home/.cache/squeal/checkouts/e2ce1b2fde83bfb8:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 19:07 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/e372bdd466a2ca90:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:48 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+home/.cache/squeal/checkouts/eb47e44968ec2cd9:
+total 8
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:55 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+2168729       1       02:25 squeal s2-10 daemon @f5fda9eb ~squeal-w33/runs/w33/claude/plugins/cache/hearsay/squeal/0.1.610/dist/cli/squeal.mjs daemon ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+2172387 2168729       02:17 /opt/squeal-w33/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w33/runs/w33/claude/plugins/cache/hearsay/squeal/0.1.610/dist/cli/squeal.mjs runner-host ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+2186569       1       01:40 squeal s2-10 store --disable-warning=ExperimentalWarning ~squeal-w33/runs/w33/claude/plugins/cache/hearsay/squeal/0.1.610/dist/cli/squeal.mjs store-process ~squeal-w33/runs/w33/s2-10/.git --store code
+2222154 2172387       00:09 /opt/squeal-w33/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js

@@ -1,0 +1,63 @@
+{
+  "id": "s2-03",
+  "lines9": [],
+  "hooks9": [],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/4aec9de2dd9da699/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at 20f03a431 --run --wait 100000; echo ---; squeal status --at 20f03a431~1 --run --wait 100000"
+  ],
+  "joins": [
+    "5s +99s squeal status --at 20f03a431 --run --wait 100000; echo ---; squeal status --at 20f03a431~1 --run --wait 100000",
+    "108s +11s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (9 of them have a stored duration) and this call measured no rate; in the working tree: 1329 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "5s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "5s +99s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "5s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "108s +11s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "loadStart": "10.23",
+  "exit": 0,
+  "wallSeconds": 123.12,
+  "squeal": [
+    "5s squeal status --at 20f03a431 --run --wait 100000; echo ---; squeal status --at 20f03a431~1 --run --wait 100000",
+    "108s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0513055,
+  "usage": {
+    "cache_creation_input_tokens": 12931,
+    "cache_read_input_tokens": 105780,
+    "output_tokens": 838
+  },
+  "firstFinal": "No verified result change. The only test file I could compare, `test/store/open.test.ts`, passes both before and after the commit.\n\n- **What the commit touched:** `src/core/store/mark.ts` (a 7-line change) and `test/store/open.test.ts` (27 lines added). The new tests in `open.test.ts` pass with the fix.\n- **Not compared:** the commit selects 1338 test files, and I did not compare them. The full comparison was still queued when I narrowed to the one changed test file. Squeal's unfiltered count was 0 pass→fail, 0 fail→pass and 1962 unknown. That count says nothing about results.\n- **Other files that could change:** any test that exercises `mark.ts` indirectly. That's possible, but I have no result for it.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000`. It waits for the queued runs and then lists every changed file.",
+  "final": "No verified result change. The only test file I could compare, `test/store/open.test.ts`, passes both before and after the commit.\n\n- **What the commit touched:** `src/core/store/mark.ts` (a 7-line change) and `test/store/open.test.ts` (27 lines added). The new tests in `open.test.ts` pass with the fix.\n- **Not compared:** the commit selects 1338 test files, and I did not compare them. The full comparison was still queued when I narrowed to the one changed test file. Squeal's unfiltered count was 0 pass→fail, 0 fail→pass and 1962 unknown. That count says nothing about results.\n- **Other files that could change:** any test that exercises `mark.ts` indirectly. That's possible, but I have no result for it.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000`. It waits for the queued runs and then lists every changed file.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "'20f03a431~1' --run"
+  ]
+}

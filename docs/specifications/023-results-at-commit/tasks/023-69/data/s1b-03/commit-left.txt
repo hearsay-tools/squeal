@@ -1,0 +1,62 @@
+## squeal ps after squeal stop
+squeal ps · 5 daemons, 7 test processes · no flags
+Host    load 7.8 12.2 10.6 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 3.0% · memory pressure 0.0% (0.0% full) · memory 9.7 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 4.0 CPUs (98% of busy) · memory 6.8 GiB (71% of used) + 0 swap · pool 3 of 11 permits
+
+~squeal-w33/runs/w33/s1b-03 (this repository) · 1 daemon · CPU 0.0 · memory 1.2 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1766480  a99321e7  0.1.610          7m    0%     0m35s  350M    0     93 pending
+    host vitest      1766879  local                      7m    0%     0m42s  647M    0
+    host vitest      1883291  local                      1m    0%     0m03s  238M    0
+
+~squeal-w33/runs/w33/s1-04 · 2 daemons · CPU 3.8 · memory 2.3 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1885554  29ee3bcd  0.1.610         42s  121%     0m09s  496M    0     idle
+    host vitest      1885796  local                     39s   41%     0m45s  616M    0
+  serving            1885010  8d5b548a  0.1.610         47s  221%     0m18s  561M    0     1 session
+    host vitest      1885140  local                     46s    0%     0m42s  614M    0
+    host node-test   1885141  local                     46s    0%     0m00s  48M     0
+    host node-test   1885142  local                     46s    0%     0m00s  62M     0
+
+~squeal-w33/runs/w33/s1b-02 · 2 daemons · CPU 0.1 · memory 3.3 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1646711  f255eca5  0.1.610         14m    0%     0m58s  258M    0     78 pending
+    host vitest      1647005  local                     14m    0%     0m54s  643M    0
+  serving            1645709  1e10d171  0.1.610         15m    0%     2m36s  563M    0     fast tier, 1 file; 91 pending; 1 session
+    host vitest      1645890  local                     15m    0%     0m54s  682M    0
+    host node-test   1645891  local                     15m    0%     0m00s  41M     0
+    host node-test   1645894  local                     15m    0%     0m00s  50M     0
+    host vitest      1878398  local                      1m    0%     0m02s  228M    0
+    group:browser:vitest1879606  fork worker                1m    0%     0m00s  46M     0     nice 10, +1 child
+    group:browser:vitest1879638                             1m    0%     0m02s  354M    0     escaped, nice 10, +14 children
+    group:browser:vitest1879656                             1m    0%     0m00s  384K    0     escaped, nice 10
+    group:browser:vitest1879658                             1m    0%     0m00s  332K    0     escaped, nice 10
+    group:browser:vitest1888200                            12s   11%     0m04s  505M    0     escaped, nice 10, +16 children
+    group:browser:vitest1888224                            12s    0%     0m00s  380K    0     escaped, nice 10
+    group:browser:vitest1888226                            12s    0%     0m00s  328K    0     escaped, nice 10
+
+Store processes
+  1649826  code.sqlite of ~squeal-w33/runs/w33/s1b-02/.git
+  1768621  code.sqlite of ~squeal-w33/runs/w33/s1b-03/.git
+  1888701  code.sqlite of ~squeal-w33/runs/w33/s1-04/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/68a19a609f9db149/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1766480  age 7m  at d8abcfe46bbe
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/c224b4ddac40b021/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1646711  age 14m  at d8abcfe46bbe
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/eb47e44968ec2cd9/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1885554  age 42s  at d8abcfe46bbe
+
+## checkout folders
+ls: cannot access '~squeal-w33/runs/w33/s1b-03/.git/squeal/checkouts': No such file or directory
+~squeal-w33/runs/w33/home/.cache/squeal/checkouts/68a19a609f9db149:
+total 12
+drwxrwxr-x  3 squeal-w33 squeal-w33 4096 Nov 23 18:45 .
+drwxrwxr-x 16 squeal-w33 squeal-w33 4096 Nov 23 18:52 ..
+drwxrwxr-x  4 squeal-w33 squeal-w33 4096 Nov 23 18:45 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:52 .
+drwxrwxr-x 16 squeal-w33 squeal-w33 4096 Nov 23 18:52 ..
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:40 0cb1c828aa962bfe.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:47 171c71f761792871.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:52 87defab0e00cce46.json

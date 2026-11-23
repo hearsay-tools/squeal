@@ -1,0 +1,111 @@
+== dryat  2026-11-23T17:28:08Z load 0.63 0.51 0.20
+Squeal daemon spawned for ~squeal-w33/runs/w33/dryat
+
+Revision: 0
+Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Slow tier: no slow test files listed yet; Squeal runs them after the fast tests.
+Outstanding:
+  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+Complexity: no file counted yet.
+Lint: linting has not started.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+squeal: asking the commit daemon at d8abcfe46 and this worktree's daemon
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cezar/src/activity/demand.test.ts and 1666 more
+95 test files: no result (queued) -> no result (queued): packages/web/e2e/agents-dock.e2e.ts, packages/web/e2e/artifact-project-links.e2e.ts, packages/web/e2e/assistant-line-breaks.e2e.ts and 92 more
+16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more
+6 test files: pass -> no result (running) (at d8abcfe46: run in the commit's worktree): packages/cezar/src/lint/ast-rules-owners.test.ts, packages/cezar/src/lint/lint-ast-grep-1.test.ts, packages/cezar/src/lint/lint-ast-grep-2.test.ts and 3 more
+packages/web/e2e/activity.e2e.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)
+packages/web/e2e/agent-browser-tabs.e2e.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notSelected.excepted): .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 121 more
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 7 unchanged, 1789 unknown, 124 not selected
+--run: queued 110 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 15 have a result now (98.3 s)
+1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 111 test files the change selects with no result in the working tree in this worktree's daemon; 8 have a result now
+Still to run, at d8abcfe46: 95 test files, time unknown: none has a stored duration and this call measured no rate for the browser group (2 of its 15 results there in 98 s were that group's); in the working tree: 103 test files, time unknown, by group: tests: about 20 s for 6 test files, up to 5 at once, from their stored durations; browser: 97 test files, time unknown: too few runs stored (2 of them have a stored duration) and this call measured no rate for the browser group (0 of its 8 results there in 98 s were that group's); name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>... --run
+95 still running at d8abcfe46 (its worktree), 103 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them.
+status --at took 98 s
+squeal ps · 2 daemons, 1 test process · no flags
+Host    load 10.6 3.9 1.4 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 6.1% · memory pressure 0.0% (0.0% full) · memory 5.4 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 3.5 CPUs (96% of busy) · memory 3.1 GiB (58% of used) + 0 swap · pool 3 of 11 permits
+
+~squeal-w33/runs/w33/dryat (this repository) · 2 daemons · CPU 3.5 · memory 3.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1507528  b3abe5eb  0.1.610          1m  246%     0m52s  801M    0     fast tier, 6 files; 97 pending
+    host vitest      1507670  local                      1m   31%     0m44s  673M    0
+    host node-test   1507671  local                      1m    0%     0m00s  47M     0
+    host node-test   1507677  local                      1m    0%     0m00s  64M     0
+    host vitest      1529365  local                     18s   71%     0m02s  278M    0
+    vitest           1529371  fork worker               18s     ?     0m19s  ?       ?     nice 10
+  serving            1507728  c74b0d7c  0.1.610          1m    0%     0m17s  491M    0     95 pending
+    host vitest      1507888  local                      1m    0%     0m46s  615M    0
+    host vitest      1508965  local                     53s    0%     0m03s  246M    0
+
+Store processes
+  1508026  code.sqlite of ~squeal-w33/runs/w33/dryat/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1507728  age 1m  at d8abcfe46bbe
+
+Unknown: 2 values; --full names each
+home/.cache/squeal/checkouts
+home/.cache/squeal/checkouts/commit-places.lock
+home/.cache/squeal/checkouts/commit-places
+home/.cache/squeal/checkouts/commit-places/b26afec30c8a7951.json
+home/.cache/squeal/checkouts/5821b6af7959874c
+home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/install.lock
+home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/run
+home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/marker.json
+dryat/.git/squeal
+dryat/.git/squeal/code.sqlite-wal
+dryat/.git/squeal/lint.sqlite-wal
+dryat/.git/squeal/checkouts.lock
+dryat/.git/squeal/store.sqlite-shm
+dryat/.git/squeal/locks
+dryat/.git/squeal/locks/c74b0d7c2f11396c.sqlite
+dryat/.git/squeal/locks/b3abe5eb116fea3c.sqlite-journal
+dryat/.git/squeal/locks/store-code.sqlite-journal
+dryat/.git/squeal/locks/c74b0d7c2f11396c.sqlite-journal
+Squeal daemon stopped for ~squeal-w33/runs/w33/dryat; `squeal stop --until-start` keeps it stopped through edits and Git operations
+== after squeal stop
+squeal ps · 1 daemon, 1 test process · no flags
+Host    load 9.3 3.9 1.4 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 2.8% · memory pressure 0.0% (0.0% full) · memory 3.6 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 1.3 CPUs (97% of busy) · memory 1.4 GiB (39% of used) + 0 swap · pool 2 of 11 permits
+
+~squeal-w33/runs/w33/dryat (this repository) · 1 daemon · CPU 1.3 · memory 1.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1507728  c74b0d7c  0.1.610          1m    1%     0m17s  491M    0     fast tier, 1 file; 94 pending
+    host vitest      1507888  local                      1m    0%     0m46s  615M    0
+    host vitest      1508965  local                      1m    5%     0m04s  246M    0
+    group:browser:vitest1533368  fork worker                0s  123%     0m00s  76M     0     nice 0
+
+Store processes
+  1508026  code.sqlite of ~squeal-w33/runs/w33/dryat/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1507728  age 1m  at d8abcfe46bbe
+Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+== after squeal stop --at HEAD~1
+squeal ps · 0 daemons, 0 test processes · no flags
+Host    load 8.6 3.8 1.4 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 1.8% · memory pressure 0.0% (0.0% full) · memory 1.2 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 0.0 CPUs (0.0% of busy) · memory 0 (0.0% of used) + 0 swap · pool 0 of 11 permits
+
+No Squeal daemon runs.
+home/.cache/squeal/checkouts
+home/.cache/squeal/checkouts/commit-places.lock
+home/.cache/squeal/checkouts/commit-places
+home/.cache/squeal/checkouts/commit-places/b26afec30c8a7951.json
+home/.cache/squeal/checkouts/5821b6af7959874c
+== leftover  2026-11-23T17:30:05Z load 8.57 3.79 1.44
+1526835	/tmp/squeal-1002/tmp/46b1d2899203f2b0 (deleted)	/opt/squeal-w33/node24/bin/node ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/5821b6af7959874c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease
+1530956	~squeal-w33/runs/w33/dryat	/opt/squeal-w33/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w33/runs/w33/dryat/.ai/qa/served/dryat 
+1530957	/tmp/squeal-1002/tmp/73f344f74d2a7473 (deleted)	/opt/squeal-w33/node24/bin/node ~squeal-w33/runs/w33/dryat/.ai/scripts/test-env-lease.mjs watch-app 1530956 c294d61d-2b74-4f72-9b10-2d9fc754e380:7911277 ~squeal-w33/runs/w33/dryat ~sque
+processes of squeal-w33: 3
+/tmp entries of squeal-w33: 4

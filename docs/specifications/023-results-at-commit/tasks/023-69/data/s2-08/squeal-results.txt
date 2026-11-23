@@ -1,0 +1,85 @@
+## 4s +98s $ squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -60
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1137 test files: no result (queued) -> no result (queued): test/cli/status-wait-window.test.ts, test/cli/status-wait.test.ts, test/cli/stop-bound.test.ts and 1134 more
+624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+181 test files: no result (running) -> no result (queued): test/cli/code-gate-closures.test.ts, test/cli/code-gate-durations.test.ts, test/cli/code-gate-estimate.test.ts and 178 more
+15 test files: no result (running) -> pass (now: run in this worktree): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 12 more
+4 test files: no result (running) -> no result (running): test/cli/ci-usage.test.ts, test/cli/code-gate-args.test.ts, test/cli/code-gate-budget.test.ts and 1 more
+test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/7634836dc2102b10/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.1 s)
+624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 16 have a result now
+Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (16 of them have a stored duration) and this call measured no rate; in the working tree: about 2.3 h for 1322 test files, at this call's rate there (16 results in 98 s); name test files or folders to narrow it: squeal status --at '20f03a4~1' <path>... --run
+1338 still running at a5c9b7223 (its worktree), 1322 in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 106s +6s $ squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15; grep -rl "store/mark" test | head -20
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown, of 1 named test file; the change selects 1338 test files at a5c9b7223 (`squeal status --at '20f03a4~1'`, without paths, compares them)
+--run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/7634836dc2102b10/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (5.7 s)
+--run, now: every test file the change selects has a result in the working tree
+The rest of the queue, outside these paths: 1294 more test files queued or running at a5c9b7223 (its worktree), 1316 in the working tree
+test/harness/store-fault-hook.test.ts
+test/store/open.test.ts
+test/daemon/full-check-daemon.test.ts
+test/daemon/store-fault.test.ts
+test/daemon/store-fault-daemon.test.ts
+test/store/helpers.ts
+test/daemon/full-check.test.ts
+test/daemon/mark-binding.test.ts
+
+## 114s +98s $ squeal status --at 20f03a4~1 test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --run --wait 100000 2>&1 | tail -14
+Now is this worktree's daemon at revision 0.
+test/daemon/full-check-daemon.test.ts: no result (queued) -> pass (now: run in this worktree)
+test/daemon/full-check.test.ts: no result (queued) -> pass (now: run in this worktree)
+test/daemon/mark-binding.test.ts: no result (queued) -> pass (now: run in this worktree)
+test/daemon/store-fault-daemon.test.ts: no result (queued) -> pass (now: run in this worktree)
+test/daemon/store-fault.test.ts: no result (queued) -> pass (now: run in this worktree)
+test/harness/store-fault-hook.test.ts: no result (queued) -> pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 6 unknown, of 6 named test files; the change selects 1338 test files at a5c9b7223 (`squeal status --at '20f03a4~1'`, without paths, compares them)
+test/harness/store-fault-hook.test.ts, test/daemon/full-check-daemon.test.ts, test/daemon/store-fault.test.ts, test/daemon/store-fault-daemon.test.ts, test/daemon/full-check.test.ts, test/daemon/mark-binding.test.ts: 6 of 6 still running at a5c9b7223, 0 of 6 still running in the working tree
+--run: queued 6 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/7634836dc2102b10/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.1 s)
+--run, now: queued 6 test files the change selects with no result in the working tree in this worktree's daemon; 6 have a result now
+The rest of the queue, outside these paths: 1288 more test files queued or running at a5c9b7223 (its worktree), 1297 in the working tree
+Still to run, at a5c9b7223: about 6 s for 6 test files, up to 6 at once, from their stored durations, times 1.2 for the host's load per CPU
+6 still running at a5c9b7223 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --wait 100000 waits for them; squeal ps shows them.
+
+## 214s +87s $ squeal status --at 20f03a4~1 test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --wait 100000 2>&1 | tail -12
+squeal status --at a5c9b7223: 6 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+test/daemon/full-check-daemon.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+test/daemon/full-check.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+test/daemon/mark-binding.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+test/daemon/store-fault-daemon.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+test/daemon/store-fault.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+test/harness/store-fault-hook.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 6 unchanged, 0 unknown, of 6 named test files; the change selects 1338 test files at a5c9b7223 (`squeal status --at '20f03a4~1'`, without paths, compares them)
+--wait: joined 6 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/7634836dc2102b10/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 6 have a result now (86.8 s)
+--wait: 6 test files went from running to a result at a5c9b7223: test/daemon/full-check-daemon.test.ts, test/daemon/full-check.test.ts, test/daemon/mark-binding.test.ts, test/daemon/store-fault-daemon.test.ts, test/daemon/store-fault.test.ts, test/harness/store-fault-hook.test.ts
+The rest of the queue, outside these paths: 1116 more test files queued or running at a5c9b7223 (its worktree), 1297 in the working tree
+
+## 307s SAY
+As far as I could check, no test file changed result. I did not compare the whole suite.
+
+The commit touched `src/core/store/mark.ts` and `test/store/open.test.ts`. I compared `20f03a4` against `a5c9b72` (its parent) for that test file and for the six test files that reference `store/mark`.
+
+All seven passed on both sides:
+- `test/store/open.test.ts`
+- `test/daemon/full-check-daemon.test.ts`
+- `test/daemon/full-check.test.ts`
+- `test/daemon/mark-binding.test.ts`
+- `test/daemon/store-fault-daemon.test.ts`
+- `test/daemon/store-fault.test.ts`
+- `test/harness/store-fault-hook.test.ts`
+
+The commit added 27 lines to `test/store/open.test.ts`. It passes both before and after because the file as a whole passed at both commits. This comparison doesn't show whether the new cases pass on the old code.
+
+I did not complete the comparison for the other test files. Squeal selects 1338 test files for this change, and the full comparison would take about 2.3 hours. A broader run at the parent commit had no result for 624 files it did not select. The first run, over all 1962 files, ended with 0 pass→fail, 0 fail→pass and 1962 unknown. A file that imports `mark.ts` only indirectly could still differ.
+
+If you want the full comparison, `squeal status --at '20f03a4~1' --wait 100000` waits for the runs already queued.

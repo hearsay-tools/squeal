@@ -1,0 +1,70 @@
+## squeal ps after squeal stop
+squeal ps · 5 daemons, 16 test processes · no flags
+Host    load 18.2 13.6 11.4 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 43% · memory pressure 0.0% (0.0% full) · memory 11.0 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 9.0 CPUs (at least 84% of busy) · memory 7.7 GiB (70% of used) + 0 swap · pool 6 of 11 permits
+
+~squeal-w33/runs/w33/s2-06 (this repository) · 1 daemon · CPU at least 1.9 · memory 1.6 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1922842  742214ba  0.1.610          2m    3%     0m27s  462M    0     fast tier, 200 files; 1126 pending
+    host vitest      1923670  local                      1m   12%     0m53s  464M    0
+    vitest           1951476  fork worker                8s     ?     0m02s  179M    0     nice 10, +2 children
+    vitest           1951493  fork worker                8s    1%     0m01s  196M    0     nice 10, +1 child
+    vitest           1951507  fork worker                8s   78%     0m03s  259M    0     nice 10
+    vitest           1951526  fork worker                8s     ?     0m07s  63M     0     nice 10, +3 children
+
+~squeal-w33/runs/w33/s1b-04 · 2 daemons · CPU at least 1.0 · memory 2.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1916120  4d2516e0  0.1.610          2m   27%     0m10s  206M    0     1 pending
+    host vitest      1916394  local                      2m    1%     0m48s  591M    0
+  serving            1914076  05a2afaa  0.1.610          2m   71%     0m52s  938M    0     fast tier, 1 file; 1 session
+    host vitest      1914301  local                      2m    0%     0m45s  629M    0
+    host node-test   1914302  local                      2m    0%     0m00s  41M     0
+    host node-test   1914308  local                      2m    0%     0m00s  46M     0
+    host vitest      1921560  local                      2m     ?     0m04s  ?       ?
+    group:browser:vitest1924060  fork worker                1m     ?     0m10s  ?       ?     nice 10, +2 children
+    group:browser:vitest1924407                             1m     ?     0m56s  ?       ?     escaped, nice 10, +26 children
+    group:browser:vitest1924423                             1m     ?     0m00s  ?       ?     escaped, nice 10
+    group:browser:vitest1924425                             1m     ?     0m00s  ?       ?     escaped, nice 10
+
+~squeal-w33/runs/w33/s2-07 · 2 daemons · CPU at least 6.1 · memory 3.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1927527  06be90cf  0.1.610          1m    0%     0m18s  627M    0     fast tier, 4 files; 1330 pending
+    host vitest      1928036  local                      1m   98%     0m42s  809M    0
+    vitest           1954377  fork worker                2s     ?     0m01s  ?       ?     nice 10
+    vitest           1954386  fork worker                2s     ?     0m02s  171M    0     nice 10, +2 children
+    vitest           1954397  fork worker                2s     ?     0m01s  ?       ?     nice 10, +1 child
+    vitest           1954404  fork worker                2s     ?     0m02s  147M    0     nice 10, +3 children
+  serving            1926809  93a4b3b9  0.1.610          1m    0%     0m38s  1012M   0     fast tier, 4 files; 1329 pending; 1 session
+    host vitest      1927044  local                      1m   38%     0m41s  561M    0
+    vitest           1954435  fork worker                1s     ?     0m01s  ?       ?     nice 10
+    vitest           1954443  fork worker                1s     ?     0m02s  173M    0     nice 10, +2 children
+    vitest           1954450  fork worker                1s   88%     0m02s  168M    0     nice 10, +1 child
+    vitest           1954457  fork worker                1s     ?     0m02s  140M    0     nice 10, +3 children
+
+Store processes
+  1920492  code.sqlite of ~squeal-w33/runs/w33/s1b-04/.git
+  1926144  code.sqlite of ~squeal-w33/runs/w33/s2-06/.git
+  1942795  code.sqlite of ~squeal-w33/runs/w33/s2-07/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/16549daeb9b84a9b/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1927527  age 1m  at a5c9b7223b65
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/63819e59e546eaf7/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1916120  age 2m  at d8abcfe46bbe
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/7de38fc266d5ea10/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1922842  age 2m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w33/runs/w33/s2-06/.git/squeal/checkouts': No such file or directory
+~squeal-w33/runs/w33/home/.cache/squeal/checkouts/7de38fc266d5ea10:
+total 12
+drwxrwxr-x  3 squeal-w33 squeal-w33 4096 Nov 23 18:55 .
+drwxrwxr-x 19 squeal-w33 squeal-w33 4096 Nov 23 18:55 ..
+drwxrwxr-x  4 squeal-w33 squeal-w33 4096 Nov 23 18:55 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:56 .
+drwxrwxr-x 19 squeal-w33 squeal-w33 4096 Nov 23 18:55 ..
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:54 91f01de1a0cdaa8a.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:55 c8a2e0d008183060.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:56 ed309aeb58805482.json

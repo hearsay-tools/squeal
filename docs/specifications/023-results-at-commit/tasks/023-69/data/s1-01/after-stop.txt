@@ -1,0 +1,54 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-23 18:30:16 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w33/runs/w33/s1-01
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+HEAD d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w33 squeal-w33    0 Nov 23 18:28 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/0fb3592e5e3ce58e:
+total 12
+drwxrwxr-x 3 squeal-w33 squeal-w33 4096 Nov 23 18:30 .
+drwxrwxr-x 5 squeal-w33 squeal-w33 4096 Nov 23 18:30 ..
+drwxrwxr-x 4 squeal-w33 squeal-w33 4096 Nov 23 18:30 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/5821b6af7959874c:
+total 8
+drwxrwxr-x 2 squeal-w33 squeal-w33 4096 Nov 23 18:30 .
+drwxrwxr-x 5 squeal-w33 squeal-w33 4096 Nov 23 18:30 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 12
+drwxrwxr-x 2 squeal-w33 squeal-w33 4096 Nov 23 18:32 .
+drwxrwxr-x 5 squeal-w33 squeal-w33 4096 Nov 23 18:30 ..
+-rw-rw-r-- 1 squeal-w33 squeal-w33  156 Nov 23 18:32 769d4978356e378a.json
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+1534770       1       02:05 squeal s1-01 daemon @c8691d55 ~squeal-w33/runs/w33/claude/plugins/cache/hearsay/squeal/0.1.610/dist/cli/squeal.mjs daemon ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+1534895 1534770       02:02 /opt/squeal-w33/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w33/runs/w33/claude/plugins/cache/hearsay/squeal/0.1.610/dist/cli/squeal.mjs runner-host ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+1535134       1       01:26 squeal s1-01 store --disable-warning=ExperimentalWarning ~squeal-w33/runs/w33/claude/plugins/cache/hearsay/squeal/0.1.610/dist/cli/squeal.mjs store-process ~squeal-w33/runs/w33/s1-01/.git --store code
+1536385 1534770       01:16 /opt/squeal-w33/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w33/runs/w33/claude/plugins/cache/hearsay/squeal/0.1.610/dist/cli/squeal.mjs runner-host ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+1553944       1       01:00 /opt/squeal-w33/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+1553945       1       01:00 /opt/squeal-w33/node24/bin/node ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease.mjs watch-app 1553944 c294d61d-2b74-4f72-9b10-2d9fc754e380:7921687 ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0fb3592e5e3ce58e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+1558378       1       00:30 /opt/squeal-w33/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w33/runs/w33/s1-01/.ai/qa/served/s1-01
+1558379       1       00:30 /opt/squeal-w33/node24/bin/node ~squeal-w33/runs/w33/s1-01/.ai/scripts/test-env-lease.mjs watch-app 1558378 c294d61d-2b74-4f72-9b10-2d9fc754e380:7924638 ~squeal-w33/runs/w33/s1-01 ~squeal-w33/runs/w33/s1-01/.ai/qa/served/s1-01

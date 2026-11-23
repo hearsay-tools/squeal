@@ -1,0 +1,58 @@
+## squeal ps after squeal stop
+squeal ps · 5 daemons, 5 test processes · no flags
+Host    load 18.1 12.6 6.8 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 59% · memory pressure 0.0% (0.0% full) · memory 9.7 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 9.0 CPUs (at least 84% of busy) · memory 5.8 GiB (60% of used) + 0 swap · pool 4 of 11 permits
+
+~squeal-w33/runs/w33/s1b-01 (this repository) · 1 daemon · CPU 0.0 · memory 911 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1564236  12953ddb  0.1.610          6m    0%     0m22s  250M    0     95 pending
+    host vitest      1564359  local                      6m    0%     0m40s  662M    0
+
+~squeal-w33/runs/w33/s1b-02 · 2 daemons · CPU at least 7.3 · memory 3.2 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1646711  f255eca5  0.1.610          1m   17%     0m14s  509M    0     fast tier, 10 files; fast tier, 3 files; fast tier, 1 file; 96 pending
+    host vitest      1647005  local                      1m    2%     0m52s  646M    0
+    host vitest      1652128  local                     14s   58%     0m02s  233M    0
+    node-test        1651799  …ts/test-inputs.test.mjs  15s   74%     0m01s  38M     0     nice 10, +1 child
+    vitest           1651966  fork worker               15s   87%     0m08s  192M    0     nice 10
+    vitest           1652607  fork worker               13s  109%     0m03s  118M    0     nice 10, +1 child
+  serving            1645709  1e10d171  0.1.610          1m  236%     0m34s  750M    0     fast tier, 4 files; fast tier, 3 files; 103 pending; 1 session
+    host vitest      1645890  local                      1m   68%     0m51s  648M    0
+    host node-test   1645891  local                      1m    0%     0m00s  48M     0
+    host node-test   1645894  local                      1m    1%     0m00s  65M     0
+    node-test        1653177  …ts/test-inputs.test.mjs  12s   73%     0m01s  31M     0     nice 10, +2 children
+    vitest           1653259  fork worker               12s     ?     0m17s  ?       ?     nice 10, +1 child
+
+~squeal-w33/runs/w33/s2-02 · 2 daemons · CPU 1.7 · memory 1.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1650780  becd325e  0.1.610         22s    6%     0m07s  177M    0     idle
+    host vitest      1652029  local                     14s   83%     0m13s  581M    0
+  serving            1649778  aac39769  0.1.610         28s   12%     0m04s  329M    0     1 session
+    host vitest      1650166  local                     26s   72%     0m25s  654M    0
+
+Store processes
+  1564496  code.sqlite of ~squeal-w33/runs/w33/s1b-01/.git
+  1649826  code.sqlite of ~squeal-w33/runs/w33/s1b-02/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0a9e45cc7c9d161c/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1564236  age 6m  at d8abcfe46bbe
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/185a555a7b333cc8/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1650780  age 24s  at a5c9b7223b65
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/c224b4ddac40b021/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1646711  age 1m  at d8abcfe46bbe
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w33/runs/w33/s1b-01/.git/squeal/checkouts': No such file or directory
+~squeal-w33/runs/w33/home/.cache/squeal/checkouts/0a9e45cc7c9d161c:
+total 12
+drwxrwxr-x  3 squeal-w33 squeal-w33 4096 Nov 23 18:33 .
+drwxrwxr-x 10 squeal-w33 squeal-w33 4096 Nov 23 18:39 ..
+drwxrwxr-x  4 squeal-w33 squeal-w33 4096 Nov 23 18:33 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:39 .
+drwxrwxr-x 10 squeal-w33 squeal-w33 4096 Nov 23 18:39 ..
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:38 0cb1c828aa962bfe.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:39 8c6017ae14105df5.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:37 b15883b07ceab035.json

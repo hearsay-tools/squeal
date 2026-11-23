@@ -1,0 +1,64 @@
+## squeal ps after squeal stop
+squeal ps · 5 daemons, 5 test processes · no flags
+Host    load 26.1 16.2 9.5 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 58% · memory pressure 0.0% (0.0% full) · memory 12.5 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 9.5 CPUs (at least 89% of busy) · memory 9.0 GiB (72% of used) + 0 swap · pool 4 of 11 permits
+
+~squeal-w33/runs/w33/s2-03 (this repository) · 1 daemon · CPU 0.9 · memory 1.5 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1698988  1d97cebc  0.1.610          2m    2%     0m28s  748M    0     fast tier, 4 files; 1310 pending
+    host vitest      1699379  local                      1m    1%     0m49s  475M    0
+    host vitest      1729175  local                     18s    0%     0m01s  150M    0
+    vitest           1730561  fork worker               11s   91%     0m01s  129M    0     nice 10, +1 child
+
+~squeal-w33/runs/w33/s1-03 · 2 daemons · CPU at least 7.0 · memory 4.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1705317  ef7cdc5d  0.1.610          1m   59%     0m13s  513M    0     fast tier, 4 files; fast tier, 3 files; fast tier, 1 file; 102 pending
+    host vitest      1706539  local                      1m   27%     0m53s  674M    0
+    host vitest      1730907  local                     10s  263%     0m02s  224M    0
+    node-test        1730532  …ts/test-inputs.test.mjs  11s   68%     0m01s  32M     0     nice 10, +1 child
+    vitest           1730578  fork worker               11s     ?     0m16s  ?       ?     nice 10, +1 child
+  serving            1704321  986e68b7  0.1.610          1m   62%     0m35s  804M    0     fast tier, 4 files; fast tier, 3 files; 103 pending; 1 session
+    host vitest      1704511  local                      1m    0%     0m46s  650M    0
+    host node-test   1704512  local                      1m    0%     0m00s  48M     0
+    host node-test   1704518  local                      1m    1%     0m00s  60M     0
+    vitest           1732092  fork worker                8s  156%     0m16s  1.5G    0     nice 10, +1 child
+    node-test        1732094  …ts/test-inputs.test.mjs   8s   66%     0m00s  31M     0     nice 10, +2 children
+
+~squeal-w33/runs/w33/s1b-02 · 2 daemons · CPU at least 1.5 · memory 3.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1646711  f255eca5  0.1.610          5m    0%     0m31s  395M    0     fast tier, 1 file; 92 pending
+    host vitest      1647005  local                      5m    0%     0m54s  625M    0
+    host vitest      1700025  local                      1m   83%     0m03s  287M    0
+  serving            1645709  1e10d171  0.1.610          5m   69%     1m48s  792M    0     93 pending; 1 session
+    host vitest      1645890  local                      5m    0%     0m53s  679M    0
+    host node-test   1645891  local                      5m    0%     0m00s  40M     0
+    host node-test   1645894  local                      5m    0%     0m00s  50M     0
+    host vitest      1671816  local                      4m    0%     0m07s  278M    0
+
+Store processes
+  1649826  code.sqlite of ~squeal-w33/runs/w33/s1b-02/.git
+  1702882  code.sqlite of ~squeal-w33/runs/w33/s2-03/.git
+  1725485  code.sqlite of ~squeal-w33/runs/w33/s1-03/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/4aec9de2dd9da699/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1698988  age 2m  at a5c9b7223b65
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/655b5f23c6e6fc33/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1705317  age 1m  at d8abcfe46bbe
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/c224b4ddac40b021/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1646711  age 5m  at d8abcfe46bbe
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w33/runs/w33/s2-03/.git/squeal/checkouts': No such file or directory
+~squeal-w33/runs/w33/home/.cache/squeal/checkouts/4aec9de2dd9da699:
+total 12
+drwxrwxr-x  3 squeal-w33 squeal-w33 4096 Nov 23 18:42 .
+drwxrwxr-x 12 squeal-w33 squeal-w33 4096 Nov 23 18:42 ..
+drwxrwxr-x  4 squeal-w33 squeal-w33 4096 Nov 23 18:42 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 18:43 .
+drwxrwxr-x 12 squeal-w33 squeal-w33 4096 Nov 23 18:42 ..
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:40 0cb1c828aa962bfe.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:43 46ab4bfefd54c623.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:42 c48454268e3e8052.json

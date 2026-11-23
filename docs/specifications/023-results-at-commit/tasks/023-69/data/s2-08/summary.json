@@ -1,0 +1,71 @@
+{
+  "id": "s2-08",
+  "lines9": [],
+  "hooks9": [],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/7634836dc2102b10/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +98s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -60",
+    "114s +98s squeal status --at 20f03a4~1 test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --run --wait 100000 2>&1 | tail -14"
+  ],
+  "joins": [
+    "4s +98s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -60",
+    "106s +6s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15; grep -rl \"store/mark\" test | head -20",
+    "114s +98s squeal status --at 20f03a4~1 test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --run --wait 100000 2>&1 | tail -14",
+    "214s +87s squeal status --at 20f03a4~1 test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --wait 100000 2>&1 | tail -12"
+  ],
+  "estimates": [
+    "4s +98s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (16 of them have a stored duration) and this call measured no rate; in the working tree: about 2.3 h for 1322 test files, at this call's rate there (16 results in 98 s); name test files or folders to narrow it: squeal sta",
+    "114s +98s Still to run, at a5c9b7223: about 6 s for 6 test files, up to 6 at once, from their stored durations, times 1.2 for the host's load per CPU"
+  ],
+  "lines8": [
+    "4s +98s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "4s +98s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "4s +98s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "106s +6s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +6s test/store/open.test.ts"
+  ],
+  "loadStart": "10.35",
+  "exit": 0,
+  "wallSeconds": 307.658,
+  "squeal": [
+    "4s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -60",
+    "106s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15; grep -rl \"store/mark\" test | head -20",
+    "114s squeal status --at 20f03a4~1 test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --run --wait 100000 2>&1 | tail -14",
+    "214s squeal status --at 20f03a4~1 test/harness/store-fault-hook.test.ts test/daemon/full-check-daemon.test.ts test/daemon/store-fault.test.ts test/daemon/store-fault-daemon.test.ts test/daemon/full-check.test.ts test/daemon/mark-binding.test.ts --wait 100000 2>&1 | tail -12"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.0664083,
+  "usage": {
+    "cache_creation_input_tokens": 15039,
+    "cache_read_input_tokens": 157128,
+    "output_tokens": 1307
+  },
+  "firstFinal": "As far as I could check, no test file changed result. I did not compare the whole suite.\n\nThe commit touched `src/core/store/mark.ts` and `test/store/open.test.ts`. I compared `20f03a4` against `a5c9b72` (its parent) for that test file and for the six test files that reference `store/mark`.\n\nAll seven passed on both sides:\n- `test/store/open.test.ts`\n- `test/daemon/full-check-daemon.test.ts`\n- `test/daemon/full-check.test.ts`\n- `test/daemon/mark-binding.test.ts`\n- `test/daemon/store-fault-daemon.test.ts`\n- `test/daemon/store-fault.test.ts`\n- `test/harness/store-fault-hook.test.ts`\n\nThe commit added 27 lines to `test/store/open.test.ts`. It passes both before and after because the file as a whole passed at both commits. This comparison doesn't show whether the new cases pass on the old code.\n\nI did not complete the comparison for the other test files. Squeal selects 1338 test files for this change, and the full comparison would take about 2.3 hours. A broader run at the parent commit had no result for 624 files it did not select. The first run, over all 1962 files, ended with 0 pass→fail, 0 fail→pass and 1962 unknown. A file that imports `mark.ts` only indirectly could still differ.\n\nIf you want the full comparison, `squeal status --at '20f03a4~1' --wait 100000` waits for the runs already queued.",
+  "final": "As far as I could check, no test file changed result. I did not compare the whole suite.\n\nThe commit touched `src/core/store/mark.ts` and `test/store/open.test.ts`. I compared `20f03a4` against `a5c9b72` (its parent) for that test file and for the six test files that reference `store/mark`.\n\nAll seven passed on both sides:\n- `test/store/open.test.ts`\n- `test/daemon/full-check-daemon.test.ts`\n- `test/daemon/full-check.test.ts`\n- `test/daemon/mark-binding.test.ts`\n- `test/daemon/store-fault-daemon.test.ts`\n- `test/daemon/store-fault.test.ts`\n- `test/harness/store-fault-hook.test.ts`\n\nThe commit added 27 lines to `test/store/open.test.ts`. It passes both before and after because the file as a whole passed at both commits. This comparison doesn't show whether the new cases pass on the old code.\n\nI did not complete the comparison for the other test files. Squeal selects 1338 test files for this change, and the full comparison would take about 2.3 hours. A broader run at the parent commit had no result for 624 files it did not select. The first run, over all 1962 files, ended with 0 pass→fail, 0 fail→pass and 1962 unknown. A file that imports `mark.ts` only indirectly could still differ.\n\nIf you want the full comparison, `squeal status --at '20f03a4~1' --wait 100000` waits for the runs already queued.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a4~1 --run",
+    "20f03a4~1 --run",
+    "20f03a4~1 --run",
+    "20f03a4~1"
+  ]
+}

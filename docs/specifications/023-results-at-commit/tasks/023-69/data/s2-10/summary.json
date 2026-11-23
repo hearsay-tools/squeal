@@ -1,0 +1,65 @@
+{
+  "id": "s2-10",
+  "lines9": [],
+  "hooks9": [],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "105s +36s squeal status --at 20f03a431~1 test/store --run --wait 100000 2>&1 | tail -20"
+  ],
+  "estimates": [
+    "4s +99s Still to run, at a5c9b7223: 1334 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: too few runs stored (4 of them have a stored duration) and this call measured no rate; name test files"
+  ],
+  "lines8": [
+    "4s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "4s +99s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "4s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "105s +36s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "105s +36s 1 more test file: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now pass (now: run in this worktree): test/store/key-shadow.test.ts",
+    "105s +36s 1 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs it"
+  ],
+  "loadStart": "5.88",
+  "exit": 0,
+  "wallSeconds": 145.2,
+  "squeal": [
+    "4s squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60; echo ---; squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "105s squeal status --at 20f03a431~1 test/store --run --wait 100000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0521009,
+  "usage": {
+    "cache_creation_input_tokens": 13516,
+    "cache_read_input_tokens": 105509,
+    "output_tokens": 774
+  },
+  "firstFinal": "**No result changed, as far as I checked.** I did not compare every test file.\n\nThe commit touched `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared the `test/store` tests at `20f03a431~1` against now, and 38 of the 39 files are unchanged, all passing both times. That includes `test/store/open.test.ts`, which still passes, now with the new test cases in it.\n\n- **No result for one file:** `test/store/key-shadow.test.ts` had no result at the parent because Squeal did not select it for that change. It passes now, so I can't say whether anything changed for it.\n- **Rest of the suite:** The full comparison covers 1338 test files. At the parent commit, 1334 of them were still queued or running when I stopped, so it does not cover them. I limited the run to `test/store`.\n\nBecause a hook message said `20f03a431` is HEAD, Squeal compared `a5c9b7223` (its parent) against the clean working tree. That is the same code as `20f03a431`.",
+  "final": "**No result changed, as far as I checked.** I did not compare every test file.\n\nThe commit touched `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared the `test/store` tests at `20f03a431~1` against now, and 38 of the 39 files are unchanged, all passing both times. That includes `test/store/open.test.ts`, which still passes, now with the new test cases in it.\n\n- **No result for one file:** `test/store/key-shadow.test.ts` had no result at the parent because Squeal did not select it for that change. It passes now, so I can't say whether anything changed for it.\n- **Rest of the suite:** The full comparison covers 1338 test files. At the parent commit, 1334 of them were still queued or running when I stopped, so it does not cover them. I limited the run to `test/store`.\n\nBecause a hook message said `20f03a431` is HEAD, Squeal compared `a5c9b7223` (its parent) against the clean working tree. That is the same code as `20f03a431`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431 --run",
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

@@ -1,0 +1,39 @@
+    2.6 TOOL Skill: squeal:squeal
+    2.7 RES  Launching skill: squeal:squeal
+    2.8 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    4.9 TOOL Bash: squeal status --at 20f03a431 --run --wait 100000; echo ---; squeal status --at 20f03a431~1 --run --wait 100000
+  104.0 RES  Exit code 3
+             squeal status --at: 20f03a431 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+             ---
+             squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+             squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             Now is this worktree's daemon at revision 0.
+             1137 test files: no result (queued) -> no result (queued): test/cli/status-wait-window.test.ts, test/cli …[2846 chars]
+  104.4 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · first results in this worktree; complexity counted at revision 0\nRevision 0: 9 of 1962 test files are current (run on the files as they are now), and `squeal status` counts the rest.\n\nComplexity counted: 72 functions over 20; squeal code lists them."}}
+  106.1 TOOL Bash: git show --stat --format=%s 20f03a431 | head -20
+  106.3 RES  fix(005-122): a parsed mark that says found unknown keeps the unknown finder (review 0.1.559 S1)
+             
+              src/core/store/mark.ts  |  7 ++++++-
+              test/store/open.test.ts | 27 +++++++++++++++++++++++++++
+              2 files changed, 33 insertions(+), 1 deletion(-)
+  107.8 TOOL Bash: squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000
+  118.7 RES  squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+             squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+             Now is this worktree's daemon at revision 0.
+             test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+             0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown, of 1 named test file; the change selects 1338 test files at a5c9b7223 (`squeal status --at '20f03a431~1'`, without paths, compares t …[1123 chars]
+  121.9 SAY  No verified result change. The only test file I could compare, `test/store/open.test.ts`, passes both before and after the commit.
+
+- **What the commit touched:** `src/core/store/mark.ts` (a 7-line change) and `test/store/open.test.ts` (27 lines added). The new tests in `open.test.ts` pass with the fix.
+- **Not compared:** the commit selects 1338 test files, and I did not compare them. The full comparison was still queued when I narrowed to the one changed test file. Squeal's unfiltered count was 0 pass→fail, 0 fail→pass and 1962 unknown. That count says nothing about results.
+- **Other files that could change:** any test that exercises `mark.ts` indirectly. That's possible, but I have no result for it.
+
+To finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000`. It waits for the queued runs and then lists every changed file.
+  122.5 END  success turns=6 duration=122034ms cost=$0.0513055 usage={"input_tokens":10,"cache_creation_input_tokens":12931,"cache_read_input_tokens":105780,"output_tokens":838,"output_tokens_details":{"thinking_tokens":55},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":12931},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+  122.5 FINAL No verified result change. The only test file I could compare, `test/store/open.test.ts`, passes both before and after the commit.
+
+- **What the commit touched:** `src/core/store/mark.ts` (a 7-line change) and `test/store/open.test.ts` (27 lines added). The new tests in `open.test.ts` pass with the fix.
+- **Not compared:** the commit selects 1338 test files, and I did not compare them. The full comparison was still queued when I narrowed to the one changed test file. Squeal's unfiltered count was 0 pass→fail, 0 fail→pass and 1962 unknown. That count says nothing about results.
+- **Other files that could change:** any test that exercises `mark.ts` indirectly. That's possible, but I have no result for it.
+
+To finish the comparison, run `squeal status --at '20f03a431~1' --wait 100000`. It waits for the queued runs and then lists every changed file.

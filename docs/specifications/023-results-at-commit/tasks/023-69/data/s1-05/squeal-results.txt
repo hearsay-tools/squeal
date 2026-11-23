@@ -1,0 +1,35 @@
+## 3s +99s $ squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -60
+squeal: asking the commit daemon at d8abcfe46 and this worktree's daemon
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cezar/src/activity/demand.test.ts and 1666 more
+94 test files: no result (queued) -> no result (queued): packages/web/e2e/artifact-project-links.e2e.ts, packages/web/e2e/assistant-line-breaks.e2e.ts, packages/web/e2e/assistant-reply-copy.e2e.ts and 91 more
+16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more
+packages/web/e2e/activity.e2e.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)
+packages/web/e2e/agent-browser-tabs.e2e.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+packages/web/e2e/agents-dock.e2e.ts: no result (running) -> no result (queued)
+124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notSelected.excepted): .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 121 more
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 13 unchanged, 1783 unknown, 124 not selected
+--run: queued 110 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/bfeb51896b3741f4/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 15 have a result now (98.2 s)
+1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 111 test files the change selects with no result in the working tree in this worktree's daemon; 14 have a result now
+Still to run, at d8abcfe46: 95 test files, time unknown: none has a stored duration and this call measured no rate for the browser group (2 of its 15 results there in 98 s were that group's); in the working tree: 97 test files, time unknown: too few runs stored (2 of them have a stored duration) and this call measured no rate for the browser group (0 of its 14 results there in 98 s were that group's); name test files or folders to narrow it: squeal status --at '8be977ad6~1' <path>... --run
+95 still running at d8abcfe46 (its worktree), 97 in the working tree; their runs go on in the daemons. squeal status --at '8be977ad6~1' --wait 100000 waits for them; squeal ps shows them.
+
+## 108s SAY
+Based on what has finished running, the commit changed no test results, but the comparison is incomplete.
+
+- **Pass to fail:** none.
+- **Fail to pass:** none.
+- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` didn't exist at the parent (d8abcfe46) and passes now. I haven't run `squeal proof` on it, so I don't know whether it would fail on the parent's code.
+- **Unchanged:** 13 test files have the same result on both sides.
+- **Not selected:** 124 test files have identical inputs at both commits, so this commit can't change their results.
+- **Still queued:** about 95 test files at the parent and 97 in the working tree. These are mostly Playwright browser e2e files such as `packages/web/e2e/activity.e2e.ts`. They had been running for about 98 seconds when I stopped, and they are still running in the background. For example, `activity.e2e.ts` and `agent-browser-tabs.e2e.ts` passed at the parent and have no result yet on the current tree.
+- **No result on either side:** about 1,669 test files, plus 16 under `.github/scripts`. Squeal can't tell whether the commit affects them, and running them would need `--all-missing`.
+
+The commit only touches lint code (the oxlint rule indexes), so I'd expect the browser e2e files to be unaffected. That's an expectation, not a measured result.
+
+To wait for the queued files, run `squeal status --at '8be977ad6~1' --wait 100000`. I can do that if you want a complete answer.

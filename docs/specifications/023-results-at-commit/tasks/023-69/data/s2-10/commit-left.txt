@@ -1,0 +1,34 @@
+## squeal ps after squeal stop
+squeal ps · 1 daemon, 1 test process · no flags
+Host    load 18.6 15.2 13.1 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 25% · memory pressure 0.0% (0.0% full) · memory 2.6 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 1.7 CPUs (99% of busy) · memory 1.1 GiB (42% of used) + 0 swap · pool 11 of 11 permits
+
+~squeal-w33/runs/w33/s2-10 (this repository) · 1 daemon · CPU 1.7 · memory 1.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2168729  f5fda9eb  0.1.610          2m  112%     0m26s  569M    0     fast tier, 4 files; 1290 pending
+    host vitest      2172387  local                      2m   59%     0m49s  568M    0
+    vitest           2222154  fork worker               10s     ?     0m03s  ?       ?     nice 10
+
+Store processes
+  2186569  code.sqlite of ~squeal-w33/runs/w33/s2-10/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 2168729  age 2m  at a5c9b7223b65
+
+Unknown: 2 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w33/runs/w33/s2-10/.git/squeal/checkouts': No such file or directory
+~squeal-w33/runs/w33/home/.cache/squeal/checkouts/2021c27dc59a0b52:
+total 12
+drwxrwxr-x  3 squeal-w33 squeal-w33 4096 Nov 23 19:08 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+drwxrwxr-x  4 squeal-w33 squeal-w33 4096 Nov 23 19:08 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w33 squeal-w33 4096 Nov 23 19:10 .
+drwxrwxr-x 24 squeal-w33 squeal-w33 4096 Nov 23 19:08 ..
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 19:10 53daf4d37356bf30.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 18:54 91f01de1a0cdaa8a.json
+-rw-rw-r--  1 squeal-w33 squeal-w33  156 Nov 23 19:09 b88493ed4665b94a.json
