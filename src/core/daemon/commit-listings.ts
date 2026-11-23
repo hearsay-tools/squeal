@@ -1,5 +1,5 @@
 import { readdirSync, realpathSync } from "node:fs";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { listedDirectory } from "../keys/observed.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
@@ -14,7 +14,9 @@ import type { FileHash } from "../types/keys.js";
  * install) would stand for the commit's (review 0.1.597 B1); when the names
  * on disk equal the tracked ones, the commit daemon's own run reads the
  * commit's listing. The folder resolves through links on disk (`realpath`)
- * and must stay inside the worktree.
+ * and must stay inside the worktree. It resolves name by name, so a `..`
+ * after a link steps out of the link's target, as the file system reads it,
+ * not out of the link's spelling (review 0.1.610 S1).
  */
 
 /** Whether the commit worktree `root` lists `listing` as the commit `blobs` track it. */
@@ -31,7 +33,7 @@ export function listingsHeld(
     const directory = listedDirectory(listing);
     if (directory === null) return false;
     top ??= real(root);
-    const at = top === null ? null : real(join(top, directory));
+    const at = top === null ? null : walk(top, directory);
     if (top === null || at === null) return false;
     const inside = relative(top, at);
     if (inside.startsWith("..") || isAbsolute(inside)) return false;
@@ -46,6 +48,18 @@ export function listingsHeld(
     }
     return onDisk.length === names.size && onDisk.every((name) => names.has(name));
   };
+}
+
+/** `directory` under the real folder `top`, one name at a time, each step resolved on disk. */
+function walk(top: string, directory: string): string | null {
+  let at = top;
+  for (const name of directory.split("/")) {
+    if (name === "" || name === ".") continue;
+    const next = name === ".." ? dirname(at) : real(join(at, name));
+    if (next === null) return null;
+    at = next;
+  }
+  return at;
 }
 
 function real(path: string): string | null {

@@ -41,6 +41,7 @@ function repo(): { root: AbsolutePath; outside: string } {
   mkdirSync(outside);
   writeFileSync(join(outside, "x.yml"), "x\n");
   symlinkSync("rules", join(root, "linked"));
+  symlinkSync("rules/deep", join(root, "deeplink"));
   symlinkSync(outside, join(root, "away"));
   git(root, "init", "-q");
   git(root, "add", "-A");
@@ -78,5 +79,17 @@ describe("listingsHeld (row 023-64)", () => {
     rmSync(join(root, "rules/a.yml"));
     expect((await held(root))("rules/")).toBe(false);
     expect((await held(root))("rules/deep/")).toBe(true);
+  });
+
+  it("walks a parent step after a link on disk, not by its spelling (review 0.1.610 S1)", async () => {
+    const { root } = repo();
+    const listed = await held(root);
+    // `deeplink` is `rules/deep`; its `..` is `rules/`, so the path reaches
+    // `rules/rules/`, which does not exist. Lexically it would read `rules/`.
+    expect(listed("deeplink/../rules/")).toBe(false);
+    // Its `..` alone is `rules/` on disk, held; lexically the root, refused.
+    expect(listed("deeplink/../")).toBe(true);
+    expect(listed("rules/deep/../")).toBe(true);
+    expect(listed("rules/./deep/")).toBe(true);
   });
 });
