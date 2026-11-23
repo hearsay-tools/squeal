@@ -116,10 +116,12 @@ describe("status --at --run: the named file's time inside a wider batch (row 023
     expect(estimate.seconds).toBeGreaterThan(10);
   });
 
-  it("keeps the file's own time when it runs alone", async () => {
-    const { estimate } = await call([NAMED]);
-    expect(estimate.batch).toBeUndefined();
+  it("keeps the file's own time when it runs alone, and says it runs on its own (row 023-65)", async () => {
+    const { estimate, text } = await call([NAMED]);
+    expect(estimate.batch).toMatchObject({ alone: true, files: 1 });
     expect(estimate.files).toBe(1);
+    expect(text).toContain(`${NAMED.path} runs on its own (`);
+    expect(text).not.toContain("the batch that holds it");
   });
 
   it("keeps the time unknown when 1 of the batch's 12 files has a stored duration (review 0.1.607 B1)", async () => {

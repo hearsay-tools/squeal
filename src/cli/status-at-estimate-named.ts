@@ -21,7 +21,10 @@ import { MEASURED_LEAST, tooFew } from "./status-at-estimate.js";
  * the call says so, with the tier's time left.
  */
 
-/** A daemon's run in flight that holds a file of the call beside files outside it. */
+/**
+ * A daemon's run in flight that holds a file of the call beside files
+ * outside it; or, `alone`, one that holds only the call's files (row 023-65).
+ */
 export interface NamedRun {
   /** The call's files still running in it. */
   readonly named: readonly TestFileRef[];
@@ -37,6 +40,12 @@ export interface NamedRun {
    * files have a stored duration (`tooFew`) and this call measured no rate.
    */
   readonly seconds: number | null;
+  /**
+   * Row 023-65 (W3's rest): the run holds only the call's files, a named file
+   * the daemon cut out of a wider batch say: `seconds` is its own time left.
+   * Absent: a wider batch.
+   */
+  readonly alone?: true;
 }
 
 /** The call's results on the side and its time so far, when it queued (`SideWork.measured`). */
@@ -81,8 +90,9 @@ export function runsInFlight(
  * less the time since its start. As the side's estimate (`estimateSide`):
  * a file without a stored duration counts at the median of the stored ones,
  * this call's rate wins when it measured one, and the time is unknown when
- * too few have one (review 0.1.607 B1). `null` when each runs alone or with
- * the call's files only, whose own time the estimate already counts.
+ * too few have one (review 0.1.607 B1). With no such run, row 023-65: the
+ * newest run in flight that holds one with the call's files only, `alone`, so
+ * the call says the file runs on its own; `null` when no run holds one.
  */
 export function namedRun(
   runs: readonly RunRecord[],
@@ -99,12 +109,16 @@ export function namedRun(
   const own = new Set(call.map(testFileId));
   const newest = [...runs].sort((a, b) => b.startedAt - a.startedAt);
   const holding = new Map<RunRecord, TestFileRef[]>();
+  const lone = new Map<RunRecord, TestFileRef[]>();
   for (const ref of running) {
     const run = newest.find((r) => r.testFiles.some((f) => testFileId(f) === testFileId(ref)));
-    if (run === undefined || run.testFiles.every((f) => own.has(testFileId(f)))) continue;
-    holding.set(run, [...(holding.get(run) ?? []), ref]);
+    if (run === undefined) continue;
+    const into = run.testFiles.every((f) => own.has(testFileId(f))) ? lone : holding;
+    into.set(run, [...(into.get(run) ?? []), ref]);
   }
-  const [run, named] = [...holding].sort(([a], [b]) => b.startedAt - a.startedAt)[0] ?? [];
+  const alone = holding.size === 0;
+  const byStart = [...(alone ? lone : holding)].sort(([a], [b]) => b.startedAt - a.startedAt);
+  const [run, named] = byStart[0] ?? [];
   if (run === undefined || named === undefined) return null;
   const all = run.testFiles.map(seconds);
   const files = all.length;
@@ -113,7 +127,8 @@ export function namedRun(
   const whole = wholeSeconds(all, known, Math.min(at.width, files), at);
   const left = whole === null ? null : Math.max(0, whole - ran);
   const { startedAt } = run;
-  return { named, files, startedAt, ran, known: known.length, seconds: left };
+  const out = { named, files, startedAt, ran, known: known.length, seconds: left };
+  return alone ? { ...out, alone: true } : out;
 }
 
 /** The run's whole time in seconds, from this call's rate or its stored durations; `null`: unknown. */
@@ -140,7 +155,8 @@ const sum = (list: readonly number[]) => list.reduce((a, s) => a + s, 0);
 /**
  * `test/store/open.test.ts runs in a batch of 65 test files started 98 s
  * ago; its result comes when that batch ends (about 4 min)`, its times
- * written by `time` (`timeText`: `about 98 s`).
+ * written by `time` (`timeText`: `about 98 s`). Row 023-65, a lone run:
+ * `test/store/open.test.ts runs on its own (about 3 s)`.
  */
 export function namedRunText(run: NamedRun, time: (seconds: number) => string): string {
   const [first] = run.named;
@@ -149,6 +165,10 @@ export function namedRunText(run: NamedRun, time: (seconds: number) => string): 
     more === 0 ? (first?.path ?? "") : `${first?.path ?? ""} and ${more} more named test files`;
   const verb = more === 0 ? "runs" : "run";
   const its = more === 0 ? "its result comes" : "their results come";
+  if (run.alone === true) {
+    const own = more === 0 ? "its own" : "their own";
+    return `${who} ${verb} on ${own} (${run.seconds === null ? aloneUnknown(run) : endText(run, time)})`;
+  }
   const ago = time(run.ran).replace(/^about /, "");
   const end =
     run.seconds === null
@@ -157,6 +177,19 @@ export function namedRunText(run: NamedRun, time: (seconds: number) => string): 
         ? "any time now: it has run past its stored durations"
         : time(run.seconds);
   return `${who} ${verb} in a batch of ${run.files} test files started ${ago} ago; ${its} when that batch ends (${end})`;
+}
+
+/** A lone run's time left: `about 3 s`, or "any time now" past its stored durations. */
+function endText(run: NamedRun, time: (seconds: number) => string): string {
+  if (run.seconds === 0) return "any time now: it has run past its stored durations";
+  return time(run.seconds ?? 0);
+}
+
+/** Why a lone run's time is unknown (row 023-65). */
+function aloneUnknown(run: NamedRun): string {
+  if (run.known === 0)
+    return `time unknown: ${run.files === 1 ? "it has no stored duration" : "none of them has a stored duration"}`;
+  return unknownText(run);
 }
 
 /** Why a batch's time is unknown: no stored duration, or too few (review 0.1.607 B1). */

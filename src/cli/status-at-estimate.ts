@@ -256,7 +256,12 @@ export function sideText(e: SideEstimate): string {
 function ownText(e: SideEstimate): string {
   const files = `${e.files} test file${e.files === 1 ? "" : "s"}`;
   // Review 0.1.607 B1: the files wait for a batch whose time is unknown, whatever their own.
-  if (e.seconds === null && e.batch !== undefined && e.batch.seconds === null)
+  if (
+    e.seconds === null &&
+    e.batch !== undefined &&
+    e.batch.alone !== true &&
+    e.batch.seconds === null
+  )
     return `${files}, time unknown: ${e.files === 1 ? "its result waits" : "their results wait"} for the batch that holds ${e.files === 1 ? "it" : "them"}`;
   if (e.seconds === null && e.known === 0)
     return `${files}, time unknown: none has a stored duration and this call measured no rate`;

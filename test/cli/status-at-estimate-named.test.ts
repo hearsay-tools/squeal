@@ -62,17 +62,40 @@ describe("the named file's time inside a wider batch (row 023-60, W3)", () => {
     expect(namedRun([batch], [OPEN], [OPEN], seconds, { ...AT, factor: 2 })?.seconds).toBe(224);
   });
 
-  it("is null when the file runs alone or with the call's files only", () => {
-    expect(namedRun([run("alone", [OPEN], NOW - 1_000)], [OPEN], [OPEN], seconds, AT)).toBeNull();
+  it("row 023-65: says the file runs on its own when it runs alone or with the call's files only", () => {
+    const alone = namedRun([run("alone", [OPEN], NOW - 1_000)], [OPEN], [OPEN], seconds, AT);
+    expect(alone).toMatchObject({ alone: true, files: 1, seconds: 2 });
+    expect(namedRunText(alone as NamedRun, timeText)).toBe(
+      "test/store/open.test.ts runs on its own (about 2 s)",
+    );
     const call = [OPEN, others[0] as TestFileRef];
-    expect(namedRun([run("own", call, NOW - 1_000)], call, call, seconds, AT)).toBeNull();
+    const own = namedRun([run("own", call, NOW - 1_000)], call, call, seconds, AT) as NamedRun;
+    expect(own).toMatchObject({ alone: true, files: 2 });
+    expect(namedRunText(own, timeText)).toBe(
+      "test/store/open.test.ts and 1 more named test files run on their own (about 9 s)",
+    );
     // A cut batch whose end is not recorded yet: the newer run that holds the file counts.
     const cut = run("cut", [...others, OPEN], NOW - 98_000);
     expect(
       namedRun([cut, run("alone", [OPEN], NOW - 500)], [OPEN], [OPEN], seconds, AT),
-    ).toBeNull();
+    ).toMatchObject({ alone: true, files: 1 });
+    // A wider batch wins over a lone run of another named file.
+    const two = [OPEN, others[0] as TestFileRef];
+    const wide = run("wide", [...others.slice(1), OPEN], NOW - 2_000);
+    expect(
+      namedRun([wide, run("lone", [others[0] as TestFileRef], NOW - 500)], two, two, seconds, AT),
+    ).not.toHaveProperty("alone");
     // A named file not running: no run holds it.
     expect(namedRun([run("b", others, NOW - 1_000)], [OPEN], [OPEN], seconds, AT)).toBeNull();
+  });
+
+  it("row 023-65: a lone run with no stored duration reads 'time unknown', never a batch's wait", () => {
+    const alone = namedRun([run("alone", [OPEN], NOW - 1_000)], [OPEN], [OPEN], () => null, AT);
+    expect(alone).toMatchObject({ alone: true, seconds: null, known: 0 });
+    const side = { files: 1, width: 1, seconds: null, basis: "unknown", known: 0, batch: alone };
+    expect(sideText(side as never)).toBe(
+      "1 test file, time unknown: none has a stored duration and this call measured no rate; test/store/open.test.ts runs on its own (time unknown: it has no stored duration)",
+    );
   });
 
   it("says the time is unknown with no stored duration, and 'any time now' past it", () => {
