@@ -104339,6 +104339,7 @@ var AtAsks = class {
     kept6.refused = chosen.refused;
     kept6.selects = chosen.selects;
     kept6.withResult = chosen.withResult;
+    kept6.ownOnly = chosen.ownOnly;
     kept6.files = atOrder(request.named, [...chosen.named, ...chosen.rest]);
     const options = request.named.length > 0 ? { at: true, lead: true } : { at: true };
     await this.#queue(kept6.files, options, kept6);
@@ -104376,7 +104377,8 @@ function stateOf3(ask2, setup) {
     problems: [...ask2.problems],
     ...ask2.refused.length === 0 ? {} : { refused: [...ask2.refused] },
     ...ask2.selects === void 0 ? {} : { selects: ask2.selects },
-    ...ask2.withResult === void 0 ? {} : { withResult: [...ask2.withResult] }
+    ...ask2.withResult === void 0 ? {} : { withResult: [...ask2.withResult] },
+    ...ask2.ownOnly === void 0 || ask2.ownOnly.length === 0 ? {} : { ownOnly: [...ask2.ownOnly] }
   };
 }
 async function choose(request, ports) {
@@ -104413,25 +104415,33 @@ async function choose(request, ports) {
   }
   const needs = await ports.needs(request);
   const refused = refusals([...first2, ...rest2], needs);
-  const listed12 = await ports.storedNeeds?.(stored4) ?? /* @__PURE__ */ new Map();
-  for (const refusal4 of storedRefusals(stored4, needs, listed12))
+  const chosen = [...first2, ...rest2, ...stored4.map(({ ref: ref3 }) => ref3)];
+  const listed12 = await ports.listings?.(chosen) ?? /* @__PURE__ */ new Map();
+  const wrote = (at2) => ports.ownResult?.(at2.ref, at2.key) ?? false;
+  for (const refusal4 of storedRefusals(stored4, needs, listed12, wrote))
     refused.set(testFileId(refusal4.ref), refusal4);
   const runs2 = (ref3) => !refused.has(testFileId(ref3));
+  const ownOnly = chosen.filter(runs2).flatMap((ref3) => {
+    const listing = listed12.get(testFileId(ref3));
+    return listing === void 0 ? [] : [{ ref: ref3, reason: storedReason(listing) }];
+  });
   return {
     named: first2.filter(runs2),
     rest: rest2.filter(runs2),
     readers,
     refused: [...refused.values()],
     selects: selectedCount,
-    withResult: withResult.filter(runs2)
+    withResult: withResult.filter(runs2),
+    ownOnly
   };
 }
-function storedRefusals(stored4, needs, listed12) {
-  return stored4.flatMap(({ ref: ref3 }) => {
+function storedRefusals(stored4, needs, listed12, own) {
+  return stored4.flatMap((at2) => {
+    const { ref: ref3 } = at2;
     const path = needs.get(testFileId(ref3));
     if (path !== void 0) return [{ ref: ref3, reason: `needs ${path}` }];
     const listing = listed12.get(testFileId(ref3));
-    return listing === void 0 ? [] : [{ ref: ref3, reason: storedReason(listing) }];
+    return listing === void 0 || own(at2) ? [] : [{ ref: ref3, reason: storedReason(listing) }];
   });
 }
 function storedReason(listing) {
@@ -104562,22 +104572,18 @@ var CommitStart = class {
           return caller !== void 0 && atHead !== null && !atHead.has(path) && existsSync43(join118(caller, path));
         });
       },
-      // Row 023-70 (the coordinator agreed, request 47cad2c0): a stored result another tree
-      // wrote holds no folder read, since nothing records the names its run listed there.
-      storedNeeds: async (stored4) => {
+      // Row 023-70 (the coordinator agreed, request 47cad2c0), review 0.1.611 B1: a result
+      // another tree wrote holds no folder read, since nothing records the names its run listed.
+      listings: async (refs2) => {
         const scheduler = ports.scheduler();
-        if (scheduler?.closureReads === void 0) return /* @__PURE__ */ new Map();
-        const foreign2 = new Set(
-          stored4.filter(
-            ({ ref: ref3, key: key3 }) => store.results.byKey(key3).some(
-              (r) => r.check.project === ref3.project && r.check.testPath === ref3.path && r.provenance.worktreeId !== worktreeId
-            )
-          ).map(({ ref: ref3 }) => testFileId(ref3))
-        );
-        if (foreign2.size === 0) return /* @__PURE__ */ new Map();
+        if (scheduler?.closureReads === void 0 || refs2.length === 0) return /* @__PURE__ */ new Map();
+        const ids = new Set(refs2.map(testFileId));
         const listings = await scheduler.closureReads((path) => listedDirectory(path) !== null);
-        return new Map([...listings].filter(([id]) => foreign2.has(id)));
+        return new Map([...listings].filter(([id]) => ids.has(id)));
       },
+      ownResult: (ref3, key3) => store.results.byKey(key3).some(
+        (r) => r.check.project === ref3.project && r.check.testPath === ref3.path && r.provenance.worktreeId === worktreeId
+      ),
       stored: (ref3, key3) => store.results.byKey(key3).some((r) => r.check.project === ref3.project && r.check.testPath === ref3.path),
       groupOf: (ref3) => groupView(ports.policy()).of(ref3).name,
       request: async (group, paths, options) => {
@@ -113764,7 +113770,8 @@ function waitingText(waiting2, files5) {
   const { reason: reason2, capacity } = waiting2;
   if (reason2 === null)
     return `not started yet, and the daemon does not say what holds ${files5 === 1 ? "it" : "them"}`;
-  return capacity ? `waiting for capacity (${reason2})` : `not started, waiting for ${reason2}`;
+  if (!capacity) return `not started, waiting for ${reason2}`;
+  return reason2 === POOL_WAIT ? `waiting for ${reason2}` : `waiting for capacity (${reason2})`;
 }
 var notStarted2 = (s) => s.state === "no result" && s.pending === "queued";
 function withNotStarted(own, files5, state, wait) {
@@ -113773,37 +113780,35 @@ function withNotStarted(own, files5, state, wait) {
   const waiting2 = { reason: wait?.reason ?? null, capacity: wait?.capacity ?? false };
   return { ...own, seconds: null, waiting: waiting2 };
 }
-function sideWaits(storeRoot, sides, slots) {
+function sideWaits(storeRoot, sides) {
   const none3 = sides.map(() => null);
   if (sides.every((side) => side.queued.length === 0)) return none3;
-  return readMainStore(storeRoot, none3, (store) => sides.map((side) => waitOf(store, side, slots)));
+  return readMainStore(storeRoot, none3, (store) => sides.map((side) => waitOf(store, side)));
 }
-function waitOf(store, side, slots) {
+function waitOf(store, side) {
   const { root, id, queued } = side;
   if (root === null || id === null || queued.length === 0 || !existsSync70(root)) return null;
   const view = groupView(readPolicy(root));
   const groups3 = new Set(queued.map((ref3) => view.of(ref3).name));
   const waits2 = [];
   for (const group of groups3) {
-    const wait = waitText2(group, readGroupActivity(store, id, group), slots);
+    const wait = waitText2(group, readGroupActivity(store, id, group));
     if (wait === null) return null;
     waits2.push(wait);
   }
   const reasons = [...new Set(waits2.map((w2) => w2.reason))];
   return { reason: reasons.join("; "), capacity: waits2.every((w2) => w2.capacity) };
 }
-function waitText2(group, activity, slots) {
+var POOL_WAIT = "capacity from the shared worker pool";
+function waitText2(group, activity) {
   if (activity === null) return null;
   if (activity.kind === "running")
     return { reason: `the ${group} group's run of ${activity.path} to end`, capacity: false };
   switch (activity.for) {
     case "slot":
-      return { reason: `the ${group} group's slot, which another daemon holds`, capacity: true };
+      return { reason: `the ${group} group's slot`, capacity: true };
     case "pool":
-      return {
-        reason: `a free test process: the shared worker pool's ${slots} permits are held by other work`,
-        capacity: true
-      };
+      return { reason: POOL_WAIT, capacity: true };
     case "load":
       return { reason: "the host load to drop", capacity: false };
     case "fast":
@@ -115866,6 +115871,8 @@ async function readGreen(input, asked, toRun2, owner2) {
     await keptAlive(daemons.wait(tree, mine, by)).catch(String);
   const queued = new Set(own.files.map(testFileId));
   const refusals2 = new Map((own.refused ?? []).map((r) => [testFileId(r.ref), r.reason]));
+  const ownOnly = new Map((own.ownOnly ?? []).map((r) => [testFileId(r.ref), r.reason]));
+  const treeId = idOf3(tree);
   await withStores(input.commonDir, async (main2) => {
     const rows = liveRows(
       main2,
@@ -115875,23 +115882,36 @@ async function readGreen(input, asked, toRun2, owner2) {
     for (const file of toRun2) {
       const id = testFileId(file.ref);
       const results3 = (key3) => main2 === null ? [] : resultsAt(main2, file.ref, key3);
-      out2.set(id, sideOf(own, rows.get(id), refusals2.get(id), queued.has(id), results3));
+      out2.set(
+        id,
+        sideOf(own, rows.get(id), results3, {
+          refused: refusals2.get(id),
+          queued: queued.has(id),
+          ownOnly: ownOnly.get(id),
+          treeId
+        })
+      );
     }
   });
   return out2;
 }
-function sideOf(own, row2, refused, queued, results3) {
-  if (refused !== void 0) return unknown2(refused);
+function sideOf(own, row2, results3, facts) {
+  if (facts.refused !== void 0) return unknown2(facts.refused);
   if (row2 === void 0) return unknown2("its commit daemon no longer lists it");
   if (row2.key === null) return unknown2("its commit daemon could not key it");
-  const records = results3(row2.key);
+  const all2 = results3(row2.key);
+  const mine = all2.filter((r) => r.provenance.worktreeId === facts.treeId);
+  if (facts.ownOnly !== void 0 && mine.length === 0 && all2.length > 0)
+    return unknown2(facts.ownOnly);
+  const records = facts.ownOnly === void 0 ? all2 : mine;
+  const ran = facts.queued && mine.length > 0;
   if (records.length > 0)
     return {
       end: endOfRecords(records),
-      from: queued ? "run" : "store",
+      from: ran ? "run" : "store",
       stored: true,
       notStored: null,
-      runs: queued ? 1 : 0
+      runs: ran ? 1 : 0
     };
   if (own.phase !== "queued" || row2.pending !== null && row2.pending !== void 0)
     return unknown2(NOT_RUN_BUDGET);
@@ -116244,16 +116264,13 @@ function resolvedOf(after3) {
 }
 var rootId = (queue) => queue.root === null ? null : idOf3(queue.root);
 function waitsOf(input, sides) {
-  const { root, commonDir } = input.place;
-  const slots = readPoolView(input.env, [], repositoryRootOf(root, commonDir)).slots;
   return sideWaits(
-    root,
+    input.place.root,
     sides.map((side) => ({
       root: side.queue.root,
       id: side.id,
       queued: side.queue.files.filter((ref3) => notStarted2(side.state(ref3)))
-    })),
-    slots
+    }))
   );
 }
 var withWait = (side, wait) => wait === null || wait === void 0 ? side : { ...side, waiting: wait.reason };
@@ -116384,6 +116401,16 @@ async function rowsSide(main2, input) {
   const refused = new Map(
     asked.asks.flatMap((ask2) => ask2.refused ?? []).map((r) => [testFileId(r.ref), r.reason])
   );
+  const ownOnly = new Map(
+    asked.asks.flatMap((ask2) => ask2.ownOnly ?? []).map((r) => [testFileId(r.ref), r.reason])
+  );
+  const recordsAt = (ref3, key3) => {
+    const all2 = main2 === null ? [] : resultsAt(main2, ref3, key3);
+    const only2 = ownOnly.get(testFileId(ref3));
+    if (only2 === void 0) return { records: all2, foreign: null };
+    const mine = all2.filter((r) => r.provenance.worktreeId === treeId);
+    return { records: mine, foreign: mine.length === 0 && all2.length > 0 ? only2 : null };
+  };
   const closureOf = (ref3) => {
     const list2 = asked.incomplete?.[ref3.project];
     if (list2 === void 0) return "unchecked";
@@ -116400,7 +116427,9 @@ async function rowsSide(main2, input) {
     if (row2 === void 0) return unlisted4(asked, committed.has(ref3.path), input.commit);
     if (row2.key === null)
       return { state: "not determined", reason: "its commit daemon could not key it" };
-    const now = stateOf4(row2.key, main2 === null ? [] : resultsAt(main2, ref3, row2.key), input.own);
+    const { records, foreign: foreign2 } = recordsAt(ref3, row2.key);
+    if (foreign2 !== null) return { state: "not comparable", reason: foreign2 };
+    const now = stateOf4(row2.key, records, input.own);
     if ("origin" in now && now.origin.worktreeId === treeId)
       return { ...now, origin: { ...now.origin, kind: "commit" } };
     if (now.state !== "no result") return now;
