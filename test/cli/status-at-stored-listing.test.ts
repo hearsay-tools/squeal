@@ -3,12 +3,16 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type AtDaemons, realDaemons } from "../../src/cli/status-at-daemons.js";
 import { installCommitWorktree } from "../../src/core/checkout/commit-setup.js";
+import { storedReason } from "../../src/core/daemon/at-asks.js";
 import { COMMIT_WORKTREES } from "../../src/core/daemon/commit-mode.js";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { CheckId } from "../../src/core/types/check.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
-import { fixture, git, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
+import { type Fixture, fixture, git, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
 import { childEnv, SLOW } from "../daemon/helpers.js";
-import { run, testOf } from "./status-at-kit.js";
+import { run, testOf, withStore } from "./status-at-kit.js";
 
 /*
  * Rows 023-70 and 023-76 (spec 023 D4.9 in the commit daemon; review
@@ -22,9 +26,14 @@ import { run, testOf } from "./status-at-kit.js";
  *   runs the file itself and fails. Before row 023-70 the call read the
  *   caller's pass as the commit's, "unchanged"; before row 023-76 it read
  *   "not comparable", since no record held the listing.
- * - With the commit's names on disk, the caller's failure is stored at the
- *   commit's key and counts there, with no run at the commit. Before row
- *   023-76 it read "not comparable", since another worktree wrote it.
+ * - With the commit's names on disk, the caller's result is stored at the
+ *   commit's key, and still reads "not comparable" there (row 023-70's
+ *   rule, kept by the 0.1.612 review repair): a key is computed before the
+ *   run, so it does not certify what the run listed (review 0.1.612 B1).
+ *   The commit does not run the file. Certifying read-time listings is left
+ *   for a later row. The caller's result is a pass: a stored failure from
+ *   another worktree is rechecked when the commit daemon starts (review
+ *   0.1.612 B2).
  *
  * `plain.test.ts` reads no folder: its key and result are shared alike.
  */
@@ -32,15 +41,17 @@ import { run, testOf } from "./status-at-kit.js";
 const LISTS = ref("test/lists.test.ts");
 const PLAIN = ref("test/plain.test.ts");
 const RUN = { allMissing: false };
+const LISTS_CHECK: CheckId = { kind: "test", project: "", testPath: LISTS.path, fullName: "lists" };
 
-/** A test that lists `test/fixtures/` and expects two names. */
-const lists = [
-  'import { readdirSync } from "node:fs";',
-  'import { expect, it } from "vitest";',
-  'import { value } from "../src/plain";',
-  'it("lists", () => expect(readdirSync(new URL("./fixtures", import.meta.url)).length).toBe(2 * value));',
-  "",
-].join("\n");
+/** A test that lists `test/fixtures/` and expects `names` names. */
+const listsOf = (names: number) =>
+  [
+    'import { readdirSync } from "node:fs";',
+    'import { expect, it } from "vitest";',
+    'import { value } from "../src/plain";',
+    `it("lists", () => expect(readdirSync(new URL("./fixtures", import.meta.url)).length).toBe(${names} * value));`,
+    "",
+  ].join("\n");
 
 /** Both real daemons in this process: the commit daemon with the fixture's install, and the worktree's. */
 function bothDaemons(): AtDaemons {
@@ -81,14 +92,24 @@ type Row = { path: string; at: Side; now: Side };
 const rowOf = (out: string, path: string) =>
   (JSON.parse(out).files as Row[]).find((row) => row.path === path);
 
-/** The fixture at `z`, then `a`, with both test files; `lists.test.ts` fails on a pristine `a`. */
-function atA() {
+/** The runs of `lists.test.ts` that another worktree than the caller's stored, by run id. */
+function foreignRuns(f: Fixture): string[] {
+  const caller = worktreeIdFor(f.root);
+  let records: readonly ResultRecord[] = [];
+  withStore(f, (store) => {
+    records = store.results.listForCheck(LISTS_CHECK, 20);
+  });
+  return records.filter((r) => r.provenance.worktreeId !== caller).map((r) => r.provenance.runId);
+}
+
+/** The fixture at `z`, then `a`, with both test files; `lists.test.ts` expects `names` names. */
+function atA(names = 2) {
   const f = fixture({
     "squeal.config.json": "{}\n",
     ".gitignore": "node_modules/\n*.log\n",
     "src/plain.ts": "export const value = 1;\n",
     "test/fixtures/a.json": "{}\n",
-    [LISTS.path]: lists,
+    [LISTS.path]: listsOf(names),
     [PLAIN.path]: testOf("plain", 1),
   });
   const z = git(f.root, "rev-parse", "HEAD").trim();
@@ -133,18 +154,21 @@ describe("the caller's stored folder result at the commit (rows 023-70, 023-76)"
     expect(plain?.origin?.kind).not.toBe("commit");
   });
 
-  it("is the commit's when its run listed the commit's names, whoever wrote it", {
+  it("is not the commit's when another worktree wrote it, even over the commit's names (review 0.1.612 B1)", {
     timeout: 400_000,
   }, async () => {
-    const { f, z, a, paths } = atA();
+    const { f, z, a, paths } = atA(1);
     const options = { cacheRoot: f.cacheRoot, daemons: bothDaemons() };
-    // The caller at `a` lists the one name the commit tracks: its run fails, as the commit's would.
+    // The caller at `a` lists the one name the commit tracks: its run passes, as the commit's would.
     const seeded = await run(
       f,
       { commit: z, paths, run: RUN, json: true, waitMs: 120_000 },
       options,
     );
-    expect(rowOf(seeded.out, LISTS.path)?.now, seeded.err).toMatchObject({ state: "fail" });
+    expect(rowOf(seeded.out, LISTS.path)?.now, seeded.err).toMatchObject({ state: "pass" });
+    // The commit `z`'s own run of the file, made by the first call.
+    const before = foreignRuns(f);
+    expect(before).toHaveLength(1);
 
     f.commit({ "src/plain.ts": "export const value = 1; // b\n" });
     const asked = await run(
@@ -152,10 +176,16 @@ describe("the caller's stored folder result at the commit (rows 023-70, 023-76)"
       { commit: a, paths, run: RUN, json: true, waitMs: 120_000 },
       options,
     );
-    const lists = rowOf(asked.out, LISTS.path)?.at;
-    expect(lists, asked.err).toMatchObject({ state: "fail" });
-    expect(lists?.origin?.kind, "read from the caller's run, not run at the commit").not.toBe(
-      "commit",
-    );
+    expect(rowOf(asked.out, LISTS.path)?.at, asked.err).toEqual({
+      state: "not comparable",
+      reason: storedReason("test/fixtures/"),
+    });
+    expect(asked.code).toBe(3);
+    // The commit at `a` did not run the file: the call added the caller's run at `b` only.
+    expect(foreignRuns(f), "a run of another worktree than the caller's").toEqual(before);
+    // A stored result with no folder read is the commit's: read, not run there.
+    const plain = rowOf(asked.out, PLAIN.path)?.at;
+    expect(plain, asked.err).toMatchObject({ state: "pass" });
+    expect(plain?.origin?.kind).not.toBe("commit");
   });
 });
