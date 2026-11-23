@@ -1840,6 +1840,7 @@ function written(stream, text, boundMs) {
 
 // src/harness/shared/harness-process.ts
 var SKIPPED = /* @__PURE__ */ new Set([
+  "run",
   "sh",
   "dash",
   "bash",
