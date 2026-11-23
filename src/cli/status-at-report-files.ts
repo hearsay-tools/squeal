@@ -26,6 +26,9 @@ export const maybeStoredText = (reason: string | undefined) =>
 /** The most files a group lists one per line, and the paths a larger group names. */
 export const GROUP_SHOWN = 3;
 
+/** Row 023-59 (W2): the most files a narrowed call names one per line, unchanged ones included. */
+export const NAMED_SHOWN = 20;
+
 const short = (sha: string | null) => (sha === null ? "none" : sha.slice(0, 9));
 
 export function originText(origin: Origin): string {
@@ -119,7 +122,13 @@ export function fileLines(
   files: readonly FileReport[],
   at: string,
   full: boolean,
+  named = false,
 ): { readonly lines: string[]; readonly folded: boolean } {
+  if (named && !full) {
+    const fixed = notSelectedLines(files, at, full);
+    const own = namedLines(files, at);
+    return { lines: [...own.lines, ...fixed.lines], folded: own.folded || fixed.folded };
+  }
   const lines: string[] = [];
   for (const kind of ["pass -> fail", "fail -> pass"] as const) {
     for (const f of files.filter((file) => file.change === kind))
@@ -149,6 +158,45 @@ export function fileLines(
   const fixed = notSelectedLines(files, at, full);
   lines.push(...fixed.lines);
   return { lines, folded: folded || fixed.folded };
+}
+
+/**
+ * Row 023-59 (dogfood round 7, W2): 4 sessions kept calling files "still
+ * running" that a later narrowed call counted as unchanged without naming
+ * them. A narrowed call names each of its files with both sides, changed
+ * files first, then the unchanged, then the unknown by group, up to
+ * `NAMED_SHOWN`; past it, the rest by group with its count and a few paths.
+ */
+function namedLines(
+  files: readonly FileReport[],
+  at: string,
+): { readonly lines: string[]; readonly folded: boolean } {
+  const rank = (f: FileReport) => (f.change === "unchanged" ? 1 : f.change === "unknown" ? 2 : 0);
+  const listed = files.filter((f) => !unchangeable(f));
+  const sizes = new Map<string, number>();
+  for (const f of listed) sizes.set(changeText(f, at), (sizes.get(changeText(f, at)) ?? 0) + 1);
+  // A stable sort: by rank, an unknown group by its size, then the files' own (path) order.
+  const ordered = [...listed].sort(
+    (a, b) =>
+      rank(a) - rank(b) ||
+      (rank(a) === 2
+        ? (sizes.get(changeText(b, at)) ?? 0) - (sizes.get(changeText(a, at)) ?? 0)
+        : 0),
+  );
+  const lines = ordered.slice(0, NAMED_SHOWN).map((f) => `${f.ref.path}: ${changeText(f, at)}`);
+  const groups = new Map<string, FileReport[]>();
+  for (const f of ordered.slice(NAMED_SHOWN)) {
+    const text = changeText(f, at, true);
+    groups.set(text, [...(groups.get(text) ?? []), f]);
+  }
+  for (const [text, group] of groups) {
+    const paths = group.map((f) => f.ref.path);
+    const n = paths.length;
+    lines.push(
+      `${n} more test file${n === 1 ? "" : "s"}: ${text}: ${listPaths(paths, GROUP_SHOWN)}`,
+    );
+  }
+  return { lines, folded: groups.size > 0 };
 }
 
 /**

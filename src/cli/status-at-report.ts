@@ -301,7 +301,8 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
     lines.push(`${what}, so its keys and results are not ${at}'s and nothing from it is stored.`);
   }
   // Row 023-19 (P6, P8): unknown files by group; a pointer to `squeal proof` for each new file.
-  const files = fileLines(report.files, at, full);
+  // Row 023-59 (W2): a narrowed call names each of its files, unchanged ones included.
+  const files = fileLines(report.files, at, full, report.scope !== undefined);
   lines.push(...files.lines);
   // Row 023-19 (P4): as `squeal status <path>` says it.
   for (const path of report.unmatched ?? [])
