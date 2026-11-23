@@ -115578,6 +115578,123 @@ function bucketsOf(policy, side) {
 
 // src/cli/status-at-idle.ts
 init_reverse_index();
+
+// src/cli/status-at-call-sides.ts
+import { randomUUID as randomUUID21 } from "node:crypto";
+import { existsSync as existsSync76 } from "node:fs";
+import { join as join194 } from "node:path";
+init_git();
+init_reverse_index();
+
+// src/cli/status-at-dirty.ts
+init_git();
+async function uncommitted(root) {
+  try {
+    const tracked = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", "HEAD"]);
+    const untracked = await runGit(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
+    const paths = `${tracked}\0${untracked}`.split("\0").filter((path) => path !== "");
+    return [...new Set(paths)];
+  } catch {
+    return null;
+  }
+}
+
+// src/cli/status-at-call-sides.ts
+async function queueBoth(input, side) {
+  const { root, commit, paths } = input.place;
+  const { daemons, bound, askBy } = side;
+  const changed2 = await changedPaths3(root, commit);
+  const owner2 = randomUUID21();
+  let selected2 = () => {
+  };
+  const later = new Promise((resolve53) => {
+    selected2 = resolve53;
+  });
+  const atFiles = /* @__PURE__ */ new Map();
+  const queue = {
+    daemons,
+    deadline: bound,
+    askBy: () => askBy,
+    call: { lead: paths !== null },
+    ask: true,
+    started: true
+  };
+  const worktree = async () => {
+    const read7 = await side.now;
+    const now = read7.side;
+    const withoutNow = now.refs.filter((ref3) => now.state(ref3).state === "no result");
+    const named4 = (ref3) => paths !== null && selects3(paths, ref3.path);
+    const first2 = side.run.allMissing ? withoutNow : withoutNow.filter((ref3) => changed2.includes(ref3.path) || named4(ref3));
+    if (read7.asked.kind === "read") {
+      const chosen = later.then((files6) => withoutNow.filter(takenBy(files6)));
+      return worktreeTwice({ ...queue, files: first2 }, root, chosen);
+    }
+    const ids = new Set(first2.map(testFileId));
+    const extra = (await later).filter(
+      (ref3) => !ids.has(testFileId(ref3)) && existsSync76(join194(root, ref3.path))
+    );
+    const files5 = [...first2, ...extra];
+    const problem = read7.asked.kind === "unserved" ? read7.asked.problem : SETTING_UP;
+    return files5.length === 0 ? NOTHING : unreached(files5, problem, read7.late);
+  };
+  return Promise.all([
+    askCommit({
+      daemons,
+      commit: side.commit,
+      owner: owner2,
+      changed: changed2,
+      named: paths ?? [],
+      allMissing: side.run.allMissing,
+      askBy,
+      deadline: bound,
+      queued: (files5) => {
+        for (const ref3 of files5) atFiles.set(testFileId(ref3), ref3);
+        selected2([...atFiles.values()]);
+      }
+    }).finally(() => selected2([])),
+    worktree()
+  ]);
+}
+function takenBy(selection) {
+  const paths = new Set(selection.map((ref3) => ref3.path));
+  return (ref3) => paths.has(ref3.path);
+}
+async function changedPaths3(root, commit) {
+  const out2 = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", commit, "HEAD"]);
+  const committed = out2.split("\0").filter((path) => path !== "");
+  return [.../* @__PURE__ */ new Set([...committed, ...await uncommitted(root) ?? []])];
+}
+async function joinedTree(daemons, input, commonDir) {
+  return daemons.find(input) ?? await formerTree(input, commonDir);
+}
+async function joinedCommit(daemons, input, commonDir, paths, bounds) {
+  const { bound, askBy } = bounds;
+  const tree = await joinedTree(daemons, input, commonDir);
+  const changed2 = await changedPaths3(input.root, input.commit).catch(() => null);
+  const change3 = changed2 === null ? null : changeOf(changed2);
+  if (tree === null) return joinCommit(daemons, null, bound);
+  const rows = await withStores(
+    commonDir,
+    async (main2) => main2?.testFileKeys.list(idOf3(tree)) ?? []
+  );
+  const listed12 = rows.filter((row2) => row2.pending !== null && row2.pending !== void 0).map((row2) => row2.testFile);
+  const sources = (paths ?? []).filter(
+    (path) => !rows.some((row2) => selects3([path], row2.testFile.path))
+  );
+  return joinCommit(daemons, tree, bound, { listed: listed12, paths, sources, change: change3, askBy });
+}
+async function formerTree(input, commonDir) {
+  const name3 = commitFolderName(input.commit, environmentFingerprint(input.environment));
+  const cacheRoot = input.cacheRoot ?? cacheCheckoutsRoot();
+  const dirs = [cacheCheckoutsDir(cacheRoot, commonDir), gitCheckoutsDir(commonDir)];
+  const trees = dirs.map((dir2) => treePath(join194(dir2, name3)));
+  return withStores(commonDir, async (main2) => {
+    if (main2 === null) return null;
+    return trees.find((tree) => main2.testFileKeys.list(idOf3(tree)).length > 0) ?? null;
+  });
+}
+
+// src/cli/status-at-idle.ts
 function recoveryAsk(asked, named4) {
   const { change: change3 } = asked;
   if (change3 === null) return null;
@@ -115595,12 +115712,12 @@ function idleOf2(after3, asked, paths, command) {
   const now = them(after3.current.state, after3.at.state);
   if (commit.length + now.length === 0) return {};
   const ask2 = recoveryAsk(asked, paths ?? []);
-  const chosen = new Set(
-    ask2 === null ? [] : [...ask2.files, ...ask2.withResult ?? []].map(testFileId)
-  );
+  const selection = ask2 === null ? [] : [...ask2.files, ...ask2.withResult ?? []];
+  const chosen = new Set(selection.map(testFileId));
   const refused = new Set((ask2?.refused ?? []).map((r) => testFileId(r.ref)));
   const atRuns = (ref3) => ask2 === null ? null : chosen.has(testFileId(ref3)) && !refused.has(testFileId(ref3));
-  const nowRuns = (ref3) => paths !== null && selects3(paths, ref3.path) ? true : ask2 === null ? null : chosen.has(testFileId(ref3));
+  const taken3 = takenBy(selection);
+  const nowRuns = (ref3) => paths !== null && selects3(paths, ref3.path) ? true : ask2 === null ? null : taken3(ref3);
   const queues = {
     commit: countOf(commit, atRuns),
     now: countOf(now, nowRuns)
@@ -115759,118 +115876,6 @@ function notSelectedOf(at2) {
     const s = at2.state(ref3);
     return s.state === "no result" && s.notSelected === true;
   }).length;
-}
-
-// src/cli/status-at-call-sides.ts
-import { randomUUID as randomUUID21 } from "node:crypto";
-import { existsSync as existsSync76 } from "node:fs";
-import { join as join194 } from "node:path";
-init_git();
-init_reverse_index();
-
-// src/cli/status-at-dirty.ts
-init_git();
-async function uncommitted(root) {
-  try {
-    const tracked = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", "HEAD"]);
-    const untracked = await runGit(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
-    const paths = `${tracked}\0${untracked}`.split("\0").filter((path) => path !== "");
-    return [...new Set(paths)];
-  } catch {
-    return null;
-  }
-}
-
-// src/cli/status-at-call-sides.ts
-async function queueBoth(input, side) {
-  const { root, commit, paths } = input.place;
-  const { daemons, bound, askBy } = side;
-  const changed2 = await changedPaths3(root, commit);
-  const owner2 = randomUUID21();
-  let selected2 = () => {
-  };
-  const later = new Promise((resolve53) => {
-    selected2 = resolve53;
-  });
-  const atFiles = /* @__PURE__ */ new Map();
-  const queue = {
-    daemons,
-    deadline: bound,
-    askBy: () => askBy,
-    call: { lead: paths !== null },
-    ask: true,
-    started: true
-  };
-  const worktree = async () => {
-    const read7 = await side.now;
-    const now = read7.side;
-    const withoutNow = now.refs.filter((ref3) => now.state(ref3).state === "no result");
-    const named4 = (ref3) => paths !== null && selects3(paths, ref3.path);
-    const first2 = side.run.allMissing ? withoutNow : withoutNow.filter((ref3) => changed2.includes(ref3.path) || named4(ref3));
-    const atPaths = later.then((files6) => new Set(files6.map((ref3) => ref3.path)));
-    if (read7.asked.kind === "read") {
-      const chosen = atPaths.then((at2) => withoutNow.filter((ref3) => at2.has(ref3.path)));
-      return worktreeTwice({ ...queue, files: first2 }, root, chosen);
-    }
-    const ids = new Set(first2.map(testFileId));
-    const extra = (await later).filter(
-      (ref3) => !ids.has(testFileId(ref3)) && existsSync76(join194(root, ref3.path))
-    );
-    const files5 = [...first2, ...extra];
-    const problem = read7.asked.kind === "unserved" ? read7.asked.problem : SETTING_UP;
-    return files5.length === 0 ? NOTHING : unreached(files5, problem, read7.late);
-  };
-  return Promise.all([
-    askCommit({
-      daemons,
-      commit: side.commit,
-      owner: owner2,
-      changed: changed2,
-      named: paths ?? [],
-      allMissing: side.run.allMissing,
-      askBy,
-      deadline: bound,
-      queued: (files5) => {
-        for (const ref3 of files5) atFiles.set(testFileId(ref3), ref3);
-        selected2([...atFiles.values()]);
-      }
-    }).finally(() => selected2([])),
-    worktree()
-  ]);
-}
-async function changedPaths3(root, commit) {
-  const out2 = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", commit, "HEAD"]);
-  const committed = out2.split("\0").filter((path) => path !== "");
-  return [.../* @__PURE__ */ new Set([...committed, ...await uncommitted(root) ?? []])];
-}
-async function joinedTree(daemons, input, commonDir) {
-  return daemons.find(input) ?? await formerTree(input, commonDir);
-}
-async function joinedCommit(daemons, input, commonDir, paths, bounds) {
-  const { bound, askBy } = bounds;
-  const tree = await joinedTree(daemons, input, commonDir);
-  const changed2 = await changedPaths3(input.root, input.commit).catch(() => null);
-  const change3 = changed2 === null ? null : changeOf(changed2);
-  if (tree === null) return joinCommit(daemons, null, bound);
-  const rows = await withStores(
-    commonDir,
-    async (main2) => main2?.testFileKeys.list(idOf3(tree)) ?? []
-  );
-  const listed12 = rows.filter((row2) => row2.pending !== null && row2.pending !== void 0).map((row2) => row2.testFile);
-  const sources = (paths ?? []).filter(
-    (path) => !rows.some((row2) => selects3([path], row2.testFile.path))
-  );
-  return joinCommit(daemons, tree, bound, { listed: listed12, paths, sources, change: change3, askBy });
-}
-async function formerTree(input, commonDir) {
-  const name3 = commitFolderName(input.commit, environmentFingerprint(input.environment));
-  const cacheRoot = input.cacheRoot ?? cacheCheckoutsRoot();
-  const dirs = [cacheCheckoutsDir(cacheRoot, commonDir), gitCheckoutsDir(commonDir)];
-  const trees = dirs.map((dir2) => treePath(join194(dir2, name3)));
-  return withStores(commonDir, async (main2) => {
-    if (main2 === null) return null;
-    return trees.find((tree) => main2.testFileKeys.list(idOf3(tree)).length > 0) ?? null;
-  });
 }
 
 // src/cli/status-at-commit-rows.ts
