@@ -80,6 +80,7 @@ var WORKTREE_META_ROWS = {
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions-row" },
+  narrowAsks: { prefix: "narrow-asks:", owner: "scheduler/narrow-asks-row" },
   focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
@@ -9298,49 +9299,26 @@ function commitLine(report) {
   return count2 > 0 && files2.length > 0 ? { ...line, notDetermined: { count: count2, files: files2 } } : line;
 }
 
-// src/core/scheduler/promotions-row.ts
-function promotionsMetaKey(worktreeId) {
-  return worktreeMetaKey("promotions", worktreeId);
+// src/core/scheduler/narrow-asks-row.ts
+function narrowAsksMetaKey(worktreeId) {
+  return worktreeMetaKey("narrowAsks", worktreeId);
 }
-function publishedBatches(store, worktreeId, daemonStartedAt, now) {
-  const places = /* @__PURE__ */ new Map();
-  const row = readRow(store, worktreeId);
-  if (row === null || row.at < daemonStartedAt) return places;
-  const batches = row.entries.filter(isBatch);
-  for (const p of row.entries) {
-    const position = batches.indexOf(p) + 1;
-    if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
-    const files2 = strings4(position === 0 ? p.files : p.batch?.files);
-    const end = p.batch?.estimatedEnd;
-    const place = position === 0 ? null : {
-      position,
-      of: batches.length,
-      files: files2.length,
-      estimatedEnd: typeof end === "number" ? end : null
-    };
-    for (const f of files2) if (!places.has(f)) places.set(f, place);
-  }
-  return places;
-}
-function readRow(store, worktreeId) {
-  const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  if (raw === null) return null;
+function publishedNarrowAsks(store, worktreeId, daemonStartedAt) {
+  const out = /* @__PURE__ */ new Map();
+  const raw = store.meta.get(narrowAsksMetaKey(worktreeId));
+  if (raw === null) return out;
   try {
-    const { at, promotions } = JSON.parse(raw);
-    if (typeof at !== "number" || !Array.isArray(promotions)) return null;
-    const entries = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
-    );
-    return { at, entries };
+    const { at, asks } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt || !Array.isArray(asks)) return out;
+    for (const entry3 of asks) {
+      if (!Array.isArray(entry3)) continue;
+      const [id, key] = entry3;
+      if (typeof id === "string" && typeof key === "string") out.set(id, key);
+    }
   } catch {
-    return null;
+    return out;
   }
-}
-function isBatch(p) {
-  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
-}
-function strings4(value) {
-  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
+  return out;
 }
 
 // src/core/daemon/client.ts
@@ -9652,10 +9630,10 @@ function requestedOf(store, worktreeId, keys, lanes) {
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (daemon === null) return () => 0;
-  const batched = publishedBatches(store, worktreeId, daemon.startedAt, Date.now());
-  if (batched.size === 0) return () => 0;
+  const asked = publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  if (asked.size === 0) return () => 0;
   const queued = keys.filter(
-    (row) => row.key !== null && row.pending !== null && batched.has(testFileId(row.testFile))
+    (row) => row.key !== null && row.pending !== null && asked.get(testFileId(row.testFile)) === row.key
   );
   return (at, inLane) => heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;
 }
@@ -11736,6 +11714,51 @@ function isCommandHold(entry3) {
   if (!isRecord(entry3)) return false;
   const { token, since, until, command, wrapper, child } = entry3;
   return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
+}
+
+// src/core/scheduler/promotions-row.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function publishedBatches(store, worktreeId, daemonStartedAt, now) {
+  const places = /* @__PURE__ */ new Map();
+  const row = readRow(store, worktreeId);
+  if (row === null || row.at < daemonStartedAt) return places;
+  const batches = row.entries.filter(isBatch);
+  for (const p of row.entries) {
+    const position = batches.indexOf(p) + 1;
+    if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
+    const files2 = strings4(position === 0 ? p.files : p.batch?.files);
+    const end = p.batch?.estimatedEnd;
+    const place = position === 0 ? null : {
+      position,
+      of: batches.length,
+      files: files2.length,
+      estimatedEnd: typeof end === "number" ? end : null
+    };
+    for (const f of files2) if (!places.has(f)) places.set(f, place);
+  }
+  return places;
+}
+function readRow(store, worktreeId) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    const { at, promotions } = JSON.parse(raw);
+    if (typeof at !== "number" || !Array.isArray(promotions)) return null;
+    const entries = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
+    );
+    return { at, entries };
+  } catch {
+    return null;
+  }
+}
+function isBatch(p) {
+  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
+}
+function strings4(value) {
+  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
 }
 
 // src/core/scheduler/queue.ts

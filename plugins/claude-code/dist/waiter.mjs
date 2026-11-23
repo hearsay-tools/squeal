@@ -176,6 +176,7 @@ var WORKTREE_META_ROWS = {
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions-row" },
+  narrowAsks: { prefix: "narrow-asks:", owner: "scheduler/narrow-asks-row" },
   focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
@@ -12381,6 +12382,28 @@ function commitLine(report) {
   return count2 > 0 && files2.length > 0 ? { ...line, notDetermined: { count: count2, files: files2 } } : line;
 }
 
+// src/core/scheduler/narrow-asks-row.ts
+function narrowAsksMetaKey(worktreeId) {
+  return worktreeMetaKey("narrowAsks", worktreeId);
+}
+function publishedNarrowAsks(store, worktreeId, daemonStartedAt) {
+  const out = /* @__PURE__ */ new Map();
+  const raw = store.meta.get(narrowAsksMetaKey(worktreeId));
+  if (raw === null) return out;
+  try {
+    const { at, asks } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt || !Array.isArray(asks)) return out;
+    for (const entry3 of asks) {
+      if (!Array.isArray(entry3)) continue;
+      const [id, key] = entry3;
+      if (typeof id === "string" && typeof key === "string") out.set(id, key);
+    }
+  } catch {
+    return out;
+  }
+  return out;
+}
+
 // src/core/daemon/client.ts
 import { statSync as statSync5 } from "node:fs";
 import { createConnection } from "node:net";
@@ -12661,10 +12684,10 @@ function requestedOf2(store, worktreeId, keys, lanes) {
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (daemon === null) return () => 0;
-  const batched = publishedBatches(store, worktreeId, daemon.startedAt, Date.now());
-  if (batched.size === 0) return () => 0;
+  const asked = publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  if (asked.size === 0) return () => 0;
   const queued = keys.filter(
-    (row) => row.key !== null && row.pending !== null && batched.has(testFileId(row.testFile))
+    (row) => row.key !== null && row.pending !== null && asked.get(testFileId(row.testFile)) === row.key
   );
   return (at, inLane) => heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;
 }
