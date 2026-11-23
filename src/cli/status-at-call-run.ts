@@ -4,6 +4,7 @@ import { shellWord } from "../core/text.js";
 import type { WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { Store } from "../core/types/store.js";
+import type { RunRecord } from "../core/types/store-records.js";
 import { storedDurations } from "./code-gate-durations.js";
 import { idOf } from "./status-at-after.js";
 import type { CallInput } from "./status-at-call.js";
@@ -19,6 +20,7 @@ import {
   widthsOf,
 } from "./status-at-estimate.js";
 import { workGroups } from "./status-at-estimate-groups.js";
+import { namedRun, runsInFlight } from "./status-at-estimate-named.js";
 import type { NowSide } from "./status-at-now.js";
 import type { SideQueue } from "./status-at-queue.js";
 import type { SideState } from "./status-at-report.js";
@@ -210,6 +212,11 @@ function estimateOf(
     sides.map((side, i) => ({ id: side.id, want: todo[i]?.length ?? 0 })),
   );
   const durations = storedDurations(root);
+  let runs: (readonly RunRecord[])[] | null = null;
+  const inFlight = () => {
+    runs ??= runsInFlight(root, ids);
+    return runs;
+  };
   try {
     const factor = loadNow();
     const seconds = (ref: TestFileRef) => durations?.of(ref) ?? null;
@@ -229,7 +236,17 @@ function estimateOf(
         ...(work.unknown[i] === true ? { limitsUnknown: true } : {}),
       };
       const leftOut = left[i] ?? 0;
-      const e = estimateSide(one, widths[i] ?? 1, factor);
+      const estimate = estimateSide(one, widths[i] ?? 1, factor);
+      // Row 023-60 (W3): a narrowed call's file that still runs in a wider batch waits for it.
+      const runs = ahead || estimate === null ? [] : (inFlight()[i] ?? []);
+      const at = { width: widths[i] ?? 1, factor, now: Date.now() };
+      const batch = namedRun(runs, side.queue.files, todo[i] ?? [], seconds, at);
+      let e = estimate;
+      if (e !== null && batch !== null) {
+        const longer = Math.max(e.seconds ?? 0, batch.seconds ?? 0);
+        e = { ...e, seconds: e.seconds === null ? null : longer, batch };
+      }
+      // Row 023-62 (V2's rest): the files left out because their setup failed on the other side.
       if (leftOut === 0) return e;
       return e === null ? onlyLeftOut(leftOut) : { ...e, leftOut };
     });
