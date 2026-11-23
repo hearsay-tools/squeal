@@ -94,8 +94,7 @@ describe("a request-only group a request queued (row 023-67, X2)", () => {
   });
 
   it("keeps the wait for `squeal run browser` with no request, or one an earlier daemon published", () => {
-    const old =
-      `browser: 3 test files; 3 pending ${ALL3}, waiting for \`squeal run browser\`. Squeal runs them only on request; \`squeal run browser --wait 60000\` runs them now and waits for their results.`;
+    const old = `browser: 3 test files; 3 pending ${ALL3}, waiting for \`squeal run browser\`. Squeal runs them only on request; \`squeal run browser --wait 60000\` runs them now and waits for their results.`;
     const none = status(queued([]));
     expect(lineOf(none)).toBe(old);
     expect(waitingIn(none)).toContain("browser");
@@ -104,8 +103,7 @@ describe("a request-only group a request queued (row 023-67, X2)", () => {
   });
 
   it("counts no named wait's batch and no ask at a key the file left (review 0.1.610 B1)", () => {
-    const old =
-      `browser: 3 test files; 3 pending ${ALL3}, waiting for \`squeal run browser\`. Squeal runs them only on request; \`squeal run browser --wait 60000\` runs them now and waits for their results.`;
+    const old = `browser: 3 test files; 3 pending ${ALL3}, waiting for \`squeal run browser\`. Squeal runs them only on request; \`squeal run browser --wait 60000\` runs them now and waits for their results.`;
     // A plain `squeal status --wait <path>` batches the files and runs no held one.
     const waited = queued([]);
     const files = FILES.map(id);

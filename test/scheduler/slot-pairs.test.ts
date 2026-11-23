@@ -128,4 +128,17 @@ describe("both sides take the shared slot file by file (row 023-78)", { timeout:
     // It follows the record (`b` first), then its own order.
     expect(log).toEqual([`commit:${B}`, `tree:${B}`, `tree:${A}`, `tree:${C}`]);
   });
+
+  it("keeps its own order when the partner ran a file this side was not asked for, or is gone", async () => {
+    const { tree, commit, log } = await pair(30_000);
+    // The commit side ran `b` and its daemon is gone; the working tree's request leaves `b` out.
+    await commit.scheduler.requestGroupPaths?.("browser", [B], { at: true });
+    await expect.poll(() => commit.current(B), { timeout: 20_000 }).toBe(true);
+    await commit.scheduler.close();
+    const started = Date.now();
+    await tree.scheduler.requestGroupPaths?.("browser", [C, A], { at: true });
+    await expect.poll(() => [A, C].every((p) => tree.current(p)), { timeout: 20_000 }).toBe(true);
+    expect(Date.now() - started).toBeLessThan(10_000);
+    expect(log).toEqual([`commit:${B}`, `tree:${C}`, `tree:${A}`]);
+  });
 });
