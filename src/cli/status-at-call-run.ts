@@ -20,7 +20,7 @@ import {
   widthsOf,
 } from "./status-at-estimate.js";
 import { workGroups } from "./status-at-estimate-groups.js";
-import { namedRun, runsInFlight } from "./status-at-estimate-named.js";
+import { type NamedRun, namedRun, runsInFlight } from "./status-at-estimate-named.js";
 import { idleOf } from "./status-at-idle.js";
 import type { NowSide } from "./status-at-now.js";
 import type { SideQueue } from "./status-at-queue.js";
@@ -226,20 +226,10 @@ function estimateOf(
       const estimate = estimateSide(one, widths[i] ?? 1, factor);
       // Row 023-60 (W3): a narrowed call's file that still runs in a wider batch waits for it.
       const runs = ahead || estimate === null ? [] : (inFlight()[i] ?? []);
-      const at = { width: widths[i] ?? 1, factor, now: Date.now(), rate: one.measured };
-      // Row 023-66 (V2): the batch's time at its group's rate, not the side's.
-      const rateIn = (ref: TestFileRef) => {
-        const own = work.doneIn[i]?.(ref) ?? null;
-        return own === null || measured === null ? one.measured : { done: own, ms: measured };
-      };
-      const batch = namedRun(runs, side.queue.files, todo[i] ?? [], seconds, { ...at, rateIn });
-      let e = estimate;
-      if (e !== null && batch !== null) {
-        // Review 0.1.607 B1: the batch's unknown time leaves the side's time unknown.
-        const longer =
-          e.seconds === null || batch.seconds === null ? null : Math.max(e.seconds, batch.seconds);
-        e = { ...e, seconds: longer, batch };
-      }
+      const at = { width: widths[i] ?? 1, factor, now: Date.now(), rate: null };
+      const find = (rate: SideWork["measured"]) =>
+        namedRun(runs, side.queue.files, todo[i] ?? [], seconds, { ...at, rate });
+      const e = withBatch(estimate, groupBatch(find, work.doneIn[i], one.measured));
       // Row 023-62 (V2's rest): the files left out because their setup failed on the other side.
       if (leftOut === 0) return e;
       return e === null ? onlyLeftOut(leftOut) : { ...e, leftOut };
@@ -248,6 +238,30 @@ function estimateOf(
   } finally {
     durations?.close();
   }
+}
+
+/**
+ * Row 023-66 (V2): the batch that holds a named file (`find`), timed at the
+ * rate of that file's group (`doneIn`, its results in this call), not the
+ * side's (`measured`); `null` when none holds one.
+ */
+export function groupBatch(
+  find: (rate: SideWork["measured"]) => NamedRun | null,
+  doneIn: ((ref: TestFileRef) => number | null) | undefined,
+  measured: SideWork["measured"],
+): NamedRun | null {
+  const [first] = find(null)?.named ?? [];
+  if (first === undefined) return null;
+  const own = doneIn?.(first) ?? null;
+  return find(own === null || measured === null ? measured : { done: own, ms: measured.ms });
+}
+
+/** Row 023-60 (W3): the side's time is at least the batch's; review 0.1.607 B1: unknown with it. */
+function withBatch(e: SideEstimate | null, batch: NamedRun | null): SideEstimate | null {
+  if (e === null || batch === null) return e;
+  const longer =
+    e.seconds === null || batch.seconds === null ? null : Math.max(e.seconds, batch.seconds);
+  return { ...e, seconds: longer, batch };
 }
 
 /** Row 023-62: a side whose every file still to run was left out of the estimate. */

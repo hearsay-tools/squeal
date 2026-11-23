@@ -2,6 +2,7 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { groupBatch } from "../../src/cli/status-at-call-run.js";
 import {
   estimateLine,
   estimateSide,
@@ -9,10 +10,8 @@ import {
   type WorkGroup,
 } from "../../src/cli/status-at-estimate.js";
 import { workGroups } from "../../src/cli/status-at-estimate-groups.js";
-import { namedRun } from "../../src/cli/status-at-estimate-named.js";
-import type { AbsolutePath, EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
-import type { RunRecord } from "../../src/core/types/store-records.js";
 
 /*
  * Row 023-66 (dogfood round 8, V2): the call's rate is per group. Round 8
@@ -135,23 +134,18 @@ describe("the results counted per group (row 023-66, V2)", () => {
   });
 
   it("times a named file's batch at its group's rate, not the side's", () => {
-    const batch = Array.from({ length: 30 }, (_, i) => ref(`test/browser/b${i}.test.ts`));
-    const [named] = batch as [TestFileRef];
-    const now = Date.now();
-    const run: RunRecord = {
-      id: "batch",
-      worktreeId: "w" as never,
-      revision: 1 as RevisionNumber,
-      testFiles: batch,
-      checkpointId: null,
-      logDir: "/tmp/batch" as AbsolutePath,
-      startedAt: (now - 10_000) as EpochMs,
-    } as RunRecord;
-    const at = { width: 1, factor: null, now, rate: ROUND8 };
-    // The side's rate (14 in 98 s) would put 30 files at 210 s; the browser group measured none.
-    const side = namedRun([run], [named], [named], () => null, at);
-    expect(side?.seconds).toBe(200);
-    const own = namedRun([run], [named], [named], () => null, { ...at, rateIn: () => null });
-    expect(own?.seconds).toBeNull();
+    const named: TestFileRef = ref("test/browser/a.test.ts");
+    const rates: unknown[] = [];
+    const find = (rate: { done: number; ms: number } | null) => {
+      rates.push(rate);
+      return { named: [named], files: 30, startedAt: 0 as never, ran: 0, known: 0, seconds: null };
+    };
+    // The browser group measured 2 of the side's 14: the batch gets 2, too few to count.
+    groupBatch(find, () => 2, ROUND8);
+    expect(rates).toEqual([null, { done: 2, ms: 98_000 }]);
+    // Not counted per group (the side's tree is gone): the side's rate, as before.
+    rates.length = 0;
+    groupBatch(find, () => null, ROUND8);
+    expect(rates).toEqual([null, ROUND8]);
   });
 });
