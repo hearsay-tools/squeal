@@ -8,6 +8,7 @@ import { SCHEMA_VERSION } from "../core/store/schema.js";
 import { createStore } from "../core/store/store.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import type { Store } from "../core/types/store.js";
 import type { RunRecord } from "../core/types/store-records.js";
 import { MEASURED_LEAST, tooFew } from "./status-at-estimate.js";
 
@@ -64,6 +65,19 @@ export function runsInFlight(
   ids: readonly (WorktreeId | null)[],
 ): (readonly RunRecord[])[] {
   const none = ids.map(() => []);
+  return readMainStore(root, none, (store) =>
+    ids.map((id) => {
+      const daemon = id === null ? null : (store.worktrees.get(id)?.daemon ?? null);
+      return id === null || daemon === null ? [] : store.runs.inFlight(id, daemon.startedAt);
+    }),
+  );
+}
+
+/**
+ * `read` of the main store of `root`'s repository, opened read-only and
+ * closed after; `none` when it cannot be opened or read.
+ */
+export function readMainStore<T>(root: AbsolutePath, none: T, read: (store: Store) => T): T {
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return none;
   const paths = storePaths(commonDir);
@@ -71,10 +85,7 @@ export function runsInFlight(
   if (db === null || db === "missing") return none;
   const store = createStore(new Connection(db), SCHEMA_VERSION, paths);
   try {
-    return ids.map((id) => {
-      const daemon = id === null ? null : (store.worktrees.get(id)?.daemon ?? null);
-      return id === null || daemon === null ? [] : store.runs.inFlight(id, daemon.startedAt);
-    });
+    return read(store);
   } catch {
     return none;
   } finally {

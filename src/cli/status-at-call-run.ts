@@ -21,6 +21,12 @@ import {
 } from "./status-at-estimate.js";
 import { workGroups } from "./status-at-estimate-groups.js";
 import { type NamedRun, namedRun, runsInFlight } from "./status-at-estimate-named.js";
+import {
+  notStarted,
+  type SideWaiting,
+  sideWaits,
+  withNotStarted,
+} from "./status-at-estimate-waits.js";
 import { idleOf } from "./status-at-idle.js";
 import type { NowSide } from "./status-at-now.js";
 import type { SideQueue } from "./status-at-queue.js";
@@ -28,6 +34,7 @@ import type { SideState } from "./status-at-report.js";
 import {
   narrowQueue,
   type QueuedRun,
+  type QueuedSide,
   queuedSide,
   runAgain,
   waitAgain,
@@ -91,16 +98,20 @@ export function queuedRun(
   const atState = after.at.state;
   const nowState = after.current.state;
   const usedMs = Date.now() - input.startedMs;
-  const commit = queuedSide(atCalled, atState, nowState);
-  const now = queuedSide(nowCalled, nowState, atState);
+  const sides = [
+    { queue: atCalled, state: atState, rest: after.rest.commit, id: rootId(atQueue) },
+    { queue: nowCalled, state: nowState, rest: after.rest.now, id: input.place.worktreeId },
+  ];
+  // Row 023-71 (Y1): a narrowed call's files not started say why they wait, where it is published.
+  const waits = narrowed ? waitsOf(input, sides) : [null, null];
+  const commit = withWait(queuedSide(atCalled, atState, nowState), waits[0]);
+  const now = withWait(queuedSide(nowCalled, nowState, atState), waits[1]);
   const estimate = estimateOf(input, {
-    sides: [
-      { queue: atCalled, state: atState, rest: after.rest.commit, id: rootId(atQueue) },
-      { queue: nowCalled, state: nowState, rest: after.rest.now, id: input.place.worktreeId },
-    ],
+    sides,
     measured: queue ? usedMs : null,
     // A narrowed call's files lead its daemons' queues: the rest is not ahead of them.
     ahead: !narrowed,
+    waits,
   });
   return {
     mode: queue ? "queue" : "join",
@@ -150,23 +161,45 @@ function resolvedOf(after: After): { resolved?: NonNullable<QueuedRun["resolved"
 const rootId = (queue: SideQueue): WorktreeId | null =>
   queue.root === null ? null : idOf(queue.root);
 
+interface Side {
+  readonly queue: SideQueue;
+  readonly state: (ref: TestFileRef) => SideState;
+  readonly rest: readonly TestFileRef[];
+  readonly id: WorktreeId | null;
+}
+
+/** Row 023-71 (Y1): per side, why the call's files queued and not started wait, where published. */
+function waitsOf(input: CallInput, sides: readonly Side[]): (SideWaiting | null)[] {
+  const { root, commonDir } = input.place;
+  const slots = readPoolView(input.env, [], repositoryRootOf(root, commonDir)).slots;
+  return sideWaits(
+    root,
+    sides.map((side) => ({
+      root: side.queue.root,
+      id: side.id,
+      queued: side.queue.files.filter((ref) => notStarted(side.state(ref))),
+    })),
+    slots,
+  );
+}
+
+const withWait = (side: QueuedSide, wait: SideWaiting | null | undefined): QueuedSide =>
+  wait === null || wait === undefined ? side : { ...side, waiting: wait.reason };
+
 interface EstimateSides {
-  readonly sides: readonly {
-    readonly queue: SideQueue;
-    readonly state: (ref: TestFileRef) => SideState;
-    readonly rest: readonly TestFileRef[];
-    readonly id: WorktreeId | null;
-  }[];
+  readonly sides: readonly Side[];
   /** The call's time so far when it queued (its rate counts), `null` for a join. */
   readonly measured: number | null;
   /** Whether the rest of a daemon's queue runs before the call's files. */
   readonly ahead: boolean;
+  /** Row 023-71 (Y1): per side, why its files not started wait, where published. */
+  readonly waits: readonly (SideWaiting | null)[];
 }
 
 /** V2: each side's estimate of what still runs; `null` when nothing does on either side. */
 function estimateOf(
   input: CallInput,
-  { sides, measured, ahead }: EstimateSides,
+  { sides, measured, ahead, waits }: EstimateSides,
 ): CallEstimate | null {
   const running = (s: SideState) => s.state === "no result" && s.pending !== undefined;
   const failedSetup = (s: SideState) => s.state === "not run" && s.reason === "setup";
@@ -223,7 +256,9 @@ function estimateOf(
         ...(work.unknown[i] === true ? { limitsUnknown: true } : {}),
       };
       const leftOut = left[i] ?? 0;
-      const estimate = estimateSide(one, widths[i] ?? 1, factor);
+      const own = estimateSide(one, widths[i] ?? 1, factor);
+      // Row 023-71 (Y1): a narrowed call's files none of which started have no time of their own.
+      const estimate = ahead ? own : withNotStarted(own, todo[i] ?? [], side.state, waits[i]);
       // Row 023-60 (W3): a narrowed call's file that still runs in a wider batch waits for it.
       const runs = ahead || estimate === null ? [] : (inFlight()[i] ?? []);
       const at = { width: widths[i] ?? 1, factor, now: Date.now(), rate: null };

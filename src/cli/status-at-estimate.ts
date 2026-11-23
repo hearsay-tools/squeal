@@ -13,6 +13,7 @@ import {
   groupWidth,
   measuredElsewhere,
 } from "./status-at-estimate-rate.js";
+import { type NotStarted, waitingText } from "./status-at-estimate-waits.js";
 
 /*
  * Row 023-49 (dogfood round 6, V2; spec 023 D7.3): the time what still
@@ -134,6 +135,13 @@ export interface SideEstimate {
   readonly elsewhere?: { readonly done: number; readonly own: number; readonly seconds: number };
   /** Row 023-66 (V2), with basis `groups`: each group's estimate. */
   readonly groups?: readonly GroupEstimate[];
+  /**
+   * Row 023-71 (Y1): a narrowed call's files there are all queued, none
+   * started: the time is unknown, and `reason` is why they wait as the
+   * daemon publishes it (`null`: it publishes none); `capacity`, the wait
+   * is for the group's slot or the shared worker pool.
+   */
+  readonly waiting?: NotStarted;
 }
 
 /** Row 023-66 (V2): one group's part of a side's estimate. */
@@ -250,6 +258,7 @@ export function sideText(e: SideEstimate): string {
 
 function ownText(e: SideEstimate): string {
   const files = `${e.files} test file${e.files === 1 ? "" : "s"}`;
+  if (e.waiting !== undefined) return `${files}, time unknown: ${waitingText(e.waiting, e.files)}`;
   if (e.groups !== undefined) return groupsText(e, files, ownText);
   // Review 0.1.607 B1: the files wait for a batch whose time is unknown, whatever their own.
   if (
