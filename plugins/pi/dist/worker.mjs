@@ -673,6 +673,7 @@ function toHarness(value) {
 
 // src/harness/shared/harness-process.ts
 var SKIPPED = /* @__PURE__ */ new Set([
+  "run",
   "sh",
   "dash",
   "bash",
@@ -13400,7 +13401,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.604";
+  if (true) return "0.1.605";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
