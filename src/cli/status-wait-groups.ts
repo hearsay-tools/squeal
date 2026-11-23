@@ -1,7 +1,7 @@
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { groupView } from "../core/scheduler/slow.js";
-import { groupRunText, groupWhenText } from "../core/state/group-text.js";
+import { groupRunText, groupWhenText, requestedOf } from "../core/state/group-text.js";
 import { fromBase } from "../core/status/next-step-text.js";
 import { plural, shellWord, testFileText } from "../core/text.js";
 import type { CheckMoment } from "../core/types/check-groups.js";
@@ -41,15 +41,29 @@ function groupQuietText(group: GroupTierState, command: string): string {
   const open = group.testFiles - group.current;
   if (open <= 0) return "";
   const them = open === 1 ? "it" : "them";
-  const runs =
-    group.pending === 0
-      ? ""
-      : ` and Squeal runs ${group.notRun === 0 ? them : "the pending ones"} ${groupWhenText(group)}`;
+  const runs = group.pending === 0 ? "" : runsClause(group, them);
   const files = `${plural(open, `${group.name} test file`)} ${open === 1 ? "is" : "are"} not current${runs}`;
   const run = groupRunText(group, command, open);
   return group.stopWaitMs === undefined
     ? `; ${files}; this repository does not require ${them} before you finish; ${run}`
     : `; ${files}, which this wait does not hold for: ${run}`;
+}
+
+/**
+ * What Squeal does with the group's pending files. Row 023-67 (X2): files a
+ * request queued (`status --at --run`, a narrow run) run now, not at the
+ * group's moment.
+ */
+function runsClause(group: GroupTierState, them: string): string {
+  const asked = requestedOf(group);
+  const when = groupWhenText(group);
+  if (asked === 0)
+    return ` and Squeal runs ${group.notRun === 0 ? them : "the pending ones"} ${when}`;
+  const rest = group.pending - asked;
+  const now =
+    rest === 0 ? `runs ${group.notRun === 0 ? them : "the pending ones"} now` : `runs ${asked} now`;
+  const others = rest === 0 ? "" : `, the other ${rest} ${when}`;
+  return ` and a request queued ${rest === 0 ? "the pending ones" : asked}: Squeal ${now}${others}`;
 }
 
 /** The files of one group a named wait left for the group's moment (`leftForPause`). */

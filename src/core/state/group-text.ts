@@ -79,7 +79,7 @@ function groupPendingText(group: GroupTierState, late: boolean, command: string)
 }
 
 /** Row 023-67 (X2): of the group's pending files, those a request queued. */
-function requestedOf(group: GroupTierState): number {
+export function requestedOf(group: GroupTierState): number {
   return Math.min(group.pending, group.requested ?? 0);
 }
 
