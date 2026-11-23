@@ -47,13 +47,21 @@ export interface Origin {
 
 /** One side of one test file (D3). */
 export type SideState =
-  | { readonly state: "pass"; readonly key: string; readonly origin: Origin }
+  | {
+      readonly state: "pass";
+      readonly key: string;
+      readonly origin: Origin;
+      /** Row 023-73 (Y3): at the commit, the test file differs from the working tree's. */
+      readonly changedSince?: true;
+    }
   | {
       readonly state: "fail";
       readonly key: string;
       readonly origin: Origin;
       /** The failed tests' names, sorted; `(file-level error)` for the file's own. */
       readonly failed: readonly string[];
+      /** Row 023-73 (Y3): at the commit, the test file differs from the working tree's. */
+      readonly changedSince?: true;
     }
   | {
       readonly state: "no result";

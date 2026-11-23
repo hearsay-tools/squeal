@@ -62,10 +62,19 @@ function word(side: SideState): string {
   return side.state;
 }
 
-function detail(name: string, side: SideState): string | null {
-  if (side.state === "fail")
-    return `${name}: ${side.failed.join(", ")}; ${originText(side.origin)}`;
-  if (side.state === "pass") return `${name}: ${originText(side.origin)}`;
+/**
+ * Row 023-73 (round 9 Y3: 2 of 10 s2 agents, rounds 7 and 8 one each, read
+ * the commit side of a changed test file as a run of the working tree's
+ * version): the commit side ran the file as it was at the commit.
+ */
+export const asItWasText = (at: string) =>
+  `the file as it was at ${at}, without its changes since then`;
+
+function detail(name: string, side: SideState, at: string): string | null {
+  const was = (side.state === "pass" || side.state === "fail") && side.changedSince === true;
+  const head = was ? `${name}: ${asItWasText(at)};` : `${name}:`;
+  if (side.state === "fail") return `${head} ${side.failed.join(", ")}; ${originText(side.origin)}`;
+  if (side.state === "pass") return `${head} ${originText(side.origin)}`;
   if (side.state === "not comparable" && side.failed !== undefined)
     return `${name}: ${side.failed.join(", ")}`;
   return null;
@@ -91,7 +100,7 @@ function changeText(f: FileReport, at: string, many = false): string {
     const more = failed.length === 0 ? "" : `; failed: ${failed.join("; ")}`;
     return `${f.at.state} -> ${f.now.state} (this run, not stored${more})`;
   }
-  const parts = [detail(`at ${at}`, f.at), detail("now", f.now)].filter((p) => p !== null);
+  const parts = [detail(`at ${at}`, f.at, at), detail("now", f.now, at)].filter((p) => p !== null);
   const more = parts.length === 0 ? "" : ` (${parts.join("; ")})`;
   if (f.at.state === "no result" && f.at.notSelected === true && f.at.closure === "complete") {
     // Review 0.1.607 B3: T2's fact for one named file (or a group of them), with its state now.

@@ -2,6 +2,7 @@ import { resultsAt } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
 import { changedText } from "../core/commit/at-keys-walk.js";
 import { committedBlobs } from "../core/commit/tree.js";
+import { runGit } from "../core/fs/git.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -97,7 +98,14 @@ export async function rowsSide(
     if (list === undefined) return "unchecked";
     return list.includes(ref.path) ? "incomplete" : "complete";
   };
-  const state = (ref: TestFileRef): SideState => {
+  // Row 023-73 (Y3): the test files that differ between the commit and the working tree.
+  const differs = await differsAt(input.root, input.commit);
+  const marked = (ref: TestFileRef, side: SideState): SideState =>
+    (side.state === "pass" || side.state === "fail") && differs.has(ref.path)
+      ? { ...side, changedSince: true }
+      : side;
+  const state = (ref: TestFileRef): SideState => marked(ref, stateAt(ref));
+  const stateAt = (ref: TestFileRef): SideState => {
     if (changed !== null) return { state: "not comparable", reason: changedText(changed) };
     const no = refused.get(testFileId(ref));
     if (no !== undefined) return { state: "not comparable", reason: no };
@@ -127,6 +135,18 @@ export async function rowsSide(
     sources,
   };
   return { at, state };
+}
+
+/**
+ * Row 023-73 (Y3): the tracked paths whose working-tree content differs
+ * from `commit`'s, staged or not; none when git cannot tell, so no line
+ * claims a version it did not check.
+ */
+async function differsAt(root: AbsolutePath, commit: string): Promise<ReadonlySet<RelativePath>> {
+  const out = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", commit, "--"]).catch(
+    () => "",
+  );
+  return new Set(out.split("\0").filter((path) => path !== "") as RelativePath[]);
 }
 
 /** A file the commit daemon does not list: setting up, its setup failed, absent at the commit, or unknown. */
