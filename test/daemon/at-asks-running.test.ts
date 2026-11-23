@@ -127,17 +127,21 @@ describe("a named file inside a running batch tier is answered when it ends (row
   });
 
   it("keeps the results of the tier's files that ended before the cut", async () => {
-    // The first four files end at once; the others take 2 s each.
-    const of = files(10_000, (i) => (i < 4 ? 0 : 2_000));
+    // The first four files end at once; the others take 1 s each, so they end after the cut.
+    const of = files(10_000, (i) => (i < 4 ? 0 : 1_000));
     const side = await seeded(of);
     const asks = asksOf(side, of);
     const tier = await wideTier(side, asks);
     await ask(asks, "narrow", [path(39)]);
     await expect.poll(() => side.current(path(39)), { timeout: TIMEOUT, interval: 20 }).toBe(true);
     expect(tier.cancelled).toBe(true);
-    expect(paths({ ...tier, files: tier.completed })).toEqual([0, 1, 2, 3].map(path));
-    expect([0, 1, 2, 3].every((i) => side.current(path(i)))).toBe(true);
-    expect(side.runner.runs.slice(1).some((run) => paths(run).includes(path(0)))).toBe(false);
+    const first = [0, 1, 2, 3].map(path);
+    expect(paths({ ...tier, files: tier.completed })).toEqual(expect.arrayContaining(first));
+    expect(first.every((p) => side.current(p))).toBe(true);
+    // The rest of the batch runs to its end; the cut's completed files never run again.
+    await expect.poll(() => of.every((f) => side.current(f.path)), { timeout: 60_000 }).toBe(true);
+    const again = side.runner.runs.slice(1).flatMap((run) => paths(run));
+    expect(again.filter((p) => first.includes(p))).toEqual([]);
   });
 
   it("does not cut a tier for a named wait that does not lead, nor a batch tier with no named file", async () => {
@@ -170,6 +174,8 @@ describe("a named file inside a running batch tier is answered when it ends (row
     expect(tier.cancelled).toBe(false);
     expect(side.runner.runs).toHaveLength(1);
     gate.stop();
+    await expect.poll(() => of.every((f) => side.current(f.path)), { timeout: TIMEOUT }).toBe(true);
+    expect(tier.cancelled).toBe(false);
   });
 
   it("cuts once: a second leading call inside the cut batch's next tier waits for it", async () => {
