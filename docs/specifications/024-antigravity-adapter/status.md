@@ -1,6 +1,6 @@
 # 024 Antigravity adapter: status
 
-Stage: shipped (2026-11-23; Wave 1 in 0.1.601, Wave 2 in 0.1.603, Wave 3 in 0.1.605, exact-main CI 45089580768 green, Wave 4 live proof in `lessons.md`)
+Stage: shipped (2026-11-23; Wave 1 in 0.1.601, Wave 2 in 0.1.603, Wave 3 in 0.1.605, Wave 4 live proof in `lessons.md`, Wave 5 polish `024-09` in 0.1.606, review `reviews/0.1.606.md` PASS, candidate CI `45140516054` green)
 Started: 2026-11-22
 
 ## Decisions so far
@@ -35,8 +35,8 @@ Started: 2026-11-22
   - Non-blocking follow-ups proposed on the board: `024-09` (non-blocking wording/test polish from `lessons.md` and `reviews/0.1.605.md` S1) and `024-10` (verify Squawk non-default Antigravity account profile plugin loading under `antigravity acp`).
 
 - 2026-11-23, the human on release and follow-ups:
-  - Approved row `024-09` ("Do 024-09 polish first") and hub release afterwards (ships Spec 024 + `024-09` polish together once `024-09` passes review and exact-main CI). Row `024-10` remains proposed.
+  - Approved row `024-09` ("Do 024-09 polish first") and hub release afterwards. Row `024-09` landed in `0.1.606` (`reviews/0.1.606.md` PASS, candidate CI `45140516054` green); cutting hub release once exact-main CI passes. Row `024-10` remains proposed.
 
 ## Open questions
 
-None blocking v1 (shipped). Deferred v1 non-goals stay in `spec.md` (App/IDE `PLUGIN_DATA` and UI rendering, active terminal sandbox, idle wake, Marketplace submission, macOS/Windows). Row `024-09` is running in Wave 5 before the hub release; row `024-10` remains proposed on `docs/board.md`.
+None blocking v1 (shipped). Deferred v1 non-goals stay in `spec.md` (App/IDE `PLUGIN_DATA` and UI rendering, active terminal sandbox, idle wake, Marketplace submission, macOS/Windows). Row `024-10` remains proposed on `docs/board.md`.
