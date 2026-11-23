@@ -1,6 +1,6 @@
 # 024 Antigravity adapter: status
 
-Stage: shipped (2026-11-23; Wave 1 in 0.1.601, Wave 2 in 0.1.603, Wave 3 in 0.1.605, Wave 4 live proof in `lessons.md`, Wave 5 polish `024-09` in 0.1.606, review `reviews/0.1.606.md` PASS, candidate CI `45140516054` green)
+Stage: shipped and released (2026-11-23; Wave 1 in 0.1.601, Wave 2 in 0.1.603, Wave 3 in 0.1.605, Wave 4 live proof in `lessons.md`, Wave 5 polish `024-09` in 0.1.606; released as `squeal--v0.1.606` at `dcb470ec8`, hub `00589dc`, exact-main CI `45147028917` green)
 Started: 2026-11-22
 
 ## Decisions so far
@@ -35,7 +35,7 @@ Started: 2026-11-22
   - Non-blocking follow-ups proposed on the board: `024-09` (non-blocking wording/test polish from `lessons.md` and `reviews/0.1.605.md` S1) and `024-10` (verify Squawk non-default Antigravity account profile plugin loading under `antigravity acp`).
 
 - 2026-11-23, the human on release and follow-ups:
-  - Approved row `024-09` ("Do 024-09 polish first") and hub release afterwards. Row `024-09` landed in `0.1.606` (`reviews/0.1.606.md` PASS, candidate CI `45140516054` green); cutting hub release once exact-main CI passes. Row `024-10` remains proposed.
+  - Approved row `024-09` ("Do 024-09 polish first") and hub release afterwards. Row `024-09` landed in `0.1.606` (`reviews/0.1.606.md` PASS, exact-main CI `45147028917` green on `dcb470ec8`) and released through `hearsay-tools/marketplace` (`00589dc`) and GitHub Releases (`squeal--v0.1.606`, 3 assets verified). Row `024-10` remains proposed.
 
 ## Open questions
 
