@@ -12,15 +12,15 @@ import { formatImpact } from "./reach-format.js";
 import { statusCommand } from "./status-command.js";
 
 /*
- * Spec 015 D11: `squeal impact [<path>...] [--limit <n>] [--json]`, the
+ * Spec 015 D11: `squeal impact [<path>...] [--limit <n>] [--offset <n>] [--json]`, the
  * on-demand edit-impact report. Pull only: it reads the stores, needs no
  * daemon, runs no test and writes nothing. Exit 0 with an answer, the
  * proposal included; 1 when there is no store; 2 on a usage error, as in
  * `squeal code`. `squeal reach` is its hidden deprecated alias (amended
- * 2026-11-22, row 015-128).
+ * 2026-11-22, row 015-128). `--offset` pages the lists (row 015-129).
  */
 
-export const IMPACT_USAGE = "squeal impact [<path>...] [--limit <n>] [--json]";
+export const IMPACT_USAGE = "squeal impact [<path>...] [--limit <n>] [--offset <n>] [--json]";
 
 /** What the deprecated alias prints to stderr before a text answer; `--json` stays quiet. */
 export const REACH_DEPRECATED =
@@ -29,28 +29,41 @@ export const REACH_DEPRECATED =
 /** Entries per part in the text, D11's default. */
 export const REACH_LIMIT = 10;
 
-type Parsed = { readonly json: boolean; readonly limit: number | null; readonly paths: string[] };
+type Parsed = {
+  readonly json: boolean;
+  readonly limit: number | null;
+  readonly offset: number;
+  readonly paths: string[];
+};
+
+/** A whole number of `least` or more, digits only: `Number("")` and `Number(" ")` read 0 (row 015-129). */
+function count(value: string | undefined, least: number): number | null {
+  if (value === undefined || !/^\d+$/.test(value)) return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= least ? n : null;
+}
+
+const countError = (option: string, least: number, value: string | undefined) =>
+  `${option} takes a whole number of entries, ${least} or more, not "${value ?? ""}"`;
 
 function parseArgs(args: readonly string[]): Parsed | { readonly error: string } {
   let json = false;
-  let limit: number | null = null;
+  const counts: Record<string, number | null> = { "--limit": null, "--offset": 0 };
+  const least: Record<string, number> = { "--limit": 1, "--offset": 0 };
   const paths: string[] = [];
   for (let at = 0; at < args.length; at++) {
     const arg = args[at] as string;
+    const option = Object.keys(least).find((o) => arg === o || arg.startsWith(`${o}=`));
     if (arg === "--json") json = true;
-    else if (arg === "--limit" || arg.startsWith("--limit=")) {
-      const value = arg === "--limit" ? args[++at] : arg.slice("--limit=".length);
-      const n = Number(value);
-      if (value === undefined || !Number.isInteger(n) || n < 1) {
-        return {
-          error: `--limit takes a whole number of entries, 1 or more, not "${value ?? ""}"`,
-        };
-      }
-      limit = n;
+    else if (option !== undefined) {
+      const value = arg === option ? args[++at] : arg.slice(option.length + 1);
+      const n = count(value, least[option] as number);
+      if (n === null) return { error: countError(option, least[option] as number, value) };
+      counts[option] = n;
     } else if (arg.startsWith("--")) return { error: `unknown option "${arg}"` };
     else paths.push(arg);
   }
-  return { json, limit, paths };
+  return { json, limit: counts["--limit"] ?? null, offset: counts["--offset"] ?? 0, paths };
 }
 
 /** `squeal reach`, hidden and deprecated: `squeal impact`, with a notice on stderr unless `--json`. */
@@ -79,7 +92,7 @@ export async function impactCommand(args: readonly string[], io: CliIo): Promise
     const run = (code: CodeStore | null): ReachReport => {
       const { snapshot, listed } = readSnapshot({ store: context.store, root, code });
       const named: RelativePath[] | null = parsed.paths.length === 0 ? null : paths;
-      return buildReport(snapshot, { paths: named, limit, command, listed });
+      return buildReport(snapshot, { paths: named, limit, offset: parsed.offset, command, listed });
     };
     const withCodeStore = withCode(codeSource(context.commonDir, root), ({ store }) =>
       store.read(() => run(store)),

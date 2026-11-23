@@ -10,17 +10,29 @@ import type { ReachSnapshot } from "./types.js";
  * Spec 015 D11: the named files in full, each route with its test files.
  * `--limit` bounds the routes of a file and the test files of a route
  * (015-116, P10): one route of cezar's sequencer listed 1,568 test files.
+ * `--offset` skips test files of each route, never routes, so a page of
+ * test files keeps every route (row 015-129).
  */
 
 /** Whether a path is one of `paths` or under one; `""` names the whole worktree. */
 export const named = (paths: readonly RelativePath[]) => (path: RelativePath) =>
   paths.some((p) => p === "" || path === p || path.startsWith(`${p}/`));
 
+/**
+ * Row 015-129: `[offset, offset + limit)` of `items` and how many follow it;
+ * past the end, an empty page and none more. `limit` may be infinite.
+ */
+export function page<T>(items: readonly T[], offset: number, limit: number): [T[], number] {
+  const shown = items.slice(offset, offset + limit);
+  return [shown, Math.max(0, items.length - offset - shown.length)];
+}
+
 export function namedFiles(
   analysis: Analysis,
   snapshot: ReachSnapshot,
   paths: readonly RelativePath[],
   limit: number,
+  offset = 0,
 ): NamedFile[] {
   const isNamed = named(paths);
   const total = analysis.suite.seconds;
@@ -45,11 +57,8 @@ export function namedFiles(
             const tests = [...(r.tests ?? [])].sort(
               (a, b) => (b.seconds ?? 0) - (a.seconds ?? 0) || compare(a.path, b.path),
             );
-            return {
-              ...routeOf(r),
-              tests: tests.slice(0, limit),
-              moreTests: Math.max(0, tests.length - limit),
-            };
+            const [shown, moreTests] = page(tests, offset, limit);
+            return { ...routeOf(r), tests: shown, moreTests };
           }),
           moreRoutes: Math.max(0, routes.length - limit),
           second: route === null ? null : secondGateway([file.path], route, snapshot, file),

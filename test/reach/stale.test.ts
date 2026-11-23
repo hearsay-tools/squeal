@@ -138,15 +138,26 @@ describe("squeal reach, the hidden deprecated alias", () => {
     expect(JSON.parse(json.out.stdout)).toMatchObject({ v: 2 });
   });
 
+  it("passes --offset on to squeal impact (row 015-129)", async () => {
+    const { repo } = seeded(ON);
+    const impact = await run(repo.main, ["--json", "--offset", "1", "--limit", "1"]);
+    const alias = io(repo.main);
+    expect(await main(["reach", "--json", "--offset", "1", "--limit", "1"], alias.cli)).toBe(0);
+    expect(alias.out.stdout).toBe(impact.stdout);
+    expect(JSON.parse(alias.out.stdout)).toMatchObject({ offset: 1 });
+  });
+
   it("is left out of --help, and its --help is squeal impact's", async () => {
     const help = io(".");
     main(["--help"], help.cli);
-    expect(help.out.stdout).toContain("  squeal impact [<path>...] [--limit <n>] [--json]\n");
+    expect(help.out.stdout).toContain(
+      "  squeal impact [<path>...] [--limit <n>] [--offset <n>] [--json]\n",
+    );
     expect(help.out.stdout).not.toContain("squeal reach");
     const own = io(".");
     await main(["reach", "--help"], own.cli);
     expect(own.out.stdout).toMatch(
-      /^Usage:\n {2}squeal impact \[<path>\.\.\.\] \[--limit <n>\] \[--json\]\n/,
+      /^Usage:\n {2}squeal impact \[<path>\.\.\.\] \[--limit <n>\] \[--offset <n>\] \[--json\]\n/,
     );
   });
 });

@@ -10,7 +10,7 @@ import type {
 import { chainText } from "../core/reach/suggest.js";
 import { plural } from "../core/text.js";
 import { proposalLines } from "./reach-proposals.js";
-import { day, gatewaysPart, pct, secs, staleLine } from "./reach-text.js";
+import { day, gatewaysPart, more, pastEnd, pct, secs, staleLine } from "./reach-text.js";
 
 /*
  * Spec 015 D11: the human rendering of `squeal impact`. Every number is
@@ -145,13 +145,15 @@ function editLines(entry: FileEntry, at: number): string[] {
 function editsPart(report: ReachReport): string[] {
   const title = "Files, by seconds re-run over the window's edits";
   if (report.window === null) return [`${title}: none ranked, because no edits are recorded yet.`];
-  if (report.byEdits.length === 0) {
+  if (report.totalByEdits === 0) {
     return [`${title}: none; no edit in the window changed a file that a test re-runs on.`];
   }
+  const { offset, byEdits } = report;
+  if (byEdits.length === 0) return [`${title}:`, pastEnd(offset, `${report.totalByEdits}`)];
   return [
     `${title}:`,
-    ...report.byEdits.flatMap((e, i) => editLines(e, i + 1)),
-    ...more(report.moreByEdits),
+    ...byEdits.flatMap((e, i) => editLines(e, offset + i + 1)),
+    ...more(report.moreByEdits, offset + byEdits.length),
   ];
 }
 
@@ -166,12 +168,6 @@ function testLines(entry: TestEntry, rank: number): string[] {
       : [`     most uncalled files come through ${entry.via.path} (${entry.via.uncalled})`]),
   ];
 }
-
-/** `… and 3 more`, or of a named thing, `… and 1 more route`. */
-const more = (n: number, noun?: string) => {
-  const what = noun === undefined ? "" : ` ${noun}${n === 1 ? "" : "s"}`;
-  return n === 0 ? [] : [`  … and ${n} more${what}; --limit lists more.`];
-};
 
 /** The orders' titles, by what coverage can tell (015-116, P8 and P12). */
 function titles(report: ReachReport): { readonly files: string; readonly tests: string } {
@@ -197,7 +193,7 @@ function namedEdits(file: NamedFile): string {
   return `${edits} re-ran ${secs(file.editSeconds)}, ${pct(file.editShare)} of the window's re-run seconds`;
 }
 
-function namedLines(file: NamedFile): string[] {
+function namedLines(file: NamedFile, offset: number): string[] {
   if (file.testFiles === 0) {
     return [`${file.path}: no test file of the suite re-runs on an edit of it.`];
   }
@@ -211,9 +207,12 @@ function namedLines(file: NamedFile): string[] {
         (t) =>
           `    ${t.path}  ${t.seconds === null ? "no recorded seconds" : secs(t.seconds)}  ${t.coverage}`,
       ),
-      ...more(route.moreTests, "test file").map((line) => `  ${line}`),
+      ...(route.testFiles > 0 && route.tests.length === 0 && offset > 0
+        ? [`  ${pastEnd(offset, plural(route.testFiles, "test file"))}`]
+        : []),
+      ...more(route.moreTests, offset + route.tests.length, "test file").map((line) => `  ${line}`),
     ]),
-    ...more(file.moreRoutes, "route"),
+    ...more(file.moreRoutes, null, "route"),
     ...advice(file, "  "),
   ];
 }
@@ -223,24 +222,31 @@ export function formatImpact(report: ReachReport, command = "squeal"): string {
   if (!report.history) {
     return `${report.proposals.flatMap((p) => proposalLines(p, report.coverage)).join("\n")}\n`;
   }
-  const named = report.named;
+  const { named, offset } = report;
   const title = titles(report);
+  const past = (shown: number, total: number) =>
+    total > 0 && shown === 0 ? [pastEnd(offset, `${total}`)] : [];
   const perEdit = [
     title.files,
     ...report.files.flatMap(fileLines),
-    ...more(report.moreFiles),
+    ...past(report.files.length, report.totalFiles),
+    ...more(report.moreFiles, offset + report.files.length),
     "",
     title.tests,
-    ...report.testFiles.flatMap((e, i) => testLines(e, i + 1)),
-    ...more(report.moreTestFiles),
+    ...report.testFiles.flatMap((e, i) => testLines(e, offset + i + 1)),
+    ...past(report.testFiles.length, report.totalTestFiles),
+    ...more(report.moreTestFiles, offset + report.testFiles.length),
   ];
   const byEdits = [...gatewaysPart(report), "", ...editsPart(report)];
   // Row 015-128: with edits recorded, what they re-ran leads; without, each edit section is one line.
   const ranked =
-    report.window === null || report.byEdits.length === 0
+    report.window === null || report.totalByEdits === 0
       ? [...perEdit, "", ...byEdits]
       : [...byEdits, "", ...perEdit];
-  const body = named === undefined ? ["", ...ranked] : ["", ...named.flatMap(namedLines)];
+  const body =
+    named === undefined
+      ? ["", ...ranked]
+      : ["", ...named.flatMap((file) => namedLines(file, offset))];
   const proposals = report.proposals.flatMap((p) => proposalLines(p, report.coverage));
   return `${[...head(report, command), ...body, ...(proposals.length === 0 ? [] : ["", ...proposals])].join("\n")}\n`;
 }

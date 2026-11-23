@@ -46,19 +46,37 @@ function gatewayLines(entry: GatewayEntry, at: number): string[] {
   ];
 }
 
+/**
+ * Row 015-129: `… and 3 more; --offset 12 lists the next page, or --limit
+ * lists more.` under a page whose last entry is `next`; of a named thing,
+ * `… and 1 more test file`. Routes, which `--offset` does not page, pass
+ * `next` as `null`.
+ */
+export function more(n: number, next: number | null, noun?: string): string[] {
+  if (n === 0) return [];
+  const what = noun === undefined ? "" : ` ${noun}${n === 1 ? "" : "s"}`;
+  const page = next === null ? "" : ` --offset ${next} lists the next page, or`;
+  return [`  … and ${n} more${what};${page} --limit lists more.`];
+}
+
+/** Row 015-129: a list `--offset` ran past; `total` reads `5` or `5 test files`. */
+export const pastEnd = (offset: number, total: string) =>
+  `  none at offset ${offset} (${total} in all).`;
+
 /** Row 015-128: the top gateways by the seconds the window's edits re-ran through them. */
 export function gatewaysPart(report: ReachReport): string[] {
   const title = "Top gateways, by seconds re-run over the window's edits";
   if (report.window === null) return [`${title}: none ranked, because no edits are recorded yet.`];
-  if (report.gateways.length === 0) {
+  if (report.totalGateways === 0) {
     return [
       `${title}: none; no edit in the window went through a setup file, helper, barrel, input, shared module or runtime read.`,
     ];
   }
-  const more = report.moreGateways;
+  const { offset, gateways } = report;
+  if (gateways.length === 0) return [`${title}:`, pastEnd(offset, `${report.totalGateways}`)];
   return [
     `${title}:`,
-    ...report.gateways.flatMap((e, i) => gatewayLines(e, i + 1)),
-    ...(more === 0 ? [] : [`  … and ${more} more; --limit lists more.`]),
+    ...gateways.flatMap((e, i) => gatewayLines(e, offset + i + 1)),
+    ...more(report.moreGateways, offset + gateways.length),
   ];
 }

@@ -2,7 +2,7 @@ import { compare } from "../fs/compare.js";
 import type { RelativePath } from "../types/common.js";
 import { analyze } from "./analyze.js";
 import { fileEntries, gatewayEntries, testEntries } from "./entries.js";
-import { named, namedFiles } from "./named.js";
+import { named, namedFiles, page } from "./named.js";
 import { proposals } from "./proposals.js";
 import { REACH_REPORT_VERSION, type ReachReport } from "./report-types.js";
 import type { ReachSnapshot } from "./types.js";
@@ -20,6 +20,8 @@ export interface ReportOptions {
   readonly paths: readonly RelativePath[] | null;
   /** Entries per list, and routes and test files per named file; `null` for every one. */
   readonly limit: number | null;
+  /** Entries each list and each named route's test files skip first (row 015-129); `0` by default. */
+  readonly offset?: number;
   /** How the text names the CLI (`statusCommand`). */
   readonly command: string;
   /** Test files the daemon listed; `null` when it listed none yet. */
@@ -38,6 +40,11 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
   const tests = history ? testEntries(analysis) : [];
   const gateways = history ? gatewayEntries(analysis) : [];
   const limit = options.limit ?? Number.POSITIVE_INFINITY;
+  const offset = options.offset ?? 0;
+  const [gatewayPage, moreGateways] = page(gateways, offset, limit);
+  const [filePage, moreFiles] = page(files, offset, limit);
+  const [editPage, moreByEdits] = page(byEdits, offset, limit);
+  const [testPage, moreTestFiles] = page(tests, offset, limit);
   const unmeasured = snapshot.coverage.on
     ? analysis.tests
         .filter((t) => t.test.coverage.kind === "unknown")
@@ -62,17 +69,22 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
     edges: snapshot.graph !== null,
     notRecorded: [...analysis.files.values()].reduce((n, f) => n + f.notRecorded, 0),
     absent,
-    gateways: gateways.slice(0, limit),
-    moreGateways: Math.max(0, gateways.length - limit),
-    files: files.slice(0, limit),
-    moreFiles: Math.max(0, files.length - limit),
-    byEdits: byEdits.slice(0, limit),
-    moreByEdits: Math.max(0, byEdits.length - limit),
-    testFiles: tests.slice(0, limit),
-    moreTestFiles: Math.max(0, tests.length - limit),
+    offset,
+    totalGateways: gateways.length,
+    totalFiles: files.length,
+    totalByEdits: byEdits.length,
+    totalTestFiles: tests.length,
+    gateways: gatewayPage,
+    moreGateways,
+    files: filePage,
+    moreFiles,
+    byEdits: editPage,
+    moreByEdits,
+    testFiles: testPage,
+    moreTestFiles,
     ...(options.paths === null || !history
       ? {}
-      : { named: namedFiles(analysis, snapshot, options.paths, limit) }),
+      : { named: namedFiles(analysis, snapshot, options.paths, limit, offset) }),
     proposals: proposals(snapshot, analysis, history, options),
   };
 }
