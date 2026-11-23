@@ -61,7 +61,7 @@ describe("the commit daemon refuses what is not the commit's (row 023-40c)", SLO
     expect(JSON.parse(called.out).run.commit).toMatchObject({ files: 1, known: 1 });
   });
 
-  it("review 0.1.597 B1: refuses a file whose recorded reads list a folder (D4.9)", {
+  it("review 0.1.597 B1: refuses a file whose recorded reads list a folder the install added a name to (D4.9)", {
     timeout: 240_000,
   }, async () => {
     const lists = [
@@ -73,6 +73,7 @@ describe("the commit daemon refuses what is not the commit's (row 023-40c)", SLO
     ].join("\n");
     const f = fixture({
       "squeal.config.json": "{}\n",
+      ".gitignore": "node_modules/\n*.log\n",
       "src/plain.ts": "export const value = 1;\n",
       "test/fixtures/a.json": "{}\n",
       [LISTS.path]: lists,
@@ -80,13 +81,23 @@ describe("the commit daemon refuses what is not the commit's (row 023-40c)", SLO
     const a = git(f.root, "rev-parse", "HEAD").trim();
     const b = f.commit({ "src/plain.ts": "export const value = 1; // b\n" });
     f.commit({ "src/plain.ts": "export const value = 1; // c\n" });
-    const real = realCommitDaemon(f.root);
+    // From the second commit on, the install writes an ignored name into the listed folder.
+    let installs = 0;
+    const install = async (tree: AbsolutePath) => {
+      link(tree);
+      installs += 1;
+      if (installs > 1) write(tree, { "test/fixtures/extra.log": "x" });
+      return { ok: true, command: "link", ms: 0 } as const;
+    };
+    const real = realCommitDaemon(f.root, { install });
     const options = { cacheRoot: f.cacheRoot, daemons: real.daemons };
     const ask = { json: true, run: { allMissing: true }, waitMs: 120_000 } as const;
 
     // The first run records the folder it lists. The folder's key hashes its tracked names
     // only, so a result stored from a listing with ignored or untracked names would stand
-    // for the commit's: the next commit's daemon refuses the file (proof's green side too).
+    // for the commit's: the next commit's daemon, whose folder holds an ignored name the
+    // commit does not track, refuses the file (row 023-64: only a listing equal to the
+    // commit's is held).
     const first = await run(f, { commit: a, ...ask }, options);
     expect(atOf(first.out, LISTS.path), first.err).toMatchObject({ state: "pass" });
     const second = await run(f, { commit: b, ...ask }, options);

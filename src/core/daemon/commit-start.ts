@@ -9,6 +9,7 @@ import type { Policy } from "../types/policy.js";
 import type { NarrowRunOptions, Scheduler } from "../types/scheduler.js";
 import type { Store } from "../types/store.js";
 import { AtAsks } from "./at-asks.js";
+import { listingsHeld } from "./commit-listings.js";
 import type { CommitMode } from "./commit-mode.js";
 
 /*
@@ -73,15 +74,17 @@ export class CommitStart {
           pending: row.pending ?? null,
         })),
       // D4.9: what the closures read that git does not hold at the commit (the tree's HEAD),
-      // a path under a tracked symlink held as the link resolves there (row 023-48, V1).
+      // a path under a tracked symlink held as the link resolves there (row 023-48, V1), and
+      // a folder read held when the tree lists exactly the names the commit tracks (row 023-64).
       needs: async (request) => {
         const scheduler = ports.scheduler();
         if (scheduler?.closureReads === undefined) return new Map();
         const atCommit = await heldAt(ports.root, "HEAD");
+        const listed = listingsHeld(ports.root, atCommit.blobs);
         const caller = request.root;
         const atHead = caller === undefined ? null : await heldAt(caller, "HEAD").catch(() => null);
         return scheduler.closureReads((path) => {
-          if (atCommit.has(path)) return false;
+          if (atCommit.has(path) || listed(path)) return false;
           if (existsSync(join(ports.root, path))) return true;
           return (
             caller !== undefined &&
