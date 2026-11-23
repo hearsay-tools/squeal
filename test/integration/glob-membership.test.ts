@@ -115,6 +115,9 @@ function globRepo(variant?: Variant) {
   for (const [path, text] of Object.entries(files)) write(repo.main, path, text);
   git(repo.main, ["add", "-A"]);
   git(repo.main, ["commit", "-qm", "glob"]);
+  // Row 023-76: a root listing holds every name on disk. The first run writes Vitest's cache
+  // under an ignored `node_modules/`; an installed project has that folder before any run.
+  mkdirSync(join(repo.main, "node_modules"), { recursive: true });
   return repo;
 }
 

@@ -27,7 +27,9 @@ import { git } from "../hash/git-repo.js";
  * commit, or a removed ignore rule), leaves the extra-file set at the
  * revision that shows it, and counts in its directories' listings from
  * there, as a restarted daemon's do. `.ai/notes.md` is a tracked sibling:
- * the root listing names `.ai` for it.
+ * the root listing names `.ai` for it. Since row 023-76 a listing hashes
+ * the names on disk as well, so the descriptor's directories list the same
+ * names before and after git sees it.
  */
 
 useDescriptorRepo();
@@ -130,8 +132,9 @@ describe.each(TRANSITIONS)("an extra file git comes to see by $name (row 011-270
     expect(revision?.changes.some((change) => change.ignored === true)).toBe(false);
     expect(keys.extraFiles()).toEqual([]);
     expect(watched.at(-1)).toEqual([]);
-    // `.ai/` names `qa` now: its listing moved.
-    expect(keysOf(keys).lister).not.toEqual(before.lister);
+    // Row 023-76: a listing holds every name on disk, so `.ai/` named `qa` before git saw it
+    // too. The names a run lists did not change, so the lister's key does not.
+    expect(keysOf(keys).lister).toEqual(before.lister);
     expect(keysOf(keys)).toEqual(await restarted());
   });
 
