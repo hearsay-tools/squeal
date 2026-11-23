@@ -6,6 +6,7 @@ import { readGreen } from "../../src/cli/proof-green-run.js";
 import { idOf } from "../../src/cli/status-at-after.js";
 import type { AtDaemons } from "../../src/cli/status-at-daemons.js";
 import { commonDirOf, type KeyedFile } from "../../src/core/commit/at-keys-checkout.js";
+import { storedReason } from "../../src/core/daemon/at-asks.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import type { CommitAskState } from "../../src/core/types/commit-ask.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
@@ -17,16 +18,17 @@ import { withStore } from "./status-at-kit.js";
 /*
  * Review 0.1.611 B1 in the proof (spec 023 D7.6, row 023-70): the green
  * side reads its files on the commit daemon at HEAD, through the same ask
- * as `status --at`. A queued file ran on the commit daemon only when the
- * commit worktree wrote its result; another worktree's result at a shared
- * key is read from the store, not counted as this command's run. Row
- * 023-76: a folder read is in the key by the names the run listed, so
- * another worktree's result of a file that lists a folder holds as well
- * (before, it read unknown).
+ * as `status --at`. A file whose closure lists a folder (`ownOnly`) holds
+ * only the commit worktree's result: another worktree's pass that arrived
+ * at the shared key while the file was queued is unknown, with the
+ * reason. A queued file ran on the commit daemon only when the commit
+ * worktree wrote its result; another worktree's result at a shared key is
+ * read from the store, not counted as this command's run.
  */
 
 const LISTS = ref("test/lists.test.ts");
 const PLAIN = ref("test/plain.test.ts");
+const REASON = storedReason("test/fixtures/");
 const CALLER = "wt-caller";
 
 const keyOf = (r: TestFileRef): CheckKey => `key-${r.path}`;
@@ -76,6 +78,7 @@ async function green(
     files: [LISTS, PLAIN],
     readers: {},
     problems: [],
+    ownOnly: [{ ref: LISTS, reason: REASON }],
   };
   const daemons = { wait: async () => null } as unknown as AtDaemons;
   const input = {
@@ -91,9 +94,15 @@ async function green(
 }
 
 describe("the proof's green side judges each result by its writer (review 0.1.611 B1)", () => {
-  it("reads another worktree's folder result at the commit's key as stored (row 023-76)", async () => {
+  it("reads another worktree's folder result as unknown, whenever it arrived", async () => {
     const side = await green([{ ref: LISTS, by: "caller" }]);
-    expect(side(LISTS)).toMatchObject({ end: { end: "pass" }, from: "store", runs: 0 });
+    expect(side(LISTS)).toEqual({
+      end: { end: "unknown", reason: REASON },
+      from: null,
+      stored: false,
+      notStored: null,
+      runs: 0,
+    });
   });
 
   it("reads another worktree's pass at a shared key as stored, not as this command's run", async () => {

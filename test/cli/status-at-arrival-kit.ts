@@ -21,6 +21,10 @@ import { withStore } from "./status-at-kit.js";
  * caller's narrow run holds the browser group's one slot until the test
  * opens its gate, so the commit's ask selects the file and queues it with
  * no result stored yet; then the caller's pass arrives.
+ *
+ * Review 0.1.612 B1: with `late`, `extra.log` appears only after the
+ * caller's run started, so both keys hold the one tracked name and the
+ * caller's pass lands at the commit's key.
  */
 
 export const LISTS = ref("test/lists.test.ts");
@@ -40,8 +44,10 @@ export interface Arrival {
  * Both daemons, the caller's narrow run of the file started and holding the
  * group's slot. `seeded`: an earlier run recorded the folder read, so both
  * closures list it at selection; otherwise each run observes it first (N1).
+ * `late`: the ignored name is written once the caller's run holds the slot,
+ * after both keys were computed (review 0.1.612 B1).
  */
-export async function arrival(seeded: boolean): Promise<Arrival> {
+export async function arrival(seeded: boolean, late = false): Promise<Arrival> {
   const runtime = realpathSync(mkdtempSync("/tmp/sq-arrival-"));
   const gate = join(runtime, "open");
   const f = fixture({
@@ -74,7 +80,8 @@ export async function arrival(seeded: boolean): Promise<Arrival> {
     withStore(f, (store) =>
       store.meta.set(observedMetaKey(""), JSON.stringify({ [LISTS.path]: ["test/fixtures/"] })),
     );
-  write(f.root, { "test/fixtures/extra.log": "x" });
+  const extra = () => write(f.root, { "test/fixtures/extra.log": "x" });
+  if (!late) extra();
   const live: RunningDaemon[] = [];
   onTestFinished(async () => {
     for (const daemon of live) await daemon.stop("stop-requested");
@@ -108,6 +115,7 @@ export async function arrival(seeded: boolean): Promise<Arrival> {
   expect(await real.worktree(f.root, bound)).toBeNull();
   expect(await real.ask(f.root, "browser", [LISTS.path], bound, { lead: true })).toBe("taken");
   await expect.poll(() => pending(f, live[0]), { timeout: 20_000 }).toBe("running");
+  if (late) extra();
   return { f, a, live, real, open: () => writeFileSync(gate, "") };
 }
 

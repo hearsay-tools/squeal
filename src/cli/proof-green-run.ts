@@ -95,6 +95,8 @@ export async function readGreen(
     await keptAlive(daemons.wait(tree, mine, by)).catch(String);
   const queued = new Set(own.files.map(testFileId));
   const refusals = new Map((own.refused ?? []).map((r) => [testFileId(r.ref), r.reason]));
+  // Review 0.1.611 B1 (row 023-70): a file that lists a folder holds only the commit worktree's result.
+  const ownOnly = new Map((own.ownOnly ?? []).map((r) => [testFileId(r.ref), r.reason]));
   const treeId = idOf(tree);
   await withStores(input.commonDir, async (main) => {
     const rows = liveRows(
@@ -110,6 +112,7 @@ export async function readGreen(
         sideOf(own, rows.get(id), results, {
           refused: refusals.get(id),
           queued: queued.has(id),
+          ownOnly: ownOnly.get(id),
           treeId,
         }),
       );
@@ -124,6 +127,8 @@ interface FileFacts {
   readonly refused: string | undefined;
   /** The ask queued it: it had no result at selection. */
   readonly queued: boolean;
+  /** Review 0.1.611 B1: why another worktree's result is not the commit's; `undefined`: any is. */
+  readonly ownOnly: string | undefined;
   /** The commit daemon's worktree, the writer of its own results. */
   readonly treeId: WorktreeId;
 }
@@ -138,9 +143,11 @@ function sideOf(
   if (facts.refused !== undefined) return unknown(facts.refused);
   if (row === undefined) return unknown("its commit daemon no longer lists it");
   if (row.key === null) return unknown("its commit daemon could not key it");
-  // Row 023-76: a folder read is in the key by the names the run listed, so any tree's result holds.
-  const records = results(row.key);
-  const mine = records.filter((r) => r.provenance.worktreeId === facts.treeId);
+  const all = results(row.key);
+  const mine = all.filter((r) => r.provenance.worktreeId === facts.treeId);
+  if (facts.ownOnly !== undefined && mine.length === 0 && all.length > 0)
+    return unknown(facts.ownOnly);
+  const records = facts.ownOnly === undefined ? all : mine;
   // Review 0.1.611 B1: a queued file ran here only when the commit worktree wrote its result;
   // another worktree's result at the shared key is read from the store.
   const ran = facts.queued && mine.length > 0;
