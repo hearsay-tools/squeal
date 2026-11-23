@@ -1,0 +1,56 @@
+fresh-1 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.284261 s, 2.9 MB/s
+fresh-1 ~: 819200 bytes (819 kB, 800 KiB) copied, 0.228399 s, 3.6 MB/s
+fresh-1 io-pressure: some avg10=2.08 avg60=4.67 avg300=2.45 total=9645484
+fresh-1 lazyfs: 
+fresh-1 load: 0.60 0.26 0.10 1/463 6994
+fork-immediate /tmp: 819200 bytes (819 kB, 800 KiB) copied, 18.6529 s, 43.9 kB/s
+fork-immediate ~: 819200 bytes (819 kB, 800 KiB) copied, 5.63795 s, 145 kB/s
+fork-immediate io-pressure: some avg10=65.66 avg60=27.75 avg300=8.31 total=29225270
+fork-immediate lazyfs:  6615 ascii-lazyfs /var/lib/ascii-lazy-bin/ascii-lazyfs --config /var/lib/ascii-lazy/config.json;
+fork-immediate load: 3.02 0.97 0.35 1/440 8629
+fork-after-tests /tmp: 819200 bytes (819 kB, 800 KiB) copied, 6.94615 s, 118 kB/s
+fork-after-tests ~: 819200 bytes (819 kB, 800 KiB) copied, 6.41123 s, 128 kB/s
+fork-after-tests io-pressure: some avg10=59.52 avg60=48.61 avg300=27.01 total=115605567
+fork-after-tests lazyfs:  6615 ascii-lazyfs /var/lib/ascii-lazy-bin/ascii-lazyfs --config /var/lib/ascii-lazy/config.json;
+fork-after-tests load: 3.41 2.10 0.89 1/437 10938
+resume-immediate /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.0705281 s, 11.6 MB/s
+resume-immediate ~: 819200 bytes (819 kB, 800 KiB) copied, 0.103822 s, 7.9 MB/s
+resume-immediate io-pressure: some avg10=0.00 avg60=0.01 avg300=0.83 total=16695718
+resume-immediate lazyfs: 
+resume-immediate load: 0.00 0.20 0.19 4/382 12426
+resume-immediate flushes: 5944 flushes,  ms, 0 ms each
+resume-immediate cpu:  AMD Ryzen 9 9950X 16-Core Processor
+fork-6min /tmp: 819200 bytes (819 kB, 800 KiB) copied, 5.16416 s, 159 kB/s
+fork-6min ~: 819200 bytes (819 kB, 800 KiB) copied, 5.02186 s, 163 kB/s
+fork-6min io-pressure: some avg10=36.49 avg60=27.08 avg300=24.42 total=126772375
+fork-6min lazyfs:  6615 ascii-lazyfs /var/lib/ascii-lazy-bin/ascii-lazyfs --config /var/lib/ascii-lazy/config.json;
+fork-6min load: 1.47 1.76 0.86 1/429 12836
+fork-6min flushes: 205925 flushes,  ms, 0 ms each
+fork-6min cpu:  AMD Ryzen 7 9700X 8-Core Processor
+fresh2 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 24.6026 s, 33.3 kB/s
+fresh2 ~: 819200 bytes (819 kB, 800 KiB) copied, 12.0729 s, 67.9 kB/s
+fresh2 io-pressure: some avg10=85.71 avg60=44.75 avg300=14.16 total=49066970
+fresh2 lazyfs: 
+fresh2 load: 1.65 0.68 0.26 1/385 6634
+fresh2 flushes: 1186 flushes, 45505 ms, 38.3 ms each
+fresh2 cpu:  AMD Ryzen 7 9700X 8-Core Processor
+fresh2-b /tmp: 819200 bytes (819 kB, 800 KiB) copied, 13.8754 s, 59.0 kB/s
+fresh2-b ~: 819200 bytes (819 kB, 800 KiB) copied, 12.9669 s, 63.2 kB/s
+fresh2-b io-pressure: some avg10=50.68 avg60=41.98 avg300=16.91 total=63809390
+fresh2-b lazyfs: 
+fresh2-b load: 2.06 0.89 0.34 1/389 7118
+fresh2-b flushes: 2082 flushes, 71819 ms, 34.4 ms each
+fresh2-b cpu:  AMD Ryzen 7 9700X 8-Core Processor
+fork2-immediate /tmp: 819200 bytes (819 kB, 800 KiB) copied, 18.5851 s, 44.1 kB/s
+fork2-immediate ~: 819200 bytes (819 kB, 800 KiB) copied, 3.96821 s, 206 kB/s
+fork2-immediate io-pressure: some avg10=59.36 avg60=26.47 avg300=8.81 total=35508114
+fork2-immediate lazyfs:  6488 ascii-lazyfs /var/lib/ascii-lazy-bin/ascii-lazyfs --config /var/lib/ascii-lazy/config.json;
+fork2-immediate load: 6.00 1.83 0.66 1/445 8661
+fork2-immediate flushes: 1301 flushes, 29596 ms, 22.7 ms each
+fork2-immediate cpu:  AMD Ryzen 7 9700X 8-Core Processor
+fork1-late /tmp: 819200 bytes (819 kB, 800 KiB) copied, 4.89215 s, 167 kB/s
+fork1-late ~: 819200 bytes (819 kB, 800 KiB) copied, 4.04744 s, 202 kB/s
+fork1-late io-pressure: some avg10=46.49 avg60=13.80 avg300=9.14 total=285306253
+fork1-late load: 0.34 0.40 0.74 1/433 21071
+fork1-late flushes: 28689 flushes, 481149 ms, 16.7 ms each
+fork1-late cpu:  AMD Ryzen 7 9700X 8-Core Processor

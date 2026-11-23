@@ -1,0 +1,18 @@
+# Throwaway (026 boat-sandboxes). Timings read off the terminal, 2026-11-23 UTC.
+create (boat new --no-env, default): to ready 1 s; first ssh 0.82 s; CPU Ryzen 9 9950X; Node v24.22.1 preinstalled
+setup-node.sh 26.13.0: 4 s
+git bundle of HEAD + 265 squeal--v* tags: 169,485,925 B, made in 16 s here; boat scp to the sandbox 5.0 s
+git clone from the bundle + tag fetch: 12.1 s; pnpm install --frozen-lockfile (CI=1, empty store): 10.1 s; node_modules 651M, .git 169M
+snapshots of the base: base 413,418,804 B (28,373 files), then 607,022,429 B (71,453 files) after clone and install
+stop: returns in 0.1 s; stopped (snapshot done) about 4 s after
+fork 1 (boat fork --no-env --wait): 6.6 s; to first ssh 7.8 s; hydrated 21 s after create; CPU Ryzen 7 9700X; git status clean
+fork 2: 6.9 s; to first ssh 8.7 s; hydrated 28 s after create; CPU Ryzen 7 9700X
+resume of the base 4 min after its stop: 0.64 s; to first ssh 1.6 s; same machine (9950X), same ssh endpoint
+fresh 2 (boat new): CPU Ryzen 7 9700X; flushes 38.3 then 34.4 ms each
+command round trip, 3 tries each: boat exec 83 to 141 ms; new ssh process over a kept ControlMaster 145 to 173 ms; boat ssh (new connection) 741 to 1,945 ms; first ssh with a new master 881 ms; ping 35.9 ms
+10-file delta over a kept connection (delta.sh), resumed base: tar.gz 15,389 B: 118 to 156 ms; diff 4,921 B through git apply: 118 ms
+boat push of a git archive copy (18,162 files, 334,155,690 B): 14.4 s; again with one file changed: 13.0 s, 334,155,695 B sent; a directory of one file: 0.88 s
+mem.sh, resumed base, test/scheduler (346 files) at 4 workers: in use 889 MiB before, 2,333 MiB peak; 346 passed in 496 s
+usage: base 1,407 s ($0.0141), fork 1 1,283 s ($0.0128), fork 2 75 s ($0.0008), fresh 2 about 90 s; plan hours 487.95 -> 487.15
+starts made: 5 (new, fork, resume, new, fork); all four sandboxes deleted; boat list --all and boat snapshots --all show none of them
+this host (load average 4 to 14 during the session), squeal ps: Squeal daemons 295 to 331 MiB, their Vitest hosts 278 to 561 MiB; Squawk's busiest daemon 1.4 GiB with a 2.4 GiB Vitest host and two node:test hosts of 45 to 62 MiB

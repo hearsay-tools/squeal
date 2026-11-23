@@ -1,0 +1,40 @@
+base-fresh-1 capacity: exit 0 wall 1948 ms;  Test Files  10 passed (10); Duration  1.61s (tests 77%, transform 13%, import 9%, worker 1%);
+base-fresh-1 load: 1.21 0.45 0.17 1/495 7966
+base-fresh-2 capacity: exit 0 wall 1999 ms;  Test Files  10 passed (10); Duration  1.65s (tests 79%, transform 12%, import 9%, worker 1%);
+base-fresh-2 load: 1.21 0.45 0.17 1/508 8150
+base-fresh git: exit 0 wall 6523 ms;  Test Files  3 passed (3); Duration  6.19s (tests 81%, transform 16%, import 3%);
+base-fresh load: 1.89 0.61 0.22 2/509 8771
+fork-immediate-1 capacity: exit 1 wall 57339 ms;  Test Files 5 failed | 5 passed (10); Tests 7 failed | 65 passed (72); Duration 56.87s (tests 100%);
+ FAIL  test/capacity/ceiling.test.ts > the background ceiling (spec 021 D18) > binds the marks' cores where the host's busy cores are not read (row 011-404)
+Error: Test timed out in 5000ms.
+ FAIL  test/capacity/fresh-reading.test.ts > a lease that ends or shrinks beside another (row 011-417, cases A to C) > after a tier at 8.2 cores ends, the next tier asks at once and gets 8 permits
+Error: Test timed out in 5000ms.
+ FAIL  test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > a host busy at the slots refuses a backlog acquire beside another daemon's and leaves a checkpoint's as today
+Error: Test timed out in 5000ms.
+ FAIL  test/capacity/pool-failure.test.ts > a pool whose mark cannot be written > the tier runs ungranted with one note, holds nothing, and the next tier takes its share
+Error: Test timed out in 5000ms.
+fork-immediate-1 load: 3.37 1.44 0.55 1/441 9327
+fork-immediate-2 capacity: exit 1 wall 71910 ms;  Test Files 5 failed | 5 passed (10); Tests 15 failed | 57 passed (72); Duration 71.59s (tests 100%);
+ FAIL  test/capacity/ceiling.test.ts > the background ceiling (spec 021 D18) > leaves a checkpoint's tier gated as today: the marks' cores and half the slots by grants
+Error: Test timed out in 5000ms.
+ FAIL  test/capacity/ceiling.test.ts > the background ceiling (spec 021 D18) > binds the marks' cores where the host's busy cores are not read (row 011-404)
+Error: Test timed out in 5000ms.
+ FAIL  test/capacity/ceiling.test.ts > the refusal's log line (spec 021 D18, row 011-404) > is not written for a grant, a checkpoint's refusal, the floor or an unread host
+Error: Test timed out in 5000ms.
+ FAIL  test/capacity/fresh-reading.test.ts > a lease that ends or shrinks beside another (row 011-417, cases A to C) > after a tier at 9.5 cores ends, the next tier asks at once and gets 8 permits
+ FAIL  test/capacity/fresh-reading.test.ts > a lease that ends or shrinks beside another (row 011-417, cases A to C) > after a tier at 8.2 cores ends, the next tier asks at once and gets 8 permits
+fork-immediate-2 load: 4.06 2.06 0.84 1/442 10237
+fork-immediate git: exit 0 wall 8595 ms;  Test Files 3 passed (3); Tests 27 passed (27); Duration 8.20s (tests 72%, transform 24%, import 4%);
+fork-immediate load: 4.03 2.13 0.87 3/441 10859
+resumed-base-1 unit: exit 0 wall 8666 ms;  Test Files 10 passed (10); Tests 26 passed (26); Duration 7.95s (transform 53%, tests 32%, import 14%);
+resumed-base-1 load: 1.25 0.44 0.26 2/383 15031
+resumed-base-2 unit: exit 0 wall 5582 ms;  Test Files 10 passed (10); Tests 26 passed (26); Duration 5.10s (transform 53%, tests 30%, import 17%);
+resumed-base-2 load: 1.31 0.46 0.27 1/386 15762
+fork1-12min-1 unit: exit 0 wall 7610 ms;  Test Files 10 passed (10); Tests 26 passed (26); Duration 7.22s (tests 67%, transform 23%, import 10%);
+fork1-12min-1 load: 1.17 2.06 1.32 1/430 16235
+fork1-12min-2 unit: exit 0 wall 6876 ms;  Test Files 10 passed (10); Tests 26 passed (26); Duration 6.56s (tests 74%, transform 18%, import 8%);
+fork1-12min-2 load: 1.45 2.09 1.34 1/430 16667
+fork2-immediate capacity: exit 0 wall 26152 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 25.78s (tests 99%, transform 1%);
+fork2-immediate load: 4.98 2.02 0.77 1/443 9256
+fork1-late capacity: exit 0 wall 28093 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 27.62s (tests 99%);
+fork1-late load: 1.63 0.70 0.83 1/429 21259

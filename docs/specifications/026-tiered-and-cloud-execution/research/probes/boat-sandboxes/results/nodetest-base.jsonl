@@ -1,0 +1,6 @@
+{"step":"start","ms":213.8}
+{"step":"testFiles","files":[{"project":"spawn","path":"test/cli.test.mjs"}]}
+{"step":"node-test-1","ms":199.3,"durationMs":126,"results":["pass"]}
+{"step":"node-test-1","ms":194,"durationMs":122,"results":["pass"]}
+{"step":"node-test-1","ms":188.9,"durationMs":116,"results":["pass"]}
+{"step":"node-test-1","ms":207.1,"durationMs":134,"results":["pass"]}
