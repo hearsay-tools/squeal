@@ -7,6 +7,7 @@ import { cancelsBacklog } from "./backlog.js";
 import { CLAIM_RECHECK_MS } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
+import { leadCut } from "./lead-cut.js";
 import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import type { Tier, TierFile } from "./tiers.js";
@@ -161,12 +162,17 @@ export function decideYields(
     const decision = decide(reading, ledger, tier, trigger, beat, marks, cuts, bookkeeping);
     let yielded: Yielded | null = null;
     if (decision === "yield") {
+      // Row 023-60: read before this cut marks the tier's files.
+      const lead = leadsInside(reading, ledger, tier, marks);
       const left = remainder(reading, tier);
       const cut = unfinished(tier);
       for (const { file, key } of cut)
         marks.set(file.id, { key, applied: file.resultsApplied, past: left < 0 });
       // Row 011-209: what the yield ran sooner, as `decide` read it, with its own cut marked.
-      const to = waitedFor(reading, ledger, tier, trigger, beat, cuts, bookkeeping);
+      // Row 023-60: a cut for a leading batch inside the tier ran a promoted file sooner.
+      const to = lead
+        ? "promoted"
+        : waitedFor(reading, ledger, tier, trigger, beat, cuts, bookkeeping);
       if (to === "edit" || to === "promoted" || to === "runner") {
         yielded = { to, remainderMs: left, cut };
         changed = true;
@@ -217,6 +223,8 @@ function decide(
   if (tier.kind === "backlog" && cancel !== null) {
     if (cancelsBacklog(context, ledger, revision, tier, selected(beat))) return "backlog";
   }
+  // Row 023-60 (W3): a leading batch's file inside a wider tier runs next, alone.
+  if (leadsInside(context, ledger, tier, marks)) return "yield";
   const waiting = waitedFor(context, ledger, tier, revision, beat, cuts, bookkeeping);
   if (waiting === null) return null;
   if (cancel === null || tier.slot === true)
@@ -227,6 +235,20 @@ function decide(
     return { kind: "cut" };
   if (waiting === "named") return { kind: "named" };
   return byRemainder(context, tier);
+}
+
+/** Row 023-60: `leadCut` with the marks that hold before this check and rule B's margin. */
+function leadsInside(
+  context: SchedulerContext,
+  ledger: Ledger,
+  tier: Tier,
+  marks: ReadonlyMap<string, Cut>,
+): boolean {
+  const marked = ({ file, key }: TierFile) => {
+    const cut = marks.get(file.id);
+    return cut !== undefined && cut.key === key && holds(file, cut);
+  };
+  return leadCut(context, ledger, tier, marked, YIELD_REMAINDER_MS);
 }
 
 /** `cut` marks `file` still: its key has not moved, and no result landed at it after the cut. */
