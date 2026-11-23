@@ -96,7 +96,8 @@ describe("a later --run asks what an earlier call left (row 023-58, W1)", SLOW, 
     const joined = await run(f, { commit: a, waitMs: 2000 }, options);
     expect(joined.out).toContain(`${A.path}: pass -> no result`);
     expect(joined.out).toContain(
-      `now: 2 test files with a result at ${a.slice(0, 9)} have none in the working tree, and none is queued or running there; \`squeal status --at ${a} --run\` queues them\n`,
+      // Review 0.1.607 B2: no kept ask tells the selection, so no count is promised.
+      `now: 2 test files with a result at ${a.slice(0, 9)} have none in the working tree, and none is queued or running there; \`squeal status --at ${a} --run\` queues those of them it selects\n`,
     );
     expect(base.asks).toEqual([]);
   });

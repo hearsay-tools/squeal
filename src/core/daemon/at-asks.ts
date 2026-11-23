@@ -87,6 +87,8 @@ interface Kept {
   readonly change: string;
   /** Row 023-61 (W5): the paths the call named. */
   readonly named: readonly RelativePath[];
+  /** Review 0.1.607 B2: the ask's `--all-missing`. */
+  readonly allMissing: boolean;
   phase: CommitAskState["phase"];
   text?: string;
   files: TestFileRef[];
@@ -116,6 +118,7 @@ export class AtAsks {
       owner: request.owner,
       change: changeOf(request.changed),
       named: [...request.named],
+      allMissing: request.allMissing,
       phase: "waiting",
       files: [],
       readers: {},
@@ -199,6 +202,7 @@ function stateOf(ask: Kept, setup: CommitSetup): CommitAskState {
     owner: ask.owner,
     change: ask.change,
     named: [...ask.named],
+    allMissing: ask.allMissing,
     phase,
     ...(ask.text === undefined ? {} : { text: ask.text }),
     files: [...ask.files],

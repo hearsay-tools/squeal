@@ -85,9 +85,16 @@ export interface QueuedRun {
   /**
    * Row 023-58 (W1): with `--wait` alone, per side, the call's files with a
    * result on the other side and none here, none queued or running here,
-   * and the call that queues them; absent when none.
+   * the call that asks them, and (review 0.1.607 B2) how many of them that
+   * call queues, from the daemon's kept selection (`null`: not known);
+   * absent when none.
    */
-  readonly idle?: { readonly commit: number; readonly now: number; readonly command: string };
+  readonly idle?: {
+    readonly commit: number;
+    readonly now: number;
+    readonly command: string;
+    readonly queues: { readonly commit: number | null; readonly now: number | null };
+  };
   /**
    * Row 023-59 (W2): with `--wait` alone, per side, the paths of the call's
    * files that were queued or running as it began and have a result now;
