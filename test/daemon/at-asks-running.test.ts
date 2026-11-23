@@ -178,6 +178,27 @@ describe("a named file inside a running batch tier is answered when it ends (row
     expect(tier.cancelled).toBe(false);
   });
 
+  it("does not cut for a leading group whose own batch time is within 30 s of the tier's (review 0.1.607 P1)", async () => {
+    // 30 of the 40 files named: 30 × 10 s over 4 workers is 75 s against the tier's 100 s.
+    const of = files(10_000, () => 500);
+    const side = await seeded(of);
+    const gate = new Gate();
+    side.runner.holdOf = (run) => (run.files.length > 1 ? gate.wait() : undefined);
+    const asks = asksOf(side, of);
+    const tier = await wideTier(side, asks);
+    await ask(
+      asks,
+      "group",
+      Array.from({ length: 30 }, (_, i) => path(i + 10)),
+    );
+    await side.rest();
+    expect(tier.cancelled).toBe(false);
+    expect(side.runner.runs).toHaveLength(1);
+    gate.stop();
+    await expect.poll(() => of.every((f) => side.current(f.path)), { timeout: TIMEOUT }).toBe(true);
+    expect(tier.cancelled).toBe(false);
+  });
+
   it("cuts once: a second leading call inside the cut batch's next tier waits for it", async () => {
     const of = files(10_000, () => 500);
     const side = await seeded(of);
