@@ -51,6 +51,9 @@ interface Sides {
   open(n: number): void;
 }
 
+/** Every participant's pool: the capacity `catchUpSide` gives both sides' schedulers. */
+const POOL = { hostSlots: 8, cpus: 64, host: null } as const;
+
 async function sides(load = 0): Promise<Sides> {
   const repo = catchUpRepo(FILES);
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-023-71-slot-"));
@@ -58,7 +61,7 @@ async function sides(load = 0): Promise<Sides> {
   const policy = groupPolicy({ checks: [BROWSER] });
   const options = {
     files: FILES,
-    hostSlots: 8,
+    hostSlots: POOL.hostSlots,
     tierSize: 1,
     lane: runnerLane,
     policy,
@@ -136,13 +139,16 @@ describe("a named file waits for a shared group slot (row 023-71)", { timeout: 6
     "starts on %s with every pool permit held by another daemon's background tier",
     async (_, load) => {
       const { repo, commit } = await sides(load);
+      // The same CPU and host inputs as both sides' pools (`catchUpSide`): the
+      // real CPU count would cap a background tier at 75% of it (3 of 8 on a
+      // 4-CPU host), and the pool would not be full (review 0.1.611 B2).
       const other = createPermitPool({
         dir: repo.poolDir,
         owner: { pid: process.pid, worktreeId: "background-daemon" },
-        hostSlots: 8,
+        ...POOL,
       });
       onTestFinished(() => other.close());
-      expect(other.acquire(200, "fast", 1, "backlog")?.grant).toBe(8);
+      expect(other.acquire(200, "fast", 1, "backlog")?.grant).toBe(POOL.hostSlots);
       await commit.scheduler.requestGroupPaths?.("browser", [NAMED], { at: true, lead: true });
       await expect.poll(() => commit.current(NAMED), { timeout: 20_000 }).toBe(true);
       expect(browserRuns(commit)).toEqual([[NAMED]]);
