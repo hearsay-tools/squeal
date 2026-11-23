@@ -8,7 +8,8 @@ import type { DeclaredPattern, StaleFallback } from "./types.js";
  * this versioned shape. Shares are fractions of recorded seconds. Version
  * 2 (row 015-128) adds `gateways`, `moreGateways`, `stale`,
  * `window.rerunSeconds`, `FileEntry.editShare`, `NamedFile.editSeconds`
- * and `NamedFile.editShare`.
+ * and `NamedFile.editShare`. Row 015-129 adds `offset`, `totalGateways`,
+ * `totalFiles`, `totalByEdits` and `totalTestFiles`.
  */
 
 export const REACH_REPORT_VERSION = 2;
@@ -194,6 +195,13 @@ export interface ReachReport {
   readonly notRecorded: number;
   /** Paths with no bytes in this worktree, left out of `files` and `byEdits` (015-122). */
   readonly absent: number;
+  /** Row 015-129: the entries `--offset` skipped in each ranked list and each named route's test files. */
+  readonly offset: number;
+  /** Row 015-129: each ranked list's length before `--offset` and `--limit`. */
+  readonly totalGateways: number;
+  readonly totalFiles: number;
+  readonly totalByEdits: number;
+  readonly totalTestFiles: number;
   /** Row 015-128: the gateways the window's edits went through, by the seconds they re-ran; empty with no edits. */
   readonly gateways: readonly GatewayEntry[];
   readonly moreGateways: number;

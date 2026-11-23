@@ -341,6 +341,10 @@ describe("P10: --limit bounds the named view", () => {
     expect(named?.routes[0]).toMatchObject({ tests: [{ path: "test/a.test.ts" }], moreTests: 0 });
     const text = formatImpact(report(snap, { paths: ["src/x.ts"], limit: 1 }));
     expect(text).toContain("  … and 4 more routes; --limit lists more.\n");
+    // Row 015-129: --offset pages a route's test files, never the routes.
+    const paged = report(snap, { paths: ["src/x.ts"], limit: 1, offset: 1 });
+    expect(paged.named?.[0]?.moreRoutes).toBe(4);
+    expect(formatImpact(paged)).toContain("  … and 4 more routes; --limit lists more.\n");
   });
 
   it("bounds the test files of one route", () => {
@@ -351,7 +355,9 @@ describe("P10: --limit bounds the named view", () => {
       tests: [{ path: "test/a.test.ts" }, { path: "test/b.test.ts" }],
       moreTests: 1,
     });
-    expect(formatImpact(one)).toContain("    … and 1 more test file; --limit lists more.\n");
+    expect(formatImpact(one)).toContain(
+      "    … and 1 more test file; --offset 2 lists the next page, or --limit lists more.\n",
+    );
   });
 
   it("gives every route and test file without a limit", () => {

@@ -189,7 +189,7 @@ Usage:
                                 block; --json: the squeal-code-gate/1 report; exit 0
                                 pass, 1 violations, 3 incomplete, 2 on a usage or
                                 setup error
-  squeal impact [<path>...] [--limit <n>] [--json]
+  squeal impact [<path>...] [--limit <n>] [--offset <n>] [--json]
                                 What edits re-run, from the stores, with no daemon
                                 and no test run: with edits recorded, first the
                                 gateways (setup files, test helpers, barrels, inputs,
@@ -200,6 +200,7 @@ Usage:
                                 share of the suite, coverage split, path kinds,
                                 gateway and one suggestion or note; paths give those
                                 files in full; --limit lists more than 10 per part;
+                                --offset skips that many entries (default 0);
                                 a test file with no closure at its current inputs
                                 reads its newest stored one, named as stale; without
                                 history it proposes squeal warmup

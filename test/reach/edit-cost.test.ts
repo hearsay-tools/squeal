@@ -69,7 +69,7 @@ describe("the list by the window's edits", () => {
     expect(formatImpact(limited)).toContain(
       "  1. src/engine.ts: 3 edits re-ran 12 s, 60% of the window's re-run seconds, 4 s each; avoidable 0 s; rank 2 below\n" +
         "     paths: import 100%\n" +
-        "  … and 1 more; --limit lists more.\n",
+        "  … and 1 more; --offset 1 lists the next page, or --limit lists more.\n",
     );
     expect(report(snapshot(tests, { edits: more })).byEdits.map((e) => e.files[0])).toEqual([
       engine,

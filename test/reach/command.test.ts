@@ -24,10 +24,22 @@ afterEach(closeStores);
 describe("squeal impact", () => {
   it("exits 2 on a usage error", async () => {
     const { repo } = seeded(ON);
-    for (const args of [["--nope"], ["--limit"], ["--limit", "0"], ["--limit=x"]]) {
+    const bad = ["", " ", "-1", "1.5", "x", "1e2", "9007199254740993"];
+    for (const args of [
+      ["--nope"],
+      ["--limit"],
+      ["--limit", "0"],
+      ["--limit=x"],
+      ...bad.map((value) => ["--limit", value]),
+      ["--offset"],
+      ...bad.map((value) => ["--offset", value]),
+      ...bad.map((value) => [`--offset=${value}`]),
+    ]) {
       const r = await run(repo.main, args);
       expect(r.code, args.join(" ")).toBe(2);
-      expect(r.stderr).toContain("Usage: squeal impact [<path>...] [--limit <n>] [--json]");
+      expect(r.stderr).toContain(
+        "Usage: squeal impact [<path>...] [--limit <n>] [--offset <n>] [--json]",
+      );
     }
   });
 
@@ -109,6 +121,26 @@ describe("squeal impact", () => {
         "  import: 2 test files, 3 s; loaded only 67%, called 33%\n" +
         "    test/b.test.ts  2 s  loaded only\n" +
         "    test/a.test.ts  1 s  called\n",
+    );
+  });
+
+  it("takes --offset <n> and --offset=<n>, and names a bad one (row 015-129)", async () => {
+    const { repo } = seeded(ON);
+    records(repo);
+    const all = JSON.parse((await run(repo.main, ["--json"])).stdout) as ReachReport;
+    const rest = JSON.parse((await run(repo.main, ["--json", "--offset", "1"])).stdout);
+    // Without --limit, --json gives every entry from the offset on.
+    expect(rest).toMatchObject({ offset: 1, moreFiles: 0, totalFiles: all.files.length });
+    expect(rest.files).toEqual(all.files.slice(1));
+    const page = JSON.parse((await run(repo.main, ["--json", "--offset=1", "--limit=1"])).stdout);
+    expect(page).toMatchObject({ offset: 1, files: all.files.slice(1, 2) });
+    const text = await run(repo.main, ["--offset", "1", "--limit", "1"]);
+    expect(text.code).toBe(0);
+    expect(text.stdout).not.toContain("  1. ");
+    const bad = await run(repo.main, ["--offset", "-1"]);
+    expect(bad.stderr).toBe(
+      'squeal impact: --offset takes a whole number of entries, 0 or more, not "-1"\n\n' +
+        "Usage: squeal impact [<path>...] [--limit <n>] [--offset <n>] [--json]\n",
     );
   });
 
