@@ -65,8 +65,10 @@ type Hook = "session-start" | "pre-invocation" | "pre-tool-use" | "stop";
 
 interface Case {
   readonly hook: Hook;
-  /** Row label; one ending "(silent)" must print nothing. */
+  /** Row label. */
   readonly name: string;
+  /** A silent case must print nothing on stdout. */
+  readonly silent?: boolean;
   readonly fixture: string;
   readonly overrides?: object;
   readonly before?: (r: SquealRepo, run: number) => void;
@@ -121,6 +123,7 @@ const CASES: readonly Case[] = [
   {
     hook: "pre-invocation",
     name: "pre-invocation (after tools, silent)",
+    silent: true,
     fixture: "pre-invocation-after-tools",
   },
   {
@@ -133,13 +136,14 @@ const CASES: readonly Case[] = [
   {
     hook: "pre-tool-use",
     name: "pre-tool-use (run_command, silent)",
+    silent: true,
     fixture: "pre-tool-use-run-command",
     // Its costliest silent path: putting a consumer left idle in a turn.
     before: idle,
   },
   { hook: "stop", name: "stop", fixture: "stop", before: flip, speaks: '{"decision":"continue"' },
   // Nothing to deliver: Stop ends the turn, recording the pending files.
-  { hook: "stop", name: "stop (silent)", fixture: "stop" },
+  { hook: "stop", name: "stop (silent)", fixture: "stop", silent: true },
 ];
 
 interface Row {
@@ -163,7 +167,7 @@ async function round(c: Case, r: SquealRepo, env: Record<string, string>, runs: 
     );
     expect(out.code, `${c.name}: ${out.stderr}`).toBe(0);
     expect(out.stderr, c.name).toBe("");
-    if (c.name.endsWith("(silent)")) expect(out.stdout, c.name).toBe("");
+    if (c.silent) expect(out.stdout, c.name).toBe("");
     if (c.speaks !== undefined)
       expect(out.stdout.startsWith(c.speaks), `${c.name}, run ${run}: ${out.stdout}`).toBe(true);
     samples.push(out.ms);
