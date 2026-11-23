@@ -85,7 +85,8 @@ describe("a narrowed call names its files (row 023-59, W2)", () => {
     );
     expect(text).toContain("`--full` lists every file");
     // A call without paths keeps counting the unchanged files.
-    const wide = formatAt({ ...report(refs, () => pass), scope: undefined }, NOW);
+    const { scope: _, ...wideReport } = report(refs, () => pass);
+    const wide = formatAt(wideReport, NOW);
     expect(wide).not.toContain("l00.test.ts");
   });
 });

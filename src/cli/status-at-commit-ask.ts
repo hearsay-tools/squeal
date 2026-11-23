@@ -38,6 +38,8 @@ export interface CommitAsked extends SideQueue {
   readonly change: string | null;
   /** Review 0.1.599 B2: `--wait` alone, the readers of its named paths the commit daemon told. */
   readonly readers?: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
+  /** Row 023-59 (W2): `--wait` alone, the call's files the daemon listed queued or running as it began. */
+  readonly began?: readonly TestFileRef[];
 }
 
 /** Each file's group, as the commit's own policy places it (R3's setup line names it). */
@@ -121,8 +123,9 @@ export async function joinCommit(
   const readers = await readersAt(daemons, tree, read, join);
   const keep = keeper(join.paths, read, readers);
   const asks = read.asks.map((ask) => ({ ...ask, files: ask.files.filter(keep) }));
-  const joined = await waitFor(daemons, tree, { ...read, asks }, bound, join.listed.filter(keep));
-  return { ...joined, change: join.change, readers };
+  const began = join.listed.filter(keep);
+  const joined = await waitFor(daemons, tree, { ...read, asks }, bound, began);
+  return { ...joined, change: join.change, readers, began };
 }
 
 /**
