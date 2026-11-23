@@ -1,0 +1,202 @@
+{
+  "at": "2026-11-23T01:03:38.947Z",
+  "node": "v26.13.0",
+  "load": [9.68, 4.98, 4.75],
+  "cpus": 16,
+  "versions": [
+    {
+      "ref": "squeal--v0.1.600",
+      "commit": "e9c4a490cf2ebd2cf5565dfb207fb8c548905648",
+      "version": "0.1.600",
+      "cases": [
+        {
+          "name": "issue shape, green unread",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "issue shape, hypothetical green pass",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "issue shape with --red-error",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "assertions alone",
+          "kinds": ["assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": true,
+          "verdict": "proven",
+          "reason": null,
+          "exit": 0
+        },
+        {
+          "name": "file error alone",
+          "kinds": ["unstaged"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "file error last",
+          "kinds": ["assertion", "assertion", "assertion", "unstaged"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "file error gains location only",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "assertions lose locations only",
+          "kinds": ["assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": true,
+          "verdict": "proven",
+          "reason": null,
+          "exit": 0
+        },
+        {
+          "name": "file error records after-tests phase",
+          "kinds": ["hook", "assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": false,
+          "verdict": "red for another reason",
+          "reason": "a hook or the file's teardown failed",
+          "exit": 3
+        },
+        {
+          "name": "after-tests phase and --red-error",
+          "kinds": ["thrown", "assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": true,
+          "verdict": "proven",
+          "reason": "red on a thrown error, not an assertion: Error: ACP input/output transport closed",
+          "exit": 0
+        }
+      ]
+    },
+    {
+      "ref": "HEAD",
+      "commit": "5b30ee04dd8d9e422118b2785b827cc308f906e4",
+      "version": "0.1.605",
+      "cases": [
+        {
+          "name": "issue shape, green unread",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "issue shape, hypothetical green pass",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "issue shape with --red-error",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "assertions alone",
+          "kinds": ["assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": true,
+          "verdict": "proven",
+          "reason": null,
+          "exit": 0
+        },
+        {
+          "name": "file error alone",
+          "kinds": ["unstaged"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "file error last",
+          "kinds": ["assertion", "assertion", "assertion", "unstaged"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "file error gains location only",
+          "kinds": ["unstaged", "assertion", "assertion", "assertion"],
+          "lacksStage": true,
+          "redCounts": false,
+          "verdict": "not comparable",
+          "reason": "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it",
+          "exit": 3
+        },
+        {
+          "name": "assertions lose locations only",
+          "kinds": ["assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": true,
+          "verdict": "proven",
+          "reason": null,
+          "exit": 0
+        },
+        {
+          "name": "file error records after-tests phase",
+          "kinds": ["hook", "assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": false,
+          "verdict": "red for another reason",
+          "reason": "a hook or the file's teardown failed",
+          "exit": 3
+        },
+        {
+          "name": "after-tests phase and --red-error",
+          "kinds": ["thrown", "assertion", "assertion", "assertion"],
+          "lacksStage": false,
+          "redCounts": true,
+          "verdict": "proven",
+          "reason": "red on a thrown error, not an assertion: Error: ACP input/output transport closed",
+          "exit": 0
+        }
+      ]
+    }
+  ]
+}
