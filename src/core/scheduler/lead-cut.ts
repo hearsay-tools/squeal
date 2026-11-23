@@ -26,7 +26,11 @@ export type CutMarks = (entry: TierFile) => boolean;
  * one cut per leading batch, since the cut marks its files too), files of
  * the least-ranked leading batch run in it beside unfinished files of no
  * such batch, and the tier's work left (`workLeft`) exceeds those files'
- * own time by more than `margin`, `YIELD_REMAINDER_MS`.
+ * own time by more than `margin`, `YIELD_REMAINDER_MS`. Review 0.1.607 P1:
+ * their own time is their batch's wall time at the tier's width, the
+ * longer of their longest file and their sum over the width, so a cut
+ * saves more than the margin; by their longest file alone, a large leading
+ * group could be cut for a saving under it, or for none.
  */
 export function leadCut(
   context: SchedulerContext,
@@ -49,7 +53,8 @@ export function leadCut(
   if (lead === 0) return false;
   const own = left.filter((entry) => rankOf(entry) === lead);
   if (own.length === left.length) return false;
-  const ownMs = Math.max(0, ...own.map(({ file }) => file.durationMs ?? 0));
+  const ms = own.map(({ file }) => file.durationMs ?? 0);
+  const ownMs = Math.max(0, ...ms, ms.reduce((a, m) => a + m, 0) / widthOf(tier));
   return workLeft(context, tier) - ownMs > margin;
 }
 
@@ -63,7 +68,7 @@ export function leadCut(
  */
 export function workLeft(context: SchedulerContext, tier: Tier): number {
   const ms = ({ file }: TierFile) => file.durationMs ?? 0;
-  const width = Math.max(1, Math.min(tier.files.length, tier.lease?.grant ?? tier.files.length));
+  const width = widthOf(tier);
   const sum = (files: readonly TierFile[]) => files.reduce((total, f) => total + ms(f), 0);
   const left = unfinished(tier);
   const longest = Math.max(0, ...left.map(ms));
@@ -71,6 +76,10 @@ export function workLeft(context: SchedulerContext, tier: Tier): number {
   const whole = Math.max(longest, sum(tier.files) / width) - ran;
   return Math.max(longest - ran, Math.min(whole, sum(left) / width));
 }
+
+/** The files of `tier` that run at once: its grant, else one per file. */
+const widthOf = (tier: Tier) =>
+  Math.max(1, Math.min(tier.files.length, tier.lease?.grant ?? tier.files.length));
 
 /** How long `tier` has run, its start moved by the calendar steps since (row 011-377). */
 function elapsed(context: SchedulerContext, tier: Tier): number {
