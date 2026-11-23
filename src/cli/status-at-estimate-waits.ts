@@ -2,11 +2,13 @@ import { existsSync } from "node:fs";
 import { readPolicy } from "../core/daemon/policy.js";
 import { groupView } from "../core/scheduler/slow.js";
 import { readGroupActivity } from "../core/slow/state.js";
+import type { ResolvedGroup } from "../core/types/check-groups.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { SlowTierActivity } from "../core/types/status.js";
 import type { Store } from "../core/types/store.js";
 import type { SideEstimate } from "./status-at-estimate.js";
+import { commonDirOf, holderText, slotHolder } from "./status-at-estimate-holder.js";
 import { readMainStore } from "./status-at-estimate-named.js";
 import type { SideState } from "./status-at-report.js";
 
@@ -27,6 +29,8 @@ export interface SideWaiting {
   readonly reason: string;
   /** The wait is for capacity: the group's slot or the shared worker pool. */
   readonly capacity: boolean;
+  /** Row 023-77: `reason` names the slot's holder (`holderText`). */
+  readonly holder?: true;
 }
 
 /** A side whose named files are all queued, none started (`SideEstimate.waiting`). */
@@ -34,6 +38,8 @@ export interface NotStarted {
   /** Why they wait, after "waiting for "; `null`: the daemon publishes no wait. */
   readonly reason: string | null;
   readonly capacity: boolean;
+  /** Row 023-77: `reason` names the slot's holder. */
+  readonly holder?: true;
 }
 
 /** Row 023-71 (Y1): why files not started have no time: the wait their daemon publishes, if any. */
@@ -42,6 +48,9 @@ export function waitingText(waiting: NotStarted, files: number): string {
   if (reason === null)
     return `not started yet, and the daemon does not say what holds ${files === 1 ? "it" : "them"}`;
   if (!capacity) return `not started, waiting for ${reason}`;
+  // Row 023-77: the slot's holder is named; the files start in turn once its run ends.
+  if (waiting.holder === true)
+    return `waiting for ${reason}; ${files === 1 ? "it starts" : "the first starts"} when that run ends`;
   return reason === POOL_WAIT ? `waiting for ${reason}` : `waiting for capacity (${reason})`;
 }
 
@@ -61,7 +70,11 @@ export function withNotStarted(
 ): SideEstimate | null {
   if (own === null || files.length === 0 || !files.every((ref) => notStarted(state(ref))))
     return own;
-  const waiting = { reason: wait?.reason ?? null, capacity: wait?.capacity ?? false };
+  const waiting = {
+    reason: wait?.reason ?? null,
+    capacity: wait?.capacity ?? false,
+    ...(wait?.holder === true ? { holder: true as const } : {}),
+  };
   return { ...own, seconds: null, waiting };
 }
 
@@ -75,7 +88,8 @@ export interface QueuedFiles {
 /**
  * Per side, why its queued files wait; `null` when none is queued, or when
  * the lane of one of their groups publishes no wait. `storeRoot` finds the
- * main store.
+ * main store. `sides` are the call's: the commit side first, then the
+ * working tree's, whose names a slot's holder takes (row 023-77).
  */
 export function sideWaits(
   storeRoot: AbsolutePath,
@@ -83,22 +97,52 @@ export function sideWaits(
 ): (SideWaiting | null)[] {
   const none = sides.map(() => null);
   if (sides.every((side) => side.queued.length === 0)) return none;
-  return readMainStore(storeRoot, none, (store) => sides.map((side) => waitOf(store, side)));
+  const ids = sides.map((side) => side.id);
+  return readMainStore(storeRoot, none, (store) => sides.map((side) => waitOf(store, side, ids)));
 }
 
-function waitOf(store: Store, side: QueuedFiles): SideWaiting | null {
+/** Who a slot's holder is, by the call's sides (`sideWaits`). */
+const SIDE_NAMES = ["the commit worktree", "the working tree"];
+
+function waitOf(
+  store: Store,
+  side: QueuedFiles,
+  ids: readonly (WorktreeId | null)[],
+): SideWaiting | null {
   const { root, id, queued } = side;
   if (root === null || id === null || queued.length === 0 || !existsSync(root)) return null;
   const view = groupView(readPolicy(root));
-  const groups = new Set(queued.map((ref) => view.of(ref).name));
+  const groups = new Map(queued.map((ref) => [view.of(ref).name, view.of(ref)]));
   const waits: SideWaiting[] = [];
-  for (const group of groups) {
-    const wait = waitText(group, readGroupActivity(store, id, group));
+  for (const group of groups.values()) {
+    const activity = readGroupActivity(store, id, group.name);
+    const wait = waitText(group.name, activity);
     if (wait === null) return null;
-    waits.push(wait);
+    const holder = activity?.kind === "waiting" && activity.for === "slot";
+    waits.push(holder ? withHolder(store, wait, { group, id, ids }) : wait);
   }
   const reasons = [...new Set(waits.map((w) => w.reason))];
-  return { reason: reasons.join("; "), capacity: waits.every((w) => w.capacity) };
+  const capacity = waits.every((w) => w.capacity);
+  const held = waits.some((w) => w.holder === true);
+  return { reason: reasons.join("; "), capacity, ...(held ? { holder: true as const } : {}) };
+}
+
+/** Row 023-77: a slot wait with its holder, when the slot records one (`slotHolder`). */
+function withHolder(
+  store: Store,
+  wait: SideWaiting,
+  at: {
+    group: ResolvedGroup;
+    id: WorktreeId;
+    ids: readonly (WorktreeId | null)[];
+  },
+): SideWaiting {
+  const commonDir = commonDirOf(store, at.id);
+  if (commonDir === null) return wait;
+  const holder = slotHolder(at.group, commonDir, at.id, Date.now());
+  if (holder === null) return wait;
+  const who = SIDE_NAMES[at.ids.indexOf(holder.worktreeId)] ?? "another worktree";
+  return { ...wait, reason: wait.reason + holderText(holder, who), holder: true };
 }
 
 /**
