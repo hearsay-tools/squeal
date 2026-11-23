@@ -43,6 +43,8 @@ describe("install.sh --uninstall with Antigravity", { timeout: 30_000 }, () => {
     expect(existsSync(antigravityPluginOf(m))).toBe(false);
     expect(existsSync(antigravityDataOf(m))).toBe(false);
     expect(existsSync(ownedOf(m))).toBe(false);
+    // Neither Claude Code nor Codex is here, so no hearsay marketplace was added (lessons.md defect 2).
+    expect(r.stdout).not.toContain("marketplace");
   });
 
   it("keeps a plugin that was there before install.sh ran, and its data directory", () => {
