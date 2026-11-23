@@ -210,6 +210,12 @@ export interface GroupTierState extends Omit<SlowTierState, "pausesOnly" | "maxH
    * `squeal run <group>`. Absent: none.
    */
   readonly requested?: number;
+  /**
+   * Row 023-79 (dogfood round 10, Z3): at `manual`, the pending files no
+   * request queued, when 1 to 3 are, so the line names them. Absent
+   * otherwise.
+   */
+  readonly pendingOutside?: readonly RelativePath[];
 }
 
 /**

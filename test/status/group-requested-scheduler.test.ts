@@ -67,7 +67,7 @@ async function edited() {
 }
 
 const WAITING =
-  "browser: 1 test file; 1 pending, waiting for `squeal run browser`. Squeal runs them only on request; `squeal run browser --wait 60000` runs it now and waits for its result.";
+  "browser: 1 test file; 1 pending (test/browser/a.test.ts), waiting for `squeal run browser`. Squeal runs them only on request; `squeal run browser --wait 60000` runs it now and waits for its result.";
 const RUNS_NOW = /Squeal runs (them|it) now/;
 
 /** Nothing in `out` says a request queued the file or that Squeal runs it now. */

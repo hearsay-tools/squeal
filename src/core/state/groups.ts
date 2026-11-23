@@ -123,12 +123,15 @@ export function groupTiersOf(
 ): readonly GroupTierState[] {
   const requested = requestedOf(store, worktreeId, keys, lanes);
   return lanes.map(({ name, inLane, head, stopWaitMs }) => {
-    const asked = requested(head.at, inLane);
+    const { asked, outside } = requested(head.at, inLane);
+    // Row 023-79 (Z3): a request-only group's few files left outside a request are named.
+    const few = head.at === "manual" && outside.length > 0 && outside.length <= NAMED_OUTSIDE;
     return {
       ...head,
       activity: liveActivity(store, worktreeId, keys, inLane, name),
       ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
       ...(asked === 0 ? {} : { requested: asked }),
+      ...(few ? { pendingOutside: outside.map((ref) => ref.path) } : {}),
     };
   });
 }
@@ -150,19 +153,31 @@ function requestedOf(
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   lanes: readonly GroupLaneCounts[],
-): (at: CheckMoment, inLane: (ref: TestFileRef) => boolean) => number {
-  if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
+): (at: CheckMoment, inLane: (ref: TestFileRef) => boolean) => Requested {
+  const none: Requested = { asked: 0, outside: [] };
+  if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => none;
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (daemon === null) return () => 0;
-  const asked = publishedNarrowAsks(store, worktreeId, daemon.startedAt);
-  if (asked.size === 0) return () => 0;
-  const queued = keys.filter(
-    (row) =>
-      row.key !== null && row.pending !== null && asked.get(testFileId(row.testFile)) === row.key,
-  );
-  return (at, inLane) =>
-    heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;
+  const asked =
+    daemon === null ? new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  const pending = keys.filter((row) => row.pending !== null);
+  const isAsked = (row: TestFileKeyRecord) =>
+    row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
+  return (at, inLane) => {
+    if (!heldUntilAsked(at)) return none;
+    const lane = pending.filter((row) => inLane(row.testFile));
+    const outside = lane.filter((row) => !isAsked(row)).map((row) => row.testFile);
+    return { asked: lane.length - outside.length, outside };
+  };
 }
+
+/** Row 023-79: of a held group's pending files, how many a request queued, and the others. */
+interface Requested {
+  readonly asked: number;
+  readonly outside: readonly TestFileRef[];
+}
+
+/** Row 023-79 (Z3): up to this many pending files outside a request are named, more are counted. */
+const NAMED_OUTSIDE = 3;
 
 /**
  * A configured group's files by class, as the header's test file counts

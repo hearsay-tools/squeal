@@ -146,3 +146,42 @@ describe("the hook's line for a request-only group a request queued (row 023-67,
     expect(browserLine(queued.json)).toMatch(/^browser: 1 test file; 1 queued by a request /);
   });
 });
+
+/*
+ * Row 023-79 (dogfood round 10, Z3): s1-02's hook said "96 queued by a
+ * request …, 1 pending, waiting for `squeal run browser`" and did not name
+ * the file. Up to 3 files outside a request are named, more are counted.
+ */
+describe("the hook names the few files left outside a request (row 023-79, Z3)", () => {
+  /** `paths` queued in the browser group; `asked` of them asked by a narrow run at their keys. */
+  function queueMany(paths: readonly string[], asked: readonly string[]): void {
+    for (const path of paths)
+      setKey(store, `k-${path}`, { file: { project: "", path }, pending: "queued" });
+    const asks = asked.map((path) => [testFileId({ project: "", path }), `k-${path}`] as const);
+    publishNarrowAsks(store, WT, asks, Date.now() as EpochMs);
+    sink.refresh(WT, revision(), { checkpointId: null });
+  }
+  const browser = (n: number) =>
+    Array.from({ length: n }, (_, i) => `test/browser/f${String(i).padStart(2, "0")}.test.ts`);
+
+  it("names one file left outside the request beside the requested ones", async () => {
+    const paths = browser(5);
+    queueMany(paths, paths.slice(0, 4));
+    flipUnit();
+    const { json } = await hook();
+    expect(browserLine(json)).toContain(
+      "4 queued by a request (`squeal status --at <commit> --run` or `squeal run browser <path>...`), 1 pending (test/browser/f04.test.ts), waiting for `squeal run browser`.",
+    );
+    // The evals parser still reads the group as waiting for its run.
+    expect(waitingIn(json)).toContain("browser");
+  });
+
+  it("counts four or more without naming them", async () => {
+    const paths = browser(5);
+    queueMany(paths, paths.slice(0, 1));
+    flipUnit();
+    const { json } = await hook();
+    expect(browserLine(json)).toContain(", 4 pending, waiting for `squeal run browser`.");
+    expect(browserLine(json)).not.toContain("f01");
+  });
+});

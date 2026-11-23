@@ -89,7 +89,7 @@ describe("a status line per group not all current (019 D6)", () => {
     const header = readHeader(s.store, s.repo.mainId);
     expect(header.groupTiers?.find((g) => g.name === "tree")).toMatchObject({ current: 0 });
     expect(lineOf(status(s), "tree")).toBe(
-      "tree: 1 test file; 1 pending, waiting for `squeal run tree`. Squeal runs them only on request; `squeal run tree --wait 60000` runs it now and waits for its result.",
+      `tree: 1 test file; 1 pending (${TREE}), waiting for \`squeal run tree\`. Squeal runs them only on request; \`squeal run tree --wait 60000\` runs it now and waits for its result.`,
     );
   });
 

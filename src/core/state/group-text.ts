@@ -73,9 +73,18 @@ function groupPendingText(group: GroupTierState, late: boolean, command: string)
   if (asked > 0) parts.push(`${asked} queued by a request (${requestsText(group, command)})`);
   if (waiting > 0) {
     const what = group.at === "commit" ? "a commit" : `\`${command} run ${group.name}\``;
-    parts.push(`${waiting} pending, waiting for ${what}`);
+    parts.push(`${waiting} pending${outsideText(group, waiting)}, waiting for ${what}`);
   }
   return parts.join(", ");
+}
+
+/**
+ * Row 023-79 (dogfood round 10, Z3): ` (a.e2e.ts)`, the pending files no
+ * request queued, when the state names them all (1 to 3); else nothing.
+ */
+function outsideText(group: GroupTierState, waiting: number): string {
+  const paths = group.pendingOutside ?? [];
+  return paths.length === waiting ? ` (${paths.join(", ")})` : "";
 }
 
 /** Row 023-67 (X2): of the group's pending files, those a request queued. */
