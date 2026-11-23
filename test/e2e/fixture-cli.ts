@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const CLI = "dist/cli/squeal.mjs";
@@ -22,9 +22,13 @@ export class FixtureCli {
     readonly layout: CliLayout = "runtime",
   ) {}
 
-  /** Claude's and Antigravity's bundled CLI, or Codex's selected runtime with the seed before bootstrap. */
+  /**
+   * Claude's bundled CLI; Antigravity's, or once its plugin root is gone, the newest
+   * kept copy's; or Codex's selected runtime with the seed before bootstrap.
+   */
   get path(): string {
-    if (this.data === undefined || this.layout === "kept") return join(this.plugin, CLI);
+    if (this.data === undefined) return join(this.plugin, CLI);
+    if (this.layout === "kept") return this.#kept(this.data);
     const current = join(this.data, "runtime/current.json");
     if (!existsSync(current)) return join(this.plugin, "seed", CLI);
     const record = JSON.parse(readFileSync(current, "utf8")) as {
@@ -39,6 +43,18 @@ export class FixtureCli {
       throw new Error(`invalid fixture runtime selection: ${current}`);
     }
     return join(this.data, "versions", record.version, CLI);
+  }
+
+  /** The plugin's CLI while it exists, else the newest version copy's in `data` (024 D1). */
+  #kept(data: string): string {
+    const own = join(this.plugin, CLI);
+    const versions = join(data, "versions");
+    if (existsSync(own) || !existsSync(versions)) return own;
+    const newest = readdirSync(versions)
+      .filter((v) => VERSION.test(v) && existsSync(join(versions, v, CLI)))
+      .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
+      .at(-1);
+    return newest === undefined ? own : join(versions, newest, CLI);
   }
 
   /** Exact CLI and command arguments in either /proc's NULs or ps's spaces. */
