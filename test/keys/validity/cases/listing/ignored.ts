@@ -5,8 +5,8 @@ import type { Case } from "../../case.js";
  * run stored, read back by this one. The watcher sees no file in the
  * directory, so the candidate keys the listing by the names on disk here,
  * where a release before keyed it as none. An absent directory keys as a
- * marker (row 016-26), where a release before keyed it as none too, and a
- * tracked directory keys by its tracked names at both. Row 016-24: a
+ * marker (row 016-26), where a release before keyed it as none too. Row
+ * 023-76: a tracked directory keys by its names on disk too. Row 016-24: a
  * revision reads the names again, so a name added or removed here moves the
  * key a release before kept until a restart, to the key a restart computes;
  * a name a run of the only file that lists the directory wrote moves none.
@@ -89,7 +89,7 @@ export const IGNORED_LISTING: readonly Case[] = [
   {
     kind: "assemble",
     name: "a listing of a tracked directory another worktree stored, read back",
-    why: "016-23: a directory the watcher sees a file in keys by its tracked names, as before, its ignored names not among them (a residual), so the keys are equal at both trees and nothing re-keys",
+    why: "023-76: a directory the watcher sees a file in keys by every name on disk, its ignored names among them, where a release before keyed its tracked names only (016-23's residual, review 0.1.611-rereview N1), and a listing's segment carries a mark; so the keys differ, and a result stored under the old key is not inherited",
     input: {
       ...INPUT,
       untracked: { "src/ignored.log": "1\n" },
