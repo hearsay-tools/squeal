@@ -1,0 +1,77 @@
+{
+  "id": "s1-03",
+  "lines9": [],
+  "hooks9": [],
+  "lines10": [
+    "5s +99s packages/web/e2e/agent-browser-tabs.e2e.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)",
+    "5s +99s Still to run, at d8abcfe46: 95 test files, time unknown: none has a stored duration and this call measured no rate for the browser group (2 of its 15 results there in 98 s were that group's); in the working tree: 96 test files, time unknown: too few runs stored (1 of them have a stored duration) and",
+    "5s +99s 0 running and 95 queued at d8abcfe46 (its worktree), 0 running and 96 queued in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them.",
+    "106s +99s Still to run, at d8abcfe46: 94 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: 94 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>",
+    "106s +99s 0 running and 94 queued at d8abcfe46 (its worktree), 0 running and 94 queued in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them."
+  ],
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/03d283217774aa9b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [],
+  "joins": [
+    "3s +0s squeal status --at 8be977ad6 --run --wait 100000",
+    "5s +99s squeal status --at HEAD~1 --run --wait 100000",
+    "106s +99s squeal status --at HEAD~1 --wait 100000 2>&1 | tail -n 15"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at d8abcfe46: 95 test files, time unknown: none has a stored duration and this call measured no rate for the browser group (2 of its 15 results there in 98 s were that group's); in the working tree: 96 test files, time unknown: too few runs stored (1 of them have a stored duration) and",
+    "106s +99s Still to run, at d8abcfe46: 94 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: 94 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>"
+  ],
+  "lines8": [
+    "5s +99s 1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cez",
+    "5s +99s 16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more",
+    "5s +99s 124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notS",
+    "5s +99s 0 pass -> fail, 0 fail -> pass, 14 unchanged, 1782 unknown, 124 not selected",
+    "5s +99s 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them",
+    "106s +99s 1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cez",
+    "106s +99s 16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more",
+    "106s +99s 124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notS",
+    "106s +99s 0 pass -> fail, 0 fail -> pass, 16 unchanged, 1780 unknown, 124 not selected",
+    "106s +99s 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them"
+  ],
+  "loadStart": "10.39",
+  "exit": 0,
+  "wallSeconds": 209.59,
+  "squeal": [
+    "3s squeal status --at 8be977ad6 --run --wait 100000",
+    "5s squeal status --at HEAD~1 --run --wait 100000",
+    "106s squeal status --at HEAD~1 --wait 100000 2>&1 | tail -n 15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.06678289999999999,
+  "usage": {
+    "cache_creation_input_tokens": 17765,
+    "cache_read_input_tokens": 119204,
+    "output_tokens": 1043
+  },
+  "firstFinal": "So far, no test file passes or fails differently, but the comparison isn't finished. I compared 8be977ad6 with its parent d8abcfe46 using `squeal status --at HEAD~1 --run`.\n\n**Results so far**\n- 0 files went pass → fail and 0 went fail → pass.\n- 16 files have a result on both sides and are unchanged.\n- One file is new: `packages/cezar/src/lint/active-run-write-index.test.ts` has no result at the parent (it didn't exist there) and passes now. I haven't run `squeal proof` on it.\n\n**Not settled**\n- 94 browser e2e files (`packages/web/e2e/*.e2e.ts`) are still queued on both sides, so I have no result for them.\n- 124 files were not selected: none of their inputs differ between the two commits, so this commit can't change their results.\n- About 1,669 files have no result at the parent, and the runner can't say whether the commit affects them. Another 16 files (`.github/scripts/*.test.cjs` among them) have the same gap, because their static closure is incomplete. Neither group ran. `--all-missing` would run them.\n\nThe commit is a lint-only perf refactor (shared active-run owner syntax indexes). The one new test passes, and the finished comparisons show no changes. That points to no behavior change, but I can't confirm it for the queued e2e files.\n\nThe queued runs continue in the background. `squeal status --at HEAD~1 --wait 100000` will pick up where this left off.",
+  "final": "So far, no test file passes or fails differently, but the comparison isn't finished. I compared 8be977ad6 with its parent d8abcfe46 using `squeal status --at HEAD~1 --run`.\n\n**Results so far**\n- 0 files went pass → fail and 0 went fail → pass.\n- 16 files have a result on both sides and are unchanged.\n- One file is new: `packages/cezar/src/lint/active-run-write-index.test.ts` has no result at the parent (it didn't exist there) and passes now. I haven't run `squeal proof` on it.\n\n**Not settled**\n- 94 browser e2e files (`packages/web/e2e/*.e2e.ts`) are still queued on both sides, so I have no result for them.\n- 124 files were not selected: none of their inputs differ between the two commits, so this commit can't change their results.\n- About 1,669 files have no result at the parent, and the runner can't say whether the commit affects them. Another 16 files (`.github/scripts/*.test.cjs` among them) have the same gap, because their static closure is incomplete. Neither group ran. `--all-missing` would run them.\n\nThe commit is a lint-only perf refactor (shared active-run owner syntax indexes). The one new test passes, and the finished comparisons show no changes. That points to no behavior change, but I can't confirm it for the queued e2e files.\n\nThe queued runs continue in the background. `squeal status --at HEAD~1 --wait 100000` will pick up where this left off.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "HEAD~1 --run",
+    "HEAD~1"
+  ]
+}

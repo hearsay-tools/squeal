@@ -1,0 +1,66 @@
+{
+  "id": "s2-10",
+  "lines9": [],
+  "hooks9": [],
+  "lines10": [
+    "3s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq",
+    "3s +99s 200 running and 1138 queued at a5c9b7223 (its worktree), 200 running and 1137 queued in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' --wait 100000 waits for them; squeal ps shows them.",
+    "106s +7s test/store/open.test.ts: pass -> pass (at a5c9b7223: the file as it was at a5c9b7223, without its changes since then; run in the commit's worktree; now: run in this worktree)"
+  ],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/12ef06dfe039bf1f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [],
+  "joins": [
+    "3s +99s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "106s +7s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "estimates": [
+    "3s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "3s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "3s +99s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "3s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "106s +7s test/store/open.test.ts: pass -> pass (at a5c9b7223: the file as it was at a5c9b7223, without its changes since then; run in the commit's worktree; now: run in this worktree)"
+  ],
+  "loadStart": "5.75",
+  "exit": 0,
+  "wallSeconds": 117.942,
+  "squeal": [
+    "3s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "106s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.050765399999999995,
+  "usage": {
+    "cache_creation_input_tokens": 12746,
+    "cache_read_input_tokens": 105204,
+    "output_tokens": 836
+  },
+  "firstFinal": "**Not fully answered yet.** Only one file has results on both sides so far.\n\nThe commit touched `src/core/store/mark.ts` and `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** pass at `a5c9b72` (using the old version of the file) and pass at `20f03a4`. Its result did not change. The commit added 27 lines to this test, so it now covers more, but it was already green.\n- **The rest of the suite:** unknown. Squeal selects 1338 test files as affected by the `mark.ts` change, and they were still queued or running when I stopped. Nothing has come back showing `pass -> fail` or `fail -> pass`. That is not the same as \"no change\".\n- **Other files:** 624 more files are not selected by the change and were not run.\n\nTo get the full comparison, wait for the daemons with `squeal status --at '20f03a4~1' --wait 100000`, then re-read the counts. I can do that if you want it.",
+  "final": "**Not fully answered yet.** Only one file has results on both sides so far.\n\nThe commit touched `src/core/store/mark.ts` and `test/store/open.test.ts`.\n\n- **`test/store/open.test.ts`:** pass at `a5c9b72` (using the old version of the file) and pass at `20f03a4`. Its result did not change. The commit added 27 lines to this test, so it now covers more, but it was already green.\n- **The rest of the suite:** unknown. Squeal selects 1338 test files as affected by the `mark.ts` change, and they were still queued or running when I stopped. Nothing has come back showing `pass -> fail` or `fail -> pass`. That is not the same as \"no change\".\n- **Other files:** 624 more files are not selected by the change and were not run.\n\nTo get the full comparison, wait for the daemons with `squeal status --at '20f03a4~1' --wait 100000`, then re-read the counts. I can do that if you want it.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4~1 --run",
+    "20f03a4 --run",
+    "20f03a4~1 --run"
+  ]
+}

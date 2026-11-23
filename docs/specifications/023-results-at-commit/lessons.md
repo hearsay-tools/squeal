@@ -713,3 +713,86 @@ Not product defects, recorded for the coordinator:
 - After Y1 and Y2: s1b again, 5 sessions, and 2 of them with another session's commit daemon busy. The question is whether the named browser file then gets both sides within the call.
 - A `proof` prompt (a red proof of a real fix), to exercise D7.6's green side on the commit daemon.
 - Codex, Pi and OpenCode are still not exercised.
+
+## Round 10 (023-75)
+
+Row 023-75, wave 35, worker 9f960d34, 2026-11-23 21:56Z to 22:45Z, on the lab VM, which the human allowed for this round (2026-11-23). Squeal 0.1.611 as released (tag `squeal--v0.1.611` at `7d2ce9ab7`, hub entry `5352468`). It carries wave 34: 023-70 (a result of a folder-reading test counts at the commit only when the commit worktree wrote it), 023-72 with 023-74 (a narrow run request follows its file across a re-key instead of being dropped), 023-71 (a named file not started reads "queued", with a reason only when the daemon publishes one, and no time until it starts) and 023-73 (a changed test file's line says it ran as it was at the commit). Claude Code 2.1.327, `--model sonnet`. s1, s1b and s2 used round 9's prompts byte-equal. The brief is `tasks/wave-35.md`; scripts, per-session data and judgements are in `tasks/023-75/`.
+
+### Verdict
+
+- **No wrong answer, and the named browser file got both sides in 4 of 5 sessions (round 9: 1 of 5).** 0 of 20 sessions answered the whole question; the other 96 browser files cannot run in 1,200 s. 19 gave a partial answer that was right for the files they compared (round 9: 19). 1 said honestly that it could not tell yet (s1b-05; round 9: 1). 0 were wrong. 4 of the 19 partial answers carry one overstated, unsupported or undercounted sentence (round 9: 6).
+- **023-71 is fixed.** No call said "still running" for a file that had not started (round 9: 4 of 5 s1b sessions, Y1). Every "1 of 1 still running at d8abcfe46" (s1b-01, 03, 04) matched a per-file row "no result (running)": the narrowed `--run` started the named file at the commit at once. A file waiting for the browser group's slot read "1 of 1 queued …, waiting for the browser group's slot" with "time unknown: waiting for capacity (the browser group's slot)" (the working tree in s1b-01, 03, 04; the commit side in s1b-05). That reason was true each time: the other side of the same clone held the slot. No call said it waited for the worker pool. No agent read a queued file as running.
+- **The named file at the commit (s1b).** Its commit result came in s1b-01 to s1b-04, within 219 to 468 s of the first `--at` call (upper bounds; s1b-02 inside the narrowed call itself), and both sides by 343 to 476 s. In s1b-05 the working tree ran it first and the commit side waited for the shared slot; the agent stopped at 230 s and asked whether to keep waiting (Z1, below). Round 9: 1 of 5, by 374 s.
+- **023-72 with 023-74 are mostly fixed.**
+  - More browser files got both sides: `activity.e2e.ts` within the first call in 4 sessions (s1-03, s1-04, s1-05, s1b-03; counted from the unchanged totals, `tasks/023-75/notes.md`), and `agent-browser-tabs` and `agents-dock` too in s1-03's wide `--wait` (round 9: none apart from the named file). In the other 6 sessions the commit side ran `activity.e2e.ts` or `agent-browser-tabs` first and the working tree had not run it by the end of the first call; in s1-01 the working tree ran `agents-dock` instead (Z2).
+  - The hook: 9 of 10 s1 and s1b sessions got "97 pending, waiting for capacity …" or "running packages/web/e2e/activity.e2e.ts". s1-02 got "96 queued by a request …, 1 pending, waiting for `squeal run browser`" while the call had queued all 97 in the working tree (round 9: s1-01, the same text). No agent repeated it (Z3).
+- **023-73 is fixed.** All 10 s2 calls that compared `test/store/open.test.ts` said "(at a5c9b7223: the file as it was at a5c9b7223, without its changes since then; …)". 9 agents restated it right ("The 'before' side used the file as it was then, without the new tests", s2-04); s2-06 did not restate it and said nothing wrong. 0 misreads (round 9: 2 of 10).
+- **023-70 costs nothing here.** No session printed "not comparable" (round 9: 0). `lint-ast-grep-1/2`, the two lint files that read a folder through a tracked symlink, compared pass -> pass "run in the commit's worktree" in all 7 sessions that narrowed to the lint folder (visible in 6; s1b-04's `tail` cut them from its 10 unchanged): the commit daemon ran both in its own worktree each time. A commit-side result that another worktree wrote appeared for 3 files (`parity-runner-subset.test.ts` in s1; `test/store/paths.test.ts` and `retry-while-busy.test.ts` in s2), and no folder read is in their sources.
+- **Kept from round 9.** `test/store/open.test.ts` got its commit result inside the call that named it in 10 of 10 s2 sessions, 106 to 154 s after the first call (median 112 s; round 9: about 112 s). Every s1 and s1b first call gave the browser group "time unknown", and no agent made up a browser time. s1b-02's working-tree estimate "about 97 s for 1 test file" came true 117 s later.
+- **Time:** s1 median 153 s (round 9: 128 s), s1b median 358 s (231 to 484; round 9: 464 s), s2 median 132 s (round 9: 123 s), longest 484 s. No session reached the 1,200 s limit.
+- **What sessions leave behind:**
+  - Every commit daemon outlived `squeal stop` and was stopped by the harness with `squeal stop --at HEAD~1`. Each s2 commit daemon had 1,084 to 1,305 files pending (V5, by design, unchanged); each s1 and s1b commit daemon had 93 to 96 browser files pending.
+  - squawk's e2e server and its lease watcher outlived 10 of 10 s1 and s1b sessions (round 9: 9 of 10). A lease watcher of the removed commit worktree outlived 5 of 10 (round 9: 8 of 10) (T3, V7).
+  - s2 left no process.
+
+### Setup
+
+| Item | Value |
+|---|---|
+| Machine | The lab VM, 12 CPUs. At 21:56Z the 1-minute load was 0.00, no other user job ran and no throwaway user or AppArmor profile from an earlier round was left. Sessions started only while the 1-minute load was below 12, at most 3 at once (`bin/batch.mjs`). The 1-minute load at session start was 4.63 to 11.68, all of it from the throwaway user's daemons, e2e servers and browsers. |
+| Isolation | Throwaway OS user `squeal-w35`, case root `~squeal-w35/runs/w35`, `env -i`, cwd `/`; `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` passed by name only, as round 9. |
+| Squeal | The release's `install.sh` (`git show squeal--v0.1.611:install.sh`, `SQUEAL_VERSION=0.1.611`) with `SQUEAL_MARKETPLACE` at a clone of the hub at `5352468` ("squeal 0.1.611"). `squeal --version` and `claude plugin list` printed 0.1.611. |
+| Browser | As rounds 8 and 9: squawk's own e2e environment downloaded `agent-browser` and Chrome for Testing into the user's home, and one AppArmor profile let only that Chrome path use user namespaces. No OS package was added (877 before and after). `pnpm run test:e2e thread-scroll.e2e.ts` as the user passed 18 of 18 tests in 97 s before s1 (`tasks/023-75/data/browser-proof.txt`). |
+| s1b's file | `thread-scroll.e2e.ts`, as round 9. |
+| Harness | Round 9's scripts with the changes in `tasks/023-75/notes.md`: names, versions, and the 023-71 and 023-73 lines collected per session (`lines10`). The `dryat` check ran first with no model. |
+| Repositories | As round 9: squawk at `8be977ad6` (s1, s1b), Squeal at `20f03a431` (s2), one fresh clone and install per session, empty store. |
+| Order | s1-01 alone as a trial (153 s), then s1b, s2 and s1 interleaved in round 9's order, 3 at once, 22:04Z to 22:39Z. |
+| Cost | 20 sessions, $1.26 (s1 $0.36, s1b $0.38, s2 $0.53). |
+| Cleanup | Each clone was removed after its session, and each commit daemon was stopped with `squeal stop --at`. At the end: the AppArmor profile unloaded and deleted, the browser and `agent-browser` deleted, every process of the user ended, the user and its home removed, `/opt/squeal-w35` and the user's 63 `/tmp` entries removed, and the work folder deleted, streams and transcripts included (22:45Z). No uid-1002 process left; the package list equal to the one before the round; the VM's load 0.02. |
+
+### Per group
+
+Round 9's counts are in brackets. Columns as round 9. "Both sides" counts sessions that got a result on both sides for at least one compared file.
+
+| Group (n) | `--run` | Both sides | Answer | `--at` on HEAD (refused) | Still running (read right) | Joined | Past 120 s (moved) | Swaps | Left after the session | Wall median (range) | Cost |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| s1 squawk, empty store (5) | 5 [5] | 5 [5]: lint folder call with 9 to 10 unchanged in s1-01, 02, 04, 05; 16 unchanged in one wide `--wait` in s1-03 (13 unit files and 3 browser files); `activity.e2e.ts` by count in s1-03, 04, 05 | full 0 [0]; partial, right 5 [5] (s1-01 with one overstated sentence, s1-05 with one unsupported); honest 0 [0]; wrong 0 [0] | 1 [4] (1) | 5 (5) [5 (5)] | 1 [0] | 0 (0) [0 (0)] | 0 [0] | 5 of 5: the commit daemon with 93 to 96 browser files pending (stopped by the harness); 5 the e2e server and lease watcher; 2 also a lease watcher of the removed commit worktree | 153 s (130 to 210) [128 s] | $0.36 [$0.38] |
+| s1b squawk, one browser file named (5) | 5 [5] | 5 [4]: `thread-scroll` in 4 [1] (s1b-01 to 04); 9 lint files in s1b-01, 03, 04; s1b-05 3 unit files only | full 0 [0]; partial, right 4 [4] (all 4 compared the named file; s1b-03, 04 with one undercount); honest 1 [1] (s1b-05: stopped while the named file waited for the slot, Z1); wrong 0 [0] | 4 [3] (4), 7 calls [5] | 5 (5) [5 (5, the text was wrong)] | 3 [4] | 5 calls in 3 (0) [12 calls in 5 (0)] | 0 [0] | 5 of 5: the commit daemon with 93 to 95 browser files pending (stopped by the harness); 5 the e2e server and lease watcher; 3 also a lease watcher of the removed commit worktree | 358 s (231 to 484) [464 s] | $0.38 [$0.43] |
+| s2 Squeal, empty store (10) | 10 [10] | 10 [10]: `open.test.ts` (6), 38 `test/store` files (4) | full 0 [0]; partial, right 10 [10] (none with a wrong sentence [2]); honest 0 [0]; wrong 0 [0] | 5 [7] (5) | 10 (10) [10 (10)] | 0 [1] | 0 (0) [0 (0)] | 0 [0] | 10 of 10: the commit daemon with 1,084 to 1,305 files pending (stopped by the harness); no process | 132 s (114 to 179) [123 s] | $0.53 [$0.53] |
+
+Per session: `tasks/023-75/data/judgements.tsv` (with a column per fix: 023-70, 023-72/74, 023-71, 023-73) and `data/<id>/`.
+
+### Squeal text read wrong or not acted on
+
+| Text | Sessions | What the agent did |
+|---|---|---|
+| `packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, 1 of 1 still running in the working tree` with `Still to run, at d8abcfe46: 1 test file, time unknown: waiting for capacity (the browser group's slot)` | s1b-05 | Read right ("still queued at the parent and running in the working tree"), then stopped at 230 s, 970 s before the limit: "Do you want me to keep waiting on it?" The slot holder was the working tree's run of the same file, which takes about 90 to 120 s (97 s in the proof; Squeal had no stored duration for it in this session) (Z1). |
+| The hook: `browser: 97 test files; 96 queued by a request (…), 1 pending, waiting for `squeal run browser`` after the first call's `--run` queued all 97 in the working tree | s1-02 (seen, not repeated) | No agent repeated it. Same text as round 9's s1-01 (Z3). |
+| The narrowed call's per-file lines, cut by the agent's own `tail -25` or `tail -30` | s1b-03, s1b-04 | Counted only the lines it saw: "Lint tests (7 files selected by the change)" (s1b-03; the call counted 9 lint files unchanged); "Only 7 to 8 of them had results when I stopped" (s1b-04; 10 unchanged and the new file). Round 8 had the same cut. |
+| `94 test files: no result (queued) -> no result (queued)` beside `activity.e2e.ts: pass -> no result (queued) (at d8abcfe46: …)` and `agent-browser-tabs.e2e.ts: pass -> …` | s1-01 | "The 97 browser e2e files were still queued at both commits": 2 had passed at the parent. Overstated, not wrong about any change. |
+| The narrowed lint call's `10 unchanged` with 6 named | s1-05 | "The other four are among the 7 selected files from the first, repo-wide comparison": unsupported. s1-02 said it right: "the other four weren't named in the output". |
+
+Read right this time: "queued" and "still running" for the named file (no Y1); "waiting for the browser group's slot" and "time unknown: waiting for capacity"; 023-73's "the file as it was at a5c9b7223, without its changes since then" (9 of 10 restated it, 0 wrong); the HEAD refusal (10 sessions, 13 calls; all went on with the parent); "time unknown … for the browser group" (no agent made up a browser time); "of N named test files; the change selects 110" (no narrowed answer read as the whole); "The rest of the queue, outside these paths"; "went from running to a result" (s1b-01, 02, 04); "124 test files not selected" (no misread; round 9: 1).
+
+### What went wrong, and the changes the evidence asks for
+
+Proposals, not code. The coordinator numbers rows.
+
+| # | Problem, with the evidence | Proposed change |
+|---|---|---|
+| Z1 | **A named file waiting for the slot that the other side's run of the same file holds gets no time.** s1b-05: at 226 s the commit side said "1 of 1 queued at d8abcfe46, waiting for the browser group's slot" and "time unknown: waiting for capacity (the browser group's slot)"; the working tree was running `thread-scroll.e2e.ts` (97 s in the proof; the call said it had no stored duration). The agent stopped and asked. In s1b-01, 03 and 04 the same wait sat on the working-tree side, and those agents joined with `--wait` and got both sides. The slot is one per repository, shared by the working tree and its commit worktree (`tasks/023-71-notes.md`), so the two sides of a browser file always run one after the other. | When a named file waits for a slot whose holder Squeal knows (a daemon of the same repository), say who holds it and since when: "waiting for the browser group's slot, which the working tree's run of thread-scroll.e2e.ts holds (running for 40 s); it starts when that run ends", with the holder's remaining time when it has a stored duration. This needs the slot to record its holder (today the publisher records none: 023-71's S1). Test: the working tree holds the slot with the named file; the commit side's narrowed call names the holder, and gives a time when the holder's file has a stored duration. |
+| Z2 | **Both sides take the shared slot for different files first, so slot turns pass without a comparison.** In 6 of 10 s1 and s1b sessions the commit side ran `activity.e2e.ts` or `agent-browser-tabs` first, and the working tree had not run that file by the end of the first call (s1-01: it ran `agents-dock`). In the other 4, `activity.e2e.ts` got both sides within the first call; in s1-03 2 more files followed in the next 100 s. | When one `--at --run` request queues the same files on both sides of a shared slot, hand the slot over per file: the commit side's run of a file, then the working tree's run of the same file, then the next file, so every two slot turns give one compared file. Test: two daemons, one slot, three requested files; results arrive in pairs, in the request's order. |
+| Z3 | **023-74's rest: one file left "waiting for `squeal run`".** s1-02's hook said "96 queued by a request …, 1 pending, waiting for `squeal run browser`" while the call said "97 queued in the working tree" (round 9: s1-01, same text). The data does not name the file. | When 1 to 3 files of a request-only group are pending outside a request, name them in the hook ("1 pending (activity.e2e.ts), waiting for …"), so the next round can find the cause; then fix it as 023-72. |
+| V5, T3/V7 | **Unchanged.** Each s2 commit daemon still has 1,084 to 1,305 files pending when the session ends. squawk's e2e server and lease watcher outlived 10 of 10 s1 and s1b sessions, and the commit worktree's lease watcher 5 of 10. | As round 6 proposed (V5's cost line; T3/V7's process-group stop). |
+
+Not product defects, recorded for the coordinator:
+
+- **squawk's browser files run one at a time** (`maxParallel: 1`, one slot for both sides), about 90 to 130 s each on this VM, so the 96 not named cannot compare in 1,200 s, whatever Squeal does. A named file now compares in about 6 minutes.
+- **The sessions share one OS user**, so `squeal ps`, the worker pool, the pending counts and the load the agents saw include other sessions' daemons and browsers. No call this round said it waited for the pool.
+- **No session ran `proof`.** 6 answers mention it, as not run, for the new test file in s1 and s1b.
+
+### Open for a later round
+
+- After Z1 and Z2: s1b again, 5 sessions. The question is whether every agent waits for the named file once the call gives a time, and whether the browser files the two sides run first get both sides.
+- A `proof` prompt (a red proof of a real fix), to exercise D7.6's green side on the commit daemon.
+- Codex, Pi and OpenCode are still not exercised.

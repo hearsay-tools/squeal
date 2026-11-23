@@ -1,0 +1,91 @@
+## head
+20f03a43139ea3e99e057b32dac3db3dffbb903d
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+20f03a4 HEAD@{2026-11-23 23:13:20 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w35/runs/w35/s2-03
+HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
+branch refs/heads/main
+
+worktree ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+HEAD a5c9b7223b6550d249098754bfc6453b3853c2b7
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w35 squeal-w35    0 Nov 23 22:59 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/38764b08fccbd132:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:01 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+
+home/.cache/squeal/checkouts/546ecef5158954b8:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:04 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+
+home/.cache/squeal/checkouts/736318afa74cfd65:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:08 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+
+home/.cache/squeal/checkouts/84aa25f2ebb2eec8:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:15 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+
+home/.cache/squeal/checkouts/859835d8f156d0a4:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:11 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+
+home/.cache/squeal/checkouts/bdb9e61056a37d12:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:14 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:15 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:14 5a89dac30d7c0662.json
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:11 a1d7d20d4fc60e45.json
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:15 b48adab687724fac.json
+
+home/.cache/squeal/checkouts/d75c899ad9fe1c5a:
+total 12
+drwxrwxr-x  3 squeal-w35 squeal-w35 4096 Nov 23 23:13 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+drwxrwxr-x  4 squeal-w35 squeal-w35 4096 Nov 23 23:13 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/fc628ca80ef3b74f:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:12 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+2415552       1       02:02 squeal s2-03 daemon @672ffec2 ~squeal-w35/runs/w35/claude/plugins/cache/hearsay/squeal/0.1.611/dist/cli/squeal.mjs daemon ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+2416044 2415552       01:58 /opt/squeal-w35/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w35/runs/w35/claude/plugins/cache/hearsay/squeal/0.1.611/dist/cli/squeal.mjs runner-host ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+2431148       1       01:15 squeal s2-03 store --disable-warning=ExperimentalWarning ~squeal-w35/runs/w35/claude/plugins/cache/hearsay/squeal/0.1.611/dist/cli/squeal.mjs store-process ~squeal-w35/runs/w35/s2-03/.git --store code
+2460363 2416044       00:04 /opt/squeal-w35/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+2460695 2460363       00:04 /opt/squeal-w35/node24/bin/node --disable-warning=ExperimentalWarning --import file://~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/tsx@4.23.15/node_modules/tsx/dist/loader.mjs ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/src/cli/index.ts code --base main --json
+2460823 2460695       00:04 ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/@esbuild+linux-x64@0.28.2/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping
+2461123 2416044       00:03 /opt/squeal-w35/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+2461246 2416044       00:03 /opt/squeal-w35/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+2461264 2416044       00:03 /opt/squeal-w35/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+2461289 2416044       00:02 /opt/squeal-w35/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+2462264 2462263       00:00 rm -rf ~squeal-w35/runs/w35/s1b-02
+2462421 2461246       00:00 /opt/squeal-w35/node24/bin/node -e const db = new (require("node:sqlite").DatabaseSync)(process.argv[1]); db.exec("BEGIN IMMEDIATE"); process.stdout.write("held\n"); process.stdin.on("data", () => { db.exec("ROLLBACK"); db.close(); process.exit(0); }); /tmp/squeal-1002/tmp/52024cc0b308f5d0/squeal-gate-tmp-sYpda8/squeal-keep-busy-LoQg3m/.git/squeal/store.sqlite
+2462467 2460695       00:00 /opt/squeal-w35/node24/bin/node --disable-warning=ExperimentalWarning --import file://~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/tsx@4.23.15/node_modules/tsx/dist/loader.mjs ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/src/cli/index.ts code --base main --json

@@ -1,0 +1,79 @@
+{
+  "id": "s1b-05",
+  "lines9": [
+    "6s +99s packages/web/e2e/thread-scroll.e2e.ts",
+    "107s +119s packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> no result (running)",
+    "107s +119s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, 1 of 1 still running in the working tree",
+    "107s +119s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for capacity (the browser group's slot); in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: it has no stored dur",
+    "107s +119s 0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at '8be977ad^' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them."
+  ],
+  "hooks9": [],
+  "lines10": [
+    "6s +99s Still to run, at d8abcfe46: 107 test files, time unknown, by group: tests: 10 test files, time unknown: too few runs stored (4 of them have a stored duration) and this call measured no rate for the tests group (3 of its 3 results there in 98 s were that group's); browser: 97 test files, time unknown",
+    "6s +99s 11 running and 96 queued at d8abcfe46 (its worktree), 4 running and 99 queued in the working tree; their runs go on in the daemons. squeal status --at '8be977ad^' --wait 100000 waits for them; squeal ps shows them.",
+    "107s +119s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, 1 of 1 still running in the working tree",
+    "107s +119s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for capacity (the browser group's slot); in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: it has no stored dur",
+    "107s +119s 0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at '8be977ad^' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them."
+  ],
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "107s +119s squeal status --at 8be977ad^ packages/web/e2e/thread-scroll.e2e.ts --run --wait 120000 2>&1 | tail -15"
+  ],
+  "joins": [
+    "6s +99s ls packages/web/e2e/thread-scroll.e2e.ts; squeal status --at 8be977ad^ --run --wait 100000 2>&1 | tail -40; echo ======; squeal status --at 8be977ad --run --wait 100000 2>&1 | tail -40",
+    "107s +119s squeal status --at 8be977ad^ packages/web/e2e/thread-scroll.e2e.ts --run --wait 120000 2>&1 | tail -15"
+  ],
+  "estimates": [
+    "6s +99s Still to run, at d8abcfe46: 107 test files, time unknown, by group: tests: 10 test files, time unknown: too few runs stored (4 of them have a stored duration) and this call measured no rate for the tests group (3 of its 3 results there in 98 s were that group's); browser: 97 test files, time unknown",
+    "107s +119s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for capacity (the browser group's slot); in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: it has no stored dur"
+  ],
+  "lines8": [
+    "6s +99s 1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cez",
+    "6s +99s 16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more",
+    "6s +99s 124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notS",
+    "6s +99s 0 pass -> fail, 0 fail -> pass, 3 unchanged, 1793 unknown, 124 not selected",
+    "6s +99s 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them"
+  ],
+  "loadStart": "6.09",
+  "exit": 0,
+  "wallSeconds": 231.013,
+  "squeal": [
+    "4s squeal checks; git show --stat --format=%H 8be977ad | head -40",
+    "6s ls packages/web/e2e/thread-scroll.e2e.ts; squeal status --at 8be977ad^ --run --wait 100000 2>&1 | tail -40; echo ======; squeal status --at 8be977ad --run --wait 100000 2>&1 | tail -40",
+    "107s squeal status --at 8be977ad^ packages/web/e2e/thread-scroll.e2e.ts --run --wait 120000 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0673946,
+  "usage": {
+    "cache_creation_input_tokens": 18115,
+    "cache_read_input_tokens": 120671,
+    "output_tokens": 1002
+  },
+  "firstFinal": "Not answered yet for `thread-scroll.e2e.ts`. Squeal has no result for it on either side, so I can't say whether anything changed.\n\n**What the comparison showed so far** (`8be977ad^` = d8abcfe46 against `8be977ad`):\n- **Changes:** 0 tests went pass → fail and 0 went fail → pass.\n- **New passing file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It did not exist at the parent and passes now.\n- **Unchanged:** 3 files had the same result on both sides.\n- **No result either side:** most of the 1920 test files, including the 97 browser/e2e files. These were still queued or running when I stopped.\n\n**Why the e2e comparison is still open:** the commit touched only `packages/cezar/src/lint/active-run-write.ts` and its new test. Squeal's change selection picked 110 test files, including the browser files, so `thread-scroll.e2e.ts` is among them and was still queued. Squeal runs the browser group only when asked. I queued `thread-scroll.e2e.ts` on both sides, and at my last check it was still queued at the parent and running in the working tree.\n\nNothing indicates a change in the e2e result, but that is an expectation from the diff, not a measurement.\n\nTo get the verdict, run `squeal status --at '8be977ad^' packages/web/e2e/thread-scroll.e2e.ts --wait 100000`. Do you want me to keep waiting on it?",
+  "final": "Not answered yet for `thread-scroll.e2e.ts`. Squeal has no result for it on either side, so I can't say whether anything changed.\n\n**What the comparison showed so far** (`8be977ad^` = d8abcfe46 against `8be977ad`):\n- **Changes:** 0 tests went pass → fail and 0 went fail → pass.\n- **New passing file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It did not exist at the parent and passes now.\n- **Unchanged:** 3 files had the same result on both sides.\n- **No result either side:** most of the 1920 test files, including the 97 browser/e2e files. These were still queued or running when I stopped.\n\n**Why the e2e comparison is still open:** the commit touched only `packages/cezar/src/lint/active-run-write.ts` and its new test. Squeal's change selection picked 110 test files, including the browser files, so `thread-scroll.e2e.ts` is among them and was still queued. Squeal runs the browser group only when asked. I queued `thread-scroll.e2e.ts` on both sides, and at my last check it was still queued at the parent and running in the working tree.\n\nNothing indicates a change in the e2e result, but that is an expectation from the diff, not a measurement.\n\nTo get the verdict, run `squeal status --at '8be977ad^' packages/web/e2e/thread-scroll.e2e.ts --wait 100000`. Do you want me to keep waiting on it?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad^ --run",
+    "8be977ad --run",
+    "8be977ad^ --run"
+  ]
+}

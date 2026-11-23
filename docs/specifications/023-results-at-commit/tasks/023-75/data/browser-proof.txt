@@ -1,0 +1,52 @@
+== browser thread-scroll.e2e.ts 2026-11-23T21:57:13Z load 0.40 0.10 0.03
+! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-12.11.2.tgz
+Downloading the pnpm 12.11.2 binary for linux-x64...
+$ sh .ai/scripts/e2e.sh thread-scroll.e2e.ts
+[test-env] not reusing: no descriptor at ~squeal-w35/runs/w35/brw/.ai/qa/test-env.json
+[test-env] installing agent-browser (agent-browser-linux-x64)
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+ 74 17.5M   74 13.0M    0     0  15.9M      0  0:00:01 --:--:--  0:00:01 15.9M100 17.5M  100 17.5M    0     0  18.9M      0 --:--:-- --:--:-- --:--:-- 40.2M
+[test-env] building (pnpm install --frozen-lockfile && sh .ai/scripts/build-e2e.sh)
+[test-env] cloning the served project into ~squeal-w35/runs/w35/brw/.ai/qa/served/brw
+[test-env] starting Squawk on a port it picks itself (CEZ_DRY_RUN=1)
+[test-env] Squawk listens on http://127.0.0.1:40751
+[test-env] healthy after 2s
+TEST_ENV_STATUS=running
+TEST_ENV_BASE_URL=http://127.0.0.1:40751
+TEST_ENV_DESCRIPTOR=.ai/qa/test-env.json
+TEST_ENV_REUSED=0
+BROWSER_PROVIDER=agent-browser
+BROWSER_INSTALLED=1
+npm warn Unknown env config "store-dir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m~squeal-w35/runs/w35/brw/packages/web/e2e[39m
+
+ [32m✓[39m [30m[45m e2e [49m[39m thread-scroll.e2e.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 95869[2mms[22m[39m
+     [33m[2m✓[22m[39m force-flat renders every row (the before measurement) [33m 4110[2mms[22m[39m
+     [33m[2m✓[22m[39m auto mode virtualizes past the threshold and keeps the DOM bounded [33m 7042[2mms[22m[39m
+     [33m[2m✓[22m[39m arrives pinned to the live tail (bottom-anchored), with no jump pill [33m 2843[2mms[22m[39m
+     [33m[2m✓[22m[39m scrolling up shows the jump pill; clicking it returns to the tail [33m 3282[2mms[22m[39m
+     [33m[2m✓[22m[39m restores the scroll position across a client-side leave and return [33m 6356[2mms[22m[39m
+     [33m[2m✓[22m[39m restores the same reader row after a measured virtual prefix grows to the cached full replay (#795) [33m 5883[2mms[22m[39m
+     [33m[2m✓[22m[39m starts folded on desktop, folds an open card while reading up and restores it reading down [33m 4838[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a manual unfold open for the rest of the reading session [33m 5585[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a card folded before the read folded on the way back down [33m 4694[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the composer at the document tail without overlaying history when the keyboard inset changes [33m 3916[2mms[22m[39m
+     [33m[2m✓[22m[39m holds the dock still while a live line arrives and the textarea grows upward [33m 3005[2mms[22m[39m
+     [33m[2m✓[22m[39m reserves the published keyboard inset below the document-flow thread [33m 3250[2mms[22m[39m
+     [33m[2m✓[22m[39m flat at 360×640 in light keeps rows separated through live updates and interaction [33m 7616[2mms[22m[39m
+     [33m[2m✓[22m[39m virtual at 360×640 in light keeps rows separated through live updates and interaction [33m 5083[2mms[22m[39m
+     [33m[2m✓[22m[39m flat at 360×640 in dark keeps rows separated through live updates and interaction [33m 8098[2mms[22m[39m
+     [33m[2m✓[22m[39m virtual at 360×640 in dark keeps rows separated through live updates and interaction [33m 5282[2mms[22m[39m
+     [33m[2m✓[22m[39m flat at 1440×900 in dark keeps rows separated through live updates and interaction [33m 6966[2mms[22m[39m
+     [33m[2m✓[22m[39m virtual at 1440×900 in dark keeps rows separated through live updates and interaction [33m 5286[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m18 passed[39m[22m[90m (18)[39m
+[2m   Start at [22m 22:57:42
+[2m   Duration [22m 97.03s[2m (transform 485ms, setup 330ms, import 478ms, tests 95.87s, environment 0ms)[22m
+
+TEST_E2E_STATUS=passed
+test:e2e thread-scroll.e2e.ts took 121 s

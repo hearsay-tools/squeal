@@ -1,0 +1,47 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 5 test processes · no flags
+Host    load 14.4 14.2 13.1 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 21% · memory pressure 0.0% (0.0% full) · memory 6.4 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 7.1 CPUs (at least 100% of busy) · memory 4.5 GiB (70% of used) + 0 swap · pool 5 of 11 permits
+
+~squeal-w35/runs/w35/s2-09 (this repository) · 1 daemon · CPU at least 4.9 · memory 2.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2774643  105577e7  0.1.611          1m   24%     0m27s  733M    0     fast tier, 200 files; 1128 pending
+    host vitest      2774850  local                      1m  195%     0m58s  473M    0
+    host vitest      2792830  local                     12s    0%     0m01s  152M    0
+    vitest           2793511  fork worker                6s   97%     0m01s  179M    0     nice 10
+    vitest           2793512  fork worker                6s  104%     0m03s  238M    0     nice 10
+    vitest           2793519  fork worker                6s    0%     0m01s  205M    0     nice 10, +1 child
+    vitest           2793531  fork worker                6s   67%     0m02s  147M    0     nice 10, +1 child
+    vitest           2793538  fork worker                6s     ?     0m01s  ?       ?     nice 10, +3 children
+
+~squeal-w35/runs/w35/s2-10 · 2 daemons · CPU 2.2 · memory 2.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2775862  f3ae1e23  0.1.611          1m  107%     0m15s  602M    0     idle
+    host vitest      2776131  local                      1m    0%     0m49s  758M    0
+  serving            2775509  98b17868  0.1.611          1m  106%     0m28s  667M    0     1 session
+    host vitest      2775655  local                      1m   12%     0m46s  451M    0
+
+Store processes
+  2775062  code.sqlite of ~squeal-w35/runs/w35/s2-09/.git
+  2791459  code.sqlite of ~squeal-w35/runs/w35/s2-10/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/0741546161032e72/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 2774643  age 1m  at a5c9b7223b65
+    commit worktree  ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/12ef06dfe039bf1f/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 2775862  age 1m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w35/runs/w35/s2-09/.git/squeal/checkouts': No such file or directory
+~squeal-w35/runs/w35/home/.cache/squeal/checkouts/0741546161032e72:
+total 12
+drwxrwxr-x  3 squeal-w35 squeal-w35 4096 Nov 23 23:35 .
+drwxrwxr-x 24 squeal-w35 squeal-w35 4096 Nov 23 23:36 ..
+drwxrwxr-x  4 squeal-w35 squeal-w35 4096 Nov 23 23:35 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:37 .
+drwxrwxr-x 24 squeal-w35 squeal-w35 4096 Nov 23 23:36 ..
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:36 b70b63a56c7388b8.json
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:37 d5bcd2751ee3d54f.json

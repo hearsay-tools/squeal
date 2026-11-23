@@ -1,0 +1,38 @@
+## squeal ps after squeal stop
+squeal ps · 1 daemon, 5 test processes · no flags
+Host    load 16.8 14.2 8.7 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 17% · memory pressure 0.0% (0.0% full) · memory 3.7 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 6.9 CPUs (at least 99% of busy) · memory 2.0 GiB (54% of used) + 0 swap · pool 5 of 11 permits
+
+~squeal-w35/runs/w35/s2-03 (this repository) · 1 daemon · CPU at least 6.9 · memory 2.0 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2415552  672ffec2  0.1.611          2m    1%     0m25s  467M    0     fast tier, 200 files; 1118 pending
+    host vitest      2416044  local                      1m  254%     0m56s  660M    0
+    vitest           2460363  fork worker                5s  134%     0m09s  634M    0     nice 10, +3 children
+    vitest           2461123  fork worker                3s     ?     0m03s  ?       ?     nice 10, +1 child
+    vitest           2461246  fork worker                3s  159%     0m02s  147M    0     nice 10, +5 children
+    vitest           2461264  fork worker                3s     ?     0m02s  150M    0     nice 10, +4 children
+    vitest           2461289  fork worker                3s     ?     0m02s  ?       ?     nice 10
+
+Store processes
+  2431148  code.sqlite of ~squeal-w35/runs/w35/s2-03/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 2415552  age 2m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w35/runs/w35/s2-03/.git/squeal/checkouts': No such file or directory
+~squeal-w35/runs/w35/home/.cache/squeal/checkouts/d75c899ad9fe1c5a:
+total 12
+drwxrwxr-x  3 squeal-w35 squeal-w35 4096 Nov 23 23:13 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+drwxrwxr-x  4 squeal-w35 squeal-w35 4096 Nov 23 23:13 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:15 .
+drwxrwxr-x 11 squeal-w35 squeal-w35 4096 Nov 23 23:13 ..
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:14 5a89dac30d7c0662.json
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:11 a1d7d20d4fc60e45.json
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:15 b48adab687724fac.json

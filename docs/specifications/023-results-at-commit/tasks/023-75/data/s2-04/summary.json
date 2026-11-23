@@ -1,0 +1,87 @@
+{
+  "id": "s2-04",
+  "lines9": [],
+  "hooks9": [],
+  "lines10": [
+    "3s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (5 of them have a stored duration) and this call measured no rate; in the working tree: 1333 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq",
+    "3s +99s 200 running and 1138 queued at a5c9b7223 (its worktree), 4 running and 1329 queued in the working tree; their runs go on in the daemons. squeal status --at '20f03a431~1' --wait 100000 waits for them; squeal ps shows them.",
+    "106s +32s test/store/busy-slice.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/check-runner.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/checkpoint-lanes.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/concurrency.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/contention.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/crash.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/daemon-token.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/environments.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/failure-repo.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/import-graph-aliases.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/import-graph.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/imported-origin.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/keys-since.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/keys-with-results.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/loaded-modules.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/lock-holders-refused.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/lock-holders.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/long-write.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/newest-for-test-file.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "106s +32s test/store/open.test.ts: pass -> pass (at a5c9b7223: the file as it was at a5c9b7223, without its changes since then; run in the commit's worktree; now: run in this worktree)",
+    "106s +32s 16 more test files: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree): test/store/opening.test.ts, test/store/prune-removed.test.ts, test/store/prune-runs.test.ts and 13 more"
+  ],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/8045b3a7617d4ca6/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [],
+  "joins": [
+    "3s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | head -80",
+    "106s +32s squeal status --at '20f03a431~1' test/store --run --wait 120000 2>&1 | head -30"
+  ],
+  "estimates": [
+    "3s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (5 of them have a stored duration) and this call measured no rate; in the working tree: 1333 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "3s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "3s +99s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "3s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "106s +32s test/store/open.test.ts: pass -> pass (at a5c9b7223: the file as it was at a5c9b7223, without its changes since then; run in the commit's worktree; now: run in this worktree)",
+    "106s +32s 1 more test file: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now pass (now: run in this worktree): test/store/key-shadow.test.ts",
+    "106s +32s 1 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs it"
+  ],
+  "loadStart": "11.62",
+  "exit": 0,
+  "wallSeconds": 142.154,
+  "squeal": [
+    "3s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | head -80",
+    "106s squeal status --at '20f03a431~1' test/store --run --wait 120000 2>&1 | head -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.054248500000000005,
+  "usage": {
+    "cache_creation_input_tokens": 13983,
+    "cache_read_input_tokens": 105310,
+    "output_tokens": 874
+  },
+  "firstFinal": "**Partial answer: no result changed that I could find, but I did not check every affected test.**\n\nCommit 20f03a431 touched `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`.\n\n- **What I checked:** I compared the 39 files under `test/store/` against the commit before it (a5c9b7223). 38 passed in both and did not change. The one with no earlier result is `test/store/key-shadow.test.ts`. Squeal doesn't select it for this change, and it passes now.\n- **The changed test:** `test/store/open.test.ts` passes at both commits. The \"before\" side used the file as it was then, without the new tests.\n- **What I didn't check:** Squeal says the `mark.ts` change affects 1,338 test files across the repo. The full comparison was still queued when I stopped, so I have no verdict for most of them. For the repo as a whole, 0 files went pass to fail, 0 went fail to pass, and 1,962 are unknown.\n\nSo no test file I checked changed its result. I can't rule out a change elsewhere in the repo. The full comparison is still running. `squeal status --at '20f03a431~1' --wait 100000` will report it when it finishes, and I can re-run it if you want.",
+  "final": "**Partial answer: no result changed that I could find, but I did not check every affected test.**\n\nCommit 20f03a431 touched `src/core/store/mark.ts` and added 27 lines of tests to `test/store/open.test.ts`.\n\n- **What I checked:** I compared the 39 files under `test/store/` against the commit before it (a5c9b7223). 38 passed in both and did not change. The one with no earlier result is `test/store/key-shadow.test.ts`. Squeal doesn't select it for this change, and it passes now.\n- **The changed test:** `test/store/open.test.ts` passes at both commits. The \"before\" side used the file as it was then, without the new tests.\n- **What I didn't check:** Squeal says the `mark.ts` change affects 1,338 test files across the repo. The full comparison was still queued when I stopped, so I have no verdict for most of them. For the repo as a whole, 0 files went pass to fail, 0 went fail to pass, and 1,962 are unknown.\n\nSo no test file I checked changed its result. I can't rule out a change elsewhere in the repo. The full comparison is still running. `squeal status --at '20f03a431~1' --wait 100000` will report it when it finishes, and I can re-run it if you want.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "'20f03a431~1' --run"
+  ]
+}

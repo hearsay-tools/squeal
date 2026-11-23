@@ -1,0 +1,56 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 12 test processes · no flags
+Host    load 16.6 10.1 4.8 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 39% · memory pressure 0.0% (0.0% full) · memory 9.5 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 10.0 CPUs (at least 97% of busy) · memory 7.0 GiB (74% of used) + 0 swap · pool 11 of 11 permits
+
+~squeal-w35/runs/w35/s2-01 (this repository) · 1 daemon · CPU at least 8.3 · memory 2.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2291016  073dfe7b  0.1.611          2m    2%     0m30s  491M    0     fast tier, 200 files; 1091 pending
+    host vitest      2298066  local                      2m  216%     1m04s  814M    0
+    vitest           2332312  fork worker               16s     ?     0m03s  143M    0     nice 10, +3 children
+    vitest           2332342  fork worker               16s  113%     0m02s  199M    0     nice 10, +1 child
+    vitest           2335077  fork worker                9s    7%     0m02s  168M    0     nice 10, +1 child
+    vitest           2335811  fork worker                7s     ?     0m02s  ?       ?     nice 10, +1 child
+    vitest           2337495  fork worker                4s     ?     0m02s  ?       ?     nice 10
+    vitest           2338977  fork worker                1s     ?     0m02s  157M    0     nice 10, +3 children
+    vitest           2339096  fork worker                1s  119%     0m02s  239M    0     nice 10
+    vitest           2339300  fork worker                0s  155%     0m02s  219M    0     nice 10
+
+~squeal-w35/runs/w35/s1b-01 · 2 daemons · CPU 1.8 · memory 4.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2287426  60fed12e  0.1.611          3m    0%     0m18s  475M    0     fast tier, 1 file; 95 pending
+    host vitest      2287549  local                      3m    0%     0m52s  647M    0
+    host vitest      2289819  local                      2m    1%     0m05s  252M    0
+    group:browser:vitest2312735  fork worker                1m    4%     0m10s  367M    0     nice 10, +2 children
+    group:browser:vitest2313213                             1m   63%     1m00s  1.8G    0     escaped, nice 10, +28 children
+    group:browser:vitest2313267                             1m    0%     0m00s  380K    0     escaped, nice 10
+    group:browser:vitest2313269                             1m    0%     0m00s  328K    0     escaped, nice 10
+  serving            2287062  76a5943f  0.1.611          3m  107%     0m56s  360M    0     97 pending; 1 session
+    host vitest      2287163  local                      3m    0%     0m49s  693M    0
+    host node-test   2287164  local                      3m    0%     0m00s  40M     0
+    host node-test   2287165  local                      3m    0%     0m00s  51M     0
+
+Store processes
+  2287742  code.sqlite of ~squeal-w35/runs/w35/s1b-01/.git
+  2310869  code.sqlite of ~squeal-w35/runs/w35/s2-01/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/736318afa74cfd65/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 2291016  age 2m  at a5c9b7223b65
+    commit worktree  ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/fc628ca80ef3b74f/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 2287426  age 3m  at d8abcfe46bbe
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w35/runs/w35/s2-01/.git/squeal/checkouts': No such file or directory
+~squeal-w35/runs/w35/home/.cache/squeal/checkouts/736318afa74cfd65:
+total 12
+drwxrwxr-x 3 squeal-w35 squeal-w35 4096 Nov 23 23:05 .
+drwxrwxr-x 7 squeal-w35 squeal-w35 4096 Nov 23 23:05 ..
+drwxrwxr-x 4 squeal-w35 squeal-w35 4096 Nov 23 23:05 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x 2 squeal-w35 squeal-w35 4096 Nov 23 23:07 .
+drwxrwxr-x 7 squeal-w35 squeal-w35 4096 Nov 23 23:05 ..
+-rw-rw-r-- 1 squeal-w35 squeal-w35  156 Nov 23 23:06 12faf0b19e34bd0c.json
+-rw-rw-r-- 1 squeal-w35 squeal-w35  156 Nov 23 23:07 c5c32f7c19b7cc87.json

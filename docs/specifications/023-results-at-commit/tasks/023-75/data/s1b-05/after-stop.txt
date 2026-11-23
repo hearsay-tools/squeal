@@ -1,0 +1,141 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-23 23:31:48 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w35/runs/w35/s1b-05
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+worktree ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+HEAD d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w35 squeal-w35    0 Nov 23 22:59 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/03d283217774aa9b:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:19 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/076da2a52632affe:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:26 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/23a900e9929d76b6:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:34 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/38764b08fccbd132:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:01 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/43cce7900e01c2ee:
+total 12
+drwxrwxr-x  3 squeal-w35 squeal-w35 4096 Nov 23 23:31 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+drwxrwxr-x  4 squeal-w35 squeal-w35 4096 Nov 23 23:32 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/4ed1694c1d7b31ee:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:22 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/546ecef5158954b8:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:04 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/736318afa74cfd65:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:08 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/8045b3a7617d4ca6:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:21 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/84aa25f2ebb2eec8:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:15 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/859835d8f156d0a4:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:11 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/9d0129fe963beb4d:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:22 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/a3a497e56f241af6:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:33 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/a7ed72a76f4c0b48:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:30 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/a9faf4031fb0872d:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:30 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/b8241923736abb25:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:30 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/bdb9e61056a37d12:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:14 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:34 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:34 020f40f2fa99e346.json
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:33 64dd1e80a2eb5719.json
+-rw-rw-r--  1 squeal-w35 squeal-w35  156 Nov 23 23:32 9b43be450948ad4f.json
+
+home/.cache/squeal/checkouts/d75c899ad9fe1c5a:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:15 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+home/.cache/squeal/checkouts/fc628ca80ef3b74f:
+total 8
+drwxrwxr-x  2 squeal-w35 squeal-w35 4096 Nov 23 23:12 .
+drwxrwxr-x 22 squeal-w35 squeal-w35 4096 Nov 23 23:32 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+2703041       1       03:49 squeal s1b-05 daemon @d1f9058a ~squeal-w35/runs/w35/claude/plugins/cache/hearsay/squeal/0.1.611/dist/cli/squeal.mjs daemon ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+2709057 2703041       03:42 /opt/squeal-w35/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w35/runs/w35/claude/plugins/cache/hearsay/squeal/0.1.611/dist/cli/squeal.mjs runner-host ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+2725098       1       02:51 squeal s1b-05 store --disable-warning=ExperimentalWarning ~squeal-w35/runs/w35/claude/plugins/cache/hearsay/squeal/0.1.611/dist/cli/squeal.mjs store-process ~squeal-w35/runs/w35/s1b-05/.git --store code
+2747023       1       02:12 /opt/squeal-w35/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+2747024       1       02:12 /opt/squeal-w35/node24/bin/node ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease.mjs watch-app 2747023 c294d61d-2b74-4f72-9b10-2d9fc754e380:9734347 ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+2751029       1       01:45 /opt/squeal-w35/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w35/runs/w35/s1b-05/.ai/qa/served/s1b-05
+2751030       1       01:45 /opt/squeal-w35/node24/bin/node ~squeal-w35/runs/w35/s1b-05/.ai/scripts/test-env-lease.mjs watch-app 2751029 c294d61d-2b74-4f72-9b10-2d9fc754e380:9737052 ~squeal-w35/runs/w35/s1b-05 ~squeal-w35/runs/w35/s1b-05/.ai/qa/served/s1b-05
+2773418 2703041       00:00 /opt/squeal-w35/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w35/runs/w35/claude/plugins/cache/hearsay/squeal/0.1.611/dist/cli/squeal.mjs runner-host ~squeal-w35/runs/w35/home/.cache/squeal/checkouts/43cce7900e01c2ee/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
