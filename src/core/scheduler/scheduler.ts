@@ -69,6 +69,7 @@ import { InstallStamps } from "./install-stamp.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
+import { publishNarrowAsks } from "./narrow-asks-row.js";
 import { narrowRequest, REINSTALLED_REASON } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
 import { PoolWaits, poolWaitsPublish } from "./pool-wait.js";
@@ -335,6 +336,16 @@ class TierScheduler implements Scheduler {
       pump: () => this.#pump(),
       store: options.store,
       worktreeId: options.worktreeId,
+      // Review 0.1.610 B1: status reads which held files a narrow run asked for.
+      narrowChanged: () => {
+        const at = this.#now();
+        publishNarrowAsks(
+          options.store,
+          options.worktreeId,
+          this.#groups.narrowAsks(),
+          this.#steps.stamp(at),
+        );
+      },
     };
     this.#groups = new GroupTiers((group) => new SlowTier(loop, options.slow, group));
     this.#slowRelease = new SlowRelease(
@@ -471,7 +482,15 @@ class TierScheduler implements Scheduler {
       // Row 011-72: a key that names an unmerged path takes no stored result.
       ledger.holds = (ref) => this.#hold.holding && this.#hold.names(keys.stabilityPaths(ref));
       // Row 018-12: an asked file's end is heard where it happens (review wave 3.6, B2).
-      ledger.ends = this.#requests;
+      // Review 0.1.610 B1: each commit drops the narrow asks a re-key or an end left behind,
+      // so the published asks never hold one the lane would not run.
+      ledger.ends = {
+        ended: (file) => this.#requests.ended(file),
+        committed: (files) => {
+          this.#requests.committed(files);
+          this.#groups.pruneNarrow(ledger);
+        },
+      };
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
       // A daemon starts on hold when git lists an unmerged path or a `squeal hold` holds (011 C9).

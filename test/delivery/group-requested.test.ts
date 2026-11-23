@@ -6,7 +6,7 @@ import { squealEvidence } from "../../evals/lib/index.mjs";
 import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { formatDelta } from "../../src/core/delivery/format.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
-import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
+import { publishNarrowAsks } from "../../src/core/scheduler/narrow-asks-row.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { EpochMs } from "../../src/core/types/common.js";
 import type { Consumer, Delta, HarnessDelivery } from "../../src/core/types/delivery.js";
@@ -94,13 +94,11 @@ function flipUnit(): void {
   apply(result(UNIT, outcome, { key: "u1" }));
 }
 
-/** The browser file queued; with `requested`, in a batch the daemon publishes, as a narrow request's. */
+/** The browser file queued; with `requested`, a narrow run's ask at its key the daemon publishes. */
 function queueBrowser(requested: boolean): void {
   setKey(store, "b1", { file: BROWSER_FILE, pending: "queued" });
   if (requested) {
-    const files = [testFileId(BROWSER_FILE)];
-    const live = [{ files, until: Date.now() as EpochMs, batch: { files, estimatedEnd: null } }];
-    publishPromotions(store, WT, live, Date.now() as EpochMs);
+    publishNarrowAsks(store, WT, [[testFileId(BROWSER_FILE), "b1"]], Date.now() as EpochMs);
   }
   sink.refresh(WT, revision(), { checkpointId: null });
 }

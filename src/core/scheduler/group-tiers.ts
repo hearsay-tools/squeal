@@ -1,4 +1,5 @@
 import type { EpochMs } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import { SLOW_GROUP, TESTS_GROUP } from "../types/scheduler.js";
 import type { Ledger } from "./ledger.js";
@@ -62,6 +63,16 @@ export class GroupTiers {
     [...names].forEach((name, index) => {
       this.#configured.get(name)?.ranked(index);
     });
+  }
+
+  /** Review 0.1.610 B1: every lane's narrow asks, each file's `testFileId` and asked key. */
+  narrowAsks(): [string, CheckKey][] {
+    return this.#all().flatMap((lane) => [...lane.narrow.entries()]);
+  }
+
+  /** Drops each lane's narrow asks that can no longer run (`CommitAsks.prune`). */
+  pruneNarrow(ledger: Ledger): void {
+    for (const lane of this.#all()) lane.narrow.prune(ledger);
   }
 
   /** Some lane has an open request. */

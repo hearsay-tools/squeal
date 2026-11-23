@@ -3,11 +3,11 @@ import { commitLine } from "../commit/text.js";
 import { heldUntilAsked } from "../daemon/check-groups.js";
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
-import { publishedBatches } from "../scheduler/promotions-row.js";
+import { publishedNarrowAsks } from "../scheduler/narrow-asks-row.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
 import type { CheckMoment } from "../types/check-groups.js";
-import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import { TESTS_GROUP } from "../types/scheduler.js";
@@ -137,10 +137,13 @@ export function groupTiersOf(
  * Row 023-67 (dogfood round 8, X2): a group at `commit` or `manual`
  * (`heldUntilAsked`) runs a queued file only when a request asked for it.
  * A narrow request (`squeal status --at <commit> --run`, `squeal run
- * <group> <path>...`) puts its files in a batch the live daemon publishes
- * (`publishedBatches`), so a queued file in one is requested, not waiting
- * for a commit or `squeal run <group>`. Round 8 told "97 pending, waiting
- * for `squeal run browser`" after the call's `--run` had queued the 97.
+ * <group> <path>...`) asks the group's lane to run its files, each at its
+ * key then, and the live daemon publishes those asks (`publishedNarrowAsks`),
+ * so a queued file asked at its key now is requested, not waiting for a
+ * commit or `squeal run <group>`. Round 8 told "97 pending, waiting for
+ * `squeal run browser`" after the call's `--run` had queued the 97. Review
+ * 0.1.610 B1: a named wait's batch only orders the queue and runs no held
+ * file, so batch membership is not counted.
  */
 function requestedOf(
   store: Store,
@@ -151,10 +154,11 @@ function requestedOf(
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (daemon === null) return () => 0;
-  const batched = publishedBatches(store, worktreeId, daemon.startedAt, Date.now() as EpochMs);
-  if (batched.size === 0) return () => 0;
+  const asked = publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  if (asked.size === 0) return () => 0;
   const queued = keys.filter(
-    (row) => row.key !== null && row.pending !== null && batched.has(testFileId(row.testFile)),
+    (row) =>
+      row.key !== null && row.pending !== null && asked.get(testFileId(row.testFile)) === row.key,
   );
   return (at, inLane) =>
     heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;

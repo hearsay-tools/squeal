@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { publishNarrowAsks } from "../../src/core/scheduler/narrow-asks-row.js";
 import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
 import { readHeader } from "../../src/core/state/header.js";
 import type { EpochMs } from "../../src/core/types/common.js";
@@ -42,20 +43,19 @@ const BROWSER = {
 const FILES = ["test/browser/a.test.ts", "test/browser/b.test.ts", "test/browser/c.test.ts"];
 const id = (path: string) => testFileId({ project: "", path });
 
-/** The browser files queued; the daemon publishes a batch of `batched` as a narrow request's (`at`: when). */
-function queued(batched: readonly string[], at: number = NOW): Seeded {
+/**
+ * The browser files queued; the daemon publishes a narrow run's asks for
+ * `asked` at their keys (`at`: when; `key`: the key each was asked at).
+ */
+function queued(
+  asked: readonly string[],
+  at: number = NOW,
+  key: (path: string) => string = (path) => `key-${path}`,
+): Seeded {
   const s = seed(BROWSER, { revisions: 3 });
   keys(s.store, s.repo, Object.fromEntries(FILES.map((path) => [path, "queued" as const])));
-  if (batched.length > 0) {
-    const files = batched.map(id);
-    const batch = { files, estimatedEnd: null };
-    publishPromotions(
-      s.store,
-      s.repo.mainId,
-      [{ files, until: NOW as EpochMs, batch }],
-      at as EpochMs,
-    );
-  }
+  const asks = asked.map((path) => [id(path), key(path)] as const);
+  publishNarrowAsks(s.store, s.repo.mainId, asks, at as EpochMs);
   inTurn(s);
   return s;
 }
@@ -99,5 +99,24 @@ describe("a request-only group a request queued (row 023-67, X2)", () => {
     expect(waitingIn(none)).toContain("browser");
     // The seeded daemon started at NOW - 60 s: a batch row written before is its predecessor's.
     expect(lineOf(status(queued(FILES, NOW - 120_000)))).toBe(old);
+  });
+
+  it("counts no named wait's batch and no ask at a key the file left (review 0.1.610 B1)", () => {
+    const old =
+      "browser: 3 test files; 3 pending, waiting for `squeal run browser`. Squeal runs them only on request; `squeal run browser --wait 60000` runs them now and waits for their results.";
+    // A plain `squeal status --wait <path>` batches the files and runs no held one.
+    const waited = queued([]);
+    const files = FILES.map(id);
+    const batch = { files, estimatedEnd: null };
+    publishPromotions(
+      waited.store,
+      waited.repo.mainId,
+      [{ files, until: NOW as EpochMs, batch }],
+      NOW as EpochMs,
+    );
+    expect(readHeader(waited.store, waited.repo.mainId).groupTiers?.[0]?.requested).toBeUndefined();
+    expect(lineOf(status(waited))).toBe(old);
+    // An edit re-keyed the files after the ask: the lane no longer runs them.
+    expect(lineOf(status(queued(FILES, NOW, (path) => `old-${path}`)))).toBe(old);
   });
 });

@@ -59,6 +59,8 @@ export interface LaneLoop {
   pump(): void;
   readonly store: Store;
   readonly worktreeId: WorktreeId;
+  /** Review 0.1.610 B1: a lane's narrow asks changed, so the scheduler publishes them again. */
+  narrowChanged?(): void;
 }
 
 /** What a lane reads of its scheduler, passed with each call that needs it. */
@@ -157,7 +159,7 @@ export class SlowTier {
    * group's moment, past the load guard and without a pool grant, as an
    * open request does; the group's other files keep waiting.
    */
-  readonly narrow = new CommitAsks();
+  readonly narrow = new CommitAsks(() => this.loop.narrowChanged?.());
   /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
   #budgetMs: number | null = null;
   #slotMissedSince: EpochMs | null = null;
@@ -797,6 +799,7 @@ export class SlowTier {
   /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
   retire(): void {
     const { store, worktreeId } = this.loop;
+    this.narrow.clear();
     this.#unmark(this.#slotDir(), worktreeId);
     const now = readGroupActivity(store, worktreeId, this.group);
     if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
