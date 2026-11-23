@@ -126,6 +126,8 @@ export interface StandInCommit {
   readonly rows?: (tree: AbsolutePath, files: readonly TestFileRef[]) => void;
   /** Row 023-53 (V8): the change's whole selection it tells in each ask (`selects`); absent: none. */
   readonly selects?: number;
+  /** Row 023-58 (W1): the files it would run that have a result at the commit (`withResult`). */
+  readonly withResult?: (ask: Omit<CommitAskRequest, "type">) => readonly TestFileRef[];
 }
 
 /** Stand-in daemons: each records what it is asked; `onWait` plays what the daemon did meanwhile. */
@@ -142,6 +144,7 @@ export function standIn(
   const queued = new Map<string, readonly TestFileRef[]>();
   // Review 0.1.599 B4: each ask's change identity, as the daemon keeps it.
   const changes = new Map<string, string>();
+  const withResult = new Map<string, readonly TestFileRef[]>();
   const ports: AtDaemons = {
     async commit(input) {
       commits.push(input.commit);
@@ -153,6 +156,8 @@ export function standIn(
         commitDaemon.select?.(ask) ?? ask.named.map((path): TestFileRef => ({ project: "", path }));
       queued.set(ask.owner, files);
       changes.set(ask.owner, changeOf(ask.changed));
+      const kept = commitDaemon.withResult?.(ask);
+      if (kept !== undefined) withResult.set(ask.owner, kept);
       commitDaemon.rows?.(tree, files);
       return null;
     },
@@ -167,6 +172,7 @@ export function standIn(
           readers: {},
           problems: [],
           ...(commitDaemon.selects === undefined ? {} : { selects: commitDaemon.selects }),
+          ...(withResult.has(owner) ? { withResult: withResult.get(owner) ?? [] } : {}),
         }));
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
