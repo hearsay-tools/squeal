@@ -16751,12 +16751,13 @@ function leadCut(context, ledger, tier, marked4, margin) {
   if (lead === 0) return false;
   const own = left.filter((entry4) => rankOf(entry4) === lead);
   if (own.length === left.length) return false;
-  const ownMs = Math.max(0, ...own.map(({ file }) => file.durationMs ?? 0));
+  const ms2 = own.map(({ file }) => file.durationMs ?? 0);
+  const ownMs = Math.max(0, ...ms2, ms2.reduce((a, m) => a + m, 0) / widthOf(tier));
   return workLeft(context, tier) - ownMs > margin;
 }
 function workLeft(context, tier) {
   const ms2 = ({ file }) => file.durationMs ?? 0;
-  const width = Math.max(1, Math.min(tier.files.length, tier.lease?.grant ?? tier.files.length));
+  const width = widthOf(tier);
   const sum3 = (files5) => files5.reduce((total, f) => total + ms2(f), 0);
   const left = unfinished(tier);
   const longest2 = Math.max(0, ...left.map(ms2));
@@ -16770,10 +16771,12 @@ function elapsed(context, tier) {
   const start2 = context.steps?.since(startedAt, tier.startedStep ?? 0) ?? startedAt;
   return context.now() - start2;
 }
+var widthOf;
 var init_lead_cut = __esm({
   "src/core/scheduler/lead-cut.ts"() {
     "use strict";
     init_yield_waits();
+    widthOf = (tier) => Math.max(1, Math.min(tier.files.length, tier.lease?.grant ?? tier.files.length));
   }
 });
 
@@ -19401,7 +19404,7 @@ var init_seed = __esm({
        * Seeds the next files while `work` allows: `done` once every file is
        * seeded, `uncounted` while a start's file waits for its count.
        */
-      advance(input, countOf, work) {
+      advance(input, countOf2, work) {
         if (!this.#caughtUp(input.store, work)) return "more";
         for (; ; ) {
           const moved4 = [...this.#came.keys()].filter((path) => this.#waiting(path) === void 0);
@@ -19412,17 +19415,17 @@ var init_seed = __esm({
             this.#seed(
               input,
               paths.map((path) => ({ path, began: null })),
-              countOf
+              countOf2
             );
             continue;
           }
           const files5 = this.#files.slice(this.#next, this.#next + SEED_FILES);
-          if (this.#counted && !this.#allCounted(input, files5, countOf)) return "uncounted";
+          if (this.#counted && !this.#allCounted(input, files5, countOf2)) return "uncounted";
           this.#next += files5.length;
           this.#seed(
             input,
             files5.map((began) => ({ path: began.path, began })),
-            countOf
+            countOf2
           );
         }
       }
@@ -19484,13 +19487,13 @@ var init_seed = __esm({
        * Whether each of `files`, as the seed began, has a count now, or is gone,
        * too big or one the counter gave up on; a start waits for the others.
        */
-      #allCounted(input, files5, countOf) {
+      #allCounted(input, files5, countOf2) {
         const { store, worktreeId } = input;
         const now = store.files.list(
           worktreeId,
           files5.map((f) => f.path)
         );
-        const uncounted = now.filter((f) => f.tooBig !== true && countOf(f) === null);
+        const uncounted = now.filter((f) => f.tooBig !== true && countOf2(f) === null);
         if (uncounted.length === 0) return true;
         const failed7 = readUncountable(store.meta, worktreeId);
         return uncounted.every((f) => spentFailure(failed7, f) !== null);
@@ -19517,7 +19520,7 @@ var init_seed = __esm({
        * `began` is a file as the seed began, `null` for one seeded already or
        * that the seed did not have, which holds only what came.
        */
-      #seed(input, files5, countOf) {
+      #seed(input, files5, countOf2) {
         const { store, worktreeId, revision } = input;
         const paths = files5.map((f) => f.path);
         const now = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f]));
@@ -19530,7 +19533,7 @@ var init_seed = __esm({
         const states = [];
         for (const { path, began } of files5) {
           const file = now.get(path);
-          const chosen = this.#chosen(store, began, file, countOf);
+          const chosen = this.#chosen(store, began, file, countOf2);
           this.#came.delete(path);
           this.#left.delete(path);
           this.#had.delete(path);
@@ -19558,9 +19561,9 @@ var init_seed = __esm({
        * `file`'s functions to seed: those moved there, and with `then`, those
        * its count had as the seed began, none an edit added or took away since.
        */
-      #chosen(store, then2, file, countOf) {
+      #chosen(store, then2, file, countOf2) {
         if (file === void 0 || file.tooBig === true) return [];
-        const functions = countOf(file)?.functions ?? [];
+        const functions = countOf2(file)?.functions ?? [];
         const came = this.#came.get(file.path);
         const left = then2 === null ? void 0 : this.#left.get(file.path);
         const same4 = then2?.blob === file.blob && then2.counterVersion === file.counterVersion;
@@ -42764,7 +42767,7 @@ var require_Resolver = __commonJS({
         * @returns {Promise<string | false>} result
         */
         (self, context, path, request, resolveContext) => {
-          const { promise, resolve: resolve53, reject } = Promise.withResolvers();
+          const { promise: promise2, resolve: resolve53, reject } = Promise.withResolvers();
           self.resolve(context, path, request, resolveContext, (err2, res) => {
             if (err2) reject(err2);
             else resolve53(
@@ -42772,7 +42775,7 @@ var require_Resolver = __commonJS({
               res
             );
           });
-          return promise;
+          return promise2;
         }
       ) : (
         /**
@@ -47197,13 +47200,13 @@ function abandon(vitest, collector) {
     (error) => collector.note(`close() of an abandoned instance failed: ${describeError(error)}`)
   );
 }
-async function settleWithin(promise, ms2) {
+async function settleWithin(promise2, ms2) {
   let timer;
   const timeout = new Promise((resolve53) => {
     timer = setTimeout(() => resolve53(null), ms2);
   });
   try {
-    return await Promise.race([promise, timeout]);
+    return await Promise.race([promise2, timeout]);
   } finally {
     clearTimeout(timer);
   }
@@ -47394,8 +47397,8 @@ var init_broken = __esm({
 import { createHash as createHash26 } from "node:crypto";
 import { lstat as lstat5, readFile as readFile6 } from "node:fs/promises";
 function changedBefore(stat10, at2) {
-  const wholeSeconds = stat10.ctimeMs % 1e3 === 0 && stat10.mtimeMs % 1e3 === 0;
-  return stat10.ctimeMs < at2 - (wholeSeconds ? RACY_WINDOW_MS : COARSE_TICK_MS);
+  const wholeSeconds2 = stat10.ctimeMs % 1e3 === 0 && stat10.mtimeMs % 1e3 === 0;
+  return stat10.ctimeMs < at2 - (wholeSeconds2 ? RACY_WINDOW_MS : COARSE_TICK_MS);
 }
 async function readStamp(file) {
   const stat10 = await statOrNull2(file);
@@ -62966,14 +62969,14 @@ var init_wakes = __esm({
           this.#pieces.delete(piece);
           this.#poke();
         };
-        let promise;
+        let promise2;
         try {
-          promise = this.#piece.run(piece, work);
+          promise2 = this.#piece.run(piece, work);
         } catch (error) {
-          promise = Promise.reject(error);
+          promise2 = Promise.reject(error);
         }
-        promise.then(done, done);
-        return promise;
+        promise2.then(done, done);
+        return promise2;
       }
       /**
        * The one way a piece stops counting (`Waiting`): it waits for `promise`,
@@ -62981,17 +62984,17 @@ var init_wakes = __esm({
        * in stops counting until `promise` settles and counts again before its
        * continuation runs. Outside any piece it suspends nothing.
        */
-      waitFor(waiting2, promise) {
+      waitFor(waiting2, promise2) {
         const piece = this.#piece.getStore();
-        if (piece === void 0 || !this.#pieces.has(piece)) return promise;
+        if (piece === void 0 || !this.#pieces.has(piece)) return promise2;
         piece.waiting += 1;
         piece.for = waiting2;
         this.#poke();
         const back = () => {
           piece.waiting -= 1;
         };
-        promise.then(back, back);
-        return promise;
+        promise2.then(back, back);
+        return promise2;
       }
       /** The `Mutex` count hook: how many of its tasks are queued or running. */
       locked(count5) {
@@ -66201,9 +66204,9 @@ var init_chokidar = __esm({
         this.removeAllListeners();
         const closers = [];
         this._closers.forEach((closerList) => closerList.forEach((closer) => {
-          const promise = closer();
-          if (promise instanceof Promise)
-            closers.push(promise);
+          const promise2 = closer();
+          if (promise2 instanceof Promise)
+            closers.push(promise2);
         }));
         this._streams.forEach((stream) => stream.destroy());
         this._userIgnored = void 0;
@@ -74395,7 +74398,7 @@ function runCoverageStep(given2) {
   const input = reseed === given2.reseed ? given2 : { ...given2, reseed };
   const start2 = summary === null || summary.provider !== COVERAGE_RECORD_VERSION;
   const counts = /* @__PURE__ */ new Map();
-  const countOf = (file) => {
+  const countOf2 = (file) => {
     const known4 = counts.get(file.path);
     if (known4 !== void 0) return known4;
     const count5 = store.counts.get(file.blob, file.language, file.counterVersion);
@@ -74407,7 +74410,7 @@ function runCoverageStep(given2) {
     const mark = seed.mark();
     let seeded2;
     try {
-      seeded2 = store.transaction(() => seed.advance(input, countOf, slice));
+      seeded2 = store.transaction(() => seed.advance(input, countOf2, slice));
     } catch (error) {
       seed.restore(mark);
       throw error;
@@ -74425,7 +74428,7 @@ function runCoverageStep(given2) {
   const brought = broughtByGit(store.meta, worktreeId, summary);
   const report4 = store.transaction(() => {
     const { next, judged: judged2, transitions, quiet, more: more2 } = walk5(
-      { input, cache: cache2, loaders, summary, start: start2, countOf, work, brought },
+      { input, cache: cache2, loaders, summary, start: start2, countOf: countOf2, work, brought },
       files5
     );
     cache2.keep(files5);
@@ -101188,12 +101191,12 @@ function deadlineOf(timeoutMs, caller) {
   const signal3 = caller === void 0 ? deadline : AbortSignal.any([deadline, caller]);
   return { signal: signal3, deadline, caller };
 }
-function race(promise, signal3) {
+function race(promise2, signal3) {
   if (signal3.aborted) return Promise.reject(signal3.reason);
   return new Promise((resolve53, reject) => {
     const onAbort = () => reject(signal3.reason);
     signal3.addEventListener("abort", onAbort, { once: true });
-    promise.then(
+    promise2.then(
       (value) => {
         signal3.removeEventListener("abort", onAbort);
         resolve53(value);
@@ -104124,6 +104127,7 @@ var AtAsks = class {
       owner: request.owner,
       change: changeOf(request.changed),
       named: [...request.named],
+      allMissing: request.allMissing,
       phase: "waiting",
       files: [],
       readers: {},
@@ -104197,6 +104201,7 @@ function stateOf3(ask2, setup) {
     owner: ask2.owner,
     change: ask2.change,
     named: [...ask2.named],
+    allMissing: ask2.allMissing,
     phase,
     ...ask2.text === void 0 ? {} : { text: ask2.text },
     files: [...ask2.files],
@@ -113356,13 +113361,26 @@ function namedRun(runs2, call2, running2, seconds7, at2) {
   }
   const [run7, named4] = [...holding].sort(([a], [b]) => b.startedAt - a.startedAt)[0] ?? [];
   if (run7 === void 0 || named4 === void 0) return null;
-  const known4 = run7.testFiles.map(seconds7).filter((s) => s !== null);
-  const width = Math.max(1, Math.min(at2.width, run7.testFiles.length));
-  const whole = Math.max(Math.max(0, ...known4), sum(known4) / width);
+  const all2 = run7.testFiles.map(seconds7);
+  const files5 = all2.length;
+  const known4 = all2.filter((s) => s !== null);
   const ran = Math.max(0, Math.round((at2.now - run7.startedAt) / 1e3));
-  const left = known4.length === 0 ? null : Math.max(0, Math.ceil(whole * (at2.factor ?? 1)) - ran);
+  const whole = wholeSeconds(all2, known4, Math.min(at2.width, files5), at2);
+  const left = whole === null ? null : Math.max(0, whole - ran);
   const { startedAt } = run7;
-  return { named: named4, files: run7.testFiles.length, startedAt, ran, seconds: left };
+  return { named: named4, files: files5, startedAt, ran, known: known4.length, seconds: left };
+}
+function wholeSeconds(all2, known4, width, at2) {
+  const { rate } = at2;
+  if (rate !== void 0 && rate !== null && rate.done >= MEASURED_LEAST && rate.ms > 0) {
+    const rated = Math.ceil(all2.length * rate.ms / 1e3 / rate.done);
+    return Math.max(rated, Math.ceil(Math.max(0, ...known4) * (at2.factor ?? 1)));
+  }
+  const middle = median2(known4);
+  if (middle === null || tooFew(known4.length, all2.length)) return null;
+  const filled = all2.map((s) => s ?? middle);
+  const whole = Math.max(Math.max(0, ...filled), sum(filled) / Math.max(1, width));
+  return Math.ceil(whole * (at2.factor ?? 1));
 }
 var sum = (list2) => list2.reduce((a, s) => a + s, 0);
 function namedRunText(run7, time) {
@@ -113372,8 +113390,13 @@ function namedRunText(run7, time) {
   const verb = more2 === 0 ? "runs" : "run";
   const its = more2 === 0 ? "its result comes" : "their results come";
   const ago = time(run7.ran).replace(/^about /, "");
-  const end = run7.seconds === null ? "time unknown: none of its files has a stored duration" : run7.seconds === 0 ? "any time now: it has run past its stored durations" : time(run7.seconds);
+  const end = run7.seconds === null ? unknownText(run7) : run7.seconds === 0 ? "any time now: it has run past its stored durations" : time(run7.seconds);
   return `${who} ${verb} in a batch of ${run7.files} test files started ${ago} ago; ${its} when that batch ends (${end})`;
+}
+function unknownText(run7) {
+  if (run7.known === 0) return "time unknown: none of its files has a stored duration";
+  const have = run7.known === 1 ? "has" : "have";
+  return `time unknown: too few runs stored (${run7.known} of its ${run7.files} files ${have} a stored duration) and this call measured no rate`;
 }
 
 // src/cli/status-at-estimate.ts
@@ -113467,6 +113490,8 @@ function sideText(e) {
 }
 function ownText(e) {
   const files5 = `${e.files} test file${e.files === 1 ? "" : "s"}`;
+  if (e.seconds === null && e.batch !== void 0 && e.batch.seconds === null)
+    return `${files5}, time unknown: ${e.files === 1 ? "its result waits" : "their results wait"} for the batch that holds ${e.files === 1 ? "it" : "them"}`;
   if (e.seconds === null && e.known === 0)
     return `${files5}, time unknown: none has a stored duration and this call measured no rate`;
   if (e.seconds === null)
@@ -113713,6 +113738,10 @@ function changeText(f, at2, many = false) {
   }
   const parts3 = [detail(`at ${at2}`, f.at), detail("now", f.now)].filter((p) => p !== null);
   const more2 = parts3.length === 0 ? "" : ` (${parts3.join("; ")})`;
+  if (f.at.state === "no result" && f.at.notSelected === true && f.at.closure === "complete") {
+    const its = many ? "their" : "its";
+    return `no result at ${at2}, not selected by the change: none of ${its} inputs differs between ${at2} and the working tree, so this commit cannot change ${its} result; now ${word(f.now)}${more2}`;
+  }
   if (f.at.state === "no result" && f.at.notSelected === true) {
     const runs2 = `\`--all-missing\` runs ${many ? "them" : "it"}`;
     const why2 = EXCEPTED_TEXT[excepted(f) ?? "unchecked"];
@@ -113726,11 +113755,7 @@ function thisRunOnly(f) {
   );
 }
 function fileLines2(files5, at2, full, named4 = false) {
-  if (named4 && !full) {
-    const fixed2 = notSelectedLines(files5, at2, full);
-    const own = namedLines(files5, at2);
-    return { lines: [...own.lines, ...fixed2.lines], folded: own.folded || fixed2.folded };
-  }
+  if (named4 && !full) return namedLines(files5, at2);
   const lines = [];
   for (const kind of ["pass -> fail", "fail -> pass"]) {
     for (const f of files5.filter((file) => file.change === kind))
@@ -113761,10 +113786,9 @@ function fileLines2(files5, at2, full, named4 = false) {
 }
 function namedLines(files5, at2) {
   const rank4 = (f) => f.change === "unchanged" ? 1 : f.change === "unknown" ? 2 : 0;
-  const listed12 = files5.filter((f) => !unchangeable(f));
   const sizes = /* @__PURE__ */ new Map();
-  for (const f of listed12) sizes.set(changeText(f, at2), (sizes.get(changeText(f, at2)) ?? 0) + 1);
-  const ordered2 = [...listed12].sort(
+  for (const f of files5) sizes.set(changeText(f, at2), (sizes.get(changeText(f, at2)) ?? 0) + 1);
+  const ordered2 = [...files5].sort(
     (a, b) => rank4(a) - rank4(b) || (rank4(a) === 2 ? (sizes.get(changeText(b, at2)) ?? 0) - (sizes.get(changeText(a, at2)) ?? 0) : 0)
   );
   const lines = ordered2.slice(0, NAMED_SHOWN).map((f) => `${f.ref.path}: ${changeText(f, at2)}`);
@@ -113846,11 +113870,22 @@ init_text();
 function idleLines(run7, at2) {
   const { idle: idle2 } = run7;
   if (idle2 === void 0) return [];
-  const line = (n, there, here) => `${n} test file${n === 1 ? "" : "s"} with a result ${there} ${n === 1 ? "has" : "have"} none ${here}, and none is queued or running there; \`${idle2.command}\` queues ${n === 1 ? "it" : "them"}`;
+  const command = `\`${idle2.command}\``;
+  const line = (n, queues2, there, here) => `${n} test file${n === 1 ? "" : "s"} with a result ${there} ${n === 1 ? "has" : "have"} none ${here}, and none is queued or running there; ${promise(command, n, queues2)}`;
+  const { queues } = idle2;
   return [
-    ...idle2.commit === 0 ? [] : [line(idle2.commit, "in the working tree", `at ${at2}`)],
-    ...idle2.now === 0 ? [] : [`now: ${line(idle2.now, `at ${at2}`, "in the working tree")}`]
+    ...idle2.commit === 0 ? [] : [line(idle2.commit, queues.commit, "in the working tree", `at ${at2}`)],
+    ...idle2.now === 0 ? [] : [`now: ${line(idle2.now, queues.now, `at ${at2}`, "in the working tree")}`]
   ];
+}
+function promise(command, n, queues) {
+  const it = n === 1 ? "it" : "them";
+  if (queues === null)
+    return n === 1 ? `${command} queues it if it selects it` : `${command} queues those of them it selects`;
+  if (queues >= n) return `${command} queues ${it}`;
+  if (queues === 0) return `${command} does not select ${n === 1 ? "it" : "any of them"}`;
+  const other = n - queues;
+  return `${command} queues ${queues} of them; it does not select the other ${other}`;
 }
 var RESOLVED_SHOWN = 20;
 function resolvedLines(run7, at2) {
@@ -115541,6 +115576,47 @@ function bucketsOf(policy, side) {
   return out2;
 }
 
+// src/cli/status-at-idle.ts
+init_reverse_index();
+function recoveryAsk(asked, named4) {
+  const { change: change3 } = asked;
+  if (change3 === null) return null;
+  const want = new Set(named4);
+  const same4 = (paths) => new Set(paths).size === want.size && paths.every((p) => want.has(p));
+  return asked.asks.find(
+    (ask2) => ask2.phase === "queued" && ask2.change === change3 && ask2.allMissing === false && ask2.withResult !== void 0 && ask2.named !== void 0 && same4(ask2.named)
+  ) ?? null;
+}
+function idleOf2(after3, asked, paths, command) {
+  const known4 = (s) => s.state === "pass" || s.state === "fail";
+  const idle2 = (s) => s.state === "no result" && s.pending === void 0 && s.notSelected !== true;
+  const them = (here, there) => after3.refs.filter((ref3) => known4(there(ref3)) && idle2(here(ref3)));
+  const commit = them(after3.at.state, after3.current.state);
+  const now = them(after3.current.state, after3.at.state);
+  if (commit.length + now.length === 0) return {};
+  const ask2 = recoveryAsk(asked, paths ?? []);
+  const chosen = new Set(
+    ask2 === null ? [] : [...ask2.files, ...ask2.withResult ?? []].map(testFileId)
+  );
+  const refused = new Set((ask2?.refused ?? []).map((r) => testFileId(r.ref)));
+  const atRuns = (ref3) => ask2 === null ? null : chosen.has(testFileId(ref3)) && !refused.has(testFileId(ref3));
+  const nowRuns = (ref3) => paths !== null && selects3(paths, ref3.path) ? true : ask2 === null ? null : chosen.has(testFileId(ref3));
+  const queues = {
+    commit: countOf(commit, atRuns),
+    now: countOf(now, nowRuns)
+  };
+  return { idle: { commit: commit.length, now: now.length, command, queues } };
+}
+function countOf(files5, runs2) {
+  let n = 0;
+  for (const ref3 of files5) {
+    const r = runs2(ref3);
+    if (r === null) return null;
+    if (r) n += 1;
+  }
+  return n;
+}
+
 // src/cli/status-at-call-run.ts
 function restOf2(main2, id, call2) {
   if (main2 === null || id === null) return [];
@@ -115584,7 +115660,7 @@ function queuedRun(input, waitMs, [atQueue, nowQueue], after3, queue) {
       rest: after3.rest.now.length,
       setup: after3.current.source.kind === "setting up"
     },
-    ...idleOf2(after3, queue, runAgain(input.args.commit, paths)),
+    ...queue ? {} : idleOf2(after3, atQueue, input.place.paths, runAgain(input.args.commit, paths)),
     ...resolvedOf(after3),
     again: finite ? waitAgain(input.args.commit, paths) : null,
     retry: atQueue.late === true || nowQueue.late === true ? runAgain(input.args.commit, paths) : null,
@@ -115594,15 +115670,6 @@ function queuedRun(input, waitMs, [atQueue, nowQueue], after3, queue) {
       narrow: narrowed2 ? null : `squeal status --at ${shellWord(input.args.commit)} <path>... --run`
     }
   };
-}
-function idleOf2(after3, queue, command) {
-  if (queue) return {};
-  const known4 = (s) => s.state === "pass" || s.state === "fail";
-  const idle2 = (s) => s.state === "no result" && s.pending === void 0 && s.notSelected !== true;
-  const count5 = (here, there) => after3.refs.filter((ref3) => known4(there(ref3)) && idle2(here(ref3))).length;
-  const commit = count5(after3.at.state, after3.current.state);
-  const now = count5(after3.current.state, after3.at.state);
-  return commit + now === 0 ? {} : { idle: { commit, now, command } };
 }
 function resolvedOf(after3) {
   if (after3.began === void 0) return {};
@@ -115663,12 +115730,12 @@ function estimateOf2(input, { sides, measured: measured3, ahead }) {
       const leftOut3 = left[i3] ?? 0;
       const estimate2 = estimateSide(one, widths[i3] ?? 1, factor);
       const runs3 = ahead || estimate2 === null ? [] : inFlight()[i3] ?? [];
-      const at2 = { width: widths[i3] ?? 1, factor, now: Date.now() };
+      const at2 = { width: widths[i3] ?? 1, factor, now: Date.now(), rate: one.measured };
       const batch = namedRun(runs3, side.queue.files, todo[i3] ?? [], seconds7, at2);
       let e = estimate2;
       if (e !== null && batch !== null) {
-        const longer = Math.max(e.seconds ?? 0, batch.seconds ?? 0);
-        e = { ...e, seconds: e.seconds === null ? null : longer, batch };
+        const longer = e.seconds === null || batch.seconds === null ? null : Math.max(e.seconds, batch.seconds);
+        e = { ...e, seconds: longer, batch };
       }
       if (leftOut3 === 0) return e;
       return e === null ? onlyLeftOut(leftOut3) : { ...e, leftOut: leftOut3 };
