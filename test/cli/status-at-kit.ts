@@ -130,6 +130,14 @@ export interface StandInCommit {
   readonly incomplete?: Readonly<Record<string, readonly RelativePath[]>>;
   /** Row 023-58 (W1): the files it would run that have a result at the commit (`withResult`). */
   readonly withResult?: (ask: Omit<CommitAskRequest, "type">) => readonly TestFileRef[];
+  /**
+   * Review 0.1.607 B2: both, from one selection (as the daemon's `choose`
+   * gives them); over `select` and `withResult` when given.
+   */
+  readonly choose?: (ask: Omit<CommitAskRequest, "type">) => Promise<{
+    readonly files: readonly TestFileRef[];
+    readonly withResult: readonly TestFileRef[];
+  }>;
 }
 
 /** Stand-in daemons: each records what it is asked; `onWait` plays what the daemon did meanwhile. */
@@ -148,6 +156,7 @@ export function standIn(
   const changes = new Map<string, string>();
   const withResult = new Map<string, readonly TestFileRef[]>();
   const named = new Map<string, readonly RelativePath[]>();
+  const allMissing = new Map<string, boolean>();
   const ports: AtDaemons = {
     async commit(input) {
       commits.push(input.commit);
@@ -155,12 +164,16 @@ export function standIn(
     },
     async commitAsk(_tree, ask) {
       commitAsks.push(ask);
+      const chosen = await commitDaemon.choose?.(ask);
       const files =
-        commitDaemon.select?.(ask) ?? ask.named.map((path): TestFileRef => ({ project: "", path }));
+        chosen?.files ??
+        commitDaemon.select?.(ask) ??
+        ask.named.map((path): TestFileRef => ({ project: "", path }));
       queued.set(ask.owner, files);
       changes.set(ask.owner, changeOf(ask.changed));
       named.set(ask.owner, ask.named);
-      const kept = commitDaemon.withResult?.(ask);
+      allMissing.set(ask.owner, ask.allMissing);
+      const kept = chosen?.withResult ?? commitDaemon.withResult?.(ask);
       if (kept !== undefined) withResult.set(ask.owner, kept);
       commitDaemon.rows?.(tree, files);
       return null;
@@ -172,6 +185,7 @@ export function standIn(
           owner,
           change: changes.get(owner) ?? "",
           named: named.get(owner) ?? [],
+          allMissing: allMissing.get(owner) ?? false,
           phase: "queued" as const,
           files,
           readers: {},

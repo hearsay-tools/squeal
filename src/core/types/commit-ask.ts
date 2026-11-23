@@ -75,6 +75,12 @@ export interface CommitAskState {
    * files are the change's whole selection. Absent from a daemon before it.
    */
   readonly named?: readonly RelativePath[];
+  /**
+   * Review 0.1.607 B2: the ask's `--all-missing`, so a join tells whether
+   * its selection is what a later `--run` without it selects. Absent from
+   * a daemon before it.
+   */
+  readonly allMissing?: boolean;
   /** `waiting`: for the setup; `selecting`: keyed, choosing; `queued`: its files are queued (or done); `failed`. */
   readonly phase: "waiting" | "selecting" | "queued" | "failed";
   /** Why it failed. */

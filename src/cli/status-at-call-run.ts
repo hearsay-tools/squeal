@@ -21,6 +21,7 @@ import {
 } from "./status-at-estimate.js";
 import { workGroups } from "./status-at-estimate-groups.js";
 import { namedRun, runsInFlight } from "./status-at-estimate-named.js";
+import { idleOf } from "./status-at-idle.js";
 import type { NowSide } from "./status-at-now.js";
 import type { SideQueue } from "./status-at-queue.js";
 import type { SideState } from "./status-at-report.js";
@@ -117,7 +118,7 @@ export function queuedRun(
       rest: after.rest.now.length,
       setup: after.current.source.kind === "setting up",
     },
-    ...idleOf(after, queue, runAgain(input.args.commit, paths)),
+    ...(queue ? {} : idleOf(after, atQueue, input.place.paths, runAgain(input.args.commit, paths))),
     ...resolvedOf(after),
     again: finite ? waitAgain(input.args.commit, paths) : null,
     retry:
@@ -132,27 +133,6 @@ export function queuedRun(
             : `squeal status --at ${shellWord(input.args.commit)} <path>... --run`,
         }),
   };
-}
-
-/**
- * Row 023-58 (W1): with `--wait` alone, the call's files known on one side
- * that the other side has no result for and does not run (the commit side
- * leaves out what the change did not select); nothing with `--run`.
- */
-function idleOf(
-  after: After,
-  queue: boolean,
-  command: string,
-): { idle?: NonNullable<QueuedRun["idle"]> } {
-  if (queue) return {};
-  const known = (s: SideState) => s.state === "pass" || s.state === "fail";
-  const idle = (s: SideState) =>
-    s.state === "no result" && s.pending === undefined && s.notSelected !== true;
-  const count = (here: (ref: TestFileRef) => SideState, there: (ref: TestFileRef) => SideState) =>
-    after.refs.filter((ref) => known(there(ref)) && idle(here(ref))).length;
-  const commit = count(after.at.state, after.current.state);
-  const now = count(after.current.state, after.at.state);
-  return commit + now === 0 ? {} : { idle: { commit, now, command } };
 }
 
 /** Row 023-59 (W2): `--wait` alone, the files that went from running to a result, per side. */
