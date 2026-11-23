@@ -93,6 +93,8 @@ interface Kept {
   refused: readonly CommitRefusal[];
   /** Row 023-53 (V8): the files the change selects at the commit, before the call's paths narrow them. */
   selects?: number;
+  /** Row 023-58 (W1): the files it would run that have a result at the commit already. */
+  withResult?: readonly TestFileRef[];
 }
 
 /** The asks of one commit daemon. */
@@ -158,6 +160,7 @@ export class AtAsks {
     kept.readers = chosen.readers;
     kept.refused = chosen.refused;
     kept.selects = chosen.selects;
+    kept.withResult = chosen.withResult;
     kept.files = [...chosen.named, ...chosen.rest];
     // Row 023-50 (round 6 V3): a call that names paths leads with every file it queues, those
     // under a named folder and the readers of a named path too, named files first, in one
@@ -199,6 +202,7 @@ function stateOf(ask: Kept, setup: CommitSetup): CommitAskState {
     problems: [...ask.problems],
     ...(ask.refused.length === 0 ? {} : { refused: [...ask.refused] }),
     ...(ask.selects === undefined ? {} : { selects: ask.selects }),
+    ...(ask.withResult === undefined ? {} : { withResult: [...ask.withResult] }),
   };
 }
 
@@ -211,6 +215,11 @@ interface Chosen {
   readonly refused: readonly CommitRefusal[];
   /** Row 023-53 (V8): the files the change selects, with a result or not, whatever the call names. */
   readonly selects: number;
+  /**
+   * Row 023-58 (W1): the candidates it would run, by the same rule, that
+   * have a result at the commit already: the working tree runs them too.
+   */
+  readonly withResult: readonly TestFileRef[];
 }
 
 /**
@@ -244,11 +253,17 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
   ).length;
   const first: TestFileRef[] = [];
   const rest: TestFileRef[] = [];
+  const withResult: TestFileRef[] = [];
   for (const { testFile, key } of rows) {
-    if (!candidate(testFile) || (key !== null && ports.stored(testFile, key))) continue;
+    if (!candidate(testFile)) continue;
     const id = testFileId(testFile);
+    const runs = own.has(testFile.path) || request.allMissing || selected.has(id) || key === null;
+    if (key !== null && ports.stored(testFile, key)) {
+      if (runs) withResult.push(testFile);
+      continue;
+    }
     if (own.has(testFile.path)) first.push(testFile);
-    else if (request.allMissing || selected.has(id) || key === null) rest.push(testFile);
+    else if (runs) rest.push(testFile);
   }
   const needs = await ports.needs(request);
   const refused = refusals([...first, ...rest], needs);
@@ -259,6 +274,7 @@ export async function choose(request: CommitAskRequest, ports: AtAskPorts): Prom
     readers,
     refused: [...refused.values()],
     selects: selectedCount,
+    withResult,
   };
 }
 
