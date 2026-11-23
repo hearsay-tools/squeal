@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.608";
+  if (true) return "0.1.609";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -221,7 +221,7 @@ var init_text = __esm({
 // src/core/state/slow-text.ts
 function slotHeld(slot2) {
   if (slot2 === void 0) return false;
-  const held4 = slot2.holders.reduce((sum2, h) => sum2 + h.permits, 0);
+  const held4 = slot2.holders.reduce((sum3, h) => sum3 + h.permits, 0);
   return held4 >= slot2.permits && slot2.holders.every((h) => h.kind === "live" && h.self !== true);
 }
 function clockText(at2) {
@@ -12274,21 +12274,21 @@ function below(table, pids3) {
   return [...all2];
 }
 function sumCosts(costs) {
-  const sum2 = (value, out2) => {
+  const sum3 = (value, out2) => {
     const known4 = costs.flatMap((c) => value(c) ?? []);
     const skipped2 = costs.filter(out2).length;
     const total = known4.length === 0 && skipped2 > 0 ? null : known4.reduce((a, b) => a + b, 0);
     return { total, skipped: skipped2 };
   };
-  const cpu = sum2(
+  const cpu = sum3(
     (c) => c.cpuPct,
     (c) => c.cpuPct === null ? c.reapedBy === null : c.reaperUnknown || c.childCpuUnread
   );
-  const memory = sum2(
+  const memory = sum3(
     (c) => c.privateBytes,
     (c) => c.privateBytes === null && !c.left
   );
-  const swap = sum2(
+  const swap = sum3(
     (c) => c.swapBytes,
     (c) => c.swapBytes === null && !c.left
   );
@@ -13587,7 +13587,7 @@ function gatedPermits(marks2, own, hostSlots, want, background2 = null) {
     for (; taken3 < want && cores < background2.ceiling; taken3++) cores++;
     return taken3;
   }
-  let grants = marks2.reduce((sum2, m) => sum2 + m.grant, own.grant);
+  let grants = marks2.reduce((sum3, m) => sum3 + m.grant, own.grant);
   for (; taken3 < want && (cores < hostSlots || grants < hostSlots / 2); taken3++) {
     cores++;
     grants++;
@@ -13595,7 +13595,7 @@ function gatedPermits(marks2, own, hostSlots, want, background2 = null) {
   return taken3;
 }
 function gatedCores(marks2, own, busy2 = null) {
-  const marked4 = marks2.reduce((sum2, m) => sum2 + (m.cores ?? m.grant), own);
+  const marked4 = marks2.reduce((sum3, m) => sum3 + (m.cores ?? m.grant), own);
   return Math.max(marked4, busy2 ?? 0);
 }
 function createTreeCpu(options = {}) {
@@ -13845,7 +13845,7 @@ function raiseToLeast(senior, shares, capped4) {
     const least = Math.min(demand.least ?? 1, capped4.get(demand.id) ?? 1);
     if (share2 === 0 || share2 >= least) return;
     const juniors = senior.slice(i3 + 1).reverse();
-    if (juniors.reduce((sum2, j) => sum2 + (shares.get(j.id) ?? 0), 0) < least - share2) return;
+    if (juniors.reduce((sum3, j) => sum3 + (shares.get(j.id) ?? 0), 0) < least - share2) return;
     let short6 = least - share2;
     for (const junior of juniors) {
       const taken3 = Math.min(short6, shares.get(junior.id) ?? 0);
@@ -13999,7 +13999,7 @@ var init_pool = __esm({
         );
         const slow = lane === "slow";
         const rank4 = this.#since ?? now;
-        const reserve = others.filter((o) => servedBefore(o, lane, rank4)).reduce((sum2, o) => sum2 + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
+        const reserve = others.filter((o) => servedBefore(o, lane, rank4)).reduce((sum3, o) => sum3 + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
         const gated = this.#gated(others, inUse, target, kind, lane, rank4, fewest2);
         const allowed = Math.min(target, gated);
         const permits = allowed < fewest2 ? [] : this.#take(allowed, reserve);
@@ -14113,7 +14113,7 @@ var init_pool = __esm({
         let target = entitled;
         if (project !== void 0) {
           const theirs = others.filter((o) => o.project?.id === project.id);
-          const held4 = theirs.reduce((sum2, o) => sum2 + o.grant, 0);
+          const held4 = theirs.reduce((sum3, o) => sum3 + o.grant, 0);
           target = Math.min(target, Math.max(0, project.slots - held4 - inUse));
         }
         return { others, inUse, demand, shares, entitled, target };
@@ -14249,7 +14249,7 @@ var init_pool = __esm({
           busyCores: cores === null ? null : gatedCores(others, cores, busy2),
           cpus: this.#cpus,
           hostSlots: this.#hostSlots,
-          grants: others.reduce((sum2, m) => sum2 + m.grant, 0)
+          grants: others.reduce((sum3, m) => sum3 + m.grant, 0)
         };
         this.#floored = false;
         this.#hostRead = busy2 !== null;
@@ -14297,9 +14297,9 @@ var init_pool = __esm({
       }
       /** The permits this daemon's background tiers hold (D18). */
       #backgroundHeld() {
-        let sum2 = 0;
-        for (const lease of this.#leases) if (lease.kind === "backlog") sum2 += grantOf(lease);
-        return sum2;
+        let sum3 = 0;
+        for (const lease of this.#leases) if (lease.kind === "backlog") sum3 += grantOf(lease);
+        return sum3;
       }
       /**
        * A backlog tier's view of the host (row 011-182): its busy cores beyond
@@ -14327,15 +14327,15 @@ var init_pool = __esm({
         return tree;
       }
       #inUse() {
-        let sum2 = 0;
-        for (const lease of this.#leases) sum2 += grantOf(lease);
-        return sum2;
+        let sum3 = 0;
+        for (const lease of this.#leases) sum3 += grantOf(lease);
+        return sum3;
       }
       /** What the held leases' tiers want, each at least what it holds. */
       #demand() {
-        let sum2 = 0;
-        for (const lease of this.#leases) sum2 += Math.max(lease.want, grantOf(lease));
-        return sum2;
+        let sum3 = 0;
+        for (const lease of this.#leases) sum3 += Math.max(lease.want, grantOf(lease));
+        return sum3;
       }
       #publish(want, grant) {
         const { dir: dir2, owner: owner2, project } = this.#options;
@@ -15879,9 +15879,9 @@ function estimateMs(traits, files5, grant) {
   const first2 = files5[0]?.file.ref;
   if (first2 === void 0) return 0;
   const durations2 = files5.map(({ file }) => file.durationMs ?? 0);
-  const sum2 = durations2.reduce((total, ms2) => total + ms2, 0);
+  const sum3 = durations2.reduce((total, ms2) => total + ms2, 0);
   const width = Math.min(files5.length, traits.tierWidth(first2, grant));
-  return wallEstimate(sum2, Math.max(0, ...durations2), width);
+  return wallEstimate(sum3, Math.max(0, ...durations2), width);
 }
 var init_tier_width = __esm({
   "src/core/scheduler/tier-width.ts"() {
@@ -16098,8 +16098,8 @@ function shareBudget(budget2, workers, full) {
   if (full === null) return budget2;
   return budget2 * Math.min(1, Math.max(0, workers) / Math.max(1, full));
 }
-function wallEstimate(sum2, longest2, width) {
-  return sum2 / width + (1 - 1 / width) * longest2;
+function wallEstimate(sum3, longest2, width) {
+  return sum3 / width + (1 - 1 / width) * longest2;
 }
 var BACKLOG_TIER_BUDGET_MS, BacklogWall;
 var init_backlog = __esm({
@@ -16735,6 +16735,48 @@ var init_yield_waits = __esm({
   }
 });
 
+// src/core/scheduler/lead-cut.ts
+function leadCut(context, ledger, tier, marked4, margin) {
+  if (tier.cancel === null || tier.slot === true) return false;
+  if (tier.kind === "turn" || tier.kind === "slow" || tier.kind === "focused") return false;
+  const left = unfinished(tier);
+  if (left.some(marked4)) return false;
+  const at2 = context.now();
+  const rankOf = (entry4) => ledger.queue.rankAt(entry4.file.ref, at2)?.rank ?? null;
+  let lead = 0;
+  for (const entry4 of tier.files) {
+    const rank4 = rankOf(entry4);
+    if (rank4 !== null && rank4 < lead) lead = rank4;
+  }
+  if (lead === 0) return false;
+  const own = left.filter((entry4) => rankOf(entry4) === lead);
+  if (own.length === left.length) return false;
+  const ownMs = Math.max(0, ...own.map(({ file }) => file.durationMs ?? 0));
+  return workLeft(context, tier) - ownMs > margin;
+}
+function workLeft(context, tier) {
+  const ms2 = ({ file }) => file.durationMs ?? 0;
+  const width = Math.max(1, Math.min(tier.files.length, tier.lease?.grant ?? tier.files.length));
+  const sum3 = (files5) => files5.reduce((total, f) => total + ms2(f), 0);
+  const left = unfinished(tier);
+  const longest2 = Math.max(0, ...left.map(ms2));
+  const ran = elapsed(context, tier);
+  const whole = Math.max(longest2, sum3(tier.files) / width) - ran;
+  return Math.max(longest2 - ran, Math.min(whole, sum3(left) / width));
+}
+function elapsed(context, tier) {
+  const { startedAt } = tier;
+  if (startedAt === void 0) return 0;
+  const start2 = context.steps?.since(startedAt, tier.startedStep ?? 0) ?? startedAt;
+  return context.now() - start2;
+}
+var init_lead_cut = __esm({
+  "src/core/scheduler/lead-cut.ts"() {
+    "use strict";
+    init_yield_waits();
+  }
+});
+
 // src/core/scheduler/decide-yields.ts
 function decideYields(at2, trigger, view) {
   if (view.held) return null;
@@ -16757,11 +16799,12 @@ function decideYields(at2, trigger, view) {
     const decision = decide(reading, ledger, tier, trigger, beat2, marks2, cuts, bookkeeping);
     let yielded = null;
     if (decision === "yield") {
+      const lead = leadsInside(reading, ledger, tier, marks2);
       const left = remainder(reading, tier);
       const cut = unfinished(tier);
       for (const { file, key: key3 } of cut)
         marks2.set(file.id, { key: key3, applied: file.resultsApplied, past: left < 0 });
-      const to = waitedFor(reading, ledger, tier, trigger, beat2, cuts, bookkeeping);
+      const to = lead ? "promoted" : waitedFor(reading, ledger, tier, trigger, beat2, cuts, bookkeeping);
       if (to === "edit" || to === "promoted" || to === "runner") {
         yielded = { to, remainderMs: left, cut };
         changed2 = true;
@@ -16790,6 +16833,7 @@ function decide(context, ledger, tier, revision, beat2, marks2, cuts, bookkeepin
   if (tier.kind === "backlog" && cancel2 !== null) {
     if (cancelsBacklog(context, ledger, revision, tier, selected(beat2))) return "backlog";
   }
+  if (leadsInside(context, ledger, tier, marks2)) return "yield";
   const waiting2 = waitedFor(context, ledger, tier, revision, beat2, cuts, bookkeeping);
   if (waiting2 === null) return null;
   if (cancel2 === null || tier.slot === true)
@@ -16800,6 +16844,13 @@ function decide(context, ledger, tier, revision, beat2, marks2, cuts, bookkeepin
     return { kind: "cut" };
   if (waiting2 === "named") return { kind: "named" };
   return byRemainder(context, tier);
+}
+function leadsInside(context, ledger, tier, marks2) {
+  const marked4 = ({ file, key: key3 }) => {
+    const cut = marks2.get(file.id);
+    return cut !== void 0 && cut.key === key3 && holds(file, cut);
+  };
+  return leadCut(context, ledger, tier, marked4, YIELD_REMAINDER_MS);
 }
 function holds(file, cut) {
   if (file === void 0 || file.key !== cut.key) return false;
@@ -16832,6 +16883,7 @@ var init_decide_yields = __esm({
     "use strict";
     init_backlog();
     init_claims();
+    init_lead_cut();
     init_yield_waits();
     YIELD_REMAINDER_MS = 3e4;
     RECHECK = { kind: "recheck" };
@@ -22885,7 +22937,7 @@ function awaiting(meta, worktreeId, states, which) {
 }
 function awaitingPause(meta, worktreeId, states) {
   const byGroup2 = awaiting(meta, worktreeId, states, (held4) => pauseReleases(held4.at));
-  return [...byGroup2.values()].reduce((sum2, n) => sum2 + n, 0);
+  return [...byGroup2.values()].reduce((sum3, n) => sum3 + n, 0);
 }
 function awaitingRun(meta, worktreeId, states) {
   const byGroup2 = awaiting(meta, worktreeId, states, (held4) => held4.at === "manual");
@@ -23571,32 +23623,32 @@ var init_pool_wait = __esm({
       /** The pool refused `lane`'s tier at a look that read `gate`. */
       refused(lane, gate2) {
         const now = this.#options.now();
-        const elapsed = this.#elapsed();
-        const live = this.#live(lane, elapsed);
+        const elapsed2 = this.#elapsed();
+        const live = this.#live(lane, elapsed2);
         const wait = { ...gate2, since: live?.wait.since ?? now };
-        this.#lanes.set(lane, { wait, began: live?.began ?? elapsed, last: elapsed });
+        this.#lanes.set(lane, { wait, began: live?.began ?? elapsed2, last: elapsed2 });
         if (live === void 0) {
           this.#options.log(
             `the pool refused the ${laneName(lane)} lane's tier: it waits for CPU (${gateText(gate2)}); ${ASKS_AGAIN}`
           );
-          this.#publish(now, elapsed);
-        } else if (this.#publishedAt === null || elapsed - this.#publishedAt >= POOL_WAIT_REFRESH_MS || this.#steps() !== this.#publishedSteps) {
-          this.#publish(now, elapsed);
+          this.#publish(now, elapsed2);
+        } else if (this.#publishedAt === null || elapsed2 - this.#publishedAt >= POOL_WAIT_REFRESH_MS || this.#steps() !== this.#publishedSteps) {
+          this.#publish(now, elapsed2);
         }
       }
       /** The pool granted `lane`'s tier: its wait ends, logged with its seconds while it was live. */
       granted(lane) {
         const now = this.#options.now();
-        const elapsed = this.#elapsed();
-        const live = this.#live(lane, elapsed);
+        const elapsed2 = this.#elapsed();
+        const live = this.#live(lane, elapsed2);
         if (!this.#lanes.delete(lane)) return;
         if (live !== void 0) {
-          const seconds7 = Math.round((elapsed - live.began) / 1e3);
+          const seconds7 = Math.round((elapsed2 - live.began) / 1e3);
           this.#options.log(
             `the pool granted the ${laneName(lane)} lane's tier after ${seconds7} s of waiting for CPU`
           );
         }
-        this.#publish(now, elapsed);
+        this.#publish(now, elapsed2);
       }
       /** The daemon's scheduler closes: its lanes wait no more, and the row goes. */
       close() {
@@ -23608,18 +23660,18 @@ var init_pool_wait = __esm({
         return this.#options.steps?.total ?? 0;
       }
       /** `lane`'s wait, if its last refusal is within the freshness at `elapsed`. */
-      #live(lane, elapsed) {
+      #live(lane, elapsed2) {
         const entry4 = this.#lanes.get(lane);
-        return entry4 !== void 0 && elapsed - entry4.last <= SLOT_WAITER_FRESH_MS ? entry4 : void 0;
+        return entry4 !== void 0 && elapsed2 - entry4.last <= SLOT_WAITER_FRESH_MS ? entry4 : void 0;
       }
       /** Writes the live waits as of calendar `now`; one whose daemon stopped looking leaves them. */
-      #publish(now, elapsed) {
+      #publish(now, elapsed2) {
         for (const lane of [...this.#lanes.keys()])
-          if (this.#live(lane, elapsed) === void 0) this.#lanes.delete(lane);
+          if (this.#live(lane, elapsed2) === void 0) this.#lanes.delete(lane);
         const waits2 = new Map([...this.#lanes].map(([lane, { wait }]) => [lane, wait]));
         try {
           this.#options.publish(waits2, now);
-          this.#publishedAt = elapsed;
+          this.#publishedAt = elapsed2;
           this.#publishedSteps = this.#steps();
           this.#written = waits2.size > 0;
         } catch {
@@ -25722,7 +25774,7 @@ function singleString(value) {
   return Array.isArray(value) && value.length === 1 && typeof value[0] === "string" ? value[0] : null;
 }
 function validLengths(lengths) {
-  return Array.isArray(lengths) && lengths.length > 0 && lengths.length <= MAX_SEGMENTS && lengths.every((n) => Number.isSafeInteger(n) && n >= 0) && Number.isSafeInteger(lengths.reduce((sum2, n) => sum2 + n + 1, 0));
+  return Array.isArray(lengths) && lengths.length > 0 && lengths.length <= MAX_SEGMENTS && lengths.every((n) => Number.isSafeInteger(n) && n >= 0) && Number.isSafeInteger(lengths.reduce((sum3, n) => sum3 + n + 1, 0));
 }
 function inlineMap(url) {
   if (typeof url !== "string" || url.length > MAX_MAP) return null;
@@ -62964,8 +63016,8 @@ var init_wakes = __esm({
        */
       wakes() {
         const at2 = this.#clock.now();
-        const elapsed = this.#clock.elapsed();
-        return [...this.#slots].filter((slot2) => slot2.due !== null).sort((a, b) => a.due - b.due || inOrder2(a, b)).map(({ reason: reason2, due }) => ({ reason: reason2, at: at2 + Math.max(0, due - elapsed) }));
+        const elapsed2 = this.#clock.elapsed();
+        return [...this.#slots].filter((slot2) => slot2.due !== null).sort((a, b) => a.due - b.due || inOrder2(a, b)).map(({ reason: reason2, due }) => ({ reason: reason2, at: at2 + Math.max(0, due - elapsed2) }));
       }
       /** Resolves when the scheduler rests (`Scheduler.rest`), with the next wake and each owner's. */
       async rest() {
@@ -62985,8 +63037,8 @@ var init_wakes = __esm({
         if (this.#pass !== null || this.#locked > 0) return false;
         for (const piece of this.#pieces) if (piece.waiting === 0) return false;
         if (this.#closed) return true;
-        const elapsed = this.#clock.elapsed();
-        for (const slot2 of this.#slots) if (slot2.due !== null && slot2.due <= elapsed) return false;
+        const elapsed2 = this.#clock.elapsed();
+        for (const slot2 of this.#slots) if (slot2.due !== null && slot2.due <= elapsed2) return false;
         return true;
       }
       #state(slot2, due) {
@@ -69083,7 +69135,7 @@ function readBatch(events, files5, rootdir, paths, basetemp = null) {
       results: results3,
       fileError: failed7 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed7.longrepr, paths, scrub)] },
       skipped: skip === void 0 ? null : skipReason(skip.longrepr),
-      durationMs: Math.round(results3.reduce((sum2, r) => sum2 + r.durationMs, 0)),
+      durationMs: Math.round(results3.reduce((sum3, r) => sum3 + r.durationMs, 0)),
       ...texts2 === void 0 ? {} : {
         focused: {
           testFile: file.testFile,
@@ -69130,7 +69182,7 @@ function joinPhases(item, testFile, phases, rootdir, paths, scrubAll) {
       fullName: item.nodeid.slice(item.nodeid.indexOf("::") + 2)
     },
     outcome: outcome2,
-    durationMs: own.reduce((sum2, p) => sum2 + p.duration * 1e3, 0),
+    durationMs: own.reduce((sum3, p) => sum3 + p.duration * 1e3, 0),
     location: first2 === void 0 ? null : checkLocation(first2, testFile, rootdir, paths),
     errors
   };
@@ -72804,7 +72856,7 @@ var init_report_merge = __esm({
         (worst, { report: report4 }) => SEVERITY[report4.end] > SEVERITY[worst] ? report4.end : worst,
         "completed"
       ),
-      durationMs: (parts3) => parts3.reduce((sum2, { report: report4 }) => sum2 + report4.durationMs, 0),
+      durationMs: (parts3) => parts3.reduce((sum3, { report: report4 }) => sum3 + report4.durationMs, 0),
       completedFiles: listed9((report4) => report4.completedFiles),
       results: listed9((report4) => report4.results),
       fileErrors: listed9((report4) => report4.fileErrors),
@@ -72895,7 +72947,7 @@ function createCompositeRunner(adapters, sets2 = []) {
   };
   const of = (testFile) => owners.get(testFile.project)?.traits;
   const traits = declareTraits({
-    omittedTestFiles: () => members.reduce((sum2, adapter) => sum2 + adapter.traits.omittedTestFiles(), 0),
+    omittedTestFiles: () => members.reduce((sum3, adapter) => sum3 + adapter.traits.omittedTestFiles(), 0),
     // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
     slowWidth(testFiles3) {
       const owner2 = testFiles3[0] === void 0 ? void 0 : owners.get(testFiles3[0].project);
@@ -77525,9 +77577,9 @@ function header(path, size) {
   block3.write("0", 156, 1, "ascii");
   block3.write("ustar\x0000", 257, 8, "ascii");
   block3.write(prefix, 345, 155, "utf8");
-  let sum2 = 0;
-  for (const byte of block3) sum2 += byte;
-  block3.write(`${sum2.toString(8).padStart(6, "0")}\0 `, 148, 8, "ascii");
+  let sum3 = 0;
+  for (const byte of block3) sum3 += byte;
+  block3.write(`${sum3.toString(8).padStart(6, "0")}\0 `, 148, 8, "ascii");
   return block3;
 }
 function split3(path) {
@@ -77686,7 +77738,7 @@ async function unpackFiles(write4) {
       );
     }
   }
-  const total = write4.files.reduce((sum2, file) => sum2 + file.size, 0);
+  const total = write4.files.reduce((sum3, file) => sum3 + file.size, 0);
   if (!Number.isSafeInteger(total)) {
     throw new Error(`runner host: a write's sizes add up past a byte count: ${total}`);
   }
@@ -77977,7 +78029,7 @@ async function remoteHostOver(channel2, node2, options) {
       let wire = 0;
       for (const write4 of await writesFor(root, missing2, paths)) {
         await on.request("write", [write4], callMs);
-        bytes2 += write4.files.reduce((sum2, file) => sum2 + file.size, 0);
+        bytes2 += write4.files.reduce((sum3, file) => sum3 + file.size, 0);
         wire += write4.gzip.length;
       }
       log(
@@ -80562,7 +80614,7 @@ function foldedText(what, list2, command) {
   for (const line of list2.flatMap((note) => note.stopped?.commands ?? [])) {
     counts.set(line, (counts.get(line) ?? 0) + 1);
   }
-  const total = [...counts.values()].reduce((sum2, n) => sum2 + n, 0);
+  const total = [...counts.values()].reduce((sum3, n) => sum3 + n, 0);
   const byCommand = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([line, n]) => `${n} \xD7 ${line}`);
   const since = new Date(Math.min(...list2.map((note) => note.at))).toISOString();
   const processes3 = total === 1 ? "1 process" : `${total} processes`;
@@ -81856,7 +81908,7 @@ function lintStatusLines(status3, command) {
   const counted3 = status3.linting === void 0 || status3.failing > 0 || status3.stale > 0;
   const awaiting2 = status3.awaitingPause ?? 0;
   const runs2 = status3.awaitingRun ?? [];
-  const notLinted = status3.pending - awaiting2 - runs2.reduce((sum2, r) => sum2 + r.checks, 0);
+  const notLinted = status3.pending - awaiting2 - runs2.reduce((sum3, r) => sum3 + r.checks, 0);
   const parts3 = [
     `${plural(status3.failing, "file")} with findings`,
     ...status3.since === null ? [] : [`${status3.sinceRegistration} ${SINCE2[status3.since]}`],
@@ -82288,7 +82340,7 @@ function slotHoldersText(slot2) {
     const holder = holders2[0];
     return holder.kind === "live" || holder.kind === "stale" ? `held by ${byText(holder)}` : `held; ${recordText(holder.kind, "its")}`;
   }
-  const held4 = holders2.reduce((sum2, h) => sum2 + h.permits, 0);
+  const held4 = holders2.reduce((sum3, h) => sum3 + h.permits, 0);
   const parts3 = holders2.map(
     (h) => h.kind === "live" || h.kind === "stale" ? `${h.permits} by ${byText(h)}` : `${h.permits} whose ${recordText(h.kind, "").trimStart()}`
   );
@@ -82650,7 +82702,7 @@ function outstandingLines(s, now, command, options = {}) {
   if (groups3.length === 0) return [];
   const shown = options.all === true ? groups3 : groups3.slice(0, OUTSTANDING_GROUPS_SHOWN);
   const rest2 = groups3.slice(shown.length);
-  const files5 = rest2.reduce((sum2, g2) => sum2 + g2.files.length, 0);
+  const files5 = rest2.reduce((sum3, g2) => sum3 + g2.files.length, 0);
   const more2 = rest2.length === 0 ? [] : [
     `  and ${plural(files5, "test file")} in ${plural(rest2.length, "more group")} (\`${command} status --full\` lists every group)`
   ];
@@ -88019,14 +88071,14 @@ function costOf(parts3) {
     for (const file of testFiles3) testMs += file.durationMs ?? 0;
   }
   if (commands2.size === 0) return null;
-  const sum2 = (field) => [...commands2.values()].reduce((total, cost) => total + cost[field], 0);
+  const sum3 = (field) => [...commands2.values()].reduce((total, cost) => total + cost[field], 0);
   const hashed = [...commands2.values()].flatMap((cost) => cost.endpointsMs ?? []);
   const endpointsMs = hashed.reduce((total, ms2) => total + ms2, 0);
   return {
     commands: commands2.size,
-    hooksMs: sum2("hooksMs"),
-    threads: sum2("threads"),
-    afterMs: sum2("afterMs"),
+    hooksMs: sum3("hooksMs"),
+    threads: sum3("threads"),
+    afterMs: sum3("afterMs"),
     ...hashed.length === 0 ? {} : { endpointsMs },
     testMs,
     without: without2,
@@ -89919,7 +89971,7 @@ function reasonGroups(files5, command, base) {
   const shown = all2.slice(0, REASON_GROUPS_SHOWN).map((g2) => groupShort(g2, command, base));
   const rest2 = all2.slice(REASON_GROUPS_SHOWN);
   if (rest2.length === 0) return shown.join(", ");
-  const more2 = rest2.reduce((sum2, { files: of }) => sum2 + of.length, 0);
+  const more2 = rest2.reduce((sum3, { files: of }) => sum3 + of.length, 0);
   const others = rest2.length === 1 ? "1 other reason" : `${rest2.length} other reasons`;
   return [...shown, `and ${more2} more for ${others}`].join(", ");
 }
@@ -92476,7 +92528,7 @@ function namedPoll(cwd, paths, options) {
     name: "named",
     sync: () => sync,
     stop: () => watch2?.stop?.(),
-    read: ({ store, root, commonDir }, final, elapsed) => {
+    read: ({ store, root, commonDir }, final, elapsed2) => {
       const id = worktreeIdFor(root);
       const pollMs = Math.min(options.pollMs, SYNC_POLL_MS);
       sync ??= options.sync(root, pollMs, sourcePaths(store, id, root, cwd, paths));
@@ -92485,7 +92537,7 @@ function namedPoll(cwd, paths, options) {
       const selection = selectNamedFiles(store, id, root, cwd, paths, readers, stored4);
       const fixed = fixedSelection(selection.paths);
       const all2 = readClasses(store, id, selection.files, fixed);
-      const settled2 = final || elapsed() >= options.settleMs;
+      const settled2 = final || elapsed2() >= options.settleMs;
       watch2 ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, worktree, at: readAt2 } = judgeWait(watch2, store, id, options.now);
       const record2 = worktree?.daemon ?? null;
@@ -92583,7 +92635,7 @@ function namedPoll(cwd, paths, options) {
           // Row 011-401 (gh-242): whether the list may still grow; row 023-26, how long it is unlisted.
           selection: withUnlisted(
             withPartial(selection, verdict, current2),
-            daemon.state === "down" ? void 0 : { store, worktreeId: id, record: record2, now: options.now(), elapsed }
+            daemon.state === "down" ? void 0 : { store, worktreeId: id, record: record2, now: options.now(), elapsed: elapsed2 }
           ),
           leftForPause,
           ...leftGroupsOf(root, leftForPause),
@@ -92877,7 +92929,7 @@ import { setTimeout as sleep11 } from "node:timers/promises";
 var ROW2 = STATUS_WAITS.snapshot;
 async function namedSnapshot(cwd, paths, options) {
   const started2 = performance.now();
-  const elapsed = () => performance.now() - started2;
+  const elapsed2 = () => performance.now() - started2;
   const settleMs = options.settleMs ?? SETTLE_MS;
   const pollMs = options.pollMs ?? SYNC_POLL_MS;
   let sync;
@@ -92885,7 +92937,7 @@ async function namedSnapshot(cwd, paths, options) {
     const step2 = decideStatusWait(ROW2, { store: "unread" });
     if (step2.kind !== "end")
       throw new Error("snapshot: a read that did not read the store ends it");
-    return { outcome: "unavailable", waitedMs: elapsed(), result };
+    return { outcome: "unavailable", waitedMs: elapsed2(), result };
   };
   try {
     const found4 = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) => {
@@ -92902,7 +92954,7 @@ async function namedSnapshot(cwd, paths, options) {
     if ("available" in found4) return unread(found4);
     for (; ; ) {
       const state = sync?.current().state;
-      const left = settleMs - elapsed();
+      const left = settleMs - elapsed2();
       if (state === "synced" || left <= 0) break;
       await (state === "unsupported" ? sleep11(left) : pollPause(Math.min(pollMs, left), sync));
     }
@@ -92913,7 +92965,7 @@ async function namedSnapshot(cwd, paths, options) {
     );
     if ("usage" in read7) throw new CheckUsageError(read7.usage);
     if ("available" in read7) return unread(read7);
-    return { ...read7, waitedMs: elapsed() };
+    return { ...read7, waitedMs: elapsed2() };
   } finally {
     sync?.stop();
   }
@@ -93218,7 +93270,7 @@ function editPoll(options) {
     first: () => start2 === null,
     sync: () => syncing.sync,
     stop: () => watch2?.stop?.(),
-    read: ({ store, root, commonDir }, final, elapsed) => {
+    read: ({ store, root, commonDir }, final, elapsed2) => {
       const id = worktreeIdFor(root);
       if (start2 === null) {
         const states = store.knownStates.list(id);
@@ -93242,7 +93294,7 @@ function editPoll(options) {
       const window2 = syncing.window;
       const held4 = syncing.slow;
       const heldFiles2 = held4 === void 0 ? [] : [...held4.values()];
-      const settled2 = final || elapsed() >= options.settleMs;
+      const settled2 = final || elapsed2() >= options.settleMs;
       const fallback2 = fallbackOf(ROW3, settled2);
       watch2 ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, at: at2 } = judgeWait(watch2, store, id, now);
@@ -93408,30 +93460,30 @@ async function statusWait(ask2) {
 }
 async function pollStatus(cwd, timeoutMs, pollMs, poll) {
   const started2 = performance.now();
-  const elapsed = () => performance.now() - started2;
+  const elapsed2 = () => performance.now() - started2;
   const row2 = STATUS_WAITS[poll.name];
   let wentOn = false;
   try {
     for (; ; ) {
-      const { busyTimeoutMs, final } = readBound(timeoutMs, elapsed);
+      const { busyTimeoutMs, final } = readBound(timeoutMs, elapsed2);
       const read7 = withStatusStore(
         cwd,
         { busyTimeoutMs },
-        (context) => poll.read(context, final, elapsed)
+        (context) => poll.read(context, final, elapsed2)
       );
       if (read7 !== null && "available" in read7) {
         const first2 = poll.first?.() ?? !wentOn;
         const step2 = decideStatusWait(row2, { store: "unread", first: first2, late: final });
         if (step2.kind === "end")
-          return { outcome: "unavailable", waitedMs: elapsed(), result: read7 };
+          return { outcome: "unavailable", waitedMs: elapsed2(), result: read7 };
       } else if (read7 !== null && "act" in read7) {
         await read7.act();
         continue;
       } else if (read7 !== null) {
-        return { end: read7.end, waitedMs: elapsed() };
+        return { end: read7.end, waitedMs: elapsed2() };
       }
       wentOn = true;
-      const remaining = timeoutMs - elapsed();
+      const remaining = timeoutMs - elapsed2();
       if (remaining > 0) await pollPause(Math.min(pollMs, remaining), poll.sync());
     }
   } finally {
@@ -95276,7 +95328,7 @@ function teardownLines(warned, files5) {
     );
     if (ran.length === 0) continue;
     const completed2 = ran.filter((f) => f.completed);
-    const failed7 = completed2.reduce((sum2, f) => sum2 + f.failed.length, 0);
+    const failed7 = completed2.reduce((sum3, f) => sum3 + f.failed.length, 0);
     const failures = failed7 === 0 ? "" : `, ${failed7 === 1 ? "1 failed test" : `${failed7} failed tests`} included`;
     const what = completed2.length === ran.length ? `the file completed, so its result counts in this report${failures}` : completed2.length === 0 ? "the report lists the file as not finished, so its result does not count" : `the file completed in ${completed2.length} of its ${ran.length} projects, so its result counts in this report for those only${failures}`;
     lines.push(`squeal code: Vitest timed out terminating the worker of ${path}; ${what}.
@@ -95316,7 +95368,7 @@ async function keptLogs(keep, ended2) {
       logDirs: offered.map((run7) => run7.logDir),
       report: {
         end: offered.find((run7) => run7.report?.end !== "completed")?.report?.end ?? "completed",
-        durationMs: offered.reduce((sum2, run7) => sum2 + (run7.report?.durationMs ?? 0), 0)
+        durationMs: offered.reduce((sum3, run7) => sum3 + (run7.report?.durationMs ?? 0), 0)
       }
     });
     if (path !== null) logs.push({ runner, path });
@@ -95355,7 +95407,7 @@ function chunksFor(pick, files5, at2) {
   const grant = pick.kind === "vitest" ? vitestWidth() : at2.tierSize;
   const width = Math.max(1, ...files5.map((ref3) => pick.adapter.traits.tierWidth(ref3, grant)));
   const work = stored4.map((s) => (s ?? median3) / width);
-  if (work.reduce((sum2, w2) => sum2 + w2, 0) < 2 * bound) return [[...files5]];
+  if (work.reduce((sum3, w2) => sum3 + w2, 0) < 2 * bound) return [[...files5]];
   const chunks2 = [];
   let chunk = [];
   let held4 = 0;
@@ -95413,7 +95465,7 @@ function joinDir(from, into) {
 function joinedReport(reports) {
   return {
     end: reports.find((r) => r.end !== "completed")?.end ?? "completed",
-    durationMs: reports.reduce((sum2, r) => sum2 + r.durationMs, 0),
+    durationMs: reports.reduce((sum3, r) => sum3 + r.durationMs, 0),
     completedFiles: reports.flatMap((r) => r.completedFiles),
     results: reports.flatMap((r) => r.results),
     fileErrors: reports.flatMap((r) => r.fileErrors),
@@ -95450,16 +95502,16 @@ function median2(values) {
 }
 function estimateRun(runner, groups3) {
   const stored4 = groups3.flatMap((g2) => g2.seconds.filter((s) => s !== null));
-  const files5 = groups3.reduce((sum2, g2) => sum2 + g2.seconds.length, 0);
+  const files5 = groups3.reduce((sum3, g2) => sum3 + g2.seconds.length, 0);
   const width = Math.max(1, ...groups3.filter((g2) => g2.seconds.length > 0).map((g2) => g2.width));
   const middle = median2(stored4);
   if (middle === null) return { runner, seconds: null, files: files5, known: 0, width };
   let total = 0;
   for (const group of groups3) {
     const each = group.seconds.map((s) => s ?? middle);
-    const sum2 = each.reduce((a, b) => a + b, 0);
+    const sum3 = each.reduce((a, b) => a + b, 0);
     const longest2 = each.reduce((a, b) => Math.max(a, b), 0);
-    total += Math.max(longest2, sum2 / Math.max(1, group.width));
+    total += Math.max(longest2, sum3 / Math.max(1, group.width));
   }
   return { runner, seconds: Math.ceil(total), files: files5, known: stored4.length, width };
 }
@@ -95541,7 +95593,7 @@ function runnerOrder(runners2) {
   );
   const middle = median2(stored4);
   const cost = ({ runner, groups: groups3 }) => {
-    if (middle === null) return groups3.reduce((sum2, g2) => sum2 + g2.seconds.length, 0);
+    if (middle === null) return groups3.reduce((sum3, g2) => sum3 + g2.seconds.length, 0);
     const own = estimateRun(runner, groups3).seconds;
     if (own !== null) return own;
     const atMedian = groups3.map((g2) => ({ ...g2, seconds: g2.seconds.map(() => middle) }));
@@ -95610,7 +95662,7 @@ function budgetTold(fit, runs2, command) {
   const rerun = { seconds: rerunSeconds2, command: command(rerunSeconds2) };
   if (fit.early !== true) return { fit, rerun };
   const overBudget = runs2.flatMap((r) => (r.overBudget ?? []).map((ref3) => ref3.path));
-  const run7 = runs2.reduce((sum2, r) => sum2 + r.files.length, 0);
+  const run7 = runs2.reduce((sum3, r) => sum3 + r.files.length, 0);
   return { fit, rerun, early: { run: run7, overBudget: [...new Set(overBudget)].sort(compare) } };
 }
 async function inLoaderOrder(runs2, context) {
@@ -97006,8 +97058,8 @@ function childFilesOf(files5) {
   const counted3 = files5.flatMap((f) => f.children === void 0 ? [] : [f.children]);
   if (counted3.length === 0) return null;
   return {
-    read: counted3.reduce((sum2, c) => sum2 + c.read, 0),
-    dropped: counted3.reduce((sum2, c) => sum2 + c.dropped, 0)
+    read: counted3.reduce((sum3, c) => sum3 + c.read, 0),
+    dropped: counted3.reduce((sum3, c) => sum3 + c.dropped, 0)
   };
 }
 
@@ -98802,13 +98854,13 @@ function runTime(runs2) {
 function runShare(run7, left) {
   const { durationMs: durationMs2, fileDurations = [] } = run7.report;
   const own = new Map(fileDurations.map((d) => [testFileId(d.testFile), d.durationMs]));
-  let sum2 = 0;
+  let sum3 = 0;
   for (const file of left) {
     const ms2 = own.get(testFileId(file.ref));
     if (ms2 === void 0) return durationMs2;
-    sum2 += ms2;
+    sum3 += ms2;
   }
-  return Math.min(sum2, durationMs2);
+  return Math.min(sum3, durationMs2);
 }
 function holderOf3(database) {
   return describeHolders(refusedLockHolders(database));
@@ -99736,7 +99788,7 @@ function outsideOf(f) {
 function causeText2(failed7) {
   const first2 = failed7[0];
   const named4 = first2 === void 0 ? "" : `${first2.path} \u203A ${first2.tests[0] ?? ""}`;
-  const more2 = failed7.reduce((sum2, t) => sum2 + t.tests.length, 0) - 1;
+  const more2 = failed7.reduce((sum3, t) => sum3 + t.tests.length, 0) - 1;
   return more2 > 0 ? `${named4} and ${plural(more2, "more failed test")}` : named4;
 }
 function outsideWords(f) {
@@ -104071,6 +104123,7 @@ var AtAsks = class {
     const kept6 = {
       owner: request.owner,
       change: changeOf(request.changed),
+      named: [...request.named],
       phase: "waiting",
       files: [],
       readers: {},
@@ -104114,6 +104167,7 @@ var AtAsks = class {
     kept6.readers = chosen.readers;
     kept6.refused = chosen.refused;
     kept6.selects = chosen.selects;
+    kept6.withResult = chosen.withResult;
     kept6.files = [...chosen.named, ...chosen.rest];
     const options = request.named.length > 0 ? { at: true, lead: true } : { at: true };
     await this.#queue(kept6.files, options, kept6);
@@ -104142,13 +104196,15 @@ function stateOf3(ask2, setup) {
   return {
     owner: ask2.owner,
     change: ask2.change,
+    named: [...ask2.named],
     phase,
     ...ask2.text === void 0 ? {} : { text: ask2.text },
     files: [...ask2.files],
     readers: { ...ask2.readers },
     problems: [...ask2.problems],
     ...ask2.refused.length === 0 ? {} : { refused: [...ask2.refused] },
-    ...ask2.selects === void 0 ? {} : { selects: ask2.selects }
+    ...ask2.selects === void 0 ? {} : { selects: ask2.selects },
+    ...ask2.withResult === void 0 ? {} : { withResult: [...ask2.withResult] }
   };
 }
 async function choose(request, ports) {
@@ -104169,11 +104225,17 @@ async function choose(request, ports) {
   ).length;
   const first2 = [];
   const rest2 = [];
+  const withResult = [];
   for (const { testFile, key: key3 } of rows) {
-    if (!candidate(testFile) || key3 !== null && ports.stored(testFile, key3)) continue;
+    if (!candidate(testFile)) continue;
     const id = testFileId(testFile);
+    const runs3 = own.has(testFile.path) || request.allMissing || selected2.has(id) || key3 === null;
+    if (key3 !== null && ports.stored(testFile, key3)) {
+      if (runs3) withResult.push(testFile);
+      continue;
+    }
     if (own.has(testFile.path)) first2.push(testFile);
-    else if (request.allMissing || selected2.has(id) || key3 === null) rest2.push(testFile);
+    else if (runs3) rest2.push(testFile);
   }
   const needs = await ports.needs(request);
   const refused = refusals([...first2, ...rest2], needs);
@@ -104183,7 +104245,8 @@ async function choose(request, ports) {
     rest: rest2.filter(runs2),
     readers,
     refused: [...refused.values()],
-    selects: selectedCount
+    selects: selectedCount,
+    withResult
   };
 }
 function refusals(chosen, needs) {
@@ -111037,7 +111100,7 @@ function compound(line, pattern2) {
   const testSpans = spans2.filter((span) => pattern2.test(span));
   const commands2 = testSpans.length > 0 ? testSpans : [line.trim()];
   const every = new RegExp(pattern2.source, "g");
-  const runs2 = commands2.reduce((sum2, command) => sum2 + (command.match(every)?.length ?? 0), 0);
+  const runs2 = commands2.reduce((sum3, command) => sum3 + (command.match(every)?.length ?? 0), 0);
   if (runs2 > 1) return "runs the test command more than once";
   for (const command of commands2) {
     const at2 = pattern2.exec(command).index;
@@ -111887,7 +111950,7 @@ function warmupOf(facts, runners2, projects2) {
     ...runners2.vitest ? [testFiles3.paths] : [],
     ...projects2.map((p) => projectFiles(facts, p))
   ];
-  const runs2 = listed12.reduce((sum2, files5) => sum2 + files5.length, 0);
+  const runs2 = listed12.reduce((sum3, files5) => sum3 + files5.length, 0);
   return {
     source: testFiles3.source,
     testFiles: runs2,
@@ -113254,7 +113317,71 @@ init_share();
 init_user_config();
 init_load();
 init_slot();
+
+// src/cli/status-at-estimate-named.ts
+init_git_layout();
+init_reverse_index();
+init_connection();
+init_open();
+init_paths();
+init_schema();
+init_store2();
+function runsInFlight(root, ids) {
+  const none3 = ids.map(() => []);
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return none3;
+  const paths = storePaths(commonDir);
+  const db = openReadOnly(paths.database, SCHEMA_VERSION);
+  if (db === null || db === "missing") return none3;
+  const store = createStore(new Connection(db), SCHEMA_VERSION, paths);
+  try {
+    return ids.map((id) => {
+      const daemon = id === null ? null : store.worktrees.get(id)?.daemon ?? null;
+      return id === null || daemon === null ? [] : store.runs.inFlight(id, daemon.startedAt);
+    });
+  } catch {
+    return none3;
+  } finally {
+    store.close();
+  }
+}
+function namedRun(runs2, call2, running2, seconds7, at2) {
+  const own = new Set(call2.map(testFileId));
+  const newest = [...runs2].sort((a, b) => b.startedAt - a.startedAt);
+  const holding = /* @__PURE__ */ new Map();
+  for (const ref3 of running2) {
+    const run8 = newest.find((r) => r.testFiles.some((f) => testFileId(f) === testFileId(ref3)));
+    if (run8 === void 0 || run8.testFiles.every((f) => own.has(testFileId(f)))) continue;
+    holding.set(run8, [...holding.get(run8) ?? [], ref3]);
+  }
+  const [run7, named4] = [...holding].sort(([a], [b]) => b.startedAt - a.startedAt)[0] ?? [];
+  if (run7 === void 0 || named4 === void 0) return null;
+  const known4 = run7.testFiles.map(seconds7).filter((s) => s !== null);
+  const width = Math.max(1, Math.min(at2.width, run7.testFiles.length));
+  const whole = Math.max(Math.max(0, ...known4), sum(known4) / width);
+  const ran = Math.max(0, Math.round((at2.now - run7.startedAt) / 1e3));
+  const left = known4.length === 0 ? null : Math.max(0, Math.ceil(whole * (at2.factor ?? 1)) - ran);
+  const { startedAt } = run7;
+  return { named: named4, files: run7.testFiles.length, startedAt, ran, seconds: left };
+}
+var sum = (list2) => list2.reduce((a, s) => a + s, 0);
+function namedRunText(run7, time) {
+  const [first2] = run7.named;
+  const more2 = run7.named.length - 1;
+  const who = more2 === 0 ? first2?.path ?? "" : `${first2?.path ?? ""} and ${more2} more named test files`;
+  const verb = more2 === 0 ? "runs" : "run";
+  const its = more2 === 0 ? "its result comes" : "their results come";
+  const ago = time(run7.ran).replace(/^about /, "");
+  const end = run7.seconds === null ? "time unknown: none of its files has a stored duration" : run7.seconds === 0 ? "any time now: it has run past its stored durations" : time(run7.seconds);
+  return `${who} ${verb} in a batch of ${run7.files} test files started ${ago} ago; ${its} when that batch ends (${end})`;
+}
+
+// src/cli/status-at-estimate.ts
 var MEASURED_LEAST = 10;
+function tooFew(known4, files5) {
+  if (known4 >= files5) return false;
+  return known4 * 5 < files5 || known4 < MEASURED_LEAST && known4 * 2 < files5;
+}
 function oneGroup(seconds7) {
   return { seconds: seconds7, cap: null, perFile: 1, shared: [] };
 }
@@ -113287,7 +113414,7 @@ function estimateSide(work, width, factor) {
     1,
     Math.min(
       width,
-      runs2.reduce((sum2, g2) => sum2 + atOnce(g2), 0)
+      runs2.reduce((sum3, g2) => sum3 + atOnce(g2), 0)
     )
   );
   const longest2 = Math.max(0, ...all2.map((s) => s ?? 0));
@@ -113298,7 +113425,7 @@ function estimateSide(work, width, factor) {
     const rate = { done: measured3.done, seconds: Math.round(measured3.ms / 1e3) };
     return { files: files5, width: wide, seconds: seconds7, basis: "measured", known: known4, rate, ...limits2 };
   }
-  const run7 = groupedSeconds(runs2, width);
+  const run7 = tooFew(known4, files5) ? null : groupedSeconds(runs2, width);
   if (run7 === null)
     return { files: files5, width: wide, seconds: null, basis: "unknown", known: known4, ...limits2 };
   const basis = known4 * 2 < files5 ? "guess" : "durations";
@@ -113315,14 +113442,14 @@ function groupedSeconds(groups3, width) {
     groups3.flatMap((g2) => [...g2.seconds, ...g2.shared]).filter((s) => s !== null)
   );
   if (middle === null) return null;
-  const sum2 = (list2) => list2.reduce((a, s) => a + (s ?? middle), 0);
+  const sum3 = (list2) => list2.reduce((a, s) => a + (s ?? middle), 0);
   let pool = 0;
   let slowest = 0;
   for (const group of groups3) {
-    const own = sum2(group.seconds);
+    const own = sum3(group.seconds);
     pool += own * group.perFile;
     const longest2 = Math.max(0, ...group.seconds.map((s) => s ?? middle));
-    const slot2 = group.cap === null || group.shared.length === 0 ? 0 : (own + sum2(group.shared)) / group.cap;
+    const slot2 = group.cap === null || group.shared.length === 0 ? 0 : (own + sum3(group.shared)) / group.cap;
     slowest = Math.max(slowest, longest2, own / groupWidth(group, width), slot2);
   }
   return Math.ceil(Math.max(pool / Math.max(1, width), slowest));
@@ -113335,9 +113462,15 @@ function timeText2(seconds7) {
   return `about ${Math.round(minutes2 / 6) / 10} h`;
 }
 function sideText(e) {
+  const text3 = ownText(e);
+  return e.batch === void 0 ? text3 : `${text3}; ${namedRunText(e.batch, timeText2)}`;
+}
+function ownText(e) {
   const files5 = `${e.files} test file${e.files === 1 ? "" : "s"}`;
-  if (e.seconds === null)
+  if (e.seconds === null && e.known === 0)
     return `${files5}, time unknown: none has a stored duration and this call measured no rate`;
+  if (e.seconds === null)
+    return `${files5}, time unknown: too few runs stored (${e.known} of them have a stored duration) and this call measured no rate`;
   const time = `${timeText2(e.seconds)} for ${files5}`;
   if (e.basis === "measured" && e.rate !== void 0)
     return `${time}, at this call's rate there (${e.rate.done} results in ${e.rate.seconds} s)`;
@@ -113351,11 +113484,19 @@ function sideText(e) {
 function estimateLine(estimate2, at2, narrow2) {
   if (estimate2 === void 0) return null;
   const parts3 = [];
-  if (estimate2.commit !== null) parts3.push(`at ${at2}: ${sideText(estimate2.commit)}`);
-  if (estimate2.now !== null) parts3.push(`in the working tree: ${sideText(estimate2.now)}`);
+  if (estimate2.commit !== null)
+    parts3.push(`at ${at2}: ${withLeftOut(estimate2.commit, "in the working tree")}`);
+  if (estimate2.now !== null)
+    parts3.push(`in the working tree: ${withLeftOut(estimate2.now, `at ${at2}`)}`);
   if (parts3.length === 0) return null;
   const tail = narrow2 === null ? "" : `; name test files or folders to narrow it: ${narrow2}`;
   return `Still to run, ${parts3.join("; ")}${tail}`;
+}
+function withLeftOut(e, there) {
+  const n = e.leftOut ?? 0;
+  if (n === 0) return sideText(e);
+  const them = `${n} test file${n === 1 ? "" : "s"} left out, ${n === 1 ? "its" : "their"} batch's setup failed ${there} in this call`;
+  return e.files === 0 ? them : `${sideText(e)}; ${them}`;
 }
 
 // src/cli/status-at-run-batches.ts
@@ -113367,7 +113508,8 @@ function runWidth(files5, env = process.env) {
   return widthsOf(readPoolView(env, []), sides)[0] ?? 1;
 }
 function estimateOf(files5, durationOf2, width = runWidth(files5.length)) {
-  return estimateRun("vitest", [{ width, seconds: files5.map((f) => durationOf2(f.ref)) }]);
+  const run7 = estimateRun("vitest", [{ width, seconds: files5.map((f) => durationOf2(f.ref)) }]);
+  return tooFew(run7.known, run7.files) ? { ...run7, seconds: null } : run7;
 }
 
 // src/cli/status-at-run-select.ts
@@ -113524,6 +113666,7 @@ init_text();
 var MAYBE_STORED = "it may have been stored, and the next status --at shows it";
 var maybeStoredText = (reason2) => reason2?.endsWith(MAYBE_STORED) === true;
 var GROUP_SHOWN = 3;
+var NAMED_SHOWN = 20;
 var short = (sha) => sha === null ? "none" : sha.slice(0, 9);
 function originText(origin) {
   if (origin.kind === "ci") return "from CI's export";
@@ -113582,7 +113725,12 @@ function thisRunOnly(f) {
     (s) => (s.state === "pass" || s.state === "fail") && s.origin.kind === "run" && s.origin.stored === false && !maybeStoredText(s.origin.notStored)
   );
 }
-function fileLines2(files5, at2, full) {
+function fileLines2(files5, at2, full, named4 = false) {
+  if (named4 && !full) {
+    const fixed2 = notSelectedLines(files5, at2, full);
+    const own = namedLines(files5, at2);
+    return { lines: [...own.lines, ...fixed2.lines], folded: own.folded || fixed2.folded };
+  }
   const lines = [];
   for (const kind of ["pass -> fail", "fail -> pass"]) {
     for (const f of files5.filter((file) => file.change === kind))
@@ -113610,6 +113758,29 @@ function fileLines2(files5, at2, full) {
   const fixed = notSelectedLines(files5, at2, full);
   lines.push(...fixed.lines);
   return { lines, folded: folded || fixed.folded };
+}
+function namedLines(files5, at2) {
+  const rank4 = (f) => f.change === "unchanged" ? 1 : f.change === "unknown" ? 2 : 0;
+  const listed12 = files5.filter((f) => !unchangeable(f));
+  const sizes = /* @__PURE__ */ new Map();
+  for (const f of listed12) sizes.set(changeText(f, at2), (sizes.get(changeText(f, at2)) ?? 0) + 1);
+  const ordered2 = [...listed12].sort(
+    (a, b) => rank4(a) - rank4(b) || (rank4(a) === 2 ? (sizes.get(changeText(b, at2)) ?? 0) - (sizes.get(changeText(a, at2)) ?? 0) : 0)
+  );
+  const lines = ordered2.slice(0, NAMED_SHOWN).map((f) => `${f.ref.path}: ${changeText(f, at2)}`);
+  const groups3 = /* @__PURE__ */ new Map();
+  for (const f of ordered2.slice(NAMED_SHOWN)) {
+    const text3 = changeText(f, at2, true);
+    groups3.set(text3, [...groups3.get(text3) ?? [], f]);
+  }
+  for (const [text3, group] of groups3) {
+    const paths = group.map((f) => f.ref.path);
+    const n = paths.length;
+    lines.push(
+      `${n} more test file${n === 1 ? "" : "s"}: ${text3}: ${listPaths(paths, GROUP_SHOWN)}`
+    );
+  }
+  return { lines, folded: groups3.size > 0 };
 }
 function notSelectedLines(files5, at2, full) {
   const paths = files5.filter(unchangeable).map((f) => f.ref.path);
@@ -113670,6 +113841,28 @@ function newFileLines(files5, commit, full) {
 init_reverse_index();
 init_text();
 
+// src/cli/status-at-report-join.ts
+init_text();
+function idleLines(run7, at2) {
+  const { idle: idle2 } = run7;
+  if (idle2 === void 0) return [];
+  const line = (n, there, here) => `${n} test file${n === 1 ? "" : "s"} with a result ${there} ${n === 1 ? "has" : "have"} none ${here}, and none is queued or running there; \`${idle2.command}\` queues ${n === 1 ? "it" : "them"}`;
+  return [
+    ...idle2.commit === 0 ? [] : [line(idle2.commit, "in the working tree", `at ${at2}`)],
+    ...idle2.now === 0 ? [] : [`now: ${line(idle2.now, `at ${at2}`, "in the working tree")}`]
+  ];
+}
+var RESOLVED_SHOWN = 20;
+function resolvedLines(run7, at2) {
+  const { resolved: resolved2 } = run7;
+  if (resolved2 === void 0) return [];
+  const line = (paths, where3) => `${paths.length} test file${paths.length === 1 ? "" : "s"} went from running to a result ${where3}: ${listPaths(paths, RESOLVED_SHOWN)}`;
+  return [
+    ...resolved2.commit.length === 0 ? [] : [`--wait: ${line(resolved2.commit, `at ${at2}`)}`],
+    ...resolved2.now.length === 0 ? [] : [`--wait, now: ${line(resolved2.now, "in the working tree")}`]
+  ];
+}
+
 // src/cli/status-at-report-narrow.ts
 function elsewhereText(failed7, there) {
   const e = failed7.elsewhere;
@@ -113683,7 +113876,7 @@ function elsewhereText(failed7, there) {
   return `; ${there}, of them: ${parts3.join(", ")}`;
 }
 function failedThere(failed7, where3) {
-  const n = failed7.setupFailed.reduce((sum2, f) => sum2 + (f.elsewhere?.running ?? 0), 0);
+  const n = failed7.setupFailed.reduce((sum3, f) => sum3 + (f.elsewhere?.running ?? 0), 0);
   return n === 0 ? "" : `${n} of them in a batch whose setup failed ${where3}`;
 }
 function namedLine2(run7, at2) {
@@ -113762,6 +113955,7 @@ function queuedLines(run7, at2) {
     lines.push(
       `--wait: nothing is queued or running for these files at ${at2} or in the working tree`
     );
+  lines.push(...resolvedLines(run7, at2), ...idleLines(run7, at2));
   const rest2 = restLine(run7, at2);
   if (rest2 !== null) lines.push(rest2);
   const estimate2 = estimateLine(run7.estimate, at2, run7.narrow ?? null);
@@ -113807,7 +114001,7 @@ function commitLines2(run7, at2) {
     lines.push(
       `${run7.notSelected} more with no result at ${at2} not selected by the change did not run; \`--all-missing\` runs ${run7.notSelected === 1 ? "it" : "them"}`
     );
-  return [...lines, ...sideLines(commit, "", `at ${at2}`, "in the working tree")];
+  return [...lines, ...sideLines(commit, "", `at ${at2}`, "in the working tree", run7.retry)];
 }
 function nowLines(run7, at2) {
   const { now } = run7;
@@ -113827,9 +114021,9 @@ function nowLines(run7, at2) {
     );
   else if (run7.mode === "queue")
     lines.push("--run, now: every test file the change selects has a result in the working tree");
-  return [...lines, ...sideLines(now, "now: ", "in the working tree", `at ${at2}`)];
+  return [...lines, ...sideLines(now, "now: ", "in the working tree", `at ${at2}`, run7.retry)];
 }
-function sideLines(side, prefix, here, there) {
+function sideLines(side, prefix, here, there, retry2) {
   if (!side.reached) return [];
   const lines = side.setupFailed.map(
     (f) => `${prefix}${f.files} not run ${here}: the batch's setup failed (${f.setup})${elsewhereText(f, there)}`
@@ -113837,7 +114031,7 @@ function sideLines(side, prefix, here, there) {
   const setup = side.setupFailed.reduce((n, f) => n + f.files, 0);
   const without2 = side.files - side.known - side.running - setup;
   if (side.problem !== null && without2 > 0)
-    lines.push(`${prefix}${without2} without a result: ${side.problem}`);
+    lines.push(`${prefix}${without2} without a result: ${side.problem}${retryText3(side, retry2)}`);
   return lines;
 }
 
@@ -113954,7 +114148,7 @@ function formatAt(report4, nowMs, full = false) {
     const what = by === "git" ? `Git's checkout rules (.gitattributes) wrote ${path} otherwise than ${at2} holds it` : `The install changed the checkout (${path} differs from ${at2})`;
     lines.push(`${what}, so its keys and results are not ${at2}'s and nothing from it is stored.`);
   }
-  const files5 = fileLines2(report4.files, at2, full);
+  const files5 = fileLines2(report4.files, at2, full, report4.scope !== void 0);
   lines.push(...files5.lines);
   for (const path of report4.unmatched ?? [])
     lines.push(`no test file's closure holds ${path}, at ${at2} or now`);
@@ -114826,6 +115020,7 @@ async function queueSide(input) {
   const pending = /* @__PURE__ */ new Set();
   const problems = [];
   const waited = [];
+  let late = false;
   for (const [group, refs2] of byGroup2) {
     if (!input.ask) {
       waited.push(...refs2);
@@ -114835,6 +115030,7 @@ async function queueSide(input) {
     const bound = input.askBy();
     if (Date.now() >= bound) {
       problems.push(`group ${group}: not asked: the call's wait ended`);
+      late = true;
       continue;
     }
     const asked = await daemons.ask(root, group, paths, bound, call2).catch((error) => ({ problem: String(error) }));
@@ -114842,12 +115038,14 @@ async function queueSide(input) {
     else if (asked === "pending") for (const ref3 of refs2) pending.add(testFileId(ref3));
     else problems.push(`group ${group}: ${asked.problem}`);
   }
-  if (input.waits === false) return { root, files: files5, pending, problems, groupOf: groupOf5, taken: waited };
+  const lateness = late ? { late } : {};
+  if (input.waits === false)
+    return { root, files: files5, pending, problems, groupOf: groupOf5, taken: waited, ...lateness };
   if (waited.length > 0) {
     const ended2 = await daemons.wait(root, waited, deadline).catch((error) => String(error));
     if (ended2 !== null) problems.push(ended2);
   }
-  return { root, files: files5, pending, problems, groupOf: groupOf5 };
+  return { root, files: files5, pending, problems, groupOf: groupOf5, ...lateness };
 }
 async function worktreeTwice(input, root, later) {
   const first2 = await worktreeQueue({ ...input, waits: false }, root);
@@ -114896,7 +115094,7 @@ async function askCommit(input) {
   if (refused !== null) return { ...notReached(refused, false), root: tree };
   const read7 = await readUntilQueued(daemons, tree, [owner2], askBy, deadline);
   const own = read7.asks.find((a) => a.owner === owner2);
-  input.queued?.(own?.phase === "queued" ? own.files : []);
+  input.queued?.(own?.phase === "queued" ? [...own.files, ...own.withResult ?? []] : []);
   return { ...await waitFor(daemons, tree, read7, deadline), change: changeOf(input.changed) };
 }
 async function joinCommit(daemons, tree, bound, join215 = { listed: [], paths: null, sources: [], change: null, askBy: bound }) {
@@ -114905,8 +115103,9 @@ async function joinCommit(daemons, tree, bound, join215 = { listed: [], paths: n
   const readers = await readersAt(daemons, tree, read7, join215);
   const keep = keeper2(join215.paths, read7, readers);
   const asks = read7.asks.map((ask2) => ({ ...ask2, files: ask2.files.filter(keep) }));
-  const joined2 = await waitFor(daemons, tree, { ...read7, asks }, bound, join215.listed.filter(keep));
-  return { ...joined2, change: join215.change, readers };
+  const began = join215.listed.filter(keep);
+  const joined2 = await waitFor(daemons, tree, { ...read7, asks }, bound, began);
+  return { ...joined2, change: join215.change, readers, began };
 }
 async function readersAt(daemons, tree, read7, join215) {
   if (join215.sources.length === 0 || read7.setup?.phase !== "ready") return /* @__PURE__ */ new Map();
@@ -115385,6 +115584,8 @@ function queuedRun(input, waitMs, [atQueue, nowQueue], after3, queue) {
       rest: after3.rest.now.length,
       setup: after3.current.source.kind === "setting up"
     },
+    ...idleOf2(after3, queue, runAgain(input.args.commit, paths)),
+    ...resolvedOf(after3),
     again: finite ? waitAgain(input.args.commit, paths) : null,
     retry: atQueue.late === true || nowQueue.late === true ? runAgain(input.args.commit, paths) : null,
     ...narrowed2 ? { paths } : {},
@@ -115394,14 +115595,37 @@ function queuedRun(input, waitMs, [atQueue, nowQueue], after3, queue) {
     }
   };
 }
+function idleOf2(after3, queue, command) {
+  if (queue) return {};
+  const known4 = (s) => s.state === "pass" || s.state === "fail";
+  const idle2 = (s) => s.state === "no result" && s.pending === void 0 && s.notSelected !== true;
+  const count5 = (here, there) => after3.refs.filter((ref3) => known4(there(ref3)) && idle2(here(ref3))).length;
+  const commit = count5(after3.at.state, after3.current.state);
+  const now = count5(after3.current.state, after3.at.state);
+  return commit + now === 0 ? {} : { idle: { commit, now, command } };
+}
+function resolvedOf(after3) {
+  if (after3.began === void 0) return {};
+  const known4 = (s) => s.state === "pass" || s.state === "fail";
+  const done = (files5, state) => [
+    ...new Set(files5.filter((ref3) => known4(state(ref3))).map((ref3) => ref3.path))
+  ];
+  const commit = done(after3.began.commit, after3.at.state);
+  const now = done(after3.began.now, after3.current.state);
+  return commit.length + now.length === 0 ? {} : { resolved: { commit, now } };
+}
 var rootId = (queue) => queue.root === null ? null : idOf3(queue.root);
 function estimateOf2(input, { sides, measured: measured3, ahead }) {
   const running2 = (s) => s.state === "no result" && s.pending !== void 0;
-  const todo = sides.map((side) => [
-    ...side.queue.files.filter((ref3) => running2(side.state(ref3))),
+  const failedSetup = (s) => s.state === "not run" && s.reason === "setup";
+  const other = (i3) => sides[1 - i3]?.state ?? (() => ({ state: "absent" }));
+  const still = sides.map((side) => side.queue.files.filter((ref3) => running2(side.state(ref3))));
+  const left = still.map((files5, i3) => files5.filter((ref3) => failedSetup(other(i3)(ref3))).length);
+  const todo = sides.map((side, i3) => [
+    ...(still[i3] ?? []).filter((ref3) => !failedSetup(other(i3)(ref3))),
     ...ahead ? side.rest : []
   ]);
-  if (todo.every((files5) => files5.length === 0)) return null;
+  if (todo.every((files5) => files5.length === 0) && left.every((n) => n === 0)) return null;
   const ids = sides.map((side) => side.id);
   const { root, commonDir } = input.place;
   const pool = readPoolView(
@@ -115414,6 +115638,11 @@ function estimateOf2(input, { sides, measured: measured3, ahead }) {
     sides.map((side, i3) => ({ id: side.id, want: todo[i3]?.length ?? 0 }))
   );
   const durations2 = storedDurations(root);
+  let runs2 = null;
+  const inFlight = () => {
+    runs2 ??= runsInFlight(root, ids);
+    return runs2;
+  };
   try {
     const factor = loadNow();
     const seconds7 = (ref3) => durations2?.of(ref3) ?? null;
@@ -115431,12 +115660,26 @@ function estimateOf2(input, { sides, measured: measured3, ahead }) {
         measured: measured3 === null ? null : { done, ms: measured3 },
         ...work.unknown[i3] === true ? { limitsUnknown: true } : {}
       };
-      return estimateSide(one, widths[i3] ?? 1, factor);
+      const leftOut3 = left[i3] ?? 0;
+      const estimate2 = estimateSide(one, widths[i3] ?? 1, factor);
+      const runs3 = ahead || estimate2 === null ? [] : inFlight()[i3] ?? [];
+      const at2 = { width: widths[i3] ?? 1, factor, now: Date.now() };
+      const batch = namedRun(runs3, side.queue.files, todo[i3] ?? [], seconds7, at2);
+      let e = estimate2;
+      if (e !== null && batch !== null) {
+        const longer = Math.max(e.seconds ?? 0, batch.seconds ?? 0);
+        e = { ...e, seconds: e.seconds === null ? null : longer, batch };
+      }
+      if (leftOut3 === 0) return e;
+      return e === null ? onlyLeftOut(leftOut3) : { ...e, leftOut: leftOut3 };
     });
     return { commit: commit ?? null, now: now ?? null };
   } finally {
     durations2?.close();
   }
+}
+function onlyLeftOut(leftOut3) {
+  return { files: 0, width: 1, seconds: null, basis: "unknown", known: 0, leftOut: leftOut3 };
 }
 function setupOf(queue) {
   const { setup } = queue;
@@ -115566,6 +115809,13 @@ async function formerTree(input, commonDir) {
 // src/cli/status-at-commit-rows.ts
 init_tree();
 init_reverse_index();
+function joinSelects(asked) {
+  const { change: change3 } = asked;
+  if (change3 === null) return false;
+  return asked.asks.some(
+    (ask2) => ask2.phase === "queued" && ask2.change === change3 && ask2.named?.length === 0
+  );
+}
 async function rowsSide(main2, input) {
   const { asked, paths } = input;
   const tree = asked.root;
@@ -117445,7 +117695,8 @@ async function readAfter(input, atQueue, nowQueue, selection, nowPlace, first2) 
   const fresh2 = await nowAgain(nowPlace, first2);
   const unread = first2.asked.kind !== "read";
   return withStores(place2.commonDir, async (main2) => {
-    const rows = { root, commit, paths, own: worktreeId, asked: atQueue, selection };
+    const chose = selection || joinSelects(atQueue);
+    const rows = { root, commit, paths, own: worktreeId, asked: atQueue, selection: chose };
     const { at: live } = await rowsSide(main2, rows);
     const sides = { now: fresh2.sources, at: live.sources, failed: unread };
     const { refs: refs2, unmatched: unmatched2 } = unionRefs(fresh2.refs, live.refs, paths, sides, root, commit);
@@ -117463,8 +117714,17 @@ async function readAfter(input, atQueue, nowQueue, selection, nowPlace, first2) 
       commit: restOf2(main2, atRoot, narrowed2 ? refs2 : atQueue.files),
       now: restOf2(main2, worktreeId, narrowed2 ? refs2 : nowQueue.files)
     };
-    return { at: at2, current: { ...fresh2, state }, refs: refs2, unmatched: unmatched2, rest: rest2 };
+    const began = selection ? {} : { began: beganOf(atQueue, first2) };
+    return { at: at2, current: { ...fresh2, state }, refs: refs2, unmatched: unmatched2, rest: rest2, ...began };
   });
+}
+function beganOf(atQueue, first2) {
+  const { side } = first2;
+  const now = side.refs.filter((ref3) => {
+    const s = side.state(ref3);
+    return s.state === "no result" && s.pending !== void 0 && s.pending !== "setting up";
+  });
+  return { commit: atQueue.began ?? [], now };
 }
 async function commitAllowlist(root, commit, timeoutMs) {
   if (timeoutMs !== void 0 && timeoutMs <= 0)
@@ -120146,7 +120406,7 @@ function runnerHostLine(h, at2) {
 }
 function processLines(p, at2, full) {
   const d = p.descendants;
-  const and = (own, sum2) => d.count === 0 ? own : own === null || sum2 === null ? null : own + sum2;
+  const and = (own, sum3) => d.count === 0 ? own : own === null || sum3 === null ? null : own + sum3;
   const plus = (text3, out2) => out2 > 0 && text3 !== UNKNOWN3 ? `${text3}+` : text3;
   const children = d.count === 0 ? [] : [`+${count2(d.count, "child", "children")}`];
   const lines = [
@@ -120653,7 +120913,7 @@ function shapeOf3(r, findings, o) {
   const table = first2.sample.table;
   const processOf2 = (p) => {
     const row2 = table.get(p.pid);
-    const sum2 = sumCosts(p.descendants.flatMap((pid) => costs.get(pid) ?? []));
+    const sum3 = sumCosts(p.descendants.flatMap((pid) => costs.get(pid) ?? []));
     return {
       pid: p.pid,
       lane: p.lane,
@@ -120667,7 +120927,7 @@ function shapeOf3(r, findings, o) {
       startedAt: row2 === void 0 ? null : startOf3(row2.startTicks),
       descendants: {
         count: p.descendants.length,
-        ...sum2,
+        ...sum3,
         list: !o.full ? null : p.descendants.map((pid) => ({
           pid,
           comm: table.get(pid)?.comm ?? "",
@@ -122163,7 +122423,7 @@ function analyze(snapshot3, detail2 = () => false) {
   return {
     suite: {
       testFiles: suite.length,
-      seconds: suite.reduce((sum2, t) => sum2 + (t.seconds ?? 0), 0),
+      seconds: suite.reduce((sum3, t) => sum3 + (t.seconds ?? 0), 0),
       withoutSeconds: suite.filter((t) => t.seconds === null).length,
       withoutClosure: suite.filter((t) => t.closure === null).length,
       leftOut: snapshot3.testFiles.length - suite.length
@@ -122445,7 +122705,7 @@ function entryOf3({ files: files5, route, lead }, analysis, snapshot3) {
   const paths = files5.map((f) => f.path).sort(compare);
   const [first2] = files5;
   const mean = (f) => files5.reduce((s, x) => s + f(x), 0) / files5.length;
-  const kinds2 = sum(files5.map((f) => f.kinds));
+  const kinds2 = sum2(files5.map((f) => f.kinds));
   const seconds7 = mean((f) => f.seconds);
   const total = analysis.suite.seconds;
   const edits = editsOf2(files5, analysis);
@@ -122458,7 +122718,7 @@ function entryOf3({ files: files5, route, lead }, analysis, snapshot3) {
     avoidableSeconds: mean((f) => f.avoidable),
     unknownSeconds: mean((f) => f.unknown),
     ...edits,
-    coverage: split4(sum(files5.map((f) => f.coverage)), seconds7 * files5.length),
+    coverage: split4(sum2(files5.map((f) => f.coverage)), seconds7 * files5.length),
     kinds: split4(kinds2, seconds7 * files5.length),
     kind: route?.kind ?? "import",
     gateway: route?.gateway == null ? null : routeOf(route),
@@ -122467,7 +122727,7 @@ function entryOf3({ files: files5, route, lead }, analysis, snapshot3) {
     ...noteOf(files5, kinds2, analysis, edits.editShare)
   };
 }
-function sum(parts3) {
+function sum2(parts3) {
   const out2 = { ...parts3[0] };
   for (const part2 of parts3.slice(1)) {
     for (const [k, v] of Object.entries(part2)) out2[k] += v;
@@ -122917,7 +123177,7 @@ function namedEdits(file) {
   if (file.editSeconds === 0) return edits;
   return `${edits} re-ran ${secs(file.editSeconds)}, ${pct2(file.editShare)} of the window's re-run seconds`;
 }
-function namedLines(file, offset2) {
+function namedLines2(file, offset2) {
   if (file.testFiles === 0) {
     return [`${file.path}: no test file of the suite re-runs on an edit of it.`];
   }
@@ -122958,7 +123218,7 @@ function formatImpact(report4, command = "squeal") {
   ];
   const byEdits = [...gatewaysPart(report4), "", ...editsPart(report4)];
   const ranked = report4.window === null || report4.totalByEdits === 0 ? [...perEdit, "", ...byEdits] : [...byEdits, "", ...perEdit];
-  const body2 = named4 === void 0 ? ["", ...ranked] : ["", ...named4.flatMap((file) => namedLines(file, offset2))];
+  const body2 = named4 === void 0 ? ["", ...ranked] : ["", ...named4.flatMap((file) => namedLines2(file, offset2))];
   const proposals2 = report4.proposals.flatMap((p) => proposalLines(p, report4.coverage));
   return `${[...head(report4, command), ...body2, ...proposals2.length === 0 ? [] : ["", ...proposals2]].join("\n")}
 `;
