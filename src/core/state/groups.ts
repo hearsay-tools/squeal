@@ -148,8 +148,9 @@ function requestedOf(
   keys: readonly TestFileKeyRecord[],
   lanes: readonly GroupLaneCounts[],
 ): (at: CheckMoment, inLane: (ref: TestFileRef) => boolean) => number {
+  if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (daemon === null || !lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
+  if (daemon === null) return () => 0;
   const batched = publishedBatches(store, worktreeId, daemon.startedAt, Date.now() as EpochMs);
   if (batched.size === 0) return () => 0;
   const queued = keys.filter(
