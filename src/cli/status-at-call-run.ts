@@ -46,6 +46,11 @@ export interface After {
   readonly refs: readonly TestFileRef[];
   /** Per side, the daemon's files still queued or running outside the call's. */
   readonly rest: { readonly commit: readonly TestFileRef[]; readonly now: readonly TestFileRef[] };
+  /** Row 023-59 (W2): `--wait` alone, per side, the call's files queued or running as it began. */
+  readonly began?: {
+    readonly commit: readonly TestFileRef[];
+    readonly now: readonly TestFileRef[];
+  };
 }
 
 /**
@@ -111,6 +116,7 @@ export function queuedRun(
       setup: after.current.source.kind === "setting up",
     },
     ...idleOf(after, queue, runAgain(input.args.commit, paths)),
+    ...resolvedOf(after),
     again: finite ? waitAgain(input.args.commit, paths) : null,
     retry:
       atQueue.late === true || nowQueue.late === true ? runAgain(input.args.commit, paths) : null,
@@ -145,6 +151,18 @@ function idleOf(
   const commit = count(after.at.state, after.current.state);
   const now = count(after.current.state, after.at.state);
   return commit + now === 0 ? {} : { idle: { commit, now, command } };
+}
+
+/** Row 023-59 (W2): `--wait` alone, the files that went from running to a result, per side. */
+function resolvedOf(after: After): { resolved?: NonNullable<QueuedRun["resolved"]> } {
+  if (after.began === undefined) return {};
+  const known = (s: SideState) => s.state === "pass" || s.state === "fail";
+  const done = (files: readonly TestFileRef[], state: (ref: TestFileRef) => SideState) => [
+    ...new Set(files.filter((ref) => known(state(ref))).map((ref) => ref.path)),
+  ];
+  const commit = done(after.began.commit, after.at.state);
+  const now = done(after.began.now, after.current.state);
+  return commit.length + now.length === 0 ? {} : { resolved: { commit, now } };
 }
 
 const rootId = (queue: SideQueue): WorktreeId | null =>

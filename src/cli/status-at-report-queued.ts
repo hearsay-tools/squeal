@@ -1,5 +1,5 @@
 import { testFileId } from "../core/keys/reverse-index.js";
-import { shellWord } from "../core/text.js";
+import { listPaths, shellWord } from "../core/text.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { type CallEstimate, estimateLine } from "./status-at-estimate.js";
 import type { SideQueue } from "./status-at-queue.js";
@@ -87,6 +87,12 @@ export interface QueuedRun {
    * and the call that queues them; absent when none.
    */
   readonly idle?: { readonly commit: number; readonly now: number; readonly command: string };
+  /**
+   * Row 023-59 (W2): with `--wait` alone, per side, the paths of the call's
+   * files that were queued or running as it began and have a result now;
+   * absent when none.
+   */
+  readonly resolved?: { readonly commit: readonly string[]; readonly now: readonly string[] };
   /** Row 023-49 (V2): per side, the time what still runs takes; absent when nothing does. */
   readonly estimate?: CallEstimate;
   /** Row 023-49: with `estimate`, the call that narrows a wide one; `null` for a narrowed call. */
@@ -171,7 +177,7 @@ export function queuedLines(run: QueuedRun, at: string): string[] {
     lines.push(
       `--wait: nothing is queued or running for these files at ${at} or in the working tree`,
     );
-  lines.push(...idleLines(run, at));
+  lines.push(...resolvedLines(run, at), ...idleLines(run, at));
   const rest = restLine(run, at);
   if (rest !== null) lines.push(rest);
   const estimate = estimateLine(run.estimate, at, run.narrow ?? null);
@@ -289,5 +295,22 @@ function idleLines(run: QueuedRun, at: string): string[] {
   return [
     ...(idle.commit === 0 ? [] : [line(idle.commit, "in the working tree", `at ${at}`)]),
     ...(idle.now === 0 ? [] : [`now: ${line(idle.now, `at ${at}`, "in the working tree")}`]),
+  ];
+}
+
+/** Row 023-59 (W2): the most paths a `--wait` names per side as now having a result. */
+export const RESOLVED_SHOWN = 20;
+
+/** Row 023-59 (W2): a join names the files that went from running to a result, per side. */
+function resolvedLines(run: QueuedRun, at: string): string[] {
+  const { resolved } = run;
+  if (resolved === undefined) return [];
+  const line = (paths: readonly string[], where: string) =>
+    `${paths.length} test file${paths.length === 1 ? "" : "s"} went from running to a result ${where}: ${listPaths(paths, RESOLVED_SHOWN)}`;
+  return [
+    ...(resolved.commit.length === 0 ? [] : [`--wait: ${line(resolved.commit, `at ${at}`)}`]),
+    ...(resolved.now.length === 0
+      ? []
+      : [`--wait, now: ${line(resolved.now, "in the working tree")}`]),
   ];
 }

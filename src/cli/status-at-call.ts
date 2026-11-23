@@ -168,8 +168,20 @@ async function readAfter(
       commit: restOf(main, atRoot, narrowed ? refs : atQueue.files),
       now: restOf(main, worktreeId, narrowed ? refs : nowQueue.files),
     };
-    return { at, current: { ...fresh, state }, refs, unmatched, rest };
+    // Row 023-59 (W2): a join names what went from running to a result; it read both sides first.
+    const began = selection ? {} : { began: beganOf(atQueue, first) };
+    return { at, current: { ...fresh, state }, refs, unmatched, rest, ...began };
   });
+}
+
+/** Row 023-59 (W2): per side, the call's files queued or running as a `--wait` began. */
+function beganOf(atQueue: CommitAsked, first: NowRead): NonNullable<After["began"]> {
+  const { side } = first;
+  const now = side.refs.filter((ref) => {
+    const s = side.state(ref);
+    return s.state === "no result" && s.pending !== undefined && s.pending !== "setting up";
+  });
+  return { commit: atQueue.began ?? [], now };
 }
 
 /**
