@@ -14,7 +14,36 @@ import { unfinished } from "./yield-waits.js";
  * so the tier is cut instead: its ended files keep their results, its
  * other files go back to their batch, and the leading files run next,
  * alone. A cut runs again at most the tier's in-progress files, its grant.
+ *
+ * Row 023-65 (dogfood round 8, W3's rest): with too few stored durations
+ * the tier's work left cannot be estimated (every file with none counts 0),
+ * so the time rule never cut, and the named file waited for a batch of 200
+ * files on an empty store. Then the tier is cut when more than
+ * `UNKNOWN_CUT_FILES` of its unfinished files are outside the leading batch.
  */
+
+/**
+ * Row 023-65: unfinished files outside the leading batch above which a tier
+ * whose time is unknown is cut. 20 files are at least two rounds at the
+ * widths a machine gives a batch (up to about 12 workers), so the named file
+ * would wait at least one more round of files of unknown length, while a cut
+ * runs again at most one round, the tier's in-progress files.
+ */
+export const UNKNOWN_CUT_FILES = 20;
+
+/**
+ * Durations of a stored floor: `known` of `files` are too few to estimate
+ * their time from. The same floor as the call's estimate (row 023-62,
+ * `tooFew` in `src/cli/status-at-estimate.ts`; a test holds them equal), so a
+ * tier the call reads as "time unknown" is the one this rule cuts.
+ */
+export function tooFewStored(known: number, files: number): boolean {
+  if (known >= files) return false;
+  return known * 5 < files || (known < STORED_LEAST && known * 2 < files);
+}
+
+/** The call's `MEASURED_LEAST`: below this many durations, at most half the files may lack one. */
+const STORED_LEAST = 10;
 
 /** What `leadCut` reads of the yield check's state: the files an earlier yield cut. */
 export type CutMarks = (entry: TierFile) => boolean;
@@ -30,7 +59,10 @@ export type CutMarks = (entry: TierFile) => boolean;
  * their own time is their batch's wall time at the tier's width, the
  * longer of their longest file and their sum over the width, so a cut
  * saves more than the margin; by their longest file alone, a large leading
- * group could be cut for a saving under it, or for none.
+ * group could be cut for a saving under it, or for none. Row 023-65: a tier
+ * whose stored durations are too few (`tooFewStored`) is cut instead when
+ * more than `UNKNOWN_CUT_FILES` of its unfinished files are outside the
+ * leading batch.
  */
 export function leadCut(
   context: SchedulerContext,
@@ -53,6 +85,8 @@ export function leadCut(
   if (lead === 0) return false;
   const own = left.filter((entry) => rankOf(entry) === lead);
   if (own.length === left.length) return false;
+  const known = tier.files.filter(({ file }) => file.durationMs !== null).length;
+  if (tooFewStored(known, tier.files.length)) return left.length - own.length > UNKNOWN_CUT_FILES;
   const ms = own.map(({ file }) => file.durationMs ?? 0);
   const ownMs = Math.max(0, ...ms, ms.reduce((a, m) => a + m, 0) / widthOf(tier));
   return workLeft(context, tier) - ownMs > margin;
