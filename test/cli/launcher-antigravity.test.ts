@@ -97,7 +97,7 @@ describe("the launcher in Antigravity's data directory", () => {
     expect(launch(m).ran?.version).toBe("0.1.599");
   });
 
-  it("names Antigravity sessions in the notice of an older copy, once per conversation, marked beside it", () => {
+  it("tells open Antigravity sessions they move at their next hook in the notice of an older copy, once per conversation, marked beside it", () => {
     const m = machine();
     antigravityInstalls(m, "0.1.601");
     const launcher = antigravityKeeps(m, "0.1.600", TEXT);
@@ -105,7 +105,7 @@ describe("the launcher in Antigravity's data directory", () => {
     const first = launch(m, launcher);
     expect(first.ran).toMatchObject({ version: "0.1.601" });
     expect(first.stderr).toBe(
-      "squeal: this command runs squeal 0.1.601; plugins: Antigravity 0.1.601; Antigravity sessions started on 0.1.600 keep 0.1.600 until they restart.\n",
+      "squeal: this command runs squeal 0.1.601; plugins: Antigravity 0.1.601; open Antigravity sessions move to 0.1.601 at their next hook, and the running 0.1.600 daemon hands over then.\n",
     );
     expect(launch(m, launcher).stderr).toBe("");
     expect(existsSync(join(antigravityDataOf(m), "launcher-notices.json"))).toBe(true);

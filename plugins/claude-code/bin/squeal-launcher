@@ -216,8 +216,9 @@ const notice = (line) => {
   process.stderr.write(line);
 };
 // One line names each version apart: the CLI this command runs, the plugin
-// of each harness, and the version the sessions started before an update keep:
-// Codex sessions for copies in the Codex data directory, Antigravity ones for others.
+// of each harness, and what the sessions started before an update do: Codex
+// sessions for copies in the Codex data directory keep their version until they
+// restart; Antigravity sessions move at their next hook, where the daemon hands over.
 const skewed = found.some((f) => f.version !== newest.version);
 const older = kept && compare(kept.version, run.version) < 0;
 const behind = pinned && newest && compare(newest.version, pinned.version) > 0;
@@ -227,7 +228,9 @@ if (skewed || older || behind) {
   notice(
     `squeal: this command runs squeal ${run.version}; plugins: ${listed}` +
       (older
-        ? `; ${inCodexData ? "Codex" : "Antigravity"} sessions started on ${kept.version} keep ${kept.version} until they restart`
+        ? inCodexData
+          ? `; Codex sessions started on ${kept.version} keep ${kept.version} until they restart`
+          : `; open Antigravity sessions move to ${run.version} at their next hook, and the running ${kept.version} daemon hands over then`
         : "") +
       (behind ? `; this Codex session started on ${pinned.version} and keeps it until it restarts` : "") +
       (skewed ? ". Run squeal update to bring the plugins to one version.\n" : ".\n"),
