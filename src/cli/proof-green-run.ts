@@ -3,12 +3,13 @@ import { resultsAt, withStores } from "../core/commit/at-keys-checkout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { NOT_RUN_BUDGET } from "../core/proof/verdict.js";
 import type { CommitAskState } from "../core/types/commit-ask.js";
-import type { AbsolutePath } from "../core/types/common.js";
+import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { CheckKey } from "../core/types/keys.js";
 import type { ResultRecord, TestFileKeyRecord } from "../core/types/store-records.js";
 import { liveRows } from "./proof-green-rows.js";
 import { endOfRecords } from "./proof-run.js";
 import type { SideFile } from "./proof-side.js";
+import { idOf } from "./status-at-after.js";
 import { readUntilQueued } from "./status-at-commit-ask.js";
 import type { AtDaemons } from "./status-at-daemons.js";
 import { keptAlive } from "./status-at-now-ask.js";
@@ -94,6 +95,9 @@ export async function readGreen(
     await keptAlive(daemons.wait(tree, mine, by)).catch(String);
   const queued = new Set(own.files.map(testFileId));
   const refusals = new Map((own.refused ?? []).map((r) => [testFileId(r.ref), r.reason]));
+  // Review 0.1.611 B1 (row 023-70): a file that lists a folder holds only the commit worktree's result.
+  const ownOnly = new Map((own.ownOnly ?? []).map((r) => [testFileId(r.ref), r.reason]));
+  const treeId = idOf(tree);
   await withStores(input.commonDir, async (main) => {
     const rows = liveRows(
       main,
@@ -103,31 +107,57 @@ export async function readGreen(
     for (const file of toRun) {
       const id = testFileId(file.ref);
       const results = (key: CheckKey) => (main === null ? [] : resultsAt(main, file.ref, key));
-      out.set(id, sideOf(own, rows.get(id), refusals.get(id), queued.has(id), results));
+      out.set(
+        id,
+        sideOf(own, rows.get(id), results, {
+          refused: refusals.get(id),
+          queued: queued.has(id),
+          ownOnly: ownOnly.get(id),
+          treeId,
+        }),
+      );
     }
   });
   return out;
+}
+
+/** What the ask and the commit daemon say of one file. */
+interface FileFacts {
+  /** D4.9: why the daemon does not run it; `undefined`: it does. */
+  readonly refused: string | undefined;
+  /** The ask queued it: it had no result at selection. */
+  readonly queued: boolean;
+  /** Review 0.1.611 B1: why another worktree's result is not the commit's; `undefined`: any is. */
+  readonly ownOnly: string | undefined;
+  /** The commit daemon's worktree, the writer of its own results. */
+  readonly treeId: WorktreeId;
 }
 
 /** One file's side after the wait: its result at its live key, or why it has none. */
 function sideOf(
   own: CommitAskState,
   row: TestFileKeyRecord | undefined,
-  refused: string | undefined,
-  queued: boolean,
   results: (key: CheckKey) => readonly ResultRecord[],
+  facts: FileFacts,
 ): SideFile {
-  if (refused !== undefined) return unknown(refused);
+  if (facts.refused !== undefined) return unknown(facts.refused);
   if (row === undefined) return unknown("its commit daemon no longer lists it");
   if (row.key === null) return unknown("its commit daemon could not key it");
-  const records = results(row.key);
+  const all = results(row.key);
+  const mine = all.filter((r) => r.provenance.worktreeId === facts.treeId);
+  if (facts.ownOnly !== undefined && mine.length === 0 && all.length > 0)
+    return unknown(facts.ownOnly);
+  const records = facts.ownOnly === undefined ? all : mine;
+  // Review 0.1.611 B1: a queued file ran here only when the commit worktree wrote its result;
+  // another worktree's result at the shared key is read from the store.
+  const ran = facts.queued && mine.length > 0;
   if (records.length > 0)
     return {
       end: endOfRecords(records),
-      from: queued ? "run" : "store",
+      from: ran ? "run" : "store",
       stored: true,
       notStored: null,
-      runs: queued ? 1 : 0,
+      runs: ran ? 1 : 0,
     };
   if (own.phase !== "queued" || (row.pending !== null && row.pending !== undefined))
     return unknown(NOT_RUN_BUDGET);
