@@ -239,12 +239,14 @@ function estimateOf(
       const estimate = estimateSide(one, widths[i] ?? 1, factor);
       // Row 023-60 (W3): a narrowed call's file that still runs in a wider batch waits for it.
       const runs = ahead || estimate === null ? [] : (inFlight()[i] ?? []);
-      const at = { width: widths[i] ?? 1, factor, now: Date.now() };
+      const at = { width: widths[i] ?? 1, factor, now: Date.now(), rate: one.measured };
       const batch = namedRun(runs, side.queue.files, todo[i] ?? [], seconds, at);
       let e = estimate;
       if (e !== null && batch !== null) {
-        const longer = Math.max(e.seconds ?? 0, batch.seconds ?? 0);
-        e = { ...e, seconds: e.seconds === null ? null : longer, batch };
+        // Review 0.1.607 B1: the batch's unknown time leaves the side's time unknown.
+        const longer =
+          e.seconds === null || batch.seconds === null ? null : Math.max(e.seconds, batch.seconds);
+        e = { ...e, seconds: longer, batch };
       }
       // Row 023-62 (V2's rest): the files left out because their setup failed on the other side.
       if (leftOut === 0) return e;

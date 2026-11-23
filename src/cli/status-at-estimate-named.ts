@@ -1,3 +1,4 @@
+import { median } from "../core/code/gate/estimate.js";
 import { resolveCommonDir } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { Connection } from "../core/store/connection.js";
@@ -8,6 +9,7 @@ import { createStore } from "../core/store/store.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { RunRecord } from "../core/types/store-records.js";
+import { MEASURED_LEAST, tooFew } from "./status-at-estimate.js";
 
 /*
  * Row 023-60 (spec 023 D7.3, dogfood round 7 W3): the named file's time.
@@ -28,8 +30,19 @@ export interface NamedRun {
   readonly startedAt: EpochMs;
   /** Whole seconds since its start, when the call read it. */
   readonly ran: number;
-  /** Its time left in whole seconds, from stored durations; `null` when none is known. */
+  /** How many of its files have a stored duration. */
+  readonly known: number;
+  /**
+   * Its time left in whole seconds; `null` when unknown: too few of its
+   * files have a stored duration (`tooFew`) and this call measured no rate.
+   */
   readonly seconds: number | null;
+}
+
+/** The call's results on the side and its time so far, when it queued (`SideWork.measured`). */
+export interface NamedRate {
+  readonly done: number;
+  readonly ms: number;
 }
 
 /**
@@ -65,15 +78,23 @@ export function runsInFlight(
  * that holds one beside a file outside `call`, with its time left: its
  * files run `width` at once, so it takes the longer of its longest file and
  * its summed `seconds` over the width, times `factor` (the host's load),
- * less the time since its start. `null` when each runs alone or with the
- * call's files only, whose own time the estimate already counts.
+ * less the time since its start. As the side's estimate (`estimateSide`):
+ * a file without a stored duration counts at the median of the stored ones,
+ * this call's rate wins when it measured one, and the time is unknown when
+ * too few have one (review 0.1.607 B1). `null` when each runs alone or with
+ * the call's files only, whose own time the estimate already counts.
  */
 export function namedRun(
   runs: readonly RunRecord[],
   call: readonly TestFileRef[],
   running: readonly TestFileRef[],
   seconds: (ref: TestFileRef) => number | null,
-  at: { readonly width: number; readonly factor: number | null; readonly now: number },
+  at: {
+    readonly width: number;
+    readonly factor: number | null;
+    readonly now: number;
+    readonly rate?: NamedRate | null;
+  },
 ): NamedRun | null {
   const own = new Set(call.map(testFileId));
   const newest = [...runs].sort((a, b) => b.startedAt - a.startedAt);
@@ -85,13 +106,33 @@ export function namedRun(
   }
   const [run, named] = [...holding].sort(([a], [b]) => b.startedAt - a.startedAt)[0] ?? [];
   if (run === undefined || named === undefined) return null;
-  const known = run.testFiles.map(seconds).filter((s): s is number => s !== null);
-  const width = Math.max(1, Math.min(at.width, run.testFiles.length));
-  const whole = Math.max(Math.max(0, ...known), sum(known) / width);
+  const all = run.testFiles.map(seconds);
+  const files = all.length;
+  const known = all.filter((s): s is number => s !== null);
   const ran = Math.max(0, Math.round((at.now - run.startedAt) / 1000));
-  const left = known.length === 0 ? null : Math.max(0, Math.ceil(whole * (at.factor ?? 1)) - ran);
+  const whole = wholeSeconds(all, known, Math.min(at.width, files), at);
+  const left = whole === null ? null : Math.max(0, whole - ran);
   const { startedAt } = run;
-  return { named, files: run.testFiles.length, startedAt, ran, seconds: left };
+  return { named, files, startedAt, ran, known: known.length, seconds: left };
+}
+
+/** The run's whole time in seconds, from this call's rate or its stored durations; `null`: unknown. */
+function wholeSeconds(
+  all: readonly (number | null)[],
+  known: readonly number[],
+  width: number,
+  at: { readonly factor: number | null; readonly rate?: NamedRate | null },
+): number | null {
+  const { rate } = at;
+  if (rate !== undefined && rate !== null && rate.done >= MEASURED_LEAST && rate.ms > 0) {
+    const rated = Math.ceil((all.length * rate.ms) / 1000 / rate.done);
+    return Math.max(rated, Math.ceil(Math.max(0, ...known) * (at.factor ?? 1)));
+  }
+  const middle = median(known);
+  if (middle === null || tooFew(known.length, all.length)) return null;
+  const filled = all.map((s) => s ?? middle);
+  const whole = Math.max(Math.max(0, ...filled), sum(filled) / Math.max(1, width));
+  return Math.ceil(whole * (at.factor ?? 1));
 }
 
 const sum = (list: readonly number[]) => list.reduce((a, s) => a + s, 0);
@@ -111,9 +152,16 @@ export function namedRunText(run: NamedRun, time: (seconds: number) => string): 
   const ago = time(run.ran).replace(/^about /, "");
   const end =
     run.seconds === null
-      ? "time unknown: none of its files has a stored duration"
+      ? unknownText(run)
       : run.seconds === 0
         ? "any time now: it has run past its stored durations"
         : time(run.seconds);
   return `${who} ${verb} in a batch of ${run.files} test files started ${ago} ago; ${its} when that batch ends (${end})`;
+}
+
+/** Why a batch's time is unknown: no stored duration, or too few (review 0.1.607 B1). */
+function unknownText(run: NamedRun): string {
+  if (run.known === 0) return "time unknown: none of its files has a stored duration";
+  const have = run.known === 1 ? "has" : "have";
+  return `time unknown: too few runs stored (${run.known} of its ${run.files} files ${have} a stored duration) and this call measured no rate`;
 }
