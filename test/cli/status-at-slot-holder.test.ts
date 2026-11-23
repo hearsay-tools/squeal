@@ -146,7 +146,7 @@ describe("a file waiting for the shared slot names its holder (row 023-77, Z1)",
     expect(out).toContain(
       `Still to run, at ${at}: 1 test file, time unknown: waiting for the browser group's slot, ${holder}`,
     );
-    expect(out).toMatch(/left\); it starts when that run ends/);
+    expect(out).toMatch(/left\); it can start after that run ends/);
   });
 
   it("gives no time left when the holder's file has no stored duration", async () => {
@@ -158,7 +158,7 @@ describe("a file waiting for the shared slot names its holder (row 023-77, Z1)",
       release = () => slot?.release();
     });
     release();
-    expect(out).toMatch(/holds \(running for \d+ s\); it starts when that run ends/);
+    expect(out).toMatch(/holds \(running for \d+ s\); it can start after that run ends/);
     expect(out).not.toContain(" left)");
   });
 
