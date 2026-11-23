@@ -135,6 +135,22 @@ describe("D4.5 at the commit daemon (row 023-40c)", () => {
     expect((await choose(ask({ allMissing: true }), p.value))?.selects).toBe(2);
   });
 
+  it("tells the files it would run that have a result at the commit already (row 023-58, W1)", async () => {
+    // A (read by src/a.ts) and named B have a result; C has none; D is neither selected nor named.
+    const stored = new Set(["k-test/a.test.ts", "k-test/b.test.ts", "k-test/d.test.ts"]);
+    const p = ports([row(A), row(B), row(C), row(D)], stored);
+    const chosen = await choose(ask({ changed: ["src/a.ts", "src/c.ts"] }), p.value);
+    expect(paths(chosen?.rest ?? [])).toEqual([C.path]);
+    expect(paths(chosen?.withResult ?? [])).toEqual([A.path]);
+    const named = await choose(ask({ named: [B.path], changed: ["src/a.ts"] }), p.value);
+    expect(paths(named?.withResult ?? [])).toEqual([B.path]);
+    const asks = new AtAsks(p.value);
+    asks.ask(ask({ changed: ["src/a.ts", "src/c.ts"] }));
+    p.ready();
+    await expect.poll(() => asks.snapshot().asks[0]?.phase).toBe("queued");
+    expect(paths(asks.snapshot().asks[0]?.withResult ?? [])).toEqual([A.path]);
+  });
+
   it("refuses a chosen file whose closure reads a path git does not hold, and its path's other projects (D4.9)", async () => {
     const other: TestFileRef = { project: "other", path: A.path };
     const p = ports(

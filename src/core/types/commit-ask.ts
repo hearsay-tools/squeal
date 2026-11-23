@@ -89,6 +89,13 @@ export interface CommitAskState {
    * `queued`, and from a daemon before this field.
    */
   readonly selects?: number;
+  /**
+   * Row 023-58 (W1): the files the ask would run, by the same rule as
+   * `files`, that it did not queue because they have a result at the
+   * commit already. The working tree runs them when they have none there.
+   * Absent until `queued`, and from a daemon before this field.
+   */
+  readonly withResult?: readonly TestFileRef[];
 }
 
 /** D4.9: a file the commit daemon does not run: its closure reads a path git does not hold there. */
