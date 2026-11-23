@@ -158,8 +158,9 @@ export function narrowRequest(
         groups.lanes(context.policy);
         groups.get(group)?.narrow.add(asks, ledger);
         // Row 011-397 (gh-181): its queued files form a batch as a named wait's do (C15);
-        // row 023-34 (B2): one a later call named leads every earlier batch.
-        promoteNarrow(context, ledger, selected, options.lead === true);
+        // row 023-34 (B2): one a later call named leads every earlier batch; row 023-68
+        // (X3): a `status --at --run` request's batch keeps the request's order.
+        promoteNarrow(context, ledger, selected, options.lead === true, options.at === true);
         // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
         const narrow = narrowAnswer(context, ledger, group, selection, null);
         const covered = selectedOf(ledger, group, selection);
@@ -192,11 +193,12 @@ function promoteNarrow(
   ledger: Ledger,
   ids: ReadonlySet<string>,
   lead: boolean,
+  ordered: boolean,
 ): number | null {
   const refs = [...ids].flatMap((id) => ledger.files.get(id)?.ref ?? []);
   if (refs.length === 0) return null;
   const until = context.now() + NARROW_PROMOTION_MS;
-  return ledger.queue.promote(refs, until, answeredOf(context, ledger), lead);
+  return ledger.queue.promote(refs, until, answeredOf(context, ledger), lead, ordered);
 }
 
 /** Group `group`'s selected files, a narrow run's covered files. */

@@ -174,8 +174,9 @@ export class RunQueue {
     until: number,
     facts?: SelectedFacts,
     lead = false,
+    ordered = false,
   ): number | null {
-    return this.#promotions.add(refs, until, this.#queued, facts, lead);
+    return this.#promotions.add(refs, until, this.#queued, facts, lead, ordered);
   }
 
   /** A reading of the promotions' clock. */
@@ -516,7 +517,8 @@ export class RunQueue {
       .filter((entry) => !this.#isSlow(entry.ref))
       .sort(
         (a, b) =>
-          (ranks.get(a) ?? 0) - (ranks.get(b) ?? 0) ||
+          (ranks.get(a)?.rank ?? 0) - (ranks.get(b)?.rank ?? 0) ||
+          byDuration(placeOf(ranks, a), placeOf(ranks, b)) ||
           byDuration(longest(b), longest(a)) ||
           a.seq - b.seq ||
           compare(a.ref.project, b.ref.project) ||
@@ -592,11 +594,11 @@ export class RunQueue {
    * so a wait that ends during the loop cannot rank one entry and not the
    * next (row 011-347).
    */
-  #ranks(now?: number): ReadonlyMap<Entry, number> {
-    const ranks = new Map<Entry, number>();
+  #ranks(now?: number): ReadonlyMap<Entry, PromotionRank> {
+    const ranks = new Map<Entry, PromotionRank>();
     const at = now ?? this.#promotions.now();
     for (const [id, entry] of this.#entries) {
-      const rank = this.#promotions.rankOf(id, at);
+      const rank = this.#promotions.rankAt(id, at);
       if (rank !== null) ranks.set(entry, rank);
     }
     return ranks;
@@ -619,11 +621,11 @@ function sorted(
   entries: readonly Entry[],
   durationOf: DurationOf,
   turn: boolean,
-  promoted: ReadonlyMap<Entry, number>,
+  promoted: ReadonlyMap<Entry, PromotionRank>,
   ranked = false,
 ): TestFileRef[] {
   const evidence = (entry: Entry) => (ranked ? entry.evidence.size : 0);
-  const rank = (entry: Entry) => promoted.get(entry) ?? Number.POSITIVE_INFINITY;
+  const rank = (entry: Entry) => promoted.get(entry)?.rank ?? Number.POSITIVE_INFINITY;
   const order = GROUP_ORDER[turn ? "turn" : "edits"];
   const groups = new Map<Entry, number>();
   const classes = new Map<Entry, number>();
@@ -644,6 +646,7 @@ function sorted(
       (a, b) =>
         group(a) - group(b) ||
         byDuration(rank(a), rank(b)) ||
+        byDuration(placeOf(promoted, a), placeOf(promoted, b)) ||
         classOf(a) - classOf(b) ||
         evidence(b) - evidence(a) ||
         byDuration(duration(a), duration(b)) ||
@@ -667,6 +670,15 @@ function groupOf(entry: Entry, promoted: boolean): Group {
  */
 function unknownDuration(priority: Priority): number {
   return priority === Priority.edited ? 0 : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Row 023-68 (round 8 X3): an entry's place in its batch's request order,
+ * when its batch keeps one (a `status --at --run` request's), so both
+ * daemons a call asks run its files in the call's order; else last.
+ */
+function placeOf(ranks: ReadonlyMap<Entry, PromotionRank>, entry: Entry): number {
+  return ranks.get(entry)?.place ?? Number.POSITIVE_INFINITY;
 }
 
 /** Ascending; two unknown (infinite) durations, or two unpromoted ranks, are equal. */

@@ -36,6 +36,12 @@ interface Promotion {
   readonly facts: SelectedFacts;
   /** Each file not seen when the wait came, by `testFileId`: its key then. */
   readonly keys: ReadonlyMap<string, string | null>;
+  /**
+   * Row 023-68 (round 8 X3): a `status --at --run` request's batch keeps its
+   * files in the request's order, each file's place in it by `testFileId`;
+   * `null`: the batch's tier orders them (longest first).
+   */
+  readonly places: ReadonlyMap<string, number> | null;
 }
 
 /**
@@ -62,6 +68,8 @@ const NO_KEYS: ReadonlyMap<string, string | null> = new Map();
  */
 export interface PromotionRank {
   readonly rank: number;
+  /** Row 023-68: its place in its batch's request order, when the batch keeps one. */
+  readonly place?: number;
 }
 
 /** A predecessor's batch as a successor takes it over (`Promotions.takeOver`). */
@@ -127,6 +135,7 @@ export class Promotions {
     queued: (id: string) => boolean,
     facts: SelectedFacts = NO_FACTS,
     lead = false,
+    ordered = false,
   ): number | null {
     let changed = this.#settle(queued);
     const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
@@ -145,7 +154,8 @@ export class Promotions {
       const seq = this.#seq++;
       const rank = lead ? -(seq + 1) : seq;
       const promotion = { files, until, seq, rank, members, estimatedEnd: null, seen };
-      this.#promotions.push({ ...promotion, facts, keys });
+      const places = ordered ? new Map([...files.keys()].map((id, at) => [id, at])) : null;
+      this.#promotions.push({ ...promotion, facts, keys, places });
       changed = true;
       formed = seq;
     }
@@ -176,9 +186,11 @@ export class Promotions {
    */
   rankAt(id: string, now: number): PromotionRank | null {
     const member = this.#promotions.find((p) => p.members.has(id));
-    if (member !== undefined) return { rank: member.rank };
-    const ranks = this.#promotions.filter((p) => p.until > now && p.files.has(id));
-    return ranks.length === 0 ? null : { rank: Math.min(...ranks.map((p) => p.rank)) };
+    if (member !== undefined) return rankIn(member, id);
+    const open = this.#promotions.filter((p) => p.until > now && p.files.has(id));
+    if (open.length === 0) return null;
+    const first = open.reduce((a, p) => (p.rank < a.rank ? p : a));
+    return rankIn(first, id);
   }
 
   /** B2: takes `ids` out of every batch's members; whether one changed. */
@@ -244,7 +256,7 @@ export class Promotions {
         estimatedEnd: null,
         seen: members,
       };
-      this.#promotions.push({ ...promotion, facts: NO_FACTS, keys: NO_KEYS });
+      this.#promotions.push({ ...promotion, facts: NO_FACTS, keys: NO_KEYS, places: null });
     }
     this.#told();
   }
@@ -347,4 +359,10 @@ function awaitsRun(p: Pick<Promotion, "files" | "facts" | "keys">, id: string): 
   const fact = p.facts(ref);
   const at = p.keys.get(id) ?? null;
   return (at === null || fact.key === at) && !fact.answered;
+}
+
+/** `id`'s rank in `batch`, with its place when the batch keeps its request's order (row 023-68). */
+function rankIn(batch: Promotion, id: string): PromotionRank {
+  const place = batch.places?.get(id);
+  return place === undefined ? { rank: batch.rank } : { rank: batch.rank, place };
 }

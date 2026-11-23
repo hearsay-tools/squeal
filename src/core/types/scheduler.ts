@@ -260,8 +260,9 @@ export interface NarrowRunOptions {
   /**
    * Row 023-36 (T3): a `status --at --run` request; the daemon flags its
    * accepted files, keyed by the request's covered-files id, so what their
-   * runs start is stopped.
-   * The scheduler reads nothing of it.
+   * runs start is stopped. Row 023-68 (round 8 X3): its batch keeps the
+   * request's path order, so the two daemons one call asks run its files in
+   * one order.
    */
   readonly at?: true;
 }

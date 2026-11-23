@@ -11,7 +11,7 @@ import {
 import { treePath } from "../core/checkout/marker.js";
 import { withStores } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
-import { changeOf } from "../core/daemon/at-asks.js";
+import { atOrder, changeOf } from "../core/daemon/at-asks.js";
 import { runGit } from "../core/fs/git.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
@@ -76,11 +76,15 @@ export async function queueBoth(
     const now = read.side;
     const withoutNow = now.refs.filter((ref) => now.state(ref).state === "no result");
     const named = (ref: TestFileRef) => paths !== null && selects(paths, ref.path);
-    const first = side.run.allMissing
-      ? withoutNow
-      : withoutNow.filter((ref) => changed.includes(ref.path) || named(ref));
+    // Row 023-68 (X3): the commit daemon's order (`atOrder`), so both sides run a file early.
+    const ordered = (refs: readonly TestFileRef[]) => atOrder(paths ?? [], refs);
+    const first = ordered(
+      side.run.allMissing
+        ? withoutNow
+        : withoutNow.filter((ref) => changed.includes(ref.path) || named(ref)),
+    );
     if (read.asked.kind === "read") {
-      const chosen = later.then((files) => withoutNow.filter(takenBy(files)));
+      const chosen = later.then((files) => ordered(withoutNow.filter(takenBy(files))));
       return worktreeTwice({ ...queue, files: first }, root, chosen);
     }
     // Not answered: the files it would have taken, the commit daemon's present here among them.

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { selects } from "../commit/at-keys-narrow.js";
 import { changedText } from "../commit/at-keys-walk.js";
+import { compare } from "../fs/compare.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type {
   CommitAskRequest,
@@ -39,6 +40,27 @@ export function changeOf(changed: readonly RelativePath[]): string {
   const hash = createHash("sha256");
   for (const path of [...new Set(changed)].sort()) hash.update(`${path}\0`);
   return hash.digest("hex").slice(0, 16);
+}
+
+/**
+ * Row 023-68 (round 8 X3): the one order both sides of a `status --at
+ * --run` call queue its files in, so each file gets both sides as early as
+ * it can: the files the call names by their own path first, in the call's
+ * order, then the others by path and project. Each daemon's batch keeps its
+ * request's order (`NarrowRunOptions.at`).
+ */
+export function atOrder(
+  named: readonly RelativePath[],
+  refs: readonly TestFileRef[],
+): TestFileRef[] {
+  const places = new Map<RelativePath, number>();
+  for (const [at, path] of named.entries()) if (!places.has(path)) places.set(path, at);
+  const place = (ref: TestFileRef) => places.get(ref.path) ?? Number.POSITIVE_INFINITY;
+  return [...refs].sort((a, b) => {
+    const [x, y] = [place(a), place(b)];
+    if (x !== y) return x < y ? -1 : 1;
+    return compare(a.path, b.path) || compare(a.project, b.project);
+  });
 }
 
 /** What a commit daemon gives its asks. */
@@ -167,7 +189,8 @@ export class AtAsks {
     kept.refused = chosen.refused;
     kept.selects = chosen.selects;
     kept.withResult = chosen.withResult;
-    kept.files = [...chosen.named, ...chosen.rest];
+    // Row 023-68 (X3): the call's order, which the working tree's side queues in too.
+    kept.files = atOrder(request.named, [...chosen.named, ...chosen.rest]);
     // Row 023-50 (round 6 V3): a call that names paths leads with every file it queues, those
     // under a named folder and the readers of a named path too, named files first, in one
     // batch per group (a later leading batch ranks first). A call that names none leads none.
