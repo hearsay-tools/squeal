@@ -1,0 +1,52 @@
+## 5s +99s $ squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1962 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1138 test files: no result (queued) -> no result (queued): test/cli/status-wait-unlisted-run.test.ts, test/cli/status-wait-window.test.ts, test/cli/status-wait.test.ts and 1135 more
+624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more
+195 test files: no result (running) -> no result (queued): test/ci-action/record-squeal-fails.test.ts, test/ci/export-absolute.test.ts, test/ci/export-evidence.test.ts and 192 more
+4 test files: no result (running) -> no result (running): test/ci/export-keys.test.ts, test/ci/export-loaded.test.ts, test/ci/export-snapshot.test.ts and 1 more
+test/store/open.test.ts: no result (running) -> pass (now: run in this worktree)
+`--full` lists every file; `--json` gives each file's states.
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown
+--run: queued 1338 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/78f7495c4131c9e1/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
+624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 1338 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now
+Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: squeal status --at '20f03a4~1' <path>... --run
+1338 still running at a5c9b7223 (its worktree), 1337 in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' --wait 100000 waits for them; squeal ps shows them.
+----
+squeal status --at: 20f03a4 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+
+## 109s +99s $ squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+test/store/open.test.ts: no result (running) -> pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown, of 1 named test file; the change selects 1338 test files at a5c9b7223 (`squeal status --at '20f03a4~1'`, without paths, compares them)
+test/store/open.test.ts: 1 of 1 still running at a5c9b7223, none queued in the working tree
+--run: queued 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/78f7495c4131c9e1/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 0 have a result now (98.2 s)
+--run, now: every test file the change selects has a result in the working tree
+The rest of the queue, outside these paths: 1337 more test files queued or running at a5c9b7223 (its worktree), 1317 in the working tree
+Still to run, at a5c9b7223: 1 test file, time unknown: its result waits for the batch that holds it; test/store/open.test.ts runs in a batch of 200 test files started 3 min ago; its result comes when that batch ends (time unknown: too few runs stored (21 of its 200 files have a stored duration) and this call measured no rate)
+1 still running at a5c9b7223 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' test/store/open.test.ts --wait 100000 waits for them; squeal ps shows them.
+
+## 210s +80s $ squeal status --at 20f03a4~1 test/store/open.test.ts --wait 300000 2>&1 | tail -8
+squeal: asking the commit daemon at a5c9b7223 and this worktree's daemon
+squeal status --at a5c9b7223: 1 test files at a5c9b7223 against the working tree (HEAD 20f03a431); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown, of 1 named test file; the change selects 1338 test files at a5c9b7223 (`squeal status --at '20f03a4~1'`, without paths, compares them)
+--wait: joined 1 test files with no result at a5c9b7223 in its commit daemon (its worktree ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/78f7495c4131c9e1/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree); 1 have a result now (79.2 s)
+--wait: 1 test file went from running to a result at a5c9b7223: test/store/open.test.ts
+The rest of the queue, outside these paths: 1272 more test files queued or running at a5c9b7223 (its worktree), 1314 in the working tree
+
+## 295s SAY
+Commit 20f03a431 changed no test results in the file I compared, but I didn't compare every file the change could affect.
+
+- **What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.
+- **Result I checked:** `test/store/open.test.ts` passes at 20f03a431 and also passed at its parent a5c9b7223 (`squeal status --at 20f03a4~1`). So it did not go from fail to pass, and I found no file that changed result.
+- **What I didn't check:** Squeal says the `mark.ts` change selects 1338 test files. Their runs at a5c9b7223 were still queued or running when I stopped, so I have no comparison for them. A pass/fail change in one of them would not show up in what I've reported.
+
+`squeal status --at '20f03a4~1' --wait 300000` will finish the full comparison once those runs end. I can run it if you want the complete answer.
+
+One caveat on the "unchanged" line: the parent's version of `open.test.ts` is the one that ran at a5c9b7223. It lacks the 27 new test lines, so "pass -> pass" means the file passes both times, not that the same tests ran.

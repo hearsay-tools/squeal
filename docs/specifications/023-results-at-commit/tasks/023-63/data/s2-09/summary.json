@@ -1,0 +1,62 @@
+{
+  "id": "s2-09",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/36290cc8f91e2ba9/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60; echo ----; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "5s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60; echo ----; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60",
+    "107s +39s squeal status --at 20f03a431~1 test/store --run --wait 120000 2>&1 | tail -25"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (12 of them have a stored duration) and this call measured no rate; in the working tree: about 3 h for 1326 test files, at this call's rate there (12 results in 98 s); name test files or folders to narrow it: squeal statu"
+  ],
+  "lines8": [
+    "5s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "5s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "107s +39s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "107s +39s 1 more test file: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now pass (now: run in this worktree): test/store/key-shadow.test.ts",
+    "107s +39s 1 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs it"
+  ],
+  "loadStart": "9.63",
+  "exit": 0,
+  "wallSeconds": 151.76,
+  "squeal": [
+    "5s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60; echo ----; squeal status --at 20f03a431 --run --wait 100000 2>&1 | tail -60",
+    "107s squeal status --at 20f03a431~1 test/store --run --wait 120000 2>&1 | tail -25"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0531923,
+  "usage": {
+    "cache_creation_input_tokens": 13737,
+    "cache_read_input_tokens": 98598,
+    "output_tokens": 897
+  },
+  "firstFinal": "**No test result changed that I could confirm.** The comparison is partial, because I didn't run the whole suite.\n\nThe commit touched `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared `20f03a431` against its parent `a5c9b7223` for the 39 test files under `test/store/`. 38 of them were `pass -> pass` and none went from pass to fail or fail to pass. That includes `test/store/open.test.ts`, where the new test cases pass with the fix.\n\n- **`test/store/` coverage:** the last file, `test/store/key-shadow.test.ts`, has no result at the parent. Squeal didn't treat it as selected by the change, so it didn't run there. It passes now.\n- **Rest of the suite:** about 1,300 other test files were queued for the parent and had not finished. The full comparison would take roughly 3 hours, so I stopped at `test/store/`. Files elsewhere that import `mark.ts` are the ones not covered. I didn't trace which files those are.\n- **`open.test.ts` before the commit:** I didn't run the new `open.test.ts` cases against the parent's `mark.ts`. I can't say whether they failed before the fix. `squeal proof test/store/open.test.ts --base 20f03a431~1` would show that.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait <ms>` once the queued runs complete.",
+  "final": "**No test result changed that I could confirm.** The comparison is partial, because I didn't run the whole suite.\n\nThe commit touched `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared `20f03a431` against its parent `a5c9b7223` for the 39 test files under `test/store/`. 38 of them were `pass -> pass` and none went from pass to fail or fail to pass. That includes `test/store/open.test.ts`, where the new test cases pass with the fix.\n\n- **`test/store/` coverage:** the last file, `test/store/key-shadow.test.ts`, has no result at the parent. Squeal didn't treat it as selected by the change, so it didn't run there. It passes now.\n- **Rest of the suite:** about 1,300 other test files were queued for the parent and had not finished. The full comparison would take roughly 3 hours, so I stopped at `test/store/`. Files elsewhere that import `mark.ts` are the ones not covered. I didn't trace which files those are.\n- **`open.test.ts` before the commit:** I didn't run the new `open.test.ts` cases against the parent's `mark.ts`. I can't say whether they failed before the fix. `squeal proof test/store/open.test.ts --base 20f03a431~1` would show that.\n\nTo finish the comparison, run `squeal status --at '20f03a431~1' --wait <ms>` once the queued runs complete.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431 --run",
+    "20f03a431~1 --run"
+  ]
+}

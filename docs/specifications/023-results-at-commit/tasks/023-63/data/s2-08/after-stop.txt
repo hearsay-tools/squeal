@@ -1,0 +1,141 @@
+## head
+20f03a43139ea3e99e057b32dac3db3dffbb903d
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+20f03a4 HEAD@{2026-11-23 14:49:31 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w31/runs/w31/s2-08
+HEAD 20f03a43139ea3e99e057b32dac3db3dffbb903d
+branch refs/heads/main
+
+worktree ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+HEAD a5c9b7223b6550d249098754bfc6453b3853c2b7
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w31 squeal-w31    0 Nov 23 14:13 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/0dc756ac6db1d7ef:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:52 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/11605d06c816b113:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:48 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/3f0a4f47dc602b68:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:31 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/4813c8fa1cdc8be7:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:18 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/5870a1fc2ed99629:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:34 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/5d1aa7c33e4e2774:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:37 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/68f575a097f2bc97:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:50 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/6de326c1c0ab376d:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:49 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/78f7495c4131c9e1:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:24 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/7c066a9dc4ceacac:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:36 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/8335f110547dd25b:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:39 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/96aa72837ab425fe:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:42 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/adfbb59d9e3acde2:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:28 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:52 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:52 75e736b6f0d06b4a.json
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:51 a72d91dd8c0b1c86.json
+
+home/.cache/squeal/checkouts/d8af3e6c62effee2:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:45 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/dee3cbcea63b5fae:
+total 12
+drwxrwxr-x  3 squeal-w31 squeal-w31 4096 Nov 23 14:49 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+drwxrwxr-x  4 squeal-w31 squeal-w31 4096 Nov 23 14:49 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/ec7f14bad002057a:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:44 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/edda2b5aa8d707e3:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:32 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+home/.cache/squeal/checkouts/f957806124538b7a:
+total 8
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:15 .
+drwxrwxr-x 21 squeal-w31 squeal-w31 4096 Nov 23 14:50 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+1277937       1       03:16 squeal s2-08 daemon @840716ea ~squeal-w31/runs/w31/claude/plugins/cache/hearsay/squeal/0.1.609/dist/cli/squeal.mjs daemon ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+1278312 1277937       03:13 /opt/squeal-w31/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w31/runs/w31/claude/plugins/cache/hearsay/squeal/0.1.609/dist/cli/squeal.mjs runner-host ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+1281204       1       02:48 squeal s2-08 store --disable-warning=ExperimentalWarning ~squeal-w31/runs/w31/claude/plugins/cache/hearsay/squeal/0.1.609/dist/cli/squeal.mjs store-process ~squeal-w31/runs/w31/s2-08/.git --store code
+1356358 1278312       00:09 /opt/squeal-w31/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+1358241 1278312       00:03 /opt/squeal-w31/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+1358303 1278312       00:03 /opt/squeal-w31/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+1358720 1278312       00:01 /opt/squeal-w31/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+1359905 1358241       00:00 /bin/sh
+1359962 1358720       00:00 /bin/sh
+1359985 1359962       00:00 /bin/sh
+1359986 1359985       00:00 node -e  const { existsSync, readFileSync, readdirSync } = require("node:fs"); const { join } = require("node:path"); const env = process.env; const home = env.HOME ?? ""; const want = process.argv[1]; const versionIn = (file) => {   try {     return JSON.parse(readFileSync(file, "utf8")).version;   } catch {} }; // A runtime root whose runtime.json and plugin manifest name one version, with its CLI. const runtime = (dir) => {   const v = versionIn(join(dir, "runtime.json"));   return typeof v === "string" && v === versionIn(join(dir, ".codex-plugin", "plugin.json")) &&     existsSync(join(dir, "dist", "cli", "squeal.mjs")) ? v : undefined; }; const isAdapter = (dir) => existsSync(join(dir, "hooks", "hooks.json")) && existsSync(join(dir, "seed")); const compare = (a, b) => {   const x = a.split(".").map(Number);   const y = b.split(".").map(Number);   for (let i = 0; i < Math.max(x.length, y.length); i++) {     const d = (x[i] ?? 0) - (y[i] ?? 0);     if (d !== 0) return d;   }   return 0; }; const found = []; if (want === "claude" || want === "any") {   try {     const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");     const file = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));     for (const e of file.plugins?.["squeal@hearsay"] ?? []) {       if (want === "claude" && e.scope !== "user") continue;       if (typeof e.version === "string" && typeof e.installPath === "string" && existsSync(e.installPath))         found.push([e.version, e.installPath]);     }   } catch {} } if (want !== "claude") {   const codex = env.CODEX_HOME ?? join(home, ".codex");   const cache = join(codex, "plugins", "cache", "hearsay", "squeal");   let dirs = [];   try {     dirs = readdirSync(cache).filter((v) => /^\d+(\.\d+)*$/.test(v));   } catch {}   for (const v of dirs) {     const dir = join(cache, v);     if (want === "codex" || (want === "adapter") === isAdapter(dir)) found.push([v, dir]);   }   if (want === "any") {     // Spec 002 D9: the current runtime, or a seed newer than it; the current one on a tie.     for (const v of dirs) {       const seed = join(cache, v, "seed");       if (isAdapter(join(cache, v)) && runtime(seed)) found.push([runtime(seed), seed]);     }     const data = join(codex, "plugins", "data", "squeal-hearsay");     const current = versionIn(join(data, "runtime", "current.json"));     // A plain release, so the version never names a path outside versions/.     const plain = typeof current === "string" && /^\d+\.\d+\.\d+$/.test(current);     if (plain && runtime(join(data, "versions", current)) === current) found.push([current, join(data, "versions", current)]);   } } if (want === "any") {   for (const packages of [env.PI_HOME, env.OPENCODE_HOME]) {     try {       for (const v of readdirSync(packages)) if (/^\d+(\.\d+)*$/.test(v)) found.push([v, join(packages, v)]);     } catch {}   } } const newest = found.sort((a, b) => compare(a[0], b[0])).at(-1); if (newest) console.log(`${newest[0]} ${newest[1]}`);  codex
+1359994 1359905 441077234-00:18:40 node -e  const { readFileSync } = require("node:fs"); const { homedir } = require("node:os"); const { join } = require("node:path"); const dir = join(process.env.XDG_CONFIG_HOME || join(process.env.HOME || homedir(), ".config"), "opencode"); const want = `file:${process.argv[1]}`; const listed = ["opencode.json", "opencode.jsonc", "config.json"].some((name) => {   let text;   try {     text = readFileSync(join(dir, name), "utf8");   } catch {     return false;   }   try {     const plugins = JSON.parse(text).plugin ?? [];     return plugins.some((p) => (Array.isArray(p) ? p[0] : p) === want);   } catch {     return text.includes(JSON.stringify(want));   } }); process.exit(listed ? 0 : 1);  /tmp/sq-zNShnz/home/.local/share/squeal/opencode/current
+1360000 1358303 441077234-00:18:40 /bin/sh
+1360007 1360000 441077234-00:18:40 node -e  const [a, b] = process.argv[1].replace(/^v/, "").split(".").map(Number); const [x, y] = process.argv[2].split(".").map(Number); process.exit(a > x || (a === x && b >= y) ? 0 : 1);  v24.21.0 22.19

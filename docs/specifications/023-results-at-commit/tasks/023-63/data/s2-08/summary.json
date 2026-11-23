@@ -1,0 +1,59 @@
+{
+  "id": "s2-08",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/dee3cbcea63b5fae/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "4s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "4s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "107s +86s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -20"
+  ],
+  "estimates": [
+    "4s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (8 of them have a stored duration) and this call measured no rate; in the working tree: 1330 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "4s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "4s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "107s +86s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "loadStart": "11.01",
+  "exit": 0,
+  "wallSeconds": 196.541,
+  "squeal": [
+    "4s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "107s squeal status --at '20f03a431~1' test/store/open.test.ts --run --wait 100000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.04862760000000001,
+  "usage": {
+    "cache_creation_input_tokens": 12656,
+    "cache_read_input_tokens": 98376,
+    "output_tokens": 713
+  },
+  "firstFinal": "I can't tell yet whether any other test file's result changed, but the one test file the commit touched did not change.\n\n- **Test file the commit edited:** `test/store/open.test.ts` passes before the commit and passes after it. The commit added 27 lines of tests there, which pass.\n- **The commit:** it changed only `src/core/store/mark.ts` and `test/store/open.test.ts`.\n- **Other tests:** the change selects 1338 test files that could be affected through `mark.ts`. When I compared the whole suite, none of them had a result at the earlier commit or in the working tree. They were still queued or running, so that comparison reported 0 pass→fail, 0 fail→pass and 0 unchanged.\n- **Not compared:** 624 test files aren't selected by the change, and I didn't run them.\n\nI can wait for the queued runs and rerun the full comparison with `squeal status --at '20f03a431~1' --wait 100000`.",
+  "final": "I can't tell yet whether any other test file's result changed, but the one test file the commit touched did not change.\n\n- **Test file the commit edited:** `test/store/open.test.ts` passes before the commit and passes after it. The commit added 27 lines of tests there, which pass.\n- **The commit:** it changed only `src/core/store/mark.ts` and `test/store/open.test.ts`.\n- **Other tests:** the change selects 1338 test files that could be affected through `mark.ts`. When I compared the whole suite, none of them had a result at the earlier commit or in the working tree. They were still queued or running, so that comparison reported 0 pass→fail, 0 fail→pass and 0 unchanged.\n- **Not compared:** 624 test files aren't selected by the change, and I didn't run them.\n\nI can wait for the queued runs and rerun the full comparison with `squeal status --at '20f03a431~1' --wait 100000`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "'20f03a431~1' --run"
+  ]
+}

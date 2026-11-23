@@ -1,0 +1,35 @@
+## squeal ps after squeal stop
+squeal ps · 1 daemon, 6 test processes · no flags
+Host    load 9.5 12.3 13.1 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 5.9% · memory pressure 0.0% (0.0% full) · memory 3.7 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 1.3 CPUs (99% of busy) · memory 2.4 GiB (65% of used) + 0 swap · pool 6 of 11 permits
+
+~squeal-w31/runs/w31/s2-10 (this repository) · 1 daemon · CPU 1.3 · memory 2.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1428634  bc6c2f08  0.1.609          3m  109%     0m40s  841M    0     fast tier, 200 files; 1072 pending
+    host vitest      1428789  local                      3m    1%     0m48s  810M    0
+    vitest           1495917  fork worker               10s    5%     0m01s  87M     0     nice 10
+    vitest           1497937  fork worker                5s    1%     0m01s  144M    0     nice 10
+    vitest           1499313  fork worker                3s    2%     0m00s  144M    0     nice 10
+    vitest           1500050  fork worker                2s    1%     0m00s  143M    0     nice 10
+    vitest           1500508  fork worker                1s    1%     0m00s  143M    0     nice 10
+    vitest           1500580  fork worker                0s   12%     0m00s  141M    0     nice 10
+
+Store processes
+  1428933  code.sqlite of ~squeal-w31/runs/w31/s2-10/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/95b9d07124ba5950/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1428634  age 3m  at a5c9b7223b65
+
+## checkout folders
+ls: cannot access '~squeal-w31/runs/w31/s2-10/.git/squeal/checkouts': No such file or directory
+~squeal-w31/runs/w31/home/.cache/squeal/checkouts/95b9d07124ba5950:
+total 12
+drwxrwxr-x  3 squeal-w31 squeal-w31 4096 Nov 23 14:56 .
+drwxrwxr-x 24 squeal-w31 squeal-w31 4096 Nov 23 14:56 ..
+drwxrwxr-x  4 squeal-w31 squeal-w31 4096 Nov 23 14:56 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 12
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:58 .
+drwxrwxr-x 24 squeal-w31 squeal-w31 4096 Nov 23 14:56 ..
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:58 18d9769489c1d875.json

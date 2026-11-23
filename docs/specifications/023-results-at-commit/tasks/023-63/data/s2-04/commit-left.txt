@@ -1,0 +1,40 @@
+## squeal ps after squeal stop
+squeal ps · 1 daemon, 8 test processes · no flags
+Host    load 15.8 15.0 12.1 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 8.0% · memory pressure 0.0% (0.0% full) · memory 3.5 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 2.4 CPUs (at least 100% of busy) · memory 1.8 GiB (51% of used) + 0 swap · pool 8 of 11 permits
+
+~squeal-w31/runs/w31/s2-04 (this repository) · 1 daemon · CPU at least 2.4 · memory 1.8 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1015901  d2a31ffe  0.1.609          2m    0%     0m29s  465M    0     fast tier, 200 files; 1094 pending
+    host vitest      1016410  local                      2m  236%     1m04s  682M    0
+    vitest           1059341  fork worker                9s    1%     0m01s  138M    0     nice 10
+    vitest           1060149  fork worker                6s     ?     0m01s  ?       ?     nice 10, +3 children
+    vitest           1060227  fork worker                6s     ?     0m01s  ?       ?     nice 10, +2 children
+    vitest           1061489  fork worker                4s    1%     0m01s  145M    0     nice 10
+    vitest           1061606  fork worker                4s    0%     0m01s  139M    0     nice 10
+    vitest           1061979  fork worker                3s    0%     0m01s  144M    0     nice 10
+    vitest           1062970  fork worker                2s    2%     0m01s  144M    0     nice 10
+    vitest           1064012  fork worker                0s     ?     0m00s  ?       ?     nice 10
+
+Store processes
+  1036614  code.sqlite of ~squeal-w31/runs/w31/s2-04/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/5d1aa7c33e4e2774/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1015901  age 2m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w31/runs/w31/s2-04/.git/squeal/checkouts': No such file or directory
+~squeal-w31/runs/w31/home/.cache/squeal/checkouts/5d1aa7c33e4e2774:
+total 12
+drwxrwxr-x  3 squeal-w31 squeal-w31 4096 Nov 23 14:34 .
+drwxrwxr-x 12 squeal-w31 squeal-w31 4096 Nov 23 14:34 ..
+drwxrwxr-x  4 squeal-w31 squeal-w31 4096 Nov 23 14:34 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:36 .
+drwxrwxr-x 12 squeal-w31 squeal-w31 4096 Nov 23 14:34 ..
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:36 6cba1a5aa4f9cda5.json
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:33 9fd1bcfabcc031a4.json

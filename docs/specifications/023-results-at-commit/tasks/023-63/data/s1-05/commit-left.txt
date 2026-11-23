@@ -1,0 +1,56 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 14 test processes · no flags
+Host    load 16.3 14.5 12.3 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 36% · memory pressure 0.0% (0.0% full) · memory 9.4 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 11.0 CPUs (at least 100% of busy) · memory 6.3 GiB (67% of used) + 0 swap · pool 10 of 11 permits
+
+~squeal-w31/runs/w31/s1-05 (this repository) · 1 daemon · CPU 0.5 · memory 2.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1065405  46f8b2fb  0.1.609          2m    1%     0m18s  464M    0     fast tier, 1 file; 95 pending
+    host vitest      1065528  local                      2m    0%     0m51s  635M    0
+    host vitest      1067339  local                      1m    1%     0m03s  250M    0
+    group:browser:vitest1092188  fork worker               14s   13%     0m04s  313M    0     nice 10, +2 children
+    group:browser:vitest1092539                            11s   31%     0m10s  772M    0     escaped, nice 10, +19 children
+    group:browser:vitest1092621                            11s    0%     0m00s  380K    0     escaped, nice 10
+    group:browser:vitest1092623                            11s    0%     0m00s  328K    0     escaped, nice 10
+
+~squeal-w31/runs/w31/s2-05 · 2 daemons · CPU at least 10.6 · memory 3.9 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1067735  03bc7986  0.1.609          1m    0%     0m15s  602M    0     fast tier, 200 files; 1138 pending
+    host vitest      1076602  local                      1m  319%     0m51s  618M    0
+    vitest           1093203  fork worker                9s   88%     0m02s  184M    0     nice 10, +1 child
+    vitest           1094733  fork worker                6s  118%     0m03s  234M    0     nice 10, +1 child
+    vitest           1094850  fork worker                6s     ?     0m02s  ?       ?     nice 10
+    vitest           1096756  fork worker                1s     ?     0m01s  86M     0     nice 10, +3 children
+    vitest           1096816  fork worker                1s   93%     0m03s  211M    0     nice 10, +2 children
+    vitest           1097268  fork worker                0s     ?     0m00s  ?       ?     nice 10
+    vitest           1097615  fork worker                0s  108%     0m01s  171M    0     nice 0
+  serving            1066506  1d68f0a7  0.1.609          1m   34%     0m39s  995M    0     fast tier, 4 files; 1333 pending; 1 session
+    host vitest      1066706  local                      1m    9%     0m44s  552M    0
+    vitest           1095537  fork worker                4s   88%     0m02s  196M    0     nice 10
+    vitest           1095566  fork worker                4s     ?     0m01s  ?       ?     nice 10
+    vitest           1095595  fork worker                4s   87%     0m01s  157M    0     nice 10
+
+Store processes
+  1065671  code.sqlite of ~squeal-w31/runs/w31/s1-05/.git
+  1088247  code.sqlite of ~squeal-w31/runs/w31/s2-05/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/8335f110547dd25b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1065405  age 2m  at d8abcfe46bbe
+    commit worktree  ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/96aa72837ab425fe/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1067735  age 1m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w31/runs/w31/s1-05/.git/squeal/checkouts': No such file or directory
+~squeal-w31/runs/w31/home/.cache/squeal/checkouts/8335f110547dd25b:
+total 12
+drwxrwxr-x  3 squeal-w31 squeal-w31 4096 Nov 23 14:37 .
+drwxrwxr-x 14 squeal-w31 squeal-w31 4096 Nov 23 14:38 ..
+drwxrwxr-x  4 squeal-w31 squeal-w31 4096 Nov 23 14:37 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:39 .
+drwxrwxr-x 14 squeal-w31 squeal-w31 4096 Nov 23 14:38 ..
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:38 141b29625b40e513.json
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:39 f1f22fa097b585ee.json

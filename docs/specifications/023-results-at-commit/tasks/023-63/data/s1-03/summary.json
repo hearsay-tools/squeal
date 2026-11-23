@@ -1,0 +1,71 @@
+{
+  "id": "s1-03",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/edda2b5aa8d707e3/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "8s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -40",
+    "110s +299s squeal status --at 8be977ad6~1 --wait 300000 2>&1 | tail -25"
+  ],
+  "joins": [
+    "8s +99s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -40",
+    "110s +299s squeal status --at 8be977ad6~1 --wait 300000 2>&1 | tail -25"
+  ],
+  "estimates": [
+    "8s +99s Still to run, at d8abcfe46: 106 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: 110 test files, time unknown: too few runs stored (4 of them have a stored duration) and this call measured no rate; name test files or folders to narrow it: sque",
+    "110s +299s Still to run, at d8abcfe46: 94 test files, time unknown: too few runs stored (8 of them have a stored duration) and this call measured no rate; in the working tree: 89 test files, time unknown: too few runs stored (3 of them have a stored duration) and this call measured no rate; name test files or "
+  ],
+  "lines8": [
+    "8s +99s 1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cez",
+    "8s +99s 16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more",
+    "8s +99s 124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notS",
+    "8s +99s 0 pass -> fail, 0 fail -> pass, 0 unchanged, 1796 unknown, 124 not selected",
+    "8s +99s 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them",
+    "110s +299s 1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cez",
+    "110s +299s 16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more",
+    "110s +299s 124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notS",
+    "110s +299s 0 pass -> fail, 0 fail -> pass, 13 unchanged, 1783 unknown, 124 not selected",
+    "110s +299s 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them"
+  ],
+  "loadStart": "7.96",
+  "exit": 0,
+  "wallSeconds": 419.336,
+  "squeal": [
+    "8s squeal status --at 8be977ad6~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -40",
+    "110s squeal status --at 8be977ad6~1 --wait 300000 2>&1 | tail -25"
+  ],
+  "skill": [
+    "5s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "110s +299s Bash squeal status --at 8be977ad6~1 --wait 300000 2>&1 | tail -25"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.07293340000000001,
+  "usage": {
+    "cache_creation_input_tokens": 20110,
+    "cache_read_input_tokens": 86724,
+    "output_tokens": 1397
+  },
+  "firstFinal": "**Not fully answered yet. So far, no test file has changed from pass to fail or from fail to pass.**\n\nI compared the parent `d8abcfe46` with `8be977ad6` using `squeal status --at`. After about 400 s of waiting, the comparison was still incomplete:\n\n- **Changed results: none.** The tally is 0 pass→fail, 0 fail→pass and 13 unchanged.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. That's a new test, not a changed result. I haven't run `squeal proof` on it against the parent.\n- **Lint tests the commit touches:** these ran at both commits and show no difference. They are `lint-runner`, `plugin`, `run-history-reader`, `ast-rules-owners`, `lint-ast-grep-1` and `lint-ast-grep-2`.\n- **Not compared yet (about 90 files):** these are mostly Playwright-style e2e specs under `packages/web/e2e/`. They are still queued or running on one or both sides, so they have no verdict.\n- **Not selected (124 files):** none of their inputs differ between the two commits, so the commit can't change their result.\n- **No result and not run (1,685 files):** `--all-missing` would run them. 1,669 are files whose runner can't say whether the commit affects them. 16 are `.github/scripts` files whose dependency analysis is incomplete.\n\n**Four e2e failures with no baseline.** `assistant-line-breaks`, `assistant-reply-copy`, `automations-disabled` and `automations` failed in this worktree. All four fail with `agent-browser set viewport 1440 900 failed`, which looks like the browser tooling and not this commit's lint changes. The parent hasn't produced a result for them yet, so I can't confirm that. The commit only touches lint code.\n\nTo finish the comparison, run `squeal status --at 'HEAD~1' --wait 100000` until the queue drains. I can keep waiting if you want a final answer. I can also narrow it to `packages/cezar/src/lint/`, which is the code this commit changes.",
+  "final": "**Not fully answered yet. So far, no test file has changed from pass to fail or from fail to pass.**\n\nI compared the parent `d8abcfe46` with `8be977ad6` using `squeal status --at`. After about 400 s of waiting, the comparison was still incomplete:\n\n- **Changed results: none.** The tally is 0 pass→fail, 0 fail→pass and 13 unchanged.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` doesn't exist at the parent and passes now. That's a new test, not a changed result. I haven't run `squeal proof` on it against the parent.\n- **Lint tests the commit touches:** these ran at both commits and show no difference. They are `lint-runner`, `plugin`, `run-history-reader`, `ast-rules-owners`, `lint-ast-grep-1` and `lint-ast-grep-2`.\n- **Not compared yet (about 90 files):** these are mostly Playwright-style e2e specs under `packages/web/e2e/`. They are still queued or running on one or both sides, so they have no verdict.\n- **Not selected (124 files):** none of their inputs differ between the two commits, so the commit can't change their result.\n- **No result and not run (1,685 files):** `--all-missing` would run them. 1,669 are files whose runner can't say whether the commit affects them. 16 are `.github/scripts` files whose dependency analysis is incomplete.\n\n**Four e2e failures with no baseline.** `assistant-line-breaks`, `assistant-reply-copy`, `automations-disabled` and `automations` failed in this worktree. All four fail with `agent-browser set viewport 1440 900 failed`, which looks like the browser tooling and not this commit's lint changes. The parent hasn't produced a result for them yet, so I can't confirm that. The commit only touches lint code.\n\nTo finish the comparison, run `squeal status --at 'HEAD~1' --wait 100000` until the queue drains. I can keep waiting if you want a final answer. I can also narrow it to `packages/cezar/src/lint/`, which is the code this commit changes.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "8be977ad6 --run",
+    "8be977ad6~1"
+  ]
+}

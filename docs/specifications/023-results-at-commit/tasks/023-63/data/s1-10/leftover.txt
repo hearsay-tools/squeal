@@ -1,0 +1,4 @@
+1415945	/tmp/squeal-1002/tmp/f3d534f9e620ece2 (deleted)	/opt/squeal-w31/node24/bin/node ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/d5d9bc489315a503/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease.mjs watch-app 1415931 c294d61d-2b74-4f72-9b10-2d9fc754e380:6626701 ~squeal-w31/runs/w31/home/.
+1421579	~squeal-w31/runs/w31/s1-10	/opt/squeal-w31/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w31/runs/w31/s1-10/.ai/qa/served/s1-10
+1421580	/tmp/squeal-1002/tmp/628d638988cba9af (deleted)	/opt/squeal-w31/node24/bin/node ~squeal-w31/runs/w31/s1-10/.ai/scripts/test-env-lease.mjs watch-app 1421579 c294d61d-2b74-4f72-9b10-2d9fc754e380:6629005 ~squeal-w31/runs/w31/s1-10 ~squeal-w31/runs/w31/s1-10/.ai/qa/served/s1-10
+3 processes

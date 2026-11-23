@@ -1,0 +1,66 @@
+{
+  "id": "s1-09",
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/0dc756ac6db1d7ef/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "7s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "5s +0s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60",
+    "7s +99s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60",
+    "110s +21s squeal status --at HEAD~1 --run --wait 100000 packages/cezar/src/lint 2>&1 | tail -30"
+  ],
+  "estimates": [
+    "7s +99s Still to run, at d8abcfe46: about 16 min for 100 test files, at this call's rate there (10 results in 98 s); in the working tree: about 17 min for 101 test files, at this call's rate there (10 results in 98 s); name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>... --run"
+  ],
+  "lines8": [
+    "7s +99s 1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cez",
+    "7s +99s 16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more",
+    "7s +99s 124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notS",
+    "7s +99s 0 pass -> fail, 0 fail -> pass, 9 unchanged, 1787 unknown, 124 not selected",
+    "7s +99s 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them",
+    "110s +21s 2 more test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now pass (now: run in this worktree): packages/cezar/src/lint/unit-wait-discipline.test.ts, packages/cezar/src/lint/wait-discipline-r",
+    "110s +21s 2 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them"
+  ],
+  "loadStart": "8.63",
+  "exit": 0,
+  "wallSeconds": 138.042,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60",
+    "7s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60",
+    "110s squeal status --at HEAD~1 --run --wait 100000 packages/cezar/src/lint 2>&1 | tail -30"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0747099,
+  "usage": {
+    "cache_creation_input_tokens": 18675,
+    "cache_read_input_tokens": 139984,
+    "output_tokens": 1400
+  },
+  "firstFinal": "**No test file changed from pass to fail or fail to pass in the lint folder. The one difference is a new test file. I haven't compared the rest of the suite.**\n\nThe commit, `8be977ad6` (`perf(lint): share active-run owner syntax indexes`), touched only two files:\n- `packages/cezar/src/lint/active-run-write.ts` (modified)\n- `packages/cezar/src/lint/active-run-write-index.test.ts` (new)\n\nI compared `packages/cezar/src/lint` against the parent commit `d8abcfe46` with `squeal status --at HEAD~1`:\n- **Newly passing:** `active-run-write-index.test.ts` is the only difference. It didn't exist at the parent and passes now. I didn't run `squeal proof` to check whether it would fail on the parent's code.\n- **Pass → pass (23 files):** These passed at both commits. They include `ast-rules-owners.test.ts`, `ast-rules-owners-readers.test.ts`, `lint-runner.test.ts`, `plugin.test.ts`, `run-history-reader.test.ts` and `layer-import.test.ts`.\n- **No parent result (4 files):** These passed at HEAD, but I can't compare them with the parent.\n  - `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` need `.ai/ast-grep/rules/`, which isn't present at the parent.\n  - `unit-wait-discipline.test.ts` and `wait-discipline-runner.test.ts` had no result at the parent, and Squeal didn't run them there.\n\nThe whole-repo comparison wasn't finished when I stopped:\n- It reported 0 pass → fail and 0 fail → pass among the files with results on both sides. The rest of the 1,920 test files mostly had no result at the parent, so that figure covers very little.\n- About 100 selected files (mostly browser e2e specs) were still running on each side, with roughly 16 minutes left. `squeal status --at HEAD~1 --wait 100000` waits for them.\n- Squeal says 124 other test files can't be affected, because none of their inputs differ between the two commits.\n\nThe commit changes only lint code, so I wouldn't expect it to affect files outside that area.",
+  "final": "**No test file changed from pass to fail or fail to pass in the lint folder. The one difference is a new test file. I haven't compared the rest of the suite.**\n\nThe commit, `8be977ad6` (`perf(lint): share active-run owner syntax indexes`), touched only two files:\n- `packages/cezar/src/lint/active-run-write.ts` (modified)\n- `packages/cezar/src/lint/active-run-write-index.test.ts` (new)\n\nI compared `packages/cezar/src/lint` against the parent commit `d8abcfe46` with `squeal status --at HEAD~1`:\n- **Newly passing:** `active-run-write-index.test.ts` is the only difference. It didn't exist at the parent and passes now. I didn't run `squeal proof` to check whether it would fail on the parent's code.\n- **Pass → pass (23 files):** These passed at both commits. They include `ast-rules-owners.test.ts`, `ast-rules-owners-readers.test.ts`, `lint-runner.test.ts`, `plugin.test.ts`, `run-history-reader.test.ts` and `layer-import.test.ts`.\n- **No parent result (4 files):** These passed at HEAD, but I can't compare them with the parent.\n  - `lint-ast-grep-1.test.ts` and `lint-ast-grep-2.test.ts` need `.ai/ast-grep/rules/`, which isn't present at the parent.\n  - `unit-wait-discipline.test.ts` and `wait-discipline-runner.test.ts` had no result at the parent, and Squeal didn't run them there.\n\nThe whole-repo comparison wasn't finished when I stopped:\n- It reported 0 pass → fail and 0 fail → pass among the files with results on both sides. The rest of the 1,920 test files mostly had no result at the parent, so that figure covers very little.\n- About 100 selected files (mostly browser e2e specs) were still running on each side, with roughly 16 minutes left. `squeal status --at HEAD~1 --wait 100000` waits for them.\n- Squeal says 124 other test files can't be affected, because none of their inputs differ between the two commits.\n\nThe commit changes only lint code, so I wouldn't expect it to affect files outside that area.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

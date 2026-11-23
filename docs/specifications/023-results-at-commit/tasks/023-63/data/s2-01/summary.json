@@ -1,0 +1,71 @@
+{
+  "id": "s2-01",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/78f7495c4131c9e1/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "109s +99s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15"
+  ],
+  "joins": [
+    "5s +99s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "109s +99s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15",
+    "210s +80s squeal status --at 20f03a4~1 test/store/open.test.ts --wait 300000 2>&1 | tail -8"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq",
+    "109s +99s Still to run, at a5c9b7223: 1 test file, time unknown: its result waits for the batch that holds it; test/store/open.test.ts runs in a batch of 200 test files started 3 min ago; its result comes when that batch ends (time unknown: too few runs stored (21 of its 200 files have a stored duration) and "
+  ],
+  "lines8": [
+    "5s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "5s +99s test/store/open.test.ts: no result (running) -> pass (now: run in this worktree)",
+    "5s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "109s +99s test/store/open.test.ts: no result (running) -> pass (now: run in this worktree)",
+    "109s +99s test/store/open.test.ts: 1 of 1 still running at a5c9b7223, none queued in the working tree",
+    "109s +99s Still to run, at a5c9b7223: 1 test file, time unknown: its result waits for the batch that holds it; test/store/open.test.ts runs in a batch of 200 test files started 3 min ago; its result comes when that batch ends (time unknown: too few runs stored (21 of its 200 files have a stored duration) and ",
+    "109s +99s 1 still running at a5c9b7223 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' test/store/open.test.ts --wait 100000 waits for them; squeal ps shows them.",
+    "210s +80s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "210s +80s --wait: 1 test file went from running to a result at a5c9b7223: test/store/open.test.ts"
+  ],
+  "loadStart": "5.30",
+  "exit": 0,
+  "wallSeconds": 295.89,
+  "squeal": [
+    "5s squeal status --at 20f03a4~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --at 20f03a4 --run --wait 100000 2>&1 | tail -40",
+    "109s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -15",
+    "210s squeal status --at 20f03a4~1 test/store/open.test.ts --wait 300000 2>&1 | tail -8"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0557465,
+  "usage": {
+    "cache_creation_input_tokens": 13529,
+    "cache_read_input_tokens": 122500,
+    "output_tokens": 965
+  },
+  "firstFinal": "Commit 20f03a431 changed no test results in the file I compared, but I didn't compare every file the change could affect.\n\n- **What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n- **Result I checked:** `test/store/open.test.ts` passes at 20f03a431 and also passed at its parent a5c9b7223 (`squeal status --at 20f03a4~1`). So it did not go from fail to pass, and I found no file that changed result.\n- **What I didn't check:** Squeal says the `mark.ts` change selects 1338 test files. Their runs at a5c9b7223 were still queued or running when I stopped, so I have no comparison for them. A pass/fail change in one of them would not show up in what I've reported.\n\n`squeal status --at '20f03a4~1' --wait 300000` will finish the full comparison once those runs end. I can run it if you want the complete answer.\n\nOne caveat on the \"unchanged\" line: the parent's version of `open.test.ts` is the one that ran at a5c9b7223. It lacks the 27 new test lines, so \"pass -> pass\" means the file passes both times, not that the same tests ran.",
+  "final": "Commit 20f03a431 changed no test results in the file I compared, but I didn't compare every file the change could affect.\n\n- **What the commit touched:** `src/core/store/mark.ts` and `test/store/open.test.ts`. The test file gained 27 lines.\n- **Result I checked:** `test/store/open.test.ts` passes at 20f03a431 and also passed at its parent a5c9b7223 (`squeal status --at 20f03a4~1`). So it did not go from fail to pass, and I found no file that changed result.\n- **What I didn't check:** Squeal says the `mark.ts` change selects 1338 test files. Their runs at a5c9b7223 were still queued or running when I stopped, so I have no comparison for them. A pass/fail change in one of them would not show up in what I've reported.\n\n`squeal status --at '20f03a4~1' --wait 300000` will finish the full comparison once those runs end. I can run it if you want the complete answer.\n\nOne caveat on the \"unchanged\" line: the parent's version of `open.test.ts` is the one that ran at a5c9b7223. It lacks the 27 new test lines, so \"pass -> pass\" means the file passes both times, not that the same tests ran.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4~1 --run",
+    "20f03a4 --run",
+    "20f03a4~1 --run",
+    "20f03a4~1"
+  ]
+}

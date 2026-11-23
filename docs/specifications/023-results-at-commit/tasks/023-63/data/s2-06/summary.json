@@ -1,0 +1,62 @@
+{
+  "id": "s2-06",
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/d8af3e6c62effee2/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60"
+  ],
+  "joins": [
+    "5s +99s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "109s +28s squeal status --at 20f03a431~1 test/store --run --wait 100000 2>&1 | tail -20"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "5s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "5s +99s test/store/open.test.ts: no result (running) -> pass (now: run in this worktree)",
+    "5s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "109s +28s test/store/open.test.ts: pass -> pass (at a5c9b7223: run in the commit's worktree; now: run in this worktree)",
+    "109s +28s 1 more test file: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now pass (now: run in this worktree): test/store/key-shadow.test.ts",
+    "109s +28s 1 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs it"
+  ],
+  "loadStart": "7.53",
+  "exit": 0,
+  "wallSeconds": 142.497,
+  "squeal": [
+    "5s squeal status --at 20f03a431~1 --run --wait 100000 2>&1 | tail -60",
+    "109s squeal status --at 20f03a431~1 test/store --run --wait 100000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.051336400000000004,
+  "usage": {
+    "cache_creation_input_tokens": 13335,
+    "cache_read_input_tokens": 98289,
+    "output_tokens": 815
+  },
+  "firstFinal": "**No test file changed its result in the part I could compare.** The comparison is not complete, so I can't confirm it for the whole suite.\n\nCommit `20f03a431` touched `src/core/store/mark.ts` and `test/store/open.test.ts`. The comparison was against its parent, `a5c9b7223`.\n\n- **`test/store`:** I compared all 39 files. 38 are `pass -> pass`, with 0 `pass -> fail` and 0 `fail -> pass`. That includes `test/store/open.test.ts`, which went `pass -> pass` even though the commit added 27 lines of tests to it. Its result is the same, but it now covers more.\n- **`test/store/key-shadow.test.ts`:** this is the one unknown. It has no result at the parent, and Squeal didn't select it for the change. It passes now.\n- **Rest of the suite:** the full comparison of 1,962 files was still running when I stopped, with about 1,338 files queued in each daemon and all still unknown. I did not check the files outside `test/store`.\n\n`squeal status --at '20f03a431~1' --wait 100000` will finish the full comparison once the queued runs complete.",
+  "final": "**No test file changed its result in the part I could compare.** The comparison is not complete, so I can't confirm it for the whole suite.\n\nCommit `20f03a431` touched `src/core/store/mark.ts` and `test/store/open.test.ts`. The comparison was against its parent, `a5c9b7223`.\n\n- **`test/store`:** I compared all 39 files. 38 are `pass -> pass`, with 0 `pass -> fail` and 0 `fail -> pass`. That includes `test/store/open.test.ts`, which went `pass -> pass` even though the commit added 27 lines of tests to it. Its result is the same, but it now covers more.\n- **`test/store/key-shadow.test.ts`:** this is the one unknown. It has no result at the parent, and Squeal didn't select it for the change. It passes now.\n- **Rest of the suite:** the full comparison of 1,962 files was still running when I stopped, with about 1,338 files queued in each daemon and all still unknown. I did not check the files outside `test/store`.\n\n`squeal status --at '20f03a431~1' --wait 100000` will finish the full comparison once the queued runs complete.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 2,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "20f03a431~1 --run",
+    "20f03a431~1 --run"
+  ]
+}

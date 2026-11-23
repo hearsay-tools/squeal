@@ -1,0 +1,37 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 1 test process · no flags
+Host    load 10.4 13.5 12.2 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 1.9% · memory pressure 0.0% (0.0% full) · memory 3.9 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 4.3 CPUs (98% of busy) · memory 2.1 GiB (55% of used) + 0 swap · pool 1 of 11 permits
+
+~squeal-w31/runs/w31/s2-05 (this repository) · 1 daemon · CPU 1.3 · memory 1.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1067735  03bc7986  0.1.609          3m    2%     0m21s  258M    0     fast tier, 200 files; 1138 pending
+    host vitest      1076602  local                      3m    1%     1m08s  619M    0
+    vitest           1131667  fork worker               45s  127%     0m08s  225M    0     nice 10
+
+~squeal-w31/runs/w31/s1-06 · 2 daemons · CPU 3.0 · memory 1.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1138942  886b2c6c  0.1.609          0s  176%     0m02s  115M    0     idle
+  serving            1138087  01c04675  0.1.609          8s    3%     0m02s  173M    0     1 session
+    host vitest      1138222  local                      7s  123%     0m11s  700M    0
+    host node-test   1138223  local                      7s    0%     0m00s  47M     0
+    host node-test   1138224  local                      7s    0%     0m00s  60M     0
+
+Temporary checkouts
+    commit worktree  ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/96aa72837ab425fe/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 1067735  age 3m  at a5c9b7223b65
+    commit worktree  ~squeal-w31/runs/w31/home/.cache/squeal/checkouts/ec7f14bad002057a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 1138942  age 0s  at d8abcfe46bbe
+
+## checkout folders
+ls: cannot access '~squeal-w31/runs/w31/s2-05/.git/squeal/checkouts': No such file or directory
+~squeal-w31/runs/w31/home/.cache/squeal/checkouts/96aa72837ab425fe:
+total 12
+drwxrwxr-x  3 squeal-w31 squeal-w31 4096 Nov 23 14:38 .
+drwxrwxr-x 15 squeal-w31 squeal-w31 4096 Nov 23 14:41 ..
+drwxrwxr-x  4 squeal-w31 squeal-w31 4096 Nov 23 14:38 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w31 squeal-w31 4096 Nov 23 14:41 .
+drwxrwxr-x 15 squeal-w31 squeal-w31 4096 Nov 23 14:41 ..
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:40 141b29625b40e513.json
+-rw-rw-r--  1 squeal-w31 squeal-w31  156 Nov 23 14:41 8fe87a4e1ec1dddc.json
