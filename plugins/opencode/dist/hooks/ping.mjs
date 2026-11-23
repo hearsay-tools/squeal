@@ -1554,6 +1554,9 @@ function waitedText(ms) {
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
 // src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+
+// src/core/slow/slot-holding.ts
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/daemon/outlived.ts
@@ -1709,7 +1712,7 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 var CAPACITY_RECHECK_MS = 2e3;
 
 // src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
 
 // src/core/status/stopping.ts
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
@@ -1730,7 +1733,7 @@ function endInOrder(items, end, undo) {
 }
 
 // src/core/status/open.ts
-import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync9 } from "node:sqlite";
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/keys/environment-descriptor.ts

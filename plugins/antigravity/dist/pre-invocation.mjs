@@ -9712,26 +9712,32 @@ function groupLaneCounts(states, keys, policy) {
 function groupTiersOf(store, worktreeId, keys, lanes) {
   const requested = requestedOf(store, worktreeId, keys, lanes);
   return lanes.map(({ name: name2, inLane, head, stopWaitMs }) => {
-    const asked = requested(head.at, inLane);
+    const { asked, outside } = requested(head.at, inLane);
+    const few = head.at === "manual" && outside.length > 0 && outside.length <= NAMED_OUTSIDE;
     return {
       ...head,
       activity: liveActivity(store, worktreeId, keys, inLane, name2),
       ...stopWaitMs === void 0 ? {} : { stopWaitMs },
-      ...asked === 0 ? {} : { requested: asked }
+      ...asked === 0 ? {} : { requested: asked },
+      ...few ? { pendingOutside: outside.map((ref2) => ref2.path) } : {}
     };
   });
 }
 function requestedOf(store, worktreeId, keys, lanes) {
-  if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => 0;
+  const none3 = { asked: 0, outside: [] };
+  if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => none3;
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (daemon === null) return () => 0;
-  const asked = publishedNarrowAsks(store, worktreeId, daemon.startedAt);
-  if (asked.size === 0) return () => 0;
-  const queued = keys.filter(
-    (row) => row.key !== null && row.pending !== null && asked.get(testFileId(row.testFile)) === row.key
-  );
-  return (at, inLane) => heldUntilAsked(at) ? queued.filter((row) => inLane(row.testFile)).length : 0;
+  const asked = daemon === null ? /* @__PURE__ */ new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  const pending2 = keys.filter((row) => row.pending !== null);
+  const isAsked = (row) => row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
+  return (at, inLane) => {
+    if (!heldUntilAsked(at)) return none3;
+    const lane = pending2.filter((row) => inLane(row.testFile));
+    const outside = lane.filter((row) => !isAsked(row)).map((row) => row.testFile);
+    return { asked: lane.length - outside.length, outside };
+  };
 }
+var NAMED_OUTSIDE = 3;
 function classifyGroupFiles(states, keys, inLane) {
   const checks = laneChecks(states, inLane);
   const files2 = /* @__PURE__ */ new Map();
@@ -12001,9 +12007,13 @@ function groupPendingText(group, late, command) {
   if (asked > 0) parts.push(`${asked} queued by a request (${requestsText(group, command)})`);
   if (waiting > 0) {
     const what = group.at === "commit" ? "a commit" : `\`${command} run ${group.name}\``;
-    parts.push(`${waiting} pending, waiting for ${what}`);
+    parts.push(`${waiting} pending${outsideText(group, waiting)}, waiting for ${what}`);
   }
   return parts.join(", ");
+}
+function outsideText(group, waiting) {
+  const paths = group.pendingOutside ?? [];
+  return paths.length === waiting ? ` (${paths.join(", ")})` : "";
 }
 function requestedOf2(group) {
   return Math.min(group.pending, group.requested ?? 0);
@@ -12161,8 +12171,66 @@ function isBackgroundShare(value) {
 // src/core/slow/slot.ts
 import { existsSync as existsSync9 } from "node:fs";
 import { dirname as dirname7, isAbsolute as isAbsolute9, join as join23 } from "node:path";
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+
+// src/core/slow/slot-holding.ts
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
+function holdingOf(db, pid, since) {
+  let row;
+  try {
+    row = db.prepare("SELECT pid, since, files FROM holding LIMIT 1").get();
+  } catch {
+    return void 0;
+  }
+  if (row === void 0 || row.pid !== pid || row.since !== since) return void 0;
+  if (typeof row.files !== "string") return void 0;
+  try {
+    const parsed2 = JSON.parse(row.files);
+    return Array.isArray(parsed2) && parsed2.every(isSlotFile) ? parsed2 : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function isSlotFile(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  const duration = v.durationMs === null || typeof v.durationMs === "number";
+  return typeof v.project === "string" && typeof v.path === "string" && duration;
+}
+function readRecord2(path) {
+  let db;
+  try {
+    db = new DatabaseSync6(immutableUrl(path), { readOnly: true });
+  } catch {
+    return "unreadable";
+  }
+  try {
+    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
+    if (row === void 0) return "missing";
+    const { pid, worktree_id: worktreeId, since } = row;
+    if (!Number.isSafeInteger(pid) || !Number.isSafeInteger(since)) return "unreadable";
+    if (typeof worktreeId !== "string") return "unreadable";
+    const files2 = holdingOf(db, pid, since);
+    return {
+      pid,
+      worktreeId,
+      since,
+      ...files2 === void 0 ? {} : { files: files2 }
+    };
+  } catch (error) {
+    return String(error).includes("no such table") ? "missing" : "unreadable";
+  } finally {
+    db.close();
+  }
+}
+function immutableUrl(path) {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
+}
+
+// src/core/slow/slot.ts
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join23(xdg, "squeal") : userDir;
@@ -12189,37 +12257,11 @@ function heldPermits(request) {
   return held;
 }
 function permitRecord(path) {
-  let db;
-  try {
-    db = new DatabaseSync6(immutableUrl(path), { readOnly: true });
-  } catch {
-    return { kind: "unreadable" };
-  }
-  try {
-    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
-    if (row === void 0) return { kind: "missing" };
-    const { pid, worktree_id: worktreeId, since } = row;
-    if (!Number.isSafeInteger(pid) || typeof worktreeId !== "string") return { kind: "unreadable" };
-    if (!Number.isSafeInteger(since)) return { kind: "unreadable" };
-    return {
-      kind: "holder",
-      pid,
-      worktreeId,
-      since
-    };
-  } catch (error) {
-    return { kind: String(error).includes("no such table") ? "missing" : "unreadable" };
-  } finally {
-    db.close();
-  }
-}
-function immutableUrl(path) {
-  const url = pathToFileURL(path);
-  url.search = "immutable=1";
-  return url;
+  const record2 = readRecord2(path);
+  return typeof record2 === "string" ? { kind: record2 } : { kind: "holder", ...record2 };
 }
 function permitFree(path) {
-  const db = new DatabaseSync6(path);
+  const db = new DatabaseSync7(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("BEGIN EXCLUSIVE");
@@ -12862,7 +12904,7 @@ function lateParts(lateness) {
 }
 
 // src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
 
 // src/core/delivery/consumer-version.ts
 function versionMetaKey(worktreeId) {
@@ -13066,7 +13108,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.611";
+  if (true) return "0.1.612";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -14800,7 +14842,7 @@ function openSentStore(commonDir, options) {
 }
 
 // src/core/status/open.ts
-import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync9 } from "node:sqlite";
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function unavailable(reason, detail) {
   return {
@@ -18421,7 +18463,7 @@ var REQUIRED_ENTRIES = [
 ];
 
 // src/harness/codex/adapter/selection.ts
-import { DatabaseSync as DatabaseSync9 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync10 } from "node:sqlite";
 
 // src/harness/shared/version-copies.ts
 var COPIED = ["dist", "skills", ".codex-plugin"];

@@ -876,22 +876,25 @@ import { join as join12 } from "node:path";
 
 // src/core/slow/slot.ts
 import { dirname as dirname7, isAbsolute as isAbsolute4, join as join11 } from "node:path";
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
 
-// src/core/slow/slot.ts
-function slowSlotDir(env = process.env, userDir = userTmpDir()) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? join11(xdg, "squeal") : userDir;
-}
+// src/core/slow/slot-holding.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 function immutableUrl(path) {
   const url = pathToFileURL(path);
   url.search = "immutable=1";
   return url;
+}
+
+// src/core/slow/slot.ts
+function slowSlotDir(env = process.env, userDir = userTmpDir()) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? join11(xdg, "squeal") : userDir;
 }
 
 // src/core/ps/reads.ts
@@ -2541,7 +2544,7 @@ function leaseProcessAlive(holder) {
 }
 
 // src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -3386,7 +3389,7 @@ function ofKept(what, kept2) {
 
 // src/core/ps/work.ts
 import { existsSync as existsSync6, statSync as statSync3 } from "node:fs";
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/daemon/last-use.ts
 function daemonUsedMetaKey(worktreeId) {
@@ -4250,7 +4253,7 @@ function openReadOnly(path) {
     const held = wal !== void 0 && existsSync6(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
-    db = new DatabaseSync4(held ? path : immutableUrl(path), { readOnly: true });
+    db = new DatabaseSync5(held ? path : immutableUrl(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
     if (version >= READS_SCHEMA) return { db, file: held ? null : file };
