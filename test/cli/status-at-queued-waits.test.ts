@@ -94,8 +94,10 @@ async function narrowed(activity: SlowTierActivity | null) {
 describe("a named file queued at the commit (row 023-71, Y1)", SLOW, () => {
   it("reads queued, with the slot wait its daemon publishes, and no time while it waits", async () => {
     const { out, at } = await narrowed({ kind: "waiting", for: "slot" });
-    const slot = "the browser group's slot, which another daemon holds";
+    // Review 0.1.611 S1: the lane publishes what it waits for, not who holds it.
+    const slot = "the browser group's slot";
     expect(out).toContain(`${B1.path}: 1 of 1 queued at ${at}, waiting for ${slot}, `);
+    expect(out).not.toMatch(/held by|holds/);
     expect(out).not.toContain(`still running at ${at}`);
     expect(out).toContain(
       `Still to run, at ${at}: 1 test file, time unknown: waiting for capacity (${slot})`,
@@ -103,13 +105,12 @@ describe("a named file queued at the commit (row 023-71, Y1)", SLOW, () => {
     expect(out).toContain(`0 running and 1 queued at ${at} (its worktree)`);
   });
 
-  it("names a pool wait by the pool's permits", async () => {
+  it("names a pool wait without claiming who holds the pool", async () => {
     const { out, at } = await narrowed({ kind: "waiting", for: "pool" });
-    expect(out).toMatch(
-      new RegExp(
-        `${B1.path}: 1 of 1 queued at ${at}, waiting for a free test process: the shared worker pool's \\d+ permits are held by other work, `,
-      ),
-    );
+    const pool = "capacity from the shared worker pool";
+    expect(out).toContain(`${B1.path}: 1 of 1 queued at ${at}, waiting for ${pool}, `);
+    expect(out).toContain(`Still to run, at ${at}: 1 test file, time unknown: waiting for ${pool}`);
+    expect(out).not.toMatch(/held by|holds/);
   });
 
   it("gives no reason where the daemon publishes none", async () => {

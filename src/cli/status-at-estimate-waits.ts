@@ -23,7 +23,7 @@ import type { SideState } from "./status-at-report.js";
 
 /** Why a side's queued files wait, as its daemon publishes it. */
 export interface SideWaiting {
-  /** After "waiting for ", e.g. "the browser group's slot, which another daemon holds". */
+  /** After "waiting for ", e.g. "the browser group's slot". */
   readonly reason: string;
   /** The wait is for capacity: the group's slot or the shared worker pool. */
   readonly capacity: boolean;
@@ -41,7 +41,8 @@ export function waitingText(waiting: NotStarted, files: number): string {
   const { reason, capacity } = waiting;
   if (reason === null)
     return `not started yet, and the daemon does not say what holds ${files === 1 ? "it" : "them"}`;
-  return capacity ? `waiting for capacity (${reason})` : `not started, waiting for ${reason}`;
+  if (!capacity) return `not started, waiting for ${reason}`;
+  return reason === POOL_WAIT ? `waiting for ${reason}` : `waiting for capacity (${reason})`;
 }
 
 /** A file of the call is queued on the side and has not started. */
@@ -73,27 +74,26 @@ export interface QueuedFiles {
 
 /**
  * Per side, why its queued files wait; `null` when none is queued, or when
- * the lane of one of their groups publishes no wait. `slots`, the shared
- * pool's permits, which a pool wait names. `storeRoot` finds the main store.
+ * the lane of one of their groups publishes no wait. `storeRoot` finds the
+ * main store.
  */
 export function sideWaits(
   storeRoot: AbsolutePath,
   sides: readonly QueuedFiles[],
-  slots: number,
 ): (SideWaiting | null)[] {
   const none = sides.map(() => null);
   if (sides.every((side) => side.queued.length === 0)) return none;
-  return readMainStore(storeRoot, none, (store) => sides.map((side) => waitOf(store, side, slots)));
+  return readMainStore(storeRoot, none, (store) => sides.map((side) => waitOf(store, side)));
 }
 
-function waitOf(store: Store, side: QueuedFiles, slots: number): SideWaiting | null {
+function waitOf(store: Store, side: QueuedFiles): SideWaiting | null {
   const { root, id, queued } = side;
   if (root === null || id === null || queued.length === 0 || !existsSync(root)) return null;
   const view = groupView(readPolicy(root));
   const groups = new Set(queued.map((ref) => view.of(ref).name));
   const waits: SideWaiting[] = [];
   for (const group of groups) {
-    const wait = waitText(group, readGroupActivity(store, id, group), slots);
+    const wait = waitText(group, readGroupActivity(store, id, group));
     if (wait === null) return null;
     waits.push(wait);
   }
@@ -101,23 +101,25 @@ function waitOf(store: Store, side: QueuedFiles, slots: number): SideWaiting | n
   return { reason: reasons.join("; "), capacity: waits.every((w) => w.capacity) };
 }
 
+/**
+ * Review 0.1.611 S1: a published wait names what the lane waits for, not who
+ * holds it. A `slot` wait is also published when the lane yields one turn
+ * to a marked waiter with the slot free; a `pool` refusal can come from a
+ * project limit or an admission rule; neither records a holder or the
+ * permits in use.
+ */
+const POOL_WAIT = "capacity from the shared worker pool";
+
 /** The words of a lane's published `activity`; `null` when it publishes none. */
-export function waitText(
-  group: string,
-  activity: SlowTierActivity | null,
-  slots: number,
-): SideWaiting | null {
+export function waitText(group: string, activity: SlowTierActivity | null): SideWaiting | null {
   if (activity === null) return null;
   if (activity.kind === "running")
     return { reason: `the ${group} group's run of ${activity.path} to end`, capacity: false };
   switch (activity.for) {
     case "slot":
-      return { reason: `the ${group} group's slot, which another daemon holds`, capacity: true };
+      return { reason: `the ${group} group's slot`, capacity: true };
     case "pool":
-      return {
-        reason: `a free test process: the shared worker pool's ${slots} permits are held by other work`,
-        capacity: true,
-      };
+      return { reason: POOL_WAIT, capacity: true };
     case "load":
       return { reason: "the host load to drop", capacity: false };
     case "fast":
