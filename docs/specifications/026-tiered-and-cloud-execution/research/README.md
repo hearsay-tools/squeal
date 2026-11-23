@@ -104,3 +104,53 @@ Questions to answer:
 7. **Gap inventory in `src/core/runner-host/remote/` and recommendation.**
    - List what must change in Squeal to run ALL tiers, ALL runners, and coverage on per-worktree boat.dev sandboxes (and how `compareEnvironment` handles macOS local -> Linux remote).
    - Recommend 2A, 2B, or a hybrid (e.g. local thin daemon with cheap edit checks + boat.dev sandbox for all heavy test execution), with the decisive trade-offs, risks, and open questions for the human.
+
+---
+
+## Topic: daemonless-hooks (round 2, the human, 2026-11-24)
+
+Earlier files to read and extend (do not repeat):
+- `tiered-pre-pr.md` (in this folder: complexity and oxlint work on edit without a runner host, hook latency 98 to 134 ms, live daemons hold 350 to 630 MB each plus 0.5 to 1.1 GB Vitest host)
+- `../../021-remote-store-and-execution/research/daemon-heap.md` and `daemon-model.md`
+- `../../015-coverage-complexity/spec.md` and `../../017-lint-checks/spec.md` and `../../017-lint-checks/research/oxlint-provider.md`
+- `bench/README.md` (hook latency limits: 80 ms p95 healthy, 200 ms warn, 2,000 ms hard timeout gate)
+
+Questions to answer:
+
+1. **What complexity and lint need from the daemon today.** Trace `src/core/daemon/daemon.ts`, `src/core/code/`, `src/core/lint/`, and `src/harness/shared/`: what state must survive between edits (transition deduplication, consumer views, `code.sqlite` / `lint.sqlite`, `squeal status`, commit reports) and what breaks if no daemon runs for a worktree?
+2. **Inline hook latency experiment.** Under `$TMPDIR` (report host load; skip timings if load > 24), measure cold-start + run time of a standalone process (simulating `PostToolBatch` with no daemon) for:
+   - tree-sitter complexity count on 1, 3, and 5 real TypeScript files from this repository (including WASM load time);
+   - `oxlint` on 1, 3, and 5 real TS files;
+   - `eslint` on 1 real TS file (if configured, or cite `017` measurements);
+   - reading/writing transition state in SQLite directly.
+   Compare directly against the 80 ms p95 healthy / 200 ms warn / 2,000 ms hard timeout hook limits.
+3. **Why is today's daemon 350 to 630 MB without a runner host?** Measure on a clean fixture and/or inspect `daemon-heap.md` and source (`WorktreeKeys`, tree-sitter WASM, SQLite connections, bundled code): when all test groups are `manual` and moment-aware keying never opens a runner host or loads test closures, how much RSS does a daemon actually hold?
+4. **Three architectures compared:**
+   - **(A) Inline daemonless hooks:** complexity + oxlint run directly inside `PostToolBatch` (zero idle RAM, zero background processes).
+   - **(B) Fire-and-exit helper:** `PostToolBatch` returns immediately after reading stored transitions (< 80 ms) and spawns a short-lived detached worker that counts complexity + runs oxlint on changed files, writes `code.sqlite`/`lint.sqlite`, and exits (zero idle RAM, fast hooks, results arrive on next hook).
+   - **(C) Slim daemon (or one shared cheap-checks daemon per clone) with moment-aware keying:** keeps persistent WASM + watcher + fast hooks, without runner hosts or test closures.
+   Compare on: hook latency, idle RAM across 1 and 12 worktrees, CPU per edit, external edits (git pull / human edits outside agent tools), `eslint` support, `squeal status`, and implementation scope.
+5. **Recommendation:** pick (A), (B), or (C) with measured numbers, concrete trade-offs, and open questions for the human.
+
+---
+
+## Topic: agent37-sandboxes (round 2, the human, 2026-11-24)
+
+Earlier files to read and extend (do not repeat):
+- `boat-sandboxes.md` and `probes/boat-sandboxes/` (in this folder: exact probes `dsync.sh`, `driver.mjs`, `run-tests.sh`, `setup-node.sh` so measurements are apples-to-apples with boat.dev)
+- Official Agent37 docs: `https://www.agent37.com/docs/llms.txt`, `/docs/agents-api/{billing,instance-sizing,vm-instances,ssh,instance-auto-sleep,instances/create,instances/fork}.md`
+
+**Budget and safety for live Agent37 experiments (authorized by the human, 2026-11-24; uses `agent-vault` proxy to `api.agent37.com` and `sandbox.agent37.app`, never print or store credentials):**
+- Check `GET /v1/billing` first. Keep total spend well under $0.50 and delete every instance and temporary SSH key you create before finishing (`GET /v1/instances` must return empty `data: []`).
+- Compare apples-to-apples against `boat-sandboxes.md` on 4 vCPU / 8 GB shapes across available types:
+  1. US `default` (gVisor, $0.0128/h),
+  2. EU `vm` (Full VM, ~$0.0309/h),
+  3. EU `performance` (dedicated-core VM, ~$0.049/h) if funded and cheap.
+
+Questions to answer:
+
+1. **Create, fork, and sleep/wake timings.** Measure cold create time, `POST /v1/instances/{id}/fork` time from a warm instance (with `.git` and `node_modules`), and `auto_sleep` wake latency. Verify whether `eu` rejects `"type": "default"` with `400 invalid_request` as documented.
+2. **Disk sync (`dsync`) and `test/capacity`.** Run the exact `dsync.sh` (200 x 4 KiB `oflag=dsync`) and 10-file `test/capacity` Vitest run from `probes/boat-sandboxes/` on each tested type (US `default` gVisor, EU `vm`, EU `performance`). Compare directly against boat.dev 9950X (0.14 ms flush, 1.9 s) and 9700X (34 to 38 ms flush, 26 to 72 s with timeouts).
+3. **End-to-end edit-to-verdict latency over SSH (`ProxyCommand agent37 tunnel`) and `exec`.** Run `probes/boat-sandboxes/driver.mjs` (1-file Vitest, 10-file Vitest, 1-file source edit, coverage off/on, 1-file `node:test`, plus the 3 Git-dependent D2 test files) on each tested type. Note RTT, SSH tunnel stability, and whether `ProxyCommand agent37 tunnel` works cleanly with `ControlMaster` and `squeal runner-host` stdio framing.
+4. **CPU consistency and throttling.** On US `default` (gVisor) vs EU `vm` (shared cores) vs EU `performance` (dedicated cores), check `/proc/cpuinfo`, sustained CPU behavior across a 50-file Vitest slice, and whether gVisor syscall overhead or throttling breaks or slows Squeal's tests (including `nice`, process groups, SQLite WAL, `fs.watch`, `realpath`).
+5. **Cost, limits, and recommendation against boat.dev.** Compare monthly cost (solo 3 worktrees; coordinator 12 worktrees with `auto_sleep`), limits (concurrent awake RAM vs boat.dev's 200 starts/day), EU data residency, and recommend boat.dev vs Agent37 (and which type) vs provider-agnostic SSH driver.
