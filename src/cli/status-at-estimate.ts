@@ -5,6 +5,7 @@ import { loadUserConfig, resolveCapacity } from "../core/daemon/user-config.js";
 import { hostLoad } from "../core/retry/load.js";
 import { slowSlotDir } from "../core/slow/slot.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import { type NamedRun, namedRunText } from "./status-at-estimate-named.js";
 
 /*
  * Row 023-49 (dogfood round 6, V2; spec 023 D7.3): the time what still
@@ -107,6 +108,8 @@ export interface SideEstimate {
    * their batch's setup failed on the other side in this call; absent: none.
    */
   readonly leftOut?: number;
+  /** Row 023-60 (W3): a named file still runs in a wider batch; `seconds` is at least its time left. */
+  readonly batch?: NamedRun;
 }
 
 /** The call's estimate per side; a side with nothing still to run is `null`. */
@@ -243,6 +246,11 @@ export function timeText(seconds: number): string {
 
 /** One side's part of the line: `about 58 min for 1248 files, at this call's rate (90 results in 98 s)`. */
 export function sideText(e: SideEstimate): string {
+  const text = ownText(e);
+  return e.batch === undefined ? text : `${text}; ${namedRunText(e.batch, timeText)}`;
+}
+
+function ownText(e: SideEstimate): string {
   const files = `${e.files} test file${e.files === 1 ? "" : "s"}`;
   if (e.seconds === null && e.known === 0)
     return `${files}, time unknown: none has a stored duration and this call measured no rate`;
