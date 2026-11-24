@@ -26,7 +26,10 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));' "$FX/squeal.config.json"
 ( cd "$FX" && git add -A && git -c user.email=p@p -c user.name=p commit -qm probe-config )
 SQ="env HOME=$PH XDG_RUNTIME_DIR=$B/run node --disable-warning=ExperimentalWarning $WT/plugins/claude-code/dist/cli/squeal.mjs"
 hook() {
-  printf '{"%s":"probe-1","cwd":"%s","%s":"%s"%s}' "session_id" "$FX" "hook_event_name" "$2" "${3:-}" |
+  {
+    printf '{"session_id":"probe-1",'
+    printf '"cwd":"%s","hook_event_name":"%s"%s}' "$FX" "$2" "${3:-}"
+  } |
     env HOME=$PH XDG_RUNTIME_DIR=$B/run CLAUDE_PLUGIN_ROOT="$WT/plugins/claude-code" \
     node --disable-warning=ExperimentalWarning "$WT/plugins/claude-code/dist/$1.mjs"
 }
