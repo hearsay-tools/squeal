@@ -10,6 +10,7 @@ import type { Store } from "../core/types/store.js";
 import type { SideEstimate } from "./status-at-estimate.js";
 import { commonDirOf, holderText, slotHolder } from "./status-at-estimate-holder.js";
 import { readMainStore } from "./status-at-estimate-named.js";
+import { staleRunWait } from "./status-at-estimate-stale.js";
 import type { SideState } from "./status-at-report.js";
 
 /*
@@ -115,8 +116,16 @@ function waitOf(
   const view = groupView(readPolicy(root));
   const groups = new Map(queued.map((ref) => [view.of(ref).name, view.of(ref)]));
   const waits: SideWaiting[] = [];
+  const who = SIDE_NAMES[ids.indexOf(id)] ?? "this worktree";
   for (const group of groups.values()) {
     const activity = readGroupActivity(store, id, group.name);
+    const own = queued.filter((ref) => view.of(ref).name === group.name);
+    // Row 023-84: the lane runs a named file at a key it no longer has.
+    const stale = staleRunWait(store, id, activity, own, who, Date.now());
+    if (stale !== null) {
+      waits.push(stale);
+      continue;
+    }
     const wait = waitText(group.name, activity);
     if (wait === null) return null;
     const holder = activity?.kind === "waiting" && activity.for === "slot";

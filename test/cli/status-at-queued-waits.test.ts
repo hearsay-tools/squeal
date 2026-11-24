@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { publishGroupActivity } from "../../src/core/slow/state.js";
-import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { SlowTierActivity } from "../../src/core/types/status.js";
 import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
@@ -47,8 +47,13 @@ function two() {
   return { f, a };
 }
 
-/** Marks `files` queued in the daemon of `tree`, at the stand-in's keys. */
-function queued(f: Fixture, tree: string, files: readonly TestFileRef[]) {
+/** Marks `files` `pending` (queued by default) in the daemon of `tree`, at the stand-in's keys. */
+function queued(
+  f: Fixture,
+  tree: string,
+  files: readonly TestFileRef[],
+  pending: "queued" | "running" = "queued",
+) {
   withStore(f, (store) =>
     store.testFileKeys.upsertMany(
       files.map((testFile) => ({
@@ -56,14 +61,22 @@ function queued(f: Fixture, tree: string, files: readonly TestFileRef[]) {
         testFile,
         key: `commit-${testFile.path}`,
         revision: 2,
-        pending: "queued" as const,
+        pending,
       })),
     ),
   );
 }
 
+/** Row 023-84: what the commit daemon records beside its lane's activity. */
+interface Recorded {
+  /** `B1`'s key row: `running` when the run is at its current key. */
+  readonly pending?: "queued" | "running";
+  /** The files of a run the store holds open, started at `since`. */
+  readonly open?: { readonly files: readonly TestFileRef[]; readonly since: number };
+}
+
 /** A narrowed `--run` on `B1` whose commit daemon's browser lane published `activity`. */
-async function narrowed(activity: SlowTierActivity | null) {
+async function narrowed(activity: SlowTierActivity | null, recorded: Recorded = {}) {
   const { f, a } = two();
   const tree = standInTree(f);
   // The stand-in's tree is an empty folder: its policy is the commit's, with the browser group.
@@ -71,10 +84,22 @@ async function narrowed(activity: SlowTierActivity | null) {
   const daemons = standIn(tree, () => undefined, {
     select: (ask) => (ask.named.length === 0 ? ALL : ALL.filter((r) => ask.named.includes(r.path))),
     rows: (at, files) => {
-      queued(f, at, files);
-      withStore(f, (store) =>
-        publishGroupActivity(store, worktreeIdFor(at as AbsolutePath), "browser", activity),
-      );
+      queued(f, at, files, recorded.pending);
+      const id = worktreeIdFor(at as AbsolutePath);
+      withStore(f, (store) => {
+        publishGroupActivity(store, id, "browser", activity);
+        const open = recorded.open;
+        if (open === undefined) return;
+        store.runs.start({
+          id: `run-${open.since}`,
+          worktreeId: id,
+          revision: 1 as never,
+          testFiles: open.files,
+          checkpointId: null,
+          logDir: "/tmp/023-84" as AbsolutePath,
+          startedAt: open.since as EpochMs,
+        });
+      });
     },
     selects: 2,
   });
@@ -120,5 +145,74 @@ describe("a named file queued at the commit (row 023-71, Y1)", SLOW, () => {
     expect(out).toContain(
       `Still to run, at ${at}: 1 test file, time unknown: not started yet, and the daemon does not say what holds it`,
     );
+  });
+});
+
+/*
+ * Row 023-84 (dogfood round 11, AA4): s1b-03 read "waiting for the browser
+ * group's run of packages/web/e2e/thread-scroll.e2e.ts to end" while that
+ * run of the same file had started at a key the file no longer had. The
+ * call now says that run's result will not count.
+ */
+describe("a named file behind its own side's run at an older key (row 023-84, AA4)", SLOW, () => {
+  /** The commit daemon's lane runs `B1` since 40 s, with a stored duration of 97 s. */
+  const since = () => Date.now() - 40_000;
+  const running = (at: number): SlowTierActivity => ({
+    kind: "running",
+    path: B1.path,
+    since: at,
+    lastDurationMs: 97_000,
+  });
+
+  it("says the run started before the file's inputs changed and its result will not count", async () => {
+    const at = since();
+    const { out, at: c } = await narrowed(running(at), { open: { files: [B1], since: at } });
+    expect(out).toMatch(
+      new RegExp(
+        `${B1.path}: 1 of 1 queued at ${c}, waiting for the commit worktree's run of ${B1.path} to end: that run started before its inputs changed \\(running for 4\\d s, about 5\\d s left\\), so its result will not count, and the file runs again after it`,
+      ),
+    );
+    expect(out).toContain(
+      `Still to run, at ${c}: 1 test file, time unknown: not started, waiting for the commit worktree's run of ${B1.path} to end: that run started`,
+    );
+    expect(out).not.toContain(`waiting for the browser group's run of ${B1.path} to end`);
+  });
+
+  it("gives no time left without a stored duration", async () => {
+    const at = since();
+    const activity = { ...running(at), lastDurationMs: null };
+    const { out } = await narrowed(activity, { open: { files: [B1], since: at } });
+    expect(out).toMatch(
+      /that run started before its inputs changed \(running for 4\d s\), so its result/,
+    );
+  });
+
+  it("reads as before when the store holds no open run of the file", async () => {
+    // The lane's activity alone is no record of a run: it can be old news.
+    const { out, at: c } = await narrowed(running(since()));
+    expect(out).toContain(
+      `${B1.path}: 1 of 1 queued at ${c}, waiting for the browser group's run of ${B1.path} to end`,
+    );
+    expect(out).not.toContain("will not count");
+  });
+
+  it("reads a run of another file as before", async () => {
+    const at = since();
+    const activity = { ...running(at), path: B2.path };
+    const { out, at: c } = await narrowed(activity, { open: { files: [B2], since: at } });
+    expect(out).toContain(
+      `${B1.path}: 1 of 1 queued at ${c}, waiting for the browser group's run of ${B2.path} to end`,
+    );
+    expect(out).not.toContain("will not count");
+  });
+
+  it("reads a run at the file's current key as running, as before", async () => {
+    const at = since();
+    const { out, at: c } = await narrowed(running(at), {
+      pending: "running",
+      open: { files: [B1], since: at },
+    });
+    expect(out).not.toContain("will not count");
+    expect(out).not.toContain(`${B1.path}: 1 of 1 queued at ${c}`);
   });
 });
