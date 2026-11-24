@@ -38,6 +38,11 @@ import {
  * or that install changed since (`tree-install.ts`).
  * A local host has no tree and refuses these messages: it never writes into
  * a worktree.
+ *
+ * Spec 026 D8.1 (row 026-11): several hosts may share a tree, as a slow
+ * lane's beside the runner's own. Each keeps its runs' logs under its own
+ * process id and removes only its own ended runs' and those of a host no
+ * longer running.
  */
 
 /** What the host answers of its tree. */
@@ -74,6 +79,9 @@ export function createTreeHost(
   const recordPath = join(state, "files.json");
   const installedPath = join(state, "installed.json");
   const files: Held = readJson(recordPath) ?? {};
+  /** This host's runs whose logs are not yet read. */
+  const running = new Set<string>();
+  const mine = `${process.pid}-`;
   const save = async () => {
     const part = `${recordPath}.part`;
     await writeFile(part, JSON.stringify(files));
@@ -152,11 +160,14 @@ export function createTreeHost(
     async runDir(runId) {
       const runs = join(state, "runs");
       await mkdir(runs, { recursive: true });
-      // One run's logs at a time per tree: the daemon keeps its own copy.
-      for (const old of await readdir(runs))
-        await rm(join(runs, old), { recursive: true, force: true });
-      const dir = join(runs, runId.replace(/[^A-Za-z0-9_.-]/g, "_"));
+      // The daemon keeps its own copy of an ended run's logs; another host's live run keeps its own.
+      for (const old of await readdir(runs)) {
+        const ended = old.startsWith(mine) ? !running.has(join(runs, old)) : !hostRuns(old);
+        if (ended) await rm(join(runs, old), { recursive: true, force: true });
+      }
+      const dir = join(runs, `${mine}${runId.replace(/[^A-Za-z0-9_.-]/g, "_")}`);
       await mkdir(dir, { recursive: true });
+      running.add(dir);
       return dir;
     },
     async differing(expected) {
@@ -182,6 +193,7 @@ export function createTreeHost(
       };
     },
     async logs(dir) {
+      running.delete(dir);
       const logs: WireLog[] = [];
       let left = LOG_BYTES;
       for (const entry of await readdir(dir, { withFileTypes: true, recursive: true })) {
@@ -196,6 +208,18 @@ export function createTreeHost(
       return logs;
     },
   };
+}
+
+/** Whether the run directory `name` is a live host's: one named by the process id of a running process. */
+function hostRuns(name: string): boolean {
+  const pid = /^(\d+)-/.exec(name)?.[1];
+  if (pid === undefined) return false;
+  try {
+    process.kill(Number(pid), 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
 }
 
 async function present(at: string): Promise<boolean> {

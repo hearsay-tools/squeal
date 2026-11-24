@@ -34,6 +34,11 @@ import {
  * project's tests need are looked for on the remote's `PATH`, which the
  * host's runs get; a missing one refuses the remote, named, before its tree
  * is sent.
+ *
+ * Spec 026 D8.2 (row 026-11): node:test's and pytest's temp and cache
+ * directories are this machine's paths; a remote host gets directories of
+ * its tree's own instead (`<tree>/tmp`, `<tree>/cache/<name>`), made before
+ * it starts, so no local path reaches a remote process.
  */
 
 /** How long each remote step may take beyond the host's own deadlines. */
@@ -150,7 +155,64 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
   if (missing.length > 0) throw new RemoteRefusal(missingText(missing, "there"));
   const tree = treeDir(places, root);
   const command = hostCommand(places, options.version, bundle.cli, tree, options.runner);
-  return remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, options);
+  const adapterOptions =
+    options.options.process === undefined
+      ? options.options
+      : remoteAdapterOptions(options.options, await remoteTreeDir(target, tree, deadlines.sshMs));
+  return remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
+    ...options,
+    options: adapterOptions,
+  });
+}
+
+/**
+ * Spec 026 D8.2: the remote tree directory `tree` as an absolute path
+ * there, with its `tmp` and `cache` made. Throws when the remote cannot.
+ */
+export async function remoteTreeDir(
+  target: SshTarget,
+  tree: string,
+  deadlineMs: number,
+): Promise<string> {
+  const q = shellQuote(tree);
+  const made = await sshRun(target, `mkdir -p ${q}/tmp ${q}/cache && cd ${q} && pwd -P`, {
+    deadlineMs,
+  });
+  const what = `could not make ${tree}/tmp and ${tree}/cache on ${target.destination}`;
+  if (made.code !== 0) throw new Error(sshFailure(what, made));
+  const dir = made.stdout.trim();
+  if (!dir.startsWith("/")) throw new Error(`${what}: pwd printed ${JSON.stringify(dir)}`);
+  return dir;
+}
+
+/**
+ * `options` as a remote host over the tree at the absolute `tree` takes
+ * them (D8.2): node:test's and pytest's temp directory is `<tree>/tmp`,
+ * pytest's cache directory `<tree>/cache/<its last name here>`.
+ */
+export function remoteAdapterOptions(
+  options: HostAdapterOptions,
+  tree: string,
+): HostAdapterOptions {
+  const data = options.process;
+  if (data === undefined) return options;
+  const { tempDir: _here, cacheDir, ...kept } = data;
+  return {
+    ...options,
+    process: {
+      ...kept,
+      tempDir: `${tree}/tmp`,
+      ...(cacheDir === undefined ? {} : { cacheDir: `${tree}/cache/${basename(cacheDir)}` }),
+    },
+  };
+}
+
+/** Spec 021 D12: `options` without coverage, Vitest's and node:test's. */
+function withoutCoverage(options: HostAdapterOptions): HostAdapterOptions {
+  const { coverage: _off, process: data, ...rest } = options;
+  if (data === undefined) return rest;
+  const { coverage: _none, ...kept } = data;
+  return { ...rest, process: kept };
 }
 
 /** Of `commands`, those the remote's `PATH` lacks, by `MISSING_SCRIPT` under its Node. Throws when it cannot look. */
@@ -199,7 +261,7 @@ export async function remoteHostOver(
     } else if (done.ran) log(`${target.destination}: installed with ${done.command}`);
     return done;
   };
-  const { coverage: _off, ...adapterOptions } = options.options;
+  const adapterOptions = withoutCoverage(options.options);
   const adapter = await startHostProxy({
     channel,
     runner: options.runner,

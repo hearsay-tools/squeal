@@ -1,4 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import type { Readable } from "node:stream";
 
 /*
@@ -7,6 +9,12 @@ import type { Readable } from "node:stream";
  * credential, edits no file of the user's, and answers no prompt: a daemon
  * has no terminal, so `BatchMode` makes a key that needs a passphrase or an
  * unknown host key fail with ssh's own text instead of hanging.
+ *
+ * Spec 026 D8.1 (row 026-11): the channels of one awake machine share one
+ * connection, a ControlMaster at a socket of Squeal's under `/tmp`, so a
+ * second lane or runner costs no handshake. The machine closes it when it
+ * sleeps and at the daemon's exit, so no connection holds a machine awake.
+ * Only the user's own `ssh` multiplexes: a test's fake `ssh` does not.
  */
 
 /** How to reach one remote. */
@@ -124,4 +132,64 @@ export function sshFailure(what: string, result: SshResult): string {
     result.failure ??
     (result.stderr === "" ? `exit code ${String(result.code)}` : result.stderr.split("\n").at(-1));
   return `${what}: ${why}`;
+}
+
+/**
+ * Spec 026 D8.1: where the connection of the machine `machineId` for the
+ * worktree at `root` is shared, short enough for a Unix socket's path;
+ * `null` where `target` does not multiplex: another `ssh` program than
+ * the user's, or Windows.
+ */
+export function controlSocket(target: SshTarget, machineId: string, root: string): string | null {
+  if (target.ssh !== undefined || process.platform === "win32") return null;
+  const key = createHash("sha256").update(`${machineId}\0${root}`).digest("hex").slice(0, 16);
+  return `/tmp/squeal-ssh-${key}`;
+}
+
+/**
+ * `target` sharing one connection at `socket` (D8.1): the first `ssh`
+ * becomes its master, and the master stays `persistSeconds` after the last
+ * channel closed. The target's own flags come first, so its own choices win.
+ */
+export function multiplexed(target: SshTarget, socket: string, persistSeconds: number): SshTarget {
+  return {
+    ...target,
+    args: [
+      ...(target.args ?? []),
+      "-o",
+      "ControlMaster=auto",
+      "-o",
+      `ControlPath=${socket}`,
+      "-o",
+      `ControlPersist=${Math.max(1, Math.ceil(persistSeconds))}`,
+    ],
+  };
+}
+
+/**
+ * Ends the shared connection at `socket` (`ssh -O exit`), when one is
+ * there; resolves once it ended or `deadlineMs` passed. Never rejects.
+ */
+export function closeMaster(target: SshTarget, socket: string, deadlineMs = 10_000): Promise<void> {
+  if (!existsSync(socket)) return Promise.resolve();
+  return new Promise((resolve) => {
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(
+        target.ssh ?? "ssh",
+        [...(target.args ?? []), "-o", `ControlPath=${socket}`, "-O", "exit", target.destination],
+        { env: target.env ?? process.env, stdio: "ignore" },
+      );
+    } catch {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(() => child.kill("SIGKILL"), deadlineMs);
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    child.on("error", done);
+    child.on("close", done);
+  });
 }
