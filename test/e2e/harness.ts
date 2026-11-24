@@ -418,6 +418,19 @@ export class E2E {
     return response?.ok === true && response.type === "ping" ? response : null;
   }
 
+  /**
+   * Asks `root`'s daemon for a reconciliation pass now, as `squeal status --wait` does, so a
+   * change no watched file shows (a new `.venv`) is found without the 30 s interval's pass
+   * (row 010-39). The answer follows the pass; the work it queues is `settle`'s to wait for.
+   */
+  async reconcile(root: string): Promise<void> {
+    const socket = socketPathFor(worktreeIdFor(root), this.#env);
+    const response = await requestDaemon(socket, { type: "sync" }, 30_000);
+    if (response.ok !== true || response.type !== "sync") {
+      throw new Error(`the sync request failed: ${JSON.stringify(response)}`);
+    }
+  }
+
   /** Waits for a daemon in `phase: ready`; with `not`, for one with another pid. */
   daemonReady(root: string, not?: number): Promise<PingResponse> {
     return until(`a ready daemon in ${root}`, DAEMON_WAIT_MS, async () => {
