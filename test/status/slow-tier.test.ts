@@ -215,6 +215,15 @@ describe("the slow-tier line (spec 004 D8)", () => {
       { kind: "waiting", for: "slot" },
       "2 pending, waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)",
     ],
+    // Row 023-83: this release's daemon records why it waits at the slot.
+    [
+      { kind: "waiting", for: "slot", slot: "held" },
+      "2 pending, waiting for the slow slot (in use)",
+    ],
+    [
+      { kind: "waiting", for: "slot", slot: "turn" },
+      "2 pending, waiting for the slow slot (its turn went to another worktree that waits for it)",
+    ],
     // Row 011-291: the pool refused a permit while the tier held the slot.
     [{ kind: "waiting", for: "pool" }, "2 pending, waiting for the shared worker pool"],
     [{ kind: "waiting", for: "load" }, "2 pending, waiting for host load to drop"],

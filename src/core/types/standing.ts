@@ -2,7 +2,7 @@ import type { CheckMoment } from "./check-groups.js";
 import type { EpochMs } from "./common.js";
 import type { TestFileRef } from "./keys.js";
 import type { PendingPhase } from "./state.js";
-import type { SlowTierWait } from "./status.js";
+import type { SlotWait, SlowTierWait } from "./status.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20): where a test file without a
@@ -384,7 +384,9 @@ export type RetryWait =
   | { readonly kind: "running"; readonly since: EpochMs }
   | { readonly kind: "tier" | "slow"; readonly since: EpochMs }
   | { readonly kind: "fast"; readonly since: EpochMs | null }
-  | { readonly kind: "slot" | "pool" | "load" | "idle" | "unknown" }
+  | { readonly kind: "pool" | "load" | "idle" | "unknown" }
+  /** Row 023-83: `slot`, why when the daemon recorded it. */
+  | { readonly kind: "slot"; readonly slot?: SlotWait }
   | {
       readonly kind: "group";
       /** The group that owns the file, its moment and the groups it follows (D1). */
@@ -397,7 +399,7 @@ export type RetryWait =
        */
       readonly lane:
         | { readonly kind: "running"; readonly since: EpochMs }
-        | { readonly kind: "waiting"; readonly for: SlowTierWait }
+        | { readonly kind: "waiting"; readonly for: SlowTierWait; readonly slot?: SlotWait }
         | null;
     };
 

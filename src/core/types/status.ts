@@ -129,6 +129,16 @@ export interface CheckpointInProgress {
  */
 export type SlowTierWait = "fast" | "idle" | "slot" | "pool" | "load";
 
+/**
+ * Row 023-83 (round 11, AA2): why a lane waits at its slot, as its daemon
+ * found it: `held`, it tried every permit and each was taken; `turn`, the
+ * slot was its to take and it gave the turn to another worktree's marked
+ * waiter (spec 004 D2). A daemon before this row publishes `slot` with
+ * neither, and before row 011-291 it published `slot` for the pool too, so
+ * a `slot` wait without it names capacity only.
+ */
+export type SlotWait = "held" | "turn";
+
 /** Spec 004 D8: the slow tier's activity as its daemon last published it. */
 export type SlowTierActivity =
   | {
@@ -144,7 +154,7 @@ export type SlowTierActivity =
       /** The longest last known run time of its files, before this run; `null` when none ran. */
       readonly lastDurationMs: number | null;
     }
-  | { readonly kind: "waiting"; readonly for: SlowTierWait };
+  | { readonly kind: "waiting"; readonly for: SlowTierWait; readonly slot?: SlotWait };
 
 /**
  * Spec 004 D8: the slow-tier line of headers and status, for a policy that

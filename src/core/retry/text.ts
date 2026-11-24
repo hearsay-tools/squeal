@@ -1,5 +1,6 @@
 import { NO_EARLIER_PASS_TEXT } from "../state/flaky.js";
 import { followedGroupsText } from "../state/group-text.js";
+import { slotWaitText } from "../state/slow-text.js";
 import { durationText, shellWord, timeText } from "../text.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { RetryWait } from "../types/standing.js";
@@ -114,6 +115,9 @@ export function holdText(wait: Exclude<RetryWait, { kind: "running" }>, command:
     case "slow":
       return `: the slow tier runs other files, since ${timeText(wait.since)}`;
     case "slot":
+      // Row 023-83: a daemon that recorded why names the slot; an older one's `slot` stays hedged.
+      if (wait.slot !== undefined)
+        return `: the slow tier waits for ${slotWaitText("the slow slot", wait.slot)}`;
       return ": the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known";
     case "pool":
       return ": the slow tier waits for the shared worker pool";
@@ -151,6 +155,8 @@ function groupHoldText(wait: Extract<RetryWait, { kind: "group" }>, command: str
     case "fast":
       return `: ${group} waits for ${followedGroupsText(wait.after)}`;
     case "slot":
+      if (lane.slot !== undefined)
+        return `: ${group} waits for ${slotWaitText(`the ${wait.group} group's slot`, lane.slot)}`;
       return `: ${group} waits for capacity; whether the ${wait.group} group's slot or the shared worker pool holds it is not known`;
     case "pool":
       return `: ${group} waits for the shared worker pool`;

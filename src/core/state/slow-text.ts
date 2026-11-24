@@ -1,6 +1,7 @@
 import { durationText, plural, testFileText } from "../text.js";
 import type { SlowSlotHolders } from "../types/standing.js";
 import type {
+  SlotWait,
   SlowPendingCounts,
   SlowTierActivity,
   SlowTierState,
@@ -29,6 +30,16 @@ const WAITING_FOR: Readonly<Record<SlowTierWait, string>> = {
   load: "host load to drop",
 };
 
+/**
+ * Row 023-83: a slot wait its daemon recorded the cause of (`SlotWait`):
+ * `the browser group's slot (in use)`, or the turn it gave to a waiter.
+ */
+export function slotWaitText(slot: string, why: SlotWait): string {
+  return why === "held"
+    ? `${slot} (in use)`
+    : `${slot} (its turn went to another worktree that waits for it)`;
+}
+
 /** Row 011-58's words, while live holders in other worktrees hold every permit of the slot. */
 const SLOT_HELD = "the slow slot another worktree's slow tier holds";
 
@@ -56,8 +67,11 @@ function filesText(paths: readonly string[]): string {
 
 /** How a lane's line words what its pending files wait for and run as (row 019-16). */
 export interface LaneWords {
-  /** What a published wait waits for: `fast test files`, `the agent to pause`. */
-  readonly waitingFor: (wait: SlowTierWait) => string;
+  /**
+   * What a published wait waits for: `fast test files`, `the agent to
+   * pause`; `slot`, why a `slot` wait waits, when its daemon recorded it (row 023-83).
+   */
+  readonly waitingFor: (wait: SlowTierWait, slot?: SlotWait) => string;
   /** Several of the lane's files running at once: `slow files`. */
   readonly files: string;
 }
@@ -65,7 +79,11 @@ export interface LaneWords {
 /** The slow-tier line's words: today's (004 D8), with the slot's holders when status read them. */
 function slowWords(slot: SlowSlotHolders | undefined): LaneWords {
   return {
-    waitingFor: (wait) => (wait === "slot" && slotHeld(slot) ? SLOT_HELD : WAITING_FOR[wait]),
+    waitingFor: (wait, why) => {
+      if (wait !== "slot") return WAITING_FOR[wait];
+      if (slotHeld(slot)) return SLOT_HELD;
+      return why === undefined ? WAITING_FOR.slot : slotWaitText("the slow slot", why);
+    },
     files: "slow files",
   };
 }
@@ -90,7 +108,7 @@ export function pendingText(
   if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for)}`;
+    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for, activity.slot)}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;

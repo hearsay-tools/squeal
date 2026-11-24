@@ -112,7 +112,10 @@ export function toSlowActivity(value: unknown): SlowTierActivity | null | undefi
   if (typeof value !== "object") return undefined;
   const v = value as Record<string, unknown>;
   if (v.kind === "waiting" && WAITS.has(v.for)) {
-    return { kind: "waiting", for: v.for as Extract<SlowTierActivity, { kind: "waiting" }>["for"] };
+    const wait = v.for as Extract<SlowTierActivity, { kind: "waiting" }>["for"];
+    // Row 023-83: a slot wait keeps why, when its daemon recorded it.
+    const slot = wait === "slot" && (v.slot === "held" || v.slot === "turn") ? v.slot : undefined;
+    return { kind: "waiting", for: wait, ...(slot === undefined ? {} : { slot }) };
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;

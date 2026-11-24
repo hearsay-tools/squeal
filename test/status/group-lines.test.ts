@@ -102,6 +102,25 @@ describe("a status line per group not all current (019 D6)", () => {
     );
   });
 
+  // Row 023-83: a daemon that recorded why the lane waits at the slot is read as the slot;
+  // an older daemon's `slot`, published for the pool too before row 011-291, stays hedged.
+  it.each([
+    ["held", "waiting for the e2e group's slot (in use)"],
+    [
+      undefined,
+      "waiting for capacity (whether the e2e group's slot or the shared worker pool holds it is not known)",
+    ],
+  ] as const)("names the group's slot when the daemon recorded why (%s)", (slot, words) => {
+    const s = grouped({ [E2E]: "queued", [E2E_B]: "queued" });
+    inTurn(s);
+    publishGroupActivity(s.store, s.repo.mainId, "e2e", {
+      kind: "waiting",
+      for: "slot",
+      ...(slot === undefined ? {} : { slot }),
+    });
+    expect(lineOf(status(s), "e2e")).toContain(`2 pending, ${words}.`);
+  });
+
   it("prints no line for a group whose files are all current", () => {
     const s = grouped();
     states(s.store, s.repo, [{ observedAt: 3 }], [API]);

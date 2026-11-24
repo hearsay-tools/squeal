@@ -8,7 +8,7 @@ import {
   othersWaitingForSlot,
   slotFiles,
 } from "../slow/slot-files.js";
-import { lastHolders, type SlotFile } from "../slow/slot-holding.js";
+import { partnerRuns, type SlotFile } from "../slow/slot-holding.js";
 import { publishGroupActivity, readGroupActivity } from "../slow/state.js";
 import type { DeferUnderLoad, ResolvedGroup } from "../types/check-groups.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
@@ -476,7 +476,8 @@ export class SlowTier {
       markSlotWaiter(dir, context.worktreeId, this.group);
       this.#marked = true;
     }
-    this.#publish({ kind: "waiting", for: "slot" });
+    // Row 023-83: why, so status names the slot, not "the slot or the pool".
+    this.#publish({ kind: "waiting", for: "slot", slot: yielded ? "turn" : "held" });
     if (!yielded) this.#slotMissed(context, dir, at);
     this.#arm();
     return "none";
@@ -534,16 +535,16 @@ export class SlowTier {
   }
 
   /**
-   * Row 023-78: `free` with the file another worktree last ran under the
-   * group's shared slot first, when a `status --at --run` request queued it
+   * Row 023-78: `free` with the file another worktree ran first under the
+   * group's shared slot first (row 023-83), when a `status --at --run` request queued it
    * here (`followPartner`). A group without `maxParallel` shares no slot.
    */
   #follow(view: LaneView, group: ResolvedGroup, free: TestFileRef[]): readonly TestFileRef[] {
     const permits = group.limits.maxParallel;
     if (permits === null) return free;
     const { at, context, ledger } = view;
-    return followPartner(free, ledger, at, context.worktreeId, () =>
-      lastHolders(this.#slotDir(), this.group, permits),
+    return followPartner(free, ledger, at, () =>
+      partnerRuns(this.#slotDir(), this.group, permits, context.worktreeId),
     );
   }
 

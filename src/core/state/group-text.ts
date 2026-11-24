@@ -1,11 +1,12 @@
 import { durationText, plural } from "../text.js";
-import type { GroupTierState, SlowTierWait, StatusHeader } from "../types/status.js";
+import type { GroupTierState, SlotWait, SlowTierWait, StatusHeader } from "../types/status.js";
 import {
   capitalized,
   currentText,
   type LaneWords,
   pendingText,
   sharedWaitText,
+  slotWaitText,
 } from "./slow-text.js";
 
 /*
@@ -103,9 +104,11 @@ function requestsText(group: GroupTierState, command: string): string {
  * names the groups of its `after`.
  */
 function groupWords(group: GroupTierState): LaneWords {
-  const waitingFor = (wait: SlowTierWait): string => {
+  const waitingFor = (wait: SlowTierWait, why?: SlotWait): string => {
     if (wait === "fast") return followedGroupsText(group.after);
     if (wait === "slot") {
+      // Row 023-83: a daemon that recorded why names the slot; an older one's `slot` stays hedged.
+      if (why !== undefined) return slotWaitText(`the ${group.name} group's slot`, why);
       return `capacity (whether the ${group.name} group's slot or the shared worker pool holds it is not known)`;
     }
     return sharedWaitText(wait);

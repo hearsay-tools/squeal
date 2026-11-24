@@ -46,7 +46,7 @@ function drainSide(dir: string, count: number, slow = count): Side {
 const waitingAtSlot = (s: Side) =>
   expect
     .poll(() => readSlowActivity(s.store, s.worktreeId), { timeout: 5_000 })
-    .toEqual({ kind: "waiting", for: "slot" });
+    .toEqual({ kind: "waiting", for: "slot", slot: "turn" });
 
 describe("a drain's slow lane tells how long it waited (row 011-163)", { timeout: 30_000 }, () => {
   it("waits from the drain's first check while its slow files wait at the slot, and names them", async () => {

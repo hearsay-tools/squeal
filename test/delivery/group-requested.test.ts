@@ -7,6 +7,7 @@ import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { formatDelta } from "../../src/core/delivery/format.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { publishNarrowAsks } from "../../src/core/scheduler/narrow-asks-row.js";
+import { publishGroupActivity } from "../../src/core/slow/state.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { EpochMs } from "../../src/core/types/common.js";
 import type { Consumer, Delta, HarnessDelivery } from "../../src/core/types/delivery.js";
@@ -183,5 +184,36 @@ describe("the hook names the few files left outside a request (row 023-79, Z3)",
     const { json } = await hook();
     expect(browserLine(json)).toContain(", 4 pending, waiting for `squeal run browser`.");
     expect(browserLine(json)).not.toContain("f01");
+  });
+});
+
+/*
+ * Row 023-83 (round 11, AA2): the hook said in 5 of 10 sessions that the
+ * browser files waited for "capacity (whether the browser group's slot or
+ * the shared worker pool holds it is not known)". A daemon that records why
+ * its lane waits at the slot is read as the slot; an older daemon's `slot`,
+ * without the record, keeps the hedge.
+ */
+describe("the hook's line for a group whose lane waits at its slot (row 023-83)", () => {
+  it.each([
+    ["held", "waiting for the browser group's slot (in use)."],
+    [
+      "turn",
+      "waiting for the browser group's slot (its turn went to another worktree that waits for it).",
+    ],
+    [
+      undefined,
+      "waiting for capacity (whether the browser group's slot or the shared worker pool holds it is not known).",
+    ],
+  ] as const)("names the slot when the daemon recorded why (%s)", async (slot, words) => {
+    queueBrowser(true);
+    publishGroupActivity(store, WT, "browser", {
+      kind: "waiting",
+      for: "slot",
+      ...(slot === undefined ? {} : { slot }),
+    });
+    flipUnit();
+    const { json } = await hook();
+    expect(browserLine(json)).toContain(words);
   });
 });

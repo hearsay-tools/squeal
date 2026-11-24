@@ -153,7 +153,7 @@ describe("group lanes, slots and priorities together (row 019-18)", { timeout: 6
     const { base, first, second, held } = await twoRepositories("user");
     await expect
       .poll(() => readSlowActivity(second.side.store, second.side.worktreeId), { timeout: 20_000 })
-      .toEqual({ kind: "waiting", for: "slot" });
+      .toEqual({ kind: "waiting", for: "slot", slot: "held" });
     // No `checks`, scope `"user"`: the base directory itself, the default group's names of before groups.
     expect(slotNames(base)).toEqual(["slow.lock", `slow.wait.${hashOf(second.side.worktreeId)}`]);
     expect(second.side.runner.runs.filter((run) => run.lane?.startsWith("slow:"))).toEqual([]);

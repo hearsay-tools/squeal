@@ -57,7 +57,11 @@ export function retryWaitOf(ref: TestFileRef, reads: QueueReads): RetryWait {
   const fast = earliest(runs, fastFile);
   if (activity?.kind === "running") return { kind: "slow", since: activity.since };
   if (activity?.kind === "waiting") {
-    return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
+    if (activity.for === "fast") return { kind: "fast", since: fast };
+    // Row 023-83: a slot wait keeps why, when its daemon recorded it.
+    if (activity.for === "slot" && activity.slot !== undefined)
+      return { kind: "slot", slot: activity.slot };
+    return { kind: activity.for };
   }
   return fast === null ? UNKNOWN : { kind: "fast", since: fast };
 }

@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { acquireSlowSlot, heldPermits, takePermit } from "../../src/core/slow/slot.js";
 import { slotFiles } from "../../src/core/slow/slot-files.js";
-import { lastHolders, type SlotFile } from "../../src/core/slow/slot-holding.js";
+import {
+  partnerRuns,
+  RAN_FRESH_MS,
+  readRecord,
+  type SlotFile,
+} from "../../src/core/slow/slot-holding.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
 
 /*
@@ -38,9 +43,9 @@ describe("the slot's holder record (rows 023-77, 023-78)", () => {
     ]);
     slot?.release();
     expect(held()).toEqual([]);
-    expect(lastHolders(dir, GROUP, 1)).toEqual([
+    expect(readRecord(permitPath())).toEqual(
       expect.objectContaining({ worktreeId: "tree", files: [FILE] }),
-    ]);
+    );
   });
 
   it("drops an earlier holder's files when an older daemon takes the permit", () => {
@@ -55,7 +60,7 @@ describe("the slot's holder record (rows 023-77, 023-78)", () => {
     expect(record).not.toHaveProperty("files");
     older?.close();
     expect(held()).toEqual([]);
-    expect(lastHolders(dir, GROUP, 1)[0]).not.toHaveProperty("files");
+    expect(readRecord(permitPath())).not.toHaveProperty("files");
     // The slot is free for this release again.
     expect(acquireSlowSlot({ dir, owner: tree, group: GROUP })).not.toBeNull();
   });
@@ -74,6 +79,30 @@ describe("the slot's holder record (rows 023-77, 023-78)", () => {
   });
 
   it("records nothing for a permit file that does not exist", () => {
-    expect(lastHolders(dir, GROUP, 2)).toEqual([]);
+    expect(partnerRuns(dir, GROUP, 2, tree.worktreeId)).toEqual([]);
+  });
+
+  it("keeps every file other worktrees ran, each at its first run, the first first (row 023-83)", () => {
+    const a: SlotFile = { project: "", path: "e2e/a.e2e.ts", durationMs: null };
+    const b: SlotFile = { project: "", path: "e2e/b.e2e.ts", durationMs: null };
+    const take = (owner: typeof tree, files: SlotFile[]) => {
+      const slot = acquireSlowSlot({ dir, owner, group: GROUP });
+      slot?.holding(files);
+      slot?.release();
+    };
+    take(commit, [a]);
+    take(commit, [b]);
+    take(tree, [b]);
+    // A run again of a file keeps its first run's place.
+    take(commit, [a]);
+    const runs = partnerRuns(dir, GROUP, 1, tree.worktreeId);
+    expect(runs.map((r) => [r.worktreeId, r.path])).toEqual([
+      ["commit", a.path],
+      ["commit", b.path],
+    ]);
+    // The commit side sees the working tree's run; a run older than a commit daemon's life counts no more.
+    expect(partnerRuns(dir, GROUP, 1, commit.worktreeId).map((r) => r.path)).toEqual([b.path]);
+    const later = Date.now() + RAN_FRESH_MS + 1_000;
+    expect(partnerRuns(dir, GROUP, 1, tree.worktreeId, later)).toEqual([]);
   });
 });

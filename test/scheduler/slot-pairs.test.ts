@@ -2,7 +2,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { readGroupActivity } from "../../src/core/slow/state.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
@@ -19,7 +21,8 @@ import { groupPolicy, inTurn, runnerLane } from "./group-lanes-fixture.js";
  * the file its partner just ran, so every two turns give one compared file.
  * A side whose partner has nothing queued runs its own order at full pace.
  * Review 0.1.612 S2: no fixed leader; the side that takes the free slot
- * first leads, and a late partner follows the leader's latest file.
+ * first leads. Row 023-83: a late partner follows the leader's first file
+ * it has not run, so pairs come in the leader's order.
  */
 
 const PATHS = ["a", "b", "c"].map((n) => `test/browser/${n}.test.ts`);
@@ -151,13 +154,15 @@ describe("both sides take the shared slot file by file (row 023-78)", { timeout:
     ]);
   });
 
-  it("has a late partner follow the leader's latest file, then its own order", async () => {
-    // Review 0.1.612 S2, the recorded limit: files the leader ran before the partner came
-    // get the partner's run last.
+  it("has a late partner run the leader's first file first, then the rest in the leader's order", async () => {
+    // Row 023-83 (round 11, AA2): the commit side ran a and b before the working tree asked;
+    // the working tree then ran its partner's latest file first, so the first file paired last.
     const { tree, commit, log } = await pair(50);
     const release = holdFirst(commit, C);
     await commit.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
     await expect.poll(() => log.length, { timeout: 20_000 }).toBe(3);
+    // The working tree's own order is c, a, b: the change's file first.
+    await tree.scheduler.requestGroupPaths?.("browser", [C], { at: true });
     await tree.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
     await tree.rest();
     expect(log).toEqual([`commit:${A}`, `commit:${B}`, `commit:${C}`]);
@@ -167,9 +172,36 @@ describe("both sides take the shared slot file by file (row 023-78)", { timeout:
       `commit:${A}`,
       `commit:${B}`,
       `commit:${C}`,
-      `tree:${C}`,
       `tree:${A}`,
       `tree:${B}`,
+      `tree:${C}`,
+    ]);
+  });
+
+  it("pairs the commit side's first file first and alternates the turns after a late start", async () => {
+    // Row 023-83: the commit side starts first and runs a; the working tree asks while it runs b.
+    const { tree, commit, log } = await pair(50);
+    const release = holdFirst(commit, B);
+    await commit.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
+    await expect.poll(() => log.length, { timeout: 20_000 }).toBe(2);
+    await tree.scheduler.requestGroupPaths?.("browser", PATHS, { at: true });
+    await tree.rest();
+    expect(log).toEqual([`commit:${A}`, `commit:${B}`]);
+    // The working tree records that it waits for the slot, which is taken: not "the slot or the pool".
+    expect(readGroupActivity(tree.store, tree.worktreeId as WorktreeId, "browser")).toEqual({
+      kind: "waiting",
+      for: "slot",
+      slot: "held",
+    });
+    release();
+    await expect.poll(() => log.length, { timeout: 20_000 }).toBe(6);
+    expect(log).toEqual([
+      `commit:${A}`,
+      `commit:${B}`,
+      `tree:${A}`,
+      `commit:${C}`,
+      `tree:${B}`,
+      `tree:${C}`,
     ]);
   });
 

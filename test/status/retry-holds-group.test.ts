@@ -115,6 +115,22 @@ describe("a queued retry of a configured group's file reads by its group (019-27
     });
   });
 
+  // Row 023-83: a daemon that recorded why its lane waits at the slot names the slot.
+  it.each([
+    ["held", "the e2e group waits for the e2e group's slot (in use)"],
+    [
+      "turn",
+      "the e2e group waits for the e2e group's slot (its turn went to another worktree that waits for it)",
+    ],
+  ] as const)("waiting for the slot, %s", (slot, words) => {
+    const s = queued();
+    s.publish({ kind: "waiting", for: "slot", slot });
+    expect(read(s)).toEqual({
+      lines: [line(`: ${words}`)],
+      waits: [{ ...E2E, lane: { kind: "waiting", for: "slot", slot } }],
+    });
+  });
+
   it("at `commit`, with nothing published: a commit runs only the files it changes", () => {
     expect(read(queued("commit"))).toEqual({
       lines: [

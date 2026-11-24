@@ -122,7 +122,11 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
     logRuns(b, "b", order);
     await b.scheduler.start();
     await step([b]);
-    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({ kind: "waiting", for: "slot" });
+    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({
+      kind: "waiting",
+      for: "slot",
+      slot: "held",
+    });
     expect(marks(dir)).toHaveLength(1);
 
     // `a`'s file ends; were `a` to take the slot again, its next file would hold.
@@ -151,7 +155,11 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
     await until([a], () => a.runner.active === 1);
     expect(a.runner.active).toBe(1);
     await step([b]);
-    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({ kind: "waiting", for: "slot" });
+    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({
+      kind: "waiting",
+      for: "slot",
+      slot: "held",
+    });
 
     a.runner.release();
     a.runner.hold();
@@ -186,7 +194,11 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
     logRuns(b, "b", order);
     await b.scheduler.start();
     await step([b]);
-    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({ kind: "waiting", for: "slot" });
+    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({
+      kind: "waiting",
+      for: "slot",
+      slot: "held",
+    });
 
     a.runner.release();
     await until([a, b], () => order.length === 5);
@@ -234,7 +246,11 @@ describe("a draining daemon yields the slot (row 011-93)", { timeout: 30_000 }, 
     a.scheduler.pauseBacklog(true);
     await a.scheduler.start();
     await step([a]);
-    expect(readSlowActivity(a.store, a.worktreeId)).toEqual({ kind: "waiting", for: "slot" });
+    expect(readSlowActivity(a.store, a.worktreeId)).toEqual({
+      kind: "waiting",
+      for: "slot",
+      slot: "turn",
+    });
     await step([a]);
     expect(a.runner.runs).toEqual([]);
     expect(marks(dir)).toEqual([other]);
