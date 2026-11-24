@@ -6,6 +6,12 @@
 
 ## Amendments
 
+- 2026-11-25 (coordinator `0266d2c5`, Wave 3 landed in `0.1.633`):
+  - **Wave 3 landed (`0.1.633`):** Candidate CI `45506464418` green 8/8 on attempt 1 at `98c02f533` (Private material `45506464445` green; reviews `0.1.631.md` FAIL B1–B3, `0.1.631-r2.md` PASS 0 findings, `0.1.633-rebase.md` PASS 0 findings).
+  - **D10 amendments (`025-10`):** Approved scoping `src/core/state/sink.ts` `begin()` reads to named files inside write transactions (cutting 30-file tier commits ~10x) and keeping `reconcileBatch` atomic to preserve D5 review B2 reader-coherence. Idle prune skips write locks via `hasFallenUnknownRuns` + `expireReplaced` read-first guards.
+  - **D12 decisions (`025-12`, `research/runner-host-and-status-bundle.md`):** Evidence recommends against both Wave 4 candidates: Spec 021 D20 (`runner.hostIdleMinutes`) already closes idle runner hosts (freeing 483–529 MiB/worktree against a 7.13 s cold reopen); a separate `cli/status.mjs` bundle saves only 11–18 ms warm on a quiet machine (7–9% on an 18k-check store).
+  - **Paired `@hooks` benchmark (`squeal--v0.1.627` vs `0.1.631`):** Running in parallel (`bench-025-w3-hooks-2`); results and `TREND.md` follow on completion.
+
 - 2026-11-24 (coordinator `0266d2c5`, Wave 2 landed in `0.1.628` and Wave 3 kicked off):
   - **Wave 2 landed (`0.1.628`):** Candidate CI `45486244333` attempt 2 green 7/7 on `7043483ec` (private CI `45486244347` green; reviews `0.1.626.md`, `0.1.626-delta.md`, `0.1.626-rebase.md`, and `0.1.628-rebase.md` all PASS with 0 blockers).
   - **Paired `@hooks` benchmark (`bench/results/2026-11-24-0.1.623-vs-0.1.626-default-AMD-Ryzen-9-9950X-16-Core-Processor/scorecard.md`):** Correctness PASS across `ref`, `wt-3`, and `stress` (no >= 15-point drop). D9 measured `hook.writeWait.max`: `ref` 70 ms (0 long), `wt-3` 245 ms (0 long), `stress` 827 ms (8 long write waits: 257–827 ms). Daemon logs in `stress@0.1.626` pinned the exact write-lock offenders for `025-10`: startup `Ledger.commit` (11,501 rows, 542–628 ms), broad-edit `reconcileBatch` (8,005 rows, 430 ms), and contended `#write < #record` (250–369 ms). Secondary worktrees in `wt-3@0.1.626` still showed 5.3% idle CPU after `testFileCounts.pending === 0` because background code-store seeding continued after test-file settle; folded into `025-13` alongside S1, S2, and the Node 22 `cache-fixture.ts` teardown race.
