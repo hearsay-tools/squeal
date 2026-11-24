@@ -46,6 +46,12 @@ const NOTICE =
 /** One CLI call in `repo`, in this process: its exit code and its first line. */
 async function run(repo: FixtureRepo, args: readonly string[]) {
   let out = "";
+  const env: NodeJS.ProcessEnv = { ...repo.env };
+  delete env.CODEX_SESSION_ID;
+  delete env.PI_SESSION_ID;
+  delete env.OPENCODE_SESSION_ID;
+  delete env.ANTIGRAVITY_CONVERSATION_ID;
+  delete env.CLAUDECODE;
   const code = await main(args, {
     stdout: (text) => {
       out += text;
@@ -54,7 +60,7 @@ async function run(repo: FixtureRepo, args: readonly string[]) {
       out += text;
     },
     cwd: repo.root,
-    env: repo.env,
+    env,
   });
   return { code, first: out.split("\n")[0] ?? "", out };
 }
