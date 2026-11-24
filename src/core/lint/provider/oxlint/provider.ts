@@ -13,7 +13,7 @@ import type {
   LintRefresh,
   LintRunReport,
 } from "../../pass/provider.js";
-import { type CacheEntry, defaultCache, type OxlintCache } from "./cache.js";
+import { defaultCache, LintedMemo, type OxlintCache } from "./cache.js";
 import { type ConfigSet, readConfigs, VITE_PLUS_OFF } from "./config-set.js";
 import type { FolderConfigs } from "./configs.js";
 import { discoverOxlint, type OxlintInstall } from "./discover.js";
@@ -91,8 +91,8 @@ class Provider implements OxlintProvider {
   private failures: number[] = [];
   private queue: Promise<unknown> = Promise.resolve();
   private readonly cache: OxlintCache;
-  /** The current configs' cache entry with the answers kept since it was read. */
-  private remembered: CacheEntry | null = null;
+  /** Whether oxlint lints each path, under the current configs' key (spec 026 D3). */
+  private memo: LintedMemo | null = null;
 
   constructor(private readonly options: OxlintProviderOptions) {
     this.guardMs = options.guardMs ?? 5_000;
@@ -193,7 +193,7 @@ class Provider implements OxlintProvider {
       else if (!linted.has(path)) results.set(path, { unknown: "oxlint does not lint it now" });
     }
     if (!("failure" in debug) && debug.loaded) {
-      await this.remember([...results.keys()], linted);
+      await this.memo?.remember([...results.keys()], linted);
     }
     return null;
   }
@@ -207,7 +207,7 @@ class Provider implements OxlintProvider {
       this.declaration = null;
       this.install = null;
       this.configs = null;
-      this.remembered = null;
+      this.memo = null;
       await this.cache.close();
     });
   }
@@ -226,7 +226,8 @@ class Provider implements OxlintProvider {
     );
     if ("off" in configs) return configs.off === null ? this.refused(configs.reason) : configs.off;
     this.configs = configs;
-    this.remembered = configs.entry;
+    this.memo =
+      configs.entry === null ? null : new LintedMemo(this.cache, this.options.root, configs.entry);
     this.closure = new Set(configs.closure);
     this.held = configs.held;
     this.declaration = {
@@ -262,36 +263,23 @@ class Provider implements OxlintProvider {
   }
 
   /**
-   * Whether oxlint lints each of `paths`: the cache's answer under the
-   * configs' key, `--debug files` for the rest (spec 026 D3). A failure is
-   * counted: `inputs` rejects with its reason (D9).
+   * Whether oxlint lints each of `paths`: the memo's answer, `--debug files`
+   * for the rest (spec 026 D3). A failure is counted: `inputs` rejects with
+   * its reason (D9).
    */
   private async linted(
     ctx: RunContext,
     paths: readonly RelativePath[],
-  ): Promise<Map<RelativePath, boolean>> {
-    const known = this.remembered?.linted ?? {};
-    const answers = new Map<RelativePath, boolean>();
-    for (const path of paths) {
-      if (Object.hasOwn(known, path)) answers.set(path, known[path] === true);
-    }
+  ): Promise<ReadonlyMap<RelativePath, boolean>> {
+    const answers = this.memo?.known(paths) ?? new Map<RelativePath, boolean>();
     const asked = paths.filter((path) => !answers.has(path));
     if (asked.length === 0) return answers;
     const debug = await debugFiles(ctx, asked);
     if ("failure" in debug) throw new Error(this.failed(debug.failure)?.off ?? debug.failure);
     for (const path of asked) answers.set(path, debug.linted.has(path));
     // A config that does not load names every file: not an answer to keep.
-    if (debug.loaded) await this.remember(asked, debug.linted);
+    if (debug.loaded) await this.memo?.remember(asked, debug.linted);
     return answers;
-  }
-
-  /** Keeps whether oxlint lints each of `paths` under the current configs' key (spec 026 D3). */
-  private async remember(paths: readonly RelativePath[], linted: ReadonlySet<RelativePath>) {
-    const entry = this.remembered;
-    if (entry === null || paths.every((p) => entry.linted[p] === linted.has(p))) return;
-    const answers = Object.fromEntries(paths.map((p) => [p, linted.has(p)]));
-    this.remembered = { ...entry, linted: { ...entry.linted, ...answers } };
-    await this.cache.write(this.options.root, this.remembered);
   }
 
   private report(

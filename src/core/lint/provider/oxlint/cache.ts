@@ -45,8 +45,8 @@ export interface CacheBacking {
   close?(): void;
 }
 
-/** The entry's backing key for one worktree root. */
-const metaKey = (root: AbsolutePath) => `oxlint.cache:${root}`;
+/** The entry's backing key for one worktree root, in `lint.sqlite`, not the main store's registry. */
+const entryKey = (root: AbsolutePath) => `oxlint.cache:${root}`;
 
 /** Entries by root, shared by every provider in this process. */
 const MEMORY = new Map<string, CacheEntry>();
@@ -67,7 +67,7 @@ export class OxlintCache {
     const kept = this.memory.get(root);
     if (kept !== undefined) return kept;
     const backing = await this.#open(root);
-    const text = attempt(() => backing?.get(metaKey(root)) ?? null);
+    const text = attempt(() => backing?.get(entryKey(root)) ?? null);
     const entry = text == null ? null : parse(text);
     if (entry !== null) this.memory.set(root, entry);
     return entry;
@@ -76,7 +76,7 @@ export class OxlintCache {
   async write(root: AbsolutePath, entry: CacheEntry): Promise<void> {
     this.memory.set(root, entry);
     const backing = await this.#open(root);
-    attempt(() => backing?.set(metaKey(root), JSON.stringify(entry)));
+    attempt(() => backing?.set(entryKey(root), JSON.stringify(entry)));
   }
 
   /** Closes a backing this cache found; a given one stays open. */
@@ -92,6 +92,32 @@ export class OxlintCache {
         ? this.backing(root).catch(() => null)
         : Promise.resolve(this.backing);
     return this.#backing;
+  }
+}
+
+/** One config read's answers to whether oxlint lints a path (`--debug files`), kept as they grow. */
+export class LintedMemo {
+  constructor(
+    private readonly cache: OxlintCache,
+    private readonly root: AbsolutePath,
+    private entry: CacheEntry,
+  ) {}
+
+  /** The kept answers for those of `paths` asked before. */
+  known(paths: readonly RelativePath[]): Map<RelativePath, boolean> {
+    const { linted } = this.entry;
+    return new Map(
+      paths.filter((p) => Object.hasOwn(linted, p)).map((p) => [p, linted[p] === true]),
+    );
+  }
+
+  /** Keeps whether oxlint lints each of `paths`: it lints those in `linted`. */
+  async remember(paths: readonly RelativePath[], linted: ReadonlySet<RelativePath>): Promise<void> {
+    const kept = this.entry.linted;
+    if (paths.every((p) => kept[p] === linted.has(p))) return;
+    const answers = Object.fromEntries(paths.map((p) => [p, linted.has(p)]));
+    this.entry = { ...this.entry, linted: { ...kept, ...answers } };
+    await this.cache.write(this.root, this.entry);
   }
 }
 
