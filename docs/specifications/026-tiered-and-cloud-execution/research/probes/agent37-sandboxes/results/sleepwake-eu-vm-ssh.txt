@@ -1,0 +1,6 @@
+marker pid 19467
+HTTP 200 4.519546 {"id":"c0myhlo00m","status":"sleeping"} 
+status sleeping after 4773 ms (sleeping 1795479979)
+status before wake: sleeping 1795479979
+wake ssh 1645 ms: marker-alive 1824.32 5474.08 
+status after wake: running -

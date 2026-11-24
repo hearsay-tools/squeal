@@ -1,0 +1,6 @@
+marker pid 19432
+HTTP 200 5.182829 {"id":"c0myhlo00m","status":"sleeping"} 
+status sleeping after 5467 ms (sleeping 1795479275)
+status before wake: sleeping 1795479275
+wake exec 676 ms: HTTP 200 0.658965 {"exit_code": 0, "stdout": "marker-alive 1184.00 3156.69 ", "stderr": "", "truncated": false} 
+status after wake: running -

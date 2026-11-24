@@ -1,0 +1,17 @@
+HTTP 200 15.368231
+git status lines: 0; head 62e4e3b56
+eu-vm-fork /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.174751 s, 4.7 MB/s
+eu-vm-fork ~: 819200 bytes (819 kB, 800 KiB) copied, 0.142826 s, 5.7 MB/s
+eu-vm-fork io-pressure: some avg10=5.40 avg60=0.98 avg300=0.20 total=741892
+eu-vm-fork lazyfs: 
+eu-vm-fork load: 0.08 0.02 0.01 1/111 189
+eu-vm-fork flushes: 0 flushes, 0 ms, 0 ms each
+eu-vm-fork cpu:  Intel(R) Xeon(R) E-2388G CPU @ 3.20GHz
+eu-vm-fork git: exit 0 wall 8122 ms;  Test Files 3 passed (3); Tests 27 passed (27); Duration 7.65s (tests 82%, transform 15%, import 3%);
+eu-vm-fork load: 0.23 0.05 0.02 1/117 764
+eu-vm-fork-1 capacity: exit 0 wall 2498 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 2.10s (tests 80%, transform 11%, import 8%, worker 1%);
+eu-vm-fork-1 load: 0.62 0.13 0.04 1/117 885
+eu-vm-fork-2 capacity: exit 0 wall 2106 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 1.70s (tests 74%, transform 14%, import 11%, worker 1%);
+eu-vm-fork-2 load: 0.62 0.13 0.04 1/117 1006
+FORK-CHECK-DONE
+exit 0

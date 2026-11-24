@@ -1,0 +1,15 @@
+#!/bin/sh
+# Throwaway (026 agent37-sandboxes). What the instance is: kernel, CPU, memory, disks, mounts.
+echo "kernel: $(uname -r)"
+echo "nproc: $(nproc)"
+echo "cpu: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2)"
+echo "cpu flags count: $(grep -m1 '^flags' /proc/cpuinfo | wc -w); mhz: $(grep -m1 'cpu MHz' /proc/cpuinfo | cut -d: -f2)"
+echo "mem: $(free -m | awk '/Mem/{print $2" MiB total, "$7" available"}')"
+echo "home: $(df -hT ~ | tail -1)"
+echo "tmp: $(df -hT /tmp | tail -1)"
+echo "mounts home/tmp: $(grep -E " ($HOME|/tmp|/) " /proc/mounts | tr '\n' ';')"
+echo "cgroup cpu.max: $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo n/a)"
+echo "steal (cpu line of /proc/stat): $(head -1 /proc/stat)"
+echo "load: $(cat /proc/loadavg)"
+echo "node: $(node -v 2>/dev/null); git: $(git --version)"
+echo "user: $(id -un); sudo: $(command -v sudo >/dev/null && sudo -n true 2>/dev/null && echo yes || echo no)"

@@ -1,0 +1,98 @@
+== tcgutmnxqn
+## dsync-1 23:57:10
+us-default-1 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.00223399 s, 367 MB/s
+us-default-1 ~: 819200 bytes (819 kB, 800 KiB) copied, 0.0614873 s, 13.3 MB/s
+head: cannot open '/proc/pressure/io' for reading: No such file or directory
+us-default-1 io-pressure: 
+us-default-1 lazyfs: 
+us-default-1 load: 0.00 0.00 0.00 0/0 0
+awk: cannot open /proc/diskstats (No such file or directory)
+us-default-1 flushes: 
+us-default-1 cpu:  unknown
+## capacity 23:57:10
+us-default-1 capacity: exit 0 wall 3154 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 2.43s (tests 61%, transform 19%, import 18%, worker 2%);
+us-default-1 load: 0.00 0.00 0.00 0/0 0
+us-default-2 capacity: exit 0 wall 3585 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 2.66s (tests 59%, transform 22%, import 17%, worker 2%);
+us-default-2 load: 0.00 0.00 0.00 0/0 0
+## git 23:57:16
+us-default git: exit 0 wall 19969 ms;  Test Files 3 passed (3); Tests 27 passed (27); Duration 19.16s (tests 86%, transform 12%, import 2%);
+us-default load: 0.00 0.00 0.00 0/0 0
+## driver-vitest 23:57:36
+{"step":"start","ms":809.3,"host":{"pid":1213,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}}
+{"step":"testFiles","ms":42.6,"count":2225}
+{"step":"warm","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":76.2,"affectedMs":25378.1,"closureMs":82.4,"runMs":1091.7,"vitestMs":941,"totalMs":26633,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12030,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":140.9,"affectedMs":201.3,"closureMs":13.4,"runMs":748.4,"vitestMs":609,"totalMs":1104.7,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12037,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":134.8,"affectedMs":229.3,"closureMs":14.4,"runMs":955.2,"vitestMs":777,"totalMs":1334.1,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12014,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":153.5,"affectedMs":264.5,"closureMs":7.9,"runMs":961.1,"vitestMs":811,"totalMs":1387.4,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12031,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":162.9,"affectedMs":299.1,"closureMs":14.5,"runMs":1127,"vitestMs":941,"totalMs":1604.5,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12033,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":171.4,"affectedMs":283.3,"closureMs":9.9,"runMs":950,"vitestMs":788,"totalMs":1415.3,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12038,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":145.9,"affectedMs":278.1,"closureMs":63.5,"runMs":3187.6,"vitestMs":3030,"totalMs":3679,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53953,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":136.3,"affectedMs":243.7,"closureMs":63.8,"runMs":3609.1,"vitestMs":3358,"totalMs":4055.6,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":54021,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":171.8,"affectedMs":318.6,"closureMs":64.1,"runMs":3545.1,"vitestMs":3387,"totalMs":4103.5,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53982,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":166.7,"affectedMs":1010,"closureMs":48.1,"runMs":908.5,"vitestMs":750,"totalMs":2134.5,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":10575,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":184.8,"affectedMs":528.6,"closureMs":5.5,"runMs":915.5,"vitestMs":689,"totalMs":1634.6,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":10583,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"project","project":""}
+## driver-vitest-coverage 23:58:27
+{"step":"start","ms":844.5,"host":{"pid":1548,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}}
+{"step":"testFiles","ms":34.8,"count":2225}
+{"step":"warm","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":50.9,"affectedMs":22089.7,"closureMs":107.7,"runMs":1331.5,"vitestMs":1142,"totalMs":23586.4,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14247,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":132.9,"affectedMs":201.5,"closureMs":13.3,"runMs":857.4,"vitestMs":695,"totalMs":1205.5,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14262,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":138,"affectedMs":187.2,"closureMs":10,"runMs":810.5,"vitestMs":655,"totalMs":1146.6,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14238,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":121,"affectedMs":191,"closureMs":5.5,"runMs":972.9,"vitestMs":804,"totalMs":1291.3,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14249,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":135.1,"affectedMs":259.3,"closureMs":11.8,"runMs":923.5,"vitestMs":762,"totalMs":1330.4,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14272,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":127,"affectedMs":223.2,"closureMs":9.1,"runMs":886.5,"vitestMs":734,"totalMs":1246.5,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14247,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":126.8,"affectedMs":166,"closureMs":50.6,"runMs":3251,"vitestMs":3078,"totalMs":3597.6,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74718,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":127.1,"affectedMs":247.3,"closureMs":52.9,"runMs":3932.5,"vitestMs":3608,"totalMs":4361.6,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74849,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":142.6,"affectedMs":453.9,"closureMs":62.8,"runMs":3768.6,"vitestMs":3555,"totalMs":4430.5,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74765,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":144.8,"affectedMs":925,"closureMs":11.4,"runMs":825.2,"vitestMs":672,"totalMs":1907.1,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":12847,"coverageEvents":1,"coverageBytes":1010671,"coverageFiles":1}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":126.4,"affectedMs":431.8,"closureMs":2.5,"runMs":902.5,"vitestMs":748,"totalMs":1463.4,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":12828,"coverageEvents":1,"coverageBytes":1010671,"coverageFiles":1}
+{"step":"project","project":""}
+## driver-nodetest 23:59:14
+nt-ready
+{"step":"start","ms":383.4}
+{"step":"testFiles","files":[{"project":"spawn","path":"test/cli.test.mjs"}]}
+{"step":"node-test-1","ms":329.1,"durationMs":320,"results":["pass"]}
+{"step":"node-test-1","ms":327.3,"durationMs":322,"results":["pass"]}
+{"step":"node-test-1","ms":317.6,"durationMs":314,"results":["pass"]}
+{"step":"node-test-1","ms":333.1,"durationMs":328,"results":["pass"]}
+## compat-home 23:59:16
+{"check":"nice","setPriorityReadBack":10,"niceCommandNiceField":"10"}
+{"check":"process-group","parentAlive":false,"grandchildAlive":false}
+{"check":"sqlite-wal","journalMode":"wal","msPerCommit":{"NORMAL":0.03,"FULL":0.51},"otherProcessExit":0,"rows":600,"readsDuring":99,"readErrors":0}
+{"check":"fs.watch","latenciesMs":[0.5,0.4,0.2,0.3,0.2]}
+{"check":"fs.watch-recursive","latenciesMs":[0.6,0.4,0.4,0.3,0.3]}
+{"check":"realpath","js":true,"native":true}
+## compat-tmp 23:59:20
+{"check":"nice","setPriorityReadBack":10,"niceCommandNiceField":"10"}
+{"check":"process-group","parentAlive":false,"grandchildAlive":false}
+{"check":"sqlite-wal","journalMode":"wal","msPerCommit":{"NORMAL":0.03,"FULL":0.03},"otherProcessExit":0,"rows":600,"readsDuring":40,"readErrors":0}
+{"check":"fs.watch","latenciesMs":[0.5,0.1,0.1,0.1,0.1]}
+{"check":"fs.watch-recursive","latenciesMs":[0.6,0.3,0.2,0.3,0.3]}
+{"check":"realpath","js":true,"native":true}
+## cpu 23:59:23
+{"check":"one-thread","mbPerS":882}
+{"check":"four-threads","mbPer5sWindows":[17319,14314,19815,15604,14004,17343,18168,15534,17818,16140,15394,17424]}
+## slice50-1 00:00:26
+us-default slice50-1: exit 0 wall 565213 ms;  Test Files 50 passed (50); Tests 197 passed (197); Duration 563.72s (tests 96%, import 3%, transform 1%);
+load: 0.00 0.00 0.00 0/0 0
+## slice50-2 00:09:51
+us-default slice50-2: exit 1 wall 656043 ms;  Test Files 5 failed | 45 passed (50); Tests 5 failed | 192 passed (197); Duration 654.48s (tests 95%, import 3%, transform 1%);
+ FAIL  test/scheduler/backlog-slots-overhead.test.ts > scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2) > 3. runs 300 files of about 50 ms at most 5.5 times a tier's daemon CPU per file, with fewer commits than files
+Error: no quiet point in 120000 ms: no rest; open calls: run ×4
+    160|     new Error(`no quiet point in ${limitMs} ms: ${what}; open calls: $…
+ FAIL  test/scheduler/backlog-slots.test.ts > scheduler: a node:test backlog in one-file slots (task 011-21 slice 2) > 1. runs 16 files of 1 to 5 s at W = 4: no slot idle while files are queued, W slots at once, progress per file
+AssertionError: expected [ { idleMs: 985, passed: 2 }, …(2) ] to deeply equal []
+ FAIL  test/scheduler/backlog-tiers.test.ts > scheduler: backlog work runs in machine-wide tiers (D5, defect 25) > runs a 200-file backlog in at most a few tiers, within 2x a direct vitest run
+load: 0.00 0.00 0.00 0/0 0
+## dsync-2 00:20:48
+us-default-2 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.00290993 s, 282 MB/s
+us-default-2 ~: 819200 bytes (819 kB, 800 KiB) copied, 0.100732 s, 8.1 MB/s
+head: cannot open '/proc/pressure/io' for reading: No such file or directory
+us-default-2 io-pressure: 
+us-default-2 lazyfs: 
+us-default-2 load: 0.00 0.00 0.00 0/0 0
+awk: cannot open /proc/diskstats (No such file or directory)
+us-default-2 flushes: 
+us-default-2 cpu:  unknown
+SUITE-DONE 00:20:48
+

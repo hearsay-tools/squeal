@@ -1,0 +1,7 @@
+# Cleanup, 2026-11-24 about 00:35 UTC (a37.sh output)
+DELETE tcgutmnxqn, c0myhlo00m, 8g96zbc4r3: deleted true (forks 0pw82zjcfb and n9sbdno5an deleted right after their checks)
+DELETE ssh key 174a96b5520eac4e311adb33: deleted true
+GET /v1/instances: {"data":[]}
+GET /v1/ssh-keys: {"data":[]}
+GET /v1/billing: balance_usd 4.948677 (5 before), tier 0, memory_limit_gb 32
+GET /v1/usage: compute cost_micros 51323, awake_minutes 99

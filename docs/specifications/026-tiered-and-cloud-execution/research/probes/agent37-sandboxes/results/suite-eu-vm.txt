@@ -1,0 +1,88 @@
+== c0myhlo00m
+## dsync-1 23:57:10
+eu-vm-1 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.10305 s, 7.9 MB/s
+eu-vm-1 ~: 819200 bytes (819 kB, 800 KiB) copied, 0.0747149 s, 11.0 MB/s
+eu-vm-1 io-pressure: some avg10=0.18 avg60=0.24 avg300=0.17 total=956617
+eu-vm-1 lazyfs: 
+eu-vm-1 load: 0.11 0.12 0.05 1/111 427
+eu-vm-1 flushes: 0 flushes, 0 ms, 0 ms each
+eu-vm-1 cpu:  Intel(R) Xeon(R) E-2388G CPU @ 3.20GHz
+## capacity 23:57:10
+eu-vm-1 capacity: exit 0 wall 1709 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 1.43s (tests 84%, transform 8%, import 7%, worker 1%);
+eu-vm-1 load: 0.11 0.12 0.05 1/113 555
+eu-vm-2 capacity: exit 0 wall 1682 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 1.41s (tests 83%, transform 8%, import 7%, worker 1%);
+eu-vm-2 load: 0.11 0.12 0.05 1/113 676
+## git 23:57:13
+eu-vm git: exit 0 wall 4647 ms;  Test Files 3 passed (3); Tests 27 passed (27); Duration 4.41s (tests 84%, transform 13%, import 3%);
+eu-vm load: 0.10 0.12 0.05 1/117 1246
+## driver-vitest 23:57:18
+{"step":"start","ms":269.3,"host":{"pid":1255,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}}
+{"step":"testFiles","ms":14.9,"count":2225}
+{"step":"warm","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":24.2,"affectedMs":6215.7,"closureMs":31.8,"runMs":355.2,"vitestMs":319,"totalMs":6628.2,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12030,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":33.2,"affectedMs":56.6,"closureMs":2.8,"runMs":263.9,"vitestMs":234,"totalMs":356.8,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12017,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":26.7,"affectedMs":50.2,"closureMs":2.6,"runMs":254.5,"vitestMs":225,"totalMs":334.3,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12024,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":24.3,"affectedMs":49.4,"closureMs":2.2,"runMs":258.3,"vitestMs":231,"totalMs":334.5,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12013,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":22.8,"affectedMs":48.9,"closureMs":2.3,"runMs":247.5,"vitestMs":220,"totalMs":321.8,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12018,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":23.5,"affectedMs":49.3,"closureMs":2.3,"runMs":251.5,"vitestMs":226,"totalMs":326.8,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12015,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":25.7,"affectedMs":60.9,"closureMs":18.1,"runMs":1094.5,"vitestMs":1064,"totalMs":1200.6,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53910,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":26.3,"affectedMs":64.3,"closureMs":12.1,"runMs":1115.2,"vitestMs":1086,"totalMs":1219.4,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53880,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":27.4,"affectedMs":60.2,"closureMs":11.9,"runMs":1069,"vitestMs":1040,"totalMs":1169.6,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53979,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":25.2,"affectedMs":92.4,"closureMs":2.2,"runMs":299.1,"vitestMs":273,"totalMs":419.2,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":10568,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":23.2,"affectedMs":66.2,"closureMs":1,"runMs":309.5,"vitestMs":281,"totalMs":400.1,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":10565,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"project","project":""}
+## driver-vitest-coverage 23:57:31
+{"step":"start","ms":296.4,"host":{"pid":1595,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}}
+{"step":"testFiles","ms":15.7,"count":2225}
+{"step":"warm","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":22.1,"affectedMs":6147.6,"closureMs":29.9,"runMs":349.9,"vitestMs":303,"totalMs":6550.8,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14249,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":30.1,"affectedMs":55,"closureMs":2.9,"runMs":275.6,"vitestMs":243,"totalMs":363.9,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14274,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":25.5,"affectedMs":50.5,"closureMs":2.6,"runMs":276.3,"vitestMs":243,"totalMs":355.2,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14263,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":24,"affectedMs":49.5,"closureMs":2.3,"runMs":276.8,"vitestMs":243,"totalMs":352.8,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14235,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":23,"affectedMs":49.6,"closureMs":2.3,"runMs":277.3,"vitestMs":244,"totalMs":352.4,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14271,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":23.4,"affectedMs":49.8,"closureMs":2.3,"runMs":266.5,"vitestMs":236,"totalMs":342.3,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14252,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":26.7,"affectedMs":61.1,"closureMs":17.6,"runMs":1164.6,"vitestMs":1118,"totalMs":1271.4,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74745,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":23.7,"affectedMs":62.1,"closureMs":12,"runMs":1219.9,"vitestMs":1179,"totalMs":1318.8,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74730,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":52.9,"affectedMs":69.8,"closureMs":12,"runMs":1161.6,"vitestMs":1112,"totalMs":1297.4,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74722,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":27.4,"affectedMs":97.3,"closureMs":2.2,"runMs":324.9,"vitestMs":291,"totalMs":451.9,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":12815,"coverageEvents":1,"coverageBytes":1010671,"coverageFiles":1}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":22.9,"affectedMs":67.7,"closureMs":0.7,"runMs":312.1,"vitestMs":278,"totalMs":403.6,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":12824,"coverageEvents":1,"coverageBytes":1010671,"coverageFiles":1}
+{"step":"project","project":""}
+## driver-nodetest 23:57:45
+nt-ready
+{"step":"start","ms":123.4}
+{"step":"testFiles","files":[{"project":"spawn","path":"test/cli.test.mjs"}]}
+{"step":"node-test-1","ms":100.3,"durationMs":97,"results":["pass"]}
+{"step":"node-test-1","ms":92.6,"durationMs":91,"results":["pass"]}
+{"step":"node-test-1","ms":90.4,"durationMs":89,"results":["pass"]}
+{"step":"node-test-1","ms":93.6,"durationMs":92,"results":["pass"]}
+## compat-home 23:57:45
+{"check":"nice","setPriorityReadBack":10,"niceCommandNiceField":"10"}
+{"check":"process-group","parentAlive":false,"grandchildAlive":false}
+{"check":"sqlite-wal","journalMode":"wal","msPerCommit":{"NORMAL":0.01,"FULL":0.43},"otherProcessExit":0,"rows":600,"readsDuring":86,"readErrors":0}
+{"check":"fs.watch","latenciesMs":[0.1,0,0,0,0]}
+{"check":"fs.watch-recursive","latenciesMs":[0.1,0.1,0.1,0.1,0.1]}
+{"check":"realpath","js":true,"native":true}
+## compat-tmp 23:57:49
+{"check":"nice","setPriorityReadBack":10,"niceCommandNiceField":"10"}
+{"check":"process-group","parentAlive":false,"grandchildAlive":false}
+{"check":"sqlite-wal","journalMode":"wal","msPerCommit":{"NORMAL":0.02,"FULL":0.46},"otherProcessExit":0,"rows":600,"readsDuring":86,"readErrors":0}
+{"check":"fs.watch","latenciesMs":[0.1,0.1,0,0,0]}
+{"check":"fs.watch-recursive","latenciesMs":[0.1,0.1,0.1,0.1,0.1]}
+{"check":"realpath","js":true,"native":true}
+## cpu 23:57:52
+{"check":"one-thread","mbPerS":1796}
+{"check":"four-threads","mbPer5sWindows":[34606,33991,34025,33946,33986,33698,33945,33778,33914,33740,33890,33724,0]}
+## slice50-1 23:58:55
+eu-vm slice50-1: exit 0 wall 189441 ms;  Test Files 50 passed (50); Tests 197 passed (197); Duration 188.94s (tests 96%, import 3%, transform 1%);
+load: 4.40 3.77 1.64 1/121 10333
+## slice50-2 00:02:05
+eu-vm slice50-2: exit 0 wall 206286 ms;  Test Files 50 passed (50); Tests 197 passed (197); Duration 205.77s (tests 97%, import 2%, transform 1%);
+load: 3.94 5.63 2.95 1/124 18556
+## dsync-2 00:05:31
+eu-vm-2 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.0434882 s, 18.8 MB/s
+eu-vm-2 ~: 819200 bytes (819 kB, 800 KiB) copied, 0.0481195 s, 17.0 MB/s
+eu-vm-2 io-pressure: some avg10=0.01 avg60=0.71 avg300=0.90 total=8871723
+eu-vm-2 lazyfs: 
+eu-vm-2 load: 3.94 5.63 2.95 1/125 18574
+eu-vm-2 flushes: 0 flushes, 0 ms, 0 ms each
+eu-vm-2 cpu:  Intel(R) Xeon(R) E-2388G CPU @ 3.20GHz
+SUITE-DONE 00:05:31
+

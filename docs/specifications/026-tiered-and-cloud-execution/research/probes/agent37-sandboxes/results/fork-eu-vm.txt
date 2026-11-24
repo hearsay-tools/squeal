@@ -1,0 +1,3 @@
+fork sq026-eu-vm-fork: 0pw82zjcfb HTTP 201 55.052543 returned 55068 ms status running
+running at 55226 ms
+first exec with ~/squeal/node_modules at 55540 ms

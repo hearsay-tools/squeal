@@ -1,0 +1,90 @@
+== 8g96zbc4r3
+## dsync-1 23:57:10
+eu-perf-1 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.135018 s, 6.1 MB/s
+eu-perf-1 ~: 819200 bytes (819 kB, 800 KiB) copied, 0.102207 s, 8.0 MB/s
+eu-perf-1 io-pressure: some avg10=0.00 avg60=0.17 avg300=0.12 total=762545
+eu-perf-1 lazyfs: 
+eu-perf-1 load: 0.21 0.19 0.08 1/112 425
+eu-perf-1 flushes: 0 flushes, 0 ms, 0 ms each
+eu-perf-1 cpu:  Intel(R) Xeon(R) E-2388G CPU @ 3.20GHz
+## capacity 23:57:10
+eu-perf-1 capacity: exit 0 wall 2031 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 1.73s (tests 83%, transform 8%, import 8%, worker 1%);
+eu-perf-1 load: 0.21 0.19 0.08 1/112 551
+eu-perf-2 capacity: exit 0 wall 1834 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 1.53s (tests 81%, transform 9%, import 9%, worker 1%);
+eu-perf-2 load: 0.52 0.26 0.10 1/112 672
+## git 23:57:14
+eu-perf git: exit 0 wall 5255 ms;  Test Files 3 passed (3); Tests 27 passed (27); Duration 5.00s (tests 83%, transform 14%, import 3%);
+eu-perf load: 0.96 0.35 0.13 1/118 1244
+## driver-vitest 23:57:20
+{"step":"start","ms":304.5,"host":{"pid":1253,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}}
+{"step":"testFiles","ms":16.4,"count":2225}
+{"step":"warm","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":26.9,"affectedMs":7776,"closureMs":34.3,"runMs":388.1,"vitestMs":347,"totalMs":8226.7,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12018,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":41.9,"affectedMs":77.9,"closureMs":3.6,"runMs":331.9,"vitestMs":297,"totalMs":455.6,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12045,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":30.2,"affectedMs":59.3,"closureMs":3.5,"runMs":349.1,"vitestMs":303,"totalMs":442.5,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12002,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":34.5,"affectedMs":55.4,"closureMs":2.5,"runMs":384.1,"vitestMs":327,"totalMs":477,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12009,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":25.9,"affectedMs":54.4,"closureMs":2.4,"runMs":334.4,"vitestMs":299,"totalMs":417.4,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12030,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":33.2,"affectedMs":55.6,"closureMs":2.5,"runMs":302.5,"vitestMs":271,"totalMs":394.2,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":12033,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":40.7,"affectedMs":73.5,"closureMs":20.6,"runMs":1145.6,"vitestMs":1107,"totalMs":1282.1,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53876,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":29.3,"affectedMs":71.6,"closureMs":13.2,"runMs":1274,"vitestMs":1232,"totalMs":1389.2,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53941,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":46.2,"affectedMs":102.8,"closureMs":16.1,"runMs":1267.6,"vitestMs":1225,"totalMs":1433.8,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":53944,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":28.1,"affectedMs":104.9,"closureMs":2.4,"runMs":322.5,"vitestMs":293,"totalMs":458.1,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":10590,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":31.9,"affectedMs":78.6,"closureMs":1.1,"runMs":319.7,"vitestMs":280,"totalMs":431.4,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":10577,"coverageEvents":0,"coverageBytes":0,"coverageFiles":0}
+{"step":"project","project":""}
+## driver-vitest-coverage 23:57:35
+{"step":"start","ms":314.1,"host":{"pid":1589,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}}
+{"step":"testFiles","ms":16.8,"count":2225}
+{"step":"warm","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":23.9,"affectedMs":8170.5,"closureMs":36.6,"runMs":420.7,"vitestMs":369,"totalMs":8653.2,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14247,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":52.1,"affectedMs":78.2,"closureMs":4.3,"runMs":392,"vitestMs":336,"totalMs":526.9,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14258,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4568,"invalidateMs":42.3,"affectedMs":59.6,"closureMs":3.3,"runMs":371.7,"vitestMs":327,"totalMs":477.1,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14274,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":32.4,"affectedMs":58.8,"closureMs":3.2,"runMs":382.3,"vitestMs":332,"totalMs":477.2,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14251,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":27.3,"affectedMs":56.9,"closureMs":2.8,"runMs":404.5,"vitestMs":354,"totalMs":491.7,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14264,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-1","files":1,"expectedPaths":25,"gzipBytes":4572,"invalidateMs":37.7,"affectedMs":79,"closureMs":3.4,"runMs":427.7,"vitestMs":356,"totalMs":548.3,"refused":0,"proofPaths":25,"pass":16,"fail":0,"replyBytes":14246,"coverageEvents":1,"coverageBytes":1027547,"coverageFiles":1}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":84.3,"affectedMs":145.6,"closureMs":21,"runMs":1490.3,"vitestMs":1415,"totalMs":1743.4,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74774,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":42.4,"affectedMs":75.4,"closureMs":16.7,"runMs":1643.6,"vitestMs":1571,"totalMs":1779.8,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74811,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-10","files":10,"expectedPaths":51,"gzipBytes":19804,"invalidateMs":38.1,"affectedMs":83.9,"closureMs":15.1,"runMs":1499.2,"vitestMs":1443,"totalMs":1637.9,"refused":0,"proofPaths":52,"pass":72,"fail":0,"replyBytes":74766,"coverageEvents":1,"coverageBytes":1469065,"coverageFiles":10}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":41.5,"affectedMs":191.7,"closureMs":4.3,"runMs":525.1,"vitestMs":439,"totalMs":763,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":12828,"coverageEvents":1,"coverageBytes":1010671,"coverageFiles":1}
+{"step":"edit-src","files":1,"expectedPaths":25,"gzipBytes":1036,"invalidateMs":56.2,"affectedMs":131.1,"closureMs":1.3,"runMs":392.8,"vitestMs":338,"totalMs":581.6,"refused":0,"proofPaths":25,"pass":13,"fail":0,"replyBytes":12855,"coverageEvents":1,"coverageBytes":1010671,"coverageFiles":1}
+{"step":"project","project":""}
+## driver-nodetest 23:57:53
+nt-ready
+{"step":"start","ms":159.4}
+{"step":"testFiles","files":[{"project":"spawn","path":"test/cli.test.mjs"}]}
+{"step":"node-test-1","ms":123.9,"durationMs":120,"results":["pass"]}
+{"step":"node-test-1","ms":114.8,"durationMs":113,"results":["pass"]}
+{"step":"node-test-1","ms":113.4,"durationMs":112,"results":["pass"]}
+{"step":"node-test-1","ms":112.9,"durationMs":111,"results":["pass"]}
+## compat-home 23:57:54
+{"check":"nice","setPriorityReadBack":10,"niceCommandNiceField":"10"}
+{"check":"process-group","parentAlive":false,"grandchildAlive":false}
+{"check":"sqlite-wal","journalMode":"wal","msPerCommit":{"NORMAL":0.01,"FULL":0.65},"otherProcessExit":0,"rows":600,"readsDuring":135,"readErrors":0}
+{"check":"fs.watch","latenciesMs":[0.2,0.1,0.1,0.1,0.1]}
+{"check":"fs.watch-recursive","latenciesMs":[0.3,0.2,0.1,0.1,0.1]}
+{"check":"realpath","js":true,"native":true}
+## compat-tmp 23:57:58
+{"check":"nice","setPriorityReadBack":10,"niceCommandNiceField":"10"}
+{"check":"process-group","parentAlive":false,"grandchildAlive":false}
+{"check":"sqlite-wal","journalMode":"wal","msPerCommit":{"NORMAL":0.01,"FULL":0.37},"otherProcessExit":0,"rows":600,"readsDuring":85,"readErrors":0}
+{"check":"fs.watch","latenciesMs":[0.2,0.1,0.1,0.1,0.1]}
+{"check":"fs.watch-recursive","latenciesMs":[0.2,0.1,0.1,0.1,0.1]}
+{"check":"realpath","js":true,"native":true}
+## cpu 23:58:01
+{"check":"one-thread","mbPerS":1616}
+{"check":"four-threads","mbPer5sWindows":[23607,22981,29220,24290,27905,30511,29780,30784,32353,28980,32318,30753,0]}
+## slice50-1 23:59:04
+eu-perf slice50-1: exit 1 wall 223638 ms;  Test Files 1 failed | 49 passed (50); Tests 1 failed | 196 passed (197); Duration 223.06s (tests 96%, import 3%, transform 1%);
+ FAIL  test/scheduler/backlog-slots-overhead.test.ts > scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2) > 3. runs 300 files of about 50 ms at most 5.5 times a tier's daemon CPU per file, with fewer commits than files
+AssertionError: expected 21.21287 to be less than or equal to 21.2014
+load: 4.61 4.56 2.07 1/121 10320
+## slice50-2 00:02:48
+eu-perf slice50-2: exit 0 wall 224126 ms;  Test Files 50 passed (50); Tests 197 passed (197); Duration 223.52s (tests 97%, import 2%, transform 1%);
+load: 4.46 6.47 3.54 1/124 18549
+## dsync-2 00:06:32
+eu-perf-2 /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.0538004 s, 15.2 MB/s
+eu-perf-2 ~: 819200 bytes (819 kB, 800 KiB) copied, 0.0655077 s, 12.5 MB/s
+eu-perf-2 io-pressure: some avg10=0.00 avg60=0.83 avg300=1.07 total=10796643
+eu-perf-2 lazyfs: 
+eu-perf-2 load: 4.46 6.47 3.54 1/125 18567
+eu-perf-2 flushes: 0 flushes, 0 ms, 0 ms each
+eu-perf-2 cpu:  Intel(R) Xeon(R) E-2388G CPU @ 3.20GHz
+SUITE-DONE 00:06:32
+

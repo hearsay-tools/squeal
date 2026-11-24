@@ -1,0 +1,3 @@
+tcgutmnxqn new ssh ms: 1642 1651 1619; master up 1395 ms; over master ms: 272 274 286 302 280; this host load 25.08
+c0myhlo00m new ssh ms: 922 807 874; master up 753 ms; over master ms: 99 127 127 137 132; this host load 26.04
+8g96zbc4r3 new ssh ms: 824 739 756; master up 765 ms; over master ms: 114 141 137 141 135; this host load 26.51

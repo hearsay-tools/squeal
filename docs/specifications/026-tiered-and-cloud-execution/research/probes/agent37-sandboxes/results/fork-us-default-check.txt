@@ -1,0 +1,14 @@
+HTTP 200 21.451397
+git status lines: 0; head 62e4e3b56
+us-default-fork /tmp: 819200 bytes (819 kB, 800 KiB) copied, 0.00210303 s, 390 MB/s
+us-default-fork ~: 819200 bytes (819 kB, 800 KiB) copied, 0.0448259 s, 18.3 MB/s
+us-default-fork load: 0.00 0.00 0.00 0/0 0
+us-default-fork cpu:  unknown
+us-default-fork git: exit 0 wall 13666 ms;  Test Files 3 passed (3); Tests 27 passed (27); Duration 13.09s (tests 87%, transform 10%, import 2%);
+us-default-fork load: 0.00 0.00 0.00 0/0 0
+us-default-fork-1 capacity: exit 0 wall 2456 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 1.95s (tests 62%, transform 19%, import 16%, worker 3%);
+us-default-fork-1 load: 0.00 0.00 0.00 0/0 0
+us-default-fork-2 capacity: exit 0 wall 2440 ms;  Test Files 10 passed (10); Tests 72 passed (72); Duration 1.91s (tests 59%, transform 22%, import 17%, worker 2%);
+us-default-fork-2 load: 0.00 0.00 0.00 0/0 0
+FORK-CHECK-DONE
+exit 0

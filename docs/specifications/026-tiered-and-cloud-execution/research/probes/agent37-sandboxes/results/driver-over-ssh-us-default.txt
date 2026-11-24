@@ -1,0 +1,20 @@
+## tcgutmnxqn over-ssh load 22.75
+start 2947.8 
+testFiles 343.4 
+warm 32660.6 run 1904.1 vitest 1485 inv 234.3 aff 30238.2 clo 278.5 pass 16 fail 0
+edit-1 2194.1 run 1216.8 vitest 867 inv 292.4 aff 532.2 clo 152.2 pass 16 fail 0
+edit-1 2156.9 run 1313.3 vitest 962 inv 278.4 aff 419 clo 145.7 pass 16 fail 0
+edit-1 2359.5 run 1415.3 vitest 1060 inv 294.8 aff 501 clo 147.9 pass 16 fail 0
+edit-1 2048.4 run 1266 vitest 948 inv 259.8 aff 375.3 clo 146.6 pass 16 fail 0
+edit-1 2100 run 1231.1 vitest 906 inv 299.9 aff 426.5 clo 142.2 pass 16 fail 0
+edit-10 6354.5 run 5337.4 vitest 4943 inv 311.4 aff 471.5 clo 231.5 pass 72 fail 0
+edit-10 5584.7 run 4314.9 vitest 3939 inv 362.9 aff 695.4 clo 210 pass 72 fail 0
+edit-10 5446.6 run 4240.8 vitest 3821 inv 359.8 aff 611.7 clo 232.9 pass 72 fail 0
+edit-src 2926.5 run 1340.9 vitest 988 inv 317.6 aff 1124.3 clo 143.3 pass 13 fail 0
+edit-src 2741.7 run 1254.8 vitest 887 inv 369.7 aff 977.4 clo 139.7 pass 13 fail 0
+project  
+{"step":"node-test-1","ms":584.6,"durationMs":317,"results":["pass"]}
+{"step":"node-test-1","ms":576.4,"durationMs":314,"results":["pass"]}
+{"step":"node-test-1","ms":615.8,"durationMs":348,"results":["pass"]}
+{"step":"node-test-1","ms":696.2,"durationMs":430,"results":["pass"]}
+Exit request sent.
