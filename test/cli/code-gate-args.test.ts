@@ -178,9 +178,11 @@ describe("squeal --help (spec 020 D1)", () => {
       lines.indexOf("  squeal code [<path>...] [--changed | --told] [--json]"),
     );
     expect(lines[gate + 1]?.trim()).toBe(
-      "[--timeout <seconds>] [--parts <dir|file>...] [--exceptions <file>]",
+      "[--narrow] [--timeout <seconds>] [--parts <dir|file>...]",
     );
-    expect(lines[gate + 2]?.trim()).toBe("[--rerun-stored-failures] [--json]");
+    expect(lines[gate + 2]?.trim()).toBe(
+      "[--exceptions <file>] [--rerun-stored-failures] [--json]",
+    );
     expect(lines[gate + 3]?.trim()).toMatch(/^Runs tests, with no daemon,/);
   });
 });
