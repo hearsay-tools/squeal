@@ -8,11 +8,13 @@ import {
   createDaemonRemote,
   type DaemonRemote,
 } from "../../../src/core/runner-host/remote/daemon-lane.js";
+import type { DiskProbe } from "../../../src/core/runner-host/remote/disk-check.js";
 import { readMachines } from "../../../src/core/runner-host/remote/machines-store.js";
 import {
   type RemoteRunner,
   remoteSettingsPath,
 } from "../../../src/core/runner-host/remote/settings.js";
+import type { SshTarget } from "../../../src/core/runner-host/remote/ssh.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { POLICY, REPORT } from "../fake-channel.js";
@@ -33,7 +35,18 @@ const scratch = mkdtempSync(join(tmpdir(), "squeal-machine-share-"));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 let n = 0;
-function machine(entry: Record<string, unknown> = {}) {
+
+/** A disk probe's answer: every write at `ms`. */
+const disk = (ms: number): DiskProbe => ({ medianMs: ms, samplesMs: Array(20).fill(ms) });
+
+interface MachineExtra {
+  /** What `acquire` prints beside its id and destination. Default: sleeps on idle. */
+  readonly answer?: Record<string, unknown>;
+  /** Each disk probe's answer in turn, the last repeating. Default: a healthy disk. */
+  readonly disks?: readonly DiskProbe[];
+}
+
+function machine(entry: Record<string, unknown> = {}, extra: MachineExtra = {}) {
   const dir = join(scratch, `m${++n}`);
   const root = join(dir, "repo");
   const remoteRoot = join(dir, "remote", "root");
@@ -56,7 +69,13 @@ ${body}`,
     );
     return [process.execPath, path];
   };
-  const answer = { v: 1, id: "lan", destination: "dev@lan-box", sleepOnIdle: true };
+  const answer = {
+    v: 1,
+    id: "lan",
+    destination: "dev@lan-box",
+    sleepOnIdle: true,
+    ...extra.answer,
+  };
   const env = {
     XDG_CONFIG_HOME: join(dir, "xdg"),
     XDG_STATE_HOME: join(dir, "state"),
@@ -97,9 +116,17 @@ ${body}`,
     },
     closed,
   );
-  const startHost = (options: RemoteHostOptions) => {
+  const startHost = async (options: RemoteHostOptions) => {
     started.push(options);
+    // As `startRemoteHost` does: the disk check after the Node check, before the host starts.
+    await options.diskCheck?.();
     return serve(options);
+  };
+  const probes: string[] = [];
+  const disks = extra.disks ?? [disk(0.5)];
+  const probeDisk = async (target: SshTarget) => {
+    probes.push(target.destination);
+    return disks[Math.min(probes.length, disks.length) - 1] as DiskProbe;
   };
   const notes: [string, string][] = [];
   const remote = createDaemonRemote({
@@ -113,6 +140,7 @@ ${body}`,
     log: () => {},
     env,
     startHost,
+    probeDisk,
   }) as DaemonRemote;
   expect(remote).not.toBeNull();
   const local = (runner: RemoteRunner): RunnerAdapter =>
@@ -158,6 +186,7 @@ ${body}`,
     env,
     notes,
     started,
+    probes,
     closed,
     remoteRuns,
     localRuns,
@@ -312,5 +341,85 @@ describe("an idle machine's sleep (row 026-11, spec 026 D7.3)", () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     expect(m.calls()).toEqual(["acquire"]);
     expect(m.closed).toEqual([]);
+  });
+});
+
+describe("the connect-time disk check (row 026-13, spec 026 D11)", () => {
+  const diskNote = (m: ReturnType<typeof machine>) =>
+    m.notes.findLast(([topic]) => topic === "remote-lane:disk")?.[1];
+  const laneNote = (m: ReturnType<typeof machine>) =>
+    m.notes.findLast(([topic]) => topic === "remote-lane")?.[1] ?? "";
+
+  it("measures a healthy disk once per incarnation for every lane, and says nothing", async () => {
+    const m = machine();
+    await connectAll(m);
+    expect(m.probes).toEqual(["dev@lan-box"]);
+    expect(diskNote(m)).toBeUndefined();
+    // A sleep ends the incarnation: the wake measures again, once for the three lanes.
+    expect((await m.remote.sleepRemote()).kind).toBe("slept");
+    await connectAll(m);
+    expect(m.probes).toHaveLength(2);
+  });
+
+  it("measures nothing when the check is off", async () => {
+    const m = machine({ diskCheck: { enabled: false } }, { disks: [disk(50)] });
+    await connectAll(m);
+    expect(m.probes).toEqual([]);
+    expect(diskNote(m)).toBeUndefined();
+  });
+
+  it("warns of a slow disk in status and goes on under onSlowDisk warn", async () => {
+    const m = machine({}, { disks: [disk(34.4)] });
+    await connectAll(m);
+    expect(m.probes).toHaveLength(1);
+    expect(diskNote(m)).toBe(
+      'remote cmd:lan: degraded disk: 34 ms/sync, limit 10 ms; runs go there anyway (onSlowDisk "warn")',
+    );
+    m.remoteRuns.length = 0;
+    m.localRuns.length = 0;
+    await m.runAll();
+    expect(m.remoteRuns.sort()).toEqual(["node-test", "pytest", "vitest"]);
+    expect(m.localRuns).toEqual([]);
+  });
+
+  it("refuses a slow disk under onSlowDisk refuse: whenLost runs here, and no host starts", async () => {
+    const m = machine(
+      { diskCheck: { onSlowDisk: "refuse", maxWriteMs: 5 } },
+      { answer: { sleepOnIdle: false }, disks: [disk(12.26)] },
+    );
+    m.lanes[0]?.run([refOf("vitest")], m.background());
+    await until(() => /refused/.test(laneNote(m)));
+    expect(laneNote(m)).toBe(
+      "remote command refused: degraded disk: 12 ms/sync, limit 5 ms; running here",
+    );
+    expect(diskNote(m)).toBe(
+      'remote cmd:lan: degraded disk: 12 ms/sync, limit 5 ms; refused (onSlowDisk "refuse")',
+    );
+    // An always-on machine is not replaced: one acquire, kept.
+    expect(m.calls()).toEqual(["acquire"]);
+    m.remoteRuns.length = 0;
+    await m.lanes[0]?.run([refOf("vitest")], m.background());
+    expect(m.remoteRuns).toEqual([]);
+    expect(m.localRuns).toContain("vitest");
+  });
+
+  it("replaces a fresh machine that sleeps on idle once, and goes there when the new disk is healthy", async () => {
+    const m = machine({ diskCheck: { onSlowDisk: "refuse" } }, { disks: [disk(40), disk(0.4)] });
+    await connectAll(m);
+    expect(m.calls()).toEqual(["acquire", "release", "acquire"]);
+    expect(m.probes).toHaveLength(2);
+    expect(diskNote(m)).toBe("remote cmd:lan: disk within its limit again");
+    m.remoteRuns.length = 0;
+    await m.runAll();
+    expect(m.remoteRuns.sort()).toEqual(["node-test", "pytest", "vitest"]);
+  });
+
+  it("refuses once the fresh machine is slow too, and replaces it no more", async () => {
+    const m = machine({ diskCheck: { onSlowDisk: "refuse" } }, { disks: [disk(40)] });
+    m.lanes[0]?.run([refOf("vitest")], m.background());
+    await until(() => /refused/.test(laneNote(m)));
+    expect(laneNote(m)).toMatch(/^remote command refused: degraded disk: 40 ms\/sync, limit 10 ms/);
+    expect(m.calls()).toEqual(["acquire", "release", "acquire"]);
+    expect(readMachines(m.env).machines).toHaveLength(1);
   });
 });

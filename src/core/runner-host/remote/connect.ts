@@ -94,6 +94,11 @@ export interface RemoteHostOptions {
   readonly deadlines?: Partial<HostDeadlines & RemoteDeadlines>;
   /** Spec 021 D19.1: `requires.commands`, looked for on the remote at each connect. Absent: none. */
   readonly commands?: readonly string[];
+  /**
+   * Spec 026 D11: the machine's disk check, after the Node check and before
+   * the host starts; rejects to refuse the machine. Absent: none.
+   */
+  readonly diskCheck?: () => Promise<void>;
 }
 
 /** A connect the remote refuses, as for a missing command (D19.1): the lane names it a refusal, not a loss. */
@@ -151,6 +156,7 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
   log(
     `${target.destination}: Node ${ensured.check.node}; Squeal ${options.version} ${ensured.copied ? "copied" : "present"}`,
   );
+  await options.diskCheck?.();
   const missing = await missingThere(target, places, options.commands ?? [], deadlines.sshMs);
   if (missing.length > 0) throw new RemoteRefusal(missingText(missing, "there"));
   const tree = treeDir(places, root);

@@ -177,6 +177,27 @@ describe("remote.json under spec 026 D6.4 (row 026-10)", () => {
     });
   });
 
+  it("defaults onSlowDisk to warn for ssh and command, refuse for agent37, and keeps an explicit one (D11.2)", () => {
+    const loaded = settings({
+      repositories: {
+        "/ssh": { target: "box" },
+        "/cmd": { provider: "command", providerConfig: { acquire: ["/bin/lan-up"] } },
+        "/a37": { provider: "agent37" },
+        "/a37-warn": { provider: "agent37", diskCheck: { onSlowDisk: "warn", maxWriteMs: 20 } },
+        "/a37-off": { provider: "agent37", diskCheck: { enabled: false } },
+        "/ssh-refuse": { target: "box", diskCheck: { onSlowDisk: "refuse" } },
+      },
+    });
+    expect(loaded.problems).toEqual([]);
+    const check = (key: string) => loaded.repositories[key]?.diskCheck;
+    expect(check("/ssh")).toEqual({ enabled: true, maxWriteMs: 10, onSlowDisk: "warn" });
+    expect(check("/cmd")).toEqual({ enabled: true, maxWriteMs: 10, onSlowDisk: "warn" });
+    expect(check("/a37")).toEqual({ enabled: true, maxWriteMs: 10, onSlowDisk: "refuse" });
+    expect(check("/a37-warn")).toEqual({ enabled: true, maxWriteMs: 20, onSlowDisk: "warn" });
+    expect(check("/a37-off")).toEqual({ enabled: false, maxWriteMs: 10, onSlowDisk: "refuse" });
+    expect(check("/ssh-refuse")).toEqual({ enabled: true, maxWriteMs: 10, onSlowDisk: "refuse" });
+  });
+
   it("passes ssh args and a providerConfig target to the ssh provider", () => {
     const lane = settings({
       repositories: { "/r": { providerConfig: { target: "me@host", args: ["-p", "2222"] } } },

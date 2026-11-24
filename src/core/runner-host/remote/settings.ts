@@ -212,7 +212,7 @@ function laneOf(entry: unknown): { lane: RemoteLane } | { problem: string } {
   if ("problem" in machine) return machine;
   const tiers = tiersOf(entry);
   if ("problem" in tiers) return tiers;
-  const lifecycle = lifecycleOf(entry);
+  const lifecycle = lifecycleOf(entry, machine.provider);
   if ("problem" in lifecycle) return lifecycle;
   return { lane: { ...machine, ...tiers, ...lifecycle } };
 }
@@ -285,12 +285,13 @@ function tiersOf(
 /** D6.4, 021 D13: idle sleep, the disk check, and what happens when the remote is lost. */
 function lifecycleOf(
   entry: Entry,
+  provider: string,
 ): Made<Pick<RemoteLane, "idleSleepMinutes" | "diskCheck" | "whenLost">> {
   const idle = entry.idleSleepMinutes;
   if (idle !== undefined && !(typeof idle === "number" && Number.isFinite(idle) && idle >= 0)) {
     return { problem: '"idleSleepMinutes" must be a number of 0 or more' };
   }
-  const diskCheck = diskCheckOf(entry.diskCheck);
+  const diskCheck = diskCheckOf(entry.diskCheck, provider);
   if (typeof diskCheck === "string") return { problem: diskCheck };
   const whenLost = oneOf(entry.whenLost, ["local", "not-run"], LANE_DEFAULTS.whenLost);
   if (whenLost === null) return { problem: '"whenLost" must be "local" or "not-run"' };
@@ -301,15 +302,29 @@ function lifecycleOf(
   };
 }
 
-/** `diskCheck` with its defaults filled in, or why it is not one. */
-function diskCheckOf(value: unknown): DiskCheck | string {
-  if (value === undefined) return LANE_DEFAULTS.diskCheck;
+/**
+ * Spec 026 D11.2: the providers whose machines are managed cloud instances,
+ * which a slow disk refuses by default: another instance is a fresh acquire away.
+ */
+export const MANAGED_PROVIDERS: readonly string[] = ["agent37"];
+
+/** D11.2: the disk check's defaults on `provider`: a managed one refuses a slow disk, others warn. */
+export function diskCheckDefaults(provider: string): DiskCheck {
+  return MANAGED_PROVIDERS.includes(provider)
+    ? { ...LANE_DEFAULTS.diskCheck, onSlowDisk: "refuse" }
+    : LANE_DEFAULTS.diskCheck;
+}
+
+/** `diskCheck` with the defaults of `provider` filled in, or why it is not one. */
+function diskCheckOf(value: unknown, provider: string): DiskCheck | string {
+  const defaults = diskCheckDefaults(provider);
+  if (value === undefined) return defaults;
   if (!isRecord(value)) return '"diskCheck" must be an object';
   const unknown = Object.keys(value).find(
     (k) => !["enabled", "maxWriteMs", "onSlowDisk"].includes(k),
   );
   if (unknown !== undefined) return `"diskCheck" has unknown key "${unknown}"`;
-  const check = { ...LANE_DEFAULTS.diskCheck, ...value };
+  const check = { ...defaults, ...value };
   if (typeof check.enabled !== "boolean") return '"diskCheck.enabled" must be true or false';
   if (!(typeof check.maxWriteMs === "number" && check.maxWriteMs > 0)) {
     return '"diskCheck.maxWriteMs" must be a positive number';

@@ -1,6 +1,8 @@
 import type { RemoteSleepOutcome } from "../../types/daemon.js";
+import { RemoteRefusal } from "./connect.js";
+import { type DiskProbe, judgeDisk } from "./disk-check.js";
 import type { LaneSleep } from "./lane.js";
-import { recordMachine, updateMachine } from "./machines-store.js";
+import { forgetMachine, recordMachine, updateMachine } from "./machines-store.js";
 import { type MachineRequest, type RemoteMachine, recordOf } from "./provider.js";
 import { providerOf } from "./providers/index.js";
 import { idleSleepMinutesOf, type RemoteLane } from "./settings.js";
@@ -36,6 +38,20 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  * Git state (`gitCurrent`). Before a lane splits a tier, `refreshGit` reads
  * that state here; only when it moved does it reach the machine, as
  * `serial` work, so the exit waits for it or refuses it.
+ *
+ * Review 0.1.619-r2 N1: on such a machine a remote run holds a lease
+ * (`gitLease`) for its time there, and a refresh that reaches the machine
+ * waits until no run holds one, while runs that ask meanwhile wait for the
+ * refresh: no test reads a `.git` that moves under it. Runs share the
+ * lease, and a machine that keeps no `.git` current gives it at once.
+ *
+ * Spec 026 D11 (row 026-13): before the first host of each incarnation
+ * (an acquire, or a wake after a sleep or a loss) starts, `checkDisk`
+ * measures the machine's disk once for every lane. A degraded disk is
+ * named in the log and status (`note`); `onSlowDisk: "warn"` goes on,
+ * `"refuse"` refuses the machine. A machine acquired by this daemon that
+ * sleeps on idle (a managed cloud instance) is replaced once first: it is
+ * released as removed, and the next connect acquires a fresh one.
  */
 
 /** What the machine asks of each lane on it: whether it may sleep, and its sleep (`RemoteLaneRunner`). */
@@ -72,6 +88,17 @@ export interface MachineShare {
    * unrun, once `signal` aborted or the daemon's exit began.
    */
   refreshGit(signal?: AbortSignal): Promise<void>;
+  /**
+   * N1: a remote run's lease on the machine's `.git`, held until the
+   * returned call; waits while a refresh reaches the machine.
+   */
+  gitLease(): Promise<() => void>;
+  /**
+   * D11: the disk check of `m` with `probe`, once per incarnation of the
+   * machine. Rejects with a `RemoteRefusal` for a refused slow disk; a
+   * `FreshMachine` when the machine was released to be acquired again.
+   */
+  checkDisk(m: RemoteMachine, probe: () => Promise<DiskProbe>): Promise<void>;
   /** A lane lost its channel: the machine may have slept by itself, so the next reach wakes it. */
   lost(): void;
   /** `lane` takes part in the machine's sleep until the returned call. */
@@ -87,6 +114,8 @@ export interface ShareOptions {
   readonly request: MachineRequest;
   readonly env?: NodeJS.ProcessEnv;
   readonly now?: () => number;
+  /** D11: the machine's disk status line (`degraded disk: ...`). Absent: the log alone. */
+  readonly note?: (text: string) => void;
 }
 
 /** How long the shared connection stays after its last channel on a machine with no idle sleep. */
@@ -97,6 +126,9 @@ class Busy extends Error {}
 
 /** Work refused because its lane closed or the daemon's exit began. */
 export class MachineEnding extends Error {}
+
+/** D11: a slow disk refused a machine released to be replaced: its lane connects once more. */
+export class FreshMachine extends RemoteRefusal {}
 
 export function shareMachine(options: ShareOptions): MachineShare {
   const { lane, request, env } = options;
@@ -117,6 +149,17 @@ export function shareMachine(options: ShareOptions): MachineShare {
   let queue: Promise<unknown> = Promise.resolve();
   /** A sleep in flight, which the daemon's exit waits for. */
   let sleeping: Promise<unknown> = Promise.resolve();
+  /** D11: each acquire or wake starts an incarnation; the disk check passed for one. */
+  let incarnation = 0;
+  let diskPassed = -1;
+  /** The incarnation acquired by this daemon, which a slow disk may replace once. */
+  let acquiredAt = -1;
+  let replaced = false;
+  let degraded = false;
+  /** N1: remote runs holding the Git lease, and the refresh that waits for none or writes now. */
+  let leased = 0;
+  let quiet: (() => void)[] = [];
+  let gitWriting: Promise<void> | null = null;
   const refused = () => new MachineEnding("the daemon's exit released the remote machine");
 
   const track = (write: () => void) => {
@@ -200,10 +243,12 @@ export function shareMachine(options: ShareOptions): MachineShare {
       const acquired = await provider.acquire(request, lane.providerConfig);
       // Acquired during the exit too: recorded, and `release` waits for this and releases it.
       machine = acquired;
+      acquiredAt = ++incarnation;
       track(() => recordMachine(recordOf(acquired, request, now()), env));
       if (released) throw refused();
     } else if (!awake) {
       await machine.wake();
+      incarnation++;
       if (released) throw refused();
       track(() => updateMachine(key, { status: "awake", lastUsedAt: now() }, env));
     }
@@ -223,6 +268,78 @@ export function shareMachine(options: ShareOptions): MachineShare {
     const run = queue.then(turn, turn);
     queue = run.catch(() => {});
     return run;
+  };
+
+  /** N1: resolves once no remote run holds the Git lease, or `signal` aborted. */
+  const leaseFree = (signal?: AbortSignal): Promise<void> =>
+    new Promise((resolve) => {
+      if (leased === 0 || signal?.aborted === true) return resolve();
+      quiet.push(resolve);
+      signal?.addEventListener("abort", () => resolve(), { once: true });
+    });
+
+  /** N1: `m`'s `.git` brought to the worktree's Git state once no run holds the lease. */
+  const writeGit = async (m: RemoteMachine, signal?: AbortSignal) => {
+    if (!awake || machine !== m) return;
+    let open = () => {};
+    gitWriting = new Promise((resolve) => {
+      open = resolve;
+    });
+    try {
+      await leaseFree(signal);
+      if (awake && machine === m && signal?.aborted !== true) await m.syncGit?.(target(m), signal);
+    } finally {
+      gitWriting = null;
+      open();
+    }
+  };
+
+  /** D11: the line of a slow disk in status; a healthy one after it clears the line. */
+  const diskNote = (m: RemoteMachine, text: string | null) => {
+    if (text === null && !degraded) return;
+    degraded = text !== null;
+    options.note?.(`remote ${m.id}: ${text ?? "disk within its limit again"}`);
+  };
+  const checkDisk = async (m: RemoteMachine, probe: () => Promise<DiskProbe>) => {
+    const at = incarnation;
+    if (diskPassed === at && machine === m) return;
+    const verdict = await judgeDisk(lane.diskCheck, probe);
+    if (verdict.kind === "unmeasured") {
+      // Not a verdict on the disk: the host's start says what is wrong with the machine.
+      request.log(`remote machine ${m.id}: disk not measured: ${verdict.why}`);
+      return;
+    }
+    if (verdict.kind !== "slow") {
+      if (verdict.kind === "healthy") {
+        request.log(`remote machine ${m.id}: disk ${verdict.probe.medianMs.toFixed(2)} ms/sync`);
+        diskNote(m, null);
+      }
+      diskPassed = at;
+      return;
+    }
+    request.log(`remote machine ${m.id}: ${verdict.text}`);
+    if (lane.diskCheck.onSlowDisk === "warn") {
+      diskNote(m, `${verdict.text}; runs go there anyway (onSlowDisk "warn")`);
+      diskPassed = at;
+      return;
+    }
+    const fresh = acquiredAt === at && m.capabilities.sleepOnIdle && !replaced;
+    if (fresh && machine === m && !released) {
+      replaced = true;
+      diskNote(m, `${verdict.text}; acquiring a fresh machine instead`);
+      machine = null;
+      awake = false;
+      disarm();
+      const shared = socket(m);
+      if (shared !== null) await closeMaster(m.ssh, shared);
+      await m.release("worktree-removed").catch((error: unknown) => {
+        request.log(`remote machine ${m.id} not released: ${String(error)}`);
+      });
+      track(() => forgetMachine(key, env));
+      throw new FreshMachine(verdict.text);
+    }
+    diskNote(m, `${verdict.text}; refused (onSlowDisk "refuse")`);
+    throw new RemoteRefusal(verdict.text);
   };
 
   /** Every work in flight on the machine ended, then the connection closed and the machine released. */
@@ -270,10 +387,25 @@ export function shareMachine(options: ShareOptions): MachineShare {
       // No SSH while the worktree's Git state is the one last found there; the read here always.
       if (await m.syncGit(null, signal)) return;
       if (!awake || released || signal?.aborted === true) return;
-      await serial(async () => {
-        if (awake && machine === m) await m.syncGit?.(target(m), signal);
-      }, signal);
+      await serial(() => writeGit(m, signal), signal);
     },
+    async gitLease() {
+      // A machine that keeps no `.git` current: no lease, so its runs never wait on one another.
+      if (machine?.syncGit === undefined) return () => {};
+      while (gitWriting !== null) await gitWriting;
+      leased++;
+      let held = true;
+      return () => {
+        if (!held) return;
+        held = false;
+        leased--;
+        if (leased > 0) return;
+        const waiting = quiet;
+        quiet = [];
+        for (const resolve of waiting) resolve();
+      };
+    },
+    checkDisk,
     awake: () => awake,
     activity() {
       last = now();

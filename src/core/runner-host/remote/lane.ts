@@ -69,6 +69,7 @@ import type { RemoteRunReply } from "./tree-wire.js";
  * Review 0.1.619 B3: before a tier that may go remote is split, the lane
  * asks `refreshRepository`, so `hasGitRepository` answers for the
  * worktree's Git state now; the call is busy for a sleep, like a planning call.
+ * Review 0.1.619-r2 N1: each remote run holds `gitLease` while it is there.
  */
 
 export interface RemoteLaneOptions {
@@ -105,6 +106,12 @@ export interface RemoteLaneOptions {
    * `signal` aborts when the lane closes. Absent: nothing to refresh.
    */
   readonly refreshRepository?: (signal: AbortSignal) => Promise<void>;
+  /**
+   * Review 0.1.619-r2 N1: a lease on the machine's `.git` for the time a
+   * run is there, which no refresh of another lane breaks; the returned
+   * call ends it. Absent: none.
+   */
+  readonly gitLease?: () => Promise<() => void>;
   /** The daemon's exit began: no planning call falls back to the runner here. Absent: never. */
   readonly ending?: () => boolean;
   /** Spec 021 D19.2: test-file globs that always run here. Absent: none. */
@@ -141,6 +148,9 @@ export interface RemoteLaneRunner extends RunnerAdapter {
 const BACKOFF_MS = [30_000, 60_000, 120_000, 300_000, 600_000];
 
 const NOTHING: InvalidateResult = { recreatedProjects: [] };
+
+/** No lease to hold: a machine that keeps no `.git` current. */
+const NO_LEASE: Promise<() => void> = Promise.resolve(() => {});
 
 /** How many runs in a row may come after their grant went back before the remote counts as lost. */
 const LATE_RUNS = 3;
@@ -345,7 +355,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         down(unequal.join("; "), true, host);
         return "refused";
       }
-      const reply = await admittedRun(host, testFiles, run, inputs);
+      const end = await (options.gitLease?.() ?? NO_LEASE);
+      const reply = await admittedRun(host, testFiles, run, inputs).finally(end);
       if ("lost" in reply || "cancelled" in reply) return reply;
       if (runnerHostGone(host.adapter)) {
         down(reply.failure ?? "the host ended", false);

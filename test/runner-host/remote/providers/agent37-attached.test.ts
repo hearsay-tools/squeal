@@ -3,17 +3,24 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
-import { treeDir } from "../../../../src/core/runner-host/remote/connect.js";
+import type { HostedAdapter } from "../../../../src/core/runner-host/host.js";
+import {
+  type RemoteHost,
+  type RemoteHostOptions,
+  remoteHostOver,
+  treeDir,
+} from "../../../../src/core/runner-host/remote/connect.js";
 import {
   createDaemonRemote,
   type DaemonRemote,
 } from "../../../../src/core/runner-host/remote/daemon-lane.js";
 import type { RemoteLaneRunner } from "../../../../src/core/runner-host/remote/lane.js";
 import { remoteSettingsPath } from "../../../../src/core/runner-host/remote/settings.js";
+import { createTreeHost } from "../../../../src/core/runner-host/remote/tree-host.js";
 import type { AbsolutePath } from "../../../../src/core/types/common.js";
 import { DEFAULT_POLICY, type Policy } from "../../../../src/core/types/policy.js";
 import type { RunOptions } from "../../../../src/core/types/runner.js";
-import { POLICY, REPORT } from "../../fake-channel.js";
+import { inProcessHost, POLICY, REPORT } from "../../fake-channel.js";
 import { until } from "../lane-fixture.js";
 import { fake, refOf, servedHosts, VERSION } from "../share-fixture.js";
 import { fakeSshAt, mockAgent37Api } from "./agent37-api-mock.js";
@@ -42,7 +49,33 @@ const edit = (): RunOptions => ({
   lane: "vitest",
 });
 
-async function attached() {
+/**
+ * As `servedHosts`, but every host served here shares one tree host, as
+ * hosts in one remote tree share its run directories: two in this one
+ * process would otherwise remove each other's live run's (their names
+ * carry this process's id).
+ */
+function oneTreeHosts(
+  root: string,
+  remoteRoot: string,
+  run: HostedAdapter["run"],
+): (options: RemoteHostOptions) => Promise<RemoteHost> {
+  const tree = createTreeHost(remoteRoot, () => {});
+  return async (options) => {
+    const served = inProcessHost(async () => fake(options.runner, run), VERSION, { tree });
+    onTestFinished(() => served.channel.kill());
+    return remoteHostOver(served.channel, "v-test", {
+      target: options.target,
+      version: VERSION,
+      root,
+      runner: options.runner,
+      options: options.options,
+      policy: options.policy,
+    });
+  };
+}
+
+async function attached(second = false) {
   const dir = join(scratch, `d${++n}`);
   const root = join(dir, "repo");
   for (const sub of ["src", "test"]) mkdirSync(join(root, sub), { recursive: true });
@@ -87,6 +120,9 @@ async function attached() {
   );
   /** Each remote run: its files, and the commit and tags its tree's `.git` held then. */
   const remoteRuns: { files: string; head: string; tags: string }[] = [];
+  /** Each remote run's files and the commit its tree's `.git` held as it ended. */
+  const ends: { files: string; head: string }[] = [];
+  let hold: Promise<void> | null = null;
   const localRuns: string[] = [];
   const logs: string[] = [];
   const notes: [string, string][] = [];
@@ -98,6 +134,13 @@ async function attached() {
     execFileSync("git", ["-C", remoteRoot, ...args])
       .toString()
       .trim();
+  const run: HostedAdapter["run"] = async (files) => {
+    const names = files.map((f) => f.path).join(",");
+    remoteRuns.push({ files: names, head: there("rev-parse", "HEAD"), tags: there("tag") });
+    if (hold !== null) await hold;
+    ends.push({ files: names, head: there("rev-parse", "HEAD") });
+    return { ...REPORT, completedFiles: [...files] };
+  };
   const remote = createDaemonRemote({
     root: real,
     commonDir: join(real, ".git") as AbsolutePath,
@@ -108,14 +151,9 @@ async function attached() {
     lastNote: (topic) => notes.findLast(([t]) => t === topic)?.[1],
     log: (line) => logs.push(line),
     env,
-    startHost: servedHosts(real, remoteRoot, () => async (files) => {
-      remoteRuns.push({
-        files: files.map((f) => f.path).join(","),
-        head: there("rev-parse", "HEAD"),
-        tags: there("tag"),
-      });
-      return { ...REPORT, completedFiles: [...files] };
-    }),
+    startHost: second
+      ? oneTreeHosts(real, remoteRoot, run)
+      : servedHosts(real, remoteRoot, () => run),
   }) as DaemonRemote;
   const here = fake("vitest", async (files) => {
     localRuns.push(files.map((f) => f.path).join(","));
@@ -127,17 +165,42 @@ async function attached() {
     tiers: ["edit", "background"],
     start: { options: { childEnv: {} }, policy: () => POLICY },
   }) as unknown as RemoteLaneRunner;
+  // Review 0.1.619-r2 N1: a second lane on the same machine, as a slow lane's would be.
+  const other = second
+    ? (remote.wrap({
+        runner: "vitest",
+        name: "vitest other",
+        local: here,
+        tiers: ["edit", "background"],
+        start: { options: { childEnv: {} }, policy: () => POLICY },
+      }) as unknown as RemoteLaneRunner)
+    : null;
   onTestFinished(async () => {
-    await lane.close();
+    await Promise.all([lane.close(), other?.close()]);
     await remote.release();
   });
-  await until(() => / go there/.test(notes.findLast(([t]) => t === "remote-lane")?.[1] ?? ""));
+  const goes = (topic: string) => / go there/.test(notes.findLast(([t]) => t === topic)?.[1] ?? "");
+  await until(() => goes("remote-lane") && (other === null || goes("remote-lane:vitest other")));
   const fakeSsh = join(ssh.bin, "ssh");
   const working = readFileSync(fakeSsh, "utf8");
   return {
     lane,
+    other,
     git,
+    there,
     remoteRuns,
+    ends,
+    /** Remote runs wait from now until the returned call. */
+    hold: () => {
+      let release = () => {};
+      hold = new Promise((resolve) => {
+        release = () => {
+          hold = null;
+          resolve();
+        };
+      });
+      return release;
+    },
     localRuns,
     logs,
     sshCalls: () => ssh.argv().length,
@@ -199,5 +262,44 @@ describe("an attached Agent37 lane and the worktree's Git state (review 0.1.619 
     await a.lane.run([REF, GIT], edit());
     expect(a.sshCalls()).toBe(calls);
     expect(a.localRuns).toEqual([GIT.path]);
+  });
+});
+
+describe("two lanes on one Agent37 machine and its Git state (review 0.1.619-r2 N1)", () => {
+  it("keeps a run's .git stable on one lane while another lane's refresh waits for it", async () => {
+    const a = await attached(true);
+    const first = a.git("rev-parse", "HEAD");
+    const release = a.hold();
+    const running = a.lane.run([REF, GIT], edit());
+    await until(() => a.remoteRuns.length === 1);
+    a.git("commit", "-q", "--allow-empty", "-m", "second");
+    a.git("tag", "v2");
+    const second = a.git("rev-parse", "HEAD");
+    // The other lane sees the commit: its split asks for a refresh, which must wait.
+    const other = a.other?.run([REF, GIT], edit());
+    const deadline = Date.now() + 1_500;
+    while (Date.now() < deadline && a.remoteRuns.length === 1) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    expect(a.remoteRuns).toHaveLength(1);
+    expect(a.there("rev-parse", "HEAD")).toBe(first);
+    expect(a.there("tag")).toBe("");
+    release();
+    await Promise.all([running, other]);
+    // The held run ended on the Git state it started on; the other then ran on the new one.
+    expect(a.ends[0]).toEqual({ files: `${REF.path},${GIT.path}`, head: first });
+    expect(a.remoteRuns[1]).toEqual({ files: `${REF.path},${GIT.path}`, head: second, tags: "v2" });
+    expect(a.localRuns).toEqual([]);
+  });
+
+  it("lets runs on two lanes share the machine at once while its Git state stands", async () => {
+    const a = await attached(true);
+    const release = a.hold();
+    const both = Promise.all([a.lane.run([REF], edit()), a.other?.run([GIT], edit())]);
+    // Neither waits for the other: both are on the machine together.
+    await until(() => a.remoteRuns.length === 2);
+    release();
+    await both;
+    expect(a.ends).toHaveLength(2);
   });
 });

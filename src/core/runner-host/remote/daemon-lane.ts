@@ -11,9 +11,10 @@ import type { RunnerHostLaunch } from "../channel.js";
 import type { HostAdapterOptions, HostPolicy } from "../protocol.js";
 import { hostedOptions } from "../vitest-host.js";
 import { startRemoteHost } from "./connect.js";
+import { probeDisk } from "./disk-check.js";
 import { withRemoteLane } from "./lane.js";
 import { tiersText } from "./lane-tiers.js";
-import { MachineEnding, type MachineShare, shareMachine } from "./machine-share.js";
+import { FreshMachine, MachineEnding, type MachineShare, shareMachine } from "./machine-share.js";
 import {
   laneLabel,
   loadRemoteSettings,
@@ -69,6 +70,8 @@ export const REMOTE_TOPIC = "remote-lane";
 export const REMOTE_SETTINGS_TOPIC = "remote-settings";
 /** The note topic of the files a remote failed as not a Git repository (D19.2). */
 export const REMOTE_REPOSITORY_TOPIC = "remote-lane:repository";
+/** Spec 026 D11: the note topic of the machine's degraded disk. */
+export const REMOTE_DISK_TOPIC = "remote-lane:disk";
 
 export interface DaemonRemoteOptions {
   readonly root: AbsolutePath;
@@ -84,6 +87,8 @@ export interface DaemonRemoteOptions {
   readonly env?: NodeJS.ProcessEnv;
   /** Starts a remote host on the machine; absent, `startRemoteHost`. For tests. */
   readonly startHost?: typeof startRemoteHost;
+  /** Spec 026 D11: measures the machine's disk; absent, `probeDisk`. For tests. */
+  readonly probeDisk?: typeof probeDisk;
 }
 
 export interface DaemonLaneOptions extends DaemonRemoteOptions {
@@ -198,6 +203,7 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
       ...(options.env === undefined ? {} : { env: options.env }),
     },
     ...(options.env === undefined ? {} : { env: options.env }),
+    note: (text) => say(text, REMOTE_DISK_TOPIC),
   });
   return {
     lane,
@@ -251,6 +257,7 @@ function laneOver<R extends RunnerAdapter>(
     planning: context.lane.planning,
     hasGitRepository: () => share.gitCurrent(),
     refreshRepository: (signal) => share.refreshGit(signal),
+    gitLease: () => share.gitLease(),
     ending: () => share.ending(),
     root,
     version,
@@ -261,20 +268,29 @@ function laneOver<R extends RunnerAdapter>(
     connect: (signal) =>
       share.serial(async () => {
         const gone = () => signal.aborted || share.ending();
-        const { ssh, machine } = await share.reach();
-        if (gone()) throw new MachineEnding("its lane closed");
-        const host = await (options.startHost ?? startRemoteHost)({
-          target: ssh,
-          places: machine.places,
-          launch,
-          version,
-          root,
-          runner: spec.runner,
-          options: spec.start.options,
-          policy: spec.start.policy,
-          ...(spec.start.note === undefined ? {} : { note: spec.start.note }),
-          log: options.log,
-          commands: options.policy().requires.commands,
+        const start = async () => {
+          const { ssh, machine } = await share.reach();
+          if (gone()) throw new MachineEnding("its lane closed");
+          const probe = options.probeDisk ?? probeDisk;
+          return (options.startHost ?? startRemoteHost)({
+            target: ssh,
+            places: machine.places,
+            launch,
+            version,
+            root,
+            runner: spec.runner,
+            options: spec.start.options,
+            policy: spec.start.policy,
+            ...(spec.start.note === undefined ? {} : { note: spec.start.note }),
+            log: options.log,
+            commands: options.policy().requires.commands,
+            diskCheck: () => share.checkDisk(machine, () => probe(ssh, machine.places)),
+          });
+        };
+        // D11: a managed machine a slow disk refused is replaced once, by a fresh acquire.
+        const host = await start().catch((error: unknown) => {
+          if (error instanceof FreshMachine && !gone()) return start();
+          throw error;
         });
         if (!gone()) return host;
         await host.adapter.close().catch(() => {});
