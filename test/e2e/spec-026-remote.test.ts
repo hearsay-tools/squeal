@@ -63,11 +63,16 @@ const lane = commandLane;
 const served = (repo: FixtureRepo) => servedIn(suite, repo);
 const cli = (repo: FixtureRepo, ...args: string[]) => cliIn(suite, repo, ...args);
 
+/** The lifecycle cases' disk check: warn, at a limit a slow sandbox disk (25 to 52 ms/sync) stays under. */
+const LIFECYCLE_DISK = { maxWriteMs: 5_000, onSlowDisk: "warn" } as const;
+
 describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () => {
   it("runs every lane and runner on a command machine, with 0 local hosts, through its lifecycle", async () => {
     const world = fixture();
     const { repo } = world;
-    const hooks = lane(world);
+    // Review 0.1.623 S1: a limit no sandbox disk reaches, so the `awake` below does not depend
+    // on the host's disk speed; the slow-disk case keeps its strict 10 ms limit.
+    const hooks = lane(world, process.execPath, { diskCheck: LIFECYCLE_DISK });
     const sampler = sampleLocalHosts(repo.root);
     const spawned = await served(repo);
     const why = () => diagnose(repo, spawned);
@@ -306,7 +311,8 @@ describe.skipIf(AGENT37_MISSING !== undefined)(
         lanes: "all",
         runners: "all",
         whenLost: "not-run",
-        diskCheck: { onSlowDisk: "warn" },
+        // Review 0.1.623 S1: as the command lifecycle's.
+        diskCheck: LIFECYCLE_DISK,
       });
       const sampler = sampleLocalHosts(repo.root);
       let spawned = await served(repo);
