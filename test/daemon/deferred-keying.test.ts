@@ -19,7 +19,10 @@ import {
  * host at start, after edits to a source and to `README.md`, after a touch
  * and over idle passes. `squeal run <group> --wait` opens one, runs the
  * group, and `runner.hostIdleMinutes` closes it again; an edit meanwhile
- * opens none.
+ * opens none. Row 010-37: `status --wait` settles on quiet under such a
+ * policy, since nothing lists unasked, and the daemon's host idle bound is
+ * `HOST_IDLE_MS` (`SQUEAL_TEST_HOST_IDLE_MS`) in place of the config's
+ * minute, whose scaling `test/daemon/host-idle.test.ts` keeps.
  */
 
 const suite = daemonSuite();
@@ -29,6 +32,9 @@ const CONFIG = {
   runner: { hostIdleMinutes: 1 },
   checks: [{ name: "unit", runner: "vitest", at: "manual" }],
 };
+
+/** The daemon's host idle bound in place of `hostIdleMinutes: 1` (row 010-37). */
+const HOST_IDLE_MS = 2_000;
 
 /** `squeal <args>` in `repo`, its exit code and output once it ends. */
 async function cli(repo: FixtureRepo, ...args: string[]) {
@@ -43,35 +49,53 @@ async function cli(repo: FixtureRepo, ...args: string[]) {
   return { code, out: `${run.stdout()}${run.stderr()}` };
 }
 
+/**
+ * `status --wait` returns on quiet, never on its timeout: nothing lists
+ * unasked under a manual-only policy, so the wait owes no listing (row 010-37).
+ */
+async function settled(repo: FixtureRepo, spawned: ReturnType<typeof suite.daemon>) {
+  const { code, out } = await cli(repo, "status", "--wait", "30000");
+  const why = `${out}\n${diagnose(repo, spawned)}`;
+  expect(out, why).toContain("Returned on quiet");
+  expect(code, why).toBe(0);
+}
+
 /** Appends a line to `path`, then waits for the daemon to take the revision. */
-async function edit(repo: FixtureRepo, path: string): Promise<void> {
+async function edit(repo: FixtureRepo, spawned: ReturnType<typeof suite.daemon>, path: string) {
   appendFileSync(join(repo.root, path), "\n// edit\n");
-  await cli(repo, "status", "--wait", "30000");
+  await settled(repo, spawned);
+}
+
+/** A fixture under `CONFIG` whose daemon closes an idle host after `HOST_IDLE_MS`. */
+function deferredFixture(): FixtureRepo {
+  const repo = suite.fixture({
+    "squeal.config.json": `${JSON.stringify(CONFIG)}\n`,
+    "README.md": "# fixture\n",
+  });
+  repo.env.SQUEAL_TEST_HOST_IDLE_MS = String(HOST_IDLE_MS);
+  return repo;
 }
 
 describe("deferred runner keying in the daemon (spec 026 D1)", { timeout: 300_000 }, () => {
   it("opens a Vitest host only for an explicit run, and closes it when idle", async () => {
-    const repo = suite.fixture({
-      "squeal.config.json": `${JSON.stringify(CONFIG)}\n`,
-      "README.md": "# fixture\n",
-    });
+    const repo = deferredFixture();
     const spawned = suite.daemon(repo);
     await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
     const none = (when: string) =>
       expect(runnerHosts(repo.root), `${when}\n${diagnose(repo, spawned)}`).toEqual([]);
 
-    await cli(repo, "status", "--wait", "30000");
+    await settled(repo, spawned);
     none("at start");
-    await edit(repo, "src/math.ts");
+    await edit(repo, spawned, "src/math.ts");
     none("after a source edit");
-    await edit(repo, "README.md");
+    await edit(repo, spawned, "README.md");
     none("after a README.md edit");
     const later = new Date(Date.now() + 60_000);
     utimesSync(join(repo.root, "src/strings.ts"), later, later);
-    await cli(repo, "status", "--wait", "30000");
+    await settled(repo, spawned);
     none("after a touch");
     // Idle passes: the reconciliation pass and the import re-walk come when nothing happens.
-    await delay(8_000);
+    await delay(2_000);
     none("after idle passes");
 
     const run = spawnCli(suite.cli, ["run", "unit", "--wait", "150000"], {
@@ -83,13 +107,13 @@ describe("deferred runner keying in the daemon (spec 026 D1)", { timeout: 300_00
     expect(code, `${run.stdout()}${run.stderr()}`).toBe(0);
 
     // Edits after the run owe their runner part; the idle bound closes the host.
-    await edit(repo, "src/math.ts");
-    await waitFor(() => runnerHosts(repo.root).length === 0, 150_000, "the host closed").catch(
+    await edit(repo, spawned, "src/math.ts");
+    await waitFor(() => runnerHosts(repo.root).length === 0, 60_000, "the host closed").catch(
       (error: Error) => {
         throw new Error(`${error.message}\n${diagnose(repo, spawned)}`);
       },
     );
-    await edit(repo, "src/math.ts");
+    await edit(repo, spawned, "src/math.ts");
     none("after an edit once the host closed");
   });
 
@@ -100,16 +124,13 @@ describe("deferred runner keying in the daemon (spec 026 D1)", { timeout: 300_00
 
   /** A fixture under `CONFIG`, its daemon serving, no runner host after unnamed status reads. */
   async function served(): Promise<Served> {
-    const repo = suite.fixture({
-      "squeal.config.json": `${JSON.stringify(CONFIG)}\n`,
-      "README.md": "# fixture\n",
-    });
+    const repo = deferredFixture();
     const spawned = suite.daemon(repo);
     await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
     const none = (when: string) =>
       expect(runnerHosts(repo.root), `${when}\n${diagnose(repo, spawned)}`).toEqual([]);
     await cli(repo, "status");
-    await cli(repo, "status", "--wait", "30000");
+    await settled(repo, spawned);
     none("after an unnamed status");
     return { repo, spawned };
   }
