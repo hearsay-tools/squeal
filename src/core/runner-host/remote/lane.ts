@@ -21,10 +21,12 @@ import { DEFAULT_TIERS, goesRemote, tiersText } from "./lane-tiers.js";
 import {
   attachRemoteCore,
   type EnvironmentMode,
+  machineText,
   remoteKeyStatusLine,
   tagReportCore,
 } from "./remote-key.js";
 import type { RemoteTier, WhenLost } from "./settings.js";
+import type { LaneReport } from "./summary.js";
 import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
 
 /*
@@ -135,7 +137,7 @@ export interface RemoteLaneOptions {
   readonly needsRepository?: () => readonly string[];
   /** The line that names the files a remote failed as not a Git repository. Absent: `status`. */
   readonly repository?: (text: string) => void;
-  /** The lane's one status line, which replaces the last (D17). */
+  /** The lane's one status line, which replaces the last (D17); `report` changed with it. */
   readonly status: (text: string) => void;
   readonly log: (text: string) => void;
   readonly now?: () => number;
@@ -160,6 +162,8 @@ export interface RemoteLaneRunner extends RunnerAdapter {
    * goes remote; after it, the next background run connects again.
    */
   sleep(machineSleep: () => Promise<void>): Promise<LaneSleep>;
+  /** Row 026-20 (spec 026 D12.1): where the lane stands now, for status's `Remote:` line. */
+  report(): LaneReport;
 }
 
 const BACKOFF_MS = [30_000, 60_000, 120_000, 300_000, 600_000];
@@ -218,6 +222,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   /** Ends when a sleep in flight asked its machine; a planning call waits for it. */
   let sleepEnd: Promise<void> = Promise.resolve();
   let why = "not connected yet";
+  /** D12.1: when the current connection's first run was proven; `null` before. */
+  let provenAt: number | null = null;
+  /** D12.1: whether the lane ever started a connect: before, it is `not connected`. */
+  let tried = false;
   /** The connect in flight, which a run of an `awaitConnect` lane waits for. */
   let connecting: Promise<void> = Promise.resolve();
   /** Aborted at `close`: a connect not yet started starts no host. */
@@ -261,6 +269,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   };
   const connect = () => {
     state = { kind: "connecting" };
+    tried = true;
+    provenAt = null;
     pending.clear();
     activity();
     connecting = options
@@ -497,7 +507,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     options.log(`remote ${target}: run proven over ${paths} paths`);
     if (state.kind !== "ready" || state.host !== host || state.proven) return;
     state.proven = true;
-    const at = new Date(now()).toISOString();
+    provenAt = now();
+    const at = new Date(provenAt).toISOString();
     options.status(
       remoteKey && remoteCore !== null
         ? `${remoteKeyStatusLine(target, remoteCore)}; proven at ${at} (blob ids equal before and after)`
@@ -612,6 +623,22 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       { adapter: { name: `remote ${target}` }, report: kept },
       { adapter: { name: "here" }, report: await runHere(failed, run, "here") },
     ]);
+  };
+
+  /** D12.1: the lane's state as status names it. */
+  const report = (): LaneReport => {
+    const machine = remoteKey && remoteCore !== null ? { machine: machineText(remoteCore) } : {};
+    switch (state.kind) {
+      case "connecting":
+        return { state: "connecting" };
+      case "asleep":
+        return { state: "asleep" };
+      case "ready":
+        return { state: "ready", ...(provenAt === null ? {} : { provenAt }), ...machine };
+      default:
+        if (closed || !tried) return { state: "not connected" };
+        return { state: state.refused ? "refused" : "unreachable", reason: why };
+    }
   };
 
   const busy = (): string | null => {
@@ -752,6 +779,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       ]);
     },
     busy,
+    report,
     async sleep(machineSleep) {
       const refused = busy();
       if (refused !== null) return { busy: refused };

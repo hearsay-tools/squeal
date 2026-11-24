@@ -17,7 +17,7 @@ import { hostedOptions } from "../vitest-host.js";
 import { startRemoteHost } from "./connect.js";
 import { sharedOf } from "./coverage.js";
 import { probeDisk } from "./disk-check.js";
-import { withRemoteLane } from "./lane.js";
+import { type RemoteLaneRunner, withRemoteLane } from "./lane.js";
 import { tiersText } from "./lane-tiers.js";
 import { FreshMachine, MachineEnding, type MachineShare, shareMachine } from "./machine-share.js";
 import { tagReportCore } from "./remote-key.js";
@@ -31,6 +31,7 @@ import {
   remoteUrls,
   settingsNote,
 } from "./settings.js";
+import { REMOTE_SUMMARY_TOPIC, remoteSummaryLine } from "./summary.js";
 
 /*
  * Spec 021 D9, D12, D17 (rows 021-13, 021-14): the daemon's runners with
@@ -78,6 +79,13 @@ import {
  * the entry's tiers reach, a slow, group or beside one the `lanes` leave
  * out, runs here only, and its runs are tagged with this machine's core
  * (`tagReportCore`), so none is stored as the remote's result.
+ *
+ * Row 026-20 (spec 026 D12.1, lessons D2): each change of a runner's own
+ * lane, of the machine's disk line, and the machine's release at the exit
+ * writes the remote's one summary line (`summary.ts`) as the note of
+ * `REMOTE_SUMMARY_TOPIC`, unless it is the same as the last; plain `squeal
+ * status` prints it as `Remote:`. A lane made per pass is left out of it.
+ * A repository whose lane was removed gets an empty summary once.
  */
 
 /** The note topic of the runner's own lane's one status line. */
@@ -187,6 +195,9 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
   if (found === null) {
     // A lane named before and removed since: its last line would stand.
     if (options.lastNote(REMOTE_TOPIC) !== undefined) say("no remote lane: every run is here");
+    if (![undefined, ""].includes(options.lastNote(REMOTE_SUMMARY_TOPIC))) {
+      say("", REMOTE_SUMMARY_TOPIC);
+    }
     return null;
   }
   const { lane } = found;
@@ -210,6 +221,25 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
       ? `remote ${target}: connecting; ${runs} ${meanwhile} until it answers`
       : `remote ${target}: connects at the first ${runs.replace(" runs ", " run ")}`,
   );
+  /** D12.1: the runner's own lanes, whose states the summary line names. */
+  const own = new Set<RemoteLaneRunner>();
+  let degradedDisk: string | null = null;
+  let released = false;
+  const summarize = () =>
+    say(
+      remoteSummaryLine({
+        provider: lane.provider,
+        machine: share.current()?.id ?? lane.target ?? null,
+        lanes: lane.lanes,
+        runners: lane.runners,
+        planning: lane.planning,
+        environmentMode: lane.environmentMode,
+        reports: [...own].map((l) => l.report()),
+        degradedDisk,
+        released,
+      }),
+      REMOTE_SUMMARY_TOPIC,
+    );
   const share = shareMachine({
     lane,
     request: {
@@ -224,8 +254,15 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
       ...(options.env === undefined ? {} : { env: options.env }),
     },
     ...(options.env === undefined ? {} : { env: options.env }),
-    note: (text) => say(text, REMOTE_DISK_TOPIC),
+    note: (text) => {
+      say(text, REMOTE_DISK_TOPIC);
+      // D12.1: a disk the runs go to anyway is named in the summary until a healthy one clears it.
+      const slow = / (degraded disk: [^;]+); runs go there anyway/.exec(text);
+      degradedDisk = slow?.[1] ?? null;
+      summarize();
+    },
   });
+  summarize();
   return {
     lane,
     wrap: <R extends RunnerAdapter>(spec: LaneSpec<R>): R => {
@@ -236,17 +273,35 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
         return (lane.environmentMode === "remote-key" ? ranHere(alone, version) : alone) as R;
       }
       const topic = spec.name === undefined ? REMOTE_TOPIC : `${REMOTE_TOPIC}:${spec.name}`;
-      return laneOver(share, spec, tiers, {
+      const counted = spec.perPass !== true;
+      const made = laneOver(share, spec, tiers, {
         target,
         lane,
         eager: spec.perPass !== true && eager(spec.runner),
-        status: (text) => say(text, topic),
+        status: (text) => {
+          say(text, topic);
+          if (counted) summarize();
+        },
         repository: (text) => say(`remote ${target}: ${text}`, REMOTE_REPOSITORY_TOPIC),
         options,
       });
+      if (counted) {
+        own.add(made);
+        summarize();
+      }
+      return made as unknown as R;
     },
     sleepRemote: () => share.sleep(),
-    release: () => share.release(),
+    release: async () => {
+      await share.release();
+      released = true;
+      // The exit may have closed the store's writer already: the line is then the last one written.
+      try {
+        summarize();
+      } catch (error) {
+        options.log(`remote ${target}: summary not written at the exit: ${String(error)}`);
+      }
+    },
   };
 }
 
@@ -290,7 +345,7 @@ function laneOver<R extends RunnerAdapter>(
   spec: LaneSpec<R>,
   tiers: readonly RemoteTier[],
   context: LaneContext,
-): R {
+): RemoteLaneRunner {
   const { options, target } = context;
   const { root, version } = options;
   const launch = options.launch as RunnerHostLaunch;
@@ -369,7 +424,7 @@ function laneOver<R extends RunnerAdapter>(
     leave();
     await close();
   };
-  return adapter as unknown as R;
+  return adapter;
 }
 
 /** `runner` whose `close` releases `remote`'s machine after every lane in it closed (D8). */

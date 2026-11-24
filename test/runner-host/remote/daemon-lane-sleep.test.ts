@@ -11,6 +11,7 @@ import {
 } from "../../../src/core/runner-host/remote/daemon-lane.js";
 import { readMachines } from "../../../src/core/runner-host/remote/machines-store.js";
 import { remoteSettingsPath } from "../../../src/core/runner-host/remote/settings.js";
+import { REMOTE_SUMMARY_TOPIC } from "../../../src/core/runner-host/remote/summary.js";
 import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
@@ -98,6 +99,7 @@ ${body}`,
     }),
   );
   const notes: [string, string][] = [];
+  const summaries: string[] = [];
   const adapter = withDaemonRemoteLane({
     root: real,
     commonDir: join(real, ".git"),
@@ -106,8 +108,13 @@ ${body}`,
     policy: () => policy,
     vitest,
     vitestOptions: { root: real },
-    note: (text, topic) => notes.push([topic, text]),
-    lastNote: (topic) => notes.findLast(([t]) => t === topic)?.[1],
+    // Row 026-20: the summary line has its own test; these read the lanes' own notes.
+    note: (text, topic) => {
+      if (topic === REMOTE_SUMMARY_TOPIC) summaries.push(text);
+      else notes.push([topic, text]);
+    },
+    lastNote: (topic) =>
+      topic === REMOTE_SUMMARY_TOPIC ? summaries.at(-1) : notes.findLast(([t]) => t === topic)?.[1],
     log: () => {},
     env,
   });
@@ -122,6 +129,7 @@ ${body}`,
   };
   return {
     adapter,
+    summaries,
     notes,
     env,
     background,

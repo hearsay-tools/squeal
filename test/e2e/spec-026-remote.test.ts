@@ -179,6 +179,9 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     );
     expect(refuseNotes).toMatch(/not planned here \(whenLost "not-run"\)/);
     expect(refuseNotes).not.toMatch(/go there; proven/);
+    console.log("PLAIN>>>" + (await cli(refused.repo, "status")).out);
+    console.log("PS>>>" + (await cli(refused.repo, "ps")).out);
+    console.log("FULL>>>" + (await cli(refused.repo, "status", "--full")).out);
     // Refused under `not-run`: nothing ran here either.
     expect(sampler.stop()).toBe(0);
     const results = withStore(refused.repo, (store) =>

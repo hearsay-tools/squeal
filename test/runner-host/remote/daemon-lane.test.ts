@@ -11,6 +11,7 @@ import {
 } from "../../../src/core/runner-host/remote/daemon-lane.js";
 import { readMachines } from "../../../src/core/runner-host/remote/machines-store.js";
 import { remoteSettingsPath } from "../../../src/core/runner-host/remote/settings.js";
+import { REMOTE_SUMMARY_TOPIC } from "../../../src/core/runner-host/remote/summary.js";
 import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
@@ -42,6 +43,7 @@ const vitest: RunnerAdapter = {
 
 let n = 0;
 function lane(settings: unknown, policy: Policy = DEFAULT_POLICY, notes: [string, string][] = []) {
+  const summaries: string[] = [];
   const dir = join(scratch, `d${++n}`);
   const root = join(dir, "repo");
   mkdirSync(root, { recursive: true });
@@ -71,13 +73,18 @@ function lane(settings: unknown, policy: Policy = DEFAULT_POLICY, notes: [string
     policy: () => policy,
     vitest,
     vitestOptions: { root: real },
-    note: (text, topic) => notes.push([topic, text]),
-    lastNote: (topic) => notes.findLast(([t]) => t === topic)?.[1],
+    // Row 026-20: the summary line has its own test; these read the lanes' own notes.
+    note: (text, topic) => {
+      if (topic === REMOTE_SUMMARY_TOPIC) summaries.push(text);
+      else notes.push([topic, text]);
+    },
+    lastNote: (topic) =>
+      topic === REMOTE_SUMMARY_TOPIC ? summaries.at(-1) : notes.findLast(([t]) => t === topic)?.[1],
     log: () => {},
     env,
   });
   onTestFinished(() => adapter.close());
-  return { adapter, notes, env };
+  return { adapter, notes, summaries, env };
 }
 
 describe("the daemon's remote lane (rows 021-13, 021-14)", () => {
@@ -130,6 +137,11 @@ describe("the daemon's remote lane (rows 021-13, 021-14)", () => {
     lane(undefined, DEFAULT_POLICY, notes);
     expect(notes.at(-1)).toEqual([REMOTE_TOPIC, "no remote lane: every run is here"]);
   });
+
+  it("writes no summary line when no lane is named", () => {
+    const { summaries } = lane(undefined);
+    expect(summaries).toEqual([]);
+  });
 });
 
 describe("the daemon's remote lane and remote.needsRepository (row 021-23)", () => {
@@ -177,7 +189,7 @@ ${body}`,
       return [process.execPath, path];
     };
     const answer = { v: 1, id: "lan", destination: "dev@lan-box", sshArgs: ["-p", "2222"] };
-    const { adapter, notes, env } = lane((root: string) => ({
+    const { adapter, notes, summaries, env } = lane((root: string) => ({
       repositories: {
         [root]: {
           provider: "command",
@@ -195,6 +207,10 @@ ${body}`,
     // Acquired, then the launch names no bundle: the connect fails after the machine is recorded.
     for (let i = 0; i < 300 && notes.length < 2; i++) await sleep(10);
     expect(notes[1]?.[1]).toMatch(/^remote command unreachable since .*bundle to copy/);
+    // Row 026-20 (D12.1): the summary names the machine and why it is unreachable.
+    expect(summaries.at(-1)).toMatch(
+      /^command cmd:lan: unreachable \(a remote lane needs Squeal's bundle to copy; .*\); background runs of vitest; planning local; environment match-local$/,
+    );
     expect(readMachines(env).machines).toMatchObject([
       {
         provider: "command",
@@ -206,6 +222,9 @@ ${body}`,
     ]);
     await adapter.close();
     expect(readFileSync(calls, "utf8")).toBe("acquire -\nrelease daemon-exit\n");
+    expect(summaries.at(-1)).toBe(
+      "command cmd:lan: released; background runs of vitest; planning local; environment match-local",
+    );
     expect(readMachines(env).machines[0]?.status).toBe("detached");
   });
 
