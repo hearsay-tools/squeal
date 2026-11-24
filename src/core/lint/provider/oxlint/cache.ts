@@ -111,6 +111,11 @@ export class LintedMemo {
     );
   }
 
+  /** Whether this config read has classified a path: false right after the configs change. */
+  get warm(): boolean {
+    return Object.keys(this.entry.linted).length > 0;
+  }
+
   /** Keeps whether oxlint lints each of `paths`: it lints those in `linted`. */
   async remember(paths: readonly RelativePath[], linted: ReadonlySet<RelativePath>): Promise<void> {
     const kept = this.entry.linted;
