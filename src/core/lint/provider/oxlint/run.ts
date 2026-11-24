@@ -69,14 +69,31 @@ export async function lintedFiles(
   paths: readonly RelativePath[],
   maxBytes: number = DEBUG_BYTES,
 ): Promise<Set<RelativePath> | { readonly failure: string }> {
+  const answer = await debugFiles(ctx, paths, maxBytes);
+  return "failure" in answer ? answer : answer.linted;
+}
+
+/**
+ * `lintedFiles` with whether each part's config loaded: only then is the
+ * answer oxlint's ignore rules, one spec 026 D3 may keep.
+ */
+export async function debugFiles(
+  ctx: RunContext,
+  paths: readonly RelativePath[],
+  maxBytes: number = DEBUG_BYTES,
+): Promise<
+  { readonly linted: Set<RelativePath>; readonly loaded: boolean } | { readonly failure: string }
+> {
   const linted = new Set<RelativePath>();
+  let loaded = true;
   for (const chunk of chunkDebugPaths(paths, maxBytes)) {
     const run = await runOxlint(ctx, ["--debug", "files", "--threads", "1", "--", ...chunk]);
     if (run.failure !== null) return { failure: run.failure };
+    loaded &&= run.process.code === 0;
     const listed = run.process.code === 0 ? run.process.stdout.split("\n") : chunk;
     for (const line of listed) if (line.trim() !== "") linted.add(line.trim() as RelativePath);
   }
-  return linted;
+  return { linted, loaded };
 }
 
 /** One run: its process, its parsed stdout and what its JavaScript side used. */
