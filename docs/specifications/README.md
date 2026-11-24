@@ -39,4 +39,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 022 | Selection strategy (an option to re-run a test file by the modules it loaded, beside today's import closure; the human, 2026-11-14) | approved; phase 1 shipped (0.1.496); phase 2 closed, stored lists dropped (022-05, 2026-11-21) |
 | 024 | Antigravity adapter (CLI on Linux: hooks, native plugin, install and updates; the human, 2026-11-22) | approved |
 | 025 | Performance improvements (source-path status promotion, narrow hook delivery and read-only status, coverage wire and batching, idle daemon and observer tuning, SQLite WAL and write-lock slicing; the human, 2026-11-22) | in-progress (Wave 1 landed in `0.1.600`) |
-| 026 | Tiered local checks and cloud sandboxes (cheap checks on edit with heavy tests on demand / pre-PR or in per-worktree boat.dev sandboxes; the human, 2026-11-23) | research |
+| 026 | Tiered local checks and cloud sandboxes (cheap checks on edit with heavy tests on demand / pre-PR or over remote providers `ssh`, `command`, and `agent37` EU `vm`; the human, 2026-11-23) | shipped (0.1.616–0.1.623) |
