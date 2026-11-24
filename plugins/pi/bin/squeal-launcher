@@ -1,5 +1,5 @@
 #!/bin/sh
-# squeal-launcher format 9
+# squeal-launcher format 10
 # Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
 # ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
 # it with Node, so a plugin update needs no launcher update. Claude Code's
@@ -35,11 +35,17 @@ command -v node >/dev/null 2>&1 || {
   echo "squeal: Node $NODE_FLOOR or later is needed, and node is not on the PATH" >&2
   exit 1
 }
+# Spec 025 D7: the commands that start without NODE_USE_ENV_PROXY's proxy setup.
+case ${1-} in
+  status | why | failures | checks | ps | start | stop | run | retry | hold | lint | code | impact | reach | --version | -v | --help | -h | help) carry=1 ;;
+  *) carry= ;;
+esac
 # One Node finds the CLI and then runs it (005-75): a second Node start cost
 # each command about 0.06 s of CPU. The CLI sees the process as
-# `node --disable-warning=ExperimentalWarning <cli> <args>` gives it, so
-# `squeal start` spawns its daemon from the CLI's path, not this file's.
-exec node --disable-warning=ExperimentalWarning -e '
+# `node --disable-warning=ExperimentalWarning <cli> <args>` gives it, without
+# the -e script and the preload below, so `squeal start` spawns its daemon
+# from the CLI's path, not this file's.
+set -- node --disable-warning=ExperimentalWarning -e '
 const { createHash } = require("node:crypto");
 const { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } = require("node:fs");
 const { basename, dirname, isAbsolute, join, sep } = require("node:path");
@@ -242,5 +248,42 @@ const ps = join(run.dir, "dist", "cli", "ps.mjs");
 const cli = process.argv[2] === "ps" && existsSync(ps) ? ps : cliOf(run.dir);
 process.argv.splice(1, 1, cli);
 process.execArgv.splice(-2);
+// Spec 025 D7: the preload that put NODE_USE_ENV_PROXY back has run; what the
+// CLI spawns with its execArgv starts without it.
+const preload = process.execArgv.indexOf("--import");
+if (preload !== -1 && /^data:text\/javascript,if\(process\.env\.SQUEAL_CARRIED_/.test(process.execArgv[preload + 1] ?? ""))
+  process.execArgv.splice(preload, 2);
 import(pathToFileURL(cli).href);
 ' "$0" "$@"
+# Spec 025 D7: Node starts with its compile cache in Squeal's own directory
+# when the user set none, marked SQUEAL_OWN_COMPILE_CACHE=1 so test processes
+# leave it out; and without NODE_USE_ENV_PROXY's proxy setup: the switch waits
+# in SQUEAL_CARRIED_NODE_USE_ENV_PROXY, and a preload puts it back before the
+# CLI's code runs, for what the CLI spawns. Only the commands named below,
+# which make no request over the network, start that way: `update`,
+# `codex-runtime` and `remote` fetch through the proxy Node sets up only at
+# its start, and an unknown command keeps it too.
+if [ "$1" = node ]; then
+  if [ -z "${NODE_COMPILE_CACHE+set}" ]; then
+    cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
+    case $cache in
+      /*)
+        cache=$cache/squeal/compile-cache
+        [ -d "$cache" ] || (umask 077 && mkdir -p "$cache") 2>/dev/null || :
+        if [ -d "$cache" ] && [ -w "$cache" ]; then
+          NODE_COMPILE_CACHE=$cache
+          SQUEAL_OWN_COMPILE_CACHE=1
+          export NODE_COMPILE_CACHE SQUEAL_OWN_COMPILE_CACHE
+        fi
+        ;;
+    esac
+  fi
+  if [ -n "${NODE_USE_ENV_PROXY+set}" ] && [ -n "$carry" ]; then
+    SQUEAL_CARRIED_NODE_USE_ENV_PROXY=$NODE_USE_ENV_PROXY
+    export SQUEAL_CARRIED_NODE_USE_ENV_PROXY
+    unset NODE_USE_ENV_PROXY
+    shift
+    set -- node --import "data:text/javascript,if(process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY!==undefined){process.env.NODE_USE_ENV_PROXY=process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY;Reflect.deleteProperty(process.env,'SQUEAL_CARRIED_NODE_USE_ENV_PROXY')}" "$@"
+  fi
+fi
+exec "$@"

@@ -1670,7 +1670,7 @@ function bind(identity) {
       requestWrite: (batch) => new Promise((resolve, reject) => {
         const id = randomUUID5();
         waitingWrite.set(id, { resolve, reject });
-        post({ type: "write", id, batch });
+        post({ type: "write", id, batch, queuedAt: Date.now() });
       }),
       requestImport: (request) => new Promise((resolve) => {
         const id = randomUUID5();

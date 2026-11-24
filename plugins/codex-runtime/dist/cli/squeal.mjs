@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.627";
+  if (true) return "0.1.628";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -22108,7 +22108,8 @@ CREATE TABLE consumer_views (
     SCHEMA_VERSION = MIGRATIONS.length;
     STORE_INDEXES = {
       runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL",
-      consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)"
+      consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)",
+      known_states_non_pass: "CREATE INDEX known_states_non_pass ON known_states (worktree_id, check_id) WHERE outcome != 'pass'"
     };
   }
 });
@@ -22381,6 +22382,7 @@ CREATE TABLE coverage (
       counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
       states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
       states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
+      states_non_pass: "CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'",
       states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
       views_by_check: "CREATE INDEX views_by_check ON views (check_id)"
     };
@@ -23964,7 +23966,7 @@ function filterTerms(filter) {
   return { sql: terms.join(" "), params };
 }
 function createStateRepo(conn) {
-  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
+  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED, STATES_NON_PASS]);
   const named4 = (index, used) => used && indexed.has(index) ? index : null;
   return {
     list(worktreeId, filter = {}) {
@@ -23977,6 +23979,22 @@ function createStateRepo(conn) {
         ...params,
         ...terms.params
       ).map((row2) => toState(worktreeId, row2));
+    },
+    countNonPass(worktreeId, measure2) {
+      const index = named4(STATES_NON_PASS, true);
+      const states = index === null ? "states" : `states INDEXED BY ${index}`;
+      const counts = { fail: 0, pending: 0, unknown: 0 };
+      const rows = conn.all(
+        `SELECT outcome, count(*) AS n FROM ${states}
+         WHERE worktree_id = ? AND measure = ? AND outcome != 'pass' GROUP BY outcome`,
+        worktreeId,
+        measure2
+      );
+      for (const row2 of rows) {
+        const outcome2 = oneOf3(row2, "outcome", OUTCOMES5);
+        if (outcome2 !== "pass") counts[outcome2] = num(row2, "n");
+      }
+      return counts;
     },
     upsertMany(states) {
       conn.transaction(() => {
@@ -24136,7 +24154,7 @@ function toEdit(row2) {
     at: num(row2, "edited_at")
   };
 }
-var MEASURES, OUTCOMES5, CHECK_WHERE2, CHECK_ID, CHECK_COLUMNS2, STATES_FAILING, STATES_EDITED;
+var MEASURES, OUTCOMES5, CHECK_WHERE2, CHECK_ID, CHECK_COLUMNS2, STATES_FAILING, STATES_EDITED, STATES_NON_PASS;
 var init_states2 = __esm({
   "src/core/code/store/states.ts"() {
     "use strict";
@@ -24157,6 +24175,7 @@ var init_states2 = __esm({
     CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
     STATES_FAILING = "states_failing";
     STATES_EDITED = "states_edited";
+    STATES_NON_PASS = "states_non_pass";
   }
 });
 
@@ -47396,6 +47415,29 @@ var init_coverage3 = __esm({
   }
 });
 
+// src/core/env/compile-cache.ts
+function hasOwnCompileCache(env) {
+  return env[OWN_COMPILE_CACHE] === "1";
+}
+function withoutOwnCompileCache(env) {
+  if (!hasOwnCompileCache(env)) return env;
+  const { [COMPILE_CACHE]: _cache, [OWN_COMPILE_CACHE]: _own, ...rest2 } = env;
+  return rest2;
+}
+function dropOwnCompileCache(env = process.env) {
+  if (!hasOwnCompileCache(env)) return;
+  Reflect.deleteProperty(env, COMPILE_CACHE);
+  Reflect.deleteProperty(env, OWN_COMPILE_CACHE);
+}
+var COMPILE_CACHE, OWN_COMPILE_CACHE;
+var init_compile_cache = __esm({
+  "src/core/env/compile-cache.ts"() {
+    "use strict";
+    COMPILE_CACHE = "NODE_COMPILE_CACHE";
+    OWN_COMPILE_CACHE = "SQUEAL_OWN_COMPILE_CACHE";
+  }
+});
+
 // src/runners/observe/signature.ts
 function recorderSignature(error, use) {
   if (use.files.length === 0) return void 0;
@@ -47679,7 +47721,7 @@ async function runNodeTest(options) {
   return { report: report4, observed: observed2, reads: reads2.take(report4.completedFiles, paths) };
 }
 function childEnv(options, runtime) {
-  const env = projectEnv(options.project, options.env ?? process.env);
+  const env = projectEnv(options.project, withoutOwnCompileCache(options.env ?? process.env));
   const nodeOptions = env.NODE_OPTIONS?.trim() ?? "";
   const recorder = options.project.slow === true ? `--require ${quoteNodeOption(runtime.recorder)}` : recorderOption(runtime.recorder, nodeOptions);
   env.NODE_OPTIONS = nodeOptions === "" ? recorder : `${recorder} ${nodeOptions}`;
@@ -47739,6 +47781,7 @@ var KILL_GRACE_MS;
 var init_run = __esm({
   "src/runners/node-test/run/run.ts"() {
     "use strict";
+    init_compile_cache();
     init_paths2();
     init_worktree_paths();
     init_process_label();
@@ -50287,6 +50330,7 @@ var init_adapter2 = __esm({
     "use strict";
     init_loaded_inputs();
     init_policy2();
+    init_compile_cache();
     init_compare();
     init_environment();
     init_glob();
@@ -50442,6 +50486,7 @@ var init_adapter2 = __esm({
           this.#reload = false;
         }
         const current2 = _VitestAdapter.#runOf(new WeakRef(this), ++this.#generation);
+        dropOwnCompileCache();
         const env = { ...this.#childEnv, ...this.#observer.start().env };
         const heard = this.#touches.mark();
         const sources = new SourceStamps(this.paths);
@@ -72621,7 +72666,7 @@ import { createHash as createHash41 } from "node:crypto";
 import { realpathSync as realpathSync25 } from "node:fs";
 import { delimiter as delimiter8, join as join152 } from "node:path";
 function runEnvironment(env, project, source2 = process.env) {
-  const result = { ...source2 };
+  const result = { ...withoutOwnCompileCache(source2) };
   const foreign2 = /* @__PURE__ */ new Set();
   for (const name3 of ACTIVATION) {
     const value = source2[name3];
@@ -72705,6 +72750,7 @@ var PYTEST_VARIABLES, ACTIVATION;
 var init_hash = __esm({
   "src/runners/pytest/environment/hash.ts"() {
     "use strict";
+    init_compile_cache();
     init_compare();
     init_paths2();
     init_states4();
@@ -85491,7 +85537,9 @@ function checksByFile(states) {
   const checks = /* @__PURE__ */ new Map();
   for (const state of states) {
     const id = testFileKeyOf(state.check);
-    checks.set(id, [...checks.get(id) ?? [], state]);
+    const own = checks.get(id);
+    if (own === void 0) checks.set(id, [state]);
+    else own.push(state);
   }
   return checks;
 }
@@ -86501,18 +86549,18 @@ function codeStatusOf(store, worktreeId, at2, shell) {
   const read7 = withCode2(
     source2,
     ({ store: code, complexity }) => code.read(() => {
-      const states = code.states.list(worktreeId, { measure: "complexity" });
+      const counts = code.states.countNonPass(worktreeId, "complexity");
       const from = since();
       const { done, total, uncountable } = countingOf(code, worktreeId);
       return {
         v: 1,
         threshold: complexity.threshold,
-        over: states.filter((s) => s.outcome === "fail").length,
+        over: counts.fail,
         sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
         since: from?.scope ?? null,
         pending: total - done,
         files: total,
-        unknown: states.filter((s) => s.outcome === "unknown").length,
+        unknown: counts.unknown,
         ...uncountable === 0 ? {} : { uncountable },
         ...coverageOf4(code),
         ...without2
@@ -110559,6 +110607,7 @@ function guarded(events) {
     requestRemoteSleep,
     commitAsk,
     requestWrite,
+    onWriteWait,
     requestImport,
     requestKeep
   } = events;
@@ -110577,6 +110626,7 @@ function guarded(events) {
     ...requestRemoteSleep === void 0 ? {} : { requestRemoteSleep: asked(requestRemoteSleep) },
     ...commitAsk === void 0 ? {} : { commitAsk: safe(commitAsk) },
     ...requestWrite === void 0 ? {} : { requestWrite: asked(requestWrite) },
+    ...onWriteWait === void 0 ? {} : { onWriteWait: safe(onWriteWait) },
     ...requestImport === void 0 ? {} : { requestImport: asked(requestImport) },
     ...requestKeep === void 0 ? {} : { requestKeep: asked(requestKeep) },
     onStop: safe(events.onStop),
@@ -110703,6 +110753,7 @@ async function inWorker(worker, identity4, events) {
           events.commitAsk?.(message3.request);
           return;
         case "write":
+          events.onWriteWait?.(Math.max(0, Date.now() - message3.queuedAt));
           (events.requestWrite?.(message3.batch) ?? Promise.reject(new Error(NO_WRITES2))).then(
             () => post({ type: "write-result", id: message3.id, error: null }),
             (error) => post({
@@ -112942,8 +112993,56 @@ function withRunGroups(runner, options) {
 init_scratch();
 init_user_config();
 init_version();
+
+// src/core/daemon/write-wait.ts
+var LONG_WRITE_WAIT_MS = 250;
+var WRITE_WAIT_SAMPLE_CAP = 1024;
+var WriteWaitStats = class {
+  #log;
+  #cap;
+  #samples = [];
+  #next = 0;
+  #count = 0;
+  #max = 0;
+  constructor(log, cap2 = WRITE_WAIT_SAMPLE_CAP) {
+    this.#log = log;
+    this.#cap = Math.max(1, cap2);
+  }
+  /** One write the main thread took after `waitMs`. */
+  record(waitMs) {
+    const wait = Math.max(0, Number.isFinite(waitMs) ? waitMs : 0);
+    if (wait > LONG_WRITE_WAIT_MS) {
+      this.#log(
+        `long write wait: hook write waited ${Math.round(wait)} ms for the daemon main thread`
+      );
+    }
+    this.#count += 1;
+    if (wait > this.#max) this.#max = wait;
+    if (this.#samples.length < this.#cap) this.#samples.push(wait);
+    else this.#samples[this.#next] = wait;
+    this.#next = (this.#next + 1) % this.#cap;
+  }
+  /**
+   * The line of the writes since the last call, `null` with none:
+   * `hook writes: 12 taken, queue wait p95 40 ms max 310 ms`. Resets.
+   */
+  take() {
+    if (this.#count === 0) return null;
+    const sorted4 = [...this.#samples].sort((a, b) => a - b);
+    const p95 = sorted4[Math.max(0, Math.ceil(sorted4.length * 0.95) - 1)] ?? 0;
+    const line = `hook writes: ${this.#count} taken, queue wait p95 ${Math.round(p95)} ms max ${Math.round(this.#max)} ms`;
+    this.#samples = [];
+    this.#next = 0;
+    this.#count = 0;
+    this.#max = 0;
+    return line;
+  }
+};
+
+// src/core/daemon/daemon.ts
 var RUNTIME_DIR = dirname69(fileURLToPath22(import.meta.url));
 var CANCEL_GRACE_MS = 2e3;
+var WRITE_WAIT_REPORT_MS = 6e4;
 async function startDaemon(options) {
   const now = options.now ?? Date.now;
   const desk = prepareFrontDesk();
@@ -113086,6 +113185,9 @@ var Daemon = class {
   #commitStart;
   #stopTimers = () => {
   };
+  /** Spec 025 D9 (row 025-09): hook writes' front-desk queue waits, logged each minute. */
+  #writeWaits = null;
+  #writeWaitTimer = null;
   /** Row 011-226: stops the full check it claimed once ready, and gives its claim back. */
   #stopFullCheck = async () => {
   };
@@ -113831,6 +113933,7 @@ var Daemon = class {
   }
   #openDesk(desk) {
     const watch2 = (call2) => watched(this.#storeFault, call2);
+    const writeWaits = this.#startWriteWaits();
     return desk.open(
       {
         socketPath: this.#socketPath,
@@ -113875,6 +113978,7 @@ var Daemon = class {
             within(SENT_WRITE_BOUND_MS, () => this.#phase === "stopping")
           )
         ),
+        onWriteWait: (waitMs) => writeWaits.record(waitMs),
         // Row 021-20, part two: one try of a write of a file the code gate keeps.
         requestKeep: (request) => keepInDaemon(
           {
@@ -114147,6 +114251,7 @@ var Daemon = class {
       );
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
+      this.#stopWriteWaits();
       pauseAt("stop-gap");
       let said = text3;
       if (this.commit !== null && removesAtExit(reason2)) {
@@ -114187,6 +114292,26 @@ var Daemon = class {
     } catch (error) {
       this.#log(`could not mark the shutdown: ${message(error)}`);
     }
+  }
+  /** Spec 025 D9: the minute's hook write waits, logged as `code store: last minute:` is. */
+  #startWriteWaits() {
+    this.#stopWriteWaits();
+    const stats = new WriteWaitStats((text3) => this.#log(text3));
+    this.#writeWaits = stats;
+    this.#writeWaitTimer = setInterval(() => {
+      const line = stats.take();
+      if (line !== null) this.#log(line);
+    }, WRITE_WAIT_REPORT_MS);
+    this.#writeWaitTimer.unref();
+    return stats;
+  }
+  /** Clears the minute's timer and logs the waits since its last line, if any. */
+  #stopWriteWaits() {
+    if (this.#writeWaitTimer !== null) clearInterval(this.#writeWaitTimer);
+    this.#writeWaitTimer = null;
+    const line = this.#writeWaits?.take() ?? null;
+    this.#writeWaits = null;
+    if (line !== null) this.#log(line);
   }
   async #step(name3, fn) {
     try {

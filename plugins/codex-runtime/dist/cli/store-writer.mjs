@@ -723,6 +723,7 @@ var CODE_INDEXES = {
   counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
   states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
   states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
+  states_non_pass: "CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'",
   states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
   views_by_check: "CREATE INDEX views_by_check ON views (check_id)"
 };
@@ -1764,6 +1765,7 @@ function checkFrom2(row) {
 }
 var STATES_FAILING = "states_failing";
 var STATES_EDITED = "states_edited";
+var STATES_NON_PASS = "states_non_pass";
 function indexesIn(conn, names) {
   const rows = conn.all(
     "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN (SELECT value FROM json_each(?))",
@@ -1802,7 +1804,7 @@ function filterTerms(filter) {
   return { sql: terms.join(" "), params };
 }
 function createStateRepo(conn) {
-  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
+  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED, STATES_NON_PASS]);
   const named = (index, used) => used && indexed.has(index) ? index : null;
   return {
     list(worktreeId, filter = {}) {
@@ -1815,6 +1817,22 @@ function createStateRepo(conn) {
         ...params,
         ...terms.params
       ).map((row) => toState(worktreeId, row));
+    },
+    countNonPass(worktreeId, measure) {
+      const index = named(STATES_NON_PASS, true);
+      const states = index === null ? "states" : `states INDEXED BY ${index}`;
+      const counts = { fail: 0, pending: 0, unknown: 0 };
+      const rows = conn.all(
+        `SELECT outcome, count(*) AS n FROM ${states}
+         WHERE worktree_id = ? AND measure = ? AND outcome != 'pass' GROUP BY outcome`,
+        worktreeId,
+        measure
+      );
+      for (const row of rows) {
+        const outcome = oneOf(row, "outcome", OUTCOMES);
+        if (outcome !== "pass") counts[outcome] = num(row, "n");
+      }
+      return counts;
     },
     upsertMany(states) {
       conn.transaction(() => {

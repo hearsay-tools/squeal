@@ -3091,7 +3091,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.627";
+  if (true) return "0.1.628";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3492,7 +3492,9 @@ function checksByFile(states) {
   const checks = /* @__PURE__ */ new Map();
   for (const state of states) {
     const id = testFileKeyOf(state.check);
-    checks.set(id, [...checks.get(id) ?? [], state]);
+    const own = checks.get(id);
+    if (own === void 0) checks.set(id, [state]);
+    else own.push(state);
   }
   return checks;
 }
@@ -10031,18 +10033,31 @@ function checksBornAfter(store, worktreeId, mark) {
   );
   return new Set(rows.map((row) => checkIdentity(checkFrom(row))));
 }
+var KNOWN_STATES_NON_PASS = "known_states_non_pass";
 function relevantStates(store, consumer, mark) {
-  return connectionOf(store).all(
-    `${SELECT_STATES} WHERE s.worktree_id = ? AND (s.outcome != 'pass'
-         OR EXISTS (SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
-           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
-         OR EXISTS (SELECT 1 FROM state_born b WHERE b.worktree_id = s.worktree_id
-           AND b.check_id = s.check_id AND b.id > ?))
+  const conn = connectionOf(store);
+  const indexed = conn.get(
+    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?",
+    KNOWN_STATES_NON_PASS
+  );
+  const nonPass = indexed === null ? "known_states" : `known_states INDEXED BY ${KNOWN_STATES_NON_PASS}`;
+  return conn.all(
+    `SELECT s.*, ${CHECK_COLUMNS} FROM (
+         SELECT check_id FROM ${nonPass} WHERE worktree_id = ? AND outcome != 'pass'
+         UNION SELECT check_id FROM consumer_views
+           WHERE worktree_id = ? AND session_id = ? AND agent_id = ?
+         UNION SELECT check_id FROM state_born WHERE worktree_id = ? AND id > ?
+       ) r
+       CROSS JOIN known_states s ON s.worktree_id = ? AND s.check_id = r.check_id
+       JOIN checks c ON c.id = s.check_id
        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+    consumer.worktreeId,
     consumer.worktreeId,
     consumer.sessionId,
     consumer.agentId,
-    mark
+    consumer.worktreeId,
+    mark,
+    consumer.worktreeId
   ).map(toKnownState);
 }
 function untoldBornAfter(store, consumer, mark) {
@@ -10717,7 +10732,8 @@ var MIGRATIONS = [(db) => db.exec(V1)];
 var SCHEMA_VERSION = MIGRATIONS.length;
 var STORE_INDEXES = {
   runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL",
-  consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)"
+  consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)",
+  known_states_non_pass: "CREATE INDEX known_states_non_pass ON known_states (worktree_id, check_id) WHERE outcome != 'pass'"
 };
 function userVersion(db) {
   return Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);
@@ -12223,6 +12239,7 @@ var CODE_INDEXES = {
   counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
   states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
   states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
+  states_non_pass: "CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'",
   states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
   views_by_check: "CREATE INDEX views_by_check ON views (check_id)"
 };
@@ -13269,6 +13286,7 @@ function checkFrom3(row) {
 }
 var STATES_FAILING = "states_failing";
 var STATES_EDITED = "states_edited";
+var STATES_NON_PASS = "states_non_pass";
 function indexesIn(conn, names3) {
   const rows = conn.all(
     "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN (SELECT value FROM json_each(?))",
@@ -13307,7 +13325,7 @@ function filterTerms(filter) {
   return { sql: terms.join(" "), params };
 }
 function createStateRepo2(conn) {
-  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
+  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED, STATES_NON_PASS]);
   const named2 = (index, used) => used && indexed.has(index) ? index : null;
   return {
     list(worktreeId, filter = {}) {
@@ -13320,6 +13338,22 @@ function createStateRepo2(conn) {
         ...params,
         ...terms.params
       ).map((row) => toState2(worktreeId, row));
+    },
+    countNonPass(worktreeId, measure2) {
+      const index = named2(STATES_NON_PASS, true);
+      const states = index === null ? "states" : `states INDEXED BY ${index}`;
+      const counts = { fail: 0, pending: 0, unknown: 0 };
+      const rows = conn.all(
+        `SELECT outcome, count(*) AS n FROM ${states}
+         WHERE worktree_id = ? AND measure = ? AND outcome != 'pass' GROUP BY outcome`,
+        worktreeId,
+        measure2
+      );
+      for (const row of rows) {
+        const outcome = oneOf3(row, "outcome", OUTCOMES6);
+        if (outcome !== "pass") counts[outcome] = num(row, "n");
+      }
+      return counts;
     },
     upsertMany(states) {
       conn.transaction(() => {
@@ -16521,18 +16555,18 @@ function codeStatusOf(store, worktreeId, at, shell) {
   const read4 = withCode2(
     source,
     ({ store: code, complexity }) => code.read(() => {
-      const states = code.states.list(worktreeId, { measure: "complexity" });
+      const counts = code.states.countNonPass(worktreeId, "complexity");
       const from = since();
       const { done, total, uncountable } = countingOf(code, worktreeId);
       return {
         v: 1,
         threshold: complexity.threshold,
-        over: states.filter((s) => s.outcome === "fail").length,
+        over: counts.fail,
         sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
         since: from?.scope ?? null,
         pending: total - done,
         files: total,
-        unknown: states.filter((s) => s.outcome === "unknown").length,
+        unknown: counts.unknown,
         ...uncountable === 0 ? {} : { uncountable },
         ...coverageOf(code),
         ...without
