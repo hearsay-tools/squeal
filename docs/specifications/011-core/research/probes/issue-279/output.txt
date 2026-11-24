@@ -1,0 +1,9 @@
+Node v26.13.0; load 0.93; CPUs 16
+Runner imports intersect changed paths: []
+Declared inputs: ["packages/web/src/api/queries.ts","packages/web/src/routes/github/github.test.tsx","packages/web/src/routes/github/use-github-refresh.ts"]
+its imports include files changed here since this session started: packages/web/src/api/queries.ts, packages/web/src/routes/github/github.test.tsx, packages/web/src/routes/github/use-github-refresh.ts
+All 4 failing tests import files changed here since this session started: packages/web/src/api/queries.ts, packages/web/src/routes/github/github.test.tsx, packages/web/src/routes/github/use-github-refresh.ts
+Synthetic other-worktree failures available: 2 (1 clean at revision 0)
+Other-worktree result-history reads by attribute: 0
+Attribution-added fields: ["changesInClosure"]
+Probe assertions: PASS; synthetic revision 1, registered at revision 0
