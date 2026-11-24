@@ -195,6 +195,8 @@ export async function startSshd(dir: string, home: string): Promise<Sshd> {
   mkdirSync(dir, { recursive: true });
   mkdirSync(home, { recursive: true });
   const at = (name: string) => join(dir, name);
+  const runtime = at("runtime");
+  mkdirSync(runtime, { recursive: true });
   execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", at("host")]);
   execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", at("id")]);
   writeFileSync(at("authorized_keys"), readFileSync(at("id.pub")));
@@ -209,8 +211,9 @@ export async function startSshd(dir: string, home: string): Promise<Sshd> {
       "StrictModes no",
       "UsePAM no",
       "PidFile none",
-      // This machine's Node first on PATH, as Squeal's Node install puts its own there.
-      `ForceCommand HOME=${home}; PATH=${dirname(process.execPath)}:/usr/bin:/bin; export HOME PATH; cd "$HOME" && exec /bin/sh -c "$SSH_ORIGINAL_COMMAND"`,
+      // This machine's Node first on PATH, as Squeal's Node install puts its own there,
+      // and a private XDG_RUNTIME_DIR so the mock instance has its own capacity pool.
+      `ForceCommand HOME=${home}; XDG_RUNTIME_DIR=${runtime}; PATH=${dirname(process.execPath)}:/usr/bin:/bin; export HOME XDG_RUNTIME_DIR PATH; cd "$HOME" && exec /bin/sh -c "$SSH_ORIGINAL_COMMAND"`,
       "",
     ].join("\n"),
   );

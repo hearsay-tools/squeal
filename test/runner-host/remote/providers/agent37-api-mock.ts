@@ -125,9 +125,11 @@ export async function mockAgent37Api(certificates?: Certificates): Promise<MockA
 export function fakeSshAt(dir: string): { bin: string; home: string; argv: () => string[][] } {
   const bin = join(dir, "bin");
   const home = join(dir, "home");
+  const runtime = join(dir, "runtime");
   const log = join(dir, "ssh.jsonl");
   mkdirSync(bin, { recursive: true });
   mkdirSync(home, { recursive: true });
+  mkdirSync(runtime, { recursive: true });
   const ssh = join(bin, "ssh");
   writeFileSync(
     ssh,
@@ -135,7 +137,9 @@ export function fakeSshAt(dir: string): { bin: string; home: string; argv: () =>
       "#!/bin/sh",
       `${JSON.stringify(process.execPath)} -e 'require("fs").appendFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)) + "\\n")' ${JSON.stringify(log)} "$@"`,
       'while [ $# -gt 0 ]; do case "$1" in -T) shift ;; -o|-i) shift 2 ;; *) break ;; esac; done',
-      `cd ${JSON.stringify(home)} && HOME=${JSON.stringify(home)} exec sh -c "$2"`,
+      // Review 0.1.622 B1: give the fake remote its own XDG_RUNTIME_DIR so its
+      // runner hosts use a remote capacity pool separate from the local daemon's.
+      `cd ${JSON.stringify(home)} && HOME=${JSON.stringify(home)} XDG_RUNTIME_DIR=${JSON.stringify(runtime)} exec sh -c "$2"`,
       "",
     ].join("\n"),
   );

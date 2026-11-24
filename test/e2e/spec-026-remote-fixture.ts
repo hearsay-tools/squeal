@@ -17,7 +17,9 @@ import { fakeSshAt } from "../runner-host/remote/providers/agent37-api-mock.js";
  * Spec 026 row 026-16, Track 2: what the remote end-to-end tests share. A
  * "remote" login is a directory of this machine reached by a fake `ssh`
  * first on the daemon's PATH (`fakeSshAt`): it records each call and runs
- * the command there with that directory as HOME. The directory sits under
+ * the command there with that directory as HOME and its own private
+ * XDG_RUNTIME_DIR (keeping the fake machine's capacity pool separate from
+ * the local daemon's). The directory sits under
  * the scheduler fixtures' scratch, inside this repository, so a remote
  * tree resolves Vitest from its `node_modules` as a remote with an
  * install would. The user's `remote.json`, `remote-machines.json` and

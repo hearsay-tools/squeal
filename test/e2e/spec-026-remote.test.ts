@@ -86,6 +86,10 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     // Group: the manual group runs there on request.
     const group = await cli(repo, "run", "later", "--wait", "120000");
     expect(group.out, why()).toMatch(/^Group later completed at revision \d+: no known failures/);
+    // Review 0.1.622 B2: wait for remaining baseline/slow work (or any tier
+    // the edit cancelled and requeued) before asserting all 6 files current and reading coverage.
+    const settled = await cli(repo, "run", "--all", "--wait", "120000");
+    expect(settled.code, `${settled.out}\n${why()}`).toBe(0);
     const full = await cli(repo, "status", "--full");
     expect(full.out, why()).toMatch(/Known failures: 0; all 6 test files current/);
     const notes = readNotes(repo).join("\n");
