@@ -92,7 +92,7 @@ describe("the command provider (row 026-10)", () => {
   it("is in the registry beside ssh", () => {
     expect(providerOf("command")).toBe(commandProvider);
     expect(providerOf("ssh")?.kind).toBe("ssh");
-    expect(providerOf("agent37")).toBeNull();
+    expect(providerOf("boat")).toBeNull();
     expect(providerOf("toString")).toBeNull();
   });
 
