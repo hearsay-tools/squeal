@@ -77,6 +77,15 @@ async function cli(repo: FixtureRepo, ...args: string[]) {
   return { code, out: `${run.stdout()}${run.stderr()}` };
 }
 
+/**
+ * `status --wait` returns on quiet, not on its timeout: under a policy with
+ * every test runner at `manual`, nothing lists unasked (row 010-37).
+ */
+async function settled(repo: FixtureRepo, why: () => string) {
+  const wait = await cli(repo, "status", "--wait", "30000");
+  expect(wait.out, `${wait.out}\n${why()}`).toContain("Returned on quiet");
+}
+
 /** The exit of `spawned` within 60 s, or `null`. */
 const exitOf = (spawned: SpawnedProcess) =>
   Promise.race([spawned.exited, new Promise<null>((done) => setTimeout(() => done(null), 60_000))]);
@@ -106,7 +115,7 @@ describe("spec 026 Track 1 end to end (row 026-16)", { timeout: 600_000 }, () =>
     const why = () => diagnose(repo, spawned);
     const noHost = (when: string) =>
       expect(runnerHosts(repo.root), `${when}\n${why()}`).toEqual([]);
-    await cli(repo, "status", "--wait", "30000");
+    await settled(repo, why);
     noHost("at start");
 
     // D1: an edit to a source and to README.md opens no runner host; oxlint and complexity run.
@@ -114,10 +123,10 @@ describe("spec 026 Track 1 end to end (row 026-16)", { timeout: 600_000 }, () =>
       join(repo.root, "src/math.ts"),
       "\nexport const twice = (a: number) => a * 2;\n",
     );
-    await cli(repo, "status", "--wait", "30000");
+    await settled(repo, why);
     noHost("after a source edit");
     appendFileSync(join(repo.root, "README.md"), "\nMore words.\n");
-    await cli(repo, "status", "--wait", "30000");
+    await settled(repo, why);
     noHost("after a README.md edit");
     const lint = await cli(repo, "lint");
     expect(lint.code, lint.out).toBe(0);

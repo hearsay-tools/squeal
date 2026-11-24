@@ -23,7 +23,7 @@ import { lockedOf } from "../wait-liveness.js";
 import { decideStatusWait } from "./decide.js";
 import { heldAt, type News, newsOf, readWindow, type Syncing } from "./edit-window.js";
 import { type Every, keptAtStart, readEvery } from "./every-state.js";
-import { testFilesListed } from "./listing.js";
+import { listingSettled } from "./listing.js";
 import { judgeWait } from "./presence.js";
 import { watchOf } from "./socket.js";
 import { STATUS_WAITS, type StatusRecord, type StatusWaitOutcome } from "./status-table.js";
@@ -189,7 +189,7 @@ export function editPoll(options: EditConfig): StatusPoll<StatusWaitEnded> {
       const quiet =
         news.quiet &&
         seen !== null &&
-        testFilesListed(store, id, seen.header) &&
+        listingSettled(store, id, root, seen.header) &&
         slowLeft.length === 0 &&
         daemon.state === "alive";
       const record: StatusRecord = {
