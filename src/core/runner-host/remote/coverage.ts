@@ -6,7 +6,7 @@ import {
   COVERAGE_RECORD_VERSION,
   decodeRecord,
 } from "../../code/coverage/record.js";
-import type { CoverageRun, CoveredFile } from "../../code/coverage/types.js";
+import type { CoverageRecord, CoverageRun, CoveredFile } from "../../code/coverage/types.js";
 import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
@@ -84,24 +84,69 @@ function removeFile(file: CoveredFile): void {
 
 /**
  * The daemon's side: the record of `remote` as the code store takes it,
- * or why it is dropped: bytes that do not decode, or a path not inside the root.
+ * or why it is dropped: bytes that do not decode, a record of another
+ * shape, or a path not inside the root. Review 0.1.620 S2: never throws,
+ * so a bad record cannot reject the proven report it rides on.
  */
 export function sharedOf(remote: RemoteRecord): SharedRecord | string {
-  let record: ReturnType<typeof decodeRecord>;
+  let record: unknown;
   try {
     record = decodeRecord(Buffer.from(remote.record, "base64"));
   } catch (error) {
     return `its remote record does not decode: ${String(error)}`;
   }
-  if (record?.v !== 1 || !Array.isArray(record.sources) || !Array.isArray(record.unread)) {
-    return "its remote record is not a coverage record";
+  const wrong = recordProblem(record);
+  if (wrong !== null) return `its remote record ${wrong}`;
+  try {
+    return shareRecord(record as CoverageRecord, COVERAGE_RECORD_VERSION);
+  } catch (error) {
+    return `its remote record is not shared: ${String(error)}`;
   }
-  const paths = [...record.sources.map((source) => source?.path), ...record.unread];
-  const outside = paths.find((path) => typeof path !== "string" || !insideRoot(path));
-  if (outside !== undefined) {
-    return `its remote record names a path outside the root: ${JSON.stringify(outside)}`;
+}
+
+/** What is wrong with a decoded record's shape and paths; `null`: nothing. */
+function recordProblem(record: unknown): string | null {
+  if (!isObject(record) || record.v !== 1) return "is not a coverage record";
+  const { sources, unread } = record;
+  if (!Array.isArray(sources) || !Array.isArray(unread)) return "is not a coverage record";
+  for (const source of sources) {
+    if (!isObject(source)) return `has a source that is not an object: ${JSON.stringify(source)}`;
+    const outside = pathProblem(source.path);
+    if (outside !== null) return outside;
+    if (!sourceShaped(source)) return `has a malformed source: ${JSON.stringify(source.path)}`;
   }
-  return shareRecord(record, COVERAGE_RECORD_VERSION);
+  for (const path of unread) {
+    const outside = pathProblem(path);
+    if (outside !== null) return outside;
+  }
+  return null;
+}
+
+function pathProblem(path: unknown): string | null {
+  return typeof path === "string" && insideRoot(path)
+    ? null
+    : `names a path outside the root: ${JSON.stringify(path) ?? String(path)}`;
+}
+
+/** A source's fields as `CoverageSource` has them: strings, and functions of five numbers. */
+function sourceShaped(source: Record<string, unknown>): boolean {
+  const { blob, lines, covered, functions } = source;
+  return (
+    typeof blob === "string" &&
+    typeof lines === "string" &&
+    typeof covered === "string" &&
+    Array.isArray(functions) &&
+    functions.every(
+      (span: unknown) =>
+        Array.isArray(span) &&
+        span.length === 5 &&
+        span.every((value: unknown) => typeof value === "number" && Number.isFinite(value)),
+    )
+  );
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Of `records`, those of test files not in `without`. */

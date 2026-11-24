@@ -361,4 +361,46 @@ describe("a remote record as the daemon reads it (row 026-13, spec 026 D9)", () 
     const kept = sharedOf(wire({ v: 1, sources: [], unread: ["src/a.ts"] }));
     expect(typeof kept).toBe("object");
   });
+
+  // Review 0.1.620 S2: every source and `unread` entry checked, and nothing thrown.
+  const SOURCE_PART = { path: "src/a.ts", blob: "a", lines: "", covered: "", functions: [] };
+  const withSource = (source: unknown, unread: unknown[] = []) =>
+    sharedOf(wire({ v: 1, sources: [source], unread }));
+
+  it("keeps a well-formed source", () => {
+    const kept = withSource(SOURCE_PART, ["src/b.ts"]);
+    expect(typeof kept).toBe("object");
+    expect(kept).toMatchObject({ paths: ["src/a.ts", "src/b.ts"] });
+  });
+
+  it("drops a source with no path, a null source and a path that is not a string", () => {
+    const { path: _, ...pathless } = SOURCE_PART;
+    expect(withSource(pathless)).toBe("its remote record names a path outside the root: undefined");
+    expect(withSource(null)).toBe("its remote record has a source that is not an object: null");
+    expect(withSource(["src/a.ts"])).toMatch(/a source that is not an object/);
+    expect(withSource({ ...SOURCE_PART, path: 7 })).toBe(
+      "its remote record names a path outside the root: 7",
+    );
+  });
+
+  it("drops a source whose fields are not a coverage source's", () => {
+    expect(withSource({ ...SOURCE_PART, blob: 1 })).toMatch(/malformed source: "src\/a.ts"/);
+    expect(withSource({ ...SOURCE_PART, functions: [[1, 2, 3]] })).toMatch(/malformed source/);
+    expect(withSource({ ...SOURCE_PART, functions: null })).toMatch(/malformed source/);
+  });
+
+  it("drops an unread entry that is not a path inside the root", () => {
+    expect(withSource(SOURCE_PART, [null])).toMatch(/outside the root: null/);
+    expect(withSource(SOURCE_PART, [3])).toMatch(/outside the root: 3/);
+    for (const path of ["", "/srv/x.ts", "src/../../x.ts", ".git/config", "src//a.ts"]) {
+      expect(withSource(SOURCE_PART, [path])).toMatch(/outside the root/);
+      expect(withSource({ ...SOURCE_PART, path })).toMatch(/outside the root/);
+    }
+  });
+
+  it("drops a record that is no object, and wire bytes that are no string, without throwing", () => {
+    expect(sharedOf(wire(null))).toBe("its remote record is not a coverage record");
+    expect(sharedOf(wire({ v: 1, sources: {}, unread: [] }))).toMatch(/not a coverage record/);
+    expect(sharedOf({ testFile: A, record: 42 as never })).toMatch(/does not decode/);
+  });
 });
