@@ -1,14 +1,12 @@
-import { compare } from "../fs/compare.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { listPaths } from "../text.js";
 import type { RelativePath, RevisionNumber } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { AffectedTestFiles, RunnerClosure } from "../types/runner.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
-import type { FileState } from "./files.js";
+import { type NamesakeCut, namesakeCut, selectEditWork } from "./edit-select.js";
 import type { WorktreeKeys } from "./keying.js";
 import type { Ledger } from "./ledger.js";
-import { namesakesOf } from "./namesakes.js";
 import type { RunnerPartBound } from "./runner-work-bound.js";
 
 /**
@@ -16,13 +14,7 @@ import type { RunnerPartBound } from "./runner-work-bound.js";
  * as amended 2026-10-20, task 011-25), read with `affected` and without the
  * scheduler lock.
  */
-export interface EditCut {
-  /** Each source the revision changed that a closure holds, with its namesakes' `testFileId`s. */
-  readonly namesakes: ReadonlyMap<RelativePath, readonly string[]>;
-  /** The sources none of whose namesakes the revision reached. */
-  readonly bare: ReadonlySet<RelativePath>;
-  /** `testFileId`s of the runner's direct importers of `bare`. */
-  readonly fallback: ReadonlySet<string>;
+export interface EditCut extends NamesakeCut {
   /** `testFileId`s of the runner's transitive importers of the revision's paths (task 011-116). */
   readonly transitive: ReadonlySet<string>;
 }
@@ -50,22 +42,12 @@ export async function fetchEditCut(
   stored?: (paths: readonly RelativePath[]) => AffectedTestFiles | null,
 ): Promise<EditCut> {
   const { keys, runner } = context;
-  const byPath = new Map<RelativePath, string[]>();
-  for (const ref of testFiles)
-    byPath.set(ref.path, [...(byPath.get(ref.path) ?? []), testFileId(ref)]);
   const reached = new Set([...affected.direct, ...affected.transitive].map(testFileId));
   for (const ref of keys.index.reverse.referencing(paths)) reached.add(testFileId(ref));
   const fetched = new Set(closures.flatMap((closure) => closure.paths));
   const held = (path: RelativePath) =>
     fetched.has(path) || keys.index.reverse.referencing([path]).length > 0;
-  const namesakes = new Map<RelativePath, readonly string[]>();
-  const bare = new Set<RelativePath>();
-  for (const path of new Set(paths)) {
-    if (byPath.has(path) || !held(path)) continue;
-    const ids = namesakesOf(path, byPath.keys()).flatMap((name) => byPath.get(name) ?? []);
-    namesakes.set(path, ids);
-    if (!ids.some((id) => reached.has(id))) bare.add(path);
-  }
+  const { namesakes, bare } = namesakeCut(testFiles, paths, reached, held);
   const direct = affected.direct.map(testFileId);
   const transitive = new Set(affected.transitive.map(testFileId));
   if (bare.size === 0) return { namesakes, bare, fallback: new Set(), transitive };
@@ -109,38 +91,20 @@ export function editWork(
   observedDirect: ReadonlySet<string> = new Set(),
   within: (id: string) => boolean = () => true,
 ): { kept: Set<string>; reached: Set<string> } {
-  const importers = new Set([...direct, ...observedDirect]);
-  const reached = ledger.recentOf(changed, importers);
-  const kept = new Set<string>();
-  for (const file of ledger.files.values()) {
-    if (changed.has(file.ref.path) && within(file.id)) kept.add(file.id);
-  }
-  for (const [source, ids] of cut.namesakes) {
-    const own = ids.filter((id) => reached.has(id) && within(id));
-    // A source whose namesake the closures reached only once the runner part applied them.
-    const fallback = cut.bare.has(source) ? cut.fallback : direct;
-    for (const id of own.length > 0 ? own : fallback) if (within(id)) kept.add(id);
-  }
+  const reached = ledger.recentOf(changed, new Set([...direct, ...observedDirect]));
   const beyond = heldBeyondInputs(context, changed);
-  const rest = [...reached].filter((id) => !kept.has(id) && !importers.has(id) && within(id));
-  const reads = rest.filter((id) => cut.transitive.has(id) || beyond.has(id));
-  const others = [
-    ...shortest(
-      ledger,
-      [...importers].filter((id) => !kept.has(id) && within(id)),
-    ),
-    ...shortest(ledger, reads),
-  ];
-  for (const file of others.slice(0, context.policy.runner.tierSize)) kept.add(file.id);
+  const kept = selectEditWork({
+    files: ledger.files,
+    named: changed,
+    reached,
+    cut,
+    direct,
+    observedDirect,
+    reads: (id) => cut.transitive.has(id) || beyond.has(id),
+    tierSize: context.policy.runner.tierSize,
+    within,
+  });
   return { kept, reached };
-}
-
-/** The files of `ids` the ledger knows, shortest last-known duration first, unknown last. */
-function shortest(ledger: Ledger, ids: readonly string[]): FileState[] {
-  return ids
-    .map((id) => ledger.files.get(id))
-    .filter((file): file is FileState => file !== undefined)
-    .sort(shortestFirst);
 }
 
 /**
@@ -199,12 +163,6 @@ export function observedDirectOf(
     if (!direct.has(id) && keys.directOf(ref).some((path) => changed.has(path))) out.add(id);
   }
   return out;
-}
-
-function shortestFirst(a: FileState, b: FileState): number {
-  const x = a.durationMs ?? Number.POSITIVE_INFINITY;
-  const y = b.durationMs ?? Number.POSITIVE_INFINITY;
-  return x === y ? compare(a.id, b.id) : x < y ? -1 : 1;
 }
 
 /**
