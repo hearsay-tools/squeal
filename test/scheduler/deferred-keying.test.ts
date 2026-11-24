@@ -159,6 +159,8 @@ describe("deferred runner keying (spec 026 D1)", { timeout: 60_000 }, () => {
     expect(counts.get("testFiles")).toBeGreaterThan(0);
 
     // After the wake, an edit is re-keyed from the stored closures, with no runner call.
+    await side.rest();
+    const ran = side.runner.runs.length;
     const before = total(counts);
     await side.edit("watch", "src/core.ts");
     await side.rest();
@@ -167,11 +169,12 @@ describe("deferred runner keying (spec 026 D1)", { timeout: 60_000 }, () => {
     expect(side.current(B)).toBe(true);
 
     // The next request catches up the owed refinement first, then runs what it re-keyed.
-    const ran = side.runner.runs.length;
     await side.scheduler.requestGroup("unit");
     await expect.poll(() => side.current(A), { timeout: 20_000 }).toBe(true);
     expect(counts.get("invalidate")).toBeGreaterThan(0);
-    expect(side.runner.runs.slice(ran).flatMap((run) => run.files.map((f) => f.path))).toEqual([A]);
+    // The first request's lane may run A at its new key too; B never runs again.
+    const again = side.runner.runs.slice(ran).flatMap((run) => run.files.map((f) => f.path));
+    expect(new Set(again)).toEqual(new Set([A]));
   });
 
   it("starts with no keying call after an eager daemon, its files unknown, never current", async () => {
