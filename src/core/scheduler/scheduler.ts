@@ -48,7 +48,7 @@ import { CommandHold } from "./command-hold.js";
 import { attachCommitLanes } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
-import { keyingDeferred, stopAsksTests } from "./deferred-keying.js";
+import { commitAsksTests, keyingDeferred, stopAsksTests } from "./deferred-keying.js";
 import { focusedWaiting } from "./focused.js";
 import { requeueFocusedTier } from "./focused-record.js";
 import { GroupTiers } from "./group-tiers.js";
@@ -570,6 +570,11 @@ class TierScheduler implements Scheduler {
     // Each pass looks again for a load retry's load, and another worktree's requests (001-368).
     if (batch.trigger === "interval" && this.#takeRetries(context, ledger)) ledger.commit();
     this.#adopt(context, ledger);
+    // Spec 026 D1.4: a commit asks a `commit` group for keyed files, so a start that keyed none keys them first.
+    if (this.#baselineOwed && commitAsksTests(context.policy)) {
+      const { head } = await context.head();
+      if (head !== ledger.revision.head) await this.#catchUp(context, ledger);
+    }
     const { applied, touched } = await reconcileBatch(context, ledger, batch);
     // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
     const install = applied?.revision.changes.some((change) => touchesInstall(change.path));
@@ -692,14 +697,21 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(async () => {
       if (this.#closed || this.#awaitingInstall || this.#reinstalled) return;
       const { context, ledger } = this.#started();
-      if (this.#baselineOwed) {
-        this.#baselineOwed = false;
-        const changed = this.#runnerWork.forgetOwed();
-        if (changed.size > 0) this.#waitChanges.push(changed);
-        await this.#baseline(context, ledger);
-      } else this.#runnerWork.catchUp();
+      await this.#catchUp(context, ledger);
     }, "opening the runner for a request");
     this.#pump();
+  }
+
+  /** `#wakeKeying`'s work, under the lock: the owed baseline, or the owed runner work queued. */
+  async #catchUp(context: SchedulerContext, ledger: Ledger): Promise<void> {
+    if (!this.#baselineOwed) {
+      this.#runnerWork.catchUp();
+      return;
+    }
+    this.#baselineOwed = false;
+    const changed = this.#runnerWork.forgetOwed();
+    if (changed.size > 0) this.#waitChanges.push(changed);
+    await this.#baseline(context, ledger);
   }
 
   /** `#wakeKeying` from inside a lock turn: it runs once the turn ends. */
