@@ -30,11 +30,25 @@ const VITEST: readonly CatchUpFile[] = [
 /** The runner calls that open or reopen a keying host. */
 const KEYING = ["environment", "testFiles", "closure", "invalidate", "affected", "recheck"];
 
-/** `runner` named `name`, as the daemon names its members, each keying call counted. */
-function member(runner: CatchUpRunner, name: string, counts: Map<string, number>): RunnerAdapter {
+/**
+ * `runner` named `name`, as the daemon names its members, each keying call
+ * counted; its listing leaves out the paths in `gone`, as files deleted on disk.
+ */
+function member(
+  runner: CatchUpRunner,
+  name: string,
+  counts: Map<string, number>,
+  gone: ReadonlySet<string> = new Set(),
+): RunnerAdapter {
   return new Proxy(runner, {
     get(target, key, receiver) {
       if (key === "name") return name;
+      if (key === "testFiles") {
+        return async () => {
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+          return (await target.testFiles()).filter((ref) => !gone.has(ref.path));
+        };
+      }
       const value: unknown = Reflect.get(target, key, receiver);
       if (typeof value !== "function") return value;
       return (...args: unknown[]) => {
@@ -66,7 +80,11 @@ const PYTEST: Other = {
   group: { name: "p", runner: "pytest", at: "edit" },
 };
 
-async function mixed(other: Other) {
+async function mixed(
+  other: Other,
+  repo = catchUpRepo([...VITEST, other.file], ["README.md"]),
+  gone: ReadonlySet<string> = new Set(),
+) {
   const files = [...VITEST, other.file];
   const vitest = new Map<string, number>();
   const others = new Map<string, number>();
@@ -77,7 +95,6 @@ async function mixed(other: Other) {
   const gate = new RunnerGate(() => policy);
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-026-r1-slot-"));
   onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
-  const repo = catchUpRepo(files, ["README.md"]);
   const vitestRunner = new CatchUpRunner(VITEST);
   const otherRunner = new CatchUpRunner([other.file]);
   const side = catchUpSide(repo, repo.main, {
@@ -86,7 +103,7 @@ async function mixed(other: Other) {
     policy,
     wrapRunner: () =>
       createCompositeRunner(
-        [member(vitestRunner, "vitest", vitest), member(otherRunner, other.name, others)],
+        [member(vitestRunner, "vitest", vitest, gone), member(otherRunner, other.name, others)],
         [],
         gate,
       ),
@@ -97,7 +114,7 @@ async function mixed(other: Other) {
   });
   await side.scheduler.start();
   await side.rest();
-  return { side, vitest, others, vitestRunner, otherRunner };
+  return { side, vitest, others, vitestRunner, otherRunner, repo };
 }
 
 const total = (counts: Map<string, number>) => [...counts.values()].reduce((a, b) => a + b, 0);
@@ -155,5 +172,68 @@ describe("per-runner deferred keying (review 0.1.616 B1, B2)", { timeout: 60_000
     const answer = await side.scheduler.readers?.([A]);
     expect(vitest.get("testFiles"), "the named path lists Vitest's files").toBeGreaterThan(0);
     expect(answer?.readers?.[A]?.map((ref) => ref.path)).toEqual([A]);
+  });
+});
+
+/*
+ * Review 0.1.616-r2 N1 (row 026-17): a daemon that starts again in a
+ * mixed-runner worktree has no listing of the deferred runner yet. Its
+ * empty part of the composite's listing is not a complete one: the start's
+ * baseline and a later relisting keep Vitest's stored files, their closures
+ * and their known checks, a failure among them, with no Vitest call; the
+ * first explicit Vitest request lists it and retires what is gone.
+ */
+describe("a restart beside a deferred runner (review 0.1.616-r2 N1)", { timeout: 60_000 }, () => {
+  const keyed = (side: Awaited<ReturnType<typeof mixed>>["side"]) =>
+    side.store.testFileKeys
+      .list(side.worktreeId)
+      .map((row) => row.testFile.path)
+      .sort();
+  const fails = (side: Awaited<ReturnType<typeof mixed>>["side"]) =>
+    side.store.knownStates
+      .list(side.worktreeId)
+      .filter((state) => state.outcome === "fail")
+      .map((state) => state.check.testPath);
+
+  it("keeps Vitest's stored files and failure with no Vitest call, then catches up", async () => {
+    const first = await mixed(NODE_TEST);
+    first.vitestRunner.failing.add(A);
+    await first.side.scheduler.requestGroup("unit");
+    await expect
+      .poll(() => first.side.current(A) && first.side.current(B), { timeout: 20_000 })
+      .toBe(true);
+    await first.side.rest();
+    expect(keyed(first.side)).toEqual([A, B, NODE_TEST.file.path].sort());
+    expect(fails(first.side)).toContain(A);
+    await first.side.scheduler.close();
+
+    // The same worktree, no source change: a new daemon's scheduler, gate and runners.
+    const gone = new Set<string>();
+    const { side, vitest } = await mixed(NODE_TEST, first.repo, gone);
+    expect(Object.fromEntries(vitest), "no Vitest call at the restart").toEqual({});
+    await expect.poll(() => side.current(NODE_TEST.file.path), { timeout: 20_000 }).toBe(true);
+    expect(keyed(side), "Vitest's files stay keyed").toEqual([A, B, NODE_TEST.file.path].sort());
+    expect(fails(side), "the stored failure stays visible").toContain(A);
+    expect(side.current(A), "unverified since the restart: not current").toBe(false);
+
+    // A new file relists (a structural change), as does an interval; Vitest stays shut.
+    await side.edit("watch", "src/core.ts", "src/added.ts");
+    await side.rest();
+    await side.scheduler.handleBatch({ trigger: "interval", paths: [] });
+    await side.rest();
+    expect(Object.fromEntries(vitest), "no Vitest call on an edit").toEqual({});
+    expect(keyed(side)).toEqual([A, B, NODE_TEST.file.path].sort());
+    expect(fails(side)).toContain(A);
+
+    // B is deleted; the explicit request lists Vitest, retires B and runs A, which passes now.
+    gone.add(B);
+    await side.scheduler.requestGroup("unit");
+    await expect.poll(() => side.current(A), { timeout: 20_000 }).toBe(true);
+    await side.rest();
+    expect(vitest.get("testFiles"), "the request lists Vitest").toBeGreaterThan(0);
+    expect(keyed(side), "the deleted file retires once listed").toEqual(
+      [A, NODE_TEST.file.path].sort(),
+    );
+    expect(fails(side), "only a passing run clears the failure").toEqual([]);
   });
 });

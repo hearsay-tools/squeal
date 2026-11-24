@@ -21,6 +21,7 @@ import { readRefined } from "./refined.js";
 import { openMoves } from "./rekeyed-moves.js";
 import { restoreReruns } from "./rerun.js";
 import { isCatchUp, readEnvironments, resolveClosures } from "./revision.js";
+import { listingGap, listsInFull } from "./runner-gate.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 
 /**
@@ -140,6 +141,7 @@ export async function baseline(
   );
   const refs = listed ?? [...previousKeys.values()].map((row) => row.testFile);
   const known = knownChecks(context, ledger);
+  const deferred = keepDeferred(context, ledger, listed, previousKeys.values(), known);
   const fromStore = new Set<string>();
   const unresolved: TestFileRef[] = [];
   for (const ref of refs) {
@@ -216,7 +218,9 @@ export async function baseline(
     if (previous !== file.key) file.resultKey = previous;
     file.durationMs = durationOf(results);
   }
-  const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
+  const unkeyed = [...ledger.files.values()].filter(
+    (file) => file.key === null && !deferred.has(file.id),
+  );
   const owed = ledger.checkpoints.takeOwed();
   const forced = outside(owedStrict(ledger, owed), [...misses, ...unkeyed]);
   ledger.checkpoints.start(
@@ -295,6 +299,36 @@ export function deferredStart(context: SchedulerContext, ledger: Ledger): void {
       keys.setClosure({ testFile: row.testFile, paths: record.closure.paths }, true);
   }
   ledger.commit({ refined: ledger.revision.number });
+}
+
+/**
+ * Review 0.1.616-r2 N1 (row 026-17): the stored files a deferred runner not
+ * listed yet left out of `listed` (`listsInFull`), each kept as
+ * `deferredStart` keeps it: its stored closure and known checks, and no key
+ * until that runner reads its environment, so it is unknown, never current
+ * by a key from before the start, and it neither runs nor counts as
+ * unkeyed. The runner's first listing, at an explicit request, retires the
+ * ones that are gone (D1.3, D1.4). Returns their ids.
+ */
+function keepDeferred(
+  context: SchedulerContext,
+  ledger: Ledger,
+  listed: readonly TestFileRef[] | null,
+  rows: Iterable<{ readonly testFile: TestFileRef }>,
+  known: ReadonlyMap<string, Known>,
+): Set<string> {
+  const kept = new Set<string>();
+  if (listed === null || listingGap(listed) === null) return kept;
+  const ids = new Set(listed.map(testFileId));
+  for (const { testFile } of rows) {
+    if (ids.has(testFileId(testFile)) || listsInFull(listed, testFile)) continue;
+    const file = ledger.addFile(testFile);
+    restore(file, known.get(file.id));
+    const record = context.store.testFiles.get(testFile);
+    if (record !== null) context.keys.setClosure({ testFile, paths: record.closure.paths }, true);
+    kept.add(file.id);
+  }
+  return kept;
 }
 
 /**

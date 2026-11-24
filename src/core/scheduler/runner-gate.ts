@@ -1,5 +1,7 @@
 import { CHECK_RUNNERS } from "../daemon/check-groups.js";
 import type { CheckRunner } from "../types/check-groups.js";
+import type { ProjectName } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { InvalidatedPath } from "../types/runner.js";
 import { runnerKeyingDeferred } from "./deferred-keying.js";
@@ -126,6 +128,41 @@ export class RunnerGate {
       },
     };
   }
+}
+
+/*
+ * Review 0.1.616-r2 N1 (row 026-17): a daemon that starts again beside a
+ * deferred runner has no listing of it yet, and the composite's listing
+ * holds none of its files. That listing is not a complete one: the
+ * composite marks it with the projects it holds in full, those of the
+ * members that answered, and a stored file of any other project is kept
+ * (`listsInFull`), with its closure and its known checks, until the
+ * deferred runner's own listing says whether it is gone (spec 026 D1.3).
+ */
+
+/** What a composite listing leaves out: the deferred runners that gave none. */
+export interface ListingGap {
+  /** The deferred runners shut before any listing in this daemon. */
+  readonly runners: readonly CheckRunner[];
+  /** The projects the listing holds in full: those of the members that answered. */
+  readonly projects: ReadonlySet<ProjectName>;
+}
+
+const GAPS = new WeakMap<readonly TestFileRef[], ListingGap>();
+
+/** Marks `listed` as leaving out the runners and projects `gap` names. */
+export function markListingGap(listed: readonly TestFileRef[], gap: ListingGap): void {
+  GAPS.set(listed, gap);
+}
+
+/** The gap of `listed`; `null`: a complete listing. */
+export function listingGap(listed: readonly TestFileRef[]): ListingGap | null {
+  return GAPS.get(listed) ?? null;
+}
+
+/** Whether `listed` holds `ref`'s project in full, so `ref` missing from it is gone. */
+export function listsInFull(listed: readonly TestFileRef[], ref: TestFileRef): boolean {
+  return listingGap(listed)?.projects.has(ref.project) ?? true;
 }
 
 /** Every runner, for a request that may need any (`run --all`, a retry, a named path). */

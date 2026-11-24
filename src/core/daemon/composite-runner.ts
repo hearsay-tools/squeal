@@ -1,5 +1,5 @@
 import { compare } from "../fs/compare.js";
-import type { RunnerGate } from "../scheduler/runner-gate.js";
+import { markListingGap, type RunnerGate } from "../scheduler/runner-gate.js";
 import type { ProjectName } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { RunnerAdapter, RunReport } from "../types/runner.js";
@@ -166,9 +166,21 @@ export function createCompositeRunner(
       for (const { adapter, value } of parts)
         own(
           adapter,
-          value.map((f) => f.project),
+          value.files.map((f) => f.project),
         );
-      return parts.flatMap((part) => part.value);
+      const listed = parts.flatMap((part) => part.value.files);
+      // Review 0.1.616-r2 N1: a deferred member not listed yet leaves its files out.
+      const gaps = parts.flatMap(({ adapter, value }) =>
+        value.unlisted === null ? [] : [{ adapter, runner: value.unlisted }],
+      );
+      if (gaps.length > 0) {
+        const unlisted = new Set(gaps.map((gap) => gap.adapter));
+        const projects = new Set(
+          [...owners].filter(([, owner]) => !unlisted.has(owner)).map(([project]) => project),
+        );
+        markListingGap(listed, { runners: gaps.map((gap) => gap.runner), projects });
+      }
+      return listed;
     },
     environment,
     async run(testFiles, options) {
