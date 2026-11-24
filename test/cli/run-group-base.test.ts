@@ -29,6 +29,10 @@ beforeEach(() => {
   process.env.XDG_RUNTIME_DIR = runtimeDir;
   process.env.GIT_CONFIG_GLOBAL = "/dev/null";
   process.env.GIT_CONFIG_NOSYSTEM = "1";
+  delete process.env.CODEX_SESSION_ID;
+  delete process.env.PI_SESSION_ID;
+  delete process.env.OPENCODE_SESSION_ID;
+  delete process.env.ANTIGRAVITY_CONVERSATION_ID;
 });
 afterEach(() => {
   closeFakeDaemons();

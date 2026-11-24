@@ -167,8 +167,8 @@ Usage:
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
   squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...]
-              [--timeout <seconds>] [--parts <dir|file>...] [--exceptions <file>]
-              [--rerun-stored-failures] [--json]
+              [--narrow] [--timeout <seconds>] [--parts <dir|file>...]
+              [--exceptions <file>] [--rerun-stored-failures] [--json]
                                 Runs tests, with no daemon, for up to --timeout
                                 seconds (default 600) in all: judges every JS/TS
                                 function changed since git merge-base <ref> HEAD, test
@@ -266,6 +266,10 @@ Usage:
                                 shortest of its other direct importers; with
                                 --wait, wait for those files only, exit codes as
                                 above; a lint group takes no paths
+  squeal run <group> --base <ref> [--wait [<ms>]] [--json]
+                                Narrow pre-PR run for paths changed since git
+                                merge-base <ref> HEAD plus working-tree edits;
+                                reports selected verdicts and omitted files
   squeal retry <test file>... [--reason load|environment]
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
