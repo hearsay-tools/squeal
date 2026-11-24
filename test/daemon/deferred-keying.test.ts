@@ -108,23 +108,39 @@ describe("deferred runner keying in the daemon (spec 026 D1)", { timeout: 300_00
     return { repo, spawned };
   }
 
-  /** `status --wait <path>`, which must end with a passing verdict. */
-  async function passes(daemon: Served, path: string) {
+  /**
+   * `status --wait <path>` lists the deferred runner's files and selects
+   * `selected`. A `manual` group's file then waits for `squeal run <group>`
+   * (spec 019): exit 3 with that next step, never "not listed" (B2).
+   */
+  async function lists(daemon: Served, path: string, selected: string) {
     const { code, out } = await cli(daemon.repo, "status", "--wait", "150000", path);
-    expect(code, `${out}\n${diagnose(daemon.repo, daemon.spawned)}`).toBe(0);
+    const why = `${out}\n${diagnose(daemon.repo, daemon.spawned)}`;
+    expect(out, why).not.toMatch(/has not listed|still starting/);
+    expect(out, why).toContain(`Selected: ${selected}`);
+    expect(out, why).toContain(`squeal run unit ${selected}`);
+    expect(code, why).toBe(3);
   }
 
   it("a first-ever named wait on a test path opens the runner, as does a new test (review 0.1.616 B2)", async () => {
     const daemon = await served();
-    await passes(daemon, "test/math.test.ts");
+    await lists(daemon, "test/math.test.ts", "test/math.test.ts");
     writeFileSync(
       join(daemon.repo.root, "test/added.test.ts"),
       'import { expect, it } from "vitest";\n\nit("adds", () => expect(1 + 1).toBe(2));\n',
     );
-    await passes(daemon, "test/added.test.ts");
+    await lists(daemon, "test/added.test.ts", "test/added.test.ts");
+    // The explicit run the wait names gives the verdict.
+    const run = await cli(daemon.repo, "run", "unit", "test/added.test.ts", "--wait", "150000");
+    expect(run.code, `${run.out}\n${diagnose(daemon.repo, daemon.spawned)}`).toBe(0);
   });
 
   it("a first-ever named wait on a source path opens the runner (review 0.1.616 B2)", async () => {
-    await passes(await served(), "src/math.ts");
+    const daemon = await served();
+    const { code, out } = await cli(daemon.repo, "status", "--wait", "150000", "src/math.ts");
+    const why = `${out}\n${diagnose(daemon.repo, daemon.spawned)}`;
+    expect(out, why).not.toMatch(/has not listed|still starting/);
+    expect(out, why).toContain("Selected: test/math.test.ts");
+    expect(code, why).toBe(3);
   });
 });
