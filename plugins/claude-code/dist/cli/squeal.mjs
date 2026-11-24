@@ -79708,6 +79708,7 @@ function withRemoteLane(options) {
   let notRun = 0;
   let remoteRuns = 0;
   let planningCalls = 0;
+  let refreshes = 0;
   let opened3 = !remotePlans;
   let closed = false;
   let sleepEnd = Promise.resolve();
@@ -79910,6 +79911,10 @@ function withRemoteLane(options) {
       ...workers === void 0 ? {} : { workers }
     });
   };
+  const runDirect = (testFiles3, run8) => {
+    opened3 = true;
+    return here.run(testFiles3, run8);
+  };
   const instead = async (testFiles3, run8) => {
     if (options.whenLost === "local") return runHere(testFiles3, run8, "here");
     notRun += testFiles3.length;
@@ -79958,6 +79963,7 @@ function withRemoteLane(options) {
   const busy2 = () => {
     if (remoteRuns > 0) return `a run is on remote ${target}`;
     if (planningCalls > 0) return `a planning call is on remote ${target}`;
+    if (refreshes > 0) return `remote ${target}'s Git state is being refreshed`;
     if (state.kind === "connecting") return `remote ${target} is connecting`;
     if (state.kind === "asleep" && state.going) return `remote ${target} is going to sleep`;
     return null;
@@ -79971,6 +79977,17 @@ function withRemoteLane(options) {
     };
   };
   const ending3 = () => closed || options.ending?.() === true;
+  const refreshRepository = async () => {
+    if (options.refreshRepository === void 0) return;
+    refreshes++;
+    activity();
+    await options.refreshRepository(closing.signal).catch(
+      (error) => options.log(`remote ${target}: its Git state not refreshed: ${error.message}`)
+    ).finally(() => {
+      refreshes--;
+      activity();
+    });
+  };
   const ended2 = (host) => {
     if (state.kind === "ready" && state.host === host) down("the host ended", false);
   };
@@ -80026,10 +80043,11 @@ function withRemoteLane(options) {
     environment: () => local2.environment(),
     ...planning,
     async run(testFiles3, run8) {
-      if (!goesRemote(run8, tiers)) return here.run(testFiles3, run8);
+      if (!goesRemote(run8, tiers)) return runDirect(testFiles3, run8);
+      await refreshRepository();
       const split5 = route.split(testFiles3);
       const { there } = split5;
-      if (there.length === 0) return here.run(testFiles3, run8);
+      if (there.length === 0) return runDirect(testFiles3, run8);
       if (split5.here.length === 0) return remoteTier(there, run8);
       const own = await runHere(split5.here, run8, "repository");
       if (run8.stop?.aborted === true) return own;
@@ -80305,6 +80323,7 @@ import { createReadStream } from "node:fs";
 import { mkdtemp, rm as rm4 } from "node:fs/promises";
 import { tmpdir as tmpdir13 } from "node:os";
 import { join as join174 } from "node:path";
+import { Readable as Readable2 } from "node:stream";
 import { promisify as promisify4 } from "node:util";
 function scriptCommand(script2, args2) {
   return ["sh", "-c", script2, "sh", ...args2].map(shellQuote).join(" ");
@@ -80318,40 +80337,90 @@ async function ensureNode(target, node2, version2, deadlineMs) {
   if (path === "") throw new Error(`${what}: the script printed no Node`);
   return path;
 }
-async function ensureGitTree(target, tree, root, deadlines) {
-  const looked2 = await sshRun(target, `test -d ${shellQuote(`${tree}/root/.git`)}`, {
+function gitStateOf(text3) {
+  const lines = text3.split("\n").map((line) => line.trim());
+  const dot = lines.indexOf(".");
+  if (dot < 0) return null;
+  const ref3 = lines.slice(0, dot).find((line) => line !== "") ?? "";
+  const shown = lines.slice(dot + 1).map((line) => line.split(" "));
+  const head2 = shown.find(([, name3]) => name3 === "HEAD")?.[0];
+  if (head2 === void 0 || !/^[0-9a-f]{40,64}$/.test(head2)) return null;
+  const tags = shown.filter(([object2, name3]) => object2 !== void 0 && name3?.startsWith("refs/tags/") === true).map(([object2, name3]) => `tag ${object2} ${name3}`).sort();
+  const refs2 = [`head ${head2}`, ...ref3 === "" ? [] : [`ref ${ref3}`], ...tags].join("\n");
+  return { head: head2, key: refs2, refs: refs2 };
+}
+async function localGitState(root) {
+  const { stdout } = await run5("sh", ["-c", STATE], { cwd: root, maxBuffer: 64 * 1024 * 1024 });
+  return gitStateOf(stdout);
+}
+async function remoteGitState(target, tree, deadlines) {
+  const looked2 = await sshRun(target, scriptCommand(LOOK_SCRIPT, [tree]), {
     deadlineMs: deadlines.sshMs
   });
-  if (looked2.code === 0) return { kind: "present" };
-  if (looked2.code !== 1) {
+  if (looked2.code !== 0) {
     throw new Error(
-      sshFailure(`could not look for ${tree}/root/.git on ${target.destination}`, looked2)
+      sshFailure(`could not read ${tree}/root/.git on ${target.destination}`, looked2)
     );
   }
+  return gitStateOf(looked2.stdout);
+}
+async function knownHere(root, commit) {
+  return run5("git", ["-C", root, "cat-file", "-e", `${commit}^{commit}`]).then(
+    () => true,
+    () => false
+  );
+}
+async function ensureGitTree(target, tree, root, deadlines) {
+  const local2 = await localGitState(root).catch(() => null);
+  if (local2 === null) return { kind: "none", why: "the worktree has no commit yet" };
+  const remote = await remoteGitState(target, tree, deadlines);
+  if (remote?.key === local2.key) return { kind: "present", commit: local2.head, state: remote };
+  const base = remote !== null && await knownHere(root, remote.head) ? remote.head : null;
   const dir2 = await mkdtemp(join174(tmpdir13(), "squeal-agent37-bundle-"));
   try {
-    const bundle = join174(dir2, "head.bundle");
-    try {
-      await run5("git", ["-C", root, "bundle", "create", "-q", bundle, "HEAD", "--tags"], {
-        maxBuffer: 1024 * 1024
-      });
-    } catch (error) {
-      const stderr = String(error.stderr ?? error).trim();
-      return { kind: "none", why: `git bundle failed: ${stderr.split("\n").at(-1) ?? ""}` };
+    let sent = await sendGit(target, tree, root, local2, base, dir2, deadlines);
+    if (sent === "missing" && base !== null) {
+      sent = await sendGit(target, tree, root, local2, null, dir2, deadlines);
     }
-    const sent = await sshRun(target, scriptCommand(UNPACK_SCRIPT, [tree]), {
-      input: createReadStream(bundle),
-      deadlineMs: deadlines.bundleMs
-    });
-    if (sent.code !== 0) {
-      throw new Error(sshFailure(`could not unpack the git bundle on ${target.destination}`, sent));
-    }
-    return { kind: "sent", commit: sent.stdout.trim().split("\n").at(-1) ?? "" };
+    if (sent === "missing") return { kind: "none", why: "the git bundle lacked objects there" };
+    return { kind: "sent", commit: local2.head, state: sent };
   } finally {
     await rm4(dir2, { recursive: true, force: true });
   }
 }
-var run5, BOOTSTRAP_DEADLINES, NODE_SCRIPT, UNPACK_SCRIPT;
+async function sendGit(target, tree, root, local2, base, dir2, deadlines) {
+  const bundle = join174(dir2, base === null ? "full.bundle" : "since.bundle");
+  const created = await run5(
+    "git",
+    ["-C", root, "bundle", "create", "-q", bundle, "HEAD", "--tags", ...base ? [`^${base}`] : []],
+    { maxBuffer: 1024 * 1024 }
+  ).then(
+    () => true,
+    (error) => {
+      if (base !== null) return false;
+      const stderr = String(error.stderr ?? error).trim();
+      throw new Error(`git bundle failed: ${stderr.split("\n").at(-1) ?? ""}`);
+    }
+  );
+  const input = Readable2.from(
+    (async function* () {
+      yield Buffer.from(`${local2.refs}
+.
+`);
+      if (created) yield* createReadStream(bundle);
+    })()
+  );
+  const sent = await sshRun(target, scriptCommand(SYNC_SCRIPT, [tree]), {
+    input,
+    deadlineMs: deadlines.bundleMs
+  });
+  if (sent.code === 3) return "missing";
+  if (sent.code !== 0) {
+    throw new Error(sshFailure(`could not unpack the git bundle on ${target.destination}`, sent));
+  }
+  return gitStateOf(sent.stdout);
+}
+var run5, BOOTSTRAP_DEADLINES, NODE_SCRIPT, STATE, LOOK_SCRIPT, SYNC_SCRIPT;
 var init_bootstrap2 = __esm({
   "src/core/runner-host/remote/providers/agent37/bootstrap.ts"() {
     "use strict";
@@ -80384,18 +80453,33 @@ for f in .bashrc .profile; do
 done
 "$D/bin/corepack" enable --install-directory "$HOME/.local/bin" >&2 || true
 printf '%s\\n' "$D/bin/node"`;
-    UNPACK_SCRIPT = `set -eu
+    STATE = `git symbolic-ref -q HEAD || true
+echo .
+git show-ref --head --tags || true`;
+    LOOK_SCRIPT = `cd "$1/root" 2>/dev/null && [ -d .git ] || { echo missing; exit 0; }
+${STATE}`;
+    SYNC_SCRIPT = `set -eu
 T=$1
 mkdir -p "$T/root"
-B=$(cd "$T" && pwd -P)/bootstrap.bundle
+D=$(cd "$T" && pwd -P)
+B=$D/git.bundle; R=$D/git.refs; N=$D/git.tags
+trap 'rm -f "$B" "$R" "$N"' EXIT
+: > "$R"
+while IFS= read -r l; do [ "$l" = . ] && break; printf '%s\\n' "$l" >> "$R"; done
 cat > "$B"
 cd "$T/root"
-fresh=; [ -z "$(ls -A)" ] && fresh=1
-git init -q
-git fetch -q --tags "$B" HEAD
-if [ -n "$fresh" ]; then git reset -q --hard FETCH_HEAD; else git reset -q FETCH_HEAD; fi
-rm -f "$B"
-git rev-parse HEAD`;
+[ -d .git ] || git init -q
+if [ -s "$B" ]; then git bundle unbundle "$B" > /dev/null || exit 3; fi
+H=$(sed -n 's/^head //p' "$R"); S=$(sed -n 's/^ref //p' "$R")
+sed -n 's/^tag [^ ]* //p' "$R" > "$N"
+{
+  git for-each-ref --format='%(refname)' refs/tags | grep -vxF -f "$N" | sed 's/^/delete /'
+  sed -n 's/^tag \\([^ ]*\\) \\(.*\\)$/update \\2 \\1/p' "$R"
+  if [ -n "$S" ]; then echo "update $S $H"; fi
+} | git update-ref --stdin || exit 3
+if [ -n "$S" ]; then git symbolic-ref HEAD "$S"; else git update-ref --no-deref HEAD "$H" || exit 3; fi
+git read-tree --reset HEAD
+${STATE}`;
   }
 });
 
@@ -80428,6 +80512,12 @@ import { readFileSync as readFileSync75 } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { isIP, connect as netConnect } from "node:net";
 import { rootCertificates, connect as tlsConnect } from "node:tls";
+function safeReason(error) {
+  if (error instanceof LocalError) return error.message;
+  const code = typeof error === "object" && error !== null ? Reflect.get(error, "code") : void 0;
+  if (typeof code !== "string" || !/^[A-Z][A-Z0-9_]{1,63}$/.test(code)) return "connection failed";
+  return /CERT|SIGNATURE|ISSUER/.test(code) ? `untrusted certificate (${code})` : code;
+}
 function envValue(env, names9) {
   for (const name3 of names9) {
     const value = env[name3];
@@ -80460,10 +80550,10 @@ function proxyFor(host, port, env) {
   try {
     proxy2 = new URL(value.includes("://") ? value : `http://${value}`);
   } catch {
-    throw new Error("HTTPS_PROXY is not a URL");
+    throw new LocalError("HTTPS_PROXY is not a URL");
   }
   if (proxy2.protocol !== "http:" && proxy2.protocol !== "https:") {
-    throw new Error(`HTTPS_PROXY must be an http: or https: URL, not ${proxy2.protocol}`);
+    throw new LocalError(`HTTPS_PROXY must be an http: or https: URL, not ${proxy2.protocol}`);
   }
   return proxy2;
 }
@@ -80489,7 +80579,7 @@ function apiKeyFor(keyEnv, proxied, env) {
   const key3 = env[keyEnv];
   if (key3 !== void 0 && key3 !== "") return key3;
   if (proxied) return "placeholder";
-  throw new Error(`no Agent37 API key: set ${keyEnv}, or HTTPS_PROXY to a proxy that adds it`);
+  throw new LocalError(`no Agent37 API key: set ${keyEnv}, or HTTPS_PROXY to a proxy that adds it`);
 }
 function connectThrough(proxy2, target, env, timeoutMs) {
   const authority = `${target.host.includes(":") ? `[${target.host}]` : target.host}:${target.port}`;
@@ -80513,18 +80603,20 @@ function connectThrough(proxy2, target, env, timeoutMs) {
   return new Promise((resolve54, reject) => {
     const asked = httpRequest(options);
     const timer = setTimeout(() => {
-      asked.destroy(new Error(`proxy ${proxyName(proxy2)} did not answer within ${timeoutMs} ms`));
+      asked.destroy(
+        new LocalError(`proxy ${proxyName(proxy2)} did not answer within ${timeoutMs} ms`)
+      );
     }, timeoutMs);
     asked.on("error", (error) => {
       clearTimeout(timer);
-      reject(new Error(`proxy ${proxyName(proxy2)}: ${error.message}`));
+      reject(new LocalError(`proxy ${proxyName(proxy2)}: ${safeReason(error)}`));
     });
     asked.on("connect", (response, socket) => {
       clearTimeout(timer);
       if (response.statusCode !== 200) {
         socket.destroy();
         reject(
-          new Error(
+          new LocalError(
             `proxy ${proxyName(proxy2)} refused CONNECT ${authority}: ${response.statusCode}`
           )
         );
@@ -80539,11 +80631,11 @@ function ready(socket, event2, timeoutMs, what) {
   return new Promise((resolve54, reject) => {
     const timer = setTimeout(() => {
       socket.destroy();
-      reject(new Error(`${what}: no connection within ${timeoutMs} ms`));
+      reject(new LocalError(`${what}: no connection within ${timeoutMs} ms`));
     }, timeoutMs);
     socket.once("error", (error) => {
       clearTimeout(timer);
-      reject(new Error(`${what}: ${error.message}`));
+      reject(new LocalError(`${what}: ${safeReason(error)}`));
     });
     socket.once(event2, () => {
       clearTimeout(timer);
@@ -80568,9 +80660,12 @@ async function openEndpoint(target, env, timeoutMs) {
   });
   return { socket: await ready(secure, "secureConnect", timeoutMs, what), proxied: proxy2 !== null };
 }
+var LocalError;
 var init_net = __esm({
   "src/core/runner-host/remote/providers/agent37/net.ts"() {
     "use strict";
+    LocalError = class extends Error {
+    };
   }
 });
 
@@ -80600,8 +80695,9 @@ function upgradeAnswer(buffer, key3) {
   const end = buffer.indexOf("\r\n\r\n");
   if (end < 0) return null;
   const lines = buffer.subarray(0, end).toString("latin1").split("\r\n");
-  const status3 = lines[0] ?? "";
-  if (!/^HTTP\/1\.1 101\b/.test(status3)) return { refused: status3.slice(0, 200) };
+  const status3 = /^HTTP\/1\.[01] (\d{3})(?: |$)/.exec(lines[0] ?? "")?.[1];
+  if (status3 === void 0) return { refused: "not an HTTP response" };
+  if (status3 !== "101") return { refused: `HTTP ${status3}` };
   const accept = lines.find((line) => /^sec-websocket-accept:/i.test(line))?.slice("sec-websocket-accept:".length).trim();
   if (accept !== acceptOf(key3))
     return { refused: "the server's Sec-WebSocket-Accept does not match" };
@@ -80693,50 +80789,88 @@ function tunnelHost(template, id) {
 }
 async function runTunnel(options) {
   const { host, port, env } = options;
+  const connectMs = options.connectMs ?? CONNECT_MS;
+  const deadline = Date.now() + connectMs;
   let socket;
   let key3;
   try {
     const proxied = proxyFor(host, port, env) !== null;
     const apiKey = apiKeyFor(options.keyEnv, proxied, env);
-    socket = (await openEndpoint({ host, port, tls: true }, env, options.connectMs ?? 3e4)).socket;
+    socket = (await openEndpoint({ host, port, tls: true }, env, connectMs)).socket;
     key3 = webSocketKey();
     socket.write(upgradeRequest(host, "/", key3, { "X-Agent37-Key": apiKey }));
   } catch (error) {
-    options.fail(`tunnel to ${host}:${port}: ${error.message}`);
+    options.fail(`tunnel to ${host}:${port}: ${safeReason(error)}`);
     return TUNNEL_FAILED;
   }
-  return bridge(socket, key3, options);
+  return bridge(socket, key3, options, deadline);
 }
-function bridge(socket, key3, options) {
+function bridge(socket, key3, options, deadline) {
   const { input, output, host } = options;
+  const closeMs = options.closeMs ?? CLOSE_MS2;
   return new Promise((resolve54) => {
     let open7 = false;
+    let closing = false;
     let ended2 = false;
     let head2 = Buffer.alloc(0);
+    let early = [];
+    let earlyBytes = 0;
+    let closeTimer;
     const decoder2 = new FrameDecoder();
+    const removals = [];
+    const on = (emitter, event2, listener) => {
+      emitter.on(event2, listener);
+      removals.push(() => emitter.removeListener(event2, listener));
+    };
     const finish = (code, why2) => {
       if (ended2) return;
       ended2 = true;
-      if (why2 !== void 0) options.fail(`tunnel to ${host}: ${why2}`);
-      input.removeListener("data", send);
+      clearTimeout(upgradeTimer);
+      clearTimeout(closeTimer);
+      for (const remove2 of removals) remove2();
+      socket.on("error", ignore);
+      output.on("error", ignore);
       input.destroy();
       socket.destroy();
+      if (why2 !== void 0) options.fail(`tunnel to ${host}: ${why2}`);
       resolve54(code);
     };
+    const upgradeTimer = setTimeout(
+      () => finish(TUNNEL_FAILED, "no upgrade answer in time"),
+      Math.max(0, deadline - Date.now())
+    );
     const send = (chunk) => {
-      if (!socket.write(encodeFrame(OPCODE.binary, chunk))) input.pause();
+      const more2 = socket.write(encodeFrame(OPCODE.binary, chunk));
+      if (!more2) input.pause();
+      return more2;
+    };
+    const fromSsh = (chunk) => {
+      if (open7) {
+        send(chunk);
+        return;
+      }
+      early.push(chunk);
+      earlyBytes += chunk.length;
+      if (earlyBytes > EARLY_LIMIT) input.pause();
+    };
+    const sshEnded = () => {
+      if (!open7) return finish(0);
+      if (closing) return;
+      closing = true;
+      socket.end(encodeFrame(OPCODE.close, NORMAL_CLOSE));
+      closeTimer = setTimeout(() => finish(0), closeMs);
     };
     const receive = (bytes2) => {
       let frames;
       try {
         frames = decoder2.push(bytes2);
-      } catch (error) {
-        finish(TUNNEL_FAILED, error.message);
+      } catch {
+        finish(TUNNEL_FAILED, "an undecodable WebSocket frame");
         return;
       }
       for (const frame of frames) {
         if (frame.opcode === OPCODE.close) {
-          socket.end(encodeFrame(OPCODE.close, frame.payload.subarray(0, 2)));
+          if (!closing) socket.end(encodeFrame(OPCODE.close, frame.payload.subarray(0, 2)));
           finish(0);
           return;
         }
@@ -80746,16 +80880,7 @@ function bridge(socket, key3, options) {
         }
       }
     };
-    output.on("drain", () => socket.resume());
-    output.on("error", () => finish(0));
-    socket.on("drain", () => input.resume());
-    socket.on("error", (error) => finish(open7 ? 0 : TUNNEL_FAILED, error.message));
-    socket.on(
-      "close",
-      () => finish(open7 ? 0 : TUNNEL_FAILED, open7 ? void 0 : "closed during the upgrade")
-    );
-    socket.on("data", (chunk) => {
-      if (open7) return receive(chunk);
+    const upgrade = (chunk) => {
       head2 = Buffer.concat([head2, chunk]);
       const answer4 = upgradeAnswer(head2, key3);
       if (answer4 === null) {
@@ -80763,17 +80888,32 @@ function bridge(socket, key3, options) {
         return;
       }
       if ("refused" in answer4) return finish(TUNNEL_FAILED, `refused: ${answer4.refused}`);
+      clearTimeout(upgradeTimer);
       open7 = true;
       head2 = Buffer.alloc(0);
-      input.on("data", send);
-      input.on("end", () => {
-        socket.end(encodeFrame(OPCODE.close, Buffer.from([3, 232])));
-      });
+      let more2 = true;
+      for (const chunk2 of early) more2 = send(chunk2);
+      early = [];
+      if (more2) input.resume();
       if (answer4.rest.length > 0) receive(answer4.rest);
-    });
+    };
+    on(output, "drain", () => socket.resume());
+    on(output, "error", () => finish(0));
+    on(socket, "drain", () => input.resume());
+    on(socket, "error", (error) => finish(open7 ? 0 : TUNNEL_FAILED, safeReason(error)));
+    on(
+      socket,
+      "close",
+      () => finish(open7 ? 0 : TUNNEL_FAILED, open7 ? void 0 : "closed during the upgrade")
+    );
+    on(socket, "data", (chunk) => open7 ? receive(chunk) : upgrade(chunk));
+    on(input, "data", fromSsh);
+    on(input, "end", sshEnded);
+    on(input, "close", sshEnded);
+    on(input, "error", sshEnded);
   });
 }
-var TUNNEL_HOST_TEMPLATE, TUNNEL_FAILED;
+var TUNNEL_HOST_TEMPLATE, TUNNEL_FAILED, CONNECT_MS, CLOSE_MS2, NORMAL_CLOSE, EARLY_LIMIT, ignore;
 var init_tunnel = __esm({
   "src/core/runner-host/remote/providers/agent37/tunnel.ts"() {
     "use strict";
@@ -80781,6 +80921,12 @@ var init_tunnel = __esm({
     init_websocket();
     TUNNEL_HOST_TEMPLATE = "{id}-22022.agent37.app";
     TUNNEL_FAILED = 255;
+    CONNECT_MS = 3e4;
+    CLOSE_MS2 = 5e3;
+    NORMAL_CLOSE = Buffer.from([3, 232]);
+    EARLY_LIMIT = 1 << 20;
+    ignore = () => {
+    };
   }
 });
 
@@ -80914,14 +81060,30 @@ var init_config3 = __esm({
 // src/core/runner-host/remote/providers/agent37/api.ts
 import { request as httpRequest2 } from "node:http";
 function errorCode2(body2) {
-  return isRecord(body2) && isRecord(body2.error) && typeof body2.error.code === "string" ? body2.error.code : null;
+  const code = isRecord(body2) && isRecord(body2.error) ? body2.error.code : void 0;
+  return typeof code === "string" && KNOWN_CODES.has(code) ? code : null;
 }
-var Agent37Error, CALL_MS, CREATE_MS, Agent37Api;
+var KNOWN_CODES, Agent37Error, CALL_MS, CREATE_MS, Agent37Api;
 var init_api = __esm({
   "src/core/runner-host/remote/providers/agent37/api.ts"() {
     "use strict";
     init_json();
     init_net();
+    KNOWN_CODES = /* @__PURE__ */ new Set([
+      "bad_request",
+      "conflict",
+      "forbidden",
+      "insufficient_balance",
+      "internal_error",
+      "invalid_request",
+      "method_not_allowed",
+      "not_found",
+      "quota_exceeded",
+      "rate_limited",
+      "service_unavailable",
+      "try_again",
+      "unauthorized"
+    ]);
     Agent37Error = class extends Error {
       constructor(message3, status3, code) {
         super(message3);
@@ -80981,10 +81143,8 @@ var init_api = __esm({
       #ok(method, path, answer4) {
         if (answer4.status >= 200 && answer4.status < 300) return;
         const code = errorCode2(answer4.body);
-        const message3 = isRecord(answer4.body) && isRecord(answer4.body.error) ? answer4.body.error.message : void 0;
-        const why2 = [code, typeof message3 === "string" ? message3.slice(0, 300) : null].filter(Boolean).join(": ");
         throw new Agent37Error(
-          `Agent37 ${method} ${path} answered ${answer4.status}${why2 === "" ? "" : ` (${why2})`}`,
+          `Agent37 ${method} ${path} answered ${answer4.status}${code === null ? "" : ` (${code})`}`,
           answer4.status,
           code
         );
@@ -81024,18 +81184,18 @@ var init_api = __esm({
             }
           });
           const timer = setTimeout(() => {
-            asked.destroy(new Error(`no answer within ${timeoutMs} ms`));
+            asked.destroy(new LocalError(`no answer within ${timeoutMs} ms`));
           }, timeoutMs);
           asked.on("error", (error) => {
             clearTimeout(timer);
-            reject(new Error(`Agent37 ${method} ${path}: ${error.message}`));
+            reject(new Error(`Agent37 ${method} ${path}: ${safeReason(error)}`));
           });
           asked.on("response", (response) => {
             const chunks2 = [];
             response.on("data", (chunk) => chunks2.push(chunk));
             response.on("error", (error) => {
               clearTimeout(timer);
-              reject(new Error(`Agent37 ${method} ${path}: ${error.message}`));
+              reject(new Error(`Agent37 ${method} ${path}: ${safeReason(error)}`));
             });
             response.on("end", () => {
               clearTimeout(timer);
@@ -81096,8 +81256,38 @@ async function untilRunning(api, id, seen2, timing, signal3) {
     if (status3 === "sleeping" || status3 === "stopped") status3 = (await api.start(id)).status;
   }
 }
+function gitKeeper(place2, reached) {
+  let found4 = reached?.key ?? null;
+  let here = found4;
+  let turn = Promise.resolve();
+  const current2 = () => found4 !== null && here === found4;
+  const bring = async (ssh, signal3) => {
+    here = (await localGitState(place2.root).catch(() => null))?.key ?? null;
+    if (here === null || ssh === null || current2() || signal3?.aborted === true) return current2();
+    try {
+      const got = await ensureGitTree(ssh, place2.tree, place2.root, place2.deadlines);
+      found4 = got.kind === "none" ? null : got.state?.key ?? null;
+      if (got.kind === "sent")
+        place2.log(`${ssh.destination}: git history brought to ${got.commit}`);
+      if (got.kind === "none") place2.log(`${ssh.destination}: no git history (${got.why})`);
+    } catch (error) {
+      found4 = null;
+      place2.log(`${ssh.destination}: git history not brought current: ${error.message}`);
+    }
+    return current2();
+  };
+  return {
+    current: current2,
+    sync(ssh, signal3) {
+      const run8 = turn.then(() => bring(ssh, signal3));
+      turn = run8.catch(() => {
+      });
+      return run8.catch(() => false);
+    }
+  };
+}
 function agent37Machine(parts3) {
-  const { state, timing } = parts3;
+  const { state, timing, git } = parts3;
   const id = state.instanceId;
   const api = apiOf(parts3.settings, parts3.env, timing);
   const sleep37 = async () => {
@@ -81116,10 +81306,12 @@ function agent37Machine(parts3) {
       ephemeralHostKey: true
     },
     state,
+    ...git === null ? {} : { gitCurrent: () => git.current(), syncGit: (ssh, signal3) => git.sync(ssh, signal3) },
     wake: async (signal3) => {
       const found4 = await api.inspect(id);
       if (found4 === null) throw goneError(id);
       await untilRunning(api, id, found4, timing, signal3);
+      await git?.sync(parts3.ssh, signal3);
     },
     sleep: sleep37,
     release: async (reason2) => {
@@ -81152,6 +81344,7 @@ var init_machine = __esm({
     "use strict";
     init_json();
     init_api();
+    init_bootstrap2();
     init_tunnel();
     AGENT37 = "agent37";
   }
@@ -81251,17 +81444,29 @@ async function bootstrap(request, settings, state, env, timing) {
   const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli);
   const node2 = await ensureNode(ssh, settings.node, request.nodeVersion, timing.bootstrap.nodeMs);
   const places = { node: node2, cache: settings.cache };
-  let hasGitRepository = false;
+  let keeper3 = null;
   if (settings.bootstrap === "git-bundle") {
-    const tree = treeDir(places, request.worktreeRoot);
-    const git = await ensureGitTree(ssh, tree, request.worktreeRoot, timing.bootstrap);
-    hasGitRepository = git.kind !== "none";
+    const place2 = gitPlace(places, request.worktreeRoot, timing, request.log);
+    const git = await ensureGitTree(ssh, place2.tree, place2.root, timing.bootstrap);
     if (git.kind === "sent")
       request.log(`Agent37 instance ${state.instanceId}: git history sent at ${git.commit}`);
     if (git.kind === "none")
       request.log(`Agent37 instance ${state.instanceId}: no git history (${git.why})`);
+    keeper3 = gitKeeper(place2, git.kind === "none" ? null : git.state);
   }
-  return agent37Machine({ settings, state, env, ssh, places, hasGitRepository, timing });
+  return agent37Machine({
+    settings,
+    state,
+    env,
+    ssh,
+    places,
+    hasGitRepository: keeper3 !== null,
+    git: keeper3,
+    timing
+  });
+}
+function gitPlace(places, root, timing, log) {
+  return { tree: treeDir(places, root), root, deadlines: timing.bootstrap, log };
 }
 function createAgent37Provider(timing = {}) {
   const t = { ...TIMING, ...timing };
@@ -81284,6 +81489,12 @@ function createAgent37Provider(timing = {}) {
         },
         places: record2.places,
         hasGitRepository: record2.capabilities.hasGitRepository,
+        // Found at no state yet: its first wake brings it current.
+        git: record2.capabilities.hasGitRepository ? gitKeeper(
+          gitPlace(record2.places, record2.worktreeRoot, t, () => {
+          }),
+          null
+        ) : null,
         timing: t
       });
     }
@@ -81950,6 +82161,18 @@ function shareMachine(options) {
     arm(machine);
     return machine;
   };
+  const serial = (work, signal3) => {
+    if (released) return Promise.reject(refused());
+    const turn = () => {
+      if (released) throw refused();
+      if (signal3?.aborted === true) throw new MachineEnding("its lane closed");
+      return work();
+    };
+    const run8 = queue.then(turn, turn);
+    queue = run8.catch(() => {
+    });
+    return run8;
+  };
   const releaseOnce = async () => {
     released = true;
     disarm();
@@ -81980,19 +82203,21 @@ function shareMachine(options) {
       if (released) throw refused();
       return { machine: reached, ssh: target(reached) };
     },
-    serial(work, signal3) {
-      if (released) return Promise.reject(refused());
-      const turn = () => {
-        if (released) throw refused();
-        if (signal3?.aborted === true) throw new MachineEnding("its lane closed");
-        return work();
-      };
-      const run8 = queue.then(turn, turn);
-      queue = run8.catch(() => {
-      });
-      return run8;
-    },
+    serial,
     ending: () => released,
+    gitCurrent() {
+      const m = machine;
+      return m?.capabilities.hasGitRepository === true && (m?.gitCurrent?.() ?? true);
+    },
+    async refreshGit(signal3) {
+      const m = machine;
+      if (m?.syncGit === void 0) return;
+      if (await m.syncGit(null, signal3)) return;
+      if (!awake || released || signal3?.aborted === true) return;
+      await serial(async () => {
+        if (awake && machine === m) await m.syncGit?.(target(m), signal3);
+      }, signal3);
+    },
     awake: () => awake,
     activity() {
       last = now();
@@ -82100,7 +82325,9 @@ function createDaemonRemote(options) {
       commonDir,
       remoteUrls: remoteUrls(commonDir),
       nodeVersion: process.version,
-      log: options.log
+      log: options.log,
+      // The provider's own processes (`ssh`, hooks, its API key) take the daemon's env.
+      ...options.env === void 0 ? {} : { env: options.env }
     },
     ...options.env === void 0 ? {} : { env: options.env }
   });
@@ -82138,7 +82365,8 @@ function laneOver(share2, spec, tiers, context2) {
     ...spec.perPass === true && share2.awake() ? { awaitConnect: true } : {},
     whenLost: context2.lane.whenLost,
     planning: context2.lane.planning,
-    hasGitRepository: () => share2.current()?.capabilities.hasGitRepository === true,
+    hasGitRepository: () => share2.gitCurrent(),
+    refreshRepository: (signal3) => share2.refreshGit(signal3),
     ending: () => share2.ending(),
     root,
     version: version2,
@@ -129047,7 +129275,7 @@ import { resolve as resolve52 } from "node:path";
 init_coverage_wire();
 init_protocol();
 import { createInterface as createInterface2 } from "node:readline";
-var CLOSE_MS2 = 5e3;
+var CLOSE_MS3 = 5e3;
 async function serveRunnerHost(options) {
   const send = (message3) => options.write(encodeLine(message3));
   const around = options.around ?? ((_, run9) => run9());
@@ -129094,7 +129322,7 @@ async function serveRunnerHost(options) {
       const closing = closeAdapter();
       let timer;
       const bound = new Promise((resolve54) => {
-        timer = setTimeout(resolve54, options.closeMs ?? CLOSE_MS2);
+        timer = setTimeout(resolve54, options.closeMs ?? CLOSE_MS3);
       });
       await Promise.race([closing, bound]);
       clearTimeout(timer);
