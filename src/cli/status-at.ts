@@ -37,6 +37,8 @@ import { runChild, takeRunRequest } from "./status-at-run-child.js";
 export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install"> & {
   readonly daemons?: AtDaemons;
   readonly placeWaitMs?: number;
+  /** Row 010-37: `--run`'s wait when no `--wait` gives one. Default `RUN_WAIT_MS`; for tests. */
+  readonly defaultWaitMs?: number;
 };
 
 /** Row 023-40 (D7.3): `--run [--all-missing]`. */

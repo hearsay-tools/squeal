@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "no
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type AtDaemons, realDaemons } from "../../src/cli/status-at-daemons.js";
+import { RECORD_WAIT_MS } from "../../src/cli/status-at-queue.js";
 import { RUN_WAIT_MS } from "../../src/cli/status-at-report-queued.js";
 import { installCommitWorktree } from "../../src/core/checkout/commit-setup.js";
 import { COMMIT_WORKTREES } from "../../src/core/daemon/commit-mode.js";
@@ -25,11 +26,18 @@ import { run, testOf } from "./status-at-kit.js";
  * ends, Q7's next `--run` reads both sides in the same call, a first run
  * that observed a tracked file at its completed key included (wave 23 B3,
  * on both sides). Both daemons run in this process and stop at the end.
+ * Row 010-37: the call's default wait is `DEFAULT_WAIT_MS` here
+ * (`AtOptions.defaultWaitMs`), still with no `waitMs`, so the omitted-wait
+ * path and its bound run in seconds; the production default stays 100 s.
+ * The asks keep their floor of `RECORD_WAIT_MS` past the start, so a call
+ * whose daemons never answer returns by the later of the two.
  */
 
 const A = ref("test/a.test.ts");
 const P = ref("test/p.test.ts");
 const RUN = { allMissing: false };
+/** The default wait of these calls, in place of `RUN_WAIT_MS` (row 010-37). */
+const DEFAULT_WAIT_MS = 3_000;
 /** What a call may take past its wait: the report, a socket's last read, a busy host. */
 const ALLOWANCE_MS = 6_000;
 
@@ -105,6 +113,10 @@ const rowOf = (out: string, path: string) =>
   (JSON.parse(out).files as Row[]).find((row) => row.path === path);
 
 describe("status --at --run asks the working tree's daemon (review wave-23-third B1)", SLOW, () => {
+  it("waits 100 s by default", () => {
+    expect(RUN_WAIT_MS).toBe(100_000);
+  });
+
   it("returns by the default wait while the worktree's config hook blocks, then reads both sides once it ends", {
     timeout: 400_000,
   }, async () => {
@@ -130,17 +142,21 @@ describe("status --at --run asks the working tree's daemon (review wave-23-third
     const options = { cacheRoot: f.cacheRoot, daemons };
     const paths = [A.path, P.path];
 
-    // The default wait (100 s): no `waitMs`.
+    // The default wait (`DEFAULT_WAIT_MS` here): no `waitMs`.
     const began = Date.now();
-    const first = await run(f, { commit: a, paths, run: RUN, json: true }, options);
+    const first = await run(
+      f,
+      { commit: a, paths, run: RUN, json: true },
+      { ...options, defaultWaitMs: DEFAULT_WAIT_MS },
+    );
     const ms = Date.now() - began;
-    expect(ms, first.err).toBeLessThan(RUN_WAIT_MS + ALLOWANCE_MS);
+    expect(ms, first.err).toBeLessThan(Math.max(DEFAULT_WAIT_MS, RECORD_WAIT_MS) + ALLOWANCE_MS);
     expect(existsSync(entered)).toBe(true);
     expect(worktreeStarts).toEqual([f.root]);
     const report = JSON.parse(first.out);
     expect(report.now).toEqual({ kind: "setting up" });
     // Neither daemon answered: the call knows no file to queue in the working tree, and says why.
-    expect(report.run).toMatchObject({ waitMs: RUN_WAIT_MS, now: { setup: true, files: 0 } });
+    expect(report.run).toMatchObject({ waitMs: DEFAULT_WAIT_MS, now: { setup: true, files: 0 } });
     expect(report.run.commit.setup).toBe("starting");
     expect(rowOf(first.out, A.path)?.now).toEqual({
       state: "no result",

@@ -66,7 +66,7 @@ export async function daemonCall(input: CallInput): Promise<number> {
   const { args, place, io, options } = input;
   const { root, commonDir, commit } = place;
   const run = args.run ?? null;
-  const waitMs = args.waitMs ?? (run === null ? 0 : RUN_WAIT_MS);
+  const waitMs = args.waitMs ?? (run === null ? 0 : (options.defaultWaitMs ?? RUN_WAIT_MS));
   const note = (text: string) =>
     io.stderr(text.startsWith("squeal: ") ? `${text}\n` : `squeal: ${text}\n`);
   // Review wave-23 B1, row 023-40c: one bound for every step, counted from the call's start. The
