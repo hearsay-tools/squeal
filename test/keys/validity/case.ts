@@ -171,6 +171,13 @@ export interface AssembleInput {
   readonly stability?: Readonly<Record<string, string>>;
   /** Read from the runner (`setEnvironments`) in place of one fixed environment hash (011-36). */
   readonly environment?: RunnerEnvironment;
+  /**
+   * Spec 026 D10 (row 026-14): each closure's key had it run on each of
+   * these machines (`WorktreeKeys.keyForCore`), beside the keys. A tree
+   * before 026-14 gives none, and keys under its own machine whatever
+   * `environment.core` names.
+   */
+  readonly otherMachines?: readonly CoreEnvironmentInputs[];
   /** The keys read the store through a `Proxy`, as a test's wrapped store: no connection of its own (018 D1). */
   readonly wrappedStore?: true;
   /**

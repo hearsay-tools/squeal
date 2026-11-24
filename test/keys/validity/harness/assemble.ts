@@ -160,6 +160,13 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
         ? {}
         : await stability(keys, root, input.closures, input.stability);
     const outputs = { runner, observes, ...stable };
+    if (input.otherMachines !== undefined) {
+      // Spec 026 D10 (row 026-14): each file's key on another machine; a tree before it, none.
+      const machines = input.otherMachines.map((core) =>
+        paths.map((path) => keys.keyForCore?.({ project: "", path }, core) ?? null),
+      );
+      return { keys: { first, core: keys.coreOf?.("") ?? null, machines }, outputs };
+    }
     if (input.revised !== undefined) {
       return { keys: [first, ...(await revised(keys, root, input.revised, paths))], outputs };
     }
