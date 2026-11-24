@@ -1,0 +1,6 @@
+# split.py (021-27) on the Vitest host of memory4.jsonl (pid 106509); MiB; sandbox, load 0.2-0.7
+moment	pid	kind	priv	swap	threads	v8_256k	anon_big	anon_small	glibc	mimalloc	file
+after-run	106509	host-vitest	823	0	31	499	45	7	40	231	74
+idle-60s-after-gc	106509	host-vitest	546	0	31	161	51	6	97	231	74
+# memory3.jsonl's host (pid 104277), after its heap snapshot: the snapshot leaves native memory behind
+after-snapshot	104277	host-vitest	757	0	31	158	116	7	271	204	74

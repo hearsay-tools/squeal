@@ -1,0 +1,12 @@
+{"t":"2026-11-24T22:20:28.574Z","load1":"0.94","cycle":1,"step":"start","startMs":317,"listMs":15,"files":2259,"hostRssMiB":173,"hostPrivMiB":104}
+{"t":"2026-11-24T22:20:34.922Z","load1":"0.94","cycle":1,"step":"cold-edit","file":"test/state/transitions.test.ts","invalidateMs":29,"affectedMs":6102,"closureMs":7,"runMs":210,"editMs":6347,"direct":1,"end":"completed","coldTotalMs":6679,"hostRssMiB":810,"hostPrivMiB":739}
+{"t":"2026-11-24T22:20:35.184Z","load1":"0.94","cycle":1,"step":"warm-edit","file":"test/state/transitions.test.ts","invalidateMs":48,"affectedMs":66,"closureMs":1,"runMs":146,"editMs":262,"direct":1,"end":"completed","hostRssMiB":823,"hostPrivMiB":752}
+{"t":"2026-11-24T22:20:35.431Z","load1":"0.94","cycle":1,"step":"warm-edit","file":"test/state/transitions.test.ts","invalidateMs":36,"affectedMs":61,"closureMs":1,"runMs":148,"editMs":246,"direct":1,"end":"completed","hostRssMiB":831,"hostPrivMiB":759}
+{"t":"2026-11-24T22:20:35.663Z","load1":"0.94","cycle":1,"step":"warm-edit","file":"test/state/transitions.test.ts","invalidateMs":33,"affectedMs":53,"closureMs":1,"runMs":144,"editMs":231,"direct":1,"end":"completed","hostRssMiB":833,"hostPrivMiB":762}
+{"t":"2026-11-24T22:20:35.751Z","load1":"0.94","cycle":1,"step":"close","closeMs":88}
+{"t":"2026-11-24T22:20:41.034Z","load1":"0.87","cycle":2,"step":"start","startMs":266,"listMs":12,"files":2259,"hostRssMiB":174,"hostPrivMiB":105}
+{"t":"2026-11-24T22:20:47.465Z","load1":"0.88","cycle":2,"step":"cold-edit","file":"test/state/transitions.test.ts","invalidateMs":28,"affectedMs":6192,"closureMs":12,"runMs":199,"editMs":6431,"direct":1,"end":"completed","coldTotalMs":6709,"hostRssMiB":811,"hostPrivMiB":739}
+{"t":"2026-11-24T22:20:47.700Z","load1":"0.88","cycle":2,"step":"warm-edit","file":"test/state/transitions.test.ts","invalidateMs":37,"affectedMs":58,"closureMs":1,"runMs":137,"editMs":234,"direct":1,"end":"completed","hostRssMiB":830,"hostPrivMiB":759}
+{"t":"2026-11-24T22:20:47.937Z","load1":"0.97","cycle":2,"step":"warm-edit","file":"test/state/transitions.test.ts","invalidateMs":29,"affectedMs":60,"closureMs":2,"runMs":147,"editMs":237,"direct":1,"end":"completed","hostRssMiB":834,"hostPrivMiB":762}
+{"t":"2026-11-24T22:20:48.187Z","load1":"0.97","cycle":2,"step":"warm-edit","file":"test/state/transitions.test.ts","invalidateMs":37,"affectedMs":60,"closureMs":1,"runMs":150,"editMs":249,"direct":1,"end":"completed","hostRssMiB":840,"hostPrivMiB":769}
+{"t":"2026-11-24T22:20:48.280Z","load1":"0.97","cycle":2,"step":"close","closeMs":93}

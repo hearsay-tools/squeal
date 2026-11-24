@@ -1,0 +1,79 @@
+# host-vitest-11598-1.heapsnapshot
+# 1102784 nodes, 3554534 edges, self size total 188.5 MiB
+
+## Self size by node type (MiB)
+   107.9  string
+    32.6  native
+    11.7  code
+    11.2  array
+    10.0  concatenated string
+     5.2  object
+     3.7  sliced string
+     2.1  closure
+     2.0  object shape
+     1.5  hidden
+     0.4  number
+     0.0  regexp
+     0.0  symbol
+     0.0  synthetic
+     0.0  bigint
+
+## Top 40 by self size: object/closure/native by constructor, others by type (MiB, count)
+   107.9    243887  string
+    32.5        65  native system / JSArrayBufferData
+    11.7    126469  code
+    11.2     49224  array
+    10.0    328079  concatenated string
+     3.7    122098  sliced string
+     2.0     22144  object shape
+     1.7     36065  object Object
+     1.5     29740  hidden
+     1.1     35699  object Array
+     0.7      3980  object EnvironmentModuleNode
+     0.6     20217  object Set
+     0.4      5283  object system / Context
+     0.4     28141  number
+     0.3      4754  closure 
+     0.2      4509  closure get
+     0.2      2295  object TestSpecification
+     0.1      1998  object Promise
+     0.1      3927  object SourceMap$1
+     0.1      1462  closure native_bind
+     0.1       939  object TstNode
+     0.1      1042  closure ~run
+     0.1      1019  closure validate
+     0.0       768  regexp
+     0.0       643  closure __init
+     0.0       645  closure NodeError
+     0.0       443  object BuiltinModule
+     0.0       376  closure toString
+     0.0       826  symbol
+     0.0       180  object Generator
+     0.0       122  native Node / ModuleWrap
+     0.0       122  object ModuleJob
+     0.0       195  closure proxyGetter
+     0.0       199  closure set
+     0.0       123  object ModuleWrap
+     0.0        77  object TokenType2
+     0.0        82  object ArrayBuffer
+     0.0       276  object Error
+     0.0       101  closure close
+     0.0       178  object Map
+
+## Dominator tree (5 passes; reachable 1102776 of 1102784; retained by root 188.5 MiB)
+## every node retaining >= 3.0 MiB, to depth 10: retained MiB, self, edge from its DFS parent, node
+188.5 (0.0) synthetic 
+  106.8 (0.0) ssr ← object Object | object RunnableDevEnvironment
+    106.7 (0.0) moduleGraph ← object RunnableDevEnvironment | object EnvironmentModuleGraph
+  17.0 (0.0) internal:context ← closure createServerHotChannel | object system / Context
+    16.1 (0.0) context:E ← object system / Context | object Object
+      16.1 (0.0) memory ← object Object | object Memory
+        16.1 (0.0) [2] ← object Memory | object ArrayBuffer
+          16.1 (16.1) internal:backing_store ← object ArrayBuffer | native system / JSArrayBufferData
+  16.2 (0.0) [0] ← object Module | hidden system / SourceTextModule
+    16.1 (0.0) internal:context ← closure parse | object system / Context
+      16.1 (0.0) context:E ← object system / Context | object Object
+        16.1 (0.0) memory ← object Object | object Memory
+          16.1 (0.0) [2] ← object Memory | object ArrayBuffer
+            16.1 (16.1) internal:backing_store ← object ArrayBuffer | native system / JSArrayBufferData
+  10.0 (10.0) internal:source ← code file://~/squeal/plugins/claude-code/dist/cli/squeal.mjs | string "#!/usr/bin/env node\nimport { createRequire as __squealCreate"…
