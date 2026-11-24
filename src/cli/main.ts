@@ -26,6 +26,7 @@ import { parseProof, proofCommand } from "./proof.js";
 import { psCommand } from "./ps.js";
 import { impactCommand, reachCommand } from "./reach.js";
 import { remoteCommand } from "./remote.js";
+import { remoteTunnelCommand } from "./remote-tunnel.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
@@ -463,6 +464,8 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   "runner-host": runnerHostCommand,
   // Spec 021 D22 (row 021-36): hidden, a daemon starts it.
   "store-process": storeProcessCommand,
+  // Spec 026 D12.6 (row 026-15): hidden, an Agent37 machine's SSH ProxyCommand.
+  "remote-tunnel": (args, io) => remoteTunnelCommand(args, io),
 };
 
 /** Hidden commands whose help is another command's (row 015-128). */
