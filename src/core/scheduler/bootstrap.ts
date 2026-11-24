@@ -196,7 +196,7 @@ export async function baseline(
     (file) => (previousKeys.get(file.id)?.pending ?? null) !== null,
   );
   if (lookupOnly && recheck.length > 0) {
-    commitFirst(ledger, { refined: ledger.revision.number }, handedMisses);
+    await commitFirst(ledger, { refined: ledger.revision.number }, handedMisses);
   }
   await resolveClosures(context, unprovenWalks(context, recheck), failures, bound);
   const misses = [
@@ -343,20 +343,22 @@ function keepDeferred(
  * (review 0.1.329 B2): a start that dies in the recheck leaves them owed to
  * the next one's handover, as its own rows were. Nothing queues them here,
  * so a recheck hit never runs at its first key; each row is written again
- * at the last commit, with the phase the handover gives it.
+ * at the last commit, with the phase the handover gives it. Row 025-10: in
+ * slices (`Ledger.commitInSlices`), so a large worktree's first commit
+ * leaves the store's write lock free between them.
  */
-function commitFirst(
+async function commitFirst(
   ledger: Ledger,
-  options: Parameters<Ledger["commit"]>[0],
+  options: CommitOptions,
   handed: readonly FileState[],
-): void {
+): Promise<void> {
   const phases = handed.map((file) => file.phase);
   for (const file of handed) {
     file.phase = "queued";
     ledger.touch(file);
   }
   try {
-    ledger.commit(options);
+    await ledger.commitInSlices(options);
   } catch (error) {
     if (!isBusy(error)) throw error;
   } finally {
@@ -375,22 +377,27 @@ function commitFirst(
 export type StartRetry = Pick<BusyRetry, "sliceMs" | "waits" | "stopped">;
 
 /**
- * The baseline's last commit. A busy store refuses it before it writes,
- * and the ledger owes it all again (row 011-126), so with `retry` it is
- * tried again until it lands or the scheduler closes (spec 021 D2).
+ * The baseline's last commit, in slices (row 025-10, `Ledger.commitInSlices`).
+ * A busy store refuses a slice before it writes, so with `retry` each is
+ * tried again until it lands or the scheduler closes (spec 021 D2); what
+ * no slice wrote is owed again then (row 011-126).
  */
 async function commitLast(
   ledger: Ledger,
-  options: Parameters<Ledger["commit"]>[0],
+  options: CommitOptions,
   retry: StartRetry | undefined,
 ): Promise<void> {
-  if (retry === undefined) return ledger.commit(options);
-  await retryWhileBusy(async () => ledger.commit(options), {
-    ...retry,
-    key: "scheduler:baseline",
-    what: "the start's lookup",
-  });
+  if (retry === undefined) return ledger.commitInSlices(options);
+  await ledger.commitInSlices(options, (write) =>
+    retryWhileBusy(async () => write(), {
+      ...retry,
+      key: "scheduler:baseline",
+      what: "the start's lookup",
+    }),
+  );
 }
+
+type CommitOptions = Parameters<Ledger["commitInSlices"]>[0];
 
 /** `files` without those in `others`. */
 function outside(files: readonly FileState[], others: readonly FileState[]): FileState[] {

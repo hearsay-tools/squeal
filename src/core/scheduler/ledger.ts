@@ -9,6 +9,7 @@ import { SLOW_GROUP } from "../types/scheduler.js";
 import type { SetupOutcome } from "../types/state.js";
 import type { MarkedUnknown, ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { acceptedAt, currentChecks, type ReadAsOne } from "./accept.js";
+import { WRITE_SLICE_FILES } from "./batch.js";
 import { Checkpoints } from "./checkpoints.js";
 import { Claims } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -25,7 +26,7 @@ import { takeHeldFiles } from "./held.js";
 import { sinkWithoutResults } from "./hold.js";
 import { publishPromotions } from "./promotions-row.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
-import { recordRefinedApplied } from "./refined.js";
+import { covers, readRefined, recordRefinedApplied } from "./refined.js";
 import { adoptsAtFirstCommit, movesWouldChange, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
@@ -51,7 +52,7 @@ interface CommitOptions {
 }
 
 /** What `commit` takes from the ledger: put back when its transaction gives up on a busy store (row 011-126). */
-interface Drained {
+export interface Drained {
   readonly dirty: readonly string[];
   readonly removed: readonly TestFileRef[];
   readonly rekeyed: readonly (readonly [string, RevisionNumber | null])[];
@@ -682,8 +683,51 @@ export class Ledger {
     }
   }
 
-  /** `commit`'s rows and its one transaction, from what it drained. */
-  #write(drained: Drained, options: CommitOptions): void {
+  /**
+   * Row 025-10 (spec 025 D10): `commit` as write transactions of at most
+   * `slice` files each, `run` running each (the caller's busy retry), one
+   * event-loop turn between two, so other writers take the lock between
+   * them. Only a commit that records its refined revision is sliced; one
+   * that does not is one transaction, as `commit`.
+   *
+   * Every slice but the last holds the key rows and lookup results of files
+   * that nothing else in the commit names (`sliceDrained`), and first moves
+   * the refined revision below `refined`: until the last slice records it,
+   * headers, status and every wait read the runner part as pending, so no
+   * reader takes a half-written commit for a settled worktree (D2 as
+   * amended). The last slice writes the rest in `commit`'s order and records
+   * `refined`. A crash between slices leaves the refined revision behind,
+   * so the next start reads the revision's changes as unseen, never as
+   * applied. A busy store's refusal that `run` gives up on puts back what
+   * no slice wrote yet (row 011-126).
+   */
+  async commitInSlices(
+    options: CommitOptions,
+    run: (write: () => void) => Promise<void> = async (write) => write(),
+    slice = WRITE_SLICE_FILES,
+  ): Promise<void> {
+    this.ends?.committed(this.files);
+    const drained = this.#drain();
+    const { refined } = options;
+    const parts = refined === undefined ? [drained] : sliceDrained(drained, slice);
+    for (const [i, part] of parts.entries()) {
+      const last = i === parts.length - 1;
+      if (i > 0) await nextTurn();
+      try {
+        await run(() => this.#write(part, last ? options : {}, last ? null : (refined ?? null)));
+      } catch (error) {
+        if (isBusy(error)) for (const rest of parts.slice(i).reverse()) this.#putBack(rest);
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * `commit`'s rows and its one transaction, from what it drained. `ahead`:
+   * the revision a slice of `commitInSlices` writes ahead of, whose runner
+   * part stays pending until its last slice.
+   */
+  #write(drained: Drained, options: CommitOptions, ahead: RevisionNumber | null = null): void {
     const { store, sink, worktreeId } = this.context;
     const revision = this.revision.number;
     const rows: TestFileKeyRecord[] = [];
@@ -721,14 +765,23 @@ export class Ledger {
       const before = adopts ? store.testFileKeys.list(worktreeId) : undefined;
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
       if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
-      this.context.keys.writeRuntimeApplications([...this.files.values()].map((file) => file.ref));
+      // A slice ahead leaves the runtime applications to the last, which writes them for every file.
+      if (ahead === null) {
+        this.context.keys.writeRuntimeApplications(
+          [...this.files.values()].map((file) => file.ref),
+        );
+      }
       const removedIds = removed.map(testFileId);
       recordRekeyed(store, worktreeId, rekeyed, removedIds);
       // Before this commit's refined revision: refinement caught up only by an earlier commit.
-      recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
-        ...writer,
-        ...(before === undefined ? {} : { before }),
-      });
+      // A slice ahead marks nothing: it records the moves only to adopt, before it holds back.
+      if (ahead === null || before !== undefined) {
+        recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
+          ...writer,
+          ...(before === undefined ? {} : { before }),
+        });
+      }
+      if (ahead !== null) holdPending(store, worktreeId, ahead);
       for (const { results, checkpointId } of mergeApplied(applied)) {
         sink.applyResults(worktreeId, revision, results, { checkpointId });
       }
@@ -907,6 +960,95 @@ export class Ledger {
     this.#dirty.add(file.id);
   }
 }
+
+/**
+ * Row 025-10: keeps the runner part of `revision` pending while a sliced
+ * commit writes ahead of it: a refined revision that covers it moves to the
+ * one before. The commit's last slice records `revision` (`recordRefinedApplied`).
+ */
+function holdPending(
+  store: SchedulerContext["store"],
+  worktreeId: SchedulerContext["worktreeId"],
+  revision: RevisionNumber,
+): void {
+  if (covers(readRefined(store, worktreeId), revision)) {
+    recordRefinedApplied(store, worktreeId, revision - 1);
+  }
+}
+
+function nextTurn(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+/** The test file a check belongs to; `null` for a project's setup. */
+function fileOfCheck(check: CheckId): string | null {
+  return check.kind === "setup"
+    ? null
+    : testFileId({ project: check.project, path: check.testPath });
+}
+
+/**
+ * Row 025-10: `drained` as the parts `Ledger.commitInSlices` writes, one
+ * transaction each. Every part but the last holds only the key rows of at
+ * most `size` dirty files and their applied results, in their order: files
+ * no removal, unknown mark, unknown-file entry or retired check of the
+ * commit names, so no sink call of the last part reads or moves them. Their
+ * re-key marks stay in the last part: those write only the edit records
+ * (`recordRekeyed`, `recordMoves`), which no sink call reads, and a move
+ * left open until the last slice only keeps an edit's wait waiting.
+ * The last part holds the rest, the last of those files included. With
+ * `size` or fewer such files, one part: `drained` itself.
+ */
+export function sliceDrained(drained: Drained, size: number): Drained[] {
+  const named = new Set<string>([
+    ...drained.removed.map(testFileId),
+    ...drained.unknown.flatMap(({ testFiles }) => testFiles.map(testFileId)),
+    ...drained.unknownFiles.map(({ testFile }) => testFileId(testFile)),
+    ...drained.retired.flatMap((check) => fileOfCheck(check) ?? []),
+  ]);
+  const free = drained.dirty.filter((id) => !named.has(id));
+  if (free.length <= size) return [drained];
+  const chunks: string[][] = [];
+  for (let at = 0; at + size < free.length; at += size) chunks.push(free.slice(at, at + size));
+  const chunkOf = new Map(chunks.flatMap((ids, i) => ids.map((id) => [id, i] as const)));
+  const applied: Applied[][] = chunks.map(() => []);
+  const rest: Applied[] = [];
+  for (const { results, checkpointId } of drained.applied) {
+    const by = new Map<number, ResultRecord[]>();
+    const left: ResultRecord[] = [];
+    for (const result of results) {
+      const id = fileOfCheck(result.check);
+      const i = id === null ? undefined : chunkOf.get(id);
+      if (i === undefined) left.push(result);
+      else if (by.has(i)) by.get(i)?.push(result);
+      else by.set(i, [result]);
+    }
+    for (const [i, part] of by) applied[i]?.push({ results: part, checkpointId });
+    if (left.length > 0) rest.push({ results: left, checkpointId });
+  }
+  const ahead = chunks.map((ids, i) => ({
+    ...NOTHING_DRAINED,
+    dirty: ids,
+    applied: applied[i] ?? [],
+  }));
+  const last: Drained = {
+    ...drained,
+    dirty: drained.dirty.filter((id) => !chunkOf.has(id)),
+    applied: rest,
+  };
+  return [...ahead, last];
+}
+
+const NOTHING_DRAINED: Drained = {
+  dirty: [],
+  removed: [],
+  rekeyed: [],
+  applied: [],
+  unknown: [],
+  unknownFiles: [],
+  retired: [],
+  setups: [],
+};
 
 /**
  * Task 001-161: one sink call per run of consecutive entries of one
