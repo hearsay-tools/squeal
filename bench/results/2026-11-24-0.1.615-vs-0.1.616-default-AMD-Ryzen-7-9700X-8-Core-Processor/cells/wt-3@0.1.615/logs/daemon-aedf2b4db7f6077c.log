@@ -1,0 +1,16 @@
+2026-11-24T10:06:31.634Z [140346] squeal daemon: serving /home/user/results/cells/wt-3@0.1.615/work/wt1 on /home/user/results/cells/wt-3@0.1.615/work/run/squeal-aedf2b4db7f6077c.sock
+2026-11-24T10:07:28.568Z [140346] squeal daemon: code store: last minute: 43 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:07:33.683Z [140346] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 244 to 169 MiB in a 37 ms pause
+2026-11-24T10:08:28.595Z [140346] squeal daemon: code store: last minute: 64 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:08:36.639Z [140346] squeal daemon: busy, heap in use 66 MiB over twice the last live size of 22 MiB: a last-resort GC took private memory from 232 to 144 MiB in a 38 ms pause; 24 MiB of heap in use after it
+2026-11-24T10:09:28.636Z [140346] squeal daemon: code store: last minute: 113 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:10:04.052Z [140346] squeal daemon: busy, heap in use 52 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 235 to 151 MiB in a 50 ms pause; 25 MiB of heap in use after it
+2026-11-24T10:10:28.637Z [140346] squeal daemon: code store: last minute: 120 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:10:44.251Z [140346] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-24T10:10:44.251Z [140346] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-24T10:10:46.338Z [140346] squeal daemon: the background ceiling let a backlog tier start after 2 s and 1 refused look
+2026-11-24T10:10:46.339Z [140346] squeal daemon: the pool granted the vitest lane's tier after 2 s of waiting for CPU
+2026-11-24T10:11:28.637Z [140346] squeal daemon: code store: last minute: 14 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:11:56.800Z [140346] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-24T10:11:56.816Z [140346] squeal daemon: code store: last minute: 21 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:11:56.929Z [140346] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

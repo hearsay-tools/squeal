@@ -1,0 +1,33 @@
+2026-11-24T09:56:06.155Z [102048] squeal daemon: serving /home/user/results/cells/size-l@0.1.615/work/wt0 on /home/user/results/cells/size-l@0.1.615/work/run/squeal-e73189e03a4f1e49.sock
+2026-11-24T09:56:06.187Z [102048] squeal daemon: full integrity check: ok
+2026-11-24T09:56:57.599Z [102048] squeal daemon: code store: last minute: 225 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T09:57:10.920Z [102048] squeal daemon: busy, heap in use 89 MiB over twice the last live size of 39 MiB: a last-resort GC took private memory from 481 to 334 MiB in a 53 ms pause; 42 MiB of heap in use after it
+2026-11-24T09:57:57.825Z [102048] squeal daemon: code store: last minute: 75 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T09:58:29.006Z [102048] squeal daemon: long write: store.sqlite write lock held 260 ms by #write < #record; 7602 rows written
+2026-11-24T09:58:44.668Z [102048] squeal daemon: long write: store.sqlite write lock held 281 ms by #write < #record; 7603 rows written
+2026-11-24T09:58:57.825Z [102048] squeal daemon: code store: last minute: 90 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T09:59:47.921Z [102048] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 346 to 312 MiB in a 42 ms pause
+2026-11-24T09:59:57.827Z [102048] squeal daemon: code store: last minute: 8 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:00:08.460Z [102048] squeal daemon: coverage: test/m38.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/137ddcacdaebbad1/coverage-k07KFA/.tmp/coverage-67775b64-4a9d-498e-9c67-a17c3784ef2f.json'
+2026-11-24T10:00:08.460Z [102048] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 map-error (its payload did not map); the last: test/m38.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/137ddcacdaebbad1/coverage-k07KFA/.tmp/coverage-67775b64-4a9d-498e-9c67-a17c3784ef2f.json'
+2026-11-24T10:00:18.751Z [102048] squeal daemon: long write: store.sqlite write lock held 282 ms by #write < #record; 153 rows written
+2026-11-24T10:00:55.238Z [102048] squeal daemon: busy, heap in use 158 MiB over twice the last live size of 44 MiB: a last-resort GC took private memory from 512 to 271 MiB in a 67 ms pause; 46 MiB of heap in use after it
+2026-11-24T10:00:57.997Z [102048] squeal daemon: code store: last minute: 74 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:01:57.997Z [102048] squeal daemon: code store: last minute: 91 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:01:58.697Z [102048] squeal daemon: busy, heap in use 96 MiB over twice the last live size of 46 MiB: a last-resort GC took private memory from 536 to 273 MiB in a 85 ms pause; 46 MiB of heap in use after it
+2026-11-24T10:02:57.997Z [102048] squeal daemon: code store: last minute: 60 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:03:00.452Z [102048] squeal daemon: long write: store.sqlite write lock held 1389 ms by reconcileBatch < process.processTicksAndRejections < #pass; 32005 rows written
+2026-11-24T10:03:01.581Z [102048] squeal daemon: busy, heap in use 101 MiB over twice the last live size of 46 MiB: a last-resort GC took private memory from 529 to 269 MiB in a 77 ms pause; 46 MiB of heap in use after it
+2026-11-24T10:03:16.972Z [102048] squeal daemon: long write: store.sqlite write lock held 312 ms by #write < #record; 4603 rows written
+2026-11-24T10:03:31.501Z [102048] squeal daemon: long write: store.sqlite write lock held 349 ms by #write < #record; 4603 rows written
+2026-11-24T10:03:47.168Z [102048] squeal daemon: long write: store.sqlite write lock held 331 ms by #write < #record; 4603 rows written
+2026-11-24T10:03:57.997Z [102048] squeal daemon: code store: last minute: 51 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:04:02.339Z [102048] squeal daemon: long write: store.sqlite write lock held 331 ms by #write < #record; 4603 rows written
+2026-11-24T10:04:18.021Z [102048] squeal daemon: busy, heap in use 93 MiB over twice the last live size of 46 MiB: a last-resort GC took private memory from 474 to 341 MiB in a 94 ms pause; 50 MiB of heap in use after it
+2026-11-24T10:04:18.466Z [102048] squeal daemon: long write: store.sqlite write lock held 427 ms by #write < #record; 4603 rows written
+2026-11-24T10:04:35.565Z [102048] squeal daemon: long write: store.sqlite write lock held 447 ms by #write < #record; 4603 rows written
+2026-11-24T10:04:52.075Z [102048] squeal daemon: long write: store.sqlite write lock held 350 ms by #write < #record; 4603 rows written
+2026-11-24T10:04:57.997Z [102048] squeal daemon: code store: last minute: 68 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T10:05:07.187Z [102048] squeal daemon: long write: store.sqlite write lock held 325 ms by #write < #record; 4603 rows written
+2026-11-24T10:05:22.657Z [102048] squeal daemon: long write: store.sqlite write lock held 352 ms by #write < #record; 4603 rows written
+2026-11-24T10:05:37.541Z [102048] squeal daemon: long write: store.sqlite write lock held 320 ms by #write < #record; 4511 rows written
