@@ -68,38 +68,50 @@ export function tunnelHost(template: string, id: string): string {
 /**
  * Opens the tunnel and bridges until either side ends. Resolves the exit
  * code: 0 when the stream ended, `TUNNEL_FAILED` when it never opened.
+ * SSH's stdin is watched from the start, so stdin ending while the
+ * connection opens settles the tunnel at once (0.1.619-r2 S1).
  */
 export async function runTunnel(options: TunnelOptions): Promise<number> {
   const { host, port, env } = options;
   const connectMs = options.connectMs ?? CONNECT_MS;
   const deadline = Date.now() + connectMs;
-  let socket: Socket;
-  let key: string;
+  let apiKey: string;
   try {
-    const proxied = proxyFor(host, port, env) !== null;
-    const apiKey = apiKeyFor(options.keyEnv, proxied, env);
-    socket = (await openEndpoint({ host, port, tls: true }, env, connectMs)).socket;
-    key = webSocketKey();
-    socket.write(upgradeRequest(host, "/", key, { "X-Agent37-Key": apiKey }));
+    apiKey = apiKeyFor(options.keyEnv, proxyFor(host, port, env) !== null, env);
   } catch (error) {
     options.fail(`tunnel to ${host}:${port}: ${safeReason(error)}`);
     return TUNNEL_FAILED;
   }
-  return bridge(socket, key, options, deadline);
+  const opening = openEndpoint({ host, port, tls: true }, env, connectMs).then(({ socket }) => {
+    const key = webSocketKey();
+    socket.write(upgradeRequest(host, "/", key, { "X-Agent37-Key": apiKey }));
+    return { socket, key };
+  });
+  return bridge(opening, options, deadline);
 }
 
 const ignore = () => {};
 
-/** Bridges `socket` once the server upgrades it, which it must do before `deadline`. */
+interface Opening {
+  readonly socket: Socket;
+  readonly key: string;
+}
+
+/**
+ * Bridges the socket `opening` resolves once the server upgrades it, which
+ * it must do before `deadline`. Stdin's end, close or error is observed
+ * before the socket exists; a socket that arrives after it is closed.
+ */
 function bridge(
-  socket: Socket,
-  key: string,
+  opening: Promise<Opening>,
   options: TunnelOptions,
   deadline: number,
 ): Promise<number> {
   const { input, output, host } = options;
   const closeMs = options.closeMs ?? CLOSE_MS;
   return new Promise((resolve) => {
+    let socket: Socket | undefined;
+    let key = "";
     let open = false;
     let closing = false;
     let ended = false;
@@ -125,10 +137,10 @@ function bridge(
       clearTimeout(closeTimer);
       for (const remove of removals) remove();
       // A destroyed socket or a closed stdout may still report an error: it changes nothing now.
-      socket.on("error", ignore);
+      socket?.on("error", ignore);
       output.on("error", ignore);
       input.destroy();
-      socket.destroy();
+      socket?.destroy();
       if (why !== undefined) options.fail(`tunnel to ${host}: ${why}`);
       resolve(code);
     };
@@ -137,7 +149,7 @@ function bridge(
       Math.max(0, deadline - Date.now()),
     );
     const send = (chunk: Buffer): boolean => {
-      const more = socket.write(encodeFrame(OPCODE.binary, chunk));
+      const more = (socket as Socket).write(encodeFrame(OPCODE.binary, chunk));
       if (!more) input.pause();
       return more;
     };
@@ -152,7 +164,7 @@ function bridge(
     };
     const sshEnded = () => {
       // Before the upgrade there is nothing to close: SSH has gone, and so does the tunnel.
-      if (!open) return finish(0);
+      if (!open || socket === undefined) return finish(0);
       if (closing) return;
       closing = true;
       socket.end(encodeFrame(OPCODE.close, NORMAL_CLOSE));
@@ -167,14 +179,16 @@ function bridge(
         return;
       }
       for (const frame of frames) {
+        if (ended) return;
+        const to = socket as Socket;
         if (frame.opcode === OPCODE.close) {
-          if (!closing) socket.end(encodeFrame(OPCODE.close, frame.payload.subarray(0, 2)));
+          if (!closing) to.end(encodeFrame(OPCODE.close, frame.payload.subarray(0, 2)));
           finish(0);
           return;
         }
-        if (frame.opcode === OPCODE.ping) socket.write(encodeFrame(OPCODE.pong, frame.payload));
+        if (frame.opcode === OPCODE.ping) to.write(encodeFrame(OPCODE.pong, frame.payload));
         else if (frame.opcode <= OPCODE.binary && frame.payload.length > 0) {
-          if (!output.write(frame.payload)) socket.pause();
+          if (!output.write(frame.payload)) to.pause();
         }
       }
     };
@@ -195,17 +209,40 @@ function bridge(
       if (more) input.resume();
       if (answer.rest.length > 0) receive(answer.rest);
     };
-    on(output, "drain", () => socket.resume());
+    const attach = (opened: Opening) => {
+      if (ended) {
+        // Stdin ended, or the deadline passed, while the connection opened.
+        opened.socket.on("error", ignore);
+        opened.socket.destroy();
+        return;
+      }
+      socket = opened.socket;
+      key = opened.key;
+      const to = socket;
+      on(output, "drain", () => to.resume());
+      on(to, "drain", () => input.resume());
+      on(to, "error", (error: Error) => finish(open ? 0 : TUNNEL_FAILED, safeReason(error)));
+      on(to, "close", () =>
+        finish(open ? 0 : TUNNEL_FAILED, open ? undefined : "closed during the upgrade"),
+      );
+      on(to, "data", (chunk: Buffer) => (open ? receive(chunk) : upgrade(chunk)));
+    };
     on(output, "error", () => finish(0));
-    on(socket, "drain", () => input.resume());
-    on(socket, "error", (error: Error) => finish(open ? 0 : TUNNEL_FAILED, safeReason(error)));
-    on(socket, "close", () =>
-      finish(open ? 0 : TUNNEL_FAILED, open ? undefined : "closed during the upgrade"),
-    );
-    on(socket, "data", (chunk: Buffer) => (open ? receive(chunk) : upgrade(chunk)));
     on(input, "data", fromSsh);
     on(input, "end", sshEnded);
     on(input, "close", sshEnded);
     on(input, "error", sshEnded);
+    // An end emitted before these listeners existed is read from the stream's state.
+    if (input.destroyed || input.readableEnded) sshEnded();
+    opening.then(attach, (error: unknown) => {
+      if (ended) return;
+      ended = true;
+      clearTimeout(upgradeTimer);
+      for (const remove of removals) remove();
+      output.on("error", ignore);
+      input.destroy();
+      options.fail(`tunnel to ${host}:${options.port}: ${safeReason(error)}`);
+      resolve(TUNNEL_FAILED);
+    });
   });
 }

@@ -333,6 +333,25 @@ describe("squeal remote-tunnel agent37 (row 026-15)", () => {
     expect(released(run.input, run.output)).toBe(true);
   });
 
+  it("settles promptly when SSH's stdin is destroyed while the connection is still opening (0.1.619-r2 S1)", async () => {
+    let heads = 0;
+    // Never answers the upgrade: only stdin's close can end the tunnel in time.
+    const peer = await raw(true, () => {
+      heads += 1;
+    });
+    const run = direct(peer.port, { connectMs: 20_000 });
+    // Synchronously after the call: the TLS connection cannot have opened yet.
+    run.input.destroy();
+    const { code, ms } = await run.settled;
+    expect(code).toBe(0);
+    expect(ms).toBeLessThan(2_000);
+    expect(run.failed).toEqual([]);
+    expect(released(run.input, run.output)).toBe(true);
+    // The socket that opened after stdin closed is closed too, without the server's help.
+    await peer.clientsGone();
+    expect(heads).toBeLessThanOrEqual(1);
+  });
+
   it("stops waiting for the server's close after closeMs once SSH ended", async () => {
     const frames: number[] = [];
     const peer = await raw(true, (socket, head) => {
