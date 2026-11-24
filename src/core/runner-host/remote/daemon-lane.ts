@@ -100,7 +100,7 @@ export interface LaneSpec<R extends RunnerAdapter> {
   readonly here?: RunnerAdapter;
   /** Of the entry's tiers, those this lane may send; absent: all of them. */
   readonly tiers?: readonly RemoteTier[];
-  /** Made per pass: it connects at its first remote run and waits for the connect. */
+  /** Made per pass: it connects at its first remote run, and waits for the connect while the machine is awake. */
   readonly perPass?: boolean;
   readonly start: RemoteStart;
 }
@@ -231,7 +231,9 @@ function laneOver<R extends RunnerAdapter>(
     target,
     eager: context.eager,
     lanes: tiers,
-    ...(spec.perPass === true ? { awaitConnect: true } : {}),
+    // A lane made per pass waits for its connect while the machine is known awake; while it is
+    // asleep or lost, its first tier runs here as the connect goes on, not after a failing one.
+    ...(spec.perPass === true && share.awake() ? { awaitConnect: true } : {}),
     whenLost: context.lane.whenLost,
     root,
     version,
