@@ -1,6 +1,6 @@
 # Spec 026 Wave 1 briefs (Track 1 + Track 2 scaffold)
 
-Four disjoint rows run in parallel (`026-05`, `026-06`, `026-07`, `026-10`). Held: `026-08` (D5 `code --base`, waiting on human decision), `026-09` (D2 short-lived daemon, Wave 2 after `026-05`).
+Five disjoint rows run in parallel (`026-05`, `026-06`, `026-07`, `026-08`, `026-10`). Held for Wave 2: `026-09` (D2 short-lived daemon, after `026-05`).
 
 Read `docs/vision.md`, `docs/styleguide.md`, and `docs/specifications/026-tiered-and-cloud-execution/spec.md` before coding. Leave `pnpm run build` out of worker trees (the coordinator builds bundles once at integration).
 
@@ -53,6 +53,24 @@ Use `/worker`.
 - **Done when:**
   - Tests cover branch commits + staged/unstaged/untracked files, test-group narrow selection, lint-group `--base`, `--json` output, reuse of already-current files, honest omission counts, invalid `<ref>` (exit 2), and `--base` + positional paths error (exit 2).
   - Lint, typecheck, and affected tests pass.
+
+---
+
+## Row 026-08: `squeal code --base` under tiered policies (D5, Option A)
+
+Use `/worker`.
+
+- **Shape:** slice.
+- **Outcome:** Under a tiered policy where every test group is `manual`, `squeal code --base` keeps `manual` groups out by default (020 D14.1), states unmistakably on the headline when 0 test groups are in scope, surfaces any current stored `fail` in left-out loading test files instead of hiding it behind `incomplete (left-out)`, and adds `--narrow` (combinable with `--group`) to run only 019 D6's direct edit-work selection (changed test files, namesakes, or direct importers + `runner.tierSize` shortest other direct importers) while keeping `loaders.leftOut` honest.
+- **Spec sections:** `docs/specifications/026-tiered-and-cloud-execution/spec.md` D5; `docs/specifications/020-quality-gate/spec.md` D14; `docs/specifications/019-run-triggers/spec.md` D6 ("Narrow run").
+- **Starting seam:** Add `--narrow` to `parseGateArgs` and `CODE_GATE_USAGE` in `src/cli/code-gate-args.ts`. In `src/cli/code-gate-files.ts` / `src/cli/code-gate.ts`, apply narrow test selection (reusing `src/core/scheduler/namesakes.ts` / direct-importer helpers without modifying `src/core/scheduler/`) when `--narrow` is set, recording non-selected loaders as `leftOut` so coverage/CRAP never claims full closure. In `src/cli/code-gate-stored.ts` and `src/cli/code-gate-text*.ts`, check the local store for current `fail` results on left-out loading test files and surface them in the report/headline, and print the 0-in-scope-groups headline when every test group is `manual`.
+- **Owns:** `src/cli/code-gate-args.ts`, `src/cli/code-gate.ts`, `src/cli/code-gate-files.ts`, `src/cli/code-gate-stored.ts`, `src/cli/code-gate-text.ts`, `src/cli/code-gate-text-left-out.ts`, `src/cli/code-gate-text-failed.ts`, `src/cli/code-gate-prerun.ts`, `src/core/code/gate/`, and tests under `test/code/gate/`.
+- **Leave alone:** `src/core/scheduler/`, `src/cli/run*.ts`, `src/cli/main.ts`, `src/core/runner-host/remote/`, `src/core/lint/`, `plugins/claude-code/`.
+- **Done when:**
+  - Fixture with all test groups at `manual`: `squeal code --base` headline states 0 test groups in scope and names `--group`, `--narrow`, and `gate.groups`.
+  - When the local store holds a current `fail` for a left-out loader, the report and text output surface that failure instead of hiding it behind `incomplete`.
+  - `squeal code --base <ref> --group <name> --narrow` runs only the narrow set (changed tests + namesakes/direct importers) and marks unrun transitive loaders as `leftOut`.
+  - Existing `test/code/gate/` tests stay green; lint, typecheck, and affected tests pass.
 
 ---
 

@@ -1,6 +1,6 @@
 # Tiered local checks and remote execution providers
 
-Stage: approved (the human, 2026-11-24: "Approve and build", D2 "2 min default", build order "Track 1 + Track 2 scaffold"; D5 default scope pending the human's answer). Written 2026-11-24 from `research/tiered-pre-pr.md` (026-01), `research/boat-sandboxes.md` (026-02), `research/daemonless-hooks.md` (026-03) and `research/agent37-sandboxes.md` (026-04), after the human asked to spec both Track 1 (local slim/tiered checks) and Track 2 (provider-agnostic remote execution targeting Agent37 EU `vm`, with a clean seam for future providers and custom LAN wake/start logic).
+Stage: approved (the human, 2026-11-24: "Approve and build", D2 "2 min default", D5 "Option A: Fix output + add --narrow", build order "Track 1 + Track 2 scaffold"). Written 2026-11-24 from `research/tiered-pre-pr.md` (026-01), `research/boat-sandboxes.md` (026-02), `research/daemonless-hooks.md` (026-03) and `research/agent37-sandboxes.md` (026-04), after the human asked to spec both Track 1 (local slim/tiered checks) and Track 2 (provider-agnostic remote execution targeting Agent37 EU `vm`, with a clean seam for future providers and custom LAN wake/start logic).
 
 ## Problem
 
@@ -103,7 +103,7 @@ Fixes the gap from `tiered-pre-pr.md` Q3 where a repository with all test groups
    - If zero test groups are in scope (every test group is `manual` and neither `gate.groups` nor `--group` included one), say so on the headline verdict line (`Code gate: incomplete (0 test groups in scope; manual groups left out: <names>; add --group <name>, use --narrow, or set gate.groups)`).
    - If the local store already holds a current `fail` at the head key for a left-out loading test file, surface that stored failure in the report (`failedTests` / headline warning) instead of hiding it solely behind `incomplete (left-out)`.
 2. **`--narrow` selection flag.** Add `squeal code --base <ref> --narrow` (combinable with `--group <name>`): selects only D4's narrow test set instead of the full closure (cutting local pre-PR runs from 38 to 90% of the suite to ~0.05 to 1.3%). Functions whose full loader set includes non-selected tests keep accurate `loaders.leftOut` / `incomplete` semantics so a narrow gate never claims full-closure coverage (vision principle 2).
-3. **Default scope decision (open question 1).** Draft keeps 020 D14.1's default (leave `manual` groups out unless `gate.groups` or `--group` names them) so `squeal code --base` never accidentally triggers a 10 to 15 minute full-closure run locally, while making the gap unmistakable and adding `--narrow`.
+3. **Default scope (decided 2026-11-24, the human: Option A).** Keep 020 D14.1's default (leave `manual` groups out unless `gate.groups` or `--group` names them) so `squeal code --base` never accidentally triggers a 10 to 15 minute full-closure run locally, while making the 0-groups gap and any stored failures unmistakable and adding `--narrow`.
 
 ---
 
@@ -335,7 +335,7 @@ Wave 1 rows (`026-05` to `026-08`) touch disjoint areas (scheduler keying, oxlin
 
 ## Open questions for the human (spec review)
 
-1. **D5 (`squeal code --base` when every test group is `manual`):** Open (human asked how before/today works vs the options; `026-08` held until decided).
+1. ~~**D5 (`squeal code --base` when every test group is `manual`)**~~ Decided 2026-11-24, the human: Option A (keep `manual` out by default, fix 0-groups headline + surface stored failures in left-out loaders, and add `--narrow`).
 2. ~~**D2 (short-lived daemon default)**~~ Decided 2026-11-24, the human: `2 min default` when no test group is at `edit` or `pause` (overridable in config).
 3. ~~**D10 (`remote-key` on macOS)**~~ Accepted 2026-11-24, the human (opt-in `environmentMode: "remote-key"`).
 4. ~~**Build order**~~ Decided 2026-11-24, the human: Track 1 Wave 1 and Track 2 Wave 3 scaffold (`026-10`) in parallel.
