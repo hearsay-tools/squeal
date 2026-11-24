@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.628";
+  if (true) return "0.1.629";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -98289,9 +98289,11 @@ function readEvery(store, id, start2, every) {
 }
 
 // src/cli/wait/listing.ts
+init_policy2();
+init_deferred_keying();
 init_store2();
-function testFilesListed(store, id, header2) {
-  return header2.testFilesListed === true || connectionOf(store).get("SELECT 1 FROM test_file_keys WHERE worktree_id = ? LIMIT 1", id) !== null;
+function listingSettled(store, id, root, header2) {
+  return header2.testFilesListed === true || connectionOf(store).get("SELECT 1 FROM test_file_keys WHERE worktree_id = ? LIMIT 1", id) !== null || keyingDeferred(readPolicy(root));
 }
 function anyPending(snapshot3) {
   const { counts, testFilesWithoutChecks, runnerPartPending } = snapshot3;
@@ -98345,7 +98347,7 @@ function editPoll(options) {
       const seen2 = files6 === null ? readEvery(store, id, view, every) : naming && heldFiles2.length === 0 ? null : readHeld2(store, id, view, files6);
       const slowLeft = held4 === void 0 || seen2 === null ? [] : heldSlowLeft(held4, seen2.states, seen2.keys);
       const news = newsOf(window2, seen2, held4, naming, current2, fallback2);
-      const quiet = news.quiet && seen2 !== null && testFilesListed(store, id, seen2.header) && slowLeft.length === 0 && daemon.state === "alive";
+      const quiet = news.quiet && seen2 !== null && listingSettled(store, id, root, seen2.header) && slowLeft.length === 0 && daemon.state === "alive";
       const record2 = {
         store: "read",
         late: final,
@@ -112529,8 +112531,9 @@ function startTimers(context2) {
       );
     } else {
       const waiting2 = context2.slowWaiting?.() ?? null;
-      if (waiting2 !== null && at2 - waiting2.since >= DRAIN_SLOW_WAIT_MS) {
-        context2.shutdown("sessions-gone", waitedText2(waiting2.paths));
+      const waitMs = context2.timings.drainSlowWaitMs ?? DRAIN_SLOW_WAIT_MS;
+      if (waiting2 !== null && at2 - waiting2.since >= waitMs) {
+        context2.shutdown("sessions-gone", waitedText2(waiting2.paths, waitMs));
       }
     }
   });
@@ -112652,8 +112655,8 @@ function drainable(context2) {
 function drainedText(drained) {
   return drained === SLOW_FILES ? "daemon stopped: the slow files pending when its last session ended have run" : `daemon stopped: the work pending when its last session ended is done (${drained})`;
 }
-function waitedText2(paths) {
-  return `daemon stopped: no slow file ran for ${DRAIN_SLOW_WAIT_MS / 1e3} s once the fast work pending when its last session ended was done; ${plural(paths.length, "slow file")} left queued for the next daemon in this worktree: ${listPaths(paths)}`;
+function waitedText2(paths, waitMs) {
+  return `daemon stopped: no slow file ran for ${Math.round(waitMs / 1e3)} s once the fast work pending when its last session ended was done; ${plural(paths.length, "slow file")} left queued for the next daemon in this worktree: ${listPaths(paths)}`;
 }
 function boundText(pending, idleMs) {
   const after3 = `${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`;
@@ -113222,6 +113225,17 @@ var Daemon = class {
       hostSlots,
       backgroundShare: backgroundShare2,
       project: { id: this.#repositoryRoot, slots: projectSlots }
+    };
+  }
+  /**
+   * Spec 019 D3 (row 019-18): a group's slot counts where the user's config says, by default
+   * per repository, as read when the loop starts; a test's `slowRecheckMs` (row 010-37).
+   */
+  #slowOptions(commonDir) {
+    const recheckMs = this.options.slowRecheckMs;
+    return {
+      slotScope: { scope: this.#capacity().groupSlotScope, commonDir },
+      ...recheckMs === void 0 ? {} : { recheckMs }
     };
   }
   /**
@@ -113875,9 +113889,7 @@ var Daemon = class {
         // user's pool, sized from the user's config as read when the loop starts.
         // Spec 021 D18 (row 021-18): each refusal by the background ceiling is a line in its log.
         capacity: { dir: slowSlotDir(this.options.env), log: this.#log, ...this.#poolCapacity() },
-        // Spec 019 D3 (row 019-18): a group's slot counts where the user's config says, by default
-        // per repository, as read when the loop starts.
-        slow: { slotScope: { scope: this.#capacity().groupSlotScope, commonDir } },
+        slow: this.#slowOptions(commonDir),
         afterBatch: () => {
           code.nudge();
           lint2();
@@ -115722,6 +115734,7 @@ async function daemonCommand(args2, io) {
         oxlint: (projectRoot) => oxlintProvider({ root: projectRoot })
       },
       ...awaitLockMs === void 0 ? {} : { awaitLockMs },
+      ...testTimings(process.env),
       // Spec 021 D8: Vitest runs in a runner host, this script under this Node and its arguments.
       ...script2 === void 0 ? {} : {
         runnerHost: { execPath: process.execPath, execArgv: process.execArgv, cli: script2 }
@@ -115747,6 +115760,21 @@ function lockWait(options) {
   if (flag3 !== "--await-lock" || value === void 0 || rest2.length > 0) return null;
   const ms2 = Number(value);
   return /^\d+$/.test(value) && ms2 <= 36e5 ? ms2 : null;
+}
+function testTimings(env) {
+  const hostIdleMs2 = positiveMs(env.SQUEAL_TEST_HOST_IDLE_MS);
+  const slowRecheckMs = positiveMs(env.SQUEAL_TEST_SLOW_RECHECK_MS);
+  const drainSlowWaitMs = positiveMs(env.SQUEAL_TEST_DRAIN_SLOW_WAIT_MS);
+  return {
+    ...hostIdleMs2 === null ? {} : { hostIdleMs: hostIdleMs2 },
+    ...slowRecheckMs === null ? {} : { slowRecheckMs },
+    ...drainSlowWaitMs === null ? {} : { timings: { drainSlowWaitMs } }
+  };
+}
+function positiveMs(value) {
+  if (value === void 0 || !/^\d+$/.test(value)) return null;
+  const ms2 = Number(value);
+  return Number.isSafeInteger(ms2) && ms2 > 0 ? ms2 : null;
 }
 
 // src/core/status/failures.ts
@@ -124160,7 +124188,7 @@ async function daemonCall(input) {
   const { args: args2, place: place2, io, options } = input;
   const { root, commonDir, commit } = place2;
   const run8 = args2.run ?? null;
-  const waitMs = args2.waitMs ?? (run8 === null ? 0 : RUN_WAIT_MS);
+  const waitMs = args2.waitMs ?? (run8 === null ? 0 : options.defaultWaitMs ?? RUN_WAIT_MS);
   const note = (text3) => io.stderr(text3.startsWith("squeal: ") ? `${text3}
 ` : `squeal: ${text3}
 `);
