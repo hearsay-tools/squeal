@@ -48,10 +48,16 @@ export interface RepositoryRoute {
   guard(report: RunReport): readonly TestFileRef[];
 }
 
-/** The route over `needsRepository`, read at each split, so a policy reload applies to the next tier. */
+/**
+ * The route over `needsRepository`, read at each split, so a policy reload
+ * applies to the next tier. Spec 026 D8.4 (row 026-12): while the remote's
+ * tree is a Git repository (`remoteHasRepository`), the setting keeps no
+ * file here; the guard's remembered files stay here still.
+ */
 export function repositoryRoute(
   needsRepository: () => readonly string[],
   named: (text: string) => void,
+  remoteHasRepository: () => boolean = () => false,
 ): RepositoryRoute {
   const failed = new Map<string, TestFileRef>();
   let globs: readonly string[] = [];
@@ -62,7 +68,7 @@ export function repositoryRoute(
       globs = now;
       matches = createInputMatcher(now);
     }
-    return failed.has(testFileId(file)) || matches(file.path);
+    return failed.has(testFileId(file)) || (!remoteHasRepository() && matches(file.path));
   };
   return {
     split(testFiles) {
@@ -78,8 +84,12 @@ export function repositoryRoute(
       for (const file of found) failed.set(testFileId(file), file);
       const paths = [...failed.values()].map((file) => file.path).sort();
       const shown = paths.length > 5 ? [...paths.slice(0, 5), `${paths.length - 5} more`] : paths;
+      // With `.git` there, the setting would change nothing: no hint to add them.
+      const hint = remoteHasRepository()
+        ? ""
+        : "; add each to remote.needsRepository in squeal.config.json";
       named(
-        `test files that failed on the remote as not a Git repository run here: ${shown.join(", ")}; add each to remote.needsRepository in squeal.config.json`,
+        `test files that failed on the remote as not a Git repository run here: ${shown.join(", ")}${hint}`,
       );
       return found;
     },

@@ -124,6 +124,40 @@ describe("the guard on a remote 'not a git repository' failure (021 D19.2)", () 
   });
 });
 
+describe("a machine whose tree is a Git repository (026 D8.4)", () => {
+  it("sends needsRepository files there with the rest of their tier", async () => {
+    const s = await setup({
+      needsRepository: ["test/git.*"],
+      files: FILES,
+      hasGitRepository: () => true,
+    });
+    const report = await s.lane.run([REF, GIT], background());
+    expect(s.remoteRuns).toEqual([`${REF.path},${GIT.path}`]);
+    expect(s.localFiles).toEqual([]);
+    expect(paths(report)).toEqual([REF.path, GIT.path]);
+  });
+
+  it("keeps the guard: a file that still fails as not a Git repository runs here, then stays here", async () => {
+    const s = await setup({
+      needsRepository: ["test/git.*"],
+      files: FILES,
+      hasGitRepository: () => true,
+      remoteRun: remoteFails(GIT_TEXT),
+    });
+    const report = await s.lane.run([REF, GIT], background());
+    expect(s.remoteRuns).toEqual([`${REF.path},${GIT.path}`]);
+    expect(s.localFiles).toEqual([GIT.path]);
+    expect(report.results).toEqual([result(REF.path, null)]);
+    // Its tree has `.git`: the setting would change nothing, so status does not ask for it.
+    expect(s.repository).toEqual([
+      "test files that failed on the remote as not a Git repository run here: test/git.test.ts",
+    ]);
+    await s.lane.run([REF, GIT], background());
+    expect(s.remoteRuns.at(-1)).toBe(REF.path);
+    expect(s.localFiles.at(-1)).toBe(GIT.path);
+  });
+});
+
 describe("a report's files that failed as not a Git repository (021 D19.2)", () => {
   const error = (message: string, stack: string | null = null) => ({
     name: "Error",

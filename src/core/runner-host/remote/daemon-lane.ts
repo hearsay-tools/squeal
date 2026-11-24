@@ -55,6 +55,11 @@ import {
  * the lane's close signal. A host that started after its lane closed or the
  * daemon's exit began is closed before the work ends, so the exit, which
  * waits for every such work, finds no host open when it releases the machine.
+ *
+ * Spec 026 D8.3, D8.4 (row 026-12): each lane plans where the entry's
+ * `planning` says; once the daemon's exit began, no planning call falls back
+ * here. A machine whose tree is a Git repository takes `needsRepository`
+ * files too.
  */
 
 /** The note topic of the runner's own lane's one status line. */
@@ -240,6 +245,9 @@ function laneOver<R extends RunnerAdapter>(
     // asleep or lost, its first tier runs here as the connect goes on, not after a failing one.
     ...(spec.perPass === true && share.awake() ? { awaitConnect: true } : {}),
     whenLost: context.lane.whenLost,
+    planning: context.lane.planning,
+    hasGitRepository: () => share.current()?.capabilities.hasGitRepository === true,
+    ending: () => share.ending(),
     root,
     version,
     local: spec.local,

@@ -80,6 +80,10 @@ export interface Setup {
   readonly awaitConnect?: boolean;
   /** Spec 026 D8.1: the runner of the runs here, made from the local one. */
   readonly here?: (local: RunnerAdapter) => RunnerAdapter;
+  /** Spec 026 D8.3: where the lane plans. */
+  readonly planning?: "local" | "remote";
+  /** Spec 026 D8.4: whether the machine's tree is a Git repository. */
+  readonly hasGitRepository?: () => boolean;
 }
 
 let n = 0;
@@ -101,6 +105,8 @@ export async function setup({
   lanes,
   awaitConnect,
   here,
+  planning,
+  hasGitRepository,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -121,16 +127,41 @@ export async function setup({
   /** The files of each run here, joined as `remoteRuns`. */
   const localFiles: string[] = [];
   let paused = false;
-  const fake = (env: () => RunnerEnvironment, run: HostedAdapter["run"]): HostedAdapter => ({
+  /** Spec 026 D8.3: each call on the local adapter but `run` and `close`, and on the remote one. */
+  const localCalls: string[] = [];
+  const remoteCalls: string[] = [];
+  const fake = (
+    env: () => RunnerEnvironment,
+    run: HostedAdapter["run"],
+    calls: string[],
+  ): HostedAdapter => ({
     name: "vitest",
     adapterVersion: "1",
     traits: NO_TRAITS,
-    invalidate: async () => ({ recreatedProjects: [] }),
-    affected: async () => ({ direct: [REF], transitive: [] }),
-    closure: async (testFile) => ({ testFile, paths: ["src/a.ts", "test/a.test.ts"] }),
-    enumerate: async () => [],
-    testFiles: async () => [REF],
-    environment: async () => [env()],
+    invalidate: async (paths) => {
+      calls.push(`invalidate ${paths.map((p) => p.path).join(",")}`);
+      return { recreatedProjects: [] };
+    },
+    affected: async (paths) => {
+      calls.push(`affected ${paths.join(",")}`);
+      return { direct: [REF], transitive: [] };
+    },
+    closure: async (testFile) => {
+      calls.push(`closure ${testFile.path}`);
+      return { testFile, paths: ["src/a.ts", "test/a.test.ts"] };
+    },
+    enumerate: async (testFile) => {
+      calls.push(`enumerate ${testFile.path}`);
+      return [];
+    },
+    testFiles: async () => {
+      calls.push("testFiles");
+      return [REF];
+    },
+    environment: async () => {
+      calls.push("environment");
+      return [env()];
+    },
     run,
     close: async () => {},
   });
@@ -158,6 +189,7 @@ export async function setup({
                   () => host.channel.kill(),
                 );
           },
+          remoteCalls,
         ),
       "0.0.0-test",
       {
@@ -197,6 +229,7 @@ export async function setup({
         localFiles.push(files.map((f) => f.path).join(","));
         return localRun === undefined ? { ...REPORT, completedFiles: [...files] } : localRun(files);
       },
+      localCalls,
     ),
     close: async () => {
       localCloses++;
@@ -226,6 +259,8 @@ export async function setup({
     ...(lanes === undefined ? {} : { lanes }),
     ...(awaitConnect === undefined ? {} : { awaitConnect }),
     ...(here === undefined ? {} : { here: here(local) }),
+    ...(planning === undefined ? {} : { planning }),
+    ...(hasGitRepository === undefined ? {} : { hasGitRepository }),
     activity: () => activity.push(clock),
   });
   onTestFinished(() => lane.close());
@@ -248,6 +283,8 @@ export async function setup({
     events,
     activity,
     localCloses: () => localCloses,
+    localCalls,
+    remoteCalls,
     advance: (ms: number) => {
       clock += ms;
     },

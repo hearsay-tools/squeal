@@ -20,6 +20,12 @@ export interface CompareOptions {
   readonly version: string;
   /** The runner here, whose environment the remote's must equal. */
   readonly local: RunnerAdapter;
+  /**
+   * Spec 026 D8.3 (row 026-12): under `remote`, the runner here is not
+   * asked: the remote's own runner environments are checked against this
+   * worktree's process inputs and the blob ids of their config files here.
+   */
+  readonly planning?: "local" | "remote";
   readonly allowlist: () => readonly string[];
   readonly log: (text: string) => void;
 }
@@ -51,12 +57,13 @@ export async function compareRemote(host: RemoteHost, options: CompareOptions): 
 
 async function differences(host: RemoteHost, options: CompareOptions): Promise<string[]> {
   const allowlist = options.allowlist();
-  const [remoteCore, remoteRunners, localRunners, installed] = await Promise.all([
+  const [remoteCore, remoteRunners, localOwn, installed] = await Promise.all([
     host.coreEnvironment(allowlist),
     host.adapter.environment(),
-    options.local.environment(),
+    options.planning === "remote" ? null : options.local.environment(),
     installedDependenciesFingerprint(options.root, options.root),
   ]);
+  const localRunners = localOwn ?? remoteRunners;
   const files = [...new Set([...remoteRunners, ...localRunners].flatMap((r) => r.files))];
   const [remoteBlobs, localBlobs] = await Promise.all([
     host.blobs(files),
