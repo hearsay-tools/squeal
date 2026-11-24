@@ -28,8 +28,36 @@ export interface RunContext {
   readonly signal: AbortSignal;
 }
 
-/** Paths per `--debug files` run, well under any command-line limit. */
-const DEBUG_CHUNK = 256;
+/**
+ * Command-line bytes per `--debug files` run (issue #274 F3.1): well under
+ * POSIX `ARG_MAX` and Windows' 32,767-character command line.
+ */
+export const DEBUG_BYTES = process.platform === "win32" ? 24 * 1024 : 128 * 1024;
+
+/**
+ * `paths` in order, in parts of at most `maxBytes`: a path counts its UTF-8
+ * bytes and one separator. A path longer than the bound is a part alone.
+ */
+export function chunkDebugPaths<T extends string>(
+  paths: readonly T[],
+  maxBytes: number = DEBUG_BYTES,
+): T[][] {
+  const parts: T[][] = [];
+  let part: T[] = [];
+  let bytes = 0;
+  for (const path of paths) {
+    const size = Buffer.byteLength(path, "utf8") + 1;
+    if (part.length > 0 && bytes + size > maxBytes) {
+      parts.push(part);
+      part = [];
+      bytes = 0;
+    }
+    part.push(path);
+    bytes += size;
+  }
+  if (part.length > 0) parts.push(part);
+  return parts;
+}
 
 /**
  * The named files oxlint lints, by `--debug files` (D11): an ignored file
@@ -39,10 +67,10 @@ const DEBUG_CHUNK = 256;
 export async function lintedFiles(
   ctx: RunContext,
   paths: readonly RelativePath[],
+  maxBytes: number = DEBUG_BYTES,
 ): Promise<Set<RelativePath> | { readonly failure: string }> {
   const linted = new Set<RelativePath>();
-  for (let i = 0; i < paths.length; i += DEBUG_CHUNK) {
-    const chunk = paths.slice(i, i + DEBUG_CHUNK);
+  for (const chunk of chunkDebugPaths(paths, maxBytes)) {
     const run = await runOxlint(ctx, ["--debug", "files", "--threads", "1", "--", ...chunk]);
     if (run.failure !== null) return { failure: run.failure };
     const listed = run.process.code === 0 ? run.process.stdout.split("\n") : chunk;

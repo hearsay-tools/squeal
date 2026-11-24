@@ -14,6 +14,7 @@ import type {
   LintRunReport,
 } from "../../pass/provider.js";
 import { type ConfigSet, readConfigs, VITE_PLUS_OFF } from "./config-set.js";
+import type { FolderConfigs } from "./configs.js";
 import { discoverOxlint, type OxlintInstall } from "./discover.js";
 import { Preload } from "./preload.js";
 import { blobsNow, lintedFiles, type RunContext, resultsOf, runOxlint } from "./run.js";
@@ -60,6 +61,9 @@ export interface OxlintProviderOptions {
   readonly node?: string;
   readonly now?: () => number;
 }
+
+/** Files `inputs` reads between two yields to the event loop (issue #274 F3.5). */
+export const YIELD_EVERY = 256;
 
 const FAILURES = 3;
 const WINDOW_MS = 10 * 60_000;
@@ -119,10 +123,14 @@ class Provider implements OxlintProvider {
       if ("off" in ready) throw new Error(ready.off);
       const linted = await this.linted(ready.ctx, paths);
       const inputs = new Map<RelativePath, LintFileInputs>();
-      for (const path of paths) {
+      const folders: FolderConfigs = new Map();
+      for (let i = 0; i < paths.length; i++) {
+        // Issue #274 F3.5: a large batch never holds the main thread in one block.
+        if (i > 0 && i % YIELD_EVERY === 0) await new Promise((r) => setImmediate(r));
+        const path = paths[i] as RelativePath;
         if (!linted.has(path)) continue;
         inputs.set(path, {
-          config: ready.configs.inputsOf(path),
+          config: ready.configs.inputsOf(path, folders),
           wholeProgram: ready.configs.importPlugin,
         });
       }

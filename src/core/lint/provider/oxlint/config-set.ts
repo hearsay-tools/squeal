@@ -7,6 +7,7 @@ import {
   configAbove,
   configFacts,
   configIn,
+  type FolderConfigs,
   findConfigs,
   ROOT_INPUTS,
 } from "./configs.js";
@@ -39,8 +40,11 @@ export interface ConfigSet {
   readonly above: RelativePath | null;
   /** What `--print-config` loaded through the preload. */
   readonly held: ReadonlyMap<RelativePath, LintHeld>;
-  /** One file's `LintFileInputs.config`: its config chain, as JSON. */
-  inputsOf(path: RelativePath): string;
+  /**
+   * One file's `LintFileInputs.config`: its config chain, as JSON. One batch
+   * passes one `folders` memo, so each folder is read once (issue #274 F3.3).
+   */
+  inputsOf(path: RelativePath, folders?: FolderConfigs): string;
   /**
    * Whether the file's nearest config is one this read did not find: one made
    * since, or one in a folder git ignored whole then, where a file was added
@@ -95,7 +99,8 @@ export async function readConfigs(
     javascript,
     above,
     held,
-    inputsOf: (path) => JSON.stringify({ chain: chainOf(root, path) }),
+    inputsOf: (path, folders) => JSON.stringify({ chain: chainOf(root, path, folders) }),
+    // Never memoized: it reads the disk for a config made since (row 017-30).
     missed: (path) => {
       const nearest = chainOf(root, path).at(-1)?.[1] ?? null;
       return nearest !== null && !configs.includes(nearest);

@@ -226,19 +226,28 @@ function stringEnd(text: string, start: number): number {
   return text.length;
 }
 
+/** Each folder's config or `null`, as `configIn` read it: one batch's memo (issue #274 F3.3). */
+export type FolderConfigs = Map<string, RelativePath | null>;
+
 /**
  * D11: the config chain of one file, from its folder up to the root: each
  * folder's config or none, then the root's. oxlint uses the nearest; the
  * chain also names the folders without one, so a new config there re-keys.
+ * With `folders`, each folder is read from the disk once per memo.
  */
 export function chainOf(
   root: AbsolutePath,
   file: RelativePath,
+  folders?: FolderConfigs,
 ): readonly (readonly [string, RelativePath | null])[] {
   const chain: [string, RelativePath | null][] = [];
   for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
     const here = dir === "." ? "" : dir;
-    const config = configIn(root, here);
+    let config = folders?.get(here);
+    if (config === undefined) {
+      config = configIn(root, here);
+      folders?.set(here, config);
+    }
     chain.push([here, config]);
     if (config !== null || here === "") return chain;
   }
