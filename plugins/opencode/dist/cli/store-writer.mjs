@@ -468,6 +468,7 @@ function* checkpointAfterWrites(conn, slices2) {
       const before = writeMark(conn);
       withoutAutoCheckpoint(conn, slice);
       wrote = writeMark(conn) !== before;
+      return wrote;
     };
     if (wrote) yield () => checkpoint(conn);
   }
@@ -533,6 +534,7 @@ function* deleteByKey(conn, rule) {
         () => last === null ? conn.all(first, ...searchParams) : conn.all(next, ...last, ...searchParams)
       );
       keys = rows.map((row) => rule.key.map((column) => row[column]));
+      return false;
     };
     if (keys.length === 0) return;
     const list = JSON.stringify(keys);
@@ -541,6 +543,7 @@ function* deleteByKey(conn, rule) {
         () => conn.run(remove, list, ...rule.recheckParams?.() ?? searchParams)
       );
       rule.removed?.(n);
+      return n > 0;
     };
     if (keys.length < batch) return;
     last = keys[keys.length - 1] ?? null;

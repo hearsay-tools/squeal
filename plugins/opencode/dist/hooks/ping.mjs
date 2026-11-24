@@ -1572,6 +1572,19 @@ function coreEnvironmentInputs(options) {
 var LINT_KEYS = ["findings", "notDetermined", "running"];
 var TOOL_KEYS = ["files", ...LINT_KEYS];
 
+// src/core/state/file-class.ts
+var isRunning = (state) => state.pendingPhase === "running";
+function tallyOf(own) {
+  const validity = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const outcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
+  for (const s of own) {
+    validity[s.validity]++;
+    outcome[s.outcome]++;
+  }
+  return { count: own.length, validity, outcome, running: own.some(isRunning) };
+}
+var NO_STATES = tallyOf([]);
+
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 

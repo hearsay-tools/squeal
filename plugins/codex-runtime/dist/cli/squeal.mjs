@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.632";
+  if (true) return "0.1.633";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4035,6 +4035,115 @@ var init_derive = __esm({
   }
 });
 
+// src/core/state/file-class.ts
+function phasesOf(pending, held4, filePhase) {
+  const all2 = pending.queued + pending.running + pending.none;
+  if (held4) return { queued: 0, running: all2 };
+  const none3 = filePhase ?? "queued";
+  return {
+    queued: pending.queued + (none3 === "queued" ? pending.none : 0),
+    running: pending.running + (none3 === "running" ? pending.none : 0)
+  };
+}
+function isNotable(state) {
+  return state.outcome === "fail" || state.validity === "unknown" || state.check.kind === "setup";
+}
+function worktreeStatesOf(states) {
+  const groups3 = /* @__PURE__ */ new Map();
+  const own = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const origin = state.validity === "current" ? state.origin : null;
+    const id = JSON.stringify([state.check.kind, state.validity, state.outcome, origin]);
+    const group = groups3.get(id);
+    if (group === void 0) {
+      const { validity, outcome: outcome2 } = state;
+      groups3.set(id, { kind: state.check.kind, validity, outcome: outcome2, origin, count: 1 });
+    } else group.count++;
+    const file = testFileKeyOf(state.check);
+    const list3 = own.get(file);
+    if (list3 === void 0) own.set(file, [state]);
+    else list3.push(state);
+  }
+  const files6 = /* @__PURE__ */ new Map();
+  for (const [id, list3] of own) files6.set(id, fileStatesOf(list3));
+  return { groups: [...groups3.values()], files: files6, notable: states.filter(isNotable) };
+}
+function fileStatesOf(own) {
+  let currentAt = null;
+  let currentUpTo = null;
+  const pending = noPending();
+  for (const s of own) {
+    if (s.validity === "pending") pending[s.check.kind][s.pendingPhase ?? "none"]++;
+    if (s.validity !== "current" || s.observedAt === null) continue;
+    currentAt = currentAt === null ? s.observedAt : Math.min(currentAt, s.observedAt);
+    currentUpTo = currentUpTo === null ? s.observedAt : Math.max(currentUpTo, s.observedAt);
+  }
+  return {
+    testFile: testFileOf(own[0].check),
+    all: tallyOf(own),
+    checks: tallyOf(own.filter((s) => s.check.kind !== "setup")),
+    currentAt,
+    currentUpTo,
+    pending
+  };
+}
+function tallyOf(own) {
+  const validity = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const outcome2 = { pass: 0, fail: 0, skip: 0, unknown: 0 };
+  for (const s of own) {
+    validity[s.validity]++;
+    outcome2[s.outcome]++;
+  }
+  return { count: own.length, validity, outcome: outcome2, running: own.some(isRunning) };
+}
+function fileClassOf(row2, own) {
+  return classOf(row2, tallyOf(own));
+}
+function classOf(row2, own = NO_STATES) {
+  const has3 = (validity) => own.validity[validity] > 0;
+  const queued = row2 !== void 0 && row2.key !== null && row2.pending !== null;
+  const unkeyed = row2 === void 0 || row2.key === null;
+  if (queued || has3("pending")) return "pending";
+  if (unkeyed || own.count === 0 || has3("unknown")) return "unknown";
+  return has3("stale") ? "stale" : "current";
+}
+function notCurrentOf(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
+  const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const testFilesByPhase = { running: 0, queued: 0 };
+  const testsByPhase = { running: 0, queued: 0 };
+  for (const row2 of keys) {
+    const id = testFileId(row2.testFile);
+    const own = states.files.get(id)?.checks;
+    const fileClass = classOf(row2, own);
+    testFileCounts[fileClass]++;
+    if (fileClass !== "pending") continue;
+    const running2 = openFiles2.has(id) || row2.pending === "running" || own?.running === true;
+    testFilesByPhase[running2 ? "running" : "queued"]++;
+  }
+  const filePhase = new Map(keys.map((row2) => [testFileId(row2.testFile), row2.pending]));
+  for (const [id, file] of states.files) {
+    const phases = phasesOf(file.pending.test, openFiles2.has(id), filePhase.get(id));
+    testsByPhase.queued += phases.queued;
+    testsByPhase.running += phases.running;
+  }
+  return { testFileCounts, testFilesByPhase, testsByPhase };
+}
+var noPending, isRunning, NO_STATES;
+var init_file_class = __esm({
+  "src/core/state/file-class.ts"() {
+    "use strict";
+    init_reverse_index();
+    init_derive();
+    noPending = () => ({
+      test: { queued: 0, running: 0, none: 0 },
+      file: { queued: 0, running: 0, none: 0 },
+      setup: { queued: 0, running: 0, none: 0 }
+    });
+    isRunning = (state) => state.pendingPhase === "running";
+    NO_STATES = tallyOf([]);
+  }
+});
+
 // src/core/scheduler/yield-row.ts
 function yieldRowText(at2, row2) {
   const { tiers, ended: ended2, endedFiles, last, lanes } = row2;
@@ -5180,6 +5289,7 @@ function* checkpointAfterWrites(conn, slices2) {
       const before5 = writeMark(conn);
       withoutAutoCheckpoint(conn, slice);
       wrote = writeMark(conn) !== before5;
+      return wrote;
     };
     if (wrote) yield () => checkpoint(conn);
   }
@@ -5350,6 +5460,10 @@ function dropFallenUnknownRuns(conn) {
   if (kept6.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept6);
   return records.length - kept6.length;
 }
+function hasFallenUnknownRuns(conn) {
+  const records = readUnknownRuns(conn);
+  return standing(conn, records).length < records.length;
+}
 function keptByUnknownRuns(conn) {
   return readUnknownRuns(conn).flatMap((r) => r.runId === null ? [] : [r.runId]);
 }
@@ -5440,6 +5554,7 @@ function* deleteByKey(conn, rule3) {
         () => last === null ? conn.all(first2, ...searchParams) : conn.all(next, ...last, ...searchParams)
       );
       keys = rows.map((row2) => rule3.key.map((column) => row2[column]));
+      return false;
     };
     if (keys.length === 0) return;
     const list3 = JSON.stringify(keys);
@@ -5448,6 +5563,7 @@ function* deleteByKey(conn, rule3) {
         () => conn.run(remove2, list3, ...rule3.recheckParams?.() ?? searchParams)
       );
       rule3.removed?.(n);
+      return n > 0;
     };
     if (keys.length < batch) return;
     last = keys[keys.length - 1] ?? null;
@@ -5806,8 +5922,16 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
     if (!isGone(worktree.root)) continue;
     yield* removeWorktree(conn, worktrees, worktree, counts);
   }
-  yield () => conn.transaction(() => expireReplaced(conn, cutoff));
-  yield () => conn.transaction(() => dropFallenUnknownRuns(conn));
+  yield* writeIf(
+    conn,
+    () => readReplaced(conn).some((entry4) => entry4.provenance.recordedAt < cutoff),
+    () => expireReplaced(conn, cutoff)
+  );
+  yield* writeIf(
+    conn,
+    () => hasFallenUnknownRuns(conn),
+    () => dropFallenUnknownRuns(conn)
+  );
   yield* dropPrunable(conn, cutoff, counts);
   if (options.maxSizeMb !== null) {
     yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
@@ -5817,6 +5941,14 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
   yield* dropEndedCheckpoints(conn, cutoff, counts);
   yield* dropUnusedChecks(conn, counts);
   yield* vacuum(conn);
+}
+function* writeIf(conn, needed, write4) {
+  let due = false;
+  yield () => {
+    due = conn.read(needed);
+    return false;
+  };
+  if (due) yield () => conn.transaction(write4) > 0;
 }
 function isGone(root) {
   return !existsSync3(join9(root, ".git"));
@@ -5828,7 +5960,7 @@ function* removeWorktree(conn, worktrees, worktree, counts) {
     while (removed === DELETE_BATCH) {
       removed = 0;
       yield () => {
-        if (!isGone(worktree.root)) return;
+        if (!isGone(worktree.root)) return false;
         removed = conn.transaction(
           () => conn.run(
             `DELETE FROM ${table} WHERE worktree_id = ? AND ${key3} IN (
@@ -5838,6 +5970,7 @@ function* removeWorktree(conn, worktrees, worktree, counts) {
             DELETE_BATCH
           )
         );
+        return removed > 0;
       };
     }
   }
@@ -5866,6 +5999,7 @@ function* dropRuns(conn, paths, cutoff, counts) {
       );
       for (const row2 of dropped) removeRunLog(paths, str(row2, "log_dir"));
       counts.runsRemoved += dropped.length;
+      return dropped.length > 0;
     };
   }
 }
@@ -5874,13 +6008,15 @@ function* dropPrunable(conn, cutoff, counts) {
   for (let at2 = 0; at2 < ids.length; at2 += DELETE_BATCH) {
     const batch = JSON.stringify(ids.slice(at2, at2 + DELETE_BATCH));
     yield () => {
-      counts.resultsRemoved += conn.transaction(
+      const n = conn.transaction(
         () => conn.run(
           `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE_BY_KEY}`,
           batch,
           cutoff
         )
       );
+      counts.resultsRemoved += n;
+      return n > 0;
     };
   }
   yield* dropOrphanTexts(conn);
@@ -5901,6 +6037,7 @@ function* evictToCap(conn, capBytes, counts) {
           return n;
         });
         counts.resultsRemoved += batch;
+        return batch > 0;
       };
       if (batch === 0) break;
     }
@@ -7367,8 +7504,19 @@ var init_transitions = __esm({
 // src/core/state/sink.ts
 var sink_exports = {};
 __export(sink_exports, {
+  SCOPED_MAX_FILES: () => SCOPED_MAX_FILES,
   createStateSink: () => createStateSink
 });
+function scoped(refs2) {
+  const unique = [...new Map([...refs2].map((ref3) => [testFileId(ref3), ref3])).values()];
+  if (unique.length > SCOPED_MAX_FILES) return void 0;
+  const last = unique.at(-1);
+  if (last === void 0) return unique;
+  let size = 1;
+  while (size < unique.length) size *= 2;
+  while (unique.length < size) unique.push(last);
+  return unique;
+}
 function failureKeys(results3) {
   const keys = /* @__PURE__ */ new Map();
   for (const r of results3) keys.set(checkIdentity(r.check), r.outcome === "fail" ? r.key : null);
@@ -7376,12 +7524,13 @@ function failureKeys(results3) {
 }
 function createStateSink(store, options = {}) {
   const now = options.now ?? Date.now;
-  function begin2(worktreeId) {
+  function begin2(worktreeId, scope2) {
+    const files6 = scope2 === void 0 ? void 0 : scoped(scope2);
     const previous = new Map(
-      store.knownStates.list(worktreeId).map((s) => [checkIdentity(s.check), s])
+      store.knownStates.list(worktreeId, files6).map((s) => [checkIdentity(s.check), s])
     );
     const keys = new Map(
-      store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k])
+      store.testFileKeys.list(worktreeId, files6).map((k) => [testFileId(k.testFile), k])
     );
     const keyOf4 = (state) => keys.get(testFileKeyOf(state.check));
     const prior = (state) => previous.get(checkIdentity(state.check)) ?? null;
@@ -7416,7 +7565,10 @@ function createStateSink(store, options = {}) {
   }
   return {
     applyResults: (worktreeId, revision, results3, provenance) => store.transaction(() => {
-      const { keyOf: keyOf4, prior, commit } = begin2(worktreeId);
+      const { keyOf: keyOf4, prior, commit } = begin2(
+        worktreeId,
+        results3.map((r) => testFileOf(r.check))
+      );
       const next = results3.map(
         (r) => stateFromResult(worktreeId, revision, r, keyOf4(r), prior(r))
       );
@@ -7425,14 +7577,14 @@ function createStateSink(store, options = {}) {
       return commit(revision, next, provenance.checkpointId);
     }),
     markUnknown: (worktreeId, revision, testFiles3, reason2) => store.transaction(() => {
-      const { previous, keyOf: keyOf4, commit } = begin2(worktreeId);
+      const { previous, keyOf: keyOf4, commit } = begin2(worktreeId, testFiles3);
       const files6 = new Set(testFiles3.map(testFileId));
       const head2 = store.revisions.get(worktreeId, revision)?.head ?? null;
       const next = [...previous.values()].filter((s) => files6.has(testFileKeyOf(s.check))).map((s) => unknownState(s, revision, keyOf4(s), reason2, head2));
       return commit(revision, next, null);
     }),
     refresh: (worktreeId, revision, provenance, testFiles3) => store.transaction(() => {
-      const { previous, keys, keyOf: keyOf4, prior, commit } = begin2(worktreeId);
+      const { previous, keys, keyOf: keyOf4, prior, commit } = begin2(worktreeId, testFiles3);
       const only2 = testFiles3 === void 0 ? null : new Set(testFiles3.map(testFileId));
       const included = (file) => only2 === null || only2.has(file);
       const at2 = now();
@@ -7490,6 +7642,7 @@ function createStateSink(store, options = {}) {
     })
   };
 }
+var SCOPED_MAX_FILES;
 var init_sink = __esm({
   "src/core/state/sink.ts"() {
     "use strict";
@@ -7501,6 +7654,7 @@ var init_sink = __esm({
     init_inherited();
     init_producers();
     init_transitions();
+    SCOPED_MAX_FILES = 1024;
   }
 });
 
@@ -8104,10 +8258,10 @@ function sorted(entries3, durationOf2, turn, promoted, ranked = false) {
     durations2.set(entry4, durationOf2(entry4.ref) ?? unknown5);
   }
   const group = (entry4) => groups3.get(entry4) ?? 0;
-  const classOf = (entry4) => classes.get(entry4) ?? 0;
+  const classOf2 = (entry4) => classes.get(entry4) ?? 0;
   const duration2 = (entry4) => durations2.get(entry4) ?? Number.POSITIVE_INFINITY;
   return [...entries3].sort(
-    (a, b) => group(a) - group(b) || byDuration(rank4(a), rank4(b)) || byDuration(placeOf(promoted, a), placeOf(promoted, b)) || classOf(a) - classOf(b) || evidence(b) - evidence(a) || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
+    (a, b) => group(a) - group(b) || byDuration(rank4(a), rank4(b)) || byDuration(placeOf(promoted, a), placeOf(promoted, b)) || classOf2(a) - classOf2(b) || evidence(b) - evidence(a) || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
   ).map((entry4) => entry4.ref);
 }
 function groupOf2(entry4, promoted) {
@@ -9805,6 +9959,56 @@ var init_setup = __esm({
 });
 
 // src/core/scheduler/ledger.ts
+function holdPending(store, worktreeId, revision) {
+  if (covers(readRefined(store, worktreeId), revision)) {
+    recordRefinedApplied(store, worktreeId, revision - 1);
+  }
+}
+function nextTurn() {
+  return new Promise((resolve56) => setImmediate(resolve56));
+}
+function fileOfCheck(check3) {
+  return check3.kind === "setup" ? null : testFileId({ project: check3.project, path: check3.testPath });
+}
+function sliceDrained(drained, size) {
+  const named4 = /* @__PURE__ */ new Set([
+    ...drained.removed.map(testFileId),
+    ...drained.unknown.flatMap(({ testFiles: testFiles3 }) => testFiles3.map(testFileId)),
+    ...drained.unknownFiles.map(({ testFile }) => testFileId(testFile)),
+    ...drained.retired.flatMap((check3) => fileOfCheck(check3) ?? [])
+  ]);
+  const free = drained.dirty.filter((id) => !named4.has(id));
+  if (free.length <= size) return [drained];
+  const chunks2 = [];
+  for (let at2 = 0; at2 + size < free.length; at2 += size) chunks2.push(free.slice(at2, at2 + size));
+  const chunkOf = new Map(chunks2.flatMap((ids, i3) => ids.map((id) => [id, i3])));
+  const applied = chunks2.map(() => []);
+  const rest2 = [];
+  for (const { results: results3, checkpointId } of drained.applied) {
+    const by = /* @__PURE__ */ new Map();
+    const left = [];
+    for (const result of results3) {
+      const id = fileOfCheck(result.check);
+      const i3 = id === null ? void 0 : chunkOf.get(id);
+      if (i3 === void 0) left.push(result);
+      else if (by.has(i3)) by.get(i3)?.push(result);
+      else by.set(i3, [result]);
+    }
+    for (const [i3, part2] of by) applied[i3]?.push({ results: part2, checkpointId });
+    if (left.length > 0) rest2.push({ results: left, checkpointId });
+  }
+  const ahead = chunks2.map((ids, i3) => ({
+    ...NOTHING_DRAINED,
+    dirty: ids,
+    applied: applied[i3] ?? []
+  }));
+  const last = {
+    ...drained,
+    dirty: drained.dirty.filter((id) => !chunkOf.has(id)),
+    applied: rest2
+  };
+  return [...ahead, last];
+}
 function mergeApplied(applied) {
   const merged4 = [];
   let seen2 = /* @__PURE__ */ new Set();
@@ -9829,7 +10033,7 @@ function runners(keys, rows, applied, setups) {
   ];
   return new Map(projects2.map((project) => [project, keys.runnerOf(project)]));
 }
-var UNPROBED, MAX_DISCARDS, Ledger;
+var WRITE_SLICE_FILES, UNPROBED, MAX_DISCARDS, Ledger, NOTHING_DRAINED;
 var init_ledger = __esm({
   "src/core/scheduler/ledger.ts"() {
     "use strict";
@@ -9855,6 +10059,7 @@ var init_ledger = __esm({
     init_setup();
     init_slow();
     init_unknown_files();
+    WRITE_SLICE_FILES = 200;
     UNPROBED = { hits: [], mayWait: true };
     MAX_DISCARDS = 3;
     Ledger = class {
@@ -10325,8 +10530,46 @@ var init_ledger = __esm({
           throw error;
         }
       }
-      /** `commit`'s rows and its one transaction, from what it drained. */
-      #write(drained, options) {
+      /**
+       * Row 025-10 (spec 025 D10): `commit` as write transactions of at most
+       * `slice` files each, `run` running each (the caller's busy retry), one
+       * event-loop turn between two, so other writers take the lock between
+       * them. Only a commit that records its refined revision is sliced; one
+       * that does not is one transaction, as `commit`.
+       *
+       * Every slice but the last holds the key rows and lookup results of files
+       * that nothing else in the commit names (`sliceDrained`), and first moves
+       * the refined revision below `refined`: until the last slice records it,
+       * headers, status and every wait read the runner part as pending, so no
+       * reader takes a half-written commit for a settled worktree (D2 as
+       * amended). The last slice writes the rest in `commit`'s order and records
+       * `refined`. A crash between slices leaves the refined revision behind,
+       * so the next start reads the revision's changes as unseen, never as
+       * applied. A busy store's refusal that `run` gives up on puts back what
+       * no slice wrote yet (row 011-126).
+       */
+      async commitInSlices(options, run9 = async (write4) => write4(), slice = WRITE_SLICE_FILES) {
+        this.ends?.committed(this.files);
+        const drained = this.#drain();
+        const { refined } = options;
+        const parts3 = refined === void 0 ? [drained] : sliceDrained(drained, slice);
+        for (const [i3, part2] of parts3.entries()) {
+          const last = i3 === parts3.length - 1;
+          if (i3 > 0) await nextTurn();
+          try {
+            await run9(() => this.#write(part2, last ? options : {}, last ? null : refined ?? null));
+          } catch (error) {
+            if (isBusy(error)) for (const rest2 of parts3.slice(i3).reverse()) this.#putBack(rest2);
+            throw error;
+          }
+        }
+      }
+      /**
+       * `commit`'s rows and its one transaction, from what it drained. `ahead`:
+       * the revision a slice of `commitInSlices` writes ahead of, whose runner
+       * part stays pending until its last slice.
+       */
+      #write(drained, options, ahead = null) {
         const { store, sink: sink2, worktreeId } = this.context;
         const revision = this.revision.number;
         const rows = [];
@@ -10356,13 +10599,20 @@ var init_ledger = __esm({
           const before5 = adopts ? store.testFileKeys.list(worktreeId) : void 0;
           if (rows.length > 0) store.testFileKeys.upsertMany(rows);
           if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
-          this.context.keys.writeRuntimeApplications([...this.files.values()].map((file) => file.ref));
+          if (ahead === null) {
+            this.context.keys.writeRuntimeApplications(
+              [...this.files.values()].map((file) => file.ref)
+            );
+          }
           const removedIds = removed.map(testFileId);
           recordRekeyed(store, worktreeId, rekeyed, removedIds);
-          recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
-            ...writer,
-            ...before5 === void 0 ? {} : { before: before5 }
-          });
+          if (ahead === null || before5 !== void 0) {
+            recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
+              ...writer,
+              ...before5 === void 0 ? {} : { before: before5 }
+            });
+          }
+          if (ahead !== null) holdPending(store, worktreeId, ahead);
           for (const { results: results3, checkpointId } of mergeApplied(applied)) {
             sink2.applyResults(worktreeId, revision, results3, { checkpointId });
           }
@@ -10529,6 +10779,16 @@ var init_ledger = __esm({
       touch(file) {
         this.#dirty.add(file.id);
       }
+    };
+    NOTHING_DRAINED = {
+      dirty: [],
+      removed: [],
+      rekeyed: [],
+      applied: [],
+      unknown: [],
+      unknownFiles: [],
+      retired: [],
+      setups: []
     };
   }
 });
@@ -20415,55 +20675,6 @@ var init_stop_wait = __esm({
   }
 });
 
-// src/core/state/file-class.ts
-function fileClassOf(row2, own) {
-  const has3 = (validity) => own.some((s) => s.validity === validity);
-  const queued = row2 !== void 0 && row2.key !== null && row2.pending !== null;
-  const unkeyed = row2 === void 0 || row2.key === null;
-  if (queued || has3("pending")) return "pending";
-  if (unkeyed || own.length === 0 || has3("unknown")) return "unknown";
-  return has3("stale") ? "stale" : "current";
-}
-function countNotCurrent(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    const id = testFileKeyOf(state.check);
-    const own = checks.get(id);
-    if (own === void 0) checks.set(id, [state]);
-    else own.push(state);
-  }
-  const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const testFilesByPhase = { running: 0, queued: 0 };
-  const testsByPhase = { running: 0, queued: 0 };
-  for (const row2 of keys) {
-    const id = testFileId(row2.testFile);
-    const own = checks.get(id) ?? [];
-    const fileClass = fileClassOf(row2, own);
-    testFileCounts[fileClass]++;
-    if (fileClass !== "pending") continue;
-    const running2 = openFiles2.has(id) || row2.pending === "running" || own.some(isRunning);
-    testFilesByPhase[running2 ? "running" : "queued"]++;
-  }
-  const filePhase = new Map(keys.map((row2) => [testFileId(row2.testFile), row2.pending]));
-  for (const state of states) {
-    if (state.check.kind !== "test" || state.validity !== "pending") continue;
-    const id = testFileKeyOf(state.check);
-    const phase = openFiles2.has(id) ? "running" : state.pendingPhase ?? filePhase.get(id) ?? "queued";
-    testsByPhase[phase]++;
-  }
-  return { testFileCounts, testFilesByPhase, testsByPhase };
-}
-var isRunning;
-var init_file_class = __esm({
-  "src/core/state/file-class.ts"() {
-    "use strict";
-    init_reverse_index();
-    init_derive();
-    isRunning = (state) => state.pendingPhase === "running";
-  }
-});
-
 // src/core/state/slot-now.ts
 function slotNow(activity, group) {
   const { slotAt, ...shown2 } = activity;
@@ -20509,29 +20720,22 @@ function worktreeSlowView(store, worktreeId) {
   return root === void 0 ? null : slowPolicyView(readPolicy(root));
 }
 function classifySlowFiles(states, keys, isSlow) {
-  const checks = laneChecks(states, isSlow);
+  return classifySlowFilesOf(worktreeStatesOf(states), keys, isSlow);
+}
+function classifySlowFilesOf(states, keys, isSlow) {
   const files6 = /* @__PURE__ */ new Map();
   for (const row2 of keys) {
     if (!isSlow(row2.testFile)) continue;
     const id = testFileId(row2.testFile);
-    const own = checks.get(id) ?? [];
-    const cls = own.length === 0 ? row2.key !== null && row2.pending !== null ? "pending" : "notRun" : own.some((s) => s.validity === "pending") ? "pending" : own.every((s) => s.validity === "current") ? "current" : "notRun";
+    const own = states.files.get(id)?.all;
+    const cls = own === void 0 || own.count === 0 ? row2.key !== null && row2.pending !== null ? "pending" : "notRun" : own.validity.pending > 0 ? "pending" : own.validity.current === own.count ? "current" : "notRun";
     files6.set(id, { ref: row2.testFile, class: cls });
   }
   return files6;
 }
-function laneChecks(states, inLane) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    const ref3 = testFileOf(state.check);
-    if (!inLane(ref3)) continue;
-    const id = testFileId(ref3);
-    checks.set(id, [...checks.get(id) ?? [], state]);
-  }
-  return checks;
-}
 function readSlowTier(store, worktreeId, states, keys, view) {
-  return slowTierOf(readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP), view);
+  const counted3 = worktreeStatesOf(states);
+  return slowTierOf(readLane(store, worktreeId, counted3, keys, view.isSlow, SLOW_GROUP), view);
 }
 function slowTierOf(lane, view) {
   return {
@@ -20541,24 +20745,24 @@ function slowTierOf(lane, view) {
     ...view.pausesOnly ? { pausesOnly: true } : {}
   };
 }
-function readLane(store, worktreeId, states, keys, inLane, group, classify5 = classifySlowFiles) {
+function readLane(store, worktreeId, states, keys, inLane, group, classify5 = classifySlowFilesOf) {
   return {
     ...laneCounts(states, keys, inLane, classify5),
     activity: liveActivity(store, worktreeId, keys, inLane, group)
   };
 }
-function laneCounts(states, keys, inLane, classify5 = classifySlowFiles) {
+function laneCounts(states, keys, inLane, classify5 = classifySlowFilesOf) {
   const files6 = classify5(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
-  for (const { class: cls } of files6.values()) counts[cls]++;
   let currentAt = null;
   let currentUpTo = null;
-  for (const state of states) {
-    if (state.validity !== "current" || state.observedAt === null) continue;
-    const id = testFileId(testFileOf(state.check));
-    if (files6.get(id)?.class !== "current") continue;
-    currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
-    currentUpTo = Math.max(currentUpTo ?? state.observedAt, state.observedAt);
+  for (const [id, { class: cls }] of files6) {
+    counts[cls]++;
+    if (cls !== "current") continue;
+    const own = states.files.get(id);
+    if (own === void 0 || own.currentAt === null || own.currentUpTo === null) continue;
+    currentAt = currentAt === null ? own.currentAt : Math.min(currentAt, own.currentAt);
+    currentUpTo = Math.max(currentUpTo ?? own.currentUpTo, own.currentUpTo);
   }
   return {
     testFiles: files6.size,
@@ -20607,7 +20811,7 @@ var init_slow2 = __esm({
     init_stop_wait();
     init_scheduler();
     init_store();
-    init_derive();
+    init_file_class();
     init_slot_now();
   }
 });
@@ -20624,7 +20828,8 @@ function testsAtEdit(policy, listed12) {
   );
 }
 function readGroupTiers(store, worktreeId, states, keys, policy) {
-  return groupTiersOf(store, worktreeId, keys, groupLaneCounts(states, keys, policy));
+  const counted3 = worktreeStatesOf(states);
+  return groupTiersOf(store, worktreeId, keys, groupLaneCounts(counted3, keys, policy));
 }
 function groupLaneCounts(states, keys, policy) {
   const view = groupView(policy);
@@ -20641,7 +20846,7 @@ function groupLaneCounts(states, keys, policy) {
           at: group.at,
           after: group.after,
           quietMs: group.quietMs,
-          ...laneCounts(states, keys, inLane, classifyGroupFiles)
+          ...laneCounts(states, keys, inLane, classifyGroupFilesOf)
         },
         ...group.stopRequires ? { stopWaitMs: waitMs } : {}
       }
@@ -20676,13 +20881,12 @@ function requestedOf2(store, worktreeId, keys, lanes) {
     return { asked: lane.length - outside2.length, outside: outside2 };
   };
 }
-function classifyGroupFiles(states, keys, inLane) {
-  const checks = laneChecks(states, inLane);
+function classifyGroupFilesOf(states, keys, inLane) {
   const files6 = /* @__PURE__ */ new Map();
   for (const row2 of keys) {
     if (!inLane(row2.testFile)) continue;
     const id = testFileId(row2.testFile);
-    const cls = fileClassOf(row2, checks.get(id) ?? []);
+    const cls = classOf(row2, states.files.get(id)?.all);
     files6.set(id, {
       ref: row2.testFile,
       class: cls === "current" || cls === "pending" ? cls : "notRun"
@@ -20725,6 +20929,9 @@ var init_groups = __esm({
 
 // src/core/state/header-part.ts
 function headerPart(states, keys, policy, isSlow, openFiles2) {
+  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles2);
+}
+function headerPartOf(states, keys, policy, isSlow, openFiles2) {
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const shown2 = policy !== null && groupTextsShown(policy);
@@ -20735,7 +20942,7 @@ function headerPart(states, keys, policy, isSlow, openFiles2) {
     view,
     counted: countStates(states),
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    notCurrent: countNotCurrent(states, keys, openFiles2),
+    notCurrent: notCurrentOf(states, keys, openFiles2),
     listed: keys.length > 0,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...owned ? { slowLane } : {},
@@ -20754,37 +20961,41 @@ function countStates(states) {
   let inheritedCount = 0;
   let inheritedFileLevelCount = 0;
   let importedCount = 0;
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    counts[state.validity]++;
-    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity !== "current") continue;
-    if (state.origin?.kind === "inherited") {
-      inheritedCount++;
-      if (state.check.kind === "file") inheritedFileLevelCount++;
+  for (const group of states.groups) {
+    if (group.kind === "setup") continue;
+    const n = group.count;
+    counts[group.validity] += n;
+    if (group.kind === "file") fileLevelCounts[group.validity] += n;
+    if (group.validity !== "current") continue;
+    if (group.origin?.kind === "inherited") {
+      inheritedCount += n;
+      if (group.kind === "file") inheritedFileLevelCount += n;
     }
-    if (state.origin?.kind === "imported") importedCount++;
+    if (group.origin?.kind === "imported") importedCount += n;
   }
   return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
 }
 function countFilesWithoutChecks(states, keys) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
   const counts = { pending: 0, unknown: 0 };
   for (const row2 of keys) {
-    if (withChecks.has(testFileId(row2.testFile))) continue;
+    if (states.files.has(testFileId(row2.testFile))) continue;
     counts[hasKey(row2) && row2.pending !== null ? "pending" : "unknown"]++;
   }
   return counts;
 }
 function countSlowPending(states, keys, isSlow) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const withChecks = states.files;
   const files6 = /* @__PURE__ */ new Map();
   let checks = 0;
-  for (const state of states) {
-    const ref3 = testFileOf(state.check);
-    if (state.validity !== "pending" || !isSlow(ref3)) continue;
-    checks++;
-    files6.set(testFileKeyOf(state.check), ref3);
+  for (const [id, file] of withChecks) {
+    if (!isSlow(file.testFile)) continue;
+    const pending = Object.values(file.pending).reduce(
+      (n, phases) => n + phases.queued + phases.running + phases.none,
+      0
+    );
+    if (pending === 0) continue;
+    checks += pending;
+    files6.set(id, file.testFile);
   }
   let testFilesWithoutChecks = 0;
   for (const row2 of keys) {
@@ -20811,7 +21022,6 @@ var init_header_part = __esm({
   "src/core/state/header-part.ts"() {
     "use strict";
     init_reverse_index();
-    init_derive();
     init_file_class();
     init_groups();
     init_slow2();
@@ -20853,6 +21063,14 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     worktreeId,
     keys,
     (policy) => headerPart(states, keys, policy, isSlow, openFiles2)
+  );
+}
+function readHeaderOf(store, worktreeId, states, keys, openFiles2) {
+  return headerWith(
+    store,
+    worktreeId,
+    keys,
+    (policy) => headerPartOf(states, keys, policy, void 0, openFiles2)
   );
 }
 function headerWith(store, worktreeId, keys, partOf2) {
@@ -28521,7 +28739,7 @@ var init_focus = __esm({
 // src/runners/vitest/results.ts
 import { loadavg as loadavg2 } from "node:os";
 function runOutcome(state) {
-  return Object.hasOwn(OUTCOMES7, state) ? OUTCOMES7[state] : void 0;
+  return Object.hasOwn(OUTCOMES8, state) ? OUTCOMES8[state] : void 0;
 }
 function toCheckError2(error, paths) {
   const frame = error.stacks?.find((f) => paths.isProjectFile(f.file));
@@ -28627,13 +28845,13 @@ function toCheckRunResult(testCase, testFile, paths, fullName) {
 function compareRefs(a, b) {
   return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
 }
-var OUTCOMES7, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey;
+var OUTCOMES8, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey;
 var init_results3 = __esm({
   "src/runners/vitest/results.ts"() {
     "use strict";
     init_compare();
     init_text();
-    OUTCOMES7 = {
+    OUTCOMES8 = {
       passed: "pass",
       failed: "fail",
       skipped: "skip"
@@ -36749,7 +36967,7 @@ function quietly(strip) {
   }
 }
 function nodeTestBindings(program) {
-  const calls = new Map(KINDS4);
+  const calls = new Map(KINDS5);
   const namespaces = /* @__PURE__ */ new Set();
   for (const statement of program.body) {
     if (statement.type !== "ImportDeclaration" || !NODE_TEST2.has(String(statement.source.value)))
@@ -36759,7 +36977,7 @@ function nodeTestBindings(program) {
       else if (specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name);
       else {
         const imported = specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value;
-        const kind = KINDS4.get(String(imported));
+        const kind = KINDS5.get(String(imported));
         if (kind) calls.set(specifier.local.name, kind);
       }
     }
@@ -36833,7 +37051,7 @@ function classify3(callee, scope2, bindings) {
   if (MODIFIERS.has(property2)) return classify3(member.object, scope2, bindings);
   if (member.object.type !== "Identifier") return null;
   if (property2 === "test" && member.object.name === scope2.context) return "test";
-  if (bindings.namespaces.has(member.object.name)) return KINDS4.get(property2) ?? null;
+  if (bindings.namespaces.has(member.object.name)) return KINDS5.get(property2) ?? null;
   return null;
 }
 function literalName(arg) {
@@ -36845,13 +37063,13 @@ function literalName(arg) {
 function isNode2(value) {
   return typeof value === "object" && value !== null && typeof value.type === "string";
 }
-var KINDS4, MODIFIERS, NODE_TEST2;
+var KINDS5, MODIFIERS, NODE_TEST2;
 var init_enumerate = __esm({
   "src/runners/node-test/enumerate.ts"() {
     "use strict";
     init_acorn();
     init_identity();
-    KINDS4 = /* @__PURE__ */ new Map([
+    KINDS5 = /* @__PURE__ */ new Map([
       ["test", "test"],
       ["it", "test"],
       ["describe", "suite"],
@@ -51706,7 +51924,7 @@ var init_commit_entry = __esm({
 
 // src/core/store/covered-files.ts
 function writeCoveredFiles(store, record2, activity) {
-  const conn = connection(store);
+  const conn = connection2(store);
   if (conn === null) return;
   if (!hasTable(conn)) conn.db.exec(TABLE_SQL);
   const now = record2.recordedAt;
@@ -51744,7 +51962,7 @@ function idleSince(files6, was, recordedAt2, now, activity) {
   return idle2;
 }
 function readCoveredFiles(store, id) {
-  const conn = connection(store);
+  const conn = connection2(store);
   if (conn === null || !hasTable(conn)) return null;
   const row2 = conn.get(`SELECT * FROM ${COVERED_FILES_TABLE} WHERE id = ?`, id);
   if (row2 === null) return null;
@@ -51756,7 +51974,7 @@ function readCoveredFiles(store, id) {
     files: parseFiles(row2.files)
   };
 }
-function connection(store) {
+function connection2(store) {
   try {
     return connectionOf(store);
   } catch {
@@ -57730,7 +57948,7 @@ var init_transfer_rekey = __esm({
 });
 
 // src/core/store/transfer-import-slices.ts
-function* importSlices(store, bundle, options, tally2) {
+function* importSlices(store, bundle, options, tally3) {
   const conn = connectionOf(store);
   const write4 = (what, fn) => ({
     what,
@@ -57741,25 +57959,25 @@ function* importSlices(store, bundle, options, tally2) {
     yield write4("an import's closure lists", () => {
       added = addClosures(store, files6, options.importId, options.now);
     });
-    tally2.closures += added;
+    tally3.closures += added;
   }
   for (const [project, files6] of groupBy(bundle.testFiles, (f) => f.project)) {
     let added = 0;
     yield write4("an import's observed entries", () => {
       added = addObserved(store, project, files6);
     });
-    tally2.observed += added;
+    tally3.observed += added;
   }
   if (bundle.observedStartup.length > 0) {
     let added = 0;
     yield write4("an import's start-up lists", () => {
       added = addStartup(store, bundle);
     });
-    tally2.startup += added;
+    tally3.startup += added;
   }
   const { rekeying } = options;
   const rekeyed = rekeying === void 0 ? /* @__PURE__ */ new Map() : conn.read(() => rekeyFiles(store, bundle, rekeying));
-  tally2.rekeyed = rekeyed.size;
+  tally3.rekeyed = rekeyed.size;
   for (const files6 of chunks(bundle.testFiles, IMPORT_SLICE_FILES)) {
     yield write4("an import's files", () => {
       ensureImportTables(conn);
@@ -57771,8 +57989,8 @@ function* importSlices(store, bundle, options, tally2) {
     yield write4("an import's results", () => {
       counts = addResults(store, bundle, group, options);
     });
-    tally2.results += counts.results;
-    tally2.alreadyStored += counts.alreadyStored;
+    tally3.results += counts.results;
+    tally3.alreadyStored += counts.alreadyStored;
   }
   yield write4("an import's record", () => {
     putEnvironments(
@@ -57894,16 +58112,16 @@ function otherKeyFormat(bundle) {
   return keyFormat === KEY_FORMAT_VERSION ? null : { version: squealVersion2, keyFormat };
 }
 async function importSliced(store, bundle, options) {
-  const tally2 = emptyTally();
+  const tally3 = emptyTally();
   const run9 = options.run ?? retriedSlice(BUSY_BOUND_MS, options.stopped);
   const pause2 = options.pause ?? ((ms2) => delay2(ms2));
-  for (const slice of slicesOf(store, bundle, options, tally2)) {
+  for (const slice of slicesOf(store, bundle, options, tally3)) {
     if (options.stopped?.() === true) throw new ImportStopped();
     let held4 = 0;
     await run9(timed2(slice, (ms2) => held4 = ms2));
     await pause2(turnGapMs(held4));
   }
-  return { ...tally2 };
+  return { ...tally3 };
 }
 function timed2(slice, took) {
   return {
@@ -57926,8 +58144,8 @@ function retriedSlice(boundMs = BUSY_BOUND_MS, stopping = () => false) {
     });
   };
 }
-function slicesOf(store, bundle, options, tally2) {
-  if (options.dryRun !== true) return importSlices(store, bundle, options, tally2);
+function slicesOf(store, bundle, options, tally3) {
+  if (options.dryRun !== true) return importSlices(store, bundle, options, tally3);
   const conn = connectionOf(store);
   const dry = {
     what: "an import's dry run",
@@ -57941,7 +58159,7 @@ function slicesOf(store, bundle, options, tally2) {
       } catch (error) {
         if (!(error instanceof DryRun)) throw error;
       }
-      Object.assign(tally2, counts);
+      Object.assign(tally3, counts);
     }
   };
   return [dry];
@@ -58640,7 +58858,7 @@ function lintTally(view, side, held4) {
   for (const state of view.states) {
     const { path } = state.check;
     if (!changed2.has(path) || !committed.has(path)) continue;
-    const tool = tallyOf(tools2, state.check.tool);
+    const tool = tallyOf2(tools2, state.check.tool);
     tool.files += 1;
     if (state.outcome === "pending" && !differing.has(path) && ownInputs(state) && !held4(state)) {
       counts.running += 1;
@@ -58662,7 +58880,7 @@ function lintTally(view, side, held4) {
   const checked2 = [...tools2.values()].sort((a, b) => a.tool < b.tool ? -1 : 1);
   return { counts: { ...counts, tools: checked2 }, running: running2 };
 }
-function tallyOf(tools2, tool) {
+function tallyOf2(tools2, tool) {
   let own = tools2.get(tool);
   if (own === void 0) {
     own = { tool, files: 0, findings: 0, notDetermined: 0, running: 0 };
@@ -58756,15 +58974,15 @@ function commitLint(commonDir, policy, worktreeId, side, listedAt) {
       return own !== void 0 && own.get(state.check.path) !== side.committed.get(state.check.path);
     };
     const view = lintViewOf(store, worktreeId);
-    const tally2 = lintTally(view, side, held4);
-    const { running: running2 } = tally2;
+    const tally3 = lintTally(view, side, held4);
+    const { running: running2 } = tally3;
     const behind = lint2.tools.filter((tool) => {
       const scope2 = lintScope(worktreeId, tool);
       const cursor = readCursor2(store.meta, scope2);
       return cursor !== null && cursor.revision < listedAt && !passOff(store.meta, scope2);
     });
     const unlisted6 = unlistedPaths(view.states, side, behind);
-    const counts = withUnlisted2(tally2.counts, unlisted6);
+    const counts = withUnlisted2(tally3.counts, unlisted6);
     const waiting2 = /* @__PURE__ */ new Map();
     const wait = (tool, path, blob) => {
       if (blob !== void 0) waiting2.set(`${tool}\0${path}`, { tool, path, blob });
@@ -59163,14 +59381,14 @@ async function flushStatsAhead(store, cache2, worktreeId, diff) {
   const ahead = diff.updates.filter((update) => !changed2.has(path(update)));
   if (ahead.length <= WRITE_SLICE_FILES) return diff;
   for (let at2 = 0; at2 < ahead.length; at2 += WRITE_SLICE_FILES) {
-    if (at2 > 0) await nextTurn();
+    if (at2 > 0) await nextTurn3();
     const slice = ahead.slice(at2, at2 + WRITE_SLICE_FILES);
     store.transaction(() => cache2.flush(store.fileHashes, worktreeId, slice));
   }
-  await nextTurn();
+  await nextTurn3();
   return { ...diff, updates: diff.updates.filter((update) => changed2.has(path(update))) };
 }
-function nextTurn() {
+function nextTurn3() {
   return new Promise((resolve56) => setImmediate(resolve56));
 }
 async function diffBeside(context2, diff, batch, paths) {
@@ -59186,7 +59404,6 @@ async function diffBeside(context2, diff, batch, paths) {
     updates: [...diff.updates, ...more2.updates]
   };
 }
-var WRITE_SLICE_FILES;
 var init_batch = __esm({
   "src/core/scheduler/batch.ts"() {
     "use strict";
@@ -59195,9 +59412,9 @@ var init_batch = __esm({
     init_reconcile();
     init_editor_scratch();
     init_head_move();
+    init_ledger();
     init_revision();
     init_stability();
-    WRITE_SLICE_FILES = 200;
   }
 });
 
@@ -60074,7 +60291,7 @@ async function baseline(context2, ledger, unseen = [], resumesRest2 = false, ret
     (file) => (previousKeys.get(file.id)?.pending ?? null) !== null
   );
   if (lookupOnly2 && recheck.length > 0) {
-    commitFirst(ledger, { refined: ledger.revision.number }, handedMisses);
+    await commitFirst(ledger, { refined: ledger.revision.number }, handedMisses);
   }
   await resolveClosures(context2, unprovenWalks(context2, recheck), failures, bound);
   const misses = [
@@ -60168,14 +60385,14 @@ function keepDeferred(context2, ledger, listed12, rows, known4) {
   }
   return kept6;
 }
-function commitFirst(ledger, options, handed) {
+async function commitFirst(ledger, options, handed) {
   const phases = handed.map((file) => file.phase);
   for (const file of handed) {
     file.phase = "queued";
     ledger.touch(file);
   }
   try {
-    ledger.commit(options);
+    await ledger.commitInSlices(options);
   } catch (error) {
     if (!isBusy(error)) throw error;
   } finally {
@@ -60186,12 +60403,15 @@ function commitFirst(ledger, options, handed) {
   }
 }
 async function commitLast(ledger, options, retry2) {
-  if (retry2 === void 0) return ledger.commit(options);
-  await retryWhileBusy(async () => ledger.commit(options), {
-    ...retry2,
-    key: "scheduler:baseline",
-    what: "the start's lookup"
-  });
+  if (retry2 === void 0) return ledger.commitInSlices(options);
+  await ledger.commitInSlices(
+    options,
+    (write4) => retryWhileBusy(async () => write4(), {
+      ...retry2,
+      key: "scheduler:baseline",
+      what: "the start's lookup"
+    })
+  );
 }
 function outside(files6, others) {
   const elsewhere = new Set(others.map((file) => file.id));
@@ -68253,7 +68473,7 @@ async function open5(spec, filter, listener) {
     atomic: false
   });
   watcher.on("all", (event2, path) => {
-    const kind = KINDS7[event2];
+    const kind = KINDS8[event2];
     if (kind) listener.onHints([{ path, kind }]);
   });
   watcher.on("error", (error) => {
@@ -68269,13 +68489,13 @@ function inNestedRepo(root, path) {
   }
   return false;
 }
-var KINDS7, chokidarBackend, Filter;
+var KINDS8, chokidarBackend, Filter;
 var init_chokidar_backend = __esm({
   "src/core/watcher/chokidar-backend.ts"() {
     "use strict";
     init_chokidar();
     init_exclusions();
-    KINDS7 = {
+    KINDS8 = {
       add: "add",
       addDir: "add",
       change: "change",
@@ -68497,19 +68717,19 @@ function callback(listener, report4, erased) {
     }
     const hints = [];
     for (const event2 of events) {
-      for (const path of report4(event2.path)) hints.push({ path, kind: KINDS8[event2.type] });
+      for (const path of report4(event2.path)) hints.push({ path, kind: KINDS9[event2.type] });
     }
     hints.push(...erased.find(new Set(events.map((e) => e.path))));
     if (hints.length > 0) listener.onHints(hints);
   };
 }
-var KINDS8, DROPPED, parcelBackend, ErasedEvents;
+var KINDS9, DROPPED, parcelBackend, ErasedEvents;
 var init_parcel_backend = __esm({
   "src/core/watcher/parcel-backend.ts"() {
     "use strict";
     init_exclusions();
     init_root_recheck();
-    KINDS8 = { create: "add", update: "change", delete: "unlink" };
+    KINDS9 = { create: "add", update: "change", delete: "unlink" };
     DROPPED = /re-?scanned|dropped/i;
     parcelBackend = createParcelBackend(() => loadOwnParcel());
     ErasedEvents = class {
@@ -73161,7 +73381,7 @@ function parsePython(source2) {
           continue;
         case "import_from_statement":
         case "future_import_statement":
-          imports2.push(fromImport2(node2, line));
+          imports2.push(fromImport(node2, line));
           continue;
         case "call": {
           const target = dynamicTarget(node2);
@@ -73190,7 +73410,7 @@ function parsePython(source2) {
     };
   });
 }
-function fromImport2(node2, line) {
+function fromImport(node2, line) {
   if (node2.type === "future_import_statement") {
     return { kind: "from", module: "__future__", level: 0, names: importedNames(node2), line };
   }
@@ -76429,7 +76649,7 @@ var init_step2 = __esm({
 import { constants as constants12 } from "node:fs";
 import { open as open6 } from "node:fs/promises";
 import { join as join161 } from "node:path";
-import { setImmediate as nextTurn2 } from "node:timers/promises";
+import { setImmediate as nextTurn4 } from "node:timers/promises";
 async function countMissing(ctx, entries3, failed7, attempt2) {
   const { store, counter } = ctx;
   const { now } = attempt2;
@@ -76443,7 +76663,7 @@ async function countMissing(ctx, entries3, failed7, attempt2) {
   const groups3 = [...byBlob.values()];
   const missing2 = [];
   for (let start2 = 0; start2 < groups3.length; start2 += size) {
-    if (start2 > 0) await nextTurn2();
+    if (start2 > 0) await nextTurn4();
     for (const group of groups3.slice(start2, start2 + size)) {
       const [e] = group;
       const stored4 = e === void 0 || store.counts.get(e.file.hash, e.language, counter.version);
@@ -76454,7 +76674,7 @@ async function countMissing(ctx, entries3, failed7, attempt2) {
   const links = /* @__PURE__ */ new Set();
   let counted3 = 0;
   for (let start2 = 0; start2 < missing2.length; start2 += size) {
-    if (start2 > 0) await nextTurn2();
+    if (start2 > 0) await nextTurn4();
     const slice = missing2.slice(start2, start2 + size);
     const counts = [];
     for (const group of slice) {
@@ -76957,7 +77177,7 @@ var init_plan = __esm({
 });
 
 // src/core/code/pass/stage.ts
-import { setImmediate as nextTurn3 } from "node:timers/promises";
+import { setImmediate as nextTurn5 } from "node:timers/promises";
 function clearStaged(store, worktreeId) {
   store.states.removeMeasure(stagedId(worktreeId), "complexity");
   store.transitions.dropStaged(stagedId(worktreeId));
@@ -76998,7 +77218,7 @@ async function inParts(ctx, items, per, work) {
   let began = Number.NEGATIVE_INFINITY;
   for (let start2 = 0; start2 < items.length; start2 += per) {
     if (ctx.now() - began > PART_BUDGET_MS) {
-      await nextTurn3();
+      await nextTurn5();
       began = ctx.now();
     }
     work(items.slice(start2, start2 + per));
@@ -77014,7 +77234,7 @@ function adoptStaged(store, worktreeId, staged) {
   if (written2 !== staged.states.length) store.states.upsertMany(staged.states);
 }
 async function dropStaged(store, worktreeId) {
-  await nextTurn3();
+  await nextTurn5();
   clearStaged(store, worktreeId);
 }
 async function quietEnd(ctx, end, entries3, {
@@ -77025,7 +77245,7 @@ async function quietEnd(ctx, end, entries3, {
   const judged2 = entries3.filter((e) => !skipped2.has(e.path));
   for (const e of judged2) end.failed.delete(e.path);
   const staged = await stageQuiet(ctx, judged2, links, end.latest);
-  await nextTurn3();
+  await nextTurn5();
   await store.sent();
   const done = store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
@@ -77055,12 +77275,12 @@ var init_stage = __esm({
 });
 
 // src/core/code/pass/stage-edit.ts
-import { setImmediate as nextTurn4 } from "node:timers/promises";
+import { setImmediate as nextTurn6 } from "node:timers/promises";
 async function stagedEditEnd(ctx, end, plan2) {
   const { store, worktreeId } = ctx;
   clearStaged(store, worktreeId);
   const parts3 = await readParts(ctx, end, plan2);
-  await nextTurn4();
+  await nextTurn6();
   const at2 = ctx.now();
   const input = { worktreeId, revision: end.latest, threshold: ctx.complexity.threshold, at: at2 };
   const quiet = quietOf({ quiet: false, after: plan2.files });
@@ -77086,7 +77306,7 @@ async function stagedEditEnd(ctx, end, plan2) {
   const staged = await judgeParts(ctx, parts3, at2, prior, plan2.committed);
   await stageTransitions(ctx, removal2.transitions);
   const transitions = [...failures, ...staged.transitions, ...removal2.transitions];
-  await nextTurn4();
+  await nextTurn6();
   await store.sent();
   const done = store.transaction(() => {
     store.files.removeMany(worktreeId, [...plan2.links]);
@@ -77306,7 +77526,7 @@ __export(pass_exports, {
   createCodePass: () => createCodePass
 });
 import { rmSync as rmSync35 } from "node:fs";
-import { setImmediate as nextTurn5 } from "node:timers/promises";
+import { setImmediate as nextTurn7 } from "node:timers/promises";
 function createCodePass(options) {
   const now = options.now ?? Date.now;
   const retry2 = /* @__PURE__ */ new Set();
@@ -77400,7 +77620,7 @@ function createCodePass(options) {
     if (report4 !== null) {
       wasOff = false;
       options.onPass?.(report4);
-      await nextTurn5();
+      await nextTurn7();
     }
     coverageStep(opened3, policy, report4);
     await cache2.seedSettled(opened3.sent());
@@ -77626,7 +77846,7 @@ var init_sink2 = __esm({
 });
 
 // src/core/lint/pass/keyer.ts
-import { setImmediate as nextTurn6 } from "node:timers/promises";
+import { setImmediate as nextTurn8 } from "node:timers/promises";
 var YIELD_EVERY, Keyer;
 var init_keyer = __esm({
   "src/core/lint/pass/keyer.ts"() {
@@ -77731,7 +77951,7 @@ var init_keyer = __esm({
         const keyed = /* @__PURE__ */ new Map();
         let count5 = 0;
         for (const [path, inputs2] of await this.inputs(paths)) {
-          if (++count5 % YIELD_EVERY === 0) await nextTurn6();
+          if (++count5 % YIELD_EVERY === 0) await nextTurn8();
           const blob = this.blobOf(path);
           if (blob === null) continue;
           const segment = inputs2.wholeProgram ? this.segment : "";
@@ -78095,7 +78315,7 @@ var init_lint_part = __esm({
 // src/core/lint/pass/parts.ts
 import { readFile as readFile16 } from "node:fs/promises";
 import { join as join164 } from "node:path";
-import { setImmediate as nextTurn7 } from "node:timers/promises";
+import { setImmediate as nextTurn9 } from "node:timers/promises";
 async function lintParts2(ctx, keyer) {
   const done = {
     linted: 0,
@@ -78140,7 +78360,7 @@ async function partsOf2(ctx, keyer, first2, done, end) {
     ctx.recorded();
     if (done.off !== null || done.grew || ctx.interrupted()) return end(null);
     queue = part2.judged ? queue.without(part2.paths) : readQueue(ctx, queue.quiet);
-    await nextTurn7();
+    await nextTurn9();
   }
 }
 function readQueue(ctx, quiet) {
@@ -78530,7 +78750,7 @@ var init_refresh = __esm({
 
 // src/core/lint/pass/rekey.ts
 import { extname as extname14 } from "node:path";
-import { setImmediate as nextTurn8 } from "node:timers/promises";
+import { setImmediate as nextTurn10 } from "node:timers/promises";
 async function rekey(ctx, keyer, latest) {
   const scope2 = lintScope(ctx.worktreeId, ctx.tool);
   const program = readProgram(ctx.store.meta, scope2);
@@ -78669,7 +78889,7 @@ async function judgeAll(ctx, plan2, keys) {
   );
   let count5 = 0;
   for (const path of plan2.candidates) {
-    if (++count5 % YIELD_EVERY === 0) await nextTurn8();
+    if (++count5 % YIELD_EVERY === 0) await nextTurn10();
     const prior = plan2.states.get(path) ?? null;
     const keyed = keys.get(path);
     const cause = edit && !writes.quiet.has(path) ? "edit" : "config";
@@ -86187,21 +86407,23 @@ init_policy2();
 init_reverse_index();
 init_unknown_files();
 init_derive();
+init_file_class();
 init_fingerprint();
 init_text();
 var UNKNOWN_FILES_LISTED = 20;
 function unknownTestFilesOf(store, worktreeId, states, keys, root, now = Date.now()) {
-  const checks = checksByFile(states);
+  const tally3 = (row2) => states.files.get(testFileId(row2.testFile))?.all ?? NO_STATES;
   const unknown5 = keys.filter((row2) => {
-    const own = checks.get(testFileId(row2.testFile)) ?? [];
-    if (row2.key !== null && row2.pending !== null || own.some((s) => s.validity === "pending")) {
-      return false;
-    }
-    return row2.key === null || own.length === 0 || own.some((s) => s.validity === "unknown");
+    const own = tally3(row2);
+    if (row2.key !== null && row2.pending !== null || own.validity.pending > 0) return false;
+    return row2.key === null || own.count === 0 || own.validity.unknown > 0;
   });
   if (unknown5.length === 0) return {};
-  const reasons = unknownReasons(store, worktreeId, states, root, now);
-  const files6 = unknown5.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row2) => reasons.of(row2, checks.get(testFileId(row2.testFile)) ?? []));
+  const notable = checksByFile(states.notable);
+  const reasons = unknownReasons(store, worktreeId, states.notable, root, now);
+  const files6 = unknown5.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map(
+    (row2) => reasons.ofCounted(row2, tally3(row2).count, notable.get(testFileId(row2.testFile)) ?? [])
+  );
   return { unknownTestFiles: { total: unknown5.length, files: files6 } };
 }
 function checksByFile(states) {
@@ -86224,7 +86446,7 @@ function unknownReasons(store, worktreeId, states, root, now) {
     lookupOnly2 ??= root !== void 0 && readPolicy(root).baseline.onStart === "lookup-only";
     return lookupOnly2;
   };
-  const reason2 = (row2, own) => {
+  const reason2 = (row2, count5, own) => {
     const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
     if (summary !== null) return { reason: summary };
     if (row2.key === null) {
@@ -86239,28 +86461,27 @@ function unknownReasons(store, worktreeId, states, root, now) {
     const claimant = claimantOf(store, worktreeId, row2.testFile, row2.key, now);
     if (claimant !== null)
       return { reason: `${claimant.worktree.root}'s daemon is running its key` };
-    if (own.length > 0) return { reason: null };
+    if (count5 > 0) return { reason: null };
     return {
       reason: isLookupOnly() ? "never run at this key: the baseline is lookup-only, so nothing queued it" : "never run at this key, and nothing queued it",
       cause: "never-run"
     };
   };
-  return {
-    of(row2, own) {
-      const entry4 = recorded2.get(testFileId(row2.testFile));
-      if (entry4 !== void 0 && entry4.key === row2.key) {
-        const { ran, reason: reason3, samples, cause } = entry4;
-        return {
-          testFile: row2.testFile,
-          ran,
-          reason: reason3,
-          samples,
-          ...cause === void 0 ? {} : { cause }
-        };
-      }
-      return { testFile: row2.testFile, ran: false, samples: [], ...reason2(row2, own) };
+  const ofCounted = (row2, count5, own) => {
+    const entry4 = recorded2.get(testFileId(row2.testFile));
+    if (entry4 !== void 0 && entry4.key === row2.key) {
+      const { ran, reason: reason3, samples, cause } = entry4;
+      return {
+        testFile: row2.testFile,
+        ran,
+        reason: reason3,
+        samples,
+        ...cause === void 0 ? {} : { cause }
+      };
     }
+    return { testFile: row2.testFile, ran: false, samples: [], ...reason2(row2, count5, own) };
   };
+  return { of: (row2, own) => ofCounted(row2, own.length, own), ofCounted };
 }
 function unknownFilesLines(s) {
   const listed12 = s.unknownTestFiles;
@@ -86954,7 +87175,7 @@ function codeSource(commonDir, root, {
     open() {
       const complexity = policy();
       if (complexity === null) return null;
-      let connection2;
+      let connection3;
       const wait = holdingAny() ? 0 : busyTimeoutMs;
       const store = openCodeStore(
         commonDir,
@@ -86962,11 +87183,11 @@ function codeSource(commonDir, root, {
         {
           create: false,
           ...wait === void 0 ? {} : { busyTimeoutMs: wait },
-          ...holding ? { connection: (db) => connection2 = new HoldingConnection(db) } : {}
+          ...holding ? { connection: (db) => connection3 = new HoldingConnection(db) } : {}
         }
       );
       if (!isCodeStoreOpenFailure(store)) {
-        return { store, complexity, ...connection2 === void 0 ? {} : { connection: connection2 } };
+        return { store, complexity, ...connection3 === void 0 ? {} : { connection: connection3 } };
       }
       return store.reason === "missing" ? "missing" : null;
     }
@@ -88650,27 +88871,18 @@ function gatedBy(standing4) {
 
 // src/core/status/phase-files.ts
 init_reverse_index();
-init_derive();
 init_file_class();
 init_text();
 var PHASE_FILES_LISTED = 100;
 var RUNNING_FILES_SHOWN = 10;
 var QUEUED_FILES_SHOWN = 5;
 function pendingPhasesOf(states, keys, openFiles2) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    const id = testFileKeyOf(state.check);
-    const own = checks.get(id);
-    if (own === void 0) checks.set(id, [state]);
-    else own.push(state);
-  }
   const phases = /* @__PURE__ */ new Map();
   for (const row2 of keys) {
     const id = testFileId(row2.testFile);
-    const own = checks.get(id) ?? [];
-    if (fileClassOf(row2, own) !== "pending") continue;
-    const runs2 = openFiles2.has(id) || row2.pending === "running" || own.some((s) => s.pendingPhase === "running");
+    const own = states.files.get(id)?.checks;
+    if (classOf(row2, own) !== "pending") continue;
+    const runs2 = openFiles2.has(id) || row2.pending === "running" || own?.running === true;
     phases.set(id, { testFile: row2.testFile, phase: runs2 ? "running" : "queued" });
   }
   return phases;
@@ -89634,9 +89846,169 @@ function entry2(records) {
 
 // src/core/status/snapshot.ts
 init_checkpoint_progress();
-init_derive();
+init_file_class();
 init_header();
 init_open();
+
+// src/core/store/status-reads.ts
+init_reverse_index();
+init_file_class();
+init_state();
+init_codec();
+init_states();
+init_store2();
+var VALIDITIES2 = ["current", "pending", "stale", "unknown"];
+var OUTCOMES7 = ["pass", "fail", "skip", "unknown"];
+var KINDS4 = ["test", "file", "setup"];
+var PHASES = ["queued", "running"];
+var FROM = "FROM known_states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?";
+function readWorktreeStates(store, worktreeId) {
+  return readTransaction(store, () => {
+    const conn = connection(store);
+    if (conn === null) return worktreeStatesOf(store.knownStates.list(worktreeId));
+    return { ...stateCounts(conn, worktreeId), notable: notableStates(conn, worktreeId) };
+  });
+}
+function connection(store) {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+var tally = () => ({
+  count: 0,
+  validity: { current: 0, pending: 0, stale: 0, unknown: 0 },
+  outcome: { pass: 0, fail: 0, skip: 0, unknown: 0 },
+  running: false
+});
+function stateCounts(conn, worktreeId) {
+  const rows = conn.all(
+    `SELECT c.project AS project, c.test_path AS test_path, c.kind AS kind,
+       s.validity AS validity, s.outcome AS outcome, s.pending_phase AS pending_phase,
+       s.origin_kind AS origin_kind, s.origin_worktree AS origin_worktree,
+       s.origin_commit AS origin_commit,
+       COUNT(*) AS n, MIN(s.observed_at) AS observed_from, MAX(s.observed_at) AS observed_to
+     ${FROM} GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9`,
+    worktreeId
+  );
+  const groups3 = /* @__PURE__ */ new Map();
+  const files6 = /* @__PURE__ */ new Map();
+  for (const row2 of rows) {
+    const current2 = row2.validity === "current";
+    const origin = current2 ? [row2.origin_kind, row2.origin_worktree, row2.origin_commit] : [];
+    const id = JSON.stringify([row2.kind, row2.validity, row2.outcome, ...origin]);
+    const same5 = groups3.get(id);
+    const group = same5 ?? {
+      kind: oneOf3(row2, "kind", KINDS4),
+      validity: oneOf3(row2, "validity", VALIDITIES2),
+      outcome: oneOf3(row2, "outcome", OUTCOMES7),
+      origin: current2 ? originOf2(row2) : null,
+      count: 0
+    };
+    const n = num(row2, "n");
+    groups3.set(id, { ...group, count: group.count + n });
+    addToFile(files6, row2, group, n);
+  }
+  return { groups: [...groups3.values()], files: files6 };
+}
+function addToFile(files6, row2, group, n) {
+  const testFile = { project: str(row2, "project"), path: str(row2, "test_path") };
+  const id = testFileId(testFile);
+  let file = files6.get(id);
+  if (file === void 0) {
+    const pending = noPending();
+    file = { testFile, all: tally(), checks: tally(), currentAt: null, currentUpTo: null, pending };
+    files6.set(id, file);
+  }
+  const phase = oneOfOrNull(row2, "pending_phase", PHASES);
+  const running2 = phase === "running";
+  if (group.validity === "pending") file.pending[group.kind][phase ?? "none"] += n;
+  for (const own of group.kind === "setup" ? [file.all] : [file.all, file.checks]) {
+    own.count += n;
+    own.validity[group.validity] += n;
+    own.outcome[group.outcome] += n;
+    own.running ||= running2;
+  }
+  if (group.validity !== "current") return;
+  const from = numOrNull(row2, "observed_from");
+  const to = numOrNull(row2, "observed_to");
+  if (from === null || to === null) return;
+  file.currentAt = file.currentAt === null ? from : Math.min(file.currentAt, from);
+  file.currentUpTo = file.currentUpTo === null ? to : Math.max(file.currentUpTo, to);
+}
+function notableStates(conn, worktreeId) {
+  return conn.all(
+    `${SELECT_STATES} WHERE s.worktree_id = ?
+         AND (s.outcome = 'fail' OR s.validity = 'unknown' OR c.kind = 'setup')
+       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+    worktreeId
+  ).map(toKnownState);
+}
+function importCountsByFile(store, worktreeId) {
+  const conn = connection(store);
+  if (conn === null) return importCountsOf(store.knownStates.list(worktreeId));
+  const rows = conn.all(
+    `SELECT c.project AS project, c.test_path AS test_path, s.origin_kind AS origin_kind,
+       s.origin_worktree AS origin_worktree, NULL AS origin_commit, COUNT(*) AS n
+     ${FROM} AND s.validity = 'current' AND c.kind != 'setup'
+     GROUP BY c.project, c.test_path, s.origin_kind, s.origin_worktree`,
+    worktreeId
+  );
+  const current2 = /* @__PURE__ */ new Map();
+  const imported = /* @__PURE__ */ new Map();
+  for (const row2 of rows) {
+    const id = testFileId({ project: str(row2, "project"), path: str(row2, "test_path") });
+    const n = num(row2, "n");
+    current2.set(id, (current2.get(id) ?? 0) + n);
+    const origin = originOf2(row2);
+    if (origin?.kind !== "imported") continue;
+    const counts = imported.get(id) ?? /* @__PURE__ */ new Map();
+    counts.set(origin.importId, (counts.get(origin.importId) ?? 0) + n);
+    imported.set(id, counts);
+  }
+  return countsFrom(current2, imported);
+}
+function importCountsOf(states) {
+  const current2 = /* @__PURE__ */ new Map();
+  const imported = /* @__PURE__ */ new Map();
+  for (const s of states) {
+    if (s.validity !== "current" || s.check.kind === "setup") continue;
+    const id = testFileId({ project: s.check.project, path: s.check.testPath });
+    current2.set(id, (current2.get(id) ?? 0) + 1);
+    if (s.origin?.kind !== "imported") continue;
+    const counts = imported.get(id) ?? /* @__PURE__ */ new Map();
+    counts.set(s.origin.importId, (counts.get(s.origin.importId) ?? 0) + 1);
+    imported.set(id, counts);
+  }
+  return countsFrom(current2, imported);
+}
+function countsFrom(current2, imported) {
+  const none3 = /* @__PURE__ */ new Map();
+  return {
+    current: (id) => current2.get(id) ?? 0,
+    fromImport: (id) => imported.get(id) ?? none3
+  };
+}
+function originOf2(row2) {
+  const stored4 = strOrNull(row2, "origin_kind");
+  const kind = stored4 === "own" || stored4 === "inherited" ? stored4 : null;
+  if (stored4 !== null && kind === null) return null;
+  if (kind === null) {
+    const marked4 = strOrNull(row2, "origin_worktree");
+    const importId = marked4 === null ? null : importIdOf(marked4);
+    if (importId === null) return null;
+    return { kind: "imported", importId, commit: strOrNull(row2, "origin_commit") };
+  }
+  if (kind === "own") return { kind };
+  return {
+    kind,
+    worktreeId: str(row2, "origin_worktree"),
+    commit: strOrNull(row2, "origin_commit")
+  };
+}
+
+// src/core/status/snapshot.ts
 init_store2();
 init_common();
 
@@ -89655,10 +90027,10 @@ var MAP_KEY = {
   observedDirect: observedDirectMetaKey,
   observedModules: observedModulesMetaKey
 };
-function readImports(store, worktreeId, keys, states) {
+function readImportsOf(store, worktreeId, keys, counts) {
   const imports2 = listImports(store);
   if (imports2.length === 0) return [];
-  const here = hereOf(store, worktreeId, keys, states);
+  const here = hereOf(store, worktreeId, keys, counts());
   return imports2.flatMap((record2) => {
     const files6 = importFiles(store, record2.id).filter((f) => here.keys.has(testFileId(f)));
     if (files6.length === 0) return [];
@@ -89678,7 +90050,7 @@ function readImports(store, worktreeId, keys, states) {
       const reason2 = reasonOf3(file, here);
       if (reason2 === "current") currentFiles++;
       else notCurrent[reason2]++;
-      currentResults += here.fromImport(testFileId(file)).get(record2.id) ?? 0;
+      currentResults += here.current.fromImport(testFileId(file)).get(record2.id) ?? 0;
     }
     return [
       {
@@ -89707,27 +90079,15 @@ function reasonOf3(file, here) {
   return here.waiting.has(file.importId) ? "keysPending" : "content";
 }
 function adoption(file, here) {
-  const current2 = here.current.get(testFileId(file)) ?? [];
-  if (current2.length > 0) {
-    return current2.every((s) => fromImport(s, file.importId)) ? "current" : "sameKeyKept";
+  const id = testFileId(file);
+  const current2 = here.current.current(id);
+  if (current2 > 0) {
+    const imported = here.current.fromImport(id).get(file.importId) ?? 0;
+    return imported === current2 ? "current" : "sameKeyKept";
   }
   return here.stored(file.importId, file.key) ? "sameKeyNotAdopted" : "sameKeyKept";
 }
-function fromImport(state, importId) {
-  return state.origin?.kind === "imported" && state.origin.importId === importId;
-}
-function currentByFile(states) {
-  const byFile = /* @__PURE__ */ new Map();
-  for (const s of states) {
-    if (s.validity !== "current" || s.check.kind === "setup") continue;
-    const id = testFileId({ project: s.check.project, path: s.check.testPath });
-    const list3 = byFile.get(id);
-    if (list3 === void 0) byFile.set(id, [s]);
-    else list3.push(s);
-  }
-  return byFile;
-}
-function hereOf(store, worktreeId, keys, states) {
+function hereOf(store, worktreeId, keys, current2) {
   const maps = /* @__PURE__ */ new Map();
   const entries3 = (map, project) => {
     const key3 = MAP_KEY[map](project);
@@ -89735,14 +90095,12 @@ function hereOf(store, worktreeId, keys, states) {
     maps.set(key3, read7);
     return read7;
   };
-  const current2 = currentByFile(states);
   return {
     keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
     current: current2,
     stored: (importId, key3) => store.results.byKey(key3, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     waiting: new Set(importsWaiting(store, worktreeId)),
-    fromImport: memoBy(String, (id) => countByImport(current2.get(id) ?? [])),
     // Row 011-411 (gh-250): what this worktree holds for a file is the same for every
     // import, so each file's closure and observed hash is made once per read.
     closure: memoBy(
@@ -89773,14 +90131,6 @@ function memoBy(idOf4, make) {
     made.set(id, value);
     return value;
   };
-}
-function countByImport(states) {
-  const counts = /* @__PURE__ */ new Map();
-  for (const s of states) {
-    if (s.origin?.kind !== "imported") continue;
-    counts.set(s.origin.importId, (counts.get(s.origin.importId) ?? 0) + 1);
-  }
-  return counts;
 }
 function environmentOf(store, worktreeId, files6) {
   const local2 = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
@@ -89920,10 +90270,11 @@ function readNamedFiles(store, worktreeId, root, files6, daemon, now, load = hos
   return standingsOf(store, worktreeId, root, daemon, now, load, reads2)(files6);
 }
 function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, reads2) {
-  const states = reads2?.states ?? store.knownStates.list(worktreeId);
+  const states = reads2?.states ?? readWorktreeStates(store, worktreeId);
   const keys = reads2?.keys ?? store.testFileKeys.list(worktreeId);
   const rows = new Map(keys.map((row3) => [testFileId(row3.testFile), row3]));
-  const checks = checksByFile(states);
+  const tally3 = (ref3) => states.files.get(testFileId(ref3))?.all ?? NO_STATES;
+  const notable = checksByFile(states.notable);
   const policy = readPolicy(root);
   const worktree = store.worktrees.get(worktreeId);
   const startedAt = liveStartedAt(worktree, daemon);
@@ -89937,10 +90288,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const yields = row2.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const pool = startedAt === null ? null : publishedPoolWaits(store, worktreeId, startedAt, now);
-  const header2 = reads2?.header ?? readHeader(store, worktreeId, states, keys);
+  const header2 = reads2?.header ?? readHeaderOf(store, worktreeId, states, keys);
   const unlisted6 = unlistedReason(header2, policy);
-  const reasons = unknownReasons(store, worktreeId, states, root, now);
-  const setups = setupsOf(states);
+  const reasons = unknownReasons(store, worktreeId, states.notable, root, now);
+  const setups = setupsOf(states.notable);
   const retried = retriedRuns(store, worktreeId);
   const alive4 = daemon.state === "alive";
   const hold = (reads2?.holds ?? readHolds(store, worktree, daemon, now))[0];
@@ -89963,15 +90314,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     load: once2(load),
     // What `run --all --wait` runs, from the rows and states read above: no further read.
     notCurrent: once2(
-      () => keys.filter(
-        (row3) => fileClassOf(row3, checks.get(testFileId(row3.testFile)) ?? []) !== "current"
-      ).length
+      () => keys.filter((row3) => classOf(row3, tally3(row3.testFile)) !== "current").length
     )
   };
   return (files6) => files6.map((ref3) => {
     const row3 = rows.get(testFileId(ref3));
-    const own = checks.get(testFileId(ref3)) ?? [];
-    const state = fileClassOf(row3, own);
+    const own = tally3(ref3);
+    const state = classOf(row3, own);
     if (state === "current") return { testFile: ref3, state, ...verdictOf(own) };
     const key3 = row3?.key ?? null;
     const claimant = state === "pending" || key3 === null ? null : claimantOf(store, worktreeId, ref3, key3, now);
@@ -89988,7 +90337,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     }
     if (state === "unknown") {
       if (row3 === void 0) return { testFile: ref3, state };
-      const unknown5 = reasons.of(row3, own);
+      const unknown5 = reasons.ofCounted(row3, own.count, notable.get(testFileId(ref3)) ?? []);
       return {
         testFile: ref3,
         state,
@@ -89996,7 +90345,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
         standing: claim ?? unknownStanding(unknown5, facts)
       };
     }
-    const running2 = row3?.pending === "running" || own.some((s) => s.pendingPhase === "running");
+    const running2 = row3?.pending === "running" || own.running;
     const lane = laneFor(policy, ref3, runnerLaneOf(policy, ref3.project));
     const run9 = running2 ? runOf(runs2, ref3) : void 0;
     const setup = isGroupLane(lane) ? setups.get(ref3.project) : void 0;
@@ -90150,7 +90499,7 @@ function runOf(runs2, ref3) {
 }
 function verdictOf(own) {
   for (const verdict of ["fail", "pass", "skip"]) {
-    if (own.some((s) => s.outcome === verdict)) return { verdict };
+    if (own.outcome[verdict] > 0) return { verdict };
   }
   return {};
 }
@@ -90322,7 +90671,7 @@ function buildSnapshotWithReads(store, root, now, load = hostLoad, shell = null)
 function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = null) {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
-  const states = store.knownStates.list(worktreeId);
+  const states = readWorktreeStates(store, worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
   const runtime = runtimeFilesStatus(store, worktreeId, root);
   const notes = [];
@@ -90337,11 +90686,12 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
   const runs2 = openRuns(store, worktree, daemon);
   const held4 = openFiles(runs2);
   const holds5 = readHolds(store, worktree, daemon, now);
-  const header2 = readHeader(store, worktreeId, states, keys, void 0, held4);
+  const header2 = readHeaderOf(store, worktreeId, states, keys, held4);
   const knownFailures = withTestFileFrames(
     store,
     worktreeId,
-    withRecorded(store, worktreeId, states, header2.revision)
+    // Every failure is notable (`WorktreeStates.notable`), in `knownStates.list` order.
+    withRecorded(store, worktreeId, states.notable, header2.revision)
   );
   const load = once2(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs2);
@@ -90381,7 +90731,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
-    ...importsOf(store, worktreeId, keys, states, at2),
+    ...importsOf(store, worktreeId, keys, at2),
     breakdown: breakdown(states, keys, held4),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
@@ -90441,8 +90791,13 @@ function openCheckpoint(store, worktreeId, daemon) {
   if (daemon.state !== "alive" || store.checkpoints.get(progress2.id)?.end !== null) return {};
   return { checkpoint: { ...rest2, owed: false } };
 }
-function importsOf(store, worktreeId, keys, states, root) {
-  const imports2 = readImports(store, worktreeId, keys, states);
+function importsOf(store, worktreeId, keys, root) {
+  const imports2 = readImportsOf(
+    store,
+    worktreeId,
+    keys,
+    () => importCountsByFile(store, worktreeId)
+  );
   const { shared: shared2 } = sharedOf(readPolicy(root).shared.ref, imports2, () => pinnedNode(root));
   return {
     ...imports2.length === 0 ? {} : { imports: imports2 },
@@ -90452,9 +90807,9 @@ function importsOf(store, worktreeId, keys, states, root) {
 function inheritedSources(store, states) {
   const groups3 = /* @__PURE__ */ new Map();
   let count5 = 0;
-  for (const s of states) {
+  for (const s of states.groups) {
     if (s.validity !== "current" || s.origin?.kind !== "inherited") continue;
-    count5++;
+    count5 += s.count;
     const id = JSON.stringify([s.origin.worktreeId, s.origin.commit]);
     const group = groups3.get(id) ?? {
       worktreeId: s.origin.worktreeId,
@@ -90462,8 +90817,8 @@ function inheritedSources(store, states) {
       count: 0,
       fileLevelCount: 0
     };
-    group.count++;
-    if (s.check.kind === "file") group.fileLevelCount++;
+    group.count += s.count;
+    if (s.kind === "file") group.fileLevelCount += s.count;
     groups3.set(id, group);
   }
   const sources = [...groups3.values()].map((g2) => ({ ...g2, worktreeRoot: store.worktrees.get(g2.worktreeId)?.root ?? null })).sort(
@@ -90486,23 +90841,24 @@ function breakdown(states, keys, running2) {
   const pendingByPhase = { queued: 0, running: 0 };
   const fileLevelByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
   const fileLevelByPhase = { queued: 0, running: 0 };
-  const filesWithChecks = /* @__PURE__ */ new Set();
-  for (const s of states) {
-    if (s.check.kind === "setup") continue;
-    const file = testFileKeyOf(s.check);
-    filesWithChecks.add(file);
-    const fileLevel = s.check.kind === "file";
-    if (s.validity === "current") {
-      currentByOutcome[s.outcome]++;
-      if (fileLevel) fileLevelByOutcome[s.outcome]++;
-    }
-    if (s.validity === "pending") {
-      const phase = running2.has(file) ? "running" : s.pendingPhase ?? filePhase.get(file) ?? "queued";
-      pendingByPhase[phase]++;
-      if (fileLevel) fileLevelByPhase[phase]++;
+  for (const g2 of states.groups) {
+    if (g2.kind === "setup" || g2.validity !== "current") continue;
+    currentByOutcome[g2.outcome] += g2.count;
+    if (g2.kind === "file") fileLevelByOutcome[g2.outcome] += g2.count;
+  }
+  for (const [id, file] of states.files) {
+    const held4 = running2.has(id);
+    for (const kind of ["test", "file"]) {
+      const phases = phasesOf(file.pending[kind], held4, filePhase.get(id));
+      pendingByPhase.queued += phases.queued;
+      pendingByPhase.running += phases.running;
+      if (kind !== "file") continue;
+      fileLevelByPhase.queued += phases.queued;
+      fileLevelByPhase.running += phases.running;
     }
   }
-  const without2 = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
+  const withChecks = (id) => (states.files.get(id)?.checks.count ?? 0) > 0;
+  const without2 = keys.filter((k) => !withChecks(testFileId(k.testFile)));
   return {
     currentByOutcome,
     pendingByPhase,
@@ -95081,9 +95437,9 @@ function decodeBatch(batch) {
 }
 var SENT_WRITE_BOUND_MS = 3e4;
 function writeBatch(store, statements) {
-  const connection2 = connectionOf(store);
+  const connection3 = connectionOf(store);
   store.transaction(() => {
-    for (const { sql, params } of statements) connection2.run(sql, ...params);
+    for (const { sql, params } of statements) connection3.run(sql, ...params);
   });
 }
 function parseBatch(value) {
@@ -95394,18 +95750,18 @@ function openSentStore(commonDir, options) {
   });
   if (isStoreOpenFailure(store)) return store;
   opened3 = store;
-  const connection2 = made;
+  const connection3 = made;
   try {
-    if (connection2 === null) throw new Error("squeal: the store opened without its connection");
+    if (connection3 === null) throw new Error("squeal: the store opened without its connection");
     const record2 = store.worktrees.get(worktreeId)?.daemon ?? null;
     const now = (options.now ?? Date.now)();
-    if (daemonLiveness(record2, now).state !== "alive") connection2.writeDirectly();
+    if (daemonLiveness(record2, now).state !== "alive") connection3.writeDirectly();
   } catch (error) {
     store.close();
     throw error;
   }
   const acquire4 = () => sender?.acquire() ?? Promise.resolve(false);
-  return { store, connection: connection2, write: (work) => connection2.unit(work, acquire4) };
+  return { store, connection: connection3, write: (work) => connection3.unit(work, acquire4) };
 }
 
 // src/cli/store-writes.ts
@@ -95865,9 +96221,9 @@ function answerOf(run9, texts2) {
   if (!texts2.every((t) => run9.texts.includes(t))) return void 0;
   const status3 = statusFocusedOf(run9, true);
   const same5 = run9.texts.every((t) => texts2.includes(t));
-  const { view, tally: tally2 } = same5 ? { view: status3, tally: focusedTally(status3) } : projected(status3, texts2);
+  const { view, tally: tally3 } = same5 ? { view: status3, tally: focusedTally(status3) } : projected(status3, texts2);
   if (!answeredRun(view)) return { run: view };
-  if (!tally2.atLeast || tally2.failed > 0) return { run: view, tally: tally2 };
+  if (!tally3.atLeast || tally3.failed > 0) return { run: view, tally: tally3 };
   if (!same5) return void 0;
   const kept6 = view.checks.length;
   return {
@@ -96030,8 +96386,8 @@ function fileLines(file, texts2, base) {
       ...focusedCheckLines(stored4.checks, 0, "  ")
     ];
   }
-  const { tally: tally2 } = file;
-  if (run9 === void 0 || tally2 === void 0) {
+  const { tally: tally3 } = file;
+  if (run9 === void 0 || tally3 === void 0) {
     const running2 = run9?.endedAt === null ? `; running since ${timeText(run9.startedAt)}` : "";
     return [`Focused: ${path}: no focused outcome yet${running2}`];
   }
@@ -96044,7 +96400,7 @@ function fileLines(file, texts2, base) {
   const took = focusedTookText(run9);
   const ended2 = run9.end === "completed" ? "" : `, ended ${run9.end}${run9.reason === null ? "" : ` (${run9.reason})`}`;
   const own = run9.collected === null ? "" : ` (${plural(run9.collected, "check")})`;
-  const count5 = tally2.total === null ? `at least ${plural(run9.checks.length, "check")}` : plural(tally2.total, "check");
+  const count5 = tally3.total === null ? `at least ${plural(run9.checks.length, "check")}` : plural(tally3.total, "check");
   return [
     `Focused: ${count5} of ${path} at revision ${run9.revision}, ${took}${ended2}; not the file's verdict.`,
     ...focusedCheckLines(run9.checks, run9.more, "  "),
@@ -96192,14 +96548,14 @@ function withPartial(selection, verdict, sync, snapshot3 = false) {
 }
 function readClasses(store, worktreeId, files6 = null, fixed = false) {
   const only2 = files6 ?? void 0;
-  const states = store.knownStates.list(worktreeId, only2);
+  const states = worktreeStatesOf(store.knownStates.list(worktreeId, only2));
   const keys = store.testFileKeys.list(worktreeId, only2);
-  return tally(store, worktreeId, files6, states, keys, fixed).classes;
+  return tally2(store, worktreeId, files6, states, keys, fixed).classes;
 }
 function readVerdict(store, worktreeId, files6 = null, fixed = false, reads2) {
-  const states = reads2?.states ?? store.knownStates.list(worktreeId);
+  const states = reads2?.states ?? readWorktreeStates(store, worktreeId);
   const keys = reads2 === void 0 ? store.testFileKeys.list(worktreeId, files6 ?? void 0) : keysOf(reads2.keys, files6);
-  const { classes, ids, rows, checks } = tally(
+  const { classes, ids, rows } = tally2(
     store,
     worktreeId,
     files6,
@@ -96209,13 +96565,13 @@ function readVerdict(store, worktreeId, files6 = null, fixed = false, reads2) {
     reads2?.header
   );
   const failures = { tests: 0, testFiles: 0 };
-  for (const id of ids) {
-    for (const state of checks.get(id) ?? []) {
-      if (state.outcome === "fail") failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
-    }
+  const selected2 = new Set(ids);
+  for (const state of states.notable) {
+    if (state.outcome !== "fail" || !selected2.has(testFileKeyOf(state.check))) continue;
+    failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
   }
   const projects2 = new Set(ids.map((id) => rows.get(id)?.testFile.project));
-  const setups = states.filter(
+  const setups = states.notable.filter(
     (s) => s.check.kind === "setup" && s.outcome === "fail" && (files6 === null || projects2.has(s.check.project))
   ).length;
   return { ...classes, failures: setups > 0 ? { ...failures, setups } : failures };
@@ -96225,19 +96581,12 @@ function keysOf(keys, files6) {
   const ids = new Set(files6.map(testFileId));
   return keys.filter((row2) => ids.has(testFileId(row2.testFile)));
 }
-function tally(store, worktreeId, files6, states, keys, fixed, known4) {
-  const header2 = known4 ?? readHeader(store, worktreeId, states, keys);
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    const id = testFileKeyOf(state.check);
-    const own = checks.get(id);
-    if (own === void 0) checks.set(id, [state]);
-    else own.push(state);
-  }
+function tally2(store, worktreeId, files6, states, keys, fixed, known4) {
+  const header2 = known4 ?? readHeaderOf(store, worktreeId, states, keys);
   const rows = new Map(keys.map((row2) => [testFileId(row2.testFile), row2]));
   const ids = files6 === null ? [...rows.keys()] : [...new Set(files6.map(testFileId))];
   const byClass = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  for (const id of ids) byClass[fileClassOf(rows.get(id), checks.get(id) ?? [])]++;
+  for (const id of ids) byClass[classOf(rows.get(id), states.files.get(id)?.all)]++;
   const listingHolds = header2.runnerPartPending === true && (!fixed || files6 === null || listingMayChangeClosures(
     store,
     worktreeId,
@@ -96251,7 +96600,7 @@ function tally(store, worktreeId, files6, states, keys, fixed, known4) {
     byClass,
     unlisted: listingHolds || header2.awaitingInstall === true
   };
-  return { classes, ids, rows, checks };
+  return { classes, ids, rows };
 }
 function verdictCode(verdict) {
   if (classReason(verdict) !== null) return 3;
@@ -96483,8 +96832,8 @@ import { isAbsolute as isAbsolute19 } from "node:path";
 
 // src/core/daemon/keep-protocol.ts
 var MAX_RECORDS = 1e5;
-var OUTCOMES8 = /* @__PURE__ */ new Set(["pass", "fail", "skip"]);
-var PHASES = /* @__PURE__ */ new Set(["load", "after-tests", "setup"]);
+var OUTCOMES9 = /* @__PURE__ */ new Set(["pass", "fail", "skip"]);
+var PHASES2 = /* @__PURE__ */ new Set(["load", "after-tests", "setup"]);
 var STAGES2 = /* @__PURE__ */ new Set(["body", "hook", "timeout", "other"]);
 var RECORD_FIELDS = [
   "check",
@@ -96602,7 +96951,7 @@ function resultRecord(value, key3, worktreeId) {
   const check3 = checkId2(value.check);
   if (check3 !== null) return `"check" ${check3}`;
   if (value.key !== key3) return "is at another key";
-  if (!OUTCOMES8.has(value.outcome)) return '"outcome" must be pass, fail or skip';
+  if (!OUTCOMES9.has(value.outcome)) return '"outcome" must be pass, fail or skip';
   if (!isCount4(value.durationMs, true)) return '"durationMs" must be a duration';
   if (value.location !== null && !isLocation(value.location))
     return '"location" must be a location or null';
@@ -96657,7 +97006,7 @@ function errorFields(value) {
     return '"loadAverage" must be a number';
   if (code !== void 0 && typeof code !== "string") return '"code" must be a string';
   if (recorder !== void 0 && typeof recorder !== "string") return '"recorder" must be a string';
-  if (phase !== void 0 && !PHASES.has(phase))
+  if (phase !== void 0 && !PHASES2.has(phase))
     return '"phase" must be load, after-tests or setup';
   if (causes === void 0) return null;
   const valid = (c) => isFields(c) && typeof c.message === "string" && (c.code === void 0 || typeof c.code === "string") && unknownField(c, ["message", "code"]) === null;
@@ -96827,10 +97176,10 @@ function parseWrite(request) {
     ...queued
   };
 }
-var KINDS5 = /* @__PURE__ */ new Set(["edit", "record", "prune"]);
+var KINDS6 = /* @__PURE__ */ new Set(["edit", "record", "prune"]);
 function parseQueued(request) {
   const { kind, splittable, seq } = request;
-  if (kind !== void 0 && !KINDS5.has(kind)) {
+  if (kind !== void 0 && !KINDS6.has(kind)) {
     return '"kind" must be "edit", "record" or "prune"';
   }
   if (splittable !== void 0 && typeof splittable !== "boolean") {
@@ -99671,7 +100020,7 @@ function openCommandStore(root, options = {}) {
     if (opened3.reason === "missing") return NO_STORE;
     return { not: "none", why: `its Squeal store could not be opened (${opened3.reason})` };
   }
-  const { store, connection: connection2 } = opened3;
+  const { store, connection: connection3 } = opened3;
   return {
     store,
     commonDir,
@@ -99680,7 +100029,7 @@ function openCommandStore(root, options = {}) {
       const started2 = Date.now();
       try {
         return await opened3.write(
-          () => connection2.direct ? whileBusy(store, deadline, write4) : write4()
+          () => connection3.direct ? whileBusy(store, deadline, write4) : write4()
         );
       } catch (error) {
         if (!isBusy(error)) throw error;
@@ -101493,7 +101842,7 @@ function retriedOf(files6) {
   return Object.fromEntries(retried.sort(([a], [b]) => compare(a, b)));
 }
 var RETRIED_NAMES = 3;
-var OUTCOMES9 = [
+var OUTCOMES10 = [
   ["passed", "passed"],
   ["failed", "failed again"],
   ["not-finished", "did not finish, so the first failure stands"]
@@ -101502,7 +101851,7 @@ function retriedText(runs2) {
   const retried = runs2.flatMap((run9) => Object.entries(run9.retried ?? {}));
   if (retried.length === 0) return "";
   const highest = retried.map(([, r]) => r).reduce((top2, r) => r.load / r.cpus > top2.load / top2.cpus ? r : top2);
-  const outcomes2 = OUTCOMES9.flatMap(([outcome2, said]) => {
+  const outcomes2 = OUTCOMES10.flatMap(([outcome2, said]) => {
     const paths = retried.filter(([, r]) => r.outcome === outcome2).map(([path]) => path);
     return paths.length === 0 ? [] : [`${paths.length} ${said} (${listPaths(paths.sort(compare), RETRIED_NAMES)})`];
   });
@@ -102064,12 +102413,12 @@ function leftOutLoaders(files6, path) {
 function tallyScope(scope2) {
   const counts = /* @__PURE__ */ new Map();
   const count5 = (place2) => {
-    let tally2 = counts.get(place2.group);
-    if (tally2 === void 0) {
-      tally2 = { at: place2.at, files: 0, selected: 0, tests: 0 };
-      counts.set(place2.group, tally2);
+    let tally3 = counts.get(place2.group);
+    if (tally3 === void 0) {
+      tally3 = { at: place2.at, files: 0, selected: 0, tests: 0 };
+      counts.set(place2.group, tally3);
     }
-    return tally2;
+    return tally3;
   };
   let [listedAll, listedInScope] = [0, 0];
   return {
@@ -102260,8 +102609,8 @@ function runsHere(known4, ref3) {
 }
 async function tellSelection(tell, picked, changed2, context2) {
   if (tell === void 0) return;
-  const { scope: scope2, tally: tally2, known: known4, planned, excluded = () => false } = context2;
-  const leftOut3 = tally2?.evidence([]).leftOut ?? [];
+  const { scope: scope2, tally: tally3, known: known4, planned, excluded = () => false } = context2;
+  const leftOut3 = tally3?.evidence([]).leftOut ?? [];
   const summary = await summarize(picked, changed2, { scope: scope2, leftOut: leftOut3, known: known4, planned, excluded });
   tell(context2.children === true ? withChildren2(summary) : summary);
 }
@@ -102512,10 +102861,10 @@ async function collectEvidence(cwd, changed2, options) {
   const start2 = performance.now();
   const deadline = start2 + budgetSeconds * 1e3;
   const { paths } = changed2;
-  const tally2 = options.scope === void 0 ? null : tallyScope(options.scope);
-  const scoped = (files6, failures = []) => tally2 === null ? {} : { scope: tally2.evidence(files6, failures) };
+  const tally3 = options.scope === void 0 ? null : tallyScope(options.scope);
+  const scoped2 = (files6, failures = []) => tally3 === null ? {} : { scope: tally3.evidence(files6, failures) };
   if (paths.length === 0 && options.tests.length === 0) {
-    return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds, ...scoped([]) };
+    return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds, ...scoped2([]) };
   }
   const root = findWorktreeRoot(cwd);
   if (root === null) throw new Error(`${cwd} is not inside a git worktree`);
@@ -102548,7 +102897,7 @@ async function collectEvidence(cwd, changed2, options) {
       durations: durations2,
       observed: options.observed
     }) : null;
-    const picked = await select(runners2, { paths, ...options }, tally2, narrowed2);
+    const picked = await select(runners2, { paths, ...options }, tally3, narrowed2);
     const known4 = await storedOf2(picked, options);
     const load = (options.hostLoad ?? hostLoad)();
     const order2 = orderRuns(picked, known4, { durations: durations2, tierSize: policy.runner.tierSize, load });
@@ -102556,7 +102905,7 @@ async function collectEvidence(cwd, changed2, options) {
     const { runs: runs2, told: told2 } = await fitRuns(order2, changed2, { ...options, deadline });
     const scheduled = new Set(runs2.flatMap((run9) => run9.files).map(testFileId));
     const planned = (ref3) => scheduled.has(testFileId(ref3));
-    await tellSelection(options.selected, inOrder3, changed2, { ...options, tally: tally2, known: known4, planned });
+    await tellSelection(options.selected, inOrder3, changed2, { ...options, tally: tally3, known: known4, planned });
     const gaps = tellClosures(lists, picked, note);
     const estimates = tellEstimates(options.estimated, order2.estimates, told2);
     const blobs = /* @__PURE__ */ new Map();
@@ -102569,7 +102918,7 @@ async function collectEvidence(cwd, changed2, options) {
       testFiles: [...testFiles3].sort(byRunnerAndPath),
       timedOut,
       budgetSeconds: options.budgetSeconds,
-      ...scoped(await leftOutFiles(picked), await leftOutFailures(picked, options.leftOutStored)),
+      ...scoped2(await leftOutFiles(picked), await leftOutFailures(picked, options.leftOutStored)),
       ...prepares.length === 0 ? {} : { prepares },
       ...estimates,
       ...gaps,
@@ -102585,7 +102934,7 @@ async function select(runners2, {
   tests: tests2,
   inputs: inputs2,
   observed: observed2
-}, tally2, narrowed2) {
+}, tally3, narrowed2) {
   const declared = inputs2 === void 0 || paths.length === 0 ? null : createDeclaredInputs(inputs2, paths);
   const named4 = /* @__PURE__ */ new Set([...paths, ...tests2]);
   const matched = /* @__PURE__ */ new Set();
@@ -102609,7 +102958,7 @@ async function select(runners2, {
     );
     for (const ref3 of byInputs) add3(ref3);
     const all2 = [...chosen.values()].sort(byPath);
-    const split5 = tally2?.split(kind, listed12, all2, new Set(tests2));
+    const split5 = tally3?.split(kind, listed12, all2, new Set(tests2));
     let [run9, leftOut3] = [split5?.run ?? all2, split5?.leftOut ?? []];
     if (narrowed2 !== null) {
       const narrow2 = await narrowed2(kind, adapter, listed12, run9);
@@ -102725,7 +103074,7 @@ function applyExceptions(judged2, entries3, baseCounted, rules) {
   return { functions, unused };
 }
 var MEASURES2 = ["complexity", "crap"];
-var KINDS6 = ["inherited", "approved"];
+var KINDS7 = ["inherited", "approved"];
 var TEXTS = ["path", "qualifiedName", "bodyHash", "issue", "approver", "baseCommit"];
 function entryOf2(raw) {
   if (!isRecord(raw)) return "not a JSON object";
@@ -102734,7 +103083,7 @@ function entryOf2(raw) {
   }
   const { measure: measure2, kind, value, issue } = raw;
   if (!MEASURES2.includes(measure2)) return "measure is not complexity or crap";
-  if (!KINDS6.includes(kind)) return "kind is not inherited or approved";
+  if (!KINDS7.includes(kind)) return "kind is not inherited or approved";
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     return "value is not a number at or above 0";
   }
@@ -103101,7 +103450,7 @@ var TOLD3 = [
   ["source", "its record holds other bytes of a source"]
 ];
 var REFUSED_NAMES = 3;
-var OUTCOMES10 = [
+var OUTCOMES11 = [
   ["ran", "ran here"],
   ["unfinished", "started here and did not finish"],
   ["not-run", "did not run"],
@@ -103123,7 +103472,7 @@ function refusedLines(runs2) {
       const files6 = refused.filter(([, r]) => r.reason === reason2);
       if (files6.length === 0) return [];
       const outcomes2 = files6.map(([path]) => outcomeOf3(run9, path));
-      const where3 = OUTCOMES10.flatMap(([outcome2, said]) => {
+      const where3 = OUTCOMES11.flatMap(([outcome2, said]) => {
         const count6 = outcomes2.filter((o) => o === outcome2).length;
         return count6 === 0 ? [] : [`${count6} ${said}`];
       }).join(", ");
@@ -105904,9 +106253,9 @@ function verdictLine(report4) {
   const unusedText2 = unused === 0 ? [] : [`${plural(unused, "exception")} unused`];
   const parts3 = [...states, ...uncounted, ...unusedText2];
   const what = judged2 === 0 ? `No function changed ${against}` : `${plural(judged2, "changed function")} ${against}`;
-  const tally2 = parts3.length === 0 ? "" : `: ${parts3.join(", ")}`;
+  const tally3 = parts3.length === 0 ? "" : `: ${parts3.join(", ")}`;
   const notes = `${leftOutText(report4)}${narrowAndFailuresText(report4)}${omittedText(report4)}`;
-  return `Code gate: ${report4.verdict}${noGroupsText(report4)}. ${what}${tally2}.${notes}`;
+  return `Code gate: ${report4.verdict}${noGroupsText(report4)}. ${what}${tally3}.${notes}`;
 }
 function rerunLine(report4) {
   const { rerun } = report4.budget;
@@ -112932,6 +113281,7 @@ init_write_turns();
 import { setTimeout as delay3 } from "node:timers/promises";
 var PRUNING = "pruning";
 var unrefDelay = (ms2) => delay3(ms2, void 0, { ref: false });
+var nextTurn2 = () => new Promise((resolve56) => setImmediate(resolve56));
 var SlicedPrune = class {
   #running = false;
   #stopped = false;
@@ -112948,7 +113298,7 @@ var SlicedPrune = class {
   async run(slices2, then2, what = "prune", fault) {
     if (this.#running || this.#stopped) return;
     this.#running = true;
-    let waited = false;
+    const waits2 = { waited: false };
     let iterator;
     try {
       iterator = slices2()[Symbol.iterator]();
@@ -112956,31 +113306,38 @@ var SlicedPrune = class {
         if (this.#stopped) return;
         const next = iterator.next();
         if (next.done === true) break;
-        let took = 0;
-        for (let attempt2 = 0; ; attempt2++) {
-          if (this.#stopped) return;
-          const started2 = performance.now();
-          try {
-            withBusySliceSync(BUSY_SLICE_MS, next.value);
-            took = performance.now() - started2;
-            break;
-          } catch (error) {
-            if (!isBusy(error)) throw error;
-            waited = true;
-            this.#context.busyWaits?.waiting(PRUNING, PRUNING);
-            await delay3(busyBackoffMs(attempt2), void 0, { ref: false });
-          }
-        }
-        await (this.#context.pause ?? unrefDelay)(turnGapMs(took));
+        const ran = await this.#slice(next.value, waits2);
+        if (ran === null) return;
+        if (ran.wrote === false) await nextTurn2();
+        else await (this.#context.pause ?? unrefDelay)(turnGapMs(ran.took));
       }
     } catch (error) {
       this.#failed(what, error, fault);
     } finally {
       iterator?.return?.();
       this.#running = false;
-      if (waited) this.#context.busyWaits?.ran(PRUNING);
+      if (waits2.waited) this.#context.busyWaits?.ran(PRUNING);
     }
     if (!this.#stopped) then2?.();
+  }
+  /**
+   * Runs `slice`, tried again after a busy store's backoff; what it returned
+   * and how long its last try took, or `null` once the driver stopped.
+   */
+  async #slice(slice, waits2) {
+    for (let attempt2 = 0; ; attempt2++) {
+      if (this.#stopped) return null;
+      const started2 = performance.now();
+      try {
+        const wrote = withBusySliceSync(BUSY_SLICE_MS, slice);
+        return { wrote, took: performance.now() - started2 };
+      } catch (error) {
+        if (!isBusy(error)) throw error;
+        waits2.waited = true;
+        this.#context.busyWaits?.waiting(PRUNING, PRUNING);
+        await delay3(busyBackoffMs(attempt2), void 0, { ref: false });
+      }
+    }
   }
   #failed(what, error, fault) {
     if (fault?.(error) !== true) this.#context.log(`${what} failed: ${String(error)}`);
@@ -120927,7 +121284,7 @@ function stateOf5(key3, records, own) {
   const newest = records.reduce(
     (a, b) => b.provenance.recordedAt > a.provenance.recordedAt ? b : a
   );
-  const origin = originOf2(newest, own);
+  const origin = originOf3(newest, own);
   const failed7 = records.filter((r) => r.outcome === "fail");
   if (failed7.length === 0) return { state: "pass", key: key3, origin };
   const names9 = new Set(
@@ -120943,7 +121300,7 @@ function commitState(at2, own) {
   if (reason2 === "changed") return { state: "not comparable", reason: detail2 };
   return { state: "not determined", reason: `${reason2}: ${detail2}` };
 }
-function originOf2(record2, own) {
+function originOf3(record2, own) {
   const { worktreeId, commit } = record2.provenance;
   if (record2.origin === "ci") return { kind: "ci", worktreeId: null, commit };
   if (importIdOf(worktreeId) !== null) return { kind: "import", worktreeId, commit };
@@ -133370,7 +133727,7 @@ function before4(a, b) {
 }
 
 // src/core/store-process/stats.ts
-var KINDS9 = ["edit", "record", "prune"];
+var KINDS10 = ["edit", "record", "prune"];
 var WriteStats = class {
   #byKind = /* @__PURE__ */ new Map();
   /** One batch ended: written (or found written by its mark) or failed. */
@@ -133392,7 +133749,7 @@ var WriteStats = class {
    */
   take() {
     const parts3 = [];
-    for (const kind of KINDS9) {
+    for (const kind of KINDS10) {
       const stats = this.#byKind.get(kind);
       if (stats === void 0) continue;
       const waits2 = [...stats.waits].sort((a, b) => a - b);
