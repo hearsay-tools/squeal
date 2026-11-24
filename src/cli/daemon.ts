@@ -87,21 +87,26 @@ function lockWait(options: readonly string[]): number | undefined | null {
 }
 
 /**
- * Row 010-37: test-only overrides of two waits that would hold a real-daemon
+ * Row 010-37: test-only overrides of waits that would hold a real-daemon
  * test for a minute, read from the environment the test gives the daemon:
  * `SQUEAL_TEST_HOST_IDLE_MS` replaces `runner.hostIdleMinutes`
- * (`startDaemon`'s `hostIdleMs`) and `SQUEAL_TEST_DRAIN_SLOW_WAIT_MS`
- * replaces `DRAIN_SLOW_WAIT_MS`. Each counts only as a positive whole number
- * of milliseconds; unset or any other value leaves the production default.
+ * (`startDaemon`'s `hostIdleMs`), `SQUEAL_TEST_DRAIN_SLOW_WAIT_MS` replaces
+ * `DRAIN_SLOW_WAIT_MS`, and `SQUEAL_TEST_SLOW_RECHECK_MS` shortens the slow
+ * slot's recheck (`SLOW_RECHECK_MS`, never longer). Each counts only as a
+ * positive whole number of milliseconds; unset or any other value leaves the
+ * production default.
  */
 export function testTimings(env: NodeJS.ProcessEnv): {
   readonly hostIdleMs?: number;
+  readonly slowRecheckMs?: number;
   readonly timings?: { readonly drainSlowWaitMs: number };
 } {
   const hostIdleMs = positiveMs(env.SQUEAL_TEST_HOST_IDLE_MS);
+  const slowRecheckMs = positiveMs(env.SQUEAL_TEST_SLOW_RECHECK_MS);
   const drainSlowWaitMs = positiveMs(env.SQUEAL_TEST_DRAIN_SLOW_WAIT_MS);
   return {
     ...(hostIdleMs === null ? {} : { hostIdleMs }),
+    ...(slowRecheckMs === null ? {} : { slowRecheckMs }),
     ...(drainSlowWaitMs === null ? {} : { timings: { drainSlowWaitMs } }),
   };
 }

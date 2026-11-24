@@ -32,14 +32,25 @@ import { resultOf } from "./scratch-helpers.js";
  * fixture's one slow permit, as a live session's daemon in another worktree
  * would. Under `lookup-only` an edit queues the files, so the next daemon
  * runs the slow file only because it resumes its predecessor's queue (011-33).
+ *
+ * Row 010-37: the daemons wait `WAIT_MS` in place of the 60 s
+ * (`SQUEAL_TEST_DRAIN_SLOW_WAIT_MS`) and look at the slow slot again every
+ * `RECHECK_MS` in place of 15 s (`SQUEAL_TEST_SLOW_RECHECK_MS`); every hold
+ * here is scaled to them. `test/daemon/test-timings.test.ts` keeps the
+ * production 60 s and 15 s.
  */
 
 const suite = daemonSuite();
 
+/** The drain's slow wait in these daemons, in place of `DRAIN_SLOW_WAIT_MS`. */
+const WAIT_MS = 4_000;
+/** The slow slot's recheck in these daemons, in place of `SLOW_RECHECK_MS`. */
+const RECHECK_MS = 500;
+
 const DRAIN_NOTE = /^the last session ended with slow files pending; this daemon runs them/;
 const DRAINED_NOTE = /daemon stopped: the slow files pending when its last session ended have run/;
 const WAITED_NOTE =
-  /^daemon stopped: no slow file ran for 60 s once the fast work pending when its last session ended was done; 1 slow file left queued for the next daemon in this worktree: test\/slow\.test\.ts$/;
+  /^daemon stopped: no slow file ran for 4 s once the fast work pending when its last session ended was done; 1 slow file left queued for the next daemon in this worktree: test\/slow\.test\.ts$/;
 
 const SLOW_TEST = "test/slow.test.ts";
 const FAST_TEST = "test/held.test.ts";
@@ -87,6 +98,8 @@ async function edited() {
       slow: { include: [SLOW_TEST], maxParallel: 1, maxLoadPerCpu: 1000 },
     })}\n`,
   });
+  repo.env.SQUEAL_TEST_DRAIN_SLOW_WAIT_MS = String(WAIT_MS);
+  repo.env.SQUEAL_TEST_SLOW_RECHECK_MS = String(RECHECK_MS);
   const owner = { pid: process.pid, worktreeId: "feedfacefeedface" };
   // The repository's slot (spec 019 D3, `capacity.groupSlotScope` default `"repository"`, row 019-18).
   const slotDir = slotFiles("slow").dir(slowSlotDir(repo.env), repo.commonDir);
@@ -143,20 +156,20 @@ describe.runIf(process.platform === "linux")(
   "a departure drain ends when its slow files wait (row 011-163)",
   { timeout: 300_000 },
   () => {
-    it("runs its fast work to the end, exits 60 s later naming the slow file, and the next daemon runs it", async () => {
+    it("runs its fast work to the end, exits the wait later naming the slow file, and the next daemon runs it", async () => {
       const { repo, spawned, slot, release } = await edited();
       await hook(repo, "session-end", "s1");
       await waitFor(() => notesLike(repo, DRAIN_NOTE).length > 0 || null, 30_000, "the drain");
-      // Its fast work holds past the slow files' would-be 60 s from the drain's start.
-      await delay(30_000);
+      // Its fast work holds half the wait; a wait counted from the drain's start would end soon after.
+      await delay(WAIT_MS / 2);
       expect(spawned.child.exitCode).toBeNull();
 
       const released = Date.now();
       release("fast");
       expect((await resultOf(repo, spawned, FAST_TEST)).outcome).toBe("pass");
       expect(await exitWithin(spawned, 120_000, repo)).toEqual({ code: 0, signal: null });
-      // The 60 s count from the fast work's end, not from the drain's start.
-      expect(Date.now() - released).toBeGreaterThanOrEqual(50_000);
+      // The wait counts from the fast work's end, not from the drain's start.
+      expect(Date.now() - released).toBeGreaterThanOrEqual(WAIT_MS * 0.875);
       expect(notesLike(repo, DRAIN_NOTE)).toHaveLength(1);
       expect(notesLike(repo, WAITED_NOTE)).toHaveLength(1);
       expect(notesLike(repo, DRAINED_NOTE)).toEqual([]);
@@ -183,15 +196,15 @@ describe.runIf(process.platform === "linux")(
       );
       await hook(repo, "session-end", "s1");
       await waitFor(() => notesLike(repo, DRAIN_NOTE).length > 0 || null, 30_000, "the drain");
-      // Within its 60 s, so the slot's next recheck (SLOW_RECHECK_MS) comes before them.
-      await delay(20_000);
+      // Within its wait, so the slot's next recheck (`RECHECK_MS`) comes before it ends.
+      await delay(WAIT_MS * 0.375);
       expect(spawned.child.exitCode).toBeNull();
 
       // The live session's daemon is done with the slot: the drain takes it.
       slot.release();
       await waitFor(() => started("slow") || null, 60_000, "the slow file started");
-      // Past 60 s from the drain's start, the running file keeps it.
-      await delay(45_000);
+      // Past the wait from the drain's start, the running file keeps it.
+      await delay(WAIT_MS * 0.75);
       expect(spawned.child.exitCode).toBeNull();
 
       release("slow");

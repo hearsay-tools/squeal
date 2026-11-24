@@ -21,6 +21,7 @@ import type { DaemonRemote } from "../runner-host/remote/daemon-lane.js";
 import { REMOTE_SUMMARY_TOPIC } from "../runner-host/remote/summary.js";
 import { hostClock } from "../scheduler/clock.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
+import type { SlowTierOptions } from "../scheduler/options.js";
 import { ImportsSeen } from "../shared/imports-seen.js";
 import type { SharedReader } from "../shared/reader.js";
 import { slowSlotDir } from "../slow/slot.js";
@@ -178,6 +179,11 @@ export interface DaemonOptions extends CommitModeOptions {
    * host stays up with no call, in place of `runner.hostIdleMinutes`. For tests.
    */
   readonly hostIdleMs?: number;
+  /**
+   * Row 010-37: how often slow work that cannot start is looked at again
+   * (`SlowTierOptions.recheckMs`), at most its default `SLOW_RECHECK_MS`. For tests.
+   */
+  readonly slowRecheckMs?: number;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -396,6 +402,18 @@ class Daemon {
       hostSlots,
       backgroundShare,
       project: { id: this.#repositoryRoot, slots: projectSlots },
+    };
+  }
+
+  /**
+   * Spec 019 D3 (row 019-18): a group's slot counts where the user's config says, by default
+   * per repository, as read when the loop starts; a test's `slowRecheckMs` (row 010-37).
+   */
+  #slowOptions(commonDir: AbsolutePath): SlowTierOptions {
+    const recheckMs = this.options.slowRecheckMs;
+    return {
+      slotScope: { scope: this.#capacity().groupSlotScope, commonDir },
+      ...(recheckMs === undefined ? {} : { recheckMs }),
     };
   }
 
@@ -1177,9 +1195,7 @@ class Daemon {
         // user's pool, sized from the user's config as read when the loop starts.
         // Spec 021 D18 (row 021-18): each refusal by the background ceiling is a line in its log.
         capacity: { dir: slowSlotDir(this.options.env), log: this.#log, ...this.#poolCapacity() },
-        // Spec 019 D3 (row 019-18): a group's slot counts where the user's config says, by default
-        // per repository, as read when the loop starts.
-        slow: { slotScope: { scope: this.#capacity().groupSlotScope, commonDir } },
+        slow: this.#slowOptions(commonDir),
         afterBatch: () => {
           code.nudge();
           lint();
