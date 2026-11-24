@@ -14,7 +14,7 @@ import {
   remoteHostOver,
 } from "../../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
-import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
+import type { RemoteTier, WhenLost } from "../../../src/core/runner-host/remote/settings.js";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type {
@@ -74,6 +74,12 @@ export interface Setup {
   readonly localRun?: (files: readonly TestFileRef[]) => Promise<RunReport>;
   /** Review 0.1.616 S2: false connects at the first background run, and setup does not wait. */
   readonly eager?: boolean;
+  /** Spec 026 D8.1: the tiers that go remote; absent, `background`. */
+  readonly lanes?: readonly RemoteTier[];
+  /** Spec 026 D8.1: runs that go remote wait for the connect. */
+  readonly awaitConnect?: boolean;
+  /** Spec 026 D8.1: the runner of the runs here, made from the local one. */
+  readonly here?: (local: RunnerAdapter) => RunnerAdapter;
 }
 
 let n = 0;
@@ -92,6 +98,9 @@ export async function setup({
   refusal,
   localRun,
   eager,
+  lanes,
+  awaitConnect,
+  here,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -179,14 +188,21 @@ export async function setup({
     };
     return remoteHost;
   };
-  const local: RunnerAdapter = fake(
-    () => ENV,
-    async (files, options) => {
-      localRuns.push(options);
-      localFiles.push(files.map((f) => f.path).join(","));
-      return localRun === undefined ? { ...REPORT, completedFiles: [...files] } : localRun(files);
+  let localCloses = 0;
+  const local: RunnerAdapter = {
+    ...fake(
+      () => ENV,
+      async (files, options) => {
+        localRuns.push(options);
+        localFiles.push(files.map((f) => f.path).join(","));
+        return localRun === undefined ? { ...REPORT, completedFiles: [...files] } : localRun(files);
+      },
+    ),
+    close: async () => {
+      localCloses++;
     },
-  );
+  };
+  const activity: number[] = [];
   const statuses: string[] = [];
   const logs: string[] = [];
   const repository: string[] = [];
@@ -207,6 +223,10 @@ export async function setup({
     backoffMs: [60_000],
     ...(admitEveryMs === undefined ? {} : { admitEveryMs }),
     ...(eager === undefined ? {} : { eager }),
+    ...(lanes === undefined ? {} : { lanes }),
+    ...(awaitConnect === undefined ? {} : { awaitConnect }),
+    ...(here === undefined ? {} : { here: here(local) }),
+    activity: () => activity.push(clock),
   });
   onTestFinished(() => lane.close());
   // Row 021-24: the lane compares at connect, so a remote may be refused before any run.
@@ -226,6 +246,8 @@ export async function setup({
     repository,
     connects,
     events,
+    activity,
+    localCloses: () => localCloses,
     advance: (ms: number) => {
       clock += ms;
     },
