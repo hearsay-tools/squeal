@@ -288,12 +288,12 @@ function slowTierText(header2, command) {
     parts3.push(pendingText(tier.pending, tier.activity, late, slowWords(header2.slowSlot)));
   }
   if (tier.notRun > 0) parts3.push(`${tier.notRun} not run at revision ${header2.revision}`);
-  const open7 = tier.testFiles - tier.current;
-  const runs2 = open7 <= 0 ? "" : `; ${slowWaitText(command, open7)}`;
+  const open8 = tier.testFiles - tier.current;
+  const runs2 = open8 <= 0 ? "" : `; ${slowWaitText(command, open8)}`;
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts3.join("; ")}. ${capitalized(stopText(tier))}${runs2}.`;
 }
-function slowWaitText(command, open7) {
-  return `\`${command} run --slow --wait 60000\` waits for ${open7 === 1 ? "its result" : "their results"}`;
+function slowWaitText(command, open8) {
+  return `\`${command} run --slow --wait 60000\` waits for ${open8 === 1 ? "its result" : "their results"}`;
 }
 function slowAffectedText(slow, command) {
   const n = slow?.testFiles ?? 0;
@@ -351,13 +351,13 @@ function groupTierLines(header2, command, only2) {
   });
 }
 function groupTierText(group, revision, late, command) {
-  const open7 = group.testFiles - group.current;
-  if (open7 <= 0) return null;
+  const open8 = group.testFiles - group.current;
+  if (open8 <= 0) return null;
   const parts3 = [];
   if (group.current > 0) parts3.push(`${group.current} ${currentText(group)}`);
   if (group.pending > 0) parts3.push(groupPendingText(group, late, command));
   if (group.notRun > 0) parts3.push(`${group.notRun} not run at revision ${revision}`);
-  return `${group.name}: ${plural(group.testFiles, "test file")}; ${parts3.join("; ")}. ${capitalized(groupDoes(group))}; ${groupRunText(group, command, open7)}.`;
+  return `${group.name}: ${plural(group.testFiles, "test file")}; ${parts3.join("; ")}. ${capitalized(groupDoes(group))}; ${groupRunText(group, command, open8)}.`;
 }
 function groupPendingText(group, late, command) {
   const held4 = group.at === "commit" || group.at === "manual";
@@ -432,8 +432,8 @@ function groupWhenText(group) {
       return "only on request";
   }
 }
-function groupRunText(group, command, open7) {
-  const one = open7 === 1;
+function groupRunText(group, command, open8) {
+  const one = open8 === 1;
   const results3 = one ? "its result" : "their results";
   const requested = group.notRun === 0 && requestedOf(group) === group.pending;
   const waiting2 = !requested && (group.at !== "edit" || group.notRun > 0 || group.activity?.kind === "waiting");
@@ -591,15 +591,15 @@ function readProcStat(pid) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const open7 = text3.indexOf("(");
+  const open8 = text3.indexOf("(");
   const close = text3.lastIndexOf(")");
   const rest2 = text3.slice(close + 2).split(" ");
   const ppid = Number(rest2[1]);
   const startTime = Number(rest2[19]);
-  if (open7 < 0 || close < open7 || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+  if (open8 < 0 || close < open8 || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
     throw new Error(`unreadable /proc/${pid}/stat`);
   }
-  return { comm: text3.slice(open7 + 1, close), state: rest2[0] ?? "", ppid, startTime };
+  return { comm: text3.slice(open8 + 1, close), state: rest2[0] ?? "", ppid, startTime };
 }
 function pidNamespace() {
   try {
@@ -1605,7 +1605,7 @@ function runGit(cwd, args2, options = {}) {
   const okCodes = options.okCodes ?? [0];
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   for (const name3 of REPOSITORY_VARIABLES) delete env[name3];
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     const child = spawn("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -1628,7 +1628,7 @@ function runGit(cwd, args2, options = {}) {
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code !== null && okCodes.includes(code)) {
-        resolve54(Buffer.concat(stdout).toString("utf8"));
+        resolve55(Buffer.concat(stdout).toString("utf8"));
         return;
       }
       const message3 = Buffer.concat(stderr).toString("utf8").trim();
@@ -1836,9 +1836,9 @@ function compile(glob2, original) {
   }
   return out2;
 }
-function matchingBrace(glob2, open7, original) {
+function matchingBrace(glob2, open8, original) {
   let depth = 0;
-  for (let i3 = open7; i3 < glob2.length; i3++) {
+  for (let i3 = open8; i3 < glob2.length; i3++) {
     if (glob2[i3] === "{") depth++;
     else if (glob2[i3] === "}" && --depth === 0) return i3;
   }
@@ -4734,17 +4734,17 @@ var init_checkpoints = __esm({
         const left = this.#left;
         this.#left = null;
         if (left === null) return null;
-        const open7 = (id) => {
+        const open8 = (id) => {
           const record2 = this.store.checkpoints.get(id);
           return record2 !== null && record2.end === null ? [record2] : [];
         };
         if (left.owed === void 0) {
-          for (const record2 of open7(left.id)) {
+          for (const record2 of open8(left.id)) {
             this.store.checkpoints.finish(record2.id, "abandoned", this.now());
           }
           return null;
         }
-        const records = left.owed.ids.flatMap(open7);
+        const records = left.owed.ids.flatMap(open8);
         return records.length === 0 ? null : { owed: left.owed, records };
       }
       get active() {
@@ -7810,8 +7810,8 @@ var init_promotions = __esm({
         let changed2 = this.#settle(queued);
         const files6 = new Map(refs2.map((ref3) => [testFileId(ref3), ref3]));
         const taken2 = this.#members();
-        const open7 = [...files6].filter(([id, ref3]) => this.#isOpen(id, ref3, queued));
-        const seen2 = new Set(open7.map(([id]) => id));
+        const open8 = [...files6].filter(([id, ref3]) => this.#isOpen(id, ref3, queued));
+        const seen2 = new Set(open8.map(([id]) => id));
         const members = new Set([...seen2].filter((id) => lead || !taken2.has(id)));
         if (lead && members.size > 0) changed2 = this.#release(members) || changed2;
         const keys = new Map(
@@ -7819,7 +7819,7 @@ var init_promotions = __esm({
         );
         const awaits = [...keys.keys()].some((id) => awaitsRun({ files: files6, facts, keys }, id));
         let formed = null;
-        if (until > this.#now() && (open7.length > 0 || awaits)) {
+        if (until > this.#now() && (open8.length > 0 || awaits)) {
           const seq = this.#seq++;
           const rank4 = lead ? -(seq + 1) : seq;
           const promotion = { files: files6, until, seq, rank: rank4, members, estimatedEnd: null, seen: seen2 };
@@ -7853,9 +7853,9 @@ var init_promotions = __esm({
       rankAt(id, now) {
         const member = this.#promotions.find((p) => p.members.has(id));
         if (member !== void 0) return rankIn(member, id);
-        const open7 = this.#promotions.filter((p) => p.until > now && p.files.has(id));
-        if (open7.length === 0) return null;
-        const first2 = open7.reduce((a, p) => p.rank < a.rank ? p : a);
+        const open8 = this.#promotions.filter((p) => p.until > now && p.files.has(id));
+        if (open8.length === 0) return null;
+        const first2 = open8.reduce((a, p) => p.rank < a.rank ? p : a);
         return rankIn(first2, id);
       }
       /** B2: takes `ids` out of every batch's members; whether one changed. */
@@ -7943,11 +7943,11 @@ var init_promotions = __esm({
       #settle(queued) {
         if (this.#promotions.length === 0) return false;
         const now = this.#now();
-        const open7 = (p, id) => {
+        const open8 = (p, id) => {
           const ref3 = p.files.get(id);
           return ref3 !== void 0 && this.#isOpen(id, ref3, queued);
         };
-        const kept6 = this.#promotions.map((p) => [...p.members].filter((id) => open7(p, id)));
+        const kept6 = this.#promotions.map((p) => [...p.members].filter((id) => open8(p, id)));
         const taken2 = new Set(kept6.flat());
         let changed2 = false;
         const next = [];
@@ -7955,7 +7955,7 @@ var init_promotions = __esm({
           const members = new Set(kept6[i3]);
           if (p.until > now) {
             for (const id of p.files.keys())
-              if (!taken2.has(id) && open7(p, id)) {
+              if (!taken2.has(id) && open8(p, id)) {
                 members.add(id);
                 taken2.add(id);
               }
@@ -7966,9 +7966,9 @@ var init_promotions = __esm({
           });
           const estimatedEnd = runs2 ? p.estimatedEnd : null;
           const same5 = estimatedEnd === p.estimatedEnd && members.size === p.members.size && [...members].every((id) => p.members.has(id));
-          const opened3 = [...p.files.keys()].filter((id) => open7(p, id) && !p.seen.has(id));
+          const opened3 = [...p.files.keys()].filter((id) => open8(p, id) && !p.seen.has(id));
           const seen2 = opened3.length === 0 ? p.seen : /* @__PURE__ */ new Set([...p.seen, ...opened3]);
-          const lives = members.size > 0 || p.until > now && [...p.files.keys()].some((id) => open7(p, id) || !seen2.has(id) && awaitsRun(p, id));
+          const lives = members.size > 0 || p.until > now && [...p.files.keys()].some((id) => open8(p, id) || !seen2.has(id) && awaitsRun(p, id));
           changed2 ||= !same5 || !lives;
           if (lives) next.push(same5 && seen2 === p.seen ? p : { ...p, members, estimatedEnd, seen: seen2 });
         });
@@ -8559,11 +8559,11 @@ function adoptsAtFirstCommit(store, worktreeId, predecessor) {
   return predecessor === void 0 || readMoves(store, worktreeId)?.writer !== predecessor;
 }
 function openMoves(store, worktreeId) {
-  const open7 = /* @__PURE__ */ new Map();
+  const open8 = /* @__PURE__ */ new Map();
   for (const [id, file] of Object.entries(readMoves(store, worktreeId)?.files ?? {})) {
-    if (file.open !== null) open7.set(id, file.open);
+    if (file.open !== null) open8.set(id, file.open);
   }
-  return open7;
+  return open8;
 }
 function movesSeq(store, worktreeId) {
   return readMoves(store, worktreeId)?.seq ?? null;
@@ -8609,19 +8609,19 @@ function nextMoves(store, worktreeId, marks2, removed, revision, now, by) {
   moves.seq = seq;
   return moves;
 }
-function apply(moves, { id, open: open7, moved: moved4 }, seq, at2) {
+function apply(moves, { id, open: open8, moved: moved4 }, seq, at2) {
   const file = moves.files[id] ?? { open: null, resolved: {} };
   const before5 = JSON.stringify(file);
-  if (open7 === null) {
+  if (open8 === null) {
     for (const revision of /* @__PURE__ */ new Set([...file.open ?? [], ...moved4 === null ? [] : [moved4]])) {
       file.resolved[String(revision)] = [seq, at2];
     }
     file.open = null;
   } else {
-    const revisions = [open7, ...moved4 === null ? [] : [moved4]];
+    const revisions = [open8, ...moved4 === null ? [] : [moved4]];
     file.open = [
-      Math.min(file.open?.[0] ?? open7, ...revisions),
-      Math.max(file.open?.[1] ?? open7, ...revisions)
+      Math.min(file.open?.[0] ?? open8, ...revisions),
+      Math.max(file.open?.[1] ?? open8, ...revisions)
     ];
     for (const revision of revisions) delete file.resolved[String(revision)];
   }
@@ -8718,11 +8718,11 @@ function recordRekeyed(store, worktreeId, marks2, removed) {
   const entries3 = readRekeyed(store, worktreeId);
   let changed2 = false;
   for (const id of removed) changed2 = entries3.delete(id) || changed2;
-  for (const { id, open: open7, moved: moved4 } of marks2) {
+  for (const { id, open: open8, moved: moved4 } of marks2) {
     const previous = entries3.get(id);
-    const latest = [previous?.last, moved4, open7].filter(isRevision);
+    const latest = [previous?.last, moved4, open8].filter(isRevision);
     if (latest.length === 0) continue;
-    const next = { open: open7, last: Math.max(...latest) };
+    const next = { open: open8, last: Math.max(...latest) };
     if (previous?.open === next.open && previous.last === next.last) continue;
     entries3.set(id, next);
     changed2 = true;
@@ -9178,12 +9178,12 @@ function markGateClosed(store, pending, testFile, key3, at2) {
   if (since !== null && known4.every((r) => r.gateClosedAt !== void 0)) return since;
   return store.transaction(() => {
     const records = readRetries(store);
-    const open7 = pendingAt(testFile, key3);
+    const open8 = pendingAt(testFile, key3);
     const stamped = records.map(
-      (r) => open7(r) && r.gateClosedAt === void 0 ? { ...r, gateClosedAt: at2 } : r
+      (r) => open8(r) && r.gateClosedAt === void 0 ? { ...r, gateClosedAt: at2 } : r
     );
     if (stamped.some((r, i3) => r !== records[i3])) writeRetries(store, stamped);
-    return gateClosedSince(stamped.filter(open7)) ?? at2;
+    return gateClosedSince(stamped.filter(open8)) ?? at2;
   });
 }
 var LOAD_RETRY_WAIT_MS;
@@ -10754,7 +10754,7 @@ import { realpath } from "node:fs/promises";
 import { dirname as dirname6, join as join12, relative as relative2, sep as sep3 } from "node:path";
 async function linkTargets(root, paths) {
   const directories = /* @__PURE__ */ new Map();
-  const resolve54 = (directory) => {
+  const resolve55 = (directory) => {
     let real4 = directories.get(directory);
     if (real4 === void 0) {
       real4 = realpath(join12(root, directory)).then(
@@ -10769,7 +10769,7 @@ async function linkTargets(root, paths) {
     [...paths].map(async (path) => {
       const directory = dirname6(path);
       if (directory === ".") return null;
-      const real4 = await resolve54(directory);
+      const real4 = await resolve55(directory);
       if (real4 === null || real4 === directory) return null;
       const target = real4 === "" ? path.slice(directory.length + 1) : `${real4}/${path.slice(directory.length + 1)}`;
       return kept2(target) ? target : null;
@@ -13907,9 +13907,9 @@ var init_proc = __esm({
       #row(pid) {
         const text3 = this.#read(`${pid}/stat`);
         if (text3 === null) return null;
-        const open7 = text3.indexOf("(");
+        const open8 = text3.indexOf("(");
         const close = text3.lastIndexOf(")");
-        if (open7 < 0 || close < open7) return null;
+        if (open8 < 0 || close < open8) return null;
         const f = text3.slice(close + 2).split(" ");
         const [ppid, utime, stime, cutime, cstime, nice, startTicks] = [
           f[1],
@@ -13925,7 +13925,7 @@ var init_proc = __esm({
         return {
           pid,
           ppid: ppid ?? 0,
-          comm: text3.slice(open7 + 1, close),
+          comm: text3.slice(open8 + 1, close),
           state: f[0] ?? null,
           startTicks: startTicks ?? 0,
           cpuTicks: (utime ?? 0) + (stime ?? 0),
@@ -14790,9 +14790,9 @@ var init_pool = __esm({
 
 // src/core/scheduler/capacity.ts
 import { availableParallelism as availableParallelism4 } from "node:os";
-function poolKind(open7, picked, batch = false) {
+function poolKind(open8, picked, batch = false) {
   if (batch) return "checkpoint";
-  if (open7?.explicit !== true) return "backlog";
+  if (open8?.explicit !== true) return "backlog";
   const runsIt = picked === void 0 || picked.some((p) => p.checkpointId !== null);
   return runsIt ? "checkpoint" : "backlog";
 }
@@ -16672,9 +16672,9 @@ function writeFocused(store, worktreeId, runs2) {
   const ids = new Set(runs2.map((run8) => testFileId(run8.testFile)));
   const kept6 = readFocused(store, worktreeId).filter((run8) => !ids.has(testFileId(run8.testFile)));
   const now = Math.max(...runs2.map((run8) => run8.endedAt ?? run8.startedAt));
-  const open7 = openWaitFiles(store, worktreeId, now);
+  const open8 = openWaitFiles(store, worktreeId, now);
   const all2 = [...kept6, ...runs2];
-  const free = all2.filter((run8) => !open7.has(testFileId(run8.testFile)));
+  const free = all2.filter((run8) => !open8.has(testFileId(run8.testFile)));
   const dropped = new Set(free.slice(0, Math.max(0, free.length - FOCUSED_FILES)));
   const left = all2.filter((run8) => !dropped.has(run8));
   store.meta.set(focusedMetaKey(worktreeId), JSON.stringify(left));
@@ -19978,17 +19978,17 @@ function toolPart(counts) {
   if (complete === files6 && unlisted6 === 0) {
     return `lint (${tool}): ${plural(findings, "finding")} in ${files6} ${of}`;
   }
-  const open7 = [];
-  if (unlisted6 > 0) open7.push(`${plural(unlisted6, "changed file")} not listed yet`);
-  if (running2 > 0) open7.push(`${running2} ${of} still running`);
+  const open8 = [];
+  if (unlisted6 > 0) open8.push(`${plural(unlisted6, "changed file")} not listed yet`);
+  if (running2 > 0) open8.push(`${running2} ${of} still running`);
   if (notDetermined2 > 0) {
-    open7.push(`${notDetermined2}${running2 > 0 ? "" : ` ${of}`} not determined`);
+    open8.push(`${notDetermined2}${running2 > 0 ? "" : ` ${of}`} not determined`);
   }
   if (complete > 0) {
     const where3 = complete === files6 ? `${files6} ${of}` : `the other ${complete}`;
-    open7.push(`${plural(findings, "finding")} in ${where3}`);
+    open8.push(`${plural(findings, "finding")} in ${where3}`);
   }
-  return `lint (${tool}): ${open7.join(", ")}`;
+  return `lint (${tool}): ${open8.join(", ")}`;
 }
 function legacyLint({ findings, notDetermined: notDetermined2, running: running2 }) {
   const more2 = [
@@ -20073,7 +20073,7 @@ async function pinDaemon(record2, timeoutMs) {
   }
 }
 function requestDaemon(socketPath, request, timeoutMs, endpoint, signal3) {
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     if (signal3?.aborted) {
       reject(failure("ABORT_ERR", `request to ${socketPath} aborted`));
       return;
@@ -20088,7 +20088,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal3) {
       signal3?.removeEventListener("abort", aborted2);
       socket.destroy();
       if (error) reject(error);
-      else resolve54(response);
+      else resolve55(response);
     };
     const timer = setTimeout(
       () => settle3(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -22478,15 +22478,15 @@ var init_held_connection = __esm({
         this.#begin();
         this.#held = true;
         holders.set(this.#file, this);
-        let open7 = true;
+        let open8 = true;
         const end = () => {
-          open7 = false;
+          open8 = false;
           this.#held = false;
           release(this.#file, this);
         };
         return {
           commit: () => {
-            if (!open7) return;
+            if (!open8) return;
             try {
               this.db.exec("COMMIT");
             } catch (error) {
@@ -22497,7 +22497,7 @@ var init_held_connection = __esm({
             }
           },
           rollback: () => {
-            if (!open7) return;
+            if (!open8) return;
             end();
             rollback(this.db);
           }
@@ -22515,7 +22515,7 @@ var init_held_connection = __esm({
       heldElsewhere() {
         const other = holders.get(this.#file);
         if (other === void 0 || other === this) return null;
-        return new Promise((resolve54) => waiters.push({ file: this.#file, resolve: resolve54 }));
+        return new Promise((resolve55) => waiters.push({ file: this.#file, resolve: resolve55 }));
       }
       /**
        * A write here while another connection of this thread holds the database
@@ -22786,17 +22786,17 @@ var init_sending_connection = __esm({
         this.#readable();
         const held4 = [];
         this.#held = held4;
-        let open7 = true;
+        let open8 = true;
         return {
           commit: () => {
-            if (!open7) return;
-            open7 = false;
+            if (!open8) return;
+            open8 = false;
             this.#held = null;
             this.#track(this.#send(held4, true), false);
           },
           rollback: () => {
-            if (!open7) return;
-            open7 = false;
+            if (!open8) return;
+            open8 = false;
             this.#held = null;
             this.#track(this.#sender.release(), false);
           }
@@ -23378,7 +23378,7 @@ var init_ranges = __esm({
       #counts = [];
       constructor(functions, wrapper) {
         const ranges = functions.flatMap((fn) => fn.ranges).map((r) => ({ start: r.startOffset - wrapper, end: r.endOffset - wrapper, count: r.count })).filter((r) => r.end > r.start).sort((a, b) => a.start - b.start || b.end - a.end);
-        const open7 = [];
+        const open8 = [];
         let at2 = Number.NEGATIVE_INFINITY;
         const emit = (to, count5) => {
           if (to > at2) {
@@ -23389,17 +23389,17 @@ var init_ranges = __esm({
           at2 = Math.max(at2, to);
         };
         const close = (until) => {
-          for (let top2 = open7.at(-1); top2 !== void 0 && top2.end <= until; top2 = open7.at(-1)) {
+          for (let top2 = open8.at(-1); top2 !== void 0 && top2.end <= until; top2 = open8.at(-1)) {
             emit(top2.end, top2.count);
-            open7.pop();
+            open8.pop();
           }
         };
         for (const range of ranges) {
           close(range.start);
-          const top2 = open7.at(-1);
+          const top2 = open8.at(-1);
           if (top2 === void 0) at2 = range.start;
           else emit(range.start, top2.count);
-          open7.push({
+          open8.push({
             end: top2 === void 0 ? range.end : Math.min(range.end, top2.end),
             count: range.count
           });
@@ -27119,8 +27119,8 @@ function workerMapper(worker, options, onFailure) {
     map(file) {
       if (failed7 !== null) return Promise.reject(failed7);
       const id = jobsMade++;
-      return new Promise((resolve54, reject) => {
-        jobs.set(id, { file, resolve: resolve54, reject });
+      return new Promise((resolve55, reject) => {
+        jobs.set(id, { file, resolve: resolve55, reject });
         const sources = idOf4(file.sources);
         options.pace.measure(
           () => post({
@@ -39252,7 +39252,7 @@ var require_graceful_fs = __commonJS({
       }
       function ReadStream$open() {
         var that = this;
-        open7(that.path, that.flags, that.mode, function(err2, fd) {
+        open8(that.path, that.flags, that.mode, function(err2, fd) {
           if (err2) {
             if (that.autoClose)
               that.destroy();
@@ -39272,7 +39272,7 @@ var require_graceful_fs = __commonJS({
       }
       function WriteStream$open() {
         var that = this;
-        open7(that.path, that.flags, that.mode, function(err2, fd) {
+        open8(that.path, that.flags, that.mode, function(err2, fd) {
           if (err2) {
             that.destroy();
             that.emit("error", err2);
@@ -39289,8 +39289,8 @@ var require_graceful_fs = __commonJS({
         return new fs4.WriteStream(path, options);
       }
       var fs$open = fs4.open;
-      fs4.open = open7;
-      function open7(path, flags3, mode, cb) {
+      fs4.open = open8;
+      function open8(path, flags3, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
         return go$open(path, flags3, mode, cb);
@@ -41265,7 +41265,7 @@ var require_ExtensionAliasPlugin = __commonJS({
           const isAliasString = typeof alias === "string";
           const sourceBase = source2.slice(0, -extension.length);
           const relativePathBase = !useRequest && request.relativePath && request.relativePath.endsWith(extension) ? request.relativePath.slice(0, -extension.length) : null;
-          const resolve54 = (alias2, callback3, index) => {
+          const resolve55 = (alias2, callback3, index) => {
             const newValue = `${sourceBase}${alias2}`;
             const nextRequest = useRequest ? {
               ...request,
@@ -41307,11 +41307,11 @@ var require_ExtensionAliasPlugin = __commonJS({
             return callback2(null, null);
           };
           if (isAliasString) {
-            resolve54(alias, stoppingCallback);
+            resolve55(alias, stoppingCallback);
           } else if (alias.length > 1) {
-            forEachBail(alias, resolve54, stoppingCallback);
+            forEachBail(alias, resolve55, stoppingCallback);
           } else {
-            resolve54(alias[0], stoppingCallback);
+            resolve55(alias[0], stoppingCallback);
           }
         });
       }
@@ -43892,10 +43892,10 @@ var require_Resolver = __commonJS({
         * @returns {Promise<string | false>} result
         */
         (self, context2, path, request, resolveContext) => {
-          const { promise: promise2, resolve: resolve54, reject } = Promise.withResolvers();
+          const { promise: promise2, resolve: resolve55, reject } = Promise.withResolvers();
           self.resolve(context2, path, request, resolveContext, (err2, res) => {
             if (err2) reject(err2);
-            else resolve54(
+            else resolve55(
               /** @type {string | false} */
               res
             );
@@ -43911,10 +43911,10 @@ var require_Resolver = __commonJS({
         * @param {ResolveContext} resolveContext resolve context
         * @returns {Promise<string | false>} result
         */
-        (self, context2, path, request, resolveContext) => new Promise((resolve54, reject) => {
+        (self, context2, path, request, resolveContext) => new Promise((resolve55, reject) => {
           self.resolve(context2, path, request, resolveContext, (err2, res) => {
             if (err2) reject(err2);
-            else resolve54(
+            else resolve55(
               /** @type {string | false} */
               res
             );
@@ -46694,7 +46694,7 @@ var require_lib2 = __commonJS({
         fileSystem: getNodeFileSystem()
       })
     );
-    var resolve54 = (
+    var resolve55 = (
       /**
        * @param {object | string | URL} context context
        * @param {string | URL} parent parent path
@@ -46873,7 +46873,7 @@ var require_lib2 = __commonJS({
         Object.freeze(obj)
       );
     };
-    module2.exports = mergeExports(resolve54, {
+    module2.exports = mergeExports(resolve55, {
       get sync() {
         return resolveSync;
       },
@@ -47456,16 +47456,16 @@ function startGroup(options) {
     } catch {
     }
   };
-  const exited2 = new Promise((resolve54) => {
+  const exited2 = new Promise((resolve55) => {
     child.once("error", (error) => {
       done = true;
-      resolve54({ code: null, signal: null, error: error.message });
+      resolve55({ code: null, signal: null, error: error.message });
     });
     child.once("exit", (code, signal3) => {
       if (done) return;
       done = true;
       kill("SIGKILL");
-      resolve54({ code, signal: signal3, error: null });
+      resolve55({ code, signal: signal3, error: null });
     });
   });
   return { exited: exited2, kill: (signal3) => done ? void 0 : kill(signal3) };
@@ -48305,9 +48305,9 @@ async function execute(vitest, specs, timeoutMs, collector, signal3, beforeForce
 async function settleOrStop(run8, timeoutMs, signal3) {
   let timer;
   let onAbort;
-  const stop2 = new Promise((resolve54) => {
-    if (timeoutMs !== null) timer = setTimeout(() => resolve54("timeout"), timeoutMs);
-    onAbort = () => resolve54("abort");
+  const stop2 = new Promise((resolve55) => {
+    if (timeoutMs !== null) timer = setTimeout(() => resolve55("timeout"), timeoutMs);
+    onAbort = () => resolve55("abort");
     signal3?.addEventListener("abort", onAbort, { once: true });
   });
   try {
@@ -48327,8 +48327,8 @@ function abandon(vitest, collector) {
 }
 async function settleWithin(promise2, ms2) {
   let timer;
-  const timeout = new Promise((resolve54) => {
-    timer = setTimeout(() => resolve54(null), ms2);
+  const timeout = new Promise((resolve55) => {
+    timer = setTimeout(() => resolve55(null), ms2);
   });
   try {
     return await Promise.race([promise2, timeout]);
@@ -49391,19 +49391,19 @@ var init_gate2 = __esm({
       }
       async exclusive(fn) {
         if (this.#sections++ === 0) {
-          this.#clear = new Promise((resolve54) => {
-            this.#cleared = resolve54;
+          this.#clear = new Promise((resolve55) => {
+            this.#cleared = resolve55;
           });
         }
         const turn = this.#turn;
         let done = () => {
         };
-        this.#turn = new Promise((resolve54) => {
-          done = resolve54;
+        this.#turn = new Promise((resolve55) => {
+          done = resolve55;
         });
         try {
           await turn;
-          while (this.#holders > 0) await new Promise((resolve54) => this.#idle.push(resolve54));
+          while (this.#holders > 0) await new Promise((resolve55) => this.#idle.push(resolve55));
           return await fn();
         } finally {
           done();
@@ -49434,7 +49434,7 @@ var init_gate2 = __esm({
       }
       #leave() {
         if (--this.#holders > 0) return;
-        for (const resolve54 of this.#idle.splice(0)) resolve54();
+        for (const resolve55 of this.#idle.splice(0)) resolve55();
       }
     };
   }
@@ -49459,12 +49459,12 @@ async function globPatterns(file, source2, parse18) {
   });
   return out2;
 }
-async function folderListings(file, source2, root, resolve54, parse18) {
+async function folderListings(file, source2, root, resolve55, parse18) {
   const patterns = await globPatterns(file, source2, parse18);
   if (patterns === null) return null;
   const out2 = [];
   for (const glob2 of patterns.filter((g2) => !g2.pattern.startsWith("!"))) {
-    const absolute = await absoluteGlob(glob2, file, root, resolve54);
+    const absolute = await absoluteGlob(glob2, file, root, resolve55);
     if (absolute !== null) out2.push(listingOf2(absolute));
   }
   return out2;
@@ -49472,7 +49472,7 @@ async function folderListings(file, source2, root, resolve54, parse18) {
 async function moduleGlobs(project, graph, paths, parse18) {
   const environment = project.vite.environments.ssr;
   const root = project.config.root;
-  const resolve54 = async (pattern2, importer) => {
+  const resolve55 = async (pattern2, importer) => {
     const custom = { "vite:import-glob": { isSubImportsPattern: pattern2.startsWith("#") } };
     return (await environment?.pluginContainer.resolveId(pattern2, importer, { custom }))?.id ?? null;
   };
@@ -49482,7 +49482,7 @@ async function moduleGlobs(project, graph, paths, parse18) {
     const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
     const transform = environment?.moduleGraph.getModuleById(file)?.transformResult;
     if (path === null || !transform) continue;
-    const listings = listed8.get(transform) ?? listingsOnDisk(file, root, resolve54, parse18);
+    const listings = listed8.get(transform) ?? listingsOnDisk(file, root, resolve55, parse18);
     listed8.set(transform, listings);
     const directories = /* @__PURE__ */ new Set();
     const recursive = /* @__PURE__ */ new Set();
@@ -49501,16 +49501,16 @@ function folderOf(directory, paths) {
   if (directory === paths.root) return "";
   return paths.isProjectFile(directory) ? paths.toRelative(directory) : null;
 }
-function listingsOnDisk(file, root, resolve54, parse18) {
+function listingsOnDisk(file, root, resolve55, parse18) {
   const source2 = readSource(file);
-  return source2 === null ? Promise.resolve([]) : folderListings(file, source2, root, resolve54, parse18);
+  return source2 === null ? Promise.resolve([]) : folderListings(file, source2, root, resolve55, parse18);
 }
-async function absoluteGlob(glob2, importer, root, resolve54) {
+async function absoluteGlob(glob2, importer, root, resolve55) {
   const { pattern: pattern2, base } = glob2;
   const from = base?.startsWith("/") ? posix11.join(root, base) : posix11.resolve(dirname36(importer), base ?? ".");
   if (pattern2.startsWith("/")) return posix11.join(root, pattern2.slice(1));
   if (pattern2.startsWith("./") || pattern2.startsWith("../")) return posix11.join(from, pattern2);
-  const resolved2 = await resolve54(pattern2, importer).catch(() => null);
+  const resolved2 = await resolve55(pattern2, importer).catch(() => null);
   return resolved2?.startsWith("/") ? resolved2 : null;
 }
 function listingOf2(glob2) {
@@ -51907,7 +51907,7 @@ function gitCall(cwd, args2, call2) {
   }
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0", ...call2.env };
   for (const name3 of REPOSITORY_VARIABLES2) delete env[name3];
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     const child = spawn6("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -51918,7 +51918,7 @@ function gitCall(cwd, args2, call2) {
       settled2 = true;
       clearTimeout(timer);
       signal3?.removeEventListener("abort", stop2);
-      resolve54(answer4);
+      resolve55(answer4);
     };
     const kill = (why2) => {
       child.kill("SIGKILL");
@@ -52238,13 +52238,13 @@ async function Module2(moduleArg = {}) {
       }
       readAsync = /* @__PURE__ */ __name(async (url) => {
         if (isFileURI(url)) {
-          return new Promise((resolve54, reject) => {
+          return new Promise((resolve55, reject) => {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.responseType = "arraybuffer";
             xhr.onload = () => {
               if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
-                resolve54(xhr.response);
+                resolve55(xhr.response);
                 return;
               }
               reject(xhr.status);
@@ -52440,9 +52440,9 @@ async function Module2(moduleArg = {}) {
     __name(receiveInstantiationResult, "receiveInstantiationResult");
     var info2 = getWasmImports();
     if (Module["instantiateWasm"]) {
-      return new Promise((resolve54, reject) => {
+      return new Promise((resolve55, reject) => {
         Module["instantiateWasm"](info2, (mod, inst) => {
-          resolve54(receiveInstance(mod, inst));
+          resolve55(receiveInstance(mod, inst));
         });
       });
     }
@@ -53775,8 +53775,8 @@ async function Module2(moduleArg = {}) {
   if (runtimeInitialized) {
     moduleRtn = Module;
   } else {
-    moduleRtn = new Promise((resolve54, reject) => {
-      readyPromiseResolve = resolve54;
+    moduleRtn = new Promise((resolve55, reject) => {
+      readyPromiseResolve = resolve55;
       readyPromiseReject = reject;
     });
   }
@@ -56518,15 +56518,15 @@ function countTree(root, text3, rules) {
       if (named4 && rules.functions.has(type)) {
         const node2 = cursor.currentNode;
         const name3 = rules.nameOf(node2, text3);
-        const open7 = {
+        const open8 = {
           qualifiedName: [...names9, name3].join("."),
           range: rangeAt(cursor),
           bodyHash: bodyHash(text3, rules.hashFrom(node2).startIndex, node2.endIndex),
           complexity: 1,
           decisions: {}
         };
-        opened3.push(open7);
-        frames.push(open7);
+        opened3.push(open8);
+        frames.push(open8);
         names9.push(name3);
         exit2.frame = exit2.scope = true;
       } else {
@@ -56567,16 +56567,16 @@ function isError(cursor, rules) {
 }
 function withOccurrences(opened3) {
   const seen2 = /* @__PURE__ */ new Map();
-  return opened3.map((open7) => {
-    const occurrence = seen2.get(open7.qualifiedName) ?? 0;
-    seen2.set(open7.qualifiedName, occurrence + 1);
+  return opened3.map((open8) => {
+    const occurrence = seen2.get(open8.qualifiedName) ?? 0;
+    seen2.set(open8.qualifiedName, occurrence + 1);
     return {
-      qualifiedName: open7.qualifiedName,
+      qualifiedName: open8.qualifiedName,
       occurrence,
-      range: open7.range,
-      bodyHash: open7.bodyHash,
-      complexity: open7.complexity,
-      decisions: open7.decisions
+      range: open8.range,
+      bodyHash: open8.bodyHash,
+      complexity: open8.complexity,
+      decisions: open8.decisions
     };
   });
 }
@@ -56849,13 +56849,13 @@ function joinByStart(spans2, entries3, joined2) {
   for (let more2 = joined2.includes(null); more2; ) {
     more2 = false;
     const used = new Set(joined2.flatMap((e) => e === null ? [] : [spanKey(e)]));
-    const open7 = spans2.flatMap((span, fn) => joined2[fn] === null ? [{ span, fn }] : []);
-    const found4 = open7.map(({ span }) => {
+    const open8 = spans2.flatMap((span, fn) => joined2[fn] === null ? [{ span, fn }] : []);
+    const found4 = open8.map(({ span }) => {
       const on = endingOn.get(span.endLine) ?? [];
       const fit = on.filter((i3) => fits(span, entries3[i3], keys[i3], used));
       return [...new Set(fit.map((i3) => keys[i3]))];
     });
-    open7.forEach(({ fn }, i3) => {
+    open8.forEach(({ fn }, i3) => {
       const only2 = found4[i3]?.length === 1 ? found4[i3]?.[0] : void 0;
       if (only2 === void 0 || found4.some((k, j) => j !== i3 && k.includes(only2))) return;
       joined2[fn] = entries3[keys.indexOf(only2)] ?? null;
@@ -57295,11 +57295,11 @@ var init_relay = __esm({
         });
         this.#worker.on("error", () => {
         });
-        this.#exit = new Promise((resolve54) => {
+        this.#exit = new Promise((resolve55) => {
           this.#worker?.once("exit", () => {
             this.#exited = true;
             this.#abandon("the daemon's code-store relay ended");
-            resolve54();
+            resolve55();
           });
         });
         this.#worker.unref();
@@ -57346,7 +57346,7 @@ var init_relay = __esm({
         const worker = this.#worker;
         if (worker !== null && !this.#exited) {
           this.#port?.postMessage({ close: true, leaving });
-          const cap2 = (ms2) => new Promise((resolve54) => setTimeout(resolve54, ms2).unref());
+          const cap2 = (ms2) => new Promise((resolve55) => setTimeout(resolve55, ms2).unref());
           await Promise.race([this.#exit, cap2(CLOSE_MS)]);
           if (!this.#exited) {
             await worker.terminate().catch(() => {
@@ -57381,8 +57381,8 @@ var init_relay = __esm({
           conn,
           epoch
         };
-        return new Promise((resolve54, reject) => {
-          this.#posted.set(n, { epoch, epochNow, resolve: resolve54, reject });
+        return new Promise((resolve55, reject) => {
+          this.#posted.set(n, { epoch, epochNow, resolve: resolve55, reject });
           this.#port?.ref();
           this.#port?.postMessage({ job });
         });
@@ -59039,7 +59039,7 @@ async function flushStatsAhead(store, cache2, worktreeId, diff) {
   return { ...diff, updates: diff.updates.filter((update) => changed2.has(path(update))) };
 }
 function nextTurn() {
-  return new Promise((resolve54) => setImmediate(resolve54));
+  return new Promise((resolve55) => setImmediate(resolve55));
 }
 async function diffBeside(context2, diff, batch, paths) {
   const own = new Set(batch.paths.map((candidate) => candidate.path));
@@ -59624,8 +59624,8 @@ function queueFullSuite(ledger, force, fresh2 = false, only2) {
   const files6 = laneFiles2(ledger, only2);
   const unrunnable = files6.filter((file) => file.key === null || file.blocked !== null);
   const runnable2 = files6.filter((file) => file.key !== null && file.blocked === null);
-  const open7 = force ? runnable2 : runnable2.filter((file) => classify2(file) !== "current");
-  const joins = !fresh2 && open7.length + unrunnable.length > 0 && checkpoints.covers(refs([...open7, ...unrunnable]), force);
+  const open8 = force ? runnable2 : runnable2.filter((file) => classify2(file) !== "current");
+  const joins = !fresh2 && open8.length + unrunnable.length > 0 && checkpoints.covers(refs([...open8, ...unrunnable]), force);
   const attributed = joins ? checkpoints.active?.record.id ?? id : id;
   let requested;
   if (force) {
@@ -59633,10 +59633,10 @@ function queueFullSuite(ledger, force, fresh2 = false, only2) {
     const queue = joins ? [] : runnable2;
     for (const file of queue) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
   } else {
-    for (const file of open7) file.unknownKey = null;
-    const pending = open7.filter((file) => file.phase !== null);
+    for (const file of open8) file.unknownKey = null;
+    const pending = open8.filter((file) => file.phase !== null);
     const misses = ledger.settle(
-      refs(open7.filter((file) => file.phase === null)),
+      refs(open8.filter((file) => file.phase === null)),
       NOTHING_CHANGED,
       { checkpointId: attributed }
     );
@@ -59750,12 +59750,12 @@ var init_checkpoint_requests = __esm({
 });
 
 // src/core/scheduler/handover.ts
-function handover(context2, ledger, previous, open7) {
+function handover(context2, ledger, previous, open8) {
   const { store, worktreeId } = context2;
   const ranges = /* @__PURE__ */ new Map();
   for (const [id, row2] of previous) {
     if (row2.pending === null || !ledger.files.has(id)) continue;
-    ranges.set(id, open7.get(id) ?? [row2.revision, row2.revision]);
+    ranges.set(id, open8.get(id) ?? [row2.revision, row2.revision]);
   }
   const first2 = /* @__PURE__ */ new Set();
   const catchUp = /* @__PURE__ */ new Set();
@@ -59937,7 +59937,7 @@ async function baseline(context2, ledger, unseen = [], resumesRest2 = false, ret
   const first2 = lookup(refs2);
   const recheck = first2.filter((file) => fromStore.has(file.id));
   const lookupOnly2 = policy.baseline.onStart === "lookup-only";
-  const open7 = openMoves(store, worktreeId);
+  const open8 = openMoves(store, worktreeId);
   const handedMisses = first2.filter(
     (file) => (previousKeys.get(file.id)?.pending ?? null) !== null
   );
@@ -59974,7 +59974,7 @@ async function baseline(context2, ledger, unseen = [], resumesRest2 = false, ret
   }
   if (lookupOnly2) ledger.checkpoints.finish("abandoned");
   const holds5 = lookupOnly2 && !resumesRest2;
-  const handed = handover(context2, ledger, previousKeys, open7);
+  const handed = handover(context2, ledger, previousKeys, open8);
   const changed2 = /* @__PURE__ */ new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
   const recent = new Set(handed.first);
   const catchUp = new Set(handed.catchUp);
@@ -60156,7 +60156,7 @@ var init_busy_resume = __esm({
        */
       retry(what) {
         this.#waits.waiting(RECORDS, what);
-        const turn = new Promise((resolve54) => this.#records.push(resolve54));
+        const turn = new Promise((resolve55) => this.#records.push(resolve55));
         this.#arm();
         return turn;
       }
@@ -61430,15 +61430,15 @@ function selectedOf(ledger, group, selection) {
   return [...selected2].flatMap((id) => ledger.files.get(id) ?? []);
 }
 function queueNarrow(ledger, ids) {
-  const open7 = [...ids].flatMap((id) => ledger.files.get(id) ?? []).filter((file) => file.key !== null && file.blocked === null && classify2(file) !== "current");
-  for (const file of open7) file.unknownKey = null;
-  const pending = open7.filter((file) => file.phase !== null);
+  const open8 = [...ids].flatMap((id) => ledger.files.get(id) ?? []).filter((file) => file.key !== null && file.blocked === null && classify2(file) !== "current");
+  for (const file of open8) file.unknownKey = null;
+  const pending = open8.filter((file) => file.phase !== null);
   const misses = ledger.settle(
-    open7.filter((file) => file.phase === null).map((file) => file.ref),
+    open8.filter((file) => file.phase === null).map((file) => file.ref),
     NOTHING_CHANGED
   );
   ledger.commit();
-  const asks = open7.flatMap(
+  const asks = open8.flatMap(
     (file) => file.key === null ? [] : [{ ref: file.ref, key: file.key }]
   );
   const newly = misses.map((file) => file.id);
@@ -61565,8 +61565,8 @@ var init_slot_records = __esm({
       }
       /** Records the slot whose run ended, `ended` its reads outside the lock. */
       async record(ended2) {
-        const outcome2 = new Promise((resolve54, reject) => {
-          this.#ended.push({ ended: ended2, resolve: resolve54, reject });
+        const outcome2 = new Promise((resolve55, reject) => {
+          this.#ended.push({ ended: ended2, resolve: resolve55, reject });
         });
         ended2.catch(() => {
         });
@@ -61599,11 +61599,11 @@ var init_slot_records = __esm({
       /** The record's wait: `SLOT_GATHER_COMMITS` times the last commit, at least `SLOT_GATHER_MS`. */
       #gather() {
         const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
-        return new Promise((resolve54) => {
+        return new Promise((resolve55) => {
           this.#gathered = () => {
             this.#gathering = null;
             this.#gathered = null;
-            resolve54();
+            resolve55();
           };
           this.#wake.after(gather);
         });
@@ -62274,13 +62274,13 @@ function longest(durations2) {
 }
 function queueGroup(context2, ledger, group) {
   const { of } = groupView(context2.policy);
-  const open7 = [...ledger.files.values()].filter(
+  const open8 = [...ledger.files.values()].filter(
     (file) => of(file.ref).name === group && file.key !== null && file.blocked === null && classify2(file) !== "current"
   );
-  for (const file of open7) file.unknownKey = null;
-  const pending = open7.filter((file) => file.phase !== null);
+  for (const file of open8) file.unknownKey = null;
+  const pending = open8.filter((file) => file.phase !== null);
   const misses = ledger.settle(
-    open7.filter((file) => file.phase === null).map((file) => file.ref),
+    open8.filter((file) => file.phase === null).map((file) => file.ref),
     NOTHING_CHANGED
   );
   ledger.commit();
@@ -63369,9 +63369,9 @@ var init_runner_work = __esm({
        */
       afterTier(task, operation) {
         if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
-        return new Promise((resolve54, reject) => {
+        return new Promise((resolve55, reject) => {
           this.#tasks.push({
-            run: () => this.host.lock.run(task, operation).then(resolve54, reject),
+            run: () => this.host.lock.run(task, operation).then(resolve55, reject),
             cancel: () => reject(new Error("squeal scheduler: closed"))
           });
           this.host.pump();
@@ -64403,14 +64403,14 @@ var init_wakes = __esm({
       async rest() {
         for (; ; ) {
           if (this.#atRest()) {
-            await new Promise((resolve54) => globalThis.setImmediate(resolve54));
+            await new Promise((resolve55) => globalThis.setImmediate(resolve55));
             if (this.#atRest()) {
               const wakes = this.wakes();
               return { next: wakes[0] ?? null, wakes };
             }
             continue;
           }
-          await new Promise((resolve54) => this.#waiters.push(resolve54));
+          await new Promise((resolve55) => this.#waiters.push(resolve55));
         }
       }
       #atRest() {
@@ -64480,7 +64480,7 @@ var init_wakes = __esm({
         this.#disarm = this.#clock.arm(ms2, () => this.#piece.exit(() => this.#run()));
       }
       #poke() {
-        for (const resolve54 of this.#waiters.splice(0)) resolve54();
+        for (const resolve55 of this.#waiters.splice(0)) resolve55();
       }
     };
   }
@@ -64564,8 +64564,8 @@ var init_warm_up = __esm({
       /** Under the lock, after `queueFullSuite` returned `record` for a warm-up request. */
       start(context2, ledger, record2) {
         startIgnoredReads(context2.store, context2.worktreeId, record2.id, record2.revision);
-        const open7 = ledger.checkpoints.active?.record.id === record2.id;
-        this.#current = open7 ? record2.id : null;
+        const open8 = ledger.checkpoints.active?.record.id === record2.id;
+        this.#current = open8 ? record2.id : null;
       }
       /** Whether `tier` runs for the warm-up, so its runner reports what each file read. */
       observes(tier) {
@@ -66128,8 +66128,8 @@ var init_scheduler2 = __esm({
         if (this.#events.length > 0) return Promise.resolve();
         return this.#wakes.waitFor(
           { for: "event" },
-          new Promise((resolve54) => {
-            this.#wake = resolve54;
+          new Promise((resolve55) => {
+            this.#wake = resolve55;
           })
         );
       }
@@ -67236,7 +67236,7 @@ var init_handler = __esm({
             this._addToNodeFs(path, initialAdd, wh, depth + 1);
           }
         }).on(EV.ERROR, this._boundHandleError);
-        return new Promise((resolve54, reject) => {
+        return new Promise((resolve55, reject) => {
           if (!stream)
             return reject();
           stream.once(STR_END, () => {
@@ -67245,7 +67245,7 @@ var init_handler = __esm({
               return;
             }
             const wasThrottled = throttler ? throttler.clear() : false;
-            resolve54(void 0);
+            resolve55(void 0);
             previous.getChildren().filter((item) => {
               return item !== directory && !current2.has(item);
             }).forEach((item) => {
@@ -68127,7 +68127,7 @@ async function open5(spec, filter, listener) {
   watcher.on("error", (error) => {
     listener.onError(error instanceof Error ? error : new Error(String(error)));
   });
-  await new Promise((resolve54) => watcher.once("ready", () => resolve54()));
+  await new Promise((resolve55) => watcher.once("ready", () => resolve55()));
   return watcher;
 }
 function inNestedRepo(root, path) {
@@ -68482,12 +68482,12 @@ var init_batch_retry = __esm({
       /** Waits `ms`, or until `close`. */
       #pause(ms2) {
         if (ms2 <= 0 || this.#closed) return Promise.resolve();
-        return new Promise((resolve54) => {
+        return new Promise((resolve55) => {
           const timer = setTimeout(() => this.#wake?.(), ms2);
           this.#wake = () => {
             clearTimeout(timer);
             this.#wake = null;
-            resolve54();
+            resolve55();
           };
         });
       }
@@ -69272,13 +69272,13 @@ function channelOf(child) {
   child.stdin.on("error", () => {
   });
   child.stdout.setEncoding("utf8");
-  const drained = new Promise((resolve54) => child.stdout.on("close", () => resolve54()));
-  const ended2 = new Promise((resolve54) => {
-    child.on("error", (error) => resolve54(`could not start: ${error.message}`));
+  const drained = new Promise((resolve55) => child.stdout.on("close", () => resolve55()));
+  const ended2 = new Promise((resolve55) => {
+    child.on("error", (error) => resolve55(`could not start: ${error.message}`));
     child.on("exit", (code, signal3) => {
       const how2 = signal3 === null ? `code ${code}` : `signal ${signal3}`;
       const bound = new Promise((done) => setTimeout(done, DRAIN_MS2).unref());
-      void Promise.race([drained, bound]).then(() => resolve54(how2));
+      void Promise.race([drained, bound]).then(() => resolve55(how2));
     });
   });
   return {
@@ -69420,18 +69420,18 @@ import { readFileSync as readFileSync65, realpathSync as realpathSync22, writeFi
 import { join as join142 } from "node:path";
 function split2(files6, size, alone) {
   const batches2 = [];
-  let open7 = [];
+  let open8 = [];
   for (const file of files6) {
     if (alone?.(file) === true) batches2.push([file]);
     else {
-      open7.push(file);
-      if (open7.length === Math.max(1, size)) {
-        batches2.push(open7);
-        open7 = [];
+      open8.push(file);
+      if (open8.length === Math.max(1, size)) {
+        batches2.push(open8);
+        open8 = [];
       }
     }
   }
-  if (open7.length > 0) batches2.push(open7);
+  if (open8.length > 0) batches2.push(open8);
   return batches2;
 }
 function ending2(batches2, done, expired, tier) {
@@ -71177,9 +71177,9 @@ var init_connection2 = __esm({
         if (this.#lost !== null) return Promise.reject(this.#lost);
         const { ms: ms2, renewable, totalMs, idle: idle2 } = typeof deadline === "number" ? { ms: deadline, totalMs: void 0, idle: void 0 } : deadline;
         const what = renewable === void 0 ? m : `${m}, nor ${renewable.progress},`;
-        return new Promise((resolve54, reject) => {
+        return new Promise((resolve55, reject) => {
           const pending = {
-            resolve: resolve54,
+            resolve: resolve55,
             reject,
             timer: void 0,
             renewable: renewable !== void 0,
@@ -71523,8 +71523,8 @@ var init_proxy = __esm({
         }
         channel2.endInput();
         let timer;
-        const bound = new Promise((resolve54) => {
-          timer = setTimeout(resolve54, this.#deadlines.closeMs);
+        const bound = new Promise((resolve55) => {
+          timer = setTimeout(resolve55, this.#deadlines.closeMs);
         });
         await Promise.race([channel2.ended, bound]);
         clearTimeout(timer);
@@ -74981,7 +74981,7 @@ var init_pace = __esm({
        */
       wait() {
         const delay4 = Math.max(0, this.#notBefore - this.#now());
-        return new Promise((resolve54) => setTimeout(resolve54, delay4));
+        return new Promise((resolve55) => setTimeout(resolve55, delay4));
       }
       /** Calls `next` once the next unit may start; a call while one waits joins it. */
       after(next) {
@@ -75622,7 +75622,7 @@ function createCoverageWriter(options) {
     if (why2 !== void 0) options.log(`coverage: ${job.testFile.path}: ${why2}`);
     drops.count(cause, job.testFile.path, why2, closed);
   };
-  const open7 = () => {
+  const open8 = () => {
     if (store !== null) return store;
     const opened3 = openCodeStore(options.commonDir, options.policy(), options.codeStore);
     if (!isCodeStoreOpenFailure(opened3)) store = opened3;
@@ -75631,7 +75631,7 @@ function createCoverageWriter(options) {
   const write4 = async (batch) => {
     let cause = "store-open";
     try {
-      const opened3 = open7();
+      const opened3 = open8();
       if (isCodeStoreOpenFailure(opened3)) {
         const why2 = `the code store did not open: ${JSON.stringify(opened3)}`;
         for (const job of batch) drop2(job, cause, why2);
@@ -75800,11 +75800,11 @@ function createCoverageWriter(options) {
     dropped: () => drops.counts(),
     idle() {
       if (quiet()) return Promise.resolve();
-      settled2 ??= new Promise((resolve54) => {
+      settled2 ??= new Promise((resolve55) => {
         settle3 = () => {
           settle3 = null;
           settled2 = null;
-          resolve54();
+          resolve55();
         };
       });
       return settled2;
@@ -77207,7 +77207,7 @@ function createCodePass(options) {
     coverageWake = null;
     coverageDue = true;
   };
-  const open7 = (policy) => {
+  const open8 = (policy) => {
     if (store !== null) return store;
     let opened3 = openCodeStore(options.commonDir, policy, options.codeStore);
     if (isCodeStoreOpenFailure(opened3) && opened3.reason === "corrupt") {
@@ -77233,7 +77233,7 @@ function createCodePass(options) {
       shut();
       return;
     }
-    const opened3 = open7(policy);
+    const opened3 = open8(policy);
     if (opened3 === null) return;
     await opened3.sent();
     if (!budgeted) {
@@ -79066,7 +79066,7 @@ function createLintPass(options) {
   let again2 = false;
   let closed = false;
   let timer = null;
-  const open7 = (policy) => {
+  const open8 = (policy) => {
     if (store !== null) return store;
     let opened3 = openLintStore(options.commonDir, policy);
     if (isLintStoreOpenFailure(opened3) && opened3.reason === "corrupt") {
@@ -79096,7 +79096,7 @@ function createLintPass(options) {
   };
   const retire = (policy) => {
     if (retired) return;
-    const opened3 = open7(policy);
+    const opened3 = open8(policy);
     if (opened3 === null) return;
     const mine = opened3.states.list(options.worktreeId, { tool }).map((s) => s.check);
     opened3.transaction(() => {
@@ -79113,7 +79113,7 @@ function createLintPass(options) {
       return null;
     }
     retired = false;
-    const opened3 = open7(policy);
+    const opened3 = open8(policy);
     if (opened3 === null) return null;
     const interrupted = () => again2 || closed;
     const state = {
@@ -79298,17 +79298,17 @@ function spawnSsh(target, command) {
   });
 }
 function sshRun(target, command, options) {
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     const { signal: signal3 } = options;
     if (signal3?.aborted === true) {
-      resolve54({ code: null, stdout: "", stderr: "", failure: "aborted before it started" });
+      resolve55({ code: null, stdout: "", stderr: "", failure: "aborted before it started" });
       return;
     }
     let child;
     try {
       child = spawnSsh(target, command);
     } catch (error) {
-      resolve54({ code: null, stdout: "", stderr: "", failure: `could not start ssh: ${error}` });
+      resolve55({ code: null, stdout: "", stderr: "", failure: `could not start ssh: ${error}` });
       return;
     }
     let stdout = "";
@@ -79332,7 +79332,7 @@ function sshRun(target, command, options) {
     const ended2 = (code) => {
       clearTimeout(timer);
       signal3?.removeEventListener("abort", onAbort);
-      resolve54({
+      resolve55({
         code,
         stdout,
         stderr: stderr.trim(),
@@ -79377,7 +79377,7 @@ function multiplexed(target, socket, persistSeconds) {
 }
 function closeMaster(target, socket, deadlineMs = 1e4) {
   if (!existsSync60(socket)) return Promise.resolve();
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     let child;
     try {
       child = spawn13(
@@ -79386,13 +79386,13 @@ function closeMaster(target, socket, deadlineMs = 1e4) {
         { env: target.env ?? process.env, stdio: "ignore" }
       );
     } catch {
-      resolve54();
+      resolve55();
       return;
     }
     const timer = setTimeout(() => child.kill("SIGKILL"), deadlineMs);
     const done = () => {
       clearTimeout(timer);
-      resolve54();
+      resolve55();
     };
     child.on("error", done);
     child.on("close", done);
@@ -79705,8 +79705,9 @@ var init_tree2 = __esm({
 import { spawn as spawn14 } from "node:child_process";
 import { randomBytes as randomBytes4 } from "node:crypto";
 import { accessSync as accessSync5, constants as constants13, existsSync as existsSync61, readFileSync as readFileSync73, statSync as statSync42 } from "node:fs";
-import { mkdir as mkdir2, rename, rm as rm3 } from "node:fs/promises";
-import { delimiter as delimiter9, dirname as dirname64, join as join170 } from "node:path";
+import { mkdir as mkdir2, open as open7, rename, rm as rm3, unlink } from "node:fs/promises";
+import { delimiter as delimiter9, dirname as dirname64, join as join170, resolve as resolve40 } from "node:path";
+import { setTimeout as sleep20 } from "node:timers/promises";
 function hostTools() {
   const nodeDir = dirname64(process.execPath);
   const cli = join170(nodeDir, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js");
@@ -79724,8 +79725,12 @@ function managerSpec(name3, manifest, berry) {
   const dir2 = `${name3}-${pinned ?? (modern ? "berry-latest" : "latest")}`;
   return { name: name3, spec: `${pkg}@${pinned ?? "latest"}`, dir: dir2 };
 }
-function onPath4(name3, path) {
-  return (path ?? "").split(delimiter9).filter((dir2) => dir2 !== "").some((dir2) => executable2(join170(dir2, name3)));
+function onPath4(name3, path, cwd) {
+  if (path === void 0) return false;
+  return path.split(delimiter9).some((entry4) => {
+    const dir2 = entry4 === "" ? cwd ?? "." : cwd !== void 0 ? resolve40(cwd, entry4) : entry4;
+    return executable2(join170(dir2, name3));
+  });
 }
 function executable2(path) {
   try {
@@ -79736,22 +79741,52 @@ function executable2(path) {
   }
 }
 function withPathDir(env, dir2) {
-  const dirs = (env.PATH ?? "").split(delimiter9).filter((entry4) => entry4 !== "");
+  if (env.PATH === void 0) return { ...env, PATH: dir2 };
+  const dirs = env.PATH.split(delimiter9);
   return dirs.includes(dir2) ? env : { ...env, PATH: [...dirs, dir2].join(delimiter9) };
 }
 async function managerEnv(command, env, place2) {
   const withNode = withPathDir(env, place2.tools.nodeDir);
   const name3 = command.split(" ")[0];
-  if (name3 !== "pnpm" && name3 !== "yarn" || onPath4(name3, withNode.PATH)) return withNode;
+  if (name3 !== "pnpm" && name3 !== "yarn" || onPath4(name3, withNode.PATH, place2.root)) {
+    return withNode;
+  }
   const manifest = readJson3(join170(place2.root, "package.json"));
   const spec = managerSpec(name3, manifest, command.includes("--immutable"));
   const bin = await installedManager(spec, withNode, place2);
-  return { ...withNode, PATH: [bin, withNode.PATH].filter((dir2) => dir2).join(delimiter9) };
+  const nextPath = withNode.PATH === void 0 ? bin : `${bin}${delimiter9}${withNode.PATH}`;
+  return { ...withNode, PATH: nextPath };
+}
+async function withPublishLock(dir2, fn) {
+  const lock2 = `${dir2}.lock`;
+  const deadline = Date.now() + 1e4;
+  for (; ; ) {
+    try {
+      const handle2 = await open7(lock2, "wx");
+      await handle2.close();
+      break;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      if (Date.now() >= deadline) {
+        await unlink(lock2).catch(() => {
+        });
+        continue;
+      }
+      await sleep20(25);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await unlink(lock2).catch(() => {
+    });
+  }
 }
 async function installedManager(spec, env, place2) {
   const dir2 = join170(place2.managers, spec.dir);
   const binOf2 = (at2) => join170(at2, "node_modules", ".bin");
-  if (executable2(join170(binOf2(dir2), spec.name))) return binOf2(dir2);
+  const made = () => executable2(join170(binOf2(dir2), spec.name));
+  if (made()) return binOf2(dir2);
   await mkdir2(place2.managers, { recursive: true });
   const part2 = `${dir2}.${process.pid}-${randomBytes4(4).toString("hex")}.part`;
   try {
@@ -79767,15 +79802,11 @@ async function installedManager(spec, env, place2) {
     if (!executable2(join170(binOf2(part2), spec.name))) {
       throw new Error(`npm install ${spec.spec} left no ${spec.name} in its .bin on the remote`);
     }
-    const made = () => executable2(join170(binOf2(dir2), spec.name));
-    const placed2 = await rename(part2, dir2).then(
-      () => true,
-      () => made()
-    );
-    if (!placed2) {
+    await withPublishLock(dir2, async () => {
+      if (made()) return;
       await rm3(dir2, { recursive: true, force: true });
       await rename(part2, dir2);
-    }
+    });
     return binOf2(dir2);
   } finally {
     await rm3(part2, { recursive: true, force: true });
@@ -79790,7 +79821,7 @@ function readJson3(path) {
 }
 function runOutput(file, args2, run8) {
   const { cwd, env, output, what } = run8;
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     const child = spawn14(file, args2, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
     let tail = "";
     const take = (chunk) => {
@@ -79802,7 +79833,7 @@ function runOutput(file, args2, run8) {
     child.stderr.on("data", take);
     child.on("error", (error) => reject(new Error(`could not run ${what}: ${error.message}`)));
     child.on("close", (code, signal3) => {
-      if (code === 0) resolve54();
+      if (code === 0) resolve55();
       else {
         const how2 = signal3 === null ? `exit code ${code}` : `signal ${signal3}`;
         reject(new Error(`${what} failed on the remote (${how2}): ${tail.trim()}`));
@@ -79810,11 +79841,13 @@ function runOutput(file, args2, run8) {
     });
   });
 }
-var VERSION4, TAIL2;
+var NUM, PRE, VERSION4, TAIL2;
 var init_package_manager = __esm({
   "src/core/runner-host/remote/package-manager.ts"() {
     "use strict";
-    VERSION4 = /^\d{1,9}\.\d{1,9}\.\d{1,9}(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/;
+    NUM = "(?:0|[1-9]\\d{0,8})";
+    PRE = "(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)";
+    VERSION4 = new RegExp(`^${NUM}\\.${NUM}\\.${NUM}(?:-${PRE}(?:\\.${PRE})*)?$`);
     TAIL2 = 2e3;
   }
 });
@@ -80264,8 +80297,8 @@ var init_disk_check = __esm({
 });
 
 // src/core/runner-host/remote/admission.ts
-import { setTimeout as sleep20 } from "node:timers/promises";
-function createHostAdmission(open7, holdMs = ADMITTED_HOLD_MS) {
+import { setTimeout as sleep21 } from "node:timers/promises";
+function createHostAdmission(open8, holdMs = ADMITTED_HOLD_MS) {
   let pool = null;
   let held4 = null;
   let refusal4;
@@ -80287,7 +80320,7 @@ function createHostAdmission(open7, holdMs = ADMITTED_HOLD_MS) {
       refusal4 = void 0;
       let lease;
       try {
-        pool ??= open7((line) => {
+        pool ??= open8((line) => {
           refusal4 = line;
         });
         lease = pool.acquire(want, "fast", least, "backlog");
@@ -80341,7 +80374,7 @@ async function remoteAdmission(admit3, ask2, wait) {
     }
     if (answer4.refusal !== void 0) wait.log(`on its machine, ${answer4.refusal}`);
     const signal3 = wait.cancel;
-    await sleep20(wait.everyMs, void 0, signal3 === void 0 ? {} : { signal: signal3 }).catch(() => {
+    await sleep21(wait.everyMs, void 0, signal3 === void 0 ? {} : { signal: signal3 }).catch(() => {
     });
   }
   return null;
@@ -81145,8 +81178,8 @@ function withRemoteLane(options) {
       state = { kind: "asleep", going: true };
       let asleep = () => {
       };
-      sleepEnd = new Promise((resolve54) => {
-        asleep = resolve54;
+      sleepEnd = new Promise((resolve55) => {
+        asleep = resolve55;
       });
       try {
         await host?.adapter.close().catch(() => {
@@ -81708,7 +81741,7 @@ function connectThrough(proxy2, target, env, timeoutMs) {
     // proxy settings (NODE_USE_ENV_PROXY), which are not this call's `env`.
     createConnection: () => proxy2.protocol === "https:" ? tlsConnect({ host, port, ca: trustedCa(env) }) : netConnect({ host, port })
   };
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     const asked = httpRequest(options);
     const timer = setTimeout(() => {
       asked.destroy(
@@ -81730,13 +81763,13 @@ function connectThrough(proxy2, target, env, timeoutMs) {
         );
         return;
       }
-      resolve54(socket);
+      resolve55(socket);
     });
     asked.end();
   });
 }
 function ready(socket, event2, timeoutMs, what) {
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     const timer = setTimeout(() => {
       socket.destroy();
       reject(new LocalError(`${what}: no connection within ${timeoutMs} ms`));
@@ -81747,7 +81780,7 @@ function ready(socket, event2, timeoutMs, what) {
     });
     socket.once(event2, () => {
       clearTimeout(timer);
-      resolve54(socket);
+      resolve55(socket);
     });
   });
 }
@@ -81916,10 +81949,10 @@ async function runTunnel(options) {
 function bridge(opening, options, deadline) {
   const { input, output, host } = options;
   const closeMs = options.closeMs ?? CLOSE_MS2;
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     let socket;
     let key3 = "";
-    let open7 = false;
+    let open8 = false;
     let closing = false;
     let ended2 = false;
     let head2 = Buffer.alloc(0);
@@ -81943,7 +81976,7 @@ function bridge(opening, options, deadline) {
       input.destroy();
       socket?.destroy();
       if (why2 !== void 0) options.fail(`tunnel to ${host}: ${why2}`);
-      resolve54(code);
+      resolve55(code);
     };
     const upgradeTimer = setTimeout(
       () => finish(TUNNEL_FAILED, "no upgrade answer in time"),
@@ -81955,7 +81988,7 @@ function bridge(opening, options, deadline) {
       return more2;
     };
     const fromSsh = (chunk) => {
-      if (open7) {
+      if (open8) {
         send(chunk);
         return;
       }
@@ -81964,7 +81997,7 @@ function bridge(opening, options, deadline) {
       if (earlyBytes > EARLY_LIMIT) input.pause();
     };
     const sshEnded = () => {
-      if (!open7 || socket === void 0) return finish(0);
+      if (!open8 || socket === void 0) return finish(0);
       if (closing) return;
       closing = true;
       socket.end(encodeFrame(OPCODE.close, NORMAL_CLOSE));
@@ -82001,7 +82034,7 @@ function bridge(opening, options, deadline) {
       }
       if ("refused" in answer4) return finish(TUNNEL_FAILED, `refused: ${answer4.refused}`);
       clearTimeout(upgradeTimer);
-      open7 = true;
+      open8 = true;
       head2 = Buffer.alloc(0);
       let more2 = true;
       for (const chunk2 of early) more2 = send(chunk2);
@@ -82020,13 +82053,13 @@ function bridge(opening, options, deadline) {
       const to = socket;
       on(output, "drain", () => to.resume());
       on(to, "drain", () => input.resume());
-      on(to, "error", (error) => finish(open7 ? 0 : TUNNEL_FAILED, safeReason(error)));
+      on(to, "error", (error) => finish(open8 ? 0 : TUNNEL_FAILED, safeReason(error)));
       on(
         to,
         "close",
-        () => finish(open7 ? 0 : TUNNEL_FAILED, open7 ? void 0 : "closed during the upgrade")
+        () => finish(open8 ? 0 : TUNNEL_FAILED, open8 ? void 0 : "closed during the upgrade")
       );
-      on(to, "data", (chunk) => open7 ? receive(chunk) : upgrade(chunk));
+      on(to, "data", (chunk) => open8 ? receive(chunk) : upgrade(chunk));
     };
     on(output, "error", () => finish(0));
     on(input, "data", fromSsh);
@@ -82042,7 +82075,7 @@ function bridge(opening, options, deadline) {
       output.on("error", ignore);
       input.destroy();
       options.fail(`tunnel to ${host}:${options.port}: ${safeReason(error)}`);
-      resolve54(TUNNEL_FAILED);
+      resolve55(TUNNEL_FAILED);
     });
   });
 }
@@ -82270,7 +82303,7 @@ var init_api = __esm({
           if (answer4.status !== 409 || errorCode2(answer4.body) !== "try_again" || attempt2 >= retries) {
             return answer4;
           }
-          await new Promise((resolve54) => setTimeout(resolve54, this.#options.retryMs ?? 2e3));
+          await new Promise((resolve55) => setTimeout(resolve55, this.#options.retryMs ?? 2e3));
         }
       }
       #ok(method, path, answer4) {
@@ -82306,7 +82339,7 @@ var init_api = __esm({
         }
         const payload = body2 === void 0 ? void 0 : Buffer.from(JSON.stringify(body2));
         const prefix = base.pathname.replace(/\/+$/, "");
-        return new Promise((resolve54, reject) => {
+        return new Promise((resolve55, reject) => {
           const asked = httpRequest2({
             method,
             host,
@@ -82349,7 +82382,7 @@ var init_api = __esm({
               } catch {
                 parsed3 = null;
               }
-              resolve54({ status: response.statusCode ?? 0, body: parsed3 });
+              resolve55({ status: response.statusCode ?? 0, body: parsed3 });
             });
           });
           asked.end(payload);
@@ -82382,11 +82415,11 @@ function goneError(id) {
   return new Error(`Agent37 instance ${id} is gone (deleted, or not in this workspace)`);
 }
 function pause(ms2, signal3) {
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     if (signal3?.aborted === true) return reject(signal3.reason);
     const timer = setTimeout(() => {
       signal3?.removeEventListener("abort", stop2);
-      resolve54();
+      resolve55();
     }, ms2);
     const stop2 = () => {
       clearTimeout(timer);
@@ -82446,7 +82479,7 @@ function agent37Machine(parts3) {
   const { state, timing, git } = parts3;
   const id = state.instanceId;
   const api = apiOf(parts3.settings, parts3.env, timing);
-  const sleep37 = async () => {
+  const sleep38 = async () => {
     const found4 = await api.inspect(id);
     if (found4 === null) throw goneError(id);
     if (found4.status !== "sleeping" && found4.status !== "stopped") await api.sleep(id);
@@ -82469,13 +82502,13 @@ function agent37Machine(parts3) {
       await untilRunning(api, id, found4, timing, signal3);
       await git?.sync(parts3.ssh, signal3);
     },
-    sleep: sleep37,
+    sleep: sleep38,
     release: async (reason2) => {
       if (reason2 === "worktree-removed") {
         await api.remove(id);
         return;
       }
-      await sleep37().catch((error) => {
+      await sleep38().catch((error) => {
         if (error.message !== goneError(id).message) throw error;
       });
     }
@@ -82722,7 +82755,7 @@ import { spawn as spawn15 } from "node:child_process";
 function runHook(run8) {
   const [program, ...args2] = run8.argv;
   const what = `the ${run8.name} hook (${program ?? ""})`;
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     let child;
     try {
       child = spawn15(program ?? "", args2, {
@@ -82742,7 +82775,7 @@ function runHook(run8) {
       settled2 = true;
       clearTimeout(timer);
       run8.signal?.removeEventListener("abort", onAbort);
-      if (error === null) resolve54(stdout);
+      if (error === null) resolve55(stdout);
       else reject(error);
     };
     const killGroup2 = () => {
@@ -83030,7 +83063,7 @@ var init_providers = __esm({
 
 // src/core/runner-host/remote/settings.ts
 import { readFileSync as readFileSync77, realpathSync as realpathSync29 } from "node:fs";
-import { dirname as dirname68, isAbsolute as isAbsolute29, join as join177, resolve as resolve40 } from "node:path";
+import { dirname as dirname68, isAbsolute as isAbsolute29, join as join177, resolve as resolve41 } from "node:path";
 function idleSleepMinutesOf(lane, sleepOnIdle) {
   return lane.idleSleepMinutes ?? (sleepOnIdle ? 10 : 0);
 }
@@ -83196,7 +83229,7 @@ function normalize8(path) {
   try {
     return realpathSync29(path);
   } catch {
-    return resolve40(path);
+    return resolve41(path);
   }
 }
 var REMOTE_FILE, REMOTE_RUNNERS, REMOTE_TIERS, LANE_DEFAULTS, ENTRY_KEYS, quoted2, MANAGED_PROVIDERS, repositories, SHAPE3;
@@ -83391,16 +83424,16 @@ function shareMachine(options) {
     });
     return run8;
   };
-  const leaseFree = (signal3) => new Promise((resolve54) => {
-    if (leased === 0 || released || signal3?.aborted === true) return resolve54();
-    quiet.push(resolve54);
-    signal3?.addEventListener("abort", () => resolve54(), { once: true });
+  const leaseFree = (signal3) => new Promise((resolve55) => {
+    if (leased === 0 || released || signal3?.aborted === true) return resolve55();
+    quiet.push(resolve55);
+    signal3?.addEventListener("abort", () => resolve55(), { once: true });
   });
   const asWriter = async (write4, signal3) => {
-    let open7 = () => {
+    let open8 = () => {
     };
-    gitWriting = new Promise((resolve54) => {
-      open7 = resolve54;
+    gitWriting = new Promise((resolve55) => {
+      open8 = resolve55;
     });
     try {
       await leaseFree(signal3);
@@ -83408,7 +83441,7 @@ function shareMachine(options) {
       return await write4();
     } finally {
       gitWriting = null;
-      open7();
+      open8();
     }
   };
   const writeGit = async (m, signal3) => {
@@ -83490,7 +83523,7 @@ function shareMachine(options) {
     disarm();
     const waiting2 = quiet;
     quiet = [];
-    for (const resolve54 of waiting2) resolve54();
+    for (const resolve55 of waiting2) resolve55();
     await queue;
     await reaching?.catch(() => {
     });
@@ -83548,7 +83581,7 @@ function shareMachine(options) {
         if (leased > 0) return;
         const waiting2 = quiet;
         quiet = [];
-        for (const resolve54 of waiting2) resolve54();
+        for (const resolve55 of waiting2) resolve55();
       };
     },
     checkDisk,
@@ -84070,14 +84103,14 @@ var init_local = __esm({
 });
 
 // src/core/shared/look-again.ts
-import { setTimeout as sleep21 } from "node:timers/promises";
+import { setTimeout as sleep22 } from "node:timers/promises";
 function gaveUpNote(ref3, remote, forSeconds) {
   const window2 = forSeconds % 60 === 0 ? `${forSeconds / 60} min` : `${forSeconds} s`;
   return `CI results: ${remote} had no ${ref3} after ${window2}; tests run here as before`;
 }
 async function closuresStored(store, worktreeId, revision, options) {
   while (!options.signal.aborted && !isRefined(store, worktreeId, revision)) {
-    await sleep21(options.pollMs, void 0, { signal: options.signal }).catch(() => {
+    await sleep22(options.pollMs, void 0, { signal: options.signal }).catch(() => {
     });
   }
 }
@@ -86695,8 +86728,8 @@ var V8_POSITION = /^(.+):(\d+):(\d+)$/;
 var PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
 var NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
 function v8Position(frame) {
-  const open7 = frame.indexOf(" (");
-  const where3 = open7 !== -1 && frame.endsWith(")") ? frame.slice(open7 + 2, -1) : frame;
+  const open8 = frame.indexOf(" (");
+  const where3 = open8 !== -1 && frame.endsWith(")") ? frame.slice(open8 + 2, -1) : frame;
   const match2 = V8_POSITION.exec(where3);
   if (match2 === null) return null;
   return { path: match2[1], line: Number(match2[2]), column: Number(match2[3]) };
@@ -90571,9 +90604,9 @@ function stderrLog(root, fd) {
 }
 function sameFile2(path, fd) {
   try {
-    const open7 = fstatSync(fd);
+    const open8 = fstatSync(fd);
     const file = statSync14(path);
-    return open7.isFile() && open7.ino === file.ino && open7.dev === file.dev;
+    return open8.isFile() && open8.ino === file.ino && open8.dev === file.dev;
   } catch {
     return false;
   }
@@ -91619,7 +91652,7 @@ import { constants as constants5 } from "node:os";
 var FORWARDED = ["SIGINT", "SIGTERM", "SIGHUP"];
 function runCommand2(command, cwd, env) {
   const [program, ...args2] = command;
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     let started2 = false;
     let settled2 = false;
     const child = spawn3(program, args2, { cwd, env, stdio: "inherit" });
@@ -91629,7 +91662,7 @@ function runCommand2(command, cwd, env) {
       if (settled2) return;
       settled2 = true;
       for (const signal3 of FORWARDED) process.off(signal3, forward);
-      resolve54(result);
+      resolve55(result);
     };
     child.once("spawn", () => {
       started2 = true;
@@ -91894,7 +91927,7 @@ function hashInChild(relaunch, work, clock, stop2) {
     child.stderr?.destroy();
     child.unref();
   };
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     let settled2 = false;
     const settle3 = (end) => {
       if (settled2 || stop2.aborted) return;
@@ -91912,7 +91945,7 @@ function hashInChild(relaunch, work, clock, stop2) {
     child.on("message", (message3) => {
       if ("begin" in message3) clock.begin(message3.begin);
       else if ("hashed" in message3) clock.hashed(message3.hashed);
-      else if ("result" in message3) settle3(() => resolve54(message3.result));
+      else if ("result" in message3) settle3(() => resolve55(message3.result));
       else settle3(() => reject(new Error(message3.error)));
     });
     child.once("error", (error) => settle3(() => reject(error)));
@@ -91951,14 +91984,14 @@ function serveEnd() {
       pending += count5;
     }
   };
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     process.once("message", (work) => {
       const done = (message3) => {
         flush();
         process.off("disconnect", gone6);
         send(message3, () => {
           process.disconnect();
-          resolve54(0);
+          resolve55(0);
         });
       };
       hashEnd(work, hashFile, clock).then(
@@ -92041,7 +92074,7 @@ function limited(limit, work) {
       lastDone = performance2.now();
     }
   };
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     let timer;
     const check3 = () => {
       const left = allowed() - (performance2.now() - start2);
@@ -92052,14 +92085,14 @@ function limited(limit, work) {
       clock.over = true;
       const seconds7 = (allowed() / 1e3).toFixed(1);
       const progress2 = begun === 0 ? "before it listed the paths" : `${done} of ${total} paths`;
-      resolve54(`hashing the checkout passed its limit of ${seconds7} s (${progress2})`);
+      resolve55(`hashing the checkout passed its limit of ${seconds7} s (${progress2})`);
       stop2.abort();
     };
     timer = setTimeout(check3, limit.floorMs);
     work(clock, stop2.signal).then(
       (value) => {
         clearTimeout(timer);
-        resolve54(value);
+        resolve55(value);
       },
       (error) => {
         clearTimeout(timer);
@@ -95660,12 +95693,12 @@ function groupsQuietText(snapshot3, command) {
   return (snapshot3.groupTiers ?? []).map((group) => groupQuietText(group, command)).join("");
 }
 function groupQuietText(group, command) {
-  const open7 = group.testFiles - group.current;
-  if (open7 <= 0) return "";
-  const them = open7 === 1 ? "it" : "them";
+  const open8 = group.testFiles - group.current;
+  if (open8 <= 0) return "";
+  const them = open8 === 1 ? "it" : "them";
   const runs2 = group.pending === 0 ? "" : runsClause(group, them);
-  const files6 = `${plural(open7, `${group.name} test file`)} ${open7 === 1 ? "is" : "are"} not current${runs2}`;
-  const run8 = groupRunText(group, command, open7);
+  const files6 = `${plural(open8, `${group.name} test file`)} ${open8 === 1 ? "is" : "are"} not current${runs2}`;
+  const run8 = groupRunText(group, command, open8);
   return group.stopWaitMs === void 0 ? `; ${files6}; this repository does not require ${them} before you finish; ${run8}` : `; ${files6}, which this wait does not hold for: ${run8}`;
 }
 function runsClause(group, them) {
@@ -97504,9 +97537,9 @@ function namedPoll(cwd, paths, options) {
       const ready2 = judged2.ready && selection.unlisted === void 0;
       const { covered } = judged2;
       if (ready2) {
-        const open7 = selection.files.filter((f) => !paused.has(testFileId(f)));
+        const open8 = selection.files.filter((f) => !paused.has(testFileId(f)));
         const liveness = daemonLiveness(record2, options.now());
-        for (const pid of pauseOnlyIds(store, id, root, open7, liveness, options.now())) {
+        for (const pid of pauseOnlyIds(store, id, root, open8, liveness, options.now())) {
           paused.add(pid);
         }
       }
@@ -98556,13 +98589,13 @@ function slowText(slow) {
 function slowTierText2(snapshot3, command) {
   const tier = snapshot3.slowTier;
   if (tier === void 0) return "";
-  const open7 = tier.pending + tier.notRun;
-  if (open7 === 0) return "";
-  const them = open7 === 1 ? "it" : "them";
+  const open8 = tier.pending + tier.notRun;
+  if (open8 === 0) return "";
+  const them = open8 === 1 ? "it" : "them";
   const runs2 = tier.pausesOnly === true || tier.pending === 0 ? "" : ` and Squeal runs ${tier.notRun === 0 ? them : "the pending ones"} after the fast tests`;
-  const files6 = `${plural(open7, "slow file")} ${open7 === 1 ? "is" : "are"} not current${runs2}`;
+  const files6 = `${plural(open8, "slow file")} ${open8 === 1 ? "is" : "are"} not current${runs2}`;
   if (tier.stopWaitMs === void 0) {
-    return `; ${files6}; this repository does not require ${them} before you finish; ${slowWaitText(command, open7)}`;
+    return `; ${files6}; this repository does not require ${them} before you finish; ${slowWaitText(command, open8)}`;
   }
   return `; ${files6}, which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
 }
@@ -100835,7 +100868,7 @@ function runCommand3(command, options) {
   }
   const started2 = performance.now();
   const [file = "", ...args2] = command;
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     const child = spawn7(file, args2, {
       cwd: options.cwd,
       env: options.env,
@@ -100907,8 +100940,8 @@ function runCommand3(command, options) {
         durationMs: durationMs2,
         ...cancelled2 === null ? {} : { cancelled: cancelled2 }
       };
-      if (cancelling === null) resolve54(ended2);
-      else void cancelling.then(() => resolve54(ended2));
+      if (cancelling === null) resolve55(ended2);
+      else void cancelling.then(() => resolve55(ended2));
     };
     child.once("error", (e) => {
       error = e.message;
@@ -101056,16 +101089,16 @@ var SlotPool = class {
       this.#free -= 1;
       return Promise.resolve(this.#release());
     }
-    return new Promise((resolve54) => {
+    return new Promise((resolve55) => {
       const waiter = {
         grant: (release3) => {
           signal3.removeEventListener("abort", onAbort);
-          resolve54(release3);
+          resolve55(release3);
         }
       };
       const onAbort = () => {
         this.#waiting.splice(this.#waiting.indexOf(waiter), 1);
-        resolve54(null);
+        resolve55(null);
       };
       signal3.addEventListener("abort", onAbort, { once: true });
       this.#waiting.push(waiter);
@@ -103070,25 +103103,25 @@ function frameSize(bytes2) {
   return /^\d+$/.test(head2) ? end + 1 + Number(head2) : null;
 }
 function ended(child) {
-  return new Promise((resolve54) => {
-    child.once("error", (error) => resolve54({ code: null, signal: null, error }));
-    child.once("exit", (code, signal3) => resolve54({ code, signal: signal3 }));
+  return new Promise((resolve55) => {
+    child.once("error", (error) => resolve55({ code: null, signal: null, error }));
+    child.once("exit", (code, signal3) => resolve55({ code, signal: signal3 }));
   });
 }
 async function readAll2(pipe, exited2) {
   const chunks2 = [];
   let read7 = 0;
   let size = null;
-  const end = new Promise((resolve54) => {
+  const end = new Promise((resolve55) => {
     pipe.on("data", (chunk) => {
       chunks2.push(chunk);
       read7 += chunk.length;
       size ??= frameSize(Buffer.concat(chunks2));
-      if (size !== null && read7 >= size) resolve54();
+      if (size !== null && read7 >= size) resolve55();
     });
-    pipe.once("end", resolve54);
-    pipe.once("close", resolve54);
-    pipe.once("error", () => resolve54());
+    pipe.once("end", resolve55);
+    pipe.once("close", resolve55);
+    pipe.once("error", () => resolve55());
   });
   const cut = new AbortController();
   const drained = exited2.then(() => delay(DRAIN_MS, void 0, { signal: cut.signal }));
@@ -104021,9 +104054,9 @@ async function writePass(runs2, at2) {
     state = new PassState(opened3);
     const head2 = await at2.options.head();
     lock2 = acquireDaemonLock(lockFileFor(commonDir, worktreeIdFor(root)));
-    const open7 = openStore(commonDir);
-    if (isStoreOpenFailure(open7)) throw new Error(`the store did not open: ${open7.reason}`);
-    store = open7;
+    const open8 = openStore(commonDir);
+    if (isStoreOpenFailure(open8)) throw new Error(`the store did not open: ${open8.reason}`);
+    store = open8;
     const chosen = chooseWriter(store, lock2 !== null, state, at2);
     if (chosen === null) {
       return at2.early ? { written: 0, left: unchecked(state.left()) } : { written: 0, left: [] };
@@ -104263,15 +104296,15 @@ var EarlyWrites = class {
   }
   /** Resolves `true` once a pause of `ms` ended, `false` when `stop` ended it first. */
   #paused(ms2) {
-    return new Promise((resolve54) => {
+    return new Promise((resolve55) => {
       const cancel2 = this.#pause(ms2, () => {
         this.#cancel = null;
-        resolve54(true);
+        resolve55(true);
       });
       this.#cancel = () => {
         this.#cancel = null;
         cancel2();
-        resolve54(false);
+        resolve55(false);
       };
     });
   }
@@ -106439,13 +106472,13 @@ function deadlineOf(timeoutMs, caller) {
 }
 function race(promise2, signal3) {
   if (signal3.aborted) return Promise.reject(signal3.reason);
-  return new Promise((resolve54, reject) => {
+  return new Promise((resolve55, reject) => {
     const onAbort = () => reject(signal3.reason);
     signal3.addEventListener("abort", onAbort, { once: true });
     promise2.then(
       (value) => {
         signal3.removeEventListener("abort", onAbort);
-        resolve54(value);
+        resolve55(value);
       },
       (error) => {
         signal3.removeEventListener("abort", onAbort);
@@ -106602,7 +106635,7 @@ async function acquireLock(data2, options = {}) {
     const attempt2 = tryLock2(data2, now);
     const remaining = until - performance.now();
     if ("lock" in attempt2 || remaining <= 0) return attempt2;
-    await new Promise((resolve54) => setTimeout(resolve54, Math.min(POLL_MS, remaining)));
+    await new Promise((resolve55) => setTimeout(resolve55, Math.min(POLL_MS, remaining)));
   }
 }
 function tryLock2(data2, now) {
@@ -107573,16 +107606,16 @@ async function openAppServer(root, env, timeoutMs) {
 }
 function terminalAsk() {
   if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) return null;
-  return (question) => new Promise((resolve54) => {
+  return (question) => new Promise((resolve55) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     let answered2 = false;
     rl.on("close", () => {
-      if (!answered2) resolve54("");
+      if (!answered2) resolve55("");
     });
     rl.question(question, (answer4) => {
       answered2 = true;
       rl.close();
-      resolve54(answer4);
+      resolve55(answer4);
     });
   });
 }
@@ -107627,7 +107660,7 @@ var AppServer = class {
     });
     this.failed.catch(() => {
     });
-    this.exited = new Promise((resolve54) => this.child.on("close", () => resolve54()));
+    this.exited = new Promise((resolve55) => this.child.on("close", () => resolve55()));
     this.child.on("error", (error) => {
       fail3(
         new AppServerError(
@@ -107692,7 +107725,7 @@ var AppServer = class {
     const id = this.nextId++;
     let timer;
     const answered2 = new Promise(
-      (resolve54) => this.pending.set(id, resolve54)
+      (resolve55) => this.pending.set(id, resolve55)
     );
     const silent2 = new Promise((_, reject) => {
       timer = setTimeout(
@@ -107835,7 +107868,7 @@ init_notes();
 init_events2();
 import { randomUUID as randomUUID19 } from "node:crypto";
 import { dirname as dirname69 } from "node:path";
-import { setTimeout as sleep22 } from "node:timers/promises";
+import { setTimeout as sleep23 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath22 } from "node:url";
 
 // src/core/presence/lock-events.ts
@@ -108452,10 +108485,10 @@ var PACKAGE_STORE_TIMEOUT_MS = 1e4;
 function packageStore(root, command, timeoutMs = PACKAGE_STORE_TIMEOUT_MS) {
   if (!command.startsWith("pnpm ") || timeoutMs <= 0) return Promise.resolve(null);
   const timeout = Math.ceil(timeoutMs);
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     execFile4("pnpm", ["store", "path"], { cwd: root, timeout }, (error, stdout) => {
       const path = stdout.trim();
-      resolve54(error === null && isAbsolute23(path) ? path : null);
+      resolve55(error === null && isAbsolute23(path) ? path : null);
     });
   });
 }
@@ -108647,7 +108680,7 @@ async function installCheckout(tree, options) {
   const [program = "npm", ...args2] = command.split(" ");
   const started2 = performance.now();
   const ms2 = () => Math.round(performance.now() - started2);
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     let log = "";
     const keep = (chunk) => {
       log = (log + chunk.toString("utf8")).slice(-LOG_CHARS);
@@ -108669,16 +108702,16 @@ async function installCheckout(tree, options) {
     child.stderr.on("data", keep);
     child.on("error", (error) => {
       clearTimeout(timer);
-      resolve54({ ok: false, command, ms: ms2(), reason: error.message, log });
+      resolve55({ ok: false, command, ms: ms2(), reason: error.message, log });
     });
     child.on("close", (code, signal3) => {
       clearTimeout(timer);
       if (code === 0 && !timedOut) {
-        resolve54({ ok: true, command, ms: ms2() });
+        resolve55({ ok: true, command, ms: ms2() });
         return;
       }
       const reason2 = timedOut ? `timed out after ${options.timeoutMs} ms` : code !== null ? `exit ${code}` : `signal ${signal3}`;
-      resolve54({ ok: false, command, ms: ms2(), reason: reason2, log });
+      resolve55({ ok: false, command, ms: ms2(), reason: reason2, log });
     });
   });
 }
@@ -109634,8 +109667,8 @@ var CommitStart = class {
   constructor(ports) {
     this.ports = ports;
     const { store, worktreeId } = ports;
-    this.#started = new Promise((resolve54) => {
-      this.#settle = resolve54;
+    this.#started = new Promise((resolve55) => {
+      this.#settle = resolve55;
     });
     this.asks = new AtAsks({
       setup: () => this.#setup,
@@ -110386,9 +110419,9 @@ async function createDaemonServer(socketPath, handle2) {
   return {
     socketPath,
     close() {
-      closing ??= new Promise((resolve54) => {
+      closing ??= new Promise((resolve55) => {
         if (stillBound(socketPath, bound)) rmSync30(socketPath, { force: true });
-        server.close(() => resolve54());
+        server.close(() => resolve55());
         for (const socket of connections2) socket.destroy();
       });
       return closing;
@@ -110401,11 +110434,11 @@ async function bindAt(server, socketPath) {
     Math.max(2, basename21(socketPath).length)
   );
   const staging = join121(dirname46(socketPath), name3);
-  await new Promise((resolve54, reject) => {
+  await new Promise((resolve55, reject) => {
     server.once("error", reject);
     server.listen(staging, () => {
       server.off("error", reject);
-      resolve54();
+      resolve55();
     });
   });
   try {
@@ -110414,7 +110447,7 @@ async function bindAt(server, socketPath) {
     renameSync11(staging, socketPath);
     return { dev, ino };
   } catch (error) {
-    await new Promise((resolve54) => server.close(() => resolve54()));
+    await new Promise((resolve55) => server.close(() => resolve55()));
     throw error;
   }
 }
@@ -110566,12 +110599,12 @@ async function inWorker(worker, identity4, events) {
   let listening2 = false;
   let closing = false;
   let closed = null;
-  const listen = new Promise((resolve54, reject) => {
+  const listen = new Promise((resolve55, reject) => {
     worker.on("message", (message3) => {
       switch (message3.type) {
         case "listening":
           listening2 = true;
-          resolve54();
+          resolve55();
           return;
         case "failed":
           reject(new Error(message3.error));
@@ -110727,8 +110760,8 @@ async function inWorker(worker, identity4, events) {
     async close() {
       if (closing) return;
       closing = true;
-      await new Promise((resolve54) => {
-        closed = resolve54;
+      await new Promise((resolve55) => {
+        closed = resolve55;
         post({ type: "close" });
       });
       await worker.terminate();
@@ -111299,13 +111332,13 @@ function runFullCheck(database, label3) {
     if (child.pid !== void 0) setPriority2(child.pid, TEST_NICE);
   } catch {
   }
-  const done = new Promise((resolve54) => {
+  const done = new Promise((resolve55) => {
     let out2 = "";
     child.stdout.setEncoding("utf8").on("data", (chunk) => {
       out2 += chunk;
     });
-    child.on("error", (error) => resolve54({ unrun: error.message }));
-    child.on("close", (code, signal3) => resolve54(outcomeOf4(out2, code, signal3)));
+    child.on("error", (error) => resolve55({ unrun: error.message }));
+    child.on("close", (code, signal3) => resolve55(outcomeOf4(out2, code, signal3)));
   });
   return { pid: child.pid, done, stop: () => void child.kill() };
 }
@@ -113075,8 +113108,8 @@ var Daemon = class {
   #registered = false;
   #resolveExit = () => {
   };
-  #exited = new Promise((resolve54) => {
-    this.#resolveExit = resolve54;
+  #exited = new Promise((resolve55) => {
+    this.#resolveExit = resolve55;
   });
   /** The pool's numbers: the options' when a caller set them, else the user's config (task 001-377). */
   #poolCapacity() {
@@ -114034,7 +114067,7 @@ var Daemon = class {
       () => true
     );
     this.#cancelling = (async () => {
-      const grace = sleep22(CANCEL_GRACE_MS, false, { ref: false });
+      const grace = sleep23(CANCEL_GRACE_MS, false, { ref: false });
       if (await Promise.race([closed, grace])) return;
       const stop2 = await this.#children.stopMarked().catch(() => null);
       if (stop2 !== null) this.#note(stop2.text, stop2.stopped);
@@ -114290,9 +114323,9 @@ var LintThread = class {
     if (this.failed !== null) return Promise.reject(new ThreadFailure(this.failed));
     if (this.pending !== null) return Promise.reject(new Error("a lint call is in hand"));
     const id = ++this.calls;
-    return new Promise((resolve54, reject) => {
+    return new Promise((resolve55, reject) => {
       const timer = this.guard(guardMs);
-      this.pending = { id, guardMs, startMs, timer, resolve: resolve54, reject };
+      this.pending = { id, guardMs, startMs, timer, resolve: resolve55, reject };
       this.worker.postMessage({ ...message3, id });
     });
   }
@@ -114746,7 +114779,7 @@ function utf16Column(line, byteColumn) {
 // src/core/lint/provider/oxlint/spawn.ts
 import { spawn as spawn16 } from "node:child_process";
 function runInGroup(command, args2, options) {
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     const child = spawn16(command, args2, {
       cwd: options.cwd,
       env: options.env,
@@ -114771,7 +114804,7 @@ function runInGroup(command, args2, options) {
       clearTimeout(timer);
       options.signal?.removeEventListener("abort", abort2);
       killGroup(pid);
-      resolve54({
+      resolve55({
         code,
         signal: signal3,
         stdout: Buffer.concat(stdout).toString("utf8"),
@@ -115597,7 +115630,7 @@ init_paths2();
 init_load();
 init_text2();
 import { realpathSync as realpathSync32 } from "node:fs";
-import { relative as relative32, resolve as resolve41 } from "node:path";
+import { relative as relative32, resolve as resolve42 } from "node:path";
 init_text();
 init_common();
 var FAILURES_LIMIT = WHY_RESULT_LIMIT;
@@ -115616,7 +115649,7 @@ function failurePaths(cwd, paths) {
 function worktreePath2(root, cwd, path) {
   for (const base of [cwd, realOrNull2(cwd)]) {
     if (base === null) continue;
-    const absolute = resolve41(base, path);
+    const absolute = resolve42(base, path);
     if (relative32(root, absolute) === "") return ".";
     const rel2 = toRelative(root, absolute);
     if (rel2 !== null) return rel2;
@@ -115822,7 +115855,7 @@ init_hold_rows();
 import { spawn as spawn17 } from "node:child_process";
 import { randomUUID as randomUUID20 } from "node:crypto";
 import { constants as constants14 } from "node:os";
-import { setTimeout as sleep23 } from "node:timers/promises";
+import { setTimeout as sleep24 } from "node:timers/promises";
 var HOLD_WAIT_MS = 3e3;
 var USAGE5 = "usage: squeal hold [--max <duration>] -- <command> [args...]\n";
 var FORWARDED3 = ["SIGINT", "SIGTERM", "SIGHUP"];
@@ -115951,7 +115984,7 @@ async function holdDaemon(root, ask2, waitMs) {
   }
   if (answer4.type !== "hold") return "";
   for (let state = answer4; !state.settled && performance.now() < deadline; ) {
-    await sleep23(50);
+    await sleep24(50);
     const next = await ask2(root, { type: "hold-status", requestId: answer4.requestId }).catch(
       () => null
     );
@@ -115962,7 +115995,7 @@ async function holdDaemon(root, ask2, waitMs) {
 }
 function run6(command, cwd, spawned) {
   const [program, ...args2] = command;
-  return new Promise((resolve54) => {
+  return new Promise((resolve55) => {
     let started2 = false;
     let settled2 = false;
     const child = spawn17(program, args2, { cwd, stdio: "inherit" });
@@ -115972,7 +116005,7 @@ function run6(command, cwd, spawned) {
       if (settled2) return;
       settled2 = true;
       for (const signal3 of FORWARDED3) process.off(signal3, forward);
-      resolve54(result);
+      resolve55(result);
     };
     child.once("spawn", () => {
       started2 = true;
@@ -115998,7 +116031,7 @@ async function withStore(root, fn, options) {
 // src/cli/import.ts
 import { createHash as createHash52 } from "node:crypto";
 import { readFileSync as readFileSync82 } from "node:fs";
-import { resolve as resolve42 } from "node:path";
+import { resolve as resolve43 } from "node:path";
 init_git_layout();
 init_import_environment();
 init_connection();
@@ -116010,7 +116043,7 @@ init_transfer_import();
 
 // src/cli/import-daemon.ts
 init_heartbeat();
-import { setTimeout as sleep24 } from "node:timers/promises";
+import { setTimeout as sleep25 } from "node:timers/promises";
 var STATUS_PAUSES_MS3 = [20, 50, 100, 250];
 async function importThroughDaemon(store, sent, now) {
   const record2 = store.worktrees.get(sent.worktreeId)?.daemon ?? null;
@@ -116021,7 +116054,7 @@ async function importThroughDaemon(store, sent, now) {
   if (!isImport(answer4)) return null;
   let state = answer4;
   for (let attempt2 = 0; state.outcome === null; attempt2++) {
-    await sleep24(STATUS_PAUSES_MS3[Math.min(attempt2, STATUS_PAUSES_MS3.length - 1)]);
+    await sleep25(STATUS_PAUSES_MS3[Math.min(attempt2, STATUS_PAUSES_MS3.length - 1)]);
     const next = await askDaemon(socket, {
       type: "import-status",
       requestId: answer4.requestId
@@ -116048,7 +116081,7 @@ async function importCommand(args2, io, internal = {}) {
 ${USAGE6}`);
     return 2;
   }
-  const file = resolve42(io.cwd ?? process.cwd(), parsed3.file);
+  const file = resolve43(io.cwd ?? process.cwd(), parsed3.file);
   let bytes2;
   try {
     bytes2 = readFileSync82(file);
@@ -118173,7 +118206,7 @@ function readSettings(path) {
 }
 
 // src/cli/lint.ts
-import { relative as relative34, resolve as resolve43 } from "node:path";
+import { relative as relative34, resolve as resolve44 } from "node:path";
 init_git_layout();
 init_source2();
 
@@ -118334,7 +118367,7 @@ var LINT_USAGE = "squeal lint [<path>...] [--changed] [--json]";
 var OPTIONS2 = ["--json", "--changed"];
 function answer3({ store, root, commonDir }, positional, changed2, io) {
   const cwd = io.cwd ?? process.cwd();
-  const paths = positional.length === 0 ? null : positional.map((p) => relative34(root, resolve43(cwd, p)));
+  const paths = positional.length === 0 ? null : positional.map((p) => relative34(root, resolve44(cwd, p)));
   const outside2 = paths?.find((p) => p.startsWith(".."));
   if (outside2 !== void 0) return { message: `"${outside2}" is outside the worktree ${root}` };
   const source2 = lintStoreSource(commonDir, root);
@@ -118410,7 +118443,7 @@ init_git_layout();
 init_reverse_index();
 
 // src/core/proof/conditions.ts
-import { isAbsolute as isAbsolute31, relative as relative35, resolve as resolve44, sep as sep37 } from "node:path";
+import { isAbsolute as isAbsolute31, relative as relative35, resolve as resolve45, sep as sep37 } from "node:path";
 var NO_CONDITIONS = { env: [], without: [], keep: [] };
 function hasConditions(conditions) {
   return conditions.env.length > 0 || conditions.without.length > 0;
@@ -118421,14 +118454,14 @@ function under4(from, to) {
   return rel2.split(sep37).join("/");
 }
 function placeWithout(given2, cwd, root, home) {
-  const path = resolve44(cwd, given2);
+  const path = resolve45(cwd, given2);
   const inRepo = under4(root, path);
   if (inRepo !== null) {
     if (inRepo === "" || inRepo === ".git" || inRepo.startsWith(".git/"))
       return { usage: `--without ${given2}: the repository and its .git cannot be hidden` };
     return { given: given2, where: "repository", path: inRepo };
   }
-  const inHome = home === void 0 || home === "" ? null : under4(resolve44(home), path);
+  const inHome = home === void 0 || home === "" ? null : under4(resolve45(home), path);
   if (inHome !== null) return { given: given2, where: "home", path: inHome };
   return {
     usage: `--without ${given2}: only a path in the repository or under HOME can be hidden`
@@ -118912,7 +118945,7 @@ function endOf5(files6, ref3) {
 
 // src/cli/proof-green.ts
 import { randomUUID as randomUUID22 } from "node:crypto";
-import { setTimeout as sleep32 } from "node:timers/promises";
+import { setTimeout as sleep33 } from "node:timers/promises";
 
 // src/core/commit/at-keys-checkout.ts
 init_git();
@@ -118932,9 +118965,9 @@ async function inCheckout(main2, input, files6, options) {
         input.commonDir,
         main2 ?? void 0,
         options,
-        async (open7) => {
-          const refs3 = files6 ?? [...open7.listed.values()];
-          const keyed = await open7.keyer.keyed(refs3);
+        async (open8) => {
+          const refs3 = files6 ?? [...open8.listed.values()];
+          const keyed = await open8.keyer.keyed(refs3);
           for (const ref3 of refs3) {
             const at2 = keyed.get(ref3);
             const id = testFileId(ref3);
@@ -118943,7 +118976,7 @@ async function inCheckout(main2, input, files6, options) {
               out2.set(id, { notDetermined: { reason: "unlisted", detail: detail2 } });
             } else out2.set(id, { ...found2(main2, ref3, at2.key), loads: at2.loads });
           }
-          const { adapters, policy } = open7;
+          const { adapters, policy } = open8;
           await options.whileOpen?.({ adapters, policy, tree: checkout.tree }, keyedOf(refs3, out2));
           return refs3;
         }
@@ -119254,9 +119287,9 @@ function staleRunWait(store, id, activity, queued, who, now) {
   const still = new Set(
     store.testFileKeys.list(id, named4).filter((row2) => row2.key !== null && row2.pending === "queued").map((row2) => testFileId(row2.testFile))
   );
-  const open7 = store.runs.inFlight(id, 0);
+  const open8 = store.runs.inFlight(id, 0);
   const stale3 = named4.filter(
-    (ref3) => still.has(testFileId(ref3)) && open7.some(
+    (ref3) => still.has(testFileId(ref3)) && open8.some(
       (run8) => run8.testFiles.some((f) => f.project === ref3.project && f.path === ref3.path)
     )
   );
@@ -119555,11 +119588,11 @@ async function changedSince4(root, commit) {
 function nextProbe(input) {
   let all2 = [];
   let selected2 = [];
-  const whileOpen = async (open7, keyed) => {
+  const whileOpen = async (open8, keyed) => {
     const missing2 = keyed.filter(noResult);
     if (missing2.length === 0) return;
-    all2 = (await refuse({ ...input, tree: open7.tree }, keyed, missing2)).run;
-    const chosen = await diffSelected(input, open7);
+    all2 = (await refuse({ ...input, tree: open8.tree }, keyed, missing2)).run;
+    const chosen = await diffSelected(input, open8);
     const named4 = new Set(input.named ?? []);
     selected2 = all2.filter((f) => chosen.has(testFileId(f.ref)) || named4.has(f.ref.path));
   };
@@ -120301,7 +120334,7 @@ init_reverse_index();
 
 // src/core/proof/own-home.ts
 import { constants as constants15, copyFileSync as copyFileSync5, lstatSync as lstatSync11, mkdirSync as mkdirSync33, readdirSync as readdirSync48 } from "node:fs";
-import { isAbsolute as isAbsolute32, join as join196, relative as relative36, resolve as resolve45, sep as sep38 } from "node:path";
+import { isAbsolute as isAbsolute32, join as join196, relative as relative36, resolve as resolve46, sep as sep38 } from "node:path";
 var OutOfBudget = class extends Error {
   constructor() {
     super("the budget ended while the kept paths were copied into the own HOME");
@@ -120314,7 +120347,7 @@ function within2(path, folder) {
 function placeKeep(given2, cwd, home, hidden, deadline) {
   const problem = (why2) => ({ usage: `--home-keep ${given2}: ${why2}` });
   if (home === void 0 || home === "") return problem("HOME is not set");
-  const rel2 = relative36(resolve45(home), resolve45(cwd, given2));
+  const rel2 = relative36(resolve46(home), resolve46(cwd, given2));
   if (rel2 === ".." || rel2.startsWith(`..${sep38}`) || isAbsolute32(rel2))
     return problem("only a path under HOME can be kept");
   const path = rel2.split(sep38).join("/");
@@ -120969,7 +121002,7 @@ function sharedFailures(runs2) {
 }
 
 // src/cli/status-at-commit-ask.ts
-import { setTimeout as sleep25 } from "node:timers/promises";
+import { setTimeout as sleep26 } from "node:timers/promises";
 init_policy2();
 init_reverse_index();
 init_slow();
@@ -121128,7 +121161,7 @@ async function readUntilQueued(daemons, tree, owners, askBy, deadline) {
         problem: null,
         ...answer4.incomplete === void 0 ? {} : { incomplete: answer4.incomplete }
       };
-    await sleep25(Math.min(READ_EVERY_MS, Math.max(0, deadline - Date.now())));
+    await sleep26(Math.min(READ_EVERY_MS, Math.max(0, deadline - Date.now())));
   }
 }
 async function waitFor(daemons, tree, read7, bound, listed12 = []) {
@@ -121608,8 +121641,8 @@ async function queueBoth(input, side) {
   const owner2 = randomUUID21();
   let selected2 = () => {
   };
-  const later = new Promise((resolve54) => {
-    selected2 = resolve54;
+  const later = new Promise((resolve55) => {
+    selected2 = resolve55;
   });
   const atFiles = /* @__PURE__ */ new Map();
   const queue = {
@@ -122861,7 +122894,7 @@ async function joinRequestAt(socketPath, request, deadline) {
 }
 
 // src/cli/status-at-start.ts
-import { setTimeout as sleep31 } from "node:timers/promises";
+import { setTimeout as sleep32 } from "node:timers/promises";
 init_version();
 init_harness_process();
 
@@ -122990,7 +123023,7 @@ init_stored();
 init_open();
 
 // src/cli/start-ready.ts
-import { setTimeout as sleep26 } from "node:timers/promises";
+import { setTimeout as sleep27 } from "node:timers/promises";
 var SPAWN_WAIT_MS = 3e4;
 async function spawnedFailed(root, { pid, ended: ended2 }, io, waitMs = SPAWN_WAIT_MS) {
   const lives = () => !ended2();
@@ -123016,7 +123049,7 @@ async function served(root, deadline, accepts, lives = () => true) {
     if (answered2 && registered2(root, probe2.ping)) return "served";
     if (ended2 && !answered2) return "ended";
     if (Date.now() > deadline) return answered2 ? "served" : "starting";
-    await sleep26(50);
+    await sleep27(50);
   }
 }
 function registered2(root, ping2) {
@@ -123025,24 +123058,24 @@ function registered2(root, ping2) {
 
 // src/cli/stop.ts
 import { realpathSync as realpathSync36 } from "node:fs";
-import { resolve as resolve46 } from "node:path";
-import { setTimeout as sleep30 } from "node:timers/promises";
+import { resolve as resolve47 } from "node:path";
+import { setTimeout as sleep31 } from "node:timers/promises";
 init_git_layout();
 init_paths();
 
 // src/cli/stop-at.ts
 import { existsSync as existsSync81 } from "node:fs";
-import { setTimeout as sleep28 } from "node:timers/promises";
+import { setTimeout as sleep29 } from "node:timers/promises";
 init_git_layout();
 init_paths();
 
 // src/cli/stop-waits.ts
-import { setTimeout as sleep27 } from "node:timers/promises";
+import { setTimeout as sleep28 } from "node:timers/promises";
 async function socketClosed(socketPath, ms2) {
   const deadline = Date.now() + ms2;
   while (await askDaemon(socketPath, { type: "ping" }).catch(() => "busy") !== null) {
     if (Date.now() > deadline) return false;
-    await sleep27(50);
+    await sleep28(50);
   }
   return true;
 }
@@ -123051,7 +123084,7 @@ async function leftoversGone(marks2, ms2) {
   for (; ; ) {
     const left = await leftovers(marks2);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep27(100);
+    await sleep28(100);
   }
 }
 function refusedLine2(error) {
@@ -123149,7 +123182,7 @@ async function treeOrLockGone(tree, path, ms2) {
   const deadline = Date.now() + ms2;
   while (existsSync81(tree) && existsSync81(path) && !lockFree2(path)) {
     if (Date.now() > deadline) return;
-    await sleep28(50);
+    await sleep29(50);
   }
 }
 function lockFree2(path) {
@@ -123165,7 +123198,7 @@ async function gone4(daemon, ms2) {
   const deadline = Date.now() + ms2;
   while (leaseProcessAlive(daemon) === true) {
     if (Date.now() > deadline) return false;
-    await sleep28(50);
+    await sleep29(50);
   }
   return true;
 }
@@ -123173,7 +123206,7 @@ async function gone4(daemon, ms2) {
 // src/cli/stop-removed.ts
 import { realpathSync as realpathSync34 } from "node:fs";
 import { basename as basename39, dirname as dirname72, join as join203 } from "node:path";
-import { setTimeout as sleep29 } from "node:timers/promises";
+import { setTimeout as sleep30 } from "node:timers/promises";
 init_paths4();
 init_terminate();
 init_git_layout();
@@ -123338,7 +123371,7 @@ async function processEnded(pid, start2, ms2) {
     const gone6 = start2 === null ? processGone(pid) : statOf(pid)?.start !== start2;
     if (gone6) return true;
     if (Date.now() > deadline) return false;
-    await sleep29(50);
+    await sleep30(50);
   }
 }
 
@@ -123484,7 +123517,7 @@ function stopArgs(args2, io) {
     return 2;
   }
   const untilStart = rest2.length < args2.length;
-  const named4 = rest2[0] === void 0 ? null : resolve46(io.cwd ?? process.cwd(), rest2[0]);
+  const named4 = rest2[0] === void 0 ? null : resolve47(io.cwd ?? process.cwd(), rest2[0]);
   if (named4 !== null && lstatOrNull(named4) === null) {
     if (!untilStart) return { removed: named4 };
     io.stderr(
@@ -123549,7 +123582,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone5(root, daemon)) return { state: "free" };
     const probe2 = marked3(path, daemon) ?? probeLock(path);
     if (probe2.state === "free" || Date.now() > deadline) return probe2;
-    await sleep30(50);
+    await sleep31(50);
   }
 }
 function marked3(path, daemon) {
@@ -123800,7 +123833,7 @@ async function serveWait(tree, started2, bound) {
     if (!await started2.lives()) return `the commit daemon exited before it served ${tree}`;
     if (Date.now() >= until)
       return Date.now() >= bound ? `the call's wait ended before the commit daemon in ${tree} answered (starting)` : `the commit daemon in ${tree} did not answer in ${SERVE_WAIT_MS / 1e3} s`;
-    await sleep31(Math.min(SERVE_POLL_MS, Math.max(0, until - Date.now())));
+    await sleep32(Math.min(SERVE_POLL_MS, Math.max(0, until - Date.now())));
   }
 }
 async function worktreeStops(root) {
@@ -124180,7 +124213,7 @@ async function withGreenDaemon(input, body2) {
   const run8 = { daemons: input.daemons, root: input.root, tree, commonDir, by, at: at2 };
   const owner2 = randomUUID22();
   let asked = null;
-  const open7 = {
+  const open8 = {
     keyed,
     admit: async (refs3) => {
       const toAsk = refs3.map((ref3) => pending.get(testFileId(ref3))).filter((f) => f !== void 0);
@@ -124194,7 +124227,7 @@ async function withGreenDaemon(input, body2) {
       ran += [...sides.values()].filter((side) => side.from === "run").length;
     }
   };
-  const value = await body2(open7);
+  const value = await body2(open8);
   const refs2 = [...keyed.map((f) => f.ref), ...unlisted5(input.files, keyed)];
   for (const ref3 of refs2) {
     const file = keyed.find((f) => testFileId(f.ref) === testFileId(ref3));
@@ -124223,7 +124256,7 @@ async function readyTree(input, by) {
       return { side: unknown3(`the commit daemon's setup at ${at2} failed: ${setup.text}`) };
     if (setup.phase === "changed") return { side: unknown3(changedText(setup)) };
     if (Date.now() >= by) return { side: unknown3(NOT_RUN_BUDGET) };
-    await keptAlive(sleep32(Math.min(SETUP_EVERY_MS, Math.max(0, by - Date.now()))));
+    await keptAlive(sleep33(Math.min(SETUP_EVERY_MS, Math.max(0, by - Date.now()))));
   }
 }
 async function greenNeeds(input, tree, by) {
@@ -124273,7 +124306,7 @@ init_git();
 
 // src/cli/status-at.ts
 import { existsSync as existsSync84, realpathSync as realpathSync37 } from "node:fs";
-import { isAbsolute as isAbsolute33, relative as relative37, resolve as resolve47, sep as sep39 } from "node:path";
+import { isAbsolute as isAbsolute33, relative as relative37, resolve as resolve48, sep as sep39 } from "node:path";
 init_version();
 init_git_layout();
 
@@ -124515,7 +124548,7 @@ async function keysAtCommit(options) {
       ...beforeRemove === void 0 ? {} : {
         beforeRemove: ((checkout, keyed, changed2) => beforeRemove(checkout, own(keyed), changed2))
       },
-      ...whileOpen === void 0 ? {} : { whileOpen: ((open7, keyed) => whileOpen(open7, own(keyed))) }
+      ...whileOpen === void 0 ? {} : { whileOpen: ((open8, keyed) => whileOpen(open8, own(keyed))) }
     };
     const at2 = await inCheckout(main2, { root, commonDir, commit }, asked, { ...options, ...hooks });
     for (const [id, key3] of at2.files) if (!files6.has(id)) files6.set(id, key3);
@@ -124542,7 +124575,7 @@ async function commitSide(options) {
   };
   const { whileOpen, beforeRemove } = options;
   const hooks = {
-    ...whileOpen === void 0 ? {} : { whileOpen: ((open7, files6) => whileOpen(open7, files6.filter(chosen))) },
+    ...whileOpen === void 0 ? {} : { whileOpen: ((open8, files6) => whileOpen(open8, files6.filter(chosen))) },
     ...beforeRemove === void 0 ? {} : {
       beforeRemove: ((checkout, files6, change4) => beforeRemove(checkout, files6.filter(chosen), change4))
     }
@@ -124703,7 +124736,7 @@ async function locate2(args2, io) {
   return { root, commonDir, commit, paths };
 }
 function worktreeOf(io) {
-  const given2 = resolve47(io.cwd ?? process.cwd());
+  const given2 = resolve48(io.cwd ?? process.cwd());
   const cwd = existsSync84(given2) ? realpathSync37(given2) : given2;
   const root = findWorktreeRoot(cwd);
   const commonDir = root === null ? null : resolveCommonDir(root);
@@ -124761,7 +124794,7 @@ async function statusAtCommand(args2, io, options = {}) {
   return side.at.failure === null && unmatched2.length === 0 ? exitCode(report4.files) : 3;
 }
 function inRoot(root, cwd, path) {
-  const rel2 = relative37(root, resolve47(cwd, path));
+  const rel2 = relative37(root, resolve48(cwd, path));
   if (rel2 === ".." || rel2.startsWith(`..${sep39}`) || isAbsolute33(rel2)) return null;
   return rel2.split(sep39).join("/");
 }
@@ -125307,13 +125340,13 @@ async function withSide(input, body2) {
       if (toRun2.length === 0) return;
       ran += await runFiles(input, checkout, toRun2, change4, files6);
     };
-    const open7 = {
+    const open8 = {
       keyed,
       admit: async () => {
       },
       run: run8
     };
-    value = await body2(open7);
+    value = await body2(open8);
   };
   const left = Math.max(1, input.deadline - performance.now());
   const listed12 = input.listed === true;
@@ -125342,7 +125375,7 @@ async function withSide(input, body2) {
   return { files: files6, refs: refs2, ran, changed: changed2, checkoutMs, value };
 }
 async function runSide(input) {
-  return withSide(input, (open7) => open7.run(open7.keyed.map((f) => f.ref)));
+  return withSide(input, (open8) => open8.run(open8.keyed.map((f) => f.ref)));
 }
 function unlistedOf(named4, keyed) {
   return named4.filter((ref3) => !keyed.some((k) => k.path === ref3.path));
@@ -125432,11 +125465,11 @@ async function prove(common, args2, base, head2, named4, given2) {
       named: named4,
       listed: true
     },
-    async (open7) => {
-      const refs2 = open7.keyed.filter((f) => "key" in f.at).map((f) => f.ref);
+    async (open8) => {
+      const refs2 = open8.keyed.filter((f) => "key" in f.at).map((f) => f.ref);
       if (refs2.length === 0) return { kind: args2.case, red: null, control: null, ...NO_IMPORTS3 };
       const loads2 = new Map(
-        open7.keyed.map((f) => [testFileId(f.ref), "key" in f.at ? f.at.loads ?? [] : []])
+        open8.keyed.map((f) => [testFileId(f.ref), "key" in f.at ? f.at.loads ?? [] : []])
       );
       const loadsOf4 = (ref3) => loads2.get(testFileId(ref3)) ?? [];
       const changed2 = await changedPaths(common.root, base, head2);
@@ -125454,11 +125487,11 @@ async function prove(common, args2, base, head2, named4, given2) {
         return { kind: args2.case, red: null, control: null, imports: imports2, unused, sourceUnused };
       const kind2 = args2.case ?? caseOf2(base, proving, loadsOf4, changed2, testSide, source2);
       if (typeof kind2 === "object") return kind2;
-      await open7.admit(proving);
+      await open8.admit(proving);
       const sides2 = sidesOf2(kind2, base, head2);
       const red = proving.length === 0 ? null : await sideOf2(common, sides2.red, proving, testSide, source2);
       const decided = red === null ? [] : proving.filter((ref3) => redCounts(endOf5(red.files, ref3).end, args2.redErrors));
-      await open7.run(decided);
+      await open8.run(decided);
       const control = hasConditions(common.conditions) && decided.length > 0 ? await sideOf2(
         { ...common, conditions: NO_CONDITIONS },
         sides2.red,
@@ -125518,8 +125551,8 @@ init_paths4();
 init_user_config();
 init_git_layout();
 import { homedir as homedir7 } from "node:os";
-import { isAbsolute as isAbsolute35, resolve as resolve48 } from "node:path";
-import { setTimeout as sleep33 } from "node:timers/promises";
+import { isAbsolute as isAbsolute35, resolve as resolve49 } from "node:path";
+import { setTimeout as sleep34 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
 init_source();
@@ -127868,7 +127901,7 @@ ${USAGE7}`);
   const cwd = io.cwd ?? process.cwd();
   const commonDir = commonDirOf3(cwd);
   if (parsed3.repo && commonDir === null) {
-    io.stderr(`squeal ps --repo: ${resolve48(cwd)} is not inside a git repository
+    io.stderr(`squeal ps --repo: ${resolve49(cwd)} is not inside a git repository
 
 ${USAGE7}`);
     return 2;
@@ -127884,7 +127917,7 @@ ${USAGE7}`);
       repo: parsed3.repo,
       sampleMs: SAMPLE_MS,
       now: io.now ?? Date.now,
-      wait: options.wait ?? ((ms2) => sleep33(ms2))
+      wait: options.wait ?? ((ms2) => sleep34(ms2))
     });
   } catch (error) {
     io.stderr(
@@ -127918,7 +127951,7 @@ function locksCommand(parsed3, io, at2) {
     );
     return 3;
   }
-  const cwd = resolve48(io.cwd ?? process.cwd());
+  const cwd = resolve49(io.cwd ?? process.cwd());
   try {
     const locks = readLocks(
       at2.source,
@@ -127938,7 +127971,7 @@ function locksCommand(parsed3, io, at2) {
 }
 function commonDirOf3(cwd) {
   try {
-    const root = findWorktreeRoot(resolve48(cwd));
+    const root = findWorktreeRoot(resolve49(cwd));
     return root === null ? null : resolveCommonDir(root);
   } catch {
     return null;
@@ -127959,7 +127992,7 @@ function placesOf(env, commonDir, options) {
 }
 
 // src/cli/reach.ts
-import { relative as relative40, resolve as resolve49 } from "node:path";
+import { relative as relative40, resolve as resolve50 } from "node:path";
 
 // src/core/reach/modules.ts
 init_lexer();
@@ -129659,7 +129692,7 @@ Usage: ${IMPACT_USAGE}
   const limit = parsed3.limit ?? (parsed3.json ? null : REACH_LIMIT);
   const read7 = withStatusStore(cwd, { busyRetryMs: CLI_READ_RETRY_MS }, (context2) => {
     const { root } = context2;
-    const paths = parsed3.paths.map((p) => relative40(root, resolve49(cwd, p)));
+    const paths = parsed3.paths.map((p) => relative40(root, resolve50(cwd, p)));
     const outside2 = paths.find((p) => p.startsWith(".."));
     if (outside2 !== void 0) return { message: `"${outside2}" is outside the worktree ${root}` };
     const run8 = (code) => {
@@ -129690,7 +129723,7 @@ init_machines_store();
 init_providers();
 init_settings();
 import { existsSync as existsSync91, realpathSync as realpathSync38 } from "node:fs";
-import { resolve as resolve50, sep as sep41 } from "node:path";
+import { resolve as resolve51, sep as sep41 } from "node:path";
 var USAGE8 = "usage: squeal remote list [--json] | sleep [<worktree>] | prune [--dry-run]\n";
 var FAILED2 = 1;
 var SLEEP_WAIT_MS = 18e4;
@@ -129701,7 +129734,7 @@ async function remoteCommand(args2, io, deps = {}) {
     return list2(io, env, rest2.includes("--json"));
   }
   if (sub === "sleep" && rest2.length <= 1 && !rest2[0]?.startsWith("-"))
-    return sleep34(io, env, rest2[0], deps);
+    return sleep35(io, env, rest2[0], deps);
   if (sub === "prune" && rest2.every((arg) => arg === "--dry-run")) {
     return prune6(io, env, rest2.includes("--dry-run"));
   }
@@ -129753,10 +129786,10 @@ function recordsOf(machines, path) {
   const longest2 = Math.max(...holding.map((m) => m.worktreeRoot.length));
   return holding.filter((m) => m.worktreeRoot.length === longest2);
 }
-async function sleep34(io, env, worktree, deps) {
+async function sleep35(io, env, worktree, deps) {
   const read7 = machinesOf(io, env);
   if (read7 === null) return FAILED2;
-  const asked = resolve50(io.cwd ?? process.cwd(), worktree ?? ".");
+  const asked = resolve51(io.cwd ?? process.cwd(), worktree ?? ".");
   const path = existsSync91(asked) ? realpathSync38(asked) : asked;
   const records = recordsOf(read7.machines, path);
   if (records.length === 0) {
@@ -129810,7 +129843,7 @@ async function daemonSleep(root, deps) {
   while (answer4?.ok === true && answer4.type === "remote-sleep") {
     if (answer4.settled) return answer4.outcome ?? answer4.error ?? "the daemon's sleep failed";
     if (performance.now() > deadline) break;
-    await new Promise((resolve54) => setTimeout(resolve54, deps.pollMs ?? 100));
+    await new Promise((resolve55) => setTimeout(resolve55, deps.pollMs ?? 100));
     answer4 = await ask2(root, { type: "remote-sleep-status", requestId: answer4.requestId });
   }
   return answer4 === null ? `the daemon of ${root} ended during the sleep` : `the daemon of ${root} did not finish the sleep`;
@@ -129901,7 +129934,7 @@ async function remoteTunnelCommand(args2, io, stdio = { stdin: process.stdin, st
 // src/cli/remove.ts
 import { existsSync as existsSync92, lstatSync as lstatSync14, readdirSync as readdirSync51, readFileSync as readFileSync93, rmSync as rmSync44 } from "node:fs";
 import { basename as basename43, dirname as dirname76, join as join217 } from "node:path";
-import { setTimeout as sleep35 } from "node:timers/promises";
+import { setTimeout as sleep36 } from "node:timers/promises";
 init_paths4();
 init_scratch();
 init_git();
@@ -130075,7 +130108,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
         for (const lock3 of held4) lock3.release();
         return { held: name3.slice(0, -".sqlite".length), lockPath, store: store !== null };
       }
-      await sleep35(50);
+      await sleep36(50);
     }
   }
   return held4;
@@ -130138,7 +130171,7 @@ init_paths2();
 init_load();
 init_records();
 init_text2();
-import { isAbsolute as isAbsolute36, resolve as resolve51 } from "node:path";
+import { isAbsolute as isAbsolute36, resolve as resolve52 } from "node:path";
 init_fingerprint();
 init_text();
 
@@ -130235,7 +130268,7 @@ function parse16(args2) {
   return { kind: "ask", reason: reason2, paths };
 }
 function inWorktree(root, cwd, path) {
-  return toRelative(root, isAbsolute36(path) ? path : resolve51(cwd, path));
+  return toRelative(root, isAbsolute36(path) ? path : resolve52(cwd, path));
 }
 function busyLine(not, shown2, { busyMs }) {
   return refuse2(
@@ -130667,10 +130700,10 @@ function joinedCheckpoint(root, checkpoint2, owner2, deadline) {
   if (owner2 === void 0 || owner2 === checkpoint2.id) return null;
   const joined2 = readBeside(root, besideBound(deadline), (store) => {
     const record2 = store.checkpoints.get(owner2);
-    const open7 = openCheckpoint2(store, checkpoint2.worktreeId);
+    const open8 = openCheckpoint2(store, checkpoint2.worktreeId);
     return {
       id: owner2,
-      open: open7?.id === owner2 ? open7 : null,
+      open: open8?.id === owner2 ? open8 : null,
       record: record2,
       what: record2?.kind === "baseline" ? "baseline" : "`run --all`"
     };
@@ -130683,17 +130716,17 @@ function joinedText(joined2) {
     const progress2 = notReadText("whose progress", joined2.unread);
     return `, joining the checkpoint ${joined2.id} already running them, ${progress2}`;
   }
-  const { id, open: open7, what } = joined2;
-  if (open7 === null) {
+  const { id, open: open8, what } = joined2;
+  if (open8 === null) {
     return `, joining the ${what} checkpoint ${id} already running them; both had ended when this command read them`;
   }
-  return `, joining the ${what} checkpoint ${id} already running them (${open7.done} of ${open7.total} test files done); it ends when that one ends`;
+  return `, joining the ${what} checkpoint ${id} already running them (${open8.done} of ${open8.total} test files done); it ends when that one ends`;
 }
 
 // src/cli/runner-host.ts
 init_version();
 import { mkdirSync as mkdirSync35, realpathSync as realpathSync39 } from "node:fs";
-import { resolve as resolve52 } from "node:path";
+import { resolve as resolve53 } from "node:path";
 
 // src/core/runner-host/host.ts
 init_runtime2();
@@ -130714,8 +130747,8 @@ async function serveRunnerHost(options) {
   const forced = /* @__PURE__ */ new Map();
   let finish = () => {
   };
-  const finished = new Promise((resolve54) => {
-    finish = resolve54;
+  const finished = new Promise((resolve55) => {
+    finish = resolve55;
   });
   let ending3 = false;
   const kept6 = options.tree === void 0 ? null : remoteCoverage(ownPath(coverageProvider()), hostLog);
@@ -130748,8 +130781,8 @@ async function serveRunnerHost(options) {
       options.admission?.close();
       const closing = closeAdapter();
       let timer;
-      const bound = new Promise((resolve54) => {
-        timer = setTimeout(resolve54, options.closeMs ?? CLOSE_MS3);
+      const bound = new Promise((resolve55) => {
+        timer = setTimeout(resolve55, options.closeMs ?? CLOSE_MS3);
       });
       await Promise.race([closing, bound]);
       clearTimeout(timer);
@@ -130854,9 +130887,9 @@ async function serveRunnerHost(options) {
         send({ ev: "fileEnded", run: id, testFile });
       },
       ...beforeForce === true ? {
-        beforeForce: (env) => new Promise((resolve54) => {
-          if (ending3) return resolve54();
-          forced.set(id, resolve54);
+        beforeForce: (env) => new Promise((resolve55) => {
+          if (ending3) return resolve55();
+          forced.set(id, resolve55);
           send({ ev: "beforeForce", run: id, env });
         })
       } : {}
@@ -131172,7 +131205,7 @@ async function locked3(lock2, work) {
 `;
   while (!acquire3(lock2, owner2)) {
     if (takeOverStale2(lock2)) continue;
-    await new Promise((resolve54) => setTimeout(resolve54, LOCK_RETRY_MS2));
+    await new Promise((resolve55) => setTimeout(resolve55, LOCK_RETRY_MS2));
   }
   try {
     return await work();
@@ -131385,7 +131418,7 @@ init_escaped();
 init_low_priority();
 init_outlived();
 init_terminate();
-import { setTimeout as sleep36 } from "node:timers/promises";
+import { setTimeout as sleep37 } from "node:timers/promises";
 function markOf(options) {
   const value = options.childEnv?.[CHILD_VARIABLE];
   if (value === void 0) return null;
@@ -131425,7 +131458,7 @@ async function workersGone(self, mark, since) {
   const deadline = Date.now() + GRACE_MS;
   left = left.filter((entry4) => !exited(entry4));
   while (left.length > 0 && Date.now() < deadline) {
-    await sleep36(25);
+    await sleep37(25);
     left = left.filter((entry4) => !exited(entry4));
   }
 }
@@ -131441,7 +131474,7 @@ async function runnerHostCommand(args2, io, options = {}) {
   }
   let root;
   try {
-    const given2 = resolve52(io.cwd ?? process.cwd(), parsed3.root);
+    const given2 = resolve53(io.cwd ?? process.cwd(), parsed3.root);
     if (parsed3.tree) mkdirSync35(given2, { recursive: true });
     root = realpathSync39(given2);
   } catch (error) {
@@ -131677,14 +131710,14 @@ async function reportProgress(root, id, io, running2) {
   const isSlow = slowFiles(policy, policy.nodeTest);
   let last = "";
   while (running2()) {
-    await new Promise((resolve54) => setTimeout(resolve54, PROGRESS_POLL_MS));
+    await new Promise((resolve55) => setTimeout(resolve55, PROGRESS_POLL_MS));
     if (!running2()) return;
     const line = withStatusStore(root, {}, ({ store }) => {
-      const open7 = readCheckpointProgress(store, id);
-      if (open7 === null) return null;
+      const open8 = readCheckpointProgress(store, id);
+      if (open8 === null) return null;
       const activity = readSlowActivity(store, id);
       const queued = activity?.kind === "waiting" && activity.for === "load" ? store.testFileKeys.list(id).filter((row2) => row2.pending === "queued" && isSlow(row2.testFile)).length : 0;
-      return progressText(open7.done, open7.total, queued);
+      return progressText(open8.done, open8.total, queued);
     });
     if (typeof line !== "string" || line === last) continue;
     last = line;
@@ -132525,8 +132558,8 @@ function inWorker2(commonDir, script2, log) {
   let dead = null;
   let readied = () => {
   };
-  const ready2 = new Promise((resolve54) => {
-    readied = resolve54;
+  const ready2 = new Promise((resolve55) => {
+    readied = resolve55;
   });
   const fail3 = (error) => {
     dead ??= error;
@@ -132552,20 +132585,20 @@ function inWorker2(commonDir, script2, log) {
   worker.on("exit", (code) => fail3(new Error(`the store writer exited with code ${code}`)));
   return {
     ready: ready2,
-    run: (job) => new Promise((resolve54, reject) => {
+    run: (job) => new Promise((resolve55, reject) => {
       if (dead !== null) {
         reject(dead);
         return;
       }
       const id = ids++;
-      waiting2.set(id, { resolve: resolve54, reject });
+      waiting2.set(id, { resolve: resolve55, reject });
       worker.postMessage({ id, job });
     }),
     close: async () => {
       worker.postMessage({ close: true });
-      await new Promise((resolve54) => {
-        if (dead !== null) resolve54();
-        else worker.once("exit", () => resolve54());
+      await new Promise((resolve55) => {
+        if (dead !== null) resolve55();
+        else worker.once("exit", () => resolve55());
       });
     }
   };
@@ -132597,10 +132630,10 @@ async function startStoreProcess(options) {
   let pumping = false;
   let endWith = () => {
   };
-  const ended2 = new Promise((resolve54) => {
-    endWith = resolve54;
+  const ended2 = new Promise((resolve55) => {
+    endWith = resolve55;
   });
-  const requestWrite = (_batch, request) => new Promise((resolve54, reject) => {
+  const requestWrite = (_batch, request) => new Promise((resolve55, reject) => {
     if (phase === "stopping") reject(new Error("the store process is stopping"));
     else if (request.seq === void 0)
       reject(new Error("a store process writes numbered batches only"));
@@ -132611,7 +132644,7 @@ async function startStoreProcess(options) {
         queuedAt: now(),
         startedAt: null,
         busyMs: 0,
-        resolve: resolve54,
+        resolve: resolve55,
         reject
       });
       batches2.queued(request.worktreeId, request.seq, queued);
@@ -132734,7 +132767,7 @@ async function startStoreProcess(options) {
       phase = "stopping";
       clearInterval(timer);
       clearInterval(report4);
-      while (pumping) await new Promise((resolve54) => setTimeout(resolve54, 5));
+      while (pumping) await new Promise((resolve55) => setTimeout(resolve55, 5));
       for (const { kind, worktreeId, item } of queue.drainQueued()) {
         stats.record(kind, false, now() - item.queuedAt, item.busyMs);
         batches2.ended(worktreeId, item.request.seq, false);
@@ -132931,7 +132964,7 @@ function codexLauncherDir(env) {
 // src/cli/update-packages.ts
 init_json();
 import { readFileSync as readFileSync95 } from "node:fs";
-import { join as join220, resolve as resolve53 } from "node:path";
+import { join as join220, resolve as resolve54 } from "node:path";
 function packagesHome(harness, env) {
   return join220(env.XDG_DATA_HOME || join220(env.HOME ?? "", ".local", "share"), "squeal", harness);
 }
@@ -132951,8 +132984,8 @@ function piPackage(env) {
   for (const entry4 of Array.isArray(packages) ? packages : []) {
     const source2 = isRecord(entry4) ? entry4.source : entry4;
     if (typeof source2 !== "string" || /^(npm|git|https?|ssh):/.test(source2)) continue;
-    const dir2 = resolve53(agent, source2);
-    if (resolve53(dir2, "..") !== resolve53(packagesHome("pi", env))) continue;
+    const dir2 = resolve54(agent, source2);
+    if (resolve54(dir2, "..") !== resolve54(packagesHome("pi", env))) continue;
     try {
       const manifest = JSON.parse(readFileSync95(join220(dir2, "package.json"), "utf8"));
       if (isRecord(manifest) && typeof manifest.version === "string")
