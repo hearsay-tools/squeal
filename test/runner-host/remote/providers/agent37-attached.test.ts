@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, describe, expect, it, onTestFinished } from "vitest";
+import { afterAll, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { HostedAdapter } from "../../../../src/core/runner-host/host.js";
 import {
   type RemoteHost,
@@ -53,16 +53,18 @@ const edit = (): RunOptions => ({
  * As `servedHosts`, but every host served here shares one tree host, as
  * hosts in one remote tree share its run directories: two in this one
  * process would otherwise remove each other's live run's (their names
- * carry this process's id).
+ * carry this process's id). `kills` gets each host's end, in start order.
  */
 function oneTreeHosts(
   root: string,
   remoteRoot: string,
   run: HostedAdapter["run"],
+  kills: (() => void)[] = [],
 ): (options: RemoteHostOptions) => Promise<RemoteHost> {
   const tree = createTreeHost(remoteRoot, () => {});
   return async (options) => {
     const served = inProcessHost(async () => fake(options.runner, run), VERSION, { tree });
+    kills.push(() => served.channel.kill());
     onTestFinished(() => served.channel.kill());
     return remoteHostOver(served.channel, "v-test", {
       target: options.target,
@@ -120,6 +122,8 @@ async function attached(second = false) {
   );
   /** Each remote run: its files, and the commit and tags its tree's `.git` held then. */
   const remoteRuns: { files: string; head: string; tags: string }[] = [];
+  /** Each served host's end, in the order the lanes started them. */
+  const kills: (() => void)[] = [];
   /** Each remote run's files and the commit its tree's `.git` held as it ended. */
   const ends: { files: string; head: string }[] = [];
   let hold: Promise<void> | null = null;
@@ -152,7 +156,7 @@ async function attached(second = false) {
     log: (line) => logs.push(line),
     env,
     startHost: second
-      ? oneTreeHosts(real, remoteRoot, run)
+      ? oneTreeHosts(real, remoteRoot, run, kills)
       : servedHosts(real, remoteRoot, () => run),
   }) as DaemonRemote;
   const here = fake("vitest", async (files) => {
@@ -203,6 +207,7 @@ async function attached(second = false) {
     },
     localRuns,
     logs,
+    kills,
     sshCalls: () => ssh.argv().length,
     /** Every SSH command fails from now, as an unreachable instance's would. */
     breakSsh: () => writeFileSync(fakeSsh, "#!/bin/sh\nexit 255\n", { mode: 0o755 }),
@@ -290,6 +295,39 @@ describe("two lanes on one Agent37 machine and its Git state (review 0.1.619-r2 
     expect(a.ends[0]).toEqual({ files: `${REF.path},${GIT.path}`, head: first });
     expect(a.remoteRuns[1]).toEqual({ files: `${REF.path},${GIT.path}`, head: second, tags: "v2" });
     expect(a.localRuns).toEqual([]);
+  });
+
+  it("wakes the machine for a lane that lost it only once the other lane's run left", async () => {
+    // Review 0.1.620 N1. The clock moves past a lost lane's first reconnect backoff (30 s).
+    const real = Date.now.bind(Date);
+    let skew = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => real() + skew);
+    onTestFinished(() => {
+      vi.restoreAllMocks();
+    });
+    const a = await attached(true);
+    const first = a.git("rev-parse", "HEAD");
+    const release = a.hold();
+    const running = a.lane.run([REF, GIT], edit());
+    await until(() => a.remoteRuns.length === 1);
+    // The other lane's host ends: its next run finds it gone, and the machine counts as lost.
+    a.kills[1]?.();
+    await a.other?.run([REF], edit());
+    a.git("commit", "-q", "--allow-empty", "-m", "second");
+    const second = a.git("rev-parse", "HEAD");
+    skew += 31_000;
+    // Its next run reconnects it: the wake that brings `.git` current must wait for the held run.
+    const reconnecting = a.other?.run([REF], edit());
+    const deadline = real() + 1_500;
+    while (real() < deadline && a.there("rev-parse", "HEAD") === first) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    expect(a.there("rev-parse", "HEAD")).toBe(first);
+    release();
+    await Promise.all([running, reconnecting]);
+    expect(a.ends[0]).toEqual({ files: `${REF.path},${GIT.path}`, head: first });
+    // Then the wake brought it there.
+    await until(() => a.there("rev-parse", "HEAD") === second);
   });
 
   it("lets runs on two lanes share the machine at once while its Git state stands", async () => {

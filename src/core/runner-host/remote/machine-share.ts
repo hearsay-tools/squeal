@@ -52,6 +52,16 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  * `"refuse"` refuses the machine. A machine acquired by this daemon that
  * sleeps on idle (a managed cloud instance) is replaced once first: it is
  * released as removed, and the next connect acquires a fresh one.
+ *
+ * Review 0.1.620 B2, S1: the verdict, a refusal too, holds for the whole
+ * incarnation, so a second lane or a reconnect measures nothing. A slow
+ * machine stays the share's, and tracked, until its removal succeeded:
+ * when it fails the machine is refused, not replaced, and the daemon's
+ * exit, which waits for a removal in flight, removes it again.
+ *
+ * Review 0.1.620 N1: a wake of a machine that keeps `.git` current
+ * (`syncGit`) brings `.git` to the worktree's Git state, so it waits for
+ * the runs' leases as `refreshGit` does.
  */
 
 /** What the machine asks of each lane on it: whether it may sleep, and its sleep (`RemoteLaneRunner`). */
@@ -149,9 +159,13 @@ export function shareMachine(options: ShareOptions): MachineShare {
   let queue: Promise<unknown> = Promise.resolve();
   /** A sleep in flight, which the daemon's exit waits for. */
   let sleeping: Promise<unknown> = Promise.resolve();
-  /** D11: each acquire or wake starts an incarnation; the disk check passed for one. */
+  /** D11: each acquire or wake starts an incarnation; S1: its disk verdict, a refusal's reason or none. */
   let incarnation = 0;
-  let diskPassed = -1;
+  let verdict: { readonly at: number; readonly refusal: string | null } | null = null;
+  /** B2: a slow machine's removal in flight, which the daemon's exit waits for. */
+  let removing: Promise<unknown> | null = null;
+  /** B2: the machine whose removal failed: the daemon's exit removes it again. */
+  let unremoved: RemoteMachine | null = null;
   /** The incarnation acquired by this daemon, which a slow disk may replace once. */
   let acquiredAt = -1;
   let replaced = false;
@@ -247,7 +261,9 @@ export function shareMachine(options: ShareOptions): MachineShare {
       track(() => recordMachine(recordOf(acquired, request, now()), env));
       if (released) throw refused();
     } else if (!awake) {
-      await machine.wake();
+      const m = machine;
+      // N1: the wake moves `.git` too, so it waits for the runs there as `writeGit` does.
+      await (m.syncGit === undefined ? m.wake() : asWriter(() => m.wake()));
       incarnation++;
       if (released) throw refused();
       track(() => updateMachine(key, { status: "awake", lastUsedAt: now() }, env));
@@ -270,28 +286,39 @@ export function shareMachine(options: ShareOptions): MachineShare {
     return run;
   };
 
-  /** N1: resolves once no remote run holds the Git lease, or `signal` aborted. */
+  /** N1: resolves once no remote run holds the Git lease, `signal` aborted or the exit began. */
   const leaseFree = (signal?: AbortSignal): Promise<void> =>
     new Promise((resolve) => {
-      if (leased === 0 || signal?.aborted === true) return resolve();
+      if (leased === 0 || released || signal?.aborted === true) return resolve();
       quiet.push(resolve);
       signal?.addEventListener("abort", () => resolve(), { once: true });
     });
 
-  /** N1: `m`'s `.git` brought to the worktree's Git state once no run holds the lease. */
-  const writeGit = async (m: RemoteMachine, signal?: AbortSignal) => {
-    if (!awake || machine !== m) return;
+  /**
+   * N1: `write` once no remote run holds the Git lease, while runs that ask
+   * for one wait; refused, unrun, once the daemon's exit began meanwhile.
+   */
+  const asWriter = async <T>(write: () => Promise<T>, signal?: AbortSignal): Promise<T> => {
     let open = () => {};
     gitWriting = new Promise((resolve) => {
       open = resolve;
     });
     try {
       await leaseFree(signal);
-      if (awake && machine === m && signal?.aborted !== true) await m.syncGit?.(target(m), signal);
+      if (released) throw refused();
+      return await write();
     } finally {
       gitWriting = null;
       open();
     }
+  };
+
+  /** N1: `m`'s `.git` brought to the worktree's Git state once no run holds the lease. */
+  const writeGit = async (m: RemoteMachine, signal?: AbortSignal) => {
+    if (!awake || machine !== m) return;
+    await asWriter(async () => {
+      if (awake && machine === m && signal?.aborted !== true) await m.syncGit?.(target(m), signal);
+    }, signal);
   };
 
   /** D11: the line of a slow disk in status; a healthy one after it clears the line. */
@@ -302,65 +329,101 @@ export function shareMachine(options: ShareOptions): MachineShare {
   };
   const checkDisk = async (m: RemoteMachine, probe: () => Promise<DiskProbe>) => {
     const at = incarnation;
-    if (diskPassed === at && machine === m) return;
-    const verdict = await judgeDisk(lane.diskCheck, probe);
-    if (verdict.kind === "unmeasured") {
+    if (verdict?.at === at && machine === m) {
+      if (verdict.refusal === null) return;
+      throw new RemoteRefusal(verdict.refusal);
+    }
+    const judged = await judgeDisk(lane.diskCheck, probe);
+    if (judged.kind === "unmeasured") {
       // Not a verdict on the disk: the host's start says what is wrong with the machine.
-      request.log(`remote machine ${m.id}: disk not measured: ${verdict.why}`);
+      request.log(`remote machine ${m.id}: disk not measured: ${judged.why}`);
       return;
     }
-    if (verdict.kind !== "slow") {
-      if (verdict.kind === "healthy") {
-        request.log(`remote machine ${m.id}: disk ${verdict.probe.medianMs.toFixed(2)} ms/sync`);
+    if (judged.kind !== "slow") {
+      if (judged.kind === "healthy") {
+        request.log(`remote machine ${m.id}: disk ${judged.probe.medianMs.toFixed(2)} ms/sync`);
         diskNote(m, null);
       }
-      diskPassed = at;
+      verdict = { at, refusal: null };
       return;
     }
-    request.log(`remote machine ${m.id}: ${verdict.text}`);
+    request.log(`remote machine ${m.id}: ${judged.text}`);
     if (lane.diskCheck.onSlowDisk === "warn") {
-      diskNote(m, `${verdict.text}; runs go there anyway (onSlowDisk "warn")`);
-      diskPassed = at;
+      diskNote(m, `${judged.text}; runs go there anyway (onSlowDisk "warn")`);
+      verdict = { at, refusal: null };
       return;
     }
     const fresh = acquiredAt === at && m.capabilities.sleepOnIdle && !replaced;
-    if (fresh && machine === m && !released) {
-      replaced = true;
-      diskNote(m, `${verdict.text}; acquiring a fresh machine instead`);
-      machine = null;
-      awake = false;
-      disarm();
+    if (fresh && machine === m && !released && removing === null) await replace(m, judged.text);
+    diskNote(m, `${judged.text}; refused (onSlowDisk "refuse")`);
+    verdict = { at, refusal: judged.text };
+    throw new RemoteRefusal(judged.text);
+  };
+
+  /**
+   * B2: `m` removed so that the next connect acquires a fresh machine
+   * (`FreshMachine`). Kept, tracked and awake again when its removal
+   * fails: then it returns, and the caller refuses it.
+   */
+  const replace = async (m: RemoteMachine, text: string): Promise<void> => {
+    diskNote(m, `${text}; acquiring a fresh machine instead`);
+    const wasAwake = awake;
+    awake = false;
+    disarm();
+    const removal = (async () => {
       const shared = socket(m);
       if (shared !== null) await closeMaster(m.ssh, shared);
-      await m.release("worktree-removed").catch((error: unknown) => {
-        request.log(`remote machine ${m.id} not released: ${String(error)}`);
-      });
-      track(() => forgetMachine(key, env));
-      throw new FreshMachine(verdict.text);
+      await m.release("worktree-removed");
+    })();
+    removing = removal.catch(() => {});
+    try {
+      await removal;
+    } catch (error) {
+      request.log(`remote machine ${m.id} not removed, kept and refused: ${String(error)}`);
+      unremoved = m;
+      if (released || machine !== m) return;
+      awake = wasAwake;
+      if (awake) arm(m);
+      return;
+    } finally {
+      removing = null;
     }
-    diskNote(m, `${verdict.text}; refused (onSlowDisk "refuse")`);
-    throw new RemoteRefusal(verdict.text);
+    machine = null;
+    replaced = true;
+    verdict = null;
+    track(() => forgetMachine(key, env));
+    if (released) throw refused();
+    throw new FreshMachine(text);
   };
 
   /** Every work in flight on the machine ended, then the connection closed and the machine released. */
   const releaseOnce = async (): Promise<void> => {
     released = true;
     disarm();
+    // N1: a refresh or wake waiting for the runs' leases writes nothing now.
+    const waiting = quiet;
+    quiet = [];
+    for (const resolve of waiting) resolve();
     // A queued work, refused at its turn, still waits for those before it.
     await queue;
     await reaching?.catch(() => {});
     await sleeping;
+    await removing;
     const m = machine;
     if (m === null) return;
     awake = false;
     const at = socket(m);
     if (at !== null) await closeMaster(m.ssh, at);
+    // B2: a slow machine whose removal failed is removed now, and forgotten once it is.
+    const removed = unremoved === m;
+    let gone = false;
     try {
-      await m.release("daemon-exit");
+      await m.release(removed ? "worktree-removed" : "daemon-exit");
+      gone = removed;
     } catch (error) {
       request.log(`remote machine ${m.id} not released: ${String(error)}`);
     }
-    track(() => updateMachine(key, { status: "detached" }, env));
+    track(() => (gone ? forgetMachine(key, env) : updateMachine(key, { status: "detached" }, env)));
   };
 
   return {
@@ -412,6 +475,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
     },
     lost() {
       awake = false;
+      verdict = null;
     },
     join(shared) {
       lanes.add(shared);
@@ -426,6 +490,8 @@ export function shareMachine(options: ShareOptions): MachineShare {
         };
       const named = { provider: m.provider, machine: m.id };
       if (released) return { kind: "busy", ...named, reason: "the daemon's exit is releasing it" };
+      if (removing !== null)
+        return { kind: "busy", ...named, reason: "its slow disk's removal is in flight" };
       if (!m.capabilities.sleepOnIdle) return { kind: "always-on", ...named };
       const slept = await sleepAll(m);
       return slept === "slept"

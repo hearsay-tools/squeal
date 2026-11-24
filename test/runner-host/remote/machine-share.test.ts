@@ -3,18 +3,29 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
-import type { RemoteHostOptions } from "../../../src/core/runner-host/remote/connect.js";
+import {
+  type RemoteHostOptions,
+  RemoteRefusal,
+} from "../../../src/core/runner-host/remote/connect.js";
 import {
   createDaemonRemote,
   type DaemonRemote,
 } from "../../../src/core/runner-host/remote/daemon-lane.js";
 import type { DiskProbe } from "../../../src/core/runner-host/remote/disk-check.js";
-import { readMachines } from "../../../src/core/runner-host/remote/machines-store.js";
 import {
+  FreshMachine,
+  MachineEnding,
+  shareMachine,
+} from "../../../src/core/runner-host/remote/machine-share.js";
+import { readMachines } from "../../../src/core/runner-host/remote/machines-store.js";
+import type { MachineRequest } from "../../../src/core/runner-host/remote/provider.js";
+import {
+  type RemoteLane,
   type RemoteRunner,
   remoteSettingsPath,
 } from "../../../src/core/runner-host/remote/settings.js";
 import type { SshTarget } from "../../../src/core/runner-host/remote/ssh.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { POLICY, REPORT } from "../fake-channel.js";
@@ -44,21 +55,16 @@ interface MachineExtra {
   readonly answer?: Record<string, unknown>;
   /** Each disk probe's answer in turn, the last repeating. Default: a healthy disk. */
   readonly disks?: readonly DiskProbe[];
+  /** How many `release` calls fail first, as a provider's HTTP 503 would. Default: none. */
+  readonly releaseFails?: number;
+  /** How long each `release` call takes. Default: no wait. */
+  readonly releaseMs?: number;
 }
 
-function machine(entry: Record<string, unknown> = {}, extra: MachineExtra = {}) {
-  const dir = join(scratch, `m${++n}`);
-  const root = join(dir, "repo");
-  const remoteRoot = join(dir, "remote", "root");
-  mkdirSync(join(root, "src"), { recursive: true });
-  mkdirSync(join(root, "test"), { recursive: true });
-  mkdirSync(remoteRoot, { recursive: true });
-  mkdirSync(join(dir, "xdg", "squeal"), { recursive: true });
-  writeFileSync(join(root, "src/a.ts"), "export const a = 1;\n");
-  writeFileSync(join(root, "test/a.test.ts"), "import '../src/a';\n");
-  execFileSync("git", ["init", "-q", root]);
-  const real = realpathSync(root);
+/** A `command` machine's hooks in `dir`, each logging its call; `release` its reason too. */
+function commandHooks(dir: string, extra: MachineExtra) {
   const calls = join(dir, "calls.log");
+  const reasons = join(dir, "reasons.log");
   const hook = (name: string, body = "") => {
     const path = join(dir, `${name}.mjs`);
     writeFileSync(
@@ -76,6 +82,53 @@ ${body}`,
     sleepOnIdle: true,
     ...extra.answer,
   };
+  const release = `import { readFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(reasons)}, process.env.SQUEAL_RELEASE_REASON + "\\n");
+const count = readFileSync(${JSON.stringify(reasons)}, "utf8").trim().split("\\n").length;
+await new Promise((resolve) => setTimeout(resolve, ${extra.releaseMs ?? 0}));
+if (count <= ${extra.releaseFails ?? 0}) {
+  console.error("HTTP 503 Service Unavailable");
+  process.exit(1);
+}`;
+  const lines = (file: string): string[] => {
+    try {
+      return readFileSync(file, "utf8").trim().split("\n");
+    } catch {
+      return [];
+    }
+  };
+  return {
+    providerConfig: {
+      acquire: hook("acquire", `console.log(${JSON.stringify(JSON.stringify(answer))});`),
+      wake: hook("wake"),
+      sleep: hook("sleep"),
+      release: hook("release", release),
+    },
+    calls: (): string[] => lines(calls).map((line) => line.split(" ")[0] ?? ""),
+    /** Each `release` call's reason. */
+    reasons: (): string[] => lines(reasons),
+    callAt: (name: string): number =>
+      Number(
+        lines(calls)
+          .find((line) => line.startsWith(`${name} `))
+          ?.split(" ")[1],
+      ),
+  };
+}
+
+function machine(entry: Record<string, unknown> = {}, extra: MachineExtra = {}) {
+  const dir = join(scratch, `m${++n}`);
+  const root = join(dir, "repo");
+  const remoteRoot = join(dir, "remote", "root");
+  mkdirSync(join(root, "src"), { recursive: true });
+  mkdirSync(join(root, "test"), { recursive: true });
+  mkdirSync(remoteRoot, { recursive: true });
+  mkdirSync(join(dir, "xdg", "squeal"), { recursive: true });
+  writeFileSync(join(root, "src/a.ts"), "export const a = 1;\n");
+  writeFileSync(join(root, "test/a.test.ts"), "import '../src/a';\n");
+  execFileSync("git", ["init", "-q", root]);
+  const real = realpathSync(root);
+  const hooks = commandHooks(dir, extra);
   const env = {
     XDG_CONFIG_HOME: join(dir, "xdg"),
     XDG_STATE_HOME: join(dir, "state"),
@@ -88,12 +141,7 @@ ${body}`,
       repositories: {
         [real]: {
           provider: "command",
-          providerConfig: {
-            acquire: hook("acquire", `console.log(${JSON.stringify(JSON.stringify(answer))});`),
-            wake: hook("wake"),
-            sleep: hook("sleep"),
-            release: hook("release"),
-          },
+          providerConfig: hooks.providerConfig,
           runners: "all",
           ...entry,
         },
@@ -211,23 +259,8 @@ ${body}`,
       });
       return release;
     },
-    calls: (): string[] => {
-      try {
-        return readFileSync(calls, "utf8")
-          .trim()
-          .split("\n")
-          .map((line) => line.split(" ")[0] ?? "");
-      } catch {
-        return [];
-      }
-    },
-    callAt: (name: string): number =>
-      Number(
-        readFileSync(calls, "utf8")
-          .split("\n")
-          .find((line) => line.startsWith(`${name} `))
-          ?.split(" ")[1],
-      ),
+    calls: hooks.calls,
+    callAt: hooks.callAt,
     /** Waits until each of the three lanes says its runs go there. */
     connected: () =>
       until(() => {
@@ -421,5 +454,179 @@ describe("the connect-time disk check (row 026-13, spec 026 D11)", () => {
     expect(laneNote(m)).toMatch(/^remote command refused: degraded disk: 40 ms\/sync, limit 10 ms/);
     expect(m.calls()).toEqual(["acquire", "release", "acquire"]);
     expect(readMachines(m.env).machines).toHaveLength(1);
+  });
+});
+
+/**
+ * Review 0.1.620 B2, S1: a machine share by itself over a `command`
+ * machine, its disk check refusing a slow disk; `probe` counts each
+ * measurement.
+ */
+function slowShare(extra: MachineExtra = {}) {
+  const dir = join(scratch, `s${++n}`);
+  mkdirSync(dir, { recursive: true });
+  const hooks = commandHooks(dir, extra);
+  const env = {
+    XDG_STATE_HOME: join(dir, "state"),
+    HOME: join(dir, "home"),
+    PATH: process.env.PATH,
+  };
+  const lane: RemoteLane = {
+    provider: "command",
+    providerConfig: { ...hooks.providerConfig, node: "node", cache: ".squeal-remote" },
+    runners: ["vitest"],
+    lanes: ["background"],
+    planning: "local",
+    coverage: "off",
+    environmentMode: "match-local",
+    diskCheck: { enabled: true, maxWriteMs: 10, onSlowDisk: "refuse" },
+    whenLost: "local",
+    node: "node",
+    cache: ".squeal-remote",
+  };
+  const logs: string[] = [];
+  const request: MachineRequest = {
+    repositoryKey: dir,
+    worktreeId: `w${n}`,
+    worktreeRoot: dir as AbsolutePath,
+    commonDir: join(dir, ".git") as AbsolutePath,
+    remoteUrls: [],
+    // A command machine's hooks are given it; none of them reads it.
+    nodeVersion: "v24.0.0",
+    log: (line) => logs.push(line),
+    env,
+  };
+  const share = shareMachine({ lane, request, env });
+  onTestFinished(() => share.release());
+  let probes = 0;
+  const disks = extra.disks ?? [disk(40)];
+  const probe = async () => disks[Math.min(++probes, disks.length) - 1] as DiskProbe;
+  return {
+    ...hooks,
+    share,
+    logs,
+    probes: () => probes,
+    tracked: () => readMachines(env).machines,
+    /** The machine reached, and its disk check's rejection. */
+    check: async () => {
+      const { machine } = await share.reach();
+      return {
+        machine,
+        error: await share.checkDisk(machine, probe).then(
+          () => null,
+          (e) => e,
+        ),
+      };
+    },
+  };
+}
+
+/** A refusal that keeps the machine: no replacement follows it. */
+const keptRefusal = (error: unknown) =>
+  error instanceof RemoteRefusal && !(error instanceof FreshMachine);
+
+describe("a slow machine's removal (review 0.1.620 B2)", () => {
+  it("keeps a machine whose removal failed, tracked and refused, and removes it at the exit", async () => {
+    const s = slowShare({ releaseFails: 1 });
+    const { machine, error } = await s.check();
+    expect(keptRefusal(error)).toBe(true);
+    expect((error as Error).message).toBe("degraded disk: 40 ms/sync, limit 10 ms");
+    expect(s.share.current()).toBe(machine);
+    expect(s.share.awake()).toBe(true);
+    expect(s.tracked()).toHaveLength(1);
+    expect(s.calls()).toEqual(["acquire", "release"]);
+    expect(s.logs).toContainEqual(expect.stringMatching(/not removed, kept and refused: .*503/));
+    // No second machine: the next connect is refused on the cached verdict.
+    expect(keptRefusal((await s.check()).error)).toBe(true);
+    expect(s.calls()).toEqual(["acquire", "release"]);
+    expect(s.probes()).toBe(1);
+    await s.share.release();
+    expect(s.reasons()).toEqual(["worktree-removed", "worktree-removed"]);
+    expect(s.tracked()).toEqual([]);
+  });
+
+  it("keeps it tracked when the exit's removal fails too", async () => {
+    const s = slowShare({ releaseFails: 2 });
+    expect(keptRefusal((await s.check()).error)).toBe(true);
+    await s.share.release();
+    expect(s.reasons()).toEqual(["worktree-removed", "worktree-removed"]);
+    expect(s.tracked()).toMatchObject([{ status: "detached" }]);
+  });
+
+  it("lets the daemon's exit wait for a removal in flight, and releases nothing twice", async () => {
+    const s = slowShare({ releaseMs: 400 });
+    const checked = s.check();
+    await until(() => s.reasons().length === 1);
+    await s.share.release();
+    expect((await checked).error).toBeInstanceOf(MachineEnding);
+    expect(s.reasons()).toEqual(["worktree-removed"]);
+    expect(s.share.current()).toBeNull();
+    expect(s.tracked()).toEqual([]);
+  });
+
+  it("removes again at the exit a machine whose removal failed during it", async () => {
+    const s = slowShare({ releaseMs: 400, releaseFails: 1 });
+    const checked = s.check();
+    await until(() => s.reasons().length === 1);
+    await s.share.release();
+    expect(keptRefusal((await checked).error)).toBe(true);
+    expect(s.reasons()).toEqual(["worktree-removed", "worktree-removed"]);
+    expect(s.tracked()).toEqual([]);
+  });
+
+  it("replaces a removed machine once, and keeps the fresh one when it is slow too", async () => {
+    const s = slowShare();
+    const first = await s.check();
+    expect(first.error).toBeInstanceOf(FreshMachine);
+    expect(s.share.current()).toBeNull();
+    expect(s.tracked()).toEqual([]);
+    const second = await s.check();
+    expect(keptRefusal(second.error)).toBe(true);
+    expect(s.share.current()).toBe(second.machine);
+    expect(s.calls()).toEqual(["acquire", "release", "acquire"]);
+    expect(s.tracked()).toHaveLength(1);
+    await s.share.release();
+    expect(s.reasons()).toEqual(["worktree-removed", "daemon-exit"]);
+    expect(s.tracked()).toMatchObject([{ status: "detached" }]);
+  });
+});
+
+describe("a refused disk's verdict (review 0.1.620 S1)", () => {
+  it("is measured once for two lanes, and refuses both", async () => {
+    const m = machine(
+      { diskCheck: { onSlowDisk: "refuse" } },
+      { answer: { sleepOnIdle: false }, disks: [disk(40)] },
+    );
+    const refused = (topic: string) =>
+      /refused: degraded disk/.test(m.notes.findLast(([t]) => t === topic)?.[1] ?? "");
+    await Promise.all([
+      m.lanes[0]?.run([refOf("vitest")], m.background()),
+      m.lanes[1]?.run([refOf("node-test")], m.background()),
+    ]);
+    await until(() => refused("remote-lane") && refused("remote-lane:node-test unit"));
+    expect(m.probes).toHaveLength(1);
+    expect(m.started).toHaveLength(2);
+    expect(m.remoteRuns).toEqual([]);
+    expect(m.calls()).toEqual(["acquire"]);
+  });
+
+  it("holds until a loss or a sleep ends the incarnation", async () => {
+    const s = slowShare({ answer: { sleepOnIdle: false } });
+    expect(keptRefusal((await s.check()).error)).toBe(true);
+    expect(keptRefusal((await s.check()).error)).toBe(true);
+    expect(s.probes()).toBe(1);
+    s.share.lost();
+    expect(keptRefusal((await s.check()).error)).toBe(true);
+    expect(s.probes()).toBe(2);
+    expect(s.calls()).toEqual(["acquire", "wake"]);
+  });
+
+  it("is measured again after the machine slept", async () => {
+    const s = slowShare({ releaseFails: 1, disks: [disk(40), disk(0.5)] });
+    expect(keptRefusal((await s.check()).error)).toBe(true);
+    expect((await s.share.sleep()).kind).toBe("slept");
+    expect((await s.check()).error).toBeNull();
+    expect(s.probes()).toBe(2);
+    expect(s.calls()).toEqual(["acquire", "release", "sleep", "wake"]);
   });
 });
