@@ -12,6 +12,7 @@ import type { Ledger } from "./ledger.js";
 import { unmatchedInputNotes } from "./notes.js";
 import { recordOmittedTestFiles } from "./omitted-test-files.js";
 import { quietQueued } from "./quiet.js";
+import { listingGap, listsInFull } from "./runner-gate.js";
 import { type RunnerPartBound, runnerPartBound } from "./runner-work-bound.js";
 
 /** Review, inputs for wave 2: "`oldHash === null` is `add`, `newHash === null` is `delete`, else `change`". */
@@ -227,7 +228,11 @@ export async function fetchRunnerRetry(
   // As `applyListing` leaves them: its files without a closure, and the blocked ones it keeps.
   const kept = listed === null ? null : new Set(listed.map(testFileId));
   const blocked = [...ledger.files.values()]
-    .filter((file) => file.blocked !== null && (kept === null || kept.has(file.id)))
+    .filter(
+      (file) =>
+        file.blocked !== null &&
+        (listed === null || kept?.has(file.id) === true || !listsInFull(listed, file.ref)),
+    )
     .map((file) => file.ref);
   const refs = [...(listed ?? []).filter((ref) => !context.keys.index.closure(ref)), ...blocked];
   const closures: RunnerClosure[] = [];
@@ -241,7 +246,8 @@ export async function fetchRunnerRetry(
     failures,
     environments,
     listed,
-    omitted: listed === null ? null : omitted,
+    // A listing a deferred runner left out keeps the count, as a failed one does (N1).
+    omitted: listed === null || listingGap(listed) !== null ? null : omitted,
     refs,
     closures,
   };
@@ -328,8 +334,9 @@ export function applyListing(
   ledger.listingFailed = listed === null;
   if (listed === null) return [];
   const ids = new Set(listed.map(testFileId));
+  // Review 0.1.616-r2 N1: a deferred runner not listed yet keeps its files (`listsInFull`).
   for (const file of [...ledger.files.values()]) {
-    if (!ids.has(file.id)) ledger.removeFile(file);
+    if (!ids.has(file.id) && listsInFull(listed, file.ref)) ledger.removeFile(file);
   }
   for (const ref of listed) {
     if (!ledger.file(ref)) ledger.addFile(ref);

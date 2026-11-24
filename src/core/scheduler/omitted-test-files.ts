@@ -2,6 +2,7 @@ import type { WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { SchedulerContext } from "./context.js";
+import { listingGap } from "./runner-gate.js";
 import type { RunnerPartBound } from "./runner-work-bound.js";
 
 /*
@@ -9,7 +10,8 @@ import type { RunnerPartBound } from "./runner-work-bound.js";
  * successful listing left out because Squeal does not run them (Vitest's
  * typecheck files). A Vitest command the hook would answer for runs them
  * too, so it is answered only while this is zero. A failed listing keeps the
- * row, as it keeps the list; a daemon that wrote none leaves it absent.
+ * row, as it keeps the list, and so does one a deferred runner left out
+ * (`listingGap`); a daemon that wrote none leaves it absent.
  */
 
 /** `meta` key of a worktree's left-out count. */
@@ -31,7 +33,10 @@ export async function listTestFilesOf(
 ): Promise<readonly TestFileRef[]> {
   const { runner, store, worktreeId } = context;
   const listed = await bound.call(() => runner.testFiles());
-  recordOmittedTestFiles(store, worktreeId, runner.traits.omittedTestFiles());
+  // Review 0.1.616-r2 N1: a deferred runner not listed yet has no count; the row stays.
+  if (listingGap(listed) === null) {
+    recordOmittedTestFiles(store, worktreeId, runner.traits.omittedTestFiles());
+  }
   return listed;
 }
 

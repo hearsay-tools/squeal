@@ -49,17 +49,24 @@ export class CompositeGate {
     return cache.environment;
   }
 
-  async testFiles(adapter: RunnerAdapter): Promise<readonly TestFileRef[]> {
+  /**
+   * The member's listing; `unlisted`: the shut runner that has not listed
+   * in this daemon, whose files `files` leaves out (review 0.1.616-r2 N1).
+   */
+  async testFiles(
+    adapter: RunnerAdapter,
+  ): Promise<{ files: readonly TestFileRef[]; unlisted: CheckRunner | null }> {
     const shut = this.#shut(adapter);
     const cache = this.#of(adapter);
     if (shut !== null) {
       this.gate?.missed(shut);
-      return cache.testFiles ?? [];
+      const files = cache.testFiles;
+      return files === undefined ? { files: [], unlisted: shut } : { files, unlisted: null };
     }
     cache.testFiles = await adapter.testFiles();
     const runner = this.#runnerOf(adapter);
     if (runner !== null) this.gate?.listed(runner);
-    return cache.testFiles;
+    return { files: cache.testFiles, unlisted: null };
   }
 
   async affected(
