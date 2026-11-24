@@ -1,6 +1,7 @@
 import { readRunLoads } from "../retry/load.js";
+import { executedCoreOf, machineText, sameMachine } from "../runner-host/remote/remote-key.js";
 import type { ProjectName, RelativePath } from "../types/common.js";
-import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { CheckKey, CoreEnvironmentInputs, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
 import type { Provenance } from "../types/store-records.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -54,6 +55,8 @@ export interface TierRecord {
   readonly grewEnvironment: FileState[];
   readonly failedAnew: NewFailure[];
   readonly notStarted: { file: FileState; forced: boolean }[];
+  /** Spec 026 D10: files that ran on another machine than their key's, with why they are `unknown`. */
+  readonly otherMachine: { file: FileState; key: CheckKey; reason: string }[];
 }
 
 /** A record of `tier` with nothing walked yet, its provenance as of now. */
@@ -88,6 +91,7 @@ export function tierRecord(
     grewEnvironment: [],
     failedAnew: [],
     notStarted: [],
+    otherMachine: [],
   };
 }
 
@@ -157,9 +161,50 @@ function recordCompleted(record: TierRecord, entry: TierFile, decision: Complete
     // Task 003-43: the key it ran under lacks what the run loaded; it runs again at the key with it.
     record.grewEnvironment.push(file);
   } else if (decision.kind === "store") {
+    const ran = executedCoreOf(record.report, file.ref);
+    const keyed = context.keys.coreOf(file.ref.project);
+    if (ran !== undefined && keyed !== undefined && !sameMachine(ran, keyed)) {
+      storeOtherMachine(record, entry, growth?.growth ?? [], { ran, keyed });
+      return;
+    }
     const storeKey = growth === undefined ? key : context.keys.index.key(file.ref);
     if (storeKey !== null) storeFile(record, entry, decision, storeKey);
   }
+}
+
+/**
+ * Spec 026 D10, vision principle 2: a file that ran on another machine than
+ * the one its key is for (this machine while keyed to a remote under
+ * `remote-key`) is stored only under that machine's own key, which a
+ * worktree keyed there reads, and is `unknown` at the key it ran for: no
+ * result stands for an environment it did not run in.
+ */
+function storeOtherMachine(
+  record: TierRecord,
+  entry: TierFile,
+  growth: readonly RelativePath[],
+  { ran, keyed }: { ran: CoreEnvironmentInputs; keyed: CoreEnvironmentInputs },
+): void {
+  const { context, report } = record;
+  const { store } = context;
+  const { file, key } = entry;
+  const ownKey = context.keys.keyForCore(file.ref, ran);
+  if (ownKey !== null) {
+    const records = recordsForFile({
+      ref: file.ref,
+      key: ownKey,
+      report,
+      previousChecks: store.results.checksForKey(ownKey),
+      provenance: record.provenance,
+      describe: context.describe,
+    });
+    // Review 0.1.266, B1: a worktree whose merge hold names the stored key's inputs takes no heal.
+    storeResults(context, records, healsUnheld(store, [...entry.inputs, ...growth]));
+  }
+  const reason =
+    `ran on ${machineText(ran)}, not on ${machineText(keyed)} its key is for; ` +
+    (ownKey === null ? "nothing stored" : "stored under the environment it ran in");
+  record.otherMachine.push({ file, key, reason });
 }
 
 /** Stores a completed file's results under `storeKey`; current when it still is at the key it ran under. */
@@ -278,4 +323,13 @@ function markUnknown(record: TierRecord): void {
     runId: tier.runId,
     ...(timedOut === null ? {} : { cause: "timeout" }),
   });
+  // Spec 026 D10: unknown at the key they ran for, each with the machine it ran on.
+  const byReason = new Map<string, TierRecord["otherMachine"]>();
+  for (const entry of record.otherMachine) {
+    byReason.set(entry.reason, [...(byReason.get(entry.reason) ?? []), entry]);
+  }
+  for (const [text, entries] of byReason) {
+    for (const { file, key } of entries) endRetry(context, file, key, null, tier.runId);
+    ledger.markUnknown(entries, text, { ran: true, runId: tier.runId });
+  }
 }

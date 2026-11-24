@@ -4,6 +4,7 @@ import { runGit, splitNul } from "../fs/git.js";
 import type { ObjectFormat } from "../hash/blob.js";
 import { type Hasher, seedStatCache } from "../hash/hasher.js";
 import { StatCache } from "../hash/stat-cache.js";
+import { encodeSegment, keyFromSegments } from "../keys/check-key.js";
 import {
   assembleClosure,
   createDeclaredInputs,
@@ -39,7 +40,8 @@ import { runtimeFilesMetaKey, runtimePolicySignature } from "../keys/runtime-app
 import { RuntimeFiles, runtimeIdentity } from "../keys/runtime-files.js";
 import { StartupSets } from "../keys/startup.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/reconcile.js";
-import { recordWorktreeEnvironments } from "../store/environments.js";
+import { onMachine, sameMachine } from "../runner-host/remote/remote-key.js";
+import { putEnvironments, recordWorktreeEnvironments } from "../store/environments.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -47,7 +49,13 @@ import type {
   RelativePath,
   WorktreeId,
 } from "../types/common.js";
-import type { EnvironmentHash, FileHash, TestFileRef } from "../types/keys.js";
+import type {
+  CheckKey,
+  CoreEnvironmentInputs,
+  EnvironmentHash,
+  FileHash,
+  TestFileRef,
+} from "../types/keys.js";
 import type { Policy, RuntimeFileApplication } from "../types/policy.js";
 import type { FileChange, Revision } from "../types/revision.js";
 import type { RunnerClosure, RunnerEnvironment } from "../types/runner.js";
@@ -115,6 +123,12 @@ export class WorktreeKeys {
   /** Each test file's closure, without `imports` (D21.1): 53% of an idle daemon's heap otherwise. */
   readonly #runnerClosures = new Map<string, KeptClosure>();
   readonly #environments = new Map<ProjectName, RunnerEnvironment>();
+  /** Each project's core as last keyed: its environment's machine under `remote-key` (026 D10). */
+  readonly #cores = new Map<ProjectName, CoreEnvironmentInputs>();
+  /** The environment hashes `keyForCore` has stored the descriptors of (026 D10). */
+  readonly #putCores = new Set<EnvironmentHash>();
+  /** The file hash the key index reads: a listing's, else the stat cache's. */
+  readonly #indexHash: (path: RelativePath) => FileHash | null | undefined;
   readonly #environmentFiles = new Set<RelativePath>();
   readonly #extra = new Set<RelativePath>();
   readonly #untracked = new Set<RelativePath>();
@@ -214,13 +228,12 @@ export class WorktreeKeys {
     this.#modules = new ModuleSets(options.store);
     this.#globs = new GlobListings(options.store);
     this.#startup = new StartupSets(options.store);
-    this.index = new KeyIndex(
-      gitEntryByKind(options.root, (path) => {
-        const directory = listedDirectory(path);
-        if (directory !== null) return this.#listings.hashOf(directory);
-        return this.#dropped.has(path) ? undefined : this.cache.hashOf(path);
-      }),
-    );
+    this.#indexHash = gitEntryByKind(options.root, (path) => {
+      const directory = listedDirectory(path);
+      if (directory !== null) return this.#listings.hashOf(directory);
+      return this.#dropped.has(path) ? undefined : this.cache.hashOf(path);
+    });
+    this.index = new KeyIndex(this.#indexHash);
   }
 
   /**
@@ -324,14 +337,18 @@ export class WorktreeKeys {
     const readAsOne = new Map<ProjectName, ReadAsOne[]>();
     const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
     const ci = sawCi(env ?? process.env);
+    this.#cores.clear();
     for (const environment of environments) {
       const dependencies = this.#dependencies.get(environment.project);
-      const core = coreEnvironmentInputs({
+      const own = coreEnvironmentInputs({
         squealVersion,
         installedDependencies: dependencies?.environment ?? "none",
         allowlist: policy.env.allowlist,
         ...(env === undefined ? {} : { env }),
       });
+      // Spec 026 D10.2: under `remote-key`, keyed under the remote's machine.
+      const core = environment.core === undefined ? own : onMachine(own, environment.core);
+      this.#cores.set(environment.project, core);
       // Spec 018 D1: the parts of the hash, from the same inputs in the same call.
       const record = environmentRecord(core, environment, hashOf, ci);
       hashes.set(environment.project, record.hash);
@@ -364,6 +381,46 @@ export class WorktreeKeys {
     ];
     this.#observedBefore = null;
     return changes;
+  }
+
+  /** The core `project` is keyed under now (026 D10); `undefined` before its environment is read. */
+  coreOf(project: ProjectName): CoreEnvironmentInputs | undefined {
+    return this.#cores.get(project);
+  }
+
+  /**
+   * Spec 026 D10 (row 026-14): `ref`'s key had it run on `core`'s machine,
+   * from the closure it is keyed with now; its current key when that is the
+   * machine it is keyed under. The other inputs of the project's keyed core
+   * stay. Stores the environment's descriptor (018 D1) without making it the
+   * worktree's. `null` while `ref` has no key, or `core` keys no environment.
+   */
+  keyForCore(ref: TestFileRef, core: CoreEnvironmentInputs): CheckKey | null {
+    const keyed = this.#cores.get(ref.project);
+    const environment = this.#environments.get(ref.project);
+    const closure = this.index.closure(ref);
+    const runner = this.#runnerClosures.get(testFileId(ref));
+    if (keyed === undefined || environment === undefined) return null;
+    if (closure === undefined || runner === undefined || this.index.key(ref) === null) return null;
+    if (sameMachine(keyed, core)) return this.index.key(ref);
+    const record = environmentRecord(
+      onMachine(keyed, core),
+      environment,
+      (path) => this.cache.hashOf(path),
+      sawCi(this.options.env ?? process.env),
+    );
+    if (!this.#putCores.has(record.hash)) {
+      putEnvironments(this.options.store, [record], this.options.now());
+      this.#putCores.add(record.hash);
+    }
+    const segments: string[] = [];
+    for (const path of closure.paths) {
+      const hash = this.#indexHash(path);
+      if (hash === undefined) return null;
+      segments.push(encodeSegment(path, hash));
+    }
+    const runtime = this.#runtimeSegment(ref, this.#rawObserved(ref));
+    return keyFromSegments(record.hash, ref, segments, this.#dependencySegment(runner), runtime);
   }
 
   /** 018 D1: stores each project's hash with its parts when one moved since the last record. */
@@ -511,7 +568,7 @@ export class WorktreeKeys {
     if (saved) this.#saved.add(testFileId(runner.testFile));
     else this.#saved.delete(testFileId(runner.testFile));
     const observes = this.observes(runner.testFile.project);
-    const raw = observes ? this.#observed.of(runner.testFile) : [];
+    const raw = this.#rawObserved(runner.testFile);
     const observed = observes ? this.effectiveObserved(runner.testFile, raw) : [];
     // Row 023-13: its modules' glob folders, observed or not; a stored list gains them too.
     const { project } = runner.testFile;
@@ -520,15 +577,21 @@ export class WorktreeKeys {
     const update = this.index.setClosure(
       assembleClosure(runner, this.#declared.for(runner.testFile.path), [...observed, ...globbed]),
       this.#dependencySegment(runner),
-      this.#refused.keyed(
-        runner.testFile,
-        raw,
-        runtimeIdentity(this.runtimeApplication(runner.testFile).paths),
-      ),
+      this.#runtimeSegment(runner.testFile, raw),
       !saved || !this.runtimeSelected(runner.testFile),
     );
     for (const path of update.untracked) this.#untracked.add(path);
     return update.changes;
+  }
+
+  /** What runs observed `ref` read, while its project observes; else none. */
+  #rawObserved(ref: TestFileRef): readonly RelativePath[] {
+    return this.observes(ref.project) ? this.#observed.of(ref) : [];
+  }
+
+  /** `ref`'s runtime segment of its key, with the observed paths `raw` refused (row 011-310). */
+  #runtimeSegment(ref: TestFileRef, raw: readonly RelativePath[]): string {
+    return this.#refused.keyed(ref, raw, runtimeIdentity(this.runtimeApplication(ref).paths));
   }
 
   /** The runner's closure of `testFile` as this worktree keeps it (D21.1); undefined before one. */
