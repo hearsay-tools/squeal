@@ -5,6 +5,7 @@ import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
 import type { RunnerClosure } from "../types/runner.js";
 import type { SchedulerContext } from "./context.js";
+import { OwedRunnerWork } from "./deferred-keying.js";
 import type { Ledger } from "./ledger.js";
 import { type ApplyHost, applyRefinement, recordRefined } from "./refine-apply.js";
 import { fetchRunnerPart, recheckRunner } from "./refinement.js";
@@ -26,6 +27,8 @@ interface RunnerTask {
   readonly touched?: Set<RelativePath>;
   /** A recheck (`queueRecheck`), which stands in for no refinement. */
   readonly recheck?: true;
+  /** Spec 026 D1: a deferred revision recorded refined with no runner call; stands in for none. */
+  readonly recorded?: true;
   /** A revision's runner part (`queueRefine`) until it starts; a newer revision supersedes it. */
   queued?: QueuedRefine;
 }
@@ -49,6 +52,8 @@ export interface RunnerWorkHost extends ApplyHost {
   pump(): void;
   /** An error of work no caller awaits: a note for status, and `onError`. */
   backgroundError(subject: string, error: unknown): void;
+  /** Spec 026 D1: runner keying is deferred, so runner work is owed, not queued; absent, never. */
+  deferred?(): boolean;
 }
 
 /** The runner work of one scheduler, applied by its pump beside the tiers in flight (task 001-140). */
@@ -59,6 +64,8 @@ export class RunnerWork {
   #refining = false;
   /** Test files whose closure went stale while a refinement fetched it; the next one resolves them again. */
   readonly #carried = new Map<string, TestFileRef>();
+  /** Spec 026 D1.2: the runner work deferred keying owes the next wake (`catchUp`). */
+  readonly #owed = new OwedRunnerWork();
 
   constructor(private readonly host: RunnerWorkHost) {}
 
@@ -83,6 +90,15 @@ export class RunnerWork {
     touched: readonly RelativePath[] = [],
   ): void {
     const newer: QueuedRefine = { revision, content, touched };
+    if (this.#deferred()) {
+      this.#owed.addRefine(newer);
+      this.#recordDeferred(revision.number);
+      return;
+    }
+    this.#pushRefine(newer);
+  }
+
+  #pushRefine(newer: QueuedRefine): void {
     const waiting = this.#tasks.find((task) => task.queued !== undefined);
     if (waiting?.queued !== undefined) {
       waiting.queued = supersede(waiting.queued, newer);
@@ -109,6 +125,11 @@ export class RunnerWork {
    * rewrites its output in several batches costs one recreate.
    */
   queueTouched(touched: readonly RelativePath[]): void {
+    if (this.#deferred()) this.#owed.addTouched(touched);
+    else this.#pushTouched(touched);
+  }
+
+  #pushTouched(touched: readonly RelativePath[]): void {
     const queued = this.#tasks.find((task) => task.touched !== undefined)?.touched;
     if (queued !== undefined) {
       for (const path of touched) queued.add(path);
@@ -135,7 +156,14 @@ export class RunnerWork {
    * asks the same, so it stands in for this one.
    */
   queueObserved(): void {
-    if (this.#tasks.some((task) => task.refine === true && task.recheck !== true)) return;
+    if (this.#deferred()) this.#owed.addObserved();
+    else this.#pushObserved();
+  }
+
+  #pushObserved(): void {
+    const standsIn = (task: RunnerTask) =>
+      task.refine === true && task.recheck !== true && task.recorded !== true;
+    if (this.#tasks.some(standsIn)) return;
     this.#tasks.push({
       run: () => {
         const { context, ledger } = this.host.started();
@@ -154,7 +182,9 @@ export class RunnerWork {
    * queued and not started yet stands in, since `invalidate` looks too.
    */
   queueRecheck(): void {
-    if (this.#tasks.some((task) => task.refine === true)) return;
+    // Spec 026 D1.2: the wake's refinement looks too, as `invalidate` does.
+    if (this.#deferred()) return;
+    if (this.#tasks.some((task) => task.refine === true && task.recorded !== true)) return;
     this.#tasks.push({
       run: () => {
         const { context, ledger } = this.host.started();
@@ -176,6 +206,57 @@ export class RunnerWork {
     const kept = this.#tasks.filter((task) => task.refine !== true);
     this.#tasks.splice(0, this.#tasks.length, ...kept);
     this.#carried.clear();
+    this.#owed.clear();
+  }
+
+  /** Spec 026 D1: runner work is owed (`catchUp`), not queued. */
+  get owes(): boolean {
+    return this.#owed.owes;
+  }
+
+  /**
+   * Spec 026 D1.4: an explicit request wakes the runner. The runner work
+   * owed since the last wake is queued, as one refinement of every
+   * revision since (`supersede`), the touched paths and the observed
+   * regrow, so the request's work waits for it. False: none was owed.
+   */
+  catchUp(): boolean {
+    const owed = this.#owed.take();
+    if (owed === null) return false;
+    if (owed.refine !== null) this.#pushRefine(owed.refine);
+    if (owed.touched.length > 0) this.#pushTouched(owed.touched);
+    if (owed.observed) this.#pushObserved();
+    return true;
+  }
+
+  /**
+   * Spec 026 D1.4: a wake's start lists, walks and keys every file afresh,
+   * so the owed work is dropped; its paths, which no runner saw change,
+   * are returned for the start to queue as edits.
+   */
+  forgetOwed(): ReadonlySet<RelativePath> {
+    const owed = this.#owed.take();
+    if (owed === null) return new Set();
+    const changes = owed.refine?.revision.changes.map((change) => change.path) ?? [];
+    return new Set([...changes, ...(owed.refine?.touched ?? []), ...owed.touched]);
+  }
+
+  #deferred(): boolean {
+    return this.host.deferred?.() === true;
+  }
+
+  /**
+   * Spec 026 D1.3: a deferred revision is re-keyed from stored closures
+   * only; it is recorded refined in arrival order, so no wait hangs on the
+   * runner part it owes. A reinstall drops it, as any refinement.
+   */
+  #recordDeferred(revision: Revision["number"]): void {
+    this.#tasks.push({
+      run: () => this.#markRefined(this.host.started().context, revision),
+      cancel: () => {},
+      refine: true,
+      recorded: true,
+    });
   }
 
   /**
@@ -274,7 +355,7 @@ export class RunnerWork {
         this.host.backgroundError("could not apply observed paths", error);
       } else {
         this.host.backgroundError(`could not apply revision ${refined}`, error);
-        await this.#refinedAfterError(context, refined);
+        await this.#markRefined(context, refined);
       }
     } finally {
       ledger.refineChanges = null;
@@ -315,9 +396,10 @@ export class RunnerWork {
    * A refinement that threw on anything but a busy store is not pending any
    * more: nothing retries it, and its note says what failed. Its revision is
    * recorded as refined, so waits do not wait for it forever (D2 as
-   * amended); that write is tried again on a busy store (spec 021 D2).
+   * amended); that write is tried again on a busy store (spec 021 D2). A
+   * deferred revision is recorded so too (spec 026 D1.3, `#recordDeferred`).
    */
-  async #refinedAfterError(context: SchedulerContext, revision: number): Promise<void> {
+  async #markRefined(context: SchedulerContext, revision: number): Promise<void> {
     try {
       await recordRefined(this.host, context, revision);
     } catch (error) {
