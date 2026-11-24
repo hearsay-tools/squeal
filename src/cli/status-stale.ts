@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
+import { lastScannedHead } from "../core/daemon/bootstrapped.js";
 import { splitNul } from "../core/fs/git.js";
 import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { sameStat } from "../core/hash/stat-cache.js";
@@ -79,10 +80,11 @@ export function staleness(
   if (listed === null) return null;
   const latest = store.revisions.latest(id);
   const commit = readRevisionCommit(store, id, latest);
-  const recorded = commit ?? latest;
+  // Revision 0 (row 026-w2-r3): the `HEAD` the start scan saw.
+  const was = (commit ?? latest)?.head ?? (latest === null ? lastScannedHead(store, id) : null);
   const head = readGitHead(root);
   const changed = changedPaths(root, cached, listed);
-  const moved = recorded?.head != null && head !== null && head !== recorded.head;
+  const moved = was != null && head !== null && head !== was;
   const what = [
     ...(moved ? [`the commit now at HEAD (${head?.slice(0, 7)})`] : []),
     ...(changed.length > 0
