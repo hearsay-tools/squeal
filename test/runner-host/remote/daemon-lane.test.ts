@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -9,6 +9,7 @@ import {
   REMOTE_TOPIC,
   withDaemonRemoteLane,
 } from "../../../src/core/runner-host/remote/daemon-lane.js";
+import { readMachines } from "../../../src/core/runner-host/remote/machines-store.js";
 import { remoteSettingsPath } from "../../../src/core/runner-host/remote/settings.js";
 import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
@@ -76,7 +77,7 @@ function lane(settings: unknown, policy: Policy = DEFAULT_POLICY, notes: [string
     env,
   });
   onTestFinished(() => adapter.close());
-  return { adapter, notes };
+  return { adapter, notes, env };
 }
 
 describe("the daemon's remote lane (rows 021-13, 021-14)", () => {
@@ -159,5 +160,63 @@ describe("the daemon's remote lane and remote.needsRepository (row 021-23)", () 
       ["test/git.test.ts"],
     ]);
     expect(other.failure).toBe('remote build-box unreachable; not run here (whenLost "not-run")');
+  });
+});
+
+describe("the daemon's remote lane through a provider (row 026-10)", () => {
+  it("acquires the command provider's machine, records it, and releases it at close", async () => {
+    const calls = join(scratch, `calls${++n}.log`);
+    const script = (name: string, body = "") => {
+      const path = join(scratch, `${name}${n}.mjs`);
+      writeFileSync(
+        path,
+        `import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(calls)}, "${name} " + (process.env.SQUEAL_RELEASE_REASON ?? "-") + "\\n");
+${body}`,
+      );
+      return [process.execPath, path];
+    };
+    const answer = { v: 1, id: "lan", destination: "dev@lan-box", sshArgs: ["-p", "2222"] };
+    const { adapter, notes, env } = lane((root: string) => ({
+      repositories: {
+        [root]: {
+          provider: "command",
+          providerConfig: {
+            acquire: script("acquire", `console.log(${JSON.stringify(JSON.stringify(answer))});`),
+            release: script("release"),
+          },
+        },
+      },
+    }));
+    expect(notes[0]).toEqual([
+      REMOTE_TOPIC,
+      "remote command: connecting; background runs of vitest run here until it answers",
+    ]);
+    // Acquired, then the launch names no bundle: the connect fails after the machine is recorded.
+    for (let i = 0; i < 300 && notes.length < 2; i++) await sleep(10);
+    expect(notes[1]?.[1]).toMatch(/^remote command unreachable since .*bundle to copy/);
+    expect(readMachines(env).machines).toMatchObject([
+      {
+        provider: "command",
+        id: "cmd:lan",
+        destination: "dev@lan-box",
+        sshArgs: ["-p", "2222"],
+        status: "awake",
+      },
+    ]);
+    await adapter.close();
+    expect(readFileSync(calls, "utf8")).toBe("acquire -\nrelease daemon-exit\n");
+    expect(readMachines(env).machines[0]?.status).toBe("detached");
+  });
+
+  it("keeps a { target } entry's notes and records the static machine", async () => {
+    const { notes, env } = lane((root: string) => ({
+      repositories: { [root]: { target: "build-box" } },
+    }));
+    for (let i = 0; i < 200 && notes.length < 2; i++) await sleep(10);
+    expect(notes[1]?.[1]).toMatch(/^remote build-box unreachable since /);
+    expect(readMachines(env).machines).toMatchObject([
+      { provider: "ssh", id: "build-box", destination: "build-box", sshArgs: [] },
+    ]);
   });
 });

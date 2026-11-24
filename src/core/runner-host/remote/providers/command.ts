@@ -2,9 +2,9 @@ import { isRecord } from "../../../fs/json.js";
 import type {
   MachineCapabilities,
   MachineRecord,
+  ReleaseReason,
   RemoteMachine,
   RemoteMachineProvider,
-  ReleaseReason,
 } from "../provider.js";
 import { validTarget } from "../ssh.js";
 import { argumentList, placesProblem, plainString, unknownKey } from "./config.js";

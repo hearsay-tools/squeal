@@ -25,6 +25,7 @@ import { piStatusLine } from "./pi/status.js";
 import { parseProof, proofCommand } from "./proof.js";
 import { psCommand } from "./ps.js";
 import { impactCommand, reachCommand } from "./reach.js";
+import { remoteCommand } from "./remote.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
@@ -354,6 +355,17 @@ Usage:
                                 records and queues each edit; the queued work runs when
                                 the command exits, after --max (default 3h), or when
                                 start ends the hold; exits with the command's code
+  squeal remote list [--json]   The remote machines the remote lanes acquired: id,
+                                provider, status, worktree (and whether it still
+                                exists), last use
+  squeal remote sleep [<worktree>]
+                                Ask the provider to sleep this worktree's remote machine
+                                now; a running daemon's lane wakes it at its next
+                                remote run
+  squeal remote prune [--dry-run]
+                                Release every tracked remote machine whose worktree is
+                                gone, so a cloud machine stops costing; --dry-run only
+                                lists them
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config
                                 also deletes squeal.config.json
@@ -439,6 +451,8 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   stop: stopCommand,
   hold: holdCommand,
   remove: removeCommand,
+  // Spec 026 D12 (row 026-10).
+  remote: remoteCommand,
   update: updateCommand,
   "codex-runtime": codexRuntimeCommand,
   "runner-host": runnerHostCommand,
