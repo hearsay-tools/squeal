@@ -95,6 +95,12 @@ export interface DeskEvents {
    */
   readonly requestWrite?: (batch: SentBatch) => Promise<void>;
   /**
+   * Spec 025 D9 (row 025-09): how long a sent write waited between the
+   * front desk worker posting it and the main thread taking it, told
+   * before `requestWrite`. Served on the main thread, a write never waits.
+   */
+  readonly onWriteWait?: (waitMs: number) => void;
+  /**
    * Spec 021 D15 (row 021-20): imports the export file `squeal import`
    * names, in the retried path. Absent, or without
    * `DeskIdentity.storeSchema`: the daemon answers that it takes no imports.
@@ -224,6 +230,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestRemoteSleep,
     commitAsk,
     requestWrite,
+    onWriteWait,
     requestImport,
     requestKeep,
   } = events;
@@ -242,6 +249,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     ...(requestRemoteSleep === undefined ? {} : { requestRemoteSleep: asked(requestRemoteSleep) }),
     ...(commitAsk === undefined ? {} : { commitAsk: safe(commitAsk) }),
     ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
+    ...(onWriteWait === undefined ? {} : { onWriteWait: safe(onWriteWait) }),
     ...(requestImport === undefined ? {} : { requestImport: asked(requestImport) }),
     ...(requestKeep === undefined ? {} : { requestKeep: asked(requestKeep) }),
     onStop: safe(events.onStop),
@@ -397,6 +405,7 @@ async function inWorker(
           events.commitAsk?.(message.request);
           return;
         case "write":
+          events.onWriteWait?.(Math.max(0, Date.now() - message.queuedAt));
           (events.requestWrite?.(message.batch) ?? Promise.reject(new Error(NO_WRITES))).then(
             () => post({ type: "write-result", id: message.id, error: null }),
             (error: unknown) =>

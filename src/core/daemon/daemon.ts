@@ -106,6 +106,7 @@ import { pauseAt } from "./test-pause.js";
 import { capacityReader, loadUserConfig, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
 import { decodeBatch, SENT_WRITE_BOUND_MS, writeBatch } from "./write-batch.js";
+import { WriteWaitStats } from "./write-wait.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
 
@@ -123,6 +124,8 @@ const RUNTIME_DIR = dirname(fileURLToPath(import.meta.url));
  * forces its workers after 1 s (task 001-367).
  */
 const CANCEL_GRACE_MS = 2_000;
+/** Spec 025 D9: how often the hook writes' queue waits are logged, the code store summary's cadence. */
+const WRITE_WAIT_REPORT_MS = 60_000;
 
 /**
  * Spec 023 D7.2 (row 023-39): `commitMode`, `commitWorktrees` and
@@ -312,6 +315,9 @@ class Daemon {
   /** Spec 023 D7.3 as amended (row 023-40c): a commit daemon's setup and asks; `null` otherwise. */
   readonly #commitStart: CommitStart | null;
   #stopTimers: () => void = () => {};
+  /** Spec 025 D9 (row 025-09): hook writes' front-desk queue waits, logged each minute. */
+  #writeWaits: WriteWaitStats | null = null;
+  #writeWaitTimer: NodeJS.Timeout | null = null;
   /** Row 011-226: stops the full check it claimed once ready, and gives its claim back. */
   #stopFullCheck: () => Promise<void> = async () => {};
   #lastActive: EpochMs;
@@ -1246,6 +1252,7 @@ class Daemon {
     // Row 011-391: a main-store request's corruption marks the store; it is still the answer.
     const watch = <A extends unknown[], T>(call: (...args: A) => T) =>
       watched(this.#storeFault, call);
+    const writeWaits = this.#startWriteWaits();
     return desk.open(
       {
         socketPath: this.#socketPath,
@@ -1296,6 +1303,7 @@ class Daemon {
             within(SENT_WRITE_BOUND_MS, () => this.#phase === "stopping"),
           ),
         ),
+        onWriteWait: (waitMs) => writeWaits.record(waitMs),
         // Row 021-20, part two: one try of a write of a file the code gate keeps.
         requestKeep: (request) =>
           keepInDaemon(
@@ -1601,6 +1609,7 @@ class Daemon {
       );
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
+      this.#stopWriteWaits();
       pauseAt("stop-gap");
       // Spec 023 D7.2: under its lock still, so no new daemon takes a tree about to go.
       let said = text;
@@ -1644,6 +1653,28 @@ class Daemon {
     } catch (error) {
       this.#log(`could not mark the shutdown: ${message(error)}`);
     }
+  }
+
+  /** Spec 025 D9: the minute's hook write waits, logged as `code store: last minute:` is. */
+  #startWriteWaits(): WriteWaitStats {
+    this.#stopWriteWaits();
+    const stats = new WriteWaitStats((text) => this.#log(text));
+    this.#writeWaits = stats;
+    this.#writeWaitTimer = setInterval(() => {
+      const line = stats.take();
+      if (line !== null) this.#log(line);
+    }, WRITE_WAIT_REPORT_MS);
+    this.#writeWaitTimer.unref();
+    return stats;
+  }
+
+  /** Clears the minute's timer and logs the waits since its last line, if any. */
+  #stopWriteWaits(): void {
+    if (this.#writeWaitTimer !== null) clearInterval(this.#writeWaitTimer);
+    this.#writeWaitTimer = null;
+    const line = this.#writeWaits?.take() ?? null;
+    this.#writeWaits = null;
+    if (line !== null) this.#log(line);
   }
 
   async #step(name: string, fn: () => unknown): Promise<void> {

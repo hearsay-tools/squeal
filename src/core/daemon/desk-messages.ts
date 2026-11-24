@@ -132,7 +132,13 @@ export type FromDesk =
   /** Row 023-40c: a `status --at --run` call's ask of a commit daemon. */
   | { readonly type: "commit-ask"; readonly request: CommitAskRequest }
   | { readonly type: "resume" }
-  | { readonly type: "write"; readonly id: string; readonly batch: SentBatch }
+  | {
+      readonly type: "write";
+      readonly id: string;
+      readonly batch: SentBatch;
+      /** Spec 025 D9: when the front desk posted it, for the main thread's queue wait. */
+      readonly queuedAt: EpochMs;
+    }
   | { readonly type: "import"; readonly id: string; readonly request: ImportRequest }
   | { readonly type: "keep"; readonly id: string; readonly request: KeepRequest }
   | {

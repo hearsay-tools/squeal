@@ -145,7 +145,7 @@ function bind(identity: DeskIdentity): void {
             new Promise<void>((resolve, reject) => {
               const id = randomUUID();
               waitingWrite.set(id, { resolve, reject });
-              post({ type: "write", id, batch });
+              post({ type: "write", id, batch, queuedAt: Date.now() });
             }),
           requestImport: (request) =>
             new Promise<ImportOutcome>((resolve) => {
