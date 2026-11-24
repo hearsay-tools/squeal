@@ -10,6 +10,8 @@ import type { StatusUnavailable } from "../core/types/status.js";
 import { changedOnDisk, detailsOnDisk } from "./lint-disk.js";
 import { formatLintChanged, formatLintDetails } from "./lint-report.js";
 import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
+import { noDaemonNotice } from "./status-stale.js";
 import { waitConsumer } from "./status-wait.js";
 
 /*
@@ -77,7 +79,11 @@ export async function lintCommand(args: readonly string[], io: CliIo): Promise<n
   const read = withStatusStore(cwd, { busyRetryMs: CLI_READ_RETRY_MS }, (context) =>
     answer(context, positional, changed, io),
   );
-  return print(await onDisk(read), json, io);
+  // Spec 026 D2.4: with no daemon, edits on disk the stores do not hold yet are named first.
+  const notice = json
+    ? null
+    : noDaemonNotice(cwd, (io.now ?? Date.now)(), statusCommand(io.env ?? process.env));
+  return print(await onDisk(read), json, io, notice);
 }
 
 /** The store's answer with each result tested against its bytes on disk, read after the store. */
@@ -88,13 +94,19 @@ async function onDisk<T extends Answer | NoAnswer | StatusUnavailable>(read: T):
 }
 
 /** Prints the details or the changes, or why there are none. */
-function print(read: Answer | NoAnswer | StatusUnavailable, json: boolean, io: CliIo): number {
+function print(
+  read: Answer | NoAnswer | StatusUnavailable,
+  json: boolean,
+  io: CliIo,
+  notice: string | null = null,
+): number {
+  const lead = notice === null ? "" : `${notice}\n`;
   if ("details" in read) {
     const { v, ...details } = read.details;
     io.stdout(
       json
         ? `${JSON.stringify({ v, available: true, paths: read.paths, ...details }, null, 2)}\n`
-        : formatLintDetails(read.details, read.paths),
+        : `${lead}${formatLintDetails(read.details, read.paths)}`,
     );
     return 0;
   }
@@ -103,7 +115,7 @@ function print(read: Answer | NoAnswer | StatusUnavailable, json: boolean, io: C
     io.stdout(
       json
         ? `${JSON.stringify({ v, available: true, ...changed }, null, 2)}\n`
-        : formatLintChanged(read.changed),
+        : `${lead}${formatLintChanged(read.changed)}`,
     );
     return 0;
   }
