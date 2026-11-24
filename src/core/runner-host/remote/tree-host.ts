@@ -1,4 +1,14 @@
-import { readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import {
+  closeSync,
+  linkSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import {
   chmod,
   lstat,
@@ -44,7 +54,8 @@ import {
  * process id and removes only its own ended runs' and those of a host no
  * longer running. A file's or the record's next copy is written under a
  * name of this host's own before it replaces the old one, and one host at
- * a time installs (`install.lock`, taken over from a host that died).
+ * a time installs (`install.lock`, taken over from a host that died, and
+ * removed only by the host that holds it: review 0.1.617 B2).
  */
 
 /** What the host answers of its tree. */
@@ -217,36 +228,118 @@ export function createTreeHost(
   };
 }
 
+/** A lock without its owner this long is a host's that died publishing it: that takes no time. */
+const UNOWNED_LOCK_MS = 10_000;
+/** A takeover guard this old is a host's that died taking over: a takeover is a few file operations. */
+const STALE_BREAK_MS = 10_000;
+const LOCK_RETRY_MS = 100;
+const NO_HARD_LINKS: ReadonlySet<string> = new Set(["EPERM", "ENOTSUP", "EOPNOTSUPP", "ENOSYS"]);
+
 /**
- * `work` while this host holds the lock directory `lock`: made by one host
- * at a time, holding its process id, taken over when that process ended.
+ * Review 0.1.617 B2: `work` while this host holds the lock file `lock`.
+ * The lock holds its owner, `<pid> <nonce>`, unique to this install; a
+ * holder that died, or a lock left without an owner, is taken over. After
+ * `work` the host removes the lock only while it holds its own owner.
  */
 async function locked<T>(lock: string, work: () => Promise<T>): Promise<T> {
-  for (;;) {
-    try {
-      await mkdir(lock);
-      await writeFile(join(lock, "pid"), String(process.pid));
-      break;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      const holder = await readFile(join(lock, "pid"), "utf8").catch(() => "");
-      // A holder that died gives the lock up, as does one that wrote no id within 10 s.
-      const made = await lstat(lock).then(
-        (stat) => stat.mtimeMs,
-        () => Date.now(),
-      );
-      const dead = holder === "" ? Date.now() - made > 10_000 : !hostRuns(`${holder}-`);
-      if (dead) {
-        await rm(lock, { recursive: true, force: true });
-        continue;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
+  const owner = `${process.pid} ${randomBytes(8).toString("hex")}\n`;
+  while (!acquire(lock, owner)) {
+    if (takeOverStale(lock)) continue;
+    await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
   }
   try {
     return await work();
   } finally {
-    await rm(lock, { recursive: true, force: true });
+    if (readOwner(lock) === owner) removeIfThere(lock);
+  }
+}
+
+/** Creates `lock` holding `owner`, never empty where hard links work; false when it exists. */
+function acquire(lock: string, owner: string): boolean {
+  const published = `${lock}.${owner.trim().replace(" ", ".")}`;
+  writeFileSync(published, owner, { mode: 0o600 });
+  try {
+    linkSync(published, lock);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code ?? "";
+    if (code === "EEXIST") return false;
+    if (!NO_HARD_LINKS.has(code)) throw error;
+  } finally {
+    removeIfThere(published);
+  }
+  // No hard links here: create, then write; `takeOverStale` waits out a lock without an owner.
+  let fd: number;
+  try {
+    fd = openSync(lock, "wx", 0o600);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+    throw error;
+  }
+  try {
+    writeFileSync(fd, owner);
+  } finally {
+    closeSync(fd);
+  }
+  return true;
+}
+
+/**
+ * Removes `lock` when its holder died, or it has had no owner for
+ * `UNOWNED_LOCK_MS`; true when it is gone. One takeover at a time, and only
+ * of the owner it read: a lock taken after that read is never removed.
+ */
+function takeOverStale(lock: string): boolean {
+  const owner = readOwner(lock);
+  if (owner === null) return true;
+  if (!stale(lock, owner)) return false;
+  const breaker = `${lock}.break`;
+  try {
+    closeSync(openSync(breaker, "wx", 0o600));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    if (ageMs(breaker) > STALE_BREAK_MS) removeIfThere(breaker);
+    return false;
+  }
+  try {
+    if (readOwner(lock) !== owner) return false;
+    rmSync(lock, { recursive: true, force: true });
+    return true;
+  } finally {
+    removeIfThere(breaker);
+  }
+}
+
+/** The holder of `owner` died; a lock without an owner is busy until `UNOWNED_LOCK_MS`. */
+function stale(lock: string, owner: string): boolean {
+  const holder = /^(\d+) \S+\n$/.exec(owner)?.[1];
+  if (holder !== undefined) return !hostRuns(`${holder}-`);
+  return ageMs(lock) > UNOWNED_LOCK_MS;
+}
+
+/** The text of `lock`; `null` when it is gone, `""` when it cannot be read as a file. */
+function readOwner(lock: string): string | null {
+  try {
+    return readFileSync(lock, "utf8");
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT" ? null : "";
+  }
+}
+
+/** Milliseconds since `path` changed; 0 when it is gone, so a missing file is never stale. */
+function ageMs(path: string): number {
+  try {
+    return Date.now() - statSync(path).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+function removeIfThere(path: string): void {
+  try {
+    unlinkSync(path);
+  } catch {
+    // Another host removed it first.
   }
 }
 
