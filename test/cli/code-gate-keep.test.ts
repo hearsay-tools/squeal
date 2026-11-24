@@ -31,8 +31,11 @@ import {
 
 const SLOW = { timeout: 240_000 } as const;
 
-/** Room for a loaded host to start Vitest and run the quick file; the late one never ends. */
-const BUDGET = "30";
+/**
+ * Room for a loaded host to start Vitest and run the quick file; the late one never ends. Each
+ * of three gate runs waits the whole budget, so it stays short (row 010-38: 30 s took 95 s).
+ */
+const BUDGET = "10";
 
 /** The feature branch: `src/keep.ts` and two tests of it, one quick and one that never ends. */
 const FEATURE: Readonly<Record<string, string>> = {
