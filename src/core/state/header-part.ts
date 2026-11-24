@@ -5,7 +5,12 @@ import type { KnownState, Validity } from "../types/state.js";
 import type { SlowPendingCounts, TestFileCounts } from "../types/status.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
-import { countNotCurrent, type NotCurrentCounts } from "./file-class.js";
+import {
+  type NotCurrentCounts,
+  notCurrentOf,
+  type WorktreeStates,
+  worktreeStatesOf,
+} from "./file-class.js";
 import {
   type GroupLaneCounts,
   groupLaneCounts,
@@ -55,6 +60,17 @@ export function headerPart(
   isSlow?: (testFile: TestFileRef) => boolean,
   openFiles?: ReadonlySet<string>,
 ): HeaderPart {
+  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles);
+}
+
+/** `headerPart` from the worktree's states counted (spec 025 D11, row 025-11). */
+export function headerPartOf(
+  states: WorktreeStates,
+  keys: readonly TestFileKeyRecord[],
+  policy: Policy | null,
+  isSlow?: (testFile: TestFileRef) => boolean,
+  openFiles?: ReadonlySet<string>,
+): HeaderPart {
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const shown = policy !== null && groupTextsShown(policy);
@@ -66,7 +82,7 @@ export function headerPart(
     view,
     counted: countStates(states),
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    notCurrent: countNotCurrent(states, keys, openFiles),
+    notCurrent: notCurrentOf(states, keys, openFiles),
     listed: keys.length > 0,
     ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),
     ...(owned ? { slowLane } : {}),
@@ -91,24 +107,25 @@ export interface StateCounts {
   readonly importedCount: number;
 }
 
-function countStates(states: readonly KnownState[]): StateCounts {
+function countStates(states: WorktreeStates): StateCounts {
   const counts: Record<Validity, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
   const fileLevelCounts: Record<Validity, number> = { ...counts };
   let inheritedCount = 0;
   let inheritedFileLevelCount = 0;
   let importedCount = 0;
-  for (const state of states) {
+  for (const group of states.groups) {
     // Task 001-382: a global setup is no test's check; it counts among known failures only.
-    if (state.check.kind === "setup") continue;
-    counts[state.validity]++;
-    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity !== "current") continue;
-    if (state.origin?.kind === "inherited") {
-      inheritedCount++;
-      if (state.check.kind === "file") inheritedFileLevelCount++;
+    if (group.kind === "setup") continue;
+    const n = group.count;
+    counts[group.validity] += n;
+    if (group.kind === "file") fileLevelCounts[group.validity] += n;
+    if (group.validity !== "current") continue;
+    if (group.origin?.kind === "inherited") {
+      inheritedCount += n;
+      if (group.kind === "file") inheritedFileLevelCount += n;
     }
     // Spec 018 D4: the hook header's count of imported results.
-    if (state.origin?.kind === "imported") importedCount++;
+    if (group.origin?.kind === "imported") importedCount += n;
   }
   return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
 }
@@ -119,13 +136,12 @@ function countStates(states: readonly KnownState[]): StateCounts {
  * running one is `pending`.
  */
 function countFilesWithoutChecks(
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
 ): TestFileCounts {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
   const counts = { pending: 0, unknown: 0 };
   for (const row of keys) {
-    if (withChecks.has(testFileId(row.testFile))) continue;
+    if (states.files.has(testFileId(row.testFile))) continue;
     counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
   }
   return counts;
@@ -136,14 +152,15 @@ const SLOW_FILES_NAMED = 3;
 
 /** The pending work of the slow test files, counted as `readHeader` counts all of it. */
 function countSlowPending(
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   isSlow: (testFile: TestFileRef) => boolean,
 ): SlowPendingCounts {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const withChecks = states.files;
   const files = new Map<string, TestFileRef>();
   let checks = 0;
-  for (const state of states) {
+  // A pending state is notable: no other is.
+  for (const state of states.notable) {
     const ref = testFileOf(state.check);
     if (state.validity !== "pending" || !isSlow(ref)) continue;
     checks++;

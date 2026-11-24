@@ -7,8 +7,16 @@ import { publishedBatches } from "../scheduler/promotions-row.js";
 import { type PublishedQuiet, publishedWaits } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { groupView, laneFor, slowView } from "../scheduler/slow.js";
-import { type FileClass, fileClassOf } from "../state/file-class.js";
-import { readHeader } from "../state/header.js";
+import {
+  classOf,
+  type FileClass,
+  fileClassOf,
+  NO_STATES,
+  type StatesTally,
+  type WorktreeStates,
+} from "../state/file-class.js";
+import { readHeaderOf } from "../state/header.js";
+import { readWorktreeStates } from "../store/status-reads.js";
 import type { ResolvedGroup } from "../types/check-groups.js";
 import type { AbsolutePath, EpochMs, ProjectName, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
@@ -23,7 +31,6 @@ import type {
   StatusHold,
   TierYield,
 } from "../types/standing.js";
-import type { KnownState } from "../types/state.js";
 import type { DaemonLiveness, StatusHeader, UnknownTestFile } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { RunRecord, TestFileKeyRecord } from "../types/store-records.js";
@@ -98,7 +105,8 @@ export function readNamedFiles(
 
 /** What a caller already read of the worktree in its read transaction (row 011-29). */
 export interface WorktreeReads {
-  readonly states: readonly KnownState[];
+  /** Its known states counted (spec 025 D11, row 025-11): never a `KnownState` per check. */
+  readonly states: WorktreeStates;
   readonly keys: readonly TestFileKeyRecord[];
   readonly header: StatusHeader;
   /** The live daemon's open runs, `openRunsOf`'s. */
@@ -123,10 +131,13 @@ export function standingsOf(
   load: () => LoadNow = hostLoad,
   reads?: WorktreeReads,
 ): (files: readonly TestFileRef[]) => readonly NamedFile[] {
-  const states = reads?.states ?? store.knownStates.list(worktreeId);
+  const states = reads?.states ?? readWorktreeStates(store, worktreeId);
   const keys = reads?.keys ?? store.testFileKeys.list(worktreeId);
   const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
-  const checks = checksByFile(states);
+  // Each file's states counted, a global setup's at its path too (`checksByFile`).
+  const tally = (ref: TestFileRef) => states.files.get(testFileId(ref))?.all ?? NO_STATES;
+  // An unknown check's reason and every global setup are notable states.
+  const notable = checksByFile(states.notable);
   const policy = readPolicy(root);
   const worktree = store.worktrees.get(worktreeId);
   const startedAt = liveStartedAt(worktree, daemon);
@@ -146,10 +157,10 @@ export function standingsOf(
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   // Row 011-309: the lanes whose tier the pool refused, with what the pool read.
   const pool = startedAt === null ? null : publishedPoolWaits(store, worktreeId, startedAt, now);
-  const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
+  const header = reads?.header ?? readHeaderOf(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
-  const reasons = unknownReasons(store, worktreeId, states, root, now);
-  const setups = setupsOf(states);
+  const reasons = unknownReasons(store, worktreeId, states.notable, root, now);
+  const setups = setupsOf(states.notable);
   const retried = retriedRuns(store, worktreeId);
   const alive = daemon.state === "alive";
   // Row 011-73 (C9, C15): while on hold no tier starts, so a queued file waits for the hold.
@@ -176,17 +187,14 @@ export function standingsOf(
     load: once(load),
     // What `run --all --wait` runs, from the rows and states read above: no further read.
     notCurrent: once(
-      () =>
-        keys.filter(
-          (row) => fileClassOf(row, checks.get(testFileId(row.testFile)) ?? []) !== "current",
-        ).length,
+      () => keys.filter((row) => classOf(row, tally(row.testFile)) !== "current").length,
     ),
   };
   return (files) =>
     files.map((ref): NamedFile => {
       const row = rows.get(testFileId(ref));
-      const own = checks.get(testFileId(ref)) ?? [];
-      const state = fileClassOf(row, own);
+      const own = tally(ref);
+      const state = classOf(row, own);
       if (state === "current") return { testFile: ref, state, ...verdictOf(own) };
       // The order rule (design 011-24 section 3): a run of its key elsewhere is waited for, not retried.
       const key = row?.key ?? null;
@@ -208,7 +216,7 @@ export function standingsOf(
       }
       if (state === "unknown") {
         if (row === undefined) return { testFile: ref, state };
-        const unknown = reasons.of(row, own);
+        const unknown = reasons.ofCounted(row, own.count, notable.get(testFileId(ref)) ?? []);
         return {
           testFile: ref,
           state,
@@ -216,7 +224,7 @@ export function standingsOf(
           standing: claim ?? unknownStanding(unknown, facts),
         };
       }
-      const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
+      const running = row?.pending === "running" || own.running;
       const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
       const run = running ? runOf(runs, ref) : undefined;
       // Row 019-16: every group lane's runs have their own instance and global setup (019-12).
@@ -454,10 +462,7 @@ function queuedReason(
  * revision and the bound on each of its runner calls, `runnerPartBoundMs`;
  * `null` when it is listed.
  */
-function unlistedReason(
-  header: ReturnType<typeof readHeader>,
-  policy: Policy,
-): PendingReason | null {
+function unlistedReason(header: StatusHeader, policy: Policy): PendingReason | null {
   const refined = header.refinedRevision;
   if (header.runnerPartPending !== true || refined === null || refined === undefined) return null;
   // C4's bound is per runner call (an invalidate, then an affected call, each its own),
@@ -479,9 +484,9 @@ function runOf(runs: readonly RunRecord[], ref: TestFileRef): RunRecord | undefi
 }
 
 /** `fail` with a failing check, else `pass` with a passing one, else `skip` with a skipped one. */
-function verdictOf(own: readonly KnownState[]): { verdict?: NamedVerdict } {
+function verdictOf(own: StatesTally): { verdict?: NamedVerdict } {
   for (const verdict of ["fail", "pass", "skip"] as const) {
-    if (own.some((s) => s.outcome === verdict)) return { verdict };
+    if (own.outcome[verdict] > 0) return { verdict };
   }
   return {};
 }

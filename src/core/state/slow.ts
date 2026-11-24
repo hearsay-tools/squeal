@@ -14,7 +14,7 @@ import type { KnownState } from "../types/state.js";
 import type { SlowTierActivity, SlowTierState } from "../types/status.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
-import { testFileOf } from "./derive.js";
+import { type WorktreeStates, worktreeStatesOf } from "./file-class.js";
 import { slotNow } from "./slot-now.js";
 
 /*
@@ -83,20 +83,28 @@ export function classifySlowFiles(
   keys: readonly TestFileKeyRecord[],
   isSlow: (testFile: TestFileRef) => boolean,
 ): LaneFiles {
-  const checks = laneChecks(states, isSlow);
+  return classifySlowFilesOf(worktreeStatesOf(states), keys, isSlow);
+}
+
+/** `classifySlowFiles` from the worktree's states counted (row 025-11). */
+export function classifySlowFilesOf(
+  states: WorktreeStates,
+  keys: readonly TestFileKeyRecord[],
+  isSlow: (testFile: TestFileRef) => boolean,
+): LaneFiles {
   const files = new Map<string, { ref: TestFileRef; class: SlowClass }>();
   for (const row of keys) {
     if (!isSlow(row.testFile)) continue;
     const id = testFileId(row.testFile);
-    const own = checks.get(id) ?? [];
+    const own = states.files.get(id)?.all;
     const cls: SlowClass =
-      own.length === 0
+      own === undefined || own.count === 0
         ? row.key !== null && row.pending !== null
           ? "pending"
           : "notRun"
-        : own.some((s) => s.validity === "pending")
+        : own.validity.pending > 0
           ? "pending"
-          : own.every((s) => s.validity === "current")
+          : own.validity.current === own.count
             ? "current"
             : "notRun";
     files.set(id, { ref: row.testFile, class: cls });
@@ -104,20 +112,12 @@ export function classifySlowFiles(
   return files;
 }
 
-/** The states of the lane's files (`inLane`), by `testFileId`. */
-export function laneChecks(
-  states: readonly KnownState[],
+/** What classes a lane's files from the worktree's states counted and its key rows. */
+export type LaneClassifier = (
+  states: WorktreeStates,
+  keys: readonly TestFileKeyRecord[],
   inLane: (testFile: TestFileRef) => boolean,
-): Map<string, KnownState[]> {
-  const checks = new Map<string, KnownState[]>();
-  for (const state of states) {
-    const ref = testFileOf(state.check);
-    if (!inLane(ref)) continue;
-    const id = testFileId(ref);
-    checks.set(id, [...(checks.get(id) ?? []), state]);
-  }
-  return checks;
-}
+) => LaneFiles;
 
 /**
  * The slow-tier line's state (D8), read in the caller's transaction. The
@@ -130,7 +130,8 @@ export function readSlowTier(
   keys: readonly TestFileKeyRecord[],
   view: SlowPolicyView,
 ): SlowTierState {
-  return slowTierOf(readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP), view);
+  const counted = worktreeStatesOf(states);
+  return slowTierOf(readLane(store, worktreeId, counted, keys, view.isSlow, SLOW_GROUP), view);
 }
 
 /** The slow-tier line's state from its lane's (`readLane`) and the policy's Stop wait and moment. */
@@ -160,11 +161,11 @@ export type LaneCounts = Omit<LaneState, "activity">;
 export function readLane(
   store: Store,
   worktreeId: WorktreeId,
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   inLane: (testFile: TestFileRef) => boolean,
   group: string,
-  classify: typeof classifySlowFiles = classifySlowFiles,
+  classify: LaneClassifier = classifySlowFilesOf,
 ): LaneState {
   return {
     ...laneCounts(states, keys, inLane, classify),
@@ -178,22 +179,22 @@ export function readLane(
  * caller that keeps them may keep this too (row 011-345).
  */
 export function laneCounts(
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   inLane: (testFile: TestFileRef) => boolean,
-  classify: typeof classifySlowFiles = classifySlowFiles,
+  classify: LaneClassifier = classifySlowFilesOf,
 ): LaneCounts {
   const files = classify(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
-  for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt: RevisionNumber | null = null;
   let currentUpTo: RevisionNumber | null = null;
-  for (const state of states) {
-    if (state.validity !== "current" || state.observedAt === null) continue;
-    const id = testFileId(testFileOf(state.check));
-    if (files.get(id)?.class !== "current") continue;
-    currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
-    currentUpTo = Math.max(currentUpTo ?? state.observedAt, state.observedAt);
+  for (const [id, { class: cls }] of files) {
+    counts[cls]++;
+    if (cls !== "current") continue;
+    const own = states.files.get(id);
+    if (own === undefined || own.currentAt === null || own.currentUpTo === null) continue;
+    currentAt = currentAt === null ? own.currentAt : Math.min(currentAt, own.currentAt);
+    currentUpTo = Math.max(currentUpTo ?? own.currentUpTo, own.currentUpTo);
   }
   return {
     testFiles: files.size,

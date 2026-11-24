@@ -110,7 +110,7 @@ function worktree() {
   return { repo, store };
 }
 
-describe("a named snapshot reads the worktree's states once (row 011-411)", () => {
+describe("a named snapshot reads the worktree's states once (row 011-411), by SQL (row 025-11)", () => {
   it("gives the text and JSON the separate reads gave", async () => {
     const { repo, store } = worktree();
 
@@ -145,8 +145,9 @@ describe("a named snapshot reads the worktree's states once (row 011-411)", () =
 
     await namedSnapshot(repo.main, [A, B, C], OPTIONS);
 
-    // Before row 011-411: two more, the verdict's and the named files'.
-    expect(snapshotOnly).toBe(1);
+    // Before row 011-411: two more, the verdict's and the named files'. Row 025-11 (spec 025
+    // D11): the snapshot's own read counts the states by SQL, so none is left.
+    expect(snapshotOnly).toBe(0);
     expect(counter.whole).toBe(snapshotOnly);
   });
 });
@@ -185,8 +186,9 @@ describe("a named wait's last read reads the worktree's states once (row 011-421
     const got = await waitForNamed(repo.main, [B, C], WAIT);
 
     expect(got.outcome).toBe("settled");
-    // Before row 011-421: three, the verdict's, the snapshot's and the named files'.
-    expect(counter.whole).toBe(1);
+    // Before row 011-421: three, the verdict's, the snapshot's and the named files';
+    // before row 025-11, the snapshot's one.
+    expect(counter.whole).toBe(0);
   });
 
   it("names a hold that ends at the deadline as of the deadline's last millisecond (review 0.1.578 B3)", () => {

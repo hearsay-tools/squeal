@@ -10,8 +10,9 @@ import type { KnownState } from "../types/state.js";
 import type { FullSuiteState, KnownFailure, StatusHeader } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { CheckpointRecord, TestFileKeyRecord } from "../types/store-records.js";
+import type { WorktreeStates } from "./file-class.js";
 import { groupTiersOf, readCommitLine } from "./groups.js";
-import { type HeaderPart, headerPart } from "./header-part.js";
+import { type HeaderPart, headerPart, headerPartOf } from "./header-part.js";
 import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
 import { liveActivity, slowTierOf } from "./slow.js";
@@ -60,6 +61,23 @@ export function readHeader(
 ): StatusHeader {
   return headerWith(store, worktreeId, keys, (policy) =>
     headerPart(states, keys, policy, isSlow, openFiles),
+  );
+}
+
+/**
+ * `readHeader` from the worktree's states counted (spec 025 D11, row
+ * 025-11): status reads them by SQL (`readWorktreeStates`), never a
+ * `KnownState` per check.
+ */
+export function readHeaderOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  states: WorktreeStates,
+  keys: readonly TestFileKeyRecord[],
+  openFiles?: ReadonlySet<string>,
+): StatusHeader {
+  return headerWith(store, worktreeId, keys, (policy) =>
+    headerPartOf(states, keys, policy, undefined, openFiles),
   );
 }
 

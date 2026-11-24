@@ -15,8 +15,8 @@ import type { KnownState } from "../types/state.js";
 import type { CommitLine, GroupTierState } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
-import { fileClassOf } from "./file-class.js";
-import { type LaneFiles, laneChecks, laneCounts, liveActivity, slowPolicyView } from "./slow.js";
+import { classOf, type WorktreeStates, worktreeStatesOf } from "./file-class.js";
+import { type LaneFiles, laneCounts, liveActivity, slowPolicyView } from "./slow.js";
 
 /*
  * Spec 019 D5 step 3 and D6 (row 019-16): what headers and status read of a
@@ -70,7 +70,8 @@ export function readGroupTiers(
   keys: readonly TestFileKeyRecord[],
   policy: Policy,
 ): readonly GroupTierState[] {
-  return groupTiersOf(store, worktreeId, keys, groupLaneCounts(states, keys, policy));
+  const counted = worktreeStatesOf(states);
+  return groupTiersOf(store, worktreeId, keys, groupLaneCounts(counted, keys, policy));
 }
 
 /** A configured test group's lane without its activity (`laneCounts`), and what tells its files. */
@@ -88,7 +89,7 @@ export interface GroupLaneCounts {
  * (row 011-345).
  */
 export function groupLaneCounts(
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   policy: Policy,
 ): readonly GroupLaneCounts[] {
@@ -106,7 +107,7 @@ export function groupLaneCounts(
           at: group.at,
           after: group.after,
           quietMs: group.quietMs,
-          ...laneCounts(states, keys, inLane, classifyGroupFiles),
+          ...laneCounts(states, keys, inLane, classifyGroupFilesOf),
         },
         ...(group.stopRequires ? { stopWaitMs: waitMs } : {}),
       },
@@ -192,12 +193,20 @@ export function classifyGroupFiles(
   keys: readonly TestFileKeyRecord[],
   inLane: (testFile: TestFileRef) => boolean,
 ): LaneFiles {
-  const checks = laneChecks(states, inLane);
+  return classifyGroupFilesOf(worktreeStatesOf(states), keys, inLane);
+}
+
+/** `classifyGroupFiles` from the worktree's states counted (row 025-11). */
+export function classifyGroupFilesOf(
+  states: WorktreeStates,
+  keys: readonly TestFileKeyRecord[],
+  inLane: (testFile: TestFileRef) => boolean,
+): LaneFiles {
   const files: LaneFiles = new Map();
   for (const row of keys) {
     if (!inLane(row.testFile)) continue;
     const id = testFileId(row.testFile);
-    const cls = fileClassOf(row, checks.get(id) ?? []);
+    const cls = classOf(row, states.files.get(id)?.all);
     files.set(id, {
       ref: row.testFile,
       class: cls === "current" || cls === "pending" ? cls : "notRun",

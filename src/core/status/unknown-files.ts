@@ -2,6 +2,7 @@ import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { readUnknownFiles } from "../scheduler/unknown-files.js";
 import { testFileKeyOf } from "../state/derive.js";
+import { NO_STATES, type WorktreeStates } from "../state/file-class.js";
 import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
 import { cap, plural, testFileText } from "../text.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
@@ -29,25 +30,28 @@ export const UNKNOWN_FILES_LISTED = 20;
 export function unknownTestFilesOf(
   store: Store,
   worktreeId: WorktreeId,
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   root?: AbsolutePath,
   now: EpochMs = Date.now(),
 ): { unknownTestFiles?: UnknownTestFiles } {
-  const checks = checksByFile(states);
+  const tally = (row: TestFileKeyRecord) =>
+    states.files.get(testFileId(row.testFile))?.all ?? NO_STATES;
   const unknown = keys.filter((row) => {
-    const own = checks.get(testFileId(row.testFile)) ?? [];
-    if ((row.key !== null && row.pending !== null) || own.some((s) => s.validity === "pending")) {
-      return false;
-    }
-    return row.key === null || own.length === 0 || own.some((s) => s.validity === "unknown");
+    const own = tally(row);
+    if ((row.key !== null && row.pending !== null) || own.validity.pending > 0) return false;
+    return row.key === null || own.count === 0 || own.validity.unknown > 0;
   });
   if (unknown.length === 0) return {};
-  const reasons = unknownReasons(store, worktreeId, states, root, now);
+  // An unknown check's reason and a failed global setup are notable states.
+  const notable = checksByFile(states.notable);
+  const reasons = unknownReasons(store, worktreeId, states.notable, root, now);
   const files = unknown
     .sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile)))
     .slice(0, UNKNOWN_FILES_LISTED)
-    .map((row) => reasons.of(row, checks.get(testFileId(row.testFile)) ?? []));
+    .map((row) =>
+      reasons.ofCounted(row, tally(row).count, notable.get(testFileId(row.testFile)) ?? []),
+    );
   return { unknownTestFiles: { total: unknown.length, files } };
 }
 
@@ -66,6 +70,11 @@ export function checksByFile(states: readonly KnownState[]): Map<string, KnownSt
 /** Why a file is `unknown`, for one worktree's read (`unknownReasons`). */
 export interface UnknownReasons {
   of(row: TestFileKeyRecord, own: readonly KnownState[]): UnknownTestFile;
+  /**
+   * `of` from how many states the file has (`count`) and those of them that
+   * are notable (`WorktreeStates.notable`), which hold every unknown one.
+   */
+  ofCounted(row: TestFileKeyRecord, count: number, notable: readonly KnownState[]): UnknownTestFile;
 }
 
 /**
@@ -97,6 +106,7 @@ export function unknownReasons(
   };
   const reason = (
     row: TestFileKeyRecord,
+    count: number,
     own: readonly KnownState[],
   ): { reason: string | null; cause?: UnknownCause } => {
     const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
@@ -114,7 +124,7 @@ export function unknownReasons(
     const claimant = claimantOf(store, worktreeId, row.testFile, row.key, now);
     if (claimant !== null)
       return { reason: `${claimant.worktree.root}'s daemon is running its key` };
-    if (own.length > 0) return { reason: null };
+    if (count > 0) return { reason: null };
     return {
       reason: isLookupOnly()
         ? "never run at this key: the baseline is lookup-only, so nothing queued it"
@@ -122,22 +132,25 @@ export function unknownReasons(
       cause: "never-run",
     };
   };
-  return {
-    of(row, own) {
-      const entry = recorded.get(testFileId(row.testFile));
-      if (entry !== undefined && entry.key === row.key) {
-        const { ran, reason, samples, cause } = entry;
-        return {
-          testFile: row.testFile,
-          ran,
-          reason,
-          samples,
-          ...(cause === undefined ? {} : { cause }),
-        };
-      }
-      return { testFile: row.testFile, ran: false, samples: [], ...reason(row, own) };
-    },
+  const ofCounted = (
+    row: TestFileKeyRecord,
+    count: number,
+    own: readonly KnownState[],
+  ): UnknownTestFile => {
+    const entry = recorded.get(testFileId(row.testFile));
+    if (entry !== undefined && entry.key === row.key) {
+      const { ran, reason, samples, cause } = entry;
+      return {
+        testFile: row.testFile,
+        ran,
+        reason,
+        samples,
+        ...(cause === undefined ? {} : { cause }),
+      };
+    }
+    return { testFile: row.testFile, ran: false, samples: [], ...reason(row, count, own) };
   };
+  return { of: (row, own) => ofCounted(row, own.length, own), ofCounted };
 }
 
 /** Status's lines naming each unknown test file and why; none when there are none. */

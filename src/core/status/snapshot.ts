@@ -14,8 +14,10 @@ import { pendingRetriesOf } from "../retry/pending.js";
 import { withRecorded } from "../retry/recorded.js";
 import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
 import { testFileKeyOf } from "../state/derive.js";
-import { readHeader } from "../state/header.js";
+import type { WorktreeStates } from "../state/file-class.js";
+import { readHeaderOf } from "../state/header.js";
 import { META_STORE_RECOVERED } from "../store/open.js";
+import { importCountsByFile, readWorktreeStates } from "../store/status-reads.js";
 import { readTransaction } from "../store/store.js";
 import {
   type AbsolutePath,
@@ -24,7 +26,6 @@ import {
   type WorktreeId,
 } from "../types/common.js";
 import type { LoadNow } from "../types/standing.js";
-import type { KnownState } from "../types/state.js";
 import type {
   CheckBreakdown,
   CheckpointInProgress,
@@ -43,7 +44,7 @@ import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
 import { ignoredConfigOf, liveDaemonVersion } from "./ignored-config.js";
-import { readImports } from "./imports.js";
+import { readImportsOf } from "./imports.js";
 import { lintStatusOf } from "./lint-status.js";
 import { sharedOf } from "./node-mismatch.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
@@ -143,7 +144,8 @@ function snapshot(
 ): { readonly snapshot: StatusSnapshot; readonly reads: WorktreeReads } {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
-  const states = store.knownStates.list(worktreeId);
+  // Spec 025 D11 (row 025-11): the states counted by SQL, never a `KnownState` per check.
+  const states = readWorktreeStates(store, worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
   const runtime = runtimeFilesStatus(store, worktreeId, root);
 
@@ -163,12 +165,13 @@ function snapshot(
   const held = openFiles(runs);
   // Row 011-73 (C6, C9): the holds on its validation, which the queued files wait for.
   const holds = readHolds(store, worktree, daemon, now);
-  const header = readHeader(store, worktreeId, states, keys, undefined, held);
+  const header = readHeaderOf(store, worktreeId, states, keys, held);
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withTestFileFrames(
     store,
     worktreeId,
-    withRecorded(store, worktreeId, states, header.revision),
+    // Every failure is notable (`WorktreeStates.notable`), in `knownStates.list` order.
+    withRecorded(store, worktreeId, states.notable, header.revision),
   );
   const load = once(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
@@ -212,7 +215,7 @@ function snapshot(
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
-    ...importsOf(store, worktreeId, keys, states, at),
+    ...importsOf(store, worktreeId, keys, at),
     breakdown: breakdown(states, keys, held),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
@@ -302,10 +305,11 @@ function importsOf(
   store: Store,
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
-  states: readonly KnownState[],
   root: AbsolutePath,
 ): Pick<StatusSnapshot, "imports" | "shared"> {
-  const imports = readImports(store, worktreeId, keys, states);
+  const imports = readImportsOf(store, worktreeId, keys, () =>
+    importCountsByFile(store, worktreeId),
+  );
   const { shared } = sharedOf(readPolicy(root).shared.ref, imports, () => pinnedNode(root));
   return {
     ...(imports.length === 0 ? {} : { imports }),
@@ -315,19 +319,20 @@ function importsOf(
   };
 }
 
-/** Current inherited results grouped by source worktree and commit, largest group first. */
-function inheritedSources(
-  store: Store,
-  states: readonly KnownState[],
-): StatusSnapshot["inherited"] {
+/**
+ * Current inherited results grouped by source worktree and commit, largest
+ * group first; a global setup's among them, though the header's count
+ * leaves them out.
+ */
+function inheritedSources(store: Store, states: WorktreeStates): StatusSnapshot["inherited"] {
   const groups = new Map<
     string,
     { worktreeId: WorktreeId; commit: string | null; count: number; fileLevelCount: number }
   >();
   let count = 0;
-  for (const s of states) {
+  for (const s of states.groups) {
     if (s.validity !== "current" || s.origin?.kind !== "inherited") continue;
-    count++;
+    count += s.count;
     const id = JSON.stringify([s.origin.worktreeId, s.origin.commit]);
     const group = groups.get(id) ?? {
       worktreeId: s.origin.worktreeId,
@@ -335,8 +340,8 @@ function inheritedSources(
       count: 0,
       fileLevelCount: 0,
     };
-    group.count++;
-    if (s.check.kind === "file") group.fileLevelCount++;
+    group.count += s.count;
+    if (s.kind === "file") group.fileLevelCount += s.count;
     groups.set(id, group);
   }
   const sources: InheritedSource[] = [...groups.values()]
@@ -370,7 +375,7 @@ function openFiles(runs: readonly RunRecord[]): ReadonlySet<string> {
  * (011 C15, gh-17 finding 3), and so does such a file without checks.
  */
 function breakdown(
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   running: ReadonlySet<string>,
 ): CheckBreakdown {
@@ -379,25 +384,23 @@ function breakdown(
   const pendingByPhase = { queued: 0, running: 0 };
   const fileLevelByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
   const fileLevelByPhase = { queued: 0, running: 0 };
-  const filesWithChecks = new Set<string>();
-  for (const s of states) {
-    if (s.check.kind === "setup") continue;
-    const file = testFileKeyOf(s.check);
-    filesWithChecks.add(file);
-    const fileLevel = s.check.kind === "file";
-    if (s.validity === "current") {
-      currentByOutcome[s.outcome]++;
-      if (fileLevel) fileLevelByOutcome[s.outcome]++;
-    }
-    if (s.validity === "pending") {
-      const phase = running.has(file)
-        ? "running"
-        : (s.pendingPhase ?? filePhase.get(file) ?? "queued");
-      pendingByPhase[phase]++;
-      if (fileLevel) fileLevelByPhase[phase]++;
-    }
+  for (const g of states.groups) {
+    if (g.kind === "setup" || g.validity !== "current") continue;
+    currentByOutcome[g.outcome] += g.count;
+    if (g.kind === "file") fileLevelByOutcome[g.outcome] += g.count;
   }
-  const without = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
+  // A pending state is notable: no other is.
+  for (const s of states.notable) {
+    if (s.check.kind === "setup" || s.validity !== "pending") continue;
+    const file = testFileKeyOf(s.check);
+    const phase = running.has(file)
+      ? "running"
+      : (s.pendingPhase ?? filePhase.get(file) ?? "queued");
+    pendingByPhase[phase]++;
+    if (s.check.kind === "file") fileLevelByPhase[phase]++;
+  }
+  const withChecks = (id: string) => (states.files.get(id)?.checks.count ?? 0) > 0;
+  const without = keys.filter((k) => !withChecks(testFileId(k.testFile)));
   return {
     currentByOutcome,
     pendingByPhase,

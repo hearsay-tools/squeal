@@ -1,10 +1,9 @@
 import { testFileId } from "../keys/reverse-index.js";
-import { testFileKeyOf } from "../state/derive.js";
-import { fileClassOf } from "../state/file-class.js";
+import { classOf, type WorktreeStates } from "../state/file-class.js";
 import { plural, testFileText } from "../text.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { PendingTestFiles, PhaseFiles } from "../types/standing.js";
-import type { KnownState, PendingPhase } from "../types/state.js";
+import type { PendingPhase } from "../types/state.js";
 import type { StatusFocused, StatusSnapshot } from "../types/status.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { textsText } from "./focused.js";
@@ -31,27 +30,17 @@ export const QUEUED_FILES_SHOWN = 5;
  * row says so or a check of it runs; else queued. Uncapped, in `keys` order.
  */
 export function pendingPhasesOf(
-  states: readonly KnownState[],
+  states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   openFiles: ReadonlySet<string>,
 ): Map<string, { readonly testFile: TestFileRef; readonly phase: PendingPhase }> {
-  const checks = new Map<string, KnownState[]>();
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    const id = testFileKeyOf(state.check);
-    const own = checks.get(id);
-    if (own === undefined) checks.set(id, [state]);
-    else own.push(state);
-  }
   const phases = new Map<string, { testFile: TestFileRef; phase: PendingPhase }>();
   for (const row of keys) {
     const id = testFileId(row.testFile);
-    const own = checks.get(id) ?? [];
-    if (fileClassOf(row, own) !== "pending") continue;
-    const runs =
-      openFiles.has(id) ||
-      row.pending === "running" ||
-      own.some((s) => s.pendingPhase === "running");
+    // A global setup's states are no test file's (task 001-382).
+    const own = states.files.get(id)?.checks;
+    if (classOf(row, own) !== "pending") continue;
+    const runs = openFiles.has(id) || row.pending === "running" || own?.running === true;
     phases.set(id, { testFile: row.testFile, phase: runs ? "running" : "queued" });
   }
   return phases;
