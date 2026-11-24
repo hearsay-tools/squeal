@@ -339,10 +339,12 @@ async function select(
     paths,
     tests,
     inputs,
+    observed,
   }: {
     readonly paths: readonly RelativePath[];
     readonly tests: readonly RelativePath[];
     readonly inputs?: PolicyInputs | undefined;
+    readonly observed?: StoredObserved | undefined;
   },
   tally: ScopeTally | null,
   narrowed: Narrowing | null,
@@ -365,6 +367,7 @@ async function select(
     if (paths.length > 0) {
       const affected = await adapter.affected(paths);
       for (const ref of [...affected.direct, ...affected.transitive]) add(ref);
+      for (const ref of observedCandidates(listed, paths, narrowed, observed)) add(ref);
     }
     const byInputs = listed.filter(
       (ref) => !chosen.has(testFileId(ref)) && (declared?.for(ref.path).length ?? 0) > 0,
@@ -387,6 +390,24 @@ async function select(
     );
   }
   return picked;
+}
+
+/** Review 0.1.625 B1: narrow mode adds files reached only via stored direct marks or runtime reads. */
+function observedCandidates(
+  listed: readonly TestFileRef[],
+  paths: readonly RelativePath[],
+  narrowed: Narrowing | null,
+  observed: StoredObserved | undefined,
+): TestFileRef[] {
+  if (narrowed === null || observed === undefined) return [];
+  const testPaths = new Set(listed.map((ref) => ref.path));
+  const sources = new Set(paths.filter((path) => !testPaths.has(path)));
+  if (sources.size === 0) return [];
+  return listed.filter(
+    (ref) =>
+      observed.directOf(ref).some((path) => sources.has(path)) ||
+      observed.readsOf(ref).some((path) => sources.has(path)),
+  );
 }
 
 function byPath(a: TestFileRef, b: TestFileRef): number {

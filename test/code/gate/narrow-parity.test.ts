@@ -1,18 +1,31 @@
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { storedDurations } from "../../../src/cli/code-gate-durations.js";
+import { collectEvidence } from "../../../src/core/code/gate/collect.js";
 import { narrowRun, type StoredObserved } from "../../../src/core/code/gate/narrow.js";
+import { readScope, resolveScope } from "../../../src/core/code/gate/scope.js";
+import type { ChangedSet } from "../../../src/core/code/gate/types.js";
+import { loadPolicy } from "../../../src/core/daemon/policy.js";
 import { ObservedSets } from "../../../src/core/keys/observed.js";
 import { testFileId } from "../../../src/core/keys/reverse-index.js";
+import { hostClock } from "../../../src/core/scheduler/clock.js";
 import type { SchedulerContext } from "../../../src/core/scheduler/context.js";
 import { editWork, fetchEditCut, observedDirectOf } from "../../../src/core/scheduler/edit-cut.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
 import { Ledger } from "../../../src/core/scheduler/ledger.js";
+import { selectNarrow } from "../../../src/core/scheduler/narrow-run.js";
 import type { RunnerPartBound } from "../../../src/core/scheduler/runner-work-bound.js";
+import { Wakes } from "../../../src/core/scheduler/wakes.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 import type { AbsolutePath, RelativePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
-import type { AffectedTestFiles } from "../../../src/core/types/runner.js";
+import type {
+  AffectedTestFiles,
+  RunnerAdapter,
+  RunnerClosure,
+  RunReport,
+} from "../../../src/core/types/runner.js";
 import { repo } from "../../cli/code-gate-fixture.js";
 
 /*
@@ -196,3 +209,198 @@ function affectedPaths(): string[] {
   const { direct, transitive } = affected(CHANGED);
   return [...direct, ...transitive].map((r) => r.path);
 }
+
+describe("collectEvidence with --narrow and real persisted ObservedSets matches selectNarrow (review 0.1.625 B1)", () => {
+  const ORPHAN = "src/orphan.ts" as RelativePath;
+  const RELEASE = ref("test/e2e/release.test.ts");
+  const EXTRA = ref("test/e2e/extra.test.ts");
+  const MANUAL = ref("test/manual/only.test.ts");
+
+  /** Stub runner with empty static `affected`, proving selection comes solely from `ObservedSets`. */
+  function emptyStaticAdapter(
+    listed: readonly TestFileRef[],
+    ran: TestFileRef[],
+  ): Pick<RunnerAdapter, "traits" | "testFiles" | "affected" | "closure" | "run" | "close"> {
+    return {
+      traits: { tierWidth: () => 1 } as unknown as RunnerAdapter["traits"],
+      testFiles: async () => [...listed],
+      affected: async () => ({ direct: [], transitive: [] }) as AffectedTestFiles,
+      closure: async (testFile) =>
+        ({ testFile, paths: [ORPHAN], imports: [], complete: true }) as unknown as RunnerClosure,
+      run: async (files) => {
+        ran.push(...files);
+        return {
+          results: [],
+          completedFiles: [...files],
+          fileErrors: [],
+          completed: true,
+        } as unknown as RunReport;
+      },
+      close: async () => {},
+    };
+  }
+
+  /** Real `selectNarrow` over a ledger whose reverse index holds the same persisted `ObservedSets`. */
+  async function schedulerNarrow(
+    root: AbsolutePath,
+    listed: readonly TestFileRef[],
+    observed: StoredObserved,
+    durationsMs: Readonly<Record<string, number>> = {},
+  ): Promise<string[]> {
+    const policy = loadPolicy(root).policy;
+    const referencing = (paths: Iterable<RelativePath>) => {
+      const set = new Set(paths);
+      return listed.filter(
+        (r) =>
+          observed.directOf(r).some((p) => set.has(p)) ||
+          observed.readsOf(r).some((p) => set.has(p)),
+      );
+    };
+    const keys = {
+      index: { reverse: { referencing } },
+      declaredFor: () => [],
+      observedOf: (r: TestFileRef) => observed.readsOf(r),
+      directOf: (r: TestFileRef) => observed.directOf(r),
+    };
+    const wakes = new Wakes(hostClock());
+    const context = {
+      keys,
+      policy,
+      wakes,
+      note: () => {},
+      runner: { affected: async () => ({ direct: [], transitive: [] }) },
+    } as unknown as SchedulerContext;
+    const files = new Map(
+      listed.map((r) => [
+        testFileId(r),
+        { id: testFileId(r), ref: r, durationMs: durationsMs[r.path] ?? null },
+      ]),
+    );
+    const fake = { context, files };
+    const ledger = Object.assign(fake, {
+      recentOf: (changed: ReadonlySet<RelativePath>, direct?: ReadonlySet<string>) =>
+        Ledger.prototype.recentOf.call(fake as unknown as Ledger, changed, direct),
+    }) as unknown as Ledger;
+    try {
+      const selected = await selectNarrow(context, ledger, [ORPHAN]);
+      const ids = new Set([...selected.selected.values()].flatMap((set) => [...set]));
+      return listed.filter((r) => ids.has(testFileId(r))).map((r) => r.path);
+    } finally {
+      wakes.close();
+    }
+  }
+
+  function writeObservedStore(
+    root: AbsolutePath,
+    entries: readonly {
+      readonly ref: TestFileRef;
+      readonly marks?: readonly RelativePath[];
+      readonly reads?: readonly RelativePath[];
+    }[],
+  ): void {
+    const store = openStore(join(root, ".git") as AbsolutePath);
+    if (isStoreOpenFailure(store)) throw new Error(store.reason);
+    const sets = new ObservedSets(store);
+    for (const entry of entries) {
+      if (entry.marks !== undefined) sets.mark(entry.ref, entry.marks);
+      if (entry.reads !== undefined) sets.see(entry.ref, entry.reads);
+    }
+    sets.write();
+    store.close();
+  }
+
+  for (const mode of ["direct", "read"] as const) {
+    it(`selects and runs an observed-only ${mode} file in collectEvidence, matching selectNarrow`, async () => {
+      const root = repo() as AbsolutePath;
+      writeObservedStore(root, [
+        mode === "direct"
+          ? { ref: RELEASE, marks: [ORPHAN], reads: [ORPHAN] }
+          : { ref: RELEASE, reads: [ORPHAN] },
+      ]);
+      const durations = storedDurations(root);
+      if (durations === null) throw new Error("no store");
+      try {
+        const listed = [RELEASE];
+        const scope = resolveScope(readScope(loadPolicy(root).policy).base, [], true);
+        if ("error" in scope) throw new Error(scope.error);
+        const ran: TestFileRef[] = [];
+        const evidence = await collectEvidence(
+          root,
+          { paths: [ORPHAN], functions: [] } as unknown as ChangedSet,
+          {
+            tests: [],
+            budgetSeconds: 30,
+            scope,
+            narrow: true,
+            observed: durations.observed,
+            adapters: {
+              vitest: async () => emptyStaticAdapter(listed, ran) as unknown as RunnerAdapter,
+              nodeTest: () => Promise.reject(new Error("a node:test adapter started")),
+            },
+          },
+        );
+        const expected = await schedulerNarrow(root, listed, durations.observed);
+        expect(expected).toEqual(["test/e2e/release.test.ts"]);
+        expect(ran.map((r) => r.path)).toEqual(expected);
+        expect(evidence.testFiles.map((f) => f.path)).toEqual(expected);
+      } finally {
+        durations.close();
+      }
+    });
+  }
+
+  it("sends out-of-scope and over-tierSize observed-only files to scope.files (left out) and runs only kept ones", async () => {
+    const root = repo() as AbsolutePath;
+    writeFileSync(
+      join(root, "squeal.config.json"),
+      JSON.stringify({
+        runner: { tierSize: 1 },
+        checks: [
+          { name: "manual-only", runner: "vitest", tests: ["test/manual/**"], at: "manual" },
+        ],
+      }),
+    );
+    writeObservedStore(root, [
+      { ref: RELEASE, reads: [ORPHAN] },
+      { ref: EXTRA, reads: [ORPHAN] },
+      { ref: MANUAL, reads: [ORPHAN] },
+    ]);
+    const durations = storedDurations(root);
+    if (durations === null) throw new Error("no store");
+    try {
+      const listed = [RELEASE, EXTRA, MANUAL];
+      // Scope explicitly omits `manual-only` by selecting only the default `tests` group.
+      const scope = resolveScope(readScope(loadPolicy(root).policy).base, ["tests"], true);
+      if ("error" in scope) throw new Error(scope.error);
+      const ran: TestFileRef[] = [];
+      const seconds: Readonly<Record<string, number>> = {
+        "test/e2e/release.test.ts": 1,
+        "test/e2e/extra.test.ts": 5,
+      };
+      const evidence = await collectEvidence(
+        root,
+        { paths: [ORPHAN], functions: [] } as unknown as ChangedSet,
+        {
+          tests: [],
+          budgetSeconds: 30,
+          scope,
+          narrow: true,
+          durations: (r) => seconds[r.path] ?? null,
+          observed: durations.observed,
+          adapters: {
+            vitest: async () => emptyStaticAdapter(listed, ran) as unknown as RunnerAdapter,
+            nodeTest: () => Promise.reject(new Error("a node:test adapter started")),
+          },
+        },
+      );
+      expect(ran.map((r) => r.path)).toEqual(["test/e2e/release.test.ts"]);
+      expect(evidence.scope?.narrowed).toBe(1);
+      expect((evidence.scope?.files ?? []).map((f) => [f.path, f.group])).toEqual([
+        ["test/e2e/extra.test.ts", "tests"],
+        ["test/manual/only.test.ts", "manual-only"],
+      ]);
+    } finally {
+      durations.close();
+    }
+  });
+});
