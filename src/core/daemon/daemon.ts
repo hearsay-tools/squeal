@@ -17,7 +17,7 @@ import { clearRecord, markExit, recordRegistration } from "../presence/events.js
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import type { RunnerHostLaunch } from "../runner-host/channel.js";
-import type { DaemonRemoteLane } from "../runner-host/remote/daemon-lane.js";
+import type { DaemonRemote } from "../runner-host/remote/daemon-lane.js";
 import { hostClock } from "../scheduler/clock.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { ImportsSeen } from "../shared/imports-seen.js";
@@ -271,8 +271,11 @@ class Daemon {
   #runner: RunnerAdapter | null = null;
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
   #vitest: RecoveringRunner | null = null;
-  /** Review 0.1.616 B7: Vitest on its remote lane, which `squeal remote sleep` puts to sleep. */
-  #remoteLane: DaemonRemoteLane | null = null;
+  /**
+   * Review 0.1.616 B7: Vitest on its remote lane, which `squeal remote sleep`
+   * puts to sleep. Review 0.1.623 B1: the exit's start aborts its acquire.
+   */
+  #remoteLane: DaemonRemote | null = null;
   #loop: DaemonLoop | null = null;
   /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
   #code: CodePass | null = null;
@@ -914,6 +917,7 @@ class Daemon {
         remoteCoverage: (runId, testFile, record) =>
           this.#coverage?.recordMapped(runId, testFile, record),
       });
+      this.#adoptRemote(remote);
       const onRemote = remote === null ? {} : { remote: remote.wrap };
       // Spec 021 D8 (row 021-12): node:test and pytest in local runner hosts, as Vitest.
       const host = this.#processHost();
@@ -997,7 +1001,6 @@ class Daemon {
         ),
       );
       this.#vitest = vitestRunner;
-      this.#remoteLane = remote;
       this.#runner = runner;
       await Promise.all([
         ...(await openedAtStart(
@@ -1513,6 +1516,12 @@ class Daemon {
     })();
   }
 
+  /** Review 0.1.623 B1: `remote` kept; an exit that began during the start aborts its acquire. */
+  #adoptRemote(remote: DaemonRemote | null): void {
+    this.#remoteLane = remote;
+    if (this.#exit !== null) remote?.beginExit();
+  }
+
   /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
    * the tier in flight, abandons the open checkpoint; cancels it after a
@@ -1527,6 +1536,8 @@ class Daemon {
    */
   #shutdown(reason: DaemonExitReason, code: 0 | 1, text: string): Promise<DaemonExit> {
     this.#exit ??= (async () => {
+      // Review 0.1.623 B1: before the waits below, so a remote acquire in flight holds none of them.
+      this.#remoteLane?.beginExit();
       this.#setPhase("stopping");
       this.#stopTimers();
       this.#shared?.close();

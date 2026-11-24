@@ -71,6 +71,22 @@ function goneError(id: string): Error {
   return new Error(`Agent37 instance ${id} is gone (deleted, or not in this workspace)`);
 }
 
+/** `ms` passed, or `signal` aborted: then it rejects at once (row 026-20). */
+function pause(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted === true) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", stop);
+      resolve();
+    }, ms);
+    const stop = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+}
+
 /** Polls `id` until `running`, waking it first when it is not; throws when it is gone or not up in time. */
 export async function untilRunning(
   api: Agent37Api,
@@ -88,8 +104,8 @@ export async function untilRunning(
     if (Date.now() > deadline) {
       throw new Error(`Agent37 instance ${id} is still ${status} after ${timing.readyMs} ms`);
     }
-    await new Promise((resolve) => setTimeout(resolve, timing.pollMs));
-    const now = await api.inspect(id);
+    await pause(timing.pollMs, signal);
+    const now = await api.inspect(id, signal);
     if (now === null) throw goneError(id);
     status = now.status;
     if (status === "sleeping" || status === "stopped") status = (await api.start(id)).status;

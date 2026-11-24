@@ -123,6 +123,9 @@ test/runner-host/idle-host
 # A real `node --test` in a remote runner host over a fake ssh, with the
 # remote tree's temp directory (row 026-11).
 test/runner-host/remote/connect-process
+# An Agent37 lane whose fake instance's Node answers this process's version,
+# so its bootstrap installs none (review 0.1.623 B1).
+test/runner-host/remote/daemon-lane-exit
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
 # pass (beside pytest), warm-up, an edit's tier beside the backlog tier,

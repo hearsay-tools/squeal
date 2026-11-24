@@ -61,6 +61,10 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  *
  * Row 026-20 (lessons O1): the daemon's exit aborts the acquire in flight
  * (`MachineRequest.signal`); a provider deletes a machine it created then.
+ * Review 0.1.623 B1: the exit says so first (`beginExit`), at once, before
+ * it waits for the lanes to close, since a lane's close waits for its
+ * connect and so for the acquire. A machine acquired already is unchanged:
+ * its work runs to its end, and `release` puts it to sleep.
  *
  * Review 0.1.620 N1: a wake of a machine that keeps `.git` current
  * (`syncGit`) brings `.git` to the worktree's Git state, so it waits for
@@ -118,6 +122,12 @@ export interface MachineShare {
   join(lane: SharedLane): () => void;
   /** D12.4: every lane's channel closed, then the machine asked to sleep, once. */
   sleep(): Promise<RemoteSleepOutcome>;
+  /**
+   * Review 0.1.623 B1: the daemon's exit began. Aborts the acquire in flight
+   * at once; waits for nothing, and leaves work on a machine acquired
+   * already, and its `release`, as they are.
+   */
+  beginExit(): void;
   /** The daemon's exit: the shared connection ended and the machine released (`daemon-exit`). */
   release(): Promise<void>;
 }
@@ -511,6 +521,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
         ? { kind: "slept", ...named }
         : { kind: "busy", ...named, reason: slept.busy };
     },
+    beginExit: () => exiting.abort(),
     release() {
       releasing ??= releaseOnce();
       return releasing;

@@ -43,6 +43,10 @@ import { tunnelHost, validInstanceId } from "./tunnel.js";
  * flight is never cut: its answer carries the only id that can delete the
  * instance. A fresh instance whose create, start or bootstrap ended after
  * the abort is deleted at once, before `acquire` rejects.
+ *
+ * Review 0.1.623 B1: the abort reaches every step after the create too:
+ * the inspect, the wait until running, and each SSH step of the bootstrap
+ * stop at once, and `acquire` rejects with `AcquireAborted`.
  */
 
 /** `acquire` stopped because the daemon's exit began (`MachineRequest.signal`). */
@@ -128,13 +132,13 @@ async function acquire(
   let state: Agent37State | null = null;
   stop();
   if (tracked !== null) {
-    const found = await api.inspect(tracked.instanceId);
+    const found = await api.inspect(tracked.instanceId, signal).catch(aborted(stop));
     stop();
     if (found === null) {
       request.log(`Agent37 instance ${tracked.instanceId} is gone; creating another`);
     } else {
       // A tracked instance stays tracked: an abort leaves it to the record and `remote prune`.
-      await untilRunning(api, tracked.instanceId, found, timing, signal);
+      await untilRunning(api, tracked.instanceId, found, timing, signal).catch(aborted(stop));
       state = tracked;
       request.log(`Agent37 instance ${tracked.instanceId} reused (${found.status} before)`);
     }
@@ -170,7 +174,7 @@ async function acquire(
       await untilRunning(api, made.id, made, timing, signal);
     } catch (error) {
       await api.remove(made.id).catch(() => {});
-      throw error;
+      return aborted(stop)(error);
     }
   }
   try {
@@ -180,9 +184,22 @@ async function acquire(
     return machine;
   } catch (error) {
     // A fresh instance that never became usable holds nothing: deleted, so no disk bills untracked.
-    if (created) await api.remove(state.instanceId).catch(() => {});
-    throw error;
+    if (created) {
+      await api.remove(state.instanceId).catch(() => {});
+      if (signal?.aborted === true) {
+        request.log(`Agent37 instance ${state.instanceId}: the daemon's exit began; deleted`);
+      }
+    }
+    return aborted(stop)(error);
   }
+}
+
+/** A step's failure: `AcquireAborted` once the exit began (`stop` throws it), else the error itself. */
+function aborted(stop: () => void): (error: unknown) => never {
+  return (error) => {
+    stop();
+    throw error;
+  };
 }
 
 async function bootstrap(
@@ -193,13 +210,20 @@ async function bootstrap(
   timing: Agent37Timing,
 ): Promise<RemoteMachine> {
   const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli);
-  const node = await ensureNode(ssh, settings.node, request.nodeVersion, timing.bootstrap.nodeMs);
+  const { signal } = request;
+  const node = await ensureNode(
+    ssh,
+    settings.node,
+    request.nodeVersion,
+    timing.bootstrap.nodeMs,
+    signal,
+  );
   const places = { node, cache: settings.cache };
   let keeper: GitKeeper | null = null;
   if (settings.bootstrap === "git-bundle") {
     // Review 0.1.619 B3: `.git` at the worktree's Git state, on a fresh instance and a reused one.
     const place = gitPlace(places, request.worktreeRoot, timing, request.log);
-    const git = await ensureGitTree(ssh, place.tree, place.root, timing.bootstrap);
+    const git = await ensureGitTree(ssh, place.tree, place.root, timing.bootstrap, signal);
     if (git.kind === "sent")
       request.log(`Agent37 instance ${state.instanceId}: git history sent at ${git.commit}`);
     if (git.kind === "none")

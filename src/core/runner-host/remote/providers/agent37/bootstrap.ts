@@ -72,15 +72,23 @@ function scriptCommand(script: string, args: readonly string[]): string {
   return ["sh", "-c", script, "sh", ...args].map(shellQuote).join(" ");
 }
 
-/** The Node the remote runs Squeal with: `node` when it is `version`, else one installed now. Throws naming the step. */
+/**
+ * The Node the remote runs Squeal with: `node` when it is `version`, else
+ * one installed now. Throws naming the step, and once `signal` aborted.
+ */
 export async function ensureNode(
   target: SshTarget,
   node: string,
   version: string,
   deadlineMs: number,
+  signal?: AbortSignal,
 ): Promise<string> {
   const bare = version.replace(/^v/, "");
-  const result = await sshRun(target, scriptCommand(NODE_SCRIPT, [node, bare]), { deadlineMs });
+  const result = await sshRun(target, scriptCommand(NODE_SCRIPT, [node, bare]), {
+    deadlineMs,
+    ...(signal === undefined ? {} : { signal }),
+  });
+  signal?.throwIfAborted();
   const what = `could not provide Node ${version} on ${target.destination}`;
   if (result.code !== 0) throw new Error(sshFailure(what, result));
   const path = result.stdout.trim().split("\n").at(-1)?.trim() ?? "";
@@ -174,10 +182,13 @@ async function remoteGitState(
   target: SshTarget,
   tree: string,
   deadlines: BootstrapDeadlines,
+  signal?: AbortSignal,
 ): Promise<GitState | null> {
   const looked = await sshRun(target, scriptCommand(LOOK_SCRIPT, [tree]), {
     deadlineMs: deadlines.sshMs,
+    ...(signal === undefined ? {} : { signal }),
   });
+  signal?.throwIfAborted();
   if (looked.code !== 0) {
     throw new Error(
       sshFailure(`could not read ${tree}/root/.git on ${target.destination}`, looked),
@@ -197,26 +208,29 @@ async function knownHere(root: string, commit: string): Promise<boolean> {
 /**
  * Makes `<tree>/root/.git` the local worktree's Git state: HEAD, its branch,
  * the tags and the index, and no working-tree file. A worktree with no
- * commit yet is `none`; an SSH step that fails throws.
+ * commit yet is `none`; an SSH step that fails throws, as every step does
+ * once `signal` aborted (row 026-20).
  */
 export async function ensureGitTree(
   target: SshTarget,
   tree: string,
   root: string,
   deadlines: BootstrapDeadlines,
+  signal?: AbortSignal,
 ): Promise<GitTree> {
   const local = await localGitState(root).catch(() => null);
+  signal?.throwIfAborted();
   if (local === null) return { kind: "none", why: "the worktree has no commit yet" };
-  const remote = await remoteGitState(target, tree, deadlines);
+  const remote = await remoteGitState(target, tree, deadlines, signal);
   if (remote?.key === local.key) return { kind: "present", commit: local.head, state: remote };
   const base = remote !== null && (await knownHere(root, remote.head)) ? remote.head : null;
   const dir = await mkdtemp(join(tmpdir(), "squeal-agent37-bundle-"));
   try {
-    let sent = await sendGit(target, tree, root, local, base, dir, deadlines);
+    const send = (since: string | null) =>
+      sendGit(target, tree, root, { local, base: since, dir, deadlines, signal });
+    let sent = await send(base);
     // Its objects did not reach that far back (gc'd, or another history): the whole history.
-    if (sent === "missing" && base !== null) {
-      sent = await sendGit(target, tree, root, local, null, dir, deadlines);
-    }
+    if (sent === "missing" && base !== null) sent = await send(null);
     if (sent === "missing") return { kind: "none", why: "the git bundle lacked objects there" };
     return { kind: "sent", commit: local.head, state: sent };
   } finally {
@@ -232,19 +246,25 @@ async function sendGit(
   target: SshTarget,
   tree: string,
   root: string,
-  local: GitState,
-  base: string | null,
-  dir: string,
-  deadlines: BootstrapDeadlines,
+  send: {
+    readonly local: GitState;
+    readonly base: string | null;
+    readonly dir: string;
+    readonly deadlines: BootstrapDeadlines;
+    readonly signal: AbortSignal | undefined;
+  },
 ): Promise<GitState | null | "missing"> {
+  const { local, base, dir, deadlines, signal } = send;
+  signal?.throwIfAborted();
   const bundle = join(dir, base === null ? "full.bundle" : "since.bundle");
   const created = await run(
     "git",
     ["-C", root, "bundle", "create", "-q", bundle, "HEAD", "--tags", ...(base ? [`^${base}`] : [])],
-    { maxBuffer: 1024 * 1024 },
+    { maxBuffer: 1024 * 1024, ...(signal === undefined ? {} : { signal }) },
   ).then(
     () => true,
     (error: unknown) => {
+      signal?.throwIfAborted();
       // Nothing new since `base` (only refs moved): no bundle; the refs alone.
       if (base !== null) return false;
       const stderr = String((error as { stderr?: unknown }).stderr ?? error).trim();
@@ -260,7 +280,9 @@ async function sendGit(
   const sent = await sshRun(target, scriptCommand(SYNC_SCRIPT, [tree]), {
     input,
     deadlineMs: deadlines.bundleMs,
+    ...(signal === undefined ? {} : { signal }),
   });
+  signal?.throwIfAborted();
   if (sent.code === 3) return "missing";
   if (sent.code !== 0) {
     throw new Error(sshFailure(`could not unpack the git bundle on ${target.destination}`, sent));

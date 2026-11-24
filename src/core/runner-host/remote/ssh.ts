@@ -77,14 +77,25 @@ const KEEP = 4_000;
 /**
  * Runs `command` on the remote, feeding it `input`, and resolves once it
  * ends or `deadlineMs` passed, when `ssh` is killed (spec 021 D13: every
- * remote step has a deadline). Never rejects.
+ * remote step has a deadline). Never rejects. Row 026-20 (review 0.1.623
+ * B1): once `signal` aborts, `ssh` is killed and the result resolves at
+ * once, not when a process the command left holds its output.
  */
 export function sshRun(
   target: SshTarget,
   command: string,
-  options: { readonly input?: Buffer | Readable; readonly deadlineMs: number },
+  options: {
+    readonly input?: Buffer | Readable;
+    readonly deadlineMs: number;
+    readonly signal?: AbortSignal;
+  },
 ): Promise<SshResult> {
   return new Promise((resolve) => {
+    const { signal } = options;
+    if (signal?.aborted === true) {
+      resolve({ code: null, stdout: "", stderr: "", failure: "aborted before it started" });
+      return;
+    }
     let child: ChildProcessWithoutNullStreams;
     try {
       child = spawnSsh(target, command);
@@ -110,15 +121,23 @@ export function sshRun(
     child.on("error", (error) => {
       failure ??= `could not start ssh: ${error.message}`;
     });
-    child.on("close", (code) => {
+    const ended = (code: number | null) => {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
       resolve({
         code,
         stdout,
         stderr: stderr.trim(),
         ...(failure === undefined ? {} : { failure }),
       });
-    });
+    };
+    const onAbort = () => {
+      failure ??= "aborted";
+      child.kill("SIGKILL");
+      ended(null);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+    child.on("close", ended);
     const { input } = options;
     if (input === undefined) child.stdin.end();
     else if (Buffer.isBuffer(input)) child.stdin.end(input);

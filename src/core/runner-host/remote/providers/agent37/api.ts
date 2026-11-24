@@ -91,8 +91,8 @@ export class Agent37Api {
   }
 
   /** The instance, or `null` when Agent37 no longer has it (`404`). */
-  async inspect(id: string): Promise<Instance | null> {
-    const answer = await this.#call("GET", `/v1/instances/${id}`);
+  async inspect(id: string, signal?: AbortSignal): Promise<Instance | null> {
+    const answer = await this.#call("GET", `/v1/instances/${id}`, undefined, CALL_MS, signal);
     if (answer.status === 404) return null;
     return this.#instance("GET", `/v1/instances/${id}`, answer);
   }
@@ -154,7 +154,15 @@ export class Agent37Api {
     throw new Error(`Agent37 ${method} ${path} answered no instance id and status`);
   }
 
-  async #call(method: string, path: string, body?: unknown, timeoutMs = CALL_MS): Promise<Answer> {
+  /** Row 026-20: `signal` ends the call where it stands; never given to a create (index.ts). */
+  async #call(
+    method: string,
+    path: string,
+    body?: unknown,
+    timeoutMs = CALL_MS,
+    signal?: AbortSignal,
+  ): Promise<Answer> {
+    signal?.throwIfAborted();
     const base = this.#base;
     const tls = base.protocol === "https:";
     const port = base.port === "" ? (tls ? 443 : 80) : Number(base.port);
@@ -162,6 +170,10 @@ export class Agent37Api {
     const { env, keyEnv } = this.#options;
     const key = apiKeyFor(keyEnv, tls && proxyFor(host, port, env) !== null, env);
     const opened = await openEndpoint({ host, port, tls }, env, timeoutMs);
+    if (signal?.aborted === true) {
+      opened.socket.destroy();
+      signal.throwIfAborted();
+    }
     const payload = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
     const prefix = base.pathname.replace(/\/+$/, "");
     return new Promise((resolve, reject) => {
@@ -185,6 +197,9 @@ export class Agent37Api {
       const timer = setTimeout(() => {
         asked.destroy(new LocalError(`no answer within ${timeoutMs} ms`));
       }, timeoutMs);
+      const onAbort = () => asked.destroy(new LocalError("stopped: the daemon's exit began"));
+      signal?.addEventListener("abort", onAbort, { once: true });
+      asked.on("close", () => signal?.removeEventListener("abort", onAbort));
       asked.on("error", (error) => {
         clearTimeout(timer);
         reject(new Error(`Agent37 ${method} ${path}: ${safeReason(error)}`));

@@ -160,6 +160,11 @@ export interface DaemonRemote {
    */
   wrap<R extends RunnerAdapter>(spec: LaneSpec<R>): R;
   sleepRemote(): Promise<RemoteSleepOutcome>;
+  /**
+   * Review 0.1.623 B1: the daemon's exit began, before it waits for anything:
+   * the machine's acquire in flight stops at once (`MachineShare.beginExit`).
+   */
+  beginExit(): void;
   /** The daemon's exit, after every lane closed: the machine released once. */
   release(): Promise<void>;
 }
@@ -292,6 +297,7 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
       return made as unknown as R;
     },
     sleepRemote: () => share.sleep(),
+    beginExit: () => share.beginExit(),
     release: async () => {
       await share.release();
       released = true;
@@ -427,7 +433,10 @@ function laneOver<R extends RunnerAdapter>(
   return adapter;
 }
 
-/** `runner` whose `close` releases `remote`'s machine after every lane in it closed (D8). */
+/**
+ * `runner` whose `close` releases `remote`'s machine after every lane in it
+ * closed (D8). Review 0.1.623 B1: it aborts the acquire in flight first.
+ */
 export function withRemoteRelease(
   runner: RunnerAdapter,
   remote: DaemonRemote | null,
@@ -435,6 +444,7 @@ export function withRemoteRelease(
   if (remote === null) return runner;
   const close = runner.close.bind(runner);
   runner.close = async () => {
+    remote.beginExit();
     try {
       await close();
     } finally {
