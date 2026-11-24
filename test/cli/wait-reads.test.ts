@@ -40,6 +40,13 @@ vi.mock("../../src/core/store/store.js", async (importOriginal) => {
   return { ...original, createStore: timed };
 });
 
+// Row 025-11: status counts every state by SQL; a counted store logs it as `counts`.
+vi.mock("../../src/core/store/status-reads.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/core/store/status-reads.js")>();
+  const { countingReads } = await import("./counting-store.js");
+  return { ...original, readWorktreeStates: countingReads(original.readWorktreeStates) };
+});
+
 const WAIT_MS = 2_500;
 /** Polls a second apart (C6) open at least this far apart: a timer fires up to 2 ms early. */
 const SECOND_MS = 990;
@@ -123,8 +130,12 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     expect(code).toBe(3);
     const polls = sessions.filter((s) => s.reads.includes("file-states"));
     for (const poll of between(polls, since)) expect(poll.reads).toEqual(["file-states"]);
-    expect(sessions.slice(0, -1).filter((s) => s.reads.includes("states"))).toEqual([]);
-    expect(sessions.at(-1)?.reads).toContain("states");
+    const every = (s: { reads: readonly string[] }) =>
+      s.reads.includes("states") || s.reads.includes("counts");
+    expect(sessions.slice(0, -1).filter(every)).toEqual([]);
+    // Row 025-11: at its end, every state counted by SQL, none listed.
+    expect(sessions.at(-1)?.reads).toContain("counts");
+    expect(sessions.at(-1)?.reads).not.toContain("states");
   });
 
   it("status --wait <slow file> under slow.trigger idle reads only its states while it runs", async () => {
@@ -245,6 +256,7 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     expect(code).toBe(3);
     const polls = sessions.filter((s) => s.reads[0] === "checkpoint");
     for (const poll of between(polls, since)) expect(poll.reads).toEqual(["checkpoint"]);
-    expect(polls.at(-1)?.reads).toEqual(["checkpoint", "states"]);
+    // Row 025-11: the verdict counts every state by SQL, and lists none.
+    expect(polls.at(-1)?.reads).toEqual(["checkpoint", "counts"]);
   });
 });

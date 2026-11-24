@@ -3,6 +3,7 @@ import { waitForStatus } from "../../src/cli/status-wait.js";
 import type {
   headerWith as HeaderWith,
   readHeader as ReadHeader,
+  readHeaderOf as ReadHeaderOf,
 } from "../../src/core/state/header.js";
 import { buildSnapshot, readStatus } from "../../src/core/status/snapshot.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
@@ -57,6 +58,7 @@ vi.mock("../../src/core/store/store.js", async (importOriginal) => {
 vi.mock("../../src/core/state/header.js", async (importOriginal) => {
   const original = await importOriginal<{
     readHeader: typeof ReadHeader;
+    readHeaderOf: typeof ReadHeaderOf;
     headerWith: typeof HeaderWith;
   }>();
   const polled =
@@ -71,6 +73,8 @@ vi.mock("../../src/core/state/header.js", async (importOriginal) => {
   return {
     ...original,
     readHeader: polled(original.readHeader),
+    // Row 025-11: status reads the header from its states counted by SQL.
+    readHeaderOf: polled(original.readHeaderOf),
     headerWith: polled(original.headerWith),
   };
 });

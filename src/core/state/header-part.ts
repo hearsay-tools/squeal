@@ -4,7 +4,6 @@ import type { Policy } from "../types/policy.js";
 import type { KnownState, Validity } from "../types/state.js";
 import type { SlowPendingCounts, TestFileCounts } from "../types/status.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
-import { testFileKeyOf, testFileOf } from "./derive.js";
 import {
   type NotCurrentCounts,
   notCurrentOf,
@@ -159,12 +158,15 @@ function countSlowPending(
   const withChecks = states.files;
   const files = new Map<string, TestFileRef>();
   let checks = 0;
-  // A pending state is notable: no other is.
-  for (const state of states.notable) {
-    const ref = testFileOf(state.check);
-    if (state.validity !== "pending" || !isSlow(ref)) continue;
-    checks++;
-    files.set(testFileKeyOf(state.check), ref);
+  for (const [id, file] of withChecks) {
+    if (!isSlow(file.testFile)) continue;
+    const pending = Object.values(file.pending).reduce(
+      (n, phases) => n + phases.queued + phases.running + phases.none,
+      0,
+    );
+    if (pending === 0) continue;
+    checks += pending;
+    files.set(id, file.testFile);
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {

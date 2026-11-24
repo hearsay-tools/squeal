@@ -42,6 +42,37 @@ export interface FileStates {
   /** The oldest and the newest `observedAt` of its current states; `null` with none. */
   readonly currentAt: number | null;
   readonly currentUpTo: number | null;
+  /** Its pending states by check kind and stored phase. */
+  readonly pending: Readonly<Record<CheckId["kind"], PhaseCounts>>;
+}
+
+/** Pending states by their stored phase; `none` when they store none. */
+export type PhaseCounts = Readonly<Record<PendingPhase | "none", number>>;
+
+/** No pending state of any kind. */
+export const noPending = (): Record<CheckId["kind"], Record<PendingPhase | "none", number>> => ({
+  test: { queued: 0, running: 0, none: 0 },
+  file: { queued: 0, running: 0, none: 0 },
+  setup: { queued: 0, running: 0, none: 0 },
+});
+
+/**
+ * `pending` by phase as status counts a check's: running while an open run
+ * holds its file (`held`, C15), else its stored phase, else its file's
+ * (`filePhase`, its key row's), else queued.
+ */
+export function phasesOf(
+  pending: PhaseCounts,
+  held: boolean,
+  filePhase: PendingPhase | null | undefined,
+): Record<PendingPhase, number> {
+  const all = pending.queued + pending.running + pending.none;
+  if (held) return { queued: 0, running: all };
+  const none = filePhase ?? "queued";
+  return {
+    queued: pending.queued + (none === "queued" ? pending.none : 0),
+    running: pending.running + (none === "running" ? pending.none : 0),
+  };
 }
 
 /** States counted alike: their check's kind, validity, outcome and, when current, origin. */
@@ -60,17 +91,17 @@ export interface WorktreeStates {
   /** Each test file with a state, by `testFileId`. */
   readonly files: ReadonlyMap<string, FileStates>;
   /**
-   * The states that are not current, those that fail and every global
-   * setup's, in `knownStates.list` order: the only ones a count reads one
-   * by one (a pending check's phase, a failure, an unknown check's reason,
-   * a project's setup).
+   * The states that fail, those that are unknown and every global setup's,
+   * in `knownStates.list` order: the only ones a count reads one by one (a
+   * failure, an unknown check's reason, a project's setup). On a worktree
+   * whose checks pass, its global setups' alone, though all are pending.
    */
   readonly notable: readonly KnownState[];
 }
 
 /** Whether `state` is among `WorktreeStates.notable`. */
 export function isNotable(state: KnownState): boolean {
-  return state.validity !== "current" || state.outcome === "fail" || state.check.kind === "setup";
+  return state.outcome === "fail" || state.validity === "unknown" || state.check.kind === "setup";
 }
 
 /** `states`, as the list `knownStates.list` reads, counted as `WorktreeStates`. */
@@ -98,7 +129,9 @@ export function worktreeStatesOf(states: readonly KnownState[]): WorktreeStates 
 function fileStatesOf(own: readonly KnownState[]): FileStates {
   let currentAt: number | null = null;
   let currentUpTo: number | null = null;
+  const pending = noPending();
   for (const s of own) {
+    if (s.validity === "pending") pending[s.check.kind][s.pendingPhase ?? "none"]++;
     if (s.validity !== "current" || s.observedAt === null) continue;
     currentAt = currentAt === null ? s.observedAt : Math.min(currentAt, s.observedAt);
     currentUpTo = currentUpTo === null ? s.observedAt : Math.max(currentUpTo, s.observedAt);
@@ -109,6 +142,7 @@ function fileStatesOf(own: readonly KnownState[]): FileStates {
     checks: tallyOf(own.filter((s) => s.check.kind !== "setup")),
     currentAt,
     currentUpTo,
+    pending,
   };
 }
 
@@ -198,13 +232,10 @@ export function notCurrentOf(
     testFilesByPhase[running ? "running" : "queued"]++;
   }
   const filePhase = new Map(keys.map((row) => [testFileId(row.testFile), row.pending]));
-  for (const state of states.notable) {
-    if (state.check.kind !== "test" || state.validity !== "pending") continue;
-    const id = testFileKeyOf(state.check);
-    const phase = openFiles.has(id)
-      ? "running"
-      : (state.pendingPhase ?? filePhase.get(id) ?? "queued");
-    testsByPhase[phase]++;
+  for (const [id, file] of states.files) {
+    const phases = phasesOf(file.pending.test, openFiles.has(id), filePhase.get(id));
+    testsByPhase.queued += phases.queued;
+    testsByPhase.running += phases.running;
   }
   return { testFileCounts, testFilesByPhase, testsByPhase };
 }

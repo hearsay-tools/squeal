@@ -1,10 +1,22 @@
 import { testFileId } from "../keys/reverse-index.js";
-import type { FileStates, StatesGroup, StatesTally, WorktreeStates } from "../state/file-class.js";
+import {
+  type FileStates,
+  noPending,
+  type StatesGroup,
+  type WorktreeStates,
+  worktreeStatesOf,
+} from "../state/file-class.js";
 import type { WorktreeId } from "../types/common.js";
-import { importIdOf, type KnownOutcome, type ResultOrigin, type Validity } from "../types/state.js";
+import {
+  importIdOf,
+  type KnownOutcome,
+  type KnownState,
+  type ResultOrigin,
+  type Validity,
+} from "../types/state.js";
 import type { Store } from "../types/store.js";
-import { num, numOrNull, oneOf, str, strOrNull } from "./codec.js";
-import type { Row } from "./connection.js";
+import { num, numOrNull, oneOf, oneOfOrNull, str, strOrNull } from "./codec.js";
+import type { Connection, Row } from "./connection.js";
 import { SELECT_STATES, toKnownState } from "./repos/states.js";
 import { connectionOf, readTransaction } from "./store.js";
 
@@ -22,91 +34,135 @@ import { connectionOf, readTransaction } from "./store.js";
 const VALIDITIES = ["current", "pending", "stale", "unknown"] as const;
 const OUTCOMES = ["pass", "fail", "skip", "unknown"] as const;
 const KINDS = ["test", "file", "setup"] as const;
+const PHASES = ["queued", "running"] as const;
 
 const FROM = "FROM known_states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?";
 
-/** `worktreeId`'s known states counted (`WorktreeStates`), in one read transaction. */
+/**
+ * `worktreeId`'s known states counted (`WorktreeStates`), in one read
+ * transaction. A store `openStore` did not open as it is (a `Proxy` of one,
+ * as the e2e probe and tests wrap it) has no connection here: its states are
+ * counted from `knownStates.list`, to the same counts.
+ */
 export function readWorktreeStates(store: Store, worktreeId: WorktreeId): WorktreeStates {
-  return readTransaction(store, () => ({
-    groups: stateGroups(store, worktreeId),
-    files: fileStates(store, worktreeId),
-    notable: notableStates(store, worktreeId),
-  }));
+  return readTransaction(store, () => {
+    const conn = connection(store);
+    if (conn === null) return worktreeStatesOf(store.knownStates.list(worktreeId));
+    return { ...stateCounts(conn, worktreeId), notable: notableStates(conn, worktreeId) };
+  });
 }
 
+function connection(store: Store): Connection | null {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+
+/** A `StatesTally` or a `FileStates` as `stateCounts` adds to it. */
+type Tally = {
+  count: number;
+  validity: Record<Validity, number>;
+  outcome: Record<KnownOutcome, number>;
+  running: boolean;
+};
+type FileTally = Omit<FileStates, "all" | "checks" | "currentAt" | "currentUpTo" | "pending"> & {
+  all: Tally;
+  checks: Tally;
+  currentAt: number | null;
+  currentUpTo: number | null;
+  pending: ReturnType<typeof noPending>;
+};
+
+const tally = (): Tally => ({
+  count: 0,
+  validity: { current: 0, pending: 0, stale: 0, unknown: 0 },
+  outcome: { pass: 0, fail: 0, skip: 0, unknown: 0 },
+  running: false,
+});
+
 /**
- * The states counted by check kind, validity, outcome and, when current,
- * origin: a few rows whatever the worktree's size.
+ * The states counted (`WorktreeStates.groups`) and each test file's
+ * (`WorktreeStates.files`), from one grouped read: a row per test file,
+ * check kind, validity, outcome, phase and origin, a few per file whatever
+ * its number of checks. Grouped by the stored columns, not by expressions
+ * of them, which the store would compute for every state
+ * (`tasks/025-11-notes.md`).
  */
-export function stateGroups(store: Store, worktreeId: WorktreeId): StatesGroup[] {
-  const current = (column: string) =>
-    `CASE WHEN s.validity = 'current' THEN s.${column} END AS ${column}`;
-  return connectionOf(store)
-    .all(
-      `SELECT c.kind AS kind, s.validity AS validity, s.outcome AS outcome,
-         ${current("origin_kind")}, ${current("origin_worktree")}, ${current("origin_commit")},
-         COUNT(*) AS n
-       ${FROM} GROUP BY 1, 2, 3, 4, 5, 6`,
-      worktreeId,
-    )
-    .map((row) => ({
+export function stateCounts(
+  conn: Connection,
+  worktreeId: WorktreeId,
+): Pick<WorktreeStates, "groups" | "files"> {
+  const rows = conn.all(
+    `SELECT c.project AS project, c.test_path AS test_path, c.kind AS kind,
+       s.validity AS validity, s.outcome AS outcome, s.pending_phase AS pending_phase,
+       s.origin_kind AS origin_kind, s.origin_worktree AS origin_worktree,
+       s.origin_commit AS origin_commit,
+       COUNT(*) AS n, MIN(s.observed_at) AS observed_from, MAX(s.observed_at) AS observed_to
+     ${FROM} GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9`,
+    worktreeId,
+  );
+  const groups = new Map<string, StatesGroup>();
+  const files = new Map<string, FileTally>();
+  for (const row of rows) {
+    const current = row.validity === "current";
+    // No count reads a state's origin unless it is current.
+    const origin = current ? [row.origin_kind, row.origin_worktree, row.origin_commit] : [];
+    const id = JSON.stringify([row.kind, row.validity, row.outcome, ...origin]);
+    const same = groups.get(id);
+    const group: StatesGroup = same ?? {
       kind: oneOf(row, "kind", KINDS),
       validity: oneOf(row, "validity", VALIDITIES),
       outcome: oneOf(row, "outcome", OUTCOMES),
-      origin: originOf(row),
-      count: num(row, "n"),
-    }));
-}
-
-/** Each test file with a state, by `testFileId`: its states counted, one row per file. */
-export function fileStates(store: Store, worktreeId: WorktreeId): Map<string, FileStates> {
-  const tally = (prefix: string, only: string) => [
-    `SUM(${only}) AS ${prefix}n`,
-    ...VALIDITIES.map((v) => `SUM(${only} AND s.validity = '${v}') AS ${prefix}v_${v}`),
-    ...OUTCOMES.map((o) => `SUM(${only} AND s.outcome = '${o}') AS ${prefix}o_${o}`),
-    `MAX(${only} AND s.pending_phase IS 'running') AS ${prefix}running`,
-  ];
-  const rows = connectionOf(store).all(
-    `SELECT c.project AS project, c.test_path AS test_path,
-       ${[...tally("a_", "1"), ...tally("t_", "c.kind != 'setup'")].join(", ")},
-       MIN(CASE WHEN s.validity = 'current' THEN s.observed_at END) AS current_at,
-       MAX(CASE WHEN s.validity = 'current' THEN s.observed_at END) AS current_up_to
-     ${FROM} GROUP BY c.project, c.test_path ORDER BY c.project, c.test_path`,
-    worktreeId,
-  );
-  const files = new Map<string, FileStates>();
-  for (const row of rows) {
-    const testFile = { project: str(row, "project"), path: str(row, "test_path") };
-    files.set(testFileId(testFile), {
-      testFile,
-      all: tallyFrom(row, "a_"),
-      checks: tallyFrom(row, "t_"),
-      currentAt: numOrNull(row, "current_at"),
-      currentUpTo: numOrNull(row, "current_up_to"),
-    });
+      origin: current ? originOf(row) : null,
+      count: 0,
+    };
+    const n = num(row, "n");
+    groups.set(id, { ...group, count: group.count + n });
+    addToFile(files, row, group, n);
   }
-  return files;
+  return { groups: [...groups.values()], files };
 }
 
-function tallyFrom(row: Row, prefix: string): StatesTally {
-  const count = (column: string) => num(row, `${prefix}${column}`);
-  const validity = {} as Record<Validity, number>;
-  for (const v of VALIDITIES) validity[v] = count(`v_${v}`);
-  const outcome = {} as Record<KnownOutcome, number>;
-  for (const o of OUTCOMES) outcome[o] = count(`o_${o}`);
-  return { count: count("n"), validity, outcome, running: count("running") > 0 };
+/** Adds `row`'s `n` states, of `group`, to its test file's tallies in `files`. */
+function addToFile(files: Map<string, FileTally>, row: Row, group: StatesGroup, n: number): void {
+  const testFile = { project: str(row, "project"), path: str(row, "test_path") };
+  const id = testFileId(testFile);
+  let file = files.get(id);
+  if (file === undefined) {
+    const pending = noPending();
+    file = { testFile, all: tally(), checks: tally(), currentAt: null, currentUpTo: null, pending };
+    files.set(id, file);
+  }
+  const phase = oneOfOrNull(row, "pending_phase", PHASES);
+  const running = phase === "running";
+  if (group.validity === "pending") file.pending[group.kind][phase ?? "none"] += n;
+  // A global setup's state is the file's at its path, never one of its checks'.
+  for (const own of group.kind === "setup" ? [file.all] : [file.all, file.checks]) {
+    own.count += n;
+    own.validity[group.validity] += n;
+    own.outcome[group.outcome] += n;
+    own.running ||= running;
+  }
+  if (group.validity !== "current") return;
+  const from = numOrNull(row, "observed_from");
+  const to = numOrNull(row, "observed_to");
+  if (from === null || to === null) return;
+  file.currentAt = file.currentAt === null ? from : Math.min(file.currentAt, from);
+  file.currentUpTo = file.currentUpTo === null ? to : Math.max(file.currentUpTo, to);
 }
 
 /**
  * The states `WorktreeStates.notable` holds (`isNotable`), in
- * `knownStates.list` order: on a worktree whose checks pass and are
- * current, its global setups' and nothing else.
+ * `knownStates.list` order: on a worktree whose checks pass, its global
+ * setups' and nothing else, though every one is pending.
  */
-export function notableStates(store: Store, worktreeId: WorktreeId) {
-  return connectionOf(store)
+export function notableStates(conn: Connection, worktreeId: WorktreeId): KnownState[] {
+  return conn
     .all(
       `${SELECT_STATES} WHERE s.worktree_id = ?
-         AND (s.validity != 'current' OR s.outcome = 'fail' OR c.kind = 'setup')
+         AND (s.outcome = 'fail' OR s.validity = 'unknown' OR c.kind = 'setup')
        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
       worktreeId,
     )
@@ -123,10 +179,13 @@ export interface ImportCounts {
 
 /**
  * `ImportCounts` by SQL: a row per test file and origin. Status reads it
- * only while the store holds an import (`readImports`).
+ * only while the store holds an import (`readImports`); a wrapped store
+ * (`readWorktreeStates`) counts from `knownStates.list`.
  */
 export function importCountsByFile(store: Store, worktreeId: WorktreeId): ImportCounts {
-  const rows = connectionOf(store).all(
+  const conn = connection(store);
+  if (conn === null) return importCountsOf(store.knownStates.list(worktreeId));
+  const rows = conn.all(
     `SELECT c.project AS project, c.test_path AS test_path, s.origin_kind AS origin_kind,
        s.origin_worktree AS origin_worktree, NULL AS origin_commit, COUNT(*) AS n
      ${FROM} AND s.validity = 'current' AND c.kind != 'setup'
@@ -145,6 +204,29 @@ export function importCountsByFile(store: Store, worktreeId: WorktreeId): Import
     counts.set(origin.importId, (counts.get(origin.importId) ?? 0) + n);
     imported.set(id, counts);
   }
+  return countsFrom(current, imported);
+}
+
+/** `ImportCounts` of `states`, as `knownStates.list` reads them. */
+export function importCountsOf(states: readonly KnownState[]): ImportCounts {
+  const current = new Map<string, number>();
+  const imported = new Map<string, Map<string, number>>();
+  for (const s of states) {
+    if (s.validity !== "current" || s.check.kind === "setup") continue;
+    const id = testFileId({ project: s.check.project, path: s.check.testPath });
+    current.set(id, (current.get(id) ?? 0) + 1);
+    if (s.origin?.kind !== "imported") continue;
+    const counts = imported.get(id) ?? new Map<string, number>();
+    counts.set(s.origin.importId, (counts.get(s.origin.importId) ?? 0) + 1);
+    imported.set(id, counts);
+  }
+  return countsFrom(current, imported);
+}
+
+function countsFrom(
+  current: ReadonlyMap<string, number>,
+  imported: ReadonlyMap<string, ReadonlyMap<string, number>>,
+): ImportCounts {
   const none: ReadonlyMap<string, number> = new Map();
   return {
     current: (id) => current.get(id) ?? 0,

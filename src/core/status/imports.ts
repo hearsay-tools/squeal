@@ -8,7 +8,7 @@ import {
   worktreeEnvironments,
 } from "../store/environments.js";
 import { type ImportFileRecord, importFiles, listImports, sourceLabel } from "../store/imports.js";
-import type { ImportCounts } from "../store/status-reads.js";
+import { type ImportCounts, importCountsOf } from "../store/status-reads.js";
 import {
   listHash,
   OBSERVED_MAPS,
@@ -160,20 +160,6 @@ function adoption(file: ImportFileRecord, here: Here): Reason {
   return here.stored(file.importId, file.key) ? "sameKeyNotAdopted" : "sameKeyKept";
 }
 
-/** `ImportCounts` of `states`: the current states of test and file checks, by test file. */
-export function importCountsOf(states: readonly KnownState[]): ImportCounts {
-  const byFile = new Map<string, KnownState[]>();
-  for (const s of states) {
-    if (s.validity !== "current" || s.check.kind === "setup") continue;
-    const id = testFileId({ project: s.check.project, path: s.check.testPath });
-    const list = byFile.get(id);
-    if (list === undefined) byFile.set(id, [s]);
-    else list.push(s);
-  }
-  const fromImport = memoBy(String, (id: string) => countByImport(byFile.get(id) ?? []));
-  return { current: (id) => byFile.get(id)?.length ?? 0, fromImport };
-}
-
 function hereOf(
   store: Store,
   worktreeId: WorktreeId,
@@ -226,16 +212,6 @@ function memoBy<A, T>(idOf: (arg: A) => string, make: (arg: A) => T): (arg: A) =
     made.set(id, value);
     return value;
   };
-}
-
-/** How many of `states` came from each import, by import id. */
-function countByImport(states: readonly KnownState[]): ReadonlyMap<string, number> {
-  const counts = new Map<string, number>();
-  for (const s of states) {
-    if (s.origin?.kind !== "imported") continue;
-    counts.set(s.origin.importId, (counts.get(s.origin.importId) ?? 0) + 1);
-  }
-  return counts;
 }
 
 /**

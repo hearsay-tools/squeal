@@ -13,8 +13,7 @@ import { hostLoad } from "../retry/load.js";
 import { pendingRetriesOf } from "../retry/pending.js";
 import { withRecorded } from "../retry/recorded.js";
 import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
-import { testFileKeyOf } from "../state/derive.js";
-import type { WorktreeStates } from "../state/file-class.js";
+import { phasesOf, type WorktreeStates } from "../state/file-class.js";
 import { readHeaderOf } from "../state/header.js";
 import { META_STORE_RECOVERED } from "../store/open.js";
 import { importCountsByFile, readWorktreeStates } from "../store/status-reads.js";
@@ -389,15 +388,16 @@ function breakdown(
     currentByOutcome[g.outcome] += g.count;
     if (g.kind === "file") fileLevelByOutcome[g.outcome] += g.count;
   }
-  // A pending state is notable: no other is.
-  for (const s of states.notable) {
-    if (s.check.kind === "setup" || s.validity !== "pending") continue;
-    const file = testFileKeyOf(s.check);
-    const phase = running.has(file)
-      ? "running"
-      : (s.pendingPhase ?? filePhase.get(file) ?? "queued");
-    pendingByPhase[phase]++;
-    if (s.check.kind === "file") fileLevelByPhase[phase]++;
+  for (const [id, file] of states.files) {
+    const held = running.has(id);
+    for (const kind of ["test", "file"] as const) {
+      const phases = phasesOf(file.pending[kind], held, filePhase.get(id));
+      pendingByPhase.queued += phases.queued;
+      pendingByPhase.running += phases.running;
+      if (kind !== "file") continue;
+      fileLevelByPhase.queued += phases.queued;
+      fileLevelByPhase.running += phases.running;
+    }
   }
   const withChecks = (id: string) => (states.files.get(id)?.checks.count ?? 0) > 0;
   const without = keys.filter((k) => !withChecks(testFileId(k.testFile)));
