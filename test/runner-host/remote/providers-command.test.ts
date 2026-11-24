@@ -18,15 +18,27 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 const HOME = join(scratch, "no-home");
 const ENV = { PATH: process.env.PATH, HOME };
 
+/** The variables a hook records: those D7.2 names, and `HOME`. */
+const SEEN = [
+  "HOME",
+  "SQUEAL_WORKTREE_ID",
+  "SQUEAL_WORKTREE_ROOT",
+  "SQUEAL_REPO_KEY",
+  "SQUEAL_NODE_VERSION",
+  "SQUEAL_MACHINE_ID",
+  "SQUEAL_MACHINE_STATE",
+  "SQUEAL_RELEASE_REASON",
+];
+
 let n = 0;
-/** A hook: a Node script that appends its argv and SQUEAL_* env to `calls`, then runs `body`. */
+/** A hook: a Node script that appends its argv and the `SEEN` env to `calls`, then runs `body`. */
 function hook(body: string): { argv: string[]; calls: () => Record<string, unknown>[] } {
   const log = join(scratch, `calls${++n}.jsonl`);
   const script = join(scratch, `hook${n}.mjs`);
   writeFileSync(
     script,
     `import { appendFileSync } from "node:fs";
-const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => k.startsWith("SQUEAL_") || k === "HOME"));
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => ${JSON.stringify(SEEN)}.includes(k)));
 appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv: process.argv.slice(2), env }) + "\\n");
 ${body}
 `,

@@ -11,8 +11,6 @@ import { isRecord } from "../../fs/json.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { PROVIDER_KINDS, providerOf } from "./providers/index.js";
 
-export { validTarget } from "./ssh.js";
-
 /*
  * Spec 021 D9 (row 021-13): a remote lane is off until the user names one.
  * The SSH target is the user's, not the repository's, so it lives beside
