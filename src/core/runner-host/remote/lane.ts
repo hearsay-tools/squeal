@@ -66,6 +66,9 @@ import type { RemoteRunReply } from "./tree-wire.js";
  * each invalidation there at once, and asks the runner here nothing until a
  * planning call or a run falls back to it. D8.4: on a machine whose tree is
  * a Git repository, `needsRepository` files go there too; D19.2's guard stays.
+ * Review 0.1.619 B3: before a tier that may go remote is split, the lane
+ * asks `refreshRepository`, so `hasGitRepository` answers for the
+ * worktree's Git state now; the call is busy for a sleep, like a planning call.
  */
 
 export interface RemoteLaneOptions {
@@ -96,6 +99,12 @@ export interface RemoteLaneOptions {
   readonly planning?: Planning;
   /** Spec 026 D8.4: whether the machine's tree is a Git repository; then `needsRepository` files go there. */
   readonly hasGitRepository?: () => boolean;
+  /**
+   * Review 0.1.619 B3: brings the machine's `.git` to the worktree's Git
+   * state when it moved, before `hasGitRepository` is read for a tier;
+   * `signal` aborts when the lane closes. Absent: nothing to refresh.
+   */
+  readonly refreshRepository?: (signal: AbortSignal) => Promise<void>;
   /** The daemon's exit began: no planning call falls back to the runner here. Absent: never. */
   readonly ending?: () => boolean;
   /** Spec 021 D19.2: test-file globs that always run here. Absent: none. */
@@ -165,6 +174,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   let remoteRuns = 0;
   /** D8.3: planning calls and invalidations on the remote in flight: a sleep waits for none. */
   let planningCalls = 0;
+  /** Review 0.1.619 B3: refreshes of the machine's `.git` in flight: a sleep waits for none. */
+  let refreshes = 0;
   /** D8.3: the runner here was asked (a run here, or planning here): it gets each invalidation. */
   let opened = !remotePlans;
   let closed = false;
@@ -531,6 +542,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   const busy = (): string | null => {
     if (remoteRuns > 0) return `a run is on remote ${target}`;
     if (planningCalls > 0) return `a planning call is on remote ${target}`;
+    if (refreshes > 0) return `remote ${target}'s Git state is being refreshed`;
     if (state.kind === "connecting") return `remote ${target} is connecting`;
     if (state.kind === "asleep" && state.going) return `remote ${target} is going to sleep`;
     return null;
@@ -546,6 +558,22 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     };
   };
   const ending = () => closed || options.ending?.() === true;
+
+  /** B3: the machine's `.git` at the worktree's Git state, or known not to be, before a split. */
+  const refreshRepository = async () => {
+    if (options.refreshRepository === undefined || ending()) return;
+    refreshes++;
+    activity();
+    await options
+      .refreshRepository(closing.signal)
+      .catch((error: Error) =>
+        options.log(`remote ${target}: its Git state not refreshed: ${error.message}`),
+      )
+      .finally(() => {
+        refreshes--;
+        activity();
+      });
+  };
   /** `host` ended during a call: down, unless the lane moved on from it meanwhile. */
   const ended = (host: RemoteHost) => {
     if (state.kind === "ready" && state.host === host) down("the host ended", false);
@@ -621,6 +649,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     async run(testFiles, run) {
       // Review 0.1.619 B4: a run here opens the runner here, which gets each later invalidation.
       if (!goesRemote(run, tiers)) return runDirect(testFiles, run);
+      await refreshRepository();
       const split = route.split(testFiles);
       const { there } = split;
       if (there.length === 0) return runDirect(testFiles, run);

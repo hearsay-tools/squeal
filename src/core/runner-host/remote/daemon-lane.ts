@@ -59,7 +59,8 @@ import {
  * Spec 026 D8.3, D8.4 (row 026-12): each lane plans where the entry's
  * `planning` says; once the daemon's exit began, no planning call falls back
  * here. A machine whose tree is a Git repository takes `needsRepository`
- * files too.
+ * files too; review 0.1.619 B3: only while its `.git` is at the worktree's
+ * Git state, which the lane refreshes before each split (`refreshGit`).
  */
 
 /** The note topic of the runner's own lane's one status line. */
@@ -246,7 +247,8 @@ function laneOver<R extends RunnerAdapter>(
     ...(spec.perPass === true && share.awake() ? { awaitConnect: true } : {}),
     whenLost: context.lane.whenLost,
     planning: context.lane.planning,
-    hasGitRepository: () => share.current()?.capabilities.hasGitRepository === true,
+    hasGitRepository: () => share.gitCurrent(),
+    refreshRepository: (signal) => share.refreshGit(signal),
     ending: () => share.ending(),
     root,
     version,

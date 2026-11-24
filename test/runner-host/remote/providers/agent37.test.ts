@@ -194,14 +194,22 @@ describe("agent37 acquire (row 026-15)", () => {
       "-o",
       "IdentitiesOnly=yes",
     ]);
-    // The real bundle, unpacked by real Git: the local HEAD, its tag, its files.
+    // The real bundle, unpacked by real Git: the local HEAD, its branch, its tag and its index.
     const remote = remoteRoot(s, machine);
-    const head = (root: string) =>
-      execFileSync("git", ["-C", root, "rev-parse", "HEAD"]).toString().trim();
-    expect(head(remote)).toBe(head(s.request.worktreeRoot));
-    expect(execFileSync("git", ["-C", remote, "tag"]).toString().trim()).toBe("v1");
-    expect(existsSync(join(remote, "src", "a.ts"))).toBe(true);
-    expect(existsSync(join(remote, "..", "bootstrap.bundle"))).toBe(false);
+    const git = (root: string, ...args: string[]) =>
+      execFileSync("git", ["-C", root, ...args])
+        .toString()
+        .trim();
+    expect(git(remote, "rev-parse", "HEAD")).toBe(git(s.request.worktreeRoot, "rev-parse", "HEAD"));
+    expect(git(remote, "symbolic-ref", "HEAD")).toBe(
+      git(s.request.worktreeRoot, "symbolic-ref", "HEAD"),
+    );
+    expect(git(remote, "tag")).toBe("v1");
+    expect(git(remote, "ls-files")).toBe("src/a.ts");
+    // Review 0.1.619 B2: no working-tree file; the tree host writes every one at the first connect.
+    expect(existsSync(join(remote, "src", "a.ts"))).toBe(false);
+    expect(existsSync(join(remote, "..", "git.bundle"))).toBe(false);
+    expect(machine.gitCurrent?.()).toBe(true);
     expect(s.log).toEqual([
       `Agent37 instance ${id} created (eu vm)`,
       expect.stringMatching(
@@ -228,10 +236,12 @@ describe("agent37 acquire (row 026-15)", () => {
       `POST /v1/instances/${id}/start`,
     ]);
     expect(s.api.instances.get(id)).toBe("running");
-    // Node checked, `.git` found: two ssh commands, none of them an unpack.
+    // Node checked, `.git` found at the worktree's Git state: two ssh commands, none an unpack.
     const after = s.ssh.argv().slice(sshBefore);
     expect(after).toHaveLength(2);
-    expect(after[1]?.at(-1)).toMatch(/^test -d .*\/root\/\.git$/);
+    expect(after[1]?.at(-1)).toContain("git show-ref --head --tags");
+    expect(after[1]?.at(-1)).not.toContain("bundle unbundle");
+    expect(again.gitCurrent?.()).toBe(true);
     expect(s.log.at(-1)).toBe(`Agent37 instance ${id} reused (sleeping before)`);
   });
 

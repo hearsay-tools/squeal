@@ -20,6 +20,9 @@ import {
   type Agent37Timing,
   agent37Machine,
   apiOf,
+  type GitKeeper,
+  type GitPlace,
+  gitKeeper,
   stateOf,
   untilRunning,
   unusable,
@@ -162,17 +165,37 @@ async function bootstrap(
   const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli);
   const node = await ensureNode(ssh, settings.node, request.nodeVersion, timing.bootstrap.nodeMs);
   const places = { node, cache: settings.cache };
-  let hasGitRepository = false;
+  let keeper: GitKeeper | null = null;
   if (settings.bootstrap === "git-bundle") {
-    const tree = treeDir(places, request.worktreeRoot);
-    const git = await ensureGitTree(ssh, tree, request.worktreeRoot, timing.bootstrap);
-    hasGitRepository = git.kind !== "none";
+    // Review 0.1.619 B3: `.git` at the worktree's Git state, on a fresh instance and a reused one.
+    const place = gitPlace(places, request.worktreeRoot, timing, request.log);
+    const git = await ensureGitTree(ssh, place.tree, place.root, timing.bootstrap);
     if (git.kind === "sent")
       request.log(`Agent37 instance ${state.instanceId}: git history sent at ${git.commit}`);
     if (git.kind === "none")
       request.log(`Agent37 instance ${state.instanceId}: no git history (${git.why})`);
+    keeper = gitKeeper(place, git.kind === "none" ? null : git.state);
   }
-  return agent37Machine({ settings, state, env, ssh, places, hasGitRepository, timing });
+  return agent37Machine({
+    settings,
+    state,
+    env,
+    ssh,
+    places,
+    hasGitRepository: keeper !== null,
+    git: keeper,
+    timing,
+  });
+}
+
+/** Where a machine's `.git` is kept: the tree of `root` under `places`. */
+function gitPlace(
+  places: RemoteMachine["places"],
+  root: string,
+  timing: Agent37Timing,
+  log: (line: string) => void,
+): GitPlace {
+  return { tree: treeDir(places, root), root, deadlines: timing.bootstrap, log };
 }
 
 /** The `agent37` provider with `timing`; tests shorten the waits. */
@@ -198,6 +221,13 @@ export function createAgent37Provider(timing: Partial<Agent37Timing> = {}): Remo
         },
         places: record.places,
         hasGitRepository: record.capabilities.hasGitRepository,
+        // Found at no state yet: its first wake brings it current.
+        git: record.capabilities.hasGitRepository
+          ? gitKeeper(
+              gitPlace(record.places, record.worktreeRoot, t, () => {}),
+              null,
+            )
+          : null,
         timing: t,
       });
     },

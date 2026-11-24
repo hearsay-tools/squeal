@@ -2,7 +2,12 @@ import { isRecord } from "../../../../fs/json.js";
 import type { MachineRecord, ReleaseReason, RemoteMachine } from "../../provider.js";
 import type { SshTarget } from "../../ssh.js";
 import { Agent37Api, type Instance } from "./api.js";
-import type { BootstrapDeadlines } from "./bootstrap.js";
+import {
+  type BootstrapDeadlines,
+  ensureGitTree,
+  type GitState,
+  localGitState,
+} from "./bootstrap.js";
 import type { Agent37Settings } from "./config.js";
 import { validInstanceId } from "./tunnel.js";
 
@@ -11,6 +16,10 @@ import { validInstanceId } from "./tunnel.js";
  * reattached: `wake` polls it to `running` through `POST /start`, `sleep`
  * stops compute billing, `worktree-removed` deletes it (`404`: already
  * gone). A lost instance is named, so the lane knows it was lost.
+ *
+ * Review 0.1.619 B3: a `git-bundle` machine keeps its tree's `.git` at the
+ * worktree's Git state (`gitKeeper`): at acquire, at each wake, and when a
+ * lane asks (`syncGit`) after a commit, a branch switch or a tag here.
  */
 
 export const AGENT37 = "agent37";
@@ -87,6 +96,57 @@ export async function untilRunning(
   }
 }
 
+/** A machine's `.git`, kept at the worktree's Git state (`RemoteMachine.syncGit`). */
+export interface GitKeeper {
+  current(): boolean;
+  sync(ssh: SshTarget | null, signal?: AbortSignal): Promise<boolean>;
+}
+
+export interface GitPlace {
+  /** The remote tree's directory (`treeDir`), whose `root` holds `.git`. */
+  readonly tree: string;
+  /** The worktree here. */
+  readonly root: string;
+  readonly deadlines: BootstrapDeadlines;
+  readonly log: (line: string) => void;
+}
+
+/**
+ * The `.git` of `place.tree`, last found at `reached` (`null`: unknown).
+ * Syncs run one at a time; one whose worktree state equals the last one
+ * found there makes no SSH call.
+ */
+export function gitKeeper(place: GitPlace, reached: GitState | null): GitKeeper {
+  let found = reached?.key ?? null;
+  let here = found;
+  let turn: Promise<unknown> = Promise.resolve();
+  const current = () => found !== null && here === found;
+  const bring = async (ssh: SshTarget | null, signal?: AbortSignal) => {
+    here = (await localGitState(place.root).catch(() => null))?.key ?? null;
+    if (here === null || ssh === null || current() || signal?.aborted === true) return current();
+    try {
+      const got = await ensureGitTree(ssh, place.tree, place.root, place.deadlines);
+      found = got.kind === "none" ? null : (got.state?.key ?? null);
+      if (got.kind === "sent")
+        place.log(`${ssh.destination}: git history brought to ${got.commit}`);
+      if (got.kind === "none") place.log(`${ssh.destination}: no git history (${got.why})`);
+    } catch (error) {
+      // What `.git` holds there now is unknown: not current until a sync succeeds.
+      found = null;
+      place.log(`${ssh.destination}: git history not brought current: ${(error as Error).message}`);
+    }
+    return current();
+  };
+  return {
+    current,
+    sync(ssh, signal) {
+      const run = turn.then(() => bring(ssh, signal));
+      turn = run.catch(() => {});
+      return run.catch(() => false);
+    },
+  };
+}
+
 export interface MachineParts {
   readonly settings: Agent37Settings;
   readonly state: Agent37State;
@@ -94,11 +154,13 @@ export interface MachineParts {
   readonly ssh: SshTarget;
   readonly places: RemoteMachine["places"];
   readonly hasGitRepository: boolean;
+  /** The `.git` the machine keeps current; `null`: none (`tree-sync`). */
+  readonly git: GitKeeper | null;
   readonly timing: Agent37Timing;
 }
 
 export function agent37Machine(parts: MachineParts): RemoteMachine {
-  const { state, timing } = parts;
+  const { state, timing, git } = parts;
   const id = state.instanceId;
   const api = apiOf(parts.settings, parts.env, timing);
   const sleep = async () => {
@@ -117,10 +179,15 @@ export function agent37Machine(parts: MachineParts): RemoteMachine {
       ephemeralHostKey: true,
     },
     state,
+    ...(git === null
+      ? {}
+      : { gitCurrent: () => git.current(), syncGit: (ssh, signal) => git.sync(ssh, signal) }),
     wake: async (signal) => {
       const found = await api.inspect(id);
       if (found === null) throw goneError(id);
       await untilRunning(api, id, found, timing, signal);
+      // Asleep or lost meanwhile: the worktree's Git state may have moved.
+      await git?.sync(parts.ssh, signal);
     },
     sleep,
     release: async (reason: ReleaseReason) => {

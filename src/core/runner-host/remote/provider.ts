@@ -60,6 +60,21 @@ export interface RemoteMachine {
   sleep(): Promise<void>;
   /** Lifecycle release: `idle` sleeps, `daemon-exit` sleeps or detaches, `worktree-removed` destroys. */
   release(reason: ReleaseReason): Promise<void>;
+  /**
+   * Review 0.1.619 B3 (spec 026 D8.4): on a machine whose tree keeps `.git`
+   * (`hasGitRepository`), whether that `.git` was found at the worktree's
+   * Git state (HEAD, its branch or detached, the tags) as `syncGit` last
+   * read it here. Absent: the provider does not keep it current, and the
+   * capability stands as it is.
+   */
+  gitCurrent?(): boolean;
+  /**
+   * Reads the worktree's Git state here and, when the remote `.git` is not
+   * at it and `ssh` is given, brings it there now: `.git` alone, never a
+   * working-tree file. `ssh` `null`: the read here alone, no SSH. Resolves
+   * `gitCurrent()` after; never rejects. `acquire` and `wake` call it too.
+   */
+  syncGit?(ssh: SshTarget | null, signal?: AbortSignal): Promise<boolean>;
 }
 
 /** Where a tracked machine stands, as `squeal remote list` shows it (D12). */

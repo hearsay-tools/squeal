@@ -30,6 +30,12 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  * machine. A queued `serial` work and a later `reach` are refused; an
  * acquire, wake, sleep or `serial` work in flight is waited for. Only then
  * does the shared connection end and the machine get released, once.
+ *
+ * Review 0.1.619 B3 (spec 026 D8.4): a machine whose tree keeps `.git`
+ * counts as a Git repository only while that `.git` is at the worktree's
+ * Git state (`gitCurrent`). Before a lane splits a tier, `refreshGit` reads
+ * that state here; only when it moved does it reach the machine, as
+ * `serial` work, so the exit waits for it or refuses it.
  */
 
 /** What the machine asks of each lane on it: whether it may sleep, and its sleep (`RemoteLaneRunner`). */
@@ -54,6 +60,18 @@ export interface MachineShare {
   serial<T>(work: () => Promise<T>, signal?: AbortSignal): Promise<T>;
   /** The daemon's exit began (`release`): no new work may reach the machine. */
   ending(): boolean;
+  /**
+   * The machine's tree is a Git repository at the worktree's Git state as
+   * `refreshGit` last read it. A provider that keeps no `.git` current
+   * (`RemoteMachine.syncGit` absent): its capability as it stands.
+   */
+  gitCurrent(): boolean;
+  /**
+   * The worktree's Git state read here; when the machine's `.git` is not at
+   * it and the machine is awake, brought there as `serial` work. Refused,
+   * unrun, once `signal` aborted or the daemon's exit began.
+   */
+  refreshGit(signal?: AbortSignal): Promise<void>;
   /** A lane lost its channel: the machine may have slept by itself, so the next reach wakes it. */
   lost(): void;
   /** `lane` takes part in the machine's sleep until the returned call. */
@@ -195,6 +213,18 @@ export function shareMachine(options: ShareOptions): MachineShare {
     return machine;
   };
 
+  const serial = <T>(work: () => Promise<T>, signal?: AbortSignal): Promise<T> => {
+    if (released) return Promise.reject(refused());
+    const turn = () => {
+      if (released) throw refused();
+      if (signal?.aborted === true) throw new MachineEnding("its lane closed");
+      return work();
+    };
+    const run = queue.then(turn, turn);
+    queue = run.catch(() => {});
+    return run;
+  };
+
   /** Every work in flight on the machine ended, then the connection closed and the machine released. */
   const releaseOnce = async (): Promise<void> => {
     released = true;
@@ -228,18 +258,22 @@ export function shareMachine(options: ShareOptions): MachineShare {
       if (released) throw refused();
       return { machine: reached, ssh: target(reached) };
     },
-    serial<T>(work: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-      if (released) return Promise.reject(refused());
-      const turn = () => {
-        if (released) throw refused();
-        if (signal?.aborted === true) throw new MachineEnding("its lane closed");
-        return work();
-      };
-      const run = queue.then(turn, turn);
-      queue = run.catch(() => {});
-      return run;
-    },
+    serial,
     ending: () => released,
+    gitCurrent() {
+      const m = machine;
+      return m?.capabilities.hasGitRepository === true && (m?.gitCurrent?.() ?? true);
+    },
+    async refreshGit(signal) {
+      const m = machine;
+      if (m?.syncGit === undefined || released) return;
+      // No SSH while the worktree's Git state is the one last found there.
+      if (await m.syncGit(null, signal)) return;
+      if (!awake || released || signal?.aborted === true) return;
+      await serial(async () => {
+        if (awake && machine === m) await m.syncGit?.(target(m), signal);
+      }, signal);
+    },
     awake: () => awake,
     activity() {
       last = now();
