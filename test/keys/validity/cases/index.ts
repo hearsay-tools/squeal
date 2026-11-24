@@ -7,6 +7,7 @@ import { INHERIT } from "./accept/inherit.js";
 import { RETIRED } from "./accept/retired.js";
 import { SLOW_INHERIT } from "./accept/slow.js";
 import { UNKNOWN_AFTER } from "./accept/unknown.js";
+import { OWN_COMPILE_CACHE } from "./adapter/compile-cache.js";
 import { VITEST_ENVIRONMENT } from "./adapter/environment.js";
 import { NODE_TEST_RUNS } from "./adapter/node-test.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
@@ -95,6 +96,7 @@ export const CASES: readonly Case[] = [
   ...PYTEST_RUNS,
   ...PYTEST_PDM,
   ...NODE_TEST_RUNS,
+  ...OWN_COMPILE_CACHE,
   ...LEAVING_LISTING,
   ...RECURSIVE_LISTING,
   ...REWRITTEN_SCRATCH,

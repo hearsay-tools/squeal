@@ -556,6 +556,14 @@ export type Case = {
    * candidate throws nothing. Inert once the last release keys it.
    */
   readonly lastThrows?: string;
+  /**
+   * Spec 025 D7.2 (row 025-07): the case runs as under a daemon a Squeal
+   * launcher started, with `SQUEAL_OWN_COMPILE_CACHE=1` and an empty
+   * `NODE_COMPILE_CACHE` (Node keeps the cache off, so coverage reads alike)
+   * in the driver's environment, which the runners take out of the test
+   * processes' environment.
+   */
+  readonly ownCompileCache?: true;
 } & (
   | { readonly kind: "key"; readonly input: KeyInput }
   | { readonly kind: "rows"; readonly input: RowsInput }

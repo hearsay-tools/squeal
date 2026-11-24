@@ -25,6 +25,24 @@ export * as vitest from "./entries/vitest.js";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+/** Runs `run` with Squeal's own compile cache in this process's environment when `c` asks (spec 025 D7.2). */
+async function underCompileCache<T>(c: Case, run: () => Promise<T>): Promise<T> {
+  if (c.ownCompileCache !== true) return run();
+  const names = ["NODE_COMPILE_CACHE", "SQUEAL_OWN_COMPILE_CACHE"] as const;
+  const saved = names.map((name) => process.env[name]);
+  process.env.NODE_COMPILE_CACHE = "";
+  process.env.SQUEAL_OWN_COMPILE_CACHE = "1";
+  try {
+    return await run();
+  } finally {
+    names.forEach((name, i) => {
+      const value = saved[i];
+      if (value === undefined) Reflect.deleteProperty(process.env, name);
+      else process.env[name] = value;
+    });
+  }
+}
+
 const [script, mode, casesPath, outPath, scratch, other] = process.argv.slice(1);
 // Node runs its entry at the real path, which a temporary directory may not be (macOS).
 const main = script !== undefined && realpathSync(script) === fileURLToPath(import.meta.url);
@@ -38,7 +56,7 @@ if (main && casesPath !== undefined && outPath !== undefined && scratch !== unde
       const output =
         mode === "decide"
           ? await decideCase(c, join(other, String(at)), dir)
-          : await runCase(c, dir, other);
+          : await underCompileCache(c, () => runCase(c, dir, other));
       if (output !== undefined) out[c.name] = output;
     } catch (error) {
       out[c.name] = { error: message(error) };
