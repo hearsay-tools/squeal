@@ -3,7 +3,12 @@ import { isRecord } from "../fs/json.js";
 import { readDaemonNotes } from "../notes.js";
 import { keyingDeferred } from "../scheduler/deferred-keying.js";
 import type { WorktreeId } from "../types/common.js";
-import { DEFAULT_POLICY, type LoadedPolicy, type Policy } from "../types/policy.js";
+import {
+  type DaemonExits,
+  DEFAULT_POLICY,
+  type LoadedPolicy,
+  type Policy,
+} from "../types/policy.js";
 import type { Store } from "../types/store.js";
 import {
   describeProblems,
@@ -152,33 +157,51 @@ const UNSET_EXITS: Policy = {
   daemon: { ...DEFAULT_POLICY.daemon, idleExitMinutes: Number.NaN, unusedExitMinutes: Number.NaN },
 };
 
+/**
+ * Spec 026 D2.2: the defaults in place of an unset exit bound, and which
+ * bounds the file sets (`daemon.set`, absent when neither). The bounds the
+ * daemon keeps are `daemonExits`'s, outside the loader, so the key path
+ * that loads a policy holds no scheduler code (`test/keys/key-format.test.ts`).
+ */
+function withExits(policy: Policy): Policy {
+  const { idleExitMinutes: idle, unusedExitMinutes: unused } = policy.daemon;
+  const defaults = DEFAULT_POLICY.daemon;
+  const set = { idleExitMinutes: !Number.isNaN(idle), unusedExitMinutes: !Number.isNaN(unused) };
+  const daemon = {
+    ...policy.daemon,
+    idleExitMinutes: set.idleExitMinutes ? idle : defaults.idleExitMinutes,
+    unusedExitMinutes: set.unusedExitMinutes ? unused : defaults.unusedExitMinutes,
+    ...(set.idleExitMinutes || set.unusedExitMinutes ? { set } : {}),
+  };
+  return { ...policy, daemon };
+}
+
 /** Spec 026 D2.2: `daemon.unusedExitMinutes` with no test group at `edit` or `pause`. */
 export const EDIT_FREE_UNUSED_EXIT_MINUTES = 2;
 
 /**
- * Spec 026 D2.2 (row 026-09; the human, 2026-11-24): a key the file sets
- * wins. Unset, with no test group at `edit` or `pause` (D1's deferred
- * keying, `keyingDeferred`), `daemon.unusedExitMinutes` is 2 and a daemon
- * with no consumer stops after the lesser of `daemon.idleExitMinutes` and
- * it (the coordinator, 2026-11-24): a hook that started a daemon on a fresh
- * store registers no consumer (`startSession`), so it would idle for 60
- * minutes between bursts. Otherwise both keep their defaults (001 D10).
+ * Spec 026 D2.2 (row 026-09; the human, 2026-11-24): the exit bounds a
+ * daemon keeps, which `squeal ps` shows. A bound the file sets wins. Unset,
+ * with no test group at `edit` or `pause` (D1's deferred keying,
+ * `keyingDeferred`), `daemon.unusedExitMinutes` is 2, and a daemon with no
+ * consumer stops after the lesser of `daemon.idleExitMinutes` and it (the
+ * coordinator, 2026-11-24): a hook that starts a daemon on a fresh store
+ * registers no consumer (`startSession`), so it would idle for 60 minutes
+ * between bursts. Otherwise both keep their values (001 D10). A policy not
+ * from the loader, with no `set`, keeps any value but a default's.
  */
-function withExits(policy: Policy): Policy {
-  const { idleExitMinutes: idle, unusedExitMinutes: unused } = policy.daemon;
-  const editFree = keyingDeferred(policy);
+export function daemonExits(policy: Policy): DaemonExits {
+  const { idleExitMinutes: idle, unusedExitMinutes: unused, set } = policy.daemon;
   const defaults = DEFAULT_POLICY.daemon;
-  const unusedExitMinutes = Number.isNaN(unused)
-    ? editFree
-      ? EDIT_FREE_UNUSED_EXIT_MINUTES
-      : defaults.unusedExitMinutes
+  const derive = (key: keyof DaemonExits, value: number) =>
+    set?.[key] !== true && value === defaults[key] && keyingDeferred(policy);
+  const unusedExitMinutes = derive("unusedExitMinutes", unused)
+    ? EDIT_FREE_UNUSED_EXIT_MINUTES
     : unused;
-  const idleExitMinutes = Number.isNaN(idle)
-    ? editFree
-      ? Math.min(defaults.idleExitMinutes, unusedExitMinutes)
-      : defaults.idleExitMinutes
+  const idleExitMinutes = derive("idleExitMinutes", idle)
+    ? Math.min(idle, unusedExitMinutes)
     : idle;
-  return { ...policy, daemon: { ...policy.daemon, idleExitMinutes, unusedExitMinutes } };
+  return { idleExitMinutes, unusedExitMinutes };
 }
 
 /** The policy alone, for callers that act on it and leave reporting to the daemon (the hooks). */

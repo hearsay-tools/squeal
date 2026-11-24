@@ -154,6 +154,13 @@ export interface Policy {
      */
     readonly unusedExitMinutes: number;
     /**
+     * Spec 026 D2.2 (row 026-09): which of the two exit bounds
+     * `squeal.config.json` sets; absent when it sets neither. Unset bounds
+     * hold the defaults here; the bounds a daemon keeps are `daemonExits`'s
+     * (`daemon/policy.ts`), 2 minutes for an edit-free policy.
+     */
+    readonly set?: { readonly [K in keyof DaemonExits]: boolean };
+    /**
      * Spec 023 D7.4 (row 023-40): the most commit worktrees, each with its
      * commit daemon, that live at once on this machine before a new
      * commit's `status --at --run` waits for a place. A whole number of at
@@ -491,6 +498,12 @@ export const DEFAULT_POLICY: Policy = {
   requires: { commands: [] },
   remote: { allowed: true, needsRepository: [] },
 };
+
+/** Spec 026 D2.2: the daemon's exit bounds, as `daemonExits` resolves them. */
+export interface DaemonExits {
+  readonly idleExitMinutes: number;
+  readonly unusedExitMinutes: number;
+}
 
 /**
  * What the one policy loader returns (spec 001 D11, review S3): the policy
