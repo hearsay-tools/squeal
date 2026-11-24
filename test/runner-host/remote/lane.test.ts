@@ -100,8 +100,35 @@ describe("a remote lane (row 021-14)", () => {
     expect(lost.completedFiles).toEqual([]);
     const report = await s.lane.run([REF], background());
     expect(report.end).toBe("crashed");
-    expect(report.failure).toMatch(/not run here/);
+    expect(report.failure).toBe('remote box unreachable; not run here (whenLost "not-run")');
     expect(s.localRuns).toHaveLength(0);
     expect(s.statuses.at(-1)).toMatch(/unreachable since .*; 2 files not run$/);
+  });
+
+  // Row 026-20 (lessons D3): a reachable remote that refused says so, never "unreachable".
+  it("says refused, with its reason, when a reachable remote refused a run under whenLost not-run", async () => {
+    const s = await setup({
+      whenLost: "not-run",
+      remoteRun: async (remoteRoot) => {
+        writeFileSync(join(remoteRoot, "src/a.ts"), `moved ${Math.random()}\n`);
+        return REPORT;
+      },
+    });
+    const report = await s.lane.run([REF], background());
+    expect(s.remoteRuns).toHaveLength(2);
+    expect(s.localRuns).toHaveLength(0);
+    expect(report.failure).toBe(
+      'remote box refused (its tree stayed different at src/a.ts); not run here (whenLost "not-run")',
+    );
+  });
+
+  it("says refused, with the difference, for a remote whose environment differs under whenLost not-run", async () => {
+    const s = await setup({ whenLost: "not-run", remoteEnv: { ...ENV, runnerVersion: "5.0.2" } });
+    const report = await s.lane.run([REF], background());
+    expect(s.remoteRuns).toEqual([]);
+    expect(report.failure).toMatch(
+      /^remote box refused \(.*5\.0\.2 on the remote, 5\.0\.3 here.*\); not run here \(whenLost "not-run"\)$/,
+    );
+    expect(report.failure).not.toMatch(/unreachable/);
   });
 });

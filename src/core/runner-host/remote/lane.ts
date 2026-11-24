@@ -371,7 +371,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     testFiles: readonly TestFileRef[],
     run: RunOptions,
   ): Promise<
-    RunReport | "refused" | { readonly lost: RunReport } | { readonly cancelled: RunReport }
+    | RunReport
+    | { readonly refused: string }
+    | { readonly lost: RunReport }
+    | { readonly cancelled: RunReport }
   > => {
     const inputs = await runInputs(host, testFiles).catch((error: Error) => error);
     if (inputs instanceof Error) {
@@ -379,6 +382,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       down("the host ended", false);
       return { lost: lostReport(testFiles) };
     }
+    let stayed: readonly string[] = [];
     for (let attempt = 0; attempt < 2; attempt++) {
       await sendPending(host);
       // Review 0.1.442 B1: equal for this run, after the revision's files and any install
@@ -390,7 +394,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       }
       if (unequal.length > 0) {
         down(unequal.join("; "), true, host);
-        return "refused";
+        return { refused: unequal.join("; ") };
       }
       const end = await (options.gitLease?.() ?? NO_LEASE);
       const reply = await admittedRun(host, testFiles, run, inputs).finally(end);
@@ -410,6 +414,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         if (reply.coverage !== undefined) coverageOf.set(report, reply.coverage);
         return report;
       }
+      stayed = differ;
       options.log(
         `remote ${target}: tree differs at ${differ.slice(0, 5).join(", ")}; sending again`,
       );
@@ -418,7 +423,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     options.status(
       `remote ${target}: refused a run whose tree stayed different; ${options.whenLost === "local" ? "ran it here" : "not run"}`,
     );
-    return "refused";
+    return { refused: `its tree stayed different at ${stayed.slice(0, 5).join(", ")}` };
   };
 
   /**
@@ -535,22 +540,29 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
 
   /**
    * What the policy does with a background run the remote cannot take (D13):
-   * `local` runs it here; `not-run` leaves it not run.
+   * `local` runs it here; `not-run` leaves it not run. Row 026-20 (lessons
+   * D3): `refusal` is the reason a reachable remote refused it; absent, the
+   * lane's own state says whether the remote refused or was not reached.
    */
   const instead = async (
     testFiles: readonly TestFileRef[],
     run: RunOptions,
+    refusal?: string,
   ): Promise<RunReport> => {
     if (options.whenLost === "local") return runHere(testFiles, run, "here");
     notRun += testFiles.length;
     tell();
+    const reason = refusal ?? (state.kind === "down" && state.refused ? why : null);
     return Promise.resolve({
       end: "crashed",
       durationMs: 0,
       completedFiles: [],
       results: [],
       fileErrors: [],
-      failure: `remote ${target} unreachable; not run here (whenLost "not-run")`,
+      failure:
+        reason === null
+          ? `remote ${target} unreachable; not run here (whenLost "not-run")`
+          : `remote ${target} refused (${reason}); not run here (whenLost "not-run")`,
     });
   };
 
@@ -568,7 +580,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         remoteRuns--;
         activity();
       });
-    if (report === null || report === "refused") return instead(testFiles, run);
+    if (report === null) return instead(testFiles, run);
+    if ("refused" in report) return instead(testFiles, run, report.refused);
     if ("cancelled" in report) return report.cancelled;
     if ("lost" in report) {
       // Review 0.1.442 B4: nothing of the lost attempt is kept; under `local` its files run
