@@ -10334,9 +10334,13 @@ function loaderCounts(store, worktreeId) {
 function bootstrappedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }
+function marker(store, worktreeId) {
+  const [startedAt = "", head] = (store.meta.get(bootstrappedMetaKey(worktreeId)) ?? "").split(" ");
+  return [startedAt, head];
+}
 function lastScannedBy(store, worktreeId) {
-  const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
-  const value = marker === null ? Number.NaN : Number(marker);
+  const [startedAt] = marker(store, worktreeId);
+  const value = startedAt === "" ? Number.NaN : Number(startedAt);
   return Number.isFinite(value) ? value : null;
 }
 function scannedBy(store, worktreeId, startedAt) {
@@ -18964,8 +18968,8 @@ var NEW_VALUE = "lower(hex(randomblob(8)))";
 var move = (key) => `INSERT INTO meta (key, value) VALUES (${key}, ${NEW_VALUE})
      ON CONFLICT (key) DO UPDATE SET value = excluded.value;`;
 var statesKey = (row) => `'${WORKTREE_META_ROWS.statesMarker.prefix}' || ${row}.worktree_id`;
-function triggersOf(table, marker) {
-  const moves = (row) => marker === "states" ? move(statesKey(row)) : move(`'${CLOSURE_WRITES_KEY}'`);
+function triggersOf(table, marker2) {
+  const moves = (row) => marker2 === "states" ? move(statesKey(row)) : move(`'${CLOSURE_WRITES_KEY}'`);
   const on = {
     INSERT: moves("NEW"),
     UPDATE: `${moves("OLD")} ${moves("NEW")}`,
@@ -18974,7 +18978,7 @@ function triggersOf(table, marker) {
   return Object.entries(on).map(([event, body]) => {
     const name2 = `squeal_marker_${table}_${event.toLowerCase()}`;
     const sql = `CREATE TRIGGER IF NOT EXISTS ${name2} AFTER ${event} ON ${table} BEGIN ${body} END`;
-    return { name: name2, marker, sql };
+    return { name: name2, marker: marker2, sql };
   });
 }
 var TRIGGERS3 = [
@@ -18997,9 +19001,9 @@ function armed2(conn) {
   for (const trigger of TRIGGERS3) if (!names3.has(trigger.name)) markers.delete(trigger.marker);
   return markers;
 }
-function trusted(store, marker, key) {
+function trusted(store, marker2, key) {
   const conn = connectionIn2(store);
-  if (conn === null || !armed2(conn).has(marker)) return null;
+  if (conn === null || !armed2(conn).has(marker2)) return null;
   return store.meta.get(key);
 }
 function statesMark(store, worktreeId) {

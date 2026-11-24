@@ -10312,9 +10312,13 @@ function loaderCounts(store, worktreeId) {
 function bootstrappedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }
+function marker(store, worktreeId) {
+  const [startedAt = "", head] = (store.meta.get(bootstrappedMetaKey(worktreeId)) ?? "").split(" ");
+  return [startedAt, head];
+}
 function lastScannedBy(store, worktreeId) {
-  const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
-  const value = marker === null ? Number.NaN : Number(marker);
+  const [startedAt] = marker(store, worktreeId);
+  const value = startedAt === "" ? Number.NaN : Number(startedAt);
   return Number.isFinite(value) ? value : null;
 }
 function scannedBy(store, worktreeId, startedAt) {
