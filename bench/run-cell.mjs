@@ -18,7 +18,6 @@
 //   8. store and daemon numbers, then `squeal stop` everywhere and the load stopped
 import {
   appendFileSync,
-  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -27,27 +26,24 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
 import {
   background,
   cpuJiffies,
   daemonPids,
-  hookWriteWaitLog,
-  longWriteCount,
-  longWriteHolds,
   procStat,
   quantile,
-  relayLog,
+  readDaemonLogs,
   sleep,
-  storeProcessLog,
   storeProcessMeter,
   storeProcessPids,
   timed,
   timedPeak,
   treeRss,
   waitForBaselines,
+  waitForQuiet,
 } from "./lib.mjs";
 
 const { values: o } = parseArgs({
@@ -84,12 +80,18 @@ const work = join(out, "work");
 const home = join(work, "home");
 const runtime = join(work, "run");
 for (const d of [home, runtime]) mkdirSync(d, { recursive: true });
-const env = { ...process.env, HOME: home, XDG_RUNTIME_DIR: runtime };
-delete env.CLAUDE_PROJECT_DIR;
 const NODE = process.execPath;
-const cli = ["--disable-warning=ExperimentalWarning", join(o.plugin, "dist/cli/squeal.mjs")];
+// Review 0.1.626 S1: the shipped launchers run `node` from PATH, so this Node comes first there.
+const PATH = [dirname(NODE), process.env.PATH].filter(Boolean).join(delimiter);
+const env = { ...process.env, PATH, HOME: home, XDG_RUNTIME_DIR: runtime };
+delete env.CLAUDE_PROJECT_DIR;
+// The CLI as agents run it: the plugin's bin/squeal (D7's startup), else its bundle directly.
+const launcher = join(o.plugin, "bin/squeal");
+const [cliCmd, ...cli] = existsSync(launcher)
+  ? [launcher]
+  : [NODE, "--disable-warning=ExperimentalWarning", join(o.plugin, "dist/cli/squeal.mjs")];
 const squeal = (root, args, timeoutMs) =>
-  timed(NODE, [...cli, ...args], { env, cwd: root, timeoutMs });
+  timed(cliCmd, [...cli, ...args], { env, cwd: root, timeoutMs });
 const git = (cwd, args) => timed("git", args, { cwd, env });
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${o.name}: ${msg}`);
 const cell = {
@@ -101,6 +103,7 @@ const cell = {
   ageLists: o["age-lists"],
   ff: o.ff === "none" ? null : { kind: o.ff, mode: o["ff-mode"], modules: Number(o["ff-modules"]) },
   churn: o.churn,
+  cli: cliCmd === launcher ? "bin/squeal" : "bundle",
   phases: {},
 };
 
@@ -240,7 +243,10 @@ for (const root of roots.slice(1)) {
 }
 // Row 025-08: the other worktrees list, key and count their files after `start` returns. Before
 // this wait, that work ran inside the idle minute and made wt-3's idle CPU read 3.5% (wt0 0.2%).
-// Each entry gets `settle`: { ms, settled, polls }; settled false means the shared 5 min bound hit.
+// Each entry gets `settle`: { ms, settled, polls, waitingFor, code }; settled false means the shared
+// 5 min bound hit, and waitingFor names what the last poll still waited for. Row 025-13: the wait
+// also holds until the daemon is alive and its code store is counted (wt-3@0.1.626 began idle
+// before its wt1 and wt2 daemons served).
 if (roots.length > 1) {
   log("wait for the other worktrees' baselines");
   const readStatus = async (root) => {
@@ -253,6 +259,13 @@ if (roots.length > 1) {
   };
   const settles = await waitForBaselines(roots.slice(1), readStatus, { timeoutMs: 300_000 });
   for (const [i, settle] of settles.entries()) cell.phases.startOthers[i].settle = settle;
+}
+
+// Row 025-13: then until the code store's process goes quiet (under 2% of a core over 2 s),
+// at most 60 s, so its seeding does not run into the idle minute.
+if (storeMeter.pids().length > 0) {
+  log("wait for the store process to go quiet");
+  cell.phases.storeQuiet = await waitForQuiet(storeMeter.cpuS, { timeoutMs: 60_000 });
 }
 
 // 6. Idle.
@@ -332,10 +345,10 @@ cell.phases.sessionStoreProcessCpuS = storeMeter.cpuS() - sessionStore0;
 {
   const opts = { env, cwd: main, timeoutMs: 600_000 };
   let command = "impact";
-  let r = await timedPeak(NODE, [...cli, command, "--json"], opts);
+  let r = await timedPeak(cliCmd, [...cli, command, "--json"], opts);
   if (r.code === 2) {
     command = "reach";
-    r = await timedPeak(NODE, [...cli, command, "--json"], opts);
+    r = await timedPeak(cliCmd, [...cli, command, "--json"], opts);
   }
   cell.phases.impact = { command, ms: r.ms, code: r.code, peakRssBytes: r.peakRssBytes };
 }
@@ -367,42 +380,26 @@ cell.store.rows = Object.fromEntries(
     .map((l) => l.split("|"))
     .map(([k, v]) => [k, Number(v)]),
 );
-let longWrites = 0;
-const holds = [];
-let lockFailures = 0;
-let storeLog = "";
-let relay = "";
-const logDir = join(store, "logs");
-mkdirSync(join(out, "logs"), { recursive: true });
-if (existsSync(logDir)) {
-  for (const f of readdirSync(logDir)) {
-    const text = readFileSync(join(logDir, f), "utf8");
-    longWrites += longWriteCount(text);
-    holds.push(...longWriteHolds(text));
-    lockFailures += (text.match(/SQLITE_BUSY|database is locked/gi) ?? []).length;
-    if (f.startsWith("store-")) storeLog += text;
-    else relay += text;
-    cpSync(join(logDir, f), join(out, "logs", f));
-  }
-}
-cell.store.longWrites = longWrites;
-cell.store.lockFailures = lockFailures;
-cell.store.longWriteHoldsMs = holds;
-// Spec 021 D22: the code store's process, when this Squeal version has one.
-cell.storeProcess = {
-  seen: storeMeter.pids().length,
-  cpuS: storeMeter.cpuS(),
-  maxRssBytes: Math.max(0, ...samples.map((s) => s.storeRss ?? 0)),
-  ...storeProcessLog(storeLog),
-  relay: relayLog(relay),
-};
-// Spec 025 D9: how long hook writes waited for the daemon's main thread; seen false before D9.
-cell.hookWriteWait = hookWriteWaitLog(relay);
 cell.daemonRss = {
   maxDaemonBytes: Math.max(0, ...samples.map((s) => s.maxDaemonRss)),
   maxTreeBytes: Math.max(0, ...samples.map((s) => s.treeRss)),
 };
+// Spec 021 D22: the code store's process, when this Squeal version has one; its log comes below.
+cell.storeProcess = {
+  seen: storeMeter.pids().length,
+  cpuS: storeMeter.cpuS(),
+  maxRssBytes: Math.max(0, ...samples.map((s) => s.storeRss ?? 0)),
+};
 for (const root of roots) await squeal(root, ["stop"], 60_000);
+// Review 0.1.626 S2: the logs after the daemons exit, so D9's shutdown summary of the last
+// partial minute of hook writes is in them.
+for (let i = 0; i < 100 && daemonPids().size > 0; i++) await sleep(200);
+{
+  const logs = readDaemonLogs(join(store, "logs"), join(out, "logs"));
+  Object.assign(cell.store, logs.store);
+  Object.assign(cell.storeProcess, logs.storeProcess);
+  cell.hookWriteWait = logs.hookWriteWait;
+}
 load.kill("SIGTERM");
 clearInterval(sampler);
 if (pruneWatch.timer) clearInterval(pruneWatch.timer);
@@ -538,12 +535,12 @@ async function ciImport(up) {
     [...cli, "ci", "record", "--out", parts, "--", join(up, "node_modules/.bin/vitest"), "run"],
     { env: { ...env, CI: "true" }, cwd: up, timeoutMs: 3_600_000 },
   );
-  const exp = await timed(NODE, [...cli, "ci", "export", "--parts", parts, "--out", file], {
+  const exp = await timed(cliCmd, [...cli, "ci", "export", "--parts", parts, "--out", file], {
     env,
     cwd: up,
     timeoutMs: 600_000,
   });
-  const imp = await timed(NODE, [...cli, "import", file], { env, cwd: main, timeoutMs: 600_000 });
+  const imp = await timed(cliCmd, [...cli, "import", file], { env, cwd: main, timeoutMs: 600_000 });
   return {
     record: { ms: rec.ms, code: rec.code, tail: (rec.stdout + rec.stderr).slice(-400) },
     export: { ms: exp.ms, code: exp.code, tail: (exp.stdout + exp.stderr).slice(-600) },

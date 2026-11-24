@@ -783,7 +783,7 @@ export function summarize(dir) {
   );
   const lines = [...headerLines(run)];
   if (run.pluginOrder.length > 1 || (meta.repeat ?? 1) > 1) lines.push(...comparison(run));
-  lines.push(...unhealthyLines(run), ...metricLines(run));
+  lines.push(...unhealthyLines(run), ...settleLines(run), ...metricLines(run));
   return { scorecard: lines.join("\n"), overall, scores, areaScores, gateFails, values };
 }
 
@@ -889,6 +889,35 @@ function headerLines({
       `| ${n} | ${c.files} | ${c.worktrees} | ${c.load}% | ${c.ageRounds ?? 0}${c.churn ? " churn" : ""} | ${gateFails[n].length ? "❌" : "✅"} | ${scores[n]?.toFixed(0)} | ${AREAS.map(area).join(" | ")} |`,
     );
   }
+  return lines;
+}
+
+/**
+ * Row 025-13: why a cell's idle figures may include start-up work: a secondary worktree whose
+ * baseline did not settle in time (what it still waited for), or a store process that did not go
+ * quiet; and whether the CLI ran through the plugin's bin/squeal. Empty for a cell from before.
+ */
+export function idleSettleIssues(cell) {
+  const issues = [];
+  for (const [i, s] of (cell.phases?.startOthers ?? []).entries()) {
+    if (s.settle && !s.settle.settled)
+      issues.push(`wt${i + 1} baseline not settled (${s.settle.waitingFor ?? "unknown"})`);
+  }
+  const quiet = cell.phases?.storeQuiet;
+  if (quiet && !quiet.settled)
+    issues.push(`store process not quiet (${quiet.lastPct?.toFixed(1) ?? "n/a"}% CPU)`);
+  if (cell.cli === "bundle") issues.push("CLI ran from its bundle, not bin/squeal");
+  return issues;
+}
+
+function settleLines({ names, results }) {
+  const cells = names
+    .map((n) => ({ n, issues: idleSettleIssues(results[n].cell) }))
+    .filter((c) => c.issues.length > 0);
+  const lines = ["", "## Before the idle minute", ""];
+  if (cells.length === 0)
+    lines.push("Every cell's baselines and store process settled before its idle minute.");
+  for (const { n, issues } of cells) lines.push(`- ${n}: ${issues.join("; ")}`);
   return lines;
 }
 

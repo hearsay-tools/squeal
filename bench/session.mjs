@@ -18,8 +18,8 @@
 //   broad   (last step) change src/core.ts, which every test file imports,
 //           then wait for the whole suite's verdict
 import { randomUUID } from "node:crypto";
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { delimiter, dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { rng, sleep, timed } from "./lib.mjs";
 
@@ -50,12 +50,18 @@ const random = rng(Number(o.seed));
 const sessionId = randomUUID();
 const GROUP = 25;
 const NODE = process.execPath;
+// Review 0.1.626 S1: the shipped launchers run `node` from PATH, so this Node comes first there.
 const env = {
   ...process.env,
+  PATH: [dirname(NODE), process.env.PATH].filter(Boolean).join(delimiter),
   CLAUDE_PLUGIN_ROOT: plugin,
   CLAUDE_PROJECT_DIR: root,
 };
-const squealArgs = ["--disable-warning=ExperimentalWarning", join(plugin, "dist/cli/squeal.mjs")];
+// The CLI as agents run it: the plugin's bin/squeal (D7's startup), else its bundle directly.
+const launcher = join(plugin, "bin/squeal");
+const [squealCmd, ...squealArgs] = existsSync(launcher)
+  ? [launcher]
+  : [NODE, "--disable-warning=ExperimentalWarning", join(plugin, "dist/cli/squeal.mjs")];
 
 const record = (row) =>
   appendFileSync(o.out, `${JSON.stringify({ t: Date.now(), session: sessionId, ...row })}\n`);
@@ -103,7 +109,7 @@ function hook(name, payload, ifSqueal = false) {
 }
 
 function squeal(args, timeoutMs = 900_000) {
-  return timed(NODE, [...squealArgs, ...args], { env, cwd: root, timeoutMs });
+  return timed(squealCmd, [...squealArgs, ...args], { env, cwd: root, timeoutMs });
 }
 
 // Module state, so a step knows what each file holds now.

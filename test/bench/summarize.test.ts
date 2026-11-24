@@ -15,7 +15,15 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 type Status = Record<string, unknown> | null;
-type Settle = { ms: number; settled: boolean; polls: number };
+type Settle = {
+  ms: number;
+  settled: boolean;
+  polls: number;
+  waitingFor?: string | null;
+  code?: { files: number; pending: number } | null;
+};
+type Quiet = { ms: number; settled: boolean; polls: number; lastPct: number | null };
+type Clock = { now: () => number; wait: (ms: number) => Promise<void> };
 type WriteWait = {
   seen: boolean;
   taken: number;
@@ -26,6 +34,15 @@ type WriteWait = {
 type Values = Record<string, number | null>;
 interface Lib {
   baselineSettled(status: Status): boolean;
+  baselineWaitingFor(status: Status): string | null;
+  waitForQuiet(
+    cpuS: () => number,
+    opts: { windowMs: number; maxPct: number; timeoutMs: number } & Clock,
+  ): Promise<Quiet>;
+  readDaemonLogs(
+    logDir: string,
+    copyTo: string,
+  ): { store: { longWrites: number }; hookWriteWait: WriteWait };
   waitForBaselines(
     roots: string[],
     read: (root: string) => Promise<Status>,
@@ -43,6 +60,7 @@ interface Summarize {
   hookValues(rows: unknown[]): Values;
   resourceValues(cell: unknown): Values;
   writeWaitValues(cell: unknown, cellDir: string): Values;
+  idleSettleIssues(cell: unknown): string[];
   summarize(dir: string): { scorecard: string; overall: number; values: Record<string, Values> };
   METRICS: { id: string; healthy?: number; warn?: number; group: string }[];
 }
@@ -64,10 +82,12 @@ const tmp = mkdtempSync(join(tmpdir(), "bench-summarize-"));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
 const settledStatus = {
+  daemon: { state: "alive" },
   testFilesListed: true,
+  testFileCounts: { current: 10, pending: 0, stale: 0, unknown: 0 },
   counts: { current: 10, pending: 0, stale: 0, unknown: 0 },
   testFilesWithoutChecks: { pending: 0, unknown: 0 },
-  code: { pending: 0 },
+  code: { files: 25, pending: 0 },
 };
 
 describe("idle settle (wt-3 / wt-6 idle window)", () => {
@@ -109,8 +129,8 @@ describe("idle settle (wt-3 / wt-6 idle window)", () => {
     };
     const settles = await lib.waitForBaselines(["wt1", "wt2"], read, opts);
     expect(settles).toEqual([
-      { ms: 2000, settled: true, polls: 3 },
-      { ms: 0, settled: true, polls: 1 },
+      { ms: 2000, settled: true, polls: 3, waitingFor: null, code: { files: 25, pending: 0 } },
+      { ms: 0, settled: true, polls: 1, waitingFor: null, code: { files: 25, pending: 0 } },
     ]);
 
     t = 0;
@@ -118,9 +138,119 @@ describe("idle settle (wt-3 / wt-6 idle window)", () => {
       ...opts,
       timeoutMs: 5000,
     });
-    expect(never.map((s) => s.settled)).toEqual([false, false]);
+    expect(never.map((s) => [s.settled, s.waitingFor, s.code])).toEqual([
+      [false, "status", null],
+      [false, "status", null],
+    ]);
     expect(never[0]?.ms).toBe(5000);
     expect(never[1]?.polls).toBe(1);
+  });
+});
+
+// Row 025-13: wt-3@0.1.626's idle minute began 6 s before its wt1 and wt2 daemons served; status
+// read the store alone then (zero counts, no code store yet), and the wait took that as settled.
+describe("settle before the idle minute (row 025-13)", () => {
+  it("waits for a live daemon and a counted code store", () => {
+    const starting = {
+      ...settledStatus,
+      daemon: { state: "down", since: null },
+      testFileCounts: { current: 0, pending: 0, stale: 0, unknown: 0 },
+      code: { files: 0, pending: 0 },
+    };
+    expect(lib.baselineWaitingFor(starting)).toBe("daemon");
+    expect(lib.baselineWaitingFor({ ...settledStatus, code: { files: 0, pending: 0 } })).toBe(
+      "code",
+    );
+    expect(lib.baselineWaitingFor({ ...settledStatus, code: { files: 25, pending: 4 } })).toBe(
+      "code",
+    );
+    // No test files: a project with nothing to count is not held.
+    const empty = { ...settledStatus, testFileCounts: { current: 0 }, code: { files: 0 } };
+    expect(lib.baselineWaitingFor(empty)).toBeNull();
+    expect(lib.baselineWaitingFor(null)).toBe("status");
+  });
+
+  it("waits for lint checks, not those held for a pause or a manual run", () => {
+    const lint = (l: Record<string, unknown>) => ({ ...settledStatus, lint: l });
+    expect(lib.baselineWaitingFor(lint({ pending: 3 }))).toBe("lint");
+    expect(
+      lib.baselineWaitingFor(
+        lint({ pending: 3, awaitingPause: 1, awaitingRun: [{ group: "slow", checks: 2 }] }),
+      ),
+    ).toBeNull();
+    expect(lib.baselineWaitingFor(lint({ pending: 0 }))).toBeNull();
+  });
+
+  it("waits for the store process to go quiet, within its bound", async () => {
+    let t = 0;
+    const clock = {
+      now: () => t,
+      wait: async (ms: number) => {
+        t += ms;
+      },
+    };
+    // 1 CPU second per 2 s window (50%), then none.
+    const busyFor = (windows: number) => () => Math.min(t, windows * 2000) / 2000;
+    const opts = { windowMs: 2000, maxPct: 2, timeoutMs: 10_000, ...clock };
+    expect(await lib.waitForQuiet(busyFor(2), opts)).toEqual({
+      ms: 6000,
+      settled: true,
+      polls: 3,
+      lastPct: 0,
+    });
+    t = 0;
+    const never = await lib.waitForQuiet(() => t / 2000, opts);
+    expect(never).toMatchObject({ ms: 10_000, settled: false, polls: 5, lastPct: 50 });
+  });
+
+  it("names what an idle minute may include in the scorecard", () => {
+    expect(sum.idleSettleIssues({ phases: {} })).toEqual([]);
+    expect(
+      sum.idleSettleIssues({
+        cli: "bundle",
+        phases: {
+          startOthers: [
+            { settle: { settled: true } },
+            { settle: { settled: false, waitingFor: "code" } },
+          ],
+          storeQuiet: { settled: false, lastPct: 4.25 },
+        },
+      }),
+    ).toEqual([
+      "wt2 baseline not settled (code)",
+      "store process not quiet (4.3% CPU)",
+      "CLI ran from its bundle, not bin/squeal",
+    ]);
+  });
+});
+
+// Review 0.1.626 S2: D9 writes its last partial minute's summary as the daemon stops.
+describe("daemon logs read after the stop", () => {
+  it("counts a hook-write summary written only at shutdown, and copies the logs", () => {
+    const logDir = join(tmp, "s2-logs");
+    mkdirSync(logDir, { recursive: true });
+    writeFileSync(
+      join(logDir, "daemon-1.log"),
+      [
+        "2026-11-24T10:00:00.000Z squeal daemon: serving /w on /s",
+        "2026-11-24T10:00:40.000Z squeal daemon: hook writes: 7 taken, queue wait p95 200 ms max 210 ms",
+        "2026-11-24T10:00:40.001Z squeal daemon: daemon stopped: squeal stop",
+      ].join("\n"),
+    );
+    const copy = join(tmp, "s2-copy");
+    const logs = lib.readDaemonLogs(logDir, copy);
+    expect(logs.hookWriteWait).toMatchObject({ seen: true, taken: 7, p95MaxMs: 200, maxMs: 210 });
+    expect(existsSync(join(copy, "daemon-1.log"))).toBe(true);
+    expect(sum.writeWaitValues({ hookWriteWait: logs.hookWriteWait }, copy)).toMatchObject({
+      "hook.writeWait.max": 210,
+    });
+  });
+
+  it("run-cell reads them after every daemon's stop", () => {
+    const src = readFileSync(join(BENCH, "run-cell.mjs"), "utf8");
+    const stop = src.indexOf('await squeal(root, ["stop"]');
+    expect(stop).toBeGreaterThan(0);
+    expect(src.indexOf("readDaemonLogs(join(store")).toBeGreaterThan(stop);
   });
 });
 
