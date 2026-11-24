@@ -168,3 +168,25 @@ describe("a remote host's tree (row 021-13)", () => {
     );
   });
 });
+
+describe("hosts sharing one tree (row 026-11, spec 026 D8.1)", () => {
+  it("keeps another host's run logs, and removes its own ended runs' and a gone host's", async () => {
+    const { root, tree } = host();
+    const runs = join(root, "..", "runs");
+    mkdirSync(join(runs, "999999999-gone"), { recursive: true });
+    mkdirSync(join(runs, `${process.ppid}-other-host`), { recursive: true });
+    const first = await tree.runDir("r1");
+    // A second run while the first is live: the first's logs stay until they are read.
+    const second = await tree.runDir("r2");
+    expect(existsSync(first)).toBe(true);
+    expect(existsSync(join(runs, "999999999-gone"))).toBe(false);
+    expect(existsSync(join(runs, `${process.ppid}-other-host`))).toBe(true);
+    await tree.logs(first);
+    await tree.logs(second);
+    const third = await tree.runDir("r3");
+    expect(existsSync(first)).toBe(false);
+    expect(existsSync(second)).toBe(false);
+    expect(existsSync(third)).toBe(true);
+    expect(existsSync(join(runs, `${process.ppid}-other-host`))).toBe(true);
+  });
+});
