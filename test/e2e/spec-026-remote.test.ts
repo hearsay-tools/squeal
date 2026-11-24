@@ -111,9 +111,10 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     // D12: list and sleep; the next edit wakes it and runs there.
     const list = await cli(repo, "remote", "list");
     expect(list.out).toMatch(new RegExp(`cmd:lan-1 +command +awake +${repo.root}`));
-    expect(await cli(repo, "remote", "sleep", repo.root)).toEqual({
+    const slept = await cli(repo, "remote", "sleep", repo.root);
+    expect({ code: slept.code, stdout: slept.stdout }).toEqual({
       code: 0,
-      out: "cmd:lan-1: asked to sleep\n",
+      stdout: "cmd:lan-1: asked to sleep\n",
     });
     appendFileSync(
       join(repo.root, "src/strings.ts"),
@@ -129,7 +130,10 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     renameSync(repo.root, `${repo.root}-gone`);
     try {
       const pruned = await cli({ ...repo, root: repo.runtimeDir }, "remote", "prune");
-      expect(pruned.out).toBe(`released cmd:lan-1 (command) of removed worktree ${repo.root}\n`);
+      expect({ code: pruned.code, stdout: pruned.stdout }).toEqual({
+        code: 0,
+        stdout: `released cmd:lan-1 (command) of removed worktree ${repo.root}\n`,
+      });
     } finally {
       renameSync(`${repo.root}-gone`, repo.root);
     }

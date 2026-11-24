@@ -118,11 +118,11 @@ export function commandHooks(dir: string, answer: Record<string, unknown>): Hook
   };
 }
 
-/** `squeal <args>` in `repo` as its own process: exit code and output. */
+/** `squeal <args>` in `repo` as its own process: exit code, combined output, and stdout alone. */
 export async function cliIn(suite: DaemonSuite, repo: FixtureRepo, ...args: string[]) {
   const run = spawnCli(suite.cli, args, { cwd: repo.root, env: repo.env });
   const { code } = await run.exited;
-  return { code, out: `${run.stdout()}${run.stderr()}` };
+  return { code, out: `${run.stdout()}${run.stderr()}`, stdout: run.stdout() };
 }
 
 /**
@@ -222,7 +222,9 @@ export function remoteFixture(
         { name: "nt", include: ["nt/*.test.mjs"] },
         { name: "slow", include: ["slow/*.test.mjs"] },
       ],
-      slow: { include: ["slow/*.test.mjs"] },
+      // High maxLoadPerCpu (as in slow-shape.ts): on a busy CI shard or shared host,
+      // the load guard would otherwise defer slow/wait.test.mjs past every wait.
+      slow: { include: ["slow/*.test.mjs"], maxLoadPerCpu: 1_000 },
       complexity: { enabled: true },
       coverage: { enabled: true },
       ...extra,

@@ -145,7 +145,7 @@ describe("spec 026 Track 1 end to end (row 026-16)", { timeout: 600_000 }, () =>
       "Code gate: incomplete (0 test groups in scope; groups left out: unit (manual); add --group <name>, use --narrow, or set gate.groups).",
     );
     expect(gate.out).toMatch(
-      /Left-out test files fail in the stores at this head, not run here: .*test\/strings\.test\.ts \(1 failed test; --group unit runs it\)/,
+      /(A left-out test file fails|Left-out test files fail) in the stores at this head, not run here: .*test\/strings\.test\.ts \(1 failed test; --group unit runs it\)/,
     );
 
     // D5: `--narrow` takes the narrow set in scope, with the coverage its run stored, and
