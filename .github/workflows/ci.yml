@@ -21,16 +21,27 @@ permissions:
 env:
   # Row 010-35: `scripts/ci-shard.mjs` splits the suite by the durations in `ci/test-timings.json`.
   # Only shard 1 checks out the full history, so every test file that reads this repository's
-  # history runs there: a release tag (011-39), a released commit's bundles (the daemon hand-over
-  # files skip without it) or a pinned commit's sources. `test/ci-shard.test.ts` checks the pins.
+  # history runs there, itself or through a helper: a release tag (011-39; `comparisons()` reads the
+  # last release's tree), a released commit's bundles (the daemon hand-over files skip without it),
+  # an old commit's plugin or sources. `test/ci-shard.test.ts` walks the test files' imports and
+  # fails when a reader is not pinned here (review 0.1.629, B1).
   # 010-16: the dispose race runs alone, after its shard's files.
   SHARD_ARGS: >-
     --pin test/keys/validity/compare.test.ts:1
+    --pin test/keys/validity/adapters.test.ts:1
+    --pin test/keys/validity/lock.test.ts:1
+    --pin test/keys/validity/pytest.test.ts:1
+    --pin test/keys/validity/reach.test.ts:1
+    --pin test/keys/validity/self-test.test.ts:1
+    --pin test/keys/key-format.test.ts:1
     --pin test/cli/group-pending-release.test.ts:1
     --pin test/code/count/corpus.test.ts:1
     --pin test/daemon/handover.test.ts:1
     --pin test/daemon/start-handoff.test.ts:1
     --pin test/daemon/step-down.test.ts:1
+    --pin test/e2e/codex-installer.test.ts:1
+    --pin test/e2e/codex-migration.test.ts:1
+    --pin test/e2e/run-triggers-control.test.ts:1
     --exclude test/harness/opencode-dispose.test.ts
 
 # Spec 010 D3: a newer push cancels a superseded run of the same candidate or pull request. A main
