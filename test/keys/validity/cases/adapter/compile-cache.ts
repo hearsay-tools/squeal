@@ -22,7 +22,8 @@ export const OWN_COMPILE_CACHE: readonly Case[] = [
         "vitest.config.ts": 'export default { test: { include: ["test/**/*.test.ts"] } };\n',
         "test/pass.test.ts": lines('import { it } from "vitest";', 'it("passes", () => {});'),
       },
-      runs: [{ files: [{ project: "", path: "test/pass.test.ts" }], touched: [] }],
+      // A plain file, not a held one: the harness waits for no marker.
+      runs: [{ files: [{ project: "", path: "test/pass.test.ts" }], touched: [], unwaited: true }],
     },
   },
   {
