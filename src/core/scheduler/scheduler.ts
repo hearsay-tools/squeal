@@ -1226,7 +1226,7 @@ class TierScheduler implements Scheduler {
 
   slowPending(): boolean {
     // A departure while on hold drains nothing (011 C9, row 011-72).
-    if (!this.#ledger || this.#admit().quiet) return false;
+    if (!this.#context || !this.#ledger || this.#admit().quiet) return false;
     if (this.#lanes().some(isGroupLane)) return true;
     return this.#drainable().length > 0;
   }

@@ -38,7 +38,7 @@ function remote(): { home: string; ssh: string } {
 
 describe("a remote host's temp and cache directories (row 026-11)", () => {
   it("moves node:test's and pytest's under the remote tree, and leaves Vitest's options", () => {
-    const tree = "/home/dev/.cache/squeal/trees/abc";
+    const tree = "/srv/dev/.cache/squeal/trees/abc";
     expect(
       remoteAdapterOptions(
         {

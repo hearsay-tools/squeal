@@ -2428,130 +2428,6 @@ import { isDeepStrictEqual } from "node:util";
 // src/core/daemon/policy.ts
 import { join as join4 } from "node:path";
 
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: {
-    blockOnKnownFailures: false,
-    requireFullSuite: false,
-    waitMs: 0,
-    requireSlowSuite: false,
-    slowWaitMs: 12e4,
-    maxHolds: 1
-  },
-  checks: [],
-  testCommand: { denyWhenCurrent: false },
-  baseline: { onStart: "lookup-only" },
-  inputs: [],
-  runtimeFiles: [],
-  observe: { runtimeInputs: true },
-  env: { allowlist: [] },
-  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
-  nodeTest: [],
-  pytest: [],
-  vitest: { excludeProjects: [], exclude: [] },
-  slow: {
-    include: [],
-    maxWorkers: 2,
-    maxLoadPerCpu: 1,
-    maxDeferMs: 6e5,
-    maxParallel: 4,
-    rank: "tokens",
-    trigger: "continuous",
-    quietMs: 3e3
-  },
-  delivery: { uncoveredEdits: true },
-  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
-  store: { retentionDays: 7, maxSizeMb: null },
-  complexity: {
-    enabled: true,
-    threshold: 20,
-    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
-    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
-    maxFileBytes: 524288,
-    blocking: false
-  },
-  coverage: { enabled: true, untested: true, exclude: [], children: false },
-  crap: { enabled: true, threshold: 30 },
-  lint: {
-    enabled: false,
-    include: ["**"],
-    exclude: [],
-    blocking: false,
-    tools: ["eslint", "oxlint"]
-  },
-  gate: { groups: null },
-  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
-  node: "project",
-  requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [] }
-};
-
-// src/core/daemon/config-file.ts
-import { readFileSync as readFileSync6 } from "node:fs";
-var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
-function loadConfigFile(path, shape, defaults) {
-  let text2;
-  try {
-    text2 = readFileSync6(path, "utf8");
-  } catch (error) {
-    if (isMissing(error)) return { value: defaults, problems: [] };
-    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
-  }
-  let parsed2;
-  try {
-    parsed2 = JSON.parse(text2);
-  } catch (error) {
-    const problem = `not valid JSON (${error.message})`;
-    return { value: defaults, problems: [problem], unparsed: true };
-  }
-  if (!isRecord(parsed2)) {
-    const got = Array.isArray(parsed2) ? "an array" : JSON.stringify(parsed2);
-    return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
-  }
-  const problems = [];
-  const unknownKeys = [];
-  const merged = merge(shape, defaults, parsed2, "", { problems, unknownKeys });
-  return {
-    value: merged,
-    problems,
-    ...unknownKeys.length === 0 ? {} : { unknownKeys }
-  };
-}
-function merge(shape, defaults, given, prefix, found2) {
-  const { problems } = found2;
-  const result = { ...defaults };
-  for (const [key, value] of Object.entries(given)) {
-    const path = `${prefix}${key}`;
-    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
-    if (rule === void 0) {
-      problems.push(unknownKey(path));
-      found2.unknownKeys.push(path);
-    } else if (typeof rule === "function") {
-      const expected = rule(value);
-      if (expected === null) result[key] = value;
-      else if (typeof expected === "object" && "kept" in expected) {
-        result[key] = expected.kept;
-        problems.push(...expected.problems);
-      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
-      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isRecord(value)) {
-      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
-    } else {
-      const nested = defaults[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, found2);
-    }
-  }
-  return result;
-}
-function unknownKey(path) {
-  return `unknown key "${path}"`;
-}
-
-// src/core/daemon/host-idle.ts
-var GIB = 2 ** 30;
-var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
-
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -2741,8 +2617,204 @@ function matcher(globs4) {
   return match;
 }
 
+// src/core/slow/classify.ts
+import { posix } from "node:path";
+function slowFiles(policy, projects2) {
+  const matches2 = createInputMatcher(policy.slow.include);
+  const slowProjects = new Set(
+    marked(policy, projects2).map((project) => project.name)
+  );
+  return (testFile) => slowProjects.has(testFile.project) || matches2(testFile.path);
+}
+function slowGlobs(policy, projects2) {
+  const globs4 = [...policy.slow.include];
+  for (const project of marked(policy, projects2)) {
+    const cwd = project.cwd ?? ".";
+    for (const glob of project.include) globs4.push(posix.join(cwd, glob));
+  }
+  return globs4;
+}
+function marked(policy, projects2) {
+  return [...projects2, ...policy.pytest].filter((project) => project.slow === true);
+}
+
+// src/core/scheduler/slow.ts
+var groupViews = /* @__PURE__ */ new WeakMap();
+function groupView(policy) {
+  let view = groupViews.get(policy);
+  if (view === void 0) {
+    const groups2 = resolveGroups(policy);
+    const owners = /* @__PURE__ */ new Map();
+    const of = (ref2) => {
+      const id = testFileId(ref2);
+      let owner = owners.get(id);
+      if (owner === void 0) {
+        const check = { kind: "test", runner: runnerOf(policy, ref2.project), ...ref2 };
+        owner = groupOf(groups2, check) ?? fallback(groups2);
+        owners.set(id, owner);
+      }
+      return owner;
+    };
+    view = { groups: groups2, of };
+    groupViews.set(policy, view);
+  }
+  return view;
+}
+function fallback(groups2) {
+  const tests2 = groups2.find((group) => group.index === null && group.name === TESTS_GROUP);
+  if (tests2 === void 0) throw new Error("the default tests group is missing");
+  return tests2;
+}
+function runnerOf(policy, project) {
+  if (policy.nodeTest.some((p) => p.name === project)) return "nodeTest";
+  if (policy.pytest.some((p) => p.name === project)) return "pytest";
+  return "vitest";
+}
+var views = /* @__PURE__ */ new WeakMap();
+function slowView(policy) {
+  let view = views.get(policy);
+  if (view === void 0) {
+    const globs4 = slowGlobs(policy, policy.nodeTest);
+    const groups2 = groupView(policy);
+    view = {
+      isSlow: (ref2) => groups2.of(ref2).name !== TESTS_GROUP,
+      globs: globs4,
+      declared: globs4.length > 0
+    };
+    views.set(policy, view);
+  }
+  return view;
+}
+function laneFor(policy, ref2, runnerLane) {
+  return groupLane(groupView(policy).of(ref2).name, runnerLane);
+}
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false,
+    slowWaitMs: 12e4,
+    maxHolds: 1
+  },
+  checks: [],
+  testCommand: { denyWhenCurrent: false },
+  baseline: { onStart: "lookup-only" },
+  inputs: [],
+  runtimeFiles: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
+  nodeTest: [],
+  pytest: [],
+  vitest: { excludeProjects: [], exclude: [] },
+  slow: {
+    include: [],
+    maxWorkers: 2,
+    maxLoadPerCpu: 1,
+    maxDeferMs: 6e5,
+    maxParallel: 4,
+    rank: "tokens",
+    trigger: "continuous",
+    quietMs: 3e3
+  },
+  delivery: { uncoveredEdits: true },
+  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
+  store: { retentionDays: 7, maxSizeMb: null },
+  complexity: {
+    enabled: true,
+    threshold: 20,
+    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+    maxFileBytes: 524288,
+    blocking: false
+  },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
+  crap: { enabled: true, threshold: 30 },
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  },
+  gate: { groups: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
+  node: "project",
+  requires: { commands: [] },
+  remote: { allowed: true, needsRepository: [] }
+};
+
+// src/core/daemon/config-file.ts
+import { readFileSync as readFileSync6 } from "node:fs";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+function loadConfigFile(path, shape, defaults) {
+  let text2;
+  try {
+    text2 = readFileSync6(path, "utf8");
+  } catch (error) {
+    if (isMissing(error)) return { value: defaults, problems: [] };
+    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
+  }
+  let parsed2;
+  try {
+    parsed2 = JSON.parse(text2);
+  } catch (error) {
+    const problem = `not valid JSON (${error.message})`;
+    return { value: defaults, problems: [problem], unparsed: true };
+  }
+  if (!isRecord(parsed2)) {
+    const got = Array.isArray(parsed2) ? "an array" : JSON.stringify(parsed2);
+    return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
+  }
+  const problems = [];
+  const unknownKeys = [];
+  const merged = merge(shape, defaults, parsed2, "", { problems, unknownKeys });
+  return {
+    value: merged,
+    problems,
+    ...unknownKeys.length === 0 ? {} : { unknownKeys }
+  };
+}
+function merge(shape, defaults, given, prefix, found2) {
+  const { problems } = found2;
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(unknownKey(path));
+      found2.unknownKeys.push(path);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isRecord(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, found2);
+    }
+  }
+  return result;
+}
+function unknownKey(path) {
+  return `unknown key "${path}"`;
+}
+
+// src/core/daemon/host-idle.ts
+var GIB = 2 ** 30;
+var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
+
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute2, posix } from "node:path";
+import { isAbsolute as isAbsolute2, posix as posix2 } from "node:path";
 function compiles(globs4) {
   for (const glob of globs4) {
     try {
@@ -2760,7 +2832,7 @@ var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s =
 var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
 var insideRoot = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
-  const normal = posix.normalize(v.replaceAll("\\", "/"));
+  const normal = posix2.normalize(v.replaceAll("\\", "/"));
   return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
 var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
@@ -3060,7 +3132,7 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute3, posix as posix2 } from "node:path";
+import { isAbsolute as isAbsolute3, posix as posix3 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -3085,7 +3157,7 @@ function withDefaults2(entry3) {
 var pythonInsideRoot = (entry3) => {
   const python = entry3.python;
   if (python === void 0 || isAbsolute3(python)) return null;
-  const path = posix2.join(entry3.cwd ?? ".", python.replaceAll("\\", "/"));
+  const path = posix3.join(entry3.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
     key: "python",
@@ -3307,14 +3379,32 @@ var SHAPE = {
   ...NODE_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join4(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join4(root, POLICY_FILE), SHAPE, UNSET_EXITS);
   const settled2 = settleChecks(loaded.value);
   return {
-    policy: settled2.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled2.checks },
+    policy: withExits(
+      settled2.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled2.checks }
+    ),
     problems: [...loaded.problems, ...settled2.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
+}
+var UNSET_EXITS = {
+  ...DEFAULT_POLICY,
+  daemon: { ...DEFAULT_POLICY.daemon, idleExitMinutes: Number.NaN, unusedExitMinutes: Number.NaN }
+};
+function withExits(policy) {
+  const { idleExitMinutes: idle, unusedExitMinutes: unused } = policy.daemon;
+  const defaults = DEFAULT_POLICY.daemon;
+  const set = { idleExitMinutes: !Number.isNaN(idle), unusedExitMinutes: !Number.isNaN(unused) };
+  const daemon = {
+    ...policy.daemon,
+    idleExitMinutes: set.idleExitMinutes ? idle : defaults.idleExitMinutes,
+    unusedExitMinutes: set.unusedExitMinutes ? unused : defaults.unusedExitMinutes,
+    ...set.idleExitMinutes || set.unusedExitMinutes ? { set } : {}
+  };
+  return { ...policy, daemon };
 }
 function readPolicy(root) {
   return loadPolicy(root).policy;
@@ -3330,7 +3420,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.616";
+  if (true) return "0.1.617";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4212,7 +4302,7 @@ import { isAbsolute as isAbsolute6, join as join10, relative as relative3, resol
 
 // src/core/daemon/runner.ts
 import { readdirSync as readdirSync4, readFileSync as readFileSync9 } from "node:fs";
-import { join as join9, posix as posix3 } from "node:path";
+import { join as join9, posix as posix4 } from "node:path";
 
 // src/core/types/runner-traits.ts
 function declareTraits(stated = {}) {
@@ -7153,78 +7243,6 @@ function pruneRekeyed(store, worktreeId, upTo) {
     if (entry3.open === null && entry3.last <= upTo) entries.delete(id);
   }
   if (entries.size !== before) write(store, worktreeId, entries);
-}
-
-// src/core/slow/classify.ts
-import { posix as posix4 } from "node:path";
-function slowFiles(policy, projects2) {
-  const matches2 = createInputMatcher(policy.slow.include);
-  const slowProjects = new Set(
-    marked(policy, projects2).map((project) => project.name)
-  );
-  return (testFile) => slowProjects.has(testFile.project) || matches2(testFile.path);
-}
-function slowGlobs(policy, projects2) {
-  const globs4 = [...policy.slow.include];
-  for (const project of marked(policy, projects2)) {
-    const cwd = project.cwd ?? ".";
-    for (const glob of project.include) globs4.push(posix4.join(cwd, glob));
-  }
-  return globs4;
-}
-function marked(policy, projects2) {
-  return [...projects2, ...policy.pytest].filter((project) => project.slow === true);
-}
-
-// src/core/scheduler/slow.ts
-var groupViews = /* @__PURE__ */ new WeakMap();
-function groupView(policy) {
-  let view = groupViews.get(policy);
-  if (view === void 0) {
-    const groups2 = resolveGroups(policy);
-    const owners = /* @__PURE__ */ new Map();
-    const of = (ref2) => {
-      const id = testFileId(ref2);
-      let owner = owners.get(id);
-      if (owner === void 0) {
-        const check = { kind: "test", runner: runnerOf(policy, ref2.project), ...ref2 };
-        owner = groupOf(groups2, check) ?? fallback(groups2);
-        owners.set(id, owner);
-      }
-      return owner;
-    };
-    view = { groups: groups2, of };
-    groupViews.set(policy, view);
-  }
-  return view;
-}
-function fallback(groups2) {
-  const tests2 = groups2.find((group) => group.index === null && group.name === TESTS_GROUP);
-  if (tests2 === void 0) throw new Error("the default tests group is missing");
-  return tests2;
-}
-function runnerOf(policy, project) {
-  if (policy.nodeTest.some((p) => p.name === project)) return "nodeTest";
-  if (policy.pytest.some((p) => p.name === project)) return "pytest";
-  return "vitest";
-}
-var views = /* @__PURE__ */ new WeakMap();
-function slowView(policy) {
-  let view = views.get(policy);
-  if (view === void 0) {
-    const globs4 = slowGlobs(policy, policy.nodeTest);
-    const groups2 = groupView(policy);
-    view = {
-      isSlow: (ref2) => groups2.of(ref2).name !== TESTS_GROUP,
-      globs: globs4,
-      declared: globs4.length > 0
-    };
-    views.set(policy, view);
-  }
-  return view;
-}
-function laneFor(policy, ref2, runnerLane) {
-  return groupLane(groupView(policy).of(ref2).name, runnerLane);
 }
 
 // src/core/capacity/background.ts
