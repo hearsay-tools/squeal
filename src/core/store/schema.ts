@@ -223,10 +223,15 @@ export const SCHEMA_VERSION = MIGRATIONS.length;
  *   on a copy of 35,718 runs, 0.02 ms with the index).
  * - `consumer_views_by_check`: lets the prune test one check again under the
  *   write lock by a search, not a scan of `consumer_views` (row 021-33).
+ * - `known_states_non_pass`: a worktree's states that do not pass, the first
+ *   of `relevantStates`' three lookups, so a tool boundary does not scan the
+ *   worktree's every state (spec 025 D6.2).
  */
 export const STORE_INDEXES: Readonly<Record<string, string>> = {
   runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL",
   consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)",
+  known_states_non_pass:
+    "CREATE INDEX known_states_non_pass ON known_states (worktree_id, check_id) WHERE outcome != 'pass'",
 };
 
 export function userVersion(db: DatabaseSync): number {

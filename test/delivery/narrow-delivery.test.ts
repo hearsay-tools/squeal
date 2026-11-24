@@ -3,7 +3,9 @@ import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { planDelta } from "../../src/core/delivery/delta.js";
 import { markedView, trustedMark } from "../../src/core/delivery/view-mark.js";
 import { createStateSink } from "../../src/core/state/sink.js";
-import { relevantStates } from "../../src/core/store/view-seed.js";
+import { SELECT_STATES, toKnownState } from "../../src/core/store/repos/states.js";
+import { connectionOf } from "../../src/core/store/store.js";
+import { KNOWN_STATES_NON_PASS, relevantStates } from "../../src/core/store/view-seed.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
 import type { KnownState } from "../../src/core/types/state.js";
@@ -55,6 +57,37 @@ function planOn(s: Store, consumer: Consumer, states: readonly KnownState[]) {
   });
 }
 
+/** `relevantStates` as 024 D2 wrote it, one scan with three tests per state: the rows D6.2 keeps. */
+function reference(s: Store, consumer: Consumer, mark: number): KnownState[] {
+  return connectionOf(s)
+    .all(
+      `${SELECT_STATES} WHERE s.worktree_id = ? AND (s.outcome != 'pass'
+         OR EXISTS (SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+         OR EXISTS (SELECT 1 FROM state_born b WHERE b.worktree_id = s.worktree_id
+           AND b.check_id = s.check_id AND b.id > ?))
+       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      consumer.worktreeId,
+      consumer.sessionId,
+      consumer.agentId,
+      mark,
+    )
+    .map(toKnownState);
+}
+
+/** The plan of `relevantStates`' statement, read from the connection's last prepared form. */
+function relevantPlan(s: Store, consumer: Consumer, mark: number): string {
+  const conn = connectionOf(s);
+  const all = vi.spyOn(conn, "all");
+  relevantStates(s, consumer, mark);
+  const [sql, ...params] = all.mock.calls.at(-1) ?? [""];
+  all.mockRestore();
+  return conn
+    .all(`EXPLAIN QUERY PLAN ${sql}`, ...params)
+    .map((row) => String(row.detail))
+    .join(" | ");
+}
+
 describe("relevantStates plans as every known state does (spec 024 D2)", () => {
   it("over random writes, retirements, re-births, registrations and deliveries", {
     timeout: 20_000,
@@ -66,6 +99,8 @@ describe("relevantStates plans as every known state does (spec 024 D2)", () => {
       const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)] as T;
       const s = freshStore();
       store = s;
+      // Spec 025 D6.2: half the stores as an older daemon leaves them, without the index.
+      if (seed % 2 === 0) connectionOf(s).run(`DROP INDEX ${KNOWN_STATES_NON_PASS}`);
       setKey(s, "k1");
       const delivery: HarnessDelivery = createDelivery(s, {
         status: fixedStatus(),
@@ -98,6 +133,7 @@ describe("relevantStates plans as every known state does (spec 024 D2)", () => {
           if (mark === null) continue;
           const full = s.knownStates.list(WT);
           const narrow = relevantStates(s, consumer, mark.mark);
+          expect(narrow).toEqual(reference(s, consumer, mark.mark));
           expect(planOn(s, consumer, narrow)).toEqual(planOn(s, consumer, full));
           compared++;
           if (narrow.length < full.length) narrower++;
@@ -109,6 +145,30 @@ describe("relevantStates plans as every known state does (spec 024 D2)", () => {
     // The comparison ran, and on reads that left states out.
     expect(compared).toBeGreaterThan(500);
     expect(narrower).toBeGreaterThan(100);
+  });
+});
+
+describe("relevantStates' indexed lookups (spec 025 D6.2)", () => {
+  it("search the non-pass index, the view and the birth marks, then each state by key", () => {
+    const s = freshStore();
+    store = s;
+    const plan = relevantPlan(s, C1, 0);
+    expect(plan).toMatch(/SEARCH known_states USING (COVERING )?INDEX known_states_non_pass/);
+    expect(plan).toMatch(/SEARCH consumer_views USING (COVERING )?INDEX/);
+    expect(plan).toMatch(/SEARCH state_born USING (COVERING )?INDEX/);
+    expect(plan).toMatch(
+      /SEARCH s USING INDEX sqlite_autoindex_known_states_1 \(worktree_id=\? AND check_id=\?\)/,
+    );
+    expect(plan).not.toMatch(/SCAN (s|known_states)\b/);
+  });
+
+  it("read without the index on a store that lacks it", () => {
+    const s = freshStore();
+    store = s;
+    connectionOf(s).run(`DROP INDEX ${KNOWN_STATES_NON_PASS}`);
+    const plan = relevantPlan(s, C1, 0);
+    expect(plan).not.toMatch(/known_states_non_pass/);
+    expect(plan).not.toMatch(/SCAN s\b/);
   });
 });
 

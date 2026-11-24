@@ -94,25 +94,46 @@ export function checksBornAfter(
   return new Set(rows.map((row) => checkIdentity(checkFrom(row))));
 }
 
+/** Spec 025 D6.2: `STORE_INDEXES`' partial index of the states that do not pass. */
+export const KNOWN_STATES_NON_PASS = "known_states_non_pass";
+
 /**
  * Spec 024 D2: of `consumer`'s worktree's known states, those a delivery to a consumer that holds
  * `mark` can tell: each not `pass`, each its view holds, and each born after the mark. Any other
  * is a pass with no entry born at or before the mark, which `markedView` reads as a told pass, so
  * `planDelta` plans nothing for it: no entry, no write, no removal. In `knownStates.list` order.
+ *
+ * Spec 025 D6.2: the check ids come from three indexed lookups joined by `UNION`, then each
+ * state by its key (`CROSS JOIN`, so the planner keeps that order), not from a scan of every
+ * state of the worktree with three tests per row. The first names `known_states_non_pass` when
+ * the file has it; a store an older daemon or a reader opened first has not.
  */
 export function relevantStates(store: Store, consumer: Consumer, mark: number): KnownState[] {
-  return connectionOf(store)
+  const conn = connectionOf(store);
+  const indexed = conn.get(
+    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?",
+    KNOWN_STATES_NON_PASS,
+  );
+  const nonPass =
+    indexed === null ? "known_states" : `known_states INDEXED BY ${KNOWN_STATES_NON_PASS}`;
+  return conn
     .all(
-      `${SELECT_STATES} WHERE s.worktree_id = ? AND (s.outcome != 'pass'
-         OR EXISTS (SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
-           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
-         OR EXISTS (SELECT 1 FROM state_born b WHERE b.worktree_id = s.worktree_id
-           AND b.check_id = s.check_id AND b.id > ?))
+      `SELECT s.*, ${CHECK_COLUMNS} FROM (
+         SELECT check_id FROM ${nonPass} WHERE worktree_id = ? AND outcome != 'pass'
+         UNION SELECT check_id FROM consumer_views
+           WHERE worktree_id = ? AND session_id = ? AND agent_id = ?
+         UNION SELECT check_id FROM state_born WHERE worktree_id = ? AND id > ?
+       ) r
+       CROSS JOIN known_states s ON s.worktree_id = ? AND s.check_id = r.check_id
+       JOIN checks c ON c.id = s.check_id
        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      consumer.worktreeId,
       consumer.worktreeId,
       consumer.sessionId,
       consumer.agentId,
+      consumer.worktreeId,
       mark,
+      consumer.worktreeId,
     )
     .map(toKnownState);
 }
