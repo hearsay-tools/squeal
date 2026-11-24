@@ -107,6 +107,48 @@ describe("narrowRun: 019 D6's narrow set among the files the scope runs (spec 02
     expect(paths(narrowed.kept)).toEqual(["test/b.test.ts"]);
     expect(narrowed.dropped).toEqual([]);
   });
+
+  it("gives each group its own tierSize places, a stored run read after the importers (row 026-21)", async () => {
+    const graph = {
+      "src/a.ts": { direct: ["test/a.test.ts", "test/b.test.ts", "test/d.test.ts"] },
+    };
+    const seconds: Record<string, number> = { "test/b.test.ts": 1, "test/d.test.ts": 2 };
+    const narrow = (tierSize: number, groupOf?: (r: TestFileRef) => string) =>
+      narrowRun({
+        adapter: adapter({
+          "src/a.ts": { ...graph["src/a.ts"], transitive: ["test/c.test.ts"] },
+        }),
+        listed,
+        run: listed,
+        paths: ["src/a.ts" as RelativePath],
+        tests: [],
+        tierSize,
+        durations: (r) => seconds[r.path] ?? 0.1,
+        observed: {
+          directOf: () => [],
+          readsOf: (r) => (r.path === "test/e.test.ts" ? ["src/a.ts" as RelativePath] : []),
+        },
+        ...(groupOf === undefined ? {} : { groupOf }),
+      });
+    // One group: the shortest other direct importer leads the shorter readers.
+    expect(paths((await narrow(1)).kept)).toEqual(["test/a.test.ts", "test/b.test.ts"]);
+    // The readers in a group of their own take that group's place: the shortest by name, c.
+    const browser = (r: TestFileRef) =>
+      ["test/c.test.ts", "test/e.test.ts"].includes(r.path) ? "browser" : "unit";
+    expect(paths((await narrow(1, browser)).kept)).toEqual([
+      "test/a.test.ts",
+      "test/b.test.ts",
+      "test/c.test.ts",
+    ]);
+    // The stored read counts as a reader once the places reach it.
+    expect(paths((await narrow(3)).kept)).toEqual([
+      "test/a.test.ts",
+      "test/b.test.ts",
+      "test/c.test.ts",
+      "test/d.test.ts",
+    ]);
+    expect(paths((await narrow(4)).kept)).toContain("test/e.test.ts");
+  });
 });
 
 const BROWSER: CheckGroup = { name: "browser", runner: "vitest", project: "browser", at: "manual" };
