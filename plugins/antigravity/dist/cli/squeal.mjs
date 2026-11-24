@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.622";
+  if (true) return "0.1.623";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -1762,6 +1762,50 @@ var init_git_head = __esm({
     init_git_layout();
     SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
     MAX_REF_DEPTH = 5;
+  }
+});
+
+// src/core/runner-host/remote/summary.ts
+function remoteState(input) {
+  if (input.released) return { state: "released" };
+  const { reports } = input;
+  for (const state of ["refused", "unreachable"]) {
+    const found4 = reports.find((r) => r.state === state);
+    if (found4 !== void 0) return { state, ...reasonOf(found4.reason) };
+  }
+  if (reports.some((r) => r.state === "connecting")) return { state: "connecting" };
+  if (reports.some((r) => r.state === "ready")) {
+    return input.degradedDisk === null ? { state: "awake" } : { state: "degraded-disk", reason: input.degradedDisk };
+  }
+  if (reports.length > 0 && reports.every((r) => r.state === "asleep"))
+    return { state: "sleeping" };
+  return { state: "not connected" };
+}
+function remoteSummaryLine(input) {
+  const { state, reason: reason2 } = remoteState(input);
+  const who = input.machine === null ? input.provider : `${input.provider} ${input.machine}`;
+  const keyed = input.reports.find((r) => r.machine !== void 0)?.machine;
+  const proven2 = input.reports.flatMap((r) => r.provenAt === void 0 ? [] : [r.provenAt]);
+  const last = state === "awake" || state === "degraded-disk" ? Math.max(...proven2) : null;
+  return [
+    `${who}: ${state}${reason2 === void 0 ? "" : ` (${reason2})`}`,
+    `${listText(input.lanes)} runs of ${input.runners.join(", ")}`,
+    `planning ${input.planning}`,
+    `environment ${input.environmentMode}${keyed === void 0 ? "" : ` (${keyed})`}`,
+    ...last === null || !Number.isFinite(last) ? [] : [`proven at ${new Date(last).toISOString()}`]
+  ].join("; ");
+}
+function reasonOf(reason2) {
+  return reason2 === void 0 || reason2 === "" ? {} : { reason: reason2 };
+}
+function listText(parts3) {
+  return parts3.length < 2 ? parts3.join("") : `${parts3.slice(0, -1).join(", ")} and ${parts3[parts3.length - 1]}`;
+}
+var REMOTE_SUMMARY_TOPIC;
+var init_summary = __esm({
+  "src/core/runner-host/remote/summary.ts"() {
+    "use strict";
+    REMOTE_SUMMARY_TOPIC = "remote-lane:summary";
   }
 });
 
@@ -11700,7 +11744,7 @@ function causeOf(decision, entry4, end, outcome2) {
       return { kind: decision.kind, paths: [] };
   }
 }
-function reasonOf(decision, cause) {
+function reasonOf2(decision, cause) {
   const paths = listPaths(cause.paths);
   switch (cause.kind) {
     case "touched":
@@ -11946,7 +11990,7 @@ function runEnd(tier, report4, changed2, requeue, observed2, runtimeIdentity2) {
 function decisionOf(entry4, end, outcome2, holds5) {
   const decision = storeDecision(entry4, end, holds5);
   const cause = causeOf(decision, entry4, end, outcome2);
-  return { decision, cause, reason: reasonOf(decision, cause) };
+  return { decision, cause, reason: reasonOf2(decision, cause) };
 }
 async function keepDecisions(sources, files6, report4) {
   const entries3 = files6.map(({ ref: ref3, key: key3, paths, runtimeIdentity: runtimeIdentity2 = "" }) => {
@@ -18125,7 +18169,7 @@ function candidateOf(view, p, shape, pick) {
     tierSize: view.runner.tierSize
   });
   return {
-    reason: reasonOf2(p, { batch, asEdit, backlog, turnTier }),
+    reason: reasonOf3(p, { batch, asEdit, backlog, turnTier }),
     kind,
     lane,
     files: [...files6],
@@ -18150,7 +18194,7 @@ function candidateOf(view, p, shape, pick) {
     estimateMs: estimateMs(view, files6, granted ? offer : files6.length)
   };
 }
-function reasonOf2(p, tier) {
+function reasonOf3(p, tier) {
   if (p.origin === "beside" || p.origin === "turn-after-batch") return p.origin;
   if (tier.batch) return tier.asEdit ? "batch-as-edit" : "batch";
   if (p.origin !== "main") return p.origin;
@@ -21044,7 +21088,7 @@ function writeEvidence(meta, worktreeId, path, evidence) {
   else meta.set(evidenceKey(worktreeId, path), JSON.stringify(evidence));
 }
 var EVIDENCE_FILES, summaryKey, crapRecountKey, changeKey, evidenceKey, functionKey, isObject;
-var init_summary = __esm({
+var init_summary2 = __esm({
   "src/core/code/crap/summary.ts"() {
     "use strict";
     EVIDENCE_FILES = 3;
@@ -21177,7 +21221,7 @@ var init_judge = __esm({
   "src/core/code/crap/judge.ts"() {
     "use strict";
     init_rule();
-    init_summary();
+    init_summary2();
     priorKey = (s) => `${s.measure}\0${s.check.path}\0${functionKey(s.check)}`;
     checkOf = (path, fn) => ({
       kind: "code",
@@ -21196,7 +21240,7 @@ var init_seed = __esm({
     "use strict";
     init_failed();
     init_judge();
-    init_summary();
+    init_summary2();
     COVERAGE_MEASURES = ["crap", "uncovered"];
     SEED_FILES = 32;
     Seed = class {
@@ -21527,7 +21571,7 @@ var init_checks = __esm({
     "use strict";
     init_glob();
     init_seed();
-    init_summary();
+    init_summary2();
     ALL_CHECKS = {
       measures: COVERAGE_MEASURES,
       exclude: [],
@@ -59783,12 +59827,14 @@ async function baseline(context2, ledger, unseen = [], resumesRest2 = false, ret
   );
   const owed = ledger.checkpoints.takeOwed();
   const forced = outside(owedStrict(ledger, owed), [...misses, ...unkeyed]);
-  ledger.checkpoints.start(
-    checkpointId,
-    "baseline",
-    ledger.revision.number,
-    [...misses, ...unkeyed, ...forced].map((file) => file.ref)
-  );
+  if (listed12 !== null) {
+    ledger.checkpoints.start(
+      checkpointId,
+      "baseline",
+      ledger.revision.number,
+      [...misses, ...unkeyed, ...forced].map((file) => file.ref)
+    );
+  }
   if (lookupOnly2) ledger.checkpoints.finish("abandoned");
   const holds5 = lookupOnly2 && !resumesRest2;
   const handed = handover(context2, ledger, previousKeys, open7);
@@ -75278,7 +75324,7 @@ var init_removed = __esm({
   "src/core/code/crap/removed.ts"() {
     "use strict";
     init_seed();
-    init_summary();
+    init_summary2();
   }
 });
 
@@ -75954,7 +76000,7 @@ var init_walk2 = __esm({
     init_checks();
     init_file();
     init_judge();
-    init_summary();
+    init_summary2();
     WRITE_FILES = 16;
     withSet = (before5, set) => before5.loaders === set ? before5 : { ...before5, loaders: set };
     marksOf = (quiet, drop2, skipped2) => ({
@@ -76086,7 +76132,7 @@ var init_step2 = __esm({
     init_checks();
     init_loaders();
     init_seed();
-    init_summary();
+    init_summary2();
     init_walk2();
     STEP_BUDGET_MS = 50;
     READING = {
@@ -80100,10 +80146,10 @@ function environmentDifferences(given2, local2, options = {}) {
     if (node2 !== null) texts2.push(node2);
     remote = { ...given2, core: onMachine(given2.core, local2.core) };
   }
-  const remoteOf = new Map(remote.runners.map((runner) => [runner.project, runner]));
+  const remoteOf2 = new Map(remote.runners.map((runner) => [runner.project, runner]));
   for (const here of local2.runners) {
-    const there = remoteOf.get(here.project);
-    remoteOf.delete(here.project);
+    const there = remoteOf2.get(here.project);
+    remoteOf2.delete(here.project);
     if (there === void 0) {
       texts2.push(`project ${JSON.stringify(here.project)} is not on the remote`);
       continue;
@@ -80127,7 +80173,7 @@ function environmentDifferences(given2, local2, options = {}) {
     );
     texts2.push(...found4.length > 0 ? found4 : ["the environment differs"]);
   }
-  for (const project of remoteOf.keys()) {
+  for (const project of remoteOf2.keys()) {
     texts2.push(`project ${JSON.stringify(project)} is only on the remote`);
   }
   return [...new Set(texts2)];
@@ -80448,6 +80494,8 @@ function withRemoteLane(options) {
   let closed = false;
   let sleepEnd = Promise.resolve();
   let why2 = "not connected yet";
+  let provenAt = null;
+  let tried = false;
   let connecting = Promise.resolve();
   const closing = new AbortController();
   let comparing = null;
@@ -80483,6 +80531,8 @@ function withRemoteLane(options) {
   };
   const connect2 = () => {
     state = { kind: "connecting" };
+    tried = true;
+    provenAt = null;
     pending.clear();
     activity();
     connecting = options.connect(closing.signal).then(compareFirst).catch((error) => {
@@ -80557,6 +80607,7 @@ function withRemoteLane(options) {
       down("the host ended", false);
       return { lost: lostReport(testFiles3) };
     }
+    let stayed = [];
     for (let attempt2 = 0; attempt2 < 2; attempt2++) {
       await sendPending(host);
       const { differences: unequal, remoteCore: runCore } = await compared2(host);
@@ -80566,7 +80617,7 @@ function withRemoteLane(options) {
       }
       if (unequal.length > 0) {
         down(unequal.join("; "), true, host);
-        return "refused";
+        return { refused: unequal.join("; ") };
       }
       const end = await (options.gitLease?.() ?? NO_LEASE);
       const reply = await admittedRun(host, testFiles3, run8, inputs2).finally(end);
@@ -80580,10 +80631,11 @@ function withRemoteLane(options) {
       if (differ.length === 0) {
         proven2(host, inputs2.length);
         const raw = stripped(reply);
-        const report4 = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
-        if (reply.coverage !== void 0) coverageOf4.set(report4, reply.coverage);
-        return report4;
+        const report5 = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
+        if (reply.coverage !== void 0) coverageOf4.set(report5, reply.coverage);
+        return report5;
       }
+      stayed = differ;
       options.log(
         `remote ${target}: tree differs at ${differ.slice(0, 5).join(", ")}; sending again`
       );
@@ -80592,7 +80644,7 @@ function withRemoteLane(options) {
     options.status(
       `remote ${target}: refused a run whose tree stayed different; ${options.whenLost === "local" ? "ran it here" : "not run"}`
     );
-    return "refused";
+    return { refused: `its tree stayed different at ${stayed.slice(0, 5).join(", ")}` };
   };
   const runInputs = async (host, testFiles3) => {
     const planner = remotePlans ? host.adapter : local2;
@@ -80643,7 +80695,8 @@ function withRemoteLane(options) {
     options.log(`remote ${target}: run proven over ${paths} paths`);
     if (state.kind !== "ready" || state.host !== host || state.proven) return;
     state.proven = true;
-    const at2 = new Date(now()).toISOString();
+    provenAt = now();
+    const at2 = new Date(provenAt).toISOString();
     options.status(
       remoteKey && remoteCore !== null ? `${remoteKeyStatusLine(target, remoteCore)}; proven at ${at2} (blob ids equal before and after)` : `remote ${target}: ${tiersName} runs of ${local2.name} go there; proven at ${at2} (blob ids equal before and after)`
     );
@@ -80653,64 +80706,80 @@ function withRemoteLane(options) {
     opened3 = true;
     const workers = permits === void 0 ? run8.workers : await permits.back(cancelOf(run8));
     if (workers === null) return notStarted();
-    const report4 = await here.run(testFiles3, {
+    const report5 = await here.run(testFiles3, {
       ...rest2,
       logDir: join173(run8.logDir, dir2),
       ...workers === void 0 ? {} : { workers }
     });
-    return remoteKey ? tagReportCore(report4, localCore()) : report4;
+    return remoteKey ? tagReportCore(report5, localCore()) : report5;
   };
   const runDirect = async (testFiles3, run8) => {
     opened3 = true;
-    const report4 = await here.run(testFiles3, run8);
-    return remoteKey ? tagReportCore(report4, localCore()) : report4;
+    const report5 = await here.run(testFiles3, run8);
+    return remoteKey ? tagReportCore(report5, localCore()) : report5;
   };
-  const instead = async (testFiles3, run8) => {
+  const instead = async (testFiles3, run8, refusal4) => {
     if (options.whenLost === "local") return runHere(testFiles3, run8, "here");
     notRun += testFiles3.length;
     tell();
+    const reason2 = refusal4 ?? (state.kind === "down" && state.refused ? why2 : null);
     return Promise.resolve({
       end: "crashed",
       durationMs: 0,
       completedFiles: [],
       results: [],
       fileErrors: [],
-      failure: `remote ${target} unreachable; not run here (whenLost "not-run")`
+      failure: reason2 === null ? `remote ${target} unreachable; not run here (whenLost "not-run")` : `remote ${target} refused (${reason2}); not run here (whenLost "not-run")`
     });
   };
   const remoteTier = async (testFiles3, run8) => {
     remoteRuns++;
     activity();
-    const report4 = await ready2().then((host) => host === null ? null : remoteRun(host, testFiles3, run8)).finally(() => {
+    const report5 = await ready2().then((host) => host === null ? null : remoteRun(host, testFiles3, run8)).finally(() => {
       remoteRuns--;
       activity();
     });
-    if (report4 === null || report4 === "refused") return instead(testFiles3, run8);
-    if ("cancelled" in report4) return report4.cancelled;
-    if ("lost" in report4) {
+    if (report5 === null) return instead(testFiles3, run8);
+    if ("refused" in report5) return instead(testFiles3, run8, report5.refused);
+    if ("cancelled" in report5) return report5.cancelled;
+    if ("lost" in report5) {
       const cancelled2 = run8.signal?.aborted === true || run8.stop?.aborted === true;
       if (options.whenLost === "local" && !cancelled2) return instead(testFiles3, run8);
       if (options.whenLost === "not-run") {
         notRun += testFiles3.length;
         tell();
       }
-      return report4.lost;
+      return report5.lost;
     }
     failures = 0;
     notRun = 0;
-    const failed7 = route.guard(report4);
-    const records = recordsWithout(coverageOf4.get(report4) ?? [], failed7);
+    const failed7 = route.guard(report5);
+    const records = recordsWithout(coverageOf4.get(report5) ?? [], failed7);
     if (records.length > 0) options.remoteCoverage?.(run8.runId, records);
-    if (failed7.length === 0) return report4;
+    if (failed7.length === 0) return report5;
     options.log(
       `remote ${target}: ${failed7.map((f) => f.path).join(", ")} failed there as not a Git repository; running here`
     );
-    const kept6 = withoutFiles2(report4, failed7);
+    const kept6 = withoutFiles2(report5, failed7);
     if (kept6.startupFailure !== void 0) return deferredTo(kept6, failed7);
     return merge3([
       { adapter: { name: `remote ${target}` }, report: kept6 },
       { adapter: { name: "here" }, report: await runHere(failed7, run8, "here") }
     ]);
+  };
+  const report4 = () => {
+    const machine = remoteKey && remoteCore !== null ? { machine: machineText(remoteCore) } : {};
+    switch (state.kind) {
+      case "connecting":
+        return { state: "connecting" };
+      case "asleep":
+        return { state: "asleep" };
+      case "ready":
+        return { state: "ready", ...provenAt === null ? {} : { provenAt }, ...machine };
+      default:
+        if (closed || !tried) return { state: "not connected" };
+        return { state: state.refused ? "refused" : "unreachable", reason: why2 };
+    }
   };
   const busy2 = () => {
     if (remoteRuns > 0) return `a run is on remote ${target}`;
@@ -80818,6 +80887,7 @@ function withRemoteLane(options) {
       ]);
     },
     busy: busy2,
+    report: report4,
     async sleep(machineSleep) {
       const refused = busy2();
       if (refused !== null) return { busy: refused };
@@ -80903,7 +80973,9 @@ function machinesPath(env = process.env) {
   return join174(base, "squeal", MACHINES_FILE);
 }
 function readMachines(env = process.env) {
-  const path = machinesPath(env);
+  return readMachinesAt(machinesPath(env));
+}
+function readMachinesAt(path) {
   let text3;
   try {
     text3 = readFileSync74(path, "utf8");
@@ -82187,21 +82259,28 @@ async function acquire2(request, config, timing) {
       'Agent37 "default" (gVisor) runs tests 3 to 4 times slower than "vm" and stored false failures in research; prefer "vm"'
     );
   }
+  const { signal: signal3 } = request;
+  const stop2 = () => {
+    if (signal3?.aborted === true) throw new AcquireAborted();
+  };
   const api = apiOf(settings, env, timing);
   const tracked = trackedState(request, env);
   let state = null;
+  stop2();
   if (tracked !== null) {
     const found4 = await api.inspect(tracked.instanceId);
+    stop2();
     if (found4 === null) {
       request.log(`Agent37 instance ${tracked.instanceId} is gone; creating another`);
     } else {
-      await untilRunning(api, tracked.instanceId, found4, timing);
+      await untilRunning(api, tracked.instanceId, found4, timing, signal3);
       state = tracked;
       request.log(`Agent37 instance ${tracked.instanceId} reused (${found4.status} before)`);
     }
   }
   const created = state === null;
   if (state === null) {
+    stop2();
     const made = await api.create({
       template: "agent37-base",
       region: settings.region,
@@ -82213,6 +82292,12 @@ async function acquire2(request, config, timing) {
     });
     if (!validInstanceId(made.id))
       throw new Error("Agent37 created an instance with an unusable id");
+    if (signal3?.aborted === true) {
+      await api.remove(made.id).catch(() => {
+      });
+      request.log(`Agent37 instance ${made.id} created after the daemon's exit began; deleted`);
+      throw new AcquireAborted();
+    }
     state = {
       instanceId: made.id,
       region: settings.region,
@@ -82221,7 +82306,7 @@ async function acquire2(request, config, timing) {
     };
     request.log(`Agent37 instance ${made.id} created (${settings.region} ${settings.type})`);
     try {
-      await untilRunning(api, made.id, made, timing);
+      await untilRunning(api, made.id, made, timing, signal3);
     } catch (error) {
       await api.remove(made.id).catch(() => {
       });
@@ -82229,7 +82314,10 @@ async function acquire2(request, config, timing) {
     }
   }
   try {
-    return await bootstrap(request, settings, state, env, timing);
+    stop2();
+    const machine = await bootstrap(request, settings, state, env, timing);
+    if (created) stop2();
+    return machine;
   } catch (error) {
     if (created) await api.remove(state.instanceId).catch(() => {
     });
@@ -82296,7 +82384,7 @@ function createAgent37Provider(timing = {}) {
     }
   };
 }
-var SSH_USER, TIMING, agent37Provider;
+var AcquireAborted, SSH_USER, TIMING, agent37Provider;
 var init_agent37 = __esm({
   "src/core/runner-host/remote/providers/agent37/index.ts"() {
     "use strict";
@@ -82307,6 +82395,11 @@ var init_agent37 = __esm({
     init_config3();
     init_machine();
     init_tunnel();
+    AcquireAborted = class extends Error {
+      constructor() {
+        super("Agent37 acquire stopped: the daemon's exit began");
+      }
+    };
     SSH_USER = "node";
     TIMING = {
       pollMs: 2e3,
@@ -82885,6 +82978,11 @@ function shareMachine(options) {
   let quiet = [];
   let gitWriting = null;
   const refused = () => new MachineEnding("the daemon's exit released the remote machine");
+  const exiting = new AbortController();
+  const asked = {
+    ...request,
+    signal: request.signal === void 0 ? exiting.signal : AbortSignal.any([request.signal, exiting.signal])
+  };
   const track = (write4) => {
     try {
       write4();
@@ -82958,7 +83056,7 @@ function shareMachine(options) {
   };
   const reachOnce = async () => {
     if (machine === null) {
-      const acquired = await provider.acquire(request, lane.providerConfig);
+      const acquired = await provider.acquire(asked, lane.providerConfig);
       machine = acquired;
       acquiredAt = ++incarnation;
       track(() => recordMachine(recordOf2(acquired, request, now()), env));
@@ -83082,6 +83180,7 @@ function shareMachine(options) {
   };
   const releaseOnce = async () => {
     released = true;
+    exiting.abort();
     disarm();
     const waiting2 = quiet;
     quiet = [];
@@ -83233,6 +83332,9 @@ function createDaemonRemote(options) {
   const found4 = remoteLaneFor(settings, repositoryRootOf(root, commonDir), commonDir);
   if (found4 === null) {
     if (options.lastNote(REMOTE_TOPIC) !== void 0) say("no remote lane: every run is here");
+    if (![void 0, ""].includes(options.lastNote(REMOTE_SUMMARY_TOPIC))) {
+      say("", REMOTE_SUMMARY_TOPIC);
+    }
     return null;
   }
   const { lane } = found4;
@@ -83253,6 +83355,23 @@ function createDaemonRemote(options) {
   say(
     lane.runners.some(eager) ? `remote ${target}: connecting; ${runs2} ${meanwhile} until it answers` : `remote ${target}: connects at the first ${runs2.replace(" runs ", " run ")}`
   );
+  const own = /* @__PURE__ */ new Set();
+  let degradedDisk = null;
+  let released = false;
+  const summarize2 = () => say(
+    remoteSummaryLine({
+      provider: lane.provider,
+      machine: share2.current()?.id ?? lane.target ?? null,
+      lanes: lane.lanes,
+      runners: lane.runners,
+      planning: lane.planning,
+      environmentMode: lane.environmentMode,
+      reports: [...own].map((l) => l.report()),
+      degradedDisk,
+      released
+    }),
+    REMOTE_SUMMARY_TOPIC
+  );
   const share2 = shareMachine({
     lane,
     request: {
@@ -83267,8 +83386,14 @@ function createDaemonRemote(options) {
       ...options.env === void 0 ? {} : { env: options.env }
     },
     ...options.env === void 0 ? {} : { env: options.env },
-    note: (text3) => say(text3, REMOTE_DISK_TOPIC)
+    note: (text3) => {
+      say(text3, REMOTE_DISK_TOPIC);
+      const slow = / (degraded disk: [^;]+); runs go there anyway/.exec(text3);
+      degradedDisk = slow?.[1] ?? null;
+      summarize2();
+    }
   });
+  summarize2();
   return {
     lane,
     wrap: (spec) => {
@@ -83279,17 +83404,34 @@ function createDaemonRemote(options) {
         return lane.environmentMode === "remote-key" ? ranHere(alone, version2) : alone;
       }
       const topic = spec.name === void 0 ? REMOTE_TOPIC : `${REMOTE_TOPIC}:${spec.name}`;
-      return laneOver(share2, spec, tiers, {
+      const counted3 = spec.perPass !== true;
+      const made = laneOver(share2, spec, tiers, {
         target,
         lane,
         eager: spec.perPass !== true && eager(spec.runner),
-        status: (text3) => say(text3, topic),
+        status: (text3) => {
+          say(text3, topic);
+          if (counted3) summarize2();
+        },
         repository: (text3) => say(`remote ${target}: ${text3}`, REMOTE_REPOSITORY_TOPIC),
         options
       });
+      if (counted3) {
+        own.add(made);
+        summarize2();
+      }
+      return made;
     },
     sleepRemote: () => share2.sleep(),
-    release: () => share2.release()
+    release: async () => {
+      await share2.release();
+      released = true;
+      try {
+        summarize2();
+      } catch (error) {
+        options.log(`remote ${target}: summary not written at the exit: ${String(error)}`);
+      }
+    }
   };
 }
 function coreHere(version2) {
@@ -83470,6 +83612,7 @@ var init_daemon_lane = __esm({
     init_machine_share();
     init_remote_key();
     init_settings();
+    init_summary();
     REMOTE_TOPIC = "remote-lane";
     REMOTE_SETTINGS_TOPIC = "remote-settings";
     REMOTE_REPOSITORY_TOPIC = "remote-lane:repository";
@@ -84912,6 +85055,30 @@ function isNode(difference, node2) {
   return difference === text3 || difference.endsWith(`: ${text3}`);
 }
 
+// src/core/status/remote-status.ts
+init_summary();
+var LISTING_FAILED = "runner testFiles failed: ";
+function remoteOf(notes) {
+  const text3 = notes.findLast((note) => note.topic === REMOTE_SUMMARY_TOPIC)?.text;
+  return text3 === void 0 || text3 === "" ? {} : { remote: text3 };
+}
+function listingFailedOf(notes, header2, daemon) {
+  if (header2.testFilesListed !== false || daemon.state !== "alive") return {};
+  const note = notes.findLast((n) => n.text.startsWith(LISTING_FAILED));
+  if (note === void 0 || note.revision !== header2.revision) return {};
+  return { listingFailed: note.text.slice(LISTING_FAILED.length) };
+}
+function remoteLines(s) {
+  return s.remote === void 0 ? [] : [`Remote: ${s.remote}`];
+}
+function unlistedText2(s, fallback2) {
+  if (s.listingFailed === void 0) return fallback2;
+  return `The daemon could not list this worktree's test files: ${s.listingFailed}. It lists them again at the next revision.`;
+}
+function isRemoteSummary(note) {
+  return note.topic === REMOTE_SUMMARY_TOPIC;
+}
+
 // src/core/status/runtime-files.ts
 init_policy2();
 init_json();
@@ -85173,6 +85340,7 @@ function notesLines(s, command, all2) {
   const groups3 = /* @__PURE__ */ new Map();
   const kept6 = [];
   for (const note of s.daemonNotes) {
+    if (isRemoteSummary(note)) continue;
     const exit2 = note.exitOf === void 0 ? void 0 : exits.get(note.text);
     if (exit2 !== void 0 && exit2[exit2.length - 1] !== note) continue;
     const what = all2 ? void 0 : note.stopped?.what;
@@ -85390,7 +85558,7 @@ import { join as join36 } from "node:path";
 
 // src/core/code/crap/status.ts
 init_checks();
-init_summary();
+init_summary2();
 function coverageStatusOf(store, worktreeId, policy) {
   const summary = readSummary(store.meta, worktreeId);
   if (summary === null) return void 0;
@@ -85421,7 +85589,7 @@ function coverageStatusOf(store, worktreeId, policy) {
 init_policy2();
 
 // src/core/delivery/code-deliver.ts
-init_summary();
+init_summary2();
 init_cursor();
 init_failed();
 init_pulled();
@@ -85430,7 +85598,7 @@ init_json();
 
 // src/core/delivery/code-coverage.ts
 init_seed();
-init_summary();
+init_summary2();
 init_text();
 
 // src/core/delivery/code-coverage-words.ts
@@ -85821,7 +85989,7 @@ function changedNotJudged(store, worktreeId, bounds) {
 }
 
 // src/core/delivery/code-untested.ts
-init_summary();
+init_summary2();
 
 // src/core/delivery/code-deliver.ts
 var MEASURE = "complexity";
@@ -87067,7 +87235,7 @@ function nextStep(s, context2 = { named: true }) {
     }
     case "unlisted":
       return same2(
-        unlistedText2(s),
+        unlistedText3(s),
         context2.named ? { kind: "none", text: "" } : { kind: "command", args: "status --wait 60000", text: "{command} waits for it" }
       );
     case "stale": {
@@ -87184,7 +87352,7 @@ function same2(reason2, step2) {
 function lookupOnly(on) {
   return on ? " (the baseline is lookup-only)" : "";
 }
-function unlistedText2(s) {
+function unlistedText3(s) {
   const listed12 = `${runnersHave(s.runners, false)} not listed revision ${s.revision}'s test files yet`;
   if (s.run === void 0 && s.yields === void 0) {
     return `${listed12}; no tier starts until the listing ends`;
@@ -87554,7 +87722,8 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     // 011-311: so does the revision's listing, in the same sentence when both apply.
     ...delaysLines(result, command),
     // Row 005-90: before the listing, no count reads as all clear; one sentence says why.
-    ...result.testFilesListed === false ? [noResultsText(command)] : [],
+    // Row 026-20 (lessons D1): or why the live daemon could not list them.
+    ...result.testFilesListed === false ? [unlistedText2(result, noResultsText(command))] : [],
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     ...knownFailuresLine(result),
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
@@ -87575,6 +87744,8 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     ...focusedLines(result, full),
     ...result.testFilesListed === false ? [] : [`Affected checks: ${affected(result, command)}`],
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
+    // Spec 026 D12.1 (row 026-20): the remote's one line, while one is named.
+    ...remoteLines(result),
     // Spec 018 D5: an import none of whose results is current because the environment differs.
     ...importDefaultLines(result),
     // Spec 018 D19: shared results recorded on another Node than the daemon runs, said once.
@@ -87604,7 +87775,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     // Row 011-275 (gh-120): the keys a runtime here does not apply, apart from the problems.
     ...ignoredConfigLines(result, command),
     ...excludedLine(result),
-    ...full ? ["", ...detailLines(result, now, command, allNotes)] : [`More: \`${command} status --full\` adds ${listText(hiddenParts(result, command))}`]
+    ...full ? ["", ...detailLines(result, now, command, allNotes)] : [`More: \`${command} status --full\` adds ${listText2(hiddenParts(result, command))}`]
   ];
   return `${lines.join("\n")}
 `;
@@ -87614,7 +87785,7 @@ function knownFailuresLine(s) {
   const current2 = splitByValidity(s.knownFailures).current.map((f) => f.check);
   return [`Known failures: ${failureCountText(current2)}${notCurrentText(s)}`];
 }
-function listText(parts3) {
+function listText2(parts3) {
   return parts3.length < 2 ? parts3.join("") : `${parts3.slice(0, -1).join(", ")} and ${parts3[parts3.length - 1]}`;
 }
 function slowLine(s, command) {
@@ -88435,7 +88606,7 @@ function readImports(store, worktreeId, keys, states) {
     let currentFiles = 0;
     let currentResults = 0;
     for (const file of files6) {
-      const reason2 = reasonOf3(file, here);
+      const reason2 = reasonOf4(file, here);
       if (reason2 === "current") currentFiles++;
       else notCurrent[reason2]++;
       currentResults += here.fromImport(testFileId(file)).get(record2.id) ?? 0;
@@ -88455,7 +88626,7 @@ function readImports(store, worktreeId, keys, states) {
     ];
   });
 }
-function reasonOf3(file, here) {
+function reasonOf4(file, here) {
   const key3 = here.keys.get(testFileId(file));
   if (key3?.key === file.key) return adoption(file, here);
   const environment = here.environments.get(file.project);
@@ -89125,6 +89296,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     now,
     load
   );
+  const daemonNotes = readDaemonNotes(store, worktreeId);
   const snapshot3 = {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -89142,7 +89314,10 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
-    daemonNotes: readDaemonNotes(store, worktreeId),
+    daemonNotes,
+    // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
+    ...remoteOf(daemonNotes),
+    ...listingFailedOf(daemonNotes, header2, daemon),
     ...checkpoint2,
     ...vitestExcluded(at2),
     ...configProblemsOf(at2),
@@ -94326,7 +94501,7 @@ function withUnlisted(selection, clock) {
   const forMs = since === void 0 ? waited : Math.max(waited, now - since);
   return { ...selection, partial, unlisted: { ...unlisted6, forMs } };
 }
-function unlistedText3({ revision, paths, forMs }) {
+function unlistedText4({ revision, paths, forMs }) {
   const what = paths !== void 0 ? `Squeal has not listed ${paths.join(", ")} here yet` : revision === null ? forMs === void 0 ? "Squeal has not listed the test files here yet" : "Squeal is still starting here" : `Squeal has not listed revision ${revision} here yet`;
   if (forMs === void 0) return what;
   return `${what} (${Math.round(forMs / 1e3)} s); wait again with the same command`;
@@ -94453,7 +94628,7 @@ function filesCounted(parts3) {
 }
 function unmatchedText2(selection) {
   const { unlisted: unlisted6 } = selection;
-  if (unlisted6 !== void 0 && unlisted6.paths === void 0) return unlistedText3(unlisted6);
+  if (unlisted6 !== void 0 && unlisted6.paths === void 0) return unlistedText4(unlisted6);
   const fresh2 = new Set(unlisted6?.paths ?? []);
   const listed12 = selection.unmatchedPaths.filter((p) => !fresh2.has(p.resolved)).map((p) => {
     const base = p.base === void 0 || p.base === "" && p.given === p.resolved ? "" : ` (${p.given}, resolved against ${p.base === "" ? "the worktree root" : p.base})`;
@@ -94461,7 +94636,7 @@ function unmatchedText2(selection) {
     if (p.folder === true) return `no listed test file is under the folder ${p.resolved}${base}`;
     return `no test file's closure holds ${p.resolved}${base}${root}${startsText(p.startsWith)}`;
   }).join("; ");
-  const late = unlisted6 === void 0 ? "" : unlistedText3(unlisted6);
+  const late = unlisted6 === void 0 ? "" : unlistedText4(unlisted6);
   return [listed12, late].filter((t) => t !== "").join("; ");
 }
 function startsText(starts) {
@@ -95105,7 +95280,7 @@ function timeoutText(wait, result, command) {
   if (reason2 === "unlisted") {
     const listed12 = wait.result.refinedRevision;
     const cover = coverText(holding, listed12 != null && listed12 < verdict.revision ? listed12 : null);
-    const why3 = unlistedText4(wait.result, verdict.revision, cover === null ? null : these);
+    const why3 = unlistedText5(wait.result, verdict.revision, cover === null ? null : these);
     const groups4 = reasonGroups(holding, command, wait.selection.base);
     const said = cover === null ? why3 : `${cover}; ${why3}`;
     return groups4 === "" ? said : `${said}: ${groups4}`;
@@ -95125,7 +95300,7 @@ function unsyncedText(sync, revision, snapshot3, these) {
   if (these !== null) return `${pass2}, so ${these} may not cover them`;
   return snapshot3 ? `results are as of revision ${revision}; ${pass2}` : `${pass2}; results are as of revision ${revision}`;
 }
-function unlistedText4(snapshot3, revision, these) {
+function unlistedText5(snapshot3, revision, these) {
   const { running: running2 = 0, queued = 0 } = snapshot3.testFilesByPhase ?? {};
   const counted3 = filesCounted([
     [running2, "running"],
@@ -98008,7 +98183,7 @@ function ownLine(wait, command) {
     case "no-daemon":
       return `Returned without a daemon: ${noDaemonText(snapshot3.daemon, wait.down, command)}; results are as of revision ${snapshot3.revision}`;
     case "timeout":
-      return `Returned on timeout ${after3}: ${pendingText2(snapshot3)} ${at2}${unlistedText5(snapshot3)}`;
+      return `Returned on timeout ${after3}: ${pendingText2(snapshot3)} ${at2}${unlistedText6(snapshot3)}`;
     case "on-hold":
       return `Returned on hold ${at2} ${after3}`;
   }
@@ -98234,7 +98409,7 @@ function pendingText2(snapshot3) {
   const counted3 = countedText(checks, word2, snapshot3.fileLevelCounts?.pending);
   return files6 > 0 ? `${counted3} and ${plural(files6, "test file")} without checks pending` : `${counted3} pending`;
 }
-function unlistedText5({ revision, runnerPartPending, listingRunners }) {
+function unlistedText6({ revision, runnerPartPending, listingRunners }) {
   return runnerPartPending === true ? `; ${unlistedClause({ revision, runners: listingRunners })}` : "";
 }
 
@@ -99254,7 +99429,7 @@ init_text();
 
 // src/cli/code-coverage.ts
 init_seed();
-init_summary();
+init_summary2();
 init_glob();
 init_text();
 
@@ -119603,7 +119778,7 @@ function jsonAt(report4) {
 function idOf3(root) {
   return existsSync74(root) ? worktreeIdFor(root) : worktreeIdOfRealPath(root);
 }
-function reasonOf4(main2, queue) {
+function reasonOf5(main2, queue) {
   if (queue.root === null) return () => null;
   const id = idOf3(queue.root);
   const rows = new Map(main2.testFileKeys.list(id).map((row2) => [testFileId(row2.testFile), row2]));
@@ -119638,7 +119813,7 @@ function reasonOf4(main2, queue) {
 }
 function nowAfter(main2, current2, queue) {
   if (main2 === null || queue.files.length === 0) return current2;
-  const reason2 = reasonOf4(main2, queue);
+  const reason2 = reasonOf5(main2, queue);
   const states = /* @__PURE__ */ new Map();
   for (const ref3 of queue.files) {
     const now = current2(ref3);
@@ -120316,7 +120491,7 @@ function ranSide(state, answer4, path, notStored, records) {
     return { end: endOfRecords(records), from: "run", stored: true, notStored: null, runs: 1 };
   }
   const ranAs = (outcome2) => {
-    const why2 = notStored ?? reasonOf5(state);
+    const why2 = notStored ?? reasonOf6(state);
     if (outcome2 === "pass") return { ...unstored(why2), end: { end: "pass" } };
     const failures = sharedFailures(runs2);
     if (failures === null)
@@ -120342,7 +120517,7 @@ function ranSide(state, answer4, path, notStored, records) {
     return unknown(state.reason);
   return unknown(state.state);
 }
-function reasonOf5(state) {
+function reasonOf6(state) {
   return "origin" in state ? state.origin.notStored ?? null : null;
 }
 function unstored(notStored) {
@@ -121330,7 +121505,7 @@ async function rowsSide(main2, input) {
   const read7 = new Set([...sources.values()].flat().map(testFileId));
   const refs2 = rows.map((row2) => row2.testFile).filter((ref3) => paths === null || selects3(paths, ref3.path) || read7.has(testFileId(ref3)));
   const committed = await committedBlobs(input.root, input.commit);
-  const why2 = main2 === null ? () => null : reasonOf4(main2, asked);
+  const why2 = main2 === null ? () => null : reasonOf5(main2, asked);
   const treeId = tree === null ? null : idOf3(tree);
   const queued = new Set(asked.files.map(testFileId));
   const chose = input.selection && asked.asks.some((a) => a.phase === "queued");
@@ -126153,16 +126328,17 @@ function daemonLines(d, at2) {
   ];
 }
 function runnerHostLine(h, at2) {
+  const { machine } = h;
   return row("  ", {
     state: `  host ${h.runner ?? "runner"}`,
     pid: String(h.pid),
-    detail: h.target === null ? "local" : `remote ${h.target} (ssh)`,
+    detail: h.target === null ? "local" : machine === void 0 ? `remote ${h.target} (ssh)` : `remote ${machine.provider}`,
     up: age2(h.startedAt, at2),
     cpu: percent2(h.cpuPct),
     time: cpuTime3(h.cpuMs),
     memory: bytes(h.privateBytes, true),
     swap: bytes(h.swapBytes, true),
-    work: ""
+    work: machine === void 0 ? "" : `${machine.id}, ${machine.state}`
   });
 }
 function processLines(p, at2, full) {
@@ -126535,6 +126711,7 @@ function filesOf2(args2) {
 // src/core/ps/snapshot-shape.ts
 init_paths4();
 init_compare();
+init_machines_store();
 init_paths();
 import { basename as basename42 } from "node:path";
 init_measure();
@@ -126672,6 +126849,12 @@ function shapeOf3(r, findings, o) {
   const startOf3 = (startTicks) => r.bootTime === null ? null : r.bootTime + ticksToMs(startTicks, ticks);
   const phase = phaseOn(model.source);
   const table = first2.sample.table;
+  let tracked = null;
+  const machines = () => {
+    const path = model.places.remoteMachines;
+    tracked ??= path === void 0 ? [] : readMachinesAt(path).machines;
+    return tracked;
+  };
   const processOf2 = (p) => {
     const row2 = table.get(p.pid);
     const sum3 = sumCosts(p.descendants.flatMap((pid) => costs.get(pid) ?? []));
@@ -126723,10 +126906,10 @@ function shapeOf3(r, findings, o) {
       })),
       processes: first2.attribution.processes.filter((p) => p.daemonPid === pid).map(processOf2),
       flags: findings.daemons.get(pid) ?? [],
-      ...hostsOf(pid)
+      ...hostsOf(pid, d.worktreeId)
     };
   };
-  const hostsOf = (pid) => {
+  const hostsOf = (pid, worktreeId) => {
     const hosts = (first2.attribution.hosts ?? []).filter((h) => h.daemonPid === pid);
     if (hosts.length === 0) return {};
     return {
@@ -126736,6 +126919,7 @@ function shapeOf3(r, findings, o) {
           pid: h.pid,
           runner: h.runner,
           target: h.target,
+          ...machineOf2(machines(), h.target, worktreeId),
           startedAt: row2 === void 0 ? null : startOf3(row2.startTicks),
           ...costOf2(costs.get(h.pid))
         };
@@ -126833,6 +127017,13 @@ function socketIdOf(path) {
 function ofKept(what, kept6) {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
   return pid === void 0 || kept6.has(Number(pid));
+}
+function machineOf2(records, target, worktreeId) {
+  if (target === null) return {};
+  const reached = records.filter((m) => m.destination === target);
+  const record2 = reached.find((m) => m.worktreeId === worktreeId) ?? reached[0];
+  if (record2 === void 0) return {};
+  return { machine: { provider: record2.provider, id: record2.id, state: record2.status } };
 }
 
 // src/core/ps/work.ts
@@ -127221,6 +127412,7 @@ function only(table, pids3) {
 }
 
 // src/cli/ps.ts
+init_machines_store();
 var USAGE7 = "usage: squeal ps [--repo] [--full] [--json] [--locks]\n";
 var SOURCES = {
   linux: () => createProcSource(),
@@ -127329,7 +127521,9 @@ function placesOf(env, commonDir, options) {
     userConfig: userConfigPath(env),
     runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute35(xdg) ? xdg : null,
     tempDir: options.tempDir ?? "/tmp",
-    commonDir
+    commonDir,
+    // Spec 026 D12.2 (row 026-20): names a remote runner host's machine.
+    remoteMachines: machinesPath(env)
   };
 }
 

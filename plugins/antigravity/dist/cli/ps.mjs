@@ -3,8 +3,8 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/cli/ps.ts
-import { homedir as homedir3 } from "node:os";
-import { isAbsolute as isAbsolute10, resolve as resolve4 } from "node:path";
+import { homedir as homedir4 } from "node:os";
+import { isAbsolute as isAbsolute11, resolve as resolve4 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/paths.ts
@@ -2365,16 +2365,17 @@ function daemonLines(d, at) {
   ];
 }
 function runnerHostLine(h, at) {
+  const { machine } = h;
   return row("  ", {
     state: `  host ${h.runner ?? "runner"}`,
     pid: String(h.pid),
-    detail: h.target === null ? "local" : `remote ${h.target} (ssh)`,
+    detail: h.target === null ? "local" : machine === void 0 ? `remote ${h.target} (ssh)` : `remote ${machine.provider}`,
     up: age(h.startedAt, at),
     cpu: percent(h.cpuPct),
     time: cpuTime2(h.cpuMs),
     memory: bytes(h.privateBytes, true),
     swap: bytes(h.swapBytes, true),
-    work: ""
+    work: machine === void 0 ? "" : `${machine.id}, ${machine.state}`
   });
 }
 function processLines(p, at, full) {
@@ -3093,6 +3094,47 @@ function compare(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+// src/core/runner-host/remote/machines-store.ts
+import {
+  closeSync,
+  linkSync as linkSync2,
+  mkdirSync as mkdirSync2,
+  openSync,
+  readFileSync as readFileSync14,
+  renameSync as renameSync3,
+  statSync as statSync3,
+  unlinkSync,
+  writeFileSync as writeFileSync3
+} from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { dirname as dirname12, isAbsolute as isAbsolute8, join as join23 } from "node:path";
+var MACHINES_FILE = "remote-machines.json";
+function machinesPath(env = process.env) {
+  const xdg = env.XDG_STATE_HOME;
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute8(xdg) ? xdg : join23(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir3(), ".local", "state");
+  return join23(base, "squeal", MACHINES_FILE);
+}
+function readMachinesAt(path) {
+  let text2;
+  try {
+    text2 = readFileSync14(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return { path, machines: [] };
+    return { path, machines: [], problem: `could not be read: ${String(error)}` };
+  }
+  try {
+    const value = JSON.parse(text2);
+    if (isRecord(value) && value.v === 1 && Array.isArray(value.machines)) {
+      return { path, machines: value.machines.filter(isMachineRecord) };
+    }
+  } catch {
+  }
+  return { path, machines: [], problem: "is not a remote machines file" };
+}
+function isMachineRecord(value) {
+  return isRecord(value) && typeof value.provider === "string" && typeof value.id === "string" && typeof value.worktreeId === "string" && typeof value.worktreeRoot === "string" && typeof value.repositoryKey === "string" && typeof value.destination === "string" && Array.isArray(value.sshArgs) && isRecord(value.places) && isRecord(value.capabilities) && typeof value.status === "string" && typeof value.createdAt === "number" && typeof value.lastUsedAt === "number";
+}
+
 // src/core/ps/shape.ts
 var PS_SHAPE_VERSION = 1;
 
@@ -3225,6 +3267,12 @@ function shapeOf2(r, findings, o) {
   const startOf = (startTicks) => r.bootTime === null ? null : r.bootTime + ticksToMs(startTicks, ticks);
   const phase = phaseOn(model.source);
   const table = first.sample.table;
+  let tracked = null;
+  const machines = () => {
+    const path = model.places.remoteMachines;
+    tracked ??= path === void 0 ? [] : readMachinesAt(path).machines;
+    return tracked;
+  };
   const processOf = (p) => {
     const row2 = table.get(p.pid);
     const sum = sumCosts(p.descendants.flatMap((pid) => costs.get(pid) ?? []));
@@ -3276,10 +3324,10 @@ function shapeOf2(r, findings, o) {
       })),
       processes: first.attribution.processes.filter((p) => p.daemonPid === pid).map(processOf),
       flags: findings.daemons.get(pid) ?? [],
-      ...hostsOf(pid)
+      ...hostsOf(pid, d.worktreeId)
     };
   };
-  const hostsOf = (pid) => {
+  const hostsOf = (pid, worktreeId) => {
     const hosts = (first.attribution.hosts ?? []).filter((h) => h.daemonPid === pid);
     if (hosts.length === 0) return {};
     return {
@@ -3289,6 +3337,7 @@ function shapeOf2(r, findings, o) {
           pid: h.pid,
           runner: h.runner,
           target: h.target,
+          ...machineOf(machines(), h.target, worktreeId),
           startedAt: row2 === void 0 ? null : startOf(row2.startTicks),
           ...costOf(costs.get(h.pid))
         };
@@ -3387,9 +3436,16 @@ function ofKept(what, kept2) {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
   return pid === void 0 || kept2.has(Number(pid));
 }
+function machineOf(records, target, worktreeId) {
+  if (target === null) return {};
+  const reached = records.filter((m) => m.destination === target);
+  const record = reached.find((m) => m.worktreeId === worktreeId) ?? reached[0];
+  if (record === void 0) return {};
+  return { machine: { provider: record.provider, id: record.id, state: record.status } };
+}
 
 // src/core/ps/work.ts
-import { existsSync as existsSync6, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync6, statSync as statSync4 } from "node:fs";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/daemon/last-use.ts
@@ -3414,7 +3470,7 @@ function isEpochMs(value) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join23 } from "node:path";
+import { join as join24 } from "node:path";
 
 // src/core/types/scheduler.ts
 var TESTS_GROUP = "tests";
@@ -3735,7 +3791,7 @@ var DEFAULT_POLICY = {
 };
 
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute8, posix } from "node:path";
+import { isAbsolute as isAbsolute9, posix } from "node:path";
 function compiles(globs4) {
   for (const glob of globs4) {
     try {
@@ -3754,7 +3810,7 @@ var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s ===
 var insideRoot = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
   const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute8(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+  return isAbsolute9(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
 var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
 var prepare = (v) => {
@@ -4053,7 +4109,7 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute9, posix as posix2 } from "node:path";
+import { isAbsolute as isAbsolute10, posix as posix2 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -4077,7 +4133,7 @@ function withDefaults2(entry) {
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
-  if (python === void 0 || isAbsolute9(python)) return null;
+  if (python === void 0 || isAbsolute10(python)) return null;
   const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
@@ -4271,7 +4327,7 @@ var SHAPE = {
   ...NODE_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join23(root, POLICY_FILE), SHAPE, UNSET_EXITS);
+  const loaded = loadConfigFile(join24(root, POLICY_FILE), SHAPE, UNSET_EXITS);
   const settled = settleChecks(loaded.value);
   return {
     policy: withExits(
@@ -4411,8 +4467,8 @@ function byStore(daemons) {
 function openReadOnly(path) {
   let db;
   try {
-    const file = statSync3(path, { bigint: true });
-    const wal = statSync3(`${path}-wal`, { throwIfNoEntry: false });
+    const file = statSync4(path, { bigint: true });
+    const wal = statSync4(`${path}-wal`, { throwIfNoEntry: false });
     const held = wal !== void 0 && existsSync6(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
@@ -4429,7 +4485,7 @@ function openReadOnly(path) {
 }
 function changed(path, before) {
   try {
-    const after = statSync3(path, { bigint: true });
+    const after = statSync4(path, { bigint: true });
     return after.ino !== before.ino || after.size !== before.size || after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs;
   } catch {
     return true;
@@ -4833,11 +4889,13 @@ function placesOf(env, commonDir, options) {
   const xdg = env.XDG_RUNTIME_DIR;
   return {
     uid: options.uid ?? currentUid(),
-    home: env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir3(),
+    home: env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir4(),
     userConfig: userConfigPath(env),
-    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute10(xdg) ? xdg : null,
+    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute11(xdg) ? xdg : null,
     tempDir: options.tempDir ?? "/tmp",
-    commonDir
+    commonDir,
+    // Spec 026 D12.2 (row 026-20): names a remote runner host's machine.
+    remoteMachines: machinesPath(env)
   };
 }
 

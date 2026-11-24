@@ -13552,7 +13552,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.622";
+  if (true) return "0.1.623";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -14073,6 +14073,22 @@ function statusIdentity(root, latest, commit, daemon) {
 }
 function shortCommit(commit) {
   return commit === null ? "no commit" : commit.slice(0, 7);
+}
+
+// src/core/runner-host/remote/summary.ts
+var REMOTE_SUMMARY_TOPIC = "remote-lane:summary";
+
+// src/core/status/remote-status.ts
+var LISTING_FAILED = "runner testFiles failed: ";
+function remoteOf(notes) {
+  const text2 = notes.findLast((note) => note.topic === REMOTE_SUMMARY_TOPIC)?.text;
+  return text2 === void 0 || text2 === "" ? {} : { remote: text2 };
+}
+function listingFailedOf(notes, header, daemon) {
+  if (header.testFilesListed !== false || daemon.state !== "alive") return {};
+  const note = notes.findLast((n) => n.text.startsWith(LISTING_FAILED));
+  if (note === void 0 || note.revision !== header.revision) return {};
+  return { listingFailed: note.text.slice(LISTING_FAILED.length) };
 }
 
 // src/core/keys/runtime-applied.ts
@@ -16949,6 +16965,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     now,
     load
   );
+  const daemonNotes = readDaemonNotes(store, worktreeId);
   const snapshot2 = {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -16966,7 +16983,10 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
-    daemonNotes: readDaemonNotes(store, worktreeId),
+    daemonNotes,
+    // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
+    ...remoteOf(daemonNotes),
+    ...listingFailedOf(daemonNotes, header, daemon),
     ...checkpoint2,
     ...vitestExcluded(at),
     ...configProblemsOf(at),
