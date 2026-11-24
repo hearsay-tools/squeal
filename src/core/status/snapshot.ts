@@ -219,7 +219,7 @@ function snapshot(
     notes,
     daemonNotes,
     // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
-    ...remoteOf(daemonNotes),
+    ...remoteOf(store, worktreeId),
     ...listingFailedOf(daemonNotes, header, daemon),
     ...checkpoint,
     ...vitestExcluded(at),

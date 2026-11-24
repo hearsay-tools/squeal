@@ -18,6 +18,7 @@ import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import type { RunnerHostLaunch } from "../runner-host/channel.js";
 import type { DaemonRemote } from "../runner-host/remote/daemon-lane.js";
+import { REMOTE_SUMMARY_TOPIC } from "../runner-host/remote/summary.js";
 import { hostClock } from "../scheduler/clock.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { ImportsSeen } from "../shared/imports-seen.js";
@@ -25,6 +26,7 @@ import type { SharedReader } from "../shared/reader.js";
 import { slowSlotDir } from "../slow/slot.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { gitHead } from "../status/git-head.js";
+import { readRemoteSummary, writeRemoteSummary } from "../status/remote-status.js";
 import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
 import { isBusy } from "../store/connection.js";
 import { setBusyTimeout } from "../store/open.js";
@@ -908,9 +910,15 @@ class Daemon {
         version: this.#version,
         launch: this.options.runnerHost,
         policy: () => this.#policy,
-        note: (text, topic) => this.#note(text, undefined, undefined, topic),
+        // Review 0.1.623 B2: the summary line in its own row, which no other note evicts.
+        note: (text, topic) =>
+          topic === REMOTE_SUMMARY_TOPIC
+            ? this.#remoteSummary(text)
+            : this.#note(text, undefined, undefined, topic),
         lastNote: (topic) =>
-          readDaemonNotes(store, worktreeId).findLast((n) => n.topic === topic)?.text,
+          topic === REMOTE_SUMMARY_TOPIC
+            ? readRemoteSummary(store, worktreeId)
+            : readDaemonNotes(store, worktreeId).findLast((n) => n.topic === topic)?.text,
         log: this.#log,
         ...(this.options.env === undefined ? {} : { env: this.options.env }),
         // Spec 026 D9 (row 026-13): a proven remote run's records, mapped there, stored as ours.
@@ -1514,6 +1522,19 @@ class Daemon {
       const stop = await this.#children.stopMarked().catch(() => null);
       if (stop !== null) this.#note(stop.text, stop.stopped);
     })();
+  }
+
+  /**
+   * Spec 026 D12.1 (review 0.1.623 B2): the remote's summary line, kept in
+   * its own row (`writeRemoteSummary`); an empty one removes it.
+   */
+  #remoteSummary(text: string): void {
+    if (text !== "") this.#log(text);
+    try {
+      writeRemoteSummary(this.opened.store, this.opened.worktreeId, text);
+    } catch (error) {
+      this.#log(`could not persist the remote's summary (${text}): ${String(error)}`);
+    }
   }
 
   /** Review 0.1.623 B1: `remote` kept; an exit that began during the start aborts its acquire. */

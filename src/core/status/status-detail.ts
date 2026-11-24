@@ -8,7 +8,6 @@ import { commitHiddenParts } from "./commit-lines.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, worktreeLine } from "./identity.js";
 import { importLines } from "./import-lines.js";
-import { isRemoteSummary } from "./remote-status.js";
 import { runtimeFilesLines } from "./runtime-files.js";
 import { shortText, stoppingText } from "./stopping.js";
 import { unknownFilesLines } from "./unknown-files.js";
@@ -190,8 +189,6 @@ function notesLines(s: StatusSnapshot, command: string, all: boolean): string[] 
   const groups = new Map<string, DaemonNote[]>();
   const kept: DaemonNote[] = [];
   for (const note of s.daemonNotes) {
-    // Row 026-20: the `Remote:` line prints the remote's summary.
-    if (isRemoteSummary(note)) continue;
     const exit = note.exitOf === undefined ? undefined : exits.get(note.text);
     if (exit !== undefined && exit[exit.length - 1] !== note) continue;
     const what = all ? undefined : note.stopped?.what;
