@@ -1,9 +1,10 @@
 import { execFile } from "node:child_process";
 import { lstat, readFile, readlink } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { runGit, splitNul } from "../../fs/git.js";
 import { readObjectFormat } from "../../hash/git-index.js";
+import { RACY_WINDOW_MS } from "../../hash/stat-cache.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { insideRoot, packFiles, type TreeEntry, type TreeWrite, treeBlob } from "./tree-wire.js";
 
@@ -23,8 +24,24 @@ export const WRITE_BYTES = 8 * 1024 * 1024;
 /** Above this many changed paths, `treePathsFor` lists the whole tree instead of passing argv pathspecs. */
 const NARROW_LIMIT = 256;
 
+const STAT_CONCURRENCY = 64;
 const AUTOCRLF_ON = new Set(["true", "input", "yes", "on", "1"]);
 const CONVERTING_ATTRIBUTES = ["eol", "text", "crlf", "filter", "ident", "working-tree-encoding"];
+
+interface CleanIndexCandidate {
+  readonly oid: string;
+  readonly isLink: boolean;
+}
+
+interface DiskStat {
+  readonly isLink: boolean;
+  readonly executable: boolean;
+  readonly ino: number;
+  readonly size: number;
+  readonly mtimeMs: number;
+  readonly ctimeMs: number;
+  readonly mode: number;
+}
 
 /** The paths of `root`'s tree: tracked, and untracked but not ignored, each once, sorted. */
 export async function treePaths(root: AbsolutePath): Promise<string[]> {
@@ -66,40 +83,63 @@ export async function treePathsFor(
   return new Set(stdout.split("\0").filter((path) => path !== "" && insideRoot(path)));
 }
 
-/** Whether `root` may have any gitattributes file that converts worktree bytes. */
-async function hasGitAttributes(root: AbsolutePath): Promise<boolean> {
-  const [tracked, configured, common] = await Promise.all([
-    runGit(root, ["ls-files", "-z", "--", ".gitattributes", "**/.gitattributes"]).catch(() => ""),
-    runGit(root, ["config", "--get", "core.attributesFile"], { okCodes: [0, 1] }).catch(() => ""),
-    runGit(root, ["rev-parse", "--git-common-dir"]).catch(() => ""),
-  ]);
-  if (tracked.trim() !== "" || configured.trim() !== "") return true;
-  if (common.trim() === "") return true;
-  const infoPath = join(resolve(root, common.trim()), "info", "attributes");
+async function statOne(root: AbsolutePath, path: string): Promise<DiskStat | null> {
   try {
-    const text = await readFile(infoPath, "utf8");
-    return text.split("\n").some((line) => {
-      const trimmed = line.trim();
-      return trimmed !== "" && !trimmed.startsWith("#");
-    });
+    const info = await lstat(join(root, path));
+    const isLink = info.isSymbolicLink();
+    if (!isLink && !info.isFile()) return null;
+    return {
+      isLink,
+      executable: !isLink && (info.mode & 0o111) !== 0,
+      ino: info.ino,
+      size: info.size,
+      mtimeMs: info.mtimeMs,
+      ctimeMs: info.ctimeMs,
+      mode: info.mode,
+    };
   } catch {
-    return false;
+    return null;
   }
+}
+
+async function statAll(
+  root: AbsolutePath,
+  paths: readonly string[],
+): Promise<Map<string, DiskStat>> {
+  const result = new Map<string, DiskStat>();
+  let next = 0;
+  const worker = async () => {
+    while (next < paths.length) {
+      const path = paths[next++];
+      if (path === undefined) continue;
+      const info = await statOne(root, path);
+      if (info !== null) result.set(path, info);
+    }
+  };
+  const count = Math.min(STAT_CONCURRENCY, paths.length);
+  await Promise.all(Array.from({ length: count }, worker));
+  return result;
+}
+
+function sameDiskStat(a: DiskStat, b: DiskStat): boolean {
+  return (
+    a.ino === b.ino &&
+    a.size === b.size &&
+    a.mtimeMs === b.mtimeMs &&
+    a.ctimeMs === b.ctimeMs &&
+    a.mode === b.mode
+  );
 }
 
 /**
  * Clean SHA-1 index entries whose bytes on disk equal their Git blob id,
- * keyed by worktree-relative path. Mirrors `readCleanIndexHashes` soundness
- * (skips dirty/unmerged/assume-unchanged/submodules/`core.autocrlf`/converting
- * attributes) while preserving executable and symlink modes.
+ * keyed by worktree-relative path. Mirrors `readCleanIndexHashes` soundness:
+ * skips dirty, unmerged, assume-unchanged, skip-worktree, submodule,
+ * `core.autocrlf`, and any file with a converting Git attribute (from any
+ * tracked, untracked, info, configured, or global attributes source).
  */
-async function cleanIndexEntries(root: AbsolutePath): Promise<Map<string, TreeEntry>> {
-  try {
-    if ((await readObjectFormat(root)) !== "sha1") return new Map();
-  } catch {
-    return new Map();
-  }
-  const [autocrlf, staged, status, attrs] = await Promise.all([
+async function cleanIndexEntries(root: AbsolutePath): Promise<Map<string, CleanIndexCandidate>> {
+  const [autocrlf, staged, status] = await Promise.all([
     runGit(root, ["config", "--get", "core.autocrlf"], { okCodes: [0, 1] }),
     runGit(root, ["ls-files", "--stage", "-v", "-z"]),
     runGit(root, [
@@ -110,12 +150,11 @@ async function cleanIndexEntries(root: AbsolutePath): Promise<Map<string, TreeEn
       "--ignore-submodules=all",
       "--no-renames",
     ]),
-    hasGitAttributes(root),
   ]);
   if (AUTOCRLF_ON.has(autocrlf.trim().toLowerCase())) return new Map();
 
   const listed = new Set(splitNul(status).map((line) => line.slice(3)));
-  const clean = new Map<string, TreeEntry>();
+  const clean = new Map<string, CleanIndexCandidate>();
   for (const line of splitNul(staged)) {
     const tab = line.indexOf("\t");
     if (tab < 0) continue;
@@ -123,11 +162,10 @@ async function cleanIndexEntries(root: AbsolutePath): Promise<Map<string, TreeEn
     const path = line.slice(tab + 1);
     if (tag !== "H" || stage !== "0" || oid === undefined || !insideRoot(path) || listed.has(path))
       continue;
-    if (mode === "100644") clean.set(path, { path, blob: oid });
-    else if (mode === "100755") clean.set(path, { path, blob: oid, mode: "x" });
-    else if (mode === "120000") clean.set(path, { path, blob: oid, mode: "link" });
+    if (mode === "100644" || mode === "100755") clean.set(path, { oid, isLink: false });
+    else if (mode === "120000") clean.set(path, { oid, isLink: true });
   }
-  if (!attrs || clean.size === 0) return clean;
+  if (clean.size === 0) return clean;
 
   const checked = await runGit(root, ["check-attr", "-z", "--stdin", ...CONVERTING_ATTRIBUTES], {
     input: `${[...clean.keys()].join("\0")}\0`,
@@ -161,14 +199,49 @@ export async function readEntry(
   }
 }
 
-/** The tree's entries, reusing clean SHA-1 Git index blobs and reading only dirty or untracked paths. */
+/**
+ * The tree's entries, reusing clean SHA-1 Git index blobs when disk `lstat`
+ * matches before and after the index check, the file type matches the index
+ * entry, and the file is outside `RACY_WINDOW_MS`. File type and executable
+ * permissions always come from disk `lstat` (safe under `core.filemode=false`
+ * and `core.symlinks=false`).
+ */
 export async function treeEntries(root: AbsolutePath): Promise<TreeEntry[]> {
-  const [paths, clean] = await Promise.all([treePaths(root), cleanIndexEntries(root)]);
+  const [paths, format] = await Promise.all([
+    treePaths(root),
+    readObjectFormat(root).catch(() => null),
+  ]);
+  if (paths.length === 0) return [];
+  if (format !== "sha1") {
+    const entries: TreeEntry[] = [];
+    for (const path of paths) {
+      const read = await readEntry(root, path);
+      if (read !== null) entries.push(read.entry);
+    }
+    return entries;
+  }
+
+  const checkStartedAt = Date.now();
+  const before = await statAll(root, paths);
+  const clean = await cleanIndexEntries(root);
+  const after =
+    clean.size > 0 ? await statAll(root, [...clean.keys()]) : new Map<string, DiskStat>();
+
   const entries: TreeEntry[] = [];
   for (const path of paths) {
-    const indexed = clean.get(path);
-    if (indexed !== undefined) {
-      entries.push(indexed);
+    const cand = clean.get(path);
+    const b = before.get(path);
+    const a = after.get(path);
+    if (
+      cand !== undefined &&
+      b !== undefined &&
+      a !== undefined &&
+      cand.isLink === a.isLink &&
+      sameDiskStat(b, a) &&
+      checkStartedAt - a.mtimeMs >= RACY_WINDOW_MS
+    ) {
+      if (a.isLink) entries.push({ path, blob: cand.oid, mode: "link" });
+      else entries.push({ path, blob: cand.oid, ...(a.executable ? { mode: "x" as const } : {}) });
       continue;
     }
     const read = await readEntry(root, path);

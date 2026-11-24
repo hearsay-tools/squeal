@@ -1,16 +1,20 @@
 import { execFileSync } from "node:child_process";
 import {
   chmodSync,
+  cpSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
   symlinkSync,
   unlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { RACY_WINDOW_MS } from "../../../src/core/hash/stat-cache.js";
 import {
   readEntry,
   treeEntries,
@@ -18,6 +22,7 @@ import {
   treePathsFor,
   writesFor,
 } from "../../../src/core/runner-host/remote/tree.js";
+import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
 import { treeBlob, unpackFiles } from "../../../src/core/runner-host/remote/tree-wire.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 
@@ -171,5 +176,81 @@ describe("fast clean-index treeEntries and narrow treePathsFor", () => {
       "src/gone.ts",
       "src/new.ts",
     ]);
+  });
+
+  // Review 0.1.630 B1: untracked or gitignored .gitattributes must not serve normalized index bytes.
+  it("reads disk bytes when an untracked or ignored .gitattributes converts a clean file", async () => {
+    const dir = root({ "a.txt": "line\n" }) as AbsolutePath;
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", ...args]);
+    git("init", "-q");
+    git("add", "a.txt");
+    git("commit", "-q", "-m", "init");
+
+    // Untracked .gitattributes converting line endings; refresh index so git status is clean.
+    writeFileSync(join(dir, ".gitattributes"), "*.txt text eol=crlf\n");
+    writeFileSync(join(dir, "a.txt"), "line\r\n");
+    git("add", "a.txt");
+    const oldTime = new Date(Date.now() - RACY_WINDOW_MS - 60_000);
+    utimesSync(join(dir, "a.txt"), oldTime, oldTime);
+
+    const disk = await readEntry(dir, "a.txt");
+    const entries = await treeEntries(dir);
+    expect(entries.find((e) => e.path === "a.txt")).toEqual(disk?.entry);
+    expect(entries.find((e) => e.path === "a.txt")?.blob).toBe(treeBlob(Buffer.from("line\r\n")));
+
+    // Ignored .gitattributes must also bypass the index shortcut.
+    writeFileSync(join(dir, ".gitignore"), ".gitattributes\n");
+    const entriesIgnored = await treeEntries(dir);
+    expect(entriesIgnored.find((e) => e.path === "a.txt")).toEqual(disk?.entry);
+  });
+
+  // Review 0.1.630 B2: disk type and executable bits win under core.filemode=false and core.symlinks=false.
+  it("preserves disk executable bits and file type under core.filemode=false and core.symlinks=false through .git materialization", async () => {
+    const dir = root({ a: "hello\n" }) as AbsolutePath;
+    symlinkSync("a", join(dir, "link"));
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", ...args]);
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-q", "-m", "init");
+    git("config", "core.filemode", "false");
+    git("config", "core.symlinks", "false");
+
+    chmodSync(join(dir, "a"), 0o755);
+    unlinkSync(join(dir, "link"));
+    writeFileSync(join(dir, "link"), "a");
+    const oldTime = new Date(Date.now() - RACY_WINDOW_MS - 60_000);
+    utimesSync(join(dir, "a"), oldTime, oldTime);
+    utimesSync(join(dir, "link"), oldTime, oldTime);
+
+    const entries = await treeEntries(dir);
+    const manualA = await readEntry(dir, "a");
+    const manualLink = await readEntry(dir, "link");
+    expect(entries.find((e) => e.path === "a")).toEqual(manualA?.entry);
+    expect(entries.find((e) => e.path === "a")?.mode).toBe("x");
+    expect(entries.find((e) => e.path === "link")).toEqual(manualLink?.entry);
+    expect(entries.find((e) => e.path === "link")?.mode).toBeUndefined();
+
+    // Round-trip through remote tree host with .git present: remote must match disk type and +x.
+    const remoteBase = join(scratch, `remote-${++n}`) as AbsolutePath;
+    const remoteRoot = join(remoteBase, "root") as AbsolutePath;
+    mkdirSync(remoteRoot, { recursive: true });
+    cpSync(join(dir, ".git"), join(remoteRoot, ".git"), { recursive: true });
+    const host = createTreeHost(remoteRoot, () => {});
+    const reply = await host.tree(entries);
+    expect(reply.missing).toEqual([]);
+    expect(
+      await host.differing({
+        a: manualA?.entry.blob ?? null,
+        link: manualLink?.entry.blob ?? null,
+      }),
+    ).toEqual([]);
+
+    const remoteA = lstatSync(join(remoteRoot, "a"));
+    const remoteLink = lstatSync(join(remoteRoot, "link"));
+    expect((remoteA.mode & 0o111) !== 0).toBe(true);
+    expect(remoteLink.isSymbolicLink()).toBe(false);
+    expect(remoteLink.isFile()).toBe(true);
   });
 });

@@ -1,7 +1,17 @@
-import { lstat, readFile, readlink } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { lstat, readdir, readFile, readlink } from "node:fs/promises";
+import { basename, join, sep } from "node:path";
+import { compare } from "../../fs/compare.js";
+import { isMissing } from "../../fs/errors.js";
 import { RACY_WINDOW_MS } from "../../hash/stat-cache.js";
-import { installedDependenciesFingerprint, isInstalledLockfile } from "../../keys/environment.js";
+import { installedDependencies, isInstalledLockfile } from "../../keys/environment.js";
+import {
+  HIDDEN_LOCKFILE,
+  parseHiddenLockfile,
+  staleHiddenLockfile,
+} from "../../keys/hidden-lockfile.js";
+import { PnpmGraph } from "../../keys/pnpm-graph.js";
+import { stalePnpmLockfile } from "../../keys/pnpm-install.js";
+import { PNPM_LOCKFILE } from "../../keys/pnpm-lockfile.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { LOCKFILES } from "./tree-install.js";
 import { insideRoot, treeBlob } from "./tree-wire.js";
@@ -14,12 +24,12 @@ import { insideRoot, treeBlob } from "./tree-wire.js";
  * SHA-1 hashing every file on disk and re-parsing `node_modules/.pnpm/lock.yaml`
  * on every tier accounted for hundreds of milliseconds of local daemon CPU per
  * tier. Both caches enforce the `RACY_WINDOW_MS` (2 s) rule from `stat-cache.ts`
- * so same-tick rewrites are always re-hashed.
+ * and verify the exact inputs consumed by the underlying readers so stale
+ * results are never returned.
  */
 
 const MAX_BLOB_ENTRIES = 50_000;
 const BLOB_CONCURRENCY = 16;
-const INSTALLED_TTL_MS = 30_000;
 
 interface CachedBlob {
   readonly mtimeMs: number;
@@ -120,28 +130,56 @@ export function createBlobCache(root: AbsolutePath, now: () => number = Date.now
   };
 }
 
-/** Paths whose stat changes when a local package-manager install or patch changes. */
-const INSTALLED_WATCH_PATHS = [
-  "node_modules",
-  "node_modules/.pnpm",
-  "node_modules/.pnpm/lock.yaml",
-  "node_modules/.modules.yaml",
-  "node_modules/.package-lock.json",
-  "node_modules/.yarn-state.yml",
-  "node_modules/.yarn-integrity",
-  ".pnp.cjs",
-  ".pnp.js",
-  "bun.lock",
-  "bun.lockb",
-  "patches",
+/**
+ * Installed lockfiles in the exact precedence order of
+ * `src/core/keys/environment.ts`.
+ */
+const INSTALLED_FORMATS = [
+  { path: HIDDEN_LOCKFILE, patches: "patches", kind: "npm" },
+  { path: "node_modules/.yarn-state.yml", patches: null, kind: "whole" },
+  { path: ".pnp.cjs", patches: ".yarn/patches", kind: "whole" },
+  { path: ".pnp.js", patches: ".yarn/patches", kind: "whole" },
+  { path: "node_modules/.yarn-integrity", patches: "patches", kind: "whole" },
+  { path: PNPM_LOCKFILE, patches: null, kind: "pnpm" },
+  { path: ".rush/temp/shrinkwrap-deps.json", patches: null, kind: "whole" },
+  { path: "bun.lock", patches: "patches", kind: "whole" },
+  { path: "bun.lockb", patches: "patches", kind: "whole" },
 ] as const;
 
-interface InstalledSnapshot {
-  readonly signature: string;
-  readonly fingerprint: string;
-  readonly at: number;
-  readonly racy: boolean;
-}
+const PNPM_MODULES = "node_modules/.modules.yaml";
+
+type FileProbe =
+  | { readonly state: "missing" }
+  | { readonly state: "uncacheable" }
+  | { readonly state: "file"; readonly sig: string; readonly racy: boolean };
+
+type LayoutProbe =
+  | { readonly cacheable: false }
+  | {
+      readonly cacheable: true;
+      readonly kind: "none" | "whole" | "npm" | "pnpm";
+      readonly sig: string;
+      readonly racy: boolean;
+    };
+
+type CachedInstalled =
+  | {
+      readonly kind: "none" | "whole" | "pnpm-whole";
+      readonly sig: string;
+      readonly fingerprint: string;
+    }
+  | {
+      readonly kind: "npm";
+      readonly sig: string;
+      readonly parsed: Record<string, unknown>;
+      readonly fingerprint: string;
+    }
+  | {
+      readonly kind: "pnpm";
+      readonly sig: string;
+      readonly graph: PnpmGraph;
+      readonly fingerprint: string;
+    };
 
 export interface InstalledFingerprintCache {
   fingerprint(): Promise<string>;
@@ -149,20 +187,129 @@ export interface InstalledFingerprintCache {
   clear(): void;
 }
 
-async function statSignature(
+/** Ensures every intermediate directory segment of `relPath` is missing or a real directory (not a symlink). */
+async function parentsSafe(
   root: AbsolutePath,
+  relPath: string,
+): Promise<"ok" | "missing" | "link"> {
+  const parts = relPath.split("/");
+  for (let i = 1; i < parts.length; i++) {
+    const prefix = join(root, ...parts.slice(0, i));
+    try {
+      const info = await lstat(prefix);
+      if (info.isSymbolicLink()) return "link";
+      if (!info.isDirectory()) return "missing";
+    } catch (error) {
+      if (isMissing(error)) return "missing";
+      return "link";
+    }
+  }
+  return "ok";
+}
+
+async function probeFile(root: AbsolutePath, relPath: string, at: number): Promise<FileProbe> {
+  const parents = await parentsSafe(root, relPath);
+  if (parents === "link") return { state: "uncacheable" };
+  if (parents === "missing") return { state: "missing" };
+  try {
+    const info = await lstat(join(root, relPath));
+    if (info.isSymbolicLink()) return { state: "uncacheable" };
+    if (!info.isFile()) return { state: "missing" };
+    return {
+      state: "file",
+      sig: `${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}:${info.mode}`,
+      racy: at - info.mtimeMs < RACY_WINDOW_MS,
+    };
+  } catch (error) {
+    if (isMissing(error)) return { state: "missing" };
+    return { state: "uncacheable" };
+  }
+}
+
+/** Complete recursive `lstat` signature of a patches directory, refusing symlinks. */
+async function probePatches(
+  root: AbsolutePath,
+  patchesRel: string | null,
   at: number,
-): Promise<{ signature: string; racy: boolean }> {
-  const stats = await Promise.all(
-    INSTALLED_WATCH_PATHS.map((rel) => lstat(join(root, rel)).catch(() => null)),
-  );
+): Promise<{ cacheable: false } | { cacheable: true; sig: string; racy: boolean }> {
+  if (patchesRel === null) return { cacheable: true, sig: "", racy: false };
+  const parents = await parentsSafe(root, patchesRel);
+  if (parents === "link") return { cacheable: false };
+  if (parents === "missing") return { cacheable: true, sig: "missing", racy: false };
+  const dir = join(root, patchesRel);
+  try {
+    const dirInfo = await lstat(dir);
+    if (dirInfo.isSymbolicLink()) return { cacheable: false };
+    if (!dirInfo.isDirectory()) return { cacheable: true, sig: "missing", racy: false };
+  } catch (error) {
+    if (isMissing(error)) return { cacheable: true, sig: "missing", racy: false };
+    return { cacheable: false };
+  }
+  let rawEntries: string[];
+  try {
+    rawEntries = await readdir(dir, { recursive: true });
+  } catch (error) {
+    if (isMissing(error)) return { cacheable: true, sig: "missing", racy: false };
+    return { cacheable: false };
+  }
+  const entries = rawEntries.map((entry) => entry.split(sep).join("/")).sort(compare);
+  const parts: string[] = [];
   let racy = false;
-  const parts = stats.map((info) => {
-    if (info === null) return "-";
-    if (at - info.mtimeMs < RACY_WINDOW_MS) racy = true;
-    return `${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`;
-  });
-  return { signature: parts.join("|"), racy };
+  for (const entry of entries) {
+    try {
+      const info = await lstat(join(dir, entry));
+      if (info.isSymbolicLink()) return { cacheable: false };
+      if (info.isDirectory()) {
+        parts.push(`d:${entry}`);
+      } else if (info.isFile()) {
+        if (at - info.mtimeMs < RACY_WINDOW_MS) racy = true;
+        parts.push(
+          `f:${entry}:${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}:${info.mode}`,
+        );
+      } else {
+        return { cacheable: false };
+      }
+    } catch {
+      return { cacheable: false };
+    }
+  }
+  return { cacheable: true, sig: parts.join("\n"), racy };
+}
+
+/**
+ * Probes the exact lockfile and patches inputs `installedDependencies(root, root)`
+ * consumes in precedence order. Returns `{ cacheable: false }` when any
+ * relevant path is a symlink or unreadable so the caller bypasses the cache.
+ */
+async function probeLayout(root: AbsolutePath, at: number): Promise<LayoutProbe> {
+  for (const format of INSTALLED_FORMATS) {
+    const file = await probeFile(root, format.path, at);
+    if (file.state === "uncacheable") return { cacheable: false };
+    if (file.state === "missing") continue;
+
+    const patches = await probePatches(root, format.patches, at);
+    if (!patches.cacheable) return { cacheable: false };
+
+    let extra = "";
+    let racy = file.racy || patches.racy;
+    if (format.kind === "pnpm") {
+      const modules = await probeFile(root, PNPM_MODULES, at);
+      if (modules.state === "uncacheable") return { cacheable: false };
+      if (modules.state === "file") {
+        extra = modules.sig;
+        racy ||= modules.racy;
+      } else {
+        extra = "missing";
+      }
+    }
+    return {
+      cacheable: true,
+      kind: format.kind,
+      sig: `${format.path}\0${file.sig}\0${extra}\0${patches.sig}`,
+      racy,
+    };
+  }
+  return { cacheable: true, kind: "none", sig: "none", racy: false };
 }
 
 /** Whether invalidating `path` may have changed local installed dependencies. */
@@ -170,36 +317,106 @@ export function touchesInstalled(path: string): boolean {
   if (isInstalledLockfile(path)) return true;
   if (path === "node_modules" || path.startsWith("node_modules/")) return true;
   if (path === "patches" || path.startsWith("patches/")) return true;
+  if (path === ".yarn/patches" || path.startsWith(".yarn/patches/")) return true;
+  if (path === ".rush" || path.startsWith(".rush/")) return true;
   return (LOCKFILES as readonly string[]).includes(basename(path));
 }
 
-/** Stat-guarded, TTL-bounded cache for local `installedDependenciesFingerprint(root, root)`. */
+/**
+ * Exact dependency-validated cache for local `installedDependenciesFingerprint(root, root)`.
+ *
+ * Whole-file lockfiles and `"none"` are validated by exact precedence, file,
+ * and recursive patches `lstat` signatures with `RACY_WINDOW_MS`. Clean npm
+ * and pnpm installs additionally re-run `staleHiddenLockfile` /
+ * `stalePnpmLockfile` against the cached parsed graph on every lookup, skipping
+ * lockfile parsing and hashing while still catching any added, removed, or
+ * modified package folder or symlink. Stale installs, symlinks, and racy files
+ * bypass the cache completely.
+ */
 export function createInstalledFingerprintCache(
   root: AbsolutePath,
   now: () => number = Date.now,
 ): InstalledFingerprintCache {
-  let cached: InstalledSnapshot | null = null;
+  let cached: CachedInstalled | null = null;
+
+  const validHit = (probe: Extract<LayoutProbe, { cacheable: true }>): string | null => {
+    const entry = cached;
+    if (entry === null || probe.racy || entry.sig !== probe.sig) return null;
+    if (entry.kind === "npm") {
+      try {
+        return staleHiddenLockfile(root, entry.parsed) === null ? entry.fingerprint : null;
+      } catch {
+        return null;
+      }
+    }
+    if (entry.kind === "pnpm") {
+      try {
+        return stalePnpmLockfile(root, entry.graph) === null ? entry.fingerprint : null;
+      } catch {
+        return null;
+      }
+    }
+    return entry.fingerprint;
+  };
 
   return {
     async fingerprint() {
-      const at = now();
-      const { signature, racy } = await statSignature(root, at);
-      if (
-        cached !== null &&
-        !cached.racy &&
-        !racy &&
-        cached.signature === signature &&
-        at - cached.at < INSTALLED_TTL_MS
-      ) {
-        return cached.fingerprint;
+      const before = await probeLayout(root, now());
+      if (before.cacheable) {
+        const hit = validHit(before);
+        if (hit !== null) return hit;
       }
-      const fingerprint = await installedDependenciesFingerprint(root, root);
-      const after = await statSignature(root, now());
-      cached =
-        after.signature === signature
-          ? { signature, fingerprint, at, racy: racy || after.racy }
-          : null;
-      return fingerprint;
+
+      const installed = await installedDependencies(root, root);
+      if (!before.cacheable || before.racy || installed.note !== null) {
+        cached = null;
+        return installed.fingerprint;
+      }
+
+      let candidate: CachedInstalled | null = null;
+      if (before.kind === "none" || before.kind === "whole") {
+        candidate = {
+          kind: before.kind,
+          sig: before.sig,
+          fingerprint: installed.fingerprint,
+        };
+      } else if (before.kind === "pnpm") {
+        candidate =
+          installed.graph instanceof PnpmGraph
+            ? {
+                kind: "pnpm",
+                sig: before.sig,
+                graph: installed.graph,
+                fingerprint: installed.fingerprint,
+              }
+            : {
+                kind: "pnpm-whole",
+                sig: before.sig,
+                fingerprint: installed.fingerprint,
+              };
+      } else if (before.kind === "npm") {
+        try {
+          const parsed = parseHiddenLockfile(await readFile(join(root, HIDDEN_LOCKFILE)));
+          if (parsed !== null && staleHiddenLockfile(root, parsed) === null) {
+            candidate = {
+              kind: "npm",
+              sig: before.sig,
+              parsed,
+              fingerprint: installed.fingerprint,
+            };
+          }
+        } catch {
+          candidate = null;
+        }
+      }
+
+      if (candidate !== null) {
+        const after = await probeLayout(root, now());
+        cached = after.cacheable && !after.racy && after.sig === before.sig ? candidate : null;
+      } else {
+        cached = null;
+      }
+      return installed.fingerprint;
     },
     onInvalidate(paths) {
       if (cached !== null && paths.some(touchesInstalled)) cached = null;
