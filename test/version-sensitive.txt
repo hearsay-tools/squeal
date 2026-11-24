@@ -3,8 +3,9 @@
 # test/lint/cli/eslint-rig.ts
 # test/lint/cli/changed-eslint.test.ts
 # test/lint/cli/same-revision-rig.ts
-# CI runs the full suite on Node 22 and only these on Node 24
-# (`.github/workflows/ci.yml`, job `node24`).
+# CI runs the full suite on Node 22 and only these on Node 24 and 26
+# (`.github/workflows/ci.yml`, jobs `node24` and `node26`); the nightly runs
+# the full suite on 24 and 26.
 #
 # One entry per line, passed to `vitest run` as it is: Vitest keeps a test
 # file whose path from the repository root contains an entry (a substring
@@ -101,6 +102,19 @@
 #   test/scheduler/stored-affected-walk.test.ts
 #   test/slow/classify.test.ts
 #   test/types.test.ts
+#   Row 010-35: these run real node:test, but they check the scheduler's slots
+#   and tiers, the warm-up or the gate's kill under load, not what node:test
+#   reports on this Node, and they are among the suite's slowest files. Node 22
+#   on every run, Node 24 and 26 in the nightly.
+#   test/cli/code-gate-keep-kill.test.ts
+#   test/cli/warmup.test.ts
+#   test/scheduler/backlog-slots-overhead.test.ts
+#   test/scheduler/backlog-slots.test.ts
+#   test/scheduler/edit-beside-backlog.test.ts
+#
+# Row 010-35 also took out, for the same reason, three slow files that run a
+# real `node --test` the rule cannot see: test/code/gate/collect-budget.test.ts,
+# test/code/gate/collect-lanes.test.ts and test/e2e/spec-026-remote.test.ts.
 #
 # Run a real `node --test` the rule cannot see, since the call is outside
 # `test/`: `groundTruth` in `evals/lib/session.mjs`, reached directly by
@@ -129,8 +143,8 @@ test/runner-host/remote/connect-process
 test/runner-host/remote/daemon-lane-exit
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
-# pass (beside pytest), warm-up, an edit's tier beside the backlog tier,
-# the backlog's one-file slots and its turn among them, and an edit's tier
+# pass (beside pytest), warm-up, the backlog's turn among its one-file
+# slots, and an edit's tier
 # superseded by a store hit, run to its end (row 011-71), and an import
 # that keeps a touched build watched (row 011-36).
 test/scheduler/slow-node-test
@@ -146,17 +160,14 @@ test/scheduler/scratch-inputs
 test/scheduler/lanes
 test/scheduler/idle-pass
 test/scheduler/warm-up
-test/scheduler/edit-beside-backlog
-test/scheduler/backlog-slots
 test/scheduler/slots-backlog-turn
 test/scheduler/superseded-claim
 test/integration/touched-scope
 # A daemon started on a node:test project: its results, its slow tier and
 # capacity mark, the version probe of each project's Node at startup, two
 # overlapping runs of its lane through the sweep, the bare-file note under
-# its policy inputs, a step-down's cancel of its tier (row 011-31), a
-# reload that reconciles its projects (row 011-78), and the warm-up's
-# record of its slow file's reads (016-17).
+# its policy inputs, a step-down's cancel of its tier (row 011-31) and a
+# reload that reconciles its projects (row 011-78).
 test/integration/slow-spawn
 test/integration/capacity-project
 test/daemon/composite-runner
@@ -169,11 +180,8 @@ test/daemon/step-down-lanes
 test/daemon/reload-projects
 test/daemon/reload-coverage
 test/daemon/observed-malformed
-test/cli/warmup.test
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
-# A real `node --test` on a remote lane through the bundled plugin CLI (row 026-16).
-test/e2e/spec-026-remote
 test/e2e/slow-node-test
 test/e2e/codex-upgrade
 
@@ -213,7 +221,6 @@ test/code/crap/lazy
 # Spec 020 D3 (row 020-03): the gate's one-shot collector runs real `node --test`
 # fixture projects with V8 coverage and Node's own type stripping.
 test/code/gate/collect-mixed.test.ts
-test/code/gate/collect-budget.test.ts
 # Spec 020 D15 (row 020-16b): a node:test entry's `prepare` before its real `node --test` run.
 test/code/gate/collect-prepare.test.ts
 test/code/gate/collect-scope-prepare.test.ts
@@ -228,13 +235,10 @@ test/cli/code-gate-keep-busy.test.ts
 test/cli/code-gate-closures.test.ts
 # Rows 020-34 and 020-35 (#194): selection by declared inputs over real node:test runs and children.
 test/cli/code-gate-inputs.test.ts
-# Rows 020-43 and 020-44 (#196): the runners at once and one node:test pool over real node:test runs.
-test/code/gate/collect-lanes.test.ts
 # Row 020-53 (#210): a covered callback beside an unrelated failing file, over real node:test runs.
 test/cli/code-gate-failed-outside.test.ts
 # Row 020-59 (#201, #216): the gate keeps each chunk of real node:test runs while the runs go on.
 test/cli/code-gate-keep-early.test.ts
-test/cli/code-gate-keep-kill.test.ts
 # Spec 023 D6 (row 023-04): a SIGKILL'd CLI process leaves no real node:test run behind.
 test/cli/code-gate-kill-parent.test.ts
 # Review wave 1 B2 (row 023-04): the files-only gate's one environment over real node:test runs.
