@@ -29,6 +29,7 @@ import { fromBase } from "./next-step-text.js";
 import { nodeMismatchLines } from "./node-mismatch.js";
 import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
+import { remoteLines, unlistedText } from "./remote-status.js";
 import { slowSlotLines } from "./slot-holders.js";
 import { squealMismatchLines } from "./squeal-mismatch.js";
 import { detailLines, hiddenParts } from "./status-detail.js";
@@ -76,7 +77,8 @@ export function formatStatus(
     // 011-311: so does the revision's listing, in the same sentence when both apply.
     ...delaysLines(result, command),
     // Row 005-90: before the listing, no count reads as all clear; one sentence says why.
-    ...(result.testFilesListed === false ? [noResultsText(command)] : []),
+    // Row 026-20 (lessons D1): or why the live daemon could not list them.
+    ...(result.testFilesListed === false ? [unlistedText(result, noResultsText(command))] : []),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     ...knownFailuresLine(result),
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
@@ -101,6 +103,8 @@ export function formatStatus(
     ...focusedLines(result, full),
     ...(result.testFilesListed === false ? [] : [`Affected checks: ${affected(result, command)}`]),
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
+    // Spec 026 D12.1 (row 026-20): the remote's one line, while one is named.
+    ...remoteLines(result),
     // Spec 018 D5: an import none of whose results is current because the environment differs.
     ...importDefaultLines(result),
     // Spec 018 D19: shared results recorded on another Node than the daemon runs, said once.

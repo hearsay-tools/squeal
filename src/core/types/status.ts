@@ -928,6 +928,19 @@ export interface StatusSnapshot extends StatusHeader {
    * `revision` is `null` when the note belongs to no revision.
    */
   readonly daemonNotes: readonly DaemonNote[];
+  /**
+   * Row 026-20 (spec 026 D12.1): the remote's one summary line, which plain
+   * status prints as `Remote:`: provider and machine, state, lanes and
+   * runners, planning, environment mode, last proof or reason. Absent when
+   * no remote lane is named for the worktree.
+   */
+  readonly remote?: string;
+  /**
+   * Row 026-20 (lessons D1): why the live daemon could not list the current
+   * revision's test files, while none is listed, such as a remote refused
+   * under `whenLost: "not-run"`. Absent otherwise.
+   */
+  readonly listingFailed?: string;
   /** The open checkpoint, running or owed (tasks 001-217, 001-219). Absent when none is. */
   readonly checkpoint?: CheckpointInProgress;
   /**

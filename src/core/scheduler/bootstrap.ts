@@ -223,12 +223,16 @@ export async function baseline(
   );
   const owed = ledger.checkpoints.takeOwed();
   const forced = outside(owedStrict(ledger, owed), [...misses, ...unkeyed]);
-  ledger.checkpoints.start(
-    checkpointId,
-    "baseline",
-    ledger.revision.number,
-    [...misses, ...unkeyed, ...forced].map((file) => file.ref),
-  );
+  // Row 026-20 (lessons D1): with the listing failed no baseline starts: which files the suite
+  // holds is not known, so neither an empty list nor a stored one reads as a completed suite.
+  if (listed !== null) {
+    ledger.checkpoints.start(
+      checkpointId,
+      "baseline",
+      ledger.revision.number,
+      [...misses, ...unkeyed, ...forced].map((file) => file.ref),
+    );
+  }
   if (lookupOnly) ledger.checkpoints.finish("abandoned");
   // Only a predecessor's queued work runs, unless the start resumes a rest (011-33, 011-91).
   const holds = lookupOnly && !resumesRest;

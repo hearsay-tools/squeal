@@ -50,6 +50,7 @@ import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js
 import { openRuns } from "./open-runs.js";
 import { outstandingOf } from "./outstanding.js";
 import { pendingPhasesOf, pendingTestFilesOf } from "./phase-files.js";
+import { listingFailedOf, remoteOf } from "./remote-status.js";
 import { runtimeFilesStatus } from "./runtime-files.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { squealMismatchOf } from "./squeal-mismatch.js";
@@ -198,6 +199,7 @@ function snapshot(
     load,
   );
 
+  const daemonNotes = readDaemonNotes(store, worktreeId);
   const snapshot: StatusSnapshot = {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -215,7 +217,10 @@ function snapshot(
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
-    daemonNotes: readDaemonNotes(store, worktreeId),
+    daemonNotes,
+    // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
+    ...remoteOf(daemonNotes),
+    ...listingFailedOf(daemonNotes, header, daemon),
     ...checkpoint,
     ...vitestExcluded(at),
     ...configProblemsOf(at),
