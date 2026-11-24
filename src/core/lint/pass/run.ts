@@ -50,19 +50,6 @@ export interface PassEnd {
   readonly grew: boolean;
 }
 
-/** `key()`, with `onKeying` told before and after it (row 011-302, `LintPassOptions.onKeying`). */
-async function told<T>(
-  onKeying: ((keying: boolean) => void) | undefined,
-  key: () => Promise<T>,
-): Promise<T> {
-  onKeying?.(true);
-  try {
-    return await key();
-  } finally {
-    onKeying?.(false);
-  }
-}
-
 /**
  * Spec 017 D7, one pass at the latest revision: the provider made ready
  * (D4) with the unlisted inputs read on disk, the keys of what changed
@@ -100,8 +87,9 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
   const keyer = new Keyer(basis, ready.provider, source, state.unlisted, extensions);
   const lint = state.policy.lint;
   const readByLint = session.readByLint;
-  const keying = { worktreeId, tool, store, source, lint, now, recorded, readByLint };
-  const keyed = await told(options.onKeying, () => rekey(keying, keyer, latest));
+  const { onKeying } = options;
+  const keying = { worktreeId, tool, store, source, lint, now, recorded, readByLint, onKeying };
+  const keyed = await rekey(keying, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);
   // Spec 019 D1, D5 step 1 (rows 019-22, 019-45): a lint group at `pause`, `stop` or `commit`
   // lints what its moment or a request released only.

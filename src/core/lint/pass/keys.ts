@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { extname } from "node:path";
-import { checkKey } from "../../keys/check-key.js";
+import { checkKey, encodeSegment, keyFromSegments } from "../../keys/check-key.js";
 import { createInputMatcher } from "../../keys/glob.js";
 import type { RelativePath } from "../../types/common.js";
 import type { CheckKey, FileHash } from "../../types/keys.js";
@@ -173,6 +173,63 @@ export function lintKey(
     method: "static imports plus declared inputs" as const,
   };
   return checkKey(environment, closure, blobOf, inputs.wholeProgram ? `program:${segment}` : "");
+}
+
+/** `lintKey` over one basis and blob reader: the key of one file. */
+export type LintKeyOf = (path: RelativePath, inputs: LintFileInputs, segment: string) => CheckKey;
+
+/**
+ * Row 017-36 (issue #274 F3.4): `lintKey` with what every file shares
+ * computed once: the shared parts, the sorted config and closure paths
+ * with their encoded segments, and the environment hash per distinct
+ * computed config. The file's own segment goes in at its sort position,
+ * or not at all when it is itself a config or closure path. The key is
+ * byte-identical to `lintKey`'s. The config segments are read at the
+ * first key, so `blobOf` answers then as it would have for `lintKey`.
+ */
+export function createLintKeyer(basis: KeyBasis, blobOf: BlobOf): LintKeyOf {
+  const head = [LINT_KEY, ...shared(basis)];
+  const environments = new Map<string, string>();
+  const project = basis.snapshot.declaration.tool;
+  let paths: RelativePath[] | null = null;
+  let segments: string[] = [];
+  const around = new Map<number, readonly [string, string]>();
+  const split = (at: number): readonly [string, string] => {
+    let parts = around.get(at);
+    if (parts === undefined) {
+      parts = [segments.slice(0, at).join(""), segments.slice(at).join("")];
+      around.set(at, parts);
+    }
+    return parts;
+  };
+  return (path, inputs, segment) => {
+    if (paths === null) {
+      paths = configInputs(basis);
+      segments = paths.map((p) => encodeSegment(p, blobOf(p)));
+    }
+    let environment = environments.get(inputs.config);
+    if (environment === undefined) {
+      environment = sha256(JSON.stringify([...head, inputs.config]));
+      environments.set(inputs.config, environment);
+    }
+    const at = sortedIndex(paths, path);
+    const own = paths[at] === path ? "" : encodeSegment(path, blobOf(path));
+    const [before, after] = split(at);
+    const dependencies = inputs.wholeProgram ? `program:${segment}` : "";
+    return keyFromSegments(environment, { project, path }, [before, own, after], dependencies);
+  };
+}
+
+/** The first index of `sorted` whose path does not sort before `path`, as `Array.sort` orders. */
+function sortedIndex(sorted: readonly RelativePath[], path: RelativePath): number {
+  let low = 0;
+  let high = sorted.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if ((sorted[mid] as RelativePath) < path) low = mid + 1;
+    else high = mid;
+  }
+  return low;
 }
 
 /**
