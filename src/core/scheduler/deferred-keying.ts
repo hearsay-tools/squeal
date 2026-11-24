@@ -61,6 +61,16 @@ export function stopAsksTests(policy: Policy): boolean {
   );
 }
 
+/**
+ * D1.4: whether a commit asks a configured test group (019 D5). A commit
+ * then opens the runner, so the files it asks for have keys.
+ */
+export function commitAsksTests(policy: Policy): boolean {
+  return groupView(policy).groups.some(
+    (group) => group.index !== null && group.at === "commit" && group.select.kind === "tests",
+  );
+}
+
 /** A group whose selector may take a file of `runner`. */
 function ownsAny(group: ResolvedGroup, runner: CheckRunner): boolean {
   const { select } = group;

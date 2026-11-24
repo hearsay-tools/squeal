@@ -12,6 +12,7 @@ import {
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
@@ -21,6 +22,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
+import { groupPolicy, inTurn, nodeTestGroup } from "./group-lanes-fixture.js";
 
 /*
  * Spec 026 D1 (row 026-05): with no test group at `edit` or `pause`, the
@@ -65,7 +67,11 @@ interface Counted {
   readonly counts: Map<string, number>;
 }
 
-async function started(repo: CatchUpRepo, policy: Partial<Policy>): Promise<Counted> {
+async function started(
+  repo: CatchUpRepo,
+  policy: Partial<Policy>,
+  beforeStart?: (side: CatchUpSide) => Promise<void>,
+): Promise<Counted> {
   const counts = new Map<string, number>();
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-026-05-slot-"));
   onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
@@ -77,6 +83,7 @@ async function started(repo: CatchUpRepo, policy: Partial<Policy>): Promise<Coun
     // A group lane's shared slot, as `groupSide` gives it (row 019-10).
     scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [0] } },
   });
+  await beforeStart?.(side);
   await side.scheduler.start();
   await side.rest();
   return { side, counts };
@@ -124,20 +131,13 @@ describe("deferred runner keying (spec 026 D1)", { timeout: 60_000 }, () => {
     expect(
       keyingDeferred(policy([{ ...UNIT, name: "e", tests: ["x/**"], at: "edit" }, UNIT])),
     ).toBe(false);
-    const nt = (name: string) => ({ name, argv: [], env: {}, include: ["*.mjs"] });
-    const nodes = policy([UNIT, { name: "n", runner: "nodeTest", project: "a", at: "manual" }], {
-      nodeTest: [nt("a"), nt("b")],
-    });
-    expect(runnerKeyingDeferred(nodes, "nodeTest"), "entry b falls to `tests`").toBe(false);
-    const both = policy(
-      [
-        UNIT,
-        { name: "n", runner: "nodeTest", project: "a", at: "manual" },
-        { name: "m", runner: "nodeTest", project: "b", at: "stop" },
-      ],
-      { nodeTest: [nt("a"), nt("b")] },
-    );
-    expect(runnerKeyingDeferred(both, "nodeTest")).toBe(true);
+    // `groupPolicy`'s node:test entries are `nt` and `ns`, its pytest entry `py`.
+    const entries: Policy = { ...DEFAULT_POLICY, ...groupPolicy() };
+    const py: CheckGroup = { name: "p", runner: "pytest", at: "manual" };
+    const nodes = { ...entries, checks: [UNIT, py, nodeTestGroup("n", "manual", "nt")] };
+    expect(runnerKeyingDeferred(nodes, "pytest")).toBe(true);
+    expect(keyingDeferred(nodes), "entry ns falls to `tests`, at edit").toBe(false);
+    const both = { ...nodes, checks: [...nodes.checks, nodeTestGroup("m", "stop", "ns")] };
     expect(keyingDeferred(both)).toBe(true);
     expect(stopAsksTests(both)).toBe(true);
     expect(stopAsksTests(policy([UNIT, LINT]))).toBe(false);
@@ -195,5 +195,42 @@ describe("deferred runner keying (spec 026 D1)", { timeout: 60_000 }, () => {
     const { counts } = await started(repo, {});
     expect(counts.get("environment")).toBeGreaterThan(0);
     expect(counts.get("testFiles")).toBeGreaterThan(0);
+  });
+
+  it("Stop's required group opens the runner at the turn's end", async () => {
+    const repo = catchUpRepo(FILES);
+    const turn: { end?: () => Promise<void> } = {};
+    const { side, counts } = await started(
+      repo,
+      { checks: [{ ...UNIT, at: "stop" }] },
+      async (s) => {
+        turn.end = (await inTurn(s)).end;
+      },
+    );
+    await side.edit("watch", "src/core.ts");
+    await side.rest();
+    expect(Object.fromEntries(counts), "no call before Stop").toEqual({});
+    await turn.end?.();
+    await expect.poll(() => side.current(A) && side.current(B), { timeout: 20_000 }).toBe(true);
+    expect(counts.get("environment")).toBeGreaterThan(0);
+  });
+
+  it("a `commit` group's ask opens the runner and runs the committed file's readers", async () => {
+    const repo = catchUpRepo(FILES);
+    const eager = await started(repo, {});
+    await expect
+      .poll(() => eager.side.current(A) && eager.side.current(B), { timeout: 20_000 })
+      .toBe(true);
+    await eager.side.scheduler.close();
+
+    const { side, counts } = await started(repo, { checks: [{ ...UNIT, at: "commit" }] });
+    await side.edit("watch", "src/core.ts");
+    await side.rest();
+    expect(Object.fromEntries(counts), "no call before the commit").toEqual({});
+    git(side.root, ["commit", "-qam", "core"]);
+    await side.scheduler.handleBatch({ trigger: "interval", paths: [] });
+    await expect.poll(() => side.current(A), { timeout: 20_000 }).toBe(true);
+    expect(counts.get("environment")).toBeGreaterThan(0);
+    expect(side.runner.runs.flatMap((run) => run.files.map((f) => f.path))).toEqual([A]);
   });
 });
