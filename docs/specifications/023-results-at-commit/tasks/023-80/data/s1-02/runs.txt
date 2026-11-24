@@ -1,0 +1,34 @@
+## runs (17), seconds from session start
+70s	2s	tree	rev 0	completed	packages/cezar/src/lint/active-run-write-index.test.ts
+84s	15s	commit	rev 0	completed	4 other files
+84s	17s	commit	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+84s	34s	commit	rev 0	completed	activity.e2e.ts
+85s	14s	tree	rev 0	completed	4 other files
+85s	18s	tree	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+99s	24s	commit	rev 0	completed	6 other files
+100s	24s	tree	rev 0	completed	4 other files
+120s	8s	commit	rev 0	completed	agent-browser-tabs.e2e.ts
+124s	3s	commit	rev 0	completed	packages/cezar/src/lint/lint-ast-grep-1.test.ts, packages/cezar/src/lint/lint-ast-grep-2.test.ts
+125s	8s	tree	rev 0	completed	4 other files
+130s	24s	commit	rev 0	completed	agents-dock.e2e.ts
+133s	7s	tree	rev 0	completed	packages/cezar/src/lint/plugin.test.ts, packages/cezar/src/lint/run-history-reader.test.ts
+155s	23s	commit	rev 0	completed	agents-dock.e2e.ts
+178s	36s	tree	rev 0	completed	agents-dock.e2e.ts
+214s	5s	tree	rev 0	completed	activity.e2e.ts
+223s	8s	commit	rev 0	completed	artifact-project-links.e2e.ts
+
+## 023-78: browser files per side, in start order
+commit: activity.e2e.ts, agent-browser-tabs.e2e.ts, agents-dock.e2e.ts, artifact-project-links.e2e.ts
+tree: agents-dock.e2e.ts, activity.e2e.ts
+both sides: 2
+  activity.e2e.ts: commit 84s, tree 214s, commit first
+  agents-dock.e2e.ts: commit 130s, tree 178s, commit first
+
+## 023-81: test files run more than once on one side (run starts)
+commit	packages/cezar/src/lint/lint-ast-grep-1.test.ts	99s, 124s
+commit	packages/cezar/src/lint/lint-ast-grep-2.test.ts	99s, 124s
+commit	packages/web/e2e/agents-dock.e2e.ts	130s, 155s
+tree	packages/cezar/src/lint/lint-ast-grep-1.test.ts	100s, 125s
+tree	packages/cezar/src/lint/lint-ast-grep-2.test.ts	100s, 125s
+tree	packages/cezar/src/lint/plugin.test.ts	125s, 133s
+tree	packages/cezar/src/lint/run-history-reader.test.ts	125s, 133s

@@ -1,0 +1,1 @@
+      2 browser: 97 test files; 1 current at revision 0; 96 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.

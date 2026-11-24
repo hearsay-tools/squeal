@@ -1,0 +1,34 @@
+## runs (16), seconds from session start
+49s	1s	tree	rev 0	completed	packages/cezar/src/lint/active-run-write-index.test.ts
+59s	33s	commit	rev 0	completed	10 other files
+59s	16s	commit	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+60s	33s	commit	rev 0	completed	activity.e2e.ts
+62s	13s	tree	rev 0	completed	4 other files
+62s	15s	tree	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+75s	25s	tree	rev 0	completed	6 other files
+92s	2s	commit	rev 0	completed	packages/cezar/src/lint/lint-ast-grep-1.test.ts, packages/cezar/src/lint/lint-ast-grep-2.test.ts
+94s	25s	tree	rev 0	completed	activity.e2e.ts
+101s	23s	tree	rev 0	completed	6 other files
+111s	2s	tree	rev 0	completed	packages/cezar/src/lint/parity-runner-subset.test.ts
+123s	10s	tree	rev 0	completed	18 other files
+124s	9s	tree	rev 0	completed	activity.e2e.ts
+134s	6s	tree	rev 0	completed	agent-browser-tabs.e2e.ts
+143s	5s	tree	rev 0	completed	agents-dock.e2e.ts
+144s	4s	commit	rev 0	completed	packages/cezar/src/lint/layer-import.test.ts
+
+## 023-78: browser files per side, in start order
+commit: activity.e2e.ts
+tree: activity.e2e.ts, agent-browser-tabs.e2e.ts, agents-dock.e2e.ts
+both sides: 1
+  activity.e2e.ts: commit 60s, tree 94s, commit first
+
+## 023-81: test files run more than once on one side (run starts)
+commit	packages/cezar/src/lint/lint-ast-grep-1.test.ts	59s, 92s
+commit	packages/cezar/src/lint/lint-ast-grep-2.test.ts	59s, 92s
+tree	packages/cezar/src/lint/ast-rules-owners.test.ts	75s, 101s
+tree	packages/cezar/src/lint/lint-ast-grep-1.test.ts	75s, 101s
+tree	packages/cezar/src/lint/lint-ast-grep-2.test.ts	75s, 101s
+tree	packages/cezar/src/lint/lint-runner.test.ts	75s, 101s
+tree	packages/cezar/src/lint/plugin.test.ts	75s, 101s
+tree	packages/cezar/src/lint/run-history-reader.test.ts	75s, 101s
+tree	packages/web/e2e/activity.e2e.ts	94s, 124s

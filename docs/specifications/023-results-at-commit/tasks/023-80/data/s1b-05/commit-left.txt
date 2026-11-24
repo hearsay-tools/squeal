@@ -1,0 +1,31 @@
+## squeal ps after squeal stop
+squeal ps · 1 daemon, 0 test processes · no flags
+Host    load 12.0 13.9 13.0 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 0.8% · memory pressure 0.0% (0.0% full) · memory 2.6 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 0.0 CPUs (0.0% of busy) · memory 875 MiB (33% of used) + 0 swap · pool 0 of 11 permits
+
+~squeal-w37/runs/w37/s1b-05 (this repository) · 1 daemon · CPU 0.0 · memory 875 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3245102  8bdd9baa  0.1.614          6m    0%     0m20s  276M    0     idle
+    host vitest      3245479  local                      6m    0%     1m12s  598M    0
+
+Store processes
+  3266114  code.sqlite of ~squeal-w37/runs/w37/s1b-05/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/c3dd3d0842dc4f6e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3245102  age 6m  at d8abcfe46bbe
+
+## checkout folders
+ls: cannot access '~squeal-w37/runs/w37/s1b-05/.git/squeal/checkouts': No such file or directory
+~squeal-w37/runs/w37/home/.cache/squeal/checkouts/c3dd3d0842dc4f6e:
+total 12
+drwxrwxr-x  3 squeal-w37 squeal-w37 4096 Nov 24 09:48 .
+drwxrwxr-x 23 squeal-w37 squeal-w37 4096 Nov 24 09:51 ..
+drwxrwxr-x  4 squeal-w37 squeal-w37 4096 Nov 24 09:48 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:53 .
+drwxrwxr-x 23 squeal-w37 squeal-w37 4096 Nov 24 09:51 ..
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:52 8bcab88e7b17d471.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:48 99df17331f6dbc54.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:53 a0d2f50a595b7e95.json

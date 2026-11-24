@@ -1,0 +1,2 @@
+      2 browser: 97 test files, time unknown: too few runs stored (2 of them have a stored duration) and this call measured no rate for the browser group (0 of its 8 results there in 98 s were that group's); name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>... --run
+      2 browser: 97 test files; 1 current at revision 0; 96 pending, running packages/web/e2e/thread-scroll.e2e.ts since 09:28 (no earlier run). Squeal runs them now; `squeal run browser --wait 60000` waits for their results.

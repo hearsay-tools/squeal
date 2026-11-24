@@ -1,0 +1,63 @@
+## squeal ps after squeal stop
+squeal ps · 5 daemons, 8 test processes · no flags
+Host    load 19.1 14.3 13.0 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 32% · memory pressure 0.0% (0.0% full) · memory 10.7 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 10.0 CPUs (at least 98% of busy) · memory 7.9 GiB (73% of used) + 0 swap · pool 7 of 11 permits
+
+~squeal-w37/runs/w37/s2-08 (this repository) · 1 daemon · CPU at least 5.3 · memory 1.5 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3279154  85073304  0.1.614          2m   11%     0m30s  463M    0     fast tier, 200 files; 1131 pending
+    host vitest      3279715  local                      1m  135%     1m09s  487M    0
+    host vitest      3293464  local                     16s    0%     0m01s  145M    0
+    vitest           3294949  fork worker                8s     ?     0m03s  175M    0     nice 10, +3 children
+    vitest           3294955  fork worker                8s     ?     0m03s  234M    0     nice 10, +3 children
+    vitest           3294961  fork worker                8s     ?     0m02s  58M     0     nice 10, +5 children
+    vitest           3294981  fork worker                8s     ?     0m03s  ?       ?     nice 10
+
+~squeal-w37/runs/w37/s1b-05 · 2 daemons · CPU 2.6 · memory 3.9 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3245102  8bdd9baa  0.1.614          4m    1%     0m19s  237M    0     fast tier, 1 file
+    host vitest      3245479  local                      4m    0%     1m12s  598M    0
+    host vitest      3282228  local                      1m    3%     0m04s  260M    0
+    group:browser:vitest3284049  fork worker               56s   11%     0m08s  365M    0     nice 10, +2 children
+    group:browser:vitest3284257                            53s  108%     0m48s  1.4G    0     escaped, nice 10, +22 children
+    group:browser:vitest3284273                            53s    0%     0m00s  384K    0     escaped, nice 10
+    group:browser:vitest3284275                            53s    0%     0m00s  328K    0     escaped, nice 10
+  serving            3244435  b20528c5  0.1.614          4m  141%     1m26s  338M    0     1 session
+    host vitest      3244536  local                      4m    0%     1m08s  630M    0
+    host node-test   3244537  local                      4m    0%     0m00s  41M     0
+    host node-test   3244543  local                      4m    0%     0m00s  50M     0
+
+~squeal-w37/runs/w37/s2-09 · 2 daemons · CPU 2.0 · memory 2.5 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3282258  9ed4462d  0.1.614          1m  105%     0m17s  590M    0     idle
+    host vitest      3283343  local                      1m    0%     0m56s  811M    0
+  serving            3281510  828e18e8  0.1.614          1m   98%     0m34s  649M    0     1 session
+    host vitest      3281720  local                      1m    0%     0m53s  468M    0
+
+Store processes
+  3266114  code.sqlite of ~squeal-w37/runs/w37/s1b-05/.git
+  3282427  code.sqlite of ~squeal-w37/runs/w37/s2-08/.git
+  3292435  code.sqlite of ~squeal-w37/runs/w37/s2-09/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/0d55592de3ce3176/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 3279154  age 2m  at a5c9b7223b65
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/6c779b202e429cbe/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 3282258  age 1m  at a5c9b7223b65
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/c3dd3d0842dc4f6e/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3245102  age 4m  at d8abcfe46bbe
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w37/runs/w37/s2-08/.git/squeal/checkouts': No such file or directory
+~squeal-w37/runs/w37/home/.cache/squeal/checkouts/0d55592de3ce3176:
+total 12
+drwxrwxr-x  3 squeal-w37 squeal-w37 4096 Nov 24 09:51 .
+drwxrwxr-x 23 squeal-w37 squeal-w37 4096 Nov 24 09:51 ..
+drwxrwxr-x  4 squeal-w37 squeal-w37 4096 Nov 24 09:51 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:52 .
+drwxrwxr-x 23 squeal-w37 squeal-w37 4096 Nov 24 09:51 ..
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:52 8bcab88e7b17d471.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:48 99df17331f6dbc54.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:51 a0d2f50a595b7e95.json

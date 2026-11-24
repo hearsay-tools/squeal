@@ -1,0 +1,18 @@
+## runs (6), seconds from session start
+76s	4s	tree	rev 0	completed	test/store/open.test.ts
+91s	47s	commit	rev 0	completed	200 other files
+92s	11s	tree	rev 0	completed	4 other files
+104s	11s	tree	rev 0	completed	4 other files
+114s	5s	commit	rev 0	completed	test/store/open.test.ts
+115s	15s	tree	rev 0	completed	4 other files
+
+## 023-78: browser files per side, in start order
+commit: (none)
+tree: (none)
+both sides: 0
+
+## 023-81: test files run more than once on one side (run starts)
+tree	test/ci-action/record-squeal-fails.test.ts	92s, 104s
+tree	test/ci/export-absolute.test.ts	92s, 104s
+tree	test/ci/export-evidence.test.ts	92s, 104s
+tree	test/ci/export-formats.test.ts	92s, 104s

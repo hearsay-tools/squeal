@@ -1,0 +1,92 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-24 09:26:28 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w37/runs/w37/s1b-02
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+worktree ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+HEAD d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w37 squeal-w37    0 Nov 24 09:15 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/3958ef12707ddb3d:
+total 12
+drwxrwxr-x  3 squeal-w37 squeal-w37 4096 Nov 24 09:26 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+drwxrwxr-x  4 squeal-w37 squeal-w37 4096 Nov 24 09:26 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/59ca60072f09d148:
+total 8
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:25 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+
+home/.cache/squeal/checkouts/5f74c8a04ec47cc2:
+total 8
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:20 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+
+home/.cache/squeal/checkouts/81fef68b214b6fa0:
+total 8
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:24 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+
+home/.cache/squeal/checkouts/93662e21bb7d191d:
+total 8
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:30 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+
+home/.cache/squeal/checkouts/c37c8d0d8ccdc54d:
+total 8
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:27 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:31 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:29 1ab5d199163beb07.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:31 43cab8d638c0338b.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:28 9b5cd4bc41892203.json
+
+home/.cache/squeal/checkouts/e6d9606c7172a940:
+total 8
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:32 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+
+home/.cache/squeal/checkouts/f5e8798a920a164a:
+total 8
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:17 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+2954345       1       06:35 squeal s1b-02 daemon @b26f7ea2 ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs daemon ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+2954737 2954345       06:32 /opt/squeal-w37/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs runner-host ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+2957111       1       06:01 squeal s1b-02 store --disable-warning=ExperimentalWarning ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs store-process ~squeal-w37/runs/w37/s1b-02/.git --store code
+2976842       1       05:26 /opt/squeal-w37/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+2976843       1       05:26 /opt/squeal-w37/node24/bin/node ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease.mjs watch-app 2976842 c294d61d-2b74-4f72-9b10-2d9fc754e380:13300088 ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+2982408       1       04:47 /opt/squeal-w37/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w37/runs/w37/s1b-02/.ai/qa/served/s1b-02
+2982410       1       04:47 /opt/squeal-w37/node24/bin/node ~squeal-w37/runs/w37/s1b-02/.ai/scripts/test-env-lease.mjs watch-app 2982408 c294d61d-2b74-4f72-9b10-2d9fc754e380:13303912 ~squeal-w37/runs/w37/s1b-02 ~squeal-w37/runs/w37/s1b-02/.ai/qa/served/s1b-02
+3035957 2954345       01:59 /opt/squeal-w37/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs runner-host ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+3069391 3069390       00:02 timeout --kill-after=30 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did the last commit (8be977ad6) change any test results compared with its parent commit? Tell me which test files, if any, now pass or fail differently.
+3069393 3069391       00:02 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did the last commit (8be977ad6) change any test results compared with its parent commit? Tell me which test files, if any, now pass or fail differently.
+3069600       1       00:02 squeal s1-03 daemon @8898ec67 ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs daemon ~squeal-w37/runs/w37/s1-03
+3069918 3069600       00:01 /opt/squeal-w37/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs runner-host ~squeal-w37/runs/w37/s1-03 --runner vitest
+3069919 3069600       00:01 /opt/squeal-w37/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs runner-host ~squeal-w37/runs/w37/s1-03 --runner node-test
+3069925 3069600       00:01 /opt/squeal-w37/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w37/runs/w37/claude/plugins/cache/hearsay/squeal/0.1.614/dist/cli/squeal.mjs runner-host ~squeal-w37/runs/w37/s1-03 --runner node-test

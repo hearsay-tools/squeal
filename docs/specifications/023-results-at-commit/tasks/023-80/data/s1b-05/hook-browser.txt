@@ -1,0 +1,1 @@
+      2 browser: 97 test files; running packages/web/e2e/thread-scroll.e2e.ts since 09:49 (no earlier run); 96 not run at revision 0. Squeal runs them now and has not queued the rest; `squeal run browser --wait 60000` runs them now and waits for their results.

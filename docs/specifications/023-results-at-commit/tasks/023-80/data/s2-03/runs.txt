@@ -1,0 +1,193 @@
+## runs (25), seconds from session start
+72s	3s	tree	rev 0	completed	test/store/open.test.ts
+83s	14s	commit	rev 0	completed	4 other files
+85s	12s	tree	rev 0	completed	4 other files
+97s	12s	commit	rev 0	completed	4 other files
+97s	11s	tree	rev 0	completed	4 other files
+108s	31s	tree	rev 0	completed	4 other files
+109s	31s	commit	rev 0	completed	4 other files
+140s	10s	tree	rev 0	completed	4 other files
+140s	17s	commit	rev 0	completed	36 other files
+149s	14s	tree	rev 0	completed	34 other files
+157s	2s	commit	rev 0	completed	test/store/prune-removed.test.ts
+159s	79s	commit	rev 0	completed	200 other files
+164s	4s	tree	rev 0	completed	test/store/prune-removed.test.ts
+168s	34s	tree	rev 0	completed	4 other files
+202s	6s	tree	rev 0	completed	4 other files
+208s	7s	tree	rev 0	completed	test/daemon/store-fault-daemon.test.ts, test/daemon/full-check-daemon.test.ts, test/harness/store-fault-hook.test.ts
+216s	8s	tree	rev 0	completed	4 other files
+224s	9s	tree	rev 0	completed	4 other files
+232s	6s	tree	rev 0	completed	4 other files
+238s	7s	commit	rev 0	completed	6 other files
+239s	5s	tree	rev 0	completed	4 other files
+244s	14s	tree	rev 0	completed	200 other files
+245s	8s	commit	rev 0	completed	4 other files
+254s	5s	commit	rev 0	completed	4 other files
+259s	2s	commit	rev 0	completed	200 other files
+
+## 023-78: browser files per side, in start order
+commit: (none)
+tree: (none)
+both sides: 0
+
+## 023-81: test files run more than once on one side (run starts)
+commit	test/ci-action/record-squeal-fails.test.ts	83s, 97s
+commit	test/ci/export-absolute.test.ts	83s, 97s
+commit	test/ci/export-evidence.test.ts	83s, 97s
+commit	test/ci/export-formats.test.ts	83s, 97s
+commit	test/ci/export-wrapper.test.ts	109s, 159s
+commit	test/store/prune-removed.test.ts	140s, 157s
+commit	test/cli/ci-export-children.test.ts	159s, 245s
+commit	test/cli/code-gate-children.test.ts	159s, 245s
+commit	test/cli/code-gate-closures.test.ts	159s, 245s
+commit	test/cli/code-gate-estimate.test.ts	159s, 245s
+commit	test/cli/code-gate-exceptions.test.ts	159s, 254s
+commit	test/cli/code-gate-failed-outside.test.ts	159s, 254s
+commit	test/cli/code-gate-files-environment.test.ts	159s, 254s
+commit	test/cli/code-gate-files.test.ts	159s, 254s
+commit	test/cli/code-gate-inputs.test.ts	159s, 259s
+commit	test/cli/code-gate-json-stdout.test.ts	159s, 259s
+commit	test/cli/code-gate-keep-busy.test.ts	159s, 259s
+commit	test/cli/code-gate-keep-early.test.ts	159s, 259s
+commit	test/cli/code-gate-keep-grown-daemon.test.ts	159s, 259s
+commit	test/cli/code-gate-keep-grown.test.ts	159s, 259s
+commit	test/cli/code-gate-keep-kill.test.ts	159s, 259s
+commit	test/cli/code-gate-keep-node-test.test.ts	159s, 259s
+commit	test/cli/code-gate-keep-stop.test.ts	159s, 259s
+commit	test/cli/code-gate-keep.test.ts	159s, 259s
+commit	test/cli/code-gate-kill-parent.test.ts	159s, 259s
+commit	test/cli/code-gate-log.test.ts	159s, 259s
+commit	test/cli/code-gate-parts-cases.test.ts	159s, 259s
+commit	test/cli/code-gate-parts-environment.test.ts	159s, 259s
+commit	test/cli/code-gate-parts-link.test.ts	159s, 259s
+commit	test/cli/code-gate-parts-unstarted.test.ts	159s, 259s
+commit	test/cli/code-gate-parts.test.ts	159s, 259s
+commit	test/cli/code-gate-prepare-cancel.test.ts	159s, 259s
+commit	test/cli/code-gate-prepare.test.ts	159s, 259s
+commit	test/cli/code-gate-prerun.test.ts	159s, 259s
+commit	test/cli/code-gate-retry.test.ts	159s, 259s
+commit	test/cli/code-gate-scope.test.ts	159s, 259s
+commit	test/cli/code-gate-setup-early.test.ts	159s, 259s
+commit	test/cli/code-gate-setup.test.ts	159s, 259s
+commit	test/cli/code-gate-stored-adapters.test.ts	159s, 259s
+commit	test/cli/code-gate-stored-rerun-prerun.test.ts	159s, 259s
+commit	test/cli/code-gate-stored-rerun.test.ts	159s, 259s
+commit	test/cli/code-gate-stored.test.ts	159s, 259s
+commit	test/cli/code-gate-teardown.test.ts	159s, 259s
+commit	test/cli/code-gate.test.ts	159s, 259s
+commit	test/cli/codex-launcher-config.test.ts	159s, 259s
+commit	test/cli/codex.test.ts	159s, 259s
+commit	test/cli/daemon-commands.test.ts	159s, 259s
+commit	test/cli/group-pending-release.test.ts	159s, 259s
+commit	test/cli/launcher-codex-runtime.test.ts	159s, 259s
+commit	test/cli/launcher-one-node.test.ts	159s, 259s
+commit	test/cli/launcher.test.ts	159s, 259s
+commit	test/cli/remove.test.ts	159s, 259s
+commit	test/cli/retry-busy.test.ts	159s, 259s
+commit	test/cli/retry-no-result-daemon.test.ts	159s, 259s
+commit	test/cli/retry.test.ts	159s, 259s
+commit	test/cli/round-trip.test.ts	159s, 259s
+commit	test/cli/run-all-owner.test.ts	159s, 259s
+commit	test/cli/run-all-verdict-daemon.test.ts	159s, 259s
+commit	test/cli/run-all-verdict.test.ts	159s, 259s
+commit	test/cli/run-busy-reads.test.ts	159s, 259s
+commit	test/cli/run-covered.test.ts	159s, 259s
+commit	test/cli/run-group-daemon.test.ts	159s, 259s
+commit	test/cli/run-group-narrow.test.ts	159s, 259s
+commit	test/cli/run-group-stall.test.ts	159s, 259s
+commit	test/cli/run-group-wait.test.ts	159s, 259s
+commit	test/cli/run-group.test.ts	159s, 259s
+commit	test/cli/run-lanes.test.ts	159s, 259s
+commit	test/cli/run-lint-group.test.ts	159s, 259s
+commit	test/cli/run-refused-pass.test.ts	159s, 259s
+commit	test/cli/run-slow-accept.test.ts	159s, 259s
+commit	test/cli/run-slow-held.test.ts	159s, 259s
+commit	test/cli/run-slow-unchanged.test.ts	159s, 259s
+commit	test/cli/run-slow-wait.test.ts	159s, 259s
+commit	test/cli/run-slow.test.ts	159s, 259s
+commit	test/cli/selection-paths.test.ts	159s, 259s
+commit	test/cli/selection-result.test.ts	159s, 259s
+commit	test/cli/setup/block-remove.test.ts	159s, 259s
+commit	test/cli/setup/block.test.ts	159s, 259s
+commit	test/cli/setup/build-outputs.test.ts	159s, 259s
+commit	test/cli/setup/candidates.test.ts	159s, 259s
+commit	test/cli/setup/codex-runtime.test.ts	159s, 259s
+commit	test/cli/setup/exclude-bounded.test.ts	159s, 259s
+commit	test/cli/setup/exclude-proposal.test.ts	159s, 259s
+commit	test/cli/setup/excluded.test.ts	159s, 259s
+commit	test/cli/setup/gates.test.ts	159s, 259s
+commit	test/cli/setup/init-flags.test.ts	159s, 259s
+commit	test/cli/setup/plan-runners.test.ts	159s, 259s
+commit	test/cli/setup/plan.test.ts	159s, 259s
+commit	test/cli/setup/pytest.test.ts	159s, 259s
+commit	test/cli/setup/setup-changes.test.ts	159s, 259s
+commit	test/cli/setup/setup-exclude.test.ts	159s, 259s
+commit	test/cli/setup/setup-flow.test.ts	159s, 259s
+commit	test/cli/slow-wait-liveness.test.ts	159s, 259s
+commit	test/cli/source-path-readers.test.ts	159s, 259s
+commit	test/cli/start-stop-busy.test.ts	159s, 259s
+commit	test/cli/status-at-fixture.test.ts	159s, 259s
+commit	test/cli/status-at-run-env.test.ts	159s, 259s
+commit	test/cli/status-at-run-inputs.test.ts	159s, 259s
+commit	test/cli/status-at-run-killed.test.ts	159s, 259s
+commit	test/cli/status-at-run-review.test.ts	159s, 259s
+commit	test/cli/status-at-run.test.ts	159s, 259s
+commit	test/cli/status-at-selection.test.ts	159s, 259s
+commit	test/cli/status-at.test.ts	159s, 259s
+commit	test/cli/status-check-args.test.ts	159s, 259s
+commit	test/cli/status-config-problem.test.ts	159s, 259s
+commit	test/cli/status-ignored-config.test.ts	159s, 259s
+commit	test/cli/status-paths-focus.test.ts	159s, 259s
+commit	test/cli/status-paths-paused.test.ts	159s, 259s
+commit	test/cli/status-paths.test.ts	159s, 259s
+commit	test/cli/status-wait-ask-race.test.ts	159s, 259s
+commit	test/cli/status-wait-ask-scheduler.test.ts	159s, 259s
+commit	test/cli/status-wait-ask.test.ts	159s, 259s
+commit	test/cli/status-wait-deadline.test.ts	159s, 259s
+commit	test/cli/status-wait-edit.test.ts	159s, 259s
+commit	test/cli/status-wait-first-commit.test.ts	159s, 259s
+commit	test/cli/status-wait-focus-capped.test.ts	159s, 259s
+commit	test/cli/status-wait-focus-shared.test.ts	159s, 259s
+commit	test/cli/status-wait-focus-unqueued.test.ts	159s, 259s
+commit	test/cli/status-wait-focus-usage.test.ts	159s, 259s
+commit	test/cli/status-wait-focus-wide.test.ts	159s, 259s
+commit	test/cli/status-wait-focus.test.ts	159s, 259s
+commit	test/cli/status-wait-group-moment.test.ts	159s, 259s
+commit	test/cli/status-wait-group-narrow.test.ts	159s, 259s
+commit	test/cli/status-wait-group-readers.test.ts	159s, 259s
+commit	test/cli/status-wait-groups.test.ts	159s, 259s
+commit	test/cli/status-wait-later-move.test.ts	159s, 259s
+commit	test/cli/status-wait-listing.test.ts	159s, 259s
+commit	test/cli/status-wait-mixed.test.ts	159s, 259s
+commit	test/cli/status-wait-paths-overlap.test.ts	159s, 259s
+commit	test/cli/status-wait-paths-slow.test.ts	159s, 259s
+commit	test/cli/status-wait-paths.test.ts	159s, 259s
+commit	test/cli/status-wait-paused.test.ts	159s, 259s
+commit	test/cli/status-wait-pool.test.ts	159s, 259s
+commit	test/cli/status-wait-promote.test.ts	159s, 259s
+commit	test/cli/status-wait-promoted.test.ts	159s, 259s
+commit	test/cli/status-wait-reasons.test.ts	159s, 259s
+commit	test/cli/status-wait-round-trip.test.ts	159s, 259s
+commit	test/cli/status-wait-same-start.test.ts	159s, 259s
+commit	test/cli/status-wait-slow-policy.test.ts	159s, 259s
+commit	test/cli/status-wait-successor.test.ts	159s, 259s
+commit	test/cli/status-wait-synced-lapse.test.ts	159s, 259s
+commit	test/cli/status-wait-unlisted-run.test.ts	159s, 259s
+commit	test/cli/status-wait-window.test.ts	159s, 259s
+commit	test/cli/status-wait.test.ts	159s, 259s
+commit	test/cli/stop-bound.test.ts	159s, 259s
+commit	test/cli/stop-lock.test.ts	159s, 259s
+commit	test/cli/stop-mark.test.ts	159s, 259s
+commit	test/cli/stop-removed.test.ts	159s, 259s
+commit	test/cli/stop-root.test.ts	159s, 259s
+tree	test/ci-action/record-squeal-fails.test.ts	85s, 97s
+tree	test/ci/export-absolute.test.ts	85s, 97s
+tree	test/ci/export-evidence.test.ts	85s, 97s
+tree	test/ci/export-formats.test.ts	85s, 97s
+tree	test/ci/export-wrapper.test.ts	108s, 168s
+tree	test/store/prune-removed.test.ts	149s, 164s
+tree	test/daemon/store-fault-daemon.test.ts	202s, 208s
+tree	test/cli/ci-export-children.test.ts	216s, 224s
+tree	test/cli/code-gate-children.test.ts	232s, 239s
+tree	test/cli/code-gate-closures.test.ts	232s, 239s
+tree	test/cli/code-gate-estimate.test.ts	232s, 239s

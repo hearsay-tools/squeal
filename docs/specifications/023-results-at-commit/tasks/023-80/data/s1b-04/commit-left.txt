@@ -1,0 +1,38 @@
+## squeal ps after squeal stop
+squeal ps · 2 daemons, 0 test processes · no flags
+Host    load 11.3 14.4 12.6 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 0.7% · memory pressure 0.0% (0.0% full) · memory 3.2 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 1.5 CPUs (84% of busy) · memory 1.5 GiB (47% of used) + 0 swap · pool 0 of 11 permits
+
+~squeal-w37/runs/w37/s1b-04 (this repository) · 1 daemon · CPU 0.0 · memory 838 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3171221  7c1eec52  0.1.614          6m    0%     0m27s  246M    0     idle
+    host vitest      3171575  local                      6m    0%     1m04s  592M    0
+
+~squeal-w37/runs/w37/s1-05 · 1 daemon · CPU 1.5 · memory 718 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3243263  5ecd948a  0.1.614          2s   40%     0m02s  147M    0     idle
+    host vitest      3243419  local                      1s  110%     0m03s  457M    0
+    host node-test   3243420  local                      1s    0%     0m00s  50M     0
+    host node-test   3243426  local                      1s    0%     0m00s  64M     0
+
+Store processes
+  3193761  code.sqlite of ~squeal-w37/runs/w37/s1b-04/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/e9b6f5dafaf0d62b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3171221  age 6m  at d8abcfe46bbe
+
+## checkout folders
+ls: cannot access '~squeal-w37/runs/w37/s1b-04/.git/squeal/checkouts': No such file or directory
+~squeal-w37/runs/w37/home/.cache/squeal/checkouts/e9b6f5dafaf0d62b:
+total 12
+drwxrwxr-x  3 squeal-w37 squeal-w37 4096 Nov 24 09:41 .
+drwxrwxr-x 19 squeal-w37 squeal-w37 4096 Nov 24 09:44 ..
+drwxrwxr-x  4 squeal-w37 squeal-w37 4096 Nov 24 09:41 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:46 .
+drwxrwxr-x 19 squeal-w37 squeal-w37 4096 Nov 24 09:44 ..
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:45 137dba46e0d9c999.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:46 2d0b84f1e69b2276.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:41 f21421ed7bd5aa36.json

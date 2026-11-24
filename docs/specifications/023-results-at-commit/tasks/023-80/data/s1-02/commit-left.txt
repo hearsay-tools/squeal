@@ -1,0 +1,41 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 0 test processes · no flags
+Host    load 8.2 10.3 5.6 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 2.0% · memory pressure 0.0% (0.0% full) · memory 5.5 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 2.4 CPUs (96% of busy) · memory 3.5 GiB (63% of used) + 0 swap · pool 2 of 11 permits
+
+~squeal-w37/runs/w37/s1-02 (this repository) · 1 daemon · CPU 0.0 · memory 1.2 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2905561  52a8a666  0.1.614          3m    3%     0m24s  407M    0     94 pending
+    host vitest      2906817  local                      3m    0%     1m06s  611M    0
+    host vitest      2921955  local                      2m    0%     0m05s  241M    0
+
+~squeal-w37/runs/w37/s1b-02 · 2 daemons · CPU 2.4 · memory 2.2 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2954345  b26f7ea2  0.1.614         14s   14%     0m04s  220M    0     idle
+    host vitest      2954737  local                     11s  112%     0m16s  741M    0
+  serving            2952835  85dc9ced  0.1.614         26s   10%     0m04s  311M    0     1 session
+    host vitest      2953262  local                     26s  103%     0m31s  924M    0
+    host node-test   2953263  local                     26s    0%     0m00s  49M     0
+    host node-test   2953269  local                     26s    0%     0m00s  59M     0
+
+Store processes
+  2916098  code.sqlite of ~squeal-w37/runs/w37/s1-02/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 2954345  age 15s  at d8abcfe46bbe
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/c37c8d0d8ccdc54d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 2905561  age 3m  at d8abcfe46bbe
+
+## checkout folders
+ls: cannot access '~squeal-w37/runs/w37/s1-02/.git/squeal/checkouts': No such file or directory
+~squeal-w37/runs/w37/home/.cache/squeal/checkouts/c37c8d0d8ccdc54d:
+total 12
+drwxrwxr-x 3 squeal-w37 squeal-w37 4096 Nov 24 09:23 .
+drwxrwxr-x 9 squeal-w37 squeal-w37 4096 Nov 24 09:26 ..
+drwxrwxr-x 4 squeal-w37 squeal-w37 4096 Nov 24 09:23 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x 2 squeal-w37 squeal-w37 4096 Nov 24 09:26 .
+drwxrwxr-x 9 squeal-w37 squeal-w37 4096 Nov 24 09:26 ..
+-rw-rw-r-- 1 squeal-w37 squeal-w37  156 Nov 24 09:26 9b5cd4bc41892203.json
+-rw-rw-r-- 1 squeal-w37 squeal-w37  156 Nov 24 09:23 fe07657229692e99.json

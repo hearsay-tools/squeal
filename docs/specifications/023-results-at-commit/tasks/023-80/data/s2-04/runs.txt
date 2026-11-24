@@ -1,0 +1,34 @@
+## runs (12), seconds from session start
+56s	1s	tree	rev 0	completed	test/store/open.test.ts
+66s	51s	commit	rev 0	completed	200 other files
+68s	14s	tree	rev 0	completed	4 other files
+83s	12s	tree	rev 0	completed	4 other files
+94s	31s	tree	rev 0	completed	4 other files
+117s	17s	commit	rev 0	completed	36 other files
+126s	8s	tree	rev 0	completed	4 other files
+134s	23s	tree	rev 0	completed	34 other files
+134s	10s	commit	rev 0	completed	4 other files
+145s	32s	commit	rev 0	completed	4 other files
+157s	4s	tree	rev 0	completed	test/store/prune-removed.test.ts
+161s	11s	tree	rev 0	completed	4 other files
+
+## 023-78: browser files per side, in start order
+commit: (none)
+tree: (none)
+both sides: 0
+
+## 023-81: test files run more than once on one side (run starts)
+commit	test/ci-action/record-squeal-fails.test.ts	66s, 134s
+commit	test/ci/export-absolute.test.ts	66s, 134s
+commit	test/ci/export-evidence.test.ts	66s, 134s
+commit	test/ci/export-formats.test.ts	66s, 134s
+commit	test/ci/export-loaded.test.ts	66s, 145s
+commit	test/ci/export-snapshot.test.ts	66s, 145s
+commit	test/ci/export-wrapper.test.ts	66s, 145s
+commit	test/ci/export.test.ts	66s, 145s
+tree	test/ci-action/record-squeal-fails.test.ts	68s, 83s
+tree	test/ci/export-absolute.test.ts	68s, 83s
+tree	test/ci/export-evidence.test.ts	68s, 83s
+tree	test/ci/export-formats.test.ts	68s, 83s
+tree	test/ci/export-wrapper.test.ts	94s, 161s
+tree	test/store/prune-removed.test.ts	134s, 157s

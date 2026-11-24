@@ -1,0 +1,130 @@
+## 7s +1s $ squeal checks; squeal status --at 8be977ad6 --run --wait 100000; git show --stat --format=%H%n%P%n%s 8be977ad6 | head -40
+The checks Squeal runs in this repository (squeal.config.json):
+
+run-loop
+  Selects: Vitest test files matching packages/cezar/src/**/*parity*.test.ts, packages/cezar/src/**/worker-*.test.ts
+  Test files now: 0
+  Runs: between your turns: Squeal starts it when your turn ends, not after an edit
+  Run it now: `squeal run run-loop --wait 60000`
+
+browser
+  Selects: Vitest test files of project "e2e" matching packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `squeal run browser --wait 60000` does
+  Run it now: `squeal run browser --wait 60000`
+
+lint
+  Selects: lint with oxlint
+  Runs: after each edit
+  Run it now: `squeal run lint --wait 60000`
+
+slow
+  Selects: test files marked slow: slow.include packages/web/e2e/*.e2e.ts
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `squeal run slow --wait 60000`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+squeal status --at: 8be977ad6 is HEAD, your working tree's commit, and the tree is clean: compare with its parent, `squeal status --at HEAD~1 --run`
+8be977ad65ee8c46183e7dde9084b816215aa00c
+d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+perf(lint): share active-run owner syntax indexes (#3785)
+
+ .../cezar/src/lint/active-run-write-index.test.ts  |  72 ++++++++++++++
+ packages/cezar/src/lint/active-run-write.ts        | 107 ++++++++++++++-------
+ 2 files changed, 143 insertions(+), 36 deletions(-)
+
+## 10s +100s $ ls packages/web/e2e/thread-scroll.e2e.ts; squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -40; echo ----; squeal status --wait 100000 packages/cezar/src/lint/active-run-write-index.test.ts packages/web/e2e/thread-scroll.e2e.ts 2>&1 | tail -30
+packages/web/e2e/thread-scroll.e2e.ts
+squeal: asking the commit daemon at d8abcfe46 and this worktree's daemon
+squeal status --at d8abcfe46: 1920 test files at d8abcfe46 against the working tree (HEAD 8be977ad6); one call is the whole comparison
+Now is this worktree's daemon at revision 0.
+1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cezar/src/activity/demand.test.ts and 1666 more
+96 test files: no result (queued) -> no result (queued): packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts, packages/web/e2e/artifact-project-links.e2e.ts and 93 more
+16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more
+packages/cezar/src/lint/plugin.test.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)
+packages/cezar/src/lint/run-history-reader.test.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)
+packages/web/e2e/activity.e2e.ts: pass -> no result (queued) (at d8abcfe46: run in the commit's worktree)
+packages/cezar/src/lint/ast-rules-owners.test.ts: pass -> no result (running) (at d8abcfe46: run in the commit's worktree)
+packages/cezar/src/lint/lint-runner.test.ts: pass -> no result (running) (at d8abcfe46: run in the commit's worktree)
+packages/cezar/src/lint/lint-ast-grep-1.test.ts: no result (running) -> no result (running)
+packages/cezar/src/lint/lint-ast-grep-2.test.ts: no result (running) -> no result (running)
+packages/cezar/src/lint/active-run-write-index.test.ts: absent -> pass (now: run in this worktree)
+124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notSelected.excepted): .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, .ai/skills/check-code-quality/scripts/code-metrics.test.mjs, .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs and 121 more
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 7 unchanged, 1789 unknown, 124 not selected
+--run: queued 110 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/77d9f010aee501b3/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 12 have a result now (98.4 s)
+1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 111 test files the change selects with no result in the working tree in this worktree's daemon; 8 have a result now
+Still to run, at d8abcfe46: 98 test files, time unknown, by group: tests: about 18 s for 2 test files, at this call's rate for the tests group (11 results in 98 s); browser: 96 test files, time unknown: none has a stored duration and this call measured no rate for the browser group (1 of its 12 results there in 98 s were that group's); in the working tree: 103 test files, time unknown, by group: tests: about 41 s for 6 test files, up to 5 at once, from their stored durations, times 1.45 for the host's load per CPU; browser: 97 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate for the browser group (0 of its 8 results there in 98 s were that group's); name test files or folders to narrow it: squeal status --at 'HEAD~1' <path>... --run
+2 running and 96 queued at d8abcfe46 (its worktree), 4 running and 99 queued in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them.
+Results are kept 7 days; d8abcfe46 is 7 days old, so most of its files have no result.
+----
+Revision: 0
+Selected: packages/cezar/src/lint/active-run-write-index.test.ts, packages/web/e2e/thread-scroll.e2e.ts
+Named test files at revision 0: no known failures; 1 test file, each with a current result, after 1.2 s; 1 browser test file waits for `squeal run browser`, which this wait does not hold for: e2e: packages/web/e2e/thread-scroll.e2e.ts; this repository does not require it before you finish; `squeal run browser packages/web/e2e/thread-scroll.e2e.ts --wait 60000` runs it now and waits for its result. Worktree: known failures 0; not current: 1912 of 1920 test files (4 running, 99 queued, 1809 unknown)
+
+## 112s +99s $ squeal status --at HEAD~1 --run --wait 100000 packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint 2>&1 | tail -25
+packages/cezar/src/lint/ast-rules-launch-read-regressions.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/ast-rules-launch-read-scopes.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/ast-rules-launch-read.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/ast-rules.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/card-2-contrast.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/design-guardian.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/home-boundary.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/import-closure.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/layer-import.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/parity-runner-subset.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+packages/cezar/src/lint/product-env-read.test.ts: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs it; now pass (now: run in this worktree)
+8 more test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now pass (now: run in this worktree): packages/cezar/src/lint/raw-query-setter.test.ts, packages/cezar/src/lint/runner-fact-combination.test.ts, packages/cezar/src/lint/runner-id-branch.test.ts and 5 more
+1 more test file: absent -> pass (now: run in this worktree): packages/cezar/src/lint/active-run-write-index.test.ts
+1 more test file: no result (queued) -> no result (running): packages/web/e2e/thread-scroll.e2e.ts
+`--full` lists every file; `--json` gives each file's states.
+packages/cezar/src/lint/active-run-write-index.test.ts is new since d8abcfe46: `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` shows whether it fails on the code at d8abcfe46.
+0 pass -> fail, 0 fail -> pass, 9 unchanged, 21 unknown, of 30 named test files; the change selects 110 test files at d8abcfe46 (`squeal status --at 'HEAD~1'`, without paths, compares them)
+packages/web/e2e/thread-scroll.e2e.ts, packages/cezar/src/lint: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 34 s), 1 of 26 still running in the working tree
+--run: queued 1 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/77d9f010aee501b3/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 0 have a result now (98.3 s)
+19 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them
+--run, now: queued 26 test files the change selects with no result in the working tree in this worktree's daemon; 25 have a result now
+The rest of the queue, outside these paths: 94 more test files queued or running at d8abcfe46 (its worktree), 96 in the working tree
+Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 34 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate for the browser group (0 of its 25 results there in 98 s were that group's); packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: it has no stored duration)
+0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint --wait 100000 waits for them; squeal ps shows them.
+Results are kept 7 days; d8abcfe46 is 7 days old, so most of its files have no result.
+
+## 213s +99s $ squeal status --at HEAD~1 --wait 100000 packages/web/e2e/thread-scroll.e2e.ts 2>&1 | tail -8
+packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's run of packages/web/e2e/thread-scroll.e2e.ts to end, 0 of 1 still running in the working tree
+--wait: joined 1 test files with no result at d8abcfe46 in its commit daemon (its worktree ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/77d9f010aee501b3/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree); 0 have a result now (98.3 s)
+--wait, now: joined 1 test files the change selects with no result in the working tree in this worktree's daemon; 1 have a result now
+--wait, now: 1 test file went from running to a result in the working tree: packages/web/e2e/thread-scroll.e2e.ts
+The rest of the queue, outside these paths: 94 more test files queued or running at d8abcfe46 (its worktree), 96 in the working tree
+Still to run, at d8abcfe46: 1 test file, time unknown: not started, waiting for the browser group's run of packages/web/e2e/thread-scroll.e2e.ts to end; packages/web/e2e/thread-scroll.e2e.ts runs on its own (about 2 min)
+0 running and 1 queued at d8abcfe46 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.
+Results are kept 7 days; d8abcfe46 is 7 days old, so most of its files have no result.
+
+## 314s +199s $ squeal status --at HEAD~1 --wait 200000 packages/web/e2e/thread-scroll.e2e.ts 2>&1 | grep -E "thread-scroll|pass ->|fail ->" | head
+packages/web/e2e/thread-scroll.e2e.ts: no result (running) -> pass (now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 0 unchanged, 1 unknown, of 1 named test file; the change selects 110 test files at d8abcfe46 (`squeal status --at 'HEAD~1'`, without paths, compares them)
+packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 still running at d8abcfe46, none queued in the working tree
+Still to run, at d8abcfe46: about 3 min for 1 test file, up to 1 at once, from their stored durations, times 1.31 for the host's load per CPU; packages/web/e2e/thread-scroll.e2e.ts runs on its own (about 61 s)
+1 still running at d8abcfe46 (its worktree), 0 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.
+
+## 516s +17s $ squeal status --at HEAD~1 --wait 200000 packages/web/e2e/thread-scroll.e2e.ts 2>&1 | grep -E "thread-scroll|pass ->|fail ->" | head
+packages/web/e2e/thread-scroll.e2e.ts: pass -> pass (at d8abcfe46: run in the commit's worktree; now: run in this worktree)
+0 pass -> fail, 0 fail -> pass, 1 unchanged, 0 unknown, of 1 named test file; the change selects 110 test files at d8abcfe46 (`squeal status --at 'HEAD~1'`, without paths, compares them)
+--wait: 1 test file went from running to a result at d8abcfe46: packages/web/e2e/thread-scroll.e2e.ts
+
+## 540s SAY
+No test file passes or fails differently because of 8be977ad6. The comparison is only partial, though, because the full parent-commit run hadn't finished.
+
+**Commit:** `perf(lint): share active-run owner syntax indexes (#3785)`. It touches only `packages/cezar/src/lint/active-run-write.ts` and adds `packages/cezar/src/lint/active-run-write-index.test.ts`.
+
+**What I compared:** I ran Squeal on the commit and on its parent, d8abcfe46.
+- **`packages/web/e2e/thread-scroll.e2e.ts`:** it passes at the parent and passes now, so it is unchanged. The commit doesn't touch the web package, and I ran this file on its own to be sure.
+- **`packages/cezar/src/lint/active-run-write-index.test.ts`:** this is new in the commit, so it has no result at the parent. It passes now. I did not run `squeal proof` on it, so I can't say whether it fails on the old code.
+- **Other lint tests:** the 9 other named files with results on both sides (the lint tests plus `thread-scroll.e2e.ts`) show pass at both commits. The `packages/cezar/src/lint` files that had no parent result at first all pass now, but I have no parent result for them to compare against.
+
+**Gaps:** Squeal keeps results for 7 days, and the parent is 7 days old, so most of its stored results had expired. Across the repo, 1,789 of 1,920 test files had no parent result when I looked, and the rest of the browser e2e files were still queued. The comparison Squeal had finished showed 0 pass→fail and 0 fail→pass. Squeal also judged 124 test files unaffected, since none of their inputs differ between the two commits. I only checked the lint files and `thread-scroll.e2e.ts` individually, so I can't vouch for the rest.
+
+If you want the full repo compared, `squeal status --at HEAD~1 --all-missing --run` will run everything that lacks a parent result, but it will take a while.

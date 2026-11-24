@@ -1,0 +1,39 @@
+## squeal ps after squeal stop
+squeal ps · 2 daemons, 0 test processes · no flags
+Host    load 9.8 14.7 9.5 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 1.6% · memory pressure 0.0% (0.0% full) · memory 3.7 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 1.4 CPUs (86% of busy) · memory 1.8 GiB (50% of used) + 0 swap · pool 0 of 11 permits
+
+~squeal-w37/runs/w37/s1b-02 (this repository) · 1 daemon · CPU 0.0 · memory 1.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2954345  b26f7ea2  0.1.614          6m    0%     0m25s  291M    0     94 pending
+    host vitest      2954737  local                      6m    0%     0m54s  559M    0
+    host vitest      3035957  local                      1m    0%     0m04s  248M    0
+
+~squeal-w37/runs/w37/s1-03 · 1 daemon · CPU 1.4 · memory 778 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3069600  8898ec67  0.1.614          2s   29%     0m01s  165M    0     idle
+    host vitest      3069918  local                      1s  107%     0m04s  504M    0
+    host node-test   3069919  local                      1s    0%     0m00s  49M     0
+    host node-test   3069925  local                      1s    0%     0m00s  60M     0
+
+Store processes
+  2957111  code.sqlite of ~squeal-w37/runs/w37/s1b-02/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 2954345  age 6m  at d8abcfe46bbe
+
+## checkout folders
+ls: cannot access '~squeal-w37/runs/w37/s1b-02/.git/squeal/checkouts': No such file or directory
+~squeal-w37/runs/w37/home/.cache/squeal/checkouts/3958ef12707ddb3d:
+total 12
+drwxrwxr-x  3 squeal-w37 squeal-w37 4096 Nov 24 09:26 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+drwxrwxr-x  4 squeal-w37 squeal-w37 4096 Nov 24 09:26 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w37 squeal-w37 4096 Nov 24 09:31 .
+drwxrwxr-x 11 squeal-w37 squeal-w37 4096 Nov 24 09:28 ..
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:29 1ab5d199163beb07.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:31 43cab8d638c0338b.json
+-rw-rw-r--  1 squeal-w37 squeal-w37  156 Nov 24 09:28 9b5cd4bc41892203.json

@@ -1,0 +1,2 @@
+      2 browser: 97 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate for the browser group (0 of its 8 results there in 98 s were that group's); name test files or folders to narrow it: squeal status --at '8be977ad6^' <path>... --run
+      2 browser: 97 test files; 97 pending, waiting for capacity (whether the browser group's slot or the shared worker pool holds it is not known). Squeal runs them now; `squeal run browser --wait 60000` waits for their results.

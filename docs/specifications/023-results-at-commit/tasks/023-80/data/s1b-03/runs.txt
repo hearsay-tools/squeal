@@ -1,0 +1,37 @@
+## runs (19), seconds from session start
+65s	1s	tree	rev 0	completed	packages/cezar/src/lint/active-run-write-index.test.ts
+78s	28s	commit	rev 0	completed	10 other files
+79s	16s	commit	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+79s	28s	commit	rev 0	completed	activity.e2e.ts
+80s	12s	tree	rev 0	completed	4 other files
+80s	16s	tree	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+92s	21s	tree	rev 0	completed	4 other files
+107s	2s	commit	rev 0	completed	packages/cezar/src/lint/lint-ast-grep-1.test.ts, packages/cezar/src/lint/lint-ast-grep-2.test.ts
+109s	7s	commit	rev 0	completed	agent-browser-tabs.e2e.ts
+114s	19s	tree	rev 0	completed	6 other files
+117s	124s	tree	rev 0	completed	thread-scroll.e2e.ts
+118s	2s	tree	rev 0	completed	packages/cezar/src/lint/parity-runner-subset.test.ts
+133s	11s	tree	rev 0	completed	18 other files
+243s	134s	commit	rev 0	completed	thread-scroll.e2e.ts
+278s	5s	commit	rev 0	completed	packages/cezar/src/lint/layer-import.test.ts
+392s	11s	tree	rev 0	completed	activity.e2e.ts
+407s	126s	commit	rev 0	completed	thread-scroll.e2e.ts
+539s	7s	tree	rev 0	completed	agent-browser-tabs.e2e.ts
+548s	4s	commit	rev 0	crashed	agents-dock.e2e.ts
+
+## 023-78: browser files per side, in start order
+commit: activity.e2e.ts, agent-browser-tabs.e2e.ts, thread-scroll.e2e.ts, agents-dock.e2e.ts
+tree: thread-scroll.e2e.ts, activity.e2e.ts, agent-browser-tabs.e2e.ts
+both sides: 3
+  activity.e2e.ts: commit 79s, tree 392s, commit first
+  agent-browser-tabs.e2e.ts: commit 109s, tree 539s, commit first
+  thread-scroll.e2e.ts: commit 243s, tree 117s, tree first
+
+## 023-81: test files run more than once on one side (run starts)
+commit	packages/cezar/src/lint/lint-ast-grep-1.test.ts	78s, 107s
+commit	packages/cezar/src/lint/lint-ast-grep-2.test.ts	78s, 107s
+commit	packages/web/e2e/thread-scroll.e2e.ts	243s, 407s
+tree	packages/cezar/src/lint/ast-rules-owners.test.ts	92s, 114s
+tree	packages/cezar/src/lint/lint-ast-grep-1.test.ts	92s, 114s
+tree	packages/cezar/src/lint/lint-ast-grep-2.test.ts	92s, 114s
+tree	packages/cezar/src/lint/lint-runner.test.ts	92s, 114s
