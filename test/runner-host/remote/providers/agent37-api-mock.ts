@@ -30,6 +30,8 @@ export interface MockApi {
   readonly instances: Map<string, string>;
   /** How many `409 try_again` answers the next `start` calls get. */
   tryAgain: number;
+  /** Row 026-20: awaited after a `POST /v1/instances` arrived, before the mock creates and answers it. */
+  beforeCreate?: () => Promise<void>;
   close(): Promise<void>;
 }
 
@@ -101,8 +103,15 @@ export async function mockAgent37Api(certificates?: Certificates): Promise<MockA
         body: text === "" ? undefined : JSON.parse(text),
       };
       api.calls.push(call);
-      const [status, reply] = answer(api, call);
-      response.writeHead(status, { "Content-Type": "application/json" }).end(JSON.stringify(reply));
+      const creates = call.method === "POST" && call.path === "/v1/instances";
+      void (
+        creates && api.beforeCreate !== undefined ? api.beforeCreate() : Promise.resolve()
+      ).then(() => {
+        const [status, reply] = answer(api, call);
+        response
+          .writeHead(status, { "Content-Type": "application/json" })
+          .end(JSON.stringify(reply));
+      });
     });
   };
   const server =

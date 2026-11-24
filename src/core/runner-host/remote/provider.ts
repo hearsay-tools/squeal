@@ -40,6 +40,12 @@ export interface MachineRequest {
   readonly log: (line: string) => void;
   /** The env a provider's own processes (hooks, `ssh`) run with. Default the daemon's. */
   readonly env?: NodeJS.ProcessEnv;
+  /**
+   * Row 026-20 (lessons O1): aborts when the daemon's exit began. An
+   * `acquire` then starts no machine, and deletes one it created meanwhile,
+   * so none is left billing untracked. Absent: never.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /** Why a machine is released: `idle` sleeps, `daemon-exit` sleeps or detaches, `worktree-removed` destroys. */

@@ -13,7 +13,10 @@ import {
   type RemoteMachine,
   recordOf,
 } from "../../../../src/core/runner-host/remote/provider.js";
-import { createAgent37Provider } from "../../../../src/core/runner-host/remote/providers/agent37/index.js";
+import {
+  AcquireAborted,
+  createAgent37Provider,
+} from "../../../../src/core/runner-host/remote/providers/agent37/index.js";
 import { providerOf } from "../../../../src/core/runner-host/remote/providers/index.js";
 import type { AbsolutePath, WorktreeId } from "../../../../src/core/types/common.js";
 import { fakeSshAt, type MockApi, mockAgent37Api } from "./agent37-api-mock.js";
@@ -282,6 +285,52 @@ describe("agent37 acquire (row 026-15)", () => {
       "no Agent37 API key: set AGENT37_API_KEY",
     );
     expect(s.api.calls).toEqual([]);
+  });
+});
+
+// Row 026-20 (lessons O1): the daemon's exit during `acquire` leaves no instance billing untracked.
+describe("agent37 acquire at the daemon's exit (row 026-20)", () => {
+  it("creates no instance when the exit began before the create", async () => {
+    const s = await setup();
+    const exit = new AbortController();
+    exit.abort();
+    await expect(provider.acquire({ ...s.request, signal: exit.signal }, s.config)).rejects.toThrow(
+      AcquireAborted,
+    );
+    expect(calls(s.api).filter((c) => c === "POST /v1/instances")).toEqual([]);
+    expect(s.api.instances.size).toBe(0);
+  });
+
+  it("deletes the instance whose create was in flight when the exit began", async () => {
+    const s = await setup();
+    const exit = new AbortController();
+    s.api.beforeCreate = async () => exit.abort();
+    await expect(provider.acquire({ ...s.request, signal: exit.signal }, s.config)).rejects.toThrow(
+      AcquireAborted,
+    );
+    expect(calls(s.api)).toHaveLength(2);
+    expect(calls(s.api)[0]).toBe("POST /v1/instances");
+    expect(calls(s.api)[1]).toMatch(/^DELETE \/v1\/instances\/mock\d{6}$/);
+    expect(s.api.instances.size).toBe(0);
+    expect(s.ssh.argv()).toEqual([]);
+    expect(s.log.at(-1)).toMatch(
+      /^Agent37 instance mock\d{6} created after the daemon's exit began; deleted$/,
+    );
+  });
+
+  it("deletes a fresh instance when the exit began after its create, before its bootstrap", async () => {
+    const s = await setup({ bootstrap: "tree-sync" });
+    const exit = new AbortController();
+    const log = (line: string) => {
+      s.log.push(line);
+      if (/^Agent37 instance mock\d{6} created /.test(line)) exit.abort();
+    };
+    await expect(
+      provider.acquire({ ...s.request, log, signal: exit.signal }, s.config),
+    ).rejects.toThrow(AcquireAborted);
+    expect(s.api.instances.size).toBe(0);
+    expect(calls(s.api).at(-1)).toMatch(/^DELETE \/v1\/instances\/mock\d{6}$/);
+    expect(s.ssh.argv()).toEqual([]);
   });
 });
 

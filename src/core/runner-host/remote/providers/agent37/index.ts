@@ -37,7 +37,20 @@ import { tunnelHost, validInstanceId } from "./tunnel.js";
  * worktree's history. SSH goes through `squeal remote-tunnel agent37`
  * (D7.3.2). `sleep` stops compute billing; `worktree-removed` deletes the
  * instance so its disk stops billing too.
+ *
+ * Row 026-20 (lessons O1): `request.signal` aborts `acquire` at the
+ * daemon's exit. Before `POST /v1/instances` it creates none. The create in
+ * flight is never cut: its answer carries the only id that can delete the
+ * instance. A fresh instance whose create, start or bootstrap ended after
+ * the abort is deleted at once, before `acquire` rejects.
  */
+
+/** `acquire` stopped because the daemon's exit began (`MachineRequest.signal`). */
+export class AcquireAborted extends Error {
+  constructor() {
+    super("Agent37 acquire stopped: the daemon's exit began");
+  }
+}
 
 /** The login on the instance: the base image's user, whose home is the instance's disk. */
 const SSH_USER = "node";
@@ -106,21 +119,30 @@ async function acquire(
       'Agent37 "default" (gVisor) runs tests 3 to 4 times slower than "vm" and stored false failures in research; prefer "vm"',
     );
   }
+  const { signal } = request;
+  const stop = () => {
+    if (signal?.aborted === true) throw new AcquireAborted();
+  };
   const api = apiOf(settings, env, timing);
   const tracked = trackedState(request, env);
   let state: Agent37State | null = null;
+  stop();
   if (tracked !== null) {
     const found = await api.inspect(tracked.instanceId);
+    stop();
     if (found === null) {
       request.log(`Agent37 instance ${tracked.instanceId} is gone; creating another`);
     } else {
-      await untilRunning(api, tracked.instanceId, found, timing);
+      // A tracked instance stays tracked: an abort leaves it to the record and `remote prune`.
+      await untilRunning(api, tracked.instanceId, found, timing, signal);
       state = tracked;
       request.log(`Agent37 instance ${tracked.instanceId} reused (${found.status} before)`);
     }
   }
   const created = state === null;
   if (state === null) {
+    stop();
+    // Never aborted in flight: an instance Agent37 made after a cut request has no id here to delete.
     const made = await api.create({
       template: "agent37-base",
       region: settings.region,
@@ -132,6 +154,11 @@ async function acquire(
     });
     if (!validInstanceId(made.id))
       throw new Error("Agent37 created an instance with an unusable id");
+    if (signal?.aborted === true) {
+      await api.remove(made.id).catch(() => {});
+      request.log(`Agent37 instance ${made.id} created after the daemon's exit began; deleted`);
+      throw new AcquireAborted();
+    }
     state = {
       instanceId: made.id,
       region: settings.region,
@@ -140,14 +167,17 @@ async function acquire(
     };
     request.log(`Agent37 instance ${made.id} created (${settings.region} ${settings.type})`);
     try {
-      await untilRunning(api, made.id, made, timing);
+      await untilRunning(api, made.id, made, timing, signal);
     } catch (error) {
       await api.remove(made.id).catch(() => {});
       throw error;
     }
   }
   try {
-    return await bootstrap(request, settings, state, env, timing);
+    stop();
+    const machine = await bootstrap(request, settings, state, env, timing);
+    if (created) stop();
+    return machine;
   } catch (error) {
     // A fresh instance that never became usable holds nothing: deleted, so no disk bills untracked.
     if (created) await api.remove(state.instanceId).catch(() => {});

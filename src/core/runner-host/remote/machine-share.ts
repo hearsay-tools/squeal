@@ -59,6 +59,9 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  * when it fails the machine is refused, not replaced, and the daemon's
  * exit, which waits for a removal in flight, removes it again.
  *
+ * Row 026-20 (lessons O1): the daemon's exit aborts the acquire in flight
+ * (`MachineRequest.signal`); a provider deletes a machine it created then.
+ *
  * Review 0.1.620 N1: a wake of a machine that keeps `.git` current
  * (`syncGit`) brings `.git` to the worktree's Git state, so it waits for
  * the runs' leases as `refreshGit` does.
@@ -175,6 +178,15 @@ export function shareMachine(options: ShareOptions): MachineShare {
   let quiet: (() => void)[] = [];
   let gitWriting: Promise<void> | null = null;
   const refused = () => new MachineEnding("the daemon's exit released the remote machine");
+  /** Row 026-20 (lessons O1): aborted when the exit begins, so an acquire in flight stops. */
+  const exiting = new AbortController();
+  const asked: MachineRequest = {
+    ...request,
+    signal:
+      request.signal === undefined
+        ? exiting.signal
+        : AbortSignal.any([request.signal, exiting.signal]),
+  };
 
   const track = (write: () => void) => {
     try {
@@ -254,7 +266,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
 
   const reachOnce = async (): Promise<RemoteMachine> => {
     if (machine === null) {
-      const acquired = await provider.acquire(request, lane.providerConfig);
+      const acquired = await provider.acquire(asked, lane.providerConfig);
       // Acquired during the exit too: recorded, and `release` waits for this and releases it.
       machine = acquired;
       acquiredAt = ++incarnation;
@@ -399,6 +411,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
   /** Every work in flight on the machine ended, then the connection closed and the machine released. */
   const releaseOnce = async (): Promise<void> => {
     released = true;
+    exiting.abort();
     disarm();
     // N1: a refresh or wake waiting for the runs' leases writes nothing now.
     const waiting = quiet;
