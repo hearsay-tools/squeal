@@ -107,13 +107,40 @@ describe("the no-daemon staleness notice (spec 026 D2.4, row 026-09)", SLOW, () 
       expect(number, line).toBe("0");
       expect(what).toBe("changes on disk to 1 file (src/math.ts)");
     }
-    // Committed, the edit has no git status line; its stat still differs from the cache's.
+    // Committed, the edit has no git status line; its stat still differs from the cache's,
+    // and HEAD moved from the one the start scan saw.
     git(repo.root, ["commit", "-qam", "late"]);
+    const head = git(repo.root, ["rev-parse", "--short=7", "HEAD"]).trim();
     for (const line of await firstLines(repo)) {
-      expect(NOTICE.exec(line)?.[2], line).toBe("changes on disk to 1 file (src/math.ts)");
+      expect(NOTICE.exec(line)?.[2], line).toBe(
+        `the commit now at HEAD (${head}) and changes on disk to 1 file (src/math.ts)`,
+      );
     }
     // JSON stays as it was: the notice is for people and agents reading text.
     expect((await run(repo, ["status", "--json"])).first).toBe("{");
+  });
+
+  it("names revision 0 and a commit that changed only HEAD after a quiet start (B3)", async () => {
+    const repo = withOxlint(fixture(CONFIG));
+    const spawned = daemon(repo);
+    await waitReady(repo, spawned);
+    expect(await exitOf(spawned)).toEqual({ code: 0, signal: null });
+    expect(withStore(repo, (s) => s.revisions.latest(repo.worktreeId))).toBeNull();
+    for (const line of await firstLines(repo)) expect(line).not.toMatch(NOTICE);
+    const json = (await run(repo, ["status", "--json"])).out;
+
+    // No file's bytes change: only HEAD moves.
+    git(repo.root, ["commit", "--allow-empty", "-qm", "head-only"]);
+    const head = git(repo.root, ["rev-parse", "--short=7", "HEAD"]).trim();
+    for (const line of await firstLines(repo)) {
+      const [, number, what] = NOTICE.exec(line) ?? [];
+      expect(number, line).toBe("0");
+      expect(what).toBe(`the commit now at HEAD (${head})`);
+    }
+    // JSON stays as it was: same shape, no notice.
+    const after = (await run(repo, ["status", "--json"])).out;
+    expect(after.split("\n")[0]).toBe("{");
+    expect(Object.keys(JSON.parse(after))).toEqual(Object.keys(JSON.parse(json)));
   });
 
   it("names the revision a daemon recorded and the commit made after it stopped", async () => {

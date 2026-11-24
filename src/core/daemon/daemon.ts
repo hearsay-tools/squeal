@@ -24,6 +24,7 @@ import { ImportsSeen } from "../shared/imports-seen.js";
 import type { SharedReader } from "../shared/reader.js";
 import { slowSlotDir } from "../slow/slot.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
+import { gitHead } from "../status/git-head.js";
 import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
 import { isBusy } from "../store/connection.js";
 import { setBusyTimeout } from "../store/open.js";
@@ -1192,10 +1193,12 @@ class Daemon {
       code.nudge();
       lint();
       // Past the start scan: a registration at a session's start from here on records this
-      // daemon as scanned, which "none of the files changed here" needs (D6).
+      // daemon as scanned, which "none of the files changed here" needs (D6). Its `HEAD` is what
+      // the no-daemon notice compares at revision 0 (row 026-w2-r3).
+      const head = await gitHead(root).catch(() => null);
       await this.#writes.write(
         "the start's scan mark",
-        () => markScanned(store, worktreeId, this.#startedAt),
+        () => markScanned(store, worktreeId, this.#startedAt, head),
         within(DAEMON_START_BUSY_TIMEOUT_MS, () => this.#exit !== null),
       );
       // Started: from here a write waits as long as a serving daemon's (task 001-161).
