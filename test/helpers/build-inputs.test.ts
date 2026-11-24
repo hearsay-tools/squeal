@@ -20,9 +20,11 @@ import { PI_PLUGIN } from "../../src/harness/pi/build.js";
 import { type RecordedFile, takeRecorded } from "../../src/runners/observe/read.js";
 import { observeEnv, observeRecorder } from "../../src/runners/observe/runtime.js";
 import {
+  compilerSources,
   observeBuildInputs,
   observeMetafile,
   type SharedBuild,
+  type Stamp,
   sharedBuild,
   TSRS,
   TSRS_ARGS,
@@ -120,6 +122,9 @@ describe("a test that builds keys what its build compiled (011-141)", () => {
     expect(compiled).toContain("src/core/scheduler/scheduler.ts");
     expect(compiled.length).toBeGreaterThan(500);
     expect(unobserved(CLI_FIXTURE, compiled)).toEqual([]);
+    // What a kept build's membership check lists is what the compiler compiles (0.1.629 B2).
+    const sources = compiled.filter((path) => path.startsWith("src/"));
+    expect(compilerSources("tsconfig.build.json")).toEqual(sources);
   });
 
   it("records every file tsrs compiled for a build linked from the run's one (row 010-36)", () => {
@@ -177,7 +182,7 @@ describe("sharedBuild builds once per run and links each target (row 010-36)", (
   }
 
   const built = (target: string) => readFileSync(join(target, "cli/index.js"), "utf8");
-  const inode = (target: string) => statSync(join(target, "cli/index.js")).ino;
+  const inode = (target: string, file = "cli/index.js") => statSync(join(target, file)).ino;
 
   it("builds the first call's and links it into the next, each target its own directory", () => {
     sharedBuild(spec(), join(root, "t1"), root);
@@ -224,6 +229,93 @@ describe("sharedBuild builds once per run and links each target (row 010-36)", (
     sharedBuild(spec(), join(root, "t2"), root);
     expect(builds).toHaveLength(1);
     expect(readdirSync(join(run, "_shared-cli"))).not.toContain("lock");
+  });
+
+  /**
+   * A build of what `tsconfig.json` in `root` gives the compiler, each
+   * `src/<name>.ts` into `<name>.js`, as tsrs builds the CLI (review 0.1.629 B2).
+   */
+  function compiling(): SharedBuild {
+    return {
+      runDir: run,
+      name: "cli",
+      recipe: "r1",
+      members: () => compilerSources("tsconfig.json", root),
+      build: (outdir) => {
+        builds.push(outdir);
+        const inputs = compilerSources("tsconfig.json", root);
+        mkdirSync(outdir, { recursive: true });
+        for (const input of inputs) {
+          const out = join(outdir, input.slice("src/".length).replace(/\.ts$/, ".js"));
+          writeFileSync(out, readFileSync(join(root, input)));
+        }
+        return observeBuildInputs(inputs, root);
+      },
+    };
+  }
+
+  /** Writes `src/<name>`, older than any build, as a file edited before the run is. */
+  function source(name: string, content = `${name}\n`): void {
+    writeFileSync(join(root, "src", name), content);
+    utimesSync(join(root, "src", name), 0, 0);
+  }
+
+  /** The inputs the run's latest build keeps, which each hit stats again. */
+  function keptInputs(): readonly string[] {
+    const home = join(run, "_shared-cli");
+    const latest = readFileSync(join(home, "latest"), "utf8");
+    return (JSON.parse(readFileSync(join(home, latest, "stamp.json"), "utf8")) as Stamp).inputs;
+  }
+
+  it("builds again once a source file is added or removed, though no input changed (0.1.629 B2)", () => {
+    mkdirSync(join(root, "src"));
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      JSON.stringify({ include: ["src"], exclude: ["src/**/*.test.ts"] }),
+    );
+    source("a.ts");
+    source("a.test.ts");
+    sharedBuild(compiling(), join(root, "t1"), root);
+    sharedBuild(compiling(), join(root, "t2"), root);
+    expect(builds).toHaveLength(1);
+    expect(keptInputs()).toEqual(["src/a.ts"]);
+
+    source("b.ts");
+    sharedBuild(compiling(), join(root, "t3"), root);
+    expect(builds).toHaveLength(2);
+    expect(readdirSync(join(root, "t3")).sort()).toEqual(["a.js", "b.js"]);
+    expect(keptInputs()).toEqual(["src/a.ts", "src/b.ts"]);
+    // The file each test linked into is its own; the earlier ones keep theirs.
+    expect(readdirSync(join(root, "t2"))).toEqual(["a.js"]);
+
+    sharedBuild(compiling(), join(root, "t4"), root);
+    expect(builds).toHaveLength(2);
+    expect(inode(join(root, "t4"), "b.js")).toBe(inode(join(root, "t3"), "b.js"));
+
+    rmSync(join(root, "src/a.ts"));
+    sharedBuild(compiling(), join(root, "t5"), root);
+    expect(builds).toHaveLength(3);
+    expect(readdirSync(join(root, "t5"))).toEqual(["b.js"]);
+  });
+
+  it("lists the files a config gives the compiler, and refuses a pattern it cannot read", () => {
+    mkdirSync(join(root, "src/deep"), { recursive: true });
+    for (const name of ["a.ts", "deep/b.tsx", "deep/c.d.ts", "deep/c.test.ts", "d.js", "e.json"]) {
+      writeFileSync(join(root, "src", name), "");
+    }
+    const config = { include: ["src"], exclude: ["src/**/*.test.ts"] };
+    writeFileSync(join(root, "tsconfig.json"), JSON.stringify(config));
+    expect(compilerSources("tsconfig.json", root)).toEqual([
+      "src/a.ts",
+      "src/deep/b.tsx",
+      "src/deep/c.d.ts",
+    ]);
+    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["src/**/*.ts"] }));
+    expect(() => compilerSources("tsconfig.json", root)).toThrow("src/**/*.ts");
+    expect(compilerSources("tsconfig.build.json")).toContain("src/core/scheduler/scheduler.ts");
+    expect(compilerSources("tsconfig.build.json").filter((p) => p.endsWith(".test.ts"))).toEqual(
+      [],
+    );
   });
 
   it("takes over a lock whose process is gone", async () => {

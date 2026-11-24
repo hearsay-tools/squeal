@@ -99,6 +99,46 @@ export function compileObserved(args: readonly string[]): string[] {
   return observeBuildInputs(listedPaths(listed));
 }
 
+/** A file the compiler takes from an included directory: TypeScript, declarations too. */
+const TS_SOURCE = /\.(?:d\.)?[cm]?tsx?$/;
+
+/**
+ * The files the compiler config `tsconfig`, relative to `root`, gives the
+ * compiler now: the TypeScript files under each directory it includes, but
+ * those its `exclude` patterns name. It reads plain directories in
+ * `include` and, in `exclude`, a directory with a file name suffix under it
+ * at any depth (the test-file pattern of `tsconfig.build.json`). It throws
+ * on any other pattern, so a config it cannot read fails the test instead of
+ * letting an old build pass for current (review 0.1.629 B2).
+ */
+export function compilerSources(tsconfig: string, root: string = ROOT): string[] {
+  const config = JSON.parse(readFileSync(resolve(root, tsconfig), "utf8")) as {
+    include?: readonly string[];
+    exclude?: readonly string[];
+  };
+  const unread = (pattern: string) =>
+    new Error(`compilerSources: ${tsconfig} names ${pattern}, a pattern this does not read`);
+  const excluded = (config.exclude ?? []).map((pattern) => {
+    const match = /^([^*?]+)\/\*\*\/\*([^*?/]+)$/.exec(pattern);
+    if (match === null) throw unread(pattern);
+    return { under: `${match[1]}/`, suffix: match[2] ?? "" };
+  });
+  const files: string[] = [];
+  for (const dir of config.include ?? []) {
+    if (/[*?]/.test(dir)) throw unread(dir);
+    const base = resolve(root, dir);
+    for (const entry of readdirSync(base, { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile() || !TS_SOURCE.test(entry.name)) continue;
+      const path = relative(root, join(entry.parentPath, entry.name)).split(sep).join("/");
+      if (excluded.some(({ under, suffix }) => path.startsWith(under) && path.endsWith(suffix))) {
+        continue;
+      }
+      files.push(path);
+    }
+  }
+  return [...new Set(files)].sort();
+}
+
 /*
  * Row 010-36: one build per run, not one per test file. The first test file
  * that builds `name` builds it into `<runDir>/_shared-<name>/<id>/dist`
@@ -107,8 +147,9 @@ export function compileObserved(args: readonly string[]): string[] {
  * the test file's own build directory and the global teardown still names
  * the file that leaked it. Each call stats the build's inputs, so the
  * recorder keys every test file by them, and reads them: a Vitest that
- * lives across edits (under a Squeal daemon) rebuilds once an input, or the
- * recipe, no longer matches what the kept build was made from.
+ * lives across edits (under a Squeal daemon) rebuilds once an input, the
+ * recipe, or the list of files it would compile (`members`) no longer
+ * matches what the kept build was made from.
  */
 
 export interface SharedBuild {
@@ -118,6 +159,13 @@ export interface SharedBuild {
   readonly name: string;
   /** What else the output depends on, such as the compiler's options. */
   readonly recipe: string;
+  /**
+   * The files the build would compile now, such as `compilerSources` lists.
+   * A kept build serves a call only while this list is the one it was built
+   * from: a file added or removed rebuilds, though no kept input changed
+   * (review 0.1.629 B2).
+   */
+  readonly members?: () => readonly string[];
   /** Builds into `outdir`; returns the worktree inputs it observed, as `observeBuildInputs` does. */
   readonly build: (outdir: string) => readonly string[];
 }
@@ -129,7 +177,7 @@ const SHARED_WAIT_MS = 600_000;
 const SETTLED_MS = 1_000;
 
 /** Kept beside each build: its inputs, and their digest when it can be reused. */
-interface Stamp {
+export interface Stamp {
   readonly inputs: readonly string[];
   readonly digest: string | null;
 }
@@ -144,7 +192,9 @@ export function sharedBuild(spec: SharedBuild, target: string, root: string = RO
   mkdirSync(home, { recursive: true });
   const deadline = Date.now() + SHARED_WAIT_MS;
   for (;;) {
-    const kept = current(home, spec.recipe, root);
+    // Listed before any build, so a file added while one runs rebuilds after it.
+    const recipe = withMembers(spec);
+    const kept = current(home, recipe, root);
     if (kept !== null) {
       observeBuildInputs(kept.inputs, root);
       linkTree(join(home, kept.id, "dist"), target);
@@ -154,7 +204,7 @@ export function sharedBuild(spec: SharedBuild, target: string, root: string = RO
     if (takeLock(lock)) {
       let built: string;
       try {
-        built = current(home, spec.recipe, root)?.id ?? publish(home, spec, root);
+        built = current(home, recipe, root)?.id ?? publish(home, spec, recipe, root);
       } finally {
         rmSync(lock, { force: true });
       }
@@ -164,6 +214,12 @@ export function sharedBuild(spec: SharedBuild, target: string, root: string = RO
     if (Date.now() > deadline) throw new Error(`sharedBuild: ${lock} held past the wait`);
     pause(100);
   }
+}
+
+/** The recipe of `spec` and the files it would compile now: a kept build matches both. */
+function withMembers(spec: SharedBuild): string {
+  if (spec.members === undefined) return spec.recipe;
+  return `${spec.recipe}\0${JSON.stringify(spec.members())}`;
 }
 
 /** The kept build whose inputs and recipe still match, or `null`. */
@@ -187,7 +243,7 @@ function current(
  * while it ran becomes `latest` and the builds before the one it replaces
  * go; another serves only this call.
  */
-function publish(home: string, spec: SharedBuild, root: string): string {
+function publish(home: string, spec: SharedBuild, recipe: string, root: string): string {
   const id = randomUUID();
   const tmp = join(home, `.tmp-${id}`);
   const started = Date.now();
@@ -205,7 +261,7 @@ function publish(home: string, spec: SharedBuild, root: string): string {
       (statSync(resolve(root, path), { throwIfNoEntry: false })?.mtimeMs ?? started) <
       started - SETTLED_MS,
   );
-  const stamp: Stamp = { inputs, digest: settled ? digest(spec.recipe, inputs, root) : null };
+  const stamp: Stamp = { inputs, digest: settled ? digest(recipe, inputs, root) : null };
   writeFileSync(join(tmp, "stamp.json"), JSON.stringify(stamp));
   renameSync(tmp, join(home, id));
   if (!settled) return id;

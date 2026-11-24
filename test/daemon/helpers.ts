@@ -24,7 +24,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { TEST_VERSION } from "../fixed-version.js";
 import { git } from "../hash/git-repo.js";
-import { compileObserved, sharedBuild } from "../helpers/build-inputs.js";
+import { compileObserved, compilerSources, sharedBuild } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";
 import {
   findProcesses,
@@ -94,7 +94,9 @@ function cliRecipe(): string {
  * Compiles with the pinned tsrs in fast mode (spec 010 D13) and stats each
  * file it compiled, so an edit the test's imports do not reach re-keys it
  * (011-141). Row 010-36: compiled once per run and linked into each test
- * file's own directory (`sharedBuild`); every call still stats those files.
+ * file's own directory (`sharedBuild`); every call still stats those files,
+ * and compiles again once a file is added to or removed from what
+ * `tsconfig.build.json` compiles.
  */
 export function buildCli(options: BuildOptions = {}, runDir = liveRunDirectory()): BuiltCli {
   const dir = testBuildDir(expect.getState().testPath, runDir ?? undefined);
@@ -103,6 +105,8 @@ export function buildCli(options: BuildOptions = {}, runDir = liveRunDirectory()
       runDir,
       name: "cli",
       recipe: cliRecipe(),
+      // A source file added or removed rebuilds, though no kept input changed (review 0.1.629 B2).
+      members: () => compilerSources("tsconfig.build.json", repoRoot),
       build: (outdir) => compileObserved([...CLI_BUILD, "--outDir", outdir]),
     },
     join(dir, "dist"),

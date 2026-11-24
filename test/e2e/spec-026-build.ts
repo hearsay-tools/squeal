@@ -15,7 +15,7 @@ import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
 import type { BuildOptions, BuiltCli } from "../daemon/helpers.js";
 import { liveRunDirectory, testBuildDir } from "../daemon/strays.js";
 import { TEST_VERSION } from "../fixed-version.js";
-import { observeMetafile, sharedBuild } from "../helpers/build-inputs.js";
+import { compilerSources, observeMetafile, sharedBuild } from "../helpers/build-inputs.js";
 
 /*
  * Spec 026 row 026-16: the Claude Code plugin's `dist/` as its build makes
@@ -28,8 +28,9 @@ import { observeMetafile, sharedBuild } from "../helpers/build-inputs.js";
  *
  * Row 010-36: the bundles are built once per run and linked into each test
  * file's own directory (`sharedBuild`), every call stat'ing what esbuild
- * bundled; the runtimes and the grammar are copied per call, so the test's
- * own reads still key it by them. `_options` is `buildCli`'s, which
+ * bundled and building again once a source file is added or removed; the
+ * runtimes and the grammar are copied per call, so the test's own reads
+ * still key it by them. `_options` is `buildCli`'s, which
  * `daemonSuite` passes; the plugin's `dist/` ships the recorder anyway.
  */
 export function buildPluginDist(
@@ -44,6 +45,8 @@ export function buildPluginDist(
       runDir,
       name: "plugin-dist",
       recipe: JSON.stringify(options("<outdir>")),
+      // A source file added or removed can change what an import resolves to (review 0.1.629 B2).
+      members: () => compilerSources("tsconfig.build.json"),
       build: (out) => observeMetafile(buildSync({ ...options(out), metafile: true }).metafile),
     },
     outdir,
