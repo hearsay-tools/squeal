@@ -17,7 +17,7 @@ import { GATE_RUNNERS, type TestFileEvidence } from "./types.js";
  */
 
 /** D14.1: where a group in scope came from. */
-export type ScopeSource = "default" | "gate.groups" | "--group";
+export type ScopeSource = "default" | "gate.groups" | "--group" | "--narrow";
 
 /** D14.1: the groups at the merge base and `gate.groups` as kept there. */
 export interface ScopeBase {
@@ -70,6 +70,18 @@ export interface LeftOutGroup {
   readonly tests?: number;
 }
 
+/**
+ * Spec 026 D5.1 (row 026-08): a left-out test file whose current result at
+ * its head key, in the local stores, failed. It did not run here.
+ */
+export interface LeftOutFailure {
+  readonly runner: TestFileEvidence["runner"];
+  readonly path: RelativePath;
+  readonly group: string;
+  /** Full names of its failed tests, sorted; `FILE_ERROR` for the file's own failure. */
+  readonly tests: readonly string[];
+}
+
 /** D14: what the collector gives the evaluator of the scope. */
 export interface ScopeEvidence {
   readonly inScope: readonly ScopeGroup[];
@@ -77,6 +89,18 @@ export interface ScopeEvidence {
   readonly leftOut: readonly LeftOutGroup[];
   /** By runner, then path. */
   readonly files: readonly LeftOutFile[];
+  /**
+   * Spec 026 D5.2: of `files`, the ones of a group in scope, which only
+   * `--narrow` leaves out. Absent when none is.
+   */
+  readonly narrowed?: number;
+  /** Spec 026 D5.1: the left-out files the stores hold a current failure of, by runner and path; absent when none. */
+  readonly failures?: readonly LeftOutFailure[];
+  /**
+   * Spec 026 D5.1: the runners listed test files and no group in scope
+   * owns one, as when every test group is `manual`. Absent otherwise.
+   */
+  readonly noTestFilesInScope?: true;
 }
 
 const isTestGroup = (group: ResolvedGroup) => group.select.kind !== "lint";
@@ -113,11 +137,15 @@ export function readScope(policy: Policy): {
 /**
  * D14.1: the scope at `given` with the `--group` names `added`; or the
  * usage error of a name that is not a test group there (D1, exit 2). With
- * no `given`, the default groups with no `gate.groups`.
+ * no `given`, the default groups with no `gate.groups`. Spec 026 D5.2 (row
+ * 026-08): with `narrow`, the scope is the `--group` groups alone; with
+ * none, `gate.groups` when set, else every test group, `manual` included,
+ * as 019 D6's narrow run ignores moments.
  */
 export function resolveScope(
   given: ScopeBase | undefined,
   added: readonly string[],
+  narrow = false,
 ): GateScope | { readonly error: string } {
   const base = given ?? readScope(DEFAULT_POLICY).base;
   const tests = base.groups.filter(isTestGroup);
@@ -132,6 +160,7 @@ export function resolveScope(
     if (!isTestGroup(group)) return { error: `--group ${name}: "${name}" ${LINT_ONLY}` };
   }
   const sourceOf = (group: ResolvedGroup): ScopeSource | null => {
+    if (narrow) return narrowSource(base, added, group.name);
     if (base.configured === null) {
       if (group.at !== "manual") return "default";
     } else if (base.configured.includes(group.name)) return "gate.groups";
@@ -142,6 +171,13 @@ export function resolveScope(
     return from === null ? [] : [{ name: group.name, at: group.at, from }];
   });
   return { groups: base.groups, inScope };
+}
+
+/** D5.2: where a group in a narrow scope comes from; `null` when it is out. */
+function narrowSource(base: ScopeBase, added: readonly string[], name: string): ScopeSource | null {
+  if (added.length > 0) return added.includes(name) ? "--group" : null;
+  if (base.configured !== null) return base.configured.includes(name) ? "gate.groups" : null;
+  return "--narrow";
 }
 
 /** A test file's runner by its `squeal.config.json` key (019 D1). */
@@ -203,8 +239,11 @@ export interface ScopeTally {
     chosen: readonly TestFileRef[],
     tests: ReadonlySet<RelativePath>,
   ): { readonly run: TestFileRef[]; readonly leftOut: LeftOutRef[] };
-  /** The scope evidence once the left-out files' closures are read. */
-  evidence(files: readonly LeftOutFile[]): ScopeEvidence;
+  /**
+   * The scope evidence once the left-out files' closures are read, with
+   * the current stored `failures` among them (spec 026 D5.1).
+   */
+  evidence(files: readonly LeftOutFile[], failures?: readonly LeftOutFailure[]): ScopeEvidence;
 }
 
 /** A tally of `scope` over the runners' selections, in the order they are split. */
@@ -221,11 +260,14 @@ export function tallyScope(scope: GateScope): ScopeTally {
     }
     return tally;
   };
+  let [listedAll, listedInScope] = [0, 0];
   return {
     split(runner, listed, chosen, tests) {
       for (const ref of listed) {
         const place = placeFile(scope, runner, ref);
-        if (!place.inScope) count(place).files += 1;
+        listedAll += 1;
+        if (place.inScope) listedInScope += 1;
+        else count(place).files += 1;
       }
       const run: TestFileRef[] = [];
       const leftOut: LeftOutRef[] = [];
@@ -242,7 +284,7 @@ export function tallyScope(scope: GateScope): ScopeTally {
       }
       return { run, leftOut };
     },
-    evidence(files) {
+    evidence(files, failures = []) {
       const order = scope.groups.map((g) => g.name);
       const leftOut = [...counts]
         .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
@@ -254,11 +296,24 @@ export function tallyScope(scope: GateScope): ScopeTally {
           add: addGroup(name),
           ...(t.tests === 0 ? {} : { tests: t.tests }),
         }));
-      const byRunner = (f: LeftOutFile) => GATE_RUNNERS.indexOf(f.runner);
+      const byRunner = (f: { readonly runner: TestFileEvidence["runner"] }) =>
+        GATE_RUNNERS.indexOf(f.runner);
       const sorted = [...files].sort(
         (a, b) => byRunner(a) - byRunner(b) || compare(a.path, b.path),
       );
-      return { inScope: scope.inScope, leftOut, files: sorted };
+      const inScope = (group: string) => scope.inScope.some((g) => g.name === group);
+      const narrowed = files.filter((f) => inScope(f.group)).length;
+      const failed = [...failures].sort(
+        (a, b) => byRunner(a) - byRunner(b) || compare(a.path, b.path),
+      );
+      return {
+        inScope: scope.inScope,
+        leftOut,
+        files: sorted,
+        ...(narrowed === 0 ? {} : { narrowed }),
+        ...(failed.length === 0 ? {} : { failures: failed }),
+        ...(listedAll > 0 && listedInScope === 0 ? { noTestFilesInScope: true as const } : {}),
+      };
     },
   };
 }

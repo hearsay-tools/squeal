@@ -1,5 +1,5 @@
 import type { GateReport } from "../core/code/gate/report.js";
-import type { LeftOutGroup } from "../core/code/gate/scope.js";
+import { addGroup, type LeftOutGroup } from "../core/code/gate/scope.js";
 import { plural, shellWord } from "../core/text.js";
 
 /*
@@ -77,4 +77,52 @@ export function leftOutText(report: GateReport): string {
     return ` ${name} (${at}) did not run: ${files}.`;
   });
   return `${lines.join("")}${testText(report)}`;
+}
+
+/**
+ * Spec 026 D5.1 (row 026-08): the verdict's note when no test group is in
+ * scope, or none in scope owns a test file, as when every test group is
+ * `manual`: the groups left out and the three ways to bring tests in;
+ * empty when a group in scope owns one.
+ */
+export function noGroupsText(report: GateReport): string {
+  const { scope } = report;
+  if (scope === undefined) return "";
+  if (scope.groups.length > 0 && scope.noTestFilesInScope !== true) return "";
+  const names = scope.leftOut.map(({ name, at }) => `${name} (${at})`);
+  const left = names.length === 0 ? "" : `; groups left out: ${names.join(", ")}`;
+  return ` (0 test groups in scope${left}; add --group <name>, use --narrow, or set gate.groups)`;
+}
+
+/** Spec 026 D5.2: what `--narrow` left out of the groups in scope; empty when nothing. */
+function narrowedText(report: GateReport): string {
+  const narrowed = report.scope?.narrowed ?? 0;
+  if (narrowed === 0) return "";
+  const [did, load, them] =
+    narrowed === 1 ? ["it did", "it loads", "it"] : ["they did", "they load", "them"];
+  return ` --narrow left out ${plural(narrowed, "other selected test file")} in scope: ${did} not run, and the functions ${load} stay incomplete; drop --narrow to run ${them}.`;
+}
+
+/** How many stored failures the verdict line names. */
+const NAMED_FAILURES = 3;
+
+/**
+ * Spec 026 D5.1: the left-out test files the local stores hold a current
+ * failure of, so a failure is never hidden behind `incomplete`; empty when none.
+ */
+function failuresText(report: GateReport): string {
+  const failures = report.scope?.leftOutFailures ?? [];
+  if (failures.length === 0) return "";
+  const named = failures.slice(0, NAMED_FAILURES).map(({ path, group, tests }) => {
+    return `${path} (${plural(tests.length, "failed test")}; ${addGroup(group)} runs it)`;
+  });
+  const rest = failures.length - named.length;
+  const more = rest === 0 ? "" : ` and ${rest} more (--json lists them in scope.leftOutFailures)`;
+  const which = failures.length === 1 ? "A left-out test file fails" : "Left-out test files fail";
+  return ` ${which} in the stores at this head, not run here: ${named.join(", ")}${more}.`;
+}
+
+/** Spec 026 D5: the verdict line's notes after the left-out groups: `--narrow`'s files, then stored failures. */
+export function narrowAndFailuresText(report: GateReport): string {
+  return `${narrowedText(report)}${failuresText(report)}`;
 }

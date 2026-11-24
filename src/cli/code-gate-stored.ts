@@ -114,6 +114,8 @@ export async function collectWithStores(
       ...options,
       adapters: told(options.adapters, opened),
       ...(known === null ? {} : { stored: known }),
+      // Spec 026 D5.1: the left-out files' current stored failures are named, never run.
+      ...(stored === null ? {} : { leftOutStored: stored.peek }),
       // D17.3: each file a run completes is kept at its key, for the next run and a daemon.
       ...(stored === null ? {} : { ran: stored.ran }),
     });

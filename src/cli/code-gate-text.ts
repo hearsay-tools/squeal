@@ -16,7 +16,7 @@ import {
 import { functionName } from "../core/delivery/code-format.js";
 import { listPaths, plural } from "../core/text.js";
 import { foldOutside, outsideWords } from "./code-gate-text-failed.js";
-import { leftOutText } from "./code-gate-text-left-out.js";
+import { leftOutText, narrowAndFailuresText, noGroupsText } from "./code-gate-text-left-out.js";
 import { rerunLines } from "./code-gate-text-reruns.js";
 
 /*
@@ -232,7 +232,8 @@ function verdictLine(report: GateReport): string {
       ? `No function changed ${against}`
       : `${plural(judged, "changed function")} ${against}`;
   const tally = parts.length === 0 ? "" : `: ${parts.join(", ")}`;
-  return `Code gate: ${report.verdict}. ${what}${tally}.${leftOutText(report)}${omittedText(report)}`;
+  const notes = `${leftOutText(report)}${narrowAndFailuresText(report)}${omittedText(report)}`;
+  return `Code gate: ${report.verdict}${noGroupsText(report)}. ${what}${tally}.${notes}`;
 }
 
 /** Row 020-45: the rerun that fits the estimate, when it was over what was left. */

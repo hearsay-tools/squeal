@@ -20,7 +20,7 @@ import {
 } from "./report.js";
 import { judgeFunction, type MissingGap, type RuleCoverage, UNRUN_GAPS } from "./rule.js";
 import { runsOf } from "./runs.js";
-import { leftOutLoaders } from "./scope.js";
+import { leftOutLoaders, type ScopeEvidence } from "./scope.js";
 import {
   type ChangedFunction,
   type ChangedSet,
@@ -301,9 +301,7 @@ export function evaluate(
     },
     head: { commit: changed.headCommit, dirty: changed.dirty, paths: headPaths(changed) },
     budget: budgetOf(evidence),
-    ...(evidence.scope === undefined
-      ? {}
-      : { scope: { groups: evidence.scope.inScope, leftOut: evidence.scope.leftOut } }),
+    ...(evidence.scope === undefined ? {} : { scope: scopeReport(evidence.scope) }),
     functions,
     ...(changed.omitted === undefined ? {} : { omitted: [...changed.omitted].sort(byIdentity) }),
     uncounted,
@@ -313,6 +311,7 @@ export function evaluate(
     verdict: verdictOf(functions, uncounted, {
       failed: ctx.failed,
       unfinished: evidence.testFiles.some((f) => !f.completed),
+      leftOutFailed: (evidence.scope?.failures?.length ?? 0) > 0,
     }),
     counts: countStates(functions),
   };
@@ -322,4 +321,16 @@ export function evaluate(
 function budgetOf(evidence: Evidence): GateReport["budget"] {
   const { budgetSeconds: seconds, timedOut, rerun } = evidence;
   return { seconds, timedOut, ...(rerun === undefined ? {} : { rerun }) };
+}
+
+/** D14.3, spec 026 D5: the report's scope: the groups, those left out, what `--narrow` left out, stored failures. */
+function scopeReport(scope: ScopeEvidence): NonNullable<GateReport["scope"]> {
+  const { narrowed, failures, noTestFilesInScope } = scope;
+  return {
+    groups: scope.inScope,
+    leftOut: scope.leftOut,
+    ...(narrowed === undefined ? {} : { narrowed }),
+    ...(failures === undefined ? {} : { leftOutFailures: failures }),
+    ...(noTestFilesInScope === undefined ? {} : { noTestFilesInScope }),
+  };
 }
