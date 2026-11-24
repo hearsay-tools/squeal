@@ -1,0 +1,248 @@
+{
+  "root": "/tmp/sq274/import",
+  "cpus": 4,
+  "node": "v24.22.1",
+  "files": 3009,
+  "loadavgStart": [
+    1.52,
+    0.56,
+    0.2
+  ],
+  "open (discover + readConfigs, not in rekey)": {
+    "wallMs": 106.9,
+    "ownCpuMs": 16.5,
+    "childCpuMs": 110,
+    "maxBlockMs": 5,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "declaration": {
+    "tool": "oxlint",
+    "toolVersion": "1.90.0",
+    "providerVersion": 1,
+    "configFiles": [
+      ".oxlintrc.json",
+      "packages/p0/.oxlintrc.json",
+      "packages/p3/.oxlintrc.json",
+      "packages/p7/.oxlintrc.json"
+    ]
+  },
+  "closure": [
+    "tools/lint/owner-reader-rules.ts",
+    "tools/lint/plugin.ts",
+    "tools/lint/test-enum-literal.ts"
+  ],
+  "lintedFiles chunk=256 observe=true": {
+    "wallMs": 1064.6,
+    "ownCpuMs": 44.8,
+    "childCpuMs": 1190,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "lintedFiles chunk=256 observe=false": {
+    "wallMs": 953.9,
+    "ownCpuMs": 30.9,
+    "childCpuMs": 1040,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "debug files chunk=1024 observe=true": {
+    "wallMs": 285.5,
+    "ownCpuMs": 10.8,
+    "childCpuMs": 320,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "debug files chunk=4096 observe=true": {
+    "wallMs": 107.7,
+    "ownCpuMs": 20,
+    "childCpuMs": 120,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "debug files chunk=4096 observe=false": {
+    "wallMs": 106.1,
+    "ownCpuMs": 4.3,
+    "childCpuMs": 120,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "debug files root pass (no paths) observe=true": {
+    "wallMs": 132.3,
+    "ownCpuMs": 4.8,
+    "childCpuMs": 110,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "lintedCount": 2103,
+  "rootPassCount": 2103,
+  "rootPassEqual": true,
+  "chainOf/inputsOf all linted (existsSync walk)": {
+    "wallMs": 48.5,
+    "ownCpuMs": 66.5,
+    "maxBlockMs": 48.5,
+    "load1": 1.52
+  },
+  "chainOf memoized per folder (one pass)": {
+    "wallMs": 3.6,
+    "ownCpuMs": 4.5,
+    "maxBlockMs": 3.6,
+    "load1": 1.52
+  },
+  "chainOf from findConfigs map (no fs)": {
+    "wallMs": 7.7,
+    "ownCpuMs": 10.6,
+    "maxBlockMs": 7.7,
+    "load1": 1.52
+  },
+  "chainMemoIdentical": true,
+  "chainMapIdentical": true,
+  "existsSyncPerFile": 21.6,
+  "Keyer.keys importPlugin=false": {
+    "wallMs": 16.9,
+    "ownCpuMs": 37.3,
+    "childCpuMs": 0,
+    "maxBlockMs": 16.1,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "fast keys importPlugin=false": {
+    "wallMs": 7,
+    "ownCpuMs": 15,
+    "maxBlockMs": 7,
+    "load1": 1.52
+  },
+  "fastKeysIdentical importPlugin=false": true,
+  "Keyer.keys importPlugin=true": {
+    "wallMs": 18,
+    "ownCpuMs": 40,
+    "childCpuMs": 0,
+    "maxBlockMs": 17.2,
+    "blocksOver50ms": 0,
+    "load1": 1.52
+  },
+  "fast keys importPlugin=true": {
+    "wallMs": 6.4,
+    "ownCpuMs": 14.4,
+    "maxBlockMs": 6.4,
+    "load1": 1.52
+  },
+  "fastKeysIdentical importPlugin=true": true,
+  "rekey first": {
+    "wallMs": 1108.7,
+    "ownCpuMs": 140.7,
+    "childCpuMs": 1160,
+    "maxBlockMs": 69.9,
+    "blocksOver50ms": 1,
+    "load1": 1.52
+  },
+  "rekey first parts": {
+    "provider.inputs (async)": {
+      "n": 1,
+      "ms": 1074.9,
+      "max": 0
+    },
+    "results.get": {
+      "n": 2103,
+      "ms": 2.8,
+      "max": 0.13
+    },
+    "store.transaction": {
+      "n": 1,
+      "ms": 10.8,
+      "max": 10.77
+    }
+  },
+  "rekey first result": {
+    "mode": "first",
+    "keyed": 2103,
+    "hits": 0
+  },
+  "rekey config (2 plugin files edited)": {
+    "wallMs": 1080.9,
+    "ownCpuMs": 145.5,
+    "childCpuMs": 1120,
+    "maxBlockMs": 65.5,
+    "blocksOver50ms": 1,
+    "load1": 1.52
+  },
+  "rekey config (2 plugin files edited) parts": {
+    "provider.inputs (async)": {
+      "n": 1,
+      "ms": 1044.5,
+      "max": 0
+    },
+    "results.get": {
+      "n": 2103,
+      "ms": 2.9,
+      "max": 0.05
+    },
+    "store.transaction": {
+      "n": 1,
+      "ms": 6.5,
+      "max": 6.46
+    }
+  },
+  "rekey config (2 plugin files edited) result": {
+    "mode": "config",
+    "keyed": 2103,
+    "hits": 0
+  },
+  "rekey config, include packages/p0/** (unknown pass)": {
+    "wallMs": 345.8,
+    "ownCpuMs": 56.8,
+    "childCpuMs": 380,
+    "maxBlockMs": 7.8,
+    "blocksOver50ms": 0,
+    "load1": 1.48
+  },
+  "rekey config, include packages/p0/** (unknown pass) parts": {
+    "provider.inputs (async)": {
+      "n": 2,
+      "ms": 332.7,
+      "max": 0
+    },
+    "results.get": {
+      "n": 210,
+      "ms": 0.3,
+      "max": 0.05
+    },
+    "store.transaction": {
+      "n": 1,
+      "ms": 4.1,
+      "max": 4.11
+    }
+  },
+  "rekey config, include packages/p0/** (unknown pass) result": {
+    "mode": "config",
+    "keyed": 210,
+    "hits": 0
+  },
+  "results.get x N, one block": {
+    "wallMs": 2.9,
+    "ownCpuMs": 6.3,
+    "childCpuMs": 0,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.48
+  },
+  "results.get x N, yield every 256": {
+    "wallMs": 3,
+    "ownCpuMs": 4.1,
+    "childCpuMs": 0,
+    "maxBlockMs": 0,
+    "blocksOver50ms": 0,
+    "load1": 1.48
+  },
+  "loadavgEnd": [
+    1.48,
+    0.56,
+    0.21
+  ]
+}

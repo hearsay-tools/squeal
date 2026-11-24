@@ -1,0 +1,13 @@
+[json config + JS plugin] --debug files --threads 1 -- src/a.ts => plugin loaded argv=--debug files --threads 1 -- src/a.ts|
+[json config + JS plugin] --format json --threads 1 -- src/a.ts => plugin loaded argv=--format json --threads 1 -- src/a.ts|rule create|
+[json config + JS plugin] --print-config --threads 1 => plugin loaded argv=--print-config --threads 1|
+[TS config] --debug files --threads 1 -- src/a.ts => ts config loaded|
+[TS config] --format json --threads 1 -- src/a.ts => ts config loaded|
+-- root pass (no paths):
+.hidden/h.ts
+plugin.ts
+src/a.ts
+-- explicit paths src/a.ts gen/g.ts .hidden/h.ts src/sub/s.ts:
+.hidden/h.ts
+src/a.ts
+src/sub/s.ts
