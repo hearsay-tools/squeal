@@ -268,6 +268,7 @@ function laneOver<R extends RunnerAdapter>(
     ...(spec.perPass === true && share.awake() ? { awaitConnect: true } : {}),
     whenLost: context.lane.whenLost,
     planning: context.lane.planning,
+    environmentMode: context.lane.environmentMode,
     hasGitRepository: () => share.gitCurrent(),
     refreshRepository: (signal) => share.refreshGit(signal),
     gitLease: () => share.gitLease(),

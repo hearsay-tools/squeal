@@ -1,7 +1,8 @@
 import { join } from "node:path";
 import { merge } from "../../daemon/composite-runner.js";
+import { coreEnvironmentInputs } from "../../keys/environment.js";
 import type { AbsolutePath } from "../../types/common.js";
-import type { TestFileRef } from "../../types/keys.js";
+import type { CoreEnvironmentInputs, TestFileRef } from "../../types/keys.js";
 import type {
   InvalidatedPath,
   InvalidateResult,
@@ -13,10 +14,16 @@ import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
 import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { recordsWithout } from "./coverage.js";
-import { blobsAt, compareRemote } from "./lane-compare.js";
+import { blobsAt, compareRemoteEnvironment } from "./lane-compare.js";
 import { type Planning, remotePlanning } from "./lane-planning.js";
 import { deferredTo, repositoryRoute, withoutFiles } from "./lane-repository.js";
 import { DEFAULT_TIERS, goesRemote, tiersText } from "./lane-tiers.js";
+import {
+  attachRemoteCore,
+  type EnvironmentMode,
+  remoteKeyStatusLine,
+  tagReportCore,
+} from "./remote-key.js";
 import type { RemoteTier, WhenLost } from "./settings.js";
 import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
 
@@ -104,6 +111,8 @@ export interface RemoteLaneOptions {
   readonly allowlist: () => readonly string[];
   /** Spec 026 D8.3: where the lane plans; absent, `local`. */
   readonly planning?: Planning;
+  /** Spec 026 D10: `remote-key` keys results to the remote's machine; absent, `match-local`. */
+  readonly environmentMode?: EnvironmentMode;
   /** Spec 026 D8.4: whether the machine's tree is a Git repository; then `needsRepository` files go there. */
   readonly hasGitRepository?: () => boolean;
   /**
@@ -185,6 +194,15 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   const now = options.now ?? Date.now;
   const backoff = options.backoffMs ?? BACKOFF_MS;
   const remotePlans = options.planning === "remote";
+  const remoteKey = options.environmentMode === "remote-key";
+  /** Spec 026 D10: the remote's verified core while ready or asleep under `remote-key`. */
+  let remoteCore: CoreEnvironmentInputs | null = null;
+  const localCore = (): CoreEnvironmentInputs =>
+    coreEnvironmentInputs({
+      squealVersion: options.version,
+      installedDependencies: "",
+      allowlist: [],
+    });
   let state: State = { kind: "down", since: now(), retryAt: 0, refused: false };
   let failures = 0;
   let notRun = 0;
@@ -222,6 +240,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   /** The remote cannot take runs: closed, and tried again after a backoff. */
   const down = (reason: string, refused: boolean, host?: RemoteHost) => {
     void host?.adapter.close().catch(() => {});
+    remoteCore = null;
     const since = state.kind === "down" ? state.since : now();
     const wait = backoff[Math.min(failures, backoff.length - 1)] ?? 0;
     why = reason;
@@ -272,8 +291,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       .then(() => compared(host))
       .then(async (found) => {
         // D8.3: the remote's first `affected` is slow (6 to 8 s); it is paid before ready.
-        if (found.length === 0 && remotePlans) await warm(host);
-        return found;
+        if (found.differences.length === 0 && remotePlans) await warm(host);
+        return found.differences;
       })
       .catch((error: Error) => [error.message]);
     // Unless `close` took it meanwhile, and closed it.
@@ -286,7 +305,9 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     else {
       state = { kind: "ready", host, proven: false };
       options.status(
-        `remote ${target}: ${tiersName} runs ${remotePlans ? "and planning " : ""}of ${local.name} go there (Node ${host.node}; environment equal)`,
+        remoteKey && remoteCore !== null
+          ? remoteKeyStatusLine(target, remoteCore)
+          : `remote ${target}: ${tiersName} runs ${remotePlans ? "and planning " : ""}of ${local.name} go there (Node ${host.node}; environment equal)`,
       );
     }
   };
@@ -330,7 +351,13 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     return host;
   };
 
-  const compared = (host: RemoteHost) => compareRemote(host, options);
+  const compared = async (host: RemoteHost) => {
+    const result = await compareRemoteEnvironment(host, options);
+    if (remoteKey && result.differences.length === 0 && result.remoteCore !== null) {
+      remoteCore = result.remoteCore;
+    }
+    return result;
+  };
   const blobsHere = (paths: readonly string[]) => blobsAt(options.root, paths);
 
   /**
@@ -356,7 +383,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       await sendPending(host);
       // Review 0.1.442 B1: equal for this run, after the revision's files and any install
       // reached the host; the remote changes only through these messages, sent in turn.
-      const unequal = await compared(host);
+      const { differences: unequal, remoteCore: runCore } = await compared(host);
       if (runnerHostGone(host.adapter)) {
         down("the host ended", false);
         return { lost: lostReport(testFiles) };
@@ -378,7 +405,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         reply.refused ?? Object.keys(after).filter((path) => after[path] !== reply.proof?.[path]);
       if (differ.length === 0) {
         proven(host, inputs.length);
-        const report = stripped(reply);
+        const raw = stripped(reply);
+        const report = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
         if (reply.coverage !== undefined) coverageOf.set(report, reply.coverage);
         return report;
       }
@@ -464,8 +492,11 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     options.log(`remote ${target}: run proven over ${paths} paths`);
     if (state.kind !== "ready" || state.host !== host || state.proven) return;
     state.proven = true;
+    const at = new Date(now()).toISOString();
     options.status(
-      `remote ${target}: ${tiersName} runs of ${local.name} go there; proven at ${new Date(now()).toISOString()} (blob ids equal before and after)`,
+      remoteKey && remoteCore !== null
+        ? `${remoteKeyStatusLine(target, remoteCore)}; proven at ${at} (blob ids equal before and after)`
+        : `remote ${target}: ${tiersName} runs of ${local.name} go there; proven at ${at} (blob ids equal before and after)`,
     );
   };
 
@@ -484,17 +515,22 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     opened = true;
     const workers = permits === undefined ? run.workers : await permits.back(cancelOf(run));
     if (workers === null) return notStarted();
-    return here.run(testFiles, {
+    const report = await here.run(testFiles, {
       ...rest,
       logDir: join(run.logDir, dir),
       ...(workers === undefined ? {} : { workers }),
     });
+    return remoteKey ? tagReportCore(report, localCore()) : report;
   };
 
   /** A run that never goes remote: here, as the scheduler admitted it, the runner here now opened. */
-  const runDirect = (testFiles: readonly TestFileRef[], run: RunOptions): Promise<RunReport> => {
+  const runDirect = async (
+    testFiles: readonly TestFileRef[],
+    run: RunOptions,
+  ): Promise<RunReport> => {
     opened = true;
-    return here.run(testFiles, run);
+    const report = await here.run(testFiles, run);
+    return remoteKey ? tagReportCore(report, localCore()) : report;
   };
 
   /**
@@ -671,8 +707,18 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     closure: (file) => local.closure(file),
     enumerate: (file) => local.enumerate(file),
     testFiles: () => local.testFiles(),
-    environment: () => local.environment(),
     ...planning,
+    async environment() {
+      if (planning !== null) {
+        const envs = await planning.environment();
+        return remoteKey && state.kind === "ready" && remoteCore !== null
+          ? attachRemoteCore(envs, remoteCore)
+          : envs;
+      }
+      if (remoteKey && state.kind === "connecting") await ready(true);
+      const envs = await local.environment();
+      return remoteKey && remoteCore !== null ? attachRemoteCore(envs, remoteCore) : envs;
+    },
     async run(testFiles, run) {
       // Review 0.1.619 B4: a run here opens the runner here, which gets each later invalidation.
       if (!goesRemote(run, tiers)) return runDirect(testFiles, run);
