@@ -28,6 +28,7 @@ const scratch = realpathSync(mkdtempSync(join(tmpdir(), "squeal-agent37-")));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 const KEY = "sk_test_provider_key_91c2";
+const NODE_VERSION = "v99.1.2";
 const provider = createAgent37Provider({
   pollMs: 5,
   readyMs: 5_000,
@@ -75,19 +76,22 @@ async function setup(config: Record<string, unknown> = {}): Promise<Setup> {
   };
   const log: string[] = [];
   const root = repository(dir);
+  // The instance's Node: a fake at a fixed version, so no test reads this process's own.
+  const node = join(ssh.bin, "remote-node");
+  writeFileSync(node, `#!/bin/sh\necho ${NODE_VERSION}\n`, { mode: 0o755 });
   return {
     api,
     env,
     ssh,
     log,
-    config: { node: process.execPath, cache: ".squeal-remote", apiBaseUrl: api.url, ...config },
+    config: { node, cache: ".squeal-remote", apiBaseUrl: api.url, ...config },
     request: {
       repositoryKey: root,
       worktreeId: `wt-${n}` as WorktreeId,
       worktreeRoot: root,
       commonDir: join(root, ".git") as AbsolutePath,
       remoteUrls: [],
-      nodeVersion: process.version,
+      nodeVersion: NODE_VERSION,
       log: (line) => log.push(line),
       env,
     },
@@ -171,7 +175,10 @@ describe("agent37 acquire (row 026-15)", () => {
       type: "vm",
       bootstrap: "git-bundle",
     });
-    expect(machine.places).toEqual({ node: process.execPath, cache: ".squeal-remote" });
+    expect(machine.places).toEqual({
+      node: join(s.ssh.bin, "remote-node"),
+      cache: ".squeal-remote",
+    });
     expect(machine.ssh.destination).toBe(`node@${id}.agent37.app`);
     expect(machine.ssh.args).toEqual([
       "-o",
@@ -251,7 +258,9 @@ describe("agent37 acquire (row 026-15)", () => {
     const s = await setup({ node: "/no/such/node" });
     // Node differs and cannot be fetched here: a `curl` that fails, first on the PATH.
     writeFileSync(join(s.ssh.bin, "curl"), "#!/bin/sh\nexit 7\n", { mode: 0o755 });
-    await expect(provider.acquire(s.request, s.config)).rejects.toThrow(/could not provide Node v/);
+    await expect(provider.acquire(s.request, s.config)).rejects.toThrow(
+      `could not provide Node ${NODE_VERSION}`,
+    );
     expect(s.api.instances.size).toBe(0);
     expect(calls(s.api).at(-1)).toMatch(/^DELETE \/v1\/instances\/mock/);
   });
