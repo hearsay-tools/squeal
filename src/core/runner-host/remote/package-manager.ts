@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { accessSync, constants, existsSync, readFileSync, statSync } from "node:fs";
-import { mkdir, rename, rm } from "node:fs/promises";
-import { delimiter, dirname, join } from "node:path";
+import { mkdir, open, rename, rm, unlink } from "node:fs/promises";
+import { delimiter, dirname, join, resolve } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 /*
  * Spec 026 row 026-22: the package manager a remote tree's install needs.
@@ -39,8 +40,10 @@ export interface ManagerSpec {
   readonly dir: string;
 }
 
-/** A plain version: no range, no tag, nothing a shell or a path reads. */
-const VERSION = /^\d{1,9}\.\d{1,9}\.\d{1,9}(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/;
+/** Strict SemVer 2.0.0 core + optional prerelease: no leading zeroes on numeric fields, hyphens allowed in prerelease. */
+const NUM = "(?:0|[1-9]\\d{0,8})";
+const PRE = "(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)";
+const VERSION = new RegExp(`^${NUM}\\.${NUM}\\.${NUM}(?:-${PRE}(?:\\.${PRE})*)?$`);
 
 /**
  * The spec of `name` as `manifest.packageManager` declares it (`pnpm@10.2.0`,
@@ -63,12 +66,13 @@ export function managerSpec(name: "pnpm" | "yarn", manifest: unknown, berry: boo
   return { name, spec: `${pkg}@${pinned ?? "latest"}`, dir };
 }
 
-/** Whether an executable file `name` lies in one of `path`'s directories. */
-export function onPath(name: string, path: string | undefined): boolean {
-  return (path ?? "")
-    .split(delimiter)
-    .filter((dir) => dir !== "")
-    .some((dir) => executable(join(dir, name)));
+/** Whether an executable file `name` lies in one of `path`'s directories (POSIX empty/relative entries resolve against `cwd`). */
+export function onPath(name: string, path: string | undefined, cwd?: string): boolean {
+  if (path === undefined) return false;
+  return path.split(delimiter).some((entry) => {
+    const dir = entry === "" ? (cwd ?? ".") : cwd !== undefined ? resolve(cwd, entry) : entry;
+    return executable(join(dir, name));
+  });
 }
 
 function executable(path: string): boolean {
@@ -80,9 +84,10 @@ function executable(path: string): boolean {
   }
 }
 
-/** `env` with `dir` last on its `PATH` when it is not there yet. */
+/** `env` with `dir` last on its `PATH` when it is not there yet, preserving empty and relative segments. */
 function withPathDir(env: NodeJS.ProcessEnv, dir: string): NodeJS.ProcessEnv {
-  const dirs = (env.PATH ?? "").split(delimiter).filter((entry) => entry !== "");
+  if (env.PATH === undefined) return { ...env, PATH: dir };
+  const dirs = env.PATH.split(delimiter);
   return dirs.includes(dir) ? env : { ...env, PATH: [...dirs, dir].join(delimiter) };
 }
 
@@ -107,11 +112,39 @@ export async function managerEnv(
 ): Promise<NodeJS.ProcessEnv> {
   const withNode = withPathDir(env, place.tools.nodeDir);
   const name = command.split(" ")[0];
-  if ((name !== "pnpm" && name !== "yarn") || onPath(name, withNode.PATH)) return withNode;
+  if ((name !== "pnpm" && name !== "yarn") || onPath(name, withNode.PATH, place.root)) {
+    return withNode;
+  }
   const manifest = readJson(join(place.root, "package.json"));
   const spec = managerSpec(name, manifest, command.includes("--immutable"));
   const bin = await installedManager(spec, withNode, place);
-  return { ...withNode, PATH: [bin, withNode.PATH].filter((dir) => dir).join(delimiter) };
+  const nextPath = withNode.PATH === undefined ? bin : `${bin}${delimiter}${withNode.PATH}`;
+  return { ...withNode, PATH: nextPath };
+}
+
+/** Runs `fn` under an atomic lock file beside `dir` so broken-cache repair never removes a concurrent winner. */
+async function withPublishLock<T>(dir: string, fn: () => Promise<T>): Promise<T> {
+  const lock = `${dir}.lock`;
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    try {
+      const handle = await open(lock, "wx");
+      await handle.close();
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (Date.now() >= deadline) {
+        await unlink(lock).catch(() => {});
+        continue;
+      }
+      await sleep(25);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await unlink(lock).catch(() => {});
+  }
 }
 
 /** The `.bin` of `spec`'s copy under `place.managers`, made now when there is none. */
@@ -122,7 +155,8 @@ async function installedManager(
 ): Promise<string> {
   const dir = join(place.managers, spec.dir);
   const binOf = (at: string) => join(at, "node_modules", ".bin");
-  if (executable(join(binOf(dir), spec.name))) return binOf(dir);
+  const made = () => executable(join(binOf(dir), spec.name));
+  if (made()) return binOf(dir);
   await mkdir(place.managers, { recursive: true });
   const part = `${dir}.${process.pid}-${randomBytes(4).toString("hex")}.part`;
   try {
@@ -138,17 +172,12 @@ async function installedManager(
     if (!executable(join(binOf(part), spec.name))) {
       throw new Error(`npm install ${spec.spec} left no ${spec.name} in its .bin on the remote`);
     }
-    // Another host may have made it meanwhile: its copy stands, this one goes. A broken
-    // copy (no manager in it) is replaced.
-    const made = () => executable(join(binOf(dir), spec.name));
-    const placed = await rename(part, dir).then(
-      () => true,
-      () => made(),
-    );
-    if (!placed) {
+    // Review 0.1.627 S1: serialize publication/repair so two repairers never remove a valid winner.
+    await withPublishLock(dir, async () => {
+      if (made()) return;
       await rm(dir, { recursive: true, force: true });
       await rename(part, dir);
-    }
+    });
     return binOf(dir);
   } finally {
     await rm(part, { recursive: true, force: true });

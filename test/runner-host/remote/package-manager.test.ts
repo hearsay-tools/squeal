@@ -134,16 +134,56 @@ describe("a missing package manager on a remote (row 026-22)", { timeout: 30_000
     expect(counted(s.pnpmCalls)).toBe(0);
   });
 
-  it("gives two trees installing at once one whole copy", async () => {
+  it("gives two trees installing at once one whole copy, also when repairing a broken cache", async () => {
     const a = setup("pnpm@9.15.0");
     const b = setup("pnpm@9.15.0");
     const shared = { managers: join(scratch, "shared-pm") };
+    mkdirSync(join(shared.managers, "pnpm-9.15.0"), { recursive: true });
+    writeFileSync(join(shared.managers, "pnpm-9.15.0", "broken"), "incomplete");
     const answers = await Promise.all([
       installTree({ ...a.place("a", a.bare), ...shared }),
       installTree({ ...b.place("a", b.bare), ...shared }),
     ]);
     expect(answers).toEqual([INSTALLED, INSTALLED]);
     expect(readdirSync(shared.managers)).toEqual(["pnpm-9.15.0"]);
+    expect(existsSync(join(shared.managers, "pnpm-9.15.0", "node_modules/.bin/pnpm"))).toBe(true);
+  });
+
+  it("preserves existing pnpm and yarn reached via empty or relative PATH segments (review 0.1.627 B2)", async () => {
+    for (const [label, pathOf] of [
+      ["trailing empty", (base: string) => `${base}:`],
+      ["leading empty", (base: string) => `:${base}`],
+      ["relative subdir", (base: string) => `local-bin:${base}`],
+    ] as const) {
+      const s = setup("pnpm@9.15.0");
+      const binDir = label === "relative subdir" ? join(s.root, "local-bin") : s.root;
+      mkdirSync(binDir, { recursive: true });
+      script(join(binDir, "pnpm"), [`echo "pnpm $*" >> ${JSON.stringify(s.pnpmCalls)}`]);
+      const env = { ...s.bare, PATH: pathOf(s.bare.PATH) };
+      expect(await installTree(s.place("a", env)), `pnpm (${label})`).toEqual(INSTALLED);
+      expect(counted(s.pnpmCalls), `pnpm calls (${label})`).toBe(1);
+      expect(counted(s.npmCalls), `npm calls (${label})`).toBe(0);
+      expect(existsSync(s.managers), `no cache (${label})`).toBe(false);
+    }
+
+    const y = setup("yarn@1.22.22");
+    rmSync(join(y.root, "pnpm-lock.yaml"));
+    writeFileSync(join(y.root, "yarn.lock"), "# yarn lockfile v1\n");
+    const yarnCalls = join(y.dir, "yarn-calls");
+    script(join(y.root, "yarn"), [
+      `echo "yarn $*" >> ${JSON.stringify(yarnCalls)}`,
+      "mkdir -p node_modules/dep",
+    ]);
+    const yarnEnv = { ...y.bare, PATH: `${y.bare.PATH}:` };
+    expect(
+      await installTree({
+        ...y.place("y", yarnEnv),
+        locks: { "yarn.lock": "y" },
+      }),
+    ).toEqual({ ran: true, command: "yarn install --frozen-lockfile" });
+    expect(counted(yarnCalls)).toBe(1);
+    expect(counted(y.npmCalls)).toBe(0);
+    expect(existsSync(y.managers)).toBe(false);
   });
 });
 
@@ -152,6 +192,11 @@ describe("the spec of a missing manager (row 026-22)", () => {
     ["pnpm@12.15.0", "pnpm@12.15.0", "pnpm-12.15.0"],
     ["pnpm@12.15.0+sha512.abc", "pnpm@12.15.0", "pnpm-12.15.0"],
     ["pnpm@11.0.0-rc.1", "pnpm@11.0.0-rc.1", "pnpm-11.0.0-rc.1"],
+    ["pnpm@1.2.3-rc-1", "pnpm@1.2.3-rc-1", "pnpm-1.2.3-rc-1"],
+    ["pnpm@0.0.0-0.alpha-1", "pnpm@0.0.0-0.alpha-1", "pnpm-0.0.0-0.alpha-1"],
+    ["pnpm@01.2.3", "pnpm@latest", "pnpm-latest"],
+    ["pnpm@1.02.3", "pnpm@latest", "pnpm-latest"],
+    ["pnpm@1.2.3-01", "pnpm@latest", "pnpm-latest"],
     ["pnpm@^9", "pnpm@latest", "pnpm-latest"],
     ["pnpm@9.0.0@evil", "pnpm@latest", "pnpm-latest"],
     ["pnpm@9.0.0 && rm -rf ~", "pnpm@latest", "pnpm-latest"],
@@ -167,7 +212,7 @@ describe("the spec of a missing manager (row 026-22)", () => {
     });
   });
 
-  it("installs Yarn 1 as yarn and later Yarn as @yarnpkg/cli-dist", () => {
+  it("installs Yarn 1 as yarn and later Yarn as @yarnpkg/cli-dist, enforcing strict semver", () => {
     expect(managerSpec("yarn", { packageManager: "yarn@1.22.22" }, false).spec).toBe(
       "yarn@1.22.22",
     );
@@ -176,6 +221,15 @@ describe("the spec of a missing manager (row 026-22)", () => {
       spec: "@yarnpkg/cli-dist@4.5.0",
       dir: "yarn-4.5.0",
     });
+    expect(managerSpec("yarn", { packageManager: "yarn@4.5.0-rc-1" }, true)).toEqual({
+      name: "yarn",
+      spec: "@yarnpkg/cli-dist@4.5.0-rc-1",
+      dir: "yarn-4.5.0-rc-1",
+    });
+    expect(managerSpec("yarn", { packageManager: "yarn@01.2.3" }, false).spec).toBe("yarn@latest");
+    expect(managerSpec("yarn", { packageManager: "yarn@1.2.3-01" }, true).spec).toBe(
+      "@yarnpkg/cli-dist@latest",
+    );
     expect(managerSpec("yarn", null, true)).toEqual({
       name: "yarn",
       spec: "@yarnpkg/cli-dist@latest",
