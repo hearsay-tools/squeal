@@ -279,6 +279,20 @@ describe("a serving daemon's work", () => {
       timeoutMs: 600_000,
     });
   });
+
+  test("the effective exits of an edit-free policy, as its daemon resolves them (spec 026 D2.2)", () => {
+    serve(800, alpha);
+    writeStore(alpha, daemonRecord(alpha));
+    writeFileSync(
+      join(alpha.root, "squeal.config.json"),
+      JSON.stringify({ checks: [{ name: "unit", runner: "vitest", at: "manual" }] }),
+    );
+    expect(workOf(800).settings).toEqual({
+      idleExitMinutes: 2,
+      unusedExitMinutes: 2,
+      timeoutMs: 600_000,
+    });
+  });
 });
 
 describe("phases' work", () => {

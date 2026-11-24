@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { isRecord } from "../fs/json.js";
 import { readDaemonNotes } from "../notes.js";
+import { keyingDeferred } from "../scheduler/deferred-keying.js";
 import type { WorktreeId } from "../types/common.js";
 import { DEFAULT_POLICY, type LoadedPolicy, type Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
@@ -129,16 +130,55 @@ const SHAPE: Shape = {
  * the defaults with one problem.
  */
 export function loadPolicy(root: string): LoadedPolicy {
-  const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, UNSET_EXITS);
   // Spec 019 D1: what `checks` needs from the other keys and among its groups.
   const settled = settleChecks(loaded.value);
   return {
-    policy:
+    policy: withExits(
       settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
+    ),
     problems: [...loaded.problems, ...settled.problems],
     ...(loaded.unparsed === true ? { unparsed: true } : {}),
     ...(loaded.unknownKeys === undefined ? {} : { unknownKeys: loaded.unknownKeys }),
   };
+}
+
+/**
+ * The defaults with both daemon exits unset: `NaN`, which no JSON value is
+ * and a bad value leaves in place, so `withExits` tells a key the file sets.
+ */
+const UNSET_EXITS: Policy = {
+  ...DEFAULT_POLICY,
+  daemon: { ...DEFAULT_POLICY.daemon, idleExitMinutes: Number.NaN, unusedExitMinutes: Number.NaN },
+};
+
+/** Spec 026 D2.2: `daemon.unusedExitMinutes` with no test group at `edit` or `pause`. */
+export const EDIT_FREE_UNUSED_EXIT_MINUTES = 2;
+
+/**
+ * Spec 026 D2.2 (row 026-09; the human, 2026-11-24): a key the file sets
+ * wins. Unset, with no test group at `edit` or `pause` (D1's deferred
+ * keying, `keyingDeferred`), `daemon.unusedExitMinutes` is 2 and a daemon
+ * with no consumer stops after the lesser of `daemon.idleExitMinutes` and
+ * it (the coordinator, 2026-11-24): a hook that started a daemon on a fresh
+ * store registers no consumer (`startSession`), so it would idle for 60
+ * minutes between bursts. Otherwise both keep their defaults (001 D10).
+ */
+function withExits(policy: Policy): Policy {
+  const { idleExitMinutes: idle, unusedExitMinutes: unused } = policy.daemon;
+  const editFree = keyingDeferred(policy);
+  const defaults = DEFAULT_POLICY.daemon;
+  const unusedExitMinutes = Number.isNaN(unused)
+    ? editFree
+      ? EDIT_FREE_UNUSED_EXIT_MINUTES
+      : defaults.unusedExitMinutes
+    : unused;
+  const idleExitMinutes = Number.isNaN(idle)
+    ? editFree
+      ? Math.min(defaults.idleExitMinutes, unusedExitMinutes)
+      : defaults.idleExitMinutes
+    : idle;
+  return { ...policy, daemon: { ...policy.daemon, idleExitMinutes, unusedExitMinutes } };
 }
 
 /** The policy alone, for callers that act on it and leave reporting to the daemon (the hooks). */
