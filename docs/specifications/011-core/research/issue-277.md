@@ -53,6 +53,8 @@ The first diff changes only unrelated slow-tier slot types in `status.ts`; the l
 
 The mechanism is related to closed #109 and #130; their narrower completed repairs do not fulfill #277's requested classification. Remaining incident questions: which daemon incarnation was registered across the transitions, whether ping replied or merely connected, whether sync completed, and whether a busy store or delayed event loop caused the missed heartbeat. The issue's five snapshots alone do not decide those.
 
+Verification: `git diff --check` passed. `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/011-core/research/issue-277.md docs/specifications/011-core/research/probes/issue-277/probe.mjs` returned exit 3: no test file's closure holds either path. Revision 12 reported known failures 0 and 330 of 2,251 test files not current (unknown). This is no test verdict for the research artifacts, not a suite pass.
+
 ## Sources and artifacts
 
 - [Issue #277](https://github.com/hearsay-tools/squeal/issues/277), fetched with `gh issue view 277 --json number,title,body,comments,url`.
