@@ -1,0 +1,40 @@
+## runs (12), seconds from session start
+68s	1s	tree	rev 0	completed	packages/cezar/src/lint/active-run-write-index.test.ts
+74s	47s	commit	rev 0	completed	10 other files
+74s	27s	commit	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+75s	45s	commit	rev 0	completed	activity.e2e.ts
+77s	20s	tree	rev 0	completed	4 other files
+77s	26s	tree	rev 0	completed	.github/scripts/change-surface-readers.test.cjs, .github/scripts/no-compat-policy.test.cjs, scripts/test-inputs.test.mjs
+97s	33s	tree	rev 0	completed	6 other files
+121s	3s	commit	rev 0	completed	packages/cezar/src/lint/lint-ast-grep-1.test.ts, packages/cezar/src/lint/lint-ast-grep-2.test.ts
+121s	8s	commit	rev 0	completed	agent-browser-tabs.e2e.ts
+130s	42s	tree	rev 0	completed	6 other files
+130s	44s	tree	rev 0	completed	activity.e2e.ts
+176s	8s	tree	rev 0	completed	agent-browser-tabs.e2e.ts
+
+## 023-78: browser files per side, in start order
+commit: activity.e2e.ts, agent-browser-tabs.e2e.ts
+tree: activity.e2e.ts, agent-browser-tabs.e2e.ts
+both sides: 2
+  activity.e2e.ts: commit 75s, tree 130s, commit first
+  agent-browser-tabs.e2e.ts: commit 121s, tree 176s, commit first
+
+## 023-83: browser runs in start order (start, end, side, end state, files)
+75s	120s	commit	completed	activity.e2e.ts
+121s	130s	commit	completed	agent-browser-tabs.e2e.ts
+130s	174s	tree	completed	activity.e2e.ts
+176s	184s	tree	completed	agent-browser-tabs.e2e.ts
+turns in a row: commit 2, tree 2
+first browser file with both sides: activity.e2e.ts at 174s
+  then agent-browser-tabs.e2e.ts at 184s
+end states seen: completed
+
+## 023-81: test files run more than once on one side (run starts)
+commit	packages/cezar/src/lint/lint-ast-grep-1.test.ts	74s, 121s
+commit	packages/cezar/src/lint/lint-ast-grep-2.test.ts	74s, 121s
+tree	packages/cezar/src/lint/ast-rules-owners.test.ts	97s, 130s
+tree	packages/cezar/src/lint/lint-ast-grep-1.test.ts	97s, 130s
+tree	packages/cezar/src/lint/lint-ast-grep-2.test.ts	97s, 130s
+tree	packages/cezar/src/lint/lint-runner.test.ts	97s, 130s
+tree	packages/cezar/src/lint/plugin.test.ts	97s, 130s
+tree	packages/cezar/src/lint/run-history-reader.test.ts	97s, 130s

@@ -1,0 +1,19 @@
+## runs (3), seconds from session start
+78s	158s	tree	rev 0	completed	thread-scroll.e2e.ts
+209s	1s	tree	rev 0	completed	packages/cezar/src/lint/active-run-write-index.test.ts
+240s	133s	commit	rev 0	completed	thread-scroll.e2e.ts
+
+## 023-78: browser files per side, in start order
+commit: thread-scroll.e2e.ts
+tree: thread-scroll.e2e.ts
+both sides: 1
+  thread-scroll.e2e.ts: commit 240s, tree 78s, tree first
+
+## 023-83: browser runs in start order (start, end, side, end state, files)
+78s	236s	tree	completed	thread-scroll.e2e.ts
+240s	373s	commit	completed	thread-scroll.e2e.ts
+turns in a row: tree 1, commit 1
+first browser file with both sides: thread-scroll.e2e.ts at 373s
+end states seen: completed
+
+## 023-81: test files run more than once on one side (run starts)

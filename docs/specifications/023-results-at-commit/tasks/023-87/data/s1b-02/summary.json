@@ -1,0 +1,89 @@
+{
+  "id": "s1b-02",
+  "lines9": [
+    "5s +99s packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> no result (running)",
+    "5s +99s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s), 1 of 1 still running in the working tree",
+    "5s +99s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration an",
+    "5s +99s 0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at '8be977ad6~1' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.",
+    "105s +99s packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> no result (running)",
+    "207s +166s packages/web/e2e/thread-scroll.e2e.ts: pass -> pass (at d8abcfe46: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "hooks9": [],
+  "lines10": [
+    "5s +99s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s), 1 of 1 still running in the working tree",
+    "5s +99s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration an",
+    "5s +99s 0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at '8be977ad6~1' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.",
+    "105s +99s Still to run, at d8abcfe46: 1 test file, time unknown: none has a stored duration and this call measured no rate; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: squeal status --at '8be977ad6~1' <path",
+    "105s +99s 0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at '8be977ad6~1' --wait 100000 waits for them; squeal ps shows them.",
+    "207s +166s packages/web/e2e/thread-scroll.e2e.ts: pass -> pass (at d8abcfe46: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "lines11": [
+    "5s +99s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s), 1 of 1 still running in the working tree",
+    "5s +99s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: i"
+  ],
+  "hooks11": [],
+  "lines12": [
+    "5s +99s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s), 1 of 1 still running in the working tree",
+    "5s +99s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: it has no stored duration)"
+  ],
+  "hooks12": [],
+  "leftover": 3,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/4d30f5f843af4bfb/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "5s +99s squeal status --at 8be977ad6~1 --run --wait 100000 packages/web/e2e/thread-scroll.e2e.ts 2>&1 | tail -30"
+  ],
+  "joins": [
+    "5s +99s squeal status --at 8be977ad6~1 --run --wait 100000 packages/web/e2e/thread-scroll.e2e.ts 2>&1 | tail -30",
+    "105s +99s squeal status --at 8be977ad6~1 --wait 100000 2>&1 | tail -30",
+    "207s +166s squeal status --at 8be977ad6~1 --run --wait 300000 packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint/active-run-write-index.test.ts 2>&1 | tail -15"
+  ],
+  "estimates": [
+    "5s +99s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 26 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration an",
+    "105s +99s Still to run, at d8abcfe46: 1 test file, time unknown: none has a stored duration and this call measured no rate; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: squeal status --at '8be977ad6~1' <path"
+  ],
+  "lines8": [],
+  "loadStart": "11.62",
+  "exit": 0,
+  "wallSeconds": 377.734,
+  "squeal": [
+    "4s squeal checks 2>&1 | head -40; git diff --stat 8be977ad6~1 8be977ad6 | tail -20",
+    "5s squeal status --at 8be977ad6~1 --run --wait 100000 packages/web/e2e/thread-scroll.e2e.ts 2>&1 | tail -30",
+    "105s squeal status --at 8be977ad6~1 --wait 100000 2>&1 | tail -30",
+    "207s squeal status --at 8be977ad6~1 --run --wait 300000 packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint/active-run-write-index.test.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "207s +166s Bash squeal status --at 8be977ad6~1 --run --wait 300000 packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint/active-run-write-index.test.ts 2>&1 | tail -15"
+  ],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0683724,
+  "usage": {
+    "cache_creation_input_tokens": 18075,
+    "cache_read_input_tokens": 122049,
+    "output_tokens": 1096
+  },
+  "firstFinal": "No test file passes or fails differently. I only compared the two files below, not the other 108 the commit selects.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` and a new `packages/cezar/src/lint/active-run-write-index.test.ts`. I compared 8be977ad6 with its parent d8abcfe46.\n\n| Test file | Parent | 8be977ad6 |\n|---|---|---|\n| `packages/web/e2e/thread-scroll.e2e.ts` | pass | pass |\n| `packages/cezar/src/lint/active-run-write-index.test.ts` | absent (new file) | pass |\n\n- **`thread-scroll.e2e.ts`:** it passes on both sides. I ran it at the parent and at the commit.\n- **New test file:** the diff only adds this file. I did not check whether it would fail on the parent's code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n- **Coverage gap:** Squeal selects 110 test files at the parent for this change, and I did not compare the other 108. A whole-suite compare returned no result for 1,918 files, because the parent is 7 days old and Squeal keeps results for 7 days.",
+  "final": "No test file passes or fails differently. I only compared the two files below, not the other 108 the commit selects.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` and a new `packages/cezar/src/lint/active-run-write-index.test.ts`. I compared 8be977ad6 with its parent d8abcfe46.\n\n| Test file | Parent | 8be977ad6 |\n|---|---|---|\n| `packages/web/e2e/thread-scroll.e2e.ts` | pass | pass |\n| `packages/cezar/src/lint/active-run-write-index.test.ts` | absent (new file) | pass |\n\n- **`thread-scroll.e2e.ts`:** it passes on both sides. I ran it at the parent and at the commit.\n- **New test file:** the diff only adds this file. I did not check whether it would fail on the parent's code. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show that.\n- **Coverage gap:** Squeal selects 110 test files at the parent for this change, and I did not compare the other 108. A whole-suite compare returned no result for 1,918 files, because the parent is 7 days old and Squeal keeps results for 7 days.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 0,
+  "atRevs": [
+    "8be977ad6~1 --run",
+    "8be977ad6~1",
+    "8be977ad6~1 --run"
+  ]
+}

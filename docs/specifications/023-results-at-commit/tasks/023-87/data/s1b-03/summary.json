@@ -1,0 +1,97 @@
+{
+  "id": "s1b-03",
+  "lines9": [
+    "4s +0s packages/web/e2e/thread-scroll.e2e.ts",
+    "6s +197s packages/web/e2e/thread-scroll.e2e.ts: no result (queued) -> no result (running)",
+    "6s +197s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s), 1 of 1 still running in the working tree",
+    "6s +197s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored durati",
+    "6s +197s 0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.",
+    "206s +229s packages/web/e2e/thread-scroll.e2e.ts: pass -> pass (at d8abcfe46: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "hooks9": [],
+  "lines10": [
+    "6s +197s Still to run, at d8abcfe46: 110 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: 110 test files, time unknown, by group: tests: 13 test files, time unknown: none has a stored duration and this call measured no rate for the tests group (1 of it",
+    "6s +197s 14 running and 96 queued at d8abcfe46 (its worktree), 7 running and 103 queued in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' --wait 100000 waits for them; squeal ps shows them.",
+    "6s +197s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s), 1 of 1 still running in the working tree",
+    "6s +197s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored durati",
+    "6s +197s 0 running and 1 queued at d8abcfe46 (its worktree), 1 in the working tree; their runs go on in the daemons. squeal status --at 'HEAD~1' packages/web/e2e/thread-scroll.e2e.ts --wait 100000 waits for them; squeal ps shows them.",
+    "206s +229s packages/web/e2e/thread-scroll.e2e.ts: pass -> pass (at d8abcfe46: run in the commit's worktree; now: run in this worktree)"
+  ],
+  "lines11": [
+    "6s +197s 7 test files: no result (running) -> no result (queued): packages/cezar/src/lint/ast-rules-owners.test.ts, packages/cezar/src/lint/lint-ast-grep-1.test.ts, packages/cezar/src/lint/lint-ast-grep-2.test.ts and 4 more",
+    "6s +197s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s), 1 of 1 still running in the working tree",
+    "6s +197s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unkno"
+  ],
+  "hooks11": [],
+  "lines12": [
+    "6s +197s packages/web/e2e/thread-scroll.e2e.ts: 1 of 1 queued at d8abcfe46, waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s), 1 of 1 still running in the working tree",
+    "6s +197s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored duration and this call measured no rate; packages/web/e2e/thread-scroll.e2e.ts runs on its own (time unknown: it has no stored duration)"
+  ],
+  "hooks12": [],
+  "leftover": 2,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at d8abcfe46bbe; removed ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/082a25b4ee3559fc/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 8be977ad65ee"
+  },
+  "stillRunning": [
+    "6s +197s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60; echo ----; squeal status --at HEAD~1 packages/web/e2e/thread-scroll.e2e.ts --run --wait 100000 2>&1 | tail -30"
+  ],
+  "joins": [
+    "4s +0s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ----; git show --stat --format=%H 8be977ad6 | head -30; ls packages/web/e2e/thread-scroll.e2e.ts",
+    "6s +197s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60; echo ----; squeal status --at HEAD~1 packages/web/e2e/thread-scroll.e2e.ts --run --wait 100000 2>&1 | tail -30",
+    "206s +229s squeal status --at HEAD~1 packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint/active-run-write-index.test.ts --run --wait 280000 2>&1 | tail -20"
+  ],
+  "estimates": [
+    "6s +197s Still to run, at d8abcfe46: 110 test files, time unknown: none has a stored duration and this call measured no rate; in the working tree: 110 test files, time unknown, by group: tests: 13 test files, time unknown: none has a stored duration and this call measured no rate for the tests group (1 of it",
+    "6s +197s Still to run, at d8abcfe46: 1 test file, time unknown: waiting for the browser group's slot, which the working tree's run of packages/web/e2e/thread-scroll.e2e.ts holds (running for 1 min 1 s); it can start after that run ends; in the working tree: 1 test file, time unknown: none has a stored durati"
+  ],
+  "lines8": [
+    "6s +197s 1669 test files: no result at d8abcfe46, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: packages/api-client/src/protocol/tool-display.test.ts, packages/api-client/src/utils/project-scope.test.ts, packages/cez",
+    "6s +197s 16 test files: no result at d8abcfe46, not selected by the change, but the static closure is incomplete; `--all-missing` runs them; now no result: .github/scripts/auto-merge-admission.test.cjs, .github/scripts/auto-merge-gates.test.cjs, .github/scripts/ci-sweep-workflow.test.cjs and 13 more",
+    "6s +197s 124 test files not selected: none of their inputs differs between d8abcfe46 and the working tree, so this commit cannot change their result (the 16 with an incomplete static closure and the 1669 whose runner does not tell whether their static closure is complete excepted; `--json` lists them in notS",
+    "6s +197s 0 pass -> fail, 0 fail -> pass, 0 unchanged, 1796 unknown, 124 not selected",
+    "6s +197s 1809 more with no result at d8abcfe46 not selected by the change did not run; `--all-missing` runs them"
+  ],
+  "loadStart": "8.87",
+  "exit": 0,
+  "wallSeconds": 440.791,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 --run --wait 100000 2>&1 | tail -60; echo ----; git show --stat --format=%H 8be977ad6 | head -30; ls packages/web/e2e/thread-scroll.e2e.ts",
+    "6s squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60; echo ----; squeal status --at HEAD~1 packages/web/e2e/thread-scroll.e2e.ts --run --wait 100000 2>&1 | tail -30",
+    "206s squeal status --at HEAD~1 packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint/active-run-write-index.test.ts --run --wait 280000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [
+    "6s +197s Bash squeal status --at HEAD~1 --run --wait 100000 2>&1 | tail -60; echo ----; squeal status --at HEAD~1 packages/web/e2e/thread-scroll.e2e.ts --run --wait 100000 2>&1 | tail -30",
+    "206s +229s Bash squeal status --at HEAD~1 packages/web/e2e/thread-scroll.e2e.ts packages/cezar/src/lint/active-run-write-index.test.ts --run --wait 280000 2>&1 | tail -20"
+  ],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0688755,
+  "usage": {
+    "cache_creation_input_tokens": 18367,
+    "cache_read_input_tokens": 120680,
+    "output_tokens": 1087
+  },
+  "firstFinal": "No test result changed in a way I could confirm, but the full comparison is incomplete.\n\n**What I compared:** `8be977ad6` against its parent `d8abcfe46`. The commit touches two files, both in `packages/cezar/src/lint/`: `active-run-write.ts` (modified) and `active-run-write-index.test.ts` (new).\n\n**Results**\n- `packages/web/e2e/thread-scroll.e2e.ts`: pass → pass, so unchanged. It ran at both commits.\n- `packages/cezar/src/lint/active-run-write-index.test.ts`: new in this commit and passing now. It didn't exist at the parent, so there is nothing to compare. I didn't run `squeal proof` on it, so I can't say whether it would fail against the parent's code.\n- Pass → fail: none found. Fail → pass: none found.\n\n**What is still unknown**\n- Squeal selected 110 test files as affected by the change, and most have no result at the parent commit. Results are kept for 7 days, and the parent is 7 days old. The one file I could compare directly was `thread-scroll.e2e.ts`.\n- For the rest, 14 files were running and 96 were queued at the parent, and 7 running and 103 queued in the working tree. The first full-comparison call reported 1796 unknown. I didn't wait for those queues to finish.\n- The lint tests most likely to be affected (`ast-rules-owners.test.ts`, `lint-ast-grep-1.test.ts`, `lint-ast-grep-2.test.ts` and 4 more) were still queued, with no result on either side.\n\nTo finish the comparison, run `squeal status --at HEAD~1 --wait 100000`. Add `--run` first if the queues have drained. Or name the lint test paths to narrow it.",
+  "final": "No test result changed in a way I could confirm, but the full comparison is incomplete.\n\n**What I compared:** `8be977ad6` against its parent `d8abcfe46`. The commit touches two files, both in `packages/cezar/src/lint/`: `active-run-write.ts` (modified) and `active-run-write-index.test.ts` (new).\n\n**Results**\n- `packages/web/e2e/thread-scroll.e2e.ts`: pass → pass, so unchanged. It ran at both commits.\n- `packages/cezar/src/lint/active-run-write-index.test.ts`: new in this commit and passing now. It didn't exist at the parent, so there is nothing to compare. I didn't run `squeal proof` on it, so I can't say whether it would fail against the parent's code.\n- Pass → fail: none found. Fail → pass: none found.\n\n**What is still unknown**\n- Squeal selected 110 test files as affected by the change, and most have no result at the parent commit. Results are kept for 7 days, and the parent is 7 days old. The one file I could compare directly was `thread-scroll.e2e.ts`.\n- For the rest, 14 files were running and 96 were queued at the parent, and 7 running and 103 queued in the working tree. The first full-comparison call reported 1796 unknown. I didn't wait for those queues to finish.\n- The lint tests most likely to be affected (`ast-rules-owners.test.ts`, `lint-ast-grep-1.test.ts`, `lint-ast-grep-2.test.ts` and 4 more) were still queued, with no result on either side.\n\nTo finish the comparison, run `squeal status --at HEAD~1 --wait 100000`. Add `--run` first if the queues have drained. Or name the lint test paths to narrow it.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 4,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "8be977ad6 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run",
+    "HEAD~1 --run"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "id": "s2-09",
+  "lines9": [],
+  "hooks9": [],
+  "lines10": [
+    "4s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq",
+    "4s +99s 200 running and 1138 queued at a5c9b7223 (its worktree), 4 running and 1333 queued in the working tree; their runs go on in the daemons. squeal status --at '20f03a4~1' --wait 100000 waits for them; squeal ps shows them.",
+    "106s +25s test/store/open.test.ts: pass -> pass (at a5c9b7223: the file as it was at a5c9b7223, without its changes since then; run in the commit's worktree; now: run in this worktree)"
+  ],
+  "lines11": [],
+  "hooks11": [],
+  "lines12": [],
+  "hooks12": [],
+  "leftover": 0,
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/214a9fd36247778a/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "stillRunning": [],
+  "joins": [
+    "106s +25s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -20"
+  ],
+  "estimates": [
+    "4s +99s Still to run, at a5c9b7223: 1338 test files, time unknown: too few runs stored (1 of them have a stored duration) and this call measured no rate; in the working tree: 1337 test files, time unknown: none has a stored duration and this call measured no rate; name test files or folders to narrow it: sq"
+  ],
+  "lines8": [
+    "4s +99s 624 test files: no result at a5c9b7223, not selected by the change, and its runner does not tell whether the static closure is complete; `--all-missing` runs them; now no result: test/capacity/ceiling.test.ts, test/capacity/cores.test.ts, test/capacity/crash.test.ts and 621 more",
+    "4s +99s test/store/open.test.ts: no result (queued) -> pass (now: run in this worktree)",
+    "4s +99s 624 more with no result at a5c9b7223 not selected by the change did not run; `--all-missing` runs them",
+    "106s +25s test/store/open.test.ts: pass -> pass (at a5c9b7223: the file as it was at a5c9b7223, without its changes since then; run in the commit's worktree; now: run in this worktree)"
+  ],
+  "loadStart": "7.97",
+  "exit": 0,
+  "wallSeconds": 135.366,
+  "squeal": [
+    "4s squeal status --at 20f03a4 --run 2>&1 | head -60; echo ---; squeal status --at 20f03a4~1 --run 2>&1 | head -60",
+    "106s squeal status --at 20f03a4~1 test/store/open.test.ts --run --wait 100000 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "overruns": [],
+  "long": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0501497,
+  "usage": {
+    "cache_creation_input_tokens": 12710,
+    "cache_read_input_tokens": 105147,
+    "output_tokens": 784
+  },
+  "firstFinal": "Not as far as I could verify. I only ran the one test file the commit touched, and I did not get a full-suite comparison.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared `test/store/open.test.ts` at `a5c9b7223` (the parent commit) against the working tree at `20f03a431` (the commit itself):\n\n- `test/store/open.test.ts`: pass at the parent (old version of the file), pass now (new version with the added tests). Its result did not change, and the new tests pass.\n\nThe full comparison is incomplete. The `mark.ts` change selects 1338 test files, and a whole-suite comparison would have had to run all of them. I started that run, but about 1333 files were still queued when I stopped waiting, so those results are unknown. I have no evidence that any other test file changed result. I also did not run a full local suite, which `CLAUDE.md` says not to do for routine checks.\n\nTo finish the comparison, run `squeal status --at '20f03a4~1' --wait 100000`. It waits for the queued runs and then reports every pass-to-fail or fail-to-pass change.",
+  "final": "Not as far as I could verify. I only ran the one test file the commit touched, and I did not get a full-suite comparison.\n\nThe commit changed `src/core/store/mark.ts` and added 27 lines to `test/store/open.test.ts`. I compared `test/store/open.test.ts` at `a5c9b7223` (the parent commit) against the working tree at `20f03a431` (the commit itself):\n\n- `test/store/open.test.ts`: pass at the parent (old version of the file), pass now (new version with the added tests). Its result did not change, and the new tests pass.\n\nThe full comparison is incomplete. The `mark.ts` change selects 1338 test files, and a whole-suite comparison would have had to run all of them. I started that run, but about 1333 files were still queued when I stopped waiting, so those results are unknown. I have no evidence that any other test file changed result. I also did not run a full local suite, which `CLAUDE.md` says not to do for routine checks.\n\nTo finish the comparison, run `squeal status --at '20f03a4~1' --wait 100000`. It waits for the queued runs and then reports every pass-to-fail or fail-to-pass change.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 2,
+  "usedAt": true,
+  "usedProof": false,
+  "usedRun": true,
+  "atCalls": 3,
+  "atHeadCalls": 1,
+  "atRevs": [
+    "20f03a4 --run",
+    "20f03a4~1 --run",
+    "20f03a4~1 --run"
+  ]
+}

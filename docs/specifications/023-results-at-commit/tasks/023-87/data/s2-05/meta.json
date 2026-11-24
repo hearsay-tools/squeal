@@ -1,0 +1,19 @@
+{
+  "id": "s2-05",
+  "group": "s2",
+  "clone": "~squeal-w41/runs/w41/s2-05",
+  "prompt": "Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.",
+  "start": "2026-11-24T20:55:57.295Z",
+  "loadStart": "8.47",
+  "cpus": 12,
+  "exit": 0,
+  "wallSeconds": 119.972,
+  "end": "2026-11-24T20:57:57.269Z",
+  "loadEnd": "19.30",
+  "commitStop": {
+    "HEAD~1": "Commit daemon stopped at a5c9b7223b65; removed ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/61fdb8b52996dc39/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree",
+    "HEAD": "No commit worktree at 20f03a43139e"
+  },
+  "leftover": 0,
+  "transcript": "~squeal-w41/runs/w41/claude/projects/-home-squeal-w41-runs-w41-s2-05/65d644a8-2d97-4a9d-9656-824a50e86b6f.jsonl"
+}

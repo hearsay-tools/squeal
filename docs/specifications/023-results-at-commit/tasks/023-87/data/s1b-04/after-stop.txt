@@ -1,0 +1,147 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-24 21:59:37 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w41/runs/w41/s1b-04
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+worktree ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+HEAD d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w41 squeal-w41    0 Nov 24 21:34 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/082a25b4ee3559fc:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:59 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/12244eec22c20a3b:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:54 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/2474bf0836577227:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:06 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/2f66463bbcaec5de:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:57 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/460a7643d78a8df3:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:02 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/4d30f5f843af4bfb:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:52 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/5d9e72dee0e4608a:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:39 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/61fdb8b52996dc39:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:58 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/94f741192ac6855d:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:45 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/956e693dee34ccb2:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:50 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/a6dc55849a6c83de:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:47 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/b5b6caf50045c42a:
+total 12
+drwxrwxr-x  3 squeal-w41 squeal-w41 4096 Nov 24 22:04 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+drwxrwxr-x  4 squeal-w41 squeal-w41 4096 Nov 24 21:59 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:05 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 22:05 a7f00366337c7094.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 22:04 f187ce07d258a180.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 22:05 f7f60d0854d0eaeb.json
+
+home/.cache/squeal/checkouts/d4dc2c8c899da819:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:48 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/e62cf02daa2ef18d:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:43 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/fdde170f2031bd26:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:36 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+home/.cache/squeal/checkouts/ffe889cecb64073b:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:06 .
+drwxrwxr-x 19 squeal-w41 squeal-w41 4096 Nov 24 22:04 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+3593401       1       07:02 squeal s1b-04 daemon @f955fdd4 ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs daemon ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+3593525 3593401       06:58 /opt/squeal-w41/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs runner-host ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+3614521       1       05:47 squeal s1b-04 store --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs store-process ~squeal-w41/runs/w41/s1b-04/.git --store code
+3634968       1       05:07 /opt/squeal-w41/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+3634969       1       05:07 /opt/squeal-w41/node24/bin/node ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease.mjs watch-app 3634968 c294d61d-2b74-4f72-9b10-2d9fc754e380:17823229 ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+3641265       1       04:21 /opt/squeal-w41/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w41/runs/w41/s1b-04/.ai/qa/served/s1b-04
+3641266       1       04:21 /opt/squeal-w41/node24/bin/node ~squeal-w41/runs/w41/s1b-04/.ai/scripts/test-env-lease.mjs watch-app 3641265 c294d61d-2b74-4f72-9b10-2d9fc754e380:17827765 ~squeal-w41/runs/w41/s1b-04 ~squeal-w41/runs/w41/s1b-04/.ai/qa/served/s1b-04
+3675927 3593401       00:10 /opt/squeal-w41/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs runner-host ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+3676433 3675927       00:04 /opt/squeal-w41/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@4.1.10_@types+node@24.19.1_@vitest+coverage-v8@4.1.10_jsdom@29.1.1_vite@8.1.4_@t_97dcf1bcc208ed9bfb6e761446f4279c/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/node_modules/.pnpm/vitest@4.1.10_@types+node@24.19.1_@vitest+coverage-v8@4.1.10_jsdom@29.1.1_vite@8.1.4_@t_97dcf1bcc208ed9bfb6e761446f4279c/node_modules/vitest/dist/workers/forks.js
+3676473 3676433       00:04 /opt/squeal-w41/node24/bin/node ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/b5b6caf50045c42a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/build/cezar/dist/index.js serve --repo /tmp/squeal-1002/tmp/ac493b20ee6d969d/cezar-e2e-thread-scroll-xgq4mL --port 0 --no-open
+3676702       1       00:02 ~squeal-w41/runs/w41/home/.cache/agent-tools/agent-browser/0.39.4/agent-browser-linux-x64
+3676738 3676702       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --remote-debugging-port=0 --no-first-run --no-default-browser-check --disable-background-networking --disable-backgrounding-occluded-windows --disable-component-update --disable-default-apps --disable-hang-monitor --disable-popup-blocking --disable-prompt-on-repost --disable-sync --disable-features=Translate --enable-features=NetworkService,NetworkServiceInProcess,WebMCPTesting,DevToolsWebMCPSupport --metrics-recording-only --password-store=basic --use-mock-keychain --headless=new --hide-scrollbars --enable-unsafe-swiftshader --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --window-size=1280,720
+3676740       1       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome_crashpad_handler --monitor-self --monitor-self-annotation=ptype=crashpad-handler --user-stream-region=4,65568 --database=/tmp/cez-browser-test-home-8usjl9/.config/google-chrome-for-testing/Crash Reports --annotation=lsb-release=Ubuntu 24.04.5 LTS --annotation=plat=Linux --annotation=prod=Chrome_Linux --annotation=ver=158.0.8127.88 --initial-client-fd=7 --shared-client-connection
+3676742       1       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome_crashpad_handler --no-periodic-tasks --monitor-self-annotation=ptype=crashpad-handler --database=/tmp/cez-browser-test-home-8usjl9/.config/google-chrome-for-testing/Crash Reports --annotation=lsb-release=Ubuntu 24.04.5 LTS --annotation=plat=Linux --annotation=prod=Chrome_Linux --annotation=ver=158.0.8127.88 --initial-client-fd=4 --shared-client-connection
+3676746 3676738       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=zygote --no-zygote-sandbox --headless=new --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --no-first-run --ozone-platform=headless --ozone-override-screen-size=800,600 --use-angle=swiftshader-webgl
+3676747 3676738       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=zygote --headless=new --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --no-first-run --ozone-platform=headless --ozone-override-screen-size=800,600 --use-angle=swiftshader-webgl
+3676750 3676747       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=zygote --headless=new --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --no-first-run --ozone-platform=headless --ozone-override-screen-size=800,600 --use-angle=swiftshader-webgl
+3676785 3676738       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --use-angle=swiftshader-webgl --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708989122997041
+3676788 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=utility --utility-sub-type=storage.mojom.StorageService --lang=en-US --service-sandbox-type=utility --use-angle=swiftshader-webgl --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708990060038890
+3676823 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=renderer --top-chrome-webui --gpu-client-id=5 --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --disallow-v8-feature-flag-overrides --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=5 --gpu-channel-request-start-time-ticks=178537649202 --launch-time-ticks=178537650054 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708990997080739
+3676835 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=renderer --gpu-client-id=7 --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=7 --gpu-channel-request-start-time-ticks=178537679546 --launch-time-ticks=178537680101 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708992871164437
+3676836 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=renderer --gpu-client-id=6 --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --ntp-process --change-stack-guard-on-fork=enable --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=6 --gpu-channel-request-start-time-ticks=178537682207 --launch-time-ticks=178537683491 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708991934122588
+3676886 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=renderer --gpu-client-id=10 --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=10 --gpu-channel-request-start-time-ticks=178537756728 --launch-time-ticks=178537757624 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708995682289984
+3676931 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=renderer --gpu-client-id=13 --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --extension-process --change-stack-guard-on-fork=enable --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=13 --gpu-channel-request-start-time-ticks=178537816550 --launch-time-ticks=178537817367 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708998493415531
+3676932 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=renderer --gpu-client-id=14 --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --extension-process --change-stack-guard-on-fork=enable --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=14 --gpu-channel-request-start-time-ticks=178537819364 --launch-time-ticks=178537821947 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190708999430457380
+3676933 3676746       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=gpu-process --gpu-recent-crash-count=0 --headless=new --ozone-platform=headless --use-angle=swiftshader-webgl --enable-unsafe-swiftshader --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --gpu-preferences=YAAAAAAAAAAgAACBAAAAAAAAAAAAAGAASAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --use-gl=disabled --shared-files --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190709000367499229
+3676949 3676933       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=broker
+3676979 3676750       00:01 ~squeal-w41/runs/w41/home/.agent-browser/browsers/chrome-158.0.8127.88/chrome --type=renderer --gpu-client-id=16 --crashpad-handler-pid=3676740 --enable-crash-reporter=, --noerrdialogs --user-data-dir=/tmp/squeal-1002/tmp/ac493b20ee6d969d/agent-browser-chrome-4e3e9be1-b053-48ff-8cf8-bf6ad4eee8e2 --change-stack-guard-on-fork=enable --remote-debugging-port=0 --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=16 --gpu-channel-request-start-time-ticks=178538013811 --launch-time-ticks=178538014664 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14887626492476664629,4360929359789903440,262144 --enable-features=DevToolsWebMCPSupport,NetworkService,NetworkServiceInProcess,WebMCPTesting --disable-features=PaintHolding,Translate --variations-seed-version --pseudonymization-salt-handle=7,i,542459293087825788,2415643979878479826,4 --trace-process-track-uuid=3190709001304541078
+3677042 3676433       00:00 ~squeal-w41/runs/w41/home/.cache/agent-tools/agent-browser/0.39.4/agent-browser-linux-x64 --namespace cez-e2e --session e2e-thread-scroll-3676433 wait --fn document.querySelector('[data-slot="history-fallback"]') !== null --json

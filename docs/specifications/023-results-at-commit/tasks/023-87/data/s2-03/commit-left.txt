@@ -1,0 +1,55 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 9 test processes · no flags
+Host    load 21.0 14.2 8.6 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 52% · memory pressure 0.0% (0.0% full) · memory 8.9 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 11.5 CPUs (at least 99% of busy) · memory 5.4 GiB (61% of used) + 0 swap · pool 11 of 11 permits
+
+~squeal-w41/runs/w41/s2-03 (this repository) · 1 daemon · CPU at least 6.1 · memory 2.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3478856  4c1fe4d4  0.1.624          1m    5%     0m29s  612M    0     fast tier, 200 files; 1137 pending
+    host vitest      3479485  local                      1m   89%     1m14s  504M    0
+    host vitest      3495151  local                     16s    5%     0m01s  149M    0
+    vitest           3491234  fork worker               29s     ?     0m05s  146M    0     nice 10, +3 children
+    vitest           3493152  fork worker               22s   42%     0m06s  285M    0     nice 10
+    vitest           3494529  fork worker               18s     ?     0m02s  ?       ?     nice 10, +1 child
+    vitest           3494561  fork worker               18s   70%     0m03s  238M    0     nice 10, +1 child
+    vitest           3497757  fork worker                7s   62%     0m03s  208M    0     nice 10, +2 children
+    vitest           3498476  fork worker                6s   47%     0m03s  204M    0     nice 10
+    vitest           3498631  fork worker                5s   64%     0m04s  167M    0     nice 10, +2 children
+    vitest           3498942  fork worker                4s   92%     0m02s  133M    0     nice 10
+    vitest           3500323  fork worker                0s   78%     0m01s  122M    0     nice 10
+
+~squeal-w41/runs/w41/s1b-02 · 2 daemons · CPU 5.4 · memory 2.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3470803  7ceb3184  0.1.624          4m    1%     0m21s  385M    0     fast tier, 1 file
+    host vitest      3471128  local                      3m    0%     1m16s  626M    0
+    host vitest      3497248  local                      9s  428%     0m03s  300M    0
+  serving            3470288  d13bc96c  0.1.624          4m  109%     1m26s  698M    0     1 session
+    host vitest      3470440  local                      4m    0%     1m15s  645M    0
+    host node-test   3470441  local                      4m    0%     0m00s  46M     0
+    host node-test   3470447  local                      4m    0%     0m00s  52M     0
+
+Store processes
+  3473678  code.sqlite of ~squeal-w41/runs/w41/s1b-02/.git
+  3489853  code.sqlite of ~squeal-w41/runs/w41/s2-03/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/4d30f5f843af4bfb/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3470803  age 4m  at d8abcfe46bbe
+    commit worktree  ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/956e693dee34ccb2/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 3478856  age 2m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w41/runs/w41/s2-03/.git/squeal/checkouts': No such file or directory
+~squeal-w41/runs/w41/home/.cache/squeal/checkouts/956e693dee34ccb2:
+total 12
+drwxrwxr-x  3 squeal-w41 squeal-w41 4096 Nov 24 21:48 .
+drwxrwxr-x 11 squeal-w41 squeal-w41 4096 Nov 24 21:48 ..
+drwxrwxr-x  4 squeal-w41 squeal-w41 4096 Nov 24 21:48 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:49 .
+drwxrwxr-x 11 squeal-w41 squeal-w41 4096 Nov 24 21:48 ..
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:49 1a1de7814478bc4a.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:49 7c0b0be213ad6e80.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:48 9e9d6e582e9be333.json

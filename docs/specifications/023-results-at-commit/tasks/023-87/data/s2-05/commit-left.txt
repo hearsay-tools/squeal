@@ -1,0 +1,59 @@
+## squeal ps after squeal stop
+squeal ps · 3 daemons, 13 test processes · no flags
+Host    load 21.1 16.1 11.5 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 49% · memory pressure 0.0% (0.0% full) · memory 9.3 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 10.9 CPUs (at least 99% of busy) · memory 6.9 GiB (74% of used) + 0 swap · pool 12 of 11 permits
+
+~squeal-w41/runs/w41/s2-05 (this repository) · 1 daemon · CPU at least 8.0 · memory 2.6 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3562212  80058dab  0.1.624          1m   33%     0m27s  613M    0     fast tier, 200 files; 1137 pending
+    host vitest      3563107  local                      1m  191%     1m12s  831M    0
+    host vitest      3582973  local                     15s    0%     0m01s  159M    0
+    vitest           3578296  fork worker               30s   81%     0m04s  151M    0     nice 10, +1 child
+    vitest           3585186  fork worker                8s     ?     0m03s  ?       ?     nice 10, +3 children
+    vitest           3585574  fork worker                6s     ?     0m03s  ?       ?     nice 10, +1 child
+    vitest           3586027  fork worker                5s   74%     0m05s  197M    0     nice 10, +2 children
+    vitest           3586140  fork worker                5s   94%     0m02s  134M    0     nice 10, +5 children
+    vitest           3586677  fork worker                3s     ?     0m02s  135M    0     nice 10, +4 children
+    vitest           3587292  fork worker                2s   84%     0m02s  213M    0     nice 10
+    vitest           3587478  fork worker                1s   97%     0m02s  190M    0     nice 10
+    vitest           3587904  fork worker                0s   74%     0m01s  91M     0     nice 10
+
+~squeal-w41/runs/w41/s1b-03 · 2 daemons · CPU 2.8 · memory 4.3 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3507309  d6af2c26  0.1.624          6m    1%     0m37s  401M    0     fast tier, 1 file; 95 pending
+    host vitest      3507644  local                      6m    0%     1m20s  600M    0
+    host vitest      3565516  local                      1m    2%     0m05s  235M    0
+    group:browser:vitest3567300  fork worker                1m   14%     0m11s  376M    0     nice 10, +1 child
+    group:browser:vitest3569132                             1m  124%     1m05s  1.5G    0     escaped, nice 10, +24 children
+    group:browser:vitest3569187                             1m    0%     0m00s  384K    0     escaped, nice 10
+    group:browser:vitest3569190                             1m    0%     0m00s  328K    0     escaped, nice 10
+  serving            3506708  aba05dff  0.1.624          6m  142%     1m54s  545M    0     94 pending; 1 session
+    host vitest      3506841  local                      6m    0%     1m17s  660M    0
+    host node-test   3506842  local                      6m    0%     0m00s  46M     0
+    host node-test   3506848  local                      6m    0%     0m01s  51M     0
+
+Store processes
+  3529133  code.sqlite of ~squeal-w41/runs/w41/s1b-03/.git
+  3574399  code.sqlite of ~squeal-w41/runs/w41/s2-05/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/082a25b4ee3559fc/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3507309  age 6m  at d8abcfe46bbe
+    commit worktree  ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/61fdb8b52996dc39/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree  daemon pid 3562212  age 2m  at a5c9b7223b65
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w41/runs/w41/s2-05/.git/squeal/checkouts': No such file or directory
+~squeal-w41/runs/w41/home/.cache/squeal/checkouts/61fdb8b52996dc39:
+total 12
+drwxrwxr-x  3 squeal-w41 squeal-w41 4096 Nov 24 21:56 .
+drwxrwxr-x 15 squeal-w41 squeal-w41 4096 Nov 24 21:56 ..
+drwxrwxr-x  4 squeal-w41 squeal-w41 4096 Nov 24 21:56 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:57 .
+drwxrwxr-x 15 squeal-w41 squeal-w41 4096 Nov 24 21:56 ..
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:56 1a8c6cac3fa39c26.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:55 2f9200b4b1a32d42.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:57 8ccfefea8d8360b4.json

@@ -1,0 +1,168 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-24 22:07:52 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w41/runs/w41/s1b-05
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+worktree ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/3eb4e940078aba5d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+HEAD d8abcfe46bbe0e0aab47ad4a7269331a838292d1
+detached
+locked squeal
+
+
+## checkouts
+-rw-r--r-- 1 squeal-w41 squeal-w41    0 Nov 24 21:34 home/.cache/squeal/checkouts/commit-places.lock
+
+home/.cache/squeal/checkouts/082a25b4ee3559fc:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:59 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/12244eec22c20a3b:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:54 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/214a9fd36247778a:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:14 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/2474bf0836577227:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:06 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/2f66463bbcaec5de:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:57 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/37c16cc2e4520f4a:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:10 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/3eb4e940078aba5d:
+total 12
+drwxrwxr-x  3 squeal-w41 squeal-w41 4096 Nov 24 22:08 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+drwxrwxr-x  4 squeal-w41 squeal-w41 4096 Nov 24 22:08 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/460a7643d78a8df3:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:02 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/4d30f5f843af4bfb:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:52 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/5d9e72dee0e4608a:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:39 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/61fdb8b52996dc39:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:58 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/837ffddda9cc2e3d:
+total 12
+drwxrwxr-x  3 squeal-w41 squeal-w41 4096 Nov 24 22:15 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+drwxrwxr-x  4 squeal-w41 squeal-w41 4096 Nov 24 22:15 commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/94f741192ac6855d:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:45 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/956e693dee34ccb2:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:50 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/a6dc55849a6c83de:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:47 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/b5b6caf50045c42a:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:06 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/cb940f8e62e6b5bf:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:13 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/commit-places:
+total 16
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:16 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 22:16 2f375772a8b6226a.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 22:13 b4381702f641d8ed.json
+
+home/.cache/squeal/checkouts/d4dc2c8c899da819:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:48 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/e62cf02daa2ef18d:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:43 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/fdde170f2031bd26:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:36 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+home/.cache/squeal/checkouts/ffe889cecb64073b:
+total 8
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 22:06 .
+drwxrwxr-x 24 squeal-w41 squeal-w41 4096 Nov 24 22:15 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+3679187       1       09:26 squeal s1b-05 daemon @7a1e6952 ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs daemon ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/3eb4e940078aba5d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree
+3701702       1       08:17 squeal s1b-05 store --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs store-process ~squeal-w41/runs/w41/s1b-05/.git --store code
+3721933       1       07:35 /opt/squeal-w41/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/3eb4e940078aba5d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+3721934       1       07:35 /opt/squeal-w41/node24/bin/node ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/3eb4e940078aba5d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease.mjs watch-app 3721933 c294d61d-2b74-4f72-9b10-2d9fc754e380:17872193 ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/3eb4e940078aba5d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/3eb4e940078aba5d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/qa/served/tree
+3727024       1       06:55 /opt/squeal-w41/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w41/runs/w41/s1b-05/.ai/qa/served/s1b-05
+3727025       1       06:55 /opt/squeal-w41/node24/bin/node ~squeal-w41/runs/w41/s1b-05/.ai/scripts/test-env-lease.mjs watch-app 3727024 c294d61d-2b74-4f72-9b10-2d9fc754e380:17876140 ~squeal-w41/runs/w41/s1b-05 ~squeal-w41/runs/w41/s1b-05/.ai/qa/served/s1b-05
+3734146 3679187       05:02 /opt/squeal-w41/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs runner-host ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/3eb4e940078aba5d/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree --runner vitest
+3764963 3764961       02:14 timeout --kill-after=30 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.
+3764965 3764963       02:14 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.
+3765048       1       02:13 squeal s2-10 daemon @813f4cb9 ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs daemon ~squeal-w41/runs/w41/s2-10
+3765546 3765048       02:10 /opt/squeal-w41/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs runner-host ~squeal-w41/runs/w41/s2-10 --runner vitest
+3765763       1       02:08 squeal s2-10 daemon @36df52f9 ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs daemon ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/837ffddda9cc2e3d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree
+3766072 3765763       02:02 /opt/squeal-w41/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs runner-host ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/837ffddda9cc2e3d/commit-a5c9b7223b6550d249098754bfc6453b3853c2b7-4e5b33bbd0bc4a67/tree --runner vitest
+3767123 3765048       01:18 squeal s2-10 store --disable-warning=ExperimentalWarning ~squeal-w41/runs/w41/claude/plugins/cache/hearsay/squeal/0.1.624/dist/cli/squeal.mjs store-process ~squeal-w41/runs/w41/s2-10/.git --store code
+3779771 3764965       00:28 /bin/bash -c source ~squeal-w41/runs/w41/claude/shell-snapshots/snapshot-bash-1795554916387-084zwa.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'squeal status --at 20f03a4~1 test/store --run --wait 120000 2>&1 | tail -30' < /dev/null && pwd -P >| ~squeal-w41/runs/w41/tmp/claude-66ef-cwd
+3779773 3779771       00:28 node --disable-warning=ExperimentalWarning -e  const { createHash } = require("node:crypto"); const { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } = require("node:fs"); const { basename, dirname, isAbsolute, join, sep } = require("node:path"); const { pathToFileURL } = require("node:url"); const env = process.env; const home = env.HOME ?? ""; const cliOf = (dir) => join(dir, "dist", "cli", "squeal.mjs"); const compare = (a, b) => {   const x = a.split(".").map(Number);   const y = b.split(".").map(Number);   for (let i = 0; i < Math.max(x.length, y.length); i++) {     const d = (x[i] ?? 0) - (y[i] ?? 0);     if (d !== 0) return d;   }   return 0; }; const newestIn = (dir) =>   readdirSync(dir)     .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(dir, v))))     .sort(compare)     .at(-1); const fail = (text) => {   process.stderr.write(`squeal: ${text}\n`);   process.exit(1); }; const found = []; try {   const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");   const file = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));   const cwd = process.cwd();   const applies = (e) =>     e.scope === "user" ||     (e.scope === "project" &&       typeof e.projectPath === "string" &&       (cwd === e.projectPath || cwd.startsWith(e.projectPath + sep)));   const entry = (file.plugins?.["squeal@hearsay"] ?? []).find(     (e) => applies(e) && typeof e.installPath === "string" && existsSync(cliOf(e.installPath)),   );   if (entry) {     const version = typeof entry.version === "string" ? entry.version : basename(entry.installPath);     found.push({ harness: "Claude Code", version, dir: entry.installPath });   } } catch {} const codexHome = env.CODEX_HOME ?? join(home, ".codex"); // A runtime version names a directory, so it is a plain release, never a path. const plain = (v) => typeof v === "string" && /^\d+\.\d+\.\d+$/.test(v); const versionIn = (file) => {   try {     return JSON.parse(readFileSync(file, "utf8")).version;   } catch {} }; // A whole runtime: runtime.json and its plugin manifest name one version, and its CLI is there. const runtimeAt = (dir) => {   const v = versionIn(join(dir, "runtime.json"));   return plain(v) && v === versionIn(join(dir, ".codex-plugin", "plugin.json")) && existsSync(cliOf(dir)) ? v : undefined; }; let self; try {   self = dirname(dirname(realpathSync(process.argv[1]))); } catch {} const data = self !== undefined && existsSync(join(self, "runtime")) ? self : join(codexHome, "plugins", "data", "squeal-hearsay"); let inCodexData = self === data; try {   inCodexData ||= self === realpathSync(data); } catch {} let adapter; let codex; try {   const cache = join(codexHome, "plugins", "cache", "hearsay", "squeal");   for (const v of readdirSync(cache).filter((v) => /^\d+(\.\d+)*$/.test(v)).sort(compare)) {     const dir = join(cache, v);     if (existsSync(join(dir, "hooks", "hooks.json")) && existsSync(join(dir, "seed"))) adapter = dir;     else if (existsSync(cliOf(dir))) codex = { harness: "Codex", version: v, dir };   } } catch {} const managed = adapter !== undefined || existsSync(join(data, "runtime")); let pinned; for (const id of [env.CODEX_SESSION_ID, env.CODEX_THREAD_ID]) {   if (!id || pinned) continue;   const file = join(data, "runtime", "sessions", `${createHash("sha256").update(id).digest("hex")}.json`);   let pin;   try {     pin = readFileSync(file, "utf8");   } catch {     continue;   }   try {     pin = JSON.parse(pin);   } catch {}   if (pin?.schema !== 1 || pin.sessionId !== id || !plain(pin.version))     fail(`the runtime record of this Codex session, ${file}, is unreadable. Squeal does not guess the runtime of a running session. Start a new Codex session.`);   const dir = join(data, "versions", pin.version);   if (runtimeAt(dir) !== pin.version)     fail(`Squeal runtime ${pin.version}, which this Codex session started with, is missing or incomplete at ${dir}. Squeal does not switch a running session to another runtime. Start a new Codex session to use the installed runtime.`);   pinned = { harness: "Codex", version: pin.version, dir }; } let problem; if (managed) {   const current = versionIn(join(data, "runtime", "current.json"));   const root = plain(current) ? join(data, "versions", current) : undefined;   const now = root && runtimeAt(root) === current ? { harness: "Codex", version: current, dir: root } : undefined;   const seed = adapter && runtimeAt(join(adapter, "seed"));   const chosen = seed && (!now || compare(seed, now.version) > 0) ? { harness: "Codex", version: seed, dir: join(adapter, "seed") } : now;   if (chosen && (!codex || compare(chosen.version, codex.version) >= 0)) codex = chosen;   if (!chosen && adapter)     problem = `the squeal@hearsay plugin for Codex at ${adapter} has no usable runtime: none in ${data} is current and whole, and its seed is incomplete. Run install.sh again, or reinstall the plugin: codex plugin remove squeal@hearsay && codex plugin add squeal@hearsay`; } if (codex) found.push(codex); for (const [harness, name] of [["Pi", "pi"], ["OpenCode", "opencode"]]) {   try {     const packages = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", name);     const version = newestIn(packages);     if (version) found.push({ harness, version, dir: join(packages, version) });   } catch {} } try {   const dir = join(home, ".gemini", "config", "plugins", "squeal");   const version = versionIn(join(dir, "plugin.json"));   if (typeof version === "string" && /^\d+(\.\d+)*$/.test(version) && existsSync(cliOf(dir)))     found.push({ harness: "Antigravity", version, dir }); } catch {} // Spec 005 D3 copies in the Codex data directory decide only without the // managed runtimes of spec 002 D9; those of another data directory, such as // the Antigravity one, always do (spec 024 D1). let kept; try {   const versions = join(self, "versions");   const version = managed && inCodexData ? undefined : newestIn(versions);   if (version) kept = { version, dir: join(versions, version) }; } catch {} if (found.length === 0 && kept === undefined && pinned === undefined) {   if (problem) fail(problem);   process.stderr.write(     "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi, OpenCode or Antigravity. Install it:\n" +       "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +       "  codex plugin marketplace add hearsay-tools/marketplace && codex plugin add squeal@hearsay\n" +       "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi, OpenCode and Antigravity.\n",   );   process.exit(1); } const newest = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a), found[0]); const run = pinned ?? (newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest); // gh-85: an unchanged line prints once per scope, a session or, outside one, // the machine; its mark lives in the data directory this launcher runs from, // else in the state directory install.sh records in. A mark that cannot be // written prints each time. const notice = (line) => {   const scope =     env.CLAUDE_CODE_SESSION_ID ||     env.CODEX_SESSION_ID ||     env.OPENCODE_SESSION_ID ||     env.PI_SESSION_ID ||     env.ANTIGRAVITY_CONVERSATION_ID ||     "";   const dir = kept     ? dirname(dirname(kept.dir))     : data === self       ? data       : join(env.XDG_STATE_HOME || join(home, ".local", "state"), "squeal");   const mark = join(dir, "launcher-notices.json");   try {     let seen = [];     try {       const read = JSON.parse(readFileSync(mark, "utf8"));       if (Array.isArray(read)) seen = read.filter(Array.isArray);     } catch {}     if (seen.some(([s, l]) => s === scope && l === line)) return;     if (!isAbsolute(dir)) throw new Error("no state directory");     mkdirSync(dir, { recursive: true });     const next = join(dir, `.launcher-notices.${process.pid}.tmp`);     writeFileSync(next, JSON.stringify([...seen.filter(([s]) => s !== scope), [scope, line]].slice(-64)));     renameSync(next, mark);   } catch {}   process.stderr.write(line); }; // One line names each version apart: the CLI this command runs, the plugin // of each harness, and what the sessions started before an update do: Codex // sessions for copies in the Codex data directory keep their version until they // restart; Antigravity sessions move at their next hook, where the daemon hands over. const skewed = found.some((f) => f.version !== newest.version); const older = kept && compare(kept.version, run.version) < 0; const behind = pinned && newest && compare(newest.version, pinned.version) > 0; if (skewed || older || behind) {   const plugins = found.map((f) => `${f.harness} ${f.version}`);   const listed = plugins.length > 1 ? `${plugins.slice(0, -1).join(", ")} and ${plugins.at(-1)}` : plugins[0];   notice(     `squeal: this command runs squeal ${run.version}; plugins: ${listed}` +       (older         ? inCodexData           ? `; Codex sessions started on ${kept.version} keep ${kept.version} until they restart`           : `; open Antigravity sessions move to ${run.version} at their next hook, and the running ${kept.version} daemon hands over then`         : "") +       (behind ? `; this Codex session started on ${pinned.version} and keeps it until it restarts` : "") +       (skewed ? ". Run squeal update to bring the plugins to one version.\n" : ".\n"),   ); } // `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014 // goal 6); an older plugin has none. const ps = join(run.dir, "dist", "cli", "ps.mjs"); const cli = process.argv[2] === "ps" && existsSync(ps) ? ps : cliOf(run.dir); process.argv.splice(1, 1, cli); process.execArgv.splice(-2); import(pathToFileURL(cli).href);  ~squeal-w41/runs/w41/home/.local/bin/squeal status --at 20f03a4~1 test/store --run --wait 120000
+3779774 3779771       00:28 tail -30
+3782705 3765546       00:08 /opt/squeal-w41/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+3782715 3765546       00:08 /opt/squeal-w41/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+3783189 3782715       00:06 /opt/squeal-w41/node24/bin/node --disable-warning=ExperimentalWarning --import ~squeal-w41/runs/w41/s2-10/test/store/child/register-ts.mjs ~squeal-w41/runs/w41/s2-10/test/store/child/worker.ts waiter /tmp/squeal-1002/tmp/e489d4d37eade789/squeal-store-gObgbf/.git 5000
+3783248 3782715       00:06 /opt/squeal-w41/node24/bin/node --disable-warning=ExperimentalWarning --import ~squeal-w41/runs/w41/s2-10/test/store/child/register-ts.mjs ~squeal-w41/runs/w41/s2-10/test/store/child/worker.ts pruner /tmp/squeal-1002/tmp/e489d4d37eade789/squeal-store-gObgbf/.git
+3784821 3765546       00:01 /opt/squeal-w41/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+3784948 3765546       00:01 /opt/squeal-w41/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+3785024 3765546       00:00 /opt/squeal-w41/node24/bin/node --experimental-import-meta-resolve --require ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development ~squeal-w41/runs/w41/s2-10/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_@vitest+coverage-v8@5.0.3_vite@8.3.2_@types+node@22.20_b47c0c715f633291ed4506045301d047/node_modules/vitest/dist/workers/forks.js
+3785112 3784948       00:00 /opt/squeal-w41/node24/bin/node -e  const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1], { timeout: 10_000 }); db.exec("CREATE TABLE holder (x)"); db.exec("BEGIN IMMEDIATE"); db.exec("INSERT INTO holder VALUES (1)"); console.log("held"); setTimeout(() => db.exec("COMMIT"), 500);  /tmp/squeal-1002/tmp/e489d4d37eade789/squeal-store-X3sQlG/.git/squeal/store.sqlite

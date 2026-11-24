@@ -1,0 +1,72 @@
+## squeal ps after squeal stop
+squeal ps · 5 daemons, 17 test processes · no flags
+Host    load 13.2 12.3 8.6 on 12 CPUs · background ceiling 9 busy CPUs · CPU pressure 35% · memory pressure 0.0% (0.0% full) · memory 10.3 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU at least 11.7 CPUs (at least 99% of busy) · memory 7.7 GiB (75% of used) + 0 swap · pool 10 of 11 permits
+
+~squeal-w41/runs/w41/s1b-02 (this repository) · 1 daemon · CPU 0.0 · memory 1.0 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3470803  7ceb3184  0.1.624          6m    0%     0m23s  427M    0     idle
+    host vitest      3471128  local                      6m    0%     1m16s  632M    0
+
+~squeal-w41/runs/w41/s1-03 · 2 daemons · CPU at least 10.0 · memory 4.6 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3504500  727b835a  0.1.624          1m   26%     0m17s  521M    0     fast tier, 10 files; fast tier, 3 files; fast tier, 1 file; 96 pending
+    host vitest      3504731  local                      1m  193%     1m12s  1.1G    0
+    host vitest      3509595  local                      2s   60%     0m02s  318M    0
+    node-test        3509113  …urface-readers.test.cjs   3s   43%     0m02s  46M     0     nice 10, +1 child
+    node-test        3509125  …ts/test-inputs.test.mjs   3s   35%     0m00s  31M     0     nice 10, +1 child
+    vitest           3509172  fork worker                3s  108%     0m04s  596M    0     nice 10, +1 child
+    vitest           3509191  fork worker                3s   38%     0m02s  190M    0     nice 10
+    vitest           3509200  fork worker                3s     ?     0m01s  ?       ?     nice 10
+    vitest           3509228  fork worker                3s     ?     0m05s  ?       ?     nice 10, +1 child
+    vitest           3509236  fork worker                3s     ?     0m00s  ?       ?     nice 10
+    vitest           3509256  fork worker                2s   37%     0m01s  90M     0     nice 10
+    vitest           3509290  fork worker                2s   25%     0m01s  178M    0     nice 10, +1 child
+    vitest           3509829  fork worker                1s     ?     0m00s  ?       ?     nice 10
+  serving            3503933  de6ffe6c  0.1.624          1m  176%     0m27s  616M    0     fast tier, 4 files; fast tier, 3 files; 6 pending; 1 session
+    host vitest      3504076  local                      1m   45%     1m08s  623M    0
+    host node-test   3504078  local                      1m    0%     0m00s  54M     0
+    host node-test   3504084  local                      1m    2%     0m00s  70M     0
+    node-test        3510414  …urface-readers.test.cjs   0s   30%     0m00s  37M     0     nice 10, +1 child
+    node-test        3510427  …-compat-policy.test.cjs   0s   33%     0m00s  5M      0     nice 10
+    node-test        3510429  …ts/test-inputs.test.mjs   0s   26%     0m00s  30M     0     nice 10, +1 child
+    vitest           3510524  fork worker                0s   42%     0m00s  28M     0     nice 10
+    vitest           3510537  fork worker                0s     ?     0m00s  ?       ?     nice 10
+    vitest           3510554  fork worker                0s   33%     0m00s  62M     0     nice 10
+    vitest           3510558  fork worker                0s   47%     0m01s  82M     0     nice 10
+
+~squeal-w41/runs/w41/s1b-03 · 2 daemons · CPU 1.7 · memory 2.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3507309  d6af2c26  0.1.624         30s   10%     0m07s  246M    0     idle
+    host vitest      3507644  local                     25s   77%     0m27s  696M    0
+  serving            3506708  aba05dff  0.1.624         36s    6%     0m05s  294M    0     1 session
+    host vitest      3506841  local                     35s   77%     0m38s  836M    0
+    host node-test   3506842  local                     35s    0%     0m00s  54M     0
+    host node-test   3506848  local                     35s    0%     0m00s  64M     0
+
+Store processes
+  3473678  code.sqlite of ~squeal-w41/runs/w41/s1b-02/.git
+  3508084  code.sqlite of ~squeal-w41/runs/w41/s1-03/.git
+
+Temporary checkouts
+    commit worktree  ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/082a25b4ee3559fc/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3507309  age 30s  at d8abcfe46bbe
+    commit worktree  ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/12244eec22c20a3b/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3504500  age 1m  at d8abcfe46bbe
+    commit worktree  ~squeal-w41/runs/w41/home/.cache/squeal/checkouts/4d30f5f843af4bfb/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree  daemon pid 3470803  age 6m  at d8abcfe46bbe
+
+Unknown: 3 values; --full names each
+
+## checkout folders
+ls: cannot access '~squeal-w41/runs/w41/s1b-02/.git/squeal/checkouts': No such file or directory
+~squeal-w41/runs/w41/home/.cache/squeal/checkouts/4d30f5f843af4bfb:
+total 12
+drwxrwxr-x  3 squeal-w41 squeal-w41 4096 Nov 24 21:46 .
+drwxrwxr-x 13 squeal-w41 squeal-w41 4096 Nov 24 21:51 ..
+drwxrwxr-x  4 squeal-w41 squeal-w41 4096 Nov 24 21:46 commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67
+
+home/.cache/squeal/checkouts/commit-places:
+total 20
+drwxrwxr-x  2 squeal-w41 squeal-w41 4096 Nov 24 21:51 .
+drwxrwxr-x 13 squeal-w41 squeal-w41 4096 Nov 24 21:51 ..
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:49 1a1de7814478bc4a.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:51 2f9200b4b1a32d42.json
+-rw-rw-r--  1 squeal-w41 squeal-w41  156 Nov 24 21:50 80be0041299c1ea5.json
