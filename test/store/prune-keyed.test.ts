@@ -125,7 +125,7 @@ describe("a prune with nothing to delete (row 021-33)", () => {
     expect(counts).toEqual(noCodeRemoved());
   });
 
-  it("takes the main store's write lock only for its two expiry steps", () => {
+  it("never takes the main store's write lock: its expiry steps read first (row 025-10)", () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
     store.results.putMany([result(testCheck("c1"), "k1", { recordedAt: NOW - DAY_MS })]);
@@ -143,7 +143,7 @@ describe("a prune with nothing to delete (row 021-33)", () => {
     )) {
       slice();
     }
-    expect(seen).toEqual([0, 0]);
+    expect(seen).toEqual([]);
     expect(counts).toEqual(noneRemoved());
   });
 });

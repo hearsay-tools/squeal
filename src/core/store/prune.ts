@@ -23,14 +23,20 @@ import {
   PRUNABLE_BY_KEY,
 } from "./prune-unused.js";
 import { vacuum } from "./prune-vacuum.js";
-import { expireReplaced } from "./repos/replaced.js";
-import { dropFallenUnknownRuns } from "./repos/unknown-runs.js";
+import { expireReplaced, readReplaced } from "./repos/replaced.js";
+import { dropFallenUnknownRuns, readUnknownRuns } from "./repos/unknown-runs.js";
 import { WORKTREE_SCOPED_TABLES } from "./repos/worktrees.js";
 
 /* Spec 001 D8 (row 011-160): the rules are in `prune-rules.ts`. */
 
-/** One write transaction of a prune (spec 021 D3); one that gave up on a busy store is run again. */
-export type PruneSlice = () => void;
+/**
+ * One write transaction of a prune (spec 021 D3); one that gave up on a busy
+ * store is run again. Row 025-10: a slice that returns `false` took no write
+ * lock or wrote nothing, so its driver goes on after one event-loop turn
+ * instead of the pause a write earns (`SlicedPrune`); any other value,
+ * nothing included, is counted as a write.
+ */
+export type PruneSlice = () => unknown;
 
 /** What a prune removed so far, filled in as its slices run. */
 export interface PruneCounts {
@@ -96,10 +102,19 @@ export function* pruneSlices(
   }
 
   // Row 011-77 (011 C7 as amended 2026-10-21): an expired replaced failure first, so its run,
-  // log and text go in this pass.
-  yield () => conn.transaction(() => expireReplaced(conn, cutoff));
+  // log and text go in this pass. Row 025-10: each expiry is read first, outside the write lock,
+  // and written only when it may drop something.
+  yield* writeIf(
+    conn,
+    () => readReplaced(conn).some((entry) => entry.provenance.recordedAt < cutoff),
+    () => expireReplaced(conn, cutoff),
+  );
   // Row 011-108: a record whose UNKNOWN no longer stands keeps its run no longer.
-  yield () => conn.transaction(() => dropFallenUnknownRuns(conn));
+  yield* writeIf(
+    conn,
+    () => readUnknownRuns(conn).length > 0,
+    () => dropFallenUnknownRuns(conn),
+  );
 
   yield* dropPrunable(conn, cutoff, counts);
 
@@ -117,6 +132,25 @@ export function* pruneSlices(
   yield* dropUnusedChecks(conn, counts);
 
   yield* vacuum(conn);
+}
+
+/**
+ * Row 025-10: a read slice that asks `needed`, outside the write lock, then,
+ * only when it said yes, a write slice that runs `write` in one transaction.
+ * `write` decides again under the lock; the read only spares a store with
+ * nothing to expire its write lock and pause.
+ */
+function* writeIf(
+  conn: Connection,
+  needed: () => boolean,
+  write: () => number,
+): Generator<PruneSlice, void, undefined> {
+  let due = false;
+  yield () => {
+    due = conn.read(needed);
+    return false;
+  };
+  if (due) yield () => conn.transaction(write) > 0;
 }
 
 /** A worktree whose root has no `.git` entry any more (spec 001 D8). */
@@ -147,7 +181,7 @@ function* removeWorktree(
     while (removed === DELETE_BATCH) {
       removed = 0;
       yield () => {
-        if (!isGone(worktree.root)) return;
+        if (!isGone(worktree.root)) return false;
         // Plain `?` placeholders: Node 22.19's node:sqlite refuses a reused `?1`
         // ("column index out of range"); 22.19 is the Node floor and CI's pin.
         removed = conn.transaction(() =>
@@ -159,6 +193,7 @@ function* removeWorktree(
             DELETE_BATCH,
           ),
         );
+        return removed > 0;
       };
     }
   }
@@ -201,6 +236,7 @@ function* dropRuns(
       );
       for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
       counts.runsRemoved += dropped.length;
+      return dropped.length > 0;
     };
   }
 }
@@ -221,13 +257,15 @@ function* dropPrunable(
   for (let at = 0; at < ids.length; at += DELETE_BATCH) {
     const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
     yield () => {
-      counts.resultsRemoved += conn.transaction(() =>
+      const n = conn.transaction(() =>
         conn.run(
           `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE_BY_KEY}`,
           batch,
           cutoff,
         ),
       );
+      counts.resultsRemoved += n;
+      return n > 0;
     };
   }
   yield* dropOrphanTexts(conn);
@@ -259,6 +297,7 @@ function* evictToCap(
           return n;
         });
         counts.resultsRemoved += batch;
+        return batch > 0;
       };
       if (batch === 0) break;
     }

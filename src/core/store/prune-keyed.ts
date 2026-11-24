@@ -2,8 +2,11 @@ import type { SQLInputValue } from "node:sqlite";
 import type { Connection, Params } from "./connection.js";
 import { DELETE_BATCH } from "./prune-rules.js";
 
-/** One write transaction of a prune, or one read of its keys (spec 021 D3, row 021-33). */
-type Slice = () => void;
+/**
+ * One write transaction of a prune, or one read of its keys (spec 021 D3, row
+ * 021-33); `false` when it wrote nothing (row 025-10, `PruneSlice`).
+ */
+type Slice = () => unknown;
 
 /**
  * One rule of a prune, as `deleteByKey` runs it (row 021-33).
@@ -35,7 +38,8 @@ export interface KeyedRule {
  * transaction, which in WAL takes no write lock; a delete slice then deletes
  * those keys that `recheck` still matches, in one write transaction. A read
  * that finds nothing ends the rule: a prune with nothing to delete takes no
- * write lock. Key columns hold text or numbers, never blobs (the keys travel
+ * write lock. Row 025-10: a read slice, and a delete whose recheck kept every
+ * row, return `false`, so the driver does not pause after them. Key columns hold text or numbers, never blobs (the keys travel
  * as JSON).
  */
 export function* deleteByKey(conn: Connection, rule: KeyedRule): Generator<Slice, void, undefined> {
@@ -60,6 +64,7 @@ export function* deleteByKey(conn: Connection, rule: KeyedRule): Generator<Slice
         last === null ? conn.all(first, ...searchParams) : conn.all(next, ...last, ...searchParams),
       );
       keys = rows.map((row) => rule.key.map((column) => row[column] as SQLInputValue));
+      return false;
     };
     if (keys.length === 0) return;
     const list = JSON.stringify(keys);
@@ -68,6 +73,7 @@ export function* deleteByKey(conn: Connection, rule: KeyedRule): Generator<Slice
         conn.run(remove, list, ...(rule.recheckParams?.() ?? searchParams)),
       );
       rule.removed?.(n);
+      return n > 0;
     };
     if (keys.length < batch) return;
     last = keys[keys.length - 1] ?? null;

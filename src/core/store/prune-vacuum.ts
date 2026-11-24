@@ -3,7 +3,7 @@ import { checkpointAfterWrites } from "./prune-checkpoint.js";
 import { VACUUM_PAGES, VACUUM_SLICE_MS } from "./prune-rules.js";
 
 /** One write transaction of a prune; the same shape as `PruneSlice` in `prune.ts`. */
-type Slice = () => void;
+type Slice = () => unknown;
 
 /** Milliseconds from a fixed start; tests replace it to stop a slice where they choose. */
 export type VacuumClock = () => number;

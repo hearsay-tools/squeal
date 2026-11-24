@@ -1,7 +1,7 @@
 import type { Connection } from "./connection.js";
 
 /** One slice of a prune; the same shape as `PruneSlice` in `prune.ts`. */
-type Slice = () => void;
+type Slice = () => unknown;
 
 /**
  * Row 022-08r: the prune's slices from `slices`, each that wrote followed by
@@ -17,7 +17,9 @@ type Slice = () => void;
  *
  * A slice wrote when `total_changes()` or the page count moved: a delete
  * counts its rows, a vacuum step shrinks the file. A slice that wrote
- * nothing gets no checkpoint, so a store with nothing to prune costs no more.
+ * nothing gets no checkpoint, so a store with nothing to prune costs no more,
+ * and returns `false`, so its driver does not pause after it (row 025-10).
+ * The checkpoint slice keeps its pause: it blocks the daemon as a write does.
  */
 export function* checkpointAfterWrites(
   conn: Connection,
@@ -29,6 +31,7 @@ export function* checkpointAfterWrites(
       const before = writeMark(conn);
       withoutAutoCheckpoint(conn, slice);
       wrote = writeMark(conn) !== before;
+      return wrote;
     };
     if (wrote) yield () => checkpoint(conn);
   }

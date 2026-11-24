@@ -28,7 +28,11 @@ function made(store: Store, clock: () => number, name: string, ran: string[]) {
     store,
     clock,
     INTERVAL_MS,
-    () => [() => ran.push(name)],
+    () => [
+      () => {
+        ran.push(name);
+      },
+    ],
     () => {},
   )[Symbol.iterator]();
 }
