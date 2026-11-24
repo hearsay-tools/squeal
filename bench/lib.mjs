@@ -1,6 +1,7 @@
 // Shared helpers for the benchmark scripts. No dependencies beyond Node.
 import { execFile, spawn } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 /** Runs a command, returns { ms, code, stdout, stderr }. Never throws on a non-zero exit. */
 export function timed(cmd, args, { input, env, cwd, timeoutMs = 900_000 } = {}) {
@@ -224,23 +225,50 @@ export function longWriteHolds(text) {
 }
 
 /**
- * Whether a daemon's `status --json` shows its start-up baseline done: test files listed,
- * nothing pending in the checks, the test files without checks or the code counts.
- * A field an older Squeal version does not print does not hold the wait (row 025-08).
+ * What a daemon's `status --json` still waits for before its start-up baseline is done, or null:
+ * "status" (none read), "daemon" (not alive yet: status read the store alone, so its zero counts
+ * mean nothing, review 0.1.626 wt-3), "listing", "checks", "testFiles", "code" (files not counted,
+ * or the code store not made yet: `files` 0 in a project with test files) or "lint" (pending,
+ * less what waits for a pause or a manual run). A field an older Squeal version does not print
+ * does not hold the wait (rows 025-08, 025-13).
  */
+export function baselineWaitingFor(status) {
+  if (!status || typeof status !== "object") return "status";
+  if (status.daemon && status.daemon.state !== "alive") return "daemon";
+  if (status.testFilesListed === false) return "listing";
+  if ((status.counts?.pending ?? 0) !== 0) return "checks";
+  if ((status.testFilesWithoutChecks?.pending ?? 0) !== 0) return "testFiles";
+  if (codeWaiting(status)) return "code";
+  if (lintWaiting(status.lint)) return "lint";
+  return null;
+}
+
+/** The code store has files to count, or has none yet in a project with test files. */
+function codeWaiting({ code, testFileCounts }) {
+  if (!code) return false;
+  if ((code.pending ?? 0) !== 0) return true;
+  const testFiles = Object.values(testFileCounts ?? {}).reduce((a, n) => a + (n ?? 0), 0);
+  return code.files === 0 && testFiles > 0;
+}
+
+/** Lint checks pending, less those a lint group holds for a pause or a manual run. */
+function lintWaiting(lint) {
+  if (!lint) return false;
+  const held = (lint.awaitingRun ?? []).reduce((a, r) => a + (r.checks ?? 0), 0);
+  return (lint.pending ?? 0) - (lint.awaitingPause ?? 0) - held > 0;
+}
+
+/** Whether `baselineWaitingFor(status)` waits for nothing. */
 export function baselineSettled(status) {
-  if (!status || typeof status !== "object") return false;
-  if (status.testFilesListed === false) return false;
-  if ((status.counts?.pending ?? 0) !== 0) return false;
-  if ((status.testFilesWithoutChecks?.pending ?? 0) !== 0) return false;
-  if (status.code && (status.code.pending ?? 0) !== 0) return false;
-  return true;
+  return baselineWaitingFor(status) === null;
 }
 
 /**
  * Polls `read(root)` (a parsed `status --json`, or null) for each root until `baselineSettled`,
  * or until `timeoutMs` from the first poll. Roots wait one after the other; the deadline is shared.
- * Returns one { ms, settled, polls } per root, in order.
+ * Returns one { ms, settled, polls, waitingFor, code } per root, in order: `waitingFor` is what
+ * the last poll still waited for (null when settled), `code` its code store counts
+ * ({ files, pending }, null when that status has none).
  */
 export async function waitForBaselines(
   roots,
@@ -252,16 +280,48 @@ export async function waitForBaselines(
   for (const root of roots) {
     const r0 = now();
     let polls = 0;
-    let settled = false;
+    let status = null;
+    let waitingFor = null;
     for (;;) {
       polls++;
-      settled = baselineSettled(await read(root));
-      if (settled || now() - t0 >= timeoutMs) break;
+      status = await read(root);
+      waitingFor = baselineWaitingFor(status);
+      if (waitingFor === null || now() - t0 >= timeoutMs) break;
       await wait(pollMs);
     }
-    out.push({ ms: now() - r0, settled, polls });
+    const code = status?.code ? { files: status.code.files, pending: status.code.pending } : null;
+    out.push({ ms: now() - r0, settled: waitingFor === null, polls, waitingFor, code });
   }
   return out;
+}
+
+/**
+ * Waits until `cpuS()` (CPU seconds used so far, as `storeProcessMeter().cpuS`) grows by under
+ * `maxPct` percent of one core over `windowMs`, or until `timeoutMs`. Returns
+ * { ms, settled, polls, lastPct }: `lastPct` is the last window's CPU percent.
+ */
+export async function waitForQuiet(
+  cpuS,
+  {
+    windowMs = 2000,
+    maxPct = 2,
+    timeoutMs = 60_000,
+    now = () => performance.now(),
+    wait = sleep,
+  } = {},
+) {
+  const t0 = now();
+  let polls = 0;
+  let lastPct = null;
+  for (;;) {
+    polls++;
+    const a = cpuS();
+    const w0 = now();
+    await wait(windowMs);
+    lastPct = (100 * (cpuS() - a)) / Math.max(0.001, (now() - w0) / 1000);
+    if (lastPct < maxPct) return { ms: now() - t0, settled: true, polls, lastPct };
+    if (now() - t0 >= timeoutMs) return { ms: now() - t0, settled: false, polls, lastPct };
+  }
 }
 
 /**
@@ -288,4 +348,35 @@ export function hookWriteWaitLog(text) {
 /** Store writes that held the lock over 250 ms; not D9's `long write wait:` lines, which are no lock holds. */
 export function longWriteCount(text) {
   return (text.match(/long write(?! wait)/gi) ?? []).length;
+}
+
+/**
+ * Reads, and copies to `copyTo`, every daemon and store-process log in `logDir`: the store's
+ * long writes and lock failures, the store process's log, the relay and D9's hook write waits.
+ * The caller reads them after `squeal stop` (review 0.1.626 S2), so the shutdown summaries count.
+ */
+export function readDaemonLogs(logDir, copyTo) {
+  let longWrites = 0;
+  const holds = [];
+  let lockFailures = 0;
+  let storeLog = "";
+  let relay = "";
+  mkdirSync(copyTo, { recursive: true });
+  if (existsSync(logDir)) {
+    for (const f of readdirSync(logDir)) {
+      const text = readFileSync(join(logDir, f), "utf8");
+      longWrites += longWriteCount(text);
+      holds.push(...longWriteHolds(text));
+      lockFailures += (text.match(/SQLITE_BUSY|database is locked/gi) ?? []).length;
+      if (f.startsWith("store-")) storeLog += text;
+      else relay += text;
+      cpSync(join(logDir, f), join(copyTo, f));
+    }
+  }
+  return {
+    store: { longWrites, lockFailures, longWriteHoldsMs: holds },
+    storeProcess: { ...storeProcessLog(storeLog), relay: relayLog(relay) },
+    // Spec 025 D9: how long hook writes waited for the daemon's main thread; seen false before D9.
+    hookWriteWait: hookWriteWaitLog(relay),
+  };
 }
