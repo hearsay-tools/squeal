@@ -747,7 +747,7 @@ class Daemon {
         runnerModule,
         { daemonVitestOptions },
         { createCompositeRunner },
-        { withSlowInstance, vitestLaneGroup, laneInstanceWorkers },
+        { vitestLaneGroup, laneInstanceWorkers },
         { awaitsInstall },
         { createCodePass },
         { mainStoreSource },
@@ -892,6 +892,25 @@ class Daemon {
           around,
           ...vitest.recovery,
         });
+      // Spec 021 D9, D12 (rows 021-13, 021-14): the remote lane the user names for this
+      // repository in remote.json, when its squeal.config.json allows one. Spec 026 D8 (row
+      // 026-11): every runner it names, and each tier, over one machine.
+      const { createDaemonRemote, vitestOver, vitestRemoteStart, withRemoteRelease } = await import(
+        "../runner-host/remote/daemon-lane.js"
+      );
+      const remote = createDaemonRemote({
+        root,
+        commonDir,
+        version: this.#version,
+        launch: this.options.runnerHost,
+        policy: () => this.#policy,
+        note: (text, topic) => this.#note(text, undefined, undefined, topic),
+        lastNote: (topic) =>
+          readDaemonNotes(store, worktreeId).findLast((n) => n.topic === topic)?.text,
+        log: this.#log,
+        ...(this.options.env === undefined ? {} : { env: this.options.env }),
+      });
+      const onRemote = remote === null ? {} : { remote: remote.wrap };
       // Spec 021 D8 (row 021-12): node:test and pytest in local runner hosts, as Vitest.
       const host = this.#processHost();
       // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
@@ -912,6 +931,7 @@ class Daemon {
           children: () => this.#policy.coverage.children,
           collected: (run) => this.#coverage?.collected(run),
         },
+        ...onRemote,
       });
       // Spec 007 D8: pytest's cache and bytecode live under the state directory (open question 3).
       const pytestRunners = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
@@ -925,42 +945,42 @@ class Daemon {
         note: (text, topic) => this.#note(text, undefined, undefined, topic),
         latestNote: (topic) =>
           readDaemonNotes(store, this.opened.worktreeId).findLast((n) => n.topic === topic)?.text,
+        ...onRemote,
       });
-      // Spec 021 D9, D12 (rows 021-13, 021-14): Vitest's background runs on the remote lane the
-      // user names for this repository in remote.json, when its squeal.config.json allows one.
-      const { remoteLaneOf, withDaemonRemoteLane } = await import(
-        "../runner-host/remote/daemon-lane.js"
-      );
-      const vitestLanes =
-        vitestRunner === null
-          ? null
-          : withDaemonRemoteLane({
-              root,
-              commonDir,
-              version: this.#version,
-              launch: this.options.runnerHost,
-              policy: () => this.#policy,
-              vitest: withSlowInstance(vitestRunner, laneVitest, besideVitest),
-              vitestOptions: {
-                ...vitestOptions,
-                note: (text) => this.#note(text),
-                childEnv: this.#children.envFor("vitest"),
-              },
-              note: (text, topic) => this.#note(text, undefined, undefined, topic),
-              lastNote: (topic) =>
-                readDaemonNotes(store, worktreeId).findLast((n) => n.topic === topic)?.text,
-              log: this.#log,
-              ...(this.options.env === undefined ? {} : { env: this.options.env }),
-            });
+      // Spec 026 D8.1: the runner's own lane sends its edit and background tiers; each slow or
+      // group lane, and a tier beside a named wait's batch, gets a remote host of its own per
+      // pass, started as a local instance of its lane would be.
+      const vitestLanes = (fast: RecoveringRunner) =>
+        vitestOver(remote, {
+          fast,
+          lane: laneVitest,
+          beside: besideVitest,
+          start: (lane) =>
+            vitestRemoteStart({
+              ...vitestOptions,
+              note: (text) => this.#note(text),
+              childEnv: this.#children.envFor(lane),
+              ...instanceWorkers(lane),
+            }),
+        });
+      const instanceWorkers = (lane: string): { maxWorkers?: number } => {
+        const workers = lane.startsWith(BESIDE_LANE_PREFIX)
+          ? this.#policy.runner.tierSize
+          : laneInstanceWorkers(vitestLaneGroup(this.#policy, lane));
+        return workers === undefined ? {} : { maxWorkers: workers };
+      };
       // Row 011-69: each run, of any lane, is a tier the idle GC waits for and,
       // row 021-29, after whose end the busy GC looks at the heap.
       const runner = this.#idleGc.track(
         afterEachRun(
           withRunGroups(
-            createCompositeRunner(
-              vitestLanes === null ? [] : [vitestLanes],
-              [nodeTestRunners, pytestRunners],
-              runnerGate,
+            withRemoteRelease(
+              createCompositeRunner(
+                vitestRunner === null ? [] : [vitestLanes(vitestRunner)],
+                [nodeTestRunners, pytestRunners],
+                runnerGate,
+              ),
+              remote,
             ),
             {
               requests: this.#atRun,
@@ -973,7 +993,7 @@ class Daemon {
         ),
       );
       this.#vitest = vitestRunner;
-      this.#remoteLane = remoteLaneOf(vitestLanes);
+      this.#remoteLane = remote;
       this.#runner = runner;
       await Promise.all([
         ...(await openedAtStart(

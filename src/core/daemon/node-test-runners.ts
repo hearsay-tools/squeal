@@ -6,9 +6,12 @@ import type { NodeTestCoverage } from "../../runners/node-test/coverage.js";
 import { nodeTestTraits } from "../../runners/node-test/traits.js";
 import { NODE_TEST_ADAPTER_VERSION } from "../../runners/node-test/version.js";
 import { createHostedNodeTest, type ProcessHost } from "../runner-host/process-host.js";
+import type { HostPolicy } from "../runner-host/protocol.js";
 import { runnerHostGone } from "../runner-host/proxy.js";
+import type { LaneSpec, RemoteStart } from "../runner-host/remote/daemon-lane.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { NodeTestProject, PolicyInputs } from "../types/policy.js";
+import type { RunnerAdapter } from "../types/runner.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
@@ -39,7 +42,15 @@ export interface NodeTestRunnersOptions {
     project: string,
     files: readonly (readonly [RelativePath, readonly string[]])[],
   ) => void;
+  /**
+   * Spec 026 D8.2 (row 026-11): puts a project's runner on the repository's
+   * remote lane (`DaemonRemote.wrap`); absent, every run is here.
+   */
+  readonly remote?: RemoteWrap;
 }
+
+/** `DaemonRemote.wrap`: a runner with its remote tiers on the shared machine (spec 026 D8). */
+export type RemoteWrap = <R extends RunnerAdapter>(spec: LaneSpec<R>) => R;
 
 /**
  * One runner per `nodeTest` entry (spec 003 D7), each behind
@@ -105,7 +116,7 @@ function nodeTestRunner(
       : { closures: (files) => options.closures?.(project.name, files) }),
   };
   const { host } = options;
-  return createRecoveringRunner({
+  const runner = createRecoveringRunner({
     name: "node-test",
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
     create: () =>
@@ -119,7 +130,44 @@ function nodeTestRunner(
       options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`),
   });
+  return (
+    options.remote?.({
+      runner: "node-test",
+      name: `node-test ${project.name}`,
+      local: runner,
+      start: remoteStart(project, adapterOptions),
+    }) ?? runner
+  );
 }
+
+/**
+ * What a remote host of `project` starts with (spec 026 D8.2), as a local
+ * one's (`createHostedNodeTest`): coverage stays off there (021 D12), and
+ * the remote moves the temp directory under its tree (`connect.ts`).
+ */
+function remoteStart(project: NodeTestProject, options: NodeTestAdapterOptions): RemoteStart {
+  return {
+    options: {
+      childEnv: options.childEnv ?? {},
+      process: { project, ...(options.tempDir === undefined ? {} : { tempDir: options.tempDir }) },
+    },
+    policy: () => ({
+      ...NO_VITEST_POLICY,
+      ...(options.concurrency === undefined ? {} : { tierSize: options.concurrency() }),
+      ...(options.inputs === undefined ? {} : { inputs: options.inputs() }),
+    }),
+    ...(options.note === undefined ? {} : { note: options.note }),
+  };
+}
+
+/** The policy values only Vitest reads, off in a node:test or pytest host. */
+export const NO_VITEST_POLICY: HostPolicy = {
+  observe: false,
+  exclude: [],
+  excludeProjects: [],
+  coverage: false,
+  coverageChildren: false,
+};
 
 /**
  * `createRecoveringRunner`'s options for an adapter in a local runner host:

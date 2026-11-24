@@ -70,6 +70,8 @@ export interface RemoteLaneOptions {
   readonly awaitConnect?: boolean;
   /** Spec 026 D7.3: called at each remote run's start and end, each connect and each queued invalidation. */
   readonly activity?: () => void;
+  /** Spec 026 D8: called when the remote is lost (not refused): its machine may have slept by itself. */
+  readonly lost?: () => void;
   readonly connect: () => Promise<RemoteHost>;
   readonly allowlist: () => readonly string[];
   /** Spec 021 D19.2: test-file globs that always run here. Absent: none. */
@@ -155,6 +157,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     why = reason;
     state = { kind: "down", since, retryAt: now() + wait, refused };
     failures++;
+    if (!refused) options.lost?.();
     options.log(`remote ${target}: ${reason}`);
     tell();
   };

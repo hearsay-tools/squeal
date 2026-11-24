@@ -120,6 +120,9 @@ test/runner-host/node-test-
 # A real node:test runner host that closes when idle and reopens on the
 # next edit (row 021-26).
 test/runner-host/idle-host
+# A real `node --test` in a remote runner host over a fake ssh, with the
+# remote tree's temp directory (row 026-11).
+test/runner-host/remote/connect-process
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
 # pass (beside pytest), warm-up, an edit's tier beside the backlog tier,

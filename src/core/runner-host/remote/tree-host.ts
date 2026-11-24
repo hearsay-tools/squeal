@@ -42,7 +42,9 @@ import {
  * Spec 026 D8.1 (row 026-11): several hosts may share a tree, as a slow
  * lane's beside the runner's own. Each keeps its runs' logs under its own
  * process id and removes only its own ended runs' and those of a host no
- * longer running.
+ * longer running. A file's or the record's next copy is written under a
+ * name of this host's own before it replaces the old one, and one host at
+ * a time installs (`install.lock`, taken over from a host that died).
  */
 
 /** What the host answers of its tree. */
@@ -82,10 +84,13 @@ export function createTreeHost(
   /** This host's runs whose logs are not yet read. */
   const running = new Set<string>();
   const mine = `${process.pid}-`;
+  /** A name no other host on the tree writes, for a file's next copy. */
+  let parts = 0;
+  const part = (at: string) => `${at}.${process.pid}-${++parts}.squeal-part`;
   const save = async () => {
-    const part = `${recordPath}.part`;
-    await writeFile(part, JSON.stringify(files));
-    await rename(part, recordPath);
+    const next = part(recordPath);
+    await writeFile(next, JSON.stringify(files));
+    await rename(next, recordPath);
   };
 
   /** `path` inside the root, refusing a path that leaves it, also through a link. */
@@ -131,10 +136,10 @@ export function createTreeHost(
         await rm(at, { force: true, recursive: true });
         if (file.mode === "link") await symlink(bytes.toString("utf8"), at);
         else {
-          const part = join(dirname(at), `.${basename(at)}.squeal-part`);
-          await writeFile(part, bytes);
-          await chmod(part, file.mode === "x" ? 0o755 : 0o644);
-          await rename(part, at);
+          const next = part(join(dirname(at), `.${basename(at)}`));
+          await writeFile(next, bytes);
+          await chmod(next, file.mode === "x" ? 0o755 : 0o644);
+          await rename(next, at);
         }
         files[file.path] = {
           blob: file.blob,
@@ -155,7 +160,9 @@ export function createTreeHost(
         LOCKFILES.flatMap((name) => (files[name] === undefined ? [] : [[name, files[name].blob]])),
       );
       const keepModules = Object.keys(files).some((path) => path.startsWith("node_modules/"));
-      return installTree({ root, record: installedPath, locks, keepModules, output, env });
+      return locked(join(state, "install.lock"), () =>
+        installTree({ root, record: installedPath, locks, keepModules, output, env }),
+      );
     },
     async runDir(runId) {
       const runs = join(state, "runs");
@@ -208,6 +215,39 @@ export function createTreeHost(
       return logs;
     },
   };
+}
+
+/**
+ * `work` while this host holds the lock directory `lock`: made by one host
+ * at a time, holding its process id, taken over when that process ended.
+ */
+async function locked<T>(lock: string, work: () => Promise<T>): Promise<T> {
+  for (;;) {
+    try {
+      await mkdir(lock);
+      await writeFile(join(lock, "pid"), String(process.pid));
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const holder = await readFile(join(lock, "pid"), "utf8").catch(() => "");
+      // A holder that died gives the lock up, as does one that wrote no id within 10 s.
+      const made = await lstat(lock).then(
+        (stat) => stat.mtimeMs,
+        () => Date.now(),
+      );
+      const dead = holder === "" ? Date.now() - made > 10_000 : !hostRuns(`${holder}-`);
+      if (dead) {
+        await rm(lock, { recursive: true, force: true });
+        continue;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+  try {
+    return await work();
+  } finally {
+    await rm(lock, { recursive: true, force: true });
+  }
 }
 
 /** Whether the run directory `name` is a live host's: one named by the process id of a running process. */
