@@ -405,15 +405,16 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     testFiles: readonly TestFileRef[],
     run: RunOptions,
   ): Promise<RunReport> => {
-    const host = await ready();
-    if (host === null) return instead(testFiles, run);
+    // Counted from before the host is picked: a sleep finds the run busy, not its host closed.
     remoteRuns++;
     activity();
-    const report = await remoteRun(host, testFiles, run).finally(() => {
-      remoteRuns--;
-      activity();
-    });
-    if (report === "refused") return instead(testFiles, run);
+    const report = await ready()
+      .then((host) => (host === null ? null : remoteRun(host, testFiles, run)))
+      .finally(() => {
+        remoteRuns--;
+        activity();
+      });
+    if (report === null || report === "refused") return instead(testFiles, run);
     if ("cancelled" in report) return report.cancelled;
     if ("lost" in report) {
       // Review 0.1.442 B4: nothing of the lost attempt is kept; under `local` its files run
