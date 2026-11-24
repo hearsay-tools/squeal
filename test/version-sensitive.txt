@@ -68,6 +68,7 @@
 #   test/cli/setup/plan.test.ts
 #   test/cli/setup/pytest.test.ts
 #   test/cli/setup/setup-exclude.test.ts
+#   test/code/gate/narrow-parity.test.ts
 #   test/code/gate/prepare.test.ts
 #   test/daemon/composite-reconcile.test.ts
 #   test/daemon/node-test-prepare.test.ts
