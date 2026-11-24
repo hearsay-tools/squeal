@@ -266,8 +266,8 @@ export function shareMachine(options: ShareOptions): MachineShare {
     },
     async refreshGit(signal) {
       const m = machine;
-      if (m?.syncGit === undefined || released) return;
-      // No SSH while the worktree's Git state is the one last found there.
+      if (m?.syncGit === undefined) return;
+      // No SSH while the worktree's Git state is the one last found there; the read here always.
       if (await m.syncGit(null, signal)) return;
       if (!awake || released || signal?.aborted === true) return;
       await serial(async () => {

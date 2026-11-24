@@ -194,6 +194,8 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
       remoteUrls: remoteUrls(commonDir),
       nodeVersion: process.version,
       log: options.log,
+      // The provider's own processes (`ssh`, hooks, its API key) take the daemon's env.
+      ...(options.env === undefined ? {} : { env: options.env }),
     },
     ...(options.env === undefined ? {} : { env: options.env }),
   });

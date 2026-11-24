@@ -561,7 +561,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
 
   /** B3: the machine's `.git` at the worktree's Git state, or known not to be, before a split. */
   const refreshRepository = async () => {
-    if (options.refreshRepository === undefined || ending()) return;
+    // Called during the exit too: what it reads here then still says whether the `.git` there is current.
+    if (options.refreshRepository === undefined) return;
     refreshes++;
     activity();
     await options
