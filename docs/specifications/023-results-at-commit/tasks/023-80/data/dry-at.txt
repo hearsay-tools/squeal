@@ -111,6 +111,6 @@ home/.cache/squeal/checkouts/f5e8798a920a164a
 == leftover  2026-11-24T08:17:07Z load 5.71 2.68 1.05
 2845598	/tmp/squeal-1002/tmp/9e81d7d48b1d4efb (deleted)	/opt/squeal-w37/node24/bin/node ~squeal-w37/runs/w37/home/.cache/squeal/checkouts/f5e8798a920a164a/commit-d8abcfe46bbe0e0aab47ad4a7269331a838292d1-4e5b33bbd0bc4a67/tree/.ai/scripts/test-env-lease
 2849904	~squeal-w37/runs/w37/dryat	/opt/squeal-w37/node24/bin/node .ai/qa/build/cezar/dist/index.js --port 0 --no-open --repo ~squeal-w37/runs/w37/dryat/.ai/qa/served/dryat 
-2849905	/tmp/squeal-1002/tmp/7ecaaea1ba2b4389 (deleted)	/opt/squeal-w37/node24/bin/node ~squeal-w37/runs/w37/dryat/.ai/scripts/test-env-lease.mjs watch-app 2849904 c294d61d-2b74-4f72-9b10-2d9fc754e380:13233206 ~squeal-w37/runs/w37/dryat /home/squ
+2849905	/tmp/squeal-1002/tmp/7ecaaea1ba2b4389 (deleted)	/opt/squeal-w37/node24/bin/node ~squeal-w37/runs/w37/dryat/.ai/scripts/test-env-lease.mjs watch-app 2849904 c294d61d-2b74-4f72-9b10-2d9fc754e380:13233206 ~squeal-w37/runs/w37/dryat ~squeal-w37/…
 processes of squeal-w37: 3
 /tmp entries of squeal-w37: 4
