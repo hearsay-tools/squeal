@@ -11,6 +11,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it } from "vitest";
 import config, { EXCLUDE, HOOKED, MOCKED, UNIT } from "../vitest.config.js";
 
@@ -164,7 +165,8 @@ describe("the unit project shares modules safely across files (review 0.1.629 B3
       });
       const taken = ["a", "b"].map((name) => readFileSync(join(dirs, name), "utf8"));
       expect(run.status, `${run.stdout}\n${run.stderr}`).toBe(0);
-      expect(run.stdout).toMatch(/Test Files\s+2 passed \(2\)/);
+      // A run under a daemon may colour its summary.
+      expect(stripVTControlCharacters(run.stdout)).toMatch(/Test Files\s+2 passed \(2\)/);
       // Both files took a directory of their own, and neither is left.
       expect(new Set(taken).size).toBe(2);
       expect(taken.filter((dir) => existsSync(dir))).toEqual([]);
