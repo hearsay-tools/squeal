@@ -1,5 +1,6 @@
 import {
   closeSync,
+  linkSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -118,22 +119,11 @@ function change(
   });
 }
 
-/** Runs `work` holding the lock file `lock` (`O_CREAT | O_EXCL`); throws when it stays held. */
+/** Runs `work` holding the lock file `lock`; throws when it stays held. */
 function locked(lock: string, work: () => void): void {
   const owner = `${process.pid} ${Math.random().toString(36).slice(2)}\n`;
   const deadline = Date.now() + LOCK_WAIT_MS;
-  for (;;) {
-    try {
-      const fd = openSync(lock, "wx", 0o600);
-      try {
-        writeFileSync(fd, owner);
-      } finally {
-        closeSync(fd);
-      }
-      break;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    }
+  while (!acquire(lock, owner)) {
     if (takeOverStale(lock)) continue;
     if (Date.now() > deadline) throw new Error(`${lock} is held by another writer`);
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, LOCK_RETRY_MS);
@@ -146,25 +136,86 @@ function locked(lock: string, work: () => void): void {
   }
 }
 
+/** Creates `lock` holding `owner`, never empty; false when it exists. */
+function acquire(lock: string, owner: string): boolean {
+  const published = `${lock}.${owner.trim().replace(" ", ".")}`;
+  writeFileSync(published, owner, { mode: 0o600 });
+  try {
+    linkSync(published, lock);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "EEXIST") return false;
+    if (!NO_HARD_LINKS.has(code ?? "")) throw error;
+  } finally {
+    unlinkSync(published);
+  }
+  // No hard links here: create, then write; `takeOverStale` waits out an empty lock.
+  let fd: number;
+  try {
+    fd = openSync(lock, "wx", 0o600);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+    throw error;
+  }
+  try {
+    writeFileSync(fd, owner);
+  } finally {
+    closeSync(fd);
+  }
+  return true;
+}
+
+const NO_HARD_LINKS: ReadonlySet<string> = new Set(["EPERM", "ENOTSUP", "EOPNOTSUPP", "ENOSYS"]);
+
 /** Removes `lock` when its holder died or it is older than `STALE_LOCK_MS`; true when removed. */
 function takeOverStale(lock: string): boolean {
   const text = readText(lock);
   if (text === null) return true;
-  let old: boolean;
+  if (!stale(lock, text)) return false;
+  // One takeover at a time: between its check and its removal no other
+  // writer removes this lock, so no lock taken after it can be removed.
+  const breaker = `${lock}.break`;
   try {
-    old = Date.now() - statSync(lock).mtimeMs > STALE_LOCK_MS;
-  } catch {
-    return true;
+    closeSync(openSync(breaker, "wx", 0o600));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    // A takeover that died holding it: no takeover holds it this long.
+    if (ageMs(breaker) > STALE_LOCK_MS) removeIfThere(breaker);
+    return false;
   }
-  if (!old && alive(Number.parseInt(text, 10))) return false;
-  // Removed only while it is still the one read, so a fresh holder's lock stays.
-  if (readText(lock) !== text) return false;
   try {
-    unlinkSync(lock);
+    if (readText(lock) !== text) return false;
+    removeIfThere(lock);
+    return true;
+  } finally {
+    removeIfThere(breaker);
+  }
+}
+
+/** The holder of `text` died, or the lock is too old for any write; a lock without owner text is busy until then. */
+function stale(lock: string, text: string): boolean {
+  const age = ageMs(lock);
+  if (age > STALE_LOCK_MS) return true;
+  const holder = /^(\d+) \S+\n$/.exec(text);
+  return holder !== null && !alive(Number(holder[1]));
+}
+
+/** Milliseconds since `path` changed; 0 when it is gone, so a missing file is never stale. */
+function ageMs(path: string): number {
+  try {
+    return Date.now() - statSync(path).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+function removeIfThere(path: string): void {
+  try {
+    unlinkSync(path);
   } catch {
     // Another writer removed it first.
   }
-  return true;
 }
 
 function alive(pid: number): boolean {
