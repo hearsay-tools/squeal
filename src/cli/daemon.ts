@@ -52,6 +52,7 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
         oxlint: (projectRoot) => oxlintProvider({ root: projectRoot }),
       },
       ...(awaitLockMs === undefined ? {} : { awaitLockMs }),
+      ...testTimings(process.env),
       // Spec 021 D8: Vitest runs in a runner host, this script under this Node and its arguments.
       ...(script === undefined
         ? {}
@@ -83,4 +84,30 @@ function lockWait(options: readonly string[]): number | undefined | null {
   if (flag !== "--await-lock" || value === undefined || rest.length > 0) return null;
   const ms = Number(value);
   return /^\d+$/.test(value) && ms <= 3_600_000 ? ms : null;
+}
+
+/**
+ * Row 010-37: test-only overrides of two waits that would hold a real-daemon
+ * test for a minute, read from the environment the test gives the daemon:
+ * `SQUEAL_TEST_HOST_IDLE_MS` replaces `runner.hostIdleMinutes`
+ * (`startDaemon`'s `hostIdleMs`) and `SQUEAL_TEST_DRAIN_SLOW_WAIT_MS`
+ * replaces `DRAIN_SLOW_WAIT_MS`. Each counts only as a positive whole number
+ * of milliseconds; unset or any other value leaves the production default.
+ */
+export function testTimings(env: NodeJS.ProcessEnv): {
+  readonly hostIdleMs?: number;
+  readonly timings?: { readonly drainSlowWaitMs: number };
+} {
+  const hostIdleMs = positiveMs(env.SQUEAL_TEST_HOST_IDLE_MS);
+  const drainSlowWaitMs = positiveMs(env.SQUEAL_TEST_DRAIN_SLOW_WAIT_MS);
+  return {
+    ...(hostIdleMs === null ? {} : { hostIdleMs }),
+    ...(drainSlowWaitMs === null ? {} : { timings: { drainSlowWaitMs } }),
+  };
+}
+
+function positiveMs(value: string | undefined): number | null {
+  if (value === undefined || !/^\d+$/.test(value)) return null;
+  const ms = Number(value);
+  return Number.isSafeInteger(ms) && ms > 0 ? ms : null;
 }
