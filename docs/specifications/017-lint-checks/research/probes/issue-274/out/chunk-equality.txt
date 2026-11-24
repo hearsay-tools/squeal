@@ -1,0 +1,4 @@
+heavy-large fixture, every listed path (5,479) through --debug files:
+  xargs -n 256: 3853 lines
+  xargs -n 100000 (xargs split it into 2 runs at its 128 KiB buffer): 3853 lines
+  cmp of the sorted lists: identical

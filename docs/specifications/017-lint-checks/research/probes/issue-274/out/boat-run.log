@@ -1,0 +1,100 @@
+{"root":"/tmp/sq274/plain","mode":"plain","ts":2100,"json":600,"md":300,"total":3007}
+{"root":"/tmp/sq274/import","mode":"import","ts":2100,"json":600,"md":300,"total":3007}
+{"root":"/tmp/sq274/heavy","mode":"plain","ts":2100,"json":600,"md":300,"total":3007}
+{"root":"/tmp/sq274/heavy-large","mode":"plain","ts":3780,"json":1080,"md":540,"total":5407}
+== plain
+open (discover + readConfigs, not in rekey)    {"wallMs":134.8,"ownCpuMs":27.9,"childCpuMs":90,"maxBlockMs":34.6,"blocksOver50ms":0,"load1":1.62}
+lintedFiles chunk=256 observe=true             {"wallMs":965.5,"ownCpuMs":39.8,"childCpuMs":1080,"maxBlockMs":8.3,"blocksOver50ms":0,"load1":1.62}
+lintedFiles chunk=256 observe=false            {"wallMs":884.6,"ownCpuMs":27.6,"childCpuMs":980,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.57}
+debug files chunk=1024 observe=true            {"wallMs":268.9,"ownCpuMs":8.7,"childCpuMs":290,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.57}
+debug files chunk=4096 observe=true            {"wallMs":105,"ownCpuMs":6.3,"childCpuMs":110,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.57}
+debug files chunk=4096 observe=false           {"wallMs":92.9,"ownCpuMs":4.3,"childCpuMs":100,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.57}
+debug files root pass (no paths) observe=true  {"wallMs":82.5,"ownCpuMs":3,"childCpuMs":100,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.57}
+chainOf/inputsOf all linted (existsSync walk)  {"wallMs":37.2,"ownCpuMs":52.4,"maxBlockMs":37.2,"load1":1.57}
+chainOf memoized per folder (one pass)         {"wallMs":3.6,"ownCpuMs":4.5,"maxBlockMs":3.6,"load1":1.57}
+chainOf from findConfigs map (no fs)           {"wallMs":4.4,"ownCpuMs":6.3,"maxBlockMs":4.4,"load1":1.57}
+Keyer.keys importPlugin=false                  {"wallMs":13.8,"ownCpuMs":30.2,"childCpuMs":0,"maxBlockMs":12.9,"blocksOver50ms":0,"load1":1.57}
+fast keys importPlugin=false                   {"wallMs":6.2,"ownCpuMs":12,"maxBlockMs":6.2,"load1":1.57}
+Keyer.keys importPlugin=true                   {"wallMs":21.1,"ownCpuMs":59.2,"childCpuMs":0,"maxBlockMs":20.2,"blocksOver50ms":0,"load1":1.57}
+fast keys importPlugin=true                    {"wallMs":5.4,"ownCpuMs":10,"maxBlockMs":5.4,"load1":1.57}
+rekey first                                    {"wallMs":1063.7,"ownCpuMs":137.1,"childCpuMs":1130,"maxBlockMs":61.4,"blocksOver50ms":1,"load1":1.57}
+   parts {"provider.inputs (async)":{"n":1,"ms":1037,"max":0},"results.get":{"n":2103,"ms":2.7,"max":0.13},"store.transaction":{"n":1,"ms":7.8,"max":7.75}}
+rekey config (2 plugin files edited)           {"wallMs":1124.6,"ownCpuMs":130.7,"childCpuMs":1180,"maxBlockMs":58.5,"blocksOver50ms":1,"load1":1.57}
+   parts {"provider.inputs (async)":{"n":1,"ms":1095.3,"max":0},"results.get":{"n":2103,"ms":3,"max":0.06},"store.transaction":{"n":1,"ms":6.7,"max":6.69}}
+rekey config, include packages/p0/** (unknown pass) {"wallMs":367.2,"ownCpuMs":43.1,"childCpuMs":380,"maxBlockMs":6.8,"blocksOver50ms":0,"load1":1.57}
+   parts {"provider.inputs (async)":{"n":2,"ms":354.1,"max":0},"results.get":{"n":210,"ms":0.5,"max":0.05},"store.transaction":{"n":1,"ms":4,"max":4.05}}
+results.get x N, one block                     {"wallMs":3,"ownCpuMs":6.5,"childCpuMs":0,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+results.get x N, yield every 256               {"wallMs":3.6,"ownCpuMs":4.8,"childCpuMs":0,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+== import
+open (discover + readConfigs, not in rekey)    {"wallMs":106.9,"ownCpuMs":16.5,"childCpuMs":110,"maxBlockMs":5,"blocksOver50ms":0,"load1":1.52}
+lintedFiles chunk=256 observe=true             {"wallMs":1064.6,"ownCpuMs":44.8,"childCpuMs":1190,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+lintedFiles chunk=256 observe=false            {"wallMs":953.9,"ownCpuMs":30.9,"childCpuMs":1040,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+debug files chunk=1024 observe=true            {"wallMs":285.5,"ownCpuMs":10.8,"childCpuMs":320,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+debug files chunk=4096 observe=true            {"wallMs":107.7,"ownCpuMs":20,"childCpuMs":120,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+debug files chunk=4096 observe=false           {"wallMs":106.1,"ownCpuMs":4.3,"childCpuMs":120,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+debug files root pass (no paths) observe=true  {"wallMs":132.3,"ownCpuMs":4.8,"childCpuMs":110,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.52}
+chainOf/inputsOf all linted (existsSync walk)  {"wallMs":48.5,"ownCpuMs":66.5,"maxBlockMs":48.5,"load1":1.52}
+chainOf memoized per folder (one pass)         {"wallMs":3.6,"ownCpuMs":4.5,"maxBlockMs":3.6,"load1":1.52}
+chainOf from findConfigs map (no fs)           {"wallMs":7.7,"ownCpuMs":10.6,"maxBlockMs":7.7,"load1":1.52}
+Keyer.keys importPlugin=false                  {"wallMs":16.9,"ownCpuMs":37.3,"childCpuMs":0,"maxBlockMs":16.1,"blocksOver50ms":0,"load1":1.52}
+fast keys importPlugin=false                   {"wallMs":7,"ownCpuMs":15,"maxBlockMs":7,"load1":1.52}
+Keyer.keys importPlugin=true                   {"wallMs":18,"ownCpuMs":40,"childCpuMs":0,"maxBlockMs":17.2,"blocksOver50ms":0,"load1":1.52}
+fast keys importPlugin=true                    {"wallMs":6.4,"ownCpuMs":14.4,"maxBlockMs":6.4,"load1":1.52}
+rekey first                                    {"wallMs":1108.7,"ownCpuMs":140.7,"childCpuMs":1160,"maxBlockMs":69.9,"blocksOver50ms":1,"load1":1.52}
+   parts {"provider.inputs (async)":{"n":1,"ms":1074.9,"max":0},"results.get":{"n":2103,"ms":2.8,"max":0.13},"store.transaction":{"n":1,"ms":10.8,"max":10.77}}
+rekey config (2 plugin files edited)           {"wallMs":1080.9,"ownCpuMs":145.5,"childCpuMs":1120,"maxBlockMs":65.5,"blocksOver50ms":1,"load1":1.52}
+   parts {"provider.inputs (async)":{"n":1,"ms":1044.5,"max":0},"results.get":{"n":2103,"ms":2.9,"max":0.05},"store.transaction":{"n":1,"ms":6.5,"max":6.46}}
+rekey config, include packages/p0/** (unknown pass) {"wallMs":345.8,"ownCpuMs":56.8,"childCpuMs":380,"maxBlockMs":7.8,"blocksOver50ms":0,"load1":1.48}
+   parts {"provider.inputs (async)":{"n":2,"ms":332.7,"max":0},"results.get":{"n":210,"ms":0.3,"max":0.05},"store.transaction":{"n":1,"ms":4.1,"max":4.11}}
+results.get x N, one block                     {"wallMs":2.9,"ownCpuMs":6.3,"childCpuMs":0,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.48}
+results.get x N, yield every 256               {"wallMs":3,"ownCpuMs":4.1,"childCpuMs":0,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.48}
+== heavy
+open (discover + readConfigs, not in rekey)    {"wallMs":154.2,"ownCpuMs":15.2,"childCpuMs":230,"maxBlockMs":4.2,"blocksOver50ms":0,"load1":1.48}
+lintedFiles chunk=256 observe=true             {"wallMs":1845.3,"ownCpuMs":60.8,"childCpuMs":3010,"maxBlockMs":5.3,"blocksOver50ms":0,"load1":1.48}
+lintedFiles chunk=256 observe=false            {"wallMs":1678.1,"ownCpuMs":50.4,"childCpuMs":2720,"maxBlockMs":5.5,"blocksOver50ms":0,"load1":1.48}
+debug files chunk=1024 observe=true            {"wallMs":610.3,"ownCpuMs":18.8,"childCpuMs":980,"maxBlockMs":5.6,"blocksOver50ms":0,"load1":1.44}
+debug files chunk=4096 observe=true            {"wallMs":171.3,"ownCpuMs":8.9,"childCpuMs":260,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.44}
+debug files chunk=4096 observe=false           {"wallMs":194.9,"ownCpuMs":9.4,"childCpuMs":300,"maxBlockMs":5.3,"blocksOver50ms":0,"load1":1.44}
+debug files root pass (no paths) observe=true  {"wallMs":165.5,"ownCpuMs":6.6,"childCpuMs":250,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.44}
+chainOf/inputsOf all linted (existsSync walk)  {"wallMs":40.1,"ownCpuMs":59.6,"maxBlockMs":40.1,"load1":1.44}
+chainOf memoized per folder (one pass)         {"wallMs":3.5,"ownCpuMs":4.5,"maxBlockMs":3.5,"load1":1.44}
+chainOf from findConfigs map (no fs)           {"wallMs":5.4,"ownCpuMs":7.6,"maxBlockMs":5.4,"load1":1.44}
+Keyer.keys importPlugin=false                  {"wallMs":61.3,"ownCpuMs":88.1,"childCpuMs":0,"maxBlockMs":60.4,"blocksOver50ms":1,"load1":1.44}
+fast keys importPlugin=false                   {"wallMs":15.2,"ownCpuMs":24.4,"maxBlockMs":15.2,"load1":1.44}
+Keyer.keys importPlugin=true                   {"wallMs":73.3,"ownCpuMs":114.7,"childCpuMs":0,"maxBlockMs":72.4,"blocksOver50ms":1,"load1":1.44}
+fast keys importPlugin=true                    {"wallMs":15.4,"ownCpuMs":25.7,"maxBlockMs":15.4,"load1":1.44}
+rekey first                                    {"wallMs":2282.4,"ownCpuMs":216.1,"childCpuMs":3480,"maxBlockMs":118.6,"blocksOver50ms":1,"load1":1.44}
+   parts {"provider.inputs (async)":{"n":1,"ms":2201.3,"max":0},"results.get":{"n":2173,"ms":3.5,"max":0.15},"store.transaction":{"n":1,"ms":8.6,"max":8.57}}
+rekey config (2 plugin files edited)           {"wallMs":2046.9,"ownCpuMs":194.7,"childCpuMs":3120,"maxBlockMs":107.4,"blocksOver50ms":1,"load1":1.44}
+   parts {"provider.inputs (async)":{"n":1,"ms":1968.7,"max":0},"results.get":{"n":2173,"ms":4.4,"max":0.06},"store.transaction":{"n":1,"ms":8.3,"max":8.31}}
+rekey config, include packages/p0/** (unknown pass) {"wallMs":662.6,"ownCpuMs":48.6,"childCpuMs":1050,"maxBlockMs":11.2,"blocksOver50ms":0,"load1":1.41}
+   parts {"provider.inputs (async)":{"n":2,"ms":645.1,"max":0},"results.get":{"n":210,"ms":0.3,"max":0.05},"store.transaction":{"n":1,"ms":4.2,"max":4.16}}
+results.get x N, one block                     {"wallMs":3.2,"ownCpuMs":6.5,"childCpuMs":0,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.41}
+results.get x N, yield every 256               {"wallMs":3.3,"ownCpuMs":4.8,"childCpuMs":0,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.41}
+== heavy-large
+open (discover + readConfigs, not in rekey)    {"wallMs":180.3,"ownCpuMs":36,"childCpuMs":280,"maxBlockMs":6.9,"blocksOver50ms":0,"load1":1.41}
+lintedFiles chunk=256 observe=true             {"wallMs":3322.6,"ownCpuMs":106.7,"childCpuMs":5360,"maxBlockMs":5.6,"blocksOver50ms":0,"load1":1.41}
+lintedFiles chunk=256 observe=false            {"wallMs":2823.8,"ownCpuMs":71.3,"childCpuMs":4600,"maxBlockMs":5.6,"blocksOver50ms":0,"load1":1.45}
+debug files chunk=1024 observe=true            {"wallMs":801,"ownCpuMs":23.8,"childCpuMs":1280,"maxBlockMs":5,"blocksOver50ms":0,"load1":1.45}
+debug files chunk=4096 observe=true            {"wallMs":299,"ownCpuMs":7.9,"childCpuMs":450,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.5}
+debug files chunk=4096 observe=false           {"wallMs":272.5,"ownCpuMs":7.4,"childCpuMs":420,"maxBlockMs":4.6,"blocksOver50ms":0,"load1":1.5}
+debug files root pass (no paths) observe=true  {"wallMs":137.8,"ownCpuMs":4.6,"childCpuMs":230,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.5}
+chainOf/inputsOf all linted (existsSync walk)  {"wallMs":66.4,"ownCpuMs":86,"maxBlockMs":66.4,"load1":1.5}
+chainOf memoized per folder (one pass)         {"wallMs":6.8,"ownCpuMs":9.6,"maxBlockMs":6.8,"load1":1.5}
+chainOf from findConfigs map (no fs)           {"wallMs":9.3,"ownCpuMs":14.6,"maxBlockMs":9.3,"load1":1.5}
+Keyer.keys importPlugin=false                  {"wallMs":114.6,"ownCpuMs":159.1,"childCpuMs":0,"maxBlockMs":113.8,"blocksOver50ms":1,"load1":1.5}
+fast keys importPlugin=false                   {"wallMs":24.8,"ownCpuMs":35.8,"maxBlockMs":24.8,"load1":1.5}
+Keyer.keys importPlugin=true                   {"wallMs":104.4,"ownCpuMs":134.9,"childCpuMs":0,"maxBlockMs":103.5,"blocksOver50ms":1,"load1":1.5}
+fast keys importPlugin=true                    {"wallMs":24.9,"ownCpuMs":35.5,"maxBlockMs":24.9,"load1":1.5}
+rekey first                                    {"wallMs":3174.6,"ownCpuMs":304.6,"childCpuMs":4840,"maxBlockMs":190.6,"blocksOver50ms":1,"load1":1.5}
+   parts {"provider.inputs (async)":{"n":1,"ms":3047.9,"max":0},"results.get":{"n":3853,"ms":4.7,"max":0.12},"store.transaction":{"n":1,"ms":13.7,"max":13.74}}
+rekey config (2 plugin files edited)           {"wallMs":3760.8,"ownCpuMs":355.5,"childCpuMs":4970,"maxBlockMs":236.1,"blocksOver50ms":1,"load1":1.78}
+   parts {"provider.inputs (async)":{"n":1,"ms":3606.5,"max":0},"results.get":{"n":3853,"ms":5.5,"max":0.06},"store.transaction":{"n":1,"ms":13.8,"max":13.8}}
+rekey config, include packages/p0/** (unknown pass) {"wallMs":794.1,"ownCpuMs":64.2,"childCpuMs":1050,"maxBlockMs":20.2,"blocksOver50ms":0,"load1":1.78}
+   parts {"provider.inputs (async)":{"n":2,"ms":761.8,"max":0},"results.get":{"n":210,"ms":0.4,"max":0.05},"store.transaction":{"n":1,"ms":9.8,"max":9.84}}
+results.get x N, one block                     {"wallMs":7,"ownCpuMs":11.5,"childCpuMs":0,"maxBlockMs":6.2,"blocksOver50ms":0,"load1":1.78}
+results.get x N, yield every 256               {"wallMs":5.8,"ownCpuMs":7.3,"childCpuMs":0,"maxBlockMs":0,"blocksOver50ms":0,"load1":1.78}
+DONE
+CPU(s):                                  4
+Model name:                              AMD Ryzen 7 9700X 8-Core Processor
+v24.22.1
