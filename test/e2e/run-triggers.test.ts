@@ -40,8 +40,11 @@ import { STRINGS } from "./sources.js";
 
 const fixture = e2eSuite();
 
-/** Stop waits this long for the e2e group (`stop.slowWaitMs`); a long e2e run outlasts two waits. */
-const WAIT_MS = 20_000;
+/**
+ * Stop waits this long for the e2e group (`stop.slowWaitMs`); a long e2e run outlasts two waits.
+ * Row 010-39: 4 s, down from 20 s, still covers the group's two short files after unit.
+ */
+const WAIT_MS = 4_000;
 const MAX_HOLDS = 2;
 const LONG_DELAY_MS = 3 * WAIT_MS;
 /** Row 005-128: the start message names no group; it sends the agent to the skill and `checks`. */
@@ -60,7 +63,7 @@ const failing = (s: StatusSnapshot) =>
     .sort();
 
 /** How long an edit's runs are watched after its unit results, so a lane that should wait could start. */
-const LINGER_MS = 3_000;
+const LINGER_MS = 1_000;
 
 /**
  * Writes, waits for the edit's unit results and `LINGER_MS` more, and returns
@@ -179,7 +182,9 @@ describe.each(PLUGINS)("run triggers end to end, $name", (plugin) => {
       expect(out.quick.json, `hold ${hold}: the 2 s entry`).toBeNull();
       expect(out.waiting.json?.decision, `hold ${hold}`).toBe("block");
       expect(out.waiting.text).toMatch(
-        /^Squeal policy checks puts the e2e group at stop and after 20 s 1 e2e test file is still not current at revision \d+: test\/e2e\/flow\.test\.ts\./,
+        new RegExp(
+          `^Squeal policy checks puts the e2e group at stop and after ${WAIT_MS / 1000} s 1 e2e test file is still not current at revision \\d+: test/e2e/flow\\.test\\.ts\\.`,
+        ),
       );
       expect(out.ms).toBeGreaterThanOrEqual(WAIT_MS);
     }
