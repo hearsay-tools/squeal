@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { coreEnvironmentInputs } from "../../../src/core/keys/environment.js";
 import type { RemoteHost } from "../../../src/core/runner-host/remote/connect.js";
 import { createDaemonRemote } from "../../../src/core/runner-host/remote/daemon-lane.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
@@ -45,6 +46,11 @@ const ENV: RunnerEnvironment = {
 
 const REMOTE_PLATFORM = "freebsd";
 const REMOTE_ARCH = "riscv64";
+const LOCAL_NODE = coreEnvironmentInputs({
+  squealVersion: "0.1.620",
+  installedDependencies: "none",
+  allowlist: [],
+}).nodeVersion;
 
 let seq = 0;
 
@@ -99,9 +105,9 @@ function fakeHost(root: AbsolutePath, adapter: RunnerAdapter): RemoteHost {
   };
   return {
     adapter: hostAdapter,
-    node: process.version,
+    node: LOCAL_NODE,
     coreEnvironment: async () => ({
-      nodeVersion: process.version,
+      nodeVersion: LOCAL_NODE,
       platform: REMOTE_PLATFORM,
       arch: REMOTE_ARCH,
       installedDependencies: "none",
@@ -116,9 +122,10 @@ function fakeHost(root: AbsolutePath, adapter: RunnerAdapter): RemoteHost {
 function runOptions(background: boolean): RunOptions {
   return {
     runId: `run-${++seq}`,
-    background,
+    ...(background ? { background: true as const } : {}),
     logDir: join(scratch, `logs-${seq}`) as AbsolutePath,
     workers: 1,
+    timeoutMs: 30_000,
   };
 }
 
@@ -156,9 +163,9 @@ describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
       const envs = await lane.environment();
       expect(envs[0]?.core?.platform).toBe(REMOTE_PLATFORM);
       expect(envs[0]?.core?.arch).toBe(REMOTE_ARCH);
-      expect(envs[0]?.core?.nodeVersion).toBe(process.version);
+      expect(envs[0]?.core?.nodeVersion).toBe(LOCAL_NODE);
       expect(statuses).toContain(
-        `remote agent37:eu:vm (${REMOTE_PLATFORM}/${REMOTE_ARCH}, Node ${process.version}); results keyed to remote environment`,
+        `remote agent37:eu:vm (${REMOTE_PLATFORM}/${REMOTE_ARCH}, Node ${LOCAL_NODE}); results keyed to remote environment`,
       );
 
       // Pure remote tier tags executedCore to the remote machine and keeps status naming it.
@@ -167,7 +174,7 @@ describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
       expect(executedCoreOf(remoteReport, REF)?.platform).toBe(REMOTE_PLATFORM);
       expect(executedCoreOf(remoteReport, REF)?.arch).toBe(REMOTE_ARCH);
       expect(statuses.at(-1)).toContain(
-        `remote agent37:eu:vm (${REMOTE_PLATFORM}/${REMOTE_ARCH}, Node ${process.version}); results keyed to remote environment; proven at `,
+        `remote agent37:eu:vm (${REMOTE_PLATFORM}/${REMOTE_ARCH}, Node ${LOCAL_NODE}); results keyed to remote environment; proven at `,
       );
 
       // Direct local run (non-remote tier) tags executedCore to this local machine.
@@ -262,7 +269,11 @@ describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
       root,
       commonDir: join(root, ".git") as AbsolutePath,
       version: "0.1.620",
-      launch: { node: process.execPath, cli: join(scratch, "cli.mjs") as AbsolutePath },
+      launch: {
+        execPath: process.execPath,
+        execArgv: [],
+        cli: join(scratch, "cli.mjs") as AbsolutePath,
+      },
       policy: () => DEFAULT_POLICY,
       note: (text, topic) => notes.push({ topic, text }),
       lastNote: (topic) => notes.findLast((n) => n.topic === topic)?.text,
@@ -270,8 +281,8 @@ describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
       env: { ...process.env, XDG_CONFIG_HOME: configHome, XDG_STATE_HOME: configHome },
       startHost: async () => fakeHost(root, remoteAdapter),
     });
-    expect(remote).not.toBeNull();
-    const wrapped = remote!.wrap({
+    if (remote === null) throw new Error("expected daemon remote");
+    const wrapped = remote.wrap({
       runner: "vitest",
       local: fakeAdapter("vitest"),
       start: {
@@ -292,7 +303,7 @@ describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
       expect(notes.some((n) => n.text.includes("results keyed to remote environment"))).toBe(true);
     } finally {
       await wrapped.close();
-      await remote!.release();
+      await remote.release();
     }
   });
 });
