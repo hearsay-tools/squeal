@@ -1,8 +1,13 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { coreEnvironmentInputs, installedDependenciesFingerprint } from "../../keys/environment.js";
+import { readPin } from "../../node-pin.js";
 import type { AbsolutePath } from "../../types/common.js";
+import type { CoreEnvironmentInputs } from "../../types/keys.js";
 import type { RunnerAdapter } from "../../types/runner.js";
 import type { RemoteHost } from "./connect.js";
 import { environmentDifferences } from "./environment.js";
+import type { EnvironmentMode } from "./remote-key.js";
 import { readEntry } from "./tree.js";
 import { insideRoot } from "./tree-wire.js";
 
@@ -12,6 +17,10 @@ import { insideRoot } from "./tree-wire.js";
  * difference is the remote's installed dependencies, the host installs once
  * and the comparison runs again: a restore onto a new machine leaves an
  * install the key no longer reads as the lockfile's (`boat-trial.md` D3).
+ *
+ * Spec 026 D10 (row 026-14): under `environmentMode: "remote-key"` the
+ * remote's platform, arch and pinned Node may differ, and the comparison
+ * gives the remote's core, which the lane keys its results under.
  */
 
 export interface CompareOptions {
@@ -26,6 +35,8 @@ export interface CompareOptions {
    * worktree's process inputs and the blob ids of their config files here.
    */
   readonly planning?: "local" | "remote";
+  /** Spec 026 D10: `remote-key` lets the remote's machine differ; absent: `match-local`. */
+  readonly environmentMode?: EnvironmentMode;
   readonly allowlist: () => readonly string[];
   readonly log: (text: string) => void;
 }
@@ -36,6 +47,13 @@ const INSTALL_DIFFERS = [
   "no installed dependencies on the remote",
 ];
 
+/** What a comparison found: what differs, one text each (`[]`: equal), and the remote's core it read. */
+export interface RemoteComparison {
+  readonly differences: string[];
+  /** `null` when the remote could not be read. */
+  readonly remoteCore: CoreEnvironmentInputs | null;
+}
+
 /**
  * What differs between `host`'s environment and this worktree's, one text
  * each; `[]`: equal. A difference in the remote's install asks the host to
@@ -44,24 +62,42 @@ const INSTALL_DIFFERS = [
  * cannot mend stands at once, and no later comparison installs for it again.
  */
 export async function compareRemote(host: RemoteHost, options: CompareOptions): Promise<string[]> {
-  const unequal = await differences(host, options).catch((error: Error) => [error.message]);
-  if (!unequal.some((text) => INSTALL_DIFFERS.includes(text))) return unequal;
+  return (await compareRemoteEnvironment(host, options)).differences;
+}
+
+/** `compareRemote` with the remote's core, which `remote-key` keys results under (D10.2). */
+export async function compareRemoteEnvironment(
+  host: RemoteHost,
+  options: CompareOptions,
+): Promise<RemoteComparison> {
+  const first = await compared(host, options);
+  const unequal = first.differences;
+  if (!unequal.some((text) => INSTALL_DIFFERS.includes(text))) return first;
   const done = await host.install().catch((error: Error) => error);
-  if (done instanceof Error) return [...unequal, done.message];
-  if (!done.ran) return unequal;
+  if (done instanceof Error) return { ...first, differences: [...unequal, done.message] };
+  if (!done.ran) return first;
   options.log(
     `remote ${options.target}: ${unequal.join("; ")}; installed again with ${done.command}`,
   );
-  return differences(host, options).catch((error: Error) => [error.message]);
+  return compared(host, options);
 }
 
-async function differences(host: RemoteHost, options: CompareOptions): Promise<string[]> {
+async function compared(host: RemoteHost, options: CompareOptions): Promise<RemoteComparison> {
+  return differences(host, options).catch((error: Error) => ({
+    differences: [error.message],
+    remoteCore: null,
+  }));
+}
+
+async function differences(host: RemoteHost, options: CompareOptions): Promise<RemoteComparison> {
   const allowlist = options.allowlist();
-  const [remoteCore, remoteRunners, localOwn, installed] = await Promise.all([
+  const remoteKey = options.environmentMode === "remote-key";
+  const [remoteOwn, remoteRunners, localOwn, installed, nodePins] = await Promise.all([
     host.coreEnvironment(allowlist),
     host.adapter.environment(),
     options.planning === "remote" ? null : options.local.environment(),
     installedDependenciesFingerprint(options.root, options.root),
+    remoteKey ? nodePinsAt(options.root) : [],
   ]);
   const localRunners = localOwn ?? remoteRunners;
   const files = [...new Set([...remoteRunners, ...localRunners].flatMap((r) => r.files))];
@@ -74,14 +110,29 @@ async function differences(host: RemoteHost, options: CompareOptions): Promise<s
     installedDependencies: installed,
     allowlist,
   });
-  return environmentDifferences(
-    {
-      core: { ...remoteCore, squealVersion: options.version },
-      runners: remoteRunners,
-      blob: (p) => remoteBlobs[p] ?? null,
-    },
+  const remoteCore = { ...remoteOwn, squealVersion: options.version };
+  const found = environmentDifferences(
+    { core: remoteCore, runners: remoteRunners, blob: (p) => remoteBlobs[p] ?? null },
     { core, runners: localRunners, blob: (p) => localBlobs[p] ?? null },
+    remoteKey ? { mode: "remote-key", nodePins } : {},
   );
+  return { differences: found, remoteCore };
+}
+
+/**
+ * D10.2: the Node versions the project at `root` pins, which a remote's Node
+ * meets under `remote-key`: the `.node-version` or `.nvmrc` value, and
+ * `package.json`'s `engines.node`.
+ */
+export async function nodePinsAt(root: AbsolutePath): Promise<string[]> {
+  const pins: string[] = [];
+  const pin = readPin(root);
+  if (pin !== null) pins.push(pin);
+  const engines = await readFile(join(root, "package.json"), "utf8")
+    .then((text) => (JSON.parse(text) as { engines?: { node?: unknown } }).engines?.node)
+    .catch(() => undefined);
+  if (typeof engines === "string" && engines.trim() !== "") pins.push(engines.trim());
+  return pins;
 }
 
 /** The blob id of each of `paths` under `root` now; `null`: absent, or outside the root. */

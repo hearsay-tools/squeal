@@ -4,6 +4,7 @@ import { compareEnvironment } from "../../status/import-environment.js";
 import type { EpochMs } from "../../types/common.js";
 import type { CoreEnvironmentInputs, FileHash } from "../../types/keys.js";
 import type { RunnerEnvironment } from "../../types/runner.js";
+import { type EnvironmentMode, nodeRefusal, onMachine } from "./remote-key.js";
 
 /*
  * Spec 021 D11.2 (row 021-14): a remote result is stored only when the
@@ -16,6 +17,12 @@ import type { RunnerEnvironment } from "../../types/runner.js";
  * compared with its `coverage` field taken out (row 021-22): with coverage
  * on here, the default, every remote run was refused (`boat-trial.md` D1).
  * Only that field: any other part that differs still refuses.
+ *
+ * Spec 026 D10 (row 026-14): under `environmentMode: "remote-key"` the
+ * remote's platform and arch may differ, and its Node too when it meets the
+ * project's Node pins; the results are keyed under the remote's machine. Its
+ * projects, config files, resolved config, installed dependencies and
+ * allow-listed variables still equal this side's.
  */
 
 /** One side's environment: its process's inputs, its runner's per project, and its config files' blob ids. */
@@ -25,9 +32,31 @@ export interface EnvironmentSide {
   readonly blob: (path: string) => string | null;
 }
 
+/** How `environmentDifferences` compares: its mode, default `match-local`, and the project's Node pins. */
+export interface DifferenceOptions {
+  readonly mode?: EnvironmentMode;
+  /** `.node-version` or `.nvmrc` values and `engines.node`, which a remote's Node meets under `remote-key`. */
+  readonly nodePins?: readonly string[];
+}
+
 /** What differs, one text each, such as `Node v24.21.0 on the remote, v24.22.1 here`; `[]`: equal. */
-export function environmentDifferences(remote: EnvironmentSide, local: EnvironmentSide): string[] {
+export function environmentDifferences(
+  given: EnvironmentSide,
+  local: EnvironmentSide,
+  options: DifferenceOptions = {},
+): string[] {
   const texts: string[] = [];
+  let remote = given;
+  if (options.mode === "remote-key") {
+    // D10.2: the machine may differ; what is left compares as under `match-local`.
+    const node = nodeRefusal(
+      given.core.nodeVersion,
+      local.core.nodeVersion,
+      options.nodePins ?? [],
+    );
+    if (node !== null) texts.push(node);
+    remote = { ...given, core: onMachine(given.core, local.core) };
+  }
   const remoteOf = new Map(remote.runners.map((runner) => [runner.project, runner]));
   for (const here of local.runners) {
     const there = remoteOf.get(here.project);
