@@ -1,6 +1,16 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { build } from "esbuild";
 import {
   bundleOptions,
@@ -85,7 +95,89 @@ export interface CodexMachine {
     cwd: string,
     env?: Readonly<Record<string, string>>,
   ): { status: number | null; stdout: string; stderr: string };
+  /** Removes the machine's directory, retrying while a late write fills it. */
   cleanup(): void;
+  /**
+   * Ends `pids` (a daemon found through its socket) and every other process
+   * of this machine (its HOME, or a command line or working directory under
+   * it, as the code store's process), waits for them to exit, then cleans up.
+   */
+  end(pids?: readonly number[]): Promise<void>;
+}
+
+/** How long `end` waits for the machine's processes to exit. */
+const END_WAIT_MS = 5_000;
+
+/** Whether `pid` belongs to the machine in `dir` with `home`: Linux's /proc, else nothing found. */
+function ofMachine(pid: number, dir: string, home: string): boolean {
+  const read = (part: string) => {
+    try {
+      return readFileSync(`/proc/${pid}/${part}`, "latin1");
+    } catch {
+      return "";
+    }
+  };
+  const under = (path: string) => path === dir || path.startsWith(`${dir}/`);
+  try {
+    if (under(readlinkSync(`/proc/${pid}/cwd`))) return true;
+  } catch {
+    // Another user's, or gone.
+  }
+  if (
+    read("cmdline")
+      .split("\0")
+      .some((arg) => arg.includes(`${dir}/`))
+  )
+    return true;
+  return read("environ").split("\0").includes(`HOME=${home}`);
+}
+
+/** The processes of the machine in `dir`, this one and its parents left out. */
+function machinePids(dir: string, home: string): number[] {
+  let entries: string[];
+  try {
+    entries = readdirSync("/proc");
+  } catch {
+    return [];
+  }
+  const own = new Set([process.pid, process.ppid]);
+  return entries
+    .filter((e) => /^\d+$/.test(e))
+    .map(Number)
+    .filter((pid) => !own.has(pid) && ofMachine(pid, dir, home));
+}
+
+/** Whether `pid` still runs: a zombie, which only its parent's wait removes, does not. */
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return false;
+  }
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "latin1");
+    return stat.slice(stat.lastIndexOf(")") + 2, stat.lastIndexOf(")") + 3) !== "Z";
+  } catch {
+    return true;
+  }
+}
+
+/** SIGKILLs `pids` and the machine's processes, and waits up to `END_WAIT_MS` for them to exit. */
+async function endProcesses(pids: readonly number[], dir: string, home: string): Promise<void> {
+  const deadline = performance.now() + END_WAIT_MS;
+  let left = [...new Set([...pids, ...machinePids(dir, home)])];
+  while (left.length > 0 && performance.now() < deadline) {
+    for (const pid of left) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // Gone already.
+      }
+    }
+    await sleep(20);
+    // A process the killed ones started a moment ago counts too.
+    left = [...new Set([...left, ...machinePids(dir, home)])].filter(running);
+  }
 }
 
 export function codexMachine(built: Built): CodexMachine {
@@ -98,6 +190,9 @@ export function codexMachine(built: Built): CodexMachine {
   symlinkSync(process.execPath, join(bin, "node"));
   const path = `${bin}:/usr/bin:/bin`;
   const rootOf = (version: string) => join(cache, version);
+  // Node 22 CI: a process still writing under HOME (its compile cache) made rmdir fail ENOTEMPTY.
+  const cleanup = () =>
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   return {
     dir,
     home,
@@ -119,6 +214,10 @@ export function codexMachine(built: Built): CodexMachine {
         encoding: "utf8",
       });
     },
-    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+    cleanup,
+    async end(pids = []) {
+      await endProcesses(pids, dir, home);
+      cleanup();
+    },
   };
 }

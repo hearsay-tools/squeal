@@ -38,8 +38,7 @@ let socket = "";
 /** Stops the daemon the hook spawned, found through its socket, whatever the test reached. */
 afterEach(async () => {
   const pid = (await ping(socket, 1_000))?.pid;
-  if (pid !== undefined) process.kill(pid, "SIGKILL");
-  m.cleanup();
+  await m.end(pid === undefined ? [] : [pid]);
 });
 
 /** A node:test repository whose test spawns a child Node, as gh-70's tier did. */

@@ -52,9 +52,8 @@ let socket = "";
 /** Stops the daemon the hook spawned, found through its socket, whatever the test reached. */
 afterEach(async () => {
   const pid = (await ping(socket, 1_000))?.pid;
-  if (pid !== undefined) process.kill(pid, "SIGKILL");
   socket = "";
-  m.cleanup();
+  await m.end(pid === undefined ? [] : [pid]);
 });
 
 /** A repository with one commit and a store, which no daemon has served yet. */

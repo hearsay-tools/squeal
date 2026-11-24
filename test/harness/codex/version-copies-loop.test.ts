@@ -52,14 +52,7 @@ let socket = "";
 const pids: number[] = [];
 afterEach(async () => {
   const pid = (await ping(socket, 1_000))?.pid;
-  for (const p of [...pids.splice(0), ...(pid === undefined ? [] : [pid])]) {
-    try {
-      process.kill(p, "SIGKILL");
-    } catch {
-      // Gone already.
-    }
-  }
-  m.cleanup();
+  await m.end([...pids.splice(0), ...(pid === undefined ? [] : [pid])]);
 });
 
 /** A repository with one commit and a store. */

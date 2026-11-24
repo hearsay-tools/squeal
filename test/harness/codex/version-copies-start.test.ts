@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -40,8 +40,7 @@ let socket = "";
 /** Stops the daemon `start` spawned, found through its socket, whatever the test reached. */
 afterEach(async () => {
   const pid = (await ping(socket, 1_000))?.pid;
-  if (pid !== undefined) process.kill(pid, "SIGKILL");
-  m.cleanup();
+  await m.end(pid === undefined ? [] : [pid]);
 });
 
 /** A repository with one commit. */
@@ -55,6 +54,27 @@ function repository(): string {
   git(["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
   return realpathSync(root);
 }
+
+// Row 025-13: on Node 22 CI the store process, writing its compile cache under HOME, outlived the
+// daemon's SIGKILL and made the directory's removal fail ENOTEMPTY.
+describe("the machine's end (row 025-13)", () => {
+  it("ends a process still writing under its HOME, which no pid names, and removes it", async () => {
+    m = codexMachine(built);
+    const writer = spawn(
+      "sh",
+      ["-c", 'i=0; while :; do mkdir -p "$HOME/.cache/w/$i"; i=$((i+1)); sleep 0.01; done'],
+      { env: { PATH: m.path, HOME: m.home }, stdio: "ignore", detached: true },
+    );
+    writer.unref();
+    const exited = new Promise((resolve) =>
+      writer.once("exit", (_code, signal) => resolve(signal)),
+    );
+    await waitFor(() => existsSync(join(m.home, ".cache", "w", "3")), 5_000);
+    await m.end();
+    expect(existsSync(m.dir)).toBe(false);
+    expect(await exited).toBe("SIGKILL");
+  });
+});
 
 describe("squeal start from Codex's plugin cache (005-77)", () => {
   it(
