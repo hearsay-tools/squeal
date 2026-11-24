@@ -442,6 +442,12 @@ export interface PruneInput {
    * 022-05 on leaves none.
    */
   readonly loadedLists?: readonly string[];
+  /**
+   * Row 025-10: `meta` rows written by SQL before the prune, such as the
+   * replaced failures and unknown runs its expiry steps read; what each key
+   * holds after it is an output.
+   */
+  readonly meta?: Readonly<Record<string, unknown>>;
 }
 
 /** The Pythons the `adapter:pytest` kind runs on, as CI installs them (`test/helpers/pytest-env.ts`). */

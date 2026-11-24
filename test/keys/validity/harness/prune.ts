@@ -87,6 +87,7 @@ export function pruneCase(input: PruneInput, dir: string): CaseOutput {
       );
     }
     addLoadedLists(db, input.loadedLists);
+    addMeta(db, input.meta);
     db.exec("COMMIT");
 
     const report = store.prune({
@@ -114,6 +115,7 @@ export function pruneCase(input: PruneInput, dir: string): CaseOutput {
           `SELECT (SELECT count(*) FROM known_states) || ' states, ' ||
                   (SELECT count(*) FROM file_hashes) || ' hashes'`,
         ),
+        ...metaAfter(db, input.meta),
       },
       wording: {
         bytesAfter,
@@ -183,4 +185,25 @@ function rootOf(dir: string, id: string, root: PruneInput["worktrees"][number]["
   if (root === "main") mkdirSync(join(path, ".git"), { recursive: true });
   else writeFileSync(join(path, ".git"), `gitdir: ${dir}/worktrees/${id}\n`);
   return path;
+}
+
+/** Writes `meta`'s rows, each value as JSON. */
+function addMeta(db: ReturnType<typeof connectionOf>["db"], meta: PruneInput["meta"]): void {
+  for (const [key, value] of Object.entries(meta ?? {})) {
+    db.prepare("INSERT INTO meta (key, value) VALUES (?, ?)").run(key, JSON.stringify(value));
+  }
+}
+
+/** With `meta`, what each of its keys holds after the prune, parsed; `null` when gone. */
+function metaAfter(
+  db: ReturnType<typeof connectionOf>["db"],
+  meta: PruneInput["meta"],
+): { meta?: Record<string, unknown> } {
+  if (meta === undefined) return {};
+  const read = db.prepare("SELECT value FROM meta WHERE key = ?");
+  const after = Object.keys(meta).map((key) => {
+    const row = read.get(key) as { value?: string } | undefined;
+    return [key, row?.value === undefined ? null : JSON.parse(row.value)] as const;
+  });
+  return { meta: Object.fromEntries(after) };
 }

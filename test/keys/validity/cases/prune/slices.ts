@@ -75,4 +75,45 @@ export const PRUNE_SLICES: readonly Case[] = [
       maxSizeMb: 0,
     },
   },
+  {
+    kind: "prune",
+    name: "an expired replaced failure and a fallen unknown run, beside kept ones (row 025-10)",
+    why: "025-10: each expiry step reads first and writes only when one is due; what it drops and keeps is the single pass's",
+    input: {
+      worktrees: [{ id: "linked", root: "live", rows: 1 }],
+      results: [{ worktree: "linked", key: "k-new", count: 1, daysAgo: 1, run: "r-new" }],
+      runs: [
+        { id: "r-expired", worktree: "linked", endedDaysAgo: 20 },
+        { id: "r-kept", worktree: "linked", endedDaysAgo: 20 },
+        { id: "r-unknown", worktree: "linked", endedDaysAgo: 20 },
+      ],
+      meta: {
+        "replaced-failures": [replaced("r-expired", 20), replaced("r-kept", 1)],
+        "unknown-runs": [
+          {
+            worktreeId: "linked",
+            testFile: { project: "", path: "test/gone.test.ts" },
+            runId: "r-unknown",
+            revision: 1,
+            reason: "not run: the run failed to start",
+            at: 0,
+          },
+        ],
+      },
+    },
+  },
 ];
+
+/** A replaced failure of run `runId`, recorded `daysAgo` before the case's now (400 days). */
+function replaced(runId: string, daysAgo: number) {
+  const recordedAt = (400 - daysAgo) * 24 * 60 * 60 * 1000;
+  return {
+    check: { kind: "test", project: "", testPath: `test/${runId}.test.ts`, fullName: "t" },
+    key: `k-${runId}`,
+    provenance: { runId, worktreeId: "linked", revision: 1, recordedAt },
+    durationMs: 1,
+    failureId: null,
+    loadPerCpu: null,
+    replacedBy: { runId: "later", worktreeId: "linked", recordedAt },
+  };
+}
