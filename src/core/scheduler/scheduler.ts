@@ -1055,7 +1055,7 @@ class TierScheduler implements Scheduler {
 
   nudge(): void {
     // Before `start` has set the context nothing is planned; the start pumps when it ends (review wave-13ak, B1).
-    if (this.#closed || !this.#ledger) return;
+    if (this.#closed || !this.#context || !this.#ledger) return;
     const ledger = this.#ledger;
     // Spec 026 D1.4: Stop's required group keys its files first.
     const stopping = stopRunners(this.#started().context.policy);
