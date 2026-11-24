@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.624";
+  if (true) return "0.1.625";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -56732,6 +56732,61 @@ var init_namesakes = __esm({
   }
 });
 
+// src/core/scheduler/edit-select.ts
+function namesakeCut(testFiles3, paths, reached, held4) {
+  const byPath3 = /* @__PURE__ */ new Map();
+  for (const ref3 of testFiles3)
+    byPath3.set(ref3.path, [...byPath3.get(ref3.path) ?? [], testFileId(ref3)]);
+  const namesakes = /* @__PURE__ */ new Map();
+  const bare3 = /* @__PURE__ */ new Set();
+  for (const path of new Set(paths)) {
+    if (byPath3.has(path) || !held4(path)) continue;
+    const ids = namesakesOf(path, byPath3.keys()).flatMap((name3) => byPath3.get(name3) ?? []);
+    namesakes.set(path, ids);
+    if (!ids.some((id) => reached.has(id))) bare3.add(path);
+  }
+  return { namesakes, bare: bare3 };
+}
+function selectEditWork(input) {
+  const { files: files6, named: named4, reached, cut, direct, within: within4 } = input;
+  const importers = /* @__PURE__ */ new Set([...direct, ...input.observedDirect]);
+  const kept6 = /* @__PURE__ */ new Set();
+  for (const file of files6.values()) {
+    if (named4.has(file.ref.path) && within4(file.id)) kept6.add(file.id);
+  }
+  for (const [source2, ids] of cut.namesakes) {
+    const own = ids.filter((id) => reached.has(id) && within4(id));
+    const fallback2 = cut.bare.has(source2) ? cut.fallback : direct;
+    for (const id of own.length > 0 ? own : fallback2) if (within4(id)) kept6.add(id);
+  }
+  const rest2 = [...reached].filter((id) => !kept6.has(id) && !importers.has(id) && within4(id));
+  const others = [
+    ...shortest(
+      files6,
+      [...importers].filter((id) => !kept6.has(id) && within4(id))
+    ),
+    ...shortest(files6, rest2.filter(input.reads))
+  ];
+  for (const file of others.slice(0, input.tierSize)) kept6.add(file.id);
+  return kept6;
+}
+function shortest(files6, ids) {
+  return ids.map((id) => files6.get(id)).filter((file) => file !== void 0).sort(shortestFirst);
+}
+function shortestFirst(a, b) {
+  const x = a.durationMs ?? Number.POSITIVE_INFINITY;
+  const y = b.durationMs ?? Number.POSITIVE_INFINITY;
+  return x === y ? compare(a.id, b.id) : x < y ? -1 : 1;
+}
+var init_edit_select = __esm({
+  "src/core/scheduler/edit-select.ts"() {
+    "use strict";
+    init_compare();
+    init_reverse_index();
+    init_namesakes();
+  }
+});
+
 // src/core/code/crap/match.ts
 function foreign(spans2, span, outer) {
   return spans2.some((other) => {
@@ -59102,21 +59157,11 @@ var init_resolution = __esm({
 // src/core/scheduler/edit-cut.ts
 async function fetchEditCut(context2, testFiles3, paths, affected2, bound, closures = [], stored4) {
   const { keys, runner } = context2;
-  const byPath3 = /* @__PURE__ */ new Map();
-  for (const ref3 of testFiles3)
-    byPath3.set(ref3.path, [...byPath3.get(ref3.path) ?? [], testFileId(ref3)]);
   const reached = new Set([...affected2.direct, ...affected2.transitive].map(testFileId));
   for (const ref3 of keys.index.reverse.referencing(paths)) reached.add(testFileId(ref3));
   const fetched = new Set(closures.flatMap((closure) => closure.paths));
   const held4 = (path) => fetched.has(path) || keys.index.reverse.referencing([path]).length > 0;
-  const namesakes = /* @__PURE__ */ new Map();
-  const bare3 = /* @__PURE__ */ new Set();
-  for (const path of new Set(paths)) {
-    if (byPath3.has(path) || !held4(path)) continue;
-    const ids = namesakesOf(path, byPath3.keys()).flatMap((name3) => byPath3.get(name3) ?? []);
-    namesakes.set(path, ids);
-    if (!ids.some((id) => reached.has(id))) bare3.add(path);
-  }
+  const { namesakes, bare: bare3 } = namesakeCut(testFiles3, paths, reached, held4);
   const direct = affected2.direct.map(testFileId);
   const transitive = new Set(affected2.transitive.map(testFileId));
   if (bare3.size === 0) return { namesakes, bare: bare3, fallback: /* @__PURE__ */ new Set(), transitive };
@@ -59131,32 +59176,20 @@ async function fetchEditCut(context2, testFiles3, paths, affected2, bound, closu
   return { namesakes, bare: bare3, fallback: fallback2, transitive };
 }
 function editWork(context2, ledger, cut, changed2, direct, observedDirect = /* @__PURE__ */ new Set(), within4 = () => true) {
-  const importers = /* @__PURE__ */ new Set([...direct, ...observedDirect]);
-  const reached = ledger.recentOf(changed2, importers);
-  const kept6 = /* @__PURE__ */ new Set();
-  for (const file of ledger.files.values()) {
-    if (changed2.has(file.ref.path) && within4(file.id)) kept6.add(file.id);
-  }
-  for (const [source2, ids] of cut.namesakes) {
-    const own = ids.filter((id) => reached.has(id) && within4(id));
-    const fallback2 = cut.bare.has(source2) ? cut.fallback : direct;
-    for (const id of own.length > 0 ? own : fallback2) if (within4(id)) kept6.add(id);
-  }
+  const reached = ledger.recentOf(changed2, /* @__PURE__ */ new Set([...direct, ...observedDirect]));
   const beyond = heldBeyondInputs(context2, changed2);
-  const rest2 = [...reached].filter((id) => !kept6.has(id) && !importers.has(id) && within4(id));
-  const reads2 = rest2.filter((id) => cut.transitive.has(id) || beyond.has(id));
-  const others = [
-    ...shortest(
-      ledger,
-      [...importers].filter((id) => !kept6.has(id) && within4(id))
-    ),
-    ...shortest(ledger, reads2)
-  ];
-  for (const file of others.slice(0, context2.policy.runner.tierSize)) kept6.add(file.id);
+  const kept6 = selectEditWork({
+    files: ledger.files,
+    named: changed2,
+    reached,
+    cut,
+    direct,
+    observedDirect,
+    reads: (id) => cut.transitive.has(id) || beyond.has(id),
+    tierSize: context2.policy.runner.tierSize,
+    within: within4
+  });
   return { kept: kept6, reached };
-}
-function shortest(ledger, ids) {
-  return ids.map((id) => ledger.files.get(id)).filter((file) => file !== void 0).sort(shortestFirst);
 }
 function heldBeyondInputs(context2, changed2) {
   const { keys } = context2;
@@ -59184,11 +59217,6 @@ function observedDirectOf(keys, paths, direct) {
   }
   return out2;
 }
-function shortestFirst(a, b) {
-  const x = a.durationMs ?? Number.POSITIVE_INFINITY;
-  const y = b.durationMs ?? Number.POSITIVE_INFINITY;
-  return x === y ? compare(a.id, b.id) : x < y ? -1 : 1;
-}
 async function cutAtStart(context2, ledger, paths, bound) {
   const list3 = [...paths];
   const affected2 = await tryRunner(
@@ -59207,11 +59235,10 @@ async function cutAtStart(context2, ledger, paths, bound) {
 var init_edit_cut = __esm({
   "src/core/scheduler/edit-cut.ts"() {
     "use strict";
-    init_compare();
     init_reverse_index();
     init_text();
     init_context();
-    init_namesakes();
+    init_edit_select();
   }
 });
 
@@ -101090,9 +101117,8 @@ async function leftOutFailures(picked, lookup) {
 }
 
 // src/core/code/gate/narrow.ts
-init_compare();
 init_reverse_index();
-init_namesakes();
+init_edit_select();
 
 // src/core/code/gate/scope.ts
 init_check_groups();
@@ -101246,27 +101272,40 @@ function tallyScope(scope2) {
 
 // src/core/code/gate/narrow.ts
 async function narrowRun(input) {
-  const { adapter, listed: listed12, run: run8, paths, tests: tests2, tierSize } = input;
-  const runIds = new Set(run8.map(testFileId));
-  const within4 = (ref3) => runIds.has(testFileId(ref3));
+  const { adapter, listed: listed12, run: run8, paths, tests: tests2, tierSize, observed: observed2 } = input;
+  const files6 = /* @__PURE__ */ new Map();
+  for (const ref3 of listed12) {
+    const seconds7 = input.durations?.(ref3) ?? null;
+    files6.set(testFileId(ref3), {
+      id: testFileId(ref3),
+      ref: ref3,
+      durationMs: seconds7 === null ? null : seconds7 * 1e3
+    });
+  }
+  const groups3 = new Map(run8.map((ref3) => [testFileId(ref3), input.groupOf?.(ref3) ?? ""]));
   const kept6 = /* @__PURE__ */ new Set();
   const named4 = /* @__PURE__ */ new Set([...paths, ...tests2]);
   for (const ref3 of run8) if (named4.has(ref3.path)) kept6.add(testFileId(ref3));
   const testPaths = new Set(listed12.map((ref3) => ref3.path));
-  const importers = /* @__PURE__ */ new Map();
+  const idsOf = (refs2) => new Set(refs2.map(testFileId));
   for (const source2 of new Set(paths)) {
     if (testPaths.has(source2)) continue;
     const affected2 = await adapter.affected([source2]);
-    const direct = affected2.direct.filter(within4);
-    for (const ref3 of direct) importers.set(testFileId(ref3), ref3);
-    const names9 = new Set(namesakesOf(source2, testPaths));
-    const reached = [...affected2.direct, ...affected2.transitive].filter(within4);
-    const own = reached.filter((ref3) => names9.has(ref3.path));
-    for (const ref3 of own.length > 0 ? own : direct) kept6.add(testFileId(ref3));
+    const direct = idsOf(affected2.direct);
+    const transitive = idsOf(affected2.transitive);
+    const stored4 = (of) => idsOf(listed12.filter((ref3) => observed2?.[of](ref3).includes(source2) === true));
+    const observedDirect = new Set([...stored4("directOf")].filter((id) => !direct.has(id)));
+    const read7 = stored4("readsOf");
+    const reached = /* @__PURE__ */ new Set([...direct, ...observedDirect, ...transitive, ...read7]);
+    const { namesakes, bare: bare3 } = namesakeCut(listed12, [source2], reached, () => reached.size > 0);
+    const cut = { namesakes, bare: bare3, fallback: bare3.size > 0 ? direct : /* @__PURE__ */ new Set() };
+    const reads2 = (id) => transitive.has(id) || read7.has(id);
+    for (const group of new Set(groups3.values())) {
+      const within4 = (id) => groups3.get(id) === group;
+      const selection = { files: files6, named: /* @__PURE__ */ new Set([source2]), reached, cut, direct, observedDirect };
+      for (const id of selectEditWork({ ...selection, reads: reads2, tierSize, within: within4 })) kept6.add(id);
+    }
   }
-  const seconds7 = (ref3) => input.durations?.(ref3) ?? Number.POSITIVE_INFINITY;
-  const others = [...importers.values()].filter((ref3) => !kept6.has(testFileId(ref3))).sort((a, b) => seconds7(a) - seconds7(b) || compare(testFileId(a), testFileId(b)));
-  for (const ref3 of others.slice(0, tierSize)) kept6.add(testFileId(ref3));
   return {
     kept: run8.filter((ref3) => kept6.has(testFileId(ref3))),
     dropped: run8.filter((ref3) => !kept6.has(testFileId(ref3)))
@@ -101274,7 +101313,8 @@ async function narrowRun(input) {
 }
 function narrowing(scope2, options) {
   return async (kind, adapter, listed12, run8) => {
-    const { kept: kept6, dropped } = await narrowRun({ ...options, adapter, listed: listed12, run: run8 });
+    const groupOf5 = (ref3) => placeFile(scope2, kind, ref3).group;
+    const { kept: kept6, dropped } = await narrowRun({ ...options, adapter, listed: listed12, run: run8, groupOf: groupOf5 });
     const leftOut3 = dropped.map((ref3) => ({ ref: ref3, group: placeFile(scope2, kind, ref3).group }));
     return { run: kept6, leftOut: leftOut3 };
   };
@@ -101645,7 +101685,13 @@ async function collectEvidence(cwd, changed2, options) {
     const opening = { provider, temp, note, children, keeping, closures, slots, started: started2, teardown };
     await openRunners(options.adapters, root, policy, opening, runners2);
     const { tierSize } = policy.runner;
-    const narrowed2 = options.narrow === true && options.scope !== void 0 ? narrowing(options.scope, { paths, tests: options.tests, tierSize, durations: durations2 }) : null;
+    const narrowed2 = options.narrow === true && options.scope !== void 0 ? narrowing(options.scope, {
+      paths,
+      tests: options.tests,
+      tierSize,
+      durations: durations2,
+      observed: options.observed
+    }) : null;
     const picked = await select(runners2, { paths, ...options }, tally2, narrowed2);
     const known4 = await storedOf2(picked, options);
     const load = (options.hostLoad ?? hostLoad)();
@@ -102379,6 +102425,7 @@ function parseGateArgs(args2) {
 
 // src/cli/code-gate-durations.ts
 init_git_layout();
+init_observed();
 init_files();
 init_connection();
 init_open();
@@ -102400,7 +102447,19 @@ function storedDurations(root) {
       return null;
     }
   };
-  return { of, close: () => store.close() };
+  const sets2 = new ObservedSets(store);
+  const read7 = (paths2) => {
+    try {
+      return paths2();
+    } catch {
+      return [];
+    }
+  };
+  const observed2 = {
+    directOf: (ref3) => read7(() => sets2.directOf(ref3)),
+    readsOf: (ref3) => read7(() => sets2.of(ref3))
+  };
+  return { of, observed: observed2, close: () => store.close() };
 }
 
 // src/cli/code-gate-exceptions.ts
@@ -105110,6 +105169,8 @@ Usage: ${CODE_GATE_USAGE}
       ...preRunOptions(changed2, policy, io.stderr),
       // D17.1: the estimate on stderr, after the stored lookup and before the first run.
       ...durations2 === null ? {} : { durations: durations2.of },
+      // Row 026-21: `--narrow` counts stored direct marks and run reads as `run --base` does.
+      ...durations2 === null ? {} : { observed: durations2.observed },
       // Rows 020-45, 020-46: over what is left, one rerun command with a fitted --timeout.
       // Row 020-57: the estimate lines themselves, with the setup-selection line, come from preRunOptions.
       ...estimateOptions(parsed3, io),
