@@ -13,6 +13,11 @@ import type { Readable } from "node:stream";
 export interface SshTarget {
   /** The SSH destination as the user names it: a `Host` of their config, or `user@host`. */
   readonly destination: string;
+  /**
+   * Spec 026 D6.1 (row 026-10): extra ssh flags placed before
+   * `destination`, such as a port, `IdentityFile` or `ProxyCommand`.
+   */
+  readonly args?: readonly string[];
   /** The `ssh` program; default `ssh` on the daemon's `PATH`. */
   readonly ssh?: string;
   /** The env `ssh` runs with; default the daemon's. */
@@ -24,14 +29,25 @@ export function shellQuote(word: string): string {
   return /^[A-Za-z0-9_./:=@%+,-]+$/.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 }
 
-/** `ssh`'s arguments to run `command` on `destination`: no terminal, never a prompt. */
-export function sshArgs(destination: string, command: string): string[] {
-  return ["-T", "-o", "BatchMode=yes", destination, command];
+/**
+ * `ssh`'s arguments to run `command` on the target: no terminal, never a
+ * prompt, then the target's own flags (D6.1), its destination and the command.
+ */
+export function sshArgs(
+  target: Pick<SshTarget, "destination" | "args">,
+  command: string,
+): string[] {
+  return ["-T", "-o", "BatchMode=yes", ...(target.args ?? []), target.destination, command];
+}
+
+/** An SSH destination ssh takes as one: no leading `-` (an option), no space or control character. */
+export function validTarget(target: unknown): target is string {
+  return typeof target === "string" && /^[^-\s][^\s]*$/.test(target) && !/\p{Cc}/u.test(target);
 }
 
 /** Starts `command` on the remote with three pipes: its stdin, stdout and stderr. */
 export function spawnSsh(target: SshTarget, command: string): ChildProcessWithoutNullStreams {
-  return spawn(target.ssh ?? "ssh", sshArgs(target.destination, command), {
+  return spawn(target.ssh ?? "ssh", sshArgs(target, command), {
     env: target.env ?? process.env,
     stdio: ["pipe", "pipe", "pipe"],
   });

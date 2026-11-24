@@ -1,5 +1,6 @@
 import type { VitestAdapterOptions } from "../../../runners/vitest/index.js";
 import { repositoryRootOf } from "../../daemon/user-config.js";
+import { worktreeIdOfRealPath } from "../../fs/git-layout.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunnerAdapter } from "../../types/runner.js";
@@ -7,7 +8,17 @@ import type { RunnerHostLaunch } from "../channel.js";
 import { hostedOptions } from "../vitest-host.js";
 import { startRemoteHost } from "./connect.js";
 import { withRemoteLane } from "./lane.js";
-import { loadRemoteSettings, remoteLaneFor, settingsNote } from "./settings.js";
+import { recordMachine, updateMachine } from "./machines-store.js";
+import { type MachineRequest, type RemoteMachine, recordOf } from "./provider.js";
+import { providerOf } from "./providers/index.js";
+import {
+  laneLabel,
+  loadRemoteSettings,
+  type RemoteLane,
+  remoteLaneFor,
+  remoteUrls,
+  settingsNote,
+} from "./settings.js";
 
 /*
  * Spec 021 D9, D12, D17 (rows 021-13, 021-14): the daemon's Vitest runner
@@ -18,6 +29,12 @@ import { loadRemoteSettings, remoteLaneFor, settingsNote } from "./settings.js";
  * `requires.commands` are looked for on the remote at each connect, its
  * `remote.needsRepository` files run here, and a second topic names the
  * files a remote failed as not a Git repository.
+ *
+ * Spec 026 D6, D7 (row 026-10): the lane reaches its machine through the
+ * entry's provider. The first connect acquires it and records it in
+ * `remote-machines.json`; a reconnect wakes it; the daemon's exit releases
+ * it (`daemon-exit`). A `{ target }` entry is the `ssh` provider, whose
+ * machine is the target as before.
  */
 
 /** The note topic of the lane's one status line. */
@@ -60,7 +77,7 @@ export function withDaemonRemoteLane(options: DaemonLaneOptions): RunnerAdapter 
     if (options.lastNote(REMOTE_TOPIC) !== undefined) say("no remote lane: every run is here");
     return options.vitest;
   }
-  const { target } = found.lane;
+  const target = laneLabel(found.lane);
   if (!options.policy().remote.allowed) {
     say(
       `remote ${target} not used: this repository's squeal.config.json forbids remote lanes (remote.allowed: false); every run is here`,
@@ -74,16 +91,30 @@ export function withDaemonRemoteLane(options: DaemonLaneOptions): RunnerAdapter 
   const meanwhile = found.lane.whenLost === "local" ? "run here" : "are not run";
   say(`remote ${target}: connecting; background runs of vitest ${meanwhile} until it answers`);
   const hosted = hostedOptions(options.vitestOptions);
-  return withRemoteLane({
+  const machines = machineOf(
+    found.lane,
+    {
+      repositoryKey: found.key,
+      worktreeId: worktreeIdOfRealPath(root),
+      worktreeRoot: root,
+      commonDir,
+      remoteUrls: remoteUrls(commonDir),
+      nodeVersion: process.version,
+      log: options.log,
+    },
+    options.env,
+  );
+  const adapter = withRemoteLane({
     target,
     whenLost: found.lane.whenLost,
     root,
     version,
     local: options.vitest,
-    connect: () =>
-      startRemoteHost({
-        target: { destination: target },
-        places: { node: found.lane.node, cache: found.lane.cache },
+    connect: async () => {
+      const machine = await machines.reach();
+      return startRemoteHost({
+        target: machine.ssh,
+        places: machine.places,
         launch,
         version,
         root,
@@ -93,11 +124,60 @@ export function withDaemonRemoteLane(options: DaemonLaneOptions): RunnerAdapter 
         ...(options.vitestOptions.note === undefined ? {} : { note: options.vitestOptions.note }),
         log: options.log,
         commands: options.policy().requires.commands,
-      }),
+      });
+    },
     allowlist: () => options.policy().env.allowlist,
     needsRepository: () => options.policy().remote.needsRepository,
     repository: (text) => say(`remote ${target}: ${text}`, REMOTE_REPOSITORY_TOPIC),
     status: (text) => say(text),
     log: options.log,
   });
+  const close = adapter.close.bind(adapter);
+  adapter.close = async () => {
+    await close();
+    await machines.release();
+  };
+  return adapter;
+}
+
+/**
+ * The lane's machine: acquired at the first connect and recorded, woken at
+ * each later one, released at the daemon's exit. The state file is a
+ * record for `squeal remote`; failing to write it fails no connect.
+ */
+function machineOf(lane: RemoteLane, request: MachineRequest, env: NodeJS.ProcessEnv | undefined) {
+  // The settings kept only entries whose provider is built in.
+  const provider = providerOf(lane.provider);
+  if (provider === null) throw new Error(`no remote provider "${lane.provider}"`);
+  const key = { provider: provider.kind, worktreeId: request.worktreeId };
+  let machine: RemoteMachine | null = null;
+  const track = (write: () => void) => {
+    try {
+      write();
+    } catch (error) {
+      request.log(`remote machines file not written: ${String(error)}`);
+    }
+  };
+  return {
+    reach: async (): Promise<RemoteMachine> => {
+      if (machine === null) {
+        const acquired = await provider.acquire(request, lane.providerConfig);
+        machine = acquired;
+        track(() => recordMachine(recordOf(acquired, request, Date.now()), env));
+        return acquired;
+      }
+      await machine.wake();
+      track(() => updateMachine(key, { status: "awake", lastUsedAt: Date.now() }, env));
+      return machine;
+    },
+    release: async (): Promise<void> => {
+      if (machine === null) return;
+      try {
+        await machine.release("daemon-exit");
+      } catch (error) {
+        request.log(`remote machine ${machine.id} not released: ${String(error)}`);
+      }
+      track(() => updateMachine(key, { status: "detached" }, env));
+    },
+  };
 }
