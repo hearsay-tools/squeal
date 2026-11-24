@@ -1,0 +1,48 @@
+2026-11-24T20:56:00.716Z [95230] squeal daemon: long write: store.sqlite write lock held 535 ms by #write < Ledger.commit < retryWhileBusy; 11501 rows written
+2026-11-24T20:56:01.681Z [95230] squeal daemon: serving /home/user/results/cells/stress@0.1.623/work/wt1 on /home/user/results/cells/stress@0.1.623/work/run/squeal-61f599ea8dc5494f.sock
+2026-11-24T20:56:03.151Z [95230] squeal daemon: the store was busy for 0.2 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-24T20:56:08.065Z [95230] squeal daemon: the store was busy for 0.1 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-24T20:56:47.721Z [95230] squeal daemon: code store: last minute: 58 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:57:03.184Z [95230] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 232 to 143 MiB in a 93 ms pause
+2026-11-24T20:57:40.205Z [95230] squeal daemon: the background ceiling refused a backlog tier: 11 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-24T20:57:40.211Z [95230] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-24T20:57:41.862Z [95230] squeal daemon: the pool granted the vitest lane's tier after 2 s of waiting for CPU
+2026-11-24T20:57:43.125Z [95230] squeal daemon: the store was busy for 0.1 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-24T20:57:47.770Z [95230] squeal daemon: code store: last minute: 25 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:58:35.776Z [95230] squeal daemon: long write: store.sqlite write lock held 270 ms by #write < #record; 97 rows written
+2026-11-24T20:58:47.771Z [95230] squeal daemon: code store: last minute: 39 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:59:09.979Z [95230] squeal daemon: busy, heap in use 51 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 194 to 145 MiB in a 209 ms pause; 27 MiB of heap in use after it
+2026-11-24T20:59:35.725Z [95230] squeal daemon: long write: store.sqlite write lock held 258 ms by #write < #record; 150 rows written
+2026-11-24T20:59:47.770Z [95230] squeal daemon: code store: last minute: 28 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:00:12.673Z [95230] squeal daemon: busy, heap in use 75 MiB over twice the last live size of 27 MiB: a last-resort GC took private memory from 258 to 159 MiB in a 233 ms pause; 28 MiB of heap in use after it
+2026-11-24T21:00:47.771Z [95230] squeal daemon: code store: last minute: 28 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:01:14.962Z [95230] squeal daemon: busy, heap in use 109 MiB over twice the last live size of 28 MiB: a last-resort GC took private memory from 285 to 161 MiB in a 157 ms pause; 28 MiB of heap in use after it
+2026-11-24T21:01:21.040Z [95230] squeal daemon: coverage: no result of run 21a7bb7e-997d-472f-aa4e-9d5342201927 for test/m380.test.ts
+2026-11-24T21:01:21.043Z [95230] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 no-result (its run's result was not found at its key); the last: test/m380.test.ts: its run's result was not found at its key
+2026-11-24T21:01:21.066Z [95230] squeal daemon: coverage: no result of run 21a7bb7e-997d-472f-aa4e-9d5342201927 for test/m399.test.ts
+2026-11-24T21:01:21.067Z [95230] squeal daemon: coverage: 2 completed test files got no record since this daemon started: 2 no-result (its run's result was not found at its key); the last: test/m399.test.ts: its run's result was not found at its key
+2026-11-24T21:01:21.078Z [95230] squeal daemon: coverage: no result of run 21a7bb7e-997d-472f-aa4e-9d5342201927 for test/m387.test.ts
+2026-11-24T21:01:47.772Z [95230] squeal daemon: code store: last minute: 42 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:02:03.109Z [95230] squeal daemon: the background ceiling refused a backlog tier: 8 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-24T21:02:03.111Z [95230] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-24T21:02:04.361Z [95230] squeal daemon: the pool granted the vitest lane's tier after 1 s of waiting for CPU
+2026-11-24T21:02:47.774Z [95230] squeal daemon: code store: last minute: 31 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:02:57.560Z [95230] squeal daemon: busy, heap in use 61 MiB over twice the last live size of 28 MiB: a last-resort GC took private memory from 286 to 166 MiB in a 113 ms pause; 28 MiB of heap in use after it
+2026-11-24T21:03:47.777Z [95230] squeal daemon: code store: last minute: 34 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:04:26.367Z [95230] squeal daemon: busy, heap in use 65 MiB over twice the last live size of 28 MiB: a last-resort GC took private memory from 262 to 169 MiB in a 289 ms pause; 28 MiB of heap in use after it
+2026-11-24T21:04:47.779Z [95230] squeal daemon: code store: last minute: 33 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:04:48.458Z [95230] squeal daemon: the store was busy for 0.1 s (another connection held its write lock); ran once it was free: a hook's or command's writes
+2026-11-24T21:05:24.417Z [95230] squeal daemon: coverage: no result of run 09cb5bbd-13f2-4e52-aa19-2fe8749eeee6 for test/m480.test.ts
+2026-11-24T21:05:24.418Z [95230] squeal daemon: coverage: 4 completed test files got no record since this daemon started: 4 no-result (its run's result was not found at its key); the last: test/m480.test.ts: its run's result was not found at its key
+2026-11-24T21:05:24.421Z [95230] squeal daemon: coverage: no result of run 09cb5bbd-13f2-4e52-aa19-2fe8749eeee6 for test/m489.test.ts
+2026-11-24T21:05:24.423Z [95230] squeal daemon: coverage: no result of run 09cb5bbd-13f2-4e52-aa19-2fe8749eeee6 for test/m487.test.ts
+2026-11-24T21:05:41.060Z [95230] squeal daemon: busy, heap in use 60 MiB over twice the last live size of 28 MiB: a last-resort GC took private memory from 315 to 166 MiB in a 186 ms pause; 28 MiB of heap in use after it
+2026-11-24T21:05:46.424Z [95230] squeal daemon: long write: store.sqlite write lock held 401 ms by reconcileBatch < #pass < withBusySlice; 8005 rows written
+2026-11-24T21:05:47.783Z [95230] squeal daemon: code store: last minute: 44 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:05:54.144Z [95230] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-24T21:06:10.176Z [95230] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-24T21:06:47.783Z [95230] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T21:06:54.316Z [95230] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 239 to 160 MiB in a 178 ms pause
+2026-11-24T21:10:51.588Z [95230] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-24T21:10:51.605Z [95230] squeal daemon: coverage: 6 completed test files got no record since this daemon started: 6 no-result (its run's result was not found at its key); the last: test/m487.test.ts: its run's result was not found at its key
+2026-11-24T21:10:51.636Z [95230] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

@@ -1,0 +1,83 @@
+{
+  "startedAt": "2026-11-24T20:15:27.463Z",
+  "squealVersion": "0.1.623 vs 0.1.626",
+  "plugins": [
+    {
+      "version": "0.1.623",
+      "label": "0.1.623"
+    },
+    {
+      "version": "0.1.626",
+      "label": "0.1.626"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 9 9950X 16-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.5,
+  "sha256MiBPerS": [
+    2369.6666666666665,
+    2345.3333333333335,
+    2460
+  ],
+  "loadavgAtStart": "0.30 0.35 0.17 1/400 7189",
+  "cells": [
+    {
+      "name": "ref@0.1.623",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.623",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.626",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.626",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.626",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.626",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.623",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.623",
+      "rep": 1
+    },
+    {
+      "name": "stress@0.1.623",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.623",
+      "rep": 1
+    },
+    {
+      "name": "stress@0.1.626",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.626",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-24T21:37:21.069Z"
+}

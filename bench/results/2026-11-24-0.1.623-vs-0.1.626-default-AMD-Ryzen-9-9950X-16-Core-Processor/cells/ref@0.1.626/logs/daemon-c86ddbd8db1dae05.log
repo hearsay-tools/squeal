@@ -1,0 +1,16 @@
+2026-11-24T20:23:07.767Z [26720] squeal daemon: serving /home/user/results/cells/ref@0.1.626/work/wt0 on /home/user/results/cells/ref@0.1.626/work/run/squeal-c86ddbd8db1dae05.sock
+2026-11-24T20:23:07.824Z [26720] squeal daemon: full integrity check: ok
+2026-11-24T20:24:03.082Z [26720] squeal daemon: code store: last minute: 105 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:25:03.081Z [26720] squeal daemon: code store: last minute: 17 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:25:08.206Z [26720] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 323 to 265 MiB in a 62 ms pause
+2026-11-24T20:26:03.083Z [26720] squeal daemon: hook writes: 15 taken, queue wait p95 70 ms max 70 ms
+2026-11-24T20:26:03.084Z [26720] squeal daemon: code store: last minute: 80 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:26:22.053Z [26720] squeal daemon: busy, heap in use 61 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 271 to 232 MiB in a 164 ms pause; 28 MiB of heap in use after it
+2026-11-24T20:27:03.082Z [26720] squeal daemon: hook writes: 10 taken, queue wait p95 4 ms max 4 ms
+2026-11-24T20:27:03.084Z [26720] squeal daemon: code store: last minute: 70 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:27:25.442Z [26720] squeal daemon: busy, heap in use 67 MiB over twice the last live size of 28 MiB: a last-resort GC took private memory from 379 to 242 MiB in a 144 ms pause; 28 MiB of heap in use after it
+2026-11-24T20:28:03.083Z [26720] squeal daemon: hook writes: 18 taken, queue wait p95 21 ms max 21 ms
+2026-11-24T20:28:03.085Z [26720] squeal daemon: code store: last minute: 91 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T20:28:31.860Z [26720] squeal daemon: busy, heap in use 77 MiB over twice the last live size of 28 MiB: a last-resort GC took private memory from 399 to 247 MiB in a 97 ms pause; 29 MiB of heap in use after it
+2026-11-24T20:29:03.082Z [26720] squeal daemon: hook writes: 6 taken, queue wait p95 2 ms max 2 ms
+2026-11-24T20:29:03.086Z [26720] squeal daemon: code store: last minute: 40 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed

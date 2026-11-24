@@ -1,0 +1,99 @@
+{
+  "name": "ref@0.1.623",
+  "files": 500,
+  "worktrees": 1,
+  "load": 0,
+  "ageRounds": 0,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "phases": {
+    "plainVitest": {
+      "ms": 42241.685308,
+      "code": 0
+    },
+    "startMain": {
+      "ms": 502.85965200000646,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/ref@0.1.623/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `squeal"
+    },
+    "runAll": {
+      "ms": 51627.42862800001,
+      "code": 0,
+      "tail": "w\nCheckpoint 59dc9aa8-ed66-4379-96f0-88378cedf705 started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 141 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.7689185748245128
+    },
+    "startOthers": [],
+    "idle": {
+      "ms": 60000,
+      "daemons": 1,
+      "storeProcessCpuPct": 0.2,
+      "perDaemonCpuPct": [
+        0.6333333333333344
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 230836.88370200002,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.28102594719948076,
+    "sessionDaemonCpuS": [
+      25.430000000000003
+    ],
+    "edits": 19,
+    "sessionStoreProcessCpuS": 1.0899999999999999,
+    "impact": {
+      "command": "impact",
+      "ms": 488.5595880000037,
+      "code": 0,
+      "peakRssBytes": 161767424
+    }
+  },
+  "store": {
+    "storeBytes": 6975488,
+    "walBytes": 5491992,
+    "codeBytes": 7340032,
+    "runsDirs": 67,
+    "rows": {
+      "results": 8190,
+      "runs": 67,
+      "revisions": 19,
+      "transitions": 336
+    },
+    "longWrites": 1,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      407
+    ]
+  },
+  "storeProcess": {
+    "seen": 1,
+    "cpuS": 2.12,
+    "maxRssBytes": 165093376,
+    "written": 350,
+    "failed": 0,
+    "queueWaitMaxMs": 0,
+    "busyMs": 1994,
+    "stops": 0,
+    "failedLines": 0,
+    "relay": {
+      "sent": 350,
+      "direct": 1,
+      "failed": 0
+    }
+  },
+  "hookWriteWait": {
+    "seen": false,
+    "taken": 0,
+    "p95MaxMs": null,
+    "maxMs": null,
+    "longWaitsMs": []
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 445677568,
+    "maxTreeBytes": 1159827456
+  }
+}
