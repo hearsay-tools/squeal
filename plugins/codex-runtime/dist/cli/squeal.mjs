@@ -1692,7 +1692,7 @@ function runGit(cwd, args2, options = {}) {
   const okCodes = options.okCodes ?? [0];
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   for (const name3 of REPOSITORY_VARIABLES) delete env[name3];
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     const child = spawn("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -1715,7 +1715,7 @@ function runGit(cwd, args2, options = {}) {
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code !== null && okCodes.includes(code)) {
-        resolve57(Buffer.concat(stdout).toString("utf8"));
+        resolve56(Buffer.concat(stdout).toString("utf8"));
         return;
       }
       const message3 = Buffer.concat(stderr).toString("utf8").trim();
@@ -10841,7 +10841,7 @@ import { realpath } from "node:fs/promises";
 import { dirname as dirname6, join as join12, relative as relative2, sep as sep3 } from "node:path";
 async function linkTargets(root, paths) {
   const directories = /* @__PURE__ */ new Map();
-  const resolve57 = (directory) => {
+  const resolve56 = (directory) => {
     let real4 = directories.get(directory);
     if (real4 === void 0) {
       real4 = realpath(join12(root, directory)).then(
@@ -10856,7 +10856,7 @@ async function linkTargets(root, paths) {
     [...paths].map(async (path) => {
       const directory = dirname6(path);
       if (directory === ".") return null;
-      const real4 = await resolve57(directory);
+      const real4 = await resolve56(directory);
       if (real4 === null || real4 === directory) return null;
       const target = real4 === "" ? path.slice(directory.length + 1) : `${real4}/${path.slice(directory.length + 1)}`;
       return kept2(target) ? target : null;
@@ -20160,7 +20160,7 @@ async function pinDaemon(record2, timeoutMs) {
   }
 }
 function requestDaemon(socketPath, request, timeoutMs, endpoint, signal3) {
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     if (signal3?.aborted) {
       reject(failure("ABORT_ERR", `request to ${socketPath} aborted`));
       return;
@@ -20175,7 +20175,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal3) {
       signal3?.removeEventListener("abort", aborted2);
       socket.destroy();
       if (error) reject(error);
-      else resolve57(response);
+      else resolve56(response);
     };
     const timer = setTimeout(
       () => settle3(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -22604,7 +22604,7 @@ var init_held_connection = __esm({
       heldElsewhere() {
         const other = holders.get(this.#file);
         if (other === void 0 || other === this) return null;
-        return new Promise((resolve57) => waiters.push({ file: this.#file, resolve: resolve57 }));
+        return new Promise((resolve56) => waiters.push({ file: this.#file, resolve: resolve56 }));
       }
       /**
        * A write here while another connection of this thread holds the database
@@ -27225,8 +27225,8 @@ function workerMapper(worker, options, onFailure) {
     map(file) {
       if (failed7 !== null) return Promise.reject(failed7);
       const id = jobsMade++;
-      return new Promise((resolve57, reject) => {
-        jobs.set(id, { file, resolve: resolve57, reject });
+      return new Promise((resolve56, reject) => {
+        jobs.set(id, { file, resolve: resolve56, reject });
         const sources = idOf4(file.sources);
         options.pace.measure(
           () => post({
@@ -38582,9 +38582,9 @@ var require_CachedInputFileSystem = __commonJS({
           this.fileSystem.readdirSync,
           this.fileSystem
         );
-        const readdir12 = this._readdirBackend.provide;
+        const readdir13 = this._readdirBackend.provide;
         this.readdir = /** @type {FileSystem["readdir"]} */
-        readdir12;
+        readdir13;
         const readdirSync53 = this._readdirBackend.provideSync;
         this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */
         readdirSync53;
@@ -39234,8 +39234,8 @@ var require_graceful_fs = __commonJS({
       }
       var fs$copyFile = fs4.copyFile;
       if (fs$copyFile)
-        fs4.copyFile = copyFile2;
-      function copyFile2(src, dest, flags3, cb) {
+        fs4.copyFile = copyFile3;
+      function copyFile3(src, dest, flags3, cb) {
         if (typeof flags3 === "function") {
           cb = flags3;
           flags3 = 0;
@@ -39253,9 +39253,9 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$readdir = fs4.readdir;
-      fs4.readdir = readdir12;
+      fs4.readdir = readdir13;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir12(path, options, cb) {
+      function readdir13(path, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path2, options2, cb2, startTime) {
@@ -41371,7 +41371,7 @@ var require_ExtensionAliasPlugin = __commonJS({
           const isAliasString = typeof alias === "string";
           const sourceBase = source2.slice(0, -extension.length);
           const relativePathBase = !useRequest && request.relativePath && request.relativePath.endsWith(extension) ? request.relativePath.slice(0, -extension.length) : null;
-          const resolve57 = (alias2, callback3, index) => {
+          const resolve56 = (alias2, callback3, index) => {
             const newValue = `${sourceBase}${alias2}`;
             const nextRequest = useRequest ? {
               ...request,
@@ -41413,11 +41413,11 @@ var require_ExtensionAliasPlugin = __commonJS({
             return callback2(null, null);
           };
           if (isAliasString) {
-            resolve57(alias, stoppingCallback);
+            resolve56(alias, stoppingCallback);
           } else if (alias.length > 1) {
-            forEachBail(alias, resolve57, stoppingCallback);
+            forEachBail(alias, resolve56, stoppingCallback);
           } else {
-            resolve57(alias[0], stoppingCallback);
+            resolve56(alias[0], stoppingCallback);
           }
         });
       }
@@ -42092,8 +42092,8 @@ var require_fileURLToPath = __commonJS({
         return `\\\\${hostname2}${pathname}`;
       }
       const letter = (pathname.codePointAt(1) || 0) | 32;
-      const sep42 = pathname.charAt(2);
-      if (letter < CHAR_LOWERCASE_A || letter > CHAR_LOWERCASE_Z || sep42 !== ":") {
+      const sep43 = pathname.charAt(2);
+      if (letter < CHAR_LOWERCASE_A || letter > CHAR_LOWERCASE_Z || sep43 !== ":") {
         throw new TypeError("File URL path must be absolute");
       }
       return pathname.slice(1);
@@ -43998,10 +43998,10 @@ var require_Resolver = __commonJS({
         * @returns {Promise<string | false>} result
         */
         (self, context2, path, request, resolveContext) => {
-          const { promise: promise2, resolve: resolve57, reject } = Promise.withResolvers();
+          const { promise: promise2, resolve: resolve56, reject } = Promise.withResolvers();
           self.resolve(context2, path, request, resolveContext, (err2, res) => {
             if (err2) reject(err2);
-            else resolve57(
+            else resolve56(
               /** @type {string | false} */
               res
             );
@@ -44017,10 +44017,10 @@ var require_Resolver = __commonJS({
         * @param {ResolveContext} resolveContext resolve context
         * @returns {Promise<string | false>} result
         */
-        (self, context2, path, request, resolveContext) => new Promise((resolve57, reject) => {
+        (self, context2, path, request, resolveContext) => new Promise((resolve56, reject) => {
           self.resolve(context2, path, request, resolveContext, (err2, res) => {
             if (err2) reject(err2);
-            else resolve57(
+            else resolve56(
               /** @type {string | false} */
               res
             );
@@ -46800,7 +46800,7 @@ var require_lib2 = __commonJS({
         fileSystem: getNodeFileSystem()
       })
     );
-    var resolve57 = (
+    var resolve56 = (
       /**
        * @param {object | string | URL} context context
        * @param {string | URL} parent parent path
@@ -46979,7 +46979,7 @@ var require_lib2 = __commonJS({
         Object.freeze(obj)
       );
     };
-    module2.exports = mergeExports(resolve57, {
+    module2.exports = mergeExports(resolve56, {
       get sync() {
         return resolveSync;
       },
@@ -47585,16 +47585,16 @@ function startGroup(options) {
     } catch {
     }
   };
-  const exited2 = new Promise((resolve57) => {
+  const exited2 = new Promise((resolve56) => {
     child.once("error", (error) => {
       done = true;
-      resolve57({ code: null, signal: null, error: error.message });
+      resolve56({ code: null, signal: null, error: error.message });
     });
     child.once("exit", (code, signal3) => {
       if (done) return;
       done = true;
       kill("SIGKILL");
-      resolve57({ code, signal: signal3, error: null });
+      resolve56({ code, signal: signal3, error: null });
     });
   });
   return { exited: exited2, kill: (signal3) => done ? void 0 : kill(signal3) };
@@ -48435,9 +48435,9 @@ async function execute(vitest, specs, timeoutMs, collector, signal3, beforeForce
 async function settleOrStop(run9, timeoutMs, signal3) {
   let timer;
   let onAbort;
-  const stop2 = new Promise((resolve57) => {
-    if (timeoutMs !== null) timer = setTimeout(() => resolve57("timeout"), timeoutMs);
-    onAbort = () => resolve57("abort");
+  const stop2 = new Promise((resolve56) => {
+    if (timeoutMs !== null) timer = setTimeout(() => resolve56("timeout"), timeoutMs);
+    onAbort = () => resolve56("abort");
     signal3?.addEventListener("abort", onAbort, { once: true });
   });
   try {
@@ -48457,8 +48457,8 @@ function abandon(vitest, collector) {
 }
 async function settleWithin(promise2, ms2) {
   let timer;
-  const timeout = new Promise((resolve57) => {
-    timer = setTimeout(() => resolve57(null), ms2);
+  const timeout = new Promise((resolve56) => {
+    timer = setTimeout(() => resolve56(null), ms2);
   });
   try {
     return await Promise.race([promise2, timeout]);
@@ -49521,19 +49521,19 @@ var init_gate2 = __esm({
       }
       async exclusive(fn) {
         if (this.#sections++ === 0) {
-          this.#clear = new Promise((resolve57) => {
-            this.#cleared = resolve57;
+          this.#clear = new Promise((resolve56) => {
+            this.#cleared = resolve56;
           });
         }
         const turn = this.#turn;
         let done = () => {
         };
-        this.#turn = new Promise((resolve57) => {
-          done = resolve57;
+        this.#turn = new Promise((resolve56) => {
+          done = resolve56;
         });
         try {
           await turn;
-          while (this.#holders > 0) await new Promise((resolve57) => this.#idle.push(resolve57));
+          while (this.#holders > 0) await new Promise((resolve56) => this.#idle.push(resolve56));
           return await fn();
         } finally {
           done();
@@ -49564,7 +49564,7 @@ var init_gate2 = __esm({
       }
       #leave() {
         if (--this.#holders > 0) return;
-        for (const resolve57 of this.#idle.splice(0)) resolve57();
+        for (const resolve56 of this.#idle.splice(0)) resolve56();
       }
     };
   }
@@ -49589,12 +49589,12 @@ async function globPatterns(file, source2, parse18) {
   });
   return out2;
 }
-async function folderListings(file, source2, root, resolve57, parse18) {
+async function folderListings(file, source2, root, resolve56, parse18) {
   const patterns = await globPatterns(file, source2, parse18);
   if (patterns === null) return null;
   const out2 = [];
   for (const glob2 of patterns.filter((g2) => !g2.pattern.startsWith("!"))) {
-    const absolute = await absoluteGlob(glob2, file, root, resolve57);
+    const absolute = await absoluteGlob(glob2, file, root, resolve56);
     if (absolute !== null) out2.push(listingOf2(absolute));
   }
   return out2;
@@ -49602,7 +49602,7 @@ async function folderListings(file, source2, root, resolve57, parse18) {
 async function moduleGlobs(project, graph, paths, parse18) {
   const environment = project.vite.environments.ssr;
   const root = project.config.root;
-  const resolve57 = async (pattern2, importer) => {
+  const resolve56 = async (pattern2, importer) => {
     const custom = { "vite:import-glob": { isSubImportsPattern: pattern2.startsWith("#") } };
     return (await environment?.pluginContainer.resolveId(pattern2, importer, { custom }))?.id ?? null;
   };
@@ -49612,7 +49612,7 @@ async function moduleGlobs(project, graph, paths, parse18) {
     const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
     const transform = environment?.moduleGraph.getModuleById(file)?.transformResult;
     if (path === null || !transform) continue;
-    const listings = listed8.get(transform) ?? listingsOnDisk(file, root, resolve57, parse18);
+    const listings = listed8.get(transform) ?? listingsOnDisk(file, root, resolve56, parse18);
     listed8.set(transform, listings);
     const directories = /* @__PURE__ */ new Set();
     const recursive = /* @__PURE__ */ new Set();
@@ -49631,16 +49631,16 @@ function folderOf(directory, paths) {
   if (directory === paths.root) return "";
   return paths.isProjectFile(directory) ? paths.toRelative(directory) : null;
 }
-function listingsOnDisk(file, root, resolve57, parse18) {
+function listingsOnDisk(file, root, resolve56, parse18) {
   const source2 = readSource(file);
-  return source2 === null ? Promise.resolve([]) : folderListings(file, source2, root, resolve57, parse18);
+  return source2 === null ? Promise.resolve([]) : folderListings(file, source2, root, resolve56, parse18);
 }
-async function absoluteGlob(glob2, importer, root, resolve57) {
+async function absoluteGlob(glob2, importer, root, resolve56) {
   const { pattern: pattern2, base } = glob2;
   const from = base?.startsWith("/") ? posix11.join(root, base) : posix11.resolve(dirname36(importer), base ?? ".");
   if (pattern2.startsWith("/")) return posix11.join(root, pattern2.slice(1));
   if (pattern2.startsWith("./") || pattern2.startsWith("../")) return posix11.join(from, pattern2);
-  const resolved2 = await resolve57(pattern2, importer).catch(() => null);
+  const resolved2 = await resolve56(pattern2, importer).catch(() => null);
   return resolved2?.startsWith("/") ? resolved2 : null;
 }
 function listingOf2(glob2) {
@@ -52039,7 +52039,7 @@ function gitCall(cwd, args2, call2) {
   }
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0", ...call2.env };
   for (const name3 of REPOSITORY_VARIABLES2) delete env[name3];
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     const child = spawn6("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -52050,7 +52050,7 @@ function gitCall(cwd, args2, call2) {
       settled2 = true;
       clearTimeout(timer);
       signal3?.removeEventListener("abort", stop2);
-      resolve57(answer4);
+      resolve56(answer4);
     };
     const kill = (why2) => {
       child.kill("SIGKILL");
@@ -52370,13 +52370,13 @@ async function Module2(moduleArg = {}) {
       }
       readAsync = /* @__PURE__ */ __name(async (url) => {
         if (isFileURI(url)) {
-          return new Promise((resolve57, reject) => {
+          return new Promise((resolve56, reject) => {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.responseType = "arraybuffer";
             xhr.onload = () => {
               if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
-                resolve57(xhr.response);
+                resolve56(xhr.response);
                 return;
               }
               reject(xhr.status);
@@ -52572,9 +52572,9 @@ async function Module2(moduleArg = {}) {
     __name(receiveInstantiationResult, "receiveInstantiationResult");
     var info2 = getWasmImports();
     if (Module["instantiateWasm"]) {
-      return new Promise((resolve57, reject) => {
+      return new Promise((resolve56, reject) => {
         Module["instantiateWasm"](info2, (mod, inst) => {
-          resolve57(receiveInstance(mod, inst));
+          resolve56(receiveInstance(mod, inst));
         });
       });
     }
@@ -53907,8 +53907,8 @@ async function Module2(moduleArg = {}) {
   if (runtimeInitialized) {
     moduleRtn = Module;
   } else {
-    moduleRtn = new Promise((resolve57, reject) => {
-      readyPromiseResolve = resolve57;
+    moduleRtn = new Promise((resolve56, reject) => {
+      readyPromiseResolve = resolve56;
       readyPromiseReject = reject;
     });
   }
@@ -57427,11 +57427,11 @@ var init_relay = __esm({
         });
         this.#worker.on("error", () => {
         });
-        this.#exit = new Promise((resolve57) => {
+        this.#exit = new Promise((resolve56) => {
           this.#worker?.once("exit", () => {
             this.#exited = true;
             this.#abandon("the daemon's code-store relay ended");
-            resolve57();
+            resolve56();
           });
         });
         this.#worker.unref();
@@ -57478,7 +57478,7 @@ var init_relay = __esm({
         const worker = this.#worker;
         if (worker !== null && !this.#exited) {
           this.#port?.postMessage({ close: true, leaving });
-          const cap2 = (ms2) => new Promise((resolve57) => setTimeout(resolve57, ms2).unref());
+          const cap2 = (ms2) => new Promise((resolve56) => setTimeout(resolve56, ms2).unref());
           await Promise.race([this.#exit, cap2(CLOSE_MS)]);
           if (!this.#exited) {
             await worker.terminate().catch(() => {
@@ -57513,8 +57513,8 @@ var init_relay = __esm({
           conn,
           epoch
         };
-        return new Promise((resolve57, reject) => {
-          this.#posted.set(n, { epoch, epochNow, resolve: resolve57, reject });
+        return new Promise((resolve56, reject) => {
+          this.#posted.set(n, { epoch, epochNow, resolve: resolve56, reject });
           this.#port?.ref();
           this.#port?.postMessage({ job });
         });
@@ -59171,7 +59171,7 @@ async function flushStatsAhead(store, cache2, worktreeId, diff) {
   return { ...diff, updates: diff.updates.filter((update) => changed2.has(path(update))) };
 }
 function nextTurn() {
-  return new Promise((resolve57) => setImmediate(resolve57));
+  return new Promise((resolve56) => setImmediate(resolve56));
 }
 async function diffBeside(context2, diff, batch, paths) {
   const own = new Set(batch.paths.map((candidate) => candidate.path));
@@ -60288,7 +60288,7 @@ var init_busy_resume = __esm({
        */
       retry(what) {
         this.#waits.waiting(RECORDS, what);
-        const turn = new Promise((resolve57) => this.#records.push(resolve57));
+        const turn = new Promise((resolve56) => this.#records.push(resolve56));
         this.#arm();
         return turn;
       }
@@ -61697,8 +61697,8 @@ var init_slot_records = __esm({
       }
       /** Records the slot whose run ended, `ended` its reads outside the lock. */
       async record(ended2) {
-        const outcome2 = new Promise((resolve57, reject) => {
-          this.#ended.push({ ended: ended2, resolve: resolve57, reject });
+        const outcome2 = new Promise((resolve56, reject) => {
+          this.#ended.push({ ended: ended2, resolve: resolve56, reject });
         });
         ended2.catch(() => {
         });
@@ -61731,11 +61731,11 @@ var init_slot_records = __esm({
       /** The record's wait: `SLOT_GATHER_COMMITS` times the last commit, at least `SLOT_GATHER_MS`. */
       #gather() {
         const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
-        return new Promise((resolve57) => {
+        return new Promise((resolve56) => {
           this.#gathered = () => {
             this.#gathering = null;
             this.#gathered = null;
-            resolve57();
+            resolve56();
           };
           this.#wake.after(gather);
         });
@@ -63501,9 +63501,9 @@ var init_runner_work = __esm({
        */
       afterTier(task, operation) {
         if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
-        return new Promise((resolve57, reject) => {
+        return new Promise((resolve56, reject) => {
           this.#tasks.push({
-            run: () => this.host.lock.run(task, operation).then(resolve57, reject),
+            run: () => this.host.lock.run(task, operation).then(resolve56, reject),
             cancel: () => reject(new Error("squeal scheduler: closed"))
           });
           this.host.pump();
@@ -64535,14 +64535,14 @@ var init_wakes = __esm({
       async rest() {
         for (; ; ) {
           if (this.#atRest()) {
-            await new Promise((resolve57) => globalThis.setImmediate(resolve57));
+            await new Promise((resolve56) => globalThis.setImmediate(resolve56));
             if (this.#atRest()) {
               const wakes = this.wakes();
               return { next: wakes[0] ?? null, wakes };
             }
             continue;
           }
-          await new Promise((resolve57) => this.#waiters.push(resolve57));
+          await new Promise((resolve56) => this.#waiters.push(resolve56));
         }
       }
       #atRest() {
@@ -64612,7 +64612,7 @@ var init_wakes = __esm({
         this.#disarm = this.#clock.arm(ms2, () => this.#piece.exit(() => this.#run()));
       }
       #poke() {
-        for (const resolve57 of this.#waiters.splice(0)) resolve57();
+        for (const resolve56 of this.#waiters.splice(0)) resolve56();
       }
     };
   }
@@ -66260,8 +66260,8 @@ var init_scheduler2 = __esm({
         if (this.#events.length > 0) return Promise.resolve();
         return this.#wakes.waitFor(
           { for: "event" },
-          new Promise((resolve57) => {
-            this.#wake = resolve57;
+          new Promise((resolve56) => {
+            this.#wake = resolve56;
           })
         );
       }
@@ -67368,7 +67368,7 @@ var init_handler = __esm({
             this._addToNodeFs(path, initialAdd, wh, depth + 1);
           }
         }).on(EV.ERROR, this._boundHandleError);
-        return new Promise((resolve57, reject) => {
+        return new Promise((resolve56, reject) => {
           if (!stream)
             return reject();
           stream.once(STR_END, () => {
@@ -67377,7 +67377,7 @@ var init_handler = __esm({
               return;
             }
             const wasThrottled = throttler ? throttler.clear() : false;
-            resolve57(void 0);
+            resolve56(void 0);
             previous.getChildren().filter((item) => {
               return item !== directory && !current2.has(item);
             }).forEach((item) => {
@@ -68259,7 +68259,7 @@ async function open5(spec, filter, listener) {
   watcher.on("error", (error) => {
     listener.onError(error instanceof Error ? error : new Error(String(error)));
   });
-  await new Promise((resolve57) => watcher.once("ready", () => resolve57()));
+  await new Promise((resolve56) => watcher.once("ready", () => resolve56()));
   return watcher;
 }
 function inNestedRepo(root, path) {
@@ -68614,12 +68614,12 @@ var init_batch_retry = __esm({
       /** Waits `ms`, or until `close`. */
       #pause(ms2) {
         if (ms2 <= 0 || this.#closed) return Promise.resolve();
-        return new Promise((resolve57) => {
+        return new Promise((resolve56) => {
           const timer = setTimeout(() => this.#wake?.(), ms2);
           this.#wake = () => {
             clearTimeout(timer);
             this.#wake = null;
-            resolve57();
+            resolve56();
           };
         });
       }
@@ -69404,13 +69404,13 @@ function channelOf(child) {
   child.stdin.on("error", () => {
   });
   child.stdout.setEncoding("utf8");
-  const drained = new Promise((resolve57) => child.stdout.on("close", () => resolve57()));
-  const ended2 = new Promise((resolve57) => {
-    child.on("error", (error) => resolve57(`could not start: ${error.message}`));
+  const drained = new Promise((resolve56) => child.stdout.on("close", () => resolve56()));
+  const ended2 = new Promise((resolve56) => {
+    child.on("error", (error) => resolve56(`could not start: ${error.message}`));
     child.on("exit", (code, signal3) => {
       const how2 = signal3 === null ? `code ${code}` : `signal ${signal3}`;
       const bound = new Promise((done) => setTimeout(done, DRAIN_MS2).unref());
-      void Promise.race([drained, bound]).then(() => resolve57(how2));
+      void Promise.race([drained, bound]).then(() => resolve56(how2));
     });
   });
   return {
@@ -71309,9 +71309,9 @@ var init_connection2 = __esm({
         if (this.#lost !== null) return Promise.reject(this.#lost);
         const { ms: ms2, renewable, totalMs, idle: idle2 } = typeof deadline === "number" ? { ms: deadline, totalMs: void 0, idle: void 0 } : deadline;
         const what = renewable === void 0 ? m : `${m}, nor ${renewable.progress},`;
-        return new Promise((resolve57, reject) => {
+        return new Promise((resolve56, reject) => {
           const pending = {
-            resolve: resolve57,
+            resolve: resolve56,
             reject,
             timer: void 0,
             renewable: renewable !== void 0,
@@ -71655,8 +71655,8 @@ var init_proxy = __esm({
         }
         channel2.endInput();
         let timer;
-        const bound = new Promise((resolve57) => {
-          timer = setTimeout(resolve57, this.#deadlines.closeMs);
+        const bound = new Promise((resolve56) => {
+          timer = setTimeout(resolve56, this.#deadlines.closeMs);
         });
         await Promise.race([channel2.ended, bound]);
         clearTimeout(timer);
@@ -75114,7 +75114,7 @@ var init_pace = __esm({
        */
       wait() {
         const delay4 = Math.max(0, this.#notBefore - this.#now());
-        return new Promise((resolve57) => setTimeout(resolve57, delay4));
+        return new Promise((resolve56) => setTimeout(resolve56, delay4));
       }
       /** Calls `next` once the next unit may start; a call while one waits joins it. */
       after(next) {
@@ -75933,11 +75933,11 @@ function createCoverageWriter(options) {
     dropped: () => drops.counts(),
     idle() {
       if (quiet()) return Promise.resolve();
-      settled2 ??= new Promise((resolve57) => {
+      settled2 ??= new Promise((resolve56) => {
         settle3 = () => {
           settle3 = null;
           settled2 = null;
-          resolve57();
+          resolve56();
         };
       });
       return settled2;
@@ -79431,17 +79431,17 @@ function spawnSsh(target, command) {
   });
 }
 function sshRun(target, command, options) {
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     const { signal: signal3 } = options;
     if (signal3?.aborted === true) {
-      resolve57({ code: null, stdout: "", stderr: "", failure: "aborted before it started" });
+      resolve56({ code: null, stdout: "", stderr: "", failure: "aborted before it started" });
       return;
     }
     let child;
     try {
       child = spawnSsh(target, command);
     } catch (error) {
-      resolve57({ code: null, stdout: "", stderr: "", failure: `could not start ssh: ${error}` });
+      resolve56({ code: null, stdout: "", stderr: "", failure: `could not start ssh: ${error}` });
       return;
     }
     let stdout = "";
@@ -79465,7 +79465,7 @@ function sshRun(target, command, options) {
     const ended2 = (code) => {
       clearTimeout(timer);
       signal3?.removeEventListener("abort", onAbort);
-      resolve57({
+      resolve56({
         code,
         stdout,
         stderr: stderr.trim(),
@@ -79510,7 +79510,7 @@ function multiplexed(target, socket, persistSeconds) {
 }
 function closeMaster(target, socket, deadlineMs = 1e4) {
   if (!existsSync60(socket)) return Promise.resolve();
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     let child;
     try {
       child = spawn13(
@@ -79519,13 +79519,13 @@ function closeMaster(target, socket, deadlineMs = 1e4) {
         { env: target.env ?? process.env, stdio: "ignore" }
       );
     } catch {
-      resolve57();
+      resolve56();
       return;
     }
     const timer = setTimeout(() => child.kill("SIGKILL"), deadlineMs);
     const done = () => {
       clearTimeout(timer);
-      resolve57();
+      resolve56();
     };
     child.on("error", done);
     child.on("close", done);
@@ -79763,7 +79763,7 @@ var init_tree_wire = __esm({
 // src/core/runner-host/remote/tree.ts
 import { execFile as execFile6 } from "node:child_process";
 import { lstat as lstat14, readFile as readFile17, readlink as readlink3 } from "node:fs/promises";
-import { join as join169, resolve as resolve40 } from "node:path";
+import { join as join169 } from "node:path";
 import { promisify as promisify3 } from "node:util";
 async function treePaths(root) {
   const { stdout } = await run4(
@@ -79795,32 +79795,44 @@ async function treePathsFor(root, paths) {
   );
   return new Set(stdout.split("\0").filter((path) => path !== "" && insideRoot3(path)));
 }
-async function hasGitAttributes(root) {
-  const [tracked, configured, common] = await Promise.all([
-    runGit(root, ["ls-files", "-z", "--", ".gitattributes", "**/.gitattributes"]).catch(() => ""),
-    runGit(root, ["config", "--get", "core.attributesFile"], { okCodes: [0, 1] }).catch(() => ""),
-    runGit(root, ["rev-parse", "--git-common-dir"]).catch(() => "")
-  ]);
-  if (tracked.trim() !== "" || configured.trim() !== "") return true;
-  if (common.trim() === "") return true;
-  const infoPath = join169(resolve40(root, common.trim()), "info", "attributes");
+async function statOne(root, path) {
   try {
-    const text3 = await readFile17(infoPath, "utf8");
-    return text3.split("\n").some((line) => {
-      const trimmed = line.trim();
-      return trimmed !== "" && !trimmed.startsWith("#");
-    });
+    const info2 = await lstat14(join169(root, path));
+    const isLink = info2.isSymbolicLink();
+    if (!isLink && !info2.isFile()) return null;
+    return {
+      isLink,
+      executable: !isLink && (info2.mode & 73) !== 0,
+      ino: info2.ino,
+      size: info2.size,
+      mtimeMs: info2.mtimeMs,
+      ctimeMs: info2.ctimeMs,
+      mode: info2.mode
+    };
   } catch {
-    return false;
+    return null;
   }
 }
+async function statAll(root, paths) {
+  const result = /* @__PURE__ */ new Map();
+  let next = 0;
+  const worker = async () => {
+    while (next < paths.length) {
+      const path = paths[next++];
+      if (path === void 0) continue;
+      const info2 = await statOne(root, path);
+      if (info2 !== null) result.set(path, info2);
+    }
+  };
+  const count5 = Math.min(STAT_CONCURRENCY, paths.length);
+  await Promise.all(Array.from({ length: count5 }, worker));
+  return result;
+}
+function sameDiskStat(a, b) {
+  return a.ino === b.ino && a.size === b.size && a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs && a.mode === b.mode;
+}
 async function cleanIndexEntries(root) {
-  try {
-    if (await readObjectFormat(root) !== "sha1") return /* @__PURE__ */ new Map();
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-  const [autocrlf, staged, status3, attrs] = await Promise.all([
+  const [autocrlf, staged, status3] = await Promise.all([
     runGit(root, ["config", "--get", "core.autocrlf"], { okCodes: [0, 1] }),
     runGit(root, ["ls-files", "--stage", "-v", "-z"]),
     runGit(root, [
@@ -79830,8 +79842,7 @@ async function cleanIndexEntries(root) {
       "--untracked-files=no",
       "--ignore-submodules=all",
       "--no-renames"
-    ]),
-    hasGitAttributes(root)
+    ])
   ]);
   if (AUTOCRLF_ON2.has(autocrlf.trim().toLowerCase())) return /* @__PURE__ */ new Map();
   const listed12 = new Set(splitNul(status3).map((line) => line.slice(3)));
@@ -79843,11 +79854,10 @@ async function cleanIndexEntries(root) {
     const path = line.slice(tab + 1);
     if (tag !== "H" || stage2 !== "0" || oid === void 0 || !insideRoot3(path) || listed12.has(path))
       continue;
-    if (mode === "100644") clean.set(path, { path, blob: oid });
-    else if (mode === "100755") clean.set(path, { path, blob: oid, mode: "x" });
-    else if (mode === "120000") clean.set(path, { path, blob: oid, mode: "link" });
+    if (mode === "100644" || mode === "100755") clean.set(path, { oid, isLink: false });
+    else if (mode === "120000") clean.set(path, { oid, isLink: true });
   }
-  if (!attrs || clean.size === 0) return clean;
+  if (clean.size === 0) return clean;
   const checked2 = await runGit(root, ["check-attr", "-z", "--stdin", ...CONVERTING_ATTRIBUTES2], {
     input: `${[...clean.keys()].join("\0")}\0`
   });
@@ -79874,12 +79884,31 @@ async function readEntry(root, path) {
   }
 }
 async function treeEntries(root) {
-  const [paths, clean] = await Promise.all([treePaths(root), cleanIndexEntries(root)]);
+  const [paths, format2] = await Promise.all([
+    treePaths(root),
+    readObjectFormat(root).catch(() => null)
+  ]);
+  if (paths.length === 0) return [];
+  if (format2 !== "sha1") {
+    const entries4 = [];
+    for (const path of paths) {
+      const read7 = await readEntry(root, path);
+      if (read7 !== null) entries4.push(read7.entry);
+    }
+    return entries4;
+  }
+  const checkStartedAt = Date.now();
+  const before5 = await statAll(root, paths);
+  const clean = await cleanIndexEntries(root);
+  const after3 = clean.size > 0 ? await statAll(root, [...clean.keys()]) : /* @__PURE__ */ new Map();
   const entries3 = [];
   for (const path of paths) {
-    const indexed = clean.get(path);
-    if (indexed !== void 0) {
-      entries3.push(indexed);
+    const cand = clean.get(path);
+    const b = before5.get(path);
+    const a = after3.get(path);
+    if (cand !== void 0 && b !== void 0 && a !== void 0 && cand.isLink === a.isLink && sameDiskStat(b, a) && checkStartedAt - a.mtimeMs >= RACY_WINDOW_MS) {
+      if (a.isLink) entries3.push({ path, blob: cand.oid, mode: "link" });
+      else entries3.push({ path, blob: cand.oid, ...a.executable ? { mode: "x" } : {} });
       continue;
     }
     const read7 = await readEntry(root, path);
@@ -79913,16 +79942,18 @@ async function writesFor(root, paths, tree, limit = WRITE_BYTES) {
   await flush();
   return writes;
 }
-var run4, WRITE_BYTES, NARROW_LIMIT, AUTOCRLF_ON2, CONVERTING_ATTRIBUTES2;
+var run4, WRITE_BYTES, NARROW_LIMIT, STAT_CONCURRENCY, AUTOCRLF_ON2, CONVERTING_ATTRIBUTES2;
 var init_tree2 = __esm({
   "src/core/runner-host/remote/tree.ts"() {
     "use strict";
     init_git();
     init_git_index();
+    init_stat_cache();
     init_tree_wire();
     run4 = promisify3(execFile6);
     WRITE_BYTES = 8 * 1024 * 1024;
     NARROW_LIMIT = 256;
+    STAT_CONCURRENCY = 64;
     AUTOCRLF_ON2 = /* @__PURE__ */ new Set(["true", "input", "yes", "on", "1"]);
     CONVERTING_ATTRIBUTES2 = ["eol", "text", "crlf", "filter", "ident", "working-tree-encoding"];
   }
@@ -79933,7 +79964,7 @@ import { spawn as spawn14 } from "node:child_process";
 import { randomBytes as randomBytes4 } from "node:crypto";
 import { accessSync as accessSync5, constants as constants13, existsSync as existsSync61, readFileSync as readFileSync73, statSync as statSync42 } from "node:fs";
 import { mkdir as mkdir2, open as open7, rename, rm as rm3, unlink } from "node:fs/promises";
-import { delimiter as delimiter9, dirname as dirname64, join as join170, resolve as resolve41 } from "node:path";
+import { delimiter as delimiter9, dirname as dirname64, join as join170, resolve as resolve40 } from "node:path";
 import { setTimeout as sleep20 } from "node:timers/promises";
 function hostTools() {
   const nodeDir = dirname64(process.execPath);
@@ -79955,7 +79986,7 @@ function managerSpec(name3, manifest, berry) {
 function onPath4(name3, path, cwd) {
   if (path === void 0) return false;
   return path.split(delimiter9).some((entry4) => {
-    const dir2 = entry4 === "" ? cwd ?? "." : cwd !== void 0 ? resolve41(cwd, entry4) : entry4;
+    const dir2 = entry4 === "" ? cwd ?? "." : cwd !== void 0 ? resolve40(cwd, entry4) : entry4;
     return executable2(join170(dir2, name3));
   });
 }
@@ -80048,7 +80079,7 @@ function readJson3(path) {
 }
 function runOutput(file, args2, run9) {
   const { cwd, env, output, what } = run9;
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     const child = spawn14(file, args2, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
     let tail = "";
     const take = (chunk) => {
@@ -80060,7 +80091,7 @@ function runOutput(file, args2, run9) {
     child.stderr.on("data", take);
     child.on("error", (error) => reject(new Error(`could not run ${what}: ${error.message}`)));
     child.on("close", (code, signal3) => {
-      if (code === 0) resolve57();
+      if (code === 0) resolve56();
       else {
         const how2 = signal3 === null ? `exit code ${code}` : `signal ${signal3}`;
         reject(new Error(`${what} failed on the remote (${how2}): ${tail.trim()}`));
@@ -80644,8 +80675,8 @@ var init_admission2 = __esm({
 });
 
 // src/core/runner-host/remote/blob-cache.ts
-import { lstat as lstat15, readFile as readFile18, readlink as readlink4 } from "node:fs/promises";
-import { basename as basename38, join as join173 } from "node:path";
+import { lstat as lstat15, readdir as readdir10, readFile as readFile18, readlink as readlink4 } from "node:fs/promises";
+import { basename as basename38, join as join173, sep as sep36 } from "node:path";
 function createBlobCache(root, now = Date.now) {
   const entries3 = /* @__PURE__ */ new Map();
   const blobOf4 = async (path) => {
@@ -80717,37 +80748,192 @@ function createBlobCache(root, now = Date.now) {
     }
   };
 }
-async function statSignature(root, at2) {
-  const stats = await Promise.all(
-    INSTALLED_WATCH_PATHS.map((rel2) => lstat15(join173(root, rel2)).catch(() => null))
-  );
+async function parentsSafe(root, relPath) {
+  const parts3 = relPath.split("/");
+  for (let i3 = 1; i3 < parts3.length; i3++) {
+    const prefix = join173(root, ...parts3.slice(0, i3));
+    try {
+      const info2 = await lstat15(prefix);
+      if (info2.isSymbolicLink()) return "link";
+      if (!info2.isDirectory()) return "missing";
+    } catch (error) {
+      if (isMissing(error)) return "missing";
+      return "link";
+    }
+  }
+  return "ok";
+}
+async function probeFile(root, relPath, at2) {
+  const parents = await parentsSafe(root, relPath);
+  if (parents === "link") return { state: "uncacheable" };
+  if (parents === "missing") return { state: "missing" };
+  try {
+    const info2 = await lstat15(join173(root, relPath));
+    if (info2.isSymbolicLink()) return { state: "uncacheable" };
+    if (!info2.isFile()) return { state: "missing" };
+    return {
+      state: "file",
+      sig: `${info2.ino}:${info2.size}:${info2.mtimeMs}:${info2.ctimeMs}:${info2.mode}`,
+      racy: at2 - info2.mtimeMs < RACY_WINDOW_MS
+    };
+  } catch (error) {
+    if (isMissing(error)) return { state: "missing" };
+    return { state: "uncacheable" };
+  }
+}
+async function probePatches(root, patchesRel, at2) {
+  if (patchesRel === null) return { cacheable: true, sig: "", racy: false };
+  const parents = await parentsSafe(root, patchesRel);
+  if (parents === "link") return { cacheable: false };
+  if (parents === "missing") return { cacheable: true, sig: "missing", racy: false };
+  const dir2 = join173(root, patchesRel);
+  try {
+    const dirInfo = await lstat15(dir2);
+    if (dirInfo.isSymbolicLink()) return { cacheable: false };
+    if (!dirInfo.isDirectory()) return { cacheable: true, sig: "missing", racy: false };
+  } catch (error) {
+    if (isMissing(error)) return { cacheable: true, sig: "missing", racy: false };
+    return { cacheable: false };
+  }
+  let rawEntries;
+  try {
+    rawEntries = await readdir10(dir2, { recursive: true });
+  } catch (error) {
+    if (isMissing(error)) return { cacheable: true, sig: "missing", racy: false };
+    return { cacheable: false };
+  }
+  const entries3 = rawEntries.map((entry4) => entry4.split(sep36).join("/")).sort(compare);
+  const parts3 = [];
   let racy = false;
-  const parts3 = stats.map((info2) => {
-    if (info2 === null) return "-";
-    if (at2 - info2.mtimeMs < RACY_WINDOW_MS) racy = true;
-    return `${info2.ino}:${info2.size}:${info2.mtimeMs}:${info2.ctimeMs}`;
-  });
-  return { signature: parts3.join("|"), racy };
+  for (const entry4 of entries3) {
+    try {
+      const info2 = await lstat15(join173(dir2, entry4));
+      if (info2.isSymbolicLink()) return { cacheable: false };
+      if (info2.isDirectory()) {
+        parts3.push(`d:${entry4}`);
+      } else if (info2.isFile()) {
+        if (at2 - info2.mtimeMs < RACY_WINDOW_MS) racy = true;
+        parts3.push(
+          `f:${entry4}:${info2.ino}:${info2.size}:${info2.mtimeMs}:${info2.ctimeMs}:${info2.mode}`
+        );
+      } else {
+        return { cacheable: false };
+      }
+    } catch {
+      return { cacheable: false };
+    }
+  }
+  return { cacheable: true, sig: parts3.join("\n"), racy };
+}
+async function probeLayout(root, at2) {
+  for (const format2 of INSTALLED_FORMATS) {
+    const file = await probeFile(root, format2.path, at2);
+    if (file.state === "uncacheable") return { cacheable: false };
+    if (file.state === "missing") continue;
+    const patches = await probePatches(root, format2.patches, at2);
+    if (!patches.cacheable) return { cacheable: false };
+    let extra = "";
+    let racy = file.racy || patches.racy;
+    if (format2.kind === "pnpm") {
+      const modules = await probeFile(root, PNPM_MODULES2, at2);
+      if (modules.state === "uncacheable") return { cacheable: false };
+      if (modules.state === "file") {
+        extra = modules.sig;
+        racy ||= modules.racy;
+      } else {
+        extra = "missing";
+      }
+    }
+    return {
+      cacheable: true,
+      kind: format2.kind,
+      sig: `${format2.path}\0${file.sig}\0${extra}\0${patches.sig}`,
+      racy
+    };
+  }
+  return { cacheable: true, kind: "none", sig: "none", racy: false };
 }
 function touchesInstalled(path) {
   if (isInstalledLockfile(path)) return true;
   if (path === "node_modules" || path.startsWith("node_modules/")) return true;
   if (path === "patches" || path.startsWith("patches/")) return true;
+  if (path === ".yarn/patches" || path.startsWith(".yarn/patches/")) return true;
+  if (path === ".rush" || path.startsWith(".rush/")) return true;
   return LOCKFILES4.includes(basename38(path));
 }
 function createInstalledFingerprintCache(root, now = Date.now) {
   let cached = null;
+  const validHit = (probe2) => {
+    const entry4 = cached;
+    if (entry4 === null || probe2.racy || entry4.sig !== probe2.sig) return null;
+    if (entry4.kind === "npm") {
+      try {
+        return staleHiddenLockfile(root, entry4.parsed) === null ? entry4.fingerprint : null;
+      } catch {
+        return null;
+      }
+    }
+    if (entry4.kind === "pnpm") {
+      try {
+        return stalePnpmLockfile(root, entry4.graph) === null ? entry4.fingerprint : null;
+      } catch {
+        return null;
+      }
+    }
+    return entry4.fingerprint;
+  };
   return {
     async fingerprint() {
-      const at2 = now();
-      const { signature, racy } = await statSignature(root, at2);
-      if (cached !== null && !cached.racy && !racy && cached.signature === signature && at2 - cached.at < INSTALLED_TTL_MS) {
-        return cached.fingerprint;
+      const before5 = await probeLayout(root, now());
+      if (before5.cacheable) {
+        const hit = validHit(before5);
+        if (hit !== null) return hit;
       }
-      const fingerprint = await installedDependenciesFingerprint(root, root);
-      const after3 = await statSignature(root, now());
-      cached = after3.signature === signature ? { signature, fingerprint, at: at2, racy: racy || after3.racy } : null;
-      return fingerprint;
+      const installed2 = await installedDependencies(root, root);
+      if (!before5.cacheable || before5.racy || installed2.note !== null) {
+        cached = null;
+        return installed2.fingerprint;
+      }
+      let candidate = null;
+      if (before5.kind === "none" || before5.kind === "whole") {
+        candidate = {
+          kind: before5.kind,
+          sig: before5.sig,
+          fingerprint: installed2.fingerprint
+        };
+      } else if (before5.kind === "pnpm") {
+        candidate = installed2.graph instanceof PnpmGraph ? {
+          kind: "pnpm",
+          sig: before5.sig,
+          graph: installed2.graph,
+          fingerprint: installed2.fingerprint
+        } : {
+          kind: "pnpm-whole",
+          sig: before5.sig,
+          fingerprint: installed2.fingerprint
+        };
+      } else if (before5.kind === "npm") {
+        try {
+          const parsed3 = parseHiddenLockfile(await readFile18(join173(root, HIDDEN_LOCKFILE)));
+          if (parsed3 !== null && staleHiddenLockfile(root, parsed3) === null) {
+            candidate = {
+              kind: "npm",
+              sig: before5.sig,
+              parsed: parsed3,
+              fingerprint: installed2.fingerprint
+            };
+          }
+        } catch {
+          candidate = null;
+        }
+      }
+      if (candidate !== null) {
+        const after3 = await probeLayout(root, now());
+        cached = after3.cacheable && !after3.racy && after3.sig === before5.sig ? candidate : null;
+      } else {
+        cached = null;
+      }
+      return installed2.fingerprint;
     },
     onInvalidate(paths) {
       if (cached !== null && paths.some(touchesInstalled)) cached = null;
@@ -80757,31 +80943,34 @@ function createInstalledFingerprintCache(root, now = Date.now) {
     }
   };
 }
-var MAX_BLOB_ENTRIES, BLOB_CONCURRENCY, INSTALLED_TTL_MS, INSTALLED_WATCH_PATHS;
+var MAX_BLOB_ENTRIES, BLOB_CONCURRENCY, INSTALLED_FORMATS, PNPM_MODULES2;
 var init_blob_cache = __esm({
   "src/core/runner-host/remote/blob-cache.ts"() {
     "use strict";
+    init_compare();
+    init_errors();
     init_stat_cache();
     init_environment();
+    init_hidden_lockfile();
+    init_pnpm_graph();
+    init_pnpm_install();
+    init_pnpm_lockfile();
     init_tree_install();
     init_tree_wire();
     MAX_BLOB_ENTRIES = 5e4;
     BLOB_CONCURRENCY = 16;
-    INSTALLED_TTL_MS = 3e4;
-    INSTALLED_WATCH_PATHS = [
-      "node_modules",
-      "node_modules/.pnpm",
-      "node_modules/.pnpm/lock.yaml",
-      "node_modules/.modules.yaml",
-      "node_modules/.package-lock.json",
-      "node_modules/.yarn-state.yml",
-      "node_modules/.yarn-integrity",
-      ".pnp.cjs",
-      ".pnp.js",
-      "bun.lock",
-      "bun.lockb",
-      "patches"
+    INSTALLED_FORMATS = [
+      { path: HIDDEN_LOCKFILE, patches: "patches", kind: "npm" },
+      { path: "node_modules/.yarn-state.yml", patches: null, kind: "whole" },
+      { path: ".pnp.cjs", patches: ".yarn/patches", kind: "whole" },
+      { path: ".pnp.js", patches: ".yarn/patches", kind: "whole" },
+      { path: "node_modules/.yarn-integrity", patches: "patches", kind: "whole" },
+      { path: PNPM_LOCKFILE, patches: null, kind: "pnpm" },
+      { path: ".rush/temp/shrinkwrap-deps.json", patches: null, kind: "whole" },
+      { path: "bun.lock", patches: "patches", kind: "whole" },
+      { path: "bun.lockb", patches: "patches", kind: "whole" }
     ];
+    PNPM_MODULES2 = "node_modules/.modules.yaml";
   }
 });
 
@@ -81556,8 +81745,8 @@ function withRemoteLane(options) {
       state = { kind: "asleep", going: true };
       let asleep = () => {
       };
-      sleepEnd = new Promise((resolve57) => {
-        asleep = resolve57;
+      sleepEnd = new Promise((resolve56) => {
+        asleep = resolve56;
       });
       try {
         await host?.adapter.close().catch(() => {
@@ -81825,12 +82014,66 @@ var init_provider = __esm({
 // src/core/runner-host/remote/providers/agent37/bundle-cache.ts
 import { execFile as execFile7 } from "node:child_process";
 import { createHash as createHash48, randomBytes as randomBytes5 } from "node:crypto";
-import { link, mkdir as mkdir4, readdir as readdir10, rename as rename3, rm as rm5, stat as stat10 } from "node:fs/promises";
-import { join as join177, resolve as resolve42 } from "node:path";
+import { copyFile as copyFile2, link, mkdir as mkdir4, readdir as readdir11, rename as rename3, rm as rm5, stat as stat10 } from "node:fs/promises";
+import { join as join177, resolve as resolve41 } from "node:path";
 import { promisify as promisify4 } from "node:util";
 function fullBundleKey(local2) {
   const lines = local2.refs.split("\n").filter((line) => !line.startsWith("ref "));
   return createHash48("sha256").update(lines.join("\n")).digest("hex").slice(0, 24);
+}
+function expectedBundleRefs(local2) {
+  const tags = /* @__PURE__ */ new Map();
+  for (const line of local2.refs.split("\n")) {
+    if (!line.startsWith("tag ")) continue;
+    const rest2 = line.slice(4);
+    const space = rest2.indexOf(" ");
+    if (space > 0) tags.set(rest2.slice(space + 1), rest2.slice(0, space));
+  }
+  return { head: local2.head, tags };
+}
+async function currentFullBundleKey(root, signal3) {
+  try {
+    const { stdout } = await run5("git", ["-C", root, "show-ref", "--head", "--tags"], {
+      maxBuffer: 64 * 1024 * 1024,
+      ...signal3 === void 0 ? {} : { signal: signal3 }
+    });
+    const shown2 = stdout.split("\n").map((line) => line.trim()).filter((line) => line !== "").map((line) => line.split(" "));
+    const head2 = shown2.find(([, name3]) => name3 === "HEAD")?.[0];
+    if (head2 === void 0 || !/^[0-9a-f]{40,64}$/.test(head2)) return null;
+    const tags = shown2.filter(([object2, name3]) => object2 !== void 0 && name3?.startsWith("refs/tags/") === true).map(([object2, name3]) => `tag ${object2} ${name3}`).sort();
+    const text3 = [`head ${head2}`, ...tags].join("\n");
+    return createHash48("sha256").update(text3).digest("hex").slice(0, 24);
+  } catch {
+    return null;
+  }
+}
+async function bundleMatchesState(bundlePath, local2, signal3) {
+  try {
+    const { stdout } = await run5("git", ["bundle", "list-heads", bundlePath], {
+      maxBuffer: 64 * 1024 * 1024,
+      ...signal3 === void 0 ? {} : { signal: signal3 }
+    });
+    const expected = expectedBundleRefs(local2);
+    let head2;
+    const tags = /* @__PURE__ */ new Map();
+    for (const raw of stdout.split("\n")) {
+      const line = raw.trim();
+      if (line === "") continue;
+      const space = line.indexOf(" ");
+      if (space <= 0) continue;
+      const oid = line.slice(0, space);
+      const name3 = line.slice(space + 1);
+      if (name3 === "HEAD") head2 = oid;
+      else if (name3.startsWith("refs/tags/")) tags.set(name3, oid);
+    }
+    if (head2 !== expected.head || tags.size !== expected.tags.size) return false;
+    for (const [name3, oid] of expected.tags) {
+      if (tags.get(name3) !== oid) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 async function gitCommonDir(root) {
   try {
@@ -81838,7 +82081,7 @@ async function gitCommonDir(root) {
       maxBuffer: 1024 * 1024
     });
     const raw = stdout.trim();
-    return raw === "" ? null : resolve42(root, raw);
+    return raw === "" ? null : resolve41(root, raw);
   } catch {
     return null;
   }
@@ -81860,7 +82103,7 @@ async function hasBundle(path) {
 async function pruneCache(cacheDir, keep) {
   let names9;
   try {
-    names9 = await readdir10(cacheDir);
+    names9 = await readdir11(cacheDir);
   } catch {
     return;
   }
@@ -81881,61 +82124,98 @@ async function pruneCache(cacheDir, keep) {
     });
   }
 }
-async function sharedFullBundle(root, local2, callerDir, deadlineMs, signal3) {
-  signal3?.throwIfAborted();
-  const fallback2 = join177(callerDir, "full.bundle");
-  const common = await gitCommonDir(root);
-  if (common === null) {
-    await createGitBundle(root, fallback2, ["HEAD", "--tags"], signal3);
-    return fallback2;
+async function pinToCaller(cached, target) {
+  try {
+    await link(cached, target);
+    return;
+  } catch {
+    await rm5(target, { force: true }).catch(() => {
+    });
   }
+  try {
+    await copyFile2(cached, target);
+  } catch (error) {
+    await rm5(target, { force: true }).catch(() => {
+    });
+    throw error;
+  }
+}
+async function ensureCachedBundle(root, local2, cacheDir, cached, key3, signal3) {
+  if (await hasBundle(cached) && await bundleMatchesState(cached, local2, signal3)) return true;
+  signal3?.throwIfAborted();
+  if (await currentFullBundleKey(root, signal3) !== key3) return false;
+  const tmp = join177(cacheDir, `${key3}.${process.pid}.${randomBytes5(4).toString("hex")}.tmp`);
+  try {
+    await createGitBundle(root, tmp, ["HEAD", "--tags"], signal3);
+    signal3?.throwIfAborted();
+    if (!await bundleMatchesState(tmp, local2, signal3)) {
+      await rm5(tmp, { force: true }).catch(() => {
+      });
+      return false;
+    }
+    await rename3(tmp, cached);
+  } catch (error) {
+    await rm5(tmp, { force: true }).catch(() => {
+    });
+    if (signal3?.aborted === true) throw error;
+    return false;
+  }
+  await pruneCache(cacheDir, cached);
+  return true;
+}
+async function trySharedCache(root, local2, target, deadlineMs, signal3) {
+  const common = await gitCommonDir(root);
+  if (common === null) return null;
   const cacheDir = join177(common, "squeal", "remote-bundles");
   try {
     await mkdir4(cacheDir, { recursive: true });
   } catch {
-    await createGitBundle(root, fallback2, ["HEAD", "--tags"], signal3);
-    return fallback2;
+    return null;
   }
   const lockPath = join177(cacheDir, "bundle.lock.sqlite");
-  const acquired = await awaitDaemonLock(lockPath, {
-    timeoutMs: deadlineMs,
-    pollMs: 50,
-    checkMs: 50,
-    giveUp: () => signal3?.aborted === true
-  });
-  signal3?.throwIfAborted();
+  let acquired;
+  try {
+    acquired = await awaitDaemonLock(lockPath, {
+      timeoutMs: deadlineMs,
+      pollMs: 50,
+      checkMs: 50,
+      giveUp: () => signal3?.aborted === true
+    });
+  } catch {
+    signal3?.throwIfAborted();
+    return null;
+  }
   if (acquired === "gave-up" || acquired === "timed-out") {
-    await createGitBundle(root, fallback2, ["HEAD", "--tags"], signal3);
-    return fallback2;
+    signal3?.throwIfAborted();
+    return null;
   }
   try {
+    signal3?.throwIfAborted();
     const key3 = fullBundleKey(local2);
     const cached = join177(cacheDir, `${key3}.bundle`);
-    if (!await hasBundle(cached)) {
-      const tmp = join177(cacheDir, `${key3}.${process.pid}.${randomBytes5(4).toString("hex")}.tmp`);
-      try {
-        await createGitBundle(root, tmp, ["HEAD", "--tags"], signal3);
-        await rename3(tmp, cached);
-      } catch (error) {
-        await rm5(tmp, { force: true }).catch(() => {
-        });
-        throw error;
-      }
-      await pruneCache(cacheDir, cached);
-    }
+    if (!await ensureCachedBundle(root, local2, cacheDir, cached, key3, signal3)) return null;
+    signal3?.throwIfAborted();
     try {
-      await link(cached, fallback2);
-      return fallback2;
+      await pinToCaller(cached, target);
+      return target;
     } catch (error) {
-      const code = error.code ?? "";
-      if (NO_HARD_LINKS2.has(code)) return cached;
-      throw error;
+      if (signal3?.aborted === true) throw error;
+      return null;
     }
   } finally {
     acquired.release();
   }
 }
-var run5, MAX_CACHED_BUNDLES, SINGLE_THREAD_PACK, NO_HARD_LINKS2;
+async function sharedFullBundle(root, local2, callerDir, deadlineMs, signal3) {
+  signal3?.throwIfAborted();
+  const fallback2 = join177(callerDir, "full.bundle");
+  const fromCache = await trySharedCache(root, local2, fallback2, deadlineMs, signal3);
+  if (fromCache !== null) return fromCache;
+  signal3?.throwIfAborted();
+  await createGitBundle(root, fallback2, ["HEAD", "--tags"], signal3);
+  return fallback2;
+}
+var run5, MAX_CACHED_BUNDLES, SINGLE_THREAD_PACK;
 var init_bundle_cache = __esm({
   "src/core/runner-host/remote/providers/agent37/bundle-cache.ts"() {
     "use strict";
@@ -81943,7 +82223,6 @@ var init_bundle_cache = __esm({
     run5 = promisify4(execFile7);
     MAX_CACHED_BUNDLES = 2;
     SINGLE_THREAD_PACK = ["-c", "pack.threads=1"];
-    NO_HARD_LINKS2 = /* @__PURE__ */ new Set(["EXDEV", "EPERM", "ENOTSUP", "EOPNOTSUPP"]);
   }
 });
 
@@ -82257,7 +82536,7 @@ function connectThrough(proxy2, target, env, timeoutMs) {
     // proxy settings (NODE_USE_ENV_PROXY), which are not this call's `env`.
     createConnection: () => proxy2.protocol === "https:" ? tlsConnect({ host, port, ca: trustedCa(env) }) : netConnect({ host, port })
   };
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     const asked = httpRequest(options);
     const timer = setTimeout(() => {
       asked.destroy(
@@ -82279,13 +82558,13 @@ function connectThrough(proxy2, target, env, timeoutMs) {
         );
         return;
       }
-      resolve57(socket);
+      resolve56(socket);
     });
     asked.end();
   });
 }
 function ready(socket, event2, timeoutMs, what) {
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     const timer = setTimeout(() => {
       socket.destroy();
       reject(new LocalError(`${what}: no connection within ${timeoutMs} ms`));
@@ -82296,7 +82575,7 @@ function ready(socket, event2, timeoutMs, what) {
     });
     socket.once(event2, () => {
       clearTimeout(timer);
-      resolve57(socket);
+      resolve56(socket);
     });
   });
 }
@@ -82465,7 +82744,7 @@ async function runTunnel(options) {
 function bridge(opening, options, deadline) {
   const { input, output, host } = options;
   const closeMs = options.closeMs ?? CLOSE_MS2;
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     let socket;
     let key3 = "";
     let open8 = false;
@@ -82492,7 +82771,7 @@ function bridge(opening, options, deadline) {
       input.destroy();
       socket?.destroy();
       if (why2 !== void 0) options.fail(`tunnel to ${host}: ${why2}`);
-      resolve57(code);
+      resolve56(code);
     };
     const upgradeTimer = setTimeout(
       () => finish(TUNNEL_FAILED, "no upgrade answer in time"),
@@ -82591,7 +82870,7 @@ function bridge(opening, options, deadline) {
       output.on("error", ignore);
       input.destroy();
       options.fail(`tunnel to ${host}:${options.port}: ${safeReason(error)}`);
-      resolve57(TUNNEL_FAILED);
+      resolve56(TUNNEL_FAILED);
     });
   });
 }
@@ -82819,7 +83098,7 @@ var init_api = __esm({
           if (answer4.status !== 409 || errorCode2(answer4.body) !== "try_again" || attempt2 >= retries) {
             return answer4;
           }
-          await new Promise((resolve57) => setTimeout(resolve57, this.#options.retryMs ?? 2e3));
+          await new Promise((resolve56) => setTimeout(resolve56, this.#options.retryMs ?? 2e3));
         }
       }
       #ok(method, path, answer4) {
@@ -82855,7 +83134,7 @@ var init_api = __esm({
         }
         const payload = body2 === void 0 ? void 0 : Buffer.from(JSON.stringify(body2));
         const prefix = base.pathname.replace(/\/+$/, "");
-        return new Promise((resolve57, reject) => {
+        return new Promise((resolve56, reject) => {
           const asked = httpRequest2({
             method,
             host,
@@ -82898,7 +83177,7 @@ var init_api = __esm({
               } catch {
                 parsed3 = null;
               }
-              resolve57({ status: response.statusCode ?? 0, body: parsed3 });
+              resolve56({ status: response.statusCode ?? 0, body: parsed3 });
             });
           });
           asked.end(payload);
@@ -82931,11 +83210,11 @@ function goneError(id) {
   return new Error(`Agent37 instance ${id} is gone (deleted, or not in this workspace)`);
 }
 function pause(ms2, signal3) {
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     if (signal3?.aborted === true) return reject(signal3.reason);
     const timer = setTimeout(() => {
       signal3?.removeEventListener("abort", stop2);
-      resolve57();
+      resolve56();
     }, ms2);
     const stop2 = () => {
       clearTimeout(timer);
@@ -83271,7 +83550,7 @@ import { spawn as spawn15 } from "node:child_process";
 function runHook(run9) {
   const [program, ...args2] = run9.argv;
   const what = `the ${run9.name} hook (${program ?? ""})`;
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     let child;
     try {
       child = spawn15(program ?? "", args2, {
@@ -83291,7 +83570,7 @@ function runHook(run9) {
       settled2 = true;
       clearTimeout(timer);
       run9.signal?.removeEventListener("abort", onAbort);
-      if (error === null) resolve57(stdout);
+      if (error === null) resolve56(stdout);
       else reject(error);
     };
     const killGroup2 = () => {
@@ -83579,7 +83858,7 @@ var init_providers = __esm({
 
 // src/core/runner-host/remote/settings.ts
 import { readFileSync as readFileSync77, realpathSync as realpathSync29 } from "node:fs";
-import { dirname as dirname68, isAbsolute as isAbsolute29, join as join179, resolve as resolve43 } from "node:path";
+import { dirname as dirname68, isAbsolute as isAbsolute29, join as join179, resolve as resolve42 } from "node:path";
 function idleSleepMinutesOf(lane, sleepOnIdle) {
   return lane.idleSleepMinutes ?? (sleepOnIdle ? 10 : 0);
 }
@@ -83745,7 +84024,7 @@ function normalize8(path) {
   try {
     return realpathSync29(path);
   } catch {
-    return resolve43(path);
+    return resolve42(path);
   }
 }
 var REMOTE_FILE, REMOTE_RUNNERS, REMOTE_TIERS, LANE_DEFAULTS, ENTRY_KEYS, quoted2, MANAGED_PROVIDERS, repositories, SHAPE3;
@@ -83940,16 +84219,16 @@ function shareMachine(options) {
     });
     return run9;
   };
-  const leaseFree = (signal3) => new Promise((resolve57) => {
-    if (leased === 0 || released || signal3?.aborted === true) return resolve57();
-    quiet.push(resolve57);
-    signal3?.addEventListener("abort", () => resolve57(), { once: true });
+  const leaseFree = (signal3) => new Promise((resolve56) => {
+    if (leased === 0 || released || signal3?.aborted === true) return resolve56();
+    quiet.push(resolve56);
+    signal3?.addEventListener("abort", () => resolve56(), { once: true });
   });
   const asWriter = async (write4, signal3) => {
     let open8 = () => {
     };
-    gitWriting = new Promise((resolve57) => {
-      open8 = resolve57;
+    gitWriting = new Promise((resolve56) => {
+      open8 = resolve56;
     });
     try {
       await leaseFree(signal3);
@@ -84039,7 +84318,7 @@ function shareMachine(options) {
     disarm();
     const waiting2 = quiet;
     quiet = [];
-    for (const resolve57 of waiting2) resolve57();
+    for (const resolve56 of waiting2) resolve56();
     await queue;
     await reaching?.catch(() => {
     });
@@ -84097,7 +84376,7 @@ function shareMachine(options) {
         if (leased > 0) return;
         const waiting2 = quiet;
         quiet = [];
-        for (const resolve57 of waiting2) resolve57();
+        for (const resolve56 of waiting2) resolve56();
       };
     },
     checkDisk,
@@ -92092,7 +92371,7 @@ import { constants as constants5 } from "node:os";
 var FORWARDED = ["SIGINT", "SIGTERM", "SIGHUP"];
 function runCommand2(command, cwd, env) {
   const [program, ...args2] = command;
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     let started2 = false;
     let settled2 = false;
     const child = spawn3(program, args2, { cwd, env, stdio: "inherit" });
@@ -92102,7 +92381,7 @@ function runCommand2(command, cwd, env) {
       if (settled2) return;
       settled2 = true;
       for (const signal3 of FORWARDED) process.off(signal3, forward);
-      resolve57(result);
+      resolve56(result);
     };
     child.once("spawn", () => {
       started2 = true;
@@ -92367,7 +92646,7 @@ function hashInChild(relaunch, work, clock, stop2) {
     child.stderr?.destroy();
     child.unref();
   };
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     let settled2 = false;
     const settle3 = (end) => {
       if (settled2 || stop2.aborted) return;
@@ -92385,7 +92664,7 @@ function hashInChild(relaunch, work, clock, stop2) {
     child.on("message", (message3) => {
       if ("begin" in message3) clock.begin(message3.begin);
       else if ("hashed" in message3) clock.hashed(message3.hashed);
-      else if ("result" in message3) settle3(() => resolve57(message3.result));
+      else if ("result" in message3) settle3(() => resolve56(message3.result));
       else settle3(() => reject(new Error(message3.error)));
     });
     child.once("error", (error) => settle3(() => reject(error)));
@@ -92424,14 +92703,14 @@ function serveEnd() {
       pending += count5;
     }
   };
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     process.once("message", (work) => {
       const done = (message3) => {
         flush();
         process.off("disconnect", gone6);
         send(message3, () => {
           process.disconnect();
-          resolve57(0);
+          resolve56(0);
         });
       };
       hashEnd(work, hashFile, clock).then(
@@ -92514,7 +92793,7 @@ function limited(limit, work) {
       lastDone = performance2.now();
     }
   };
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     let timer;
     const check3 = () => {
       const left = allowed() - (performance2.now() - start2);
@@ -92525,14 +92804,14 @@ function limited(limit, work) {
       clock.over = true;
       const seconds7 = (allowed() / 1e3).toFixed(1);
       const progress2 = begun === 0 ? "before it listed the paths" : `${done} of ${total} paths`;
-      resolve57(`hashing the checkout passed its limit of ${seconds7} s (${progress2})`);
+      resolve56(`hashing the checkout passed its limit of ${seconds7} s (${progress2})`);
       stop2.abort();
     };
     timer = setTimeout(check3, limit.floorMs);
     work(clock, stop2.signal).then(
       (value) => {
         clearTimeout(timer);
-        resolve57(value);
+        resolve56(value);
       },
       (error) => {
         clearTimeout(timer);
@@ -101308,7 +101587,7 @@ function runCommand3(command, options) {
   }
   const started2 = performance.now();
   const [file = "", ...args2] = command;
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     const child = spawn7(file, args2, {
       cwd: options.cwd,
       env: options.env,
@@ -101380,8 +101659,8 @@ function runCommand3(command, options) {
         durationMs: durationMs2,
         ...cancelled2 === null ? {} : { cancelled: cancelled2 }
       };
-      if (cancelling === null) resolve57(ended2);
-      else void cancelling.then(() => resolve57(ended2));
+      if (cancelling === null) resolve56(ended2);
+      else void cancelling.then(() => resolve56(ended2));
     };
     child.once("error", (e) => {
       error = e.message;
@@ -101529,16 +101808,16 @@ var SlotPool = class {
       this.#free -= 1;
       return Promise.resolve(this.#release());
     }
-    return new Promise((resolve57) => {
+    return new Promise((resolve56) => {
       const waiter = {
         grant: (release3) => {
           signal3.removeEventListener("abort", onAbort);
-          resolve57(release3);
+          resolve56(release3);
         }
       };
       const onAbort = () => {
         this.#waiting.splice(this.#waiting.indexOf(waiter), 1);
-        resolve57(null);
+        resolve56(null);
       };
       signal3.addEventListener("abort", onAbort, { once: true });
       this.#waiting.push(waiter);
@@ -103543,25 +103822,25 @@ function frameSize(bytes2) {
   return /^\d+$/.test(head2) ? end + 1 + Number(head2) : null;
 }
 function ended(child) {
-  return new Promise((resolve57) => {
-    child.once("error", (error) => resolve57({ code: null, signal: null, error }));
-    child.once("exit", (code, signal3) => resolve57({ code, signal: signal3 }));
+  return new Promise((resolve56) => {
+    child.once("error", (error) => resolve56({ code: null, signal: null, error }));
+    child.once("exit", (code, signal3) => resolve56({ code, signal: signal3 }));
   });
 }
 async function readAll2(pipe, exited2) {
   const chunks2 = [];
   let read7 = 0;
   let size = null;
-  const end = new Promise((resolve57) => {
+  const end = new Promise((resolve56) => {
     pipe.on("data", (chunk) => {
       chunks2.push(chunk);
       read7 += chunk.length;
       size ??= frameSize(Buffer.concat(chunks2));
-      if (size !== null && read7 >= size) resolve57();
+      if (size !== null && read7 >= size) resolve56();
     });
-    pipe.once("end", resolve57);
-    pipe.once("close", resolve57);
-    pipe.once("error", () => resolve57());
+    pipe.once("end", resolve56);
+    pipe.once("close", resolve56);
+    pipe.once("error", () => resolve56());
   });
   const cut = new AbortController();
   const drained = exited2.then(() => delay(DRAIN_MS, void 0, { signal: cut.signal }));
@@ -104737,15 +105016,15 @@ var EarlyWrites = class {
   }
   /** Resolves `true` once a pause of `ms` ended, `false` when `stop` ended it first. */
   #paused(ms2) {
-    return new Promise((resolve57) => {
+    return new Promise((resolve56) => {
       const cancel2 = this.#pause(ms2, () => {
         this.#cancel = null;
-        resolve57(true);
+        resolve56(true);
       });
       this.#cancel = () => {
         this.#cancel = null;
         cancel2();
-        resolve57(false);
+        resolve56(false);
       };
     });
   }
@@ -106913,13 +107192,13 @@ function deadlineOf(timeoutMs, caller) {
 }
 function race(promise2, signal3) {
   if (signal3.aborted) return Promise.reject(signal3.reason);
-  return new Promise((resolve57, reject) => {
+  return new Promise((resolve56, reject) => {
     const onAbort = () => reject(signal3.reason);
     signal3.addEventListener("abort", onAbort, { once: true });
     promise2.then(
       (value) => {
         signal3.removeEventListener("abort", onAbort);
-        resolve57(value);
+        resolve56(value);
       },
       (error) => {
         signal3.removeEventListener("abort", onAbort);
@@ -107076,7 +107355,7 @@ async function acquireLock(data2, options = {}) {
     const attempt2 = tryLock2(data2, now);
     const remaining = until - performance.now();
     if ("lock" in attempt2 || remaining <= 0) return attempt2;
-    await new Promise((resolve57) => setTimeout(resolve57, Math.min(POLL_MS, remaining)));
+    await new Promise((resolve56) => setTimeout(resolve56, Math.min(POLL_MS, remaining)));
   }
 }
 function tryLock2(data2, now) {
@@ -108047,16 +108326,16 @@ async function openAppServer(root, env, timeoutMs) {
 }
 function terminalAsk() {
   if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) return null;
-  return (question) => new Promise((resolve57) => {
+  return (question) => new Promise((resolve56) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     let answered2 = false;
     rl.on("close", () => {
-      if (!answered2) resolve57("");
+      if (!answered2) resolve56("");
     });
     rl.question(question, (answer4) => {
       answered2 = true;
       rl.close();
-      resolve57(answer4);
+      resolve56(answer4);
     });
   });
 }
@@ -108101,7 +108380,7 @@ var AppServer = class {
     });
     this.failed.catch(() => {
     });
-    this.exited = new Promise((resolve57) => this.child.on("close", () => resolve57()));
+    this.exited = new Promise((resolve56) => this.child.on("close", () => resolve56()));
     this.child.on("error", (error) => {
       fail3(
         new AppServerError(
@@ -108166,7 +108445,7 @@ var AppServer = class {
     const id = this.nextId++;
     let timer;
     const answered2 = new Promise(
-      (resolve57) => this.pending.set(id, resolve57)
+      (resolve56) => this.pending.set(id, resolve56)
     );
     const silent2 = new Promise((_, reject) => {
       timer = setTimeout(
@@ -108927,10 +109206,10 @@ var PACKAGE_STORE_TIMEOUT_MS = 1e4;
 function packageStore(root, command, timeoutMs = PACKAGE_STORE_TIMEOUT_MS) {
   if (!command.startsWith("pnpm ") || timeoutMs <= 0) return Promise.resolve(null);
   const timeout = Math.ceil(timeoutMs);
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     execFile4("pnpm", ["store", "path"], { cwd: root, timeout }, (error, stdout) => {
       const path = stdout.trim();
-      resolve57(error === null && isAbsolute23(path) ? path : null);
+      resolve56(error === null && isAbsolute23(path) ? path : null);
     });
   });
 }
@@ -109125,7 +109404,7 @@ async function installCheckout(tree, options) {
   const [program = "npm", ...args2] = command.split(" ");
   const started2 = performance.now();
   const ms2 = () => Math.round(performance.now() - started2);
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     let log = "";
     const keep = (chunk) => {
       log = (log + chunk.toString("utf8")).slice(-LOG_CHARS);
@@ -109147,16 +109426,16 @@ async function installCheckout(tree, options) {
     child.stderr.on("data", keep);
     child.on("error", (error) => {
       clearTimeout(timer);
-      resolve57({ ok: false, command, ms: ms2(), reason: error.message, log });
+      resolve56({ ok: false, command, ms: ms2(), reason: error.message, log });
     });
     child.on("close", (code, signal3) => {
       clearTimeout(timer);
       if (code === 0 && !timedOut) {
-        resolve57({ ok: true, command, ms: ms2() });
+        resolve56({ ok: true, command, ms: ms2() });
         return;
       }
       const reason2 = timedOut ? `timed out after ${options.timeoutMs} ms` : code !== null ? `exit ${code}` : `signal ${signal3}`;
-      resolve57({ ok: false, command, ms: ms2(), reason: reason2, log });
+      resolve56({ ok: false, command, ms: ms2(), reason: reason2, log });
     });
   });
 }
@@ -110112,8 +110391,8 @@ var CommitStart = class {
   constructor(ports) {
     this.ports = ports;
     const { store, worktreeId } = ports;
-    this.#started = new Promise((resolve57) => {
-      this.#settle = resolve57;
+    this.#started = new Promise((resolve56) => {
+      this.#settle = resolve56;
     });
     this.asks = new AtAsks({
       setup: () => this.#setup,
@@ -110864,9 +111143,9 @@ async function createDaemonServer(socketPath, handle2) {
   return {
     socketPath,
     close() {
-      closing ??= new Promise((resolve57) => {
+      closing ??= new Promise((resolve56) => {
         if (stillBound(socketPath, bound)) rmSync30(socketPath, { force: true });
-        server.close(() => resolve57());
+        server.close(() => resolve56());
         for (const socket of connections2) socket.destroy();
       });
       return closing;
@@ -110879,11 +111158,11 @@ async function bindAt(server, socketPath) {
     Math.max(2, basename21(socketPath).length)
   );
   const staging = join121(dirname46(socketPath), name3);
-  await new Promise((resolve57, reject) => {
+  await new Promise((resolve56, reject) => {
     server.once("error", reject);
     server.listen(staging, () => {
       server.off("error", reject);
-      resolve57();
+      resolve56();
     });
   });
   try {
@@ -110892,7 +111171,7 @@ async function bindAt(server, socketPath) {
     renameSync11(staging, socketPath);
     return { dev, ino };
   } catch (error) {
-    await new Promise((resolve57) => server.close(() => resolve57()));
+    await new Promise((resolve56) => server.close(() => resolve56()));
     throw error;
   }
 }
@@ -111046,12 +111325,12 @@ async function inWorker(worker, identity4, events) {
   let listening2 = false;
   let closing = false;
   let closed = null;
-  const listen = new Promise((resolve57, reject) => {
+  const listen = new Promise((resolve56, reject) => {
     worker.on("message", (message3) => {
       switch (message3.type) {
         case "listening":
           listening2 = true;
-          resolve57();
+          resolve56();
           return;
         case "failed":
           reject(new Error(message3.error));
@@ -111208,8 +111487,8 @@ async function inWorker(worker, identity4, events) {
     async close() {
       if (closing) return;
       closing = true;
-      await new Promise((resolve57) => {
-        closed = resolve57;
+      await new Promise((resolve56) => {
+        closed = resolve56;
         post({ type: "close" });
       });
       await worker.terminate();
@@ -111783,13 +112062,13 @@ function runFullCheck(database, label3) {
     if (child.pid !== void 0) setPriority2(child.pid, TEST_NICE);
   } catch {
   }
-  const done = new Promise((resolve57) => {
+  const done = new Promise((resolve56) => {
     let out2 = "";
     child.stdout.setEncoding("utf8").on("data", (chunk) => {
       out2 += chunk;
     });
-    child.on("error", (error) => resolve57({ unrun: error.message }));
-    child.on("close", (code, signal3) => resolve57(outcomeOf4(out2, code, signal3)));
+    child.on("error", (error) => resolve56({ unrun: error.message }));
+    child.on("close", (code, signal3) => resolve56(outcomeOf4(out2, code, signal3)));
   });
   return { pid: child.pid, done, stop: () => void child.kill() };
 }
@@ -113611,8 +113890,8 @@ var Daemon = class {
   #registered = false;
   #resolveExit = () => {
   };
-  #exited = new Promise((resolve57) => {
-    this.#resolveExit = resolve57;
+  #exited = new Promise((resolve56) => {
+    this.#resolveExit = resolve56;
   });
   /** The pool's numbers: the options' when a caller set them, else the user's config (task 001-377). */
   #poolCapacity() {
@@ -114849,9 +115128,9 @@ var LintThread = class {
     if (this.failed !== null) return Promise.reject(new ThreadFailure(this.failed));
     if (this.pending !== null) return Promise.reject(new Error("a lint call is in hand"));
     const id = ++this.calls;
-    return new Promise((resolve57, reject) => {
+    return new Promise((resolve56, reject) => {
       const timer = this.guard(guardMs);
-      this.pending = { id, guardMs, startMs, timer, resolve: resolve57, reject };
+      this.pending = { id, guardMs, startMs, timer, resolve: resolve56, reject };
       this.worker.postMessage({ ...message3, id });
     });
   }
@@ -115240,7 +115519,7 @@ init_configs();
 // src/core/lint/provider/oxlint/run.ts
 init_blob();
 import { readFileSync as readFileSync79, realpathSync as realpathSync30 } from "node:fs";
-import { join as join181, relative as relative31, sep as sep36 } from "node:path";
+import { join as join181, relative as relative31, sep as sep37 } from "node:path";
 
 // src/core/lint/provider/oxlint/output.ts
 var PLUGIN_ERROR = "Error running JS plugin.";
@@ -115305,7 +115584,7 @@ function utf16Column(line, byteColumn) {
 // src/core/lint/provider/oxlint/spawn.ts
 import { spawn as spawn16 } from "node:child_process";
 function runInGroup(command, args2, options) {
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     const child = spawn16(command, args2, {
       cwd: options.cwd,
       env: options.env,
@@ -115330,7 +115609,7 @@ function runInGroup(command, args2, options) {
       clearTimeout(timer);
       options.signal?.removeEventListener("abort", abort2);
       killGroup(pid);
-      resolve57({
+      resolve56({
         code,
         signal: signal3,
         stdout: Buffer.concat(stdout).toString("utf8"),
@@ -115430,12 +115709,12 @@ function unknownOf(observed2, held4) {
 function heldOf2(root, packageDir, observed2) {
   const roots = [.../* @__PURE__ */ new Set([root, realpathOr(root)])];
   const relativeTo = (path) => {
-    if (path.startsWith(packageDir + sep36)) return null;
+    if (path.startsWith(packageDir + sep37)) return null;
     const best = roots.map((r) => relative31(r, path)).sort(
       (a, b) => Number(a.startsWith("..")) - Number(b.startsWith("..")) || a.length - b.length
     )[0];
     if (best === void 0 || best === "") return null;
-    const parts3 = best.split(sep36);
+    const parts3 = best.split(sep37);
     return parts3.includes("node_modules") ? null : parts3.join("/");
   };
   const held4 = /* @__PURE__ */ new Map();
@@ -116156,7 +116435,7 @@ init_paths2();
 init_load();
 init_text2();
 import { realpathSync as realpathSync32 } from "node:fs";
-import { relative as relative32, resolve as resolve44 } from "node:path";
+import { relative as relative32, resolve as resolve43 } from "node:path";
 init_text();
 init_common();
 var FAILURES_LIMIT = WHY_RESULT_LIMIT;
@@ -116175,7 +116454,7 @@ function failurePaths(cwd, paths) {
 function worktreePath2(root, cwd, path) {
   for (const base of [cwd, realOrNull2(cwd)]) {
     if (base === null) continue;
-    const absolute = resolve44(base, path);
+    const absolute = resolve43(base, path);
     if (relative32(root, absolute) === "") return ".";
     const rel2 = toRelative(root, absolute);
     if (rel2 !== null) return rel2;
@@ -116521,7 +116800,7 @@ async function holdDaemon(root, ask2, waitMs) {
 }
 function run7(command, cwd, spawned) {
   const [program, ...args2] = command;
-  return new Promise((resolve57) => {
+  return new Promise((resolve56) => {
     let started2 = false;
     let settled2 = false;
     const child = spawn17(program, args2, { cwd, stdio: "inherit" });
@@ -116531,7 +116810,7 @@ function run7(command, cwd, spawned) {
       if (settled2) return;
       settled2 = true;
       for (const signal3 of FORWARDED3) process.off(signal3, forward);
-      resolve57(result);
+      resolve56(result);
     };
     child.once("spawn", () => {
       started2 = true;
@@ -116557,7 +116836,7 @@ async function withStore(root, fn, options) {
 // src/cli/import.ts
 import { createHash as createHash53 } from "node:crypto";
 import { readFileSync as readFileSync82 } from "node:fs";
-import { resolve as resolve45 } from "node:path";
+import { resolve as resolve44 } from "node:path";
 init_git_layout();
 init_import_environment();
 init_connection();
@@ -116607,7 +116886,7 @@ async function importCommand(args2, io, internal = {}) {
 ${USAGE6}`);
     return 2;
   }
-  const file = resolve45(io.cwd ?? process.cwd(), parsed3.file);
+  const file = resolve44(io.cwd ?? process.cwd(), parsed3.file);
   let bytes2;
   try {
     bytes2 = readFileSync82(file);
@@ -118732,7 +119011,7 @@ function readSettings(path) {
 }
 
 // src/cli/lint.ts
-import { relative as relative34, resolve as resolve46 } from "node:path";
+import { relative as relative34, resolve as resolve45 } from "node:path";
 init_git_layout();
 init_source2();
 
@@ -118893,7 +119172,7 @@ var LINT_USAGE = "squeal lint [<path>...] [--changed] [--json]";
 var OPTIONS2 = ["--json", "--changed"];
 function answer3({ store, root, commonDir }, positional, changed2, io) {
   const cwd = io.cwd ?? process.cwd();
-  const paths = positional.length === 0 ? null : positional.map((p) => relative34(root, resolve46(cwd, p)));
+  const paths = positional.length === 0 ? null : positional.map((p) => relative34(root, resolve45(cwd, p)));
   const outside2 = paths?.find((p) => p.startsWith(".."));
   if (outside2 !== void 0) return { message: `"${outside2}" is outside the worktree ${root}` };
   const source2 = lintStoreSource(commonDir, root);
@@ -118962,32 +119241,32 @@ function print2(read7, json3, io, notice = null) {
 }
 
 // src/cli/proof.ts
-import { join as join210, relative as relative39, sep as sep40 } from "node:path";
+import { join as join210, relative as relative39, sep as sep41 } from "node:path";
 init_tree();
 init_version();
 init_git_layout();
 init_reverse_index();
 
 // src/core/proof/conditions.ts
-import { isAbsolute as isAbsolute31, relative as relative35, resolve as resolve47, sep as sep37 } from "node:path";
+import { isAbsolute as isAbsolute31, relative as relative35, resolve as resolve46, sep as sep38 } from "node:path";
 var NO_CONDITIONS = { env: [], without: [], keep: [] };
 function hasConditions(conditions) {
   return conditions.env.length > 0 || conditions.without.length > 0;
 }
 function under4(from, to) {
   const rel2 = relative35(from, to);
-  if (rel2 === ".." || rel2.startsWith(`..${sep37}`) || isAbsolute31(rel2)) return null;
-  return rel2.split(sep37).join("/");
+  if (rel2 === ".." || rel2.startsWith(`..${sep38}`) || isAbsolute31(rel2)) return null;
+  return rel2.split(sep38).join("/");
 }
 function placeWithout(given2, cwd, root, home) {
-  const path = resolve47(cwd, given2);
+  const path = resolve46(cwd, given2);
   const inRepo = under4(root, path);
   if (inRepo !== null) {
     if (inRepo === "" || inRepo === ".git" || inRepo.startsWith(".git/"))
       return { usage: `--without ${given2}: the repository and its .git cannot be hidden` };
     return { given: given2, where: "repository", path: inRepo };
   }
-  const inHome = home === void 0 || home === "" ? null : under4(resolve47(home), path);
+  const inHome = home === void 0 || home === "" ? null : under4(resolve46(home), path);
   if (inHome !== null) return { given: given2, where: "home", path: inHome };
   return {
     usage: `--without ${given2}: only a path in the repository or under HOME can be hidden`
@@ -120860,7 +121139,7 @@ init_reverse_index();
 
 // src/core/proof/own-home.ts
 import { constants as constants15, copyFileSync as copyFileSync5, lstatSync as lstatSync11, mkdirSync as mkdirSync33, readdirSync as readdirSync48 } from "node:fs";
-import { isAbsolute as isAbsolute32, join as join198, relative as relative36, resolve as resolve48, sep as sep38 } from "node:path";
+import { isAbsolute as isAbsolute32, join as join198, relative as relative36, resolve as resolve47, sep as sep39 } from "node:path";
 var OutOfBudget = class extends Error {
   constructor() {
     super("the budget ended while the kept paths were copied into the own HOME");
@@ -120873,10 +121152,10 @@ function within2(path, folder) {
 function placeKeep(given2, cwd, home, hidden, deadline) {
   const problem = (why2) => ({ usage: `--home-keep ${given2}: ${why2}` });
   if (home === void 0 || home === "") return problem("HOME is not set");
-  const rel2 = relative36(resolve48(home), resolve48(cwd, given2));
-  if (rel2 === ".." || rel2.startsWith(`..${sep38}`) || isAbsolute32(rel2))
+  const rel2 = relative36(resolve47(home), resolve47(cwd, given2));
+  if (rel2 === ".." || rel2.startsWith(`..${sep39}`) || isAbsolute32(rel2))
     return problem("only a path under HOME can be kept");
-  const path = rel2.split(sep38).join("/");
+  const path = rel2.split(sep39).join("/");
   const hiding = hidden.find((h) => within2(path, h));
   if (hiding !== void 0)
     return problem(`it lies in the hidden path ${hiding === "" ? "HOME" : `~/${hiding}`}`);
@@ -122167,8 +122446,8 @@ async function queueBoth(input, side) {
   const owner2 = randomUUID21();
   let selected2 = () => {
   };
-  const later = new Promise((resolve57) => {
-    selected2 = resolve57;
+  const later = new Promise((resolve56) => {
+    selected2 = resolve56;
   });
   const atFiles = /* @__PURE__ */ new Map();
   const queue = {
@@ -123584,7 +123863,7 @@ function registered2(root, ping2) {
 
 // src/cli/stop.ts
 import { realpathSync as realpathSync36 } from "node:fs";
-import { resolve as resolve49 } from "node:path";
+import { resolve as resolve48 } from "node:path";
 import { setTimeout as sleep31 } from "node:timers/promises";
 init_lock();
 init_test_pause();
@@ -124046,7 +124325,7 @@ function stopArgs(args2, io) {
     return 2;
   }
   const untilStart = rest2.length < args2.length;
-  const named4 = rest2[0] === void 0 ? null : resolve49(io.cwd ?? process.cwd(), rest2[0]);
+  const named4 = rest2[0] === void 0 ? null : resolve48(io.cwd ?? process.cwd(), rest2[0]);
   if (named4 !== null && lstatOrNull(named4) === null) {
     if (!untilStart) return { removed: named4 };
     io.stderr(
@@ -124835,7 +125114,7 @@ init_git();
 
 // src/cli/status-at.ts
 import { existsSync as existsSync84, realpathSync as realpathSync37 } from "node:fs";
-import { isAbsolute as isAbsolute33, relative as relative37, resolve as resolve50, sep as sep39 } from "node:path";
+import { isAbsolute as isAbsolute33, relative as relative37, resolve as resolve49, sep as sep40 } from "node:path";
 init_version();
 init_git_layout();
 
@@ -125265,7 +125544,7 @@ async function locate2(args2, io) {
   return { root, commonDir, commit, paths };
 }
 function worktreeOf(io) {
-  const given2 = resolve50(io.cwd ?? process.cwd());
+  const given2 = resolve49(io.cwd ?? process.cwd());
   const cwd = existsSync84(given2) ? realpathSync37(given2) : given2;
   const root = findWorktreeRoot(cwd);
   const commonDir = root === null ? null : resolveCommonDir(root);
@@ -125323,9 +125602,9 @@ async function statusAtCommand(args2, io, options = {}) {
   return side.at.failure === null && unmatched2.length === 0 ? exitCode(report4.files) : 3;
 }
 function inRoot(root, cwd, path) {
-  const rel2 = relative37(root, resolve50(cwd, path));
-  if (rel2 === ".." || rel2.startsWith(`..${sep39}`) || isAbsolute33(rel2)) return null;
-  return rel2.split(sep39).join("/");
+  const rel2 = relative37(root, resolve49(cwd, path));
+  if (rel2 === ".." || rel2.startsWith(`..${sep40}`) || isAbsolute33(rel2)) return null;
+  return rel2.split(sep40).join("/");
 }
 
 // src/cli/proof-locate.ts
@@ -125952,7 +126231,7 @@ async function proofCommand2(args2, io, options = {}) {
     );
   const proved = await prove(common, args2, base, head2, named4, at2);
   if ("usage" in proved) return fail3(proved.usage);
-  const fromCwd = (path) => relative39(cwd, join210(root, path)).split(sep40).join("/");
+  const fromCwd = (path) => relative39(cwd, join210(root, path)).split(sep41).join("/");
   const notRun = proved.files.filter(
     (f) => f.reason === "budget" || f.control?.end.end === "unknown" && f.control.end.reason === NOT_RUN_BUDGET
   ).length;
@@ -126080,7 +126359,7 @@ init_paths4();
 init_user_config();
 init_git_layout();
 import { homedir as homedir7 } from "node:os";
-import { isAbsolute as isAbsolute35, resolve as resolve51 } from "node:path";
+import { isAbsolute as isAbsolute35, resolve as resolve50 } from "node:path";
 import { setTimeout as sleep34 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
@@ -128430,7 +128709,7 @@ ${USAGE7}`);
   const cwd = io.cwd ?? process.cwd();
   const commonDir = commonDirOf3(cwd);
   if (parsed3.repo && commonDir === null) {
-    io.stderr(`squeal ps --repo: ${resolve51(cwd)} is not inside a git repository
+    io.stderr(`squeal ps --repo: ${resolve50(cwd)} is not inside a git repository
 
 ${USAGE7}`);
     return 2;
@@ -128480,7 +128759,7 @@ function locksCommand(parsed3, io, at2) {
     );
     return 3;
   }
-  const cwd = resolve51(io.cwd ?? process.cwd());
+  const cwd = resolve50(io.cwd ?? process.cwd());
   try {
     const locks = readLocks(
       at2.source,
@@ -128500,7 +128779,7 @@ function locksCommand(parsed3, io, at2) {
 }
 function commonDirOf3(cwd) {
   try {
-    const root = findWorktreeRoot(resolve51(cwd));
+    const root = findWorktreeRoot(resolve50(cwd));
     return root === null ? null : resolveCommonDir(root);
   } catch {
     return null;
@@ -128521,7 +128800,7 @@ function placesOf(env, commonDir, options) {
 }
 
 // src/cli/reach.ts
-import { relative as relative40, resolve as resolve52 } from "node:path";
+import { relative as relative40, resolve as resolve51 } from "node:path";
 
 // src/core/reach/modules.ts
 init_lexer();
@@ -130221,7 +130500,7 @@ Usage: ${IMPACT_USAGE}
   const limit = parsed3.limit ?? (parsed3.json ? null : REACH_LIMIT);
   const read7 = withStatusStore(cwd, { busyRetryMs: CLI_READ_RETRY_MS }, (context2) => {
     const { root } = context2;
-    const paths = parsed3.paths.map((p) => relative40(root, resolve52(cwd, p)));
+    const paths = parsed3.paths.map((p) => relative40(root, resolve51(cwd, p)));
     const outside2 = paths.find((p) => p.startsWith(".."));
     if (outside2 !== void 0) return { message: `"${outside2}" is outside the worktree ${root}` };
     const run9 = (code) => {
@@ -130252,7 +130531,7 @@ init_machines_store();
 init_providers();
 init_settings();
 import { existsSync as existsSync91, realpathSync as realpathSync38 } from "node:fs";
-import { resolve as resolve53, sep as sep41 } from "node:path";
+import { resolve as resolve52, sep as sep42 } from "node:path";
 var USAGE8 = "usage: squeal remote list [--json] | sleep [<worktree>] | prune [--dry-run]\n";
 var FAILED2 = 1;
 var SLEEP_WAIT_MS = 18e4;
@@ -130310,7 +130589,7 @@ function reattach(record2, env) {
 }
 function recordsOf(machines, path) {
   const holding = machines.filter(
-    (m) => path === m.worktreeRoot || path.startsWith(`${m.worktreeRoot}${sep41}`)
+    (m) => path === m.worktreeRoot || path.startsWith(`${m.worktreeRoot}${sep42}`)
   );
   const longest2 = Math.max(...holding.map((m) => m.worktreeRoot.length));
   return holding.filter((m) => m.worktreeRoot.length === longest2);
@@ -130318,7 +130597,7 @@ function recordsOf(machines, path) {
 async function sleep35(io, env, worktree, deps) {
   const read7 = machinesOf(io, env);
   if (read7 === null) return FAILED2;
-  const asked = resolve53(io.cwd ?? process.cwd(), worktree ?? ".");
+  const asked = resolve52(io.cwd ?? process.cwd(), worktree ?? ".");
   const path = existsSync91(asked) ? realpathSync38(asked) : asked;
   const records = recordsOf(read7.machines, path);
   if (records.length === 0) {
@@ -130372,7 +130651,7 @@ async function daemonSleep(root, deps) {
   while (answer4?.ok === true && answer4.type === "remote-sleep") {
     if (answer4.settled) return answer4.outcome ?? answer4.error ?? "the daemon's sleep failed";
     if (performance.now() > deadline) break;
-    await new Promise((resolve57) => setTimeout(resolve57, deps.pollMs ?? 100));
+    await new Promise((resolve56) => setTimeout(resolve56, deps.pollMs ?? 100));
     answer4 = await ask2(root, { type: "remote-sleep-status", requestId: answer4.requestId });
   }
   return answer4 === null ? `the daemon of ${root} ended during the sleep` : `the daemon of ${root} did not finish the sleep`;
@@ -130701,7 +130980,7 @@ init_paths2();
 init_load();
 init_records();
 init_text2();
-import { isAbsolute as isAbsolute36, resolve as resolve54 } from "node:path";
+import { isAbsolute as isAbsolute36, resolve as resolve53 } from "node:path";
 init_fingerprint();
 init_text();
 
@@ -130798,7 +131077,7 @@ function parse16(args2) {
   return { kind: "ask", reason: reason2, paths };
 }
 function inWorktree(root, cwd, path) {
-  return toRelative(root, isAbsolute36(path) ? path : resolve54(cwd, path));
+  return toRelative(root, isAbsolute36(path) ? path : resolve53(cwd, path));
 }
 function busyLine(not, shown2, { busyMs }) {
   return refuse2(
@@ -131256,7 +131535,7 @@ function joinedText(joined2) {
 // src/cli/runner-host.ts
 init_version();
 import { mkdirSync as mkdirSync35, realpathSync as realpathSync39 } from "node:fs";
-import { resolve as resolve55 } from "node:path";
+import { resolve as resolve54 } from "node:path";
 
 // src/core/runner-host/host.ts
 init_runtime2();
@@ -131277,8 +131556,8 @@ async function serveRunnerHost(options) {
   const forced = /* @__PURE__ */ new Map();
   let finish = () => {
   };
-  const finished = new Promise((resolve57) => {
-    finish = resolve57;
+  const finished = new Promise((resolve56) => {
+    finish = resolve56;
   });
   let ending3 = false;
   const kept6 = options.tree === void 0 ? null : remoteCoverage(ownPath(coverageProvider()), hostLog);
@@ -131311,8 +131590,8 @@ async function serveRunnerHost(options) {
       options.admission?.close();
       const closing = closeAdapter();
       let timer;
-      const bound = new Promise((resolve57) => {
-        timer = setTimeout(resolve57, options.closeMs ?? CLOSE_MS3);
+      const bound = new Promise((resolve56) => {
+        timer = setTimeout(resolve56, options.closeMs ?? CLOSE_MS3);
       });
       await Promise.race([closing, bound]);
       clearTimeout(timer);
@@ -131417,9 +131696,9 @@ async function serveRunnerHost(options) {
         send({ ev: "fileEnded", run: id, testFile });
       },
       ...beforeForce === true ? {
-        beforeForce: (env) => new Promise((resolve57) => {
-          if (ending3) return resolve57();
-          forced.set(id, resolve57);
+        beforeForce: (env) => new Promise((resolve56) => {
+          if (ending3) return resolve56();
+          forced.set(id, resolve56);
           send({ ev: "beforeForce", run: id, env });
         })
       } : {}
@@ -131581,7 +131860,7 @@ import {
   chmod,
   lstat as lstat16,
   mkdir as mkdir5,
-  readdir as readdir11,
+  readdir as readdir12,
   readFile as readFile20,
   readlink as readlink5,
   realpath as realpath7,
@@ -131622,19 +131901,19 @@ async function materializeFromGit(root, entries3, writeEntry) {
       const text3 = `${blobs.slice(i3, i3 + CHUNK3).join("\n")}
 `;
       if (!child.stdin.write(text3)) {
-        await new Promise((resolve57) => child.stdin.once("drain", resolve57));
+        await new Promise((resolve56) => child.stdin.once("drain", resolve56));
       }
     }
     child.stdin.end();
   })();
-  await new Promise((resolve57) => {
+  await new Promise((resolve56) => {
     let buf = Buffer.alloc(0);
     let pending = null;
     let processing = false;
     let ended2 = false;
     let failed7 = false;
     const finish = () => {
-      if (!processing && (ended2 || failed7)) resolve57();
+      if (!processing && (ended2 || failed7)) resolve56();
     };
     const drain = async () => {
       if (processing) return;
@@ -131795,7 +132074,7 @@ function createTreeHost(root, output, env = process.env) {
     async runDir(runId) {
       const runs2 = join221(state, "runs");
       await mkdir5(runs2, { recursive: true });
-      for (const old of await readdir11(runs2)) {
+      for (const old of await readdir12(runs2)) {
         const ended2 = old.startsWith(mine) ? !running2.has(join221(runs2, old)) : !hostRuns(old);
         if (ended2) await rm7(join221(runs2, old), { recursive: true, force: true });
       }
@@ -131830,7 +132109,7 @@ function createTreeHost(root, output, env = process.env) {
       running2.delete(dir2);
       const logs = [];
       let left = LOG_BYTES;
-      for (const entry4 of await readdir11(dir2, { withFileTypes: true, recursive: true })) {
+      for (const entry4 of await readdir12(dir2, { withFileTypes: true, recursive: true })) {
         if (!entry4.isFile() || left <= 0) continue;
         const at2 = join221(entry4.parentPath, entry4.name);
         const bytes2 = await readFile20(at2);
@@ -131845,13 +132124,13 @@ function createTreeHost(root, output, env = process.env) {
 var UNOWNED_LOCK_MS = 1e4;
 var STALE_BREAK_MS = 1e4;
 var LOCK_RETRY_MS2 = 100;
-var NO_HARD_LINKS3 = /* @__PURE__ */ new Set(["EPERM", "ENOTSUP", "EOPNOTSUPP", "ENOSYS"]);
+var NO_HARD_LINKS2 = /* @__PURE__ */ new Set(["EPERM", "ENOTSUP", "EOPNOTSUPP", "ENOSYS"]);
 async function locked3(lock2, work) {
   const owner2 = `${process.pid} ${randomBytes7(8).toString("hex")}
 `;
   while (!acquire3(lock2, owner2)) {
     if (takeOverStale2(lock2)) continue;
-    await new Promise((resolve57) => setTimeout(resolve57, LOCK_RETRY_MS2));
+    await new Promise((resolve56) => setTimeout(resolve56, LOCK_RETRY_MS2));
   }
   try {
     return await work();
@@ -131868,7 +132147,7 @@ function acquire3(lock2, owner2) {
   } catch (error) {
     const code = error.code ?? "";
     if (code === "EEXIST") return false;
-    if (!NO_HARD_LINKS3.has(code)) throw error;
+    if (!NO_HARD_LINKS2.has(code)) throw error;
   } finally {
     removeIfThere2(published);
   }
@@ -132120,7 +132399,7 @@ async function runnerHostCommand(args2, io, options = {}) {
   }
   let root;
   try {
-    const given2 = resolve55(io.cwd ?? process.cwd(), parsed3.root);
+    const given2 = resolve54(io.cwd ?? process.cwd(), parsed3.root);
     if (parsed3.tree) mkdirSync35(given2, { recursive: true });
     root = realpathSync39(given2);
   } catch (error) {
@@ -132356,7 +132635,7 @@ async function reportProgress(root, id, io, running2) {
   const isSlow = slowFiles(policy, policy.nodeTest);
   let last = "";
   while (running2()) {
-    await new Promise((resolve57) => setTimeout(resolve57, PROGRESS_POLL_MS));
+    await new Promise((resolve56) => setTimeout(resolve56, PROGRESS_POLL_MS));
     if (!running2()) return;
     const line = withStatusStore(root, {}, ({ store }) => {
       const open8 = readCheckpointProgress(store, id);
@@ -133206,8 +133485,8 @@ function inWorker2(commonDir, script2, log) {
   let dead = null;
   let readied = () => {
   };
-  const ready2 = new Promise((resolve57) => {
-    readied = resolve57;
+  const ready2 = new Promise((resolve56) => {
+    readied = resolve56;
   });
   const fail3 = (error) => {
     dead ??= error;
@@ -133233,20 +133512,20 @@ function inWorker2(commonDir, script2, log) {
   worker.on("exit", (code) => fail3(new Error(`the store writer exited with code ${code}`)));
   return {
     ready: ready2,
-    run: (job) => new Promise((resolve57, reject) => {
+    run: (job) => new Promise((resolve56, reject) => {
       if (dead !== null) {
         reject(dead);
         return;
       }
       const id = ids++;
-      waiting2.set(id, { resolve: resolve57, reject });
+      waiting2.set(id, { resolve: resolve56, reject });
       worker.postMessage({ id, job });
     }),
     close: async () => {
       worker.postMessage({ close: true });
-      await new Promise((resolve57) => {
-        if (dead !== null) resolve57();
-        else worker.once("exit", () => resolve57());
+      await new Promise((resolve56) => {
+        if (dead !== null) resolve56();
+        else worker.once("exit", () => resolve56());
       });
     }
   };
@@ -133278,10 +133557,10 @@ async function startStoreProcess(options) {
   let pumping = false;
   let endWith = () => {
   };
-  const ended2 = new Promise((resolve57) => {
-    endWith = resolve57;
+  const ended2 = new Promise((resolve56) => {
+    endWith = resolve56;
   });
-  const requestWrite = (_batch, request) => new Promise((resolve57, reject) => {
+  const requestWrite = (_batch, request) => new Promise((resolve56, reject) => {
     if (phase === "stopping") reject(new Error("the store process is stopping"));
     else if (request.seq === void 0)
       reject(new Error("a store process writes numbered batches only"));
@@ -133292,7 +133571,7 @@ async function startStoreProcess(options) {
         queuedAt: now(),
         startedAt: null,
         busyMs: 0,
-        resolve: resolve57,
+        resolve: resolve56,
         reject
       });
       batches2.queued(request.worktreeId, request.seq, queued);
@@ -133415,7 +133694,7 @@ async function startStoreProcess(options) {
       phase = "stopping";
       clearInterval(timer);
       clearInterval(report4);
-      while (pumping) await new Promise((resolve57) => setTimeout(resolve57, 5));
+      while (pumping) await new Promise((resolve56) => setTimeout(resolve56, 5));
       for (const { kind, worktreeId, item } of queue.drainQueued()) {
         stats.record(kind, false, now() - item.queuedAt, item.busyMs);
         batches2.ended(worktreeId, item.request.seq, false);
@@ -133612,7 +133891,7 @@ function codexLauncherDir(env) {
 // src/cli/update-packages.ts
 init_json();
 import { readFileSync as readFileSync95 } from "node:fs";
-import { join as join223, resolve as resolve56 } from "node:path";
+import { join as join223, resolve as resolve55 } from "node:path";
 function packagesHome(harness, env) {
   return join223(env.XDG_DATA_HOME || join223(env.HOME ?? "", ".local", "share"), "squeal", harness);
 }
@@ -133632,8 +133911,8 @@ function piPackage(env) {
   for (const entry4 of Array.isArray(packages) ? packages : []) {
     const source2 = isRecord(entry4) ? entry4.source : entry4;
     if (typeof source2 !== "string" || /^(npm|git|https?|ssh):/.test(source2)) continue;
-    const dir2 = resolve56(agent, source2);
-    if (resolve56(dir2, "..") !== resolve56(packagesHome("pi", env))) continue;
+    const dir2 = resolve55(agent, source2);
+    if (resolve55(dir2, "..") !== resolve55(packagesHome("pi", env))) continue;
     try {
       const manifest = JSON.parse(readFileSync95(join223(dir2, "package.json"), "utf8"));
       if (isRecord(manifest) && typeof manifest.version === "string")
