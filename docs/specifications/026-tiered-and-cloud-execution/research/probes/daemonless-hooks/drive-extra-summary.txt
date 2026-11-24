@@ -1,0 +1,6 @@
+case | n | wall p50 | wall p95 | wall max | cpu p50 | maxRSS p50 MB | load range | status
+git-status | 15 | 60 | 720 | 720 | 90 | 10 | 21.9-23.9 | 0
+git-diff-names | 15 | 20 | 30 | 30 | 50 | 11 | 21.9-23.9 | 0
+hook-spawns-helper | 15 | 60 | 80 | 80 | 60 | 60 | 21.9-23.9 | 0
+wait-for-helper | 15 | 2000 | 2000 | 2000 | 0 | 2 | 21.3-24.8 | 0
+node-floor | 15 | 70 | 80 | 80 | 60 | 60 | 21.3-24.8 | 0

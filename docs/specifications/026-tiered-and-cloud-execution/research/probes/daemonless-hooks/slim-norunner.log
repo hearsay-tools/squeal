@@ -1,0 +1,18 @@
+== variant norunner (slim)
+-- settled (CPU flat for 30 s) (00:25:02Z, load 20.88)
+  pid 3493290 rss 274 MB private 212 MB cpu 122.1 s: squeal fx daemon @928b62be <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-norunner/fx 
+  pid 3497259 rss 138 MB private 80 MB cpu 1.9 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-norunner/fx/.git --store code 
+  processes 2, total rss 413 MB, private 292 MB, cpu 124.0 s
+idle CPU over 60 s: 124.0 -> 125.3 s
+edit 1 (src/core/code/pass/order.ts): PostToolBatch 221 ms, next 159 ms, CPU 125.3 -> 126.0 s, load 18.72; lint news: $TMPDIR/dlh/mem-norunner/hook-1.json:Lint: 384 files with findings; squeal lint lists them. 
+edit 2 (src/core/code/pass/plan.ts): PostToolBatch 134 ms, next 147 ms, CPU 126.0 -> 126.4 s, load 19.09; lint news: 
+edit 3 (src/core/lint/pass/moment.ts): PostToolBatch 134 ms, next 129 ms, CPU 126.4 -> 127.0 s, load 19.26; lint news: 
+edit 4 (src/core/lint/pass/held.ts): PostToolBatch 139 ms, next 149 ms, CPU 127.0 -> 127.4 s, load 19.25; lint news: 
+edit 5 (src/core/code/pass/head.ts): PostToolBatch 163 ms, next 117 ms, CPU 127.4 -> 127.8 s, load 19.88; lint news: 
+-- after 5 edits (00:27:32Z, load 19.88)
+  pid 3493290 rss 343 MB private 280 MB cpu 125.8 s: squeal fx daemon @928b62be <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-norunner/fx 
+  pid 3497259 rss 138 MB private 80 MB cpu 2.0 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-norunner/fx/.git --store code 
+  processes 2, total rss 481 MB, private 361 MB, cpu 127.8 s
+Squeal daemon stopped for $TMPDIR/dlh/mem-norunner/fx; `squeal stop --until-start` keeps it stopped through edits and Git operations
+-- after squeal stop (00:27:36Z, load 20.13)
+  processes 0, total rss 0 MB, private 0 MB, cpu 0.0 s

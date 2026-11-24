@@ -1,0 +1,3 @@
+== variant norunner (restart, unusedExitMinutes 0.5)
+SessionStart: 96 ms
+restart.sh stopped by hand at 00:49Z: the daemon had not stopped 20 min after its first pass (289 MB RSS, 131 s CPU incl. the first pass); squeal stop then.

@@ -1,0 +1,36 @@
+== variant norunner
+first status --wait: 217 ms
+-- settled after start (23:47:39Z, load 26.85)
+  pid 2368078 rss 144 MB private 85 MB cpu 1.0 s: squeal fx daemon @928b62be <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-norunner/fx 
+  processes 1, total rss 144 MB, private 85 MB, cpu 1.0 s
+-- 60 s later (23:48:41Z, load 26.19)
+  pid 2368078 rss 603 MB private 541 MB cpu 30.9 s: squeal fx daemon @928b62be <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-norunner/fx 
+  pid 2372441 rss 177 MB private 119 MB cpu 2.0 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-norunner/fx/.git --store code 
+  processes 2, total rss 781 MB, private 661 MB, cpu 33.0 s
+Revision: 0
+Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+Complexity: 72 functions over 20; 2 functions in parse errors not judged; squeal code lists them.
+Lint: 342 files with findings, 3652 not linted yet; linting, 2944 of 6596 files; squeal lint lists them.
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+More: `squeal status --full` adds the worktree and daemon and 2 notes
+== edit: src/core/code/count/walk.ts gains an unused variable and a branch
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 1\nRevision 1 (changed src/core/code/count/walk.ts): Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change. No dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `pnpm install --frozen-lockfile` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.\nComplexity: 72 functions over 20; squeal code lists them.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}PostToolBatch: 242 ms
+-- edit settled (23:49:46Z, load 22.79)
+  pid 2368078 rss 403 MB private 340 MB cpu 40.1 s: squeal fx daemon @928b62be <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-norunner/fx 
+  pid 2372441 rss 177 MB private 119 MB cpu 2.0 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-norunner/fx/.git --store code 
+  processes 2, total rss 580 MB, private 460 MB, cpu 42.2 s
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · lint summary at revision 1\nRevision 1 (changed src/core/code/count/walk.ts): Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change. No dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `pnpm install --frozen-lockfile` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.\n\nLint: 384 files with findings; squeal lint lists them."}}PostToolBatch (next): 220 ms
+-- 20 s after the edit (23:50:08Z, load 28.13)
+  pid 2368078 rss 267 MB private 204 MB cpu 40.2 s: squeal fx daemon @928b62be <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-norunner/fx 
+  pid 2372441 rss 138 MB private 80 MB cpu 2.0 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-norunner/fx/.git --store code 
+  processes 2, total rss 405 MB, private 285 MB, cpu 42.3 s
+-- 90 s idle after the edit (23:51:40Z, load 19.62)
+  pid 2368078 rss 295 MB private 233 MB cpu 41.3 s: squeal fx daemon @928b62be <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-norunner/fx 
+  pid 2372441 rss 137 MB private 79 MB cpu 2.1 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-norunner/fx/.git --store code 
+  processes 2, total rss 433 MB, private 312 MB, cpu 43.5 s
+Squeal daemon stopped for $TMPDIR/dlh/mem-norunner/fx; `squeal stop --until-start` keeps it stopped through edits and Git operations
+-- after squeal stop (23:51:45Z, load 19.17)
+  processes 0, total rss 0 MB, private 0 MB, cpu 0.0 s

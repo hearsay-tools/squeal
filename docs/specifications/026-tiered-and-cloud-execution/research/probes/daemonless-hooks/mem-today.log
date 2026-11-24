@@ -1,0 +1,40 @@
+== variant today
+first status --wait: 200 ms
+-- settled after start (23:52:01Z, load 20.77)
+  pid 2508058 rss 151 MB private 91 MB cpu 1.2 s: squeal fx daemon @bce26748 <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-today/fx 
+  processes 1, total rss 151 MB, private 91 MB, cpu 1.2 s
+-- 60 s later (23:53:03Z, load 30.07)
+  pid 2508058 rss 579 MB private 516 MB cpu 19.2 s: squeal fx daemon @bce26748 <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-today/fx 
+  pid 2510542 rss 683 MB private 613 MB cpu 41.6 s: node <dist>/cli/squeal.mjs runner-host <tmp>/dlh/mem-today/fx --runner vitest 
+  pid 2533656 rss 118 MB private 66 MB cpu 0.3 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-today/fx/.git --store code 
+  processes 3, total rss 1382 MB, private 1196 MB, cpu 61.1 s
+Revision: 0
+Known failures: 0; not current: 2191 of 2191 test files (2191 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+unit: 2191 test files; 2191 not run at revision 0. Squeal has not queued them; `squeal run unit --wait 60000` runs them now and waits for their results.
+Complexity: counting, 800 of 4470 files.
+Lint: linting has not started.
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+More: `squeal status --full` adds the worktree and daemon, the 2191 test files without a result one by one and 2 notes
+== edit: src/core/code/count/walk.ts gains an unused variable and a branch
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 1\nRevision 1 (changed src/core/code/count/walk.ts): Vitest has not yet listed the test files of revision 1, so new test files are not counted.\nKnown failures: 0; 0 of 2191 test files are current (run on the files as they are now), and `squeal status` counts the rest.\nunit: 2191 test files; 407 pending, waiting for `squeal run unit`; 1784 not run at revision 1. Squeal runs the pending ones only on request and has not queued the rest; `squeal run unit --wait 60000` runs them now and waits for their results.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}PostToolBatch: 581 ms
+-- edit settled (23:53:21Z, load 29.77)
+  pid 2508058 rss 657 MB private 594 MB cpu 33.2 s: squeal fx daemon @bce26748 <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-today/fx 
+  pid 2510542 rss 599 MB private 528 MB cpu 48.8 s: node <dist>/cli/squeal.mjs runner-host <tmp>/dlh/mem-today/fx --runner vitest 
+  pid 2533656 rss 135 MB private 82 MB cpu 0.6 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-today/fx/.git --store code 
+  processes 3, total rss 1391 MB, private 1205 MB, cpu 82.7 s
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · complexity counted at revision 1\nRevision 1 (changed src/core/code/count/walk.ts).\n\nComplexity counted: 72 functions over 20; squeal code lists them."}}PostToolBatch (next): 307 ms
+-- 20 s after the edit (23:53:44Z, load 28.10)
+  pid 2508058 rss 815 MB private 752 MB cpu 41.2 s: squeal fx daemon @bce26748 <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-today/fx 
+  pid 2510542 rss 599 MB private 528 MB cpu 48.8 s: node <dist>/cli/squeal.mjs runner-host <tmp>/dlh/mem-today/fx --runner vitest 
+  pid 2533656 rss 156 MB private 98 MB cpu 2.1 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-today/fx/.git --store code 
+  processes 3, total rss 1570 MB, private 1379 MB, cpu 92.3 s
+-- 90 s idle after the edit (23:55:16Z, load 33.09)
+  pid 2508058 rss 399 MB private 336 MB cpu 53.6 s: squeal fx daemon @bce26748 <dist>/cli/squeal.mjs daemon <tmp>/dlh/mem-today/fx 
+  pid 2510542 rss 487 MB private 417 MB cpu 49.1 s: node <dist>/cli/squeal.mjs runner-host <tmp>/dlh/mem-today/fx --runner vitest 
+  pid 2533656 rss 139 MB private 81 MB cpu 2.2 s: squeal fx store <dist>/cli/squeal.mjs store-process <tmp>/dlh/mem-today/fx/.git --store code 
+  processes 3, total rss 1026 MB, private 835 MB, cpu 104.9 s
+Squeal daemon stopped for $TMPDIR/dlh/mem-today/fx; `squeal stop --until-start` keeps it stopped through edits and Git operations
+-- after squeal stop (23:55:22Z, load 31.72)
+  processes 0, total rss 0 MB, private 0 MB, cpu 0.0 s
