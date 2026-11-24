@@ -11,6 +11,12 @@ import { ROOT } from "./validity/trees.js";
  * while a launcher runs Node with no other flag and no environment of its
  * own; a launcher that adds either fails here and goes to the coordinator,
  * instead of silently changing how the daemon runs.
+ *
+ * Spec 025 D7, by agreement with the coordinator (row 025-07): a launcher may
+ * also export Node's compile cache with Squeal's mark, which stores only V8
+ * code keyed by its source and which test runners take out again, and may
+ * carry NODE_USE_ENV_PROXY past Node's start with the one guarded preload
+ * that puts it back. Nothing else.
  */
 
 const LAUNCHERS = readdirSync(join(ROOT, "plugins"), { withFileTypes: true })
@@ -42,8 +48,19 @@ function shellLines(text: string): string[] {
   return lines;
 }
 
-/** `exec node <flags> "<cli>"`, or `exec node <flags> -e '<lookup>` from format 6. */
-const EXEC_NODE = /\bexec node((?:\s+-\S+)*)\s+(?:"|-e '$)/;
+/**
+ * `exec node <flags> "<cli>"`, or `exec node <flags> -e '<lookup>` from format
+ * 6; from spec 025 D7 `set -- node <flags> ...`, run by `exec "$@"`.
+ */
+const EXEC_NODE = /\b(?:exec|set --) node((?:\s+(?:--import "[^"]*"|-\S+))*)\s+(?:"|-e '$)/;
+/** The one preload a launcher may add (spec 025 D7). */
+const RESTORE_PRELOAD = `--import "data:text/javascript,if(process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY!==undefined){process.env.NODE_USE_ENV_PROXY=process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY;Reflect.deleteProperty(process.env,'SQUEAL_CARRIED_NODE_USE_ENV_PROXY')}"`;
+/** The variables a launcher may export (spec 025 D7). */
+const EXPORTED = new Set([
+  "NODE_COMPILE_CACHE",
+  "SQUEAL_OWN_COMPILE_CACHE",
+  "SQUEAL_CARRIED_NODE_USE_ENV_PROXY",
+]);
 
 describe("the launchers", () => {
   it("are found", () => {
@@ -53,15 +70,16 @@ describe("the launchers", () => {
 
   it.each(LAUNCHERS)("%s runs Node with --disable-warning flags only", (path) => {
     const lines = shellLines(readFileSync(join(ROOT, path), "utf8"));
-    const runs = lines.filter((line) => /(?:^\s*(?:exec\s+)?|\$\()node\s/.test(line));
+    const runs = lines.filter((line) => /(?:^\s*(?:exec\s+|set\s+--\s+)?|\$\()node\s/.test(line));
     expect(runs.length, path).toBeGreaterThan(0);
     for (const line of runs) {
       // The CLI's lookup is a script Node runs with `-e`. Up to format 5 the launcher read its
       // output; from format 6 (005-75) it imports the CLI and drops `-e` from `process.execArgv`.
       if (/^\S+=\$\(node -e '$/.test(line.trim())) continue;
-      const flags = EXEC_NODE.exec(line)?.[1]?.split(/\s+/).filter(Boolean) ?? null;
-      expect(flags, `${path}: ${line}`).not.toBeNull();
-      for (const flag of flags ?? []) expect(flag, path).toMatch(/^--disable-warning=\w+$/);
+      const matched = EXEC_NODE.exec(line)?.[1] ?? null;
+      expect(matched, `${path}: ${line}`).not.toBeNull();
+      const flags = (matched ?? "").split(RESTORE_PRELOAD).join(" ").split(/\s+/).filter(Boolean);
+      for (const flag of flags) expect(flag, path).toMatch(/^--disable-warning=\w+$/);
     }
   });
 
@@ -69,6 +87,8 @@ describe("the launchers", () => {
     const text = readFileSync(join(ROOT, path), "utf8");
     expect(text, path).not.toMatch(/NODE_OPTIONS/);
     for (const line of shellLines(text)) {
+      const exported = /^\s*export\s+([A-Za-z_]\w*(?:\s+[A-Za-z_]\w*)*)\s*$/.exec(line)?.[1];
+      if (exported?.split(/\s+/).every((name) => EXPORTED.has(name))) continue;
       expect(line, path).not.toMatch(/^\s*(?:export|declare\s+-x|env)\s/);
       expect(line, path).not.toMatch(/^\s*(?:exec\s+)?[A-Za-z_]\w*=\S*\s+(?:exec\s+)?node\b/);
     }
