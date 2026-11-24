@@ -66,10 +66,15 @@ export function testBuildDir(testFile: string | undefined, runDir = runDirectory
 
 /** The run's directory; `TEST_CACHE` itself when Vitest runs without the global setup. */
 function runDirectory(): string {
+  return liveRunDirectory() ?? TEST_CACHE;
+}
+
+/** The run's directory from the global setup; `null` when Vitest runs without it. */
+export function liveRunDirectory(): string | null {
   try {
-    return inject("squealTestRun") ?? TEST_CACHE;
+    return inject("squealTestRun") ?? null;
   } catch {
-    return TEST_CACHE;
+    return null;
   }
 }
 

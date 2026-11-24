@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import type { TestProject } from "vitest/node";
 import * as paths from "../../src/core/daemon/paths.js";
 import * as harness from "../../src/core/delivery/harness-process.js";
 import setup from "../global-teardown.js";
+import { type SharedBuild, sharedBuild } from "../helpers/build-inputs.js";
 import { stopStrays } from "./helpers.js";
 import {
   currentUid,
@@ -81,6 +82,36 @@ describe("the global teardown", () => {
     expect(isAlive(leaked)).toBe(false);
     expect(isAlive(other)).toBe(true);
     expect(existsSync(runDir)).toBe(false);
+  });
+
+  it("names the test file whose linked build leaked, not the build it was linked from (row 010-36)", async () => {
+    const { runDir, teardown } = await startRun();
+    const spec: SharedBuild = {
+      runDir,
+      name: "cli",
+      recipe: "",
+      build: (outdir) => {
+        mkdirSync(join(outdir, "cli"), { recursive: true });
+        writeFileSync(join(outdir, "cli/index.js"), "setTimeout(() => {}, 60_000);\n");
+        return [];
+      },
+    };
+    sharedBuild(spec, join(testBuildDir("test/daemon/quiet.test.ts", runDir), "dist"));
+    const leaky = join(testBuildDir("test/daemon/leaky.test.ts", runDir), "dist");
+    sharedBuild(spec, leaky);
+    const child = spawn(process.execPath, [join(leaky, "cli/index.js")], {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+    if (child.pid === undefined) throw new Error("no pid");
+    sleepers.push(child.pid);
+    const failure = await teardown().then(
+      () => "",
+      (error: unknown) => String(error),
+    );
+    expect(failure).toMatch(new RegExp(`test/daemon/leaky\\.test\\.ts: pid ${child.pid}, `));
+    expect(failure).not.toContain("quiet");
   });
 
   it("kills, at setup, what a run that died before its teardown left", async () => {
