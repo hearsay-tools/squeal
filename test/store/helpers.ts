@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach } from "vitest";
 import { markPath, type StoreMark } from "../../src/core/store/mark.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
@@ -11,14 +10,15 @@ import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { ResultRecord, WorktreeRecord } from "../../src/core/types/store-records.js";
+import { deferCleanup } from "../unit-cleanup.js";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
-const cleanups: (() => void)[] = [];
-
-afterEach(() => {
-  for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
+/*
+ * Cleanups run after each test through `test/unit-cleanup.ts`, also in a
+ * `unit` file that finds this module kept from an earlier file (review
+ * 0.1.629 B3).
+ */
 
 /**
  * A fresh temporary directory, removed after the test. The removal retries:
@@ -28,9 +28,7 @@ afterEach(() => {
  */
 export function tempDir(prefix = "squeal-store-"): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
-  cleanups.push(() =>
-    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }),
-  );
+  deferCleanup(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
   return dir;
 }
 
@@ -46,7 +44,7 @@ export function fakeCommonDir(): string {
 export function open(commonDir: string): Store {
   const store = openStore(commonDir, { busyTimeoutMs: 10_000 });
   if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
-  cleanups.push(() => store.close());
+  deferCleanup(() => store.close());
   return store;
 }
 
