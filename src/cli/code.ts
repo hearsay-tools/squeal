@@ -17,6 +17,7 @@ import { codeGateCommand, isGate } from "./code-gate.js";
 import { type CodeReport, type CodeReportFile, readCodeReport } from "./code-report.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
+import { noDaemonNotice } from "./status-stale.js";
 import { type DaemonSync, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitConsumer } from "./status-wait.js";
 
@@ -237,7 +238,12 @@ export function codeCommand(
     withStatusStore(cwd, { busyRetryMs: CLI_READ_RETRY_MS }, (context) => answer(context, request));
   const first = read();
   if (!("report" in first) || first.live === null || !hasPending(first.report)) {
-    return print(first, json, io);
+    // Spec 026 D2.4: with no daemon, edits on disk the stores do not hold yet are named first.
+    const notice =
+      json || !("report" in first) || first.live !== null
+        ? null
+        : noDaemonNotice(cwd, request.now(), request.command);
+    return print(first, json, io, notice);
   }
   return waitForPass(first.live, read, options).then((last) => print(last, json, io));
 }
@@ -266,12 +272,20 @@ async function waitForPass<T extends Answer | NoAnswer | StatusUnavailable>(
 }
 
 /** Prints a report, or why there is none. */
-function print(read: Answer | NoAnswer | StatusUnavailable, json: boolean, io: CliIo): number {
+function print(
+  read: Answer | NoAnswer | StatusUnavailable,
+  json: boolean,
+  io: CliIo,
+  notice: string | null = null,
+): number {
   if (!("report" in read)) {
     const answer = "available" in read ? read : { v: 1, available: false, message: read.message };
     io.stdout(json ? `${JSON.stringify(answer, null, 2)}\n` : `${read.message}\n`);
     return 1;
   }
-  io.stdout(json ? `${JSON.stringify(read.report, null, 2)}\n` : formatCodeReport(read.report));
+  const lead = notice === null ? "" : `${notice}\n`;
+  io.stdout(
+    json ? `${JSON.stringify(read.report, null, 2)}\n` : `${lead}${formatCodeReport(read.report)}`,
+  );
   return 0;
 }

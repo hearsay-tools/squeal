@@ -35,6 +35,7 @@ import { startCommand } from "./start.js";
 import { AT_NO_TIMEOUT, asksAt, parseAt, statusAtCommand } from "./status-at.js";
 import { statusCommand } from "./status-command.js";
 import { namedSnapshotCommand } from "./status-paths.js";
+import { statusLead } from "./status-stale.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
 import { CHECK_NEEDS_TEST_FILE, takeChecks } from "./status-wait-focus.js";
 import { stopCommand } from "./stop.js";
@@ -559,8 +560,9 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
       opencodeStatusLine(cwd, env) ??
       antigravityStatusLine(cwd, env));
   const base = result.available ? baseOf(result.worktreeRoot, cwd) : "";
+  // Spec 026 D2.4 (row 026-09): with no daemon, edits on disk the stores do not hold lead.
   const human = () =>
-    `${formatStatus(result, now(), statusCommand(env), { full, allNotes, base })}${harness ?? ""}`;
+    `${statusLead(result, cwd, now(), statusCommand(env))}${formatStatus(result, now(), statusCommand(env), { full, allNotes, base })}${harness ?? ""}`;
   io.stdout(parsed.json ? json(result) : human());
   return result.available ? 0 : 1;
 }
