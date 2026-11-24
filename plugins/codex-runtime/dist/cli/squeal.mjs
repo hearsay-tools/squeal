@@ -101727,7 +101727,8 @@ async function collectEvidence(cwd, changed2, options) {
 async function select(runners2, {
   paths,
   tests: tests2,
-  inputs: inputs2
+  inputs: inputs2,
+  observed: observed2
 }, tally2, narrowed2) {
   const declared = inputs2 === void 0 || paths.length === 0 ? null : createDeclaredInputs(inputs2, paths);
   const named4 = /* @__PURE__ */ new Set([...paths, ...tests2]);
@@ -101745,6 +101746,7 @@ async function select(runners2, {
     if (paths.length > 0) {
       const affected2 = await adapter.affected(paths);
       for (const ref3 of [...affected2.direct, ...affected2.transitive]) add3(ref3);
+      for (const ref3 of observedCandidates(listed12, paths, narrowed2, observed2)) add3(ref3);
     }
     const byInputs = listed12.filter(
       (ref3) => !chosen.has(testFileId(ref3)) && (declared?.for(ref3.path).length ?? 0) > 0
@@ -101767,6 +101769,15 @@ async function select(runners2, {
     );
   }
   return picked;
+}
+function observedCandidates(listed12, paths, narrowed2, observed2) {
+  if (narrowed2 === null || observed2 === void 0) return [];
+  const testPaths = new Set(listed12.map((ref3) => ref3.path));
+  const sources = new Set(paths.filter((path) => !testPaths.has(path)));
+  if (sources.size === 0) return [];
+  return listed12.filter(
+    (ref3) => observed2.directOf(ref3).some((path) => sources.has(path)) || observed2.readsOf(ref3).some((path) => sources.has(path))
+  );
 }
 function byPath(a, b) {
   return compare(a.path, b.path) || compare(a.project, b.project);
