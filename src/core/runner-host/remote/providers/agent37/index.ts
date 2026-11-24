@@ -1,27 +1,29 @@
-import { isRecord } from "../../../../fs/json.js";
 import { treeDir } from "../../connect.js";
 import { readMachines } from "../../machines-store.js";
 import type {
   MachineRecord,
   MachineRequest,
-  ReleaseReason,
   RemoteMachine,
   RemoteMachineProvider,
 } from "../../provider.js";
 import { type SshTarget, shellQuote } from "../../ssh.js";
-import { Agent37Api, type Instance } from "./api.js";
-import {
-  BOOTSTRAP_DEADLINES,
-  type BootstrapDeadlines,
-  ensureGitTree,
-  ensureNode,
-} from "./bootstrap.js";
+import { BOOTSTRAP_DEADLINES, ensureGitTree, ensureNode } from "./bootstrap.js";
 import {
   AGENT37_DEFAULTS,
   type Agent37Settings,
   agent37Settings,
   validateAgent37,
 } from "./config.js";
+import {
+  AGENT37,
+  type Agent37State,
+  type Agent37Timing,
+  agent37Machine,
+  apiOf,
+  stateOf,
+  untilRunning,
+  unusable,
+} from "./machine.js";
 import { tunnelHost, validInstanceId } from "./tunnel.js";
 
 /*
@@ -34,28 +36,8 @@ import { tunnelHost, validInstanceId } from "./tunnel.js";
  * instance so its disk stops billing too.
  */
 
-export const AGENT37 = "agent37";
-
 /** The login on the instance: the base image's user, whose home is the instance's disk. */
 const SSH_USER = "node";
-
-/** What `remote-machines.json` keeps of an Agent37 machine. */
-export interface Agent37State {
-  readonly instanceId: string;
-  readonly region: string;
-  readonly type: string;
-  readonly bootstrap: string;
-}
-
-export interface Agent37Timing {
-  /** Waits between status polls, and between `409 try_again` retries. */
-  readonly pollMs: number;
-  /** How long an instance may take to read `running` after a create or start. */
-  readonly readyMs: number;
-  readonly bootstrap: BootstrapDeadlines;
-  /** The command that starts this Squeal's CLI: Node and its script. */
-  readonly cli: readonly string[];
-}
 
 const TIMING: Agent37Timing = {
   pollMs: 2_000,
@@ -63,17 +45,6 @@ const TIMING: Agent37Timing = {
   bootstrap: BOOTSTRAP_DEADLINES,
   cli: [process.execPath, "--disable-warning=ExperimentalWarning", process.argv[1] ?? ""],
 };
-
-function stateOf(value: unknown): Agent37State | null {
-  if (!isRecord(value) || !validInstanceId(value.instanceId)) return null;
-  const text = (key: string) => (typeof value[key] === "string" ? (value[key] as string) : "");
-  return {
-    instanceId: value.instanceId,
-    region: text("region"),
-    type: text("type"),
-    bootstrap: text("bootstrap"),
-  };
-}
 
 /** `word` for an ssh `ProxyCommand`: shell-quoted, `%` escaped from ssh's own tokens. */
 function proxyWord(word: string): string {
@@ -109,98 +80,6 @@ export function agent37Ssh(
         : ["-i", settings.sshKeyPath, "-o", "IdentitiesOnly=yes"]),
     ],
     env,
-  };
-}
-
-function apiOf(
-  settings: Agent37Settings,
-  env: NodeJS.ProcessEnv,
-  timing: Agent37Timing,
-): Agent37Api {
-  return new Agent37Api({
-    baseUrl: settings.apiBaseUrl,
-    keyEnv: settings.apiKeyEnv,
-    env,
-    retryMs: timing.pollMs,
-  });
-}
-
-/** The instance `id`, gone or not: `null` when Agent37 no longer has it. */
-function goneError(id: string): Error {
-  return new Error(`Agent37 instance ${id} is gone (deleted, or not in this workspace)`);
-}
-
-/** Polls `id` until `running`, waking it first when it is not; throws when it is gone or not up in time. */
-async function untilRunning(
-  api: Agent37Api,
-  id: string,
-  seen: Instance,
-  timing: Agent37Timing,
-  signal?: AbortSignal,
-): Promise<void> {
-  let status = seen.status;
-  if (status === "running") return;
-  if (status === "sleeping" || status === "stopped") status = (await api.start(id)).status;
-  const deadline = Date.now() + timing.readyMs;
-  while (status !== "running") {
-    signal?.throwIfAborted();
-    if (Date.now() > deadline) {
-      throw new Error(`Agent37 instance ${id} is still ${status} after ${timing.readyMs} ms`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, timing.pollMs));
-    const now = await api.inspect(id);
-    if (now === null) throw goneError(id);
-    status = now.status;
-    if (status === "sleeping" || status === "stopped") status = (await api.start(id)).status;
-  }
-}
-
-interface MachineParts {
-  readonly settings: Agent37Settings;
-  readonly state: Agent37State;
-  readonly env: NodeJS.ProcessEnv;
-  readonly ssh: SshTarget;
-  readonly places: RemoteMachine["places"];
-  readonly hasGitRepository: boolean;
-  readonly timing: Agent37Timing;
-}
-
-function agent37Machine(parts: MachineParts): RemoteMachine {
-  const { state, timing } = parts;
-  const id = state.instanceId;
-  const api = apiOf(parts.settings, parts.env, timing);
-  const sleep = async () => {
-    const found = await api.inspect(id);
-    if (found === null) throw goneError(id);
-    if (found.status !== "sleeping" && found.status !== "stopped") await api.sleep(id);
-  };
-  return {
-    id: `${AGENT37}:${state.region}:${state.type}:${id}`,
-    provider: AGENT37,
-    ssh: parts.ssh,
-    places: parts.places,
-    capabilities: {
-      hasGitRepository: parts.hasGitRepository,
-      sleepOnIdle: true,
-      ephemeralHostKey: true,
-    },
-    state,
-    wake: async (signal) => {
-      const found = await api.inspect(id);
-      if (found === null) throw goneError(id);
-      await untilRunning(api, id, found, timing, signal);
-    },
-    sleep,
-    release: async (reason: ReleaseReason) => {
-      if (reason === "worktree-removed") {
-        await api.remove(id);
-        return;
-      }
-      // Idle or the daemon's exit: asleep, kept for a fast wake. One already gone needs nothing.
-      await sleep().catch((error: unknown) => {
-        if ((error as Error).message !== goneError(id).message) throw error;
-      });
-    },
   };
 }
 
@@ -294,21 +173,6 @@ async function bootstrap(
       request.log(`Agent37 instance ${state.instanceId}: no git history (${git.why})`);
   }
   return agent37Machine({ settings, state, env, ssh, places, hasGitRepository, timing });
-}
-
-/** A machine whose every call fails with `why`. */
-function unusable(record: MachineRecord, why: string): RemoteMachine {
-  const fail = () => Promise.reject(new Error(why));
-  return {
-    id: record.id,
-    provider: AGENT37,
-    ssh: { destination: record.destination, args: record.sshArgs },
-    places: record.places,
-    capabilities: record.capabilities,
-    wake: fail,
-    sleep: fail,
-    release: fail,
-  };
 }
 
 /** The `agent37` provider with `timing`; tests shorten the waits. */
