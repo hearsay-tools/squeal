@@ -32,7 +32,13 @@ const CONFIG = {
 
 /** `squeal <args>` in `repo`, its exit code and output once it ends. */
 async function cli(repo: FixtureRepo, ...args: string[]) {
-  const run = spawnCli(suite.cli, args, { cwd: repo.root, env: repo.env });
+  const env: NodeJS.ProcessEnv = { ...repo.env };
+  delete env.CODEX_SESSION_ID;
+  delete env.PI_SESSION_ID;
+  delete env.OPENCODE_SESSION_ID;
+  delete env.ANTIGRAVITY_CONVERSATION_ID;
+  delete env.CLAUDECODE;
+  const run = spawnCli(suite.cli, args, { cwd: repo.root, env });
   const { code } = await run.exited;
   return { code, out: `${run.stdout()}${run.stderr()}` };
 }
