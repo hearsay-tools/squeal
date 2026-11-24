@@ -2,6 +2,9 @@ import { describe, expect, test } from "vitest";
 import type { ProcessOwner } from "../../src/core/ps/model.js";
 import { attribute, hostOf } from "../../src/core/ps/processes.js";
 import { render } from "../../src/core/ps/render.js";
+import { machineOf } from "../../src/core/ps/snapshot-shape.js";
+import type { MachineRecord } from "../../src/core/runner-host/remote/provider.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { type FakeProcess, fakeSource, tableOf } from "./fixture-samples.js";
 import {
   EXAMPLE_AT,
@@ -95,5 +98,59 @@ describe("a daemon's runner hosts (spec 021 D17)", () => {
     const at = lines.findIndex((line) => line.includes(String(d.pid)));
     expect(lines[at + 1]).toMatch(/^ {4}host vitest +2091500 +local /);
     expect(lines[at + 2]).toMatch(/^ {4}host vitest +2091510 +remote build-box \(ssh\) /);
+  });
+
+  // Spec 026 D12.2 (row 026-20): a host on a tracked machine names provider, machine and state.
+  test("name the tracked machine a remote host runs on, by its destination and worktree", () => {
+    const record = (worktreeId: string, id: string, status: MachineRecord["status"]) =>
+      ({
+        provider: "agent37",
+        id,
+        worktreeId: worktreeId as WorktreeId,
+        worktreeRoot: "/repo" as AbsolutePath,
+        repositoryKey: "/repo",
+        destination: "node@abc.agent37.app",
+        sshArgs: [],
+        places: { cache: ".cache", node: "node" },
+        capabilities: { hasGitRepository: true, sleepOnIdle: true, ephemeralHostKey: true },
+        status,
+        createdAt: 0 as EpochMs,
+        lastUsedAt: 0 as EpochMs,
+      }) as unknown as MachineRecord;
+    const records = [
+      record("other", "agent37:eu:vm:zzz", "sleeping"),
+      record("wt-1", "agent37:eu:vm:abc", "awake"),
+    ];
+    expect(machineOf(records, "node@abc.agent37.app", "wt-1")).toEqual({
+      machine: { provider: "agent37", id: "agent37:eu:vm:abc", state: "awake" },
+    });
+    expect(machineOf(records, "build-box", "wt-1")).toEqual({});
+    expect(machineOf(records, null, "wt-1")).toEqual({});
+
+    const d = exampleDaemon({
+      processes: [],
+      hosts: [
+        {
+          pid: 2091510,
+          runner: "vitest",
+          target: "node@abc.agent37.app",
+          machine: { provider: "agent37", id: "agent37:eu:vm:abc", state: "awake" },
+          startedAt: EXAMPLE_AT - 60_000,
+          cpuPct: 1.5,
+          cpuMs: 1_000,
+          privateBytes: 40 * 2 ** 20,
+          swapBytes: 0,
+        },
+      ],
+    });
+    const text = render(
+      exampleSnapshot({ repositories: [exampleRepository("/repo/.git", true, [d])] }),
+      { full: false },
+    );
+    const lines = text.split("\n");
+    const at = lines.findIndex((line) => line.includes(String(d.pid)));
+    expect(lines[at + 1]).toMatch(
+      /^ {4}host vitest +2091510 +remote agent37 .* agent37:eu:vm:abc, awake$/,
+    );
   });
 });

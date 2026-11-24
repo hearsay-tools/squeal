@@ -38,6 +38,11 @@ export interface PsPlaces {
   readonly commonDir: AbsolutePath | null;
   /** Spec 023 D6: `<cache>/squeal/checkouts`; by default under `XDG_CACHE_HOME` or `home`. */
   readonly checkoutsRoot?: AbsolutePath;
+  /**
+   * Spec 026 D12.2 (row 026-20): `remote-machines.json`, which names the
+   * provider, machine and state of a remote runner host. Absent: not read.
+   */
+  readonly remoteMachines?: AbsolutePath;
 }
 
 /** D2: one daemon process, found by its command line. */

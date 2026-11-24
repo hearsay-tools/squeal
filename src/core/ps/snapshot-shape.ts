@@ -1,6 +1,8 @@
 import { basename } from "node:path";
 import { socketWorktreeId } from "../daemon/paths.js";
 import { compare } from "../fs/compare.js";
+import { readMachinesAt } from "../runner-host/remote/machines-store.js";
+import type { MachineRecord } from "../runner-host/remote/provider.js";
 import { lockFileWorktreeId, storePaths } from "../store/paths.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { phaseOn } from "./discover.js";
@@ -63,6 +65,13 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
     r.bootTime === null ? null : r.bootTime + ticksToMs(startTicks, ticks);
   const phase = phaseOn(model.source);
   const table = first.sample.table;
+  // Spec 026 D12.2: read once, and only when a remote host is there to name.
+  let tracked: readonly MachineRecord[] | null = null;
+  const machines = () => {
+    const path = model.places.remoteMachines;
+    tracked ??= path === undefined ? [] : readMachinesAt(path).machines;
+    return tracked;
+  };
 
   const processOf = (p: TestProcessModel): PsTestProcess => {
     const row = table.get(p.pid);
@@ -119,12 +128,12 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
       })),
       processes: first.attribution.processes.filter((p) => p.daemonPid === pid).map(processOf),
       flags: findings.daemons.get(pid) ?? [],
-      ...hostsOf(pid),
+      ...hostsOf(pid, d.worktreeId),
     };
   };
 
   /** Spec 021 D17: the daemon's runner hosts, only when it has one. */
-  const hostsOf = (pid: number): { hosts?: PsRunnerHost[] } => {
+  const hostsOf = (pid: number, worktreeId: string | null): { hosts?: PsRunnerHost[] } => {
     const hosts = (first.attribution.hosts ?? []).filter((h) => h.daemonPid === pid);
     if (hosts.length === 0) return {};
     return {
@@ -134,6 +143,7 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
           pid: h.pid,
           runner: h.runner,
           target: h.target,
+          ...machineOf(machines(), h.target, worktreeId),
           startedAt: row === undefined ? null : startOf(row.startTicks),
           ...costOf(costs.get(h.pid)),
         };
@@ -257,4 +267,21 @@ function socketIdOf(path: AbsolutePath): string {
 function ofKept(what: string, kept: ReadonlySet<number>): boolean {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
   return pid === undefined || kept.has(Number(pid));
+}
+
+/**
+ * Spec 026 D12.2 (row 026-20): the tracked machine a remote host's `ssh`
+ * reaches: the record of that destination, of the daemon's worktree when
+ * one has it. None for a local host or a destination no record names.
+ */
+export function machineOf(
+  records: readonly MachineRecord[],
+  target: string | null,
+  worktreeId: string | null,
+): Pick<PsRunnerHost, "machine"> {
+  if (target === null) return {};
+  const reached = records.filter((m) => m.destination === target);
+  const record = reached.find((m) => m.worktreeId === worktreeId) ?? reached[0];
+  if (record === undefined) return {};
+  return { machine: { provider: record.provider, id: record.id, state: record.status } };
 }

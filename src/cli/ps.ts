@@ -13,6 +13,7 @@ import { render } from "../core/ps/render.js";
 import type { PsSnapshot } from "../core/ps/shape.js";
 import { SAMPLE_MS, takeSnapshot } from "../core/ps/snapshot.js";
 import type { PsSource } from "../core/ps/source.js";
+import { machinesPath } from "../core/runner-host/remote/machines-store.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 
@@ -178,5 +179,7 @@ function placesOf(
     runtimeDir: xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? xdg : null,
     tempDir: options.tempDir ?? "/tmp",
     commonDir,
+    // Spec 026 D12.2 (row 026-20): names a remote runner host's machine.
+    remoteMachines: machinesPath(env),
   };
 }

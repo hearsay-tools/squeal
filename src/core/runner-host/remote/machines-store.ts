@@ -54,7 +54,11 @@ export function machinesPath(env: NodeJS.ProcessEnv = process.env): AbsolutePath
 
 /** Reads the tracked machines; never throws; a missing file tracks none. */
 export function readMachines(env: NodeJS.ProcessEnv = process.env): Machines {
-  const path = machinesPath(env);
+  return readMachinesAt(machinesPath(env));
+}
+
+/** `readMachines` of the file at `path`, as `squeal ps` names it (row 026-20). */
+export function readMachinesAt(path: AbsolutePath): Machines {
   let text: string;
   try {
     text = readFileSync(path, "utf8");

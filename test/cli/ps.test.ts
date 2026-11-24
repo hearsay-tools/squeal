@@ -237,6 +237,8 @@ describe("squeal ps", () => {
       runtimeDir: null,
       tempDir: host.places.tempDir,
       commonDir: alpha.commonDir,
+      // Spec 026 D12.2 (row 026-20): under XDG_STATE_HOME, else the home's `.local/state`.
+      remoteMachines: join(host.places.home, ".local", "state", "squeal", "remote-machines.json"),
     });
     expect(JSON.parse(stdout)).toMatchObject({ v: PS_SHAPE_VERSION });
   });

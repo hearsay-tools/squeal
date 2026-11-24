@@ -152,6 +152,16 @@ export interface PsRunnerHost {
   readonly runner: string | null;
   /** The SSH destination of a remote host; `null` for a local one. */
   readonly target: string | null;
+  /**
+   * Spec 026 D12.2 (row 026-20): the tracked machine a remote host runs on,
+   * from `remote-machines.json`: its provider, id and state. Absent for a
+   * local host, and for a remote one no tracked machine matches.
+   */
+  readonly machine?: {
+    readonly provider: string;
+    readonly id: string;
+    readonly state: "awake" | "sleeping" | "detached";
+  };
   readonly startedAt: EpochMs | null;
   readonly cpuPct: number | null;
   readonly cpuMs: number | null;
