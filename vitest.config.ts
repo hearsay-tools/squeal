@@ -7,11 +7,15 @@ import { TEST_VERSION } from "./test/fixed-version.js";
  * keeps its modules from one file to the next (`isolate: false`), which cut
  * the CPU of these files by 40% (2,287 files: 434 here, 2026-11-24). Worker
  * threads were 4x slower there and break `process.cpuUsage` measurements, so
- * they stay forks. `mocked` holds the files of those folders that replace a
- * module with `vi.mock`, which leaks into the next file without isolation.
- * `isolated` holds every other test file, each in a fresh module graph.
+ * they stay forks. `unit-isolated` holds the files of those folders that
+ * replace a module with `vi.mock`, which leaks into the next file without
+ * isolation, and those that import a helper registering a hook when its
+ * module is evaluated: a kept module registers it on the first file alone
+ * (review 0.1.629 B3). Helpers defer cleanups to `test/unit-cleanup.ts`, the
+ * `unit` setup file, instead; `test/unit-isolation.test.ts` holds both lists
+ * to that. `isolated` holds every other test file, each in a fresh module graph.
  */
-const UNIT = [
+export const UNIT = [
   "test/status/**/*.test.ts",
   "test/delivery/**/*.test.ts",
   "test/policy/**/*.test.ts",
@@ -37,7 +41,7 @@ const UNIT = [
 ];
 
 /** Files of `UNIT` that replace modules with `vi.mock`. */
-const MOCKED = [
+export const MOCKED = [
   "test/delivery/sending-overlay-cost.test.ts",
   "test/presence/io.test.ts",
   "test/presence/reads.test.ts",
@@ -46,7 +50,38 @@ const MOCKED = [
   "test/status/torn-read.test.ts",
 ];
 
-const EXCLUDE = ["test/fixtures/**", "node_modules/**"];
+/**
+ * Files of `UNIT` that import a helper with a top-level `afterEach`,
+ * `afterAll`, `beforeEach` or `beforeAll` (review 0.1.629 B3).
+ */
+export const HOOKED = [
+  "test/delivery/hold-code-wait.test.ts",
+  "test/evals/code-lines.test.ts",
+  "test/evals/codex-runtime-hold.test.ts",
+  "test/evals/lint-lines.test.ts",
+  "test/plugins/codex/fast-path.test.ts",
+  "test/presence/hook-stop.test.ts",
+  "test/presence/marks-stopped.test.ts",
+  "test/presence/marks.test.ts",
+  "test/presence/news.test.ts",
+  "test/presence/presence.test.ts",
+  "test/presence/told.test.ts",
+  "test/presence/wait.test.ts",
+  "test/reach/command.test.ts",
+  "test/reach/setup-chains.test.ts",
+  "test/reach/stale.test.ts",
+  "test/status/listing-failed.test.ts",
+  "test/status/why-foreign-key.test.ts",
+  "test/status/why-replaced.test.ts",
+  "test/status/why-revert.test.ts",
+  "test/store/import-graph-aliases.test.ts",
+  "test/store/key-shadow.test.ts",
+  "test/store/prune-keyed.test.ts",
+  "test/store/prune-plans.test.ts",
+  "test/store/prune-removed.test.ts",
+];
+
+export const EXCLUDE = ["test/fixtures/**", "node_modules/**"];
 
 export default defineConfig({
   // Row 011-425: workers report a fixed version and read no `package.json` for it.
@@ -59,9 +94,16 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        test: { name: "unit", include: UNIT, exclude: [...EXCLUDE, ...MOCKED], isolate: false },
+        test: {
+          name: "unit",
+          include: UNIT,
+          exclude: [...EXCLUDE, ...MOCKED, ...HOOKED],
+          isolate: false,
+          // Review 0.1.629 B3: drains the helpers' cleanups after each test of every file.
+          setupFiles: ["test/unit-cleanup.ts"],
+        },
       },
-      { extends: true, test: { name: "mocked", include: MOCKED } },
+      { extends: true, test: { name: "unit-isolated", include: [...MOCKED, ...HOOKED] } },
       {
         extends: true,
         test: {
