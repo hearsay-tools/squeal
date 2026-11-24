@@ -101,7 +101,7 @@ export async function buildAdapter(
 }
 
 /** Vitest's coverage options of `start`, its provider the host's own under `HOST_PROVIDER`. */
-function vitestCoverage(
+export function vitestCoverage(
   start: HostStart,
   hooks: AdapterHooks,
 ): { readonly provider: string; readonly tempDir: string } | undefined {
