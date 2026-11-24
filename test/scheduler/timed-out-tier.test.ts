@@ -5,6 +5,7 @@ import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { readUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
 import type { TestCheckId } from "../../src/core/types/check.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import type { RecordedRun } from "./recording-runner.js";
 import { createRepo, openRepoStore } from "./repo.js";
@@ -29,11 +30,16 @@ const HANG = "test/hang.test.ts";
  * Only the hanging file may reach it (task 001-335). A tier of three
  * ordinary files took 0.5-2.8 s beside a full suite at load 37-87; one such
  * tier outlasted the 8 s this was at load 76 and ended without its files.
+ * Row 010-38: the real timeout is waited twice, so it is 10 s, not 30 s,
+ * over four quick files that run beside the hanging one in the first tier.
  */
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 10_000;
 
-/** `count` quick test files and one that never ends; `oneWorker` runs them one at a time, the hanging one first. */
-function suite(count: number, oneWorker = false) {
+/** How long the fake hanging file holds its tier before it reports the timeout (row 010-38). */
+const FAKE_HOLD_MS = 50;
+
+/** `count` quick test files and one that never ends. */
+function suite(count: number) {
   const repo = createRepo("barrel-only");
   const at = (path: string) => join(repo.main, path);
   rmSync(at("test/aa-slow.test.ts"));
@@ -49,32 +55,6 @@ function suite(count: number, oneWorker = false) {
     at(HANG),
     'import { it } from "vitest";\nit("hangs", () => {\n  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);\n});\n',
   );
-  if (oneWorker) {
-    // One file at a time, the hanging one first: it holds every file behind it.
-    writeFileSync(
-      at("vitest.config.ts"),
-      [
-        `import { defineConfig } from "vitest/config";`,
-        `import { BaseSequencer } from "vitest/node";`,
-        `class HangFirst extends BaseSequencer {`,
-        `  async sort(files) {`,
-        `    const hang = (f) => (f.moduleId.endsWith("hang.test.ts") ? 0 : 1);`,
-        `    return [...files].sort((a, b) => hang(a) - hang(b));`,
-        `  }`,
-        `}`,
-        `export default defineConfig({`,
-        `  test: {`,
-        `    include: ["test/**/*.test.ts"],`,
-        `    testTimeout: 60_000,`,
-        `    maxWorkers: 1,`,
-        `    fileParallelism: false,`,
-        `    sequence: { sequencer: HangFirst },`,
-        `  },`,
-        `});`,
-        "",
-      ].join("\n"),
-    );
-  }
   return repo;
 }
 
@@ -91,9 +71,9 @@ function expectHalving(runs: readonly RecordedRun[]): void {
 
 describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 001-179)", () => {
   it("stores the files that completed, isolates the hanging one as unknown and finishes the baseline", {
-    timeout: 180_000,
+    timeout: 120_000,
   }, async () => {
-    const count = 12;
+    const count = 4;
     const repo = suite(count);
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
@@ -139,10 +119,10 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
   });
 
   it("splits a tier the hanging file holds up, halving down to one file, and stores the rest", {
-    timeout: 240_000,
+    timeout: 120_000,
   }, async () => {
     const count = 6;
-    const repo = suite(count, true);
+    const repo = suite(count);
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
@@ -150,6 +130,24 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
       timeoutMs: TIMEOUT_MS,
       policy: RUN_MISSING,
     });
+    // Row 010-38: the hanging file runs first on one worker and holds every file behind it, so a
+    // tier that holds it completes none of its files and times out, here after 50 ms instead of
+    // the policy's timeout. Tiers without it run in Vitest. The real timeout is the test above's.
+    const real = h.runner.run;
+    h.runner.run = async (files, options) => {
+      if (!files.some((f) => f.path === HANG)) return real(files, options);
+      await new Promise((done) => setTimeout(done, FAKE_HOLD_MS));
+      const report: RunReport = {
+        end: "timed-out",
+        durationMs: FAKE_HOLD_MS,
+        completedFiles: [],
+        results: [],
+        fileErrors: [],
+        failure: `timed out after ${TIMEOUT_MS / 1000} s`,
+      };
+      h.runner.runs.push({ files, options, report });
+      return report;
+    };
     await h.scheduler.start();
     await h.quiet();
 
@@ -159,7 +157,7 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
     );
     // The hanging file ran first and held the files behind it: the first tier stored none of them.
     expect(runs[0]?.files).toHaveLength(count + 1);
-    expect(runs[0]?.report.completedFiles.length).toBeLessThan(count);
+    expect(runs[0]?.report.completedFiles).toHaveLength(0);
     expectHalving(runs);
     expect(runs.at(-1)?.files.map((f) => f.path)).toEqual([HANG]);
     expect(runs.at(-1)?.report.end).toBe("timed-out");
