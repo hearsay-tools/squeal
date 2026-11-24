@@ -6,6 +6,7 @@ import { ObservedSets } from "../../../src/core/keys/observed.js";
 import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { SchedulerContext } from "../../../src/core/scheduler/context.js";
 import { editWork, fetchEditCut, observedDirectOf } from "../../../src/core/scheduler/edit-cut.js";
+import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
 import { Ledger } from "../../../src/core/scheduler/ledger.js";
 import type { RunnerPartBound } from "../../../src/core/scheduler/runner-work-bound.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
@@ -73,12 +74,13 @@ function keysOver(observed: StoredObserved) {
     const set = new Set(paths);
     return LISTED.filter((r) => closure(r).some((p) => set.has(p)));
   };
-  return {
+  const keys = {
     index: { reverse: { referencing } },
     declaredFor: () => [],
     observedOf: (r: TestFileRef) => observed.readsOf(r),
     directOf: (r: TestFileRef) => observed.directOf(r),
   };
+  return keys as typeof keys & Pick<WorktreeKeys, "index" | "directOf">;
 }
 
 /** `squeal run <group> --base`'s selection of `CHANGED` in `group` (`selectNarrow`, row 019-49). */
