@@ -1,0 +1,8 @@
+{"node":"v26.13.0","cpus":16,"load":[1.6,7.87,19.29]}
+{"ageMs":9999,"daemon":{"state":"alive","lastHeartbeatAt":90001},"snapshot":{"result":"none","reason":"unsynced"},"waitLiveness":{"state":"alive"},"named":{"result":"none","reason":"unsynced"}}
+{"ageMs":10000,"daemon":{"state":"alive","lastHeartbeatAt":90000},"snapshot":{"result":"none","reason":"unsynced"},"waitLiveness":{"state":"alive"},"named":{"result":"none","reason":"unsynced"}}
+{"ageMs":10001,"daemon":{"state":"down","since":89999,"heartbeatLate":{"ageMs":10001}},"snapshot":{"result":"none","reason":"no-daemon"},"waitLiveness":{"state":"lapsed"},"named":{"result":"none","reason":"lapsed"}}
+{"ageMs":23679,"daemon":{"state":"down","since":76321,"heartbeatLate":{"ageMs":23679}},"snapshot":{"result":"none","reason":"no-daemon"},"waitLiveness":{"state":"lapsed"},"named":{"result":"none","reason":"lapsed"}}
+{"ageMs":32796,"daemon":{"state":"down","since":67204,"heartbeatLate":{"ageMs":32796}},"snapshot":{"result":"none","reason":"no-daemon"},"waitLiveness":{"state":"lapsed"},"named":{"result":"none","reason":"lapsed"}}
+{"ageMs":0,"daemon":{"state":"alive","lastHeartbeatAt":100000},"snapshot":{"result":"none","reason":"unsynced"},"waitLiveness":{"state":"alive"},"named":{"result":"none","reason":"unsynced"}}
+PASS: six synthetic readings; no store, process or socket touched
