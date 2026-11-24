@@ -52,6 +52,47 @@ function settled(): { commonDir: string; store: Store } {
   return { commonDir, store };
 }
 
+/**
+ * Review 0.1.631 B2: `settled()` plus one file whose check reads UNKNOWN at
+ * revision 3 with the runner's error, and its unknown-run record at
+ * `revision`. At revision 3 the record stands; at an older one it fell.
+ */
+function withUnknown(revision: number): { commonDir: string; store: Store } {
+  const { commonDir, store } = settled();
+  const check = testCheck("u", "test/u.test.ts");
+  store.knownStates.upsertMany([
+    { ...knownState("live", check), outcome: "unknown", summary: "runner failed" },
+  ]);
+  store.failures.recordUnknownRuns(
+    "live",
+    revision,
+    [
+      {
+        testFiles: [{ project: "", path: "test/u.test.ts" }],
+        reason: "runner failed",
+        runId: null,
+      },
+    ],
+    NOW,
+  );
+  return { commonDir, store };
+}
+
+/** Runs every slice of one prune; what it wrote, paused and removed. */
+async function runPrune(commonDir: string, store: Store) {
+  const pauses: number[] = [];
+  const writes = countWrites();
+  const counts = noneRemoved();
+  await new SlicedPrune({
+    log: () => {},
+    pause: async (ms) => {
+      pauses.push(ms);
+    },
+  }).run(slicesOf(commonDir, store, counts));
+  observeWrites(null);
+  return { writes: writes.n, pauses, counts };
+}
+
 function slicesOf(commonDir: string, store: Store, counts = noneRemoved()) {
   return () =>
     pruneSlices(
@@ -125,5 +166,24 @@ describe("zero-row prune slices (row 025-10)", () => {
     expect(counts.resultsRemoved).toBe(1);
     expect(writes.n).toBeGreaterThan(0);
     expect(pauses.length).toBeGreaterThan(0);
+  });
+
+  it("takes no write lock and no pause while an unknown run's UNKNOWN stands (review 0.1.631 B2)", async () => {
+    const { commonDir, store } = withUnknown(3);
+    expect(store.failures.unknownRuns("live")).toHaveLength(1);
+    const { writes, pauses, counts } = await runPrune(commonDir, store);
+    expect(writes).toBe(0);
+    expect(pauses).toEqual([]);
+    expect(counts).toEqual(noneRemoved());
+    expect(store.failures.unknownRuns("live")).toHaveLength(1);
+  });
+
+  it("still drops an unknown run whose UNKNOWN fell, in a write (review 0.1.631 B2)", async () => {
+    const { commonDir, store } = withUnknown(2);
+    expect(store.failures.unknownRuns("live")).toHaveLength(1);
+    const { writes, pauses } = await runPrune(commonDir, store);
+    expect(writes).toBe(1);
+    expect(pauses).toHaveLength(1);
+    expect(store.failures.unknownRuns("live")).toEqual([]);
   });
 });

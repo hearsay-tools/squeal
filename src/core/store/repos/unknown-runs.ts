@@ -69,6 +69,16 @@ export function dropFallenUnknownRuns(conn: Connection): number {
   return records.length - kept.length;
 }
 
+/**
+ * Review 0.1.631 B2: whether some record's UNKNOWN no longer stands, read
+ * outside the write lock, so a prune with only standing records takes no
+ * write transaction. `dropFallenUnknownRuns` decides again under the lock.
+ */
+export function hasFallenUnknownRuns(conn: Connection): boolean {
+  const records = readUnknownRuns(conn);
+  return standing(conn, records).length < records.length;
+}
+
 /** The runs the records name, which prune keeps while their UNKNOWN stands; read inside its transaction. */
 export function keptByUnknownRuns(conn: Connection): string[] {
   return readUnknownRuns(conn).flatMap((r) => (r.runId === null ? [] : [r.runId]));

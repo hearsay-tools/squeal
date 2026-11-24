@@ -24,7 +24,7 @@ import {
 } from "./prune-unused.js";
 import { vacuum } from "./prune-vacuum.js";
 import { expireReplaced, readReplaced } from "./repos/replaced.js";
-import { dropFallenUnknownRuns, readUnknownRuns } from "./repos/unknown-runs.js";
+import { dropFallenUnknownRuns, hasFallenUnknownRuns } from "./repos/unknown-runs.js";
 import { WORKTREE_SCOPED_TABLES } from "./repos/worktrees.js";
 
 /* Spec 001 D8 (row 011-160): the rules are in `prune-rules.ts`. */
@@ -110,9 +110,10 @@ export function* pruneSlices(
     () => expireReplaced(conn, cutoff),
   );
   // Row 011-108: a record whose UNKNOWN no longer stands keeps its run no longer.
+  // Review 0.1.631 B2: only a fallen record is due; a standing one writes nothing.
   yield* writeIf(
     conn,
-    () => readUnknownRuns(conn).length > 0,
+    () => hasFallenUnknownRuns(conn),
     () => dropFallenUnknownRuns(conn),
   );
 
