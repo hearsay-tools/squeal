@@ -1,13 +1,15 @@
 import type { VitestAdapterOptions } from "../../../runners/vitest/index.js";
 import { repositoryRootOf } from "../../daemon/user-config.js";
 import { worktreeIdOfRealPath } from "../../fs/git-layout.js";
+import { runnerKeyingDeferred } from "../../scheduler/deferred-keying.js";
 import type { AbsolutePath } from "../../types/common.js";
+import type { RemoteSleepOutcome } from "../../types/daemon.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunnerAdapter } from "../../types/runner.js";
 import type { RunnerHostLaunch } from "../channel.js";
 import { hostedOptions } from "../vitest-host.js";
 import { startRemoteHost } from "./connect.js";
-import { withRemoteLane } from "./lane.js";
+import { type RemoteLaneRunner, withRemoteLane } from "./lane.js";
 import { recordMachine, updateMachine } from "./machines-store.js";
 import { type MachineRequest, type RemoteMachine, recordOf } from "./provider.js";
 import { providerOf } from "./providers/index.js";
@@ -35,6 +37,13 @@ import {
  * `remote-machines.json`; a reconnect wakes it; the daemon's exit releases
  * it (`daemon-exit`). A `{ target }` entry is the `ssh` provider, whose
  * machine is the target as before.
+ *
+ * Review 0.1.616 B7 (D12.4): `sleepRemote` closes the lane's idle channel,
+ * then asks its machine to sleep and records it sleeping; a machine that
+ * does not sleep when idle (a static host) is left as it is. The next
+ * background run wakes the machine before it connects. S2 (spec 026 D1): a
+ * runner whose keying is deferred reaches its machine at its first
+ * background run, not at the daemon's start.
  */
 
 /** The note topic of the lane's one status line. */
@@ -60,6 +69,21 @@ export interface DaemonLaneOptions {
   readonly lastNote: (topic: string) => string | undefined;
   readonly log: (text: string) => void;
   readonly env?: NodeJS.ProcessEnv;
+}
+
+/** The daemon's Vitest runner on a remote lane, which can put its machine to sleep (B7). */
+export interface DaemonRemoteLane extends RunnerAdapter {
+  sleepRemote(): Promise<RemoteSleepOutcome>;
+}
+
+/** Whether `adapter` is a remote lane that can put its machine to sleep. */
+export function sleepsRemote(adapter: RunnerAdapter): adapter is DaemonRemoteLane {
+  return typeof (adapter as Partial<DaemonRemoteLane>).sleepRemote === "function";
+}
+
+/** `adapter` when it is a remote lane that can put its machine to sleep; else `null`. */
+export function remoteLaneOf(adapter: RunnerAdapter | null): DaemonRemoteLane | null {
+  return adapter !== null && sleepsRemote(adapter) ? adapter : null;
 }
 
 /** `options.vitest`, its background runs on the remote lane when one is named and allowed. */
@@ -89,7 +113,12 @@ export function withDaemonRemoteLane(options: DaemonLaneOptions): RunnerAdapter 
     return options.vitest;
   }
   const meanwhile = found.lane.whenLost === "local" ? "run here" : "are not run";
-  say(`remote ${target}: connecting; background runs of vitest ${meanwhile} until it answers`);
+  const eager = !runnerKeyingDeferred(options.policy(), "vitest");
+  say(
+    eager
+      ? `remote ${target}: connecting; background runs of vitest ${meanwhile} until it answers`
+      : `remote ${target}: connects at the first background run of vitest`,
+  );
   const hosted = hostedOptions(options.vitestOptions);
   const machines = machineOf(
     found.lane,
@@ -104,8 +133,9 @@ export function withDaemonRemoteLane(options: DaemonLaneOptions): RunnerAdapter 
     },
     options.env,
   );
-  const adapter = withRemoteLane({
+  const adapter: RemoteLaneRunner & Partial<DaemonRemoteLane> = withRemoteLane({
     target,
+    eager,
     whenLost: found.lane.whenLost,
     root,
     version,
@@ -137,6 +167,17 @@ export function withDaemonRemoteLane(options: DaemonLaneOptions): RunnerAdapter 
     await close();
     await machines.release();
   };
+  adapter.sleepRemote = async (): Promise<RemoteSleepOutcome> => {
+    const machine = machines.current();
+    if (machine === null)
+      return { kind: "none", reason: `remote ${target} reached no machine yet` };
+    const named = { provider: machine.provider, machine: machine.id };
+    if (!machine.capabilities.sleepOnIdle) return { kind: "always-on", ...named };
+    const slept = await adapter.sleep(() => machines.sleep(machine));
+    return slept === "slept"
+      ? { kind: "slept", ...named }
+      : { kind: "busy", ...named, reason: slept.busy };
+  };
   return adapter;
 }
 
@@ -159,6 +200,12 @@ function machineOf(lane: RemoteLane, request: MachineRequest, env: NodeJS.Proces
     }
   };
   return {
+    current: (): RemoteMachine | null => machine,
+    /** After the lane closed its channel: the machine's own sleep, then its record. */
+    sleep: async (asleep: RemoteMachine): Promise<void> => {
+      await asleep.sleep();
+      track(() => updateMachine(key, { status: "sleeping" }, env));
+    },
     reach: async (): Promise<RemoteMachine> => {
       if (machine === null) {
         const acquired = await provider.acquire(request, lane.providerConfig);

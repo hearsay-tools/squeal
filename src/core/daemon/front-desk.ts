@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
-import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { DaemonPhase, RemoteSleepOutcome, SyncAnswer } from "../types/daemon.js";
 import type { ImportOutcome, KeepOutcome } from "../types/daemon-writes.js";
 import type { FullSuiteCheckpoint } from "../types/scheduler.js";
 import { CommitDesk } from "./commit-desk.js";
@@ -52,6 +52,12 @@ const waitingSync = new Map<
 const waitingHold = new Map<
   string,
   { resolve: (holding: boolean) => void; reject: (error: Error) => void }
+>();
+
+/** Review 0.1.616 B7: `remote-sleep` requests the main thread has not answered. */
+const waitingSleep = new Map<
+  string,
+  { resolve: (outcome: RemoteSleepOutcome) => void; reject: (error: Error) => void }
 >();
 
 const waitingWrite = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
@@ -114,6 +120,12 @@ function bind(identity: DeskIdentity): void {
         post({ type: "hold", id });
       }),
     requestResume: async () => post({ type: "resume" }),
+    requestRemoteSleep: () =>
+      new Promise((resolve, reject) => {
+        const id = randomUUID();
+        waitingSleep.set(id, { resolve, reject });
+        post({ type: "remote-sleep", id });
+      }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
@@ -217,6 +229,13 @@ function receive(message: ToDesk): void {
       waitingHold.delete(message.id);
       if (message.holding !== null) entry?.resolve(message.holding);
       else entry?.reject(new Error(message.error ?? "hold failed"));
+      return;
+    }
+    case "remote-sleep-result": {
+      const entry = waitingSleep.get(message.id);
+      waitingSleep.delete(message.id);
+      if (message.outcome !== null) entry?.resolve(message.outcome);
+      else entry?.reject(new Error(message.error ?? "remote sleep failed"));
       return;
     }
     case "write-result": {

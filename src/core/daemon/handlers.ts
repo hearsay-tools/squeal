@@ -16,6 +16,8 @@ import {
   type HoldResponse,
   type PingResponse,
   type RecordedRequest,
+  type RemoteSleepOutcome,
+  type RemoteSleepResponse,
   type RunAllResponse,
   type RunSlowResponse,
   type SyncAnswer,
@@ -149,6 +151,12 @@ export interface HandlerContext {
   /** `squeal hold` removed its entry, or `squeal start` all: the scheduler reads them again. Never awaited. */
   readonly requestResume?: () => Promise<void>;
   /**
+   * Review 0.1.616 B7: `squeal remote sleep` closes the remote lane's idle
+   * channel, then asks its machine to sleep, like `requestHold`. Absent:
+   * this daemon answers that it has no remote lane to sleep.
+   */
+  readonly requestRemoteSleep?: () => Promise<RemoteSleepOutcome>;
+  /**
    * Spec 021 D15 (row 021-16): writes a batch a hook or command sent, in
    * the daemon's retried path, with `storeSchema` the `user_version` of its
    * store. Both absent: this daemon answers that it takes no writes, and
@@ -198,6 +206,11 @@ interface HoldState {
   error: string | null;
 }
 
+interface RemoteSleepState {
+  outcome: RemoteSleepOutcome | null;
+  error: string | null;
+}
+
 /**
  * The `ping` answer. Review wave-23 B2: with the narrow requests not taken
  * yet, so a later `status --at --wait` joins them; none: no field.
@@ -241,6 +254,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
   const syncRequests = new Map<string, SyncState>();
   const holdRequests = new Map<string, HoldState>();
+  const sleepRequests = new Map<string, RemoteSleepState>();
   const { requestWrite, storeSchema } = context;
   const writes =
     requestWrite === undefined || storeSchema === undefined
@@ -302,6 +316,16 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     requestId,
     settled: state.holding !== null || state.error !== null,
     holding: state.holding,
+    error: state.error,
+  });
+
+  const remoteSleep = (requestId: string, state: RemoteSleepState): RemoteSleepResponse => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "remote-sleep",
+    requestId,
+    settled: state.outcome !== null || state.error !== null,
+    outcome: state.outcome,
     error: state.error,
   });
 
@@ -433,6 +457,29 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         const state = holdRequests.get(request.requestId);
         if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
         return hold(request.requestId, state);
+      }
+      case "remote-sleep": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        if (context.requestRemoteSleep === undefined) {
+          return errorResponse("this daemon has no remote lane to sleep");
+        }
+        const requestId = randomUUID();
+        const state: RemoteSleepState = { outcome: null, error: null };
+        remember(sleepRequests, requestId, state);
+        context.requestRemoteSleep().then(
+          (outcome) => {
+            state.outcome = outcome;
+          },
+          (error: unknown) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          },
+        );
+        return remoteSleep(requestId, state);
+      }
+      case "remote-sleep-status": {
+        const state = sleepRequests.get(request.requestId);
+        if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
+        return remoteSleep(request.requestId, state);
       }
       case "resume":
         if (context.requestResume === undefined) return errorResponse("this daemon cannot hold");

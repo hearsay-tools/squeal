@@ -9,6 +9,9 @@ import {
 import type { MachineRecord, RemoteMachine } from "../core/runner-host/remote/provider.js";
 import { providerOf } from "../core/runner-host/remote/providers/index.js";
 import { loadRemoteSettings } from "../core/runner-host/remote/settings.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { DaemonRequest, DaemonResponse, RemoteSleepOutcome } from "../core/types/daemon.js";
+import { askDaemon, daemonSocket } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 
 /*
@@ -18,6 +21,12 @@ import type { CliIo } from "./main.js";
  * releases (`worktree-removed`) each machine whose worktree is gone, which
  * stops a cloud machine's disk charges. None needs a daemon. A machine's
  * hooks come from the user's `remote.json` entry it was acquired under.
+ *
+ * Review 0.1.616 B7 (D12.4): `sleep` asks the worktree's running daemon
+ * first, which closes its idle channel before the machine sleeps and
+ * refuses while a run is on it. With no daemon, or a daemon that holds no
+ * machine, the machine is reached here. A machine that does not sleep when
+ * idle, such as a static `ssh` host, is left as it is.
  */
 
 const USAGE = "usage: squeal remote list [--json] | sleep [<worktree>] | prune [--dry-run]\n";
@@ -25,14 +34,28 @@ const USAGE = "usage: squeal remote list [--json] | sleep [<worktree>] | prune [
 /** Exit 1: a machine could not be reached, slept or released, or the file could not be read. */
 const FAILED = 1;
 
-export async function remoteCommand(args: readonly string[], io: CliIo): Promise<number> {
+/** How long `sleep` waits for a daemon's sleep: its hooks' own default deadlines are shorter. */
+const SLEEP_WAIT_MS = 180_000;
+
+export interface RemoteDeps {
+  /** The answer of the daemon of the worktree at `root`; `null` when none runs. */
+  readonly ask?: (root: AbsolutePath, request: DaemonRequest) => Promise<DaemonResponse | null>;
+  /** How often `sleep` asks the daemon how its sleep goes. */
+  readonly pollMs?: number;
+}
+
+export async function remoteCommand(
+  args: readonly string[],
+  io: CliIo,
+  deps: RemoteDeps = {},
+): Promise<number> {
   const [sub, ...rest] = args;
   const env = (io.env ?? process.env) as NodeJS.ProcessEnv;
   if (sub === "list" && rest.every((arg) => arg === "--json")) {
     return list(io, env, rest.includes("--json"));
   }
   if (sub === "sleep" && rest.length <= 1 && !rest[0]?.startsWith("-"))
-    return sleep(io, env, rest[0]);
+    return sleep(io, env, rest[0], deps);
   if (sub === "prune" && rest.every((arg) => arg === "--dry-run")) {
     return prune(io, env, rest.includes("--dry-run"));
   }
@@ -92,6 +115,7 @@ async function sleep(
   io: CliIo,
   env: NodeJS.ProcessEnv,
   worktree: string | undefined,
+  deps: RemoteDeps,
 ): Promise<number> {
   const read = machinesOf(io, env);
   if (read === null) return FAILED;
@@ -102,20 +126,74 @@ async function sleep(
     io.stderr(`squeal remote sleep: no remote machine is tracked for ${path}\n`);
     return FAILED;
   }
+  // One worktree's records: its daemon holds at most the machine of its lane.
+  const root = records[0]?.worktreeRoot as AbsolutePath;
+  const daemon = await daemonSleep(root, deps).catch((error: unknown) => String(error));
   let code = 0;
   for (const record of records) {
-    const machine = reattach(record, env);
-    try {
-      if (typeof machine === "string") throw new Error(machine);
-      await machine.sleep();
-      updateMachine(record, { status: "sleeping" }, env);
-      io.stdout(`${record.id}: asked to sleep\n`);
-    } catch (error) {
-      io.stderr(`${record.id}: not slept: ${(error as Error).message}\n`);
+    const told = typeof daemon === "string" ? { failed: daemon } : toldBy(daemon, record);
+    const line = told ?? (await sleepHere(record, env));
+    if ("failed" in line) {
+      io.stderr(`${record.id}: not slept: ${line.failed}\n`);
       code = FAILED;
-    }
+    } else io.stdout(`${record.id}: ${line.done}\n`);
   }
   return code;
+}
+
+type Told = { readonly done: string } | { readonly failed: string };
+
+/** What the daemon's `outcome` says of `record`; `null` when it holds no such machine. */
+function toldBy(outcome: RemoteSleepOutcome | null, record: MachineRecord): Told | null {
+  if (outcome === null || outcome.kind === "none" || outcome.provider !== record.provider) {
+    return null;
+  }
+  if (outcome.kind === "busy") return { failed: outcome.reason };
+  return { done: outcome.kind === "slept" ? "asked to sleep" : ALWAYS_ON };
+}
+
+const ALWAYS_ON = "always on; nothing to sleep";
+
+/** With no daemon holding it: the machine reached here, asked to sleep, and recorded. */
+async function sleepHere(record: MachineRecord, env: NodeJS.ProcessEnv): Promise<Told> {
+  if (!record.capabilities.sleepOnIdle) return { done: ALWAYS_ON };
+  const machine = reattach(record, env);
+  try {
+    if (typeof machine === "string") throw new Error(machine);
+    await machine.sleep();
+    updateMachine(record, { status: "sleeping" }, env);
+    return { done: "asked to sleep" };
+  } catch (error) {
+    return { failed: (error as Error).message };
+  }
+}
+
+/**
+ * The daemon of `root` closes its channel and sleeps its machine: what it
+ * did, `null` when no daemon runs, or why it could not (a string).
+ */
+async function daemonSleep(
+  root: AbsolutePath,
+  deps: RemoteDeps,
+): Promise<RemoteSleepOutcome | null | string> {
+  const ask =
+    deps.ask ??
+    ((at: AbsolutePath, request) => daemonSocket(at).then((s) => askDaemon(s, request)));
+  const deadline = performance.now() + SLEEP_WAIT_MS;
+  let answer = await ask(root, { type: "remote-sleep" });
+  if (answer === null) return null;
+  if (!answer.ok) {
+    return `the daemon of ${root} cannot close its remote channel (${answer.error}); run \`squeal stop\` there first`;
+  }
+  while (answer?.ok === true && answer.type === "remote-sleep") {
+    if (answer.settled) return answer.outcome ?? answer.error ?? "the daemon's sleep failed";
+    if (performance.now() > deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, deps.pollMs ?? 100));
+    answer = await ask(root, { type: "remote-sleep-status", requestId: answer.requestId });
+  }
+  return answer === null
+    ? `the daemon of ${root} ended during the sleep`
+    : `the daemon of ${root} did not finish the sleep`;
 }
 
 async function prune(io: CliIo, env: NodeJS.ProcessEnv, dryRun: boolean): Promise<number> {

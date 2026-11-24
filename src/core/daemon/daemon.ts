@@ -17,6 +17,7 @@ import { clearRecord, markExit, recordRegistration } from "../presence/events.js
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import type { RunnerHostLaunch } from "../runner-host/channel.js";
+import type { DaemonRemoteLane } from "../runner-host/remote/daemon-lane.js";
 import { hostClock } from "../scheduler/clock.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { ImportsSeen } from "../shared/imports-seen.js";
@@ -269,6 +270,8 @@ class Daemon {
   #runner: RunnerAdapter | null = null;
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
   #vitest: RecoveringRunner | null = null;
+  /** Review 0.1.616 B7: Vitest on its remote lane, which `squeal remote sleep` puts to sleep. */
+  #remoteLane: DaemonRemoteLane | null = null;
   #loop: DaemonLoop | null = null;
   /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
   #code: CodePass | null = null;
@@ -925,7 +928,9 @@ class Daemon {
       });
       // Spec 021 D9, D12 (rows 021-13, 021-14): Vitest's background runs on the remote lane the
       // user names for this repository in remote.json, when its squeal.config.json allows one.
-      const { withDaemonRemoteLane } = await import("../runner-host/remote/daemon-lane.js");
+      const { remoteLaneOf, withDaemonRemoteLane } = await import(
+        "../runner-host/remote/daemon-lane.js"
+      );
       const vitestLanes =
         vitestRunner === null
           ? null
@@ -968,6 +973,7 @@ class Daemon {
         ),
       );
       this.#vitest = vitestRunner;
+      this.#remoteLane = remoteLaneOf(vitestLanes);
       this.#runner = runner;
       await Promise.all([
         ...(await openedAtStart(
@@ -1233,6 +1239,15 @@ class Daemon {
           this.#requestFocus(testFiles, texts, withinMs),
         requestHold: watch(() => this.#requestHold()),
         requestResume: watch(async () => void (await this.#requestHold())),
+        requestRemoteSleep: async () => {
+          await this.#starting;
+          return (
+            (await this.#remoteLane?.sleepRemote()) ?? {
+              kind: "none",
+              reason: "this worktree's daemon has no remote lane",
+            }
+          );
+        },
         ...(this.#commitStart === null
           ? {}
           : { commitAsk: (request: CommitAskRequest) => this.#commitStart?.asks.ask(request) }),

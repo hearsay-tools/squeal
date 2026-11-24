@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type { CommitAskRequest, CommitSnapshot } from "../types/commit-ask.js";
 import type { RelativePath } from "../types/common.js";
-import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { DaemonPhase, RemoteSleepOutcome, SyncAnswer } from "../types/daemon.js";
 import type {
   FailedOutcome,
   ImportOutcome,
@@ -84,6 +84,8 @@ export interface DeskEvents {
   readonly requestHold?: () => Promise<boolean>;
   /** `squeal hold` ended, or `squeal start`: the command holds read again. */
   readonly requestResume?: () => Promise<void>;
+  /** Review 0.1.616 B7: `squeal remote sleep`; absent: the daemon has no remote lane to sleep. */
+  readonly requestRemoteSleep?: () => Promise<RemoteSleepOutcome>;
   /** Row 023-40c (spec 023 D7.3 as amended): a commit daemon's ask; absent: no commit daemon. */
   readonly commitAsk?: (request: CommitAskRequest) => void;
   /**
@@ -219,6 +221,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestGroup,
     requestHold,
     requestResume,
+    requestRemoteSleep,
     commitAsk,
     requestWrite,
     requestImport,
@@ -236,6 +239,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestSync: asked(events.requestSync),
     ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
+    ...(requestRemoteSleep === undefined ? {} : { requestRemoteSleep: asked(requestRemoteSleep) }),
     ...(commitAsk === undefined ? {} : { commitAsk: safe(commitAsk) }),
     ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
     ...(requestImport === undefined ? {} : { requestImport: asked(requestImport) }),
@@ -370,6 +374,22 @@ async function inWorker(
               }),
           );
           return;
+        case "remote-sleep":
+          (
+            events.requestRemoteSleep?.() ??
+            Promise.reject(new Error("this daemon has no remote lane to sleep"))
+          ).then(
+            (outcome) =>
+              post({ type: "remote-sleep-result", id: message.id, outcome, error: null }),
+            (error: unknown) =>
+              post({
+                type: "remote-sleep-result",
+                id: message.id,
+                outcome: null,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+          );
+          return;
         case "resume":
           events.requestResume?.().catch(() => {});
           return;
@@ -462,6 +482,9 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestSync: events.requestSync,
       ...(events.requestHold === undefined ? {} : { requestHold: events.requestHold }),
       ...(events.requestResume === undefined ? {} : { requestResume: events.requestResume }),
+      ...(events.requestRemoteSleep === undefined
+        ? {}
+        : { requestRemoteSleep: events.requestRemoteSleep }),
       ...(commitDesk === null ? {} : { commitDesk }),
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),

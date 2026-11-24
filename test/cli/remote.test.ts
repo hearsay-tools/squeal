@@ -1,8 +1,12 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, onTestFinished } from "vitest";
+import { askDaemon } from "../../src/cli/daemon-access.js";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { type RemoteDeps, remoteCommand } from "../../src/cli/remote.js";
+import { createHandlers } from "../../src/core/daemon/handlers.js";
+import { createDaemonServer } from "../../src/core/daemon/server.js";
 import {
   machinesPath,
   readMachines,
@@ -10,6 +14,16 @@ import {
 } from "../../src/core/runner-host/remote/machines-store.js";
 import type { MachineRecord } from "../../src/core/runner-host/remote/provider.js";
 import { remoteSettingsPath } from "../../src/core/runner-host/remote/settings.js";
+import {
+  type AbsolutePath,
+  PAYLOAD_SCHEMA_VERSION,
+  type WorktreeId,
+} from "../../src/core/types/common.js";
+import type {
+  DaemonRequest,
+  DaemonResponse,
+  RemoteSleepOutcome,
+} from "../../src/core/types/daemon.js";
 
 /*
  * Spec 026 D12.3 to D12.5 (row 026-10): `squeal remote list|sleep|prune`
@@ -96,7 +110,12 @@ function track(env: NodeJS.ProcessEnv, over: Partial<MachineRecord>): void {
   );
 }
 
-async function remote(args: string[], env: NodeJS.ProcessEnv, cwd = scratch) {
+async function remote(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  cwd = scratch,
+  deps: RemoteDeps | null = null,
+) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
@@ -109,7 +128,8 @@ async function remote(args: string[], env: NodeJS.ProcessEnv, cwd = scratch) {
     cwd,
     env,
   };
-  const code = await main(["remote", ...args], io);
+  const code =
+    deps === null ? await main(["remote", ...args], io) : await remoteCommand(args, io, deps);
   return { code, stdout, stderr };
 }
 
@@ -189,7 +209,7 @@ describe("squeal remote sleep (row 026-10)", () => {
     expect(readMachines(u.env).machines[0]?.status).toBe("awake");
   });
 
-  it("does nothing for a static ssh machine", async () => {
+  it("does nothing for a static ssh machine, and never marks it sleeping (review 0.1.616 B7)", async () => {
     const u = user();
     track(u.env, {
       provider: "ssh",
@@ -197,9 +217,137 @@ describe("squeal remote sleep (row 026-10)", () => {
       repositoryKey: "/static",
       destination: "build-box",
       worktreeRoot: u.worktree,
+      capabilities: { hasGitRepository: false, sleepOnIdle: false, ephemeralHostKey: false },
     });
     const out = await remote(["sleep", u.worktree], u.env);
-    expect(out).toEqual({ code: 0, stdout: "build-box: asked to sleep\n", stderr: "" });
+    expect(out).toEqual({
+      code: 0,
+      stdout: "build-box: always on; nothing to sleep\n",
+      stderr: "",
+    });
+    expect(u.calls()).toEqual([]);
+    expect(readMachines(u.env).machines[0]?.status).toBe("awake");
+  });
+});
+
+describe("squeal remote sleep through the worktree's daemon (review 0.1.616 B7)", () => {
+  /** A daemon whose `remote-sleep` settles with `outcome` at its second status ask. */
+  const daemon = (outcome: RemoteSleepOutcome | null, asked: DaemonRequest[] = []): RemoteDeps => {
+    let polls = 0;
+    const answer = (settled: boolean): DaemonResponse => ({
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "remote-sleep",
+      requestId: "s1",
+      settled,
+      outcome: settled ? outcome : null,
+      error: settled && outcome === null ? "the sleep hook failed" : null,
+    });
+    return {
+      ask: async (_root, request) => {
+        asked.push(request);
+        if (request.type === "remote-sleep") return answer(false);
+        return answer(++polls >= 2);
+      },
+      pollMs: 1,
+    };
+  };
+
+  it("lets the daemon close its channel and sleep the machine; runs no hook here", async () => {
+    const u = user();
+    track(u.env, { worktreeRoot: u.worktree });
+    const asked: DaemonRequest[] = [];
+    const slept = { kind: "slept", provider: "command", machine: "cmd:lan" } as const;
+    const out = await remote(["sleep", u.worktree], u.env, scratch, daemon(slept, asked));
+    expect(out).toEqual({ code: 0, stdout: "cmd:lan: asked to sleep\n", stderr: "" });
+    expect(asked.map((r) => r.type)).toEqual([
+      "remote-sleep",
+      "remote-sleep-status",
+      "remote-sleep-status",
+    ]);
+    expect(u.calls()).toEqual([]);
+  });
+
+  it("refuses while a run is on the machine, and marks nothing sleeping", async () => {
+    const u = user();
+    track(u.env, { worktreeRoot: u.worktree });
+    const busy = {
+      kind: "busy",
+      provider: "command",
+      machine: "cmd:lan",
+      reason: "a run is on remote command",
+    } as const;
+    const out = await remote(["sleep", u.worktree], u.env, scratch, daemon(busy));
+    expect(out).toEqual({
+      code: 1,
+      stdout: "",
+      stderr: "cmd:lan: not slept: a run is on remote command\n",
+    });
+    expect(u.calls()).toEqual([]);
+    expect(readMachines(u.env).machines[0]?.status).toBe("awake");
+  });
+
+  it("names the daemon's failure, and runs no hook here", async () => {
+    const u = user();
+    track(u.env, { worktreeRoot: u.worktree });
+    const out = await remote(["sleep", u.worktree], u.env, scratch, daemon(null));
+    expect(out.code).toBe(1);
+    expect(out.stderr).toBe("cmd:lan: not slept: the sleep hook failed\n");
+    expect(u.calls()).toEqual([]);
+  });
+
+  it("refuses beside an older daemon, which cannot close its channel", async () => {
+    const u = user();
+    track(u.env, { worktreeRoot: u.worktree });
+    const older: RemoteDeps = {
+      ask: async () => ({
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        ok: false,
+        error: "unknown request type",
+      }),
+    };
+    const out = await remote(["sleep", u.worktree], u.env, scratch, older);
+    expect(out.code).toBe(1);
+    expect(out.stderr).toBe(
+      `cmd:lan: not slept: the daemon of ${u.worktree} cannot close its remote channel (unknown request type); run \`squeal stop\` there first\n`,
+    );
+    expect(u.calls()).toEqual([]);
+  });
+
+  it("runs the hook here when the daemon holds no machine", async () => {
+    const u = user();
+    track(u.env, { worktreeRoot: u.worktree });
+    const none = { kind: "none", reason: "remote command reached no machine yet" } as const;
+    const out = await remote(["sleep", u.worktree], u.env, scratch, daemon(none));
+    expect(out).toEqual({ code: 0, stdout: "cmd:lan: asked to sleep\n", stderr: "" });
+    expect(u.calls()).toEqual(["sleep lan -"]);
+    expect(readMachines(u.env).machines[0]?.status).toBe("sleeping");
+  });
+
+  it("asks a real daemon socket, and waits for its sleep to settle", async () => {
+    const u = user();
+    track(u.env, { worktreeRoot: u.worktree });
+    const socketPath = join(u.worktree, "d.sock") as AbsolutePath;
+    let settle = (_: RemoteSleepOutcome) => {};
+    const handlers = createHandlers({
+      worktreeId: "w" as WorktreeId,
+      root: u.worktree as AbsolutePath,
+      squealVersion: "0.0.0-test",
+      startedAt: 1,
+      token: "t",
+      phase: () => "ready",
+      requestFullSuite: () => new Promise(() => {}),
+      onActivity: () => {},
+      onStop: () => {},
+      onStepDown: () => {},
+      requestRemoteSleep: () => new Promise((resolve) => (settle = resolve)),
+    });
+    const server = await createDaemonServer(socketPath, handlers);
+    onTestFinished(() => server.close());
+    setTimeout(() => settle({ kind: "slept", provider: "command", machine: "cmd:lan" }), 50);
+    const deps: RemoteDeps = { ask: (_root, request) => askDaemon(socketPath, request), pollMs: 5 };
+    const out = await remote(["sleep", u.worktree], u.env, scratch, deps);
+    expect(out).toEqual({ code: 0, stdout: "cmd:lan: asked to sleep\n", stderr: "" });
     expect(u.calls()).toEqual([]);
   });
 });

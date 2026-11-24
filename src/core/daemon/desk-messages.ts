@@ -1,6 +1,6 @@
 import type { CommitAskRequest, CommitSnapshot } from "../types/commit-ask.js";
 import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
-import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { DaemonPhase, RemoteSleepOutcome, SyncAnswer } from "../types/daemon.js";
 import type {
   ImportOutcome,
   ImportRequest,
@@ -82,6 +82,13 @@ export type ToDesk =
       readonly error: string | null;
     }
   | {
+      /** Review 0.1.616 B7: how `remote-sleep` request `id` went. */
+      readonly type: "remote-sleep-result";
+      readonly id: string;
+      readonly outcome: RemoteSleepOutcome | null;
+      readonly error: string | null;
+    }
+  | {
       /** Spec 021 D15: how sent write `id` went; `error` `null` once written. */
       readonly type: "write-result";
       readonly id: string;
@@ -121,6 +128,7 @@ export type FromDesk =
     }
   | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
+  | { readonly type: "remote-sleep"; readonly id: string }
   /** Row 023-40c: a `status --at --run` call's ask of a commit daemon. */
   | { readonly type: "commit-ask"; readonly request: CommitAskRequest }
   | { readonly type: "resume" }
