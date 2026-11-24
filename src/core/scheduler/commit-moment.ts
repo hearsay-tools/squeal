@@ -142,10 +142,17 @@ export function testWaitEnded(
   });
 }
 
-/** `squeal run <group>` for lint group `group` (`releaseLintGroup`); 0 outside a git repository. */
-export function releaseLint(context: SchedulerContext, group: string): number {
+/**
+ * `squeal run <group>` for lint group `group` (`releaseLintGroup`); 0 outside a git repository.
+ * With `paths` (review 0.1.616 B4), only their checks.
+ */
+export function releaseLint(
+  context: SchedulerContext,
+  group: string,
+  paths?: readonly RelativePath[],
+): number {
   const commonDir = resolveCommonDir(context.root);
   if (commonDir === null) return 0;
   const blobOf = (path: RelativePath) => context.keys.cache.hashOf(path);
-  return releaseLintGroup(commonDir, context.policy, context.worktreeId, group, blobOf);
+  return releaseLintGroup(commonDir, context.policy, context.worktreeId, group, blobOf, paths);
 }

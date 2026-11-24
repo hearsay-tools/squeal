@@ -3,9 +3,12 @@ import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/open.js";
 import { type CoveredFile, writeCoveredFiles } from "../../src/core/store/covered-files.js";
-import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
+import type { LintOutcome } from "../../src/core/types/lint.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { NarrowRun } from "../../src/core/types/scheduler.js";
 import { appendRevisions, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon, received } from "./fake-daemon.js";
@@ -63,6 +66,7 @@ export function worktree(runtimeDir: string) {
   write(
     "squeal.config.json",
     JSON.stringify({
+      lint: { enabled: true, tools: ["eslint"] },
       checks: [
         { name: "unit", runner: "vitest", tests: ["test/unit/**"], at: "manual" },
         { name: "lint", lint: true, at: "commit" },
@@ -138,8 +142,26 @@ export function worktree(runtimeDir: string) {
       },
       { listed: () => true, pending: () => false, leftAt: () => null, knownSince: 0 as EpochMs },
     );
+  /** The lint store's eslint states, each path at its outcome. */
+  const lintStates = (states: Record<string, LintOutcome>) => {
+    const lint = { ...DEFAULT_POLICY.lint, enabled: true };
+    const opened = openLintStore(repo.commonDir, { lint }, { busyTimeoutMs: 5_000 });
+    if (isLintStoreOpenFailure(opened)) throw new Error(JSON.stringify(opened));
+    opened.states.upsertMany(
+      Object.entries(states).map(([path, outcome]) => ({
+        worktreeId: id,
+        check: { kind: "lint", path: path as RelativePath, tool: "eslint" } as const,
+        outcome,
+        judged: null,
+        stale: false,
+        reason: null,
+        changedAt: 1,
+      })),
+    );
+    opened.close();
+  };
   const base = git("merge-base", "main", "HEAD").trim();
-  return { root, socket, git, write, current, queued, covered, base, store, id };
+  return { root, socket, git, write, current, queued, covered, lintStates, base, store, id };
 }
 
 export const CHANGED = [

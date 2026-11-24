@@ -109,37 +109,42 @@ describe("squeal run <group> --base <ref> (spec 026 D4, row 026-07)", () => {
     ]);
   });
 
-  it("lints a lint group's pending checks and names the changed paths", async () => {
+  // Review 0.1.616 B4: the changed paths go to the daemon, and the wait counts theirs alone.
+  it("lints only the changed paths' lint checks, and waits for theirs alone", async () => {
     const w = worktree();
+    // `src/core.ts` changed and has a lint check; `src/new.ts` changed with none (no rule
+    // matches it); `src/unrelated.ts` did not change, waits to lint and failed before.
+    w.lintStates({ "src/core.ts": "pass", "src/unrelated.ts": "fail", "src/waits.ts": "pending" });
     const taken = {
       ok: true,
       type: "run-group",
       requestId: "g1",
       group: "lint",
-      requested: { revision: 3, queued: 2 },
+      requested: { revision: 3, queued: 1 },
       unknown: false,
       error: null,
     };
-    await fakeDaemon(w.socket, { "run-group": [taken] });
-    const text = await run(["run", "lint", "--base", "main"], w.root);
-    expect(text.code).toBe(0);
+    await fakeDaemon(w.socket, { "run-group-paths": [taken] });
+    const text = await run(["run", "lint", "--base", "main", "--wait", "5000"], w.root);
+    expect(sent()).toEqual([{ type: "run-group-paths", group: "lint", paths: [...CHANGED] }]);
     expect(text.stdout).toBe(
       [
-        `Changes since ${w.base.slice(0, 12)} (merge base of main and HEAD): 5 changed paths; group lint lints its pending lint checks, these among them.`,
-        "Group lint requested at revision 3: 2 lint checks queued; they lint now.",
+        `Changes since ${w.base.slice(0, 12)} (merge base of main and HEAD): 5 changed paths; group lint lints the lint checks of these paths.`,
+        "Group lint completed: no lint findings in 1 file",
+        "Group lint requested at revision 3: 1 lint check queued; they lint now.",
         "",
       ].join("\n"),
     );
-    expect(sent()).toEqual([{ type: "run-group", group: "lint" }]);
-    const json = await run(["run", "lint", "--base", "main", "--json"], w.root);
+    expect(text.code).toBe(0);
+    const json = await run(["run", "lint", "--base", "main", "--wait", "5000", "--json"], w.root);
     expect(JSON.parse(json.stdout)).toMatchObject({
       group: "lint",
       kind: "lint",
       mergeBase: w.base,
       changedPaths: [...CHANGED],
       revision: 3,
-      queued: 2,
-      verdict: null,
+      queued: 1,
+      verdict: { line: "Group lint completed: no lint findings in 1 file", code: 0 },
       code: 0,
     });
   });

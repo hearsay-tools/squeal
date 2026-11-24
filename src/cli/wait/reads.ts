@@ -10,7 +10,12 @@ import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/s
 import { groupView } from "../../core/scheduler/slow.js";
 import { isBusy } from "../../core/store/connection.js";
 import { isStoreOpenFailure, openStore } from "../../core/store/open.js";
-import type { AbsolutePath, RevisionNumber, WorktreeId } from "../../core/types/common.js";
+import type {
+  AbsolutePath,
+  RelativePath,
+  RevisionNumber,
+  WorktreeId,
+} from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import type { LintTool } from "../../core/types/lint.js";
 import type { Policy } from "../../core/types/policy.js";
@@ -39,7 +44,8 @@ import type { ReadField, WaitRecord } from "./table.js";
  */
 export type WaitFiles =
   | { readonly kind: "lane"; readonly lane: CheckpointLane | null }
-  | { readonly kind: "group"; readonly group: string }
+  /** `paths`: a lint group's wait on those paths' checks only (review 0.1.616 B4). */
+  | { readonly kind: "group"; readonly group: string; readonly paths?: readonly RelativePath[] }
   | { readonly kind: "list"; readonly files: readonly TestFileRef[] };
 
 /** A checkpoint wait's files: its lane's, or its covered files. */
@@ -162,7 +168,7 @@ export function waitReads(ask: RunWaitAsk, ports: WaitPorts): (store: Store | nu
       const presence = presenceOf(ask.root, worktreeIdFor(ask.root), ports);
       return () => (field) => {
         if (field === "late") return late();
-        if (field === "counts") return lintRead(ask.root, ask.files.group, ask.deadline, now);
+        if (field === "counts") return lintRead(ask.root, ask.files, ask.deadline, now);
         // The lint group reads no worktree store but here, in a read of its own (row 011-327).
         if (field === "daemon") return { daemon: presenceRead(ask, presence, now) };
         return unknownField(ask, field);
@@ -242,7 +248,7 @@ export interface LintCounts {
  */
 function lintRead(
   root: AbsolutePath,
-  group: string,
+  { group, paths }: Extract<WaitFiles, { kind: "group" }>,
   deadline: number,
   now: () => number,
 ): Partial<WaitRecord> {
@@ -259,7 +265,8 @@ function lintRead(
     if (access === null || access === "missing" || "unreadable" in access) {
       return { counts: "unread" };
     }
-    return { counts: countsIn(access.store, policy, id, tools) };
+    const only = paths === undefined ? null : new Set<string>(paths);
+    return { counts: countsIn(access.store, policy, id, tools, only) };
   } catch (error) {
     if (!isBusy(error)) return { counts: "unread" };
     const waited = Date.now() - started;
@@ -274,12 +281,13 @@ function lintBusyText(waited: number): string {
   return `lint store busy, waited ${waited} ms: another process holds the lint store's lock; run the command again once it is released`;
 }
 
-/** The group's lint checks in the open lint store, by its tools. */
+/** The group's lint checks in the open lint store, by its tools; with `only`, those paths' alone. */
 function countsIn(
   store: LintStore,
   policy: Policy,
   id: WorktreeId,
   tools: readonly LintTool[],
+  only: ReadonlySet<string> | null,
 ): LintCounts {
   const counts = { files: 0, failing: 0, linting: 0, held: 0, unknown: 0 };
   for (const tool of tools) {
@@ -288,6 +296,7 @@ function countsIn(
     const released =
       at !== undefined && heldUntilAsked(at) ? readReleased(store.meta, lintScope(id, tool)) : null;
     for (const state of store.states.list(id, { tool })) {
+      if (only !== null && !only.has(state.check.path)) continue;
       counts.files += 1;
       // A stale check's outcome is an old one: it is no verdict until linted again (review 0.1.398 B1).
       if (waitsToLint(state)) {
