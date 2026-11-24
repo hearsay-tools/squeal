@@ -1,0 +1,101 @@
+{
+  "startedAt": "2026-11-24T18:26:16.492Z",
+  "squealVersion": "0.1.615 vs 0.1.623",
+  "plugins": [
+    {
+      "version": "0.1.615",
+      "label": "0.1.615"
+    },
+    {
+      "version": "0.1.623",
+      "label": "0.1.623"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 7,
+  "sha256MiBPerS": [
+    2430.3333333333335,
+    2455.6666666666665,
+    2445.6666666666665
+  ],
+  "loadavgAtStart": "0.15 0.03 0.01 1/380 7239",
+  "cells": [
+    {
+      "name": "ref@0.1.615",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.615",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.623",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.623",
+      "rep": 1
+    },
+    {
+      "name": "size-l@0.1.623",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.623",
+      "rep": 1
+    },
+    {
+      "name": "size-l@0.1.615",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.615",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.615",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.615",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.623",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.623",
+      "rep": 1
+    },
+    {
+      "name": "load-50@0.1.623",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.623",
+      "rep": 1
+    },
+    {
+      "name": "load-50@0.1.615",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.615",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-24T19:29:15.830Z"
+}

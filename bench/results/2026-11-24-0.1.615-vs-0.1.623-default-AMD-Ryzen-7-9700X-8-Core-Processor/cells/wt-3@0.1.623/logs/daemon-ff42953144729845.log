@@ -1,0 +1,15 @@
+2026-11-24T19:09:24.444Z [164385] squeal daemon: serving /home/user/results/cells/wt-3@0.1.623/work/wt2 on /home/user/results/cells/wt-3@0.1.623/work/run/squeal-ff42953144729845.sock
+2026-11-24T19:10:21.924Z [164385] squeal daemon: code store: last minute: 42 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:10:26.996Z [164385] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 300 to 178 MiB in a 29 ms pause
+2026-11-24T19:11:21.944Z [164385] squeal daemon: code store: last minute: 54 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:12:21.944Z [164385] squeal daemon: code store: last minute: 56 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:12:57.057Z [164385] squeal daemon: busy, heap in use 62 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 234 to 165 MiB in a 32 ms pause; 28 MiB of heap in use after it
+2026-11-24T19:13:21.944Z [164385] squeal daemon: code store: last minute: 69 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:13:36.374Z [164385] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-24T19:13:38.360Z [164385] squeal daemon: the background ceiling refused a backlog tier: 3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-24T19:13:42.501Z [164385] squeal daemon: the background ceiling let a backlog tier start after 4 s and 2 refused looks
+2026-11-24T19:13:42.501Z [164385] squeal daemon: the pool granted the vitest lane's tier after 6 s of waiting for CPU
+2026-11-24T19:14:21.952Z [164385] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:14:29.469Z [164385] squeal daemon: long write: store.sqlite write lock held 254 ms by #write < #record; 4603 rows written
+2026-11-24T19:15:10.841Z [164385] squeal daemon: long write: store.sqlite write lock held 268 ms by #write < #record; 4603 rows written
+2026-11-24T19:15:22.086Z [164385] squeal daemon: code store: last minute: 28 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed

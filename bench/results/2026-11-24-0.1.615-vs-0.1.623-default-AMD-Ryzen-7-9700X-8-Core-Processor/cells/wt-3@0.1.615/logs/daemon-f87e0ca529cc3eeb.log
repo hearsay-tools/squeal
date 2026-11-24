@@ -1,0 +1,13 @@
+2026-11-24T19:02:35.247Z [141049] squeal daemon: serving /home/user/results/cells/wt-3@0.1.615/work/wt2 on /home/user/results/cells/wt-3@0.1.615/work/run/squeal-f87e0ca529cc3eeb.sock
+2026-11-24T19:03:32.855Z [141049] squeal daemon: code store: last minute: 42 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:03:37.909Z [141049] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 247 to 174 MiB in a 21 ms pause
+2026-11-24T19:04:32.884Z [141049] squeal daemon: code store: last minute: 54 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:05:30.051Z [141049] squeal daemon: busy, heap in use 49 MiB over twice the last live size of 22 MiB: a last-resort GC took private memory from 217 to 150 MiB in a 53 ms pause; 25 MiB of heap in use after it
+2026-11-24T19:05:32.883Z [141049] squeal daemon: code store: last minute: 57 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:06:32.884Z [141049] squeal daemon: code store: last minute: 71 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:06:44.289Z [141049] squeal daemon: the background ceiling refused a backlog tier: 3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-24T19:06:44.290Z [141049] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-24T19:06:52.483Z [141049] squeal daemon: the background ceiling let a backlog tier start after 8 s and 4 refused looks
+2026-11-24T19:06:52.484Z [141049] squeal daemon: the pool granted the vitest lane's tier after 8 s of waiting for CPU
+2026-11-24T19:07:32.913Z [141049] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T19:08:32.931Z [141049] squeal daemon: code store: last minute: 34 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
