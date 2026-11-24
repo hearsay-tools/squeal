@@ -11,7 +11,7 @@ import { writeCurrent, writeFixedPlugin, writeRuntime } from "./codex-runtime-fi
 import { LAUNCHER, type Machine, machine, writePlugin } from "./install-fixture.js";
 
 /*
- * Spec 024 D1, the launcher of format 9: it finds Squeal installed in
+ * Spec 024 D1, the launcher of format 9 (format 10 since spec 025 D7): it finds Squeal installed in
  * Antigravity at ~/.gemini/config/plugins/squeal, and as
  * <PLUGIN_DATA>/bin/squeal in Antigravity's data directory it runs the newest
  * copy under <PLUGIN_DATA>/versions/, even when the fixed Codex plugin of
@@ -49,8 +49,8 @@ function fixedCodex(m: Machine, version: string): void {
 }
 
 describe("the launcher with Antigravity", () => {
-  it("carries format 9", () => {
-    expect(TEXT).toMatch(/^#!\/bin\/sh\n# squeal-launcher format 9\n/);
+  it("carries format 10", () => {
+    expect(TEXT).toMatch(/^#!\/bin\/sh\n# squeal-launcher format 10\n/);
   });
 
   it("runs Squeal installed in Antigravity, and names it among the harnesses", () => {

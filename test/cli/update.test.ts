@@ -113,23 +113,23 @@ describe("squeal update", { timeout: 30_000 }, () => {
 
   it("re-copies the launcher when the plugin's copy has a newer format", async () => {
     const m = installed("0.1.131");
-    m.publish("0.1.132", laterLauncher(10));
+    m.publish("0.1.132", laterLauncher(11));
     const r = await update(m);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain(`Copied the launcher (format 9, now 10) to ${launcherOf(m)}\n`);
-    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(10));
+    expect(r.stdout).toContain(`Copied the launcher (format 10, now 11) to ${launcherOf(m)}\n`);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(11));
     expect(squeal(m)).toEqual({ version: "0.1.132", stderr: "" });
   });
 
   it("leaves a launcher it did not copy, and creates none", async () => {
     const m = installed("0.1.131");
     writeFileSync(launcherOf(m), "#!/bin/sh\necho mine\n");
-    m.publish("0.1.132", laterLauncher(10));
+    m.publish("0.1.132", laterLauncher(11));
     expect((await update(m)).stdout).not.toContain("Copied");
     expect(readFileSync(launcherOf(m), "utf8")).toBe("#!/bin/sh\necho mine\n");
     const bare = installed("0.1.131");
     bare.env.SQUEAL_BIN_DIR = join(bare.root, "elsewhere");
-    bare.publish("0.1.132", laterLauncher(10));
+    bare.publish("0.1.132", laterLauncher(11));
     expect((await update(bare)).stdout).not.toContain("Copied");
   });
 
@@ -165,6 +165,6 @@ describe("squeal update", { timeout: 30_000 }, () => {
   });
 
   it("keeps the fixture's launcher the shipped one", () => {
-    expect(laterLauncher(9)).toBe(readFileSync(LAUNCHER, "utf8"));
+    expect(laterLauncher(10)).toBe(readFileSync(LAUNCHER, "utf8"));
   });
 });

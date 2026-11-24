@@ -4,4 +4,41 @@
 # loads only its code (spec 014 goal 6).
 cli=squeal
 [ "${1-}" = ps ] && cli=ps
-exec node --disable-warning=ExperimentalWarning "$(dirname "$0")/../dist/cli/$cli.mjs" "$@"
+# Spec 025 D7: the commands that start without NODE_USE_ENV_PROXY's proxy setup.
+case ${1-} in
+  status | why | failures | checks | ps | start | stop | run | retry | hold | lint | code | impact | reach | --version | -v | --help | -h | help) carry=1 ;;
+  *) carry= ;;
+esac
+set -- node --disable-warning=ExperimentalWarning "$(dirname "$0")/../dist/cli/$cli.mjs" "$@"
+# Spec 025 D7: Node starts with its compile cache in Squeal's own directory
+# when the user set none, marked SQUEAL_OWN_COMPILE_CACHE=1 so test processes
+# leave it out; and without NODE_USE_ENV_PROXY's proxy setup: the switch waits
+# in SQUEAL_CARRIED_NODE_USE_ENV_PROXY, and a preload puts it back before the
+# CLI's code runs, for what the CLI spawns. Only the commands named below,
+# which make no request over the network, start that way: `update`,
+# `codex-runtime` and `remote` fetch through the proxy Node sets up only at
+# its start, and an unknown command keeps it too.
+if [ "$1" = node ]; then
+  if [ -z "${NODE_COMPILE_CACHE+set}" ]; then
+    cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
+    case $cache in
+      /*)
+        cache=$cache/squeal/compile-cache
+        [ -d "$cache" ] || (umask 077 && mkdir -p "$cache") 2>/dev/null || :
+        if [ -d "$cache" ] && [ -w "$cache" ]; then
+          NODE_COMPILE_CACHE=$cache
+          SQUEAL_OWN_COMPILE_CACHE=1
+          export NODE_COMPILE_CACHE SQUEAL_OWN_COMPILE_CACHE
+        fi
+        ;;
+    esac
+  fi
+  if [ -n "${NODE_USE_ENV_PROXY+set}" ] && [ -n "$carry" ]; then
+    SQUEAL_CARRIED_NODE_USE_ENV_PROXY=$NODE_USE_ENV_PROXY
+    export SQUEAL_CARRIED_NODE_USE_ENV_PROXY
+    unset NODE_USE_ENV_PROXY
+    shift
+    set -- node --import "data:text/javascript,if(process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY!==undefined){process.env.NODE_USE_ENV_PROXY=process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY;Reflect.deleteProperty(process.env,'SQUEAL_CARRIED_NODE_USE_ENV_PROXY')}" "$@"
+  fi
+fi
+exec "$@"

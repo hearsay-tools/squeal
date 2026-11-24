@@ -9,8 +9,10 @@
 # no store, with no git or other process. Anything unclear (no cwd, an empty
 # cwd, a backslash escape, a cwd key past 4 KB) passes the payload to the hook.
 [ "$#" -gt 0 ] || exit 0
+piped=
 if [ "$1" = --if-squeal ]; then
   shift
+  piped=1
   # bash converts every expansion of a large UTF-8 string to wide characters
   # (about 3 ms each at 100 KB); parse bytes under C and give the hook the
   # caller's locale back. dash ignores locales.
@@ -54,6 +56,36 @@ if [ "$1" = --if-squeal ]; then
     esac
   fi
   if [ "$lc" = unset ]; then unset LC_ALL; else LC_ALL=$lc; fi
+fi
+# Spec 025 D7: a node command starts with Node's compile cache in Squeal's own
+# directory when the user set none, marked SQUEAL_OWN_COMPILE_CACHE=1 so test
+# processes leave it out; and without NODE_USE_ENV_PROXY's proxy setup, which
+# no hook needs: the switch waits in SQUEAL_CARRIED_NODE_USE_ENV_PROXY, and a
+# preload puts it back before the hook's code runs, for what the hook spawns.
+if [ "$1" = node ]; then
+  if [ -z "${NODE_COMPILE_CACHE+set}" ]; then
+    cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
+    case $cache in
+      /*)
+        cache=$cache/squeal/compile-cache
+        [ -d "$cache" ] || (umask 077 && mkdir -p "$cache") 2>/dev/null || :
+        if [ -d "$cache" ] && [ -w "$cache" ]; then
+          NODE_COMPILE_CACHE=$cache
+          SQUEAL_OWN_COMPILE_CACHE=1
+          export NODE_COMPILE_CACHE SQUEAL_OWN_COMPILE_CACHE
+        fi
+        ;;
+    esac
+  fi
+  if [ -n "${NODE_USE_ENV_PROXY+set}" ]; then
+    SQUEAL_CARRIED_NODE_USE_ENV_PROXY=$NODE_USE_ENV_PROXY
+    export SQUEAL_CARRIED_NODE_USE_ENV_PROXY
+    unset NODE_USE_ENV_PROXY
+    shift
+    set -- node --import "data:text/javascript,if(process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY!==undefined){process.env.NODE_USE_ENV_PROXY=process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY;Reflect.deleteProperty(process.env,'SQUEAL_CARRIED_NODE_USE_ENV_PROXY')}" "$@"
+  fi
+fi
+if [ -n "$piped" ]; then
   printf '%s' "$payload" | "$@"
   exit
 fi
