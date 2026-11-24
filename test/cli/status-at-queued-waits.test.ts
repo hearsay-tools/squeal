@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { publishGroupActivity } from "../../src/core/slow/state.js";
 import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
@@ -9,6 +9,24 @@ import type { SlowTierActivity } from "../../src/core/types/status.js";
 import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { run, standIn, standInTree, testOf, withStore } from "./status-at-kit.js";
+
+/** Review 0.1.621 B1: what the daemon does after the call's first read, before its wait read. */
+const between = vi.hoisted(() => ({ act: null as (() => void) | null }));
+vi.mock("../../src/cli/status-at-estimate-named.js", async (original) => {
+  const named = await original<typeof import("../../src/cli/status-at-estimate-named.js")>();
+  return {
+    ...named,
+    readMainStore: ((...args: Parameters<typeof named.readMainStore>) => {
+      const act = between.act;
+      between.act = null;
+      act?.();
+      return named.readMainStore(...args);
+    }) as typeof named.readMainStore,
+  };
+});
+afterEach(() => {
+  between.act = null;
+});
 
 /*
  * Row 023-71 (dogfood round 9, Y1) on a `$TMPDIR` git fixture with
@@ -53,13 +71,14 @@ function queued(
   tree: string,
   files: readonly TestFileRef[],
   pending: "queued" | "running" = "queued",
+  prefix = "commit",
 ) {
   withStore(f, (store) =>
     store.testFileKeys.upsertMany(
       files.map((testFile) => ({
         worktreeId: worktreeIdFor(tree as AbsolutePath),
         testFile,
-        key: `commit-${testFile.path}`,
+        key: `${prefix}-${testFile.path}`,
         revision: 2,
         pending,
       })),
@@ -73,6 +92,10 @@ interface Recorded {
   readonly pending?: "queued" | "running";
   /** The files of a run the store holds open, started at `since`. */
   readonly open?: { readonly files: readonly TestFileRef[]; readonly since: number };
+  /** The run started at key `old-…` (row `running`); an edit then moved the key (row `queued`). */
+  readonly rekeyed?: true;
+  /** Review 0.1.621 B1: after the call's first read, the daemon starts `B1` at its current key. */
+  readonly startsLater?: true;
 }
 
 /** A narrowed `--run` on `B1` whose commit daemon's browser lane published `activity`. */
@@ -84,8 +107,10 @@ async function narrowed(activity: SlowTierActivity | null, recorded: Recorded = 
   const daemons = standIn(tree, () => undefined, {
     select: (ask) => (ask.named.length === 0 ? ALL : ALL.filter((r) => ask.named.includes(r.path))),
     rows: (at, files) => {
-      queued(f, at, files, recorded.pending);
+      if (recorded.rekeyed === true) queued(f, at, files, "running", "old");
+      else queued(f, at, files, recorded.pending);
       const id = worktreeIdFor(at as AbsolutePath);
+      if (recorded.startsLater === true) between.act = () => queued(f, at, [B1], "running");
       withStore(f, (store) => {
         publishGroupActivity(store, id, "browser", activity);
         const open = recorded.open;
@@ -100,6 +125,7 @@ async function narrowed(activity: SlowTierActivity | null, recorded: Recorded = 
           startedAt: open.since as EpochMs,
         });
       });
+      if (recorded.rekeyed === true) queued(f, at, files);
     },
     selects: 2,
   });
@@ -214,5 +240,28 @@ describe("a named file behind its own side's run at an older key (row 023-84, AA
     });
     expect(out).not.toContain("will not count");
     expect(out).not.toContain(`${B1.path}: 1 of 1 queued at ${c}`);
+  });
+
+  it("says so for a run at K whose file's key moved to K' during the run", async () => {
+    const at = since();
+    const { out, at: c } = await narrowed(running(at), {
+      rekeyed: true,
+      open: { files: [B1], since: at },
+    });
+    expect(out).toContain(
+      `${B1.path}: 1 of 1 queued at ${c}, waiting for the commit worktree's run of ${B1.path} to end: that run started before its inputs changed`,
+    );
+  });
+
+  // Review 0.1.621 B1: the call's queued list is an earlier read than its wait's.
+  it("never calls a run stale that started at the current key after the call's first read", async () => {
+    const at = since();
+    const { out } = await narrowed(running(at), {
+      startsLater: true,
+      open: { files: [B1], since: at },
+    });
+    expect(between.act).toBeNull();
+    expect(out).not.toContain("will not count");
+    expect(out).not.toContain("started before its inputs changed");
   });
 });

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readPolicy } from "../core/daemon/policy.js";
 import { groupView } from "../core/scheduler/slow.js";
 import { readGroupActivity } from "../core/slow/state.js";
+import { readTransaction } from "../core/store/store.js";
 import type { ResolvedGroup } from "../core/types/check-groups.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -100,7 +101,10 @@ export function sideWaits(
   const none = sides.map(() => null);
   if (sides.every((side) => side.queued.length === 0)) return none;
   const ids = sides.map((side) => side.id);
-  return readMainStore(storeRoot, none, (store) => sides.map((side) => waitOf(store, side, ids)));
+  // Review 0.1.621 B1: one committed state of the store for every fact a wait claims.
+  return readMainStore(storeRoot, none, (store) =>
+    readTransaction(store, () => sides.map((side) => waitOf(store, side, ids))),
+  );
 }
 
 /** Who a slot's holder is, by the call's sides (`sideWaits`). */
