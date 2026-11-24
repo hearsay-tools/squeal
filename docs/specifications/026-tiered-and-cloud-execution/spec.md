@@ -161,6 +161,10 @@ All remote test execution (runner-host stdio protocol, tree delta sync, blob pro
      sleep(): Promise<void>;
      /** Lifecycle release: `idle` sleeps, `daemon-exit` sleeps/detaches, `worktree-removed` destroys. */
      release(reason: ReleaseReason): Promise<void>;
+     /** Optional: whether remote `.git` matches the local worktree's Git state (HEAD, branch/detached, tags). */
+     gitCurrent?(): boolean;
+     /** Optional: refreshes remote `.git` and `.git/index` only (never working-tree files) to local Git state. */
+     syncGit?(ssh: SshTarget | null, signal?: AbortSignal): Promise<boolean>;
    }
 
    export interface RemoteMachineProvider {
@@ -227,11 +231,11 @@ Built from the measurements in `agent37-sandboxes.md` (0.61 s 1-file / 1.50 s 10
 
 1. **Config (`providerConfig`).**
    - `region`: `"eu"` (default) | `"us"` | `"ap-south"`.
-   - `type`: `"vm"` (default) | `"performance"` | `"default"`. Validation rejects `region: "eu"` with `type: "default"` (`400 invalid_request` on Agent37) and logs a warning if `type: "default"` (gVisor) is explicitly configured in `us`.
-   - `vcpu`: default `4`; `memoryGb`: default `8`; `diskGb`: default `10`.
-   - `autoSleepMinutes`: default `10` (passed to Agent37 `auto_sleep`).
-   - `apiKeyEnv`: default `"AGENT37_API_KEY"` (name of env var holding the key; Squeal never stores the key in `remote.json`, logs, or command-line arguments).
-   - `sshKeyPath`: path to the private SSH key registered in the Agent37 workspace (defaults to standard user SSH agent/keys).
+   - `type`: `"vm"` (default) | `"performance"` | `"default"`. Validation rejects `region: "eu"` and `region: "ap-south"` with `type: "default"` (`400 invalid_request` on Agent37) and logs a warning if `type: "default"` (gVisor) is explicitly configured in `us`.
+   - `vcpu`: default `4`; `memoryGb`: default `8`; `diskGb`: default `10` (sent under `resources: { cpu, memory, disk }`).
+   - `autoSleepMinutes`: default `10` (range `5..1440`, sent as `auto_sleep: true` and `idle_timeout_seconds: autoSleepMinutes * 60`, matching Agent37's `300..86400` s bound).
+   - `apiKeyEnv`: default `"AGENT37_API_KEY"` (name of env var holding the key; control-plane HTTP calls send `Authorization: Bearer <key>`, while the WebSocket SSH tunnel sends `X-Agent37-Key`; Squeal never stores the key in `remote.json`, logs, error messages, or command-line arguments).
+   - `sshKeyPath`: path to the private SSH key registered in the Agent37 workspace (defaults to standard user SSH agent/keys; SSH connects as `node@<instance-id>.agent37.app`).
    - `bootstrap`: `"git-bundle"` (default) | `"tree-sync"`.
    - `apiBaseUrl`: default `"https://api.agent37.com"` (overridable for testing against local mocks).
    - Proxy support: all API calls and the WebSocket tunnel honor `HTTPS_PROXY` / `NO_PROXY`.
@@ -240,12 +244,12 @@ Built from the measurements in `agent37-sandboxes.md` (0.61 s 1-file / 1.50 s 10
    - `RemoteMachine.ssh.args` sets `-o ProxyCommand=<squeal> remote-tunnel agent37 <id>` plus `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null` (Agent37 regenerates host keys on host relocation; transport authentication is carried by TLS + `X-Agent37-Key` + SSH key). No `agent37` CLI installation is required.
 3. **Provisioning and local git-bundle bootstrap (`acquire`).**
    - Tracks `(provider, worktreeId) -> { instanceId, region, type, createdAt, lastUsedAt, worktreeRoot }` in `$XDG_STATE_HOME/squeal/remote-machines.json` (fallback `~/.local/state/squeal/remote-machines.json`).
-   - Reuses an existing instance for `worktreeId` if `GET /v1/instances/<id>` reports it exists (waking if `sleeping`).
-   - Otherwise calls `POST /v1/instances` (1.2 s), installs matching Node if absent (~2 s), and when `bootstrap: "git-bundle"` creates a local `git bundle` of `HEAD` + tags, streams it over SSH, clones it into the remote tree directory, and runs lockfile install (~31 s total on EU `vm`, faster than Agent37's 55 s `POST /fork` and requiring **zero** git credentials on the cloud VM). Sets `capabilities.hasGitRepository = true`.
+   - Reuses an existing instance for `worktreeId` if `GET /v1/instances/<id>` reports it exists (waking if `sleeping` or `stopped` via `POST /v1/instances/<id>/start`).
+   - Otherwise calls `POST /v1/instances` (1.2 s), installs matching Node if absent (~2 s), and when `bootstrap: "git-bundle"` creates a local `git bundle` of `HEAD` + tags, streams it over SSH, and populates `.git` and `.git/index` only (`git read-tree --reset HEAD`, never `git reset --hard`) so `tree-host` owns 100% of working-tree files (~31 s total on EU `vm`, faster than Agent37's 55 s `POST /fork` and requiring **zero** git credentials on the cloud VM). On reuse and across attached commits, `syncGit` compares local Git state (HEAD, branch/detached, tags) and refreshes `.git` only when stale. Sets `capabilities.hasGitRepository = true`.
 4. **Sleep and wake lifecycle (compute billing control).**
    - Agent37 charges compute (`$0.0301/h` for 4/8 `vm`) only while awake; sleeping instances cost `$0` compute and do not count against the awake-memory quota (`agent37-sandboxes.md` Q5). Disk costs `$0.09/GB-month` (`$0.90/month` for 10 GB) until deleted.
    - Because SSH keepalives prevent auto-sleep (`agent37-sandboxes.md` Q1), the remote lane never sends SSH keepalives past `idleSleepMinutes`. After `idleSleepMinutes` with no active run or edit, the lane closes its SSH channels and calls `machine.sleep()`, which sends `POST /v1/instances/<id>/sleep` (4.5 to 6.4 s) so compute billing stops immediately.
-   - On the next edit or explicit request, `machine.wake()` opens SSH (or calls `exec`/wake) to restore the memory checkpoint (~0.7 to 1.7 s) and reconnects the runner-host channel. If Agent37 rebuilt the instance instead of restoring memory, the lane detects the closed/missing host, re-runs `startRemoteHost`, syncs the delta, and continues transparently.
+   - On the next edit or explicit request, `machine.wake()` sends `POST /v1/instances/<id>/start` and polls until `running` to restore the memory checkpoint (~0.7 to 1.7 s), refreshes `.git` if local Git state moved, and reconnects the runner-host channel. If Agent37 rebuilt the instance instead of restoring memory, the lane detects the closed/missing host, re-runs `startRemoteHost`, syncs the delta, and continues transparently.
    - On `release("worktree-removed")`: calls `DELETE /v1/instances/<id>` and removes the state entry so disk billing stops too. On `release("daemon-exit")`: calls `sleep()` and keeps the sleeping instance for fast wake on the next session.
 
 #### D8. Hybrid 2A: all tiers, all runners, and remote planning
@@ -259,7 +263,7 @@ Extends `src/core/runner-host/remote/{lane,daemon-lane,connect,settings}.ts` (so
    - On connect, the remote host warms its first `affected` (6 to 8 s on EU `vm`) before reporting ready.
    - **Result:** zero local Vitest, node:test, or pytest runner hosts start while the remote is active. The local daemon stays at ~274 to 343 MB RSS (or exits between bursts under D2).
    - When the remote is `down` (unreachable or refused): `whenLost: "local"` lazily starts the local runner host as fallback; `whenLost: "not-run"` leaves test files `unknown` without starting a local runner host.
-4. **Repository-reading tests (021 D19).** When `machine.capabilities.hasGitRepository` is `true`, `remote.needsRepository` files run on the remote machine instead of forcing a local runner host (verified 27/27 pass in `boat-sandboxes.md` Q2 and `agent37-sandboxes.md` Q1). D19's guard still catches any unexpected "not a git repository" error and reruns locally without storing a false failure.
+4. **Repository-reading tests (021 D19).** When `machine.capabilities.hasGitRepository` is `true` and remote `.git` metadata is verified current with the local worktree (`gitCurrent()`/`syncGit()` when provided), `remote.needsRepository` files run on the remote machine instead of forcing a local runner host (verified 27/27 pass in `boat-sandboxes.md` Q2 and `agent37-sandboxes.md` Q1). If metadata refresh cannot run or fails, `needsRepository` files stay local. D19's guard still catches any unexpected "not a git repository" error and reruns locally without storing a false failure.
 
 #### D9. Remote coverage mapping
 
