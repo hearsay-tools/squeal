@@ -714,6 +714,15 @@ class TierScheduler implements Scheduler {
     await this.#baseline(context, ledger);
   }
 
+  /**
+   * Spec 026 D1.4: `take` once the runner is awake. With nothing owed it is
+   * taken in this turn, so a request still joins the pass queued before it
+   * (row 011-198).
+   */
+  #afterWake<T>(take: () => Promise<T>): Promise<T> {
+    return this.#owesKeying() ? this.#wakeKeying().then(take) : take();
+  }
+
   /** `#wakeKeying` from inside a lock turn: it runs once the turn ends. */
   #wakeLater(): void {
     void this.#wakes.track(() =>
@@ -885,10 +894,9 @@ class TierScheduler implements Scheduler {
   }
 
   /** `squeal run --all` (`fullSuiteRequest`): the checkpoint, after a pass delivered after it. */
-  async requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
-    await this.#wakeKeying();
-    return this.#intake.take(
-      fullSuiteRequest(request, { quiet: this.#quiet, warmUp: this.#warmUp }),
+  requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
+    return this.#afterWake(() =>
+      this.#intake.take(fullSuiteRequest(request, { quiet: this.#quiet, warmUp: this.#warmUp })),
     );
   }
 
@@ -917,26 +925,26 @@ class TierScheduler implements Scheduler {
   }
 
   /** Spec 019 D6: `squeal run <group>` (`groupRequest`); `null` for a group the policy lacks. */
-  async requestGroup(group: string): Promise<SlowSuiteRequest | null> {
-    await this.#wakeKeying();
-    return this.#intake.take(groupRequest(group, this.#groups, this.options.passes));
+  requestGroup(group: string): Promise<SlowSuiteRequest | null> {
+    return this.#afterWake(() =>
+      this.#intake.take(groupRequest(group, this.#groups, this.options.passes)),
+    );
   }
 
   /** Spec 019 D6 "Narrow run" (row 019-49): `narrowRequest`. */
-  async requestGroupPaths(
+  requestGroupPaths(
     group: string,
     paths: readonly RelativePath[],
     options: NarrowRunOptions = {},
   ): Promise<NarrowRunRequest | null> {
-    await this.#wakeKeying();
-    const request = narrowRequest(group, paths, this.#groups, options);
-    return this.#intake.take(request);
+    return this.#afterWake(() =>
+      this.#intake.take(narrowRequest(group, paths, this.#groups, options)),
+    );
   }
 
   /** `squeal retry` (001-368): queues the requests in the store that may run now. */
-  async requestRetries(): Promise<void> {
-    await this.#wakeKeying();
-    return this.#intake.take(retryRequest());
+  requestRetries(): Promise<void> {
+    return this.#afterWake(() => this.#intake.take(retryRequest()));
   }
 
   /**
@@ -950,24 +958,20 @@ class TierScheduler implements Scheduler {
   }
 
   /** Spec 011 C15: a named wait promotes `testFiles` for `withinMs` (`promoteRequest`). */
-  async promote(
-    testFiles: readonly TestFileRef[],
-    withinMs: number,
-    wakeCatchUp?: true,
-  ): Promise<void> {
+  promote(testFiles: readonly TestFileRef[], withinMs: number, wakeCatchUp?: true): Promise<void> {
     // Spec 026 D1.4: a named wait whose files need the runner opens it.
-    if (testFiles.length > 0) await this.#wakeKeying();
-    return this.#intake.take(promoteRequest(testFiles, withinMs, wakeCatchUp));
+    const take = () => this.#intake.take(promoteRequest(testFiles, withinMs, wakeCatchUp));
+    return testFiles.length > 0 ? this.#afterWake(take) : take();
   }
 
   /** Spec 011 C15, focused checks (row 011-145): `focusRequest`. */
-  async focus(
+  focus(
     testFiles: readonly TestFileRef[],
     texts: readonly string[],
     withinMs: number,
   ): Promise<void> {
-    if (testFiles.length > 0) await this.#wakeKeying();
-    return this.#intake.take(focusRequest(testFiles, texts, withinMs));
+    const take = () => this.#intake.take(focusRequest(testFiles, texts, withinMs));
+    return testFiles.length > 0 ? this.#afterWake(take) : take();
   }
 
   nudge(): void {
