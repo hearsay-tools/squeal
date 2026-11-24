@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDelivery } from "../../src/core/delivery/delivery.js";
 import {
   readTurn,
+  resumeTurn,
   START_IDLE,
   trimmed,
   turnMetaKey,
@@ -68,6 +69,18 @@ describe("turn state", () => {
     expect((await delivery.onToolBoundary(C1))?.entries.map((e) => e.kind)).toEqual([
       "pass-to-fail",
     ]);
+  });
+
+  it("takes no write lock to resume a consumer that never registered (spec 025 D6.3)", async () => {
+    const transaction = vi.spyOn(store, "transaction");
+    resumeTurn(store, C1);
+    expect(transaction).not.toHaveBeenCalled();
+    expect(store.consumers.get(C1)).toBeNull();
+    await delivery.register(C1);
+    transaction.mockClear();
+    resumeTurn(store, C1);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(readTurn(store, C1).turn).toBe("in-turn");
   });
 
   it("puts an idle consumer heard from in a turn, by a tool boundary or a peek (S2)", async () => {
