@@ -100,6 +100,7 @@ function groupBlock(
     `  Runs: ${off === null ? runs(group, command) : `never: ${off}`}`,
     ...(group.after.length === 0 ? [] : [`  Starts after: ${group.after.join(", ")}`]),
     ...(off === null ? [`  Run it now: \`${command} run ${group.name} --wait 60000\``] : []),
+    ...(prePr(group) ? [`  Before a pull request: ${prePrText(group.name, command)}`] : []),
     ...(results === undefined || results.files === 0
       ? []
       : [`  Last result${revisionText(store)}: ${resultText(results)}`]),
@@ -162,6 +163,15 @@ function runs(group: ResolvedGroup, command: string): string {
   }
   const when = WHEN[group.at];
   return group.stopRequires && group.at !== "stop" ? `${when}; Stop waits for it` : when;
+}
+
+/** Spec 026 D4.5 (row 026-07): a test check only on request has a narrow pre-PR run. */
+function prePr(group: ResolvedGroup): boolean {
+  return group.at === "manual" && group.select.kind !== "lint";
+}
+
+function prePrText(name: string, command: string): string {
+  return `\`${command} run ${name} --base <ref> --wait\` runs only the test files your changes since <ref> select; the check's other files wait for \`${command} run ${name}\` or CI`;
 }
 
 function revisionText(store: StoreView | null): string {
