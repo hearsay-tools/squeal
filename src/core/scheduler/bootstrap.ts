@@ -276,6 +276,28 @@ export async function baseline(
 }
 
 /**
+ * Spec 026 D1.2, D1.3 (row 026-05): the start of a worktree whose runner
+ * keying is deferred, with no runner call. The test files are those the last
+ * daemon keyed, each with its stored closure, so the key index answers
+ * which files read a path; with no environment read, no file has a key, so
+ * each is unknown, never current by a key from before the start. The
+ * `baseline` runs at the first explicit request (D1.4), and takes the
+ * files a heal left held then.
+ */
+export function deferredStart(context: SchedulerContext, ledger: Ledger): void {
+  const { store, keys, worktreeId } = context;
+  const known = knownChecks(context, ledger);
+  for (const row of store.testFileKeys.list(worktreeId)) {
+    const file = ledger.addFile(row.testFile);
+    restore(file, known.get(file.id));
+    const record = store.testFiles.get(row.testFile);
+    if (record !== null)
+      keys.setClosure({ testFile: row.testFile, paths: record.closure.paths }, true);
+  }
+  ledger.commit({ refined: ledger.revision.number });
+}
+
+/**
  * Row 011-227: commits the first lookup before the recheck. A busy store
  * gives up before writing anything and the ledger owes it all
  * again (row 011-126), so the baseline's last commit writes it. The misses

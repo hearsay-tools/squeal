@@ -73,12 +73,15 @@ export function clearImportsWaiting(store: Store, worktreeId: WorktreeId): void 
  * `queueObserved` queues that runner work. The mark is written in the
  * stage's transaction, tried again while the store is busy (spec 021 D2;
  * `research/request-intake.md`, difference 1). `false`: closed, not
- * started, or waiting for an install.
+ * started, or waiting for an install. With `waits` false, the runner
+ * keying is deferred (spec 026 D1.2): the regrow is owed to the next
+ * explicit request, so no mark says the keys wait for it.
  */
 export function importRequest(
   projects: readonly ProjectName[],
   imports: readonly string[],
   queueObserved: () => void,
+  waits = true,
 ): Request<boolean> {
   return {
     operation: "taking the observed reads of an import",
@@ -88,7 +91,7 @@ export function importRequest(
     store: {
       stage: (context) => {
         if (projects.length > 0) context.keys.refreshObserved(projects);
-        markImportsWaiting(context.store, context.worktreeId, imports);
+        if (waits) markImportsWaiting(context.store, context.worktreeId, imports);
         queueObserved();
         // No covered file: the refinement's regrow re-keys the files it reaches, and runs none.
         return { answer: true, covered: [] };
