@@ -6,7 +6,11 @@ import {
   isCodeStoreOpenFailure,
   openCodeStore,
 } from "../../src/core/code/store/open.js";
-import { STATES_EDITED, STATES_FAILING, STATES_NON_PASS } from "../../src/core/code/store/states.js";
+import {
+  STATES_EDITED,
+  STATES_FAILING,
+  STATES_NON_PASS,
+} from "../../src/core/code/store/states.js";
 import type { CodeStore } from "../../src/core/code/store/types.js";
 import { Connection, type Params, type Row } from "../../src/core/store/connection.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../../src/core/types/code.js";
