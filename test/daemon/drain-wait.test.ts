@@ -43,14 +43,15 @@ import { resultOf } from "./scratch-helpers.js";
 const suite = daemonSuite();
 
 /** The drain's slow wait in these daemons, in place of `DRAIN_SLOW_WAIT_MS`. */
-const WAIT_MS = 4_000;
+const WAIT_MS = 6_000;
 /** The slow slot's recheck in these daemons, in place of `SLOW_RECHECK_MS`. */
 const RECHECK_MS = 500;
 
 const DRAIN_NOTE = /^the last session ended with slow files pending; this daemon runs them/;
 const DRAINED_NOTE = /daemon stopped: the slow files pending when its last session ended have run/;
-const WAITED_NOTE =
-  /^daemon stopped: no slow file ran for 4 s once the fast work pending when its last session ended was done; 1 slow file left queued for the next daemon in this worktree: test\/slow\.test\.ts$/;
+const WAITED_NOTE = new RegExp(
+  `^daemon stopped: no slow file ran for ${WAIT_MS / 1000} s once the fast work pending when its last session ended was done; 1 slow file left queued for the next daemon in this worktree: test\\/slow\\.test\\.ts$`,
+);
 
 const SLOW_TEST = "test/slow.test.ts";
 const FAST_TEST = "test/held.test.ts";
@@ -168,8 +169,9 @@ describe.runIf(process.platform === "linux")(
       release("fast");
       expect((await resultOf(repo, spawned, FAST_TEST)).outcome).toBe("pass");
       expect(await exitWithin(spawned, 120_000, repo)).toEqual({ code: 0, signal: null });
-      // The wait counts from the fast work's end, not from the drain's start.
-      expect(Date.now() - released).toBeGreaterThanOrEqual(WAIT_MS * 0.875);
+      // The wait counts from the fast work's end, not from the drain's start; subtract 1.5 s
+      // for the 1 s presence-poll quantization of `#drainBusyAt` (still well past `WAIT_MS / 2`).
+      expect(Date.now() - released).toBeGreaterThanOrEqual(WAIT_MS - 1_500);
       expect(notesLike(repo, DRAIN_NOTE)).toHaveLength(1);
       expect(notesLike(repo, WAITED_NOTE)).toHaveLength(1);
       expect(notesLike(repo, DRAINED_NOTE)).toEqual([]);
