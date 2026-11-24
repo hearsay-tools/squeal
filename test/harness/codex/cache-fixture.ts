@@ -5,7 +5,6 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
-  readlinkSync,
   rmSync,
   symlinkSync,
 } from "node:fs";
@@ -98,9 +97,10 @@ export interface CodexMachine {
   /** Removes the machine's directory, retrying while a late write fills it. */
   cleanup(): void;
   /**
-   * Ends `pids` (a daemon found through its socket) and every other process
-   * of this machine (its HOME, or a command line or working directory under
-   * it, as the code store's process), waits for them to exit, then cleans up.
+   * Ends `pids` (a daemon found through its socket), their descendants and
+   * every process whose HOME is this machine's (the code store's process),
+   * waits for them to exit, then cleans up. A process that only names a path
+   * of the machine, or works in it, is not the machine's and keeps running.
    */
   end(pids?: readonly number[]): Promise<void>;
 }
@@ -108,32 +108,31 @@ export interface CodexMachine {
 /** How long `end` waits for the machine's processes to exit. */
 const END_WAIT_MS = 5_000;
 
-/** Whether `pid` belongs to the machine in `dir` with `home`: Linux's /proc, else nothing found. */
-function ofMachine(pid: number, dir: string, home: string): boolean {
-  const read = (part: string) => {
-    try {
-      return readFileSync(`/proc/${pid}/${part}`, "latin1");
-    } catch {
-      return "";
-    }
-  };
-  const under = (path: string) => path === dir || path.startsWith(`${dir}/`);
+/** `/proc/<pid>/<part>`, or "" when it is another user's, gone, or not Linux. */
+function procRead(pid: number, part: string): string {
   try {
-    if (under(readlinkSync(`/proc/${pid}/cwd`))) return true;
+    return readFileSync(`/proc/${pid}/${part}`, "latin1");
   } catch {
-    // Another user's, or gone.
+    return "";
   }
-  if (
-    read("cmdline")
-      .split("\0")
-      .some((arg) => arg.includes(`${dir}/`))
-  )
-    return true;
-  return read("environ").split("\0").includes(`HOME=${home}`);
 }
 
-/** The processes of the machine in `dir`, this one and its parents left out. */
-function machinePids(dir: string, home: string): number[] {
+/** The parent of `pid` from `/proc/<pid>/stat`, or undefined. */
+function parentOf(pid: number): number | undefined {
+  const stat = procRead(pid, "stat");
+  const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+  const ppid = Number(fields[1]);
+  return Number.isInteger(ppid) && ppid > 0 ? ppid : undefined;
+}
+
+/**
+ * The processes of the machine with `home`: those whose HOME is exactly
+ * `home` (the machine's HOME is unique to it), the `roots` the caller named,
+ * and every descendant of either. A working directory or an argument under
+ * the machine's directory proves nothing: an independent process (a `tail -f`
+ * of its log) has them too. This process and its parent are never included.
+ */
+function machinePids(home: string, roots: ReadonlySet<number>): number[] {
   let entries: string[];
   try {
     entries = readdirSync("/proc");
@@ -141,10 +140,23 @@ function machinePids(dir: string, home: string): number[] {
     return [];
   }
   const own = new Set([process.pid, process.ppid]);
-  return entries
-    .filter((e) => /^\d+$/.test(e))
-    .map(Number)
-    .filter((pid) => !own.has(pid) && ofMachine(pid, dir, home));
+  const all = entries.filter((e) => /^\d+$/.test(e)).map(Number);
+  const owned = new Set(
+    all.filter(
+      (pid) => roots.has(pid) || procRead(pid, "environ").split("\0").includes(`HOME=${home}`),
+    ),
+  );
+  const parents = new Map(all.map((pid) => [pid, parentOf(pid)]));
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const [pid, ppid] of parents) {
+      if (ppid !== undefined && owned.has(ppid) && !owned.has(pid)) {
+        owned.add(pid);
+        grew = true;
+      }
+    }
+  }
+  return [...owned].filter((pid) => !own.has(pid));
 }
 
 /** Whether `pid` still runs: a zombie, which only its parent's wait removes, does not. */
@@ -162,12 +174,15 @@ function running(pid: number): boolean {
   }
 }
 
-/** SIGKILLs `pids` and the machine's processes, and waits up to `END_WAIT_MS` for them to exit. */
-async function endProcesses(pids: readonly number[], dir: string, home: string): Promise<void> {
+/** SIGKILLs `pids`, their descendants and the machine's processes, and waits up to `END_WAIT_MS` for them to exit. */
+async function endProcesses(pids: readonly number[], home: string): Promise<void> {
   const deadline = performance.now() + END_WAIT_MS;
-  let left = [...new Set([...pids, ...machinePids(dir, home)])];
+  const own = new Set([process.pid, process.ppid]);
+  const roots = new Set(pids.filter((pid) => !own.has(pid)));
+  let left = [...new Set([...roots, ...machinePids(home, roots)])];
   while (left.length > 0 && performance.now() < deadline) {
     for (const pid of left) {
+      if (own.has(pid)) continue;
       try {
         process.kill(pid, "SIGKILL");
       } catch {
@@ -176,7 +191,8 @@ async function endProcesses(pids: readonly number[], dir: string, home: string):
     }
     await sleep(20);
     // A process the killed ones started a moment ago counts too.
-    left = [...new Set([...left, ...machinePids(dir, home)])].filter(running);
+    for (const pid of left) roots.add(pid);
+    left = [...new Set([...left, ...machinePids(home, roots)])].filter(running);
   }
 }
 
@@ -216,7 +232,7 @@ export function codexMachine(built: Built): CodexMachine {
     },
     cleanup,
     async end(pids = []) {
-      await endProcesses(pids, dir, home);
+      await endProcesses(pids, home);
       cleanup();
     },
   };

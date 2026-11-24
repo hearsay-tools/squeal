@@ -1,8 +1,9 @@
-import { execFileSync, spawn } from "node:child_process";
+import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import {
   cpSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -74,6 +75,84 @@ describe("the machine's end (row 025-13)", () => {
     expect(existsSync(m.dir)).toBe(false);
     expect(await exited).toBe("SIGKILL");
   });
+});
+
+/** Resolves with the signal that ended `child`, or its exit code. */
+function exitOf(child: ChildProcess): Promise<string | number | null> {
+  return new Promise((resolve) => child.once("exit", (code, signal) => resolve(signal ?? code)));
+}
+
+/** Whether `pid` is alive and not a zombie. */
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return false;
+  }
+  const stat = readFileSync(`/proc/${pid}/stat`, "latin1");
+  return stat.slice(stat.lastIndexOf(")") + 2, stat.lastIndexOf(")") + 3) !== "Z";
+}
+
+// Review 0.1.631 B1: only the machine's HOME, named pids and their descendants are its processes.
+describe("the machine's end keeps a process that only names its paths (review 0.1.631 B1)", () => {
+  it.runIf(process.platform === "linux")(
+    "ends the writer, the named daemon and its store child; a foreign observer survives",
+    async () => {
+      m = codexMachine(built);
+      const foreign = mkdtempSync("/tmp/sq-vc-foreign-");
+      const log = join(m.dir, "logs", "daemon.log");
+      mkdirSync(join(m.dir, "logs"), { recursive: true });
+      writeFileSync(log, "");
+      const hold = "process.stdout.write('ready\\n'); setInterval(() => {}, 1000);";
+      // An independent diagnostic process: foreign HOME and cwd, a fixture path in its argv.
+      const observer = spawn(process.execPath, ["-e", hold, log], {
+        cwd: "/tmp",
+        env: { PATH: m.path, HOME: foreign },
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+      try {
+        const observerExit = exitOf(observer);
+        const writer = spawn(
+          "sh",
+          ["-c", 'i=0; while :; do mkdir -p "$HOME/.cache/w/$i"; i=$((i+1)); sleep 0.01; done'],
+          { env: { PATH: m.path, HOME: m.home }, stdio: "ignore", detached: true },
+        );
+        const writerExit = exitOf(writer);
+        // A stand-in daemon with a foreign HOME, named by pid, and its store child.
+        const daemon = spawn(
+          "sh",
+          ["-c", `${shellWord(process.execPath)} -e "$1" & echo $!; wait`, "sh", hold],
+          {
+            env: { PATH: m.path, HOME: foreign },
+            stdio: ["ignore", "pipe", "ignore"],
+            detached: true,
+          },
+        );
+        const daemonExit = exitOf(daemon);
+        const store = await new Promise<number>((resolve) =>
+          daemon.stdout?.once("data", (d: Buffer) => resolve(Number(String(d).split("\n")[0]))),
+        );
+        await new Promise((resolve) => observer.stdout?.once("data", resolve));
+        await waitFor(() => existsSync(join(m.home, ".cache", "w", "3")), 5_000);
+        expect(alive(store)).toBe(true);
+
+        await m.end(daemon.pid === undefined ? [] : [daemon.pid]);
+
+        expect(existsSync(m.dir)).toBe(false);
+        expect(await writerExit).toBe("SIGKILL");
+        expect(await daemonExit).toBe("SIGKILL");
+        await waitFor(() => !alive(store), 5_000, "store child ended");
+        expect(observer.exitCode).toBeNull();
+        expect(observer.signalCode).toBeNull();
+        expect(alive(observer.pid ?? -1)).toBe(true);
+        observer.kill("SIGTERM");
+        expect(await observerExit).toBe("SIGTERM");
+      } finally {
+        if (observer.exitCode === null && observer.signalCode === null) observer.kill("SIGKILL");
+        rmSync(foreign, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 describe("squeal start from Codex's plugin cache (005-77)", () => {
