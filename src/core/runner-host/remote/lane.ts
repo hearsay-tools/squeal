@@ -12,12 +12,13 @@ import type {
 import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
 import { type RemoteHost, RemoteRefusal } from "./connect.js";
+import { recordsWithout } from "./coverage.js";
 import { blobsAt, compareRemote } from "./lane-compare.js";
 import { type Planning, remotePlanning } from "./lane-planning.js";
 import { deferredTo, repositoryRoute, withoutFiles } from "./lane-repository.js";
 import { DEFAULT_TIERS, goesRemote, tiersText } from "./lane-tiers.js";
 import type { RemoteTier, WhenLost } from "./settings.js";
-import type { RemoteRunReply } from "./tree-wire.js";
+import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
 
 /*
  * Spec 021 D11 to D13 (row 021-14): one runner's background runs on a
@@ -70,6 +71,11 @@ import type { RemoteRunReply } from "./tree-wire.js";
  * asks `refreshRepository`, so `hasGitRepository` answers for the
  * worktree's Git state now; the call is busy for a sleep, like a planning call.
  * Review 0.1.619-r2 N1: each remote run holds `gitLease` while it is there.
+ *
+ * Spec 026 D9 (row 026-13): the coverage records a remote run's reply
+ * carries go to `remoteCoverage` only once its blob proof holds, less
+ * those of files D19.2's guard sends here; a refused, lost, cancelled or
+ * unadmitted run's are dropped with it.
  */
 
 export interface RemoteLaneOptions {
@@ -112,6 +118,8 @@ export interface RemoteLaneOptions {
    * call ends it. Absent: none.
    */
   readonly gitLease?: () => Promise<() => void>;
+  /** Spec 026 D9: a proven run's coverage records, of the files whose results it keeps. Absent: dropped. */
+  readonly remoteCoverage?: (runId: string, records: readonly RemoteRecord[]) => void;
   /** The daemon's exit began: no planning call falls back to the runner here. Absent: never. */
   readonly ending?: () => boolean;
   /** Spec 021 D19.2: test-file globs that always run here. Absent: none. */
@@ -203,6 +211,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   const queue = (paths: readonly InvalidatedPath[]) => {
     for (const path of paths) pending.set(path.path, path);
   };
+  /** D9: a proven remote report's coverage records, until its tier keeps them. */
+  const coverageOf = new WeakMap<RunReport, readonly RemoteRecord[]>();
   const route = repositoryRoute(
     options.needsRepository ?? (() => []),
     options.repository ?? options.status,
@@ -368,7 +378,9 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         reply.refused ?? Object.keys(after).filter((path) => after[path] !== reply.proof?.[path]);
       if (differ.length === 0) {
         proven(host, inputs.length);
-        return stripped(reply);
+        const report = stripped(reply);
+        if (reply.coverage !== undefined) coverageOf.set(report, reply.coverage);
+        return report;
       }
       options.log(
         `remote ${target}: tree differs at ${differ.slice(0, 5).join(", ")}; sending again`,
@@ -537,6 +549,9 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     notRun = 0;
     // D19.2's guard: a file that failed there as not a Git repository keeps no result; it runs here.
     const failed = route.guard(report);
+    // D9: the proven run's records, of the files whose results stand.
+    const records = recordsWithout(coverageOf.get(report) ?? [], failed);
+    if (records.length > 0) options.remoteCoverage?.(run.runId, records);
     if (failed.length === 0) return report;
     options.log(
       `remote ${target}: ${failed.map((f) => f.path).join(", ")} failed there as not a Git repository; running here`,
@@ -712,6 +727,12 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
 
 /** A report without what only the lane reads. */
 function stripped(report: RunReport & RemoteRunReply): RunReport {
-  const { refused: _refused, proof: _proof, unadmitted: _unadmitted, ...rest } = report;
+  const {
+    refused: _refused,
+    proof: _proof,
+    unadmitted: _unadmitted,
+    coverage: _coverage,
+    ...rest
+  } = report;
   return rest;
 }

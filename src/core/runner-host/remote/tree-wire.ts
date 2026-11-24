@@ -1,6 +1,7 @@
 import { promisify } from "node:util";
 import { gunzip, gzip } from "node:zlib";
-import { blobHash } from "../../hash/blob.js";
+import { blobHash, type ObjectFormat } from "../../hash/blob.js";
+import type { TestFileRef } from "../../types/keys.js";
 
 /*
  * Spec 021 D10 (row 021-13): the tree messages between the daemon and a
@@ -63,6 +64,27 @@ export interface RemoteRunOptions {
   readonly expected?: Readonly<Record<string, string | null>>;
   readonly alive?: number;
   readonly admitted?: true;
+  /**
+   * Spec 026 D9 (row 026-13): the host maps the run's coverage itself and
+   * returns its records (`RemoteRunReply.coverage`), their blob ids in the
+   * worktree's object format. Absent: it returns none.
+   */
+  readonly coverageFormat?: ObjectFormat;
+}
+
+/**
+ * Spec 026 D9: the coverage provider a remote host's Vitest loads: its own,
+ * beside the bundle it runs from, which only the host can name.
+ */
+export const HOST_PROVIDER = "squeal:host-provider";
+
+/**
+ * Spec 026 D9: one completed test file's coverage record as the remote
+ * host mapped it, its paths relative to the root: `encodeRecord`'s bytes, base64.
+ */
+export interface RemoteRecord {
+  readonly testFile: TestFileRef;
+  readonly record: string;
 }
 
 /**
@@ -80,6 +102,8 @@ export interface RemoteRunReply {
   readonly unadmitted?: true;
   readonly proof?: Readonly<Record<string, string | null>>;
   readonly logs?: readonly WireLog[];
+  /** Spec 026 D9: the records of the run's covered files, asked for by `coverageFormat`. */
+  readonly coverage?: readonly RemoteRecord[];
 }
 
 /** The host's own environment inputs (spec 021 D11): what the key holds of a process. */

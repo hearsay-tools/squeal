@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import type { PoolLease } from "../capacity/pool.js";
+import { coverageProvider } from "../code/coverage/runtime.js";
 import type { CoverageRun } from "../code/coverage/types.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../types/runner.js";
 import { encodeCoverageRun } from "./coverage-wire.js";
@@ -18,6 +19,7 @@ import {
   type WireRunOptions,
 } from "./protocol.js";
 import type { AdmitAsk, HostAdmission } from "./remote/admission.js";
+import { remoteCoverage } from "./remote/coverage.js";
 import type { TreeHost } from "./remote/tree-host.js";
 import type { RemoteRunOptions, RemoteRunReply, TreeEntry, TreeWrite } from "./remote/tree-wire.js";
 import type { RunAround } from "./workers.js";
@@ -28,6 +30,11 @@ import type { RunAround } from "./workers.js";
  * events. It never opens the store. When its input ends it stops its runs,
  * closes the adapter and returns, so the process exits (`runner-split.md`
  * Q6).
+ *
+ * Spec 026 D9 (row 026-13): a remote host's runs keep their coverage
+ * payloads instead of sending their paths, which are of its own machine;
+ * a run asked for its records (`coverageFormat`) gets them on its reply,
+ * mapped here, and every payload of a run is deleted once it ends.
  */
 
 /** An adapter a host serves: a Vitest adapter also tells its widths. */
@@ -94,6 +101,9 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
     finish = resolve;
   });
   let ending = false;
+  /** Spec 026 D9: a remote host's coverage, kept per run for its reply; its own provider no record holds. */
+  const kept =
+    options.tree === undefined ? null : remoteCoverage(ownPath(coverageProvider()), hostLog);
 
   const valuesOf = (current: HostedAdapter): HostValues => ({
     omittedTestFiles: current.traits.omittedTestFiles(),
@@ -147,7 +157,8 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
     },
     note: (text, topic) => send({ ev: "note", text, ...(topic === undefined ? {} : { topic }) }),
     optimizer: (projects) => send({ ev: "optimizer", projects }),
-    coverage: (run) => send({ ev: "coverage", run: encodeCoverageRun(run) }),
+    coverage: (run) =>
+      kept === null ? send({ ev: "coverage", run: encodeCoverageRun(run) }) : kept.collected(run),
   };
 
   const start = async (args: HostStart): Promise<HostStarted> => {
@@ -228,7 +239,15 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
   ): Promise<RunReport> => {
     const current = started();
     // `permits` are the daemon's (`RunOptions.permits`): never this host's to use.
-    const { beforeForce, expected, alive, admitted: _admitted, permits: _permits, ...data } = wire;
+    const {
+      beforeForce,
+      expected,
+      alive,
+      coverageFormat,
+      admitted: _admitted,
+      permits: _permits,
+      ...data
+    } = wire;
     let left = files.length;
     // Spec 021 D11: a remote host runs only over the tree the daemon expects.
     const refused = expected === undefined ? [] : await treeOf().differing(expected);
@@ -268,13 +287,18 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       if (options.tree === undefined || logDir === undefined) return report;
       const observed = (report.observed ?? []).flatMap((o) => o.paths);
       const proven = [...new Set([...Object.keys(expected ?? {}), ...observed])];
+      const coverage =
+        kept === null || coverageFormat === undefined ? [] : kept.take(data.runId, coverageFormat);
       const reply: RemoteRunReply = {
         logs: await options.tree.logs(logDir),
         ...(expected === undefined ? {} : { proof: await options.tree.blobs(proven) }),
+        ...(coverage.length === 0 ? {} : { coverage }),
       };
       return { ...report, ...reply } as RunReport;
     } finally {
       clearInterval(beat);
+      // D9: a payload no reply took, of a run that failed or asked for none, goes now.
+      kept?.drop(data.runId);
       runs.delete(id);
       forced.get(id)?.();
       forced.delete(id);
@@ -373,6 +397,16 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
 }
 
 type RunReportFiles = Parameters<RunnerAdapter["run"]>[0];
+
+/** Whether a path is `own`, the host's coverage provider, which no record holds. */
+function ownPath(own: string | null): (path: string) => boolean {
+  return (path) => path === own;
+}
+
+/** A remote host's own line: its stderr, which the daemon's ssh logs. */
+function hostLog(text: string): void {
+  process.stderr.write(`${text}\n`);
+}
 
 /** The adapter's member `method` with `args`; one it lacks is an error. */
 function call(adapter: HostedAdapter, method: string, args: readonly unknown[]): Promise<unknown> {

@@ -4,7 +4,7 @@ import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
 import { isBusy, withBusySlice } from "../../store/connection.js";
 import { withWriteKind } from "../../store-process/relay.js";
 import type { AbsolutePath, EpochMs } from "../../types/common.js";
-import type { CheckKey } from "../../types/keys.js";
+import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import { isCodeStoreOpenFailure, type OpenCodeStoreOptions, openCodeStore } from "../store/open.js";
 import type { CodeStore, CodeStoreOpenFailure } from "../store/types.js";
@@ -78,6 +78,12 @@ export interface CoverageWriterOptions {
 export interface CoverageWriter {
   /** A run's payloads; mapped one test file at a time, never awaited by the run. */
   collected(run: CoverageRun): void;
+  /**
+   * Spec 026 D9 (row 026-13): the record of `testFile` in run `runId`,
+   * mapped already (on a remote host): it waits for its result, its batch
+   * and the store as a mapped payload's does.
+   */
+  recordMapped(runId: string, testFile: TestFileRef, record: SharedRecord): void;
   /** Resolves once nothing is mapped or waits. */
   idle(): Promise<void>;
   /** A payload is queued or mapped, or a record waits for its result, its batch or the store (row 015-12). */
@@ -90,7 +96,9 @@ export interface CoverageWriter {
 
 interface Job {
   readonly runId: string;
-  readonly file: CoveredFile;
+  readonly testFile: TestFileRef;
+  /** The payload to map; absent for a record mapped already (`recordMapped`). */
+  readonly file?: CoveredFile;
   record?: SharedRecord;
   /** Its result's key once found: a retry on a busy store stores there. */
   key?: CheckKey;
@@ -188,9 +196,9 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
 
   /** A completed test file that got no record: counted by cause, `why` logged; close notes the rest. */
   const drop = (job: Job, cause: DropCause, why?: string): void => {
-    rmSync(job.file.payload, { force: true });
-    if (why !== undefined) options.log(`coverage: ${job.file.testFile.path}: ${why}`);
-    drops.count(cause, job.file.testFile.path, why, closed);
+    if (job.file !== undefined) rmSync(job.file.payload, { force: true });
+    if (why !== undefined) options.log(`coverage: ${job.testFile.path}: ${why}`);
+    drops.count(cause, job.testFile.path, why, closed);
   };
 
   const open = (): CodeStore | CodeStoreOpenFailure => {
@@ -254,9 +262,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       options.onStored?.();
     } catch (error) {
       const more = stored > 1 ? ` and ${stored - 1} more` : "";
-      options.log(
-        `coverage: after storing ${batch[0]?.file.testFile.path}${more}: ${String(error)}`,
-      );
+      options.log(`coverage: after storing ${batch[0]?.testFile.path}${more}: ${String(error)}`);
     }
   };
   const endWindow = (): void => {
@@ -295,7 +301,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   const later = (job: Job): void => {
     const wait = waits[job.attempt];
     if (wait === undefined) {
-      options.log(`coverage: no result of run ${job.runId} for ${job.file.testFile.path}`);
+      options.log(`coverage: no result of run ${job.runId} for ${job.testFile.path}`);
       drop(job, "no-result");
       return;
     }
@@ -311,7 +317,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   const place = (job: Job, record: SharedRecord): void => {
     if (job.key === undefined) {
       job.attempt++;
-      const key = options.resultKey(job.runId, job.file.testFile);
+      const key = options.resultKey(job.runId, job.testFile);
       if (key !== undefined) job.key = key;
     }
     if (job.key === undefined) later(job);
@@ -322,7 +328,8 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   const step = async (job: Job): Promise<void> => {
     let record: SharedRecord;
     try {
-      record = job.record ??= await mapOf(job.file);
+      // A record mapped already has no payload: only one with a payload is mapped here.
+      record = job.record ??= await mapOf(job.file as CoveredFile);
     } catch (error) {
       drop(job, closed ? "closed" : "map-error", closed ? undefined : String(error));
       return;
@@ -373,11 +380,17 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   return {
     collected(run) {
       for (const file of run.files) {
-        const job = { runId: run.runId, file, attempt: 0 };
+        const job = { runId: run.runId, testFile: file.testFile, file, attempt: 0 };
         if (closed) drop(job, "closed");
         else queue.push(job);
       }
       if (!closed) start();
+    },
+    recordMapped(runId, testFile, record) {
+      const job: Job = { runId, testFile, record, attempt: 0 };
+      if (closed) return drop(job, "closed");
+      queue.push(job);
+      start();
     },
     busy: () => !quiet() || queue.length > 0,
     dropped: () => drops.counts(),

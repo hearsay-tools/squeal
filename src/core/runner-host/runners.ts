@@ -1,13 +1,19 @@
+import { coverageProvider, PROVIDER_MISSING_NOTE } from "../code/coverage/runtime.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { NodeTestProject, PytestProject } from "../types/policy.js";
 import type { AdapterHooks, HostedAdapter } from "./host.js";
 import type { HostStart, ProcessHostOptions } from "./protocol.js";
+import { HOST_PROVIDER } from "./remote/tree-wire.js";
 
 /*
  * Spec 021 D6 to D8 (rows 021-11, 021-12): per runner, how the host builds
  * the project's own adapter from `start`. The daemon's proxy answers its
  * runner kind's traits from the values the host sends (`proxy.ts`, row
  * 011-329).
+ *
+ * Spec 026 D9 (row 026-13): a remote host's Vitest loads the coverage
+ * provider beside its own bundle (`HOST_PROVIDER`): the daemon's path is
+ * of another machine. With none there, its runs take no coverage, noted.
  */
 
 /**
@@ -22,7 +28,8 @@ export async function buildAdapter(
   switch (start.runner) {
     case "vitest": {
       const { createVitestAdapter } = await import("../../runners/vitest/index.js");
-      const { coverage, childEnv, maxWorkers } = start.options;
+      const { childEnv, maxWorkers } = start.options;
+      const coverage = vitestCoverage(start, hooks);
       return createVitestAdapter({
         root,
         note: hooks.note,
@@ -91,6 +98,21 @@ export async function buildAdapter(
     default:
       throw new Error(`runner host: no runner ${String(start.runner)}`);
   }
+}
+
+/** Vitest's coverage options of `start`, its provider the host's own under `HOST_PROVIDER`. */
+function vitestCoverage(
+  start: HostStart,
+  hooks: AdapterHooks,
+): { readonly provider: string; readonly tempDir: string } | undefined {
+  const { coverage } = start.options;
+  if (coverage === undefined || coverage.provider !== HOST_PROVIDER) return coverage;
+  const provider = coverageProvider();
+  if (provider === null) {
+    hooks.note(PROVIDER_MISSING_NOTE);
+    return undefined;
+  }
+  return { provider, tempDir: coverage.tempDir };
 }
 
 /** node:test's or pytest's data from `start`. */

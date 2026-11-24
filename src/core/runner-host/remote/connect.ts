@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { MISSING_SCRIPT, missingText } from "../../daemon/required-commands.js";
+import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { RunnerAdapter, RunReport } from "../../types/runner.js";
 import { channelOf, type HostChannel, type RunnerHostLaunch } from "../channel.js";
@@ -14,9 +15,11 @@ import { type SshTarget, shellQuote, spawnSsh, sshFailure, sshRun } from "./ssh.
 import { treeEntries, treePaths, writesFor } from "./tree.js";
 import { LOCKFILES } from "./tree-install.js";
 import {
+  HOST_PROVIDER,
   type HostCore,
   type InstallAnswer,
   insideRoot,
+  type RemoteRunOptions,
   type RemoteRunReply,
   type TreeAnswer,
 } from "./tree-wire.js";
@@ -39,6 +42,13 @@ import {
  * directories are this machine's paths; a remote host gets directories of
  * its tree's own instead (`<tree>/tmp`, `<tree>/cache/<name>`), made before
  * it starts, so no local path reaches a remote process.
+ *
+ * Spec 026 D9 (row 026-13): under `coverage: "remote"` the host keeps
+ * coverage on as the policy says: Vitest loads the provider of the host's
+ * own bundle (`HOST_PROVIDER`) and writes payloads to `<tree>/tmp/coverage`;
+ * each run asks for its records in the worktree's object format, and its
+ * reply carries them to the lane, which keeps them only once the run is
+ * proven. Under `"off"`, 021 D12 stands: coverage is stripped.
  */
 
 /** How long each remote step may take beyond the host's own deadlines. */
@@ -99,6 +109,10 @@ export interface RemoteHostOptions {
    * the host starts; rejects to refuse the machine. Absent: none.
    */
   readonly diskCheck?: () => Promise<void>;
+  /** Spec 026 D9: `"remote"` maps coverage on the host; absent or `"off"`, 021 D12 strips it. */
+  readonly coverage?: "off" | "remote";
+  /** Spec 026 D9: the worktree's object format, the blob ids of remote records. Absent: none asked for. */
+  readonly coverageFormat?: ObjectFormat;
 }
 
 /** A connect the remote refuses, as for a missing command (D19.1): the lane names it a refusal, not a loss. */
@@ -161,10 +175,15 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
   if (missing.length > 0) throw new RemoteRefusal(missingText(missing, "there"));
   const tree = treeDir(places, root);
   const command = hostCommand(places, options.version, bundle.cli, tree, options.runner);
+  const mapped = options.coverage === "remote" && options.options.coverage !== undefined;
   const adapterOptions =
-    options.options.process === undefined
+    options.options.process === undefined && !mapped
       ? options.options
-      : remoteAdapterOptions(options.options, await remoteTreeDir(target, tree, deadlines.sshMs));
+      : remoteAdapterOptions(
+          options.options,
+          await remoteTreeDir(target, tree, deadlines.sshMs),
+          options.coverage,
+        );
   return remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
     ...options,
     options: adapterOptions,
@@ -181,7 +200,7 @@ export async function remoteTreeDir(
   deadlineMs: number,
 ): Promise<string> {
   const q = shellQuote(tree);
-  const made = await sshRun(target, `mkdir -p ${q}/tmp ${q}/cache && cd ${q} && pwd -P`, {
+  const made = await sshRun(target, `mkdir -p ${q}/tmp/coverage ${q}/cache && cd ${q} && pwd -P`, {
     deadlineMs,
   });
   const what = `could not make ${tree}/tmp and ${tree}/cache on ${target.destination}`;
@@ -194,17 +213,25 @@ export async function remoteTreeDir(
 /**
  * `options` as a remote host over the tree at the absolute `tree` takes
  * them (D8.2): node:test's and pytest's temp directory is `<tree>/tmp`,
- * pytest's cache directory `<tree>/cache/<its last name here>`.
+ * pytest's cache directory `<tree>/cache/<its last name here>`. D9: under
+ * `coverage: "remote"`, Vitest's provider is the host's own and its
+ * payloads go to `<tree>/tmp/coverage`.
  */
 export function remoteAdapterOptions(
   options: HostAdapterOptions,
   tree: string,
+  coverage: "off" | "remote" = "off",
 ): HostAdapterOptions {
+  const vitest =
+    coverage === "remote" && options.coverage !== undefined
+      ? { coverage: { provider: HOST_PROVIDER, tempDir: `${tree}/tmp/coverage` } }
+      : {};
   const data = options.process;
-  if (data === undefined) return options;
+  if (data === undefined) return "coverage" in vitest ? { ...options, ...vitest } : options;
   const { tempDir: _here, cacheDir, ...kept } = data;
   return {
     ...options,
+    ...vitest,
     process: {
       ...kept,
       tempDir: `${tree}/tmp`,
@@ -267,14 +294,17 @@ export async function remoteHostOver(
     } else if (done.ran) log(`${target.destination}: installed with ${done.command}`);
     return done;
   };
-  const adapterOptions = withoutCoverage(options.options);
+  // Spec 021 D12: coverage stays off on a remote lane, unless D9 maps it there.
+  const mapped = options.coverage === "remote";
+  const adapterOptions = mapped ? options.options : withoutCoverage(options.options);
   const adapter = await startHostProxy({
     channel,
     runner: options.runner,
     version: options.version,
-    // Spec 021 D12: coverage stays off on a remote lane.
     options: adapterOptions,
-    policy: () => ({ ...options.policy(), coverage: false, coverageChildren: false }),
+    policy: mapped
+      ? options.policy
+      : () => ({ ...options.policy(), coverage: false, coverageChildren: false }),
     ...(options.note === undefined ? {} : { note: options.note }),
     ...(options.optimizer === undefined ? {} : { optimizer: options.optimizer }),
     deadlines: hostDeadlines,
@@ -314,7 +344,7 @@ export async function remoteHostOver(
     return requests;
   };
   return {
-    adapter: withLogs(adapter),
+    adapter: withLogs(adapter, mapped ? options.coverageFormat : undefined),
     node,
     coreEnvironment: async (allowlist) =>
       (await started().request("coreEnvironment", [allowlist], callMs)) as HostCore,
@@ -330,13 +360,17 @@ function mib(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MiB`;
 }
 
-/** `adapter` whose runs' reports carry their logs: written into the run's own `logDir`. */
-function withLogs(adapter: RunnerAdapter): RunnerAdapter {
+/**
+ * `adapter` whose runs' reports carry their logs: written into the run's
+ * own `logDir`. D9: with `coverageFormat`, each run asks for its records.
+ */
+function withLogs(adapter: RunnerAdapter, coverageFormat?: ObjectFormat): RunnerAdapter {
   const run = adapter.run.bind(adapter);
+  const asked: RemoteRunOptions = coverageFormat === undefined ? {} : { coverageFormat };
   adapter.run = async (testFiles, options) => {
-    const report = (await run(testFiles, options)) as RunReport & RemoteRunReply;
+    const report = (await run(testFiles, { ...options, ...asked })) as RunReport & RemoteRunReply;
     const { logs, ...rest } = report;
-    // `refused` and `proof` stay: the lane reads them (spec 021 D11).
+    // `refused`, `proof` and `coverage` stay: the lane reads them (spec 021 D11, 026 D9).
     for (const log of logs ?? []) {
       if (!insideRoot(log.name)) continue;
       const at = join(options.logDir, log.name);

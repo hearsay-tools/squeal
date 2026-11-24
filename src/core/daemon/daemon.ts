@@ -910,6 +910,9 @@ class Daemon {
           readDaemonNotes(store, worktreeId).findLast((n) => n.topic === topic)?.text,
         log: this.#log,
         ...(this.options.env === undefined ? {} : { env: this.options.env }),
+        // Spec 026 D9 (row 026-13): a proven remote run's records, mapped there, stored as ours.
+        remoteCoverage: (runId, testFile, record) =>
+          this.#coverage?.recordMapped(runId, testFile, record),
       });
       const onRemote = remote === null ? {} : { remote: remote.wrap };
       // Spec 021 D8 (row 021-12): node:test and pytest in local runner hosts, as Vitest.

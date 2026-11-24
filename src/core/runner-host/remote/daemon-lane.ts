@@ -1,16 +1,20 @@
 import type { VitestAdapterOptions } from "../../../runners/vitest/index.js";
+import type { SharedRecord } from "../../code/coverage/parts.js";
 import { withSlowInstance } from "../../daemon/slow-instance.js";
 import { repositoryRootOf } from "../../daemon/user-config.js";
 import { worktreeIdOfRealPath } from "../../fs/git-layout.js";
+import { readObjectFormat } from "../../hash/git-index.js";
 import { runnerKeyingDeferred } from "../../scheduler/deferred-keying.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { RemoteSleepOutcome } from "../../types/daemon.js";
+import type { TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import { BESIDE_LANE_PREFIX, isSlowLane, type RunnerAdapter } from "../../types/runner.js";
 import type { RunnerHostLaunch } from "../channel.js";
 import type { HostAdapterOptions, HostPolicy } from "../protocol.js";
 import { hostedOptions } from "../vitest-host.js";
 import { startRemoteHost } from "./connect.js";
+import { sharedOf } from "./coverage.js";
 import { probeDisk } from "./disk-check.js";
 import { withRemoteLane } from "./lane.js";
 import { tiersText } from "./lane-tiers.js";
@@ -62,6 +66,10 @@ import {
  * here. A machine whose tree is a Git repository takes `needsRepository`
  * files too; review 0.1.619 B3: only while its `.git` is at the worktree's
  * Git state, which the lane refreshes before each split (`refreshGit`).
+ *
+ * Spec 026 D9 (row 026-13): under `coverage: "remote"` each host maps its
+ * runs' coverage in the worktree's object format; a proven run's records
+ * go to `remoteCoverage`, the daemon's records' writer, decoded and checked here.
  */
 
 /** The note topic of the runner's own lane's one status line. */
@@ -87,6 +95,11 @@ export interface DaemonRemoteOptions {
   readonly env?: NodeJS.ProcessEnv;
   /** Starts a remote host on the machine; absent, `startRemoteHost`. For tests. */
   readonly startHost?: typeof startRemoteHost;
+  /**
+   * Spec 026 D9: a proven remote run's record of `testFile`, mapped there,
+   * for the code store (`CoverageWriter.recordMapped`). Absent: dropped.
+   */
+  readonly remoteCoverage?: (runId: string, testFile: TestFileRef, record: SharedRecord) => void;
   /** Spec 026 D11: measures the machine's disk; absent, `probeDisk`. For tests. */
   readonly probeDisk?: typeof probeDisk;
 }
@@ -258,6 +271,13 @@ function laneOver<R extends RunnerAdapter>(
     hasGitRepository: () => share.gitCurrent(),
     refreshRepository: (signal) => share.refreshGit(signal),
     gitLease: () => share.gitLease(),
+    remoteCoverage: (runId, records) => {
+      for (const remote of records) {
+        const record = sharedOf(remote);
+        if (typeof record === "string") options.log(`coverage: ${remote.testFile.path}: ${record}`);
+        else options.remoteCoverage?.(runId, remote.testFile, record);
+      }
+    },
     ending: () => share.ending(),
     root,
     version,
@@ -272,6 +292,7 @@ function laneOver<R extends RunnerAdapter>(
           const { ssh, machine } = await share.reach();
           if (gone()) throw new MachineEnding("its lane closed");
           const probe = options.probeDisk ?? probeDisk;
+          const mapped = context.lane.coverage === "remote";
           return (options.startHost ?? startRemoteHost)({
             target: ssh,
             places: machine.places,
@@ -285,6 +306,8 @@ function laneOver<R extends RunnerAdapter>(
             log: options.log,
             commands: options.policy().requires.commands,
             diskCheck: () => share.checkDisk(machine, () => probe(ssh, machine.places)),
+            coverage: context.lane.coverage,
+            ...(mapped ? { coverageFormat: await readObjectFormat(root) } : {}),
           });
         };
         // D11: a managed machine a slow disk refused is replaced once, by a fresh acquire.
