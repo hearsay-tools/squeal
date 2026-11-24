@@ -1,8 +1,16 @@
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { appendFileSync, chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { remoteSettingsPath } from "../../src/core/runner-host/remote/settings.js";
-import { type DaemonSuite, type FixtureRepo, runnerHosts, spawnCli } from "../daemon/helpers.js";
+import {
+  type DaemonSuite,
+  type FixtureRepo,
+  runnerHosts,
+  spawnCli,
+  waitReady,
+} from "../daemon/helpers.js";
+import { git } from "../hash/git-repo.js";
 import { fakeSshAt } from "../runner-host/remote/providers/agent37-api-mock.js";
 
 /*
@@ -178,3 +186,82 @@ Object.defineProperty(process, "arch", {
   },
 });
 `;
+
+const NODE_TEST = {
+  "nt/sum.test.mjs":
+    'import assert from "node:assert/strict";\nimport { test } from "node:test";\n\ntest("sums", () => assert.equal(1 + 1, 2));\n',
+  "slow/wait.test.mjs":
+    'import assert from "node:assert/strict";\nimport { test } from "node:test";\n\ntest("waits", async () => {\n  await new Promise((r) => setTimeout(r, 300));\n  assert.ok(true);\n});\n',
+};
+
+/** A Python with pytest on this machine, or `null`: the pytest case is skipped without one. */
+export function pytestPython(): string | null {
+  for (const python of [process.env.SQUEAL_E2E_PYTHON, "python3"]) {
+    if (python === undefined || python === "") continue;
+    const probe = spawnSync(python, ["-c", "import pytest, sys; print(sys.executable)"], {
+      encoding: "utf8",
+    });
+    if (probe.status === 0) return probe.stdout.trim();
+  }
+  return null;
+}
+
+/** A fixture: Vitest, two node:test projects (one slow), a manual group, and a remote world. */
+export function remoteFixture(
+  suite: DaemonSuite,
+  extra: Record<string, unknown> = {},
+  files: Record<string, string> = {},
+): RemoteWorld {
+  const repo = suite.fixture({
+    "squeal.config.json": `${JSON.stringify({
+      baseline: { onStart: "lookup-then-run-missing" },
+      checks: [{ name: "later", runner: "vitest", tests: ["test/plain.test.ts"], at: "manual" }],
+      nodeTest: [
+        { name: "nt", include: ["nt/*.test.mjs"] },
+        { name: "slow", include: ["slow/*.test.mjs"] },
+      ],
+      slow: { include: ["slow/*.test.mjs"] },
+      complexity: { enabled: true },
+      coverage: { enabled: true },
+      ...extra,
+    })}\n`,
+    ...NODE_TEST,
+    ...files,
+  });
+  // The fixture's `test/gen.test.ts` reads a gitignored file, which never reaches a remote tree.
+  git(repo.root, ["rm", "-q", "test/gen.test.ts"]);
+  git(repo.root, ["commit", "-qm", "no ignored input"]);
+  return withRemote(suite, repo);
+}
+
+/** A `command` machine answering with `node` and `.squeal-remote`. */
+export function commandLane(
+  world: RemoteWorld,
+  node = process.execPath,
+  entry: Record<string, unknown> = {},
+): Hooks {
+  const hooks = commandHooks(join(world.repo.runtimeDir, "hooks"), {
+    v: 1,
+    id: "lan-1",
+    destination: "dev@lan-box",
+    node,
+    cache: ".squeal-remote",
+    sleepOnIdle: true,
+  });
+  world.remote({
+    provider: "command",
+    providerConfig: hooks.config,
+    lanes: "all",
+    runners: "all",
+    whenLost: "not-run",
+    ...entry,
+  });
+  return hooks;
+}
+
+/** The daemon of `repo`, ready. */
+export async function served(suite: DaemonSuite, repo: FixtureRepo) {
+  const spawned = suite.daemon(repo);
+  await waitReady(repo, spawned, 120_000);
+  return spawned;
+}

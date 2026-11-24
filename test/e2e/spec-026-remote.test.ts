@@ -1,7 +1,7 @@
-import { spawnSync } from "node:child_process";
 import { appendFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
+import { treeDir } from "../../src/core/runner-host/remote/connect.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import {
   daemonSuite,
@@ -9,20 +9,29 @@ import {
   type FixtureRepo,
   readNotes,
   stopProcess,
-  waitReady,
   withStore,
 } from "../daemon/helpers.js";
 import { git } from "../hash/git-repo.js";
+import { mockAgent37Api } from "../runner-host/remote/providers/agent37-api-mock.js";
+import {
+  agent37WorldMissing,
+  certificates,
+  routingProxy,
+  sshBridge,
+  startSshd,
+  TUNNEL_TEMPLATE,
+} from "./spec-026-agent37-world.js";
 import { buildPluginDist } from "./spec-026-build.js";
 import {
   cliIn,
-  commandHooks,
+  commandLane,
   nodeWith,
   OTHER_ARCH,
-  type RemoteWorld,
+  pytestPython,
+  remoteFixture,
   SLOW_DISK,
   sampleLocalHosts,
-  withRemote,
+  served as servedIn,
 } from "./spec-026-remote-fixture.js";
 
 /*
@@ -37,85 +46,21 @@ import {
  * the remote's coverage lands in the local code store. A remote Node that
  * reports another arch is refused under `match-local` and keyed to its own
  * environment under `remote-key` (D10); one whose disk syncs slowly is
- * named and kept under `warn` and refused under `refuse` (D11).
+ * named and kept under `warn` and refused under `refuse` (D11). The
+ * `agent37` provider runs against a local Agent37: the row 026-15 mock
+ * API, a `CONNECT` proxy and a TLS WebSocket bridge to a loopback `sshd`
+ * (`spec-026-agent37-world.ts`), so a real `ssh` goes through
+ * `squeal remote-tunnel agent37`.
  */
 
 const suite = daemonSuite({}, buildPluginDist);
 
 const MATH = { project: "", path: "test/math.test.ts" } as TestFileRef;
-
-const NODE_TEST = {
-  "nt/sum.test.mjs":
-    'import assert from "node:assert/strict";\nimport { test } from "node:test";\n\ntest("sums", () => assert.equal(1 + 1, 2));\n',
-  "slow/wait.test.mjs":
-    'import assert from "node:assert/strict";\nimport { test } from "node:test";\n\ntest("waits", async () => {\n  await new Promise((r) => setTimeout(r, 300));\n  assert.ok(true);\n});\n',
-};
-
-/** A Python with pytest on this machine, or `null`: the pytest case is skipped without one. */
-function pytestPython(): string | null {
-  for (const python of [process.env.SQUEAL_E2E_PYTHON, "python3"]) {
-    if (python === undefined || python === "") continue;
-    const probe = spawnSync(python, ["-c", "import pytest, sys; print(sys.executable)"], {
-      encoding: "utf8",
-    });
-    if (probe.status === 0) return probe.stdout.trim();
-  }
-  return null;
-}
 const PYTHON = pytestPython();
-
-/** A fixture: Vitest, two node:test projects (one slow), a manual group, and a remote world. */
-function fixture(extra: Record<string, unknown> = {}, files: Record<string, string> = {}) {
-  const repo = suite.fixture({
-    "squeal.config.json": `${JSON.stringify({
-      baseline: { onStart: "lookup-then-run-missing" },
-      checks: [{ name: "later", runner: "vitest", tests: ["test/plain.test.ts"], at: "manual" }],
-      nodeTest: [
-        { name: "nt", include: ["nt/*.test.mjs"] },
-        { name: "slow", include: ["slow/*.test.mjs"] },
-      ],
-      slow: { include: ["slow/*.test.mjs"] },
-      complexity: { enabled: true },
-      coverage: { enabled: true },
-      ...extra,
-    })}\n`,
-    ...NODE_TEST,
-    ...files,
-  });
-  // The fixture's `test/gen.test.ts` reads a gitignored file, which never reaches a remote tree.
-  git(repo.root, ["rm", "-q", "test/gen.test.ts"]);
-  git(repo.root, ["commit", "-qm", "no ignored input"]);
-  return withRemote(suite, repo);
-}
-
-/** A `command` machine answering with `node` and `.squeal-remote`. */
-function lane(world: RemoteWorld, node = process.execPath, entry: Record<string, unknown> = {}) {
-  const hooks = commandHooks(join(world.repo.runtimeDir, "hooks"), {
-    v: 1,
-    id: "lan-1",
-    destination: "dev@lan-box",
-    node,
-    cache: ".squeal-remote",
-    sleepOnIdle: true,
-  });
-  world.remote({
-    provider: "command",
-    providerConfig: hooks.config,
-    lanes: "all",
-    runners: "all",
-    whenLost: "not-run",
-    ...entry,
-  });
-  return hooks;
-}
-
-/** The daemon of `repo`, ready. */
-async function served(repo: FixtureRepo) {
-  const spawned = suite.daemon(repo);
-  await waitReady(repo, spawned, 120_000);
-  return spawned;
-}
-
+const fixture = (extra?: Record<string, unknown>, files?: Record<string, string>) =>
+  remoteFixture(suite, extra, files);
+const lane = commandLane;
+const served = (repo: FixtureRepo) => servedIn(suite, repo);
 const cli = (repo: FixtureRepo, ...args: string[]) => cliIn(suite, repo, ...args);
 
 describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () => {
@@ -286,3 +231,124 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     });
   });
 });
+
+const AGENT37_MISSING = agent37WorldMissing();
+const KEY = "sk_e2e_agent37_0b7e";
+const GIT_TEST = [
+  'import { execFileSync } from "node:child_process";',
+  'import { expect, it } from "vitest";',
+  'it("reads HEAD", () => {',
+  '  expect(execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" })).toMatch(/^[0-9a-f]{40}\\n$/);',
+  "});",
+  "",
+].join("\n");
+
+describe.skipIf(AGENT37_MISSING !== undefined)(
+  "spec 026 Track 2 end to end on a mock Agent37 (row 026-16)",
+  { timeout: 600_000 },
+  () => {
+    it("creates, bootstraps Git, runs a needsRepository file there, sleeps, wakes, is reused and deleted", async () => {
+      const world = fixture(
+        { remote: { needsRepository: ["test/git.test.ts"] } },
+        { "test/git.test.ts": GIT_TEST },
+      );
+      const { repo } = world;
+      const dir = join(repo.runtimeDir, "agent37");
+      const certs = certificates(join(dir, "certs"));
+      const sshd = await startSshd(join(dir, "sshd"), world.home);
+      const bridge = await sshBridge(certs, KEY, () => sshd.port);
+      const proxy = await routingProxy(() => bridge.port);
+      const api = await mockAgent37Api(certs);
+      onTestFinished(async () => {
+        await Promise.all([api.close(), proxy.close(), bridge.close()]);
+        sshd.stop();
+      });
+      for (const name of ["NO_PROXY", "no_proxy", "https_proxy", "http_proxy", "HTTP_PROXY"]) {
+        delete repo.env[name];
+      }
+      Object.assign(repo.env, {
+        PATH: `${sshd.bin}:${repo.env.PATH ?? ""}`,
+        HTTPS_PROXY: proxy.url,
+        NODE_EXTRA_CA_CERTS: certs.caFile,
+        AGENT37_API_KEY: KEY,
+      });
+      const places = { node: process.execPath, cache: ".squeal-remote" };
+      world.remote({
+        provider: "agent37",
+        providerConfig: {
+          apiBaseUrl: api.url,
+          sshKeyPath: sshd.key,
+          tunnelHostTemplate: TUNNEL_TEMPLATE,
+          ...places,
+        },
+        lanes: "all",
+        runners: "all",
+        whenLost: "not-run",
+        diskCheck: { onSlowDisk: "warn" },
+      });
+      const sampler = sampleLocalHosts(repo.root);
+      let spawned = await served(repo);
+      const why = () => diagnose(repo, spawned);
+
+      // Create, Node, `.git` from a local bundle, then every file there: the Git one too.
+      const all = await cli(repo, "run", "--all", "--wait", "180000");
+      expect(all.code, `${all.out}\n${why()}`).toBe(0);
+      expect((await cli(repo, "status")).out).toMatch(
+        /Known failures: 0; all 7 test files current/,
+      );
+      const [id] = [...api.instances.keys()];
+      expect(spawned.stderr()).toContain(`Agent37 instance ${id} created (eu vm)`);
+      expect(spawned.stderr()).toMatch(new RegExp(`Agent37 instance ${id}: git history sent at`));
+      const created = api.calls.find((c) => c.method === "POST" && c.path === "/v1/instances");
+      expect(created?.body).toMatchObject({
+        region: "eu",
+        type: "vm",
+        resources: { cpu: 4, memory: 8, disk: 10 },
+        auto_sleep: true,
+        idle_timeout_seconds: 600,
+      });
+      expect(new Set(api.calls.map((c) => c.authorization))).toEqual(new Set([`Bearer ${KEY}`]));
+      const remoteRoot = join(world.home, treeDir(places, repo.root as never), "root");
+      expect(git(remoteRoot, ["rev-parse", "HEAD"])).toBe(git(repo.root, ["rev-parse", "HEAD"]));
+      // The API and SSH both went through the proxy; the tunnel carried the key.
+      expect(proxy.targets).toContain(`${id}.squeal.test:443`);
+      expect(proxy.targets).toContain(new URL(api.url).host);
+      expect(new Set(bridge.keys)).toEqual(new Set([KEY]));
+
+      // Sleep, then the next edit wakes it and runs there.
+      await cli(repo, "remote", "sleep", repo.root);
+      expect(api.instances.get(id as string)).toBe("sleeping");
+      appendFileSync(
+        join(repo.root, "src/math.ts"),
+        "\nexport const twice = (a: number) => a * 2;\n",
+      );
+      const woke = await cli(repo, "status", "--wait", "180000", "src/math.ts");
+      expect(woke.out, why()).toMatch(/1 test file, each with a current result/);
+      expect(api.instances.get(id as string)).toBe("running");
+      expect(api.calls.some((c) => c.path === `/v1/instances/${id}/start`)).toBe(true);
+
+      // Daemon exit sleeps it; the next daemon reuses it.
+      await stopProcess(spawned);
+      expect(api.instances.get(id as string)).toBe("sleeping");
+      spawned = await served(repo);
+      const again = await cli(repo, "run", "--all", "--wait", "180000");
+      expect(again.code, `${again.out}\n${why()}`).toBe(0);
+      expect(spawned.stderr()).toContain(`Agent37 instance ${id} reused (sleeping before)`);
+      expect(
+        api.calls.filter((c) => c.method === "POST" && c.path === "/v1/instances"),
+      ).toHaveLength(1);
+      await stopProcess(spawned);
+      expect(sampler.stop(), "local runner hosts seen at once").toBe(0);
+
+      // A removed worktree's instance is deleted.
+      renameSync(repo.root, `${repo.root}-gone`);
+      try {
+        await cli({ ...repo, root: repo.runtimeDir }, "remote", "prune");
+      } finally {
+        renameSync(`${repo.root}-gone`, repo.root);
+      }
+      expect(api.calls.at(-1)).toMatchObject({ method: "DELETE", path: `/v1/instances/${id}` });
+      expect(api.instances.size).toBe(0);
+    });
+  },
+);
