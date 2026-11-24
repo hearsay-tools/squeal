@@ -198,7 +198,8 @@ async function gate(
   if ("error" in inventory) return fail(inventory.error);
   const { changed, policy } = inventory;
   // D14.1: the scope at the base, and `--group`; a name no test group has there is a usage error.
-  const scope = resolveScope(policy.scope, parsed.groups ?? []);
+  // Spec 026 D5.2: `--narrow` alone takes every test group unless `gate.groups` names them.
+  const scope = resolveScope(policy.scope, parsed.groups ?? [], parsed.narrow === true);
   if ("error" in scope) return fail(scope.error, true);
   const durationsMs: Partial<Record<GateRunner, number>> = {};
   // D17: the stored durations, for the estimate and the order.
@@ -218,6 +219,7 @@ async function gate(
       note,
       ...fromBase(policy),
       scope,
+      ...(parsed.narrow === true ? { narrow: true as const } : {}),
       // D15: a `prepare` command's output goes to stderr.
       output: io.stderr,
       // D14.4: the selection on stderr, after it and before the first run.

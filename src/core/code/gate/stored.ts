@@ -87,6 +87,11 @@ export interface Keyed {
 export interface StoredFiles {
   /** `CollectOptions.stored`: the files with results and a record at their key. */
   readonly stored: StoredEvidence;
+  /**
+   * Spec 026 D5.1 (row 026-08): `stored`'s lookup alone, for files that do
+   * not run (`CollectOptions.leftOutStored`): nothing is expected to be kept.
+   */
+  readonly peek: StoredEvidence;
   /** `CollectOptions.ran` (D17.3): queues the files a run completed that `stored` keyed and did not find. */
   readonly ran: (run: GateRun) => Promise<void>;
   /** D17.5: writes the queued files, once the report is out and before `close`. */
@@ -178,8 +183,17 @@ export function openStored(options: StoredOptions): StoredFiles | null {
       stores.close();
     }
   };
+  const peek: StoredEvidence = async (runner, files) => {
+    const found = new Map<TestFileRef, TestFileEvidence>();
+    for (const [ref, at] of await (await keyerOf()).keyed(files)) {
+      const evidence = evidenceAt(stores, runner, ref, at);
+      if (evidence !== null) found.set(ref, evidence);
+    }
+    return found;
+  };
   return {
     stored,
+    peek,
     ran: (run) => keeper.ran(run),
     flush: () => keeper.flush(),
     notKept: () => keeper.notKeptFiles(),

@@ -18,13 +18,21 @@ import type { RunEstimate } from "./estimate.js";
 import { keptLogs, leftOutFiles, type RunLog } from "./evidence.js";
 import type { KeepOptions } from "./keep-pass.js";
 import { runLanes, SlotPool } from "./lanes.js";
+import { leftOutFailures } from "./left-out-stored.js";
+import { type Narrowing, narrowing } from "./narrow.js";
 import { type BudgetTold, fitRuns, orderRuns } from "./plan.js";
 import type { BasePrepares } from "./prepare.js";
 import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { FileProgress, type Overrun } from "./progress.js";
 import type { Mapped } from "./records.js";
 import { type GateAdapters, openRunners, type Runner } from "./runners.js";
-import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
+import {
+  type GateScope,
+  type LeftOutFailure,
+  type LeftOutFile,
+  type ScopeTally,
+  tallyScope,
+} from "./scope.js";
 import { type IncompleteClosure, tellClosures } from "./select-closures.js";
 import { storedOf, tellEstimates } from "./steps.js";
 import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } from "./types.js";
@@ -69,6 +77,17 @@ export interface CollectOptions {
    * selected file runs, as before.
    */
   readonly scope?: GateScope;
+  /**
+   * Spec 026 D5.2 (row 026-08): with a `scope`, the scope runs only 019
+   * D6's narrow set; the other files it selected are left out.
+   */
+  readonly narrow?: true;
+  /**
+   * Spec 026 D5.1: a read-only lookup of the left-out files' current
+   * results in the local stores; its failures are named in the scope's
+   * evidence. Absent, none is looked up.
+   */
+  readonly leftOutStored?: StoredEvidence;
   /** D15.2: the base's `prepare` of each node:test entry, by name; absent, the base declares none. */
   readonly prepares?: BasePrepares;
   /** D15.3: a `prepare` command's output, as it comes, for stderr; dropped when absent. */
@@ -217,8 +236,8 @@ export async function collectEvidence(
   const deadline = start + budgetSeconds * 1000;
   const { paths } = changed;
   const tally = options.scope === undefined ? null : tallyScope(options.scope);
-  const scoped = (files: readonly LeftOutFile[]) =>
-    tally === null ? {} : { scope: tally.evidence(files) };
+  const scoped = (files: readonly LeftOutFile[], failures: readonly LeftOutFailure[] = []) =>
+    tally === null ? {} : { scope: tally.evidence(files, failures) };
   if (paths.length === 0 && options.tests.length === 0) {
     return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds, ...scoped([]) };
   }
@@ -247,7 +266,12 @@ export async function collectEvidence(
     const { teardown } = options;
     const opening = { provider, temp, note, children, keeping, closures, slots, started, teardown };
     await openRunners(options.adapters, root, policy, opening, runners);
-    const picked = await select(runners, { paths, ...options }, tally);
+    const { tierSize } = policy.runner;
+    const narrowed =
+      options.narrow === true && options.scope !== undefined
+        ? narrowing(options.scope, { paths, tests: options.tests, tierSize, durations })
+        : null;
+    const picked = await select(runners, { paths, ...options }, tally, narrowed);
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
     const known = await storedOf(picked, options);
     // D18: the runners in the order they start, which the print follows (D18.4); no closure read.
@@ -266,7 +290,6 @@ export async function collectEvidence(
     const estimates = tellEstimates(options.estimated, order.estimates, told);
     const blobs: BlobCache = new Map();
     const mapping = { format, blobs, provider, children, note };
-    const { tierSize } = policy.runner;
     const context = { root, deadline, note, options, children, temp, known, mapping, progress };
     // Row 020-59: a long run goes in chunks (`chunksFor`), so each chunk's files are kept as it ends.
     // D18 as amended (row 020-44): every runner at once, the node:test entries from one pool.
@@ -277,7 +300,7 @@ export async function collectEvidence(
       testFiles: [...testFiles].sort(byRunnerAndPath),
       timedOut,
       budgetSeconds: options.budgetSeconds,
-      ...scoped(await leftOutFiles(picked)),
+      ...scoped(await leftOutFiles(picked), await leftOutFailures(picked, options.leftOutStored)),
       ...(prepares.length === 0 ? {} : { prepares }),
       ...estimates,
       ...gaps,
@@ -310,6 +333,7 @@ async function select(
     readonly inputs?: PolicyInputs | undefined;
   },
   tally: ScopeTally | null,
+  narrowed: Narrowing | null,
 ): Promise<(Picked & { readonly runner: Runner })[]> {
   // The daemon's rule (spec 001 D3): a list declares for every test file, a map per test glob.
   const declared =
@@ -336,7 +360,11 @@ async function select(
     for (const ref of byInputs) add(ref);
     const all = [...chosen.values()].sort(byPath);
     const split = tally?.split(kind, listed, all, new Set(tests));
-    const [run, leftOut] = [split?.run ?? all, split?.leftOut ?? []];
+    let [run, leftOut] = [split?.run ?? all, split?.leftOut ?? []];
+    if (narrowed !== null) {
+      const narrow = await narrowed(kind, adapter, listed, run);
+      [run, leftOut] = [narrow.run, [...leftOut, ...narrow.leftOut]];
+    }
     const declaredOnly = byInputs.length === 0 ? {} : { byInputs: byInputs.sort(byPath) };
     picked.push({ runner, kind, adapter, listed, run, leftOut, ...declaredOnly });
   }

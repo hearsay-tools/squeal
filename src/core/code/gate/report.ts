@@ -4,7 +4,7 @@ import type { FileHash } from "../../types/keys.js";
 import type { RunEstimate } from "./estimate.js";
 import type { GatePartRefusal } from "./parts-refused.js";
 import type { PrepareRun } from "./prepare.js";
-import type { LeftOutGroup, ScopeGroup } from "./scope.js";
+import type { LeftOutFailure, LeftOutGroup, ScopeGroup } from "./scope.js";
 import type { ClosureGaps } from "./select-closures.js";
 import type {
   ChangeKind,
@@ -292,6 +292,21 @@ export interface GateReport {
   readonly scope?: {
     readonly groups: readonly ScopeGroup[];
     readonly leftOut: readonly LeftOutGroup[];
+    /**
+     * Spec 026 D5.2 (row 026-08): the selected files of groups in scope
+     * that `--narrow` left out; absent when none was.
+     */
+    readonly narrowed?: number;
+    /**
+     * Spec 026 D5.1: the left-out test files the local stores hold a
+     * current failure of; they did not run here. Absent when none.
+     */
+    readonly leftOutFailures?: readonly LeftOutFailure[];
+    /**
+     * Spec 026 D5.1: the runners listed test files and no group in scope
+     * owns one, as when every test group is `manual`. Absent otherwise.
+     */
+    readonly noTestFilesInScope?: true;
   };
   readonly functions: readonly GateFunctionReport[];
   /**
@@ -322,6 +337,11 @@ export interface RunsStanding {
   readonly failed: boolean;
   /** A selected test file did not finish (D3.4). */
   readonly unfinished: boolean;
+  /**
+   * Spec 026 D5.1 (row 026-08): the stores hold a current failure of a
+   * left-out test file, so the gate never passes. Absent, none.
+   */
+  readonly leftOutFailed?: boolean;
 }
 
 /**
@@ -339,6 +359,7 @@ export function verdictOf(
   if (
     runs.failed ||
     runs.unfinished ||
+    runs.leftOutFailed === true ||
     uncounted.length > 0 ||
     functions.some((f) => f.state === "incomplete")
   ) {
