@@ -19,7 +19,7 @@ import { keptLogs, leftOutFiles, type RunLog } from "./evidence.js";
 import type { KeepOptions } from "./keep-pass.js";
 import { runLanes, SlotPool } from "./lanes.js";
 import { leftOutFailures } from "./left-out-stored.js";
-import { type Narrowing, narrowing } from "./narrow.js";
+import { type Narrowing, narrowing, type StoredObserved } from "./narrow.js";
 import { type BudgetTold, fitRuns, orderRuns } from "./plan.js";
 import type { BasePrepares } from "./prepare.js";
 import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
@@ -82,6 +82,12 @@ export interface CollectOptions {
    * D6's narrow set; the other files it selected are left out.
    */
   readonly narrow?: true;
+  /**
+   * Row 026-21: what the stores observed of the listed files' runs, so the
+   * narrow set counts stored direct marks and run reads as the daemon's
+   * does. Absent, it reads only the runner's `affected`.
+   */
+  readonly observed?: StoredObserved;
   /**
    * Spec 026 D5.1: a read-only lookup of the left-out files' current
    * results in the local stores; its failures are named in the scope's
@@ -269,7 +275,13 @@ export async function collectEvidence(
     const { tierSize } = policy.runner;
     const narrowed =
       options.narrow === true && options.scope !== undefined
-        ? narrowing(options.scope, { paths, tests: options.tests, tierSize, durations })
+        ? narrowing(options.scope, {
+            paths,
+            tests: options.tests,
+            tierSize,
+            durations,
+            observed: options.observed,
+          })
         : null;
     const picked = await select(runners, { paths, ...options }, tally, narrowed);
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
