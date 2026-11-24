@@ -18,7 +18,10 @@ type Waiting = Extract<SlowTierActivity, { kind: "waiting" }>;
  * A `held` or `turn` slot wait whose permits read every one held reads
  * `in use`; a `held` one with a permit free reads `free`; a `turn` one with
  * a permit free stays `turn`. A wait whose slot cannot be read keeps what
- * its daemon published: `held` then means taken at its last try.
+ * its daemon published: `held` then means taken at its last try. So does
+ * one whose every permit counts held only with some whose lock could not be
+ * tested (re-review 0.1.621 B3): a malformed permit file is no proof that a
+ * process holds it.
  */
 export function slotNow(activity: Waiting, group: string): Waiting {
   const { slotAt, ...shown } = activity;
@@ -29,19 +32,23 @@ export function slotNow(activity: Waiting, group: string): Waiting {
   return { ...shown, slot: now };
 }
 
-/** `in use` when each of `permits` is held now; else `free` for `held`, `turn` for `turn`. */
+/**
+ * `in use` when each of `permits` is held now; `free` for `held`, `turn`
+ * for `turn`, when one is free now; what was published when it is not known.
+ */
 function permitsNow(
   dir: AbsolutePath,
   permits: number,
   group: string,
   published: "held" | "turn",
 ): SlotWait {
-  let held: number;
+  let held: ReturnType<typeof heldPermits>;
   try {
-    held = heldPermits({ dir, permits, group }).length;
+    held = heldPermits({ dir, permits, group });
   } catch {
     return published;
   }
-  if (held >= permits) return "in use";
-  return published === "held" ? "free" : "turn";
+  if (held.length < permits) return published === "held" ? "free" : "turn";
+  const proved = held.filter((permit) => permit.unknown !== true).length;
+  return proved >= permits ? "in use" : published;
 }

@@ -200,6 +200,8 @@ describe("the hook's line for a group whose lane waits at its slot (row 023-83)"
   it.each([
     ["held", "held", "waiting for the browser group's slot (in use)."],
     ["held", "free", "waiting for the browser group's slot (taken at its last try, free now)."],
+    // Re-review 0.1.621 B3: a malformed permit no process holds is not proof of use.
+    ["held", "malformed", "waiting for the browser group's slot (taken at its last try)."],
     [
       "turn",
       "free",

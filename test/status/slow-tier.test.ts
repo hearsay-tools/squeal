@@ -252,6 +252,8 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it.each([
     ["held", "2 pending, waiting for the slow slot (in use)"],
     ["free", "2 pending, waiting for the slow slot (taken at its last try, free now)"],
+    // Re-review 0.1.621 B3: a malformed permit no process holds is not proof of use.
+    ["malformed", "2 pending, waiting for the slow slot (taken at its last try)"],
   ] as const)(
     "says the slow slot is in use only while its permit reads held (%s)",
     (then, words) => {

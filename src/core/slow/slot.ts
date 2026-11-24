@@ -169,6 +169,12 @@ export type PermitRecord =
 export interface HeldPermit {
   readonly file: string;
   readonly record: PermitRecord;
+  /**
+   * Re-review 0.1.621 B3: the lock test failed (the file is no database), so
+   * whether a process holds the permit is not known. Counted held, as the
+   * slot counts it; absent when the lock test found it held.
+   */
+  readonly unknown?: true;
 }
 
 /**
@@ -180,7 +186,7 @@ export interface HeldPermit {
  * exclusive lock keeps every other reader out. The row is committed before
  * the holder keeps its lock, so the file's bytes hold it. A missing directory or
  * permit file holds none, and none is created; a file the test cannot lock
- * nor read as a database is held, `unreadable`. Throws when the directory
+ * nor read as a database is held, `unreadable`, and `unknown`. Throws when the directory
  * is not the user's private one.
  */
 export function heldPermits(
@@ -199,7 +205,7 @@ export function heldPermits(
     try {
       free = permitFree(path);
     } catch {
-      held.push({ file, record: { kind: "unreadable" } });
+      held.push({ file, record: { kind: "unreadable" }, unknown: true });
       continue;
     }
     if (!free) held.push({ file, record: permitRecord(path) });

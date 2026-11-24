@@ -110,6 +110,8 @@ describe("a status line per group not all current (019 D6)", () => {
     ["held", "waiting for the e2e group's slot (in use)"],
     ["free", "waiting for the e2e group's slot (taken at its last try, free now)"],
     ["unread", "waiting for the e2e group's slot (taken at its last try)"],
+    // Re-review 0.1.621 B3: a malformed permit no process holds is not proof of use.
+    ["malformed", "waiting for the e2e group's slot (taken at its last try)"],
     [
       undefined,
       "waiting for capacity (whether the e2e group's slot or the shared worker pool holds it is not known)",

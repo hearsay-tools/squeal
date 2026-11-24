@@ -132,6 +132,13 @@ describe("a queued retry of a configured group's file reads by its group (019-27
       "held",
       "the e2e group waits for the e2e group's slot (taken at its last try)",
     ],
+    // Re-review 0.1.621 B3: a malformed permit no process holds is not proof of use.
+    [
+      "held",
+      "malformed",
+      "held",
+      "the e2e group waits for the e2e group's slot (taken at its last try)",
+    ],
     [
       "turn",
       "free",

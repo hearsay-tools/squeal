@@ -100,7 +100,8 @@ describe("the slot's held permits and their holders (011-58)", () => {
     expect(held).toEqual([
       { file: "slow.lock", record: { kind: "missing" } },
       { file: "slow.1.lock", record: { kind: "unreadable" } },
-      { file: "slow.2.lock", record: { kind: "unreadable" } },
+      // Re-review 0.1.621 B3: no lock test read it, so no process is known to hold it.
+      { file: "slow.2.lock", record: { kind: "unreadable" }, unknown: true },
     ]);
   });
 });
