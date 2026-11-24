@@ -106,7 +106,56 @@ In `src/cli/wait/named.ts`:
    - In `results.byKey(key, usedAt)`, update `last_used_at` only when `last_used_at < usedAt - RESULT_TOUCH_INTERVAL_MS` (keeping `usedAt === 0` strictly read-only, and preserving retention/prune behavior where retention is measured in days).
 3. **Slice unchanged-file stat-cache updates in `reconcileBatch` (`src/core/scheduler/batch.ts`):**
    - When `reconcileBatch` has more than `WRITE_SLICE_FILES = 200` unchanged-file stat-cache updates (paths absent from `diff.changes`), flush them ahead of the revision transaction in 200-path transactions with a `setImmediate` yield between slices. A crash between slices only refreshes stat metadata for unchanged files, preserving exact revision atomicity.
-   - Deferred to Wave 2 pending paired boat.dev benchmark measurements on `0.1.600`: slicing changed-file reconciliation, `startTier`, `#write`/`recordTier` (which require async caller and busy-retry ownership across `ledger.ts`, `record-tier.ts`, `tier-start.ts`, and `slow-tier.ts`), and zero-row prune slices (`sliced-prune.ts`, `prune.ts`).
+   - Deferred to Wave 3 (row `025-10`) pending hook write-wait metrics (`025-09`): slicing changed-file reconciliation, `startTier`, `#write`/`recordTier` (which require async caller and busy-retry ownership across `ledger.ts`, `record-tier.ts`, `tier-start.ts`, and `slow-tier.ts`), and zero-row prune slices (`sliced-prune.ts`, `prune.ts`).
+
+### D6: SQLite hot-read optimizations (Wave 2, row `025-06`)
+
+Follow-up measurements on Squeal's own repository (2026-11-24, task `05abfc9a` and coordinator review `0266d2c5`) identified four low-risk read-path and lock-hygiene wins:
+
+1. **Aggregate complexity counts in `codeStatusOf` (`src/core/code/store/schema.ts`, `src/core/code/store/states.ts`, `src/core/code/store/types.ts`, `src/core/status/code-status.ts`):**
+   - Add an additive partial index `states_non_pass` to `CODE_INDEXES` (`CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'`), with no `CODE_SCHEMA_VERSION` raise.
+   - Add `countNonPass(worktreeId, measure)` on `CodeStateRepo` returning `{ fail, pending, unknown }` counts using `INDEXED BY states_non_pass` when the index exists in `sqlite_master` and falling back to `SELECT outcome, count(*) FROM states WHERE worktree_id = ? AND measure = ? AND outcome != 'pass' GROUP BY outcome` when absent (read-only/older stores).
+   - Replace `code.states.list(worktreeId, { measure: "complexity" })` in `codeStatusOf` with `code.states.countNonPass(worktreeId, "complexity")` so `squeal status` never materializes tens of thousands of passing function rows.
+2. **Indexed `UNION` rewrite for `relevantStates` (`src/core/store/schema.ts`, `src/core/store/view-seed.ts`):**
+   - Add an additive partial index `known_states_non_pass` to `STORE_INDEXES` (`CREATE INDEX known_states_non_pass ON known_states (worktree_id, check_id) WHERE outcome != 'pass'`), with no `SCHEMA_VERSION` raise.
+   - Rewrite `relevantStates(store, consumer, mark)` as a `UNION` of three indexed lookups (`known_states` with `worktree_id = ? AND outcome != 'pass'` using `INDEXED BY known_states_non_pass` when present, `consumer_views` for `(worktree_id, session_id, agent_id)`, and `state_born` for `(worktree_id, id > ?)`), `CROSS JOIN known_states` and `JOIN checks`, preserving exact row equivalence and `ORDER BY c.project, c.test_path, c.kind, c.full_name`.
+3. **Read-first consumer guard in `resumeTurn` (`src/core/delivery/turn.ts`):**
+   - Check `store.consumers.get(consumer) === null` before entering `store.transaction()` in `resumeTurn`, so unregistered sessions on `PreToolUse` never acquire and immediately release a no-op write lease.
+4. **Linear `checksByFile` grouping (`src/core/status/unknown-files.ts`):**
+   - Replace the quadratic array-spread copy (`checks.set(id, [...(checks.get(id) ?? []), state])`) in `checksByFile` with in-place `.push(state)`.
+
+### D7: Hook and CLI startup (`NODE_USE_ENV_PROXY` carry/restore and `NODE_COMPILE_CACHE`, Wave 2, row `025-07`)
+
+1. **`NODE_USE_ENV_PROXY` carry-and-restore across shell hook runners and CLI launchers:**
+   - Reuse the proven OpenCode pattern (`src/harness/opencode/bridge-client.ts`, row 008-21) in `plugins/claude-code/hooks/run`, `plugins/antigravity/hooks/run`, `plugins/claude-code/bin/squeal`, `plugins/opencode/bin/squeal`, and `plugins/claude-code/bin/squeal-launcher` (copied to all plugins; bump `# squeal-launcher format` to `10`).
+   - When `NODE_USE_ENV_PROXY` is set, unset it for the hook/CLI Node boot, stash it in `SQUEAL_CARRIED_NODE_USE_ENV_PROXY`, and pass a zero-space `--import data:text/javascript,...` preload that restores `process.env.NODE_USE_ENV_PROXY` and deletes `SQUEAL_CARRIED_NODE_USE_ENV_PROXY` before module code runs (so spawned daemons, network commands like `update`/`remote`, and user tests keep the original environment unchanged).
+2. **`NODE_COMPILE_CACHE` in launchers and Codex fixed adapter, stripped before user tests:**
+   - In the shell hook runners and CLI launchers, when `NODE_COMPILE_CACHE` is unset, export `NODE_COMPILE_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/squeal/compile-cache"` (created with `0700` permissions when absent, falling back safely if `$HOME` is unset or unwritable) and mark `SQUEAL_OWN_COMPILE_CACHE=1`.
+   - Do NOT edit `plugins/codex/hooks/hooks.json` commands (changing them forces every Codex user to re-trust every hook). Instead, call `module.enableCompileCache(dir)` inside `src/harness/codex/adapter/index.ts` before `await load(runtime.root)` so the runtime bundle benefits without touching `hooks.json`.
+   - When spawning user test processes (Vitest workers via runner-host/Vitest adapter, `node:test` child processes, and `pytest` child processes), strip `NODE_COMPILE_CACHE` and `SQUEAL_OWN_COMPILE_CACHE` whenever `SQUEAL_OWN_COMPILE_CACHE === "1"` so user test runs never write into Squeal's cache or observe an unexpected env var (while preserving any user-provided `NODE_COMPILE_CACHE`).
+
+### D8: Benchmark accuracy and visibility (Wave 2, row `025-08`)
+
+1. **Fix `wt-3` / `wt-6` idle window measurement (`bench/run-cell.mjs`):**
+   - After `startOthers` starts secondary worktrees, wait until every worktree daemon has finished its startup listing/keying/counting baseline before starting the 60 s `idle` CPU measurement window (previously `wt1` and `wt2` executed their initial baseline and 42 code-store batches each during the "idle" minute, inflating `wt-3` idle CPU to 3.5% while `wt0` sat at 0.20%).
+2. **Whole-tree memory, hook tails, hook write-wait, and large-repo cell (`bench/summarize.mjs`, `bench/run-cell.mjs`, `bench/run-all.mjs`, `bench/gen-project.mjs`, `bench/lib.mjs`, `bench/README.md`):**
+   - Report and score `res.treeRss.max` (from `cell.daemonRss.maxTreeBytes`, already sampled) alongside `res.daemonRss.max`.
+   - Report `hook.preToolUse.p99`, `hook.preToolUse.max`, `hook.postToolBatch.p99`, and `hook.postToolBatch.max`.
+   - Parse and report daemon front-desk hook write-wait metrics (`hook.writeWait.p95`, `hook.writeWait.max`, `hook.longWriteWaits`) from daemon logs (produced by D9 / row `025-09`), handling older versions cleanly as `n/a`.
+   - Add an optional large-check/function-count benchmark cell (e.g. `size-xl` or `scale-real`, ~20,000 checks / ~60,000 functions) selectable in `bench/run-all.mjs` so real-repository `status` read scaling is measurable on boat.dev.
+
+### D9: Daemon front-desk hook write-wait instrumentation (Wave 2, row `025-09`)
+
+1. **Stamp and measure front-desk write queue wait (`src/core/daemon/desk-messages.ts`, `src/core/daemon/front-desk.ts`, `src/core/daemon/desk.ts`, `src/core/daemon/daemon.ts`):**
+   - Attach `queuedAt: EpochMs` when the front-desk worker posts `{ type: "write", id, batch, queuedAt }` to the main thread.
+   - On the main thread (`desk.ts`), measure `waitMs = now() - message.queuedAt` when taking each `"write"` message.
+   - Log `"long write wait: hook write waited <N> ms for the daemon main thread"` whenever `waitMs > 250` (matching the 250 ms threshold of `store.longWrites`), and emit a concise periodic/shutdown summary line (`hook writes: <n> taken, queue wait p95 <p95> ms max <max> ms`) when at least one hook write was taken since the last report.
+
+### Planned Wave 3 items (rows `025-10` to `025-12`)
+
+- **D10 (`025-10`):** Finish deferred write slicing (`startTier`, `#write`/`recordTier`, changed-file reconciliation, zero-row prune slices) guided by D9 hook write-wait data.
+- **D11 (`025-11`):** Replace full `knownStates.list(worktreeId)` in `src/core/status/snapshot.ts` (and its consumers `header-part.ts`, `imports.ts`, `outstanding.ts`, `named.ts`) with targeted SQL aggregations plus file-scoped reads for named waits.
+- **D12 (`025-12`):** Research/measurement row: measure Vitest `runner-host` cold-restart + first-edit latency and take one idle runner-host heap snapshot on Squeal's repo before deciding an idle runner-host exit policy; also measure `cli/status.mjs` (including `status --wait <path>`) on top of `NODE_COMPILE_CACHE` to decide whether a second CLI bundle pays for itself.
 
 ## Testing
 

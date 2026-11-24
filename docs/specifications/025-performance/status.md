@@ -1,10 +1,12 @@
 # 025: Performance improvements - status
 
-- **Stage:** in-progress (Wave 1 released in `0.1.600`, 2026-11-22; approved by the human 2026-11-22: `/coordinator get it done`)
-- **Coordinator:** `201d84ee`
+- **Stage:** in-progress (Wave 1 released in `0.1.600`, 2026-11-22; Wave 2 approved by the human 2026-11-24: "Write the rows and let's start")
+- **Coordinator:** `0266d2c5` (Wave 2+; Wave 1 was `201d84ee`)
 - **Released:** Wave 1 (`025-01`..`025-05`) in `0.1.600` (tag `squeal--v0.1.600` at `e9c4a490c`, `v0` and `v0.1.600` there, hub `225bd33`, GitHub latest release with `install.sh` and both Codex runtime assets; candidate CI `45074688588` green on `7633b6de4`, exact-main CI `45080260007` green on `e9c4a490c`, Codex reviews `0.1.600-r2.md`, `0.1.600-r3.md`, and `0.1.600-validity.md` PASS; paired boat.dev scorecard `bench/results/2026-11-22-0.1.597-vs-0.1.600-default-AMD-Ryzen-7-9700X-8-Core-Processor/scorecard.md`: `ref` 71→88, `size-l` 46→61, `wt-3` 70→75, `store-7g-wt3` 63→68, Correctness PASS)
 
 ## Amendments
+
+- 2026-11-24 (coordinator `0266d2c5`, approved by the human: "Write the rows and let's start"): Added D6–D9 (Wave 2 rows `025-06`..`025-09`) and planned Wave 3 (D10–D12, rows `025-10`..`025-12`) from the review of task `05abfc9a`'s performance audit against the codebase and 2026-11-24 benchmark raw data. Rejected the `05abfc9a` shared-presence-owner proposal after `wt-3@0.1.616/cell.json` (`perDaemonCpuPct: [0.20, 2.37, 2.50]`) and daemon logs proved `bench/run-cell.mjs` measured `wt1`/`wt2` startup baseline work during the `idle` window; moved the fix into `025-08`.
 
 - 2026-11-22: Renumbered from `024-performance` (rows `024-01`..`024-05`) to `025-performance` (rows `025-01`..`025-05`) before landing on `main` because `024-antigravity-adapter` (`54e28826b`, `a7f479fdd`) landed on `main` first. Earlier Wave 1 worker notes, code comments, and review files (`0.1.600.md`, `0.1.600-r2.md`, `0.1.600-r3.md`) refer to the original `024` numbering. Rebased cleanly onto `0.1.599` (`3e30055c1`, zero shared `src/` or `test/` files with `0.1.599`).
 - 2026-11-22: Initial spec (`D1` to `D5`) created from full repository performance audit against `bench/results/TREND.md` and `0.1.598` (`22be8a3c4`). Wave 1 rows `025-01` through `025-05` (originally `024-01`..`024-05`) dispatched in parallel.
