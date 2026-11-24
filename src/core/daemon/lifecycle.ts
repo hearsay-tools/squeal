@@ -65,6 +65,11 @@ export interface DaemonTimings {
    * Default 5 s.
    */
   readonly observedMs: number;
+  /**
+   * How long a departure drain's slow lane may wait with its fast work done
+   * before the drain ends (row 011-163). Default `DRAIN_SLOW_WAIT_MS`.
+   */
+  readonly drainSlowWaitMs: number;
 }
 
 /**
@@ -170,7 +175,7 @@ export interface TimerContext {
   /**
    * The drain's slow lane waits (`Scheduler.slowWaiting`, row 011-163): its
    * fast work is done and no slow file runs. Once that lasted
-   * `DRAIN_SLOW_WAIT_MS`, the drain ends. Absent or `null`: none waits.
+   * `timings.drainSlowWaitMs`, the drain ends. Absent or `null`: none waits.
    */
   readonly slowWaiting?: () => SlowWaiting | null;
   /**
@@ -424,8 +429,9 @@ export function startTimers(context: TimerContext): () => void {
         );
       } else {
         const waiting = context.slowWaiting?.() ?? null;
-        if (waiting !== null && at - waiting.since >= DRAIN_SLOW_WAIT_MS) {
-          context.shutdown("sessions-gone", waitedText(waiting.paths));
+        const waitMs = context.timings.drainSlowWaitMs ?? DRAIN_SLOW_WAIT_MS;
+        if (waiting !== null && at - waiting.since >= waitMs) {
+          context.shutdown("sessions-gone", waitedText(waiting.paths, waitMs));
         }
       }
     });
@@ -582,9 +588,9 @@ function drainedText(drained: string): string {
     : `daemon stopped: the work pending when its last session ended is done (${drained})`;
 }
 
-function waitedText(paths: readonly string[]): string {
+function waitedText(paths: readonly string[], waitMs: number): string {
   return (
-    `daemon stopped: no slow file ran for ${DRAIN_SLOW_WAIT_MS / 1000} s once the fast work ` +
+    `daemon stopped: no slow file ran for ${Math.round(waitMs / 1000)} s once the fast work ` +
     `pending when its last session ended was done; ${plural(paths.length, "slow file")} left ` +
     `queued for the next daemon in this worktree: ${listPaths(paths)}`
   );
