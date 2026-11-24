@@ -1,9 +1,9 @@
-import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { rename, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { installedDependenciesFingerprint } from "../../keys/environment.js";
 import { installCommand } from "../../scheduler/install-command.js";
+import { hostTools, type ManagerTools, managerEnv, runOutput } from "./package-manager.js";
 import type { InstallAnswer } from "./tree-wire.js";
 
 /*
@@ -19,6 +19,9 @@ import type { InstallAnswer } from "./tree-wire.js";
  * folders as they are (pnpm's `optimisticRepeatInstall`). So is one whose
  * record an earlier release wrote, without that fingerprint: once, and
  * then its record holds one (review 0.1.454 B1).
+ *
+ * Row 026-22: the install runs with the host's Node directory on `PATH`,
+ * and with a `pnpm` or `yarn` it lacks installed first (`package-manager.ts`).
  */
 
 /** Committed lockfiles, as `installCommand` reads them (`src/core/scheduler/install-command.ts`). */
@@ -53,10 +56,14 @@ export interface InstallPlace {
   /** The install's output: the host's stderr, never its protocol channel. */
   readonly output: (text: string) => void;
   readonly env: NodeJS.ProcessEnv;
+  /**
+   * The machine's directory of package managers installed for a tree
+   * (row 026-22); by default `pm` beside the tree directories.
+   */
+  readonly managers?: string;
+  /** The Node and npm that install a missing manager; by default this process's. */
+  readonly tools?: ManagerTools;
 }
-
-/** What the install's output keeps for its error. */
-const TAIL = 2_000;
 
 /** Installs the tree at `place.root` when its last install no longer stands; says whether it ran. */
 export async function installTree(place: InstallPlace): Promise<InstallAnswer> {
@@ -77,7 +84,13 @@ export async function installTree(place: InstallPlace): Promise<InstallAnswer> {
     await rm(join(root, "node_modules"), { recursive: true, force: true });
   }
   const command = await installCommand(root, readJson(join(root, "package.json")));
-  await runInstall(command, root, place.output, place.env);
+  const env = await managerEnv(command, place.env, {
+    root,
+    managers: place.managers ?? join(dirname(dirname(place.record)), "pm"),
+    tools: place.tools ?? hostTools(),
+    output: place.output,
+  });
+  await runOutput("sh", ["-c", command], { cwd: root, env, output: place.output, what: command });
   const made: Installed = {
     locks,
     modules: existsSync(join(root, "node_modules")),
@@ -104,36 +117,4 @@ function readJson(path: string): unknown {
   } catch {
     return null;
   }
-}
-
-/** Runs the install in the root, its output to `output`; rejects with its end on a failure. */
-function runInstall(
-  command: string,
-  root: string,
-  output: (text: string) => void,
-  env: NodeJS.ProcessEnv,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("sh", ["-c", command], {
-      cwd: root,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let tail = "";
-    const take = (chunk: Buffer) => {
-      const text = chunk.toString("utf8");
-      output(text);
-      tail = (tail + text).slice(-TAIL);
-    };
-    child.stdout.on("data", take);
-    child.stderr.on("data", take);
-    child.on("error", (error) => reject(new Error(`could not run ${command}: ${error.message}`)));
-    child.on("close", (code, signal) => {
-      if (code === 0) resolve();
-      else {
-        const how = signal === null ? `exit code ${code}` : `signal ${signal}`;
-        reject(new Error(`${command} failed on the remote (${how}): ${tail.trim()}`));
-      }
-    });
-  });
 }

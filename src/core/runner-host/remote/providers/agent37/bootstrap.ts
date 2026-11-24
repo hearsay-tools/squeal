@@ -42,7 +42,10 @@ export const BOOTSTRAP_DEADLINES: BootstrapDeadlines = {
 /**
  * Prints the Node to use: `$1` when it is version `$2`, else the one it
  * installs under `~/.local/node-v$2`, linked first on the login's `PATH`
- * so the lockfile install runs under it too.
+ * so the lockfile install runs under it too. Node 25 and later ship no
+ * corepack: it is linked and enabled only when present (an earlier
+ * bootstrap's dangling link is removed), and the tree host
+ * installs a missing pnpm or yarn itself (row 026-22).
  */
 const NODE_SCRIPT = `set -eu
 N=$1; V=$2
@@ -58,13 +61,17 @@ if [ ! -x "$D/bin/node" ]; then
   cd /; rm -rf "$W"
 fi
 mkdir -p "$HOME/.local/bin"
-for b in node npm npx corepack; do ln -sfn "$D/bin/$b" "$HOME/.local/bin/$b"; done
+for b in node npm npx corepack; do
+  P=$HOME/.local/bin/$b
+  if [ -x "$D/bin/$b" ]; then ln -sfn "$D/bin/$b" "$P"
+  elif [ -L "$P" ] && [ ! -e "$P" ]; then rm -f "$P"; fi
+done
 L='export PATH="$HOME/.local/bin:$PATH" # squeal-agent37'
 for f in .bashrc .profile; do
   touch "$HOME/$f"
   grep -q squeal-agent37 "$HOME/$f" || { printf '%s\\n' "$L" | cat - "$HOME/$f" > "$HOME/$f.new"; mv "$HOME/$f.new" "$HOME/$f"; }
 done
-"$D/bin/corepack" enable --install-directory "$HOME/.local/bin" >&2 || true
+if [ -x "$D/bin/corepack" ]; then "$D/bin/corepack" enable --install-directory "$HOME/.local/bin" >&2 || true; fi
 printf '%s\\n' "$D/bin/node"`;
 
 /** A one-off script on the remote: `sh -c <script> sh <args>`. */
