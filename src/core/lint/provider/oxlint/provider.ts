@@ -18,7 +18,14 @@ import { type ConfigSet, readConfigs, VITE_PLUS_OFF } from "./config-set.js";
 import type { FolderConfigs } from "./configs.js";
 import { discoverOxlint, type OxlintInstall } from "./discover.js";
 import { Preload } from "./preload.js";
-import { blobsNow, debugFiles, type RunContext, resultsOf, runOxlint } from "./run.js";
+import {
+  blobsNow,
+  debugFiles,
+  type OxlintRun,
+  type RunContext,
+  resultsOf,
+  runOxlint,
+} from "./run.js";
 
 /*
  * Spec 017 D11: the project's own oxlint as a lint provider, shaped after
@@ -67,6 +74,9 @@ export interface OxlintProviderOptions {
 
 /** Files `inputs` reads between two yields to the event loop (issue #274 F3.5). */
 export const YIELD_EVERY = 256;
+
+/** The files oxlint lints by extension; one of these is linted unless an ignore names it. */
+const LINTED_EXTENSIONS = /(?<!\.d)\.(?:[cm]?[jt]s|[jt]sx)$/;
 
 const FAILURES = 3;
 const WINDOW_MS = 10 * 60_000;
@@ -163,12 +173,8 @@ class Provider implements OxlintProvider {
       const run = await runOxlint(ready.ctx, args);
       if (run.failure !== null && this.failed(run.failure) !== null) return { off: this.off ?? "" };
       const results = resultsOf(run, texts);
-      // oxlint counts the named files it linted: fewer means one is ignored now (D11).
-      const counted = run.unknown === null ? run.report?.number_of_files : files.length;
-      if (counted !== undefined && counted !== files.length) {
-        const ignored = await this.ignoredNow(ready.ctx, results);
-        if (ignored !== null) return ignored;
-      }
+      const counted = await this.counted(ready.ctx, run, results);
+      if (counted !== null) return counted;
       // oxlint reads the files from disk: a result is the given text's only if the bytes still are.
       for (const [path, blob] of blobsNow(this.options.root, texts.keys(), this.format)) {
         const given = files.find((f) => f.path === path);
@@ -177,6 +183,24 @@ class Provider implements OxlintProvider {
       }
       return this.report(results, run.held);
     });
+  }
+
+  /**
+   * oxlint counts the named files it linted (D11): all of them are linted,
+   * kept so no pass asks again (review 0.1.616 B3); fewer means one is
+   * ignored now, which `--debug files` names. Off at a third failure.
+   */
+  private async counted(
+    ctx: RunContext,
+    run: OxlintRun,
+    results: Map<RelativePath, LintFileResult>,
+  ): Promise<LintOff | null> {
+    if (run.unknown !== null) return null;
+    const counted = run.report?.number_of_files;
+    if (counted === undefined) return null;
+    if (counted !== results.size) return this.ignoredNow(ctx, results);
+    await this.memo?.remember([...results.keys()], new Set(results.keys()));
+    return null;
   }
 
   /** Marks each result's file that oxlint no longer lints; off at a third failure. */
@@ -265,14 +289,23 @@ class Provider implements OxlintProvider {
   /**
    * Whether oxlint lints each of `paths`: the memo's answer, `--debug files`
    * for the rest (spec 026 D3). A failure is counted: `inputs` rejects with
-   * its reason (D9).
+   * its reason (D9). Review 0.1.616 B3: once this config read has classified
+   * a path, a new file with a linted extension is taken as linted unasked;
+   * `lint` classifies it from the report's count, with `--debug files` only
+   * when oxlint lints fewer files than named.
    */
   private async linted(
     ctx: RunContext,
     paths: readonly RelativePath[],
   ): Promise<ReadonlyMap<RelativePath, boolean>> {
     const answers = this.memo?.known(paths) ?? new Map<RelativePath, boolean>();
-    const asked = paths.filter((path) => !answers.has(path));
+    const warm = this.memo?.warm === true;
+    const asked = paths.filter((path) => {
+      if (answers.has(path)) return false;
+      if (!warm || !this.likelyLinted(path)) return true;
+      answers.set(path, true);
+      return false;
+    });
     if (asked.length === 0) return answers;
     const debug = await debugFiles(ctx, asked);
     if ("failure" in debug) throw new Error(this.failed(debug.failure)?.off ?? debug.failure);
@@ -280,6 +313,10 @@ class Provider implements OxlintProvider {
     // A config that does not load names every file: not an answer to keep.
     if (debug.loaded) await this.memo?.remember(asked, debug.linted);
     return answers;
+  }
+
+  private likelyLinted(path: RelativePath): boolean {
+    return LINTED_EXTENSIONS.test(path) && existsSync(join(this.options.root, path));
   }
 
   private report(

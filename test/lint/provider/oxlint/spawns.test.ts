@@ -88,6 +88,56 @@ describe("spec 026 D3: oxlint processes per pass", { timeout: 60_000 }, () => {
     });
   });
 
+  it("runs one oxlint process for a new included file while the configs are unchanged (review 0.1.616 B3)", async () => {
+    const root = project({
+      ".oxlintrc.json": CONFIG,
+      "src/a.js": "export const a = 1;\n",
+      "src/b.js": "debugger;\n",
+    });
+    const counter = countingNode();
+    const lint = provider(root, { node: counter.node, cache: new OxlintCache(memoryBacking()) });
+    await lint.open();
+    await pass(lint, root, ["src/a.js"]);
+
+    counter.reset();
+    const unseen = await pass(lint, root, ["src/b.js"]);
+    expect(counter.spawns().map(kind)).toEqual(["lint"]);
+    expect([...unseen.inputs.keys()]).toEqual(["src/b.js"]);
+    expect(unseen.report.results.get(p("src/b.js"))).toMatchObject({
+      findings: [{ rule: "eslint(no-debugger)" }],
+    });
+
+    // The lint report's count answered for it: the next pass asks nothing more.
+    counter.reset();
+    await pass(lint, root, ["src/b.js"]);
+    expect(counter.spawns().map(kind)).toEqual(["lint"]);
+  });
+
+  it("classifies a new ignored file under unchanged configs from the lint report, once", async () => {
+    const root = project({
+      ".oxlintrc.json": json({ ignorePatterns: ["src/gen.js"], rules: {} }),
+      "src/a.js": "export const a = 1;\n",
+      "src/gen.js": "export const g = 1;\n",
+    });
+    const counter = countingNode();
+    const lint = provider(root, { node: counter.node, cache: new OxlintCache(memoryBacking()) });
+    await lint.open();
+    await pass(lint, root, ["src/a.js"]);
+
+    counter.reset();
+    const unseen = await pass(lint, root, ["src/a.js", "src/gen.js"]);
+    expect(counter.spawns().map(kind)).toEqual(["lint", "debug-files"]);
+    expect(unseen.report.results.get(p("src/a.js"))).toEqual({ findings: [] });
+    expect(unseen.report.results.get(p("src/gen.js"))).toEqual({
+      unknown: "oxlint does not lint it now",
+    });
+
+    counter.reset();
+    const after = await pass(lint, root, ["src/a.js", "src/gen.js"]);
+    expect([...after.inputs.keys()]).toEqual(["src/a.js"]);
+    expect(counter.spawns().map(kind)).toEqual(["lint"]);
+  });
+
   it("runs one oxlint process after a restart that finds the cache's backing", async () => {
     const root = project({ ".oxlintrc.json": CONFIG, "src/a.js": "export const a = 1;\n" });
     const backing = memoryBacking();
