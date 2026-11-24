@@ -168,7 +168,7 @@ describe("squeal code --base: usage and setup errors (spec 020 D1, exit 2)", () 
     expect(ran.stdout).toBe("");
     expect(ran.stderr).toContain(`--base does not combine with ${flag}`);
     expect(ran.stderr).toContain(
-      "Usage: squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir|file>...] [--timeout <seconds>] [--exceptions <file>] [--rerun-stored-failures] [--json]",
+      "Usage: squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir|file>...] [--timeout <seconds>] [--exceptions <file>] [--narrow] [--rerun-stored-failures] [--json]",
     );
   });
 });
