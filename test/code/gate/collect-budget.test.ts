@@ -15,8 +15,11 @@ import { quiet } from "./host-load.js";
  * of their estimate (D18.4).
  */
 
-/** Room for a loaded host to start node:test and Vitest and run the 6 s file. */
-const BUDGET = 30;
+/**
+ * Room for a loaded host to start node:test and Vitest and run the fixture's 6 s file
+ * (`patient.test.ts`); each test waits the whole budget (row 010-38: 30 s took 60 s).
+ */
+const BUDGET = 12;
 
 /** The collector over the fixture under the budget, given the stores' `durations`: what it told and gave. */
 async function collect(durations?: CollectOptions["durations"]) {

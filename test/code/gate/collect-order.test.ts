@@ -25,8 +25,8 @@ import { quiet } from "./host-load.js";
  * behind it that never got the worker reads not started.
  */
 
-/** Room for a loaded host to start Vitest and run the leaf's file. */
-const BUDGET = 25;
+/** Room for a loaded host to start Vitest and run the leaf's file; the first test waits all of it (row 010-38). */
+const BUDGET = 10;
 
 const HUB = "test/a-hub.test.ts";
 const LEAF = "test/b-leaf.test.ts";
@@ -74,7 +74,7 @@ describe("collectEvidence: loader order and the estimate (spec 020 D17)", () => 
     const ran = await gate(false);
 
     expect(ran.events).toEqual(["estimate", `run ${LEAF} ${HUB}`]);
-    // One file at a time: the sum, 602 s, over what is left of the 25 s budget.
+    // One file at a time: the sum, 602 s, over what is left of the 10 s budget.
     const estimate = { runner: "vitest", seconds: 602, files: 2, known: 2, width: 1 };
     expect(ran.told).toEqual([{ estimates: [estimate], left: expect.any(Number) }]);
     expect(ran.told[0]?.left).toBeLessThanOrEqual(BUDGET);
