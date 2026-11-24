@@ -6,7 +6,7 @@ Row 026-16, 2026-11-24. Inputs: `spec.md` (D1 to D12, Testing), `status.md`, `ta
 
 Both tracks work end to end. Track 1 keeps Vitest closed on edits under a tiered policy, runs a narrow pre-PR set from a base ref, and gates honestly. Track 2 runs every lane and runner on a remote machine with remote planning and 0 local runner hosts, through the `command` provider, a local Agent37 and the live Agent37 EU `vm`. The live run created, bootstrapped, slept, woke and deleted one instance in 45 s of wall time for $0.000523, and left 0 instances and 0 SSH keys.
 
-Three defects remain, none in the happy path (D1 to D3 below). The coordinator scheduled follow-up row 026-20 for them on 2026-11-24. D1 is the one that breaks vision principle 2: a refused remote under `whenLost: "not-run"` reads as a completed, empty checkpoint in plain `squeal status`.
+The proof found three defects, none in the happy path, and one observation (D1 to D3 and O1 below). D1 broke vision principle 2: a refused remote under `whenLost: "not-run"` read as a completed, empty checkpoint in plain `squeal status`. Row 026-20 closed all four on 2026-11-24 (see "Closed in 026-20"). O2 stays open as a harmless observation.
 
 ## What shipped
 
@@ -78,11 +78,36 @@ Compared with the research (`research/agent37-sandboxes.md`): its 0.61 s edit-to
 
 | Id | What | Repro | Where |
 | --- | --- | --- | --- |
-| D1 | With `planning: "remote"` and `whenLost: "not-run"`, a remote refused at connect (slow disk under `refuse`, or another arch under `match-local`) leaves plain `squeal status` saying "Known failures: 0; the daemon listed no test files" and "Full-suite checkpoint: completed at revision 0". No line names the remote as refused; only `status --full` notes do ("remote command refused: degraded disk: 26 ms/sync, limit 10 ms; 0 files not run", "runner testFiles failed: ... not planned here"). Breaks vision principle 2 and D12.1 | `spec-026-remote.test.ts`, slow-disk and other-arch cases | notes from `src/core/runner-host/remote/lane-planning.ts:77`; status rendering |
-| D2 | Plain `squeal status` has no remote line (provider, machine id, state, lanes, planning, environment mode), which D12.1 asks for; it is only in notes. `squeal ps` shows a remote host as `remote <target> (ssh)`, without provider, machine id or awake/sleeping (D12.2) | any remote case, `squeal status`, `squeal ps` | `src/core/ps/render.ts:204` |
-| D3 | The lane's not-run answer always says "remote <x> unreachable; not run here", also when the remote was reachable and refused a run because the tree stayed different. A group batch with one file that reads a gitignored file was refused whole, and its 3 batch-mates showed "unreachable" | scheduler fixture with `test/gen.test.ts` kept, `run <group>` over a `command` lane under `not-run` | `src/core/runner-host/remote/lane.ts:553` |
-| O1 | A `SIGTERM` 0.4 s after daemon start, during `acquire`, did not stop the create call: "Agent37 instance jdevpipdou created" came 0.8 s after "daemon stopped". The script deleted it; whether the daemon would have tracked or released it was not observed. Worth a test in 026-20 | first live attempt | `src/core/runner-host/remote/providers/agent37/index.ts` `acquire` |
-| O2 | Under `onSlowDisk: "refuse"` the `command` provider also got "acquiring a fresh machine instead". D11.2 names the one retry for managed providers only. Harmless for a `command` script that returns the same machine; costs one extra `acquire` call | slow-disk case, `refuse` | lane's disk verdict |
+| D1 (closed, 026-20) | With `planning: "remote"` and `whenLost: "not-run"`, a remote refused at connect (slow disk under `refuse`, or another arch under `match-local`) leaves plain `squeal status` saying "Known failures: 0; the daemon listed no test files" and "Full-suite checkpoint: completed at revision 0". No line names the remote as refused; only `status --full` notes do ("remote command refused: degraded disk: 26 ms/sync, limit 10 ms; 0 files not run", "runner testFiles failed: ... not planned here"). Breaks vision principle 2 and D12.1 | `spec-026-remote.test.ts`, slow-disk and other-arch cases | notes from `src/core/runner-host/remote/lane-planning.ts:77`; status rendering |
+| D2 (closed, 026-20) | Plain `squeal status` has no remote line (provider, machine id, state, lanes, planning, environment mode), which D12.1 asks for; it is only in notes. `squeal ps` shows a remote host as `remote <target> (ssh)`, without provider, machine id or awake/sleeping (D12.2) | any remote case, `squeal status`, `squeal ps` | `src/core/ps/render.ts:204` |
+| D3 (closed, 026-20) | The lane's not-run answer always says "remote <x> unreachable; not run here", also when the remote was reachable and refused a run because the tree stayed different. A group batch with one file that reads a gitignored file was refused whole, and its 3 batch-mates showed "unreachable" | scheduler fixture with `test/gen.test.ts` kept, `run <group>` over a `command` lane under `not-run` | `src/core/runner-host/remote/lane.ts:553` |
+| O1 (closed, 026-20) | A `SIGTERM` 0.4 s after daemon start, during `acquire`, did not stop the create call: "Agent37 instance jdevpipdou created" came 0.8 s after "daemon stopped". The script deleted it; whether the daemon would have tracked or released it was not observed. Worth a test in 026-20 | first live attempt | `src/core/runner-host/remote/providers/agent37/index.ts` `acquire` |
+| O2 (open, low) | Under `onSlowDisk: "refuse"` the `command` provider also got "acquiring a fresh machine instead". D11.2 names the one retry for managed providers only. Harmless for a `command` script that returns the same machine; costs one extra `acquire` call | slow-disk case, `refuse` | lane's disk verdict |
+
+## Closed in 026-20
+
+Row 026-20, 2026-11-24. Each item is proven by the tests named.
+
+| Id | Fix | Proof |
+| --- | --- | --- |
+| D1 | A baseline whose test-file listing failed starts no checkpoint (`src/core/scheduler/bootstrap.ts`), so neither an empty list nor a stored one reads as a completed suite. While the live daemon has listed no file and the current revision's listing failed, plain `squeal status` says so with the reason (`src/core/status/remote-status.ts`) | `test/status/listing-failed.test.ts`; `spec-026-remote.test.ts` slow-disk and other-arch cases assert the text below and the absence of "the daemon listed no test files" and "Full-suite checkpoint: completed at revision 0" |
+| D2 (D12.1) | The daemon writes one summary line under the note topic `remote-lane:summary` (`src/core/runner-host/remote/summary.ts`) at each change of a runner's own lane, of the disk line, and at the release. Plain `squeal status` prints it as `Remote:`; `--full` notes leave it out. A per-pass lane (slow, group, beside) is not in it. A lane removed from `remote.json` gets an empty line once, and status then prints none | `test/runner-host/remote/summary.test.ts`, `daemon-lane.test.ts`; e2e healthy, refused, `remote-key` and mock Agent37 cases |
+| D2 (D12.2) | `squeal ps` reads `remote-machines.json` (`PsPlaces.remoteMachines`) and names a remote runner host on a tracked machine as `remote <provider>`, with `<machine id>, <state>` in its work column; `--json` gains the optional `machine` field of a host. An untracked target keeps `remote <target> (ssh)` | `test/ps/runner-hosts.test.ts`; the mock Agent37 e2e case. The `command` cases cannot show it: their fake `ssh` runs `exec`, so no ssh process stays |
+| D3 | A run the reachable remote refused ends `remote <x> refused (<reason>); not run here (whenLost "not-run")`, where the reason is the environment difference or "its tree stayed different at <paths>"; only a remote not reached says "unreachable" | `test/runner-host/remote/lane.test.ts` (tree, environment, lost host) |
+| O1 | `MachineRequest.signal` (new, optional) aborts when the machine share's release begins. Agent37's `acquire` then starts no `POST /v1/instances`; a create already sent is never cut, since its answer holds the only id that can delete it, and an instance whose create, start or bootstrap ended after the abort is deleted before `acquire` rejects with `AcquireAborted`. A tracked instance stays tracked | `test/runner-host/remote/providers/agent37.test.ts`: pre-aborted (0 creates), aborted during the create (`POST` then `DELETE`, 0 instances), aborted after the create (`DELETE`, no SSH) |
+
+Plain `squeal status` of the refused slow-disk case now reads (e2e, sanitized):
+
+```
+Revision: 0
+The daemon could not list this worktree's test files: remote command refused: degraded disk: 26 ms/sync, limit 10 ms; not planned here (whenLost "not-run"). It lists them again at the next revision.
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Remote: command cmd:lan-1: refused (degraded disk: 26 ms/sync, limit 10 ms); background, edit, slow and group runs of vitest, node-test, pytest; planning remote; environment match-local
+```
+
+and of a healthy one: `Remote: command cmd:lan-1: awake; background, edit, slow and group runs of vitest, node-test, pytest; planning remote; environment match-local; proven at <time>`.
+
+Left as it was: the hook headers (registration, deliveries) still say "still starting" for a failed listing; only `squeal status` names it. O2 is unchanged.
 
 ## Spec risks and open questions, closed
 
@@ -113,5 +138,5 @@ Compared with the research (`research/agent37-sandboxes.md`): its 0.61 s edit-to
 
 ## Next
 
-- Row 026-20 (scheduled by the coordinator): D1 to D3, and a test for O1.
-- Spec 026 can move to `shipped` once 026-19 and 026-20 land.
+- Row 026-20 closed D1 to D3 and O1 (above).
+- Spec 026 can move to `shipped` once 026-20 lands.

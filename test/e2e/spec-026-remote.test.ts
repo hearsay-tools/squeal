@@ -90,6 +90,10 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     // the edit cancelled and requeued) before asserting all 6 files current and reading coverage.
     const settled = await cli(repo, "run", "--all", "--wait", "120000");
     expect(settled.code, `${settled.out}\n${why()}`).toBe(0);
+    // Row 026-20 (D12.1): plain status names the remote, its state, lanes, runners and proof.
+    expect((await cli(repo, "status")).out, why()).toMatch(
+      /^Remote: command cmd:lan-1: awake; background, edit, slow and group runs of vitest, node-test, pytest; planning remote; environment match-local; proven at \d{4}-\d\d-\d\dT[\d:.]+Z$/m,
+    );
     const full = await cli(repo, "status", "--full");
     expect(full.out, why()).toMatch(/Known failures: 0; all 6 test files current/);
     const notes = readNotes(repo).join("\n");
@@ -179,9 +183,11 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     );
     expect(refuseNotes).toMatch(/not planned here \(whenLost "not-run"\)/);
     expect(refuseNotes).not.toMatch(/go there; proven/);
-    console.log("PLAIN>>>" + (await cli(refused.repo, "status")).out);
-    console.log("PS>>>" + (await cli(refused.repo, "ps")).out);
-    console.log("FULL>>>" + (await cli(refused.repo, "status", "--full")).out);
+    // Row 026-20 (lessons D1, D12.1): no empty, completed checkpoint; the refusal is named.
+    refusedHonestly(
+      (await cli(refused.repo, "status")).out,
+      "degraded disk: \\d+ ms\\/sync, limit 10 ms",
+    );
     // Refused under `not-run`: nothing ran here either.
     expect(sampler.stop()).toBe(0);
     const results = withStore(refused.repo, (store) =>
@@ -200,6 +206,10 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
       `remote command refused: arch riscv64 on the remote, ${process.arch} here`,
     );
     expect(matchNotes).not.toMatch(/go there; proven/);
+    refusedHonestly(
+      (await cli(matched.repo, "status")).out,
+      `arch riscv64 on the remote, ${process.arch} here`,
+    );
     await stopProcess(matchDaemon);
 
     const keyed = fixture();
@@ -214,6 +224,7 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     const machine = `${process.platform}/riscv64, Node v`;
     expect(readNotes(repo).join("\n")).toContain(`remote command (${machine}`);
     expect(readNotes(repo).join("\n")).toMatch(/results keyed to remote environment; proven/);
+    expect((await cli(repo, "status")).out).toContain(`; environment remote-key (${machine}`);
     await stopProcess(keyDaemon);
     expect(sampler.stop()).toBe(0);
     const keyOf = () =>
@@ -300,10 +311,17 @@ describe.skipIf(AGENT37_MISSING !== undefined)(
       // Create, Node, `.git` from a local bundle, then every file there: the Git one too.
       const all = await cli(repo, "run", "--all", "--wait", "180000");
       expect(all.code, `${all.out}\n${why()}`).toBe(0);
-      expect((await cli(repo, "status")).out).toMatch(
-        /Known failures: 0; all 7 test files current/,
-      );
       const [id] = [...api.instances.keys()];
+      const plain = (await cli(repo, "status")).out;
+      expect(plain).toMatch(/Known failures: 0; all 7 test files current/);
+      // Row 026-20 (D12.1, D12.2): status names the instance awake; ps names its remote hosts so.
+      expect(plain).toMatch(
+        new RegExp(`^Remote: agent37 agent37:eu:vm:${id}: awake; .*; planning remote; `, "m"),
+      );
+      const ps = (await cli(repo, "ps", "--repo")).out;
+      expect(ps, ps).toMatch(
+        new RegExp(`^ +host vitest +\\d+ +remote agent37 .* agent37:eu:vm:${id}, awake$`, "m"),
+      );
       expect(spawned.stderr()).toContain(`Agent37 instance ${id} created (eu vm)`);
       expect(spawned.stderr()).toMatch(new RegExp(`Agent37 instance ${id}: git history sent at`));
       const created = api.calls.find((c) => c.method === "POST" && c.path === "/v1/instances");
@@ -359,3 +377,26 @@ describe.skipIf(AGENT37_MISSING !== undefined)(
     });
   },
 );
+
+/**
+ * Row 026-20 (lessons D1, spec 026 D12.1): plain status of a remote refused
+ * under `whenLost: "not-run"` says the listing failed and why, names no
+ * completed or empty checkpoint, and its `Remote:` line names the refusal.
+ */
+function refusedHonestly(out: string, reason: string): void {
+  expect(out).not.toContain("the daemon listed no test files");
+  expect(out).not.toContain("Full-suite checkpoint: completed at revision 0");
+  expect(out).toMatch(
+    new RegExp(
+      `^The daemon could not list this worktree's test files: remote command refused: ${reason}; not planned here \\(whenLost "not-run"\\)\\.`,
+      "m",
+    ),
+  );
+  expect(out).toContain("Full-suite checkpoint: none completed at any revision");
+  expect(out).toMatch(
+    new RegExp(
+      `^Remote: command cmd:lan-1: refused \\(${reason}\\); background, edit, slow and group runs of vitest, node-test, pytest; planning remote; environment match-local$`,
+      "m",
+    ),
+  );
+}
