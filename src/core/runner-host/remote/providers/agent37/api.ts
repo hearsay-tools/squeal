@@ -1,6 +1,6 @@
 import { request as httpRequest } from "node:http";
 import { isRecord } from "../../../../fs/json.js";
-import { apiKeyFor, openEndpoint, proxyFor } from "./net.js";
+import { apiKeyFor, LocalError, openEndpoint, proxyFor, safeReason } from "./net.js";
 
 /*
  * Spec 026 D7.3.3, D7.3.4 (row 026-15): the Agent37 control plane, as its
@@ -10,7 +10,8 @@ import { apiKeyFor, openEndpoint, proxyFor } from "./net.js";
  * `/start` wakes a sleeping or stopped instance (`202` while it moves
  * host); `DELETE` acts once, then `404`; `409 try_again` means retry in a
  * few seconds. Through `HTTPS_PROXY` like the tunnel, with no dependency.
- * The key never reaches an error or a log.
+ * The key never reaches an error or a log, and no text the API or a proxy
+ * sent does either: an error names the status and an allowlisted code.
  */
 
 /** An instance as the API names it; other fields are not read. */
@@ -39,7 +40,28 @@ export interface ApiOptions {
   readonly retries?: number;
 }
 
-/** A call the API refused, with its status and error code. */
+/**
+ * The error codes an `Agent37Error` may carry. Any other code is dropped:
+ * a server, or a proxy that injects the key, could reflect a credential in
+ * it, and this process does not know every credential it could reflect.
+ */
+const KNOWN_CODES: ReadonlySet<string> = new Set([
+  "bad_request",
+  "conflict",
+  "forbidden",
+  "insufficient_balance",
+  "internal_error",
+  "invalid_request",
+  "method_not_allowed",
+  "not_found",
+  "quota_exceeded",
+  "rate_limited",
+  "service_unavailable",
+  "try_again",
+  "unauthorized",
+]);
+
+/** A call the API refused, with its status and its error code when the code is a known one. */
 export class Agent37Error extends Error {
   constructor(
     message: string,
@@ -114,14 +136,10 @@ export class Agent37Api {
 
   #ok(method: string, path: string, answer: Answer): void {
     if (answer.status >= 200 && answer.status < 300) return;
+    // Never `error.message`: only the status and a code from KNOWN_CODES.
     const code = errorCode(answer.body);
-    const message =
-      isRecord(answer.body) && isRecord(answer.body.error) ? answer.body.error.message : undefined;
-    const why = [code, typeof message === "string" ? message.slice(0, 300) : null]
-      .filter(Boolean)
-      .join(": ");
     throw new Agent37Error(
-      `Agent37 ${method} ${path} answered ${answer.status}${why === "" ? "" : ` (${why})`}`,
+      `Agent37 ${method} ${path} answered ${answer.status}${code === null ? "" : ` (${code})`}`,
       answer.status,
       code,
     );
@@ -165,18 +183,18 @@ export class Agent37Api {
         },
       });
       const timer = setTimeout(() => {
-        asked.destroy(new Error(`no answer within ${timeoutMs} ms`));
+        asked.destroy(new LocalError(`no answer within ${timeoutMs} ms`));
       }, timeoutMs);
       asked.on("error", (error) => {
         clearTimeout(timer);
-        reject(new Error(`Agent37 ${method} ${path}: ${error.message}`));
+        reject(new Error(`Agent37 ${method} ${path}: ${safeReason(error)}`));
       });
       asked.on("response", (response) => {
         const chunks: Buffer[] = [];
         response.on("data", (chunk: Buffer) => chunks.push(chunk));
         response.on("error", (error) => {
           clearTimeout(timer);
-          reject(new Error(`Agent37 ${method} ${path}: ${error.message}`));
+          reject(new Error(`Agent37 ${method} ${path}: ${safeReason(error)}`));
         });
         response.on("end", () => {
           clearTimeout(timer);
@@ -196,8 +214,8 @@ export class Agent37Api {
   }
 }
 
+/** The answer's `error.code` when KNOWN_CODES has it, else `null`. */
 function errorCode(body: unknown): string | null {
-  return isRecord(body) && isRecord(body.error) && typeof body.error.code === "string"
-    ? body.error.code
-    : null;
+  const code = isRecord(body) && isRecord(body.error) ? body.error.code : undefined;
+  return typeof code === "string" && KNOWN_CODES.has(code) ? code : null;
 }

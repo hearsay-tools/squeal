@@ -59,6 +59,8 @@ export function upgradeRequest(
 /**
  * The server's answer at the head of `buffer`: `null` until its header
  * ended; else the bytes after it, or the reason it refused the upgrade.
+ * A reason is fixed text and the 3-digit status, never the reason phrase
+ * or a header: a server or a proxy could reflect a credential in them.
  */
 export function upgradeAnswer(
   buffer: Buffer,
@@ -67,8 +69,9 @@ export function upgradeAnswer(
   const end = buffer.indexOf("\r\n\r\n");
   if (end < 0) return null;
   const lines = buffer.subarray(0, end).toString("latin1").split("\r\n");
-  const status = lines[0] ?? "";
-  if (!/^HTTP\/1\.1 101\b/.test(status)) return { refused: status.slice(0, 200) };
+  const status = /^HTTP\/1\.[01] (\d{3})(?: |$)/.exec(lines[0] ?? "")?.[1];
+  if (status === undefined) return { refused: "not an HTTP response" };
+  if (status !== "101") return { refused: `HTTP ${status}` };
   const accept = lines
     .find((line) => /^sec-websocket-accept:/i.test(line))
     ?.slice("sec-websocket-accept:".length)

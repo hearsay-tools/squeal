@@ -9,8 +9,25 @@ import { rootCertificates, type TLSSocket, connect as tlsConnect } from "node:tl
  * `HTTPS_PROXY` (or `https_proxy`) carries an `https:` connection through
  * HTTP `CONNECT`, unless `NO_PROXY` names the host; certificates are the
  * system's roots plus `NODE_EXTRA_CA_CERTS` and `SSL_CERT_FILE`. No proxy
- * credential and no API key is ever written to a log or an error.
+ * credential and no API key is ever written to a log or an error, and no
+ * text a server or proxy sent either: errors carry `safeReason` only.
  */
+
+/** An error Squeal wrote itself: its message carries no remote text and no credential. */
+export class LocalError extends Error {}
+
+/**
+ * A one-line reason for `error` that is safe to print: Squeal's own
+ * message, else the system's error code, never the message itself. A
+ * server or an injecting proxy can fill a message (a reason phrase, a
+ * certificate name) with a credential this process does not know.
+ */
+export function safeReason(error: unknown): string {
+  if (error instanceof LocalError) return error.message;
+  const code = typeof error === "object" && error !== null ? Reflect.get(error, "code") : undefined;
+  if (typeof code !== "string" || !/^[A-Z][A-Z0-9_]{1,63}$/.test(code)) return "connection failed";
+  return /CERT|SIGNATURE|ISSUER/.test(code) ? `untrusted certificate (${code})` : code;
+}
 
 /** Where a connection goes: a host and port, over TLS or not. */
 export interface Endpoint {
@@ -57,10 +74,11 @@ export function proxyFor(host: string, port: number, env: NodeJS.ProcessEnv): UR
     proxy = new URL(value.includes("://") ? value : `http://${value}`);
   } catch {
     // The value may carry a credential: never shown.
-    throw new Error("HTTPS_PROXY is not a URL");
+    throw new LocalError("HTTPS_PROXY is not a URL");
   }
   if (proxy.protocol !== "http:" && proxy.protocol !== "https:") {
-    throw new Error(`HTTPS_PROXY must be an http: or https: URL, not ${proxy.protocol}`);
+    // A scheme is letters, digits and `+-.`: it cannot hold the URL's credential.
+    throw new LocalError(`HTTPS_PROXY must be an http: or https: URL, not ${proxy.protocol}`);
   }
   return proxy;
 }
@@ -98,7 +116,7 @@ export function apiKeyFor(keyEnv: string, proxied: boolean, env: NodeJS.ProcessE
   const key = env[keyEnv];
   if (key !== undefined && key !== "") return key;
   if (proxied) return "placeholder";
-  throw new Error(`no Agent37 API key: set ${keyEnv}, or HTTPS_PROXY to a proxy that adds it`);
+  throw new LocalError(`no Agent37 API key: set ${keyEnv}, or HTTPS_PROXY to a proxy that adds it`);
 }
 
 /** A socket to `proxy` that has answered `CONNECT` to `target` with 200. */
@@ -132,18 +150,21 @@ function connectThrough(
   return new Promise((resolve, reject) => {
     const asked = httpRequest(options);
     const timer = setTimeout(() => {
-      asked.destroy(new Error(`proxy ${proxyName(proxy)} did not answer within ${timeoutMs} ms`));
+      asked.destroy(
+        new LocalError(`proxy ${proxyName(proxy)} did not answer within ${timeoutMs} ms`),
+      );
     }, timeoutMs);
     asked.on("error", (error) => {
       clearTimeout(timer);
-      reject(new Error(`proxy ${proxyName(proxy)}: ${error.message}`));
+      reject(new LocalError(`proxy ${proxyName(proxy)}: ${safeReason(error)}`));
     });
     asked.on("connect", (response, socket) => {
       clearTimeout(timer);
       if (response.statusCode !== 200) {
         socket.destroy();
+        // The status as a number: the proxy's reason phrase and body stay unread.
         reject(
-          new Error(
+          new LocalError(
             `proxy ${proxyName(proxy)} refused CONNECT ${authority}: ${response.statusCode}`,
           ),
         );
@@ -165,11 +186,11 @@ function ready<T extends Socket>(
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       socket.destroy();
-      reject(new Error(`${what}: no connection within ${timeoutMs} ms`));
+      reject(new LocalError(`${what}: no connection within ${timeoutMs} ms`));
     }, timeoutMs);
     socket.once("error", (error) => {
       clearTimeout(timer);
-      reject(new Error(`${what}: ${error.message}`));
+      reject(new LocalError(`${what}: ${safeReason(error)}`));
     });
     socket.once(event, () => {
       clearTimeout(timer);
