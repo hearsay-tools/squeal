@@ -1,12 +1,13 @@
 import { mergeBase } from "../core/code/gate/changed.js";
 import { compare } from "../core/fs/compare.js";
 import { runGit, splitNul } from "../core/fs/git.js";
-import { readStatus } from "../core/status/snapshot.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import { plural } from "../core/text.js";
 import type { ResolvedGroup } from "../core/types/check-groups.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import { daemonSocket } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { finalVerdicts, type InitialState } from "./run-group-base-verdicts.js";
 import { type NarrowTaken, narrowAnswer, requestNarrow } from "./run-group-narrow.js";
 import { groupVerdictLine } from "./run-group-wait.js";
 import {
@@ -167,20 +168,24 @@ async function testJson(
     verdict = { line: `Selected test files of group ${group.name} ${line}`, code: result };
     code = result;
   }
-  const states = new Map(covered?.files.map((file) => [file.testFile.path, file]) ?? []);
-  const failing = waitMs === null ? null : failingFiles(root);
-  const selected = narrow.selected.map((testFile) => {
-    const file = states.get(testFile.path);
-    const notRun = narrow.notRun.find((entry) => entry.testFile.path === testFile.path);
-    return {
-      path: testFile.path,
-      project: testFile.project,
-      // `current`: its stored or imported result counts; `queued`: this run runs it.
-      state: notRun !== undefined ? "not-run" : (file?.state ?? null),
-      ...(notRun === undefined ? {} : { reason: notRun.reason }),
-      ...(failing === null ? {} : { failed: failing.has(testFile.path) }),
-    };
+  // Review 0.1.616 B5: how the request first found each file, by project and path.
+  const initial = new Map(covered?.files.map((file) => [testFileId(file.testFile), file]) ?? []);
+  const files = narrow.selected.map((ref) => {
+    const notRun = narrow.notRun.find((entry) => testFileId(entry.testFile) === testFileId(ref));
+    const state: InitialState =
+      notRun !== undefined ? "not-run" : (initial.get(testFileId(ref))?.state ?? null);
+    return { ref, initial: state, notRun };
   });
+  // After the wait, each file's final verdict from one read of the store (D4.4).
+  const finals = waitMs === null ? null : finalVerdicts(root, files);
+  const selected = files.map(({ ref, initial: state, notRun }, index) => ({
+    path: ref.path,
+    project: ref.project,
+    // `current`: its stored or imported result counted; `queued`: the request ran it.
+    initialState: state,
+    ...(notRun === undefined ? {} : { reason: notRun.reason }),
+    ...(finals?.[index] ?? {}),
+  }));
   const omitted = narrow.reached;
   const note =
     omitted === 0
@@ -189,7 +194,7 @@ async function testJson(
   const json = baseJson(group, changes, {
     revision: requested.revision,
     selected,
-    current: narrow.current,
+    initialCurrent: narrow.current,
     queued: requested.queued,
     omitted,
     others: narrow.others,
@@ -200,15 +205,6 @@ async function testJson(
   });
   io.stdout(jsonLine(json));
   return code;
-}
-
-/** The test paths with a known failure, from status; `null` when status cannot be read. */
-function failingFiles(root: AbsolutePath): Set<string> | null {
-  const status = readStatus(root);
-  if (!("knownFailures" in status)) return null;
-  return new Set(
-    status.knownFailures.flatMap(({ check }) => ("testPath" in check ? [check.testPath] : [])),
-  );
 }
 
 /** A lint group's `--json` answer: the group's pending checks, linted now. */
