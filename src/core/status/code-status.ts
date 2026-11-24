@@ -42,18 +42,18 @@ export function codeStatusOf(
   };
   const read = withCode(source, ({ store: code, complexity }) =>
     code.read((): CodeStatus => {
-      const states = code.states.list(worktreeId, { measure: "complexity" });
+      const counts = code.states.countNonPass(worktreeId, "complexity");
       const from = since();
       const { done, total, uncountable } = countingOf(code, worktreeId);
       return {
         v: 1,
         threshold: complexity.threshold,
-        over: states.filter((s) => s.outcome === "fail").length,
+        over: counts.fail,
         sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
         since: from?.scope ?? null,
         pending: total - done,
         files: total,
-        unknown: states.filter((s) => s.outcome === "unknown").length,
+        unknown: counts.unknown,
         ...(uncountable === 0 ? {} : { uncountable }),
         ...coverageOf(code),
         ...without,

@@ -122,10 +122,12 @@ export function startTurn(store: Store, consumer: Consumer): void {
  * after wave 10). In the same transaction it clears the consumer's leaving
  * mark, idle or not, since a subagent that calls a tool goes on (review
  * 001-423, B1). Reads first, so a consumer already in a turn and not marked
- * takes no write lock.
+ * takes no write lock, nor does an unregistered one (spec 025 D6.3): its
+ * transaction would change nothing.
  */
 export function resumeTurn(store: Store, consumer: Consumer): void {
   if (readTurn(store, consumer).turn !== "idle" && !isLeaving(store, consumer)) return;
+  if (store.consumers.get(consumer) === null) return;
   store.transaction(() => {
     if (store.consumers.get(consumer) === null) return;
     if (readTurn(store, consumer).turn === "idle") startTurn(store, consumer);

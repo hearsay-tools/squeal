@@ -56,7 +56,9 @@ export function checksByFile(states: readonly KnownState[]): Map<string, KnownSt
   const checks = new Map<string, KnownState[]>();
   for (const state of states) {
     const id = testFileKeyOf(state.check);
-    checks.set(id, [...(checks.get(id) ?? []), state]);
+    const own = checks.get(id);
+    if (own === undefined) checks.set(id, [state]);
+    else own.push(state);
   }
   return checks;
 }

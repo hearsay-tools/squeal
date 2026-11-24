@@ -137,6 +137,9 @@ export const CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
  * edited states, the two sets each tool boundary reads (`states.list` with
  * the `fail` outcome, `states.edits`; row 015-127), so neither scans the
  * worktree's every state, 260,000 on 005-110's copy; the reads name them.
+ * `states_non_pass` holds a worktree's states that do not pass, so status
+ * counts them (`states.countNonPass`) without reading every passing one,
+ * 67,000 complexity states on Squeal's own store (spec 025 D6.1).
  * `states_by_blob` and `views_by_check` let the prune test one count or one
  * check again under the write lock by a search, not a scan of `states`
  * (5.4 M rows on cezar's store) or `views` (row 021-33).
@@ -150,6 +153,8 @@ export const CODE_INDEXES: Readonly<Record<string, string>> = {
     "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
   states_edited:
     "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
+  states_non_pass:
+    "CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'",
   states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
   views_by_check: "CREATE INDEX views_by_check ON views (check_id)",
 };

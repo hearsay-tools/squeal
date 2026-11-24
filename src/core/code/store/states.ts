@@ -2,7 +2,7 @@ import { num, numOrNull, oneOf, str } from "../../store/codec.js";
 import type { Connection, Params, Row } from "../../store/connection.js";
 import type { CodeCheckId, CodeKnownState, CodeMeasure, CodeOutcome } from "../../types/code.js";
 import type { RelativePath, WorktreeId } from "../../types/common.js";
-import type { CodeEdit, CodeStateFilter, CodeStateRepo } from "./types.js";
+import type { CodeEdit, CodeNonPassCounts, CodeStateFilter, CodeStateRepo } from "./types.js";
 
 export const MEASURES = [
   "complexity",
@@ -70,6 +70,8 @@ export function checkFrom(row: Row): CodeCheckId {
  */
 export const STATES_FAILING = "states_failing";
 export const STATES_EDITED = "states_edited";
+/** Spec 025 D6.1: the states that do not pass, which status counts. */
+export const STATES_NON_PASS = "states_non_pass";
 
 /** Which of `names` the file has; a store a reader opened before any creating open has none. */
 function indexesIn(conn: Connection, names: readonly string[]): ReadonlySet<string> {
@@ -132,7 +134,7 @@ function filterTerms(filter: CodeStateFilter): { readonly sql: string; readonly 
 }
 
 export function createStateRepo(conn: Connection): CodeStateRepo {
-  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
+  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED, STATES_NON_PASS]);
   const named = (index: string, used: boolean) => (used && indexed.has(index) ? index : null);
   return {
     list(worktreeId, filter = {}) {
@@ -147,6 +149,25 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
           ...terms.params,
         )
         .map((row) => toState(worktreeId, row));
+    },
+    countNonPass(worktreeId, measure) {
+      const index = named(STATES_NON_PASS, true);
+      const states = index === null ? "states" : `states INDEXED BY ${index}`;
+      const counts = { fail: 0, pending: 0, unknown: 0 } satisfies Record<
+        keyof CodeNonPassCounts,
+        number
+      >;
+      const rows = conn.all(
+        `SELECT outcome, count(*) AS n FROM ${states}
+         WHERE worktree_id = ? AND measure = ? AND outcome != 'pass' GROUP BY outcome`,
+        worktreeId,
+        measure,
+      );
+      for (const row of rows) {
+        const outcome = oneOf(row, "outcome", OUTCOMES);
+        if (outcome !== "pass") counts[outcome] = num(row, "n");
+      }
+      return counts;
     },
     upsertMany(states) {
       conn.transaction(() => {

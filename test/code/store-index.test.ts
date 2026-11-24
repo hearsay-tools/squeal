@@ -29,6 +29,7 @@ const MADE = [
   "coverage_stored",
   "states_edited",
   "states_failing",
+  "states_non_pass",
 ];
 const at = (resultKey: string) => ({ resultKey, providerVersion: 2 });
 

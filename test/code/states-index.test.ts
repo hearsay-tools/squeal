@@ -6,7 +6,7 @@ import {
   isCodeStoreOpenFailure,
   openCodeStore,
 } from "../../src/core/code/store/open.js";
-import { STATES_EDITED, STATES_FAILING } from "../../src/core/code/store/states.js";
+import { STATES_EDITED, STATES_FAILING, STATES_NON_PASS } from "../../src/core/code/store/states.js";
 import type { CodeStore } from "../../src/core/code/store/types.js";
 import { Connection, type Params, type Row } from "../../src/core/store/connection.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../../src/core/types/code.js";
@@ -119,6 +119,10 @@ function answers(store: CodeStore) {
     edits: store.states.edits(WT, "complexity").map((e) => [e.check.qualifiedName, e.revision]),
     crapEdits: store.states.edits(WT, "crap").map((e) => [e.check.qualifiedName, e.at]),
     pathEdits: store.states.edits(WT, "complexity", ["src/a.ts"]).map((e) => e.revision),
+    complexityCounts: store.states.countNonPass(WT, "complexity"),
+    crapCounts: store.states.countNonPass(WT, "crap"),
+    uncoveredCounts: store.states.countNonPass(WT, "uncovered"),
+    otherCounts: store.states.countNonPass(OTHER, "complexity"),
   };
 }
 
@@ -146,14 +150,19 @@ const EXPECTED = {
   ],
   crapEdits: [["pay", 60]],
   pathEdits: [4, 5],
+  complexityCounts: { fail: 2, pending: 0, unknown: 0 },
+  crapCounts: { fail: 1, pending: 0, unknown: 1 },
+  uncoveredCounts: { fail: 0, pending: 1, unknown: 0 },
+  otherCounts: { fail: 1, pending: 0, unknown: 0 },
 };
+const INDEXES = [STATES_EDITED, STATES_FAILING, STATES_NON_PASS];
 
 function hasIndexes(dir: string): string[] {
   const db = new Sqlite(codeStorePath(dir), { readOnly: true });
   try {
     return db
-      .prepare("SELECT name FROM sqlite_master WHERE name IN (?, ?) ORDER BY name")
-      .all(STATES_EDITED, STATES_FAILING)
+      .prepare("SELECT name FROM sqlite_master WHERE name IN (?, ?, ?) ORDER BY name")
+      .all(...INDEXES)
       .map((row) => String(row.name));
   } finally {
     db.close();
@@ -180,6 +189,11 @@ describe("the boundary's code reads (row 015-127)", () => {
       expect(lastPlan(conn)).toMatch(
         /SEARCH s USING PRIMARY KEY \(worktree_id=\? AND check_id=\?\)/,
       );
+      // Status counts the states that do not pass, never reading the passing ones (025 D6.1).
+      store.states.countNonPass(WT, "complexity");
+      expect(lastPlan(conn)).toMatch(
+        /SEARCH states USING (COVERING )?INDEX states_non_pass \(worktree_id=\? AND measure=\?\)/,
+      );
     } finally {
       store.close();
     }
@@ -187,23 +201,25 @@ describe("the boundary's code reads (row 015-127)", () => {
 
   it("give the same answers with the indexes as without them", () => {
     const dir = seeded();
-    expect(hasIndexes(dir)).toEqual([STATES_EDITED, STATES_FAILING]);
+    expect(hasIndexes(dir)).toEqual(INDEXES);
     const indexed = open(dir);
     expect(answers(indexed)).toEqual(EXPECTED);
     indexed.close();
     const db = new Sqlite(codeStorePath(dir));
-    db.exec(`DROP INDEX ${STATES_FAILING}; DROP INDEX ${STATES_EDITED}`);
+    for (const name of INDEXES) db.exec(`DROP INDEX ${name}`);
     db.close();
     // An older store, as a daemon that predates the indexes leaves it, read by a hook.
     const { store: reader, conn } = recorded(dir, false);
     expect(answers(reader)).toEqual(EXPECTED);
     reader.states.list(WT, { measure: "complexity", outcome: "fail" });
     expect(lastPlan(conn)).not.toMatch(/states_failing/);
+    reader.states.countNonPass(WT, "complexity");
+    expect(lastPlan(conn)).not.toMatch(/states_non_pass/);
     reader.close();
     expect(hasIndexes(dir)).toEqual([]);
     // The next creating open makes them again, and the answers stay.
     const daemon = open(dir);
-    expect(hasIndexes(dir)).toEqual([STATES_EDITED, STATES_FAILING]);
+    expect(hasIndexes(dir)).toEqual(INDEXES);
     expect(answers(daemon)).toEqual(EXPECTED);
   });
 });

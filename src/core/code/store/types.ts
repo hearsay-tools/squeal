@@ -59,9 +59,18 @@ export interface CodeEdit {
   readonly at: EpochMs;
 }
 
+/** How many of a worktree's states of one measure have each outcome that is not `pass`. */
+export interface CodeNonPassCounts {
+  readonly fail: number;
+  readonly pending: number;
+  readonly unknown: number;
+}
+
 /** Spec 015 D4, D5: the known state of each code check's measures, per worktree. */
 export interface CodeStateRepo {
   list(worktreeId: WorktreeId, filter?: CodeStateFilter): readonly CodeKnownState[];
+  /** The counts of `measure`'s states that do not pass, read without the passing ones (spec 025 D6.1). */
+  countNonPass(worktreeId: WorktreeId, measure: CodeMeasure): CodeNonPassCounts;
   /** Writes each state; a stored state keeps its last edit. */
   upsertMany(states: readonly CodeKnownState[]): void;
   /** The last edit of each state of `measure` that has one; with `paths`, of theirs (row 015-45). */
