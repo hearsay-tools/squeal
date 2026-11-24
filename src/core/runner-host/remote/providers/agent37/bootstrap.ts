@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
 import { type SshTarget, shellQuote, sshFailure, sshRun } from "../../ssh.js";
+import { createGitBundle, sharedFullBundle } from "./bundle-cache.js";
 
 /*
  * Spec 026 D7.3.3 (row 026-15): what a fresh Agent37 instance needs before
@@ -263,25 +264,36 @@ async function sendGit(
 ): Promise<GitState | null | "missing"> {
   const { local, base, dir, deadlines, signal } = send;
   signal?.throwIfAborted();
-  const bundle = join(dir, base === null ? "full.bundle" : "since.bundle");
-  const created = await run(
-    "git",
-    ["-C", root, "bundle", "create", "-q", bundle, "HEAD", "--tags", ...(base ? [`^${base}`] : [])],
-    { maxBuffer: 1024 * 1024, ...(signal === undefined ? {} : { signal }) },
-  ).then(
-    () => true,
-    (error: unknown) => {
+  let bundle: string | null = null;
+  if (base === null) {
+    try {
+      bundle = await sharedFullBundle(root, local, dir, deadlines.bundleMs, signal);
+    } catch (error) {
       signal?.throwIfAborted();
-      // Nothing new since `base` (only refs moved): no bundle; the refs alone.
-      if (base !== null) return false;
       const stderr = String((error as { stderr?: unknown }).stderr ?? error).trim();
       throw new Error(`git bundle failed: ${stderr.split("\n").at(-1) ?? ""}`);
-    },
-  );
+    }
+  } else {
+    const sincePath = join(dir, "since.bundle");
+    const created = await createGitBundle(
+      root,
+      sincePath,
+      ["HEAD", "--tags", `^${base}`],
+      signal,
+    ).then(
+      () => true,
+      () => {
+        signal?.throwIfAborted();
+        // Nothing new since `base` (only refs moved): no bundle; the refs alone.
+        return false;
+      },
+    );
+    if (created) bundle = sincePath;
+  }
   const input = Readable.from(
     (async function* () {
       yield Buffer.from(`${local.refs}\n.\n`);
-      if (created) yield* createReadStream(bundle);
+      if (bundle !== null) yield* createReadStream(bundle);
     })(),
   );
   const sent = await sshRun(target, scriptCommand(SYNC_SCRIPT, [tree]), {

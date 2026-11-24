@@ -1,7 +1,9 @@
 import { execFile } from "node:child_process";
 import { lstat, readFile, readlink } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { runGit, splitNul } from "../../fs/git.js";
+import { readObjectFormat } from "../../hash/git-index.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { insideRoot, packFiles, type TreeEntry, type TreeWrite, treeBlob } from "./tree-wire.js";
 
@@ -18,6 +20,12 @@ const run = promisify(execFile);
 /** What one `write` message carries at most, in bytes before base64. */
 export const WRITE_BYTES = 8 * 1024 * 1024;
 
+/** Above this many changed paths, `treePathsFor` lists the whole tree instead of passing argv pathspecs. */
+const NARROW_LIMIT = 256;
+
+const AUTOCRLF_ON = new Set(["true", "input", "yes", "on", "1"]);
+const CONVERTING_ATTRIBUTES = ["eol", "text", "crlf", "filter", "ident", "working-tree-encoding"];
+
 /** The paths of `root`'s tree: tracked, and untracked but not ignored, each once, sorted. */
 export async function treePaths(root: AbsolutePath): Promise<string[]> {
   const { stdout } = await run(
@@ -27,6 +35,108 @@ export async function treePaths(root: AbsolutePath): Promise<string[]> {
   );
   const paths = new Set(stdout.split("\0").filter((path) => path !== "" && insideRoot(path)));
   return [...paths].sort();
+}
+
+/**
+ * Subset of `paths` that belong to `root`'s tree (tracked, or untracked and
+ * not ignored). Avoids listing the whole repository on small invalidations.
+ */
+export async function treePathsFor(
+  root: AbsolutePath,
+  paths: readonly string[],
+): Promise<Set<string>> {
+  const valid = [...new Set(paths)].filter((path) => insideRoot(path));
+  if (valid.length === 0) return new Set();
+  if (valid.length > NARROW_LIMIT) return new Set(await treePaths(root));
+  const { stdout } = await run(
+    "git",
+    [
+      "-C",
+      root,
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "--",
+      ...valid.map((path) => `:(literal)${path}`),
+    ],
+    { maxBuffer: 64 * 1024 * 1024, encoding: "utf8" },
+  );
+  return new Set(stdout.split("\0").filter((path) => path !== "" && insideRoot(path)));
+}
+
+/** Whether `root` may have any gitattributes file that converts worktree bytes. */
+async function hasGitAttributes(root: AbsolutePath): Promise<boolean> {
+  const [tracked, configured, common] = await Promise.all([
+    runGit(root, ["ls-files", "-z", "--", ".gitattributes", "**/.gitattributes"]).catch(() => ""),
+    runGit(root, ["config", "--get", "core.attributesFile"], { okCodes: [0, 1] }).catch(() => ""),
+    runGit(root, ["rev-parse", "--git-common-dir"]).catch(() => ""),
+  ]);
+  if (tracked.trim() !== "" || configured.trim() !== "") return true;
+  if (common.trim() === "") return true;
+  const infoPath = join(resolve(root, common.trim()), "info", "attributes");
+  try {
+    const text = await readFile(infoPath, "utf8");
+    return text.split("\n").some((line) => {
+      const trimmed = line.trim();
+      return trimmed !== "" && !trimmed.startsWith("#");
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Clean SHA-1 index entries whose bytes on disk equal their Git blob id,
+ * keyed by worktree-relative path. Mirrors `readCleanIndexHashes` soundness
+ * (skips dirty/unmerged/assume-unchanged/submodules/`core.autocrlf`/converting
+ * attributes) while preserving executable and symlink modes.
+ */
+async function cleanIndexEntries(root: AbsolutePath): Promise<Map<string, TreeEntry>> {
+  try {
+    if ((await readObjectFormat(root)) !== "sha1") return new Map();
+  } catch {
+    return new Map();
+  }
+  const [autocrlf, staged, status, attrs] = await Promise.all([
+    runGit(root, ["config", "--get", "core.autocrlf"], { okCodes: [0, 1] }),
+    runGit(root, ["ls-files", "--stage", "-v", "-z"]),
+    runGit(root, [
+      "status",
+      "--porcelain=v1",
+      "-z",
+      "--untracked-files=no",
+      "--ignore-submodules=all",
+      "--no-renames",
+    ]),
+    hasGitAttributes(root),
+  ]);
+  if (AUTOCRLF_ON.has(autocrlf.trim().toLowerCase())) return new Map();
+
+  const listed = new Set(splitNul(status).map((line) => line.slice(3)));
+  const clean = new Map<string, TreeEntry>();
+  for (const line of splitNul(staged)) {
+    const tab = line.indexOf("\t");
+    if (tab < 0) continue;
+    const [tag, mode, oid, stage] = line.slice(0, tab).split(" ");
+    const path = line.slice(tab + 1);
+    if (tag !== "H" || stage !== "0" || oid === undefined || !insideRoot(path) || listed.has(path))
+      continue;
+    if (mode === "100644") clean.set(path, { path, blob: oid });
+    else if (mode === "100755") clean.set(path, { path, blob: oid, mode: "x" });
+    else if (mode === "120000") clean.set(path, { path, blob: oid, mode: "link" });
+  }
+  if (!attrs || clean.size === 0) return clean;
+
+  const checked = await runGit(root, ["check-attr", "-z", "--stdin", ...CONVERTING_ATTRIBUTES], {
+    input: `${[...clean.keys()].join("\0")}\0`,
+  });
+  const fields = splitNul(checked);
+  for (let i = 0; i + 2 < fields.length; i += 3) {
+    if (fields[i + 2] !== "unspecified") clean.delete(fields[i] ?? "");
+  }
+  return clean;
 }
 
 /** A file of the tree as it is on disk now, with its bytes; `null` when it is no file or link. */
@@ -51,10 +161,16 @@ export async function readEntry(
   }
 }
 
-/** The tree's entries, each read now. */
+/** The tree's entries, reusing clean SHA-1 Git index blobs and reading only dirty or untracked paths. */
 export async function treeEntries(root: AbsolutePath): Promise<TreeEntry[]> {
+  const [paths, clean] = await Promise.all([treePaths(root), cleanIndexEntries(root)]);
   const entries: TreeEntry[] = [];
-  for (const path of await treePaths(root)) {
+  for (const path of paths) {
+    const indexed = clean.get(path);
+    if (indexed !== undefined) {
+      entries.push(indexed);
+      continue;
+    }
     const read = await readEntry(root, path);
     if (read !== null) entries.push(read.entry);
   }

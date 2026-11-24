@@ -5,6 +5,7 @@ import { readPin } from "../../node-pin.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { CoreEnvironmentInputs } from "../../types/keys.js";
 import type { RunnerAdapter } from "../../types/runner.js";
+import type { BlobCache, InstalledFingerprintCache } from "./blob-cache.js";
 import type { RemoteHost } from "./connect.js";
 import { environmentDifferences } from "./environment.js";
 import type { EnvironmentMode } from "./remote-key.js";
@@ -39,6 +40,10 @@ export interface CompareOptions {
   readonly environmentMode?: EnvironmentMode;
   readonly allowlist: () => readonly string[];
   readonly log: (text: string) => void;
+  /** Optional stat-cached blob reader for local config files. */
+  readonly blobCache?: BlobCache;
+  /** Optional stat-guarded cache for local `installedDependenciesFingerprint`. */
+  readonly installedCache?: InstalledFingerprintCache;
 }
 
 /** The differences of the remote's install that an install there may mend. */
@@ -96,14 +101,16 @@ async function differences(host: RemoteHost, options: CompareOptions): Promise<R
     host.coreEnvironment(allowlist),
     host.adapter.environment(),
     options.planning === "remote" ? null : options.local.environment(),
-    installedDependenciesFingerprint(options.root, options.root),
+    options.installedCache !== undefined
+      ? options.installedCache.fingerprint()
+      : installedDependenciesFingerprint(options.root, options.root),
     remoteKey ? nodePinsAt(options.root) : [],
   ]);
   const localRunners = localOwn ?? remoteRunners;
   const files = [...new Set([...remoteRunners, ...localRunners].flatMap((r) => r.files))];
   const [remoteBlobs, localBlobs] = await Promise.all([
     host.blobs(files),
-    blobsAt(options.root, files),
+    options.blobCache !== undefined ? options.blobCache.blobs(files) : blobsAt(options.root, files),
   ]);
   const core = coreEnvironmentInputs({
     squealVersion: options.version,

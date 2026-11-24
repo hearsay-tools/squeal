@@ -12,7 +12,7 @@ import { type HostDeadlines, type HostRequests, startHostProxy } from "../proxy.
 import type { AdmitAnswer, AdmitAsk } from "./admission.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
 import { type SshTarget, shellQuote, spawnSsh, sshFailure, sshRun } from "./ssh.js";
-import { treeEntries, treePaths, writesFor } from "./tree.js";
+import { treeEntries, treePathsFor, writesFor } from "./tree.js";
 import { LOCKFILES } from "./tree-install.js";
 import {
   HOST_PROVIDER,
@@ -329,7 +329,7 @@ export async function remoteHostOver(
       const on = requests;
       const changed = paths.filter((p) => p.kind !== "touch").map((p) => p.path);
       if (on === null || changed.length === 0) return undefined;
-      const writes = await writesFor(root, changed, new Set(await treePaths(root)));
+      const writes = await writesFor(root, changed, await treePathsFor(root, changed));
       const lockfile = changed.some((path) =>
         (LOCKFILES as readonly string[]).includes(basename(path)),
       );

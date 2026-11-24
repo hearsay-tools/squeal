@@ -12,9 +12,10 @@ import type {
 } from "../../types/runner.js";
 import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
+import { createBlobCache, createInstalledFingerprintCache } from "./blob-cache.js";
 import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { recordsWithout } from "./coverage.js";
-import { blobsAt, compareRemoteEnvironment } from "./lane-compare.js";
+import { compareRemoteEnvironment } from "./lane-compare.js";
 import { type Planning, remotePlanning } from "./lane-planning.js";
 import { deferredTo, repositoryRoute, withoutFiles } from "./lane-repository.js";
 import { DEFAULT_TIERS, goesRemote, tiersText } from "./lane-tiers.js";
@@ -361,14 +362,20 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     return host;
   };
 
+  const blobCache = createBlobCache(options.root, now);
+  const installedCache = createInstalledFingerprintCache(options.root, now);
   const compared = async (host: RemoteHost) => {
-    const result = await compareRemoteEnvironment(host, options);
+    const result = await compareRemoteEnvironment(host, {
+      ...options,
+      blobCache,
+      installedCache,
+    });
     if (remoteKey && result.differences.length === 0 && result.remoteCore !== null) {
       remoteCore = result.remoteCore;
     }
     return result;
   };
-  const blobsHere = (paths: readonly string[]) => blobsAt(options.root, paths);
+  const blobsHere = (paths: readonly string[]) => blobCache.blobs(paths);
 
   /**
    * The remote's run, proven over a current environment; `refused` after a
@@ -735,6 +742,9 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     adapterVersion: local.adapterVersion,
     traits: local.traits,
     invalidate(paths) {
+      const names = paths.map((p) => p.path);
+      blobCache.evict(names);
+      installedCache.onInvalidate(names);
       if (remotePlans) return invalidateThere(paths);
       // While connecting too: the tree it sent may predate them. A connect sends the whole tree.
       if (state.kind === "ready" || state.kind === "connecting") {

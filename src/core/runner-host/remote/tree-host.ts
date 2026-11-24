@@ -24,6 +24,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { installedDependenciesFingerprint } from "../../keys/environment.js";
+import { materializeFromGit } from "./tree-git.js";
 import { installTree, LOCKFILES } from "./tree-install.js";
 import {
   type HostCore,
@@ -124,17 +125,37 @@ export function createTreeHost(
     if (insideRoot(path)) await rm(join(root, path), { force: true, recursive: true });
   };
 
+  const writeEntry = async (file: TreeEntry, bytes: Buffer) => {
+    const at = await place(file.path);
+    await rm(at, { force: true, recursive: true });
+    if (file.mode === "link") await symlink(bytes.toString("utf8"), at);
+    else {
+      const next = part(join(dirname(at), `.${basename(at)}`));
+      await writeFile(next, bytes);
+      await chmod(next, file.mode === "x" ? 0o755 : 0o644);
+      await rename(next, at);
+    }
+    files[file.path] = {
+      blob: file.blob,
+      ...(file.mode === undefined ? {} : { mode: file.mode }),
+    };
+  };
+
   return {
     root,
     async tree(entries) {
       const given = new Set(entries.map((entry) => entry.path));
       for (const path of Object.keys(files)) if (!given.has(path)) await remove(path);
-      const missing: string[] = [];
+      const need: TreeEntry[] = [];
       for (const entry of entries) {
         const held = files[entry.path];
         const same = held?.blob === entry.blob && held.mode === entry.mode;
-        if (!same || !(await present(join(root, entry.path)))) missing.push(entry.path);
+        if (!same || !(await present(join(root, entry.path)))) need.push(entry);
       }
+      const materialized = await materializeFromGit(root, need, writeEntry);
+      const missing = need
+        .filter((entry) => !materialized.has(entry.path))
+        .map((entry) => entry.path);
       await save();
       return { missing };
     },
@@ -143,19 +164,7 @@ export function createTreeHost(
         if (treeBlob(bytes) !== file.blob) {
           throw new Error(`runner host: the bytes of ${file.path} do not match their blob id`);
         }
-        const at = await place(file.path);
-        await rm(at, { force: true, recursive: true });
-        if (file.mode === "link") await symlink(bytes.toString("utf8"), at);
-        else {
-          const next = part(join(dirname(at), `.${basename(at)}`));
-          await writeFile(next, bytes);
-          await chmod(next, file.mode === "x" ? 0o755 : 0o644);
-          await rename(next, at);
-        }
-        files[file.path] = {
-          blob: file.blob,
-          ...(file.mode === undefined ? {} : { mode: file.mode }),
-        };
+        await writeEntry(file, bytes);
       }
       for (const path of write.removed) await remove(path);
       await save();

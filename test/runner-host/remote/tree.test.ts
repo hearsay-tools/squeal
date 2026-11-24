@@ -1,9 +1,25 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { writesFor } from "../../../src/core/runner-host/remote/tree.js";
+import {
+  readEntry,
+  treeEntries,
+  treePaths,
+  treePathsFor,
+  writesFor,
+} from "../../../src/core/runner-host/remote/tree.js";
 import { treeBlob, unpackFiles } from "../../../src/core/runner-host/remote/tree-wire.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 
 /*
  * Row 021-25 (`boat-trial.md` D6): the tree went to the remote as base64 in
@@ -106,5 +122,54 @@ describe("the tree on the wire (row 021-25)", () => {
       /a write without files carries bytes/,
     );
     expect(await unpackFiles({ files: [], gzip: "" })).toEqual([]);
+  });
+});
+
+describe("fast clean-index treeEntries and narrow treePathsFor", () => {
+  it("matches full disk reads across clean, executable, symlink, dirty, untracked and deleted files", async () => {
+    const dir = root({
+      ".gitignore": ".env\n",
+      ".env": "SECRET=1\n",
+      "src/clean.ts": "export const c = 1;\n",
+      "src/dirty.ts": "export const d = 1;\n",
+      "src/gone.ts": "export const g = 1;\n",
+      "src/[id].ts": "export const id = 1;\n",
+      "bin/run": "#!/bin/sh\necho ok\n",
+    }) as AbsolutePath;
+    chmodSync(join(dir, "bin/run"), 0o755);
+    symlinkSync("src/clean.ts", join(dir, "alias.ts"));
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", ...args]);
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-q", "-m", "init");
+
+    writeFileSync(join(dir, "src/dirty.ts"), "export const d = 2;\n");
+    writeFileSync(join(dir, "src/new.ts"), "export const n = 1;\n");
+    unlinkSync(join(dir, "src/gone.ts"));
+
+    const fast = await treeEntries(dir);
+    const manual = [];
+    for (const path of await treePaths(dir)) {
+      const r = await readEntry(dir, path);
+      if (r !== null) manual.push(r.entry);
+    }
+    expect(fast).toEqual(manual);
+
+    // Narrow lookup handles tracked, untracked, ignored, deleted, and literal bracket paths.
+    const narrow = await treePathsFor(dir, [
+      "src/clean.ts",
+      "src/new.ts",
+      "src/[id].ts",
+      ".env",
+      "src/gone.ts",
+      "nope.ts",
+    ]);
+    expect([...narrow].sort()).toEqual([
+      "src/[id].ts",
+      "src/clean.ts",
+      "src/gone.ts",
+      "src/new.ts",
+    ]);
   });
 });
