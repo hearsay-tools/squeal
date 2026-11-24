@@ -72,6 +72,8 @@ export interface Setup {
   readonly refusal?: string;
   /** The local adapter's run; absent, each file completes with no result. */
   readonly localRun?: (files: readonly TestFileRef[]) => Promise<RunReport>;
+  /** Review 0.1.616 S2: false connects at the first background run, and setup does not wait. */
+  readonly eager?: boolean;
 }
 
 let n = 0;
@@ -89,6 +91,7 @@ export async function setup({
   needsRepository,
   refusal,
   localRun,
+  eager,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -123,8 +126,11 @@ export async function setup({
     close: async () => {},
   });
   const connects: number[] = [];
+  /** Each connect's start and each host's close, in turn (review 0.1.616 B7). */
+  const events: string[] = [];
   const connect = async (): Promise<RemoteHost> => {
     connects.push(Date.now());
+    events.push("connect");
     if (refusal !== undefined) throw new RemoteRefusal(refusal);
     const host = inProcessHost(
       async () =>
@@ -157,7 +163,7 @@ export async function setup({
       if (!paused) output.write(chunk);
     });
     onTestFinished(() => host.channel.kill());
-    return remoteHostOver({ ...host.channel, output }, "v-test", {
+    const remoteHost = await remoteHostOver({ ...host.channel, output }, "v-test", {
       target: { destination: "box" },
       version: "0.0.0-test",
       root,
@@ -166,6 +172,12 @@ export async function setup({
       policy: () => POLICY,
       ...(deadlines === undefined ? {} : { deadlines }),
     });
+    const close = remoteHost.adapter.close.bind(remoteHost.adapter);
+    remoteHost.adapter.close = async () => {
+      events.push("close");
+      await close();
+    };
+    return remoteHost;
   };
   const local: RunnerAdapter = fake(
     () => ENV,
@@ -194,10 +206,13 @@ export async function setup({
     now: () => clock,
     backoffMs: [60_000],
     ...(admitEveryMs === undefined ? {} : { admitEveryMs }),
+    ...(eager === undefined ? {} : { eager }),
   });
   onTestFinished(() => lane.close());
   // Row 021-24: the lane compares at connect, so a remote may be refused before any run.
-  await until(() => statuses.some((s) => / go there| refused| unreachable/.test(s)));
+  if (eager !== false) {
+    await until(() => statuses.some((s) => / go there| refused| unreachable/.test(s)));
+  }
   return {
     lane,
     remote,
@@ -210,6 +225,7 @@ export async function setup({
     logs,
     repository,
     connects,
+    events,
     advance: (ms: number) => {
       clock += ms;
     },

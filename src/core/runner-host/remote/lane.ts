@@ -42,6 +42,11 @@ import type { RemoteRunReply } from "./tree-wire.js";
  * as not a Git repository keeps no result and runs here again. A report
  * holds one setup failure (review 0.1.457 B3): a part after one whose run
  * failed to start does not run, and its files join that failure's.
+ *
+ * Review 0.1.616 B7 (spec 026 D12.4): `sleep` closes the idle channel
+ * first, then asks the machine to sleep; a remote run in flight refuses it.
+ * The next background run connects again, which wakes the machine. S2: a
+ * lane that is not `eager` connects at its first background run.
  */
 
 export interface RemoteLaneOptions {
@@ -65,6 +70,21 @@ export interface RemoteLaneOptions {
   readonly backoffMs?: readonly number[];
   /** How often a run the remote machine refuses asks again. Default `ADMIT_EVERY_MS`. */
   readonly admitEveryMs?: number;
+  /** Connect now (default), or at the first background run (S2: a deferred runner). */
+  readonly eager?: boolean;
+}
+
+/** What `RemoteLaneRunner.sleep` did: slept, or not because a run or a connect is on the remote. */
+export type LaneSleep = "slept" | { readonly busy: string };
+
+/** The lane's runner, which can also put its remote to sleep (B7). */
+export interface RemoteLaneRunner extends RunnerAdapter {
+  /**
+   * Closes the remote's channel, then calls `machineSleep`; refused while a
+   * remote run or a connect is in flight. Until `machineSleep` ends, no run
+   * goes remote; after it, the next background run connects again.
+   */
+  sleep(machineSleep: () => Promise<void>): Promise<LaneSleep>;
 }
 
 const BACKOFF_MS = [30_000, 60_000, 120_000, 300_000, 600_000];
@@ -82,6 +102,8 @@ export function goesRemote(options: RunOptions): boolean {
 
 type State =
   | { readonly kind: "connecting" }
+  /** B7: closed for sleep (`going`: the machine is being asked); the next run connects. */
+  | { readonly kind: "asleep"; readonly going: boolean }
   | { readonly kind: "ready"; readonly host: RemoteHost; proven: boolean }
   | {
       readonly kind: "down";
@@ -91,13 +113,15 @@ type State =
     };
 
 /** `local` with its background runs on the remote `connect` reaches. */
-export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
+export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   const { local, target } = options;
   const now = options.now ?? Date.now;
   const backoff = options.backoffMs ?? BACKOFF_MS;
   let state: State = { kind: "down", since: now(), retryAt: 0, refused: false };
   let failures = 0;
   let notRun = 0;
+  /** Remote runs in flight: a sleep waits for none (B7). */
+  let remoteRuns = 0;
   let why = "not connected yet";
   /** Paths invalidated since the last remote run, by path; sent before the next. */
   const pending = new Map<string, InvalidatedPath>();
@@ -180,6 +204,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
   /** The host when it can take a run now; else `null`, and a reconnect when due. */
   const ready = (): RemoteHost | null => {
     if (state.kind === "down" && now() >= state.retryAt) connect();
+    if (state.kind === "asleep" && !state.going) connect();
     if (state.kind !== "ready") return null;
     const { host } = state;
     if (runnerHostGone(host.adapter)) {
@@ -359,7 +384,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
   ): Promise<RunReport> => {
     const host = ready();
     if (host === null) return instead(testFiles, run);
-    const report = await remoteRun(host, testFiles, run);
+    remoteRuns++;
+    const report = await remoteRun(host, testFiles, run).finally(() => remoteRuns--);
     if (report === "refused") return instead(testFiles, run);
     if ("cancelled" in report) return report.cancelled;
     if ("lost" in report) {
@@ -390,14 +416,14 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     ]);
   };
 
-  connect();
+  if (options.eager !== false) connect();
   return {
     ...local,
     name: local.name,
     adapterVersion: local.adapterVersion,
     invalidate(paths) {
-      // While connecting too: the tree it sent may predate them.
-      if (state.kind !== "down") queue(paths);
+      // While connecting too: the tree it sent may predate them. A connect sends the whole tree.
+      if (state.kind === "ready" || state.kind === "connecting") queue(paths);
       return local.invalidate(paths);
     },
     affected: (paths) => local.affected(paths),
@@ -420,6 +446,23 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
         { adapter: { name: "here" }, report: own },
         { adapter: { name: `remote ${target}` }, report: await remoteTier(there, run) },
       ]);
+    },
+    async sleep(machineSleep) {
+      if (remoteRuns > 0) return { busy: `a run is on remote ${target}` };
+      if (state.kind === "connecting") return { busy: `remote ${target} is connecting` };
+      if (state.kind === "asleep" && state.going)
+        return { busy: `remote ${target} is going to sleep` };
+      const host = state.kind === "ready" ? state.host : null;
+      state = { kind: "asleep", going: true };
+      await host?.adapter.close().catch(() => {});
+      try {
+        await machineSleep();
+      } finally {
+        if (state.kind === "asleep") state = { kind: "asleep", going: false };
+      }
+      failures = 0;
+      options.status(`remote ${target}: asleep; the next background run wakes it`);
+      return "slept";
     },
     async close() {
       const host = state.kind === "ready" ? state.host : null;
