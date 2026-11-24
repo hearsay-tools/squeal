@@ -152,7 +152,8 @@ export class Agent37Api {
         host,
         port,
         path: `${prefix}${path}`,
-        agent: false,
+        // The socket opened above, never an Agent: `agent: false` makes a fresh Agent that
+        // ignores `createConnection` and reads the process's own proxy settings.
         createConnection: () => opened.socket,
         headers: {
           Host: base.host,

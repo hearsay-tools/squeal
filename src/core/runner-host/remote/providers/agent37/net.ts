@@ -114,19 +114,20 @@ function connectThrough(
     const user = `${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`;
     headers["Proxy-Authorization"] = `Basic ${Buffer.from(user).toString("base64")}`;
   }
+  const host = proxy.hostname.replace(/^\[|\]$/g, "");
+  const port = proxyPort(proxy);
   const options = {
-    host: proxy.hostname.replace(/^\[|\]$/g, ""),
-    port: proxyPort(proxy),
+    host,
+    port,
     method: "CONNECT",
     path: authority,
     headers,
-    agent: false as const,
-    ...(proxy.protocol === "https:"
-      ? {
-          createConnection: () =>
-            tlsConnect({ host: proxy.hostname, port: proxyPort(proxy), ca: trustedCa(env) }),
-        }
-      : {}),
+    // Always our own socket, never an Agent: Node 26's Agent reads the process's own
+    // proxy settings (NODE_USE_ENV_PROXY), which are not this call's `env`.
+    createConnection: () =>
+      proxy.protocol === "https:"
+        ? tlsConnect({ host, port, ca: trustedCa(env) })
+        : netConnect({ host, port }),
   };
   return new Promise((resolve, reject) => {
     const asked = httpRequest(options);
