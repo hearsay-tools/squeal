@@ -7164,759 +7164,6 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 // src/core/scheduler/capacity.ts
 var CAPACITY_RECHECK_MS = 2e3;
 
-// src/core/scheduler/omitted-test-files.ts
-function omittedTestFilesMetaKey(worktreeId) {
-  return worktreeMetaKey("omittedTestFiles", worktreeId);
-}
-function readOmittedTestFiles(store, worktreeId) {
-  const raw = store.meta.get(omittedTestFilesMetaKey(worktreeId));
-  const count2 = raw === null ? Number.NaN : Number(raw);
-  return Number.isInteger(count2) && count2 >= 0 ? count2 : null;
-}
-
-// src/core/scheduler/focused-row.ts
-function focusedMetaKey(worktreeId) {
-  return worktreeMetaKey("focused", worktreeId);
-}
-function readFocused(store, worktreeId) {
-  const raw = store.meta.get(focusedMetaKey(worktreeId));
-  if (raw === null) return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value.filter(isFocusedRun) : [];
-  } catch {
-    return [];
-  }
-}
-function isFocusedRun(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const run2 = value;
-  const file = run2.testFile;
-  return typeof file?.project === "string" && typeof file.path === "string" && typeof run2.key === "string" && typeof run2.revision === "number" && typeof run2.runId === "string" && Array.isArray(run2.texts) && Array.isArray(run2.checks);
-}
-
-// src/core/scheduler/quiet.ts
-function quietMetaKey(worktreeId) {
-  return worktreeMetaKey("quiet", worktreeId);
-}
-var NO_ENDS = /* @__PURE__ */ new Map();
-function publishedWaits(store, worktreeId, daemonStartedAt, now) {
-  const none2 = { backlog: NO_ENDS, catchUp: NO_ENDS };
-  const raw = store.meta.get(quietMetaKey(worktreeId));
-  if (raw === null) return none2;
-  try {
-    const { at, lanes, catchUp } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt) return none2;
-    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
-  } catch {
-    return none2;
-  }
-}
-function endsAfter(lanes, now) {
-  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
-  return new Map(
-    Object.entries(lanes).filter(
-      (entry3) => typeof entry3[1] === "number" && entry3[1] > now
-    )
-  );
-}
-
-// src/core/scheduler/runner-work-bound.ts
-var RUNNER_PART_MARGIN_MS = 6e4;
-function runnerPartBoundMs(timeoutMs) {
-  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
-}
-
-// src/core/scheduler/backlog.ts
-function wallEstimate(sum, longest, width) {
-  return sum / width + (1 - 1 / width) * longest;
-}
-
-// src/core/scheduler/yields.ts
-function yieldsMetaKey(worktreeId) {
-  return worktreeMetaKey("yields", worktreeId);
-}
-function publishedYieldRow(store, worktreeId, daemonStartedAt) {
-  return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
-}
-
-// src/core/status/standing-yields.ts
-function liveYieldRow(store, worktreeId, startedAt) {
-  return startedAt === null ? NO_YIELD_ROW : publishedYieldRow(store, worktreeId, startedAt);
-}
-function withYieldFacts(pending, lane, run2, { row, startedAt, laneOf: laneOf2 }) {
-  const last = lastIn(row, lane, run2?.id, laneOf2);
-  const ended = run2 === void 0 ? void 0 : row.ended.get(run2.id);
-  if (pending.kind === "queued")
-    return last === void 0 ? pending : { ...pending, lastYield: last };
-  if (run2 === void 0) return pending;
-  if (pending.kind === "unlisted") {
-    const waited = {
-      lane,
-      since: run2.startedAt,
-      files: run2.testFiles.length,
-      ...ended === void 0 ? {} : { ended }
-    };
-    return { ...pending, run: waited };
-  }
-  const tier = row.tiers.get(run2.id);
-  const first = startedAt !== null && firstTier(row, lane, run2, laneOf2);
-  return {
-    ...pending,
-    ...tier === void 0 ? {} : { yields: tier },
-    ...ended === void 0 ? {} : { ended },
-    ...last === void 0 ? {} : { lastYield: last },
-    ...first ? { yieldsSince: startedAt } : {}
-  };
-}
-var UNREPORTED_SHOWN = 3;
-function endOf(ref2, pending, run2, { row }) {
-  if (pending.kind !== "running" || run2 === void 0) return {};
-  const end = fileEndOf(ref2, run2, row);
-  return end === void 0 ? {} : { end };
-}
-function fileEndOf(ref2, run2, row) {
-  const named2 = row.endedFiles.get(run2.id);
-  if (named2 === void 0 || row.at === void 0) return void 0;
-  const ended = new Set(named2.map(testFileId));
-  if (!ended.has(testFileId(ref2))) return void 0;
-  const unreported = run2.testFiles.filter((f) => !ended.has(testFileId(f)));
-  return {
-    revision: run2.revision,
-    asOf: row.at,
-    unreported: unreported.slice(0, UNREPORTED_SHOWN),
-    unreportedCount: unreported.length
-  };
-}
-function lastIn(row, lane, runId, laneOf2) {
-  const { last } = row;
-  const [cut] = last?.files ?? [];
-  if (last === null || cut === void 0 || last.runId === runId) return void 0;
-  return laneOf2(cut) === lane ? { ...last, lane } : void 0;
-}
-function firstTier(row, lane, run2, laneOf2) {
-  if (run2.testFiles.length < 2 || isSlowLane(lane) || row.last !== null) return false;
-  return ![...row.lanes.values()].some((ref2) => laneOf2(ref2) === lane);
-}
-
-// src/core/scheduler/edit-timings.ts
-function editTimingsMetaKey(worktreeId) {
-  return worktreeMetaKey("editTimings", worktreeId);
-}
-var isNumber3 = (v) => typeof v === "number" && Number.isFinite(v);
-function readEditTimings(store, worktreeId) {
-  const raw = store.meta.get(editTimingsMetaKey(worktreeId));
-  let value = null;
-  try {
-    value = raw === null ? null : JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!isRecord(value) || !isNumber3(value.tierSize) || !isRecord(value.widths)) return null;
-  const widths = {};
-  for (const [project, w] of Object.entries(value.widths)) {
-    if (isRecord(w) && isNumber3(w.width) && typeof w.part === "string") {
-      widths[project] = { width: w.width, part: w.part };
-    }
-  }
-  const list = (v) => Array.isArray(v) ? v.filter(isRecord) : [];
-  return {
-    tierSize: value.tierSize,
-    widths,
-    firsts: list(value.firsts).flatMap(
-      (f) => isNumber3(f.revision) && isNumber3(f.delayMs) ? [{ revision: f.revision, delayMs: f.delayMs }] : []
-    ),
-    tiers: list(value.tiers).flatMap(
-      (t) => typeof t.runId === "string" && isNumber3(t.estimateMs) ? [{ runId: t.runId, estimateMs: t.estimateMs }] : []
-    )
-  };
-}
-
-// src/core/delivery/late-bound.ts
-var LATE_FACTOR = 2;
-function median(values) {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-function tierEstimate(tier) {
-  const parts = /* @__PURE__ */ new Map();
-  for (const f of tier) {
-    const was = parts.get(f.part) ?? { sum: 0, longest: 0, count: 0, width: Infinity };
-    parts.set(f.part, {
-      sum: was.sum + f.ms,
-      longest: Math.max(was.longest, f.ms),
-      count: was.count + 1,
-      width: Math.min(was.width, Math.max(1, Math.floor(f.width)))
-    });
-  }
-  let total = 0;
-  for (const p of parts.values())
-    total += wallEstimate(p.sum, p.longest, Math.min(p.count, p.width));
-  return total;
-}
-function lateBoundMs({ files: files2, tierSize, startMs, overheadMs }) {
-  const fallback2 = median(files2.flatMap((f) => f.ms === null ? [] : [f.ms]));
-  const ordered = files2.map((f) => ({ ...f, ms: f.ms ?? fallback2 })).sort((a, b) => a.ms - b.ms);
-  const size = Math.max(1, tierSize);
-  let tiers = 0;
-  for (let i = 0; i < ordered.length; i += size) {
-    tiers += overheadMs + tierEstimate(ordered.slice(i, i + size));
-  }
-  return LATE_FACTOR * (startMs + tiers);
-}
-
-// src/core/delivery/late-timings.ts
-function worktreeMedians(store, worktreeId) {
-  const timings = readEditTimings(store, worktreeId);
-  if (timings === null) return { startMs: 0, overheadMs: 0 };
-  const overheads = timings.tiers.flatMap(({ runId, estimateMs: estimateMs2 }) => {
-    const run2 = store.runs.get(runId);
-    return run2?.end === "completed" && run2.endedAt !== null ? [run2.endedAt - run2.startedAt - estimateMs2] : [];
-  });
-  return {
-    startMs: Math.max(0, median(timings.firsts.map((f) => f.delayMs))),
-    overheadMs: Math.max(0, median(overheads))
-  };
-}
-function pastBound(store, worktreeId, files2, ageMs) {
-  const timings = readEditTimings(store, worktreeId);
-  const tierSize = timings?.tierSize ?? DEFAULT_POLICY.runner.tierSize;
-  const bound = files2.map((file) => {
-    const known = timings?.widths[file.project];
-    return {
-      ms: durationOf(store.results.newestForTestFile(file)),
-      width: known?.width ?? 1,
-      part: known?.part ?? ""
-    };
-  });
-  const floor2 = lateBoundMs({ files: bound, tierSize, startMs: 0, overheadMs: 0 });
-  if (ageMs <= floor2) return false;
-  const medians = worktreeMedians(store, worktreeId);
-  const measured = lateBoundMs({ files: bound, tierSize, ...medians });
-  return ageMs > (measured === 0 ? FEED_LATE_MS : measured);
-}
-
-// src/core/delivery/late.ts
-function lateMetaKey(worktreeId) {
-  return worktreeMetaKey("editsLate", worktreeId);
-}
-function readSlotOf(store, consumer) {
-  const value = readSlot(store, lateMetaKey(consumer.worktreeId), consumer);
-  if (typeof value === "number") return value;
-  return isRecord(value) && typeof value.ended === "number" ? { ended: value.ended } : null;
-}
-var endedAt = (slot2) => slot2 === null || typeof slot2 === "number" ? 0 : slot2.ended;
-function readLate(store, consumer) {
-  const slot2 = readSlotOf(store, consumer);
-  return typeof slot2 === "number" ? slot2 : null;
-}
-function writeLate(store, consumer, slot2) {
-  writeSlot(store, lateMetaKey(consumer.worktreeId), consumer, slot2);
-}
-function forgetLate(store, consumer) {
-  writeLate(store, consumer, null);
-}
-function lateIsOpen(store, consumer) {
-  return readLate(store, consumer) !== null;
-}
-function endLate(store, consumer) {
-  if (!lateIsOpen(store, consumer)) return;
-  writeLate(store, consumer, { ended: store.revisions.latest(consumer.worktreeId)?.number ?? 0 });
-}
-var NAMED_MAX = 3;
-function lateNotes(store, consumer, own, at, header) {
-  const slot2 = readSlotOf(store, consumer);
-  const open2 = typeof slot2 === "number" ? slot2 : null;
-  const after = Math.max(own.since, endedAt(slot2));
-  if (open2 === null && own.revision <= after) return null;
-  const daemon = headerView(readPresence(store, consumer.worktreeId, at));
-  if (open2 === null) {
-    if (daemon.state !== "alive" || daemon.stopping !== void 0) return null;
-    const late = lateNow(store, consumer.worktreeId, { ...own, after }, at, lateOf(daemon)?.since);
-    if (late === null || quietFor(header())) return null;
-    return {
-      open: false,
-      late: late.kind === "unlisted" ? withRunners(late, header()) : late,
-      tell: () => writeLate(store, consumer, late.revision)
-    };
-  }
-  const done = own.refined && own.owed.length === 0 && lateOf(daemon) === void 0;
-  if (done && own.files === 0) {
-    writeLate(store, consumer, null);
-    return null;
-  }
-  const caughtUp = done ? { revision: own.revision, files: own.files, unknown: own.unknown } : void 0;
-  return {
-    open: true,
-    ...caughtUp === void 0 ? {} : { caughtUp },
-    tell: () => {
-      if (caughtUp !== void 0) writeLate(store, consumer, null);
-    }
-  };
-}
-function lateNow(store, worktreeId, own, at, unreadSince) {
-  const { revision } = own;
-  if (unreadSince !== void 0) return { kind: "unread", revision, since: unreadSince };
-  if (!own.refined) {
-    const age = at - (store.revisions.get(worktreeId, revision)?.createdAt ?? at);
-    return age > FEED_LATE_MS && pastBound(store, worktreeId, [], age) ? { kind: "unlisted", revision } : null;
-  }
-  const owed2 = own.owed.filter((o) => o.from > own.after);
-  const oldest = oldestOwed(store, worktreeId, owed2);
-  if (oldest === null) return null;
-  const ageMs = at - oldest.createdAt;
-  const due = owed2.map((o) => o.file);
-  if (!pastBound(store, worktreeId, due, ageMs)) return null;
-  const files2 = own.owed.map((o) => o.file);
-  const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? null;
-  const hung = firstOverrunning(files2, liveYieldRow(store, worktreeId, startedAt), at);
-  return {
-    kind: "owed",
-    revision,
-    owed: own.owed.length,
-    files: own.files,
-    editRevision: oldest.from,
-    ageMs,
-    ...files2.length <= NAMED_MAX ? { named: files2.map((f) => f.path) } : {},
-    ...hung === null ? {} : { hung: hung.path }
-  };
-}
-function quietFor(header) {
-  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true || header.testFilesListed === false;
-}
-function lateMaySay(header) {
-  const { daemon } = header;
-  return daemon?.state === "alive" && daemon.stopping === void 0 && !quietFor(header);
-}
-function lateCarriesDelay(header, owed2, late) {
-  return (owed2 > 0 || late !== void 0) && lateMaySay(header);
-}
-function withRunners(late, header) {
-  const runners = header.listingRunners;
-  return runners === void 0 ? late : { ...late, runners };
-}
-function oldestOwed(store, worktreeId, owed2) {
-  if (owed2.length === 0) return null;
-  const from = Math.min(...owed2.map((o) => o.from));
-  const createdAt = store.revisions.get(worktreeId, from)?.createdAt;
-  return createdAt === void 0 ? null : { from, createdAt };
-}
-
-// src/core/delivery/header.ts
-var CURRENT_DEFINED = "(run on the files as they are now)";
-function noResultsText(command) {
-  return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
-}
-var NO_RESULTS_HERE = "Squeal has no results in this worktree yet";
-function unlistedLine(header, command) {
-  if (header.testFilesListed !== false) return null;
-  const { daemon } = header;
-  if (daemon?.state === "down" && daemon.startStopped === true) {
-    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
-  }
-  if (daemon?.state === "down" && daemon.startSlow === true) {
-    return `${revisionPrefix(header)}${slowStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
-  }
-  if (noneRunning(daemon)) {
-    return `${revisionPrefix(header)}${NO_RESULTS_HERE}, and no daemon is running; \`${command} start\` starts one.${diedText(daemon)}`;
-  }
-  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command, true)}`;
-}
-function revisionPrefix(header) {
-  return `Revision ${header.revision}${changedText(header)}: `;
-}
-var CHANGED_PATHS_SHOWN = 3;
-function changedText(header) {
-  const paths = header.changedPaths;
-  if (paths === void 0 || paths.length === 0) return "";
-  const ignored = new Set(header.ignoredPaths);
-  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).map((path) => ignored.has(path) ? `git-ignored ${path}` : path).join(", ");
-  const more = paths.length - CHANGED_PATHS_SHOWN;
-  return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
-}
-function incompleteText(header, command) {
-  const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
-  const delays = delaysText(header, late, command);
-  return delays === null ? "" : ` ${delays}`;
-}
-function fullLine(header, command) {
-  const unlisted3 = unlistedLine(header, command);
-  if (unlisted3 !== null) return `${unlisted3}${holdsText2(header, command)}`;
-  const rest = `${incompleteText(header, command)}${daemonText(header, command)}${holdsText2(header, command)}`;
-  const revision = revisionPrefix(header).slice(0, -2);
-  if (rest !== "") return `${revision}:${rest}`;
-  return changedText(header) === "" ? null : `${revision}.`;
-}
-function currentFilesText(header, command) {
-  const files2 = header.testFileCounts;
-  if (files2 === void 0 || header.testFilesListed === false) return null;
-  const total = files2.current + files2.pending + files2.stale + files2.unknown;
-  if (total === 0) return "the daemon listed no test files.";
-  const are = (...ns) => ns.includes(1) ? "is" : "are";
-  if (files2.current < total) {
-    return `${files2.current} of ${plural(total, "test file")} ${are(files2.current, total)} current ${CURRENT_DEFINED}, and \`${command} status\` counts the rest.`;
-  }
-  const live = header.daemon?.state === "alive" && header.daemon.late === void 0;
-  const all = live && header.runnerPartPending !== true && header.awaitingInstall !== true;
-  return `${all ? "all " : ""}${plural(total, "test file")} ${are(total)} current ${CURRENT_DEFINED}.`;
-}
-function holdsText2(header, command) {
-  return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
-}
-function newsLine(header, command, told) {
-  const unlisted3 = unlistedLine(header, command);
-  if (unlisted3 !== null) return unlisted3;
-  const revision = revisionPrefix(header);
-  const own = told.ownEdits;
-  const delays = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate) ? "" : incompleteText(header, command);
-  if (!showsOwnCount(header, "news", told)) {
-    const files2 = currentFilesText(header, command);
-    const line2 = files2 === null ? `${revision.slice(0, -2)}.` : `${revision}${files2}`;
-    return `${line2}${delays}${daemonText(header, command)}`;
-  }
-  const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
-  return `${line}${delays}${daemonText(header, command)}`;
-}
-function showsOwnCount(header, form, told) {
-  return form === "news" && header.testFilesListed !== false && told.countsOwed === void 0;
-}
-function affected(files2) {
-  return `the ${plural(files2, "test file")} your edits affect`;
-}
-function notRunText(owed2, files2) {
-  const verb = owed2 === 1 ? "has" : "have";
-  return owed2 === files2 ? `${affected(files2)} ${verb} not run` : `${owed2} of ${affected(files2)} ${verb} not run`;
-}
-function ownCountText({ files: files2, owed: owed2, unknown = 0 }) {
-  const count2 = owed2 > 0 ? notRunText(owed2, files2) : `${affected(files2)} ${files2 === 1 ? "has run" : "have all run"}`;
-  return unknown === 0 ? `${count2}.` : `${count2}; ${unknown} with no result (unknown).`;
-}
-function headerLines(...args) {
-  const { line, tiers } = headerParts(...args);
-  return line === null ? [...tiers] : [line, ...tiers];
-}
-function slowLine(header, command) {
-  return header.slowTier?.testFiles === 0 ? null : slowTierText(header, command);
-}
-function headerParts(header, command, form = "full", told = {}) {
-  const line = form === "full" ? fullLine(header, command) : newsLine(header, command, told);
-  const slow = form === "full" || told.slowTierChanged ? slowLine(header, command) : null;
-  const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
-  const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
-  return {
-    line,
-    tiers: [...slow === null ? [] : [slow], ...groups2, ...commit === void 0 ? [] : [commit]]
-  };
-}
-
-// src/core/delivery/late-format.ts
-function nowText(late, command) {
-  if (late.named !== void 0) {
-    const paths = late.named.map(shellWord).join(" ");
-    const them = late.named.length === 1 ? "it" : "them";
-    return `To have ${them} now, \`${command} status --wait 60000 ${paths}\` runs ${them} first.`;
-  }
-  return `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths select first.`;
-}
-function hungText(late, command) {
-  if (late.hung === void 0) return "";
-  const path = shellWord(late.hung);
-  return `${late.hung} has run far past its usual time and may be hung; \`${command} why ${path}\` shows its run. `;
-}
-var PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
-function lateLine(late, command) {
-  switch (late.kind) {
-    case "owed":
-      return `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; Squeal says once when it has caught up. ${hungText(late, command)}${nowText(late, command)}`;
-    case "unread":
-      return `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued their test files. ${readWaitText(command)}`;
-    case "unlisted":
-      return `${runnersHave(late.runners, true)} not yet listed the test files of revision ${late.revision}, so Squeal has not queued them. ${listWaitText(command)}`;
-  }
-}
-function caughtUpLine({ revision, files: files2, unknown }) {
-  const which = files2 === 1 ? `The 1 test file your edits affect has run at revision ${revision}` : `All ${files2} test files your edits affect have run at revision ${revision}`;
-  if (unknown === 0) return `${which}, with no new failure.`;
-  return `${which}: ${files2 - unknown} with results, ${unknown} with no result (unknown); no new failure.`;
-}
-
-// src/core/delivery/shared-closure.ts
-var keyOf = (paths) => JSON.stringify(paths);
-function sharedClosure(blocks2) {
-  const counts = /* @__PURE__ */ new Map();
-  for (const block3 of blocks2) {
-    const key = blockKey(block3);
-    if (key !== null) counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  const [shared2] = [...counts].reduce(
-    (best, [key, count2]) => count2 >= 2 && count2 > best[1] ? [key, count2] : best,
-    [null, 0]
-  );
-  if (shared2 === null) return { own: closureLine, line: null };
-  const all = blocks2.flat();
-  const n = all.filter((p) => p !== void 0 && keyOf(p) === shared2).length;
-  const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
-  const paths = JSON.parse(shared2);
-  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalize(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
-  return { own: (p) => p !== void 0 && keyOf(p) === shared2 ? null : closureLine(p), line };
-}
-function blockKey(block3) {
-  const keys = block3.map((p) => p === void 0 ? null : keyOf(p));
-  return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
-}
-
-// src/core/delivery/format.ts
-var MESSAGE_CAP_CHARS = 1e4;
-var SHARED_LINE_MAX_CHARS = 1e3;
-var OVERFLOW_RESERVE = 400;
-var INDENT = "      ";
-var SQUEAL_COMMAND = "squeal";
-var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
-var partsText = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
-var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
-var upper2 = (outcome) => outcome.toUpperCase();
-function whyLine(check, command) {
-  return `Full output: ${command} why ${shellWord(checkName(check))}`;
-}
-function block2(head, lines, counted) {
-  const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
-  return { text: [head, ...body].join("\n"), counted };
-}
-function entryBlock(entry3, revision, flaky, closure = () => null) {
-  const failed2 = entry3.to === "fail";
-  return block2(
-    `${upper2(entry3.to)}  ${checkName(entry3.check)}`,
-    [
-      failed2 ? seenLine(entry3, revision) : change(entry3),
-      entry3.summary === null ? null : cap(entry3.summary, SUMMARY_MAX_CHARS),
-      entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
-      ...failed2 ? [closure(entry3.changesInClosure), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
-      ...flaky(entry3.flaky),
-      entry3.retry === void 0 ? null : capitalize(retryText(entry3.retry))
-    ],
-    [{ check: entry3.check, shown: entry3.to }]
-  );
-}
-function retiredBlock(entry3) {
-  return block2(
-    `RESOLVED  ${checkName(entry3.check)}`,
-    ["FAIL -> no longer reported by the runner"],
-    [{ check: entry3.check, shown: "resolved" }]
-  );
-}
-function collapsedBlock({ head, lines }, shown, checks) {
-  return block2(
-    head,
-    lines,
-    checks.map((check) => ({ check, shown }))
-  );
-}
-function failureBlocks(groups2, revision, command, flaky, closure) {
-  return groups2.map((group) => {
-    const [first] = group;
-    if (group.length === 1 && first !== void 0) {
-      return entryBlock(first, revision, flaky, closure);
-    }
-    const lines = groupLines(group, revision, command, flaky, closure);
-    return collapsedBlock(
-      lines,
-      "fail",
-      group.map((e) => e.check)
-    );
-  });
-}
-function recoveryBlocks(entries, delta, flaky) {
-  const checks = entries.map((e) => e.check);
-  const head = `PASS  ${plural(checks.length, "check")} recovered (FAIL -> PASS): ${partsText(checks)}`;
-  const collapsed = collapse(head, checks, delta.stillFailing);
-  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", checks)];
-  return entries.map((e) => entryBlock(e, delta.header.revision, flaky));
-}
-function retiredBlocks(entries, delta) {
-  const checks = entries.map((e) => e.check);
-  const head = `RESOLVED  ${plural(checks.length, "check")} no longer reported by the runner (FAIL -> RESOLVED): ${partsText(checks)}`;
-  const collapsed = collapse(head, checks, delta.stillFailing);
-  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", checks)];
-  return entries.map(retiredBlock);
-}
-function unknownBlocks(entries, command) {
-  const byReason = /* @__PURE__ */ new Map();
-  for (const e of entries) {
-    const reason = e.summary ?? "no trusted result";
-    byReason.set(reason, [...byReason.get(reason) ?? [], e]);
-  }
-  return [...byReason].map(([reason, group]) => {
-    const files2 = [...new Set(group.map((e) => e.check.testPath))];
-    const first = group[0]?.check;
-    const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
-    const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText(from(o))})`);
-    const listed3 = files2.slice(0, 5).join(", ");
-    const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
-    return block2(
-      `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
-      [
-        counts.join(", "),
-        cap(reason, SUMMARY_MAX_CHARS),
-        `${listed3}${more}`,
-        first === void 0 ? null : `Full reason: ${command} why ${shellWord(checkName(first))}`
-      ],
-      group.map((e) => ({ check: e.check, shown: "unknown" }))
-    );
-  });
-}
-function assemble(head, blocks2, overflow, tail, max) {
-  const end = tail === null ? "" : `
-
-${tail}`;
-  const room = max - end.length;
-  let out = head;
-  for (const [i, b] of blocks2.entries()) {
-    const next = `${out}
-
-${b.text}`;
-    const last = i === blocks2.length - 1;
-    if (next.length <= room - (last ? 0 : OVERFLOW_RESERVE)) {
-      out = next;
-      continue;
-    }
-    return `${cap(`${out}
-
-${overflow(blocks2.slice(i))}`, room)}${end}`;
-  }
-  return `${out}${end}`;
-}
-function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, form = "news") {
-  const { header, entries } = delta;
-  const changed = entries.filter((e) => e.kind !== "fail-retired");
-  const retired = entries.filter((e) => e.kind === "fail-retired");
-  const holds2 = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
-  const holdTitle = entries.length === 0 && delta.liveness === void 0 ? holds2[0] : void 0;
-  const title = titleOf(delta, holdTitle, command);
-  const flaky = flakyLines();
-  const failures = changed.filter((e) => e.to === "fail");
-  const groups2 = failureGroups(failures, header.revision);
-  const closure = sharedClosure(groups2.map((g) => g.map((e) => e.changesInClosure)));
-  const blocks2 = [
-    ...failureBlocks(groups2, header.revision, command, flaky, closure.own),
-    ...unknownBlocks(
-      changed.filter((e) => e.to === "unknown"),
-      command
-    ),
-    ...recoveryBlocks(
-      changed.filter((e) => e.to === "pass"),
-      delta,
-      flaky
-    ),
-    ...retiredBlocks(retired, delta)
-  ];
-  const [failed2] = failures;
-  const overflow = (left) => {
-    const counted = left.flatMap((b) => b.counted);
-    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)]).filter(([, checks]) => checks.length > 0).map(([o, checks]) => `${checks.length} ${upper2(o)}: ${partsText(checks, fileLevelWord(o))}`);
-    return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
-  };
-  const code = delta.code === void 0 ? [] : codeLines(delta.code, command);
-  const lint2 = delta.lint === void 0 ? [] : lintLines(delta.lint, command);
-  const tail = [
-    ...closure.line === null ? [] : [cap(closure.line, SHARED_LINE_MAX_CHARS)],
-    ...failed2 === void 0 ? [] : [whyLine(failed2.check, command)],
-    ...code.length === 0 ? [] : [code.join("\n")],
-    ...lint2.length === 0 ? [] : [lint2.join("\n")],
-    ...otherSideLines(delta, code.length > 0 || lint2.length > 0, command, form)
-  ].join("\n\n") || null;
-  return assemble(
-    [
-      title,
-      ...headerLines(header, command, form, delta),
-      ...holdTitle === void 0 ? holds2 : holds2.slice(1),
-      ...editLines(delta, command)
-    ].join("\n"),
-    blocks2,
-    overflow,
-    tail,
-    max
-  );
-}
-function otherSideLines({ entries, code, knownFailures = 0 }, codeNews, command, form) {
-  if (entries.length > 0) {
-    const told = code === void 0 ? null : toldOverLine(code, command);
-    return told === null ? [] : [told];
-  }
-  if (!codeNews || form === "full" || knownFailures === 0) return [];
-  return [knownFailuresTailLine(knownFailures, command)];
-}
-function titleOf(delta, holdTitle, command) {
-  const { header, entries } = delta;
-  const words = [
-    delta.code === void 0 ? null : codeTitleWords(delta.code),
-    delta.lint === void 0 ? null : lintTitleWords(delta.lint)
-  ].filter((w) => w !== null);
-  const code = words.length === 0 ? null : words.join(" and ");
-  const own = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? null : livenessTitle(delta.liveness, header, command) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
-  if (own === null) {
-    const words2 = [code, ...contentWords(delta)].filter((w) => w !== null);
-    return words2.length === 0 ? `SQUEAL \xB7 revision ${header.revision}` : `SQUEAL \xB7 ${words2.join("; ")} at revision ${header.revision}`;
-  }
-  return code === null ? own : `${own}; ${code}`;
-}
-function quietEditsText(command) {
-  return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
-}
-function sawEditLine(queued, quiet = null, done = false) {
-  if (done) return `Squeal saw your edit; ${quiet ?? PASSES_SILENT_TEXT}.`;
-  if (quiet !== null) {
-    return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
-  }
-  return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and ${PASSES_SILENT_TEXT}.`;
-}
-function editLines({ sawEdit, ownEdits, editsLate, caughtUp, header }, command) {
-  const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
-  return [
-    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued, quiet, ownEdits?.owed === 0)],
-    ...editsLate === void 0 ? [] : [lateLine(editsLate, command)],
-    ...caughtUp === void 0 ? [] : [caughtUpLine(caughtUp)]
-  ];
-}
-var checksOf = (entries) => entries.map((e) => e.check);
-function holdChangeLine(change2, revision, command) {
-  switch (change2.kind) {
-    case "on-hold":
-      return `SQUEAL \xB7 validation on hold at revision ${revision}: ${holdStartText(change2.hold, command)}`;
-    case "ended":
-      return `SQUEAL \xB7 a hold ended at revision ${revision}: ${holdEndedText(change2)}`;
-    case "resumed":
-      return `SQUEAL \xB7 validating again at revision ${revision}: ${holdEndText(change2)}`;
-  }
-}
-function livenessTitle(liveness, header, command) {
-  const { revision } = header;
-  if (liveness?.stopping !== void 0) {
-    const what = liveness.stopping.to === void 0 ? "stopping" : "handing over";
-    return `SQUEAL \xB7 the daemon is ${what} at revision ${revision}`;
-  }
-  const told = liveness === void 0 ? void 0 : toldOf(liveness);
-  switch (told?.state) {
-    case "stopped by request":
-      return stopOf(liveness) === "until-start" ? `SQUEAL \xB7 the daemon is stopped until \`${command} start\` at revision ${revision}` : `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
-    case "validating":
-      if (liveness?.state === "alive" && liveness.short !== void 0) {
-        return `SQUEAL \xB7 a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
-      }
-      return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
-    case "starting":
-      if (told.notes.includes("start stopped")) {
-        return `SQUEAL \xB7 a starting daemon may be stopped at revision ${revision}`;
-      }
-      if (told.notes.includes("start slow")) {
-        return `SQUEAL \xB7 a daemon is still starting at revision ${revision}`;
-      }
-      break;
-  }
-  return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
-}
-
 // src/core/keys/hidden-lockfile.ts
 import { createHash as createHash6 } from "node:crypto";
 import { lstatSync as lstatSync4, readdirSync as readdirSync7, readFileSync as readFileSync13, readlinkSync as readlinkSync2 } from "node:fs";
@@ -8798,6 +8045,22 @@ function example2(paths) {
 }
 
 // src/core/keys/environment.ts
+function coreEnvironmentInputs(options) {
+  const source = options.env ?? process.env;
+  const env = {};
+  for (const name2 of [...options.allowlist].sort(compare)) {
+    const value = source[name2];
+    if (value !== void 0) env[name2] = value;
+  }
+  return {
+    squealVersion: options.squealVersion,
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    installedDependencies: options.installedDependencies,
+    env
+  };
+}
 var LOCKFILES2 = [
   { path: HIDDEN_LOCKFILE, patches: "patches", read: npmReading },
   { path: "node_modules/.yarn-state.yml", patches: null },
@@ -8811,6 +8074,766 @@ var LOCKFILES2 = [
 ];
 function isInstalledLockfile(path) {
   return LOCKFILES2.some((format) => path === format.path || path.endsWith(`/${format.path}`));
+}
+
+// src/core/scheduler/omitted-test-files.ts
+function omittedTestFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("omittedTestFiles", worktreeId);
+}
+function readOmittedTestFiles(store, worktreeId) {
+  const raw = store.meta.get(omittedTestFilesMetaKey(worktreeId));
+  const count2 = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(count2) && count2 >= 0 ? count2 : null;
+}
+
+// src/core/scheduler/focused-row.ts
+function focusedMetaKey(worktreeId) {
+  return worktreeMetaKey("focused", worktreeId);
+}
+function readFocused(store, worktreeId) {
+  const raw = store.meta.get(focusedMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter(isFocusedRun) : [];
+  } catch {
+    return [];
+  }
+}
+function isFocusedRun(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const run2 = value;
+  const file = run2.testFile;
+  return typeof file?.project === "string" && typeof file.path === "string" && typeof run2.key === "string" && typeof run2.revision === "number" && typeof run2.runId === "string" && Array.isArray(run2.texts) && Array.isArray(run2.checks);
+}
+
+// src/core/scheduler/quiet.ts
+function quietMetaKey(worktreeId) {
+  return worktreeMetaKey("quiet", worktreeId);
+}
+var NO_ENDS = /* @__PURE__ */ new Map();
+function publishedWaits(store, worktreeId, daemonStartedAt, now) {
+  const none2 = { backlog: NO_ENDS, catchUp: NO_ENDS };
+  const raw = store.meta.get(quietMetaKey(worktreeId));
+  if (raw === null) return none2;
+  try {
+    const { at, lanes, catchUp } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt) return none2;
+    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
+  } catch {
+    return none2;
+  }
+}
+function endsAfter(lanes, now) {
+  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
+  return new Map(
+    Object.entries(lanes).filter(
+      (entry3) => typeof entry3[1] === "number" && entry3[1] > now
+    )
+  );
+}
+
+// src/core/scheduler/runner-work-bound.ts
+var RUNNER_PART_MARGIN_MS = 6e4;
+function runnerPartBoundMs(timeoutMs) {
+  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
+}
+
+// src/core/scheduler/record-tier.ts
+var HERE = coreEnvironmentInputs({
+  squealVersion: "",
+  installedDependencies: "",
+  allowlist: []
+});
+
+// src/core/scheduler/backlog.ts
+function wallEstimate(sum, longest, width) {
+  return sum / width + (1 - 1 / width) * longest;
+}
+
+// src/core/scheduler/yields.ts
+function yieldsMetaKey(worktreeId) {
+  return worktreeMetaKey("yields", worktreeId);
+}
+function publishedYieldRow(store, worktreeId, daemonStartedAt) {
+  return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
+}
+
+// src/core/status/standing-yields.ts
+function liveYieldRow(store, worktreeId, startedAt) {
+  return startedAt === null ? NO_YIELD_ROW : publishedYieldRow(store, worktreeId, startedAt);
+}
+function withYieldFacts(pending, lane, run2, { row, startedAt, laneOf: laneOf2 }) {
+  const last = lastIn(row, lane, run2?.id, laneOf2);
+  const ended = run2 === void 0 ? void 0 : row.ended.get(run2.id);
+  if (pending.kind === "queued")
+    return last === void 0 ? pending : { ...pending, lastYield: last };
+  if (run2 === void 0) return pending;
+  if (pending.kind === "unlisted") {
+    const waited = {
+      lane,
+      since: run2.startedAt,
+      files: run2.testFiles.length,
+      ...ended === void 0 ? {} : { ended }
+    };
+    return { ...pending, run: waited };
+  }
+  const tier = row.tiers.get(run2.id);
+  const first = startedAt !== null && firstTier(row, lane, run2, laneOf2);
+  return {
+    ...pending,
+    ...tier === void 0 ? {} : { yields: tier },
+    ...ended === void 0 ? {} : { ended },
+    ...last === void 0 ? {} : { lastYield: last },
+    ...first ? { yieldsSince: startedAt } : {}
+  };
+}
+var UNREPORTED_SHOWN = 3;
+function endOf(ref2, pending, run2, { row }) {
+  if (pending.kind !== "running" || run2 === void 0) return {};
+  const end = fileEndOf(ref2, run2, row);
+  return end === void 0 ? {} : { end };
+}
+function fileEndOf(ref2, run2, row) {
+  const named2 = row.endedFiles.get(run2.id);
+  if (named2 === void 0 || row.at === void 0) return void 0;
+  const ended = new Set(named2.map(testFileId));
+  if (!ended.has(testFileId(ref2))) return void 0;
+  const unreported = run2.testFiles.filter((f) => !ended.has(testFileId(f)));
+  return {
+    revision: run2.revision,
+    asOf: row.at,
+    unreported: unreported.slice(0, UNREPORTED_SHOWN),
+    unreportedCount: unreported.length
+  };
+}
+function lastIn(row, lane, runId, laneOf2) {
+  const { last } = row;
+  const [cut] = last?.files ?? [];
+  if (last === null || cut === void 0 || last.runId === runId) return void 0;
+  return laneOf2(cut) === lane ? { ...last, lane } : void 0;
+}
+function firstTier(row, lane, run2, laneOf2) {
+  if (run2.testFiles.length < 2 || isSlowLane(lane) || row.last !== null) return false;
+  return ![...row.lanes.values()].some((ref2) => laneOf2(ref2) === lane);
+}
+
+// src/core/scheduler/edit-timings.ts
+function editTimingsMetaKey(worktreeId) {
+  return worktreeMetaKey("editTimings", worktreeId);
+}
+var isNumber3 = (v) => typeof v === "number" && Number.isFinite(v);
+function readEditTimings(store, worktreeId) {
+  const raw = store.meta.get(editTimingsMetaKey(worktreeId));
+  let value = null;
+  try {
+    value = raw === null ? null : JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value) || !isNumber3(value.tierSize) || !isRecord(value.widths)) return null;
+  const widths = {};
+  for (const [project, w] of Object.entries(value.widths)) {
+    if (isRecord(w) && isNumber3(w.width) && typeof w.part === "string") {
+      widths[project] = { width: w.width, part: w.part };
+    }
+  }
+  const list = (v) => Array.isArray(v) ? v.filter(isRecord) : [];
+  return {
+    tierSize: value.tierSize,
+    widths,
+    firsts: list(value.firsts).flatMap(
+      (f) => isNumber3(f.revision) && isNumber3(f.delayMs) ? [{ revision: f.revision, delayMs: f.delayMs }] : []
+    ),
+    tiers: list(value.tiers).flatMap(
+      (t) => typeof t.runId === "string" && isNumber3(t.estimateMs) ? [{ runId: t.runId, estimateMs: t.estimateMs }] : []
+    )
+  };
+}
+
+// src/core/delivery/late-bound.ts
+var LATE_FACTOR = 2;
+function median(values) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function tierEstimate(tier) {
+  const parts = /* @__PURE__ */ new Map();
+  for (const f of tier) {
+    const was = parts.get(f.part) ?? { sum: 0, longest: 0, count: 0, width: Infinity };
+    parts.set(f.part, {
+      sum: was.sum + f.ms,
+      longest: Math.max(was.longest, f.ms),
+      count: was.count + 1,
+      width: Math.min(was.width, Math.max(1, Math.floor(f.width)))
+    });
+  }
+  let total = 0;
+  for (const p of parts.values())
+    total += wallEstimate(p.sum, p.longest, Math.min(p.count, p.width));
+  return total;
+}
+function lateBoundMs({ files: files2, tierSize, startMs, overheadMs }) {
+  const fallback2 = median(files2.flatMap((f) => f.ms === null ? [] : [f.ms]));
+  const ordered = files2.map((f) => ({ ...f, ms: f.ms ?? fallback2 })).sort((a, b) => a.ms - b.ms);
+  const size = Math.max(1, tierSize);
+  let tiers = 0;
+  for (let i = 0; i < ordered.length; i += size) {
+    tiers += overheadMs + tierEstimate(ordered.slice(i, i + size));
+  }
+  return LATE_FACTOR * (startMs + tiers);
+}
+
+// src/core/delivery/late-timings.ts
+function worktreeMedians(store, worktreeId) {
+  const timings = readEditTimings(store, worktreeId);
+  if (timings === null) return { startMs: 0, overheadMs: 0 };
+  const overheads = timings.tiers.flatMap(({ runId, estimateMs: estimateMs2 }) => {
+    const run2 = store.runs.get(runId);
+    return run2?.end === "completed" && run2.endedAt !== null ? [run2.endedAt - run2.startedAt - estimateMs2] : [];
+  });
+  return {
+    startMs: Math.max(0, median(timings.firsts.map((f) => f.delayMs))),
+    overheadMs: Math.max(0, median(overheads))
+  };
+}
+function pastBound(store, worktreeId, files2, ageMs) {
+  const timings = readEditTimings(store, worktreeId);
+  const tierSize = timings?.tierSize ?? DEFAULT_POLICY.runner.tierSize;
+  const bound = files2.map((file) => {
+    const known = timings?.widths[file.project];
+    return {
+      ms: durationOf(store.results.newestForTestFile(file)),
+      width: known?.width ?? 1,
+      part: known?.part ?? ""
+    };
+  });
+  const floor2 = lateBoundMs({ files: bound, tierSize, startMs: 0, overheadMs: 0 });
+  if (ageMs <= floor2) return false;
+  const medians = worktreeMedians(store, worktreeId);
+  const measured = lateBoundMs({ files: bound, tierSize, ...medians });
+  return ageMs > (measured === 0 ? FEED_LATE_MS : measured);
+}
+
+// src/core/delivery/late.ts
+function lateMetaKey(worktreeId) {
+  return worktreeMetaKey("editsLate", worktreeId);
+}
+function readSlotOf(store, consumer) {
+  const value = readSlot(store, lateMetaKey(consumer.worktreeId), consumer);
+  if (typeof value === "number") return value;
+  return isRecord(value) && typeof value.ended === "number" ? { ended: value.ended } : null;
+}
+var endedAt = (slot2) => slot2 === null || typeof slot2 === "number" ? 0 : slot2.ended;
+function readLate(store, consumer) {
+  const slot2 = readSlotOf(store, consumer);
+  return typeof slot2 === "number" ? slot2 : null;
+}
+function writeLate(store, consumer, slot2) {
+  writeSlot(store, lateMetaKey(consumer.worktreeId), consumer, slot2);
+}
+function forgetLate(store, consumer) {
+  writeLate(store, consumer, null);
+}
+function lateIsOpen(store, consumer) {
+  return readLate(store, consumer) !== null;
+}
+function endLate(store, consumer) {
+  if (!lateIsOpen(store, consumer)) return;
+  writeLate(store, consumer, { ended: store.revisions.latest(consumer.worktreeId)?.number ?? 0 });
+}
+var NAMED_MAX = 3;
+function lateNotes(store, consumer, own, at, header) {
+  const slot2 = readSlotOf(store, consumer);
+  const open2 = typeof slot2 === "number" ? slot2 : null;
+  const after = Math.max(own.since, endedAt(slot2));
+  if (open2 === null && own.revision <= after) return null;
+  const daemon = headerView(readPresence(store, consumer.worktreeId, at));
+  if (open2 === null) {
+    if (daemon.state !== "alive" || daemon.stopping !== void 0) return null;
+    const late = lateNow(store, consumer.worktreeId, { ...own, after }, at, lateOf(daemon)?.since);
+    if (late === null || quietFor(header())) return null;
+    return {
+      open: false,
+      late: late.kind === "unlisted" ? withRunners(late, header()) : late,
+      tell: () => writeLate(store, consumer, late.revision)
+    };
+  }
+  const done = own.refined && own.owed.length === 0 && lateOf(daemon) === void 0;
+  if (done && own.files === 0) {
+    writeLate(store, consumer, null);
+    return null;
+  }
+  const caughtUp = done ? { revision: own.revision, files: own.files, unknown: own.unknown } : void 0;
+  return {
+    open: true,
+    ...caughtUp === void 0 ? {} : { caughtUp },
+    tell: () => {
+      if (caughtUp !== void 0) writeLate(store, consumer, null);
+    }
+  };
+}
+function lateNow(store, worktreeId, own, at, unreadSince) {
+  const { revision } = own;
+  if (unreadSince !== void 0) return { kind: "unread", revision, since: unreadSince };
+  if (!own.refined) {
+    const age = at - (store.revisions.get(worktreeId, revision)?.createdAt ?? at);
+    return age > FEED_LATE_MS && pastBound(store, worktreeId, [], age) ? { kind: "unlisted", revision } : null;
+  }
+  const owed2 = own.owed.filter((o) => o.from > own.after);
+  const oldest = oldestOwed(store, worktreeId, owed2);
+  if (oldest === null) return null;
+  const ageMs = at - oldest.createdAt;
+  const due = owed2.map((o) => o.file);
+  if (!pastBound(store, worktreeId, due, ageMs)) return null;
+  const files2 = own.owed.map((o) => o.file);
+  const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? null;
+  const hung = firstOverrunning(files2, liveYieldRow(store, worktreeId, startedAt), at);
+  return {
+    kind: "owed",
+    revision,
+    owed: own.owed.length,
+    files: own.files,
+    editRevision: oldest.from,
+    ageMs,
+    ...files2.length <= NAMED_MAX ? { named: files2.map((f) => f.path) } : {},
+    ...hung === null ? {} : { hung: hung.path }
+  };
+}
+function quietFor(header) {
+  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true || header.testFilesListed === false;
+}
+function lateMaySay(header) {
+  const { daemon } = header;
+  return daemon?.state === "alive" && daemon.stopping === void 0 && !quietFor(header);
+}
+function lateCarriesDelay(header, owed2, late) {
+  return (owed2 > 0 || late !== void 0) && lateMaySay(header);
+}
+function withRunners(late, header) {
+  const runners = header.listingRunners;
+  return runners === void 0 ? late : { ...late, runners };
+}
+function oldestOwed(store, worktreeId, owed2) {
+  if (owed2.length === 0) return null;
+  const from = Math.min(...owed2.map((o) => o.from));
+  const createdAt = store.revisions.get(worktreeId, from)?.createdAt;
+  return createdAt === void 0 ? null : { from, createdAt };
+}
+
+// src/core/delivery/header.ts
+var CURRENT_DEFINED = "(run on the files as they are now)";
+function noResultsText(command) {
+  return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
+}
+var NO_RESULTS_HERE = "Squeal has no results in this worktree yet";
+function unlistedLine(header, command) {
+  if (header.testFilesListed !== false) return null;
+  const { daemon } = header;
+  if (daemon?.state === "down" && daemon.startStopped === true) {
+    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
+  }
+  if (daemon?.state === "down" && daemon.startSlow === true) {
+    return `${revisionPrefix(header)}${slowStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
+  }
+  if (noneRunning(daemon)) {
+    return `${revisionPrefix(header)}${NO_RESULTS_HERE}, and no daemon is running; \`${command} start\` starts one.${diedText(daemon)}`;
+  }
+  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command, true)}`;
+}
+function revisionPrefix(header) {
+  return `Revision ${header.revision}${changedText(header)}: `;
+}
+var CHANGED_PATHS_SHOWN = 3;
+function changedText(header) {
+  const paths = header.changedPaths;
+  if (paths === void 0 || paths.length === 0) return "";
+  const ignored = new Set(header.ignoredPaths);
+  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).map((path) => ignored.has(path) ? `git-ignored ${path}` : path).join(", ");
+  const more = paths.length - CHANGED_PATHS_SHOWN;
+  return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
+}
+function incompleteText(header, command) {
+  const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
+  const delays = delaysText(header, late, command);
+  return delays === null ? "" : ` ${delays}`;
+}
+function fullLine(header, command) {
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return `${unlisted3}${holdsText2(header, command)}`;
+  const rest = `${incompleteText(header, command)}${daemonText(header, command)}${holdsText2(header, command)}`;
+  const revision = revisionPrefix(header).slice(0, -2);
+  if (rest !== "") return `${revision}:${rest}`;
+  return changedText(header) === "" ? null : `${revision}.`;
+}
+function currentFilesText(header, command) {
+  const files2 = header.testFileCounts;
+  if (files2 === void 0 || header.testFilesListed === false) return null;
+  const total = files2.current + files2.pending + files2.stale + files2.unknown;
+  if (total === 0) return "the daemon listed no test files.";
+  const are = (...ns) => ns.includes(1) ? "is" : "are";
+  if (files2.current < total) {
+    return `${files2.current} of ${plural(total, "test file")} ${are(files2.current, total)} current ${CURRENT_DEFINED}, and \`${command} status\` counts the rest.`;
+  }
+  const live = header.daemon?.state === "alive" && header.daemon.late === void 0;
+  const all = live && header.runnerPartPending !== true && header.awaitingInstall !== true;
+  return `${all ? "all " : ""}${plural(total, "test file")} ${are(total)} current ${CURRENT_DEFINED}.`;
+}
+function holdsText2(header, command) {
+  return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
+}
+function newsLine(header, command, told) {
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return unlisted3;
+  const revision = revisionPrefix(header);
+  const own = told.ownEdits;
+  const delays = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate) ? "" : incompleteText(header, command);
+  if (!showsOwnCount(header, "news", told)) {
+    const files2 = currentFilesText(header, command);
+    const line2 = files2 === null ? `${revision.slice(0, -2)}.` : `${revision}${files2}`;
+    return `${line2}${delays}${daemonText(header, command)}`;
+  }
+  const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
+  return `${line}${delays}${daemonText(header, command)}`;
+}
+function showsOwnCount(header, form, told) {
+  return form === "news" && header.testFilesListed !== false && told.countsOwed === void 0;
+}
+function affected(files2) {
+  return `the ${plural(files2, "test file")} your edits affect`;
+}
+function notRunText(owed2, files2) {
+  const verb = owed2 === 1 ? "has" : "have";
+  return owed2 === files2 ? `${affected(files2)} ${verb} not run` : `${owed2} of ${affected(files2)} ${verb} not run`;
+}
+function ownCountText({ files: files2, owed: owed2, unknown = 0 }) {
+  const count2 = owed2 > 0 ? notRunText(owed2, files2) : `${affected(files2)} ${files2 === 1 ? "has run" : "have all run"}`;
+  return unknown === 0 ? `${count2}.` : `${count2}; ${unknown} with no result (unknown).`;
+}
+function headerLines(...args) {
+  const { line, tiers } = headerParts(...args);
+  return line === null ? [...tiers] : [line, ...tiers];
+}
+function slowLine(header, command) {
+  return header.slowTier?.testFiles === 0 ? null : slowTierText(header, command);
+}
+function headerParts(header, command, form = "full", told = {}) {
+  const line = form === "full" ? fullLine(header, command) : newsLine(header, command, told);
+  const slow = form === "full" || told.slowTierChanged ? slowLine(header, command) : null;
+  const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
+  const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
+  return {
+    line,
+    tiers: [...slow === null ? [] : [slow], ...groups2, ...commit === void 0 ? [] : [commit]]
+  };
+}
+
+// src/core/delivery/late-format.ts
+function nowText(late, command) {
+  if (late.named !== void 0) {
+    const paths = late.named.map(shellWord).join(" ");
+    const them = late.named.length === 1 ? "it" : "them";
+    return `To have ${them} now, \`${command} status --wait 60000 ${paths}\` runs ${them} first.`;
+  }
+  return `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths select first.`;
+}
+function hungText(late, command) {
+  if (late.hung === void 0) return "";
+  const path = shellWord(late.hung);
+  return `${late.hung} has run far past its usual time and may be hung; \`${command} why ${path}\` shows its run. `;
+}
+var PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
+function lateLine(late, command) {
+  switch (late.kind) {
+    case "owed":
+      return `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; Squeal says once when it has caught up. ${hungText(late, command)}${nowText(late, command)}`;
+    case "unread":
+      return `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued their test files. ${readWaitText(command)}`;
+    case "unlisted":
+      return `${runnersHave(late.runners, true)} not yet listed the test files of revision ${late.revision}, so Squeal has not queued them. ${listWaitText(command)}`;
+  }
+}
+function caughtUpLine({ revision, files: files2, unknown }) {
+  const which = files2 === 1 ? `The 1 test file your edits affect has run at revision ${revision}` : `All ${files2} test files your edits affect have run at revision ${revision}`;
+  if (unknown === 0) return `${which}, with no new failure.`;
+  return `${which}: ${files2 - unknown} with results, ${unknown} with no result (unknown); no new failure.`;
+}
+
+// src/core/delivery/shared-closure.ts
+var keyOf = (paths) => JSON.stringify(paths);
+function sharedClosure(blocks2) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const block3 of blocks2) {
+    const key = blockKey(block3);
+    if (key !== null) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const [shared2] = [...counts].reduce(
+    (best, [key, count2]) => count2 >= 2 && count2 > best[1] ? [key, count2] : best,
+    [null, 0]
+  );
+  if (shared2 === null) return { own: closureLine, line: null };
+  const all = blocks2.flat();
+  const n = all.filter((p) => p !== void 0 && keyOf(p) === shared2).length;
+  const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
+  const paths = JSON.parse(shared2);
+  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalize(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
+  return { own: (p) => p !== void 0 && keyOf(p) === shared2 ? null : closureLine(p), line };
+}
+function blockKey(block3) {
+  const keys = block3.map((p) => p === void 0 ? null : keyOf(p));
+  return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
+}
+
+// src/core/delivery/format.ts
+var MESSAGE_CAP_CHARS = 1e4;
+var SHARED_LINE_MAX_CHARS = 1e3;
+var OVERFLOW_RESERVE = 400;
+var INDENT = "      ";
+var SQUEAL_COMMAND = "squeal";
+var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
+var partsText = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
+var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
+var upper2 = (outcome) => outcome.toUpperCase();
+function whyLine(check, command) {
+  return `Full output: ${command} why ${shellWord(checkName(check))}`;
+}
+function block2(head, lines, counted) {
+  const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
+  return { text: [head, ...body].join("\n"), counted };
+}
+function entryBlock(entry3, revision, flaky, closure = () => null) {
+  const failed2 = entry3.to === "fail";
+  return block2(
+    `${upper2(entry3.to)}  ${checkName(entry3.check)}`,
+    [
+      failed2 ? seenLine(entry3, revision) : change(entry3),
+      entry3.summary === null ? null : cap(entry3.summary, SUMMARY_MAX_CHARS),
+      entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
+      ...failed2 ? [closure(entry3.changesInClosure), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
+      ...flaky(entry3.flaky),
+      entry3.retry === void 0 ? null : capitalize(retryText(entry3.retry))
+    ],
+    [{ check: entry3.check, shown: entry3.to }]
+  );
+}
+function retiredBlock(entry3) {
+  return block2(
+    `RESOLVED  ${checkName(entry3.check)}`,
+    ["FAIL -> no longer reported by the runner"],
+    [{ check: entry3.check, shown: "resolved" }]
+  );
+}
+function collapsedBlock({ head, lines }, shown, checks) {
+  return block2(
+    head,
+    lines,
+    checks.map((check) => ({ check, shown }))
+  );
+}
+function failureBlocks(groups2, revision, command, flaky, closure) {
+  return groups2.map((group) => {
+    const [first] = group;
+    if (group.length === 1 && first !== void 0) {
+      return entryBlock(first, revision, flaky, closure);
+    }
+    const lines = groupLines(group, revision, command, flaky, closure);
+    return collapsedBlock(
+      lines,
+      "fail",
+      group.map((e) => e.check)
+    );
+  });
+}
+function recoveryBlocks(entries, delta, flaky) {
+  const checks = entries.map((e) => e.check);
+  const head = `PASS  ${plural(checks.length, "check")} recovered (FAIL -> PASS): ${partsText(checks)}`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", checks)];
+  return entries.map((e) => entryBlock(e, delta.header.revision, flaky));
+}
+function retiredBlocks(entries, delta) {
+  const checks = entries.map((e) => e.check);
+  const head = `RESOLVED  ${plural(checks.length, "check")} no longer reported by the runner (FAIL -> RESOLVED): ${partsText(checks)}`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", checks)];
+  return entries.map(retiredBlock);
+}
+function unknownBlocks(entries, command) {
+  const byReason = /* @__PURE__ */ new Map();
+  for (const e of entries) {
+    const reason = e.summary ?? "no trusted result";
+    byReason.set(reason, [...byReason.get(reason) ?? [], e]);
+  }
+  return [...byReason].map(([reason, group]) => {
+    const files2 = [...new Set(group.map((e) => e.check.testPath))];
+    const first = group[0]?.check;
+    const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
+    const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText(from(o))})`);
+    const listed3 = files2.slice(0, 5).join(", ");
+    const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
+    return block2(
+      `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
+      [
+        counts.join(", "),
+        cap(reason, SUMMARY_MAX_CHARS),
+        `${listed3}${more}`,
+        first === void 0 ? null : `Full reason: ${command} why ${shellWord(checkName(first))}`
+      ],
+      group.map((e) => ({ check: e.check, shown: "unknown" }))
+    );
+  });
+}
+function assemble(head, blocks2, overflow, tail, max) {
+  const end = tail === null ? "" : `
+
+${tail}`;
+  const room = max - end.length;
+  let out = head;
+  for (const [i, b] of blocks2.entries()) {
+    const next = `${out}
+
+${b.text}`;
+    const last = i === blocks2.length - 1;
+    if (next.length <= room - (last ? 0 : OVERFLOW_RESERVE)) {
+      out = next;
+      continue;
+    }
+    return `${cap(`${out}
+
+${overflow(blocks2.slice(i))}`, room)}${end}`;
+  }
+  return `${out}${end}`;
+}
+function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, form = "news") {
+  const { header, entries } = delta;
+  const changed = entries.filter((e) => e.kind !== "fail-retired");
+  const retired = entries.filter((e) => e.kind === "fail-retired");
+  const holds2 = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
+  const holdTitle = entries.length === 0 && delta.liveness === void 0 ? holds2[0] : void 0;
+  const title = titleOf(delta, holdTitle, command);
+  const flaky = flakyLines();
+  const failures = changed.filter((e) => e.to === "fail");
+  const groups2 = failureGroups(failures, header.revision);
+  const closure = sharedClosure(groups2.map((g) => g.map((e) => e.changesInClosure)));
+  const blocks2 = [
+    ...failureBlocks(groups2, header.revision, command, flaky, closure.own),
+    ...unknownBlocks(
+      changed.filter((e) => e.to === "unknown"),
+      command
+    ),
+    ...recoveryBlocks(
+      changed.filter((e) => e.to === "pass"),
+      delta,
+      flaky
+    ),
+    ...retiredBlocks(retired, delta)
+  ];
+  const [failed2] = failures;
+  const overflow = (left) => {
+    const counted = left.flatMap((b) => b.counted);
+    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)]).filter(([, checks]) => checks.length > 0).map(([o, checks]) => `${checks.length} ${upper2(o)}: ${partsText(checks, fileLevelWord(o))}`);
+    return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
+  };
+  const code = delta.code === void 0 ? [] : codeLines(delta.code, command);
+  const lint2 = delta.lint === void 0 ? [] : lintLines(delta.lint, command);
+  const tail = [
+    ...closure.line === null ? [] : [cap(closure.line, SHARED_LINE_MAX_CHARS)],
+    ...failed2 === void 0 ? [] : [whyLine(failed2.check, command)],
+    ...code.length === 0 ? [] : [code.join("\n")],
+    ...lint2.length === 0 ? [] : [lint2.join("\n")],
+    ...otherSideLines(delta, code.length > 0 || lint2.length > 0, command, form)
+  ].join("\n\n") || null;
+  return assemble(
+    [
+      title,
+      ...headerLines(header, command, form, delta),
+      ...holdTitle === void 0 ? holds2 : holds2.slice(1),
+      ...editLines(delta, command)
+    ].join("\n"),
+    blocks2,
+    overflow,
+    tail,
+    max
+  );
+}
+function otherSideLines({ entries, code, knownFailures = 0 }, codeNews, command, form) {
+  if (entries.length > 0) {
+    const told = code === void 0 ? null : toldOverLine(code, command);
+    return told === null ? [] : [told];
+  }
+  if (!codeNews || form === "full" || knownFailures === 0) return [];
+  return [knownFailuresTailLine(knownFailures, command)];
+}
+function titleOf(delta, holdTitle, command) {
+  const { header, entries } = delta;
+  const words = [
+    delta.code === void 0 ? null : codeTitleWords(delta.code),
+    delta.lint === void 0 ? null : lintTitleWords(delta.lint)
+  ].filter((w) => w !== null);
+  const code = words.length === 0 ? null : words.join(" and ");
+  const own = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? null : livenessTitle(delta.liveness, header, command) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
+  if (own === null) {
+    const words2 = [code, ...contentWords(delta)].filter((w) => w !== null);
+    return words2.length === 0 ? `SQUEAL \xB7 revision ${header.revision}` : `SQUEAL \xB7 ${words2.join("; ")} at revision ${header.revision}`;
+  }
+  return code === null ? own : `${own}; ${code}`;
+}
+function quietEditsText(command) {
+  return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
+}
+function sawEditLine(queued, quiet = null, done = false) {
+  if (done) return `Squeal saw your edit; ${quiet ?? PASSES_SILENT_TEXT}.`;
+  if (quiet !== null) {
+    return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
+  }
+  return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and ${PASSES_SILENT_TEXT}.`;
+}
+function editLines({ sawEdit, ownEdits, editsLate, caughtUp, header }, command) {
+  const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
+  return [
+    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued, quiet, ownEdits?.owed === 0)],
+    ...editsLate === void 0 ? [] : [lateLine(editsLate, command)],
+    ...caughtUp === void 0 ? [] : [caughtUpLine(caughtUp)]
+  ];
+}
+var checksOf = (entries) => entries.map((e) => e.check);
+function holdChangeLine(change2, revision, command) {
+  switch (change2.kind) {
+    case "on-hold":
+      return `SQUEAL \xB7 validation on hold at revision ${revision}: ${holdStartText(change2.hold, command)}`;
+    case "ended":
+      return `SQUEAL \xB7 a hold ended at revision ${revision}: ${holdEndedText(change2)}`;
+    case "resumed":
+      return `SQUEAL \xB7 validating again at revision ${revision}: ${holdEndText(change2)}`;
+  }
+}
+function livenessTitle(liveness, header, command) {
+  const { revision } = header;
+  if (liveness?.stopping !== void 0) {
+    const what = liveness.stopping.to === void 0 ? "stopping" : "handing over";
+    return `SQUEAL \xB7 the daemon is ${what} at revision ${revision}`;
+  }
+  const told = liveness === void 0 ? void 0 : toldOf(liveness);
+  switch (told?.state) {
+    case "stopped by request":
+      return stopOf(liveness) === "until-start" ? `SQUEAL \xB7 the daemon is stopped until \`${command} start\` at revision ${revision}` : `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
+    case "validating":
+      if (liveness?.state === "alive" && liveness.short !== void 0) {
+        return `SQUEAL \xB7 a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
+      }
+      return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
+    case "starting":
+      if (told.notes.includes("start stopped")) {
+        return `SQUEAL \xB7 a starting daemon may be stopped at revision ${revision}`;
+      }
+      if (told.notes.includes("start slow")) {
+        return `SQUEAL \xB7 a daemon is still starting at revision ${revision}`;
+      }
+      break;
+  }
+  return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 
 // src/core/presence/events.ts

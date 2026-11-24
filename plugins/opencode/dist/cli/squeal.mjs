@@ -14946,6 +14946,1067 @@ var init_local_permits = __esm({
   }
 });
 
+// src/core/keys/files.ts
+import { readdir as readdir2, readFile as readFile4, stat as stat4 } from "node:fs/promises";
+import { sep as sep4 } from "node:path";
+async function readIfFile(path) {
+  try {
+    if (!(await stat4(path)).isFile()) return null;
+    return await readFile4(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+async function listEntries(dir2) {
+  try {
+    const entries3 = await readdir2(dir2, { recursive: true });
+    return entries3.map((entry4) => entry4.split(sep4).join("/")).sort(compare);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+}
+var init_files2 = __esm({
+  "src/core/keys/files.ts"() {
+    "use strict";
+    init_compare();
+    init_errors();
+  }
+});
+
+// src/core/keys/hidden-lockfile.ts
+import { createHash as createHash9 } from "node:crypto";
+import { lstatSync as lstatSync4, readdirSync as readdirSync11, readFileSync as readFileSync15, readlinkSync as readlinkSync3 } from "node:fs";
+import { isAbsolute as isAbsolute7, join as join22 } from "node:path";
+function staleHiddenLockfile(dir2, lockfile) {
+  const listed12 = lockfile === null ? null : packagesIn(lockfile);
+  if (listed12 === null) return "not valid JSON";
+  const lockTime = lstatSync4(join22(dir2, HIDDEN_LOCKFILE)).mtimeMs;
+  const folders = packageFolders(dir2, workspaces(listed12));
+  const seen2 = new Set(folders.map((folder) => folder.path));
+  const unlisted6 = folders.filter((folder) => !Object.hasOwn(listed12, folder.path)).map((folder) => folder.path);
+  const newer = folders.filter(
+    (folder) => Object.hasOwn(listed12, folder.path) && folder.mtimeMs > lockTime
+  );
+  const missing2 = Object.keys(listed12).filter((path) => isInstalledFolder(path) && !seen2.has(path));
+  const parts3 = [
+    ["not listed in it", unlisted6],
+    ["newer than it", newer.map((folder) => folder.path)],
+    ["missing", missing2]
+  ];
+  const reasons = parts3.filter(([, paths]) => paths.length > 0).map(([label3, paths]) => `${label3}: ${example(paths)}`);
+  return reasons.length === 0 ? null : reasons.join("; ");
+}
+function packageFoldersFingerprint(dir2, lockfile) {
+  const folders = packageFolders(dir2, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
+  folders.sort((a, b) => compare(a.path, b.path));
+  const entries3 = folders.map(
+    ({ path, link }) => link ? [path, "link", readlinkSync3(join22(dir2, path))] : [path, ...nameAndVersion(dir2, path)]
+  );
+  return createHash9("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries3])).digest("hex");
+}
+function parseHiddenLockfile(content) {
+  let parsed3;
+  try {
+    parsed3 = JSON.parse(content.toString("utf8"));
+  } catch {
+    return null;
+  }
+  return isRecord(parsed3) ? parsed3 : {};
+}
+function withoutOwnVersions(lockfile) {
+  const { name: _name, version: _version, ...rest2 } = lockfile;
+  const own = (path, entry4) => (path === "" || isWorkspace(path)) && isRecord(entry4) ? { ...entry4, version: void 0 } : entry4;
+  const packages = isRecord(rest2.packages) ? Object.fromEntries(Object.entries(rest2.packages).map(([path, e]) => [path, own(path, e)])) : rest2.packages;
+  return JSON.stringify({ ...rest2, packages });
+}
+function packagesIn(lockfile) {
+  return isRecord(lockfile.packages) ? lockfile.packages : {};
+}
+function isInstalledFolder(path) {
+  return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
+}
+function insideInstall(path) {
+  return path !== "" && !isAbsolute7(path) && path !== ".." && !path.startsWith("../");
+}
+function isWorkspace(path) {
+  return insideInstall(path) && !isInstalledFolder(path);
+}
+function workspaces(listed12) {
+  return Object.keys(listed12).filter(isWorkspace);
+}
+function packageFolders(dir2, workspaceFolders) {
+  const folders = [];
+  const visit2 = (path, entry4) => {
+    if (!entry4.isSymbolicLink() && !entry4.isDirectory()) return;
+    const link = entry4.isSymbolicLink();
+    folders.push({ path, link, mtimeMs: lstatSync4(join22(dir2, path)).mtimeMs });
+    if (!link) walk8(`${path}/node_modules`);
+  };
+  const walk8 = (modules) => {
+    for (const entry4 of entriesOf2(join22(dir2, modules))) {
+      if (entry4.name.startsWith(".")) continue;
+      const path = `${modules}/${entry4.name}`;
+      if (entry4.name.startsWith("@") && entry4.isDirectory()) {
+        for (const child of entriesOf2(join22(dir2, path))) visit2(`${path}/${child.name}`, child);
+      } else {
+        visit2(path, entry4);
+      }
+    }
+  };
+  for (const path of ["", ...workspaceFolders])
+    walk8(path === "" ? "node_modules" : `${path}/node_modules`);
+  return folders;
+}
+function entriesOf2(path) {
+  try {
+    return readdirSync11(path, { withFileTypes: true });
+  } catch (error) {
+    if (isMissing(error) || error.code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+function nameAndVersion(dir2, path) {
+  try {
+    const manifest = JSON.parse(readFileSync15(join22(dir2, path, "package.json"), "utf8"));
+    if (!isRecord(manifest)) return [null, null];
+    return [manifest.name ?? null, manifest.version ?? null];
+  } catch {
+    return [null, null];
+  }
+}
+function example(paths) {
+  const [first2] = [...paths].sort(compare);
+  return paths.length === 1 ? `${first2}` : `${first2} and ${paths.length - 1} more`;
+}
+var HIDDEN_LOCKFILE, PACKAGE_FOLDERS_ENCODING;
+var init_hidden_lockfile = __esm({
+  "src/core/keys/hidden-lockfile.ts"() {
+    "use strict";
+    init_compare();
+    init_errors();
+    init_json();
+    HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
+    PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
+  }
+});
+
+// src/core/keys/package-scans.ts
+import { readdirSync as readdirSync12, readFileSync as readFileSync16 } from "node:fs";
+import { join as join23 } from "node:path";
+function hasRuntimeFile(dir2) {
+  const entries3 = entriesOf3(dir2);
+  if (entries3 === null) return true;
+  return entries3.some((entry4) => {
+    if (entry4.name === "node_modules") return false;
+    if (entry4.isDirectory()) return hasRuntimeFile(join23(dir2, entry4.name));
+    return !NOT_RUNTIME.some((pattern2) => pattern2.test(entry4.name));
+  });
+}
+function referencesOpaque(dir2) {
+  const entries3 = entriesOf3(dir2);
+  if (entries3 === null) return true;
+  return entries3.some((entry4) => {
+    if (entry4.name === "node_modules") return false;
+    const path = join23(dir2, entry4.name);
+    if (entry4.isDirectory()) return referencesOpaque(path);
+    if (!entry4.isFile() || !CODE.test(entry4.name) || DECLARATION.test(entry4.name)) return false;
+    try {
+      return OPAQUE_REFERENCE.test(readFileSync16(path, "utf8"));
+    } catch {
+      return true;
+    }
+  });
+}
+function entriesOf3(dir2) {
+  try {
+    return readdirSync12(dir2, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+}
+var NOT_RUNTIME, CODE, DECLARATION, OPAQUE_REFERENCE, PackageScans;
+var init_package_scans = __esm({
+  "src/core/keys/package-scans.ts"() {
+    "use strict";
+    NOT_RUNTIME = [
+      /\.d\.[cm]?ts(?:\.map)?$/,
+      /^package\.json$/,
+      /\.(?:md|markdown|txt)$/i,
+      /^(?:licen[cs]e|readme|changelog|notice|authors|history|copying)(?:[.-].*)?$/i
+    ];
+    CODE = /\.(?:[cm]?[jt]sx?)$/;
+    DECLARATION = /\.d\.[cm]?ts$/;
+    OPAQUE_REFERENCE = /(["'`])(?:node:)?(?:child_process|worker_threads)\1|(["'`])node:(?:module|cluster)\2|(?:require|\bimport|\bfrom|getBuiltinModule)\s*\(?\s*(["'`])(?:module|cluster)\3/;
+    PackageScans = class {
+      #typesOnly = /* @__PURE__ */ new Map();
+      #opaque = /* @__PURE__ */ new Map();
+      /** Opaque scans done, and the time they took, for measurement. */
+      scanned = 0;
+      scanMs = 0;
+      /** Whether the package at `dir` ships no file Node could load. */
+      typesOnly(identity4, dir2) {
+        let known4 = this.#typesOnly.get(identity4);
+        if (known4 === void 0) {
+          known4 = !hasRuntimeFile(dir2);
+          this.#typesOnly.set(identity4, known4);
+        }
+        return known4;
+      }
+      /** Whether the code of the package at `dir` references an opaque builtin. */
+      opaque(identity4, dir2) {
+        let known4 = this.#opaque.get(identity4);
+        if (known4 === void 0) {
+          const start2 = performance.now();
+          known4 = referencesOpaque(dir2);
+          this.scanMs += performance.now() - start2;
+          this.scanned += 1;
+          this.#opaque.set(identity4, known4);
+        }
+        return known4;
+      }
+    };
+  }
+});
+
+// src/core/keys/packages.ts
+import { join as join24, posix as posix6 } from "node:path";
+function isInstalled(location2) {
+  return location2.startsWith("node_modules/") || location2.includes("/node_modules/");
+}
+function identityOf(location2, entry4) {
+  return `${location2}@${text(entry4.version)}#${text(entry4.integrity ?? entry4.resolved)}`;
+}
+function absent(from, name3) {
+  return `absent:${from}>${name3}`;
+}
+function parent(dir2) {
+  const up = posix6.dirname(dir2);
+  return up === "." ? "" : up;
+}
+function text(value) {
+  return typeof value === "string" ? value : "";
+}
+function npmReading(dir2, base, content, scans) {
+  const hidden = parseHiddenLockfile(content);
+  const stale3 = staleHiddenLockfile(dir2, hidden);
+  if (stale3 !== null) {
+    return { manager: "npm", stale: stale3, folders: packageFoldersFingerprint(dir2, hidden), graph: null };
+  }
+  if (hidden === null) return WHOLE;
+  const listed12 = packagesOf(content);
+  const graph = listed12 === null || base === null ? null : new InstalledGraph(dir2, base, listed12, scans);
+  return { manager: "npm", stale: stale3, text: withoutOwnVersions(hidden), graph };
+}
+function packagesOf(content) {
+  try {
+    const parsed3 = JSON.parse(content.toString("utf8"));
+    return isRecord(parsed3) && isRecord(parsed3.packages) ? parsed3.packages : null;
+  } catch {
+    return null;
+  }
+}
+var OPAQUE_BUILTINS, EDGES, InstalledGraph, WHOLE;
+var init_packages = __esm({
+  "src/core/keys/packages.ts"() {
+    "use strict";
+    init_compare();
+    init_json();
+    init_hidden_lockfile();
+    init_package_scans();
+    OPAQUE_BUILTINS = /* @__PURE__ */ new Set([
+      "child_process",
+      "cluster",
+      "module",
+      "worker_threads"
+    ]);
+    EDGES = ["dependencies", "optionalDependencies", "peerDependencies"];
+    InstalledGraph = class {
+      /**
+       * `base` is the directory holding `node_modules`, relative to the worktree
+       * root (`""` for the root). `scans` caches the on-disk scans by identity,
+       * so a re-read of an unchanged install scans nothing.
+       */
+      constructor(dir2, base, packages, scans = new PackageScans()) {
+        this.dir = dir2;
+        this.base = base;
+        this.scans = scans;
+        const entries3 = {};
+        for (const [location2, entry4] of Object.entries(packages)) {
+          if (isRecord(entry4)) entries3[location2] = entry4;
+        }
+        this.#packages = entries3;
+      }
+      dir;
+      base;
+      scans;
+      #packages;
+      #closures = /* @__PURE__ */ new Map();
+      /** The location of each installed identity a closure produced. */
+      #locations = /* @__PURE__ */ new Map();
+      /**
+       * The sorted identities of every installed package `imports` can load,
+       * without those in `exclude`.
+       */
+      identities(imports2, exclude) {
+        const found4 = /* @__PURE__ */ new Set();
+        const starts = /* @__PURE__ */ new Set();
+        for (const { from, name: name3, manifest } of imports2) {
+          const local2 = this.#local(from);
+          const location2 = local2 === null ? null : this.#resolve(local2, name3);
+          const entry4 = location2 === null ? void 0 : this.#packages[location2];
+          if (location2 === null) found4.add(absent(local2 ?? from, name3));
+          else if (manifest === true && entry4 !== void 0 && isInstalled(location2)) {
+            found4.add(identityOf(location2, entry4));
+          } else starts.add(location2);
+        }
+        for (const location2 of starts) {
+          for (const identity4 of this.#closure(location2)) found4.add(identity4);
+        }
+        const sorted4 = [...found4].filter((identity4) => !exclude?.has(identity4));
+        return sorted4.sort(compare);
+      }
+      /**
+       * Whether the code of one of `identities`, as `identities()` returned
+       * them, reaches `child_process`, `worker_threads`, `module` or `cluster`
+       * (task 001-109, review wave-11b B3): a package that starts a process or a
+       * worker, or resolves by hand, can load packages its lockfile closure does
+       * not hold. Scanned once per identity.
+       */
+      opaque(identities) {
+        return identities.some((identity4) => {
+          const location2 = this.#locations.get(identity4);
+          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity4), join24(this.dir, location2));
+        });
+      }
+      /** A worktree-relative directory relative to the install, or `null` when outside it. */
+      #local(from) {
+        if (this.base === "") return from;
+        if (from === this.base) return "";
+        return from.startsWith(`${this.base}/`) ? from.slice(this.base.length + 1) : null;
+      }
+      /** The location of `name` looked up from `from`, a link followed to its target. */
+      #resolve(from, name3) {
+        for (let dir2 = from; ; dir2 = parent(dir2)) {
+          if (!dir2.endsWith("node_modules")) {
+            const location2 = dir2 === "" ? `node_modules/${name3}` : `${dir2}/node_modules/${name3}`;
+            const entry4 = this.#packages[location2];
+            if (entry4 !== void 0) {
+              return entry4.link === true && typeof entry4.resolved === "string" ? entry4.resolved : location2;
+            }
+          }
+          if (dir2 === "") return null;
+        }
+      }
+      /** Identities of `start` and everything it can load, memoized per location. */
+      #closure(start2) {
+        const memo2 = this.#closures.get(start2);
+        if (memo2 !== void 0) return memo2;
+        const identities = [];
+        const seen2 = /* @__PURE__ */ new Set();
+        const stack = [start2];
+        for (let location2 = stack.pop(); location2 !== void 0; location2 = stack.pop()) {
+          if (seen2.has(location2)) continue;
+          seen2.add(location2);
+          const entry4 = this.#packages[location2];
+          if (entry4 === void 0 || !isInstalled(location2)) {
+            identities.push(`workspace:${location2}`);
+            continue;
+          }
+          const identity4 = identityOf(location2, entry4);
+          if (this.scans.typesOnly(this.#scanId(identity4), join24(this.dir, location2))) {
+            identities.push(`${location2}@types-only`);
+            continue;
+          }
+          identities.push(identity4);
+          this.#locations.set(identity4, location2);
+          for (const field of EDGES) {
+            const names9 = entry4[field];
+            if (!isRecord(names9)) continue;
+            for (const name3 of Object.keys(names9)) {
+              const target = this.#resolve(location2, name3);
+              if (target === null) identities.push(absent(location2, name3));
+              else stack.push(target);
+            }
+          }
+        }
+        this.#closures.set(start2, identities);
+        return identities;
+      }
+      /** An identity is unique within one install; the install's directory makes it unique across. */
+      #scanId(identity4) {
+        return `${this.dir}\0${identity4}`;
+      }
+    };
+    WHOLE = { manager: null, stale: null, text: null, graph: null };
+  }
+});
+
+// src/core/keys/pnpm-lockfile.ts
+import { createHash as createHash10 } from "node:crypto";
+function withoutLinkedSpecifiers(text3) {
+  const lines = text3.split("\n");
+  return lines.filter((line, at2) => !linkedSpecifier(line, lines[at2 + 1] ?? "")).join("\n");
+}
+function linkedSpecifier(line, next) {
+  const indent2 = /^( +)specifier: /.exec(line)?.[1];
+  return indent2 !== void 0 && next.startsWith(`${indent2}version: link:`);
+}
+function readPnpmLockfile(text3) {
+  const reader = {
+    importers: /* @__PURE__ */ new Map(),
+    integrity: /* @__PURE__ */ new Map(),
+    snapshots: /* @__PURE__ */ new Map(),
+    version: false,
+    part: null,
+    entry: null,
+    id: "",
+    reading: false,
+    dependency: ""
+  };
+  for (const line of text3.split("\n")) {
+    const indent2 = /^ */.exec(line)?.[0].length ?? 0;
+    const body2 = line.slice(indent2);
+    if (body2 === "" || body2.startsWith("#")) continue;
+    if (/^\s/.test(body2) || indent2 % 2 !== 0) return null;
+    const known4 = indent2 === 0 ? readTopLevel(reader, body2) : reader.part === "packages" ? readPackageLine(reader, indent2, body2) : reader.part === null || readEntryLine(reader, reader.part, indent2, body2);
+    if (!known4) return null;
+  }
+  return lockfileOf(reader);
+}
+function readTopLevel(reader, body2) {
+  const pair2 = pairOf(body2);
+  if (pair2 === null) return false;
+  const [key3, value] = pair2;
+  if (key3 === "lockfileVersion") {
+    if (!/^9\.\d+$/.test(value)) return false;
+    reader.version = true;
+  } else if (!UNREAD.root.has(key3) && (!isPart(key3) || value !== "")) return false;
+  reader.part = isPart(key3) ? key3 : null;
+  [reader.entry, reader.id, reader.reading] = [null, "", false];
+  return true;
+}
+function readPackageLine(reader, indent2, body2) {
+  if (indent2 > 4) return true;
+  const pair2 = pairOf(body2);
+  if (pair2 === null) return false;
+  const [key3, value] = pair2;
+  if (indent2 === 2) {
+    if (value !== "") return false;
+    reader.id = key3;
+  } else if (key3 === "resolution") {
+    if (!value.startsWith("{")) return false;
+    const found4 = /^\{(?:.*[ ,])?integrity: ([^\s,}]+)[,}]/.exec(value)?.[1];
+    if (found4 !== void 0) reader.integrity.set(reader.id, found4);
+  } else if (!UNREAD.packages.has(key3)) return false;
+  return true;
+}
+function readEntryLine(reader, part2, indent2, body2) {
+  if (indent2 > 4 && !reader.reading) return true;
+  if (indent2 > (part2 === "importers" ? 8 : 6) || body2.startsWith("- ")) return false;
+  const pair2 = pairOf(body2);
+  if (pair2 === null) return false;
+  const [key3, value] = pair2;
+  if (indent2 === 2) {
+    if (value !== "" && value !== "{}") return false;
+    reader.entry = /* @__PURE__ */ new Map();
+    reader[part2].set(key3, reader.entry);
+    reader.reading = false;
+    return true;
+  }
+  const { entry: entry4 } = reader;
+  if (entry4 === null) return false;
+  if (indent2 === 4) {
+    reader.reading = (part2 === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key3);
+    return reader.reading ? value === "" : UNREAD[part2].has(key3);
+  }
+  if (part2 === "snapshots") return isRef2(value) && setOnce(entry4, key3, value);
+  return readDependencyLine(reader, entry4, indent2, pair2);
+}
+function readDependencyLine(reader, entry4, indent2, [key3, value]) {
+  if (indent2 === 6) {
+    if (value !== "") return false;
+    reader.dependency = key3;
+    if (!entry4.has(key3)) entry4.set(key3, "");
+    return true;
+  }
+  if (key3 === "version") return isRef2(value) && setOnce(entry4, reader.dependency, value);
+  return key3 === "specifier";
+}
+function lockfileOf({ version: version2, importers, integrity, snapshots }) {
+  for (const declared of importers.values()) {
+    for (const ref3 of declared.values()) if (ref3 === "") return null;
+  }
+  return version2 && importers.has(".") ? { importers, integrity, snapshots } : null;
+}
+function isPart(key3) {
+  return key3 === "importers" || key3 === "packages" || key3 === "snapshots";
+}
+function isRef2(value) {
+  return value !== "" && !value.startsWith("{") && !value.startsWith("[");
+}
+function setOnce(map, name3, value) {
+  const known4 = map.get(name3);
+  if (known4 !== void 0 && known4 !== "" && known4 !== value) return false;
+  map.set(name3, value);
+  return true;
+}
+function pairOf(body2) {
+  let key3;
+  let rest2;
+  if (body2.startsWith("'")) {
+    const quoted4 = singleQuoted(body2);
+    if (quoted4 === null) return null;
+    [key3, rest2] = quoted4;
+  } else {
+    const at2 = body2.search(/:(?: |$)/);
+    if (at2 <= 0 || body2.startsWith('"')) return null;
+    key3 = body2.slice(0, at2);
+    rest2 = body2.slice(at2);
+  }
+  if (rest2 !== ":" && !rest2.startsWith(": ")) return null;
+  const value = rest2.slice(1).trim();
+  if (value.startsWith('"')) return null;
+  if (!value.startsWith("'")) return [key3, value];
+  const quoted3 = singleQuoted(value);
+  return quoted3 === null || quoted3[1] !== "" ? null : [key3, quoted3[0]];
+}
+function singleQuoted(text3) {
+  const quoted3 = /^'((?:[^']|'')*)'/.exec(text3);
+  const [all2, inner] = quoted3 ?? [];
+  return all2 === void 0 || inner === void 0 ? null : [inner.replaceAll("''", "'"), text3.slice(all2.length)];
+}
+function pnpmFolderName(id, max) {
+  let name3 = id.replace(/[\\/:*?"<>|#]/g, "+");
+  if (name3.includes("(")) name3 = name3.replace(/\)$/, "").replace(/\)\(|\(|\)/g, "_");
+  if (name3.length > max || name3 !== name3.toLowerCase() && !name3.startsWith("file+")) {
+    const digest2 = createHash10("sha256").update(name3).digest("hex");
+    return `${name3.slice(0, max - 33)}_${digest2.slice(0, 32)}`;
+  }
+  return name3;
+}
+var PNPM_VIRTUAL_STORE, PNPM_LOCKFILE, IMPORTER_FIELDS, SNAPSHOT_FIELDS, UNREAD;
+var init_pnpm_lockfile = __esm({
+  "src/core/keys/pnpm-lockfile.ts"() {
+    "use strict";
+    PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
+    PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
+    IMPORTER_FIELDS = /* @__PURE__ */ new Set(["dependencies", "devDependencies", "optionalDependencies"]);
+    SNAPSHOT_FIELDS = /* @__PURE__ */ new Set(["dependencies", "optionalDependencies"]);
+    UNREAD = {
+      root: /* @__PURE__ */ new Set([
+        "settings",
+        "catalogs",
+        "overrides",
+        "packageExtensionsChecksum",
+        "pnpmfileChecksum",
+        "patchedDependencies",
+        "ignoredOptionalDependencies",
+        "time"
+      ]),
+      importers: /* @__PURE__ */ new Set(["dependenciesMeta", "publishDirectory"]),
+      packages: /* @__PURE__ */ new Set([
+        "bundledDependencies",
+        "cpu",
+        "deprecated",
+        "engines",
+        "hasBin",
+        "libc",
+        "name",
+        "os",
+        "peerDependencies",
+        "peerDependenciesMeta",
+        "version"
+      ]),
+      snapshots: /* @__PURE__ */ new Set(["transitivePeerDependencies", "optional", "id"])
+    };
+  }
+});
+
+// src/core/keys/pnpm-graph.ts
+import { join as join25, posix as posix7 } from "node:path";
+function isMarker(target) {
+  return target.startsWith("workspace:") || target.startsWith("unknown:");
+}
+function nameOf(id) {
+  return id.slice(0, id.indexOf("@", 1));
+}
+function childOf(name3, ref3) {
+  if (ref3.startsWith("link:")) return workspace("", ref3);
+  return ref3.replace(/\(.*$/, "").indexOf("@", 1) > 0 ? ref3 : `${name3}@${ref3}`;
+}
+function workspace(dir2, ref3) {
+  return `workspace:${posix7.normalize(posix7.join(dir2, ref3.slice("link:".length)))}`;
+}
+var FOLDER_MAX_LENGTH, PnpmGraph;
+var init_pnpm_graph = __esm({
+  "src/core/keys/pnpm-graph.ts"() {
+    "use strict";
+    init_compare();
+    init_json();
+    init_package_scans();
+    init_packages();
+    init_pnpm_lockfile();
+    FOLDER_MAX_LENGTH = 120;
+    PnpmGraph = class {
+      /**
+       * `base` is the directory holding `node_modules`, relative to the worktree
+       * root (`""` for the root); `modules` is `.modules.yaml` as parsed JSON.
+       * `scans` caches the on-disk scans by identity.
+       */
+      constructor(dir2, base, lockfile, modules, scans = new PackageScans()) {
+        this.dir = dir2;
+        this.base = base;
+        this.lockfile = lockfile;
+        this.scans = scans;
+        const max = modules.virtualStoreDirMaxLength;
+        const length = typeof max === "number" ? max : FOLDER_MAX_LENGTH;
+        const folders = /* @__PURE__ */ new Map();
+        for (const id of lockfile.snapshots.keys()) {
+          const folder = pnpmFolderName(id, length);
+          folders.set(id, folder);
+          this.#snapshotOf.set(folder, id);
+        }
+        this.folders = folders;
+        const skipped2 = Array.isArray(modules.skipped) ? modules.skipped : [];
+        this.skipped = new Set(skipped2.filter((id) => typeof id === "string"));
+        const publicHoisted = /* @__PURE__ */ new Map();
+        const privateHoisted = /* @__PURE__ */ new Map();
+        const hoisted = isRecord(modules.hoistedDependencies) ? modules.hoistedDependencies : {};
+        for (const [id, aliases] of Object.entries(hoisted)) {
+          if (!isRecord(aliases)) continue;
+          for (const [alias, kind] of Object.entries(aliases)) {
+            if (kind === "public") publicHoisted.set(alias, id);
+            else if (kind === "private") privateHoisted.set(alias, id);
+          }
+        }
+        this.publicHoisted = publicHoisted;
+        this.privateHoisted = privateHoisted;
+      }
+      dir;
+      base;
+      lockfile;
+      scans;
+      /** The `.pnpm` folder of each snapshot, by id. */
+      folders;
+      /** Snapshots `.modules.yaml` lists as skipped: optional packages pnpm did not install. */
+      skipped;
+      /** The snapshot each publicly hoisted name at the root links to. */
+      publicHoisted;
+      /** The snapshot each privately hoisted name in `.pnpm/node_modules` links to. */
+      privateHoisted;
+      #snapshotOf = /* @__PURE__ */ new Map();
+      #closures = /* @__PURE__ */ new Map();
+      /** The package folder of each installed identity a closure produced. */
+      #packageFolders = /* @__PURE__ */ new Map();
+      /** The sorted identities of every installed package `imports` can load, without those in `exclude`. */
+      identities(imports2, exclude) {
+        const found4 = /* @__PURE__ */ new Set();
+        const starts = /* @__PURE__ */ new Set();
+        for (const { from, name: name3, manifest } of imports2) {
+          const local2 = this.#local(from);
+          const targets3 = local2 === null ? [] : this.#resolve(local2, name3);
+          if (targets3.length === 0) found4.add(`absent:${local2 ?? from}>${name3}`);
+          for (const target of targets3) {
+            if (isMarker(target)) found4.add(target);
+            else if (manifest === true) found4.add(this.#identity(target));
+            else starts.add(target);
+          }
+        }
+        for (const id of starts) {
+          for (const identity4 of this.#closure(id)) found4.add(identity4);
+        }
+        return [...found4].filter((identity4) => !exclude?.has(identity4)).sort(compare);
+      }
+      /**
+       * Whether one of `identities`, as `identities()` returned them, is a
+       * folder no snapshot names, a snapshot without an integrity, or a package
+       * whose code reaches `child_process`, `worker_threads`, `module` or
+       * `cluster` (task 001-109). Scanned once per identity.
+       */
+      opaque(identities) {
+        return identities.some((identity4) => {
+          if (identity4.startsWith("unknown:") || identity4.startsWith("nointegrity:")) return true;
+          const folder = this.#packageFolders.get(identity4);
+          return folder !== void 0 && this.scans.opaque(this.#scanId(identity4), join25(this.dir, folder));
+        });
+      }
+      /** A worktree-relative directory relative to the install, or `null` when outside it. */
+      #local(from) {
+        const prefix = this.base === "" ? "" : `${this.base}/`;
+        if (from === this.base) return "";
+        return from.startsWith(prefix) ? from.slice(prefix.length) : null;
+      }
+      /**
+       * What `name` resolves to from `from`: the skipped packages Node walks
+       * past, then the snapshot id or marker it finds; empty when absent.
+       */
+      #resolve(from, name3) {
+        const store = `${PNPM_VIRTUAL_STORE}/`;
+        if (!from.startsWith(store)) return this.#walk(this.#fromImporters(from, name3));
+        const folder = from.slice(store.length).split("/")[0] ?? "";
+        const id = this.#snapshotOf.get(folder);
+        if (id === void 0) return [`unknown:${folder}`];
+        return nameOf(id) === name3 ? [id] : this.#walk(this.#fromFolder(id, name3));
+      }
+      /** The candidates of a walk up to the first one pnpm installed: the skipped ones, then it. */
+      #walk(candidates) {
+        const found4 = [];
+        for (const candidate of candidates) {
+          if (candidate === void 0) continue;
+          found4.push(candidate);
+          if (!this.skipped.has(candidate)) break;
+        }
+        return found4;
+      }
+      /** Node's walk from snapshot `id`'s folder: its edges, pnpm's private hoisting, then the root. */
+      *#fromFolder(id, name3) {
+        const ref3 = this.lockfile.snapshots.get(id)?.get(name3);
+        yield ref3 === void 0 ? void 0 : childOf(name3, ref3);
+        yield this.privateHoisted.get(name3);
+        yield* this.#fromImporters("", name3);
+      }
+      /**
+       * Node's walk from a project directory: pnpm creates `node_modules` only
+       * in importers, the root's with the names it hoists publicly.
+       */
+      *#fromImporters(from, name3) {
+        for (let dir2 = from; ; dir2 = parent(dir2)) {
+          const ref3 = this.lockfile.importers.get(dir2 === "" ? "." : dir2)?.get(name3);
+          if (ref3?.startsWith("link:")) yield workspace(dir2, ref3);
+          else if (ref3 !== void 0) yield childOf(name3, ref3);
+          if (dir2 === "") {
+            yield this.publicHoisted.get(name3);
+            return;
+          }
+        }
+      }
+      /** `<id>#<integrity>` and its sorted edges, or a marker the closure does not expand. */
+      #identity(id) {
+        const base = this.#base(id);
+        if (!base.startsWith(`${id}#`)) return base;
+        const edges = [...this.lockfile.snapshots.get(id) ?? []].map(
+          ([name3, ref3]) => this.#typesOnly(childOf(name3, ref3)) ? `${name3}@types-only` : `${name3}@${ref3}`
+        );
+        return edges.length === 0 ? base : `${base}>${edges.sort(compare).join(",")}`;
+      }
+      /** `<id>#<integrity>`, or a marker: no such snapshot, no integrity, or skipped. */
+      #base(id) {
+        if (!this.lockfile.snapshots.has(id)) return `unknown:${id}`;
+        const integrity = this.lockfile.integrity.get(id.replace(/\(.*$/, ""));
+        if (integrity === void 0) return `nointegrity:${id}`;
+        return this.skipped.has(id) ? `skipped:${id}#${integrity}` : `${id}#${integrity}`;
+      }
+      /** Whether `id` is an installed snapshot whose package has no runtime file (task 001-109). */
+      #typesOnly(id) {
+        const base = this.#base(id);
+        return base.startsWith(`${id}#`) && this.scans.typesOnly(this.#scanId(base), join25(this.dir, this.#folderOf(id)));
+      }
+      /** The package folder of snapshot `id`, relative to the install. */
+      #folderOf(id) {
+        return `${PNPM_VIRTUAL_STORE}/${this.folders.get(id)}/node_modules/${nameOf(id)}`;
+      }
+      /** Identities of `start` and everything it can load, memoized per snapshot. */
+      #closure(start2) {
+        const memo2 = this.#closures.get(start2);
+        if (memo2 !== void 0) return memo2;
+        const identities = [];
+        const seen2 = /* @__PURE__ */ new Set();
+        const stack = [start2];
+        for (let id = stack.pop(); id !== void 0; id = stack.pop()) {
+          if (seen2.has(id)) continue;
+          seen2.add(id);
+          const base = isMarker(id) ? id : this.#base(id);
+          if (!base.startsWith(`${id}#`)) {
+            identities.push(base);
+            continue;
+          }
+          if (this.#typesOnly(id)) {
+            identities.push(`${nameOf(id)}@types-only`);
+            continue;
+          }
+          const identity4 = this.#identity(id);
+          identities.push(identity4);
+          this.#packageFolders.set(identity4, this.#folderOf(id));
+          for (const name3 of this.lockfile.snapshots.get(id)?.keys() ?? [])
+            stack.push(...this.#walk(this.#fromFolder(id, name3)));
+        }
+        this.#closures.set(start2, identities);
+        return identities;
+      }
+      /** An identity is unique within one install; the install's directory makes it unique across. */
+      #scanId(identity4) {
+        return `${this.dir}\0${identity4}`;
+      }
+    };
+  }
+});
+
+// src/core/keys/pnpm-install.ts
+import { createHash as createHash11 } from "node:crypto";
+import { lstatSync as lstatSync5, readdirSync as readdirSync13, readFileSync as readFileSync17, readlinkSync as readlinkSync4 } from "node:fs";
+import { join as join26 } from "node:path";
+function readPnpmInstall(dir2, base, text3, scans) {
+  const modules = layoutOf(dir2);
+  if (modules === null) return null;
+  const lockfile = readPnpmLockfile(text3);
+  if (lockfile === null) return null;
+  const graph = new PnpmGraph(dir2, base, lockfile, modules, scans);
+  const stale3 = stalePnpmLockfile(dir2, graph);
+  if (stale3 === null) return { graph, stale: stale3 };
+  return {
+    graph: null,
+    stale: stale3,
+    folders: pnpmPackageFoldersFingerprint(dir2, lockfile.importers.keys())
+  };
+}
+function pnpmReading(dir2, base, content, scans) {
+  const text3 = content.toString("utf8");
+  const install = base === null ? null : readPnpmInstall(dir2, base, text3, scans);
+  if (install !== null && install.stale !== null) {
+    return { manager: "pnpm", stale: install.stale, folders: install.folders, graph: null };
+  }
+  const graph = install?.graph ?? null;
+  return { manager: "pnpm", stale: null, text: withoutLinkedSpecifiers(text3), graph };
+}
+function layoutOf(dir2) {
+  let modules;
+  try {
+    modules = JSON.parse(readFileSync17(join26(dir2, PNPM_MODULES), "utf8"));
+  } catch {
+    return null;
+  }
+  if (!isRecord(modules) || modules.nodeLinker !== "isolated") return null;
+  if (modules.virtualStoreDir !== ".pnpm" || modules.enableGlobalVirtualStore === true) return null;
+  return modules;
+}
+function stalePnpmLockfile(dir2, graph) {
+  const lockTime = lstatSync5(join26(dir2, PNPM_LOCKFILE)).mtimeMs;
+  const stale3 = { unlisted: [], newer: [], missing: [], installed: [] };
+  checkVirtualStore(dir2, graph, lockTime, stale3);
+  checkImporters(dir2, graph, lockTime, stale3);
+  const parts3 = [
+    ["not listed in it", stale3.unlisted],
+    ["newer than it", stale3.newer],
+    ["missing", stale3.missing],
+    ["installed though skipped", stale3.installed]
+  ];
+  const reasons = parts3.filter(([, paths]) => paths.length > 0).map(([label3, paths]) => `${label3}: ${example2(paths)}`);
+  return reasons.length === 0 ? null : reasons.join("; ");
+}
+function checkVirtualStore(dir2, graph, lockTime, stale3) {
+  for (const [id, folder] of graph.folders) {
+    if (graph.skipped.has(id)) continue;
+    const modules = `${PNPM_VIRTUAL_STORE}/${folder}/node_modules`;
+    const path = `${modules}/${id.slice(0, id.indexOf("@", 1))}`;
+    const stat10 = lstatSync5(join26(dir2, path), { throwIfNoEntry: false });
+    if (stat10 === void 0) stale3.missing.push(path);
+    else if (stat10.mtimeMs > lockTime) stale3.newer.push(path);
+    for (const [name3, ref3] of graph.lockfile.snapshots.get(id) ?? []) {
+      const edge = `${modules}/${name3}`;
+      expectLink(graph, stale3, edge, childOf(name3, ref3), exists(dir2, edge));
+    }
+  }
+  for (const [alias, id] of graph.privateHoisted) {
+    const path = `${PNPM_VIRTUAL_STORE}/node_modules/${alias}`;
+    expectLink(graph, stale3, path, id, exists(dir2, path));
+  }
+}
+function checkImporters(dir2, graph, lockTime, stale3) {
+  for (const [importer, declared] of graph.lockfile.importers) {
+    const modules = importer === "." ? "node_modules" : `${importer}/node_modules`;
+    const present3 = new Set(namesIn(join26(dir2, modules)));
+    for (const name3 of present3) {
+      const path = `${modules}/${name3}`;
+      if (!declared.has(name3) && !(importer === "." && graph.publicHoisted.has(name3))) {
+        stale3.unlisted.push(path);
+      } else if (lstatSync5(join26(dir2, path)).mtimeMs > lockTime) stale3.newer.push(path);
+    }
+    const links = new Map([...declared].map(([name3, ref3]) => [name3, childOf(name3, ref3)]));
+    for (const [alias, id] of importer === "." ? graph.publicHoisted : []) {
+      const own = links.get(alias);
+      if (own === void 0 || graph.skipped.has(own)) links.set(alias, id);
+    }
+    for (const [name3, target] of links) {
+      expectLink(graph, stale3, `${modules}/${name3}`, target, present3.has(name3));
+    }
+  }
+}
+function expectLink(graph, stale3, path, target, there) {
+  if (graph.skipped.has(target)) {
+    if (there) stale3.installed.push(path);
+  } else if (!there) stale3.missing.push(path);
+}
+function exists(dir2, path) {
+  return lstatSync5(join26(dir2, path), { throwIfNoEntry: false }) !== void 0;
+}
+function pnpmPackageFoldersFingerprint(dir2, importers) {
+  const roots = /* @__PURE__ */ new Set(["node_modules", `${PNPM_VIRTUAL_STORE}/node_modules`]);
+  for (const importer of importers)
+    roots.add(importer === "." ? "node_modules" : `${importer}/node_modules`);
+  for (const folder of entriesOf4(join26(dir2, PNPM_VIRTUAL_STORE))) {
+    if (folder.isDirectory() && folder.name !== "node_modules") {
+      roots.add(`${PNPM_VIRTUAL_STORE}/${folder.name}/node_modules`);
+    }
+  }
+  const entries3 = [];
+  const walk8 = (at2) => {
+    for (const name3 of namesIn(join26(dir2, at2))) {
+      const path = `${at2}/${name3}`;
+      const link = lstatSync5(join26(dir2, path)).isSymbolicLink();
+      entries3.push(
+        link ? [path, "link", readlinkSync4(join26(dir2, path))] : [path, ...manifestOf(dir2, path)]
+      );
+      if (!link) walk8(`${path}/node_modules`);
+    }
+  };
+  for (const at2 of [...roots].sort(compare)) walk8(at2);
+  return createHash11("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING2, entries3])).digest("hex");
+}
+function namesIn(modules) {
+  const names9 = [];
+  for (const entry4 of entriesOf4(modules)) {
+    if (entry4.name.startsWith(".")) continue;
+    if (entry4.name.startsWith("@") && entry4.isDirectory()) {
+      for (const child of entriesOf4(join26(modules, entry4.name)))
+        names9.push(`${entry4.name}/${child.name}`);
+    } else names9.push(entry4.name);
+  }
+  return names9.sort(compare);
+}
+function entriesOf4(path) {
+  try {
+    return readdirSync13(path, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+function manifestOf(dir2, path) {
+  try {
+    const manifest = JSON.parse(readFileSync17(join26(dir2, path, "package.json"), "utf8"));
+    return isRecord(manifest) ? [manifest.name ?? null, manifest.version ?? null] : [null, null];
+  } catch {
+    return [null, null];
+  }
+}
+function example2(paths) {
+  const [first2] = [...paths].sort(compare);
+  return paths.length === 1 ? `${first2}` : `${first2} and ${paths.length - 1} more`;
+}
+var PNPM_MODULES, PACKAGE_FOLDERS_ENCODING2;
+var init_pnpm_install = __esm({
+  "src/core/keys/pnpm-install.ts"() {
+    "use strict";
+    init_compare();
+    init_json();
+    init_pnpm_graph();
+    init_pnpm_lockfile();
+    PNPM_MODULES = "node_modules/.modules.yaml";
+    PACKAGE_FOLDERS_ENCODING2 = "squeal-pnpm-package-folders/1";
+  }
+});
+
+// src/core/keys/environment.ts
+import { createHash as createHash12 } from "node:crypto";
+import { dirname as dirname12, join as join27, resolve as resolve5 } from "node:path";
+function coreEnvironmentInputs(options) {
+  const source2 = options.env ?? process.env;
+  const env = {};
+  for (const name3 of [...options.allowlist].sort(compare)) {
+    const value = source2[name3];
+    if (value !== void 0) env[name3] = value;
+  }
+  return {
+    squealVersion: options.squealVersion,
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    installedDependencies: options.installedDependencies,
+    env
+  };
+}
+function isInstalledLockfile(path) {
+  return LOCKFILES.some((format2) => path === format2.path || path.endsWith(`/${format2.path}`));
+}
+async function findInstalledLockfile(projectRoot, worktreeRoot2) {
+  const found4 = await locateLockfile(projectRoot, worktreeRoot2);
+  if (found4 === null) return null;
+  const { dir: dir2, format: format2 } = found4;
+  return {
+    path: join27(dir2, format2.path),
+    patches: format2.patches === null ? null : join27(dir2, format2.patches)
+  };
+}
+async function installedDependenciesFingerprint(projectRoot, worktreeRoot2) {
+  return (await installedDependencies(projectRoot, worktreeRoot2)).fingerprint;
+}
+async function installedDependencies(projectRoot, worktreeRoot2, scans) {
+  const found4 = await locateLockfile(projectRoot, worktreeRoot2);
+  if (found4 === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
+  const { dir: dir2, base, format: format2, content } = found4;
+  const reading = format2.read?.(dir2, base, content, scans) ?? WHOLE;
+  const hash4 = createHash12("sha256").update(`${format2.path}\0`);
+  if (reading.stale !== null) hash4.update(`stale\0${reading.folders}`);
+  else if (reading.text !== null) hash4.update(`${INSTALLED_ENCODING}\0${reading.text}`);
+  else hash4.update(content);
+  const patches = createHash12("sha256");
+  if (format2.patches !== null) {
+    const patchesDir = join27(dir2, format2.patches);
+    for (const path of await listEntries(patchesDir)) {
+      const bytes2 = await readIfFile(join27(patchesDir, path));
+      if (bytes2 === null) continue;
+      for (const target of [hash4, patches]) {
+        target.update(`\0${path}\0${bytes2.byteLength}\0`).update(bytes2);
+      }
+    }
+  }
+  const lockfile = toRelative(worktreeRoot2, join27(dir2, format2.path)) ?? format2.path;
+  const note = reading.stale === null ? null : `${lockfile} does not describe the installed packages (${reading.stale}); dependencies are keyed by their package.json files until ${reading.manager} rewrites it`;
+  return {
+    fingerprint: hash4.digest("hex"),
+    note,
+    graph: reading.graph,
+    patches: patches.digest("hex")
+  };
+}
+async function locateLockfile(projectRoot, worktreeRoot2) {
+  for (let dir2 = projectRoot; ; dir2 = dirname12(dir2)) {
+    for (const format2 of LOCKFILES) {
+      const content = await readIfFile(join27(dir2, format2.path));
+      if (content === null) continue;
+      const base = resolve5(dir2) === resolve5(worktreeRoot2) ? "" : toRelative(worktreeRoot2, dir2);
+      return { dir: dir2, base, format: format2, content };
+    }
+    if (dirname12(dir2) === dir2 || toRelative(worktreeRoot2, dir2) === null) return null;
+  }
+}
+var INSTALLED_ENCODING, LOCKFILES;
+var init_environment = __esm({
+  "src/core/keys/environment.ts"() {
+    "use strict";
+    init_compare();
+    init_paths2();
+    init_files2();
+    init_hidden_lockfile();
+    init_packages();
+    init_pnpm_install();
+    init_pnpm_lockfile();
+    INSTALLED_ENCODING = "squeal-installed/2";
+    LOCKFILES = [
+      { path: HIDDEN_LOCKFILE, patches: "patches", read: npmReading },
+      { path: "node_modules/.yarn-state.yml", patches: null },
+      { path: ".pnp.cjs", patches: ".yarn/patches" },
+      { path: ".pnp.js", patches: ".yarn/patches" },
+      { path: "node_modules/.yarn-integrity", patches: "patches" },
+      { path: PNPM_LOCKFILE, patches: null, read: pnpmReading },
+      { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
+      { path: "bun.lock", patches: "patches" },
+      { path: "bun.lockb", patches: "patches" }
+    ];
+  }
+});
+
 // src/core/runner-host/remote/remote-key.ts
 function sameMachine(a, b) {
   return a.nodeVersion === b.nodeVersion && a.platform === b.platform && a.arch === b.arch;
@@ -16280,9 +17341,9 @@ function recordCompleted(record2, entry4, decision) {
   } else if (decision.kind === "environment") {
     record2.grewEnvironment.push(file);
   } else if (decision.kind === "store") {
-    const ran = executedCoreOf(record2.report, file.ref);
+    const ran = executedCoreOf(record2.report, file.ref) ?? HERE;
     const keyed = context2.keys.coreOf(file.ref.project);
-    if (ran !== void 0 && keyed !== void 0 && !sameMachine(ran, keyed)) {
+    if (keyed !== void 0 && !sameMachine(ran, keyed)) {
       storeOtherMachine(record2, entry4, growth?.growth ?? [], { ran, keyed });
       return;
     }
@@ -16400,9 +17461,11 @@ function markUnknown(record2) {
     ledger.markUnknown(entries3, text3, { ran: true, runId: tier.runId });
   }
 }
+var HERE;
 var init_record_tier = __esm({
   "src/core/scheduler/record-tier.ts"() {
     "use strict";
+    init_environment();
     init_load();
     init_remote_key();
     init_context();
@@ -16417,6 +17480,11 @@ var init_record_tier = __esm({
     init_store_decision();
     init_store_results();
     init_timeout_split();
+    HERE = coreEnvironmentInputs({
+      squealVersion: "",
+      installedDependencies: "",
+      allowlist: []
+    });
   }
 });
 
@@ -16483,7 +17551,7 @@ var init_tier_width = __esm({
 
 // src/core/scheduler/tiers.ts
 import { randomUUID as randomUUID3 } from "node:crypto";
-import { join as join22 } from "node:path";
+import { join as join28 } from "node:path";
 function laneOf(context2, ref3) {
   return laneFor(context2.policy, ref3, context2.runner.traits.lane(ref3));
 }
@@ -16533,7 +17601,7 @@ function newTier(context2, ledger, first2, files6, kind) {
   const cancellable = kind === "backlog" || kind !== "slow" && cancels(context2, first2.file.ref);
   const tier = {
     runId,
-    logDir: join22(context2.runsDir, runId),
+    logDir: join28(context2.runsDir, runId),
     lane: laneOf(context2, first2.file.ref),
     priority: groupView(context2.policy).of(first2.file.ref).limits.priority,
     run: keys.beginRun(),
@@ -18297,8 +19365,8 @@ __export(runner_exports, {
   vitestBelowRootReason: () => vitestBelowRootReason,
   vitestDetected: () => vitestDetected
 });
-import { readdirSync as readdirSync11, readFileSync as readFileSync15 } from "node:fs";
-import { join as join23, posix as posix6 } from "node:path";
+import { readdirSync as readdirSync14, readFileSync as readFileSync18 } from "node:fs";
+import { join as join29, posix as posix8 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
@@ -18467,12 +19535,12 @@ function messageOf(error) {
 function vitestDetected(root) {
   let names9;
   try {
-    names9 = readdirSync11(root);
+    names9 = readdirSync14(root);
   } catch {
     return false;
   }
   if (names9.some((name3) => VITEST_CONFIG.test(name3))) return true;
-  return listsVitest(readManifest(join23(root, "package.json")));
+  return listsVitest(readManifest(join29(root, "package.json")));
 }
 function runsVitest(root, policy) {
   return policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root);
@@ -18485,8 +19553,8 @@ async function readVitestBelowRoot(root) {
   if (vitestDetected(root)) return [];
   const tracked = splitNul(await runGit(root, ["ls-files", "-z", "--", ":(glob)**/package.json"]));
   const manifests = tracked.filter((path) => !path.split("/").includes("node_modules")).map((path) => ({
-    dir: posix6.dirname(path).replace(/^\.$/, ""),
-    value: readManifest(join23(root, path))
+    dir: posix8.dirname(path).replace(/^\.$/, ""),
+    value: readManifest(join29(root, path))
   }));
   return vitestBelowRoot(root, manifests);
 }
@@ -18506,7 +19574,7 @@ function listsVitest(manifest) {
 }
 function readManifest(path) {
   try {
-    return JSON.parse(readFileSync15(path, "utf8"));
+    return JSON.parse(readFileSync18(path, "utf8"));
   } catch {
     return null;
   }
@@ -18622,7 +19690,7 @@ function lintOf(raw) {
     ...isText(notRun) ? { notRun } : {}
   };
 }
-function entriesOf2(raw, keys) {
+function entriesOf5(raw, keys) {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry4) => {
     if (typeof entry4 !== "object" || entry4 === null) return [];
@@ -18634,8 +19702,8 @@ function entriesOf2(raw, keys) {
 function waitingOf(raw) {
   if (typeof raw !== "object" || raw === null) return null;
   const value = raw;
-  const tests2 = entriesOf2(value.tests, ["project", "path", "key"]);
-  const lint2 = entriesOf2(value.lint, ["tool", "path", "blob"]);
+  const tests2 = entriesOf5(value.tests, ["project", "path", "key"]);
+  const lint2 = entriesOf5(value.lint, ["tool", "path", "blob"]);
   return tests2.length === 0 && lint2.length === 0 ? null : { tests: tests2, lint: lint2 };
 }
 function notDeterminedOf(raw) {
@@ -19660,16 +20728,30 @@ function mainStoreResultKey(store, worktreeId) {
   return (runId, testFile) => {
     const key3 = store.testFileKeys.list(worktreeId, [testFile])[0]?.key;
     if (key3 === null || key3 === void 0) return void 0;
-    const stored4 = store.results.byKey(key3, 0).some(
-      (r) => r.provenance.runId === runId && r.check.project === testFile.project && r.check.testPath === testFile.path
-    );
-    return stored4 ? key3 : void 0;
+    if (store.results.byKey(key3, 0).some((r) => ranFile(r, runId, testFile))) return key3;
+    return otherMachineKey(store, worktreeId, runId, testFile, key3);
   };
+}
+function ranFile(result, runId, testFile) {
+  return result.provenance.runId === runId && result.check.project === testFile.project && result.check.testPath === testFile.path;
+}
+function otherMachineKey(store, worktreeId, runId, testFile, current2) {
+  const unknown5 = readUnknownFiles(store, worktreeId).get(testFileId(testFile));
+  if (unknown5 === void 0 || !unknown5.ran || unknown5.key !== current2) return void 0;
+  const newest = store.results.newestForTestFile(testFile);
+  const stored4 = newest[0]?.key;
+  if (stored4 === void 0 || stored4 === current2) return void 0;
+  const ours = newest.some(
+    (r) => r.provenance.worktreeId === worktreeId && ranFile(r, runId, testFile)
+  );
+  return ours ? stored4 : void 0;
 }
 var PROVIDER_FILE, CANDIDATES2, PROVIDER_MISSING_NOTE, RECORDING_RUNNERS, IN_PROCESS_ENVIRONMENTS;
 var init_runtime2 = __esm({
   "src/core/code/coverage/runtime.ts"() {
     "use strict";
+    init_reverse_index();
+    init_unknown_files();
     PROVIDER_FILE = "provider.mjs";
     CANDIDATES2 = ["../coverage/", "./coverage/", "./"];
     PROVIDER_MISSING_NOTE = "coverage stays off: Squeal's coverage provider (coverage/provider.mjs) is not beside its code (spec 015 D8)";
@@ -20514,13 +21596,13 @@ import { randomUUID as randomUUID5 } from "node:crypto";
 import {
   existsSync as existsSync8,
   mkdirSync as mkdirSync4,
-  readFileSync as readFileSync16,
+  readFileSync as readFileSync19,
   renameSync as renameSync3,
   rmSync as rmSync5,
   statSync as statSync9,
   writeFileSync as writeFileSync4
 } from "node:fs";
-import { join as join24 } from "node:path";
+import { join as join30 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 function readStoreMark(commonDir) {
   return currentMark(storePaths(commonDir).database);
@@ -20528,7 +21610,7 @@ function readStoreMark(commonDir) {
 function markUnder(commonDir, file, mark, waitMs) {
   const paths = storePaths(commonDir);
   mkdirSync4(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync4(join24(paths.locksDir, RECOVERY_LOCK));
+  const lock2 = new DatabaseSync4(join30(paths.locksDir, RECOVERY_LOCK));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.round(waitMs))}`);
     try {
@@ -20578,7 +21660,7 @@ function names2(mark, database) {
 function readMark(path) {
   let text3;
   try {
-    text3 = readFileSync16(path, "utf8");
+    text3 = readFileSync19(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -20840,7 +21922,7 @@ CREATE TABLE consumer_views (
 
 // src/core/store/open.ts
 import { existsSync as existsSync9, mkdirSync as mkdirSync5, renameSync as renameSync4, rmSync as rmSync6 } from "node:fs";
-import { join as join25 } from "node:path";
+import { join as join31 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 function isStoreOpenFailure(value) {
   return "reason" in value;
@@ -20935,7 +22017,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync5(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync5(join25(paths.locksDir, RECOVERY_LOCK));
+  const lock2 = new DatabaseSync5(join31(paths.locksDir, RECOVERY_LOCK));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
@@ -21721,7 +22803,7 @@ var init_counts = __esm({
 });
 
 // src/core/code/coverage/parts.ts
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 import { constants, deflateRawSync as deflateRawSync2, inflateRawSync } from "node:zlib";
 function shareRecord(record2, recordVersion2) {
   const paths = [.../* @__PURE__ */ new Set([...record2.sources.map((s) => s.path), ...record2.unread])].sort(
@@ -21733,7 +22815,7 @@ function shareRecord(record2, recordVersion2) {
     const head2 = partHead(source2.path);
     return {
       at: index.get(source2.path) ?? 0,
-      hash: createHash9("sha256").update(`${recordVersion2}
+      hash: createHash13("sha256").update(`${recordVersion2}
 ${text3}`).digest("hex"),
       bytes: Buffer.concat([stored(head2), rest(text3.slice(head2.length), text3.length)])
     };
@@ -22045,11 +23127,11 @@ var init_coverage = __esm({
 });
 
 // src/core/hash/blob.ts
-import { createHash as createHash10 } from "node:crypto";
+import { createHash as createHash14 } from "node:crypto";
 import { constants as constants2 } from "node:fs";
 import { open, readlink } from "node:fs/promises";
 function blobHash(bytes2, format2) {
-  return createHash10(format2).update(`blob ${bytes2.byteLength}\0`).update(bytes2).digest("hex");
+  return createHash14(format2).update(`blob ${bytes2.byteLength}\0`).update(bytes2).digest("hex");
 }
 async function hashFile(path, format2) {
   for (let attempt2 = 0; ; attempt2++) {
@@ -22326,8 +23408,8 @@ var init_map = __esm({
 });
 
 // src/core/code/coverage/record.ts
-import { createHash as createHash11 } from "node:crypto";
-import { readFileSync as readFileSync17 } from "node:fs";
+import { createHash as createHash15 } from "node:crypto";
+import { readFileSync as readFileSync20 } from "node:fs";
 import { fileURLToPath as fileURLToPath5 } from "node:url";
 import { deflateRawSync as deflateRawSync3, inflateRawSync as inflateRawSync2 } from "node:zlib";
 function coverageMarker(children) {
@@ -22451,14 +23533,14 @@ function blobOf(path, executed, format2, blobs) {
   const known4 = blobs.get(sha1);
   if (known4 !== void 0) return known4;
   const content = executed.map?.sourcesContent?.[0];
-  for (const read7 of [() => readFileSync17(path), () => Buffer.from(content ?? "", "utf8")]) {
+  for (const read7 of [() => readFileSync20(path), () => Buffer.from(content ?? "", "utf8")]) {
     let bytes2;
     try {
       bytes2 = read7();
     } catch {
       continue;
     }
-    if (createHash11("sha1").update(bytes2).digest("hex") !== sha1) continue;
+    if (createHash15("sha1").update(bytes2).digest("hex") !== sha1) continue;
     const blob = blobHash(bytes2, format2);
     if (blobs.size >= BLOB_CACHE_LIMIT) blobs.clear();
     blobs.set(sha1, blob);
@@ -23126,10 +24208,10 @@ var init_store4 = __esm({
 
 // src/core/code/store/open.ts
 import { existsSync as existsSync10, mkdirSync as mkdirSync6 } from "node:fs";
-import { join as join26 } from "node:path";
+import { join as join32 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 function codeStorePath(commonDir) {
-  return join26(storePaths(commonDir).dir, "code.sqlite");
+  return join32(storePaths(commonDir).dir, "code.sqlite");
 }
 function isCodeStoreOpenFailure(value) {
   return "reason" in value;
@@ -23196,25 +24278,25 @@ var init_open2 = __esm({
 });
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync11, readdirSync as readdirSync12, readFileSync as readFileSync18, statSync as statSync10 } from "node:fs";
-import { basename as basename4, dirname as dirname12, isAbsolute as isAbsolute7, join as join27, relative as relative3, resolve as resolve5 } from "node:path";
+import { existsSync as existsSync11, readdirSync as readdirSync15, readFileSync as readFileSync21, statSync as statSync10 } from "node:fs";
+import { basename as basename4, dirname as dirname13, isAbsolute as isAbsolute8, join as join33, relative as relative3, resolve as resolve6 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
 function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
-    const declared = resolve5(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join27(declared, "bin", "python"));
-    if (existsSync11(declared)) return found("declared", dirname12(dirname12(declared)), declared);
-    const target = basename4(declared).startsWith("python") ? dirname12(dirname12(declared)) : declared;
+    const declared = resolve6(cwd, project.python);
+    if (isDirectory(declared)) return found("declared", declared, join33(declared, "bin", "python"));
+    if (existsSync11(declared)) return found("declared", dirname13(dirname13(declared)), declared);
+    const target = basename4(declared).startsWith("python") ? dirname13(dirname13(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join27(cwd, ".venv");
-  if (existsSync11(join27(venv, "pyvenv.cfg"))) return found("venv", venv, join27(venv, "bin", "python"));
+  const venv = join33(cwd, ".venv");
+  if (existsSync11(join33(venv, "pyvenv.cfg"))) return found("venv", venv, join33(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname12(dirname12(pdm)), pdm);
-  return none(root, cwd, [venv, join27(cwd, ".pdm-python")], venv);
+  if (pdm !== null) return found("pdm-python", dirname13(dirname13(pdm)), pdm);
+  return none(root, cwd, [venv, join33(cwd, ".pdm-python")], venv);
 }
 function found(source2, env, python) {
   return { kind: "found", source: source2, env, python };
@@ -23222,28 +24304,28 @@ function found(source2, env, python) {
 function pdmPython(root, cwd) {
   let text3;
   try {
-    text3 = readFileSync18(join27(cwd, ".pdm-python"), "utf8").trim();
+    text3 = readFileSync21(join33(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute7(text3) || toRelative(root, text3) === null || !existsSync11(text3)) return null;
+  if (!isAbsolute8(text3) || toRelative(root, text3) === null || !existsSync11(text3)) return null;
   return text3;
 }
 function none(root, cwd, looked2, target) {
   const venv = relative3(cwd, target) || ".";
   const dirs = [];
-  for (let dir2 = cwd; ; dir2 = dirname12(dir2)) {
+  for (let dir2 = cwd; ; dir2 = dirname13(dir2)) {
     dirs.push(dir2);
     if (toRelative(root, dir2) === null) break;
   }
   for (const dir2 of dirs) {
-    const hit = LOCKFILES.find(([file]) => existsSync11(join27(dir2, file)));
+    const hit = LOCKFILES2.find(([file]) => existsSync11(join33(dir2, file)));
     if (hit !== void 0)
-      return { kind: "none", looked: looked2, command: hit[1], from: join27(dir2, hit[0]) };
+      return { kind: "none", looked: looked2, command: hit[1], from: join33(dir2, hit[0]) };
   }
   for (const dir2 of dirs) {
-    const files6 = requirementsIn(dir2).map((file) => join27(dir2, file));
+    const files6 = requirementsIn(dir2).map((file) => join33(dir2, file));
     if (files6.length === 0) continue;
     const install = files6.map((file) => `-r ${relative3(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -23254,7 +24336,7 @@ function none(root, cwd, looked2, target) {
 function requirementsIn(dir2) {
   let names9;
   try {
-    names9 = readdirSync12(dir2);
+    names9 = readdirSync15(dir2);
   } catch (error) {
     if (isMissing(error)) return [];
     throw error;
@@ -23269,13 +24351,13 @@ function isDirectory(path) {
     throw error;
   }
 }
-var LOCKFILES, REQUIREMENTS;
+var LOCKFILES2, REQUIREMENTS;
 var init_discover = __esm({
   "src/runners/pytest/environment/discover.ts"() {
     "use strict";
     init_errors();
     init_paths2();
-    LOCKFILES = [
+    LOCKFILES2 = [
       ["uv.lock", "uv sync"],
       ["poetry.lock", "poetry install"],
       ["pdm.lock", "pdm install"]
@@ -24109,10 +25191,10 @@ var init_store5 = __esm({
 
 // src/core/lint/store/open.ts
 import { existsSync as existsSync12, mkdirSync as mkdirSync7 } from "node:fs";
-import { join as join31 } from "node:path";
+import { join as join37 } from "node:path";
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 function lintStorePath(commonDir) {
-  return join31(storePaths(commonDir).dir, "lint.sqlite");
+  return join37(storePaths(commonDir).dir, "lint.sqlite");
 }
 function isLintStoreOpenFailure(value) {
   return "reason" in value;
@@ -24352,13 +25434,13 @@ var init_pool_wait = __esm({
 });
 
 // src/core/daemon/user-config.ts
-import { readFileSync as readFileSync21, realpathSync as realpathSync4 } from "node:fs";
+import { readFileSync as readFileSync24, realpathSync as realpathSync4 } from "node:fs";
 import { availableParallelism as availableParallelism5, homedir } from "node:os";
-import { dirname as dirname13, isAbsolute as isAbsolute9, join as join32, resolve as resolve8 } from "node:path";
+import { dirname as dirname14, isAbsolute as isAbsolute10, join as join38, resolve as resolve9 } from "node:path";
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
-  const base = xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? xdg : join32(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
-  return join32(base, "squeal", "config.json");
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute10(xdg) ? xdg : join38(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
+  return join38(base, "squeal", "config.json");
 }
 function defaultHostSlots2(cpus3 = availableParallelism5()) {
   return Math.max(1, cpus3 - 1);
@@ -24407,7 +25489,7 @@ function capacityReader(options) {
 }
 function repositoryRootOf(root, commonDir) {
   if (gitDirIs(root, commonDir)) return root;
-  for (const candidate of [coreWorktree(commonDir), dirname13(commonDir)]) {
+  for (const candidate of [coreWorktree(commonDir), dirname14(commonDir)]) {
     if (candidate !== null && gitDirIs(candidate, commonDir)) return normalize3(candidate);
   }
   return commonDir;
@@ -24423,7 +25505,7 @@ function gitDirIs(worktree, commonDir) {
 function coreWorktree(commonDir) {
   let text3;
   try {
-    text3 = readFileSync21(join32(commonDir, "config"), "utf8");
+    text3 = readFileSync24(join38(commonDir, "config"), "utf8");
   } catch {
     return null;
   }
@@ -24435,7 +25517,7 @@ function coreWorktree(commonDir) {
       continue;
     }
     const entry4 = core ? /^\s*worktree\s*=\s*(.*?)\s*$/i.exec(line) : null;
-    if (entry4?.[1]) return resolve8(commonDir, entry4[1].replace(/^"(.*)"$/, "$1"));
+    if (entry4?.[1]) return resolve9(commonDir, entry4[1].replace(/^"(.*)"$/, "$1"));
   }
   return null;
 }
@@ -24450,7 +25532,7 @@ function normalize3(path) {
   try {
     return realpathSync4(path);
   } catch {
-    return resolve8(path);
+    return resolve9(path);
   }
 }
 var projects, groupSlotScope, backgroundShare, SHAPE2;
@@ -24469,7 +25551,7 @@ var init_user_config = __esm({
       const problems = [];
       for (const [root, entry4] of Object.entries(value)) {
         const at2 = `"capacity.projects[${root}]"`;
-        if (!isAbsolute9(root)) {
+        if (!isAbsolute10(root)) {
           problems.push(`${at2} must name an absolute path; it is left out`);
           continue;
         }
@@ -24540,1067 +25622,6 @@ var init_refused = __esm({
     "use strict";
     init_json();
     init_store();
-  }
-});
-
-// src/core/keys/files.ts
-import { readdir as readdir2, readFile as readFile4, stat as stat4 } from "node:fs/promises";
-import { sep as sep4 } from "node:path";
-async function readIfFile(path) {
-  try {
-    if (!(await stat4(path)).isFile()) return null;
-    return await readFile4(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-async function listEntries(dir2) {
-  try {
-    const entries3 = await readdir2(dir2, { recursive: true });
-    return entries3.map((entry4) => entry4.split(sep4).join("/")).sort(compare);
-  } catch (error) {
-    if (isMissing(error)) return [];
-    throw error;
-  }
-}
-var init_files2 = __esm({
-  "src/core/keys/files.ts"() {
-    "use strict";
-    init_compare();
-    init_errors();
-  }
-});
-
-// src/core/keys/hidden-lockfile.ts
-import { createHash as createHash12 } from "node:crypto";
-import { lstatSync as lstatSync4, readdirSync as readdirSync13, readFileSync as readFileSync22, readlinkSync as readlinkSync3 } from "node:fs";
-import { isAbsolute as isAbsolute10, join as join33 } from "node:path";
-function staleHiddenLockfile(dir2, lockfile) {
-  const listed12 = lockfile === null ? null : packagesIn(lockfile);
-  if (listed12 === null) return "not valid JSON";
-  const lockTime = lstatSync4(join33(dir2, HIDDEN_LOCKFILE)).mtimeMs;
-  const folders = packageFolders(dir2, workspaces(listed12));
-  const seen2 = new Set(folders.map((folder) => folder.path));
-  const unlisted6 = folders.filter((folder) => !Object.hasOwn(listed12, folder.path)).map((folder) => folder.path);
-  const newer = folders.filter(
-    (folder) => Object.hasOwn(listed12, folder.path) && folder.mtimeMs > lockTime
-  );
-  const missing2 = Object.keys(listed12).filter((path) => isInstalledFolder(path) && !seen2.has(path));
-  const parts3 = [
-    ["not listed in it", unlisted6],
-    ["newer than it", newer.map((folder) => folder.path)],
-    ["missing", missing2]
-  ];
-  const reasons = parts3.filter(([, paths]) => paths.length > 0).map(([label3, paths]) => `${label3}: ${example(paths)}`);
-  return reasons.length === 0 ? null : reasons.join("; ");
-}
-function packageFoldersFingerprint(dir2, lockfile) {
-  const folders = packageFolders(dir2, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
-  folders.sort((a, b) => compare(a.path, b.path));
-  const entries3 = folders.map(
-    ({ path, link }) => link ? [path, "link", readlinkSync3(join33(dir2, path))] : [path, ...nameAndVersion(dir2, path)]
-  );
-  return createHash12("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries3])).digest("hex");
-}
-function parseHiddenLockfile(content) {
-  let parsed3;
-  try {
-    parsed3 = JSON.parse(content.toString("utf8"));
-  } catch {
-    return null;
-  }
-  return isRecord(parsed3) ? parsed3 : {};
-}
-function withoutOwnVersions(lockfile) {
-  const { name: _name, version: _version, ...rest2 } = lockfile;
-  const own = (path, entry4) => (path === "" || isWorkspace(path)) && isRecord(entry4) ? { ...entry4, version: void 0 } : entry4;
-  const packages = isRecord(rest2.packages) ? Object.fromEntries(Object.entries(rest2.packages).map(([path, e]) => [path, own(path, e)])) : rest2.packages;
-  return JSON.stringify({ ...rest2, packages });
-}
-function packagesIn(lockfile) {
-  return isRecord(lockfile.packages) ? lockfile.packages : {};
-}
-function isInstalledFolder(path) {
-  return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
-}
-function insideInstall(path) {
-  return path !== "" && !isAbsolute10(path) && path !== ".." && !path.startsWith("../");
-}
-function isWorkspace(path) {
-  return insideInstall(path) && !isInstalledFolder(path);
-}
-function workspaces(listed12) {
-  return Object.keys(listed12).filter(isWorkspace);
-}
-function packageFolders(dir2, workspaceFolders) {
-  const folders = [];
-  const visit2 = (path, entry4) => {
-    if (!entry4.isSymbolicLink() && !entry4.isDirectory()) return;
-    const link = entry4.isSymbolicLink();
-    folders.push({ path, link, mtimeMs: lstatSync4(join33(dir2, path)).mtimeMs });
-    if (!link) walk8(`${path}/node_modules`);
-  };
-  const walk8 = (modules) => {
-    for (const entry4 of entriesOf3(join33(dir2, modules))) {
-      if (entry4.name.startsWith(".")) continue;
-      const path = `${modules}/${entry4.name}`;
-      if (entry4.name.startsWith("@") && entry4.isDirectory()) {
-        for (const child of entriesOf3(join33(dir2, path))) visit2(`${path}/${child.name}`, child);
-      } else {
-        visit2(path, entry4);
-      }
-    }
-  };
-  for (const path of ["", ...workspaceFolders])
-    walk8(path === "" ? "node_modules" : `${path}/node_modules`);
-  return folders;
-}
-function entriesOf3(path) {
-  try {
-    return readdirSync13(path, { withFileTypes: true });
-  } catch (error) {
-    if (isMissing(error) || error.code === "ENOTDIR") return [];
-    throw error;
-  }
-}
-function nameAndVersion(dir2, path) {
-  try {
-    const manifest = JSON.parse(readFileSync22(join33(dir2, path, "package.json"), "utf8"));
-    if (!isRecord(manifest)) return [null, null];
-    return [manifest.name ?? null, manifest.version ?? null];
-  } catch {
-    return [null, null];
-  }
-}
-function example(paths) {
-  const [first2] = [...paths].sort(compare);
-  return paths.length === 1 ? `${first2}` : `${first2} and ${paths.length - 1} more`;
-}
-var HIDDEN_LOCKFILE, PACKAGE_FOLDERS_ENCODING;
-var init_hidden_lockfile = __esm({
-  "src/core/keys/hidden-lockfile.ts"() {
-    "use strict";
-    init_compare();
-    init_errors();
-    init_json();
-    HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
-    PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
-  }
-});
-
-// src/core/keys/package-scans.ts
-import { readdirSync as readdirSync14, readFileSync as readFileSync23 } from "node:fs";
-import { join as join34 } from "node:path";
-function hasRuntimeFile(dir2) {
-  const entries3 = entriesOf4(dir2);
-  if (entries3 === null) return true;
-  return entries3.some((entry4) => {
-    if (entry4.name === "node_modules") return false;
-    if (entry4.isDirectory()) return hasRuntimeFile(join34(dir2, entry4.name));
-    return !NOT_RUNTIME.some((pattern2) => pattern2.test(entry4.name));
-  });
-}
-function referencesOpaque(dir2) {
-  const entries3 = entriesOf4(dir2);
-  if (entries3 === null) return true;
-  return entries3.some((entry4) => {
-    if (entry4.name === "node_modules") return false;
-    const path = join34(dir2, entry4.name);
-    if (entry4.isDirectory()) return referencesOpaque(path);
-    if (!entry4.isFile() || !CODE.test(entry4.name) || DECLARATION.test(entry4.name)) return false;
-    try {
-      return OPAQUE_REFERENCE.test(readFileSync23(path, "utf8"));
-    } catch {
-      return true;
-    }
-  });
-}
-function entriesOf4(dir2) {
-  try {
-    return readdirSync14(dir2, { withFileTypes: true });
-  } catch {
-    return null;
-  }
-}
-var NOT_RUNTIME, CODE, DECLARATION, OPAQUE_REFERENCE, PackageScans;
-var init_package_scans = __esm({
-  "src/core/keys/package-scans.ts"() {
-    "use strict";
-    NOT_RUNTIME = [
-      /\.d\.[cm]?ts(?:\.map)?$/,
-      /^package\.json$/,
-      /\.(?:md|markdown|txt)$/i,
-      /^(?:licen[cs]e|readme|changelog|notice|authors|history|copying)(?:[.-].*)?$/i
-    ];
-    CODE = /\.(?:[cm]?[jt]sx?)$/;
-    DECLARATION = /\.d\.[cm]?ts$/;
-    OPAQUE_REFERENCE = /(["'`])(?:node:)?(?:child_process|worker_threads)\1|(["'`])node:(?:module|cluster)\2|(?:require|\bimport|\bfrom|getBuiltinModule)\s*\(?\s*(["'`])(?:module|cluster)\3/;
-    PackageScans = class {
-      #typesOnly = /* @__PURE__ */ new Map();
-      #opaque = /* @__PURE__ */ new Map();
-      /** Opaque scans done, and the time they took, for measurement. */
-      scanned = 0;
-      scanMs = 0;
-      /** Whether the package at `dir` ships no file Node could load. */
-      typesOnly(identity4, dir2) {
-        let known4 = this.#typesOnly.get(identity4);
-        if (known4 === void 0) {
-          known4 = !hasRuntimeFile(dir2);
-          this.#typesOnly.set(identity4, known4);
-        }
-        return known4;
-      }
-      /** Whether the code of the package at `dir` references an opaque builtin. */
-      opaque(identity4, dir2) {
-        let known4 = this.#opaque.get(identity4);
-        if (known4 === void 0) {
-          const start2 = performance.now();
-          known4 = referencesOpaque(dir2);
-          this.scanMs += performance.now() - start2;
-          this.scanned += 1;
-          this.#opaque.set(identity4, known4);
-        }
-        return known4;
-      }
-    };
-  }
-});
-
-// src/core/keys/packages.ts
-import { join as join35, posix as posix9 } from "node:path";
-function isInstalled(location2) {
-  return location2.startsWith("node_modules/") || location2.includes("/node_modules/");
-}
-function identityOf(location2, entry4) {
-  return `${location2}@${text(entry4.version)}#${text(entry4.integrity ?? entry4.resolved)}`;
-}
-function absent(from, name3) {
-  return `absent:${from}>${name3}`;
-}
-function parent(dir2) {
-  const up = posix9.dirname(dir2);
-  return up === "." ? "" : up;
-}
-function text(value) {
-  return typeof value === "string" ? value : "";
-}
-function npmReading(dir2, base, content, scans) {
-  const hidden = parseHiddenLockfile(content);
-  const stale3 = staleHiddenLockfile(dir2, hidden);
-  if (stale3 !== null) {
-    return { manager: "npm", stale: stale3, folders: packageFoldersFingerprint(dir2, hidden), graph: null };
-  }
-  if (hidden === null) return WHOLE;
-  const listed12 = packagesOf(content);
-  const graph = listed12 === null || base === null ? null : new InstalledGraph(dir2, base, listed12, scans);
-  return { manager: "npm", stale: stale3, text: withoutOwnVersions(hidden), graph };
-}
-function packagesOf(content) {
-  try {
-    const parsed3 = JSON.parse(content.toString("utf8"));
-    return isRecord(parsed3) && isRecord(parsed3.packages) ? parsed3.packages : null;
-  } catch {
-    return null;
-  }
-}
-var OPAQUE_BUILTINS, EDGES, InstalledGraph, WHOLE;
-var init_packages = __esm({
-  "src/core/keys/packages.ts"() {
-    "use strict";
-    init_compare();
-    init_json();
-    init_hidden_lockfile();
-    init_package_scans();
-    OPAQUE_BUILTINS = /* @__PURE__ */ new Set([
-      "child_process",
-      "cluster",
-      "module",
-      "worker_threads"
-    ]);
-    EDGES = ["dependencies", "optionalDependencies", "peerDependencies"];
-    InstalledGraph = class {
-      /**
-       * `base` is the directory holding `node_modules`, relative to the worktree
-       * root (`""` for the root). `scans` caches the on-disk scans by identity,
-       * so a re-read of an unchanged install scans nothing.
-       */
-      constructor(dir2, base, packages, scans = new PackageScans()) {
-        this.dir = dir2;
-        this.base = base;
-        this.scans = scans;
-        const entries3 = {};
-        for (const [location2, entry4] of Object.entries(packages)) {
-          if (isRecord(entry4)) entries3[location2] = entry4;
-        }
-        this.#packages = entries3;
-      }
-      dir;
-      base;
-      scans;
-      #packages;
-      #closures = /* @__PURE__ */ new Map();
-      /** The location of each installed identity a closure produced. */
-      #locations = /* @__PURE__ */ new Map();
-      /**
-       * The sorted identities of every installed package `imports` can load,
-       * without those in `exclude`.
-       */
-      identities(imports2, exclude) {
-        const found4 = /* @__PURE__ */ new Set();
-        const starts = /* @__PURE__ */ new Set();
-        for (const { from, name: name3, manifest } of imports2) {
-          const local2 = this.#local(from);
-          const location2 = local2 === null ? null : this.#resolve(local2, name3);
-          const entry4 = location2 === null ? void 0 : this.#packages[location2];
-          if (location2 === null) found4.add(absent(local2 ?? from, name3));
-          else if (manifest === true && entry4 !== void 0 && isInstalled(location2)) {
-            found4.add(identityOf(location2, entry4));
-          } else starts.add(location2);
-        }
-        for (const location2 of starts) {
-          for (const identity4 of this.#closure(location2)) found4.add(identity4);
-        }
-        const sorted4 = [...found4].filter((identity4) => !exclude?.has(identity4));
-        return sorted4.sort(compare);
-      }
-      /**
-       * Whether the code of one of `identities`, as `identities()` returned
-       * them, reaches `child_process`, `worker_threads`, `module` or `cluster`
-       * (task 001-109, review wave-11b B3): a package that starts a process or a
-       * worker, or resolves by hand, can load packages its lockfile closure does
-       * not hold. Scanned once per identity.
-       */
-      opaque(identities) {
-        return identities.some((identity4) => {
-          const location2 = this.#locations.get(identity4);
-          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity4), join35(this.dir, location2));
-        });
-      }
-      /** A worktree-relative directory relative to the install, or `null` when outside it. */
-      #local(from) {
-        if (this.base === "") return from;
-        if (from === this.base) return "";
-        return from.startsWith(`${this.base}/`) ? from.slice(this.base.length + 1) : null;
-      }
-      /** The location of `name` looked up from `from`, a link followed to its target. */
-      #resolve(from, name3) {
-        for (let dir2 = from; ; dir2 = parent(dir2)) {
-          if (!dir2.endsWith("node_modules")) {
-            const location2 = dir2 === "" ? `node_modules/${name3}` : `${dir2}/node_modules/${name3}`;
-            const entry4 = this.#packages[location2];
-            if (entry4 !== void 0) {
-              return entry4.link === true && typeof entry4.resolved === "string" ? entry4.resolved : location2;
-            }
-          }
-          if (dir2 === "") return null;
-        }
-      }
-      /** Identities of `start` and everything it can load, memoized per location. */
-      #closure(start2) {
-        const memo2 = this.#closures.get(start2);
-        if (memo2 !== void 0) return memo2;
-        const identities = [];
-        const seen2 = /* @__PURE__ */ new Set();
-        const stack = [start2];
-        for (let location2 = stack.pop(); location2 !== void 0; location2 = stack.pop()) {
-          if (seen2.has(location2)) continue;
-          seen2.add(location2);
-          const entry4 = this.#packages[location2];
-          if (entry4 === void 0 || !isInstalled(location2)) {
-            identities.push(`workspace:${location2}`);
-            continue;
-          }
-          const identity4 = identityOf(location2, entry4);
-          if (this.scans.typesOnly(this.#scanId(identity4), join35(this.dir, location2))) {
-            identities.push(`${location2}@types-only`);
-            continue;
-          }
-          identities.push(identity4);
-          this.#locations.set(identity4, location2);
-          for (const field of EDGES) {
-            const names9 = entry4[field];
-            if (!isRecord(names9)) continue;
-            for (const name3 of Object.keys(names9)) {
-              const target = this.#resolve(location2, name3);
-              if (target === null) identities.push(absent(location2, name3));
-              else stack.push(target);
-            }
-          }
-        }
-        this.#closures.set(start2, identities);
-        return identities;
-      }
-      /** An identity is unique within one install; the install's directory makes it unique across. */
-      #scanId(identity4) {
-        return `${this.dir}\0${identity4}`;
-      }
-    };
-    WHOLE = { manager: null, stale: null, text: null, graph: null };
-  }
-});
-
-// src/core/keys/pnpm-lockfile.ts
-import { createHash as createHash13 } from "node:crypto";
-function withoutLinkedSpecifiers(text3) {
-  const lines = text3.split("\n");
-  return lines.filter((line, at2) => !linkedSpecifier(line, lines[at2 + 1] ?? "")).join("\n");
-}
-function linkedSpecifier(line, next) {
-  const indent2 = /^( +)specifier: /.exec(line)?.[1];
-  return indent2 !== void 0 && next.startsWith(`${indent2}version: link:`);
-}
-function readPnpmLockfile(text3) {
-  const reader = {
-    importers: /* @__PURE__ */ new Map(),
-    integrity: /* @__PURE__ */ new Map(),
-    snapshots: /* @__PURE__ */ new Map(),
-    version: false,
-    part: null,
-    entry: null,
-    id: "",
-    reading: false,
-    dependency: ""
-  };
-  for (const line of text3.split("\n")) {
-    const indent2 = /^ */.exec(line)?.[0].length ?? 0;
-    const body2 = line.slice(indent2);
-    if (body2 === "" || body2.startsWith("#")) continue;
-    if (/^\s/.test(body2) || indent2 % 2 !== 0) return null;
-    const known4 = indent2 === 0 ? readTopLevel(reader, body2) : reader.part === "packages" ? readPackageLine(reader, indent2, body2) : reader.part === null || readEntryLine(reader, reader.part, indent2, body2);
-    if (!known4) return null;
-  }
-  return lockfileOf(reader);
-}
-function readTopLevel(reader, body2) {
-  const pair2 = pairOf(body2);
-  if (pair2 === null) return false;
-  const [key3, value] = pair2;
-  if (key3 === "lockfileVersion") {
-    if (!/^9\.\d+$/.test(value)) return false;
-    reader.version = true;
-  } else if (!UNREAD.root.has(key3) && (!isPart(key3) || value !== "")) return false;
-  reader.part = isPart(key3) ? key3 : null;
-  [reader.entry, reader.id, reader.reading] = [null, "", false];
-  return true;
-}
-function readPackageLine(reader, indent2, body2) {
-  if (indent2 > 4) return true;
-  const pair2 = pairOf(body2);
-  if (pair2 === null) return false;
-  const [key3, value] = pair2;
-  if (indent2 === 2) {
-    if (value !== "") return false;
-    reader.id = key3;
-  } else if (key3 === "resolution") {
-    if (!value.startsWith("{")) return false;
-    const found4 = /^\{(?:.*[ ,])?integrity: ([^\s,}]+)[,}]/.exec(value)?.[1];
-    if (found4 !== void 0) reader.integrity.set(reader.id, found4);
-  } else if (!UNREAD.packages.has(key3)) return false;
-  return true;
-}
-function readEntryLine(reader, part2, indent2, body2) {
-  if (indent2 > 4 && !reader.reading) return true;
-  if (indent2 > (part2 === "importers" ? 8 : 6) || body2.startsWith("- ")) return false;
-  const pair2 = pairOf(body2);
-  if (pair2 === null) return false;
-  const [key3, value] = pair2;
-  if (indent2 === 2) {
-    if (value !== "" && value !== "{}") return false;
-    reader.entry = /* @__PURE__ */ new Map();
-    reader[part2].set(key3, reader.entry);
-    reader.reading = false;
-    return true;
-  }
-  const { entry: entry4 } = reader;
-  if (entry4 === null) return false;
-  if (indent2 === 4) {
-    reader.reading = (part2 === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key3);
-    return reader.reading ? value === "" : UNREAD[part2].has(key3);
-  }
-  if (part2 === "snapshots") return isRef2(value) && setOnce(entry4, key3, value);
-  return readDependencyLine(reader, entry4, indent2, pair2);
-}
-function readDependencyLine(reader, entry4, indent2, [key3, value]) {
-  if (indent2 === 6) {
-    if (value !== "") return false;
-    reader.dependency = key3;
-    if (!entry4.has(key3)) entry4.set(key3, "");
-    return true;
-  }
-  if (key3 === "version") return isRef2(value) && setOnce(entry4, reader.dependency, value);
-  return key3 === "specifier";
-}
-function lockfileOf({ version: version2, importers, integrity, snapshots }) {
-  for (const declared of importers.values()) {
-    for (const ref3 of declared.values()) if (ref3 === "") return null;
-  }
-  return version2 && importers.has(".") ? { importers, integrity, snapshots } : null;
-}
-function isPart(key3) {
-  return key3 === "importers" || key3 === "packages" || key3 === "snapshots";
-}
-function isRef2(value) {
-  return value !== "" && !value.startsWith("{") && !value.startsWith("[");
-}
-function setOnce(map, name3, value) {
-  const known4 = map.get(name3);
-  if (known4 !== void 0 && known4 !== "" && known4 !== value) return false;
-  map.set(name3, value);
-  return true;
-}
-function pairOf(body2) {
-  let key3;
-  let rest2;
-  if (body2.startsWith("'")) {
-    const quoted4 = singleQuoted(body2);
-    if (quoted4 === null) return null;
-    [key3, rest2] = quoted4;
-  } else {
-    const at2 = body2.search(/:(?: |$)/);
-    if (at2 <= 0 || body2.startsWith('"')) return null;
-    key3 = body2.slice(0, at2);
-    rest2 = body2.slice(at2);
-  }
-  if (rest2 !== ":" && !rest2.startsWith(": ")) return null;
-  const value = rest2.slice(1).trim();
-  if (value.startsWith('"')) return null;
-  if (!value.startsWith("'")) return [key3, value];
-  const quoted3 = singleQuoted(value);
-  return quoted3 === null || quoted3[1] !== "" ? null : [key3, quoted3[0]];
-}
-function singleQuoted(text3) {
-  const quoted3 = /^'((?:[^']|'')*)'/.exec(text3);
-  const [all2, inner] = quoted3 ?? [];
-  return all2 === void 0 || inner === void 0 ? null : [inner.replaceAll("''", "'"), text3.slice(all2.length)];
-}
-function pnpmFolderName(id, max) {
-  let name3 = id.replace(/[\\/:*?"<>|#]/g, "+");
-  if (name3.includes("(")) name3 = name3.replace(/\)$/, "").replace(/\)\(|\(|\)/g, "_");
-  if (name3.length > max || name3 !== name3.toLowerCase() && !name3.startsWith("file+")) {
-    const digest2 = createHash13("sha256").update(name3).digest("hex");
-    return `${name3.slice(0, max - 33)}_${digest2.slice(0, 32)}`;
-  }
-  return name3;
-}
-var PNPM_VIRTUAL_STORE, PNPM_LOCKFILE, IMPORTER_FIELDS, SNAPSHOT_FIELDS, UNREAD;
-var init_pnpm_lockfile = __esm({
-  "src/core/keys/pnpm-lockfile.ts"() {
-    "use strict";
-    PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
-    PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
-    IMPORTER_FIELDS = /* @__PURE__ */ new Set(["dependencies", "devDependencies", "optionalDependencies"]);
-    SNAPSHOT_FIELDS = /* @__PURE__ */ new Set(["dependencies", "optionalDependencies"]);
-    UNREAD = {
-      root: /* @__PURE__ */ new Set([
-        "settings",
-        "catalogs",
-        "overrides",
-        "packageExtensionsChecksum",
-        "pnpmfileChecksum",
-        "patchedDependencies",
-        "ignoredOptionalDependencies",
-        "time"
-      ]),
-      importers: /* @__PURE__ */ new Set(["dependenciesMeta", "publishDirectory"]),
-      packages: /* @__PURE__ */ new Set([
-        "bundledDependencies",
-        "cpu",
-        "deprecated",
-        "engines",
-        "hasBin",
-        "libc",
-        "name",
-        "os",
-        "peerDependencies",
-        "peerDependenciesMeta",
-        "version"
-      ]),
-      snapshots: /* @__PURE__ */ new Set(["transitivePeerDependencies", "optional", "id"])
-    };
-  }
-});
-
-// src/core/keys/pnpm-graph.ts
-import { join as join36, posix as posix10 } from "node:path";
-function isMarker(target) {
-  return target.startsWith("workspace:") || target.startsWith("unknown:");
-}
-function nameOf(id) {
-  return id.slice(0, id.indexOf("@", 1));
-}
-function childOf(name3, ref3) {
-  if (ref3.startsWith("link:")) return workspace("", ref3);
-  return ref3.replace(/\(.*$/, "").indexOf("@", 1) > 0 ? ref3 : `${name3}@${ref3}`;
-}
-function workspace(dir2, ref3) {
-  return `workspace:${posix10.normalize(posix10.join(dir2, ref3.slice("link:".length)))}`;
-}
-var FOLDER_MAX_LENGTH, PnpmGraph;
-var init_pnpm_graph = __esm({
-  "src/core/keys/pnpm-graph.ts"() {
-    "use strict";
-    init_compare();
-    init_json();
-    init_package_scans();
-    init_packages();
-    init_pnpm_lockfile();
-    FOLDER_MAX_LENGTH = 120;
-    PnpmGraph = class {
-      /**
-       * `base` is the directory holding `node_modules`, relative to the worktree
-       * root (`""` for the root); `modules` is `.modules.yaml` as parsed JSON.
-       * `scans` caches the on-disk scans by identity.
-       */
-      constructor(dir2, base, lockfile, modules, scans = new PackageScans()) {
-        this.dir = dir2;
-        this.base = base;
-        this.lockfile = lockfile;
-        this.scans = scans;
-        const max = modules.virtualStoreDirMaxLength;
-        const length = typeof max === "number" ? max : FOLDER_MAX_LENGTH;
-        const folders = /* @__PURE__ */ new Map();
-        for (const id of lockfile.snapshots.keys()) {
-          const folder = pnpmFolderName(id, length);
-          folders.set(id, folder);
-          this.#snapshotOf.set(folder, id);
-        }
-        this.folders = folders;
-        const skipped2 = Array.isArray(modules.skipped) ? modules.skipped : [];
-        this.skipped = new Set(skipped2.filter((id) => typeof id === "string"));
-        const publicHoisted = /* @__PURE__ */ new Map();
-        const privateHoisted = /* @__PURE__ */ new Map();
-        const hoisted = isRecord(modules.hoistedDependencies) ? modules.hoistedDependencies : {};
-        for (const [id, aliases] of Object.entries(hoisted)) {
-          if (!isRecord(aliases)) continue;
-          for (const [alias, kind] of Object.entries(aliases)) {
-            if (kind === "public") publicHoisted.set(alias, id);
-            else if (kind === "private") privateHoisted.set(alias, id);
-          }
-        }
-        this.publicHoisted = publicHoisted;
-        this.privateHoisted = privateHoisted;
-      }
-      dir;
-      base;
-      lockfile;
-      scans;
-      /** The `.pnpm` folder of each snapshot, by id. */
-      folders;
-      /** Snapshots `.modules.yaml` lists as skipped: optional packages pnpm did not install. */
-      skipped;
-      /** The snapshot each publicly hoisted name at the root links to. */
-      publicHoisted;
-      /** The snapshot each privately hoisted name in `.pnpm/node_modules` links to. */
-      privateHoisted;
-      #snapshotOf = /* @__PURE__ */ new Map();
-      #closures = /* @__PURE__ */ new Map();
-      /** The package folder of each installed identity a closure produced. */
-      #packageFolders = /* @__PURE__ */ new Map();
-      /** The sorted identities of every installed package `imports` can load, without those in `exclude`. */
-      identities(imports2, exclude) {
-        const found4 = /* @__PURE__ */ new Set();
-        const starts = /* @__PURE__ */ new Set();
-        for (const { from, name: name3, manifest } of imports2) {
-          const local2 = this.#local(from);
-          const targets3 = local2 === null ? [] : this.#resolve(local2, name3);
-          if (targets3.length === 0) found4.add(`absent:${local2 ?? from}>${name3}`);
-          for (const target of targets3) {
-            if (isMarker(target)) found4.add(target);
-            else if (manifest === true) found4.add(this.#identity(target));
-            else starts.add(target);
-          }
-        }
-        for (const id of starts) {
-          for (const identity4 of this.#closure(id)) found4.add(identity4);
-        }
-        return [...found4].filter((identity4) => !exclude?.has(identity4)).sort(compare);
-      }
-      /**
-       * Whether one of `identities`, as `identities()` returned them, is a
-       * folder no snapshot names, a snapshot without an integrity, or a package
-       * whose code reaches `child_process`, `worker_threads`, `module` or
-       * `cluster` (task 001-109). Scanned once per identity.
-       */
-      opaque(identities) {
-        return identities.some((identity4) => {
-          if (identity4.startsWith("unknown:") || identity4.startsWith("nointegrity:")) return true;
-          const folder = this.#packageFolders.get(identity4);
-          return folder !== void 0 && this.scans.opaque(this.#scanId(identity4), join36(this.dir, folder));
-        });
-      }
-      /** A worktree-relative directory relative to the install, or `null` when outside it. */
-      #local(from) {
-        const prefix = this.base === "" ? "" : `${this.base}/`;
-        if (from === this.base) return "";
-        return from.startsWith(prefix) ? from.slice(prefix.length) : null;
-      }
-      /**
-       * What `name` resolves to from `from`: the skipped packages Node walks
-       * past, then the snapshot id or marker it finds; empty when absent.
-       */
-      #resolve(from, name3) {
-        const store = `${PNPM_VIRTUAL_STORE}/`;
-        if (!from.startsWith(store)) return this.#walk(this.#fromImporters(from, name3));
-        const folder = from.slice(store.length).split("/")[0] ?? "";
-        const id = this.#snapshotOf.get(folder);
-        if (id === void 0) return [`unknown:${folder}`];
-        return nameOf(id) === name3 ? [id] : this.#walk(this.#fromFolder(id, name3));
-      }
-      /** The candidates of a walk up to the first one pnpm installed: the skipped ones, then it. */
-      #walk(candidates) {
-        const found4 = [];
-        for (const candidate of candidates) {
-          if (candidate === void 0) continue;
-          found4.push(candidate);
-          if (!this.skipped.has(candidate)) break;
-        }
-        return found4;
-      }
-      /** Node's walk from snapshot `id`'s folder: its edges, pnpm's private hoisting, then the root. */
-      *#fromFolder(id, name3) {
-        const ref3 = this.lockfile.snapshots.get(id)?.get(name3);
-        yield ref3 === void 0 ? void 0 : childOf(name3, ref3);
-        yield this.privateHoisted.get(name3);
-        yield* this.#fromImporters("", name3);
-      }
-      /**
-       * Node's walk from a project directory: pnpm creates `node_modules` only
-       * in importers, the root's with the names it hoists publicly.
-       */
-      *#fromImporters(from, name3) {
-        for (let dir2 = from; ; dir2 = parent(dir2)) {
-          const ref3 = this.lockfile.importers.get(dir2 === "" ? "." : dir2)?.get(name3);
-          if (ref3?.startsWith("link:")) yield workspace(dir2, ref3);
-          else if (ref3 !== void 0) yield childOf(name3, ref3);
-          if (dir2 === "") {
-            yield this.publicHoisted.get(name3);
-            return;
-          }
-        }
-      }
-      /** `<id>#<integrity>` and its sorted edges, or a marker the closure does not expand. */
-      #identity(id) {
-        const base = this.#base(id);
-        if (!base.startsWith(`${id}#`)) return base;
-        const edges = [...this.lockfile.snapshots.get(id) ?? []].map(
-          ([name3, ref3]) => this.#typesOnly(childOf(name3, ref3)) ? `${name3}@types-only` : `${name3}@${ref3}`
-        );
-        return edges.length === 0 ? base : `${base}>${edges.sort(compare).join(",")}`;
-      }
-      /** `<id>#<integrity>`, or a marker: no such snapshot, no integrity, or skipped. */
-      #base(id) {
-        if (!this.lockfile.snapshots.has(id)) return `unknown:${id}`;
-        const integrity = this.lockfile.integrity.get(id.replace(/\(.*$/, ""));
-        if (integrity === void 0) return `nointegrity:${id}`;
-        return this.skipped.has(id) ? `skipped:${id}#${integrity}` : `${id}#${integrity}`;
-      }
-      /** Whether `id` is an installed snapshot whose package has no runtime file (task 001-109). */
-      #typesOnly(id) {
-        const base = this.#base(id);
-        return base.startsWith(`${id}#`) && this.scans.typesOnly(this.#scanId(base), join36(this.dir, this.#folderOf(id)));
-      }
-      /** The package folder of snapshot `id`, relative to the install. */
-      #folderOf(id) {
-        return `${PNPM_VIRTUAL_STORE}/${this.folders.get(id)}/node_modules/${nameOf(id)}`;
-      }
-      /** Identities of `start` and everything it can load, memoized per snapshot. */
-      #closure(start2) {
-        const memo2 = this.#closures.get(start2);
-        if (memo2 !== void 0) return memo2;
-        const identities = [];
-        const seen2 = /* @__PURE__ */ new Set();
-        const stack = [start2];
-        for (let id = stack.pop(); id !== void 0; id = stack.pop()) {
-          if (seen2.has(id)) continue;
-          seen2.add(id);
-          const base = isMarker(id) ? id : this.#base(id);
-          if (!base.startsWith(`${id}#`)) {
-            identities.push(base);
-            continue;
-          }
-          if (this.#typesOnly(id)) {
-            identities.push(`${nameOf(id)}@types-only`);
-            continue;
-          }
-          const identity4 = this.#identity(id);
-          identities.push(identity4);
-          this.#packageFolders.set(identity4, this.#folderOf(id));
-          for (const name3 of this.lockfile.snapshots.get(id)?.keys() ?? [])
-            stack.push(...this.#walk(this.#fromFolder(id, name3)));
-        }
-        this.#closures.set(start2, identities);
-        return identities;
-      }
-      /** An identity is unique within one install; the install's directory makes it unique across. */
-      #scanId(identity4) {
-        return `${this.dir}\0${identity4}`;
-      }
-    };
-  }
-});
-
-// src/core/keys/pnpm-install.ts
-import { createHash as createHash14 } from "node:crypto";
-import { lstatSync as lstatSync5, readdirSync as readdirSync15, readFileSync as readFileSync24, readlinkSync as readlinkSync4 } from "node:fs";
-import { join as join37 } from "node:path";
-function readPnpmInstall(dir2, base, text3, scans) {
-  const modules = layoutOf(dir2);
-  if (modules === null) return null;
-  const lockfile = readPnpmLockfile(text3);
-  if (lockfile === null) return null;
-  const graph = new PnpmGraph(dir2, base, lockfile, modules, scans);
-  const stale3 = stalePnpmLockfile(dir2, graph);
-  if (stale3 === null) return { graph, stale: stale3 };
-  return {
-    graph: null,
-    stale: stale3,
-    folders: pnpmPackageFoldersFingerprint(dir2, lockfile.importers.keys())
-  };
-}
-function pnpmReading(dir2, base, content, scans) {
-  const text3 = content.toString("utf8");
-  const install = base === null ? null : readPnpmInstall(dir2, base, text3, scans);
-  if (install !== null && install.stale !== null) {
-    return { manager: "pnpm", stale: install.stale, folders: install.folders, graph: null };
-  }
-  const graph = install?.graph ?? null;
-  return { manager: "pnpm", stale: null, text: withoutLinkedSpecifiers(text3), graph };
-}
-function layoutOf(dir2) {
-  let modules;
-  try {
-    modules = JSON.parse(readFileSync24(join37(dir2, PNPM_MODULES), "utf8"));
-  } catch {
-    return null;
-  }
-  if (!isRecord(modules) || modules.nodeLinker !== "isolated") return null;
-  if (modules.virtualStoreDir !== ".pnpm" || modules.enableGlobalVirtualStore === true) return null;
-  return modules;
-}
-function stalePnpmLockfile(dir2, graph) {
-  const lockTime = lstatSync5(join37(dir2, PNPM_LOCKFILE)).mtimeMs;
-  const stale3 = { unlisted: [], newer: [], missing: [], installed: [] };
-  checkVirtualStore(dir2, graph, lockTime, stale3);
-  checkImporters(dir2, graph, lockTime, stale3);
-  const parts3 = [
-    ["not listed in it", stale3.unlisted],
-    ["newer than it", stale3.newer],
-    ["missing", stale3.missing],
-    ["installed though skipped", stale3.installed]
-  ];
-  const reasons = parts3.filter(([, paths]) => paths.length > 0).map(([label3, paths]) => `${label3}: ${example2(paths)}`);
-  return reasons.length === 0 ? null : reasons.join("; ");
-}
-function checkVirtualStore(dir2, graph, lockTime, stale3) {
-  for (const [id, folder] of graph.folders) {
-    if (graph.skipped.has(id)) continue;
-    const modules = `${PNPM_VIRTUAL_STORE}/${folder}/node_modules`;
-    const path = `${modules}/${id.slice(0, id.indexOf("@", 1))}`;
-    const stat10 = lstatSync5(join37(dir2, path), { throwIfNoEntry: false });
-    if (stat10 === void 0) stale3.missing.push(path);
-    else if (stat10.mtimeMs > lockTime) stale3.newer.push(path);
-    for (const [name3, ref3] of graph.lockfile.snapshots.get(id) ?? []) {
-      const edge = `${modules}/${name3}`;
-      expectLink(graph, stale3, edge, childOf(name3, ref3), exists(dir2, edge));
-    }
-  }
-  for (const [alias, id] of graph.privateHoisted) {
-    const path = `${PNPM_VIRTUAL_STORE}/node_modules/${alias}`;
-    expectLink(graph, stale3, path, id, exists(dir2, path));
-  }
-}
-function checkImporters(dir2, graph, lockTime, stale3) {
-  for (const [importer, declared] of graph.lockfile.importers) {
-    const modules = importer === "." ? "node_modules" : `${importer}/node_modules`;
-    const present3 = new Set(namesIn(join37(dir2, modules)));
-    for (const name3 of present3) {
-      const path = `${modules}/${name3}`;
-      if (!declared.has(name3) && !(importer === "." && graph.publicHoisted.has(name3))) {
-        stale3.unlisted.push(path);
-      } else if (lstatSync5(join37(dir2, path)).mtimeMs > lockTime) stale3.newer.push(path);
-    }
-    const links = new Map([...declared].map(([name3, ref3]) => [name3, childOf(name3, ref3)]));
-    for (const [alias, id] of importer === "." ? graph.publicHoisted : []) {
-      const own = links.get(alias);
-      if (own === void 0 || graph.skipped.has(own)) links.set(alias, id);
-    }
-    for (const [name3, target] of links) {
-      expectLink(graph, stale3, `${modules}/${name3}`, target, present3.has(name3));
-    }
-  }
-}
-function expectLink(graph, stale3, path, target, there) {
-  if (graph.skipped.has(target)) {
-    if (there) stale3.installed.push(path);
-  } else if (!there) stale3.missing.push(path);
-}
-function exists(dir2, path) {
-  return lstatSync5(join37(dir2, path), { throwIfNoEntry: false }) !== void 0;
-}
-function pnpmPackageFoldersFingerprint(dir2, importers) {
-  const roots = /* @__PURE__ */ new Set(["node_modules", `${PNPM_VIRTUAL_STORE}/node_modules`]);
-  for (const importer of importers)
-    roots.add(importer === "." ? "node_modules" : `${importer}/node_modules`);
-  for (const folder of entriesOf5(join37(dir2, PNPM_VIRTUAL_STORE))) {
-    if (folder.isDirectory() && folder.name !== "node_modules") {
-      roots.add(`${PNPM_VIRTUAL_STORE}/${folder.name}/node_modules`);
-    }
-  }
-  const entries3 = [];
-  const walk8 = (at2) => {
-    for (const name3 of namesIn(join37(dir2, at2))) {
-      const path = `${at2}/${name3}`;
-      const link = lstatSync5(join37(dir2, path)).isSymbolicLink();
-      entries3.push(
-        link ? [path, "link", readlinkSync4(join37(dir2, path))] : [path, ...manifestOf(dir2, path)]
-      );
-      if (!link) walk8(`${path}/node_modules`);
-    }
-  };
-  for (const at2 of [...roots].sort(compare)) walk8(at2);
-  return createHash14("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING2, entries3])).digest("hex");
-}
-function namesIn(modules) {
-  const names9 = [];
-  for (const entry4 of entriesOf5(modules)) {
-    if (entry4.name.startsWith(".")) continue;
-    if (entry4.name.startsWith("@") && entry4.isDirectory()) {
-      for (const child of entriesOf5(join37(modules, entry4.name)))
-        names9.push(`${entry4.name}/${child.name}`);
-    } else names9.push(entry4.name);
-  }
-  return names9.sort(compare);
-}
-function entriesOf5(path) {
-  try {
-    return readdirSync15(path, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-}
-function manifestOf(dir2, path) {
-  try {
-    const manifest = JSON.parse(readFileSync24(join37(dir2, path, "package.json"), "utf8"));
-    return isRecord(manifest) ? [manifest.name ?? null, manifest.version ?? null] : [null, null];
-  } catch {
-    return [null, null];
-  }
-}
-function example2(paths) {
-  const [first2] = [...paths].sort(compare);
-  return paths.length === 1 ? `${first2}` : `${first2} and ${paths.length - 1} more`;
-}
-var PNPM_MODULES, PACKAGE_FOLDERS_ENCODING2;
-var init_pnpm_install = __esm({
-  "src/core/keys/pnpm-install.ts"() {
-    "use strict";
-    init_compare();
-    init_json();
-    init_pnpm_graph();
-    init_pnpm_lockfile();
-    PNPM_MODULES = "node_modules/.modules.yaml";
-    PACKAGE_FOLDERS_ENCODING2 = "squeal-pnpm-package-folders/1";
-  }
-});
-
-// src/core/keys/environment.ts
-import { createHash as createHash15 } from "node:crypto";
-import { dirname as dirname16, join as join38, resolve as resolve9 } from "node:path";
-function coreEnvironmentInputs(options) {
-  const source2 = options.env ?? process.env;
-  const env = {};
-  for (const name3 of [...options.allowlist].sort(compare)) {
-    const value = source2[name3];
-    if (value !== void 0) env[name3] = value;
-  }
-  return {
-    squealVersion: options.squealVersion,
-    nodeVersion: process.version,
-    platform: process.platform,
-    arch: process.arch,
-    installedDependencies: options.installedDependencies,
-    env
-  };
-}
-function isInstalledLockfile(path) {
-  return LOCKFILES2.some((format2) => path === format2.path || path.endsWith(`/${format2.path}`));
-}
-async function findInstalledLockfile(projectRoot, worktreeRoot2) {
-  const found4 = await locateLockfile(projectRoot, worktreeRoot2);
-  if (found4 === null) return null;
-  const { dir: dir2, format: format2 } = found4;
-  return {
-    path: join38(dir2, format2.path),
-    patches: format2.patches === null ? null : join38(dir2, format2.patches)
-  };
-}
-async function installedDependenciesFingerprint(projectRoot, worktreeRoot2) {
-  return (await installedDependencies(projectRoot, worktreeRoot2)).fingerprint;
-}
-async function installedDependencies(projectRoot, worktreeRoot2, scans) {
-  const found4 = await locateLockfile(projectRoot, worktreeRoot2);
-  if (found4 === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
-  const { dir: dir2, base, format: format2, content } = found4;
-  const reading = format2.read?.(dir2, base, content, scans) ?? WHOLE;
-  const hash4 = createHash15("sha256").update(`${format2.path}\0`);
-  if (reading.stale !== null) hash4.update(`stale\0${reading.folders}`);
-  else if (reading.text !== null) hash4.update(`${INSTALLED_ENCODING}\0${reading.text}`);
-  else hash4.update(content);
-  const patches = createHash15("sha256");
-  if (format2.patches !== null) {
-    const patchesDir = join38(dir2, format2.patches);
-    for (const path of await listEntries(patchesDir)) {
-      const bytes2 = await readIfFile(join38(patchesDir, path));
-      if (bytes2 === null) continue;
-      for (const target of [hash4, patches]) {
-        target.update(`\0${path}\0${bytes2.byteLength}\0`).update(bytes2);
-      }
-    }
-  }
-  const lockfile = toRelative(worktreeRoot2, join38(dir2, format2.path)) ?? format2.path;
-  const note = reading.stale === null ? null : `${lockfile} does not describe the installed packages (${reading.stale}); dependencies are keyed by their package.json files until ${reading.manager} rewrites it`;
-  return {
-    fingerprint: hash4.digest("hex"),
-    note,
-    graph: reading.graph,
-    patches: patches.digest("hex")
-  };
-}
-async function locateLockfile(projectRoot, worktreeRoot2) {
-  for (let dir2 = projectRoot; ; dir2 = dirname16(dir2)) {
-    for (const format2 of LOCKFILES2) {
-      const content = await readIfFile(join38(dir2, format2.path));
-      if (content === null) continue;
-      const base = resolve9(dir2) === resolve9(worktreeRoot2) ? "" : toRelative(worktreeRoot2, dir2);
-      return { dir: dir2, base, format: format2, content };
-    }
-    if (dirname16(dir2) === dir2 || toRelative(worktreeRoot2, dir2) === null) return null;
-  }
-}
-var INSTALLED_ENCODING, LOCKFILES2;
-var init_environment = __esm({
-  "src/core/keys/environment.ts"() {
-    "use strict";
-    init_compare();
-    init_paths2();
-    init_files2();
-    init_hidden_lockfile();
-    init_packages();
-    init_pnpm_install();
-    init_pnpm_lockfile();
-    INSTALLED_ENCODING = "squeal-installed/2";
-    LOCKFILES2 = [
-      { path: HIDDEN_LOCKFILE, patches: "patches", read: npmReading },
-      { path: "node_modules/.yarn-state.yml", patches: null },
-      { path: ".pnp.cjs", patches: ".yarn/patches" },
-      { path: ".pnp.js", patches: ".yarn/patches" },
-      { path: "node_modules/.yarn-integrity", patches: "patches" },
-      { path: PNPM_LOCKFILE, patches: null, read: pnpmReading },
-      { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
-      { path: "bun.lock", patches: "patches" },
-      { path: "bun.lockb", patches: "patches" }
-    ];
   }
 });
 
@@ -79749,15 +79770,41 @@ function sharedOf2(remote) {
   } catch (error) {
     return `its remote record does not decode: ${String(error)}`;
   }
-  if (record2?.v !== 1 || !Array.isArray(record2.sources) || !Array.isArray(record2.unread)) {
-    return "its remote record is not a coverage record";
+  const wrong = recordProblem(record2);
+  if (wrong !== null) return `its remote record ${wrong}`;
+  try {
+    return shareRecord(record2, COVERAGE_RECORD_VERSION);
+  } catch (error) {
+    return `its remote record is not shared: ${String(error)}`;
   }
-  const paths = [...record2.sources.map((source2) => source2?.path), ...record2.unread];
-  const outside2 = paths.find((path) => typeof path !== "string" || !insideRoot3(path));
-  if (outside2 !== void 0) {
-    return `its remote record names a path outside the root: ${JSON.stringify(outside2)}`;
+}
+function recordProblem(record2) {
+  if (!isObject8(record2) || record2.v !== 1) return "is not a coverage record";
+  const { sources, unread } = record2;
+  if (!Array.isArray(sources) || !Array.isArray(unread)) return "is not a coverage record";
+  for (const source2 of sources) {
+    if (!isObject8(source2)) return `has a source that is not an object: ${JSON.stringify(source2)}`;
+    const outside2 = pathProblem(source2.path);
+    if (outside2 !== null) return outside2;
+    if (!sourceShaped(source2)) return `has a malformed source: ${JSON.stringify(source2.path)}`;
   }
-  return shareRecord(record2, COVERAGE_RECORD_VERSION);
+  for (const path of unread) {
+    const outside2 = pathProblem(path);
+    if (outside2 !== null) return outside2;
+  }
+  return null;
+}
+function pathProblem(path) {
+  return typeof path === "string" && insideRoot3(path) ? null : `names a path outside the root: ${JSON.stringify(path) ?? String(path)}`;
+}
+function sourceShaped(source2) {
+  const { blob, lines, covered, functions } = source2;
+  return typeof blob === "string" && typeof lines === "string" && typeof covered === "string" && Array.isArray(functions) && functions.every(
+    (span) => Array.isArray(span) && span.length === 5 && span.every((value) => typeof value === "number" && Number.isFinite(value))
+  );
+}
+function isObject8(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function recordsWithout(records, without2) {
   const gone6 = new Set(without2.map((ref3) => `${ref3.project}\0${ref3.path}`));
@@ -82745,7 +82792,9 @@ function shareMachine(options) {
   let queue = Promise.resolve();
   let sleeping = Promise.resolve();
   let incarnation = 0;
-  let diskPassed = -1;
+  let verdict = null;
+  let removing = null;
+  let unremoved = null;
   let acquiredAt = -1;
   let replaced = false;
   let degraded = false;
@@ -82832,7 +82881,8 @@ function shareMachine(options) {
       track(() => recordMachine(recordOf2(acquired, request, now()), env));
       if (released) throw refused();
     } else if (!awake) {
-      await machine.wake();
+      const m = machine;
+      await (m.syncGit === void 0 ? m.wake() : asWriter(() => m.wake()));
       incarnation++;
       if (released) throw refused();
       track(() => updateMachine(key3, { status: "awake", lastUsedAt: now() }, env));
@@ -82855,12 +82905,11 @@ function shareMachine(options) {
     return run8;
   };
   const leaseFree = (signal3) => new Promise((resolve54) => {
-    if (leased === 0 || signal3?.aborted === true) return resolve54();
+    if (leased === 0 || released || signal3?.aborted === true) return resolve54();
     quiet.push(resolve54);
     signal3?.addEventListener("abort", () => resolve54(), { once: true });
   });
-  const writeGit = async (m, signal3) => {
-    if (!awake || machine !== m) return;
+  const asWriter = async (write4, signal3) => {
     let open7 = () => {
     };
     gitWriting = new Promise((resolve54) => {
@@ -82868,11 +82917,18 @@ function shareMachine(options) {
     });
     try {
       await leaseFree(signal3);
-      if (awake && machine === m && signal3?.aborted !== true) await m.syncGit?.(target(m), signal3);
+      if (released) throw refused();
+      return await write4();
     } finally {
       gitWriting = null;
       open7();
     }
+  };
+  const writeGit = async (m, signal3) => {
+    if (!awake || machine !== m) return;
+    await asWriter(async () => {
+      if (awake && machine === m && signal3?.aborted !== true) await m.syncGit?.(target(m), signal3);
+    }, signal3);
   };
   const diskNote = (m, text3) => {
     if (text3 === null && !degraded) return;
@@ -82881,62 +82937,91 @@ function shareMachine(options) {
   };
   const checkDisk = async (m, probe2) => {
     const at2 = incarnation;
-    if (diskPassed === at2 && machine === m) return;
-    const verdict = await judgeDisk(lane.diskCheck, probe2);
-    if (verdict.kind === "unmeasured") {
-      request.log(`remote machine ${m.id}: disk not measured: ${verdict.why}`);
+    if (verdict?.at === at2 && machine === m) {
+      if (verdict.refusal === null) return;
+      throw new RemoteRefusal(verdict.refusal);
+    }
+    const judged2 = await judgeDisk(lane.diskCheck, probe2);
+    if (judged2.kind === "unmeasured") {
+      request.log(`remote machine ${m.id}: disk not measured: ${judged2.why}`);
       return;
     }
-    if (verdict.kind !== "slow") {
-      if (verdict.kind === "healthy") {
-        request.log(`remote machine ${m.id}: disk ${verdict.probe.medianMs.toFixed(2)} ms/sync`);
+    if (judged2.kind !== "slow") {
+      if (judged2.kind === "healthy") {
+        request.log(`remote machine ${m.id}: disk ${judged2.probe.medianMs.toFixed(2)} ms/sync`);
         diskNote(m, null);
       }
-      diskPassed = at2;
+      verdict = { at: at2, refusal: null };
       return;
     }
-    request.log(`remote machine ${m.id}: ${verdict.text}`);
+    request.log(`remote machine ${m.id}: ${judged2.text}`);
     if (lane.diskCheck.onSlowDisk === "warn") {
-      diskNote(m, `${verdict.text}; runs go there anyway (onSlowDisk "warn")`);
-      diskPassed = at2;
+      diskNote(m, `${judged2.text}; runs go there anyway (onSlowDisk "warn")`);
+      verdict = { at: at2, refusal: null };
       return;
     }
     const fresh2 = acquiredAt === at2 && m.capabilities.sleepOnIdle && !replaced;
-    if (fresh2 && machine === m && !released) {
-      replaced = true;
-      diskNote(m, `${verdict.text}; acquiring a fresh machine instead`);
-      machine = null;
-      awake = false;
-      disarm();
+    if (fresh2 && machine === m && !released && removing === null) await replace2(m, judged2.text);
+    diskNote(m, `${judged2.text}; refused (onSlowDisk "refuse")`);
+    verdict = { at: at2, refusal: judged2.text };
+    throw new RemoteRefusal(judged2.text);
+  };
+  const replace2 = async (m, text3) => {
+    diskNote(m, `${text3}; acquiring a fresh machine instead`);
+    const wasAwake = awake;
+    awake = false;
+    disarm();
+    const removal2 = (async () => {
       const shared2 = socket(m);
       if (shared2 !== null) await closeMaster(m.ssh, shared2);
-      await m.release("worktree-removed").catch((error) => {
-        request.log(`remote machine ${m.id} not released: ${String(error)}`);
-      });
-      track(() => forgetMachine(key3, env));
-      throw new FreshMachine(verdict.text);
+      await m.release("worktree-removed");
+    })();
+    removing = removal2.catch(() => {
+    });
+    try {
+      await removal2;
+    } catch (error) {
+      request.log(`remote machine ${m.id} not removed, kept and refused: ${String(error)}`);
+      unremoved = m;
+      if (released || machine !== m) return;
+      awake = wasAwake;
+      if (awake) arm(m);
+      return;
+    } finally {
+      removing = null;
     }
-    diskNote(m, `${verdict.text}; refused (onSlowDisk "refuse")`);
-    throw new RemoteRefusal(verdict.text);
+    machine = null;
+    replaced = true;
+    verdict = null;
+    track(() => forgetMachine(key3, env));
+    if (released) throw refused();
+    throw new FreshMachine(text3);
   };
   const releaseOnce = async () => {
     released = true;
     disarm();
+    const waiting2 = quiet;
+    quiet = [];
+    for (const resolve54 of waiting2) resolve54();
     await queue;
     await reaching?.catch(() => {
     });
     await sleeping;
+    await removing;
     const m = machine;
     if (m === null) return;
     awake = false;
     const at2 = socket(m);
     if (at2 !== null) await closeMaster(m.ssh, at2);
+    const removed = unremoved === m;
+    let gone6 = false;
     try {
-      await m.release("daemon-exit");
+      await m.release(removed ? "worktree-removed" : "daemon-exit");
+      gone6 = removed;
     } catch (error) {
       request.log(`remote machine ${m.id} not released: ${String(error)}`);
     }
-    track(() => updateMachine(key3, { status: "detached" }, env));
+    track(() => gone6 ? forgetMachine(key3, env) : updateMachine(key3, { status: "detached" }, env));
   };
   return {
     current: () => machine,
@@ -82985,6 +83070,7 @@ function shareMachine(options) {
     },
     lost() {
       awake = false;
+      verdict = null;
     },
     join(shared2) {
       lanes.add(shared2);
@@ -82999,6 +83085,8 @@ function shareMachine(options) {
         };
       const named4 = { provider: m.provider, machine: m.id };
       if (released) return { kind: "busy", ...named4, reason: "the daemon's exit is releasing it" };
+      if (removing !== null)
+        return { kind: "busy", ...named4, reason: "its slow disk's removal is in flight" };
       if (!m.capabilities.sleepOnIdle) return { kind: "always-on", ...named4 };
       const slept = await sleepAll(m);
       return slept === "slept" ? { kind: "slept", ...named4 } : { kind: "busy", ...named4, reason: slept.busy };
@@ -83052,7 +83140,7 @@ function remoteLaneOf(adapter) {
   return adapter !== null && sleepsRemote(adapter) ? adapter : null;
 }
 function createDaemonRemote(options) {
-  const { root, commonDir, launch } = options;
+  const { root, commonDir, launch, version: version2 } = options;
   const say = (text3, topic = REMOTE_TOPIC) => {
     if (options.lastNote(topic) !== text3) options.note(text3, topic);
   };
@@ -83102,8 +83190,10 @@ function createDaemonRemote(options) {
     lane,
     wrap: (spec) => {
       const tiers = lane.lanes.filter((tier) => spec.tiers?.includes(tier) ?? true);
-      if (!lane.runners.includes(spec.runner) || tiers.length === 0) {
-        return spec.here ?? spec.local;
+      if (!lane.runners.includes(spec.runner)) return spec.here ?? spec.local;
+      if (tiers.length === 0) {
+        const alone = spec.here ?? spec.local;
+        return lane.environmentMode === "remote-key" ? ranHere(alone, version2) : alone;
       }
       const topic = spec.name === void 0 ? REMOTE_TOPIC : `${REMOTE_TOPIC}:${spec.name}`;
       return laneOver(share2, spec, tiers, {
@@ -83118,6 +83208,23 @@ function createDaemonRemote(options) {
     sleepRemote: () => share2.sleep(),
     release: () => share2.release()
   };
+}
+function coreHere(version2) {
+  return coreEnvironmentInputs({
+    squealVersion: version2,
+    installedDependencies: "",
+    allowlist: []
+  });
+}
+function ranHere(adapter, version2) {
+  const run8 = async (testFiles3, options) => tagReportCore(await adapter.run(testFiles3, options), coreHere(version2));
+  return new Proxy(adapter, {
+    get(target, name3) {
+      if (name3 === "run") return run8;
+      const value = Reflect.get(target, name3, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
 }
 function laneOver(share2, spec, tiers, context2) {
   const { options, target } = context2;
@@ -83268,6 +83375,7 @@ var init_daemon_lane = __esm({
     init_user_config();
     init_git_layout();
     init_git_index();
+    init_environment();
     init_deferred_keying();
     init_runner();
     init_vitest_host();
@@ -83277,6 +83385,7 @@ var init_daemon_lane = __esm({
     init_lane();
     init_lane_tiers();
     init_machine_share();
+    init_remote_key();
     init_settings();
     REMOTE_TOPIC = "remote-lane";
     REMOTE_SETTINGS_TOPIC = "remote-settings";
@@ -85193,8 +85302,8 @@ init_text();
 
 // src/core/status/code-status.ts
 init_runtime2();
-import { readFileSync as readFileSync20 } from "node:fs";
-import { join as join30 } from "node:path";
+import { readFileSync as readFileSync23 } from "node:fs";
+import { join as join36 } from "node:path";
 
 // src/core/code/crap/status.ts
 init_checks();
@@ -85269,7 +85378,7 @@ init_open2();
 init_policy2();
 
 // src/runners/descriptions.ts
-import { posix as posix7 } from "node:path";
+import { posix as posix9 } from "node:path";
 
 // src/runners/node-test/describe.ts
 var UNCONFIGURED = { nodeTest: [] };
@@ -85315,7 +85424,7 @@ function nodeTestFiles(command, listing) {
 // src/runners/pytest/describe.ts
 init_discover();
 import { realpathSync as realpathSync3 } from "node:fs";
-import { join as join28, resolve as resolve6 } from "node:path";
+import { join as join34, resolve as resolve7 } from "node:path";
 var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
 var PYTEST = {
   runner: "pytest",
@@ -85346,7 +85455,7 @@ function pytestHere(root, cwd, projects2) {
 }
 function realPath(path) {
   try {
-    return realpathSync3(resolve6(path));
+    return realpathSync3(resolve7(path));
   } catch {
     return null;
   }
@@ -85365,13 +85474,13 @@ function pytestCommand(words, here) {
     if (OUTPUT_FLAG.test(word2)) continue;
     const path = word2.split("::")[0];
     if (word2.startsWith("-") || path === "") return null;
-    paths.push(resolve6(dir2, path));
+    paths.push(resolve7(dir2, path));
   }
   return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
 }
 function invocation(words, dir2, env) {
   const [first2, second, third] = words;
-  const inEnv = (name3) => env !== null && first2?.includes("/") === true && resolve6(dir2, first2) === join28(env, "bin", name3);
+  const inEnv = (name3) => env !== null && first2?.includes("/") === true && resolve7(dir2, first2) === join34(env, "bin", name3);
   if (first2 === "pytest" || inEnv("pytest")) return 1;
   if (first2 === "uv" && second === "run" && third === "pytest") return 3;
   if ((first2 === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -85389,8 +85498,8 @@ function pytestFiles(command, listing) {
 init_runner2();
 init_json();
 init_text();
-import { readFileSync as readFileSync19 } from "node:fs";
-import { isAbsolute as isAbsolute8, join as join29, relative as relative4, resolve as resolve7 } from "node:path";
+import { readFileSync as readFileSync22 } from "node:fs";
+import { isAbsolute as isAbsolute9, join as join35, relative as relative4, resolve as resolve8 } from "node:path";
 var UNCONFIGURED2 = { vitest: true };
 var REPORTER = "--reporter";
 var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
@@ -85467,22 +85576,22 @@ function vitestFiles(command, listing) {
   if (command.filters.length === 0) return vitest;
   const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref3) => matchesFilter(join29(root, ref3.path), filter, root));
+    const hits = vitest.filter((ref3) => matchesFilter(join35(root, ref3.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref3 of hits) selected2.add(ref3);
   }
   return vitest.filter((ref3) => selected2.has(ref3));
 }
 function matchesFilter(file, filter, root) {
-  if (isAbsolute8(filter) && file.startsWith(filter)) return true;
+  if (isAbsolute9(filter) && file.startsWith(filter)) return true;
   const testFile = relative4(root, file).toLocaleLowerCase();
-  const rel2 = relative4(root, resolve7(root, filter));
-  const relativePath = filter.endsWith("/") ? join29(rel2, "/") : rel2;
+  const rel2 = relative4(root, resolve8(root, filter));
+  const relativePath = filter.endsWith("/") ? join35(rel2, "/") : rel2;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync19(join29(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync22(join35(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text3]) => typeof text3 === "string")
@@ -85519,7 +85628,7 @@ function runnerCoverage(policy, root) {
 function fromRoot({ name: name3, cwd, include }) {
   return {
     name: name3,
-    include: include.map((glob2) => cwd === void 0 ? glob2 : posix7.join(cwd, glob2))
+    include: include.map((glob2) => cwd === void 0 ? glob2 : posix9.join(cwd, glob2))
   };
 }
 
@@ -85862,7 +85971,7 @@ function codeStatusOf(store, worktreeId, at2, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync20(join30(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync23(join36(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
@@ -86519,7 +86628,7 @@ var lintStatusPart = (s, command) => s.lint === void 0 ? [] : lintStatusLines(s.
 
 // src/core/status/next-step-text.ts
 init_text();
-import { posix as posix8 } from "node:path";
+import { posix as posix10 } from "node:path";
 var PATHS_IN_COMMAND = 3;
 function stepText(step2, paths, command) {
   const n = paths.length;
@@ -86552,8 +86661,8 @@ function reasonWords(next, paths, command) {
   );
 }
 function fromBase(base, path) {
-  if (base === void 0 || base === "" || posix8.isAbsolute(base)) return path;
-  return posix8.relative(base, path);
+  if (base === void 0 || base === "" || posix10.isAbsolute(base)) return path;
+  return posix10.relative(base, path);
 }
 function stepCommand(step2, paths, command) {
   switch (step2.kind) {
@@ -87479,7 +87588,7 @@ function freshText(s) {
 }
 
 // src/core/status/format-why.ts
-import { basename as basename6, dirname as dirname15 } from "node:path";
+import { basename as basename6, dirname as dirname16 } from "node:path";
 init_text2();
 init_run_log();
 init_flaky();
@@ -87564,7 +87673,7 @@ function replacedAt(why2, key3) {
 
 // src/core/status/why-unknown.ts
 init_derive();
-import { basename as basename5, dirname as dirname14 } from "node:path";
+import { basename as basename5, dirname as dirname15 } from "node:path";
 function unknownRunOf(store, worktreeId, check3, knownState2, logOf) {
   if (knownState2?.outcome !== "unknown") return void 0;
   const file = testFileOf(check3);
@@ -87614,7 +87723,7 @@ function logLines(log, run8) {
   const capital = `${run8.charAt(0).toUpperCase()}${run8.slice(1)}`;
   const lines = log.state === "not-vitest" ? [
     `Run log: none, ${run8} wrote no ${basename5(log.path)}`,
-    `  ${capital} ended this check UNKNOWN; its runner's output is under ${dirname14(log.path)}`
+    `  ${capital} ended this check UNKNOWN; its runner's output is under ${dirname15(log.path)}`
   ] : [
     `Run log: ${log.path}`,
     `  ${capital} ended this check UNKNOWN. ${log.state === "node-test" ? `Its stderr log: ${log.stderrPath ?? "not recorded"}.` : "The log covers that whole run, every test file in it, not only this check."}`
@@ -87842,7 +87951,7 @@ function runLog(why2) {
   if (log.state === "not-vitest") {
     return [
       `Run log: none, run ${log.runId} in ${where3} wrote no ${basename6(log.path)}`,
-      `  Its runner's output is under ${dirname15(log.path)}`,
+      `  Its runner's output is under ${dirname16(log.path)}`,
       ...log.console === null ? [] : [`  No console of ${file} was captured in this run.`]
     ];
   }

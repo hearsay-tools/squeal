@@ -111,6 +111,11 @@ var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
 var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
 var DEFAULT_GROUP_NAMES = ["tests", "slow"];
 
+// src/core/fs/compare.ts
+function compare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 // src/core/types/policy.ts
 var DEFAULT_POLICY = {
   interrupt: { onRegression: true },
@@ -1545,6 +1550,24 @@ var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 
+// src/core/keys/environment.ts
+function coreEnvironmentInputs(options) {
+  const source = options.env ?? process.env;
+  const env = {};
+  for (const name2 of [...options.allowlist].sort(compare)) {
+    const value = source[name2];
+    if (value !== void 0) env[name2] = value;
+  }
+  return {
+    squealVersion: options.squealVersion,
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    installedDependencies: options.installedDependencies,
+    env
+  };
+}
+
 // src/core/commit/report.ts
 var LINT_KEYS = ["findings", "notDetermined", "running"];
 var TOOL_KEYS = ["files", ...LINT_KEYS];
@@ -1773,6 +1796,13 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 
 // src/core/scheduler/capacity.ts
 var CAPACITY_RECHECK_MS = 2e3;
+
+// src/core/scheduler/record-tier.ts
+var HERE = coreEnvironmentInputs({
+  squealVersion: "",
+  installedDependencies: "",
+  allowlist: []
+});
 
 // src/core/waiter-lock/waiter-lock.ts
 import { DatabaseSync as DatabaseSync8 } from "node:sqlite";

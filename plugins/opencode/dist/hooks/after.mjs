@@ -5678,6 +5678,34 @@ var UNCONFIGURED3 = {
   ...PYTEST.unconfigured
 };
 
+// src/core/scheduler/unknown-files.ts
+function unknownFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("unknownFiles", worktreeId);
+}
+function readUnknownFiles(store, worktreeId) {
+  const raw = store.meta.get(unknownFilesMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+  if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
+  const entries = value.filter(isEntry3).map(knownCause);
+  return new Map(entries.map((e) => [testFileId(e.testFile), e]));
+}
+var CAUSES = ["timeout", "install", "runner", "setup"];
+function isEntry3(value) {
+  if (!isRecord(value) || !isRecord(value.testFile)) return false;
+  return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
+}
+function knownCause(entry3) {
+  if (entry3.cause === void 0 || CAUSES.includes(entry3.cause)) return entry3;
+  const { cause: _cause, ...rest } = entry3;
+  return rest;
+}
+
 // src/core/code/coverage/runtime.ts
 var RECORDING_RUNNERS = /* @__PURE__ */ new Set(["vitest", "node-test"]);
 function coverageOn(policy) {
@@ -9047,6 +9075,22 @@ function example2(paths) {
 }
 
 // src/core/keys/environment.ts
+function coreEnvironmentInputs(options) {
+  const source = options.env ?? process.env;
+  const env = {};
+  for (const name2 of [...options.allowlist].sort(compare)) {
+    const value = source[name2];
+    if (value !== void 0) env[name2] = value;
+  }
+  return {
+    squealVersion: options.squealVersion,
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    installedDependencies: options.installedDependencies,
+    env
+  };
+}
 var LOCKFILES2 = [
   { path: HIDDEN_LOCKFILE, patches: "patches", read: npmReading },
   { path: "node_modules/.yarn-state.yml", patches: null },
@@ -12146,34 +12190,6 @@ function loadRetryText(loadPerCpu, words, fresh2) {
   return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
 
-// src/core/scheduler/unknown-files.ts
-function unknownFilesMetaKey(worktreeId) {
-  return worktreeMetaKey("unknownFiles", worktreeId);
-}
-function readUnknownFiles(store, worktreeId) {
-  const raw = store.meta.get(unknownFilesMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
-  let value;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-  if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
-  const entries = value.filter(isEntry3).map(knownCause);
-  return new Map(entries.map((e) => [testFileId(e.testFile), e]));
-}
-var CAUSES = ["timeout", "install", "runner", "setup"];
-function isEntry3(value) {
-  if (!isRecord(value) || !isRecord(value.testFile)) return false;
-  return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
-}
-function knownCause(entry3) {
-  if (entry3.cause === void 0 || CAUSES.includes(entry3.cause)) return entry3;
-  const { cause: _cause, ...rest } = entry3;
-  return rest;
-}
-
 // src/core/capacity/background.ts
 var DEFAULT_BACKGROUND_SHARE = 0.75;
 function isBackgroundShare(value) {
@@ -12491,6 +12507,13 @@ var RUNNER_PART_MARGIN_MS = 6e4;
 function runnerPartBoundMs(timeoutMs) {
   return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
 }
+
+// src/core/scheduler/record-tier.ts
+var HERE = coreEnvironmentInputs({
+  squealVersion: "",
+  installedDependencies: "",
+  allowlist: []
+});
 
 // src/core/scheduler/backlog.ts
 function wallEstimate(sum, longest, width) {
