@@ -38,7 +38,7 @@ function validate(config: Readonly<Record<string, unknown>>): string | null {
   const unknown = unknownKey(config, KEYS);
   if (unknown !== null) return unknown;
   if (!argumentList(config.acquire, true)) {
-    return '"acquire" must be a non-empty argument list such as ["/home/me/bin/lan-up"]';
+    return '"acquire" must be a non-empty argument list such as ["~/bin/lan-up"]';
   }
   for (const hook of ["wake", "sleep", "release"] as const) {
     if (config[hook] !== undefined && !argumentList(config[hook], true)) {
