@@ -3,10 +3,14 @@ import { join } from "node:path";
 import { createPytestAdapter } from "../../runners/pytest/adapter.js";
 import { pytestTraits } from "../../runners/pytest/traits.js";
 import { PYTEST_ADAPTER_VERSION } from "../../runners/pytest/version.js";
-import { createHostedPytest, type ProcessHost } from "../runner-host/process-host.js";
+import {
+  createHostedPytest,
+  type ProcessHost,
+  pytestEnvironmentTopic,
+} from "../runner-host/process-host.js";
 import type { AbsolutePath, ProjectName } from "../types/common.js";
 import type { PytestProject } from "../types/policy.js";
-import { hosted } from "./node-test-runners.js";
+import { hosted, NO_VITEST_POLICY, type RemoteWrap } from "./node-test-runners.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
@@ -43,6 +47,8 @@ export interface PytestRunnersOptions {
   readonly host?: ProcessHost | undefined;
   /** Spec 021 D20 (row 021-26): how long a host stays up with no call; absent, for good. */
   readonly idleMs?: () => number;
+  /** Spec 026 D8.2 (row 026-11): puts a project's runner on the remote lane; absent, every run is here. */
+  readonly remote?: RemoteWrap;
 }
 
 /**
@@ -80,7 +86,7 @@ function pytestRunner(project: PytestProject, options: PytestRunnersOptions): Re
     ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
   };
   const { host } = options;
-  return createRecoveringRunner({
+  const runner = createRecoveringRunner({
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
     create: () =>
@@ -95,5 +101,28 @@ function pytestRunner(project: PytestProject, options: PytestRunnersOptions): Re
     traits: pytestTraits({ tierSize: options.tierSize, batchSize: () => batchSize }),
     onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
+  });
+  if (options.remote === undefined) return runner;
+  // Spec 026 D8.2: as a local host's start (`createHostedPytest`); the remote moves the temp and
+  // cache directories under its tree (`connect.ts`).
+  const topic = pytestEnvironmentTopic(project);
+  const latest = options.latestNote?.(topic);
+  return options.remote({
+    runner: "pytest",
+    name: `pytest ${project.name}`,
+    local: runner,
+    start: {
+      options: {
+        childEnv: adapterOptions.childEnv ?? {},
+        process: {
+          project,
+          tempDir: adapterOptions.tempDir,
+          cacheDir: adapterOptions.cacheDir,
+          ...(latest === undefined ? {} : { latestNotes: { [topic]: latest } }),
+        },
+      },
+      policy: () => ({ ...NO_VITEST_POLICY, tierSize: options.tierSize() }),
+      note: options.note,
+    },
   });
 }
