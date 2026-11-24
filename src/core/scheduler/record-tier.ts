@@ -10,6 +10,7 @@ import { type EnvironmentGrowth, rerunGrown } from "./environment-growth.js";
 import type { FileState } from "./files.js";
 import { healsUnheld } from "./hold.js";
 import type { Ledger } from "./ledger.js";
+import { recordOtherMachineKeys } from "./other-machine-keys.js";
 import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
 import {
@@ -67,8 +68,17 @@ export interface TierRecord {
   readonly grewEnvironment: FileState[];
   readonly failedAnew: NewFailure[];
   readonly notStarted: { file: FileState; forced: boolean }[];
-  /** Spec 026 D10: files that ran on another machine than their key's, with why they are `unknown`. */
-  readonly otherMachine: { file: FileState; key: CheckKey; reason: string }[];
+  /**
+   * Spec 026 D10: files that ran on another machine than their key's, with
+   * why they are `unknown`, and the key their results were stored under
+   * (`null`: none stored; review 0.1.620-r2 S3).
+   */
+  readonly otherMachine: {
+    file: FileState;
+    key: CheckKey;
+    reason: string;
+    storedKey: CheckKey | null;
+  }[];
 }
 
 /** A record of `tier` with nothing walked yet, its provenance as of now. */
@@ -216,7 +226,7 @@ function storeOtherMachine(
   const reason =
     `ran on ${machineText(ran)}, not on the machine its key is for (${machineText(keyed)}); ` +
     (ownKey === null ? "nothing stored" : "stored under the environment it ran in");
-  record.otherMachine.push({ file, key, reason });
+  record.otherMachine.push({ file, key, reason, storedKey: ownKey });
 }
 
 /** Stores a completed file's results under `storeKey`; current when it still is at the key it ran under. */
@@ -283,6 +293,26 @@ export function endRecord(record: TierRecord, environment: EnvironmentGrowth | u
   );
   if (record.setups !== false) recordSetups(record, record.setups);
   markUnknown(record);
+  recordOtherMachine(record);
+}
+
+/**
+ * Review 0.1.620-r2 S3 (row 026-19): the key each file run on another
+ * machine was stored under, for the run's coverage, in this transaction. An
+ * entry stays while the file is at the key it ran for.
+ */
+function recordOtherMachine(record: TierRecord): void {
+  const { context, ledger, tier } = record;
+  if (record.otherMachine.length === 0) return;
+  const admitted = [];
+  const cleared = [];
+  for (const { file, key, storedKey } of record.otherMachine) {
+    if (storedKey === null) cleared.push(file.ref);
+    else admitted.push({ testFile: file.ref, runId: tier.runId, currentKey: key, storedKey });
+  }
+  recordOtherMachineKeys(context.store, context.worktreeId, admitted, cleared, (ref) => {
+    return ledger.file(ref)?.key;
+  });
 }
 
 /**

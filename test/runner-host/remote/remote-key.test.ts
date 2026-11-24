@@ -17,6 +17,7 @@ import {
 } from "../../../src/core/keys/environment.js";
 import { environmentHash } from "../../../src/core/keys/environment-hash.js";
 import { KEY_FORMAT_VERSION } from "../../../src/core/keys/key-format.js";
+import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { RemoteHost } from "../../../src/core/runner-host/remote/connect.js";
 import {
   blobsAt,
@@ -31,7 +32,7 @@ import {
   tagReportCore,
 } from "../../../src/core/runner-host/remote/remote-key.js";
 import { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
-import { readUnknownFiles } from "../../../src/core/scheduler/unknown-files.js";
+import { readUnknownFiles, UNKNOWN_FILES_KEPT } from "../../../src/core/scheduler/unknown-files.js";
 import { worktreeEnvironment } from "../../../src/core/store/environments.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 import type { AbsolutePath, WorktreeId } from "../../../src/core/types/common.js";
@@ -339,6 +340,102 @@ describe("a run here while keyed to another machine (review 0.1.620 B1, S3)", SL
     expect(resultKey(runId, ref)).toBeUndefined();
   });
 });
+
+/*
+ * Review 0.1.620-r2 S3 (row 026-19): the key a run here stored a file under
+ * while keyed to another machine is a fact of its recording, not of the
+ * unknown-file history, which keeps only the newest `UNKNOWN_FILES_KEPT`.
+ */
+describe("coverage of a run here above the unknown-file cap (review 0.1.620-r2 S3)", SLOW, () => {
+  const COUNT = UNKNOWN_FILES_KEPT + 4;
+
+  it("stores every file's coverage under its executed key, and none once a file is re-keyed", async () => {
+    const { main } = claimRepo(COUNT);
+    const b = side(main, { count: COUNT, policy: RUN_MISSING });
+    onMachines(b, FREEBSD, null);
+    await b.scheduler.start();
+    await b.quiet();
+    const worktreeId = b.worktreeId as WorktreeId;
+
+    const files = Array.from({ length: COUNT }, (_, i) => {
+      const path = fileName(i);
+      const ref: TestFileRef = { project: "", path };
+      const remoteKey = b.keyOf(path) as CheckKey;
+      const newest = b.store.results.newestForTestFile(ref);
+      const hereKey = newest[0]?.key;
+      const runId = newest[0]?.provenance.runId;
+      if (hereKey === undefined || runId === undefined) throw new Error(`${path} stored nothing`);
+      return { path, ref, remoteKey, hereKey, runId };
+    });
+    // Each ran once here, stored under this machine's key only, and is unknown at the remote's.
+    for (const { path, remoteKey, hereKey } of files) {
+      expect(b.runner.ran(path), path).toBe(1);
+      expect(hereKey, path).not.toBe(remoteKey);
+      expect(passesAt(b.store, hereKey), path).toBe(1);
+      expect(b.store.results.byKey(remoteKey, 0), path).toEqual([]);
+      expect(b.phase(path), path).not.toBe("current");
+    }
+    expect(await keyOn(main, F0, OWN)).toBe(files[0]?.hereKey);
+    // The diagnostic history dropped the oldest files.
+    const unknown = readUnknownFiles(b.store, worktreeId);
+    expect(unknown.size).toBe(UNKNOWN_FILES_KEPT);
+    const evicted = files.filter((f) => !unknown.has(testFileId(f.ref)));
+    expect(evicted).toHaveLength(COUNT - UNKNOWN_FILES_KEPT);
+    const recent = files.filter((f) => unknown.has(testFileId(f.ref)));
+
+    const resultKey = mainStoreResultKey(b.store, worktreeId);
+    for (const { path, ref, hereKey, runId } of files) {
+      expect(resultKey(runId, ref), path).toBe(hereKey);
+      expect(resultKey(randomUUID(), ref), path).toBeUndefined();
+    }
+
+    const written = await writeCoverage(resultKey, files);
+    for (const { path, hereKey, remoteKey } of files) {
+      expect(written.has(at(hereKey)), path).toBe(true);
+      expect(written.has(at(remoteKey)), path).toBe(false);
+    }
+
+    // Edit protection: an evicted and a recent file at another key take no coverage.
+    const rekeyed = [evicted[0], recent.at(-1)].filter((f) => f !== undefined);
+    expect(rekeyed).toHaveLength(2);
+    const rows = b.store.testFileKeys.list(
+      worktreeId,
+      rekeyed.map((f) => f.ref),
+    );
+    b.store.testFileKeys.upsertMany(rows.map((row) => ({ ...row, key: "edited" as CheckKey })));
+    for (const { path, ref, runId } of rekeyed) expect(resultKey(runId, ref), path).toBeUndefined();
+    const after = await writeCoverage(resultKey, rekeyed);
+    for (const { path, hereKey } of rekeyed) expect(after.has(at(hereKey)), path).toBe(false);
+    expect(after.has(at("edited" as CheckKey))).toBe(false);
+  });
+});
+
+/** The coverage store key of `key`'s records. */
+const at = (key: CheckKey) => ({ resultKey: key, providerVersion: COVERAGE_RECORD_VERSION });
+
+/** A fresh code store with each file's coverage written through `CoverageWriter`, by run. */
+async function writeCoverage(
+  resultKey: ReturnType<typeof mainStoreResultKey>,
+  files: readonly { path: string; runId: string }[],
+) {
+  const dir = commonDir();
+  const writer = createCoverageWriter({
+    commonDir: dir,
+    format: "sha1",
+    policy: () => ON,
+    resultKey,
+    log: () => {},
+    waitsMs: [0],
+    worker: null,
+  });
+  for (const runId of new Set(files.map((f) => f.runId))) {
+    const ran = files.filter((f) => f.runId === runId);
+    writer.collected({ runId, files: ran.map((f) => payloadFile(f.path)) });
+  }
+  await writer.idle();
+  await writer.close();
+  return open(dir).coverage;
+}
 
 /** A coverage payload of one source line, run by `test`. */
 function payloadFile(test: string): CoveredFile {

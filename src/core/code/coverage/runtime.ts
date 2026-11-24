@@ -1,7 +1,11 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { testFileId } from "../../keys/reverse-index.js";
-import { readUnknownFiles } from "../../scheduler/unknown-files.js";
+import {
+  type OtherMachineKey,
+  otherMachineKeysMetaKey,
+  parseOtherMachineKeys,
+} from "../../scheduler/other-machine-keys.js";
 import type { AbsolutePath, WorktreeId } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
@@ -59,21 +63,51 @@ export function coverageOn(policy: Pick<Policy, "complexity" | "coverage">): boo
  * names that run. `undefined` before the scheduler stored them, and once an
  * edit re-keyed the file first (its record then waits for no result).
  *
- * Review 0.1.620 S3 (spec 026 D10): a run on another machine than the one
- * the file's key is for is stored only under that machine's key, and the
- * file is `unknown` at its current key (`storeOtherMachine`). Its key is
- * then the one its results were stored under, while the file is still
- * `unknown` at the key it ran for after a completed run, and this
- * worktree's results of that run are the file's newest. No other key is
- * given: a record never makes a result key, nor another machine's current.
+ * Review 0.1.620 S3 and 0.1.620-r2 S3 (spec 026 D10, row 026-19): a run on
+ * another machine than the one the file's key is for is stored only under
+ * that machine's key (`storeOtherMachine`), which records that key for the
+ * file and run (`other-machine-keys.ts`). That key is given while the file
+ * is still at the key the run was for and a result of this worktree's run
+ * is stored under it. No other key is given: a record never makes a result
+ * key, nor another machine's current.
  */
 export function mainStoreResultKey(store: Store, worktreeId: WorktreeId): ResultKeyOf {
+  const associations = otherMachineKeys(store, worktreeId);
   return (runId, testFile) => {
     const key: CheckKey | null | undefined = store.testFileKeys.list(worktreeId, [testFile])[0]
       ?.key;
     if (key === null || key === undefined) return undefined;
     if (store.results.byKey(key, 0).some((r) => ranFile(r, runId, testFile))) return key;
-    return otherMachineKey(store, worktreeId, runId, testFile, key);
+    const admitted = associations().get(testFileId(testFile));
+    // Edit protection: still at the key the run was for, which it left `unknown` after it ran.
+    if (admitted === undefined || admitted.runId !== runId || admitted.currentKey !== key) {
+      return undefined;
+    }
+    const { storedKey } = admitted;
+    if (storedKey === key) return undefined;
+    // Admission and provenance: this worktree's result of that run, stored under that key.
+    const ours = store.results
+      .byKey(storedKey, 0)
+      .some((r) => r.provenance.worktreeId === worktreeId && ranFile(r, runId, testFile));
+    return ours ? storedKey : undefined;
+  };
+}
+
+/** The worktree's recorded other-machine keys, parsed again only when the row changed. */
+function otherMachineKeys(
+  store: Store,
+  worktreeId: WorktreeId,
+): () => ReadonlyMap<string, OtherMachineKey> {
+  const row = otherMachineKeysMetaKey(worktreeId);
+  let raw: string | null = null;
+  let parsed: ReadonlyMap<string, OtherMachineKey> = new Map();
+  return () => {
+    const now = store.meta.get(row);
+    if (now !== raw) {
+      raw = now;
+      parsed = parseOtherMachineKeys(now);
+    }
+    return parsed;
   };
 }
 
@@ -84,24 +118,4 @@ function ranFile(result: ResultRecord, runId: string, testFile: TestFileRef): bo
     result.check.project === testFile.project &&
     result.check.testPath === testFile.path
   );
-}
-
-/** S3: the key `runId` stored `testFile` under on another machine than `current`'s; else `undefined`. */
-function otherMachineKey(
-  store: Store,
-  worktreeId: WorktreeId,
-  runId: string,
-  testFile: TestFileRef,
-  current: CheckKey,
-): CheckKey | undefined {
-  const unknown = readUnknownFiles(store, worktreeId).get(testFileId(testFile));
-  // Edit protection: still at the key the run was for, which it left `unknown` after it ran.
-  if (unknown === undefined || !unknown.ran || unknown.key !== current) return undefined;
-  const newest = store.results.newestForTestFile(testFile);
-  const stored = newest[0]?.key;
-  if (stored === undefined || stored === current) return undefined;
-  const ours = newest.some(
-    (r) => r.provenance.worktreeId === worktreeId && ranFile(r, runId, testFile),
-  );
-  return ours ? stored : undefined;
 }
