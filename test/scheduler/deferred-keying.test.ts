@@ -7,7 +7,7 @@ import { statCandidates } from "../../src/core/revision/reconcile.js";
 import {
   keyingDeferred,
   runnerKeyingDeferred,
-  stopAsksTests,
+  stopRunners,
 } from "../../src/core/scheduler/deferred-keying.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
@@ -139,8 +139,8 @@ describe("deferred runner keying (spec 026 D1)", { timeout: 60_000 }, () => {
     expect(keyingDeferred(nodes), "entry ns falls to `tests`, at edit").toBe(false);
     const both = { ...nodes, checks: [...nodes.checks, nodeTestGroup("m", "stop", "ns")] };
     expect(keyingDeferred(both)).toBe(true);
-    expect(stopAsksTests(both)).toBe(true);
-    expect(stopAsksTests(policy([UNIT, LINT]))).toBe(false);
+    expect(stopRunners(both), "only node:test's group runs at stop").toEqual(["nodeTest"]);
+    expect(stopRunners(policy([UNIT, LINT]))).toEqual([]);
   });
 
   it("makes no keying call on any background path, and keys at an explicit request", async () => {
@@ -175,6 +175,20 @@ describe("deferred runner keying (spec 026 D1)", { timeout: 60_000 }, () => {
     // The first request's lane may run A at its new key too; B never runs again.
     const again = side.runner.runs.slice(ran).flatMap((run) => run.files.map((f) => f.path));
     expect(new Set(again)).toEqual(new Set([A]));
+  });
+
+  it("a named wait's path wakes a start that listed nothing (review 0.1.616 B2)", async () => {
+    const repo = catchUpRepo(FILES, ["README.md"]);
+    const { side, counts } = await started(repo, DEFERRED);
+    expect(Object.fromEntries(counts)).toEqual({});
+    const answer = await side.scheduler.readers?.([A]);
+    expect(counts.get("testFiles"), "the named path lists the files").toBeGreaterThan(0);
+    expect(answer?.readers?.[A]?.map((ref) => ref.path)).toEqual([A]);
+    // Nothing owed: a path no file reads asks the runner nothing.
+    await side.rest();
+    const before = total(counts);
+    await side.scheduler.readers?.(["README.md"]);
+    expect(total(counts)).toBe(before);
   });
 
   it("starts with no keying call after an eager daemon, its files unknown, never current", async () => {

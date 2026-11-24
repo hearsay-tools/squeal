@@ -780,6 +780,9 @@ class Daemon {
         this.options.lintProviders === undefined ? null : import("../lint/pass/idle.js"),
       ]);
       const { storePaths } = await import("../store/paths.js");
+      // Spec 026 D1 (review 0.1.616 B1): each runner deferred on its own, read from the live policy.
+      const { RunnerGate } = await import("../scheduler/runner-gate.js");
+      const runnerGate = new RunnerGate(() => this.#policy);
       // Spec 021 D8 (row 021-11): each Vitest instance in a local runner host when `squeal
       // daemon` gives one, whose working directory is the root, so the daemon stays out of it;
       // a host gone is replaced (D7).
@@ -949,10 +952,11 @@ class Daemon {
       const runner = this.#idleGc.track(
         afterEachRun(
           withRunGroups(
-            createCompositeRunner(vitestLanes === null ? [] : [vitestLanes], [
-              nodeTestRunners,
-              pytestRunners,
-            ]),
+            createCompositeRunner(
+              vitestLanes === null ? [] : [vitestLanes],
+              [nodeTestRunners, pytestRunners],
+              runnerGate,
+            ),
             {
               requests: this.#atRun,
               record: this.#runGroups,
@@ -971,6 +975,7 @@ class Daemon {
           vitest.hosted ? null : vitestRunner,
           host,
           [nodeTestRunners, pytestRunners],
+          runnerGate.shut("vitest"),
         )),
         vitestBelowRoot,
       ]);
@@ -1085,6 +1090,7 @@ class Daemon {
         worktreeId,
         store,
         runner,
+        runnerGate,
         // Row 015-12: stored results nudge the coverage step; nothing while coverage is off.
         sink: afterResults(createStateSink(store, { now: this.#now }), () => code.soon()),
         policy: this.#policy,
@@ -1582,14 +1588,18 @@ class Daemon {
  * node:test graphs build here too, off the hook path (review wave 1,
  * inputs). Spec 021 D20.1 (row 021-26): a runner in a local runner host
  * (`host`, and a hosted Vitest passed as `null`) starts on its first call.
+ * Spec 026 D1.2 (review 0.1.616 B1): a deferred Vitest (`vitestDeferred`)
+ * starts on its first call too, which an explicit request makes.
  */
 export async function openedAtStart(
   installing: () => Promise<boolean>,
   vitest: RecoveringRunner | null,
   host: unknown,
   sets: readonly { members(): readonly RecoveringRunner[] }[],
+  vitestDeferred = false,
 ): Promise<Promise<boolean>[]> {
-  const opened = vitest === null || (await installing()) ? [] : [vitest.open()];
+  const later = vitest === null || vitestDeferred || (await installing());
+  const opened = later ? [] : [vitest.open()];
   if (host !== undefined) return opened;
   return [...opened, ...sets.flatMap((set) => set.members().map((runner) => runner.open()))];
 }

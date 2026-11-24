@@ -270,7 +270,7 @@ export interface CatchUpOptions {
    */
   readonly clock?: "virtual" | VirtualClock;
   /** Further `SchedulerOptions`: the runtime directory, the slow tier's (rows 011-106, 004). */
-  readonly scheduler?: Pick<SchedulerOptions, "runtimeDir" | "onReinstall" | "slow">;
+  readonly scheduler?: Pick<SchedulerOptions, "runtimeDir" | "onReinstall" | "slow" | "runnerGate">;
   /** The scheduler's runner made from the fake one, as the daemon wraps its own (row 019-18). */
   readonly wrapRunner?: (runner: CatchUpRunner) => RunnerAdapter;
 }

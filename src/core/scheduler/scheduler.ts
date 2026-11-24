@@ -12,9 +12,11 @@ import { describeFailure } from "../state/fingerprint.js";
 import { retryWhileBusy } from "../store/busy.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
+import type { CheckRunner } from "../types/check-groups.js";
 import type { EpochMs, ProjectName, RelativePath, RevisionNumber } from "../types/common.js";
 import { daemonIncarnation, type SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
 import { BESIDE_LANE_PREFIX, isBesideLane } from "../types/runner.js";
 import {
   type ClosureIndex,
@@ -48,7 +50,13 @@ import { CommandHold } from "./command-hold.js";
 import { attachCommitLanes } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
-import { commitAsksTests, keyingDeferred, stopAsksTests } from "./deferred-keying.js";
+import {
+  commitRunners,
+  fileRunners,
+  groupRunners,
+  keyingDeferred,
+  stopRunners,
+} from "./deferred-keying.js";
 import { focusedWaiting } from "./focused.js";
 import { requeueFocusedTier } from "./focused-record.js";
 import { GroupTiers } from "./group-tiers.js";
@@ -82,6 +90,7 @@ import { focusRequest, groupRequest, promoteRequest } from "./request-intake-req
 import { RequestProgress } from "./request-progress.js";
 import { RERUN_CAP } from "./rerun.js";
 import { retryRequest, takeRetries } from "./retries.js";
+import { ALL_RUNNERS, type RunnerGate } from "./runner-gate.js";
 import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
 import { groupView } from "./slow.js";
@@ -476,7 +485,8 @@ class TierScheduler implements Scheduler {
           this.#groups.lanes(context.policy);
           this.#groups.get(group)?.asks.add(asks, ledger);
           // Spec 026 D1.4: a `commit` group's ask opens a deferred runner once the turn ends.
-          if (this.#owesKeying()) this.#wakeLater();
+          const runners = groupRunners(context.policy, group);
+          if (this.#owesFor(runners)) this.#wakeLater(runners);
         },
         asked: (ref) => {
           const lane = this.#groups.get(groupView(context.policy).of(ref).name);
@@ -571,9 +581,17 @@ class TierScheduler implements Scheduler {
     if (batch.trigger === "interval" && this.#takeRetries(context, ledger)) ledger.commit();
     this.#adopt(context, ledger);
     // Spec 026 D1.4: a commit asks a `commit` group for keyed files, so a start that keyed none keys them first.
-    if (this.#baselineOwed && commitAsksTests(context.policy)) {
+    const committing = commitRunners(context.policy);
+    if (this.#baselineOwed && committing.length > 0) {
       const { head } = await context.head();
-      if (head !== ledger.revision.head) await this.#catchUp(context, ledger);
+      if (head !== ledger.revision.head) {
+        const hold = this.#gate?.hold(committing);
+        try {
+          await this.#catchUp(context, ledger);
+        } finally {
+          hold?.release();
+        }
+      }
     }
     const { applied, touched } = await reconcileBatch(context, ledger, batch);
     // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
@@ -599,7 +617,7 @@ class TierScheduler implements Scheduler {
     this.#stepOutside([{ kind: "revision", revision: applied.revision }]);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
     // Spec 026 D1: a reload that makes a group eager wakes the runner for what was owed.
-    if (this.#owesKeying() && !this.#keyingDeferred()) this.#wakeLater();
+    if (this.#owesKeying() && !this.#keyingDeferred()) this.#wakeLater([]);
   }
 
   /**
@@ -685,51 +703,106 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Spec 026 D1.4: an explicit request opens the runner. A start that keyed
+   * Spec 026 D1.4: an explicit request opens `runners`. A start that keyed
    * nothing runs its baseline now, with the paths changed since as edits;
    * otherwise the runner work owed since the last wake is queued, so the
-   * request waits for it. The runner host closes again once idle
+   * request waits for it. Review 0.1.616 B1: with a `RunnerGate`, only the
+   * deferred ones of `runners` open, each held open until its owed work
+   * is applied; one that missed a call is listed and keyed afresh
+   * (`RunnerWork.queueWake`). The runner host closes again once idle
    * (`runner.hostIdleMinutes`, 021 D20); later background work is owed
    * again.
    */
-  async #wakeKeying(): Promise<void> {
-    if (this.#closed || this.#context === null || !this.#owesKeying()) return;
-    await this.#lock.run(async () => {
-      if (this.#closed || this.#awaitingInstall || this.#reinstalled) return;
-      const { context, ledger } = this.#started();
-      await this.#catchUp(context, ledger);
-    }, "opening the runner for a request");
-    this.#pump();
+  async #wakeKeying(runners: readonly CheckRunner[]): Promise<void> {
+    if (this.#closed || this.#context === null) return;
+    const hold = this.#gate?.hold(runners);
+    try {
+      const opened = this.#gate?.owing(hold?.runners ?? []) ?? [];
+      if (!this.#owesKeying() && opened.length === 0) return;
+      await this.#lock.run(async () => {
+        if (this.#closed || this.#awaitingInstall || this.#reinstalled) return;
+        const { context, ledger } = this.#started();
+        const listed = await this.#catchUp(context, ledger);
+        if (!listed && opened.length > 0) this.#runnerWork.queueWake();
+      }, "opening the runner for a request");
+      this.#pump();
+      if ((hold?.runners.length ?? 0) === 0) return;
+      // The runners stay open until the work queued for them is applied; a close ends the wait.
+      await this.#runnerWork
+        .afterTier(async () => {}, "waiting for an opened runner's catch-up")
+        .catch(() => {});
+    } finally {
+      hold?.release();
+    }
   }
 
-  /** `#wakeKeying`'s work, under the lock: the owed baseline, or the owed runner work queued. */
-  async #catchUp(context: SchedulerContext, ledger: Ledger): Promise<void> {
+  /**
+   * `#wakeKeying`'s work, under the lock: the owed baseline, or the owed
+   * runner work queued. True: the baseline ran, which listed every open runner.
+   */
+  async #catchUp(context: SchedulerContext, ledger: Ledger): Promise<boolean> {
     if (!this.#baselineOwed) {
       this.#runnerWork.catchUp();
-      return;
+      return false;
     }
     this.#baselineOwed = false;
     const changed = this.#runnerWork.forgetOwed();
     if (changed.size > 0) this.#waitChanges.push(changed);
     await this.#baseline(context, ledger);
+    return true;
+  }
+
+  /** Spec 026 D1.4: whether a request for `runners` owes a wake first. */
+  #owesFor(runners: readonly CheckRunner[]): boolean {
+    return this.#owesKeying() || (this.#gate?.owing(runners).length ?? 0) > 0;
   }
 
   /**
-   * Spec 026 D1.4: `take` once the runner is awake. With nothing owed it is
+   * Spec 026 D1.4: `take` once `runners` are awake. With nothing owed it is
    * taken in this turn, so a request still joins the pass queued before it
    * (row 011-198).
    */
-  #afterWake<T>(take: () => Promise<T>): Promise<T> {
-    return this.#owesKeying() ? this.#wakeKeying().then(take) : take();
+  #afterWake<T>(runners: readonly CheckRunner[], take: () => Promise<T>): Promise<T> {
+    return this.#owesFor(runners) ? this.#wakeKeying(runners).then(take) : take();
   }
 
   /** `#wakeKeying` from inside a lock turn: it runs once the turn ends. */
-  #wakeLater(): void {
+  #wakeLater(runners: readonly CheckRunner[]): void {
     void this.#wakes.track(() =>
-      this.#wakeKeying().catch((error: unknown) =>
+      this.#wakeKeying(runners).catch((error: unknown) =>
         this.#backgroundError("could not open the runner for a request", error),
       ),
     );
+  }
+
+  /**
+   * Review 0.1.616 B2 (D1.4): the runners a named wait's `paths` open
+   * before their readers are read; `null`: none. A deferred runner never
+   * listed here may read any path; one that only owes work, or a start
+   * that keyed nothing, opens when a path is neither a listed test file
+   * nor read by one, such as a test file added since.
+   */
+  #namedWake(paths: readonly RelativePath[]): readonly CheckRunner[] | null {
+    const context = this.#context;
+    const ledger = this.#ledger;
+    if (context === null || !ledger || paths.length === 0) return null;
+    const { reverse } = context.keys.index;
+    const listed = new Set([...ledger.files.values()].map((file) => file.ref.path));
+    const unresolved = paths.some(
+      (path) => !listed.has(path) && reverse.referencing([path]).length === 0,
+    );
+    if (this.#baselineOwed || (unresolved && this.#runnerWork.owes)) return ALL_RUNNERS;
+    const runners = this.#gate?.owing(ALL_RUNNERS, !unresolved) ?? [];
+    return runners.length === 0 ? null : runners;
+  }
+
+  /** The policy as the scheduler holds it now. */
+  #policy(): Policy {
+    return this.#context?.policy ?? this.options.policy;
+  }
+
+  get #gate(): RunnerGate | undefined {
+    return this.options.runnerGate;
   }
 
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
@@ -744,6 +817,8 @@ class TierScheduler implements Scheduler {
         ? undefined
         : { sliceMs: this.options.busySliceMs, waits, stopped: () => this.#closed };
     await baseline(context, ledger, unseen, this.options.resumesRest === true, retry);
+    // Review 0.1.616 B1: what an open runner missed before is listed afresh now.
+    this.#gate?.keyed(ALL_RUNNERS);
   }
 
   /**
@@ -895,7 +970,7 @@ class TierScheduler implements Scheduler {
 
   /** `squeal run --all` (`fullSuiteRequest`): the checkpoint, after a pass delivered after it. */
   requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
-    return this.#afterWake(() =>
+    return this.#afterWake(ALL_RUNNERS, () =>
       this.#intake.take(fullSuiteRequest(request, { quiet: this.#quiet, warmUp: this.#warmUp })),
     );
   }
@@ -926,7 +1001,7 @@ class TierScheduler implements Scheduler {
 
   /** Spec 019 D6: `squeal run <group>` (`groupRequest`); `null` for a group the policy lacks. */
   requestGroup(group: string): Promise<SlowSuiteRequest | null> {
-    return this.#afterWake(() =>
+    return this.#afterWake(groupRunners(this.#policy(), group), () =>
       this.#intake.take(groupRequest(group, this.#groups, this.options.passes)),
     );
   }
@@ -937,14 +1012,14 @@ class TierScheduler implements Scheduler {
     paths: readonly RelativePath[],
     options: NarrowRunOptions = {},
   ): Promise<NarrowRunRequest | null> {
-    return this.#afterWake(() =>
+    return this.#afterWake(groupRunners(this.#policy(), group), () =>
       this.#intake.take(narrowRequest(group, paths, this.#groups, options)),
     );
   }
 
   /** `squeal retry` (001-368): queues the requests in the store that may run now. */
   requestRetries(): Promise<void> {
-    return this.#afterWake(() => this.#intake.take(retryRequest()));
+    return this.#afterWake(ALL_RUNNERS, () => this.#intake.take(retryRequest()));
   }
 
   /**
@@ -961,7 +1036,9 @@ class TierScheduler implements Scheduler {
   promote(testFiles: readonly TestFileRef[], withinMs: number, wakeCatchUp?: true): Promise<void> {
     // Spec 026 D1.4: a named wait whose files need the runner opens it.
     const take = () => this.#intake.take(promoteRequest(testFiles, withinMs, wakeCatchUp));
-    return testFiles.length > 0 ? this.#afterWake(take) : take();
+    return testFiles.length > 0
+      ? this.#afterWake(fileRunners(this.#policy(), testFiles), take)
+      : take();
   }
 
   /** Spec 011 C15, focused checks (row 011-145): `focusRequest`. */
@@ -971,7 +1048,9 @@ class TierScheduler implements Scheduler {
     withinMs: number,
   ): Promise<void> {
     const take = () => this.#intake.take(focusRequest(testFiles, texts, withinMs));
-    return testFiles.length > 0 ? this.#afterWake(take) : take();
+    return testFiles.length > 0
+      ? this.#afterWake(fileRunners(this.#policy(), testFiles), take)
+      : take();
   }
 
   nudge(): void {
@@ -979,9 +1058,10 @@ class TierScheduler implements Scheduler {
     if (this.#closed || !this.#ledger) return;
     const ledger = this.#ledger;
     // Spec 026 D1.4: Stop's required group keys its files first.
-    if (this.#owesKeying() && stopAsksTests(this.#started().context.policy)) {
+    const stopping = stopRunners(this.#started().context.policy);
+    if (stopping.length > 0 && this.#owesFor(stopping)) {
       void this.#wakes.track(() =>
-        this.#wakeKeying()
+        this.#wakeKeying(stopping)
           .then(() => this.#groups.nudge(ledger))
           .catch((error: unknown) =>
             this.#backgroundError("could not open the runner for Stop", error),
@@ -1021,6 +1101,9 @@ class TierScheduler implements Scheduler {
    * lock with the revision they hold at. Before the start, the revision only.
    */
   async readers(paths: readonly RelativePath[]): Promise<SyncAnswer> {
+    // Review 0.1.616 B2: a path no listing holds opens the deferred runners first.
+    const wake = this.#namedWake(paths);
+    if (wake !== null) await this.#wakeKeying(wake);
     return this.#lock.run(() => {
       const revision = this.status().revision;
       if (!this.#context) return { revision };

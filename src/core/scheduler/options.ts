@@ -13,6 +13,7 @@ import type { Store } from "../types/store.js";
 import type { FeedPasses } from "../types/watcher.js";
 import type { Clock } from "./clock.js";
 import type { FailureDescriber } from "./records.js";
+import type { RunnerGate } from "./runner-gate.js";
 
 export interface SchedulerOptions {
   /** Worktree root. Must be its realpath, like the runner's. */
@@ -20,6 +21,12 @@ export interface SchedulerOptions {
   readonly worktreeId: WorktreeId;
   readonly store: Store;
   readonly runner: RunnerAdapter;
+  /**
+   * Spec 026 D1 (review 0.1.616 B1): the gate `runner`'s members key through,
+   * which an explicit request holds open for the deferred runners it needs.
+   * Absent: no member is gated, and deferral is the scheduler's alone.
+   */
+  readonly runnerGate?: RunnerGate;
   /** Known state and transitions (task 001-21). */
   readonly sink: StateSink;
   readonly policy: Policy;

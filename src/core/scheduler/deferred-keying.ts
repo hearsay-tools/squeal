@@ -1,8 +1,9 @@
 import { CHECK_RUNNERS } from "../daemon/check-groups.js";
 import type { CheckMoment, CheckRunner, ResolvedGroup } from "../types/check-groups.js";
 import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import { groupView } from "./slow.js";
+import { groupView, runnerOf } from "./slow.js";
 import { type QueuedRefine, supersede } from "./superseded.js";
 
 /*
@@ -52,23 +53,46 @@ export function keyingDeferred(policy: Policy): boolean {
 }
 
 /**
- * D1.4: whether Stop asks a group of a deferred runner: a test group at
- * `stop`, or one Stop waits for. A Stop then opens the runner to key it.
+ * D1.4 (review 0.1.616 B1): the runners Stop opens: those of a test group
+ * at `stop`, or one Stop waits for. None: Stop opens no runner.
  */
-export function stopAsksTests(policy: Policy): boolean {
-  return groupView(policy).groups.some(
-    (group) => group.select.kind !== "lint" && (group.at === "stop" || group.stopRequires),
+export function stopRunners(policy: Policy): readonly CheckRunner[] {
+  return runnersOf(
+    groupView(policy).groups.filter((group) => group.at === "stop" || group.stopRequires),
   );
 }
 
 /**
- * D1.4: whether a commit asks a configured test group (019 D5). A commit
- * then opens the runner, so the files it asks for have keys.
+ * D1.4: the runners a commit opens, those of its configured test groups
+ * (019 D5), so the files it asks for have keys. None: a commit opens none.
  */
-export function commitAsksTests(policy: Policy): boolean {
-  return groupView(policy).groups.some(
-    (group) => group.index !== null && group.at === "commit" && group.select.kind === "tests",
+export function commitRunners(policy: Policy): readonly CheckRunner[] {
+  return runnersOf(
+    groupView(policy).groups.filter(
+      (group) => group.index !== null && group.at === "commit" && group.select.kind === "tests",
+    ),
   );
+}
+
+/** D1.4: the runners an explicit request for group `name` opens; none for a lint group. */
+export function groupRunners(policy: Policy, name: string): readonly CheckRunner[] {
+  return runnersOf(groupView(policy).groups.filter((group) => group.name === name));
+}
+
+/** D1.4: the runners of `testFiles`, by project (`runnerOf`). */
+export function fileRunners(policy: Policy, testFiles: readonly TestFileRef[]): CheckRunner[] {
+  return [...new Set(testFiles.map((ref) => runnerOf(policy, ref.project)))];
+}
+
+/** The runners whose files `groups` may own; a group of no one runner may own any. */
+function runnersOf(groups: readonly ResolvedGroup[]): readonly CheckRunner[] {
+  const runners = new Set<CheckRunner>();
+  for (const { select } of groups) {
+    if (select.kind === "lint") continue;
+    if (select.kind !== "tests") return CHECK_RUNNERS;
+    runners.add(select.runner);
+  }
+  return CHECK_RUNNERS.filter((runner) => runners.has(runner));
 }
 
 /** A group whose selector may take a file of `runner`. */
