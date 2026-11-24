@@ -101,11 +101,13 @@ describe("squeal checks (row 005-126)", () => {
         "  Selects: Vitest test files matching test/browser/**",
         "  Runs: only on request: Squeal does not start it; `squeal run browser --wait 60000` does",
         "  Run it now: `squeal run browser --wait 60000`",
+        "  Before a pull request: `squeal run browser --base <ref> --wait` runs only the test files your changes since <ref> select; the check's other files wait for `squeal run browser` or CI",
         "",
         "e2e",
         "  Selects: Vitest test files matching test/e2e/**",
         "  Runs: only on request: Squeal does not start it; `squeal run e2e --wait 60000` does",
         "  Run it now: `squeal run e2e --wait 60000`",
+        "  Before a pull request: `squeal run e2e --base <ref> --wait` runs only the test files your changes since <ref> select; the check's other files wait for `squeal run e2e` or CI",
         "",
         "tests",
         "  Selects: the test files no other check selects",
@@ -210,7 +212,7 @@ describe("squeal checks (row 005-126)", () => {
       stdout.indexOf("contract\n"),
       stdout.indexOf("\n\n", stdout.indexOf("contract\n")),
     );
-    expect(block.split("\n")).toHaveLength(7);
+    expect(block.split("\n")).toHaveLength(8);
     for (const dir of SKILL_COPIES) {
       const commands = readFileSync(join(dir, "references", "commands.md"), "utf8");
       expect(commands).toContain(`\`\`\`text\n${block}\n\`\`\``);
