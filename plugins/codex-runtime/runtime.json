@@ -80,7 +80,7 @@
       "mode": 420
     },
     "dist/cli/front-desk.mjs": {
-      "sha256": "eac4287f45187408beafd40ce7a17cfe90dcbfe2d489485b57604a75626729d9",
+      "sha256": "d70b9b9353176d06a4f87647eed0e75050003dc4a9523cab1dcb1d8b72a4510e",
       "mode": 420
     },
     "dist/cli/lint-worker.mjs": {
@@ -92,7 +92,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "4e4edea282c2544e988b0d1029197536f7741d6a3f321d1edc90976d8acf53c3",
+      "sha256": "0691e2300c62fbe4504b0663dad3a7a627aaa592d137196b60b7cb4ca86b78a5",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {

@@ -649,6 +649,7 @@ function parseRequest(line) {
     case "stop":
     case "hold":
     case "resume":
+    case "remote-sleep":
       return { type: request.type };
     // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
     case "sync":
@@ -692,6 +693,9 @@ function parseRequest(line) {
     case "hold-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "hold-status", requestId: request.requestId };
+    case "remote-sleep-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "remote-sleep-status", requestId: request.requestId };
     case "commit-ask":
     case "commit-read":
       return parseCommitAsk(request);
@@ -1230,6 +1234,7 @@ function createHandlers(context) {
   const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
   const syncRequests = /* @__PURE__ */ new Map();
   const holdRequests = /* @__PURE__ */ new Map();
+  const sleepRequests = /* @__PURE__ */ new Map();
   const { requestWrite, storeSchema } = context;
   const writes = requestWrite === void 0 || storeSchema === void 0 ? null : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
   const { requestImport, requestKeep, worktreeId } = context;
@@ -1281,6 +1286,15 @@ function createHandlers(context) {
     requestId,
     settled: state.holding !== null || state.error !== null,
     holding: state.holding,
+    error: state.error
+  });
+  const remoteSleep = (requestId, state) => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "remote-sleep",
+    requestId,
+    settled: state.outcome !== null || state.error !== null,
+    outcome: state.outcome,
     error: state.error
   });
   return (request) => {
@@ -1405,6 +1419,29 @@ function createHandlers(context) {
         const state = holdRequests.get(request.requestId);
         if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
         return hold(request.requestId, state);
+      }
+      case "remote-sleep": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        if (context.requestRemoteSleep === void 0) {
+          return errorResponse("this daemon has no remote lane to sleep");
+        }
+        const requestId = randomUUID4();
+        const state = { outcome: null, error: null };
+        remember2(sleepRequests, requestId, state);
+        context.requestRemoteSleep().then(
+          (outcome) => {
+            state.outcome = outcome;
+          },
+          (error) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          }
+        );
+        return remoteSleep(requestId, state);
+      }
+      case "remote-sleep-status": {
+        const state = sleepRequests.get(request.requestId);
+        if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+        return remoteSleep(request.requestId, state);
       }
       case "resume":
         if (context.requestResume === void 0) return errorResponse("this daemon cannot hold");
@@ -1568,6 +1605,7 @@ var waitingGroup = /* @__PURE__ */ new Map();
 var steps = new MainSteps();
 var waitingSync = /* @__PURE__ */ new Map();
 var waitingHold = /* @__PURE__ */ new Map();
+var waitingSleep = /* @__PURE__ */ new Map();
 var waitingWrite = /* @__PURE__ */ new Map();
 var waitingImport = /* @__PURE__ */ new Map();
 var waitingKeep = /* @__PURE__ */ new Map();
@@ -1613,6 +1651,11 @@ function bind(identity) {
       post({ type: "hold", id });
     }),
     requestResume: async () => post({ type: "resume" }),
+    requestRemoteSleep: () => new Promise((resolve, reject) => {
+      const id = randomUUID5();
+      waitingSleep.set(id, { resolve, reject });
+      post({ type: "remote-sleep", id });
+    }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
@@ -1706,6 +1749,13 @@ function receive(message) {
       waitingHold.delete(message.id);
       if (message.holding !== null) entry?.resolve(message.holding);
       else entry?.reject(new Error(message.error ?? "hold failed"));
+      return;
+    }
+    case "remote-sleep-result": {
+      const entry = waitingSleep.get(message.id);
+      waitingSleep.delete(message.id);
+      if (message.outcome !== null) entry?.resolve(message.outcome);
+      else entry?.reject(new Error(message.error ?? "remote sleep failed"));
       return;
     }
     case "write-result": {
