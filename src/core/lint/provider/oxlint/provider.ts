@@ -13,11 +13,12 @@ import type {
   LintRefresh,
   LintRunReport,
 } from "../../pass/provider.js";
+import { type CacheEntry, defaultCache, type OxlintCache } from "./cache.js";
 import { type ConfigSet, readConfigs, VITE_PLUS_OFF } from "./config-set.js";
 import type { FolderConfigs } from "./configs.js";
 import { discoverOxlint, type OxlintInstall } from "./discover.js";
 import { Preload } from "./preload.js";
-import { blobsNow, lintedFiles, type RunContext, resultsOf, runOxlint } from "./run.js";
+import { blobsNow, debugFiles, type RunContext, resultsOf, runOxlint } from "./run.js";
 
 /*
  * Spec 017 D11: the project's own oxlint as a lint provider, shaped after
@@ -60,6 +61,8 @@ export interface OxlintProviderOptions {
   /** The Node that runs oxlint; the daemon's own by default. */
   readonly node?: string;
   readonly now?: () => number;
+  /** Spec 026 D3's cache of config reads; the worktree's `lint.sqlite` by default. */
+  readonly cache?: OxlintCache;
 }
 
 /** Files `inputs` reads between two yields to the event loop (issue #274 F3.5). */
@@ -87,11 +90,15 @@ class Provider implements OxlintProvider {
   private off: string | null = null;
   private failures: number[] = [];
   private queue: Promise<unknown> = Promise.resolve();
+  private readonly cache: OxlintCache;
+  /** The current configs' cache entry with the answers kept since it was read. */
+  private remembered: CacheEntry | null = null;
 
   constructor(private readonly options: OxlintProviderOptions) {
     this.guardMs = options.guardMs ?? 5_000;
     this.now = options.now ?? Date.now;
     this.env = options.env ?? process.env;
+    this.cache = options.cache ?? defaultCache();
   }
 
   open(format: ObjectFormat = "sha1"): Promise<OxlintDeclaration | LintOff> {
@@ -128,7 +135,7 @@ class Provider implements OxlintProvider {
         // Issue #274 F3.5: a large batch never holds the main thread in one block.
         if (i > 0 && i % YIELD_EVERY === 0) await new Promise((r) => setImmediate(r));
         const path = paths[i] as RelativePath;
-        if (!linted.has(path)) continue;
+        if (linted.get(path) !== true) continue;
         inputs.set(path, {
           config: ready.configs.inputsOf(path, folders),
           wholeProgram: ready.configs.importPlugin,
@@ -177,14 +184,16 @@ class Provider implements OxlintProvider {
     ctx: RunContext,
     results: Map<RelativePath, LintFileResult>,
   ): Promise<LintOff | null> {
-    const linted = await lintedFiles(ctx, [...results.keys()]);
-    const failure = "failure" in linted ? linted.failure : null;
+    const debug = await debugFiles(ctx, [...results.keys()]);
+    const failure = "failure" in debug ? debug.failure : null;
     if (failure !== null && this.failed(failure) !== null) return { off: this.off ?? failure };
+    const linted = "failure" in debug ? new Set<RelativePath>() : debug.linted;
     for (const path of results.keys()) {
       if (failure !== null) results.set(path, { unknown: failure });
-      else if (!(linted as Set<RelativePath>).has(path)) {
-        results.set(path, { unknown: "oxlint does not lint it now" });
-      }
+      else if (!linted.has(path)) results.set(path, { unknown: "oxlint does not lint it now" });
+    }
+    if (!("failure" in debug) && debug.loaded) {
+      await this.remember([...results.keys()], linted);
     }
     return null;
   }
@@ -198,6 +207,8 @@ class Provider implements OxlintProvider {
       this.declaration = null;
       this.install = null;
       this.configs = null;
+      this.remembered = null;
+      await this.cache.close();
     });
   }
 
@@ -208,9 +219,14 @@ class Provider implements OxlintProvider {
     if (this.env.VP_VERSION !== undefined) return this.refused(VITE_PLUS_OFF);
     this.install = install;
     this.preload ??= new Preload();
-    const configs = await readConfigs(this.context(install, true), (reason) => this.failed(reason));
+    const configs = await readConfigs(
+      this.context(install, true),
+      (reason) => this.failed(reason),
+      this.cache,
+    );
     if ("off" in configs) return configs.off === null ? this.refused(configs.reason) : configs.off;
     this.configs = configs;
+    this.remembered = configs.entry;
     this.closure = new Set(configs.closure);
     this.held = configs.held;
     this.declaration = {
@@ -245,14 +261,37 @@ class Provider implements OxlintProvider {
     };
   }
 
-  /** `lintedFiles`, a failure counted: `inputs` rejects with its reason (D9). */
+  /**
+   * Whether oxlint lints each of `paths`: the cache's answer under the
+   * configs' key, `--debug files` for the rest (spec 026 D3). A failure is
+   * counted: `inputs` rejects with its reason (D9).
+   */
   private async linted(
     ctx: RunContext,
     paths: readonly RelativePath[],
-  ): Promise<Set<RelativePath>> {
-    const linted = await lintedFiles(ctx, paths);
-    if (!("failure" in linted)) return linted;
-    throw new Error(this.failed(linted.failure)?.off ?? linted.failure);
+  ): Promise<Map<RelativePath, boolean>> {
+    const known = this.remembered?.linted ?? {};
+    const answers = new Map<RelativePath, boolean>();
+    for (const path of paths) {
+      if (Object.hasOwn(known, path)) answers.set(path, known[path] === true);
+    }
+    const asked = paths.filter((path) => !answers.has(path));
+    if (asked.length === 0) return answers;
+    const debug = await debugFiles(ctx, asked);
+    if ("failure" in debug) throw new Error(this.failed(debug.failure)?.off ?? debug.failure);
+    for (const path of asked) answers.set(path, debug.linted.has(path));
+    // A config that does not load names every file: not an answer to keep.
+    if (debug.loaded) await this.remember(asked, debug.linted);
+    return answers;
+  }
+
+  /** Keeps whether oxlint lints each of `paths` under the current configs' key (spec 026 D3). */
+  private async remember(paths: readonly RelativePath[], linted: ReadonlySet<RelativePath>) {
+    const entry = this.remembered;
+    if (entry === null || paths.every((p) => entry.linted[p] === linted.has(p))) return;
+    const answers = Object.fromEntries(paths.map((p) => [p, linted.has(p)]));
+    this.remembered = { ...entry, linted: { ...entry.linted, ...answers } };
+    await this.cache.write(this.options.root, this.remembered);
   }
 
   private report(
