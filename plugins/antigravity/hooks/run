@@ -62,7 +62,8 @@ fi
 # processes leave it out; and without NODE_USE_ENV_PROXY's proxy setup, which
 # no hook needs: the switch waits in SQUEAL_CARRIED_NODE_USE_ENV_PROXY, and a
 # preload puts it back before the hook's code runs, for what the hook spawns.
-if [ "$1" = node ]; then
+# The command is node or a path ending in /node; the carry keeps that path.
+case $1 in node | */node)
   if [ -z "${NODE_COMPILE_CACHE+set}" ]; then
     cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
     case $cache in
@@ -81,10 +82,12 @@ if [ "$1" = node ]; then
     SQUEAL_CARRIED_NODE_USE_ENV_PROXY=$NODE_USE_ENV_PROXY
     export SQUEAL_CARRIED_NODE_USE_ENV_PROXY
     unset NODE_USE_ENV_PROXY
+    node_cmd=$1
     shift
-    set -- node --import "data:text/javascript,if(process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY!==undefined){process.env.NODE_USE_ENV_PROXY=process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY;Reflect.deleteProperty(process.env,'SQUEAL_CARRIED_NODE_USE_ENV_PROXY')}" "$@"
+    set -- "$node_cmd" --import "data:text/javascript,if(process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY!==undefined){process.env.NODE_USE_ENV_PROXY=process.env.SQUEAL_CARRIED_NODE_USE_ENV_PROXY;Reflect.deleteProperty(process.env,'SQUEAL_CARRIED_NODE_USE_ENV_PROXY')}" "$@"
   fi
-fi
+  ;;
+esac
 if [ -n "$piped" ]; then
   printf '%s' "$payload" | "$@"
   exit

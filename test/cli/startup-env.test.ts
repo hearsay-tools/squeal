@@ -87,7 +87,7 @@ function run(
   script: string,
   shell: string,
   env: Record<string, string | undefined>,
-  options: { command?: string; guard?: boolean } = {},
+  options: { command?: string; guard?: boolean; node?: string } = {},
 ): Seen & { home: string; root: string } {
   const m = machine(script);
   const command = options.command ?? "status";
@@ -96,7 +96,7 @@ function run(
   const args = hook
     ? [
         ...(options.guard ? ["--if-squeal"] : []),
-        "node",
+        options.node ?? "node",
         "--disable-warning=ExperimentalWarning",
         probe,
         "a b",
@@ -212,6 +212,50 @@ describe.each(SHELLS)("under %s (spec 025 D7)", (shell) => {
     expect(seen).toMatchObject({ argv: ["a b", "c"], proxy: "1", carried: null, own: "1" });
     // Antigravity hands the payload it read on to the hook.
     if (script.includes("antigravity")) expect(JSON.parse(seen.stdin)).toMatchObject({ hook: "x" });
+  });
+
+  // Review 0.1.626 S1: a caller such as the benchmark passes Node's absolute path.
+  describe.each(HOOKS)("%s given Node's absolute path", (script) => {
+    it.each([{ guard: false }, { guard: true }])(
+      "sets the cache and carries the switch with --if-squeal $guard",
+      ({ guard }) => {
+        const seen = run(
+          script,
+          shell,
+          { ...PROXY_URL, NODE_USE_ENV_PROXY: "1" },
+          { guard, node: process.execPath },
+        );
+        expect(seen).toMatchObject({
+          argv: ["a b", "c"],
+          proxy: "1",
+          carried: null,
+          proxyAtStart: false,
+          child: { proxy: "1", carried: null },
+          cache: join(seen.home, ".cache", "squeal", "compile-cache"),
+          own: "1",
+        });
+        expect(seen.execArgv.includes("--import")).toBe(true);
+      },
+    );
+
+    it("leaves a command that is not Node as it is", () => {
+      const m = machine(script);
+      const result = spawnSync(
+        shell,
+        [
+          m.copy,
+          "sh",
+          "-c",
+          'printf "%s|%s" "${NODE_COMPILE_CACHE-unset}" "${NODE_USE_ENV_PROXY-unset}"',
+        ],
+        {
+          env: { PATH: process.env.PATH ?? "", HOME: m.home, NODE_USE_ENV_PROXY: "1" },
+          input: "",
+          encoding: "utf8",
+        },
+      );
+      expect(result.stdout).toBe("unset|1");
+    });
   });
 
   it.each([...CLIS, LAUNCHER])(
