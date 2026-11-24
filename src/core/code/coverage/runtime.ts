@@ -1,9 +1,12 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { testFileId } from "../../keys/reverse-index.js";
+import { readUnknownFiles } from "../../scheduler/unknown-files.js";
 import type { AbsolutePath, WorktreeId } from "../../types/common.js";
-import type { CheckKey } from "../../types/keys.js";
+import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import type { Store } from "../../types/store.js";
+import type { ResultRecord } from "../../types/store-records.js";
 import type { ResultKeyOf } from "./types.js";
 
 /** The provider's file name, beside this module and in a plugin's `dist/coverage/`. */
@@ -55,23 +58,50 @@ export function coverageOn(policy: Pick<Policy, "complexity" | "coverage">): boo
  * from the worktree's main store: its current key, while a result there
  * names that run. `undefined` before the scheduler stored them, and once an
  * edit re-keyed the file first (its record then waits for no result).
+ *
+ * Review 0.1.620 S3 (spec 026 D10): a run on another machine than the one
+ * the file's key is for is stored only under that machine's key, and the
+ * file is `unknown` at its current key (`storeOtherMachine`). Its key is
+ * then the one its results were stored under, while the file is still
+ * `unknown` at the key it ran for after a completed run, and this
+ * worktree's results of that run are the file's newest. No other key is
+ * given: a record never makes a result key, nor another machine's current.
  */
-export function mainStoreResultKey(
-  store: Pick<Store, "testFileKeys" | "results">,
-  worktreeId: WorktreeId,
-): ResultKeyOf {
+export function mainStoreResultKey(store: Store, worktreeId: WorktreeId): ResultKeyOf {
   return (runId, testFile) => {
     const key: CheckKey | null | undefined = store.testFileKeys.list(worktreeId, [testFile])[0]
       ?.key;
     if (key === null || key === undefined) return undefined;
-    const stored = store.results
-      .byKey(key, 0)
-      .some(
-        (r) =>
-          r.provenance.runId === runId &&
-          r.check.project === testFile.project &&
-          r.check.testPath === testFile.path,
-      );
-    return stored ? key : undefined;
+    if (store.results.byKey(key, 0).some((r) => ranFile(r, runId, testFile))) return key;
+    return otherMachineKey(store, worktreeId, runId, testFile, key);
   };
+}
+
+/** Whether `result` is of `testFile`, from the run `runId`. */
+function ranFile(result: ResultRecord, runId: string, testFile: TestFileRef): boolean {
+  return (
+    result.provenance.runId === runId &&
+    result.check.project === testFile.project &&
+    result.check.testPath === testFile.path
+  );
+}
+
+/** S3: the key `runId` stored `testFile` under on another machine than `current`'s; else `undefined`. */
+function otherMachineKey(
+  store: Store,
+  worktreeId: WorktreeId,
+  runId: string,
+  testFile: TestFileRef,
+  current: CheckKey,
+): CheckKey | undefined {
+  const unknown = readUnknownFiles(store, worktreeId).get(testFileId(testFile));
+  // Edit protection: still at the key the run was for, which it left `unknown` after it ran.
+  if (unknown === undefined || !unknown.ran || unknown.key !== current) return undefined;
+  const newest = store.results.newestForTestFile(testFile);
+  const stored = newest[0]?.key;
+  if (stored === undefined || stored === current) return undefined;
+  const ours = newest.some(
+    (r) => r.provenance.worktreeId === worktreeId && ranFile(r, runId, testFile),
+  );
+  return ours ? stored : undefined;
 }

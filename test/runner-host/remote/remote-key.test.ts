@@ -1,8 +1,12 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { COVERAGE_RECORD_VERSION } from "../../../src/core/code/coverage/record.js";
+import { mainStoreResultKey } from "../../../src/core/code/coverage/runtime.js";
+import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { readHead } from "../../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
 import { createFsHasher } from "../../../src/core/hash/hasher.js";
@@ -39,6 +43,7 @@ import type {
   RunReport,
 } from "../../../src/core/types/runner.js";
 import type { Store } from "../../../src/core/types/store.js";
+import { commonDir, ON, open } from "../../code/helpers.js";
 import { git } from "../../hash/git-repo.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
 import {
@@ -73,6 +78,8 @@ const LINUX: CoreEnvironmentInputs = {
   arch: "x64",
 };
 const DARWIN: CoreEnvironmentInputs = { ...LINUX, platform: "darwin", arch: "arm64" };
+/** A machine no test host is: a key for it is never this one's (review 0.1.620 B1). */
+const FREEBSD: CoreEnvironmentInputs = { ...OWN, platform: "freebsd", arch: "riscv64" };
 const F0 = fileName(0);
 const LOOKUP_ONLY = { baseline: { onStart: "lookup-only" as const } };
 /** Real schedulers, a real store and git: a loaded host needs headroom. */
@@ -98,13 +105,18 @@ const pick = ({ nodeVersion, platform, arch }: CoreEnvironmentInputs) => ({
   arch,
 });
 
-/** `b`'s runner keyed under `keyedOn`, its runs on `ranOn`. */
-function onMachines(b: Side, keyedOn: CoreEnvironmentInputs, ranOn: CoreEnvironmentInputs): void {
+/** `b`'s runner keyed under `keyedOn`, its runs on `ranOn`; `null`, its reports name no machine. */
+function onMachines(
+  b: Side,
+  keyedOn: CoreEnvironmentInputs,
+  ranOn: CoreEnvironmentInputs | null,
+): void {
   const environment = b.runner.environment;
   const run = b.runner.run.bind(b.runner);
   Object.assign(b.runner, {
     environment: async () => attachRemoteCore(await environment(), keyedOn),
-    run: async (files: readonly TestFileRef[]) => tagReportCore(await run(files), ranOn),
+    run: async (files: readonly TestFileRef[]) =>
+      ranOn === null ? run(files) : tagReportCore(await run(files), ranOn),
   });
 }
 
@@ -259,6 +271,97 @@ describe("a remote-key worktree in a shared store (026 D10.2)", SLOW, () => {
     expect(remote.passing()).toBe(1);
   });
 });
+
+/*
+ * Review 0.1.620 B1 and S3: a report that names no machine ran here, never
+ * on the machine the project is keyed to; the coverage of a run stored
+ * under another machine's key than the current one goes to that key.
+ */
+describe("a run here while keyed to another machine (review 0.1.620 B1, S3)", SLOW, () => {
+  /** A worktree keyed to `FREEBSD` whose run of `F0` names no machine, once it is quiet. */
+  async function untagged() {
+    const { main } = claimRepo(1);
+    const [remoteKey, hereKey] = await Promise.all([
+      keyOn(main, F0, FREEBSD),
+      keyOn(main, F0, OWN),
+    ]);
+    const b = side(main, { count: 1, policy: RUN_MISSING });
+    onMachines(b, FREEBSD, null);
+    await b.scheduler.start();
+    await b.quiet();
+    return { b, remoteKey, hereKey };
+  }
+
+  it("stores an untagged run only under this machine's key, never the keyed remote's", async () => {
+    const { b, remoteKey, hereKey } = await untagged();
+    expect(remoteKey).not.toBe(hereKey);
+    expect(b.keyOf(F0)).toBe(remoteKey);
+    expect(b.runner.ran(F0)).toBe(1);
+    expect(b.store.results.byKey(remoteKey, 0)).toEqual([]);
+    expect(passesAt(b.store, hereKey)).toBe(1);
+    expect(b.passing()).toBe(0);
+    expect(b.phase(F0)).not.toBe("current");
+  });
+
+  it("stores the run's coverage under the key its results are under, none under the current key", async () => {
+    const { b, remoteKey, hereKey } = await untagged();
+    const runId = b.store.results.byKey(hereKey, 0)[0]?.provenance.runId;
+    if (runId === undefined) throw new Error("the run stored its results here");
+    const resultKey = mainStoreResultKey(b.store, b.worktreeId as WorktreeId);
+    const ref: TestFileRef = { project: "", path: F0 };
+    expect(resultKey(runId, ref)).toBe(hereKey);
+    // Neither another run's nor another file's.
+    expect(resultKey(randomUUID(), ref)).toBeUndefined();
+    expect(resultKey(runId, { project: "", path: fileName(1) })).toBeUndefined();
+
+    const dir = commonDir();
+    const writer = createCoverageWriter({
+      commonDir: dir,
+      format: "sha1",
+      policy: () => ON,
+      resultKey,
+      log: () => {},
+      waitsMs: [0],
+      worker: null,
+    });
+    writer.collected({ runId, files: [payloadFile(F0)] });
+    await writer.idle();
+    await writer.close();
+    const code = open(dir);
+    const at = (key: CheckKey) => ({ resultKey: key, providerVersion: COVERAGE_RECORD_VERSION });
+    expect(code.coverage.has(at(hereKey))).toBe(true);
+    expect(code.coverage.has(at(remoteKey))).toBe(false);
+
+    // Edit protection: once the file is at another key, the run's record waits for no result.
+    const [row] = b.store.testFileKeys.list(b.worktreeId as WorktreeId, [ref]);
+    if (row === undefined) throw new Error("the file has a row");
+    b.store.testFileKeys.upsertMany([{ ...row, key: "edited" as CheckKey }]);
+    expect(resultKey(runId, ref)).toBeUndefined();
+  });
+});
+
+/** A coverage payload of one source line, run by `test`. */
+function payloadFile(test: string): CoveredFile {
+  const dir = mkdtempSync(join(tmpdir(), "sq-026-s3-"));
+  onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+  const text = "f();\n";
+  const path = join(dir, "a.js");
+  writeFileSync(path, text);
+  const payload = join(dir, "payload.json");
+  const ranges = [{ startOffset: 0, endOffset: text.length, count: 1 }];
+  writeFileSync(
+    payload,
+    JSON.stringify({
+      result: [{ url: `file://${path}`, functions: [{ functionName: "", ranges }] }],
+    }),
+  );
+  const sha1 = createHash("sha1").update(text).digest("hex");
+  return {
+    testFile: { project: "", path: test },
+    payload,
+    sources: new Map([[path, { path: "a.js", code: text, map: null, sha1 }]]),
+  };
+}
 
 /** A pass of `path` at `key`, as another worktree's daemon or a CI import stored it. */
 function stored(path: string, key: CheckKey, worktreeId: string) {
