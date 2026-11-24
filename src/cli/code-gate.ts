@@ -226,6 +226,8 @@ async function gate(
       ...preRunOptions(changed, policy, io.stderr),
       // D17.1: the estimate on stderr, after the stored lookup and before the first run.
       ...(durations === null ? {} : { durations: durations.of }),
+      // Row 026-21: `--narrow` counts stored direct marks and run reads as `run --base` does.
+      ...(durations === null ? {} : { observed: durations.observed }),
       // Rows 020-45, 020-46: over what is left, one rerun command with a fitted --timeout.
       // Row 020-57: the estimate lines themselves, with the setup-selection line, come from preRunOptions.
       ...estimateOptions(parsed, io),

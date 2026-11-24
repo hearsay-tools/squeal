@@ -1,11 +1,13 @@
+import type { StoredObserved } from "../core/code/gate/narrow.js";
 import { resolveCommonDir } from "../core/fs/git-layout.js";
+import { ObservedSets } from "../core/keys/observed.js";
 import { durationOf } from "../core/scheduler/files.js";
 import { Connection } from "../core/store/connection.js";
 import { openReadOnly } from "../core/store/open.js";
 import { storePaths } from "../core/store/paths.js";
 import { SCHEMA_VERSION } from "../core/store/schema.js";
 import { createStore } from "../core/store/store.js";
-import type { AbsolutePath } from "../core/types/common.js";
+import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 
 /*
@@ -20,6 +22,11 @@ import type { TestFileRef } from "../core/types/keys.js";
 export interface StoredDurations {
   /** `CollectOptions.durations`: a file's seconds, `null` when the store holds none. */
   readonly of: (ref: TestFileRef) => number | null;
+  /**
+   * Row 026-21: the stored direct marks and run reads of a file, for
+   * `--narrow` (`CollectOptions.observed`); none for a file whose read fails.
+   */
+  readonly observed: StoredObserved;
   close(): void;
 }
 
@@ -43,5 +50,17 @@ export function storedDurations(root: AbsolutePath): StoredDurations | null {
       return null;
     }
   };
-  return { of, close: () => store.close() };
+  const sets = new ObservedSets(store);
+  const read = (paths: () => readonly RelativePath[]) => {
+    try {
+      return paths();
+    } catch {
+      return [];
+    }
+  };
+  const observed: StoredObserved = {
+    directOf: (ref) => read(() => sets.directOf(ref)),
+    readsOf: (ref) => read(() => sets.of(ref)),
+  };
+  return { of, observed, close: () => store.close() };
 }
