@@ -10,12 +10,28 @@ on:
   pull_request:
     paths: ["**", "!docs/**", "docs/**/probes/**"]
   workflow_dispatch:
-  # Spec 010 D7: once a night, main's head on Node 24 in full, which D4 runs only in part.
+  # Spec 010 D7, row 010-35: once a night, main's head in full on Node 24 and 26, which D4 runs
+  # only in part.
   schedule:
     - cron: "23 3 * * *"
 
 permissions:
   contents: read
+
+env:
+  # Row 010-35: `scripts/ci-shard.mjs` splits the suite by the durations in `ci/test-timings.json`.
+  # Only shard 1 checks out the full history, so every test file that reads this repository's
+  # history runs there: a release tag (011-39), a released commit's bundles (the daemon hand-over
+  # files skip without it) or a pinned commit's sources. `test/ci-shard.test.ts` checks the pins.
+  # 010-16: the dispose race runs alone, after its shard's files.
+  SHARD_ARGS: >-
+    --pin test/keys/validity/compare.test.ts:1
+    --pin test/cli/group-pending-release.test.ts:1
+    --pin test/code/count/corpus.test.ts:1
+    --pin test/daemon/handover.test.ts:1
+    --pin test/daemon/start-handoff.test.ts:1
+    --pin test/daemon/step-down.test.ts:1
+    --exclude test/harness/opencode-dispose.test.ts
 
 # Spec 010 D3: a newer push cancels a superseded run of the same candidate or pull request. A main
 # run is never cancelled and never waits: its group is its own, so the version job checks every
@@ -26,20 +42,23 @@ concurrency:
 
 jobs:
   node22:
-    # Spec 010 D4, D5: the full suite on the engines floor, in three shards, each read on its own.
-    name: Node 22 (${{ matrix.shard }}/3)
+    # Spec 010 D4, D5: the full suite on the engines floor, each shard read on its own. Row 010-35:
+    # six shards of about equal measured duration instead of Vitest's three of equal file count.
+    name: Node 22 (${{ matrix.shard }}/6)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
         with:
           # 011-39: `test/keys/validity/compare.test.ts` reads the last release from its tag, the
           # newest `squeal--v*` that is an ancestor of HEAD: every tag, and the history to it.
-          fetch-depth: 0
+          # Shard 1 holds every file that reads history (`SHARD_ARGS`). A string: 0 is false in
+          # an expression, so `&& 0 || 1` would always give 1.
+          fetch-depth: ${{ matrix.shard == 1 && '0' || '1' }}
       # 017-11: pnpm at package.json's packageManager version, before setup-node reads its store.
       - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v4
@@ -50,21 +69,30 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Spec 007: the pytest fixtures sync uv environments on both Pythons; on CI an absent
-      # uv or Python fails those tests instead of skipping them.
+      # uv or Python fails those tests instead of skipping them. Row 010-35: uv keeps its
+      # download cache between runs.
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           version: "0.12.2"
+          enable-cache: true
       - name: Pythons for the pytest fixtures
         run: uv python install 3.10 3.13
+      # Row 010-35: the e2e fixtures' npm installs (`test/e2e/install.ts`), keyed there by Node
+      # major and the pinned Vitest, Vite and tsx; here by the lockfile and workspace manifests.
+      - name: Cache the e2e fixture installs
+        uses: actions/cache@v4
+        with:
+          path: /tmp/squeal-e2e-cache
+          key: ${{ runner.os }}-squeal-e2e-node-22-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
       - name: Test
         id: test
-        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3 --exclude test/harness/opencode-dispose.test.ts
+        run: node scripts/ci-shard.mjs --shard ${{ matrix.shard }}/6 $SHARD_ARGS
       # 010-16: this file's race must fit OpenCode's rebuild of a disposed instance inside the
       # plugin's 2,000 ms idle deadline, which a shard sharing 4 vCPUs with
       # `scheduler/backlog-tiers` misses on every attempt. It runs alone, after its shard's files,
       # and reads as its own step even when they failed.
       - name: Test the dispose race alone
-        if: ${{ !cancelled() && matrix.shard == 3 && steps.test.outcome != 'skipped' }}
+        if: ${{ !cancelled() && matrix.shard == 6 && steps.test.outcome != 'skipped' }}
         run: pnpm exec vitest run test/harness/opencode-dispose.test.ts
       - name: Build
         if: matrix.shard == 1
@@ -99,8 +127,14 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           version: "0.12.2"
+          enable-cache: true
       - name: Pythons for the pytest fixtures
         run: uv python install 3.10 3.13
+      - name: Cache the e2e fixture installs
+        uses: actions/cache@v4
+        with:
+          path: /tmp/squeal-e2e-cache
+          key: ${{ runner.os }}-squeal-e2e-node-24-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
       - name: Lint and format
         run: pnpm exec biome check .
       - name: Typecheck
@@ -117,21 +151,15 @@ jobs:
         run: test -z "$(git status --porcelain --untracked-files=all -- plugins)" || { git status --short --untracked-files=all -- plugins; exit 1; }
 
   node26:
-    # Row 018-36: the full suite on Node 26, the current LTS, for main and candidate pushes and on
-    # request, in three shards as on Node 22, so a run takes no longer. Its daemon spawns, stack
-    # frames and dropped flags broke tests that Node 22 and 24 passed.
-    name: Node 26 (${{ matrix.shard }}/3)
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Row 018-36: Node 26, the current LTS, whose daemon spawns, stack frames and dropped flags
+    # broke tests that Node 22 and 24 passed. Row 010-35: on every run, the version-sensitive
+    # files as on Node 24, without the lint, typecheck and build that job already runs; the full
+    # suite runs on Node 26 in the nightly.
+    name: Node 26 (version-sensitive)
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
-        with:
-          # 011-39: the last release's tag and the history to it, as for the Node 22 shards.
-          fetch-depth: 0
       - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v4
         with:
@@ -141,40 +169,58 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           version: "0.12.2"
+          enable-cache: true
       - name: Pythons for the pytest fixtures
         run: uv python install 3.10 3.13
-      - name: Test
-        id: test
-        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3 --exclude test/harness/opencode-dispose.test.ts
-      # 010-16: the dispose race runs alone, as in the Node 22 shards.
-      - name: Test the dispose race alone
-        if: ${{ !cancelled() && matrix.shard == 3 && steps.test.outcome != 'skipped' }}
-        run: pnpm exec vitest run test/harness/opencode-dispose.test.ts
+      - name: Cache the e2e fixture installs
+        uses: actions/cache@v4
+        with:
+          path: /tmp/squeal-e2e-cache
+          key: ${{ runner.os }}-squeal-e2e-node-26-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+      - name: Test the version-sensitive files
+        run: pnpm exec vitest run $(grep -Ev '^[[:space:]]*(#|$)' test/version-sensitive.txt)
 
   nightly:
-    # Spec 010 D7: the whole suite on Node 24, scheduled on main only. Main's Node 22 result comes
-    # from its landings, so the nightly runs this one job.
-    name: Node 24 (nightly, full suite)
+    # Spec 010 D7: the whole suite on main's head once a night, on the Node versions the push
+    # runs test only in part: Node 24 and, since row 010-35, Node 26. Main's Node 22 result comes
+    # from its landings. Three duration-balanced shards per version, as on Node 22.
+    name: Node ${{ matrix.node-version }} (nightly ${{ matrix.shard }}/3)
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [24, 26]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
         with:
-          # 011-39: the last release's tag and the history to it, as for the Node 22 shards.
-          fetch-depth: 0
+          # 011-39: the last release's tag and the history to it, in the shard that reads it.
+          fetch-depth: ${{ matrix.shard == 1 && '0' || '1' }}
       - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           version: "0.12.2"
+          enable-cache: true
       - name: Pythons for the pytest fixtures
         run: uv python install 3.10 3.13
+      - name: Cache the e2e fixture installs
+        uses: actions/cache@v4
+        with:
+          path: /tmp/squeal-e2e-cache
+          key: ${{ runner.os }}-squeal-e2e-node-${{ matrix.node-version }}-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
       - name: Test
-        run: pnpm exec vitest run
+        id: test
+        run: node scripts/ci-shard.mjs --shard ${{ matrix.shard }}/3 $SHARD_ARGS
+      # 010-16: the dispose race runs alone, as in the Node 22 shards.
+      - name: Test the dispose race alone
+        if: ${{ !cancelled() && matrix.shard == 3 && steps.test.outcome != 'skipped' }}
+        run: pnpm exec vitest run test/harness/opencode-dispose.test.ts
 
   version:
     # 001-76: Claude Code updates an installed plugin only when its manifest's version changes,
