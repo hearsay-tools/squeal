@@ -52,9 +52,9 @@ A newer push cancels a superseded run on `cand/*` and on pull requests. Main run
 
 ### D4. One full Node version
 
-The full suite runs on Node 22. It is the engines floor (`>=22.19` since row 011-86, which the job pins literally: `node-version: 22` installed the newest 22.x, so a break on the floor passed CI, review 0.1.239 B1), it had the only real one-version defect (npm 10.9.9 crashing on an e2e install, `ci-test-time.md` 3), and it has the larger flake share. Node 24 runs only the version-sensitive test files.
+The full suite runs on Node 22. It is the engines floor (`>=22.19` since row 011-86, which the job pins literally: `node-version: 22` installed the newest 22.x, so a break on the floor passed CI, review 0.1.239 B1), it had the only real one-version defect (npm 10.9.9 crashing on an e2e install, `ci-test-time.md` 3), and it has the larger flake share. Node 24 and Node 26 (amended 2026-11-24, Wave 4 row 010-35) run only the version-sensitive test files on push and pull requests; both get the full suite nightly (D7).
 
-Those files are listed in `test/version-sensitive.txt`, which the workflow reads (44 files at 010-10). The list started from `ci-test-time.md` 3, 47 files and 144 s of file time:
+Those files are listed in `test/version-sensitive.txt`, which the workflow reads (pruned in row 010-35 to remove slow files that check no Node-version behaviour). The list started from `ci-test-time.md` 3, 47 files and 144 s of file time:
 
 - `test/runners/node-test/**` and every other test that runs a real `node --test` (integration, the slow tier, e2e);
 - `test/e2e/shipped-plugin` and `pi-update` (`plugin-copy` left the list after review 010-11 N1: it reads no version);
@@ -64,13 +64,11 @@ Those files are listed in `test/version-sensitive.txt`, which the workflow reads
 
 A guard test fails when a `*.test.ts` file reads either of those and is not in the list. The list's header names the helpers that read the Node version (`test/e2e/install.ts`, `test/helpers/pi.ts`) and the files that use them.
 
-### D5. Three shards
+### D5. Duration-balanced shards
 
-The Node 22 suite runs as three jobs, `vitest run --shard=<i>/3`. A simulation calibrated on the logged file times gives 7.2 minutes of Test wall time, and about 25 job-minutes per run together with the Node 24 job (`ci-test-time.md` 4). `test/harness/opencode-dispose.test.ts` is excluded from the shards and runs alone in shard 3 after its suite: inside a shard it overlaps `scheduler/backlog-tiers`' backlog phase and misses its 2,000 ms barrier (010-16). Each shard passes or fails on its own. There is no merge job, because the process reads a failure by test name from the failing job's log.
+Amended 2026-11-24 (Wave 4, row 010-35; was three equal-count shards at 634 files). At ~2,298 files, the Node 22 suite runs as six duration-balanced jobs partitioned by `scripts/ci-shard.mjs` from `ci/test-timings.json`, seeding Vitest's `results.json` for longest-processing-time worker order. Only shard 1 fetches full git history (`fetch-depth: '0'`); shards 2–6 use `fetch-depth: '1'`. Every direct and indirect git-history reader is pinned to shard 1 via the shared `SHARD_ARGS` list in `.github/workflows/ci.yml`, guarded by a transitive import walker in `test/ci-shard.test.ts`. `test/harness/opencode-dispose.test.ts` stays excluded from the shards and runs alone in shard 6 after its suite (010-16). Each shard passes or fails on its own. There is no merge job, because the process reads a failure by test name from the failing job's log.
 
-Lint and typecheck run once per run, in the Node 24 job. Build and the bundle drift check run once per Node version: in Node 22 shard 1 and in the Node 24 job.
-
-A run's peak goes from 2 jobs to 4, plus the 6-second `version` job on main. Each lasts about 8 minutes instead of 20, so the pool time a run occupies falls from about 40 to about 25 job-minutes.
+Lint and typecheck run once per run, in the Node 24 job. Build and the bundle drift check run once per Node version: in Node 22 shard 1 and in the Node 24 job. `uv` and `/tmp/squeal-e2e-cache` are cached across runs.
 
 ### D6. Process
 
@@ -81,9 +79,9 @@ The coordinator skill, section 6, gains two rules:
 
 Branches outside D1 get CI only through `workflow_dispatch`. `docs/process.md` is the human's: the line "docs-only pushes start no CI run" in step 5 is proposed to them, not written.
 
-### D7. Nightly Node 24
+### D7. Nightly Node 24 and Node 26
 
-The human, 2026-10-15. A `schedule` trigger runs main's head once a night (03:23 UTC) as one job: the whole suite on Node 24, which D4 runs only in part. The candidate and landing jobs do not run on a schedule, and neither does `version`. About 20 job-minutes a day. The run lists under `main` in `gh run list`, so the coordinator reads it with the landings (D6); a red nightly blocks the next landing until its cause is named.
+The human, 2026-10-15; extended to Node 26 and sharded 2026-11-24 (Wave 4, row 010-35). A `schedule` trigger runs main's head once a night (03:23 UTC) across `node-version: [24, 26]` in 3 duration-balanced shards each (`scripts/ci-shard.mjs` with the same shard-1 history pins), restoring the full suite that D4 drops from push runs. The candidate and landing jobs do not run on a schedule, and neither does `version`. The run lists under `main` in `gh run list`, so the coordinator reads it with the landings (D6); a red nightly blocks the next landing until its cause is named.
 
 ### D12. Issue intake
 
