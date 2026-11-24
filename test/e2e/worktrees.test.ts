@@ -40,7 +40,7 @@ async function twoWorktrees(e: E2E) {
 }
 
 describe.each(ALL_PLUGINS)("a second worktree, $name", (plugin) => {
-  it("bootstraps with zero runs and inherited provenance", async (ctx) => {
+  it("bootstraps with zero runs and inherited provenance, named in status --full", async (ctx) => {
     const e = fixture(ctx, plugin);
     const { main, wt2, second } = await twoWorktrees(e);
 
@@ -65,20 +65,13 @@ describe.each(ALL_PLUGINS)("a second worktree, $name", (plugin) => {
     const batch = await e.hook("post-tool-batch", wt2, { session_id: OTHER_SESSION });
     expect(batch).toMatchObject({ code: 0, stdout: "", stderr: "" });
 
-    // A session that starts now registers against the inherited state.
+    // A session that starts now registers against the inherited state, with the current test
+    // files. Goal 4: inherited results are reported as inherited. Row 005-94 (the human,
+    // 2026-11-17, R1): the registration leaves the inherited count to `squeal status --full`,
+    // which names it and where it came from. Row 010-39: one fixture for both, as one state.
     const later = await e.hook("session-start", wt2, { session_id: "late-session" });
     expect(later.text).toMatch(/^SQUEAL · registered at revision \d+\n/);
     expectAgrees(later.text, await e.status(wt2));
-  }, 240_000);
-
-  // Goal 4: inherited results are reported as inherited. Row 005-94 (the human, 2026-11-17, R1):
-  // the registration leaves the inherited count to `squeal status --full`, which names it and
-  // where it came from; the registration says how many test files are current.
-  it("names inherited results in status --full, and registers with the current test files", async (ctx) => {
-    const e = fixture(ctx, plugin);
-    const { main, wt2 } = await twoWorktrees(e);
-    const later = await e.hook("session-start", wt2, { session_id: "late-session" });
-    expect(later.text).toContain("registered at revision");
     expect(later.text).toMatch(
       /test files? (?:is|are) current \(run on the files as they are now\)/,
     );
