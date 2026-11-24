@@ -3415,64 +3415,8 @@ function isEpochMs(value) {
 // src/core/daemon/policy.ts
 import { join as join23 } from "node:path";
 
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: {
-    blockOnKnownFailures: false,
-    requireFullSuite: false,
-    waitMs: 0,
-    requireSlowSuite: false,
-    slowWaitMs: 12e4,
-    maxHolds: 1
-  },
-  checks: [],
-  testCommand: { denyWhenCurrent: false },
-  baseline: { onStart: "lookup-only" },
-  inputs: [],
-  runtimeFiles: [],
-  observe: { runtimeInputs: true },
-  env: { allowlist: [] },
-  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
-  nodeTest: [],
-  pytest: [],
-  vitest: { excludeProjects: [], exclude: [] },
-  slow: {
-    include: [],
-    maxWorkers: 2,
-    maxLoadPerCpu: 1,
-    maxDeferMs: 6e5,
-    maxParallel: 4,
-    rank: "tokens",
-    trigger: "continuous",
-    quietMs: 3e3
-  },
-  delivery: { uncoveredEdits: true },
-  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
-  store: { retentionDays: 7, maxSizeMb: null },
-  complexity: {
-    enabled: true,
-    threshold: 20,
-    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
-    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
-    maxFileBytes: 524288,
-    blocking: false
-  },
-  coverage: { enabled: true, untested: true, exclude: [], children: false },
-  crap: { enabled: true, threshold: 30 },
-  lint: {
-    enabled: false,
-    include: ["**"],
-    exclude: [],
-    blocking: false,
-    tools: ["eslint", "oxlint"]
-  },
-  gate: { groups: null },
-  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
-  node: "project",
-  requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [] }
-};
+// src/core/types/scheduler.ts
+var TESTS_GROUP = "tests";
 
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
@@ -3480,6 +3424,11 @@ function globToRegExp(glob) {
   if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
   const source = glob.startsWith("./") ? glob.slice(2) : glob;
   return new RegExp(`^${compile(source, glob)}$`, "s");
+}
+function createInputMatcher(globs4) {
+  if (globs4.length === 0) return () => false;
+  const patterns = globs4.map(globToRegExp);
+  return (path) => patterns.some((pattern) => pattern.test(path));
 }
 function compile(glob, original) {
   let out = "";
@@ -3597,6 +3546,192 @@ function defaultGroups(policy) {
     }
   ];
 }
+function resolveGroups(policy) {
+  return [...policy.checks.map(resolveEntry), ...defaultGroups(policy)];
+}
+function resolveEntry(group, index) {
+  const given = group.limits ?? {};
+  const defer = given.deferUnderLoad;
+  return {
+    name: group.name,
+    index,
+    at: group.at,
+    ...group.description === void 0 ? {} : { description: group.description },
+    stopRequires: group.at === "stop",
+    after: group.after ?? [],
+    quietMs: group.quietMs ?? 0,
+    limits: {
+      maxParallel: given.maxParallel ?? null,
+      maxWorkers: given.maxWorkers ?? null,
+      priority: given.priority ?? "normal",
+      deferUnderLoad: defer === void 0 ? null : {
+        maxLoadPerCpu: defer.maxLoadPerCpu ?? DEFER_DEFAULTS.maxLoadPerCpu,
+        maxDeferMs: defer.maxDeferMs ?? DEFER_DEFAULTS.maxDeferMs
+      }
+    },
+    select: "lint" in group ? { kind: "lint", tools: group.lint === true ? null : group.lint } : {
+      kind: "tests",
+      runner: group.runner,
+      project: group.project ?? null,
+      tests: group.tests ?? null
+    }
+  };
+}
+var DEFER_DEFAULTS = { maxLoadPerCpu: 1, maxDeferMs: 6e5 };
+function groupOf(groups2, check) {
+  return groups2.find((group) => selects(group.select, check)) ?? null;
+}
+function selects(selector, check) {
+  switch (selector.kind) {
+    case "lint":
+      return check.kind === "lint" && (selector.tools?.includes(check.tool) ?? true);
+    case "tests":
+      return check.kind === "test" && check.runner === selector.runner && (selector.project === null || check.project === selector.project) && (selector.tests === null || matcher(selector.tests)(check.path));
+    case "marked":
+      return check.kind === "test" && markedSlow(selector, check) === selector.slow;
+  }
+}
+function markedSlow(selector, check) {
+  return selector.projects.some((p) => p.runner === check.runner && p.name === check.project) || matcher(selector.include)(check.path);
+}
+var matchers = /* @__PURE__ */ new WeakMap();
+function matcher(globs4) {
+  let match = matchers.get(globs4);
+  if (match === void 0) {
+    match = createInputMatcher(globs4);
+    matchers.set(globs4, match);
+  }
+  return match;
+}
+
+// src/core/keys/reverse-index.ts
+function testFileId(ref2) {
+  return `${ref2.project}\0${ref2.path}`;
+}
+
+// src/core/scheduler/slow.ts
+var groupViews = /* @__PURE__ */ new WeakMap();
+function groupView(policy) {
+  let view = groupViews.get(policy);
+  if (view === void 0) {
+    const groups2 = resolveGroups(policy);
+    const owners = /* @__PURE__ */ new Map();
+    const of = (ref2) => {
+      const id = testFileId(ref2);
+      let owner = owners.get(id);
+      if (owner === void 0) {
+        const check = { kind: "test", runner: runnerOf2(policy, ref2.project), ...ref2 };
+        owner = groupOf(groups2, check) ?? fallback(groups2);
+        owners.set(id, owner);
+      }
+      return owner;
+    };
+    view = { groups: groups2, of };
+    groupViews.set(policy, view);
+  }
+  return view;
+}
+function fallback(groups2) {
+  const tests2 = groups2.find((group) => group.index === null && group.name === TESTS_GROUP);
+  if (tests2 === void 0) throw new Error("the default tests group is missing");
+  return tests2;
+}
+function runnerOf2(policy, project) {
+  if (policy.nodeTest.some((p) => p.name === project)) return "nodeTest";
+  if (policy.pytest.some((p) => p.name === project)) return "pytest";
+  return "vitest";
+}
+
+// src/core/scheduler/deferred-keying.ts
+var EAGER_MOMENTS = /* @__PURE__ */ new Set(["edit", "pause"]);
+function runnerKeyingDeferred(policy, runner) {
+  const entries = entryNames(policy, runner);
+  if (entries !== null && entries.length === 0) return true;
+  const taken = /* @__PURE__ */ new Set();
+  for (const group of groupView(policy).groups) {
+    if (!ownsAny(group, runner)) continue;
+    if (EAGER_MOMENTS.has(group.at)) return false;
+    const { select } = group;
+    if (select.kind !== "tests" || select.tests !== null) continue;
+    if (select.project === null) return true;
+    taken.add(select.project);
+    if (entries?.every((name2) => taken.has(name2))) return true;
+  }
+  return true;
+}
+function keyingDeferred(policy) {
+  return CHECK_RUNNERS.every((runner) => runnerKeyingDeferred(policy, runner));
+}
+function ownsAny(group, runner) {
+  const { select } = group;
+  if (select.kind === "lint") return false;
+  if (select.kind === "tests") return select.runner === runner;
+  return true;
+}
+function entryNames(policy, runner) {
+  if (runner === "nodeTest") return policy.nodeTest.map((entry) => entry.name);
+  if (runner === "pytest") return policy.pytest.map((entry) => entry.name);
+  return null;
+}
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false,
+    slowWaitMs: 12e4,
+    maxHolds: 1
+  },
+  checks: [],
+  testCommand: { denyWhenCurrent: false },
+  baseline: { onStart: "lookup-only" },
+  inputs: [],
+  runtimeFiles: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
+  nodeTest: [],
+  pytest: [],
+  vitest: { excludeProjects: [], exclude: [] },
+  slow: {
+    include: [],
+    maxWorkers: 2,
+    maxLoadPerCpu: 1,
+    maxDeferMs: 6e5,
+    maxParallel: 4,
+    rank: "tokens",
+    trigger: "continuous",
+    quietMs: 3e3
+  },
+  delivery: { uncoveredEdits: true },
+  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
+  store: { retentionDays: 7, maxSizeMb: null },
+  complexity: {
+    enabled: true,
+    threshold: 20,
+    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+    maxFileBytes: 524288,
+    blocking: false
+  },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
+  crap: { enabled: true, threshold: 30 },
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  },
+  gate: { groups: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
+  node: "project",
+  requires: { commands: [] },
+  remote: { allowed: true, needsRepository: [] }
+};
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute8, posix } from "node:path";
@@ -4135,14 +4270,41 @@ var SHAPE = {
   ...NODE_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join23(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join23(root, POLICY_FILE), SHAPE, UNSET_EXITS);
   const settled = settleChecks(loaded.value);
   return {
-    policy: settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
+    policy: withExits(
+      settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks }
+    ),
     problems: [...loaded.problems, ...settled.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
+}
+var UNSET_EXITS = {
+  ...DEFAULT_POLICY,
+  daemon: { ...DEFAULT_POLICY.daemon, idleExitMinutes: Number.NaN, unusedExitMinutes: Number.NaN }
+};
+function withExits(policy) {
+  const { idleExitMinutes: idle, unusedExitMinutes: unused } = policy.daemon;
+  const defaults = DEFAULT_POLICY.daemon;
+  const set = { idleExitMinutes: !Number.isNaN(idle), unusedExitMinutes: !Number.isNaN(unused) };
+  const daemon = {
+    ...policy.daemon,
+    idleExitMinutes: set.idleExitMinutes ? idle : defaults.idleExitMinutes,
+    unusedExitMinutes: set.unusedExitMinutes ? unused : defaults.unusedExitMinutes,
+    ...set.idleExitMinutes || set.unusedExitMinutes ? { set } : {}
+  };
+  return { ...policy, daemon };
+}
+var EDIT_FREE_UNUSED_EXIT_MINUTES = 2;
+function daemonExits(policy) {
+  const { idleExitMinutes: idle, unusedExitMinutes: unused, set } = policy.daemon;
+  const defaults = DEFAULT_POLICY.daemon;
+  const derive = (key, value) => set?.[key] !== true && value === defaults[key] && keyingDeferred(policy);
+  const unusedExitMinutes = derive("unusedExitMinutes", unused) ? EDIT_FREE_UNUSED_EXIT_MINUTES : unused;
+  const idleExitMinutes = derive("idleExitMinutes", idle) ? Math.min(idle, unusedExitMinutes) : idle;
+  return { idleExitMinutes, unusedExitMinutes };
 }
 function readPolicy(root) {
   return loadPolicy(root).policy;
@@ -4421,10 +4583,11 @@ var statIn = (table) => (pid) => {
   return row2 === void 0 ? null : { startTime: row2.startTicks, state: row2.state };
 };
 function settingsOf(root) {
-  const { daemon, runner } = root === null ? DEFAULT_POLICY : readPolicy(root);
+  const policy = root === null ? DEFAULT_POLICY : readPolicy(root);
+  const { runner } = policy;
   return {
-    idleExitMinutes: daemon.idleExitMinutes,
-    unusedExitMinutes: daemon.unusedExitMinutes,
+    // Spec 026 D2.2: the bounds the daemon keeps, as its timers resolve them.
+    ...daemonExits(policy),
     // `null` is no limit, which no process outlives.
     timeoutMs: runner.timeoutMs ?? Number.POSITIVE_INFINITY
   };

@@ -10,19 +10,6 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// src/core/fs/errors.ts
-function isMissing(error) {
-  const code = error?.code;
-  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
-}
-
-// src/core/daemon/config-file.ts
-var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
-
-// src/core/daemon/host-idle.ts
-var GIB = 2 ** 30;
-var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
-
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -123,6 +110,78 @@ function excludedFilesText(globs4) {
 var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
 var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
 var DEFAULT_GROUP_NAMES = ["tests", "slow"];
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false,
+    slowWaitMs: 12e4,
+    maxHolds: 1
+  },
+  checks: [],
+  testCommand: { denyWhenCurrent: false },
+  baseline: { onStart: "lookup-only" },
+  inputs: [],
+  runtimeFiles: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
+  nodeTest: [],
+  pytest: [],
+  vitest: { excludeProjects: [], exclude: [] },
+  slow: {
+    include: [],
+    maxWorkers: 2,
+    maxLoadPerCpu: 1,
+    maxDeferMs: 6e5,
+    maxParallel: 4,
+    rank: "tokens",
+    trigger: "continuous",
+    quietMs: 3e3
+  },
+  delivery: { uncoveredEdits: true },
+  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
+  store: { retentionDays: 7, maxSizeMb: null },
+  complexity: {
+    enabled: true,
+    threshold: 20,
+    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+    maxFileBytes: 524288,
+    blocking: false
+  },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
+  crap: { enabled: true, threshold: 30 },
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  },
+  gate: { groups: null },
+  shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
+  node: "project",
+  requires: { commands: [] },
+  remote: { allowed: true, needsRepository: [] }
+};
+
+// src/core/fs/errors.ts
+function isMissing(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
+}
+
+// src/core/daemon/config-file.ts
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+
+// src/core/daemon/host-idle.ts
+var GIB = 2 ** 30;
+var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute, posix } from "node:path";
@@ -591,6 +650,10 @@ var SHAPE = {
   ...REMOTE_SHAPE,
   ...GATE_SHAPE,
   ...NODE_SHAPE
+};
+var UNSET_EXITS = {
+  ...DEFAULT_POLICY,
+  daemon: { ...DEFAULT_POLICY.daemon, idleExitMinutes: Number.NaN, unusedExitMinutes: Number.NaN }
 };
 function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);

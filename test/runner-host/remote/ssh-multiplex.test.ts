@@ -21,9 +21,9 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 describe("one connection per awake machine (row 026-11)", () => {
   it("names a short socket for the user's ssh, and none for another ssh program", () => {
-    const socket = controlSocket({ destination: "box" }, "agent37:eu:vm:abc", "/home/me/app");
+    const socket = controlSocket({ destination: "box" }, "agent37:eu:vm:abc", "/srv/work/app");
     expect(socket).toMatch(/^\/tmp\/squeal-ssh-[0-9a-f]{16}$/);
-    expect(controlSocket({ destination: "box" }, "agent37:eu:vm:abc", "/home/me/other")).not.toBe(
+    expect(controlSocket({ destination: "box" }, "agent37:eu:vm:abc", "/srv/work/other")).not.toBe(
       socket,
     );
     expect(controlSocket({ destination: "box", ssh: "/fake/ssh" }, "m", "/r")).toBeNull();
