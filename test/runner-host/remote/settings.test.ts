@@ -208,7 +208,7 @@ describe("remote.json under spec 026 D6.4 (row 026-10)", () => {
   it("leaves out a provider it does not have, a bad hook, and a target on a command lane", () => {
     const loaded = settings({
       repositories: {
-        "/a": { provider: "agent37" },
+        "/a": { provider: "boat" },
         "/b": { provider: "command", providerConfig: { acquire: "lan-up --now" } },
         "/c": { provider: "command", target: "box", providerConfig: { acquire: ["x"] } },
         "/d": { provider: "command", providerConfig: { acquire: ["x"], extra: 1 } },
@@ -221,7 +221,7 @@ describe("remote.json under spec 026 D6.4 (row 026-10)", () => {
     });
     expect(loaded.repositories).toEqual({});
     expect(loaded.problems).toHaveLength(9);
-    expect(loaded.problems[0]).toMatch(/"provider" must be one of "ssh", "command"/);
+    expect(loaded.problems[0]).toMatch(/"provider" must be one of "ssh", "command", "agent37"/);
     expect(loaded.problems[1]).toMatch(/"acquire" must be a non-empty argument list/);
     expect(loaded.problems[2]).toMatch(/"target" applies to provider "ssh" only/);
   });

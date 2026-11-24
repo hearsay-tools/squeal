@@ -1,4 +1,5 @@
 import type { RemoteMachineProvider } from "../provider.js";
+import { agent37Provider } from "./agent37/index.js";
 import { commandProvider } from "./command.js";
 import { sshProvider } from "./ssh.js";
 
@@ -11,6 +12,8 @@ import { sshProvider } from "./ssh.js";
 const PROVIDERS: Readonly<Record<string, RemoteMachineProvider>> = {
   ssh: sshProvider,
   command: commandProvider,
+  // Spec 026 D7.3 (row 026-15).
+  agent37: agent37Provider,
 };
 
 /** The provider of `kind`, or `null` when none is built in. */
