@@ -168,6 +168,8 @@ test/daemon/observed-malformed
 test/cli/warmup.test
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
+# A real `node --test` on a remote lane through the bundled plugin CLI (row 026-16).
+test/e2e/spec-026-remote
 test/e2e/slow-node-test
 test/e2e/codex-upgrade
 
