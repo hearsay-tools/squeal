@@ -1,17 +1,7 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { readGroupActivity } from "../../src/core/slow/state.js";
-import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
-import {
-  type CatchUpFile,
-  type CatchUpSide,
-  catchUpRepo,
-  catchUpSide,
-} from "./catch-up-fixture.js";
-import { groupPolicy, inTurn, runnerLane } from "./group-lanes-fixture.js";
+import { A, B, C, holdFirst, PATHS, pair } from "./slot-pairs-fixture.js";
 
 /*
  * Row 023-78 (round 10 Z2): one `status --at --run` call queues the same
@@ -24,77 +14,6 @@ import { groupPolicy, inTurn, runnerLane } from "./group-lanes-fixture.js";
  * first leads. Row 023-83: a late partner follows the leader's first file
  * it has not run, so pairs come in the leader's order.
  */
-
-const PATHS = ["a", "b", "c"].map((n) => `test/browser/${n}.test.ts`);
-const [A, B, C] = PATHS as [string, string, string];
-const FILES: readonly CatchUpFile[] = PATHS.map((path) => ({
-  path,
-  ms: 10,
-  imports: ["src/core.ts"],
-}));
-
-const BROWSER: CheckGroup = {
-  name: "browser",
-  runner: "vitest",
-  tests: ["test/browser/**"],
-  at: "manual",
-  limits: { maxParallel: 1, maxWorkers: 1, priority: "low" },
-};
-
-interface Pair {
-  readonly tree: CatchUpSide;
-  readonly commit: CatchUpSide;
-  /** Every browser run's start, both sides, in order: `tree:<path>` or `commit:<path>`. */
-  readonly log: string[];
-}
-
-async function pair(recheckMs: number): Promise<Pair> {
-  const repo = catchUpRepo(FILES);
-  const slotDir = mkdtempSync(join(tmpdir(), "squeal-023-78-slot-"));
-  onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
-  const options = {
-    files: FILES,
-    hostSlots: 8,
-    tierSize: 1,
-    lane: runnerLane,
-    policy: groupPolicy({ checks: [BROWSER] }),
-    scheduler: { slow: { slotDir, recheckMs, cpus: () => 1, load: () => [0] } },
-  };
-  const tree = catchUpSide(repo, repo.main, options);
-  const commit = catchUpSide(repo, repo.other, options);
-  // The commit's sources differ from the working tree's, so no file shares a key.
-  commit.touch("src/core.ts");
-  const log: string[] = [];
-  for (const [name, side] of [
-    ["tree", tree],
-    ["commit", commit],
-  ] as const) {
-    side.runner.beforeRun = (files) => {
-      for (const file of files)
-        if (file.path.startsWith("test/browser/")) log.push(`${name}:${file.path}`);
-    };
-  }
-  const turns = [await inTurn(tree), await inTurn(commit)];
-  onTestFinished(async () => {
-    for (const turn of turns) await turn.end();
-  });
-  await tree.scheduler.start();
-  await commit.scheduler.start();
-  await tree.rest();
-  await commit.rest();
-  return { tree, commit, log };
-}
-
-/** Holds `side`'s run of `path` until the returned release is called. */
-function holdFirst(side: CatchUpSide, path: string): () => void {
-  let release = () => {};
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  onTestFinished(() => release());
-  side.runner.holdOf = (run) => (run.files.some((f) => f.path === path) ? held : undefined);
-  return () => release();
-}
 
 describe("both sides take the shared slot file by file (row 023-78)", { timeout: 60_000 }, () => {
   it("runs each requested file on both sides before the next, in the request's order", async () => {
@@ -188,7 +107,7 @@ describe("both sides take the shared slot file by file (row 023-78)", { timeout:
     await tree.rest();
     expect(log).toEqual([`commit:${A}`, `commit:${B}`]);
     // The working tree records that it waits for the slot, which is taken: not "the slot or the pool".
-    expect(readGroupActivity(tree.store, tree.worktreeId as WorktreeId, "browser")).toEqual({
+    expect(readGroupActivity(tree.store, tree.worktreeId as WorktreeId, "browser")).toMatchObject({
       kind: "waiting",
       for: "slot",
       slot: "held",

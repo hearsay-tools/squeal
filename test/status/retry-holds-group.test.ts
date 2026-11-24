@@ -9,6 +9,7 @@ import type { CheckKey } from "../../src/core/types/keys.js";
 import type { OutstandingGroup, RetryWait } from "../../src/core/types/standing.js";
 import type { SlowTierActivity, StatusSnapshot } from "../../src/core/types/status.js";
 import { check, state } from "./helpers.js";
+import { slotWait } from "./slot-at-kit.js";
 import { inTurn, keys, NOW, SLOW_A, SLOW_B, SLOW_POLICY, seed } from "./slow-tier-seed.js";
 
 /*
@@ -116,15 +117,30 @@ describe("a queued retry of a configured group's file reads by its group (019-27
   });
 
   // Row 023-83: a daemon that recorded why its lane waits at the slot names the slot.
+  // Review 0.1.621 B2: "in use" only when the slot's permit reads held now.
   it.each([
-    ["held", "the e2e group waits for the e2e group's slot (in use)"],
+    ["held", "held", "in use", "the e2e group waits for the e2e group's slot (in use)"],
     [
+      "held",
+      "free",
+      "free",
+      "the e2e group waits for the e2e group's slot (taken at its last try, free now)",
+    ],
+    [
+      "held",
+      "unread",
+      "held",
+      "the e2e group waits for the e2e group's slot (taken at its last try)",
+    ],
+    [
+      "turn",
+      "free",
       "turn",
       "the e2e group waits for the e2e group's slot (its turn went to another worktree that waits for it)",
     ],
-  ] as const)("waiting for the slot, %s", (slot, words) => {
+  ] as const)("waiting for the slot, %s, its permit %s now", (published, then, slot, words) => {
     const s = queued();
-    s.publish({ kind: "waiting", for: "slot", slot });
+    s.publish(slotWait("e2e", then, published));
     expect(read(s)).toEqual({
       lines: [line(`: ${words}`)],
       waits: [{ ...E2E, lane: { kind: "waiting", for: "slot", slot } }],

@@ -15,6 +15,7 @@ import type { SlowTierActivity, SlowTierState } from "../types/status.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { testFileOf } from "./derive.js";
+import { slotNow } from "./slot-now.js";
 
 /*
  * Spec 004 D8: the slow tier as headers, status and Stop read it from the
@@ -211,8 +212,8 @@ export function laneCounts(
  * defect 12). A wait for the agent to pause, once no registered consumer is
  * in a turn, is a wait for the fast files pending, or for nothing (lessons
  * defect 11): the daemon publishes again only when it next looks at its slow
- * files, which fast tiers can put off for minutes. `null` when nothing is
- * true of it.
+ * files, which fast tiers can put off for minutes. A slot wait reads its
+ * slot's permits now (`slotNow`). `null` when nothing is true of it.
  */
 export function liveActivity(
   store: Store,
@@ -223,6 +224,8 @@ export function liveActivity(
 ): SlowTierActivity | null {
   const activity = readGroupActivity(store, worktreeId, group);
   if (activity?.kind === "waiting") {
+    // Review 0.1.621 B2: a slot wait says what the slot's permits read now.
+    if (activity.for === "slot") return slotNow(activity, group);
     if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
     const fast = keys.some((row) => row.pending !== null && !inLane(row.testFile));
     return fast ? { kind: "waiting", for: "fast" } : null;

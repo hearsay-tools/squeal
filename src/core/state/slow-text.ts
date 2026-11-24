@@ -33,11 +33,20 @@ const WAITING_FOR: Readonly<Record<SlowTierWait, string>> = {
 /**
  * Row 023-83: a slot wait its daemon recorded the cause of (`SlotWait`):
  * `the browser group's slot (in use)`, or the turn it gave to a waiter.
+ * Review 0.1.621 B2: `in use` only when its permits read held at read time
+ * (`slotNow`); a `held` not read then says when it was taken.
  */
 export function slotWaitText(slot: string, why: SlotWait): string {
-  return why === "held"
-    ? `${slot} (in use)`
-    : `${slot} (its turn went to another worktree that waits for it)`;
+  switch (why) {
+    case "in use":
+      return `${slot} (in use)`;
+    case "free":
+      return `${slot} (taken at its last try, free now)`;
+    case "held":
+      return `${slot} (taken at its last try)`;
+    case "turn":
+      return `${slot} (its turn went to another worktree that waits for it)`;
+  }
 }
 
 /** Row 011-58's words, while live holders in other worktrees hold every permit of the slot. */

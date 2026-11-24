@@ -32,7 +32,7 @@ const SLOW = fileName(0);
 /** Each step's bound: the scheduler's starts and the runner's stand-in run under the host's load. */
 const POLL = { timeout: 10_000 };
 const FAST = fileName(1);
-/** Row 023-83: the slow tier's `waiting: slot` with every permit taken, as this release's daemon records it. */
+/** Row 023-83: the slow tier's `waiting: slot`; review 0.1.621 B2: every permit read held now. */
 const SLOT_HELD = "the slow tier waits for the slow slot (in use)";
 /** The slow tier's `waiting: pool` (row 011-291). */
 const POOL = "the slow tier waits for the shared worker pool";
@@ -111,14 +111,14 @@ it("a slow retry is queued behind fast work, then the slot, then runs, and says 
   fastRun.open();
   await expect
     .poll(() => readSlowActivity(h.store, h.worktreeId), POLL)
-    .toEqual({ kind: "waiting", for: "slot", slot: "held" });
+    .toMatchObject({ kind: "waiting", for: "slot", slot: "held" });
   const slotWait = `it has not started: ${SLOT_HELD}.`;
   expect((await retry(main, "s2")).stdout).toBe(
     `Retry queued (reason: environment): ${SLOW} runs once more in its turn at its normal priority; ${slotWait} It joins a retry another session asked for. ${TAIL}\n`,
   );
   expect(retryLine(main)).toEqual({
     text: `  1 test file with a pending retry (environment): ${SLOW}; queued and not started: ${SLOT_HELD}`,
-    waits: { kind: "slot", slot: "held" },
+    waits: { kind: "slot", slot: "in use" },
     failing: true,
   });
   expect(h.runner.ran(SLOW)).toBe(1);

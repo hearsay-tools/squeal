@@ -84,7 +84,13 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
       const { h, activity } = await harness(0, dir);
       await h.scheduler.start();
       await until(h, () => waitingFor(activity()) === "slot", { driven: SLOW_DRIVEN });
-      expect(activity()).toEqual({ kind: "waiting", for: "slot", slot: "held" });
+      // Review 0.1.621 B2: with where the slot is, so a reader can test its permits.
+      expect(activity()).toEqual({
+        kind: "waiting",
+        for: "slot",
+        slot: "held",
+        slotAt: { dir, permits: maxParallel },
+      });
     } finally {
       held?.release();
     }

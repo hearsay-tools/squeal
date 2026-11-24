@@ -14,9 +14,11 @@ import { readHeader } from "../../src/core/state/header.js";
 import { clockText } from "../../src/core/state/slow-text.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import type { Consumer } from "../../src/core/types/delivery.js";
+import { SLOW_GROUP } from "../../src/core/types/scheduler.js";
 import type { SlowTierActivity, StatusSnapshot } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
 import { fixedStatus } from "../delivery/fakes.js";
+import { slotWait } from "./slot-at-kit.js";
 import {
   FAST,
   inTurn,
@@ -215,10 +217,11 @@ describe("the slow-tier line (spec 004 D8)", () => {
       { kind: "waiting", for: "slot" },
       "2 pending, waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)",
     ],
-    // Row 023-83: this release's daemon records why it waits at the slot.
+    // Row 023-83: this release's daemon records why it waits at the slot; review 0.1.621
+    // B2: where the slot is not published, a `held` is no claim that it is in use now.
     [
       { kind: "waiting", for: "slot", slot: "held" },
-      "2 pending, waiting for the slow slot (in use)",
+      "2 pending, waiting for the slow slot (taken at its last try)",
     ],
     [
       { kind: "waiting", for: "slot", slot: "turn" },
@@ -244,6 +247,21 @@ describe("the slow-tier line (spec 004 D8)", () => {
       `Slow tier: 2 test files; ${words}. Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for their results.`,
     );
   });
+
+  // Review 0.1.621 B2: the slow slot's permit as it reads now, where the daemon published the slot.
+  it.each([
+    ["held", "2 pending, waiting for the slow slot (in use)"],
+    ["free", "2 pending, waiting for the slow slot (taken at its last try, free now)"],
+  ] as const)(
+    "says the slow slot is in use only while its permit reads held (%s)",
+    (then, words) => {
+      const s = seed();
+      inTurn(s);
+      keys(s.store, s.repo, { [SLOW_A]: "queued", [SLOW_B]: "queued" });
+      publishSlowActivity(s.store, s.repo.mainId, slotWait(SLOW_GROUP, then));
+      expect(slowLine(status(s))).toContain(`; ${words}. `);
+    },
+  );
 
   it("keeps the daemon's reason when no daemon is validating, as last reported (lessons defect 8c)", () => {
     const s = seed(SLOW_POLICY, { alive: false });

@@ -137,7 +137,28 @@ export type SlowTierWait = "fast" | "idle" | "slot" | "pool" | "load";
  * neither, and before row 011-291 it published `slot` for the pool too, so
  * a `slot` wait without it names capacity only.
  */
-export type SlotWait = "held" | "turn";
+export type SlotWait = "held" | "turn" | SlotNow;
+
+/**
+ * Review 0.1.621 B2: the slot of a `held` or `turn` wait as a reader finds
+ * it, from its permits at read time (`slotNow`, `src/core/state/slot-now.ts`):
+ * `in use`, every permit is held now; `free`, the lane found it taken at its
+ * last try and a permit is free now. A daemon never publishes these, and a
+ * `held` a reader could not check means "taken at its last try", not "in use".
+ */
+export type SlotNow = "in use" | "free";
+
+/**
+ * Review 0.1.621 B2: where a lane's slot is, published with its slot wait,
+ * so a reader can test its permits now (`heldPermits`). Readers drop it
+ * from the activity they show (`liveActivity`).
+ */
+export interface SlotAt {
+  /** The slot's directory (`slotDirOf`). */
+  readonly dir: string;
+  /** The group's permits, its `maxParallel`. */
+  readonly permits: number;
+}
 
 /** Spec 004 D8: the slow tier's activity as its daemon last published it. */
 export type SlowTierActivity =
@@ -154,7 +175,13 @@ export type SlowTierActivity =
       /** The longest last known run time of its files, before this run; `null` when none ran. */
       readonly lastDurationMs: number | null;
     }
-  | { readonly kind: "waiting"; readonly for: SlowTierWait; readonly slot?: SlotWait };
+  | {
+      readonly kind: "waiting";
+      readonly for: SlowTierWait;
+      readonly slot?: SlotWait;
+      /** Review 0.1.621 B2: with a `slot` wait, where the slot is; only in the store. */
+      readonly slotAt?: SlotAt;
+    };
 
 /**
  * Spec 004 D8: the slow-tier line of headers and status, for a policy that

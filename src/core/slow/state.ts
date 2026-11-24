@@ -1,7 +1,7 @@
 import type { WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
 import { SLOW_GROUP } from "../types/scheduler.js";
-import type { SlowTierActivity } from "../types/status.js";
+import type { SlotAt, SlotWait, SlowTierActivity } from "../types/status.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
@@ -103,6 +103,15 @@ function groupEntries(raw: string | null): Record<string, unknown> {
 
 const WAITS: ReadonlySet<unknown> = new Set(["fast", "idle", "slot", "pool", "load"]);
 
+const SLOT_WAITS: ReadonlySet<unknown> = new Set<SlotWait>(["held", "turn", "in use", "free"]);
+
+function slotAtOf(value: unknown): SlotAt | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const { dir, permits } = value as Record<string, unknown>;
+  if (typeof dir !== "string" || typeof permits !== "number" || !(permits >= 1)) return undefined;
+  return { dir, permits };
+}
+
 /**
  * A `slowTier` row's parsed value: `null` when none is published, `undefined`
  * in a format this release does not know.
@@ -114,8 +123,15 @@ export function toSlowActivity(value: unknown): SlowTierActivity | null | undefi
   if (v.kind === "waiting" && WAITS.has(v.for)) {
     const wait = v.for as Extract<SlowTierActivity, { kind: "waiting" }>["for"];
     // Row 023-83: a slot wait keeps why, when its daemon recorded it.
-    const slot = wait === "slot" && (v.slot === "held" || v.slot === "turn") ? v.slot : undefined;
-    return { kind: "waiting", for: wait, ...(slot === undefined ? {} : { slot }) };
+    const slot = wait === "slot" && SLOT_WAITS.has(v.slot) ? (v.slot as SlotWait) : undefined;
+    // Review 0.1.621 B2: and where its slot is, for a reader's check of its permits.
+    const at = slot === undefined ? undefined : slotAtOf(v.slotAt);
+    return {
+      kind: "waiting",
+      for: wait,
+      ...(slot === undefined ? {} : { slot }),
+      ...(at === undefined ? {} : { slotAt: at }),
+    };
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;

@@ -9,6 +9,7 @@ import { isFastPending, readHeader } from "../../src/core/state/header.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import type { StatusHeader } from "../../src/core/types/status.js";
+import { slotWait } from "./slot-at-kit.js";
 import { inTurn, keys, NOW, type Seeded, seed, states, status } from "./slow-tier-seed.js";
 
 /*
@@ -104,20 +105,21 @@ describe("a status line per group not all current (019 D6)", () => {
 
   // Row 023-83: a daemon that recorded why the lane waits at the slot is read as the slot;
   // an older daemon's `slot`, published for the pool too before row 011-291, stays hedged.
+  // Review 0.1.621 B2: "in use" only when the slot's permit reads held now.
   it.each([
     ["held", "waiting for the e2e group's slot (in use)"],
+    ["free", "waiting for the e2e group's slot (taken at its last try, free now)"],
+    ["unread", "waiting for the e2e group's slot (taken at its last try)"],
     [
       undefined,
       "waiting for capacity (whether the e2e group's slot or the shared worker pool holds it is not known)",
     ],
-  ] as const)("names the group's slot when the daemon recorded why (%s)", (slot, words) => {
+  ] as const)("names the group's slot when the daemon recorded why (permit %s)", (then, words) => {
     const s = grouped({ [E2E]: "queued", [E2E_B]: "queued" });
     inTurn(s);
-    publishGroupActivity(s.store, s.repo.mainId, "e2e", {
-      kind: "waiting",
-      for: "slot",
-      ...(slot === undefined ? {} : { slot }),
-    });
+    const wait =
+      then === undefined ? ({ kind: "waiting", for: "slot" } as const) : slotWait("e2e", then);
+    publishGroupActivity(s.store, s.repo.mainId, "e2e", wait);
     expect(lineOf(status(s), "e2e")).toContain(`2 pending, ${words}.`);
   });
 

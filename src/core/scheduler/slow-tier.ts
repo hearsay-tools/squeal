@@ -476,8 +476,15 @@ export class SlowTier {
       markSlotWaiter(dir, context.worktreeId, this.group);
       this.#marked = true;
     }
-    // Row 023-83: why, so status names the slot, not "the slot or the pool".
-    this.#publish({ kind: "waiting", for: "slot", slot: yielded ? "turn" : "held" });
+    // Row 023-83: why, so status names the slot, not "the slot or the pool". Review 0.1.621
+    // B2: and where it is, so a reader says "in use" only from the permits as they are then.
+    const permits = this.#resolved(context)?.limits.maxParallel ?? null;
+    this.#publish({
+      kind: "waiting",
+      for: "slot",
+      slot: yielded ? "turn" : "held",
+      ...(permits === null ? {} : { slotAt: { dir, permits } }),
+    });
     if (!yielded) this.#slotMissed(context, dir, at);
     this.#arm();
     return "none";

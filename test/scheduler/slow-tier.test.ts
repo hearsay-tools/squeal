@@ -343,8 +343,11 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
       held = true;
       // The other worktree comes to its slow tier while the first file runs, and misses the slot.
       void b.scheduler.start();
-      const missed = JSON.stringify({ kind: "waiting", for: "slot", slot: "held" });
-      await waitFor(() => JSON.stringify(readSlowActivity(store, b.worktreeId)) === missed, 60_000);
+      const missed = () => {
+        const now = readSlowActivity(store, b.worktreeId);
+        return now?.kind === "waiting" && now.for === "slot" && now.slot === "held";
+      };
+      await waitFor(missed, 60_000);
     };
     await a.scheduler.start();
     await waitFor(done, 90_000);

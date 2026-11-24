@@ -122,7 +122,7 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
     logRuns(b, "b", order);
     await b.scheduler.start();
     await step([b]);
-    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({
+    expect(readSlowActivity(b.store, b.worktreeId)).toMatchObject({
       kind: "waiting",
       for: "slot",
       slot: "held",
@@ -155,7 +155,7 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
     await until([a], () => a.runner.active === 1);
     expect(a.runner.active).toBe(1);
     await step([b]);
-    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({
+    expect(readSlowActivity(b.store, b.worktreeId)).toMatchObject({
       kind: "waiting",
       for: "slot",
       slot: "held",
@@ -194,7 +194,7 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
     logRuns(b, "b", order);
     await b.scheduler.start();
     await step([b]);
-    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({
+    expect(readSlowActivity(b.store, b.worktreeId)).toMatchObject({
       kind: "waiting",
       for: "slot",
       slot: "held",
@@ -246,7 +246,7 @@ describe("a draining daemon yields the slot (row 011-93)", { timeout: 30_000 }, 
     a.scheduler.pauseBacklog(true);
     await a.scheduler.start();
     await step([a]);
-    expect(readSlowActivity(a.store, a.worktreeId)).toEqual({
+    expect(readSlowActivity(a.store, a.worktreeId)).toMatchObject({
       kind: "waiting",
       for: "slot",
       slot: "turn",

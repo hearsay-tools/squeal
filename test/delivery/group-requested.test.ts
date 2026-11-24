@@ -17,6 +17,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { additionalContext } from "../../src/harness/claude-code/hook.js";
 import type { HookInput } from "../../src/harness/claude-code/input.js";
 import { check, freshStore, result, setKey, WT } from "../state/helpers.js";
+import { slotWait } from "../status/slot-at-kit.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /*
@@ -195,25 +196,32 @@ describe("the hook names the few files left outside a request (row 023-79, Z3)",
  * without the record, keeps the hedge.
  */
 describe("the hook's line for a group whose lane waits at its slot (row 023-83)", () => {
+  // Review 0.1.621 B2: "in use" only when the slot's permit reads held now.
   it.each([
-    ["held", "waiting for the browser group's slot (in use)."],
+    ["held", "held", "waiting for the browser group's slot (in use)."],
+    ["held", "free", "waiting for the browser group's slot (taken at its last try, free now)."],
     [
       "turn",
+      "free",
       "waiting for the browser group's slot (its turn went to another worktree that waits for it).",
     ],
     [
       undefined,
+      "unread",
       "waiting for capacity (whether the browser group's slot or the shared worker pool holds it is not known).",
     ],
-  ] as const)("names the slot when the daemon recorded why (%s)", async (slot, words) => {
-    queueBrowser(true);
-    publishGroupActivity(store, WT, "browser", {
-      kind: "waiting",
-      for: "slot",
-      ...(slot === undefined ? {} : { slot }),
-    });
-    flipUnit();
-    const { json } = await hook();
-    expect(browserLine(json)).toContain(words);
-  });
+  ] as const)(
+    "names the slot when the daemon recorded why (%s, permit %s)",
+    async (slot, then, words) => {
+      queueBrowser(true);
+      const wait =
+        slot === undefined
+          ? ({ kind: "waiting", for: "slot" } as const)
+          : slotWait("browser", then, slot);
+      publishGroupActivity(store, WT, "browser", wait);
+      flipUnit();
+      const { json } = await hook();
+      expect(browserLine(json)).toContain(words);
+    },
+  );
 });
