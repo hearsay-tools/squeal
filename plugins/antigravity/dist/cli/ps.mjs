@@ -861,7 +861,8 @@ var WORKTREE_META_ROWS = {
   otherMachineKeys: { prefix: "other-machine-keys:", owner: "scheduler/other-machine-keys" },
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
   importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
-  sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }
+  sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" },
+  remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" }
 };
 function worktreeMetaKey(row2, worktreeId) {
   return `${WORKTREE_META_ROWS[row2].prefix}${worktreeId}`;

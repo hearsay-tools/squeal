@@ -522,7 +522,8 @@ var init_store = __esm({
       otherMachineKeys: { prefix: "other-machine-keys:", owner: "scheduler/other-machine-keys" },
       importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
       importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
-      sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }
+      sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" },
+      remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" }
     };
   }
 });
@@ -1762,50 +1763,6 @@ var init_git_head = __esm({
     init_git_layout();
     SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
     MAX_REF_DEPTH = 5;
-  }
-});
-
-// src/core/runner-host/remote/summary.ts
-function remoteState(input) {
-  if (input.released) return { state: "released" };
-  const { reports } = input;
-  for (const state of ["refused", "unreachable"]) {
-    const found4 = reports.find((r) => r.state === state);
-    if (found4 !== void 0) return { state, ...reasonOf(found4.reason) };
-  }
-  if (reports.some((r) => r.state === "connecting")) return { state: "connecting" };
-  if (reports.some((r) => r.state === "ready")) {
-    return input.degradedDisk === null ? { state: "awake" } : { state: "degraded-disk", reason: input.degradedDisk };
-  }
-  if (reports.length > 0 && reports.every((r) => r.state === "asleep"))
-    return { state: "sleeping" };
-  return { state: "not connected" };
-}
-function remoteSummaryLine(input) {
-  const { state, reason: reason2 } = remoteState(input);
-  const who = input.machine === null ? input.provider : `${input.provider} ${input.machine}`;
-  const keyed = input.reports.find((r) => r.machine !== void 0)?.machine;
-  const proven2 = input.reports.flatMap((r) => r.provenAt === void 0 ? [] : [r.provenAt]);
-  const last = state === "awake" || state === "degraded-disk" ? Math.max(...proven2) : null;
-  return [
-    `${who}: ${state}${reason2 === void 0 ? "" : ` (${reason2})`}`,
-    `${listText(input.lanes)} runs of ${input.runners.join(", ")}`,
-    `planning ${input.planning}`,
-    `environment ${input.environmentMode}${keyed === void 0 ? "" : ` (${keyed})`}`,
-    ...last === null || !Number.isFinite(last) ? [] : [`proven at ${new Date(last).toISOString()}`]
-  ].join("; ");
-}
-function reasonOf(reason2) {
-  return reason2 === void 0 || reason2 === "" ? {} : { reason: reason2 };
-}
-function listText(parts3) {
-  return parts3.length < 2 ? parts3.join("") : `${parts3.slice(0, -1).join(", ")} and ${parts3[parts3.length - 1]}`;
-}
-var REMOTE_SUMMARY_TOPIC;
-var init_summary = __esm({
-  "src/core/runner-host/remote/summary.ts"() {
-    "use strict";
-    REMOTE_SUMMARY_TOPIC = "remote-lane:summary";
   }
 });
 
@@ -11744,7 +11701,7 @@ function causeOf(decision, entry4, end, outcome2) {
       return { kind: decision.kind, paths: [] };
   }
 }
-function reasonOf2(decision, cause) {
+function reasonOf(decision, cause) {
   const paths = listPaths(cause.paths);
   switch (cause.kind) {
     case "touched":
@@ -11990,7 +11947,7 @@ function runEnd(tier, report4, changed2, requeue, observed2, runtimeIdentity2) {
 function decisionOf(entry4, end, outcome2, holds5) {
   const decision = storeDecision(entry4, end, holds5);
   const cause = causeOf(decision, entry4, end, outcome2);
-  return { decision, cause, reason: reasonOf2(decision, cause) };
+  return { decision, cause, reason: reasonOf(decision, cause) };
 }
 async function keepDecisions(sources, files6, report4) {
   const entries3 = files6.map(({ ref: ref3, key: key3, paths, runtimeIdentity: runtimeIdentity2 = "" }) => {
@@ -18169,7 +18126,7 @@ function candidateOf(view, p, shape, pick) {
     tierSize: view.runner.tierSize
   });
   return {
-    reason: reasonOf3(p, { batch, asEdit, backlog, turnTier }),
+    reason: reasonOf2(p, { batch, asEdit, backlog, turnTier }),
     kind,
     lane,
     files: [...files6],
@@ -18194,7 +18151,7 @@ function candidateOf(view, p, shape, pick) {
     estimateMs: estimateMs(view, files6, granted ? offer : files6.length)
   };
 }
-function reasonOf3(p, tier) {
+function reasonOf2(p, tier) {
   if (p.origin === "beside" || p.origin === "turn-after-batch") return p.origin;
   if (tier.batch) return tier.asEdit ? "batch-as-edit" : "batch";
   if (p.origin !== "main") return p.origin;
@@ -20048,7 +20005,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal3) {
       if (settled2) return;
       settled2 = true;
       clearTimeout(timer);
-      signal3?.removeEventListener("abort", aborted);
+      signal3?.removeEventListener("abort", aborted2);
       socket.destroy();
       if (error) reject(error);
       else resolve54(response);
@@ -20057,8 +20014,8 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal3) {
       () => settle3(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
-    const aborted = () => settle3(failure("ABORT_ERR", `request to ${socketPath} aborted`));
-    signal3?.addEventListener("abort", aborted, { once: true });
+    const aborted2 = () => settle3(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+    signal3?.addEventListener("abort", aborted2, { once: true });
     socket.setEncoding("utf8");
     socket.on("connect", () => {
       if (endpoint !== void 0 && !sameEndpoint(endpointAt(socketPath), endpoint)) {
@@ -21088,7 +21045,7 @@ function writeEvidence(meta, worktreeId, path, evidence) {
   else meta.set(evidenceKey(worktreeId, path), JSON.stringify(evidence));
 }
 var EVIDENCE_FILES, summaryKey, crapRecountKey, changeKey, evidenceKey, functionKey, isObject;
-var init_summary2 = __esm({
+var init_summary = __esm({
   "src/core/code/crap/summary.ts"() {
     "use strict";
     EVIDENCE_FILES = 3;
@@ -21221,7 +21178,7 @@ var init_judge = __esm({
   "src/core/code/crap/judge.ts"() {
     "use strict";
     init_rule();
-    init_summary2();
+    init_summary();
     priorKey = (s) => `${s.measure}\0${s.check.path}\0${functionKey(s.check)}`;
     checkOf = (path, fn) => ({
       kind: "code",
@@ -21240,7 +21197,7 @@ var init_seed = __esm({
     "use strict";
     init_failed();
     init_judge();
-    init_summary2();
+    init_summary();
     COVERAGE_MEASURES = ["crap", "uncovered"];
     SEED_FILES = 32;
     Seed = class {
@@ -21571,7 +21528,7 @@ var init_checks = __esm({
     "use strict";
     init_glob();
     init_seed();
-    init_summary2();
+    init_summary();
     ALL_CHECKS = {
       measures: COVERAGE_MEASURES,
       exclude: [],
@@ -51457,14 +51414,14 @@ function momentHold(store, worktreeId, tool, policy, blobOf4, pauseIn, now = Dat
   const waiting2 = new Set(
     store.states.list(worktreeId, { tool }).filter(waitsToLint).map((state) => state.check.path)
   );
-  const pause = pauseReleases(held4.at) && waiting2.size > 0 ? pauseIn?.() ?? 0 : null;
-  if (pause !== null && pause <= 0) add2(store.meta, releaseKey(scope2), blobsOf(waiting2, blobOf4));
+  const pause2 = pauseReleases(held4.at) && waiting2.size > 0 ? pauseIn?.() ?? 0 : null;
+  if (pause2 !== null && pause2 <= 0) add2(store.meta, releaseKey(scope2), blobsOf(waiting2, blobOf4));
   const released = releasedNow(store.meta, scope2, waiting2, blobOf4);
   if (held4.at === "commit") committedNews(store, worktreeId, tool, released, blobOf4, now());
   const waits2 = [...waiting2].some((path) => !released.has(path));
   return {
     held: (path) => !released.has(path),
-    pauseIn: waits2 && pause !== null && pause > 0 ? pause : null
+    pauseIn: waits2 && pause2 !== null && pause2 > 0 ? pause2 : null
   };
 }
 function blobsOf(paths, blobOf4) {
@@ -56838,6 +56795,50 @@ var init_join = __esm({
   }
 });
 
+// src/core/runner-host/remote/summary.ts
+function remoteState(input) {
+  if (input.released) return { state: "released" };
+  const { reports } = input;
+  for (const state of ["refused", "unreachable"]) {
+    const found4 = reports.find((r) => r.state === state);
+    if (found4 !== void 0) return { state, ...reasonOf4(found4.reason) };
+  }
+  if (reports.some((r) => r.state === "connecting")) return { state: "connecting" };
+  if (reports.some((r) => r.state === "ready")) {
+    return input.degradedDisk === null ? { state: "awake" } : { state: "degraded-disk", reason: input.degradedDisk };
+  }
+  if (reports.length > 0 && reports.every((r) => r.state === "asleep"))
+    return { state: "sleeping" };
+  return { state: "not connected" };
+}
+function remoteSummaryLine(input) {
+  const { state, reason: reason2 } = remoteState(input);
+  const who = input.machine === null ? input.provider : `${input.provider} ${input.machine}`;
+  const keyed = input.reports.find((r) => r.machine !== void 0)?.machine;
+  const proven2 = input.reports.flatMap((r) => r.provenAt === void 0 ? [] : [r.provenAt]);
+  const last = state === "awake" || state === "degraded-disk" ? Math.max(...proven2) : null;
+  return [
+    `${who}: ${state}${reason2 === void 0 ? "" : ` (${reason2})`}`,
+    `${listText2(input.lanes)} runs of ${input.runners.join(", ")}`,
+    `planning ${input.planning}`,
+    `environment ${input.environmentMode}${keyed === void 0 ? "" : ` (${keyed})`}`,
+    ...last === null || !Number.isFinite(last) ? [] : [`proven at ${new Date(last).toISOString()}`]
+  ].join("; ");
+}
+function reasonOf4(reason2) {
+  return reason2 === void 0 || reason2 === "" ? {} : { reason: reason2 };
+}
+function listText2(parts3) {
+  return parts3.length < 2 ? parts3.join("") : `${parts3.slice(0, -1).join(", ")} and ${parts3[parts3.length - 1]}`;
+}
+var REMOTE_SUMMARY_TOPIC;
+var init_summary2 = __esm({
+  "src/core/runner-host/remote/summary.ts"() {
+    "use strict";
+    REMOTE_SUMMARY_TOPIC = "remote-lane:summary";
+  }
+});
+
 // src/core/store/state-born.ts
 function connectionIn2(store) {
   try {
@@ -57599,12 +57600,12 @@ function otherKeyFormat(bundle) {
 async function importSliced(store, bundle, options) {
   const tally2 = emptyTally();
   const run8 = options.run ?? retriedSlice(BUSY_BOUND_MS, options.stopped);
-  const pause = options.pause ?? ((ms2) => delay2(ms2));
+  const pause2 = options.pause ?? ((ms2) => delay2(ms2));
   for (const slice of slicesOf(store, bundle, options, tally2)) {
     if (options.stopped?.() === true) throw new ImportStopped();
     let held4 = 0;
     await run8(timed2(slice, (ms2) => held4 = ms2));
-    await pause(turnGapMs(held4));
+    await pause2(turnGapMs(held4));
   }
   return { ...tally2 };
 }
@@ -75324,7 +75325,7 @@ var init_removed = __esm({
   "src/core/code/crap/removed.ts"() {
     "use strict";
     init_seed();
-    init_summary2();
+    init_summary();
   }
 });
 
@@ -76000,7 +76001,7 @@ var init_walk2 = __esm({
     init_checks();
     init_file();
     init_judge();
-    init_summary2();
+    init_summary();
     WRITE_FILES = 16;
     withSet = (before5, set) => before5.loaders === set ? before5 : { ...before5, loaders: set };
     marksOf = (quiet, drop2, skipped2) => ({
@@ -76132,7 +76133,7 @@ var init_step2 = __esm({
     init_checks();
     init_loaders();
     init_seed();
-    init_summary2();
+    init_summary();
     init_walk2();
     STEP_BUDGET_MS = 50;
     READING = {
@@ -77055,7 +77056,7 @@ function createCodePass(options) {
   const pace = options.coverage?.pace ?? new Pace(now);
   let reseedDue = false;
   let budgeted = false;
-  let aborted = 0;
+  let aborted2 = 0;
   let checks = null;
   const shut = () => {
     store?.close();
@@ -77195,8 +77196,8 @@ function createCodePass(options) {
     if (store === null) return null;
     const retry3 = nextRetry(readUncountable(store.meta, options.worktreeId));
     const at2 = retry3 === null || coverageWake === null ? retry3 ?? coverageWake : Math.min(retry3, coverageWake);
-    if (at2 === null || aborted === 0) return at2;
-    const wait = RETRY_AFTER_MS[Math.min(aborted, RETRY_AFTER_MS.length) - 1] ?? 0;
+    if (at2 === null || aborted2 === 0) return at2;
+    const wait = RETRY_AFTER_MS[Math.min(aborted2, RETRY_AFTER_MS.length) - 1] ?? 0;
     return Math.max(at2, now() + wait);
   };
   const retryLater2 = (at2) => {
@@ -77220,12 +77221,12 @@ function createCodePass(options) {
       try {
         await once4();
         lastError = null;
-        aborted = 0;
+        aborted2 = 0;
       } catch (error) {
         const failure2 = error instanceof Error ? error : new Error(String(error));
         if (failure2.message !== lastError) options.onError(failure2);
         lastError = failure2.message;
-        aborted++;
+        aborted2++;
       }
       try {
         retryLater2(nextWake());
@@ -78532,9 +78533,9 @@ async function runLintPass(options, state) {
 }
 function wakeOf(parts3, hold, now) {
   if (parts3.spoiled) return now + MOVING_RECHECK_MS;
-  const pause = hold.pauseIn === null ? null : now + hold.pauseIn;
-  if (pause === null || parts3.wakeAt === null) return pause ?? parts3.wakeAt;
-  return Math.min(pause, parts3.wakeAt);
+  const pause2 = hold.pauseIn === null ? null : now + hold.pauseIn;
+  if (pause2 === null || parts3.wakeAt === null) return pause2 ?? parts3.wakeAt;
+  return Math.min(pause2, parts3.wakeAt);
 }
 function onePass(source2) {
   let files6 = null;
@@ -79160,6 +79161,11 @@ function spawnSsh(target, command) {
 }
 function sshRun(target, command, options) {
   return new Promise((resolve54) => {
+    const { signal: signal3 } = options;
+    if (signal3?.aborted === true) {
+      resolve54({ code: null, stdout: "", stderr: "", failure: "aborted before it started" });
+      return;
+    }
     let child;
     try {
       child = spawnSsh(target, command);
@@ -79185,15 +79191,23 @@ function sshRun(target, command, options) {
     child.on("error", (error) => {
       failure2 ??= `could not start ssh: ${error.message}`;
     });
-    child.on("close", (code) => {
+    const ended2 = (code) => {
       clearTimeout(timer);
+      signal3?.removeEventListener("abort", onAbort);
       resolve54({
         code,
         stdout,
         stderr: stderr.trim(),
         ...failure2 === void 0 ? {} : { failure: failure2 }
       });
-    });
+    };
+    const onAbort = () => {
+      failure2 ??= "aborted";
+      child.kill("SIGKILL");
+      ended2(null);
+    };
+    signal3?.addEventListener("abort", onAbort, { once: true });
+    child.on("close", ended2);
     const { input } = options;
     if (input === void 0) child.stdin.end();
     else if (Buffer.isBuffer(input)) child.stdin.end(input);
@@ -81171,9 +81185,13 @@ import { promisify as promisify4 } from "node:util";
 function scriptCommand(script2, args2) {
   return ["sh", "-c", script2, "sh", ...args2].map(shellQuote).join(" ");
 }
-async function ensureNode(target, node2, version2, deadlineMs) {
+async function ensureNode(target, node2, version2, deadlineMs, signal3) {
   const bare3 = version2.replace(/^v/, "");
-  const result = await sshRun(target, scriptCommand(NODE_SCRIPT, [node2, bare3]), { deadlineMs });
+  const result = await sshRun(target, scriptCommand(NODE_SCRIPT, [node2, bare3]), {
+    deadlineMs,
+    ...signal3 === void 0 ? {} : { signal: signal3 }
+  });
+  signal3?.throwIfAborted();
   const what = `could not provide Node ${version2} on ${target.destination}`;
   if (result.code !== 0) throw new Error(sshFailure(what, result));
   const path = result.stdout.trim().split("\n").at(-1)?.trim() ?? "";
@@ -81196,10 +81214,12 @@ async function localGitState(root) {
   const { stdout } = await run5("sh", ["-c", STATE], { cwd: root, maxBuffer: 64 * 1024 * 1024 });
   return gitStateOf(stdout);
 }
-async function remoteGitState(target, tree, deadlines) {
+async function remoteGitState(target, tree, deadlines, signal3) {
   const looked2 = await sshRun(target, scriptCommand(LOOK_SCRIPT, [tree]), {
-    deadlineMs: deadlines.sshMs
+    deadlineMs: deadlines.sshMs,
+    ...signal3 === void 0 ? {} : { signal: signal3 }
   });
+  signal3?.throwIfAborted();
   if (looked2.code !== 0) {
     throw new Error(
       sshFailure(`could not read ${tree}/root/.git on ${target.destination}`, looked2)
@@ -81213,33 +81233,36 @@ async function knownHere(root, commit) {
     () => false
   );
 }
-async function ensureGitTree(target, tree, root, deadlines) {
+async function ensureGitTree(target, tree, root, deadlines, signal3) {
   const local2 = await localGitState(root).catch(() => null);
+  signal3?.throwIfAborted();
   if (local2 === null) return { kind: "none", why: "the worktree has no commit yet" };
-  const remote = await remoteGitState(target, tree, deadlines);
+  const remote = await remoteGitState(target, tree, deadlines, signal3);
   if (remote?.key === local2.key) return { kind: "present", commit: local2.head, state: remote };
   const base = remote !== null && await knownHere(root, remote.head) ? remote.head : null;
   const dir2 = await mkdtemp(join175(tmpdir13(), "squeal-agent37-bundle-"));
   try {
-    let sent = await sendGit(target, tree, root, local2, base, dir2, deadlines);
-    if (sent === "missing" && base !== null) {
-      sent = await sendGit(target, tree, root, local2, null, dir2, deadlines);
-    }
+    const send = (since) => sendGit(target, tree, root, { local: local2, base: since, dir: dir2, deadlines, signal: signal3 });
+    let sent = await send(base);
+    if (sent === "missing" && base !== null) sent = await send(null);
     if (sent === "missing") return { kind: "none", why: "the git bundle lacked objects there" };
     return { kind: "sent", commit: local2.head, state: sent };
   } finally {
     await rm4(dir2, { recursive: true, force: true });
   }
 }
-async function sendGit(target, tree, root, local2, base, dir2, deadlines) {
+async function sendGit(target, tree, root, send) {
+  const { local: local2, base, dir: dir2, deadlines, signal: signal3 } = send;
+  signal3?.throwIfAborted();
   const bundle = join175(dir2, base === null ? "full.bundle" : "since.bundle");
   const created = await run5(
     "git",
     ["-C", root, "bundle", "create", "-q", bundle, "HEAD", "--tags", ...base ? [`^${base}`] : []],
-    { maxBuffer: 1024 * 1024 }
+    { maxBuffer: 1024 * 1024, ...signal3 === void 0 ? {} : { signal: signal3 } }
   ).then(
     () => true,
     (error) => {
+      signal3?.throwIfAborted();
       if (base !== null) return false;
       const stderr = String(error.stderr ?? error).trim();
       throw new Error(`git bundle failed: ${stderr.split("\n").at(-1) ?? ""}`);
@@ -81255,8 +81278,10 @@ async function sendGit(target, tree, root, local2, base, dir2, deadlines) {
   );
   const sent = await sshRun(target, scriptCommand(SYNC_SCRIPT, [tree]), {
     input,
-    deadlineMs: deadlines.bundleMs
+    deadlineMs: deadlines.bundleMs,
+    ...signal3 === void 0 ? {} : { signal: signal3 }
   });
+  signal3?.throwIfAborted();
   if (sent.code === 3) return "missing";
   if (sent.code !== 0) {
     throw new Error(sshFailure(`could not unpack the git bundle on ${target.destination}`, sent));
@@ -81971,8 +81996,8 @@ var init_api = __esm({
         this.#base = new URL(options.baseUrl);
       }
       /** The instance, or `null` when Agent37 no longer has it (`404`). */
-      async inspect(id) {
-        const answer4 = await this.#call("GET", `/v1/instances/${id}`);
+      async inspect(id, signal3) {
+        const answer4 = await this.#call("GET", `/v1/instances/${id}`, void 0, CALL_MS, signal3);
         if (answer4.status === 404) return null;
         return this.#instance("GET", `/v1/instances/${id}`, answer4);
       }
@@ -82025,7 +82050,9 @@ var init_api = __esm({
         }
         throw new Error(`Agent37 ${method} ${path} answered no instance id and status`);
       }
-      async #call(method, path, body2, timeoutMs = CALL_MS) {
+      /** Row 026-20: `signal` ends the call where it stands; never given to a create (index.ts). */
+      async #call(method, path, body2, timeoutMs = CALL_MS, signal3) {
+        signal3?.throwIfAborted();
         const base = this.#base;
         const tls = base.protocol === "https:";
         const port = base.port === "" ? tls ? 443 : 80 : Number(base.port);
@@ -82033,6 +82060,10 @@ var init_api = __esm({
         const { env, keyEnv } = this.#options;
         const key3 = apiKeyFor(keyEnv, tls && proxyFor(host, port, env) !== null, env);
         const opened3 = await openEndpoint({ host, port, tls }, env, timeoutMs);
+        if (signal3?.aborted === true) {
+          opened3.socket.destroy();
+          signal3.throwIfAborted();
+        }
         const payload = body2 === void 0 ? void 0 : Buffer.from(JSON.stringify(body2));
         const prefix = base.pathname.replace(/\/+$/, "");
         return new Promise((resolve54, reject) => {
@@ -82054,6 +82085,9 @@ var init_api = __esm({
           const timer = setTimeout(() => {
             asked.destroy(new LocalError(`no answer within ${timeoutMs} ms`));
           }, timeoutMs);
+          const onAbort = () => asked.destroy(new LocalError("stopped: the daemon's exit began"));
+          signal3?.addEventListener("abort", onAbort, { once: true });
+          asked.on("close", () => signal3?.removeEventListener("abort", onAbort));
           asked.on("error", (error) => {
             clearTimeout(timer);
             reject(new Error(`Agent37 ${method} ${path}: ${safeReason(error)}`));
@@ -82107,6 +82141,20 @@ function apiOf(settings, env, timing) {
 function goneError(id) {
   return new Error(`Agent37 instance ${id} is gone (deleted, or not in this workspace)`);
 }
+function pause(ms2, signal3) {
+  return new Promise((resolve54, reject) => {
+    if (signal3?.aborted === true) return reject(signal3.reason);
+    const timer = setTimeout(() => {
+      signal3?.removeEventListener("abort", stop2);
+      resolve54();
+    }, ms2);
+    const stop2 = () => {
+      clearTimeout(timer);
+      reject(signal3?.reason);
+    };
+    signal3?.addEventListener("abort", stop2, { once: true });
+  });
+}
 async function untilRunning(api, id, seen2, timing, signal3) {
   let status3 = seen2.status;
   if (status3 === "running") return;
@@ -82117,8 +82165,8 @@ async function untilRunning(api, id, seen2, timing, signal3) {
     if (Date.now() > deadline) {
       throw new Error(`Agent37 instance ${id} is still ${status3} after ${timing.readyMs} ms`);
     }
-    await new Promise((resolve54) => setTimeout(resolve54, timing.pollMs));
-    const now = await api.inspect(id);
+    await pause(timing.pollMs, signal3);
+    const now = await api.inspect(id, signal3);
     if (now === null) throw goneError(id);
     status3 = now.status;
     if (status3 === "sleeping" || status3 === "stopped") status3 = (await api.start(id)).status;
@@ -82268,12 +82316,12 @@ async function acquire2(request, config, timing) {
   let state = null;
   stop2();
   if (tracked !== null) {
-    const found4 = await api.inspect(tracked.instanceId);
+    const found4 = await api.inspect(tracked.instanceId, signal3).catch(aborted(stop2));
     stop2();
     if (found4 === null) {
       request.log(`Agent37 instance ${tracked.instanceId} is gone; creating another`);
     } else {
-      await untilRunning(api, tracked.instanceId, found4, timing, signal3);
+      await untilRunning(api, tracked.instanceId, found4, timing, signal3).catch(aborted(stop2));
       state = tracked;
       request.log(`Agent37 instance ${tracked.instanceId} reused (${found4.status} before)`);
     }
@@ -82310,7 +82358,7 @@ async function acquire2(request, config, timing) {
     } catch (error) {
       await api.remove(made.id).catch(() => {
       });
-      throw error;
+      return aborted(stop2)(error);
     }
   }
   try {
@@ -82319,19 +82367,37 @@ async function acquire2(request, config, timing) {
     if (created) stop2();
     return machine;
   } catch (error) {
-    if (created) await api.remove(state.instanceId).catch(() => {
-    });
-    throw error;
+    if (created) {
+      await api.remove(state.instanceId).catch(() => {
+      });
+      if (signal3?.aborted === true) {
+        request.log(`Agent37 instance ${state.instanceId}: the daemon's exit began; deleted`);
+      }
+    }
+    return aborted(stop2)(error);
   }
+}
+function aborted(stop2) {
+  return (error) => {
+    stop2();
+    throw error;
+  };
 }
 async function bootstrap(request, settings, state, env, timing) {
   const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli);
-  const node2 = await ensureNode(ssh, settings.node, request.nodeVersion, timing.bootstrap.nodeMs);
+  const { signal: signal3 } = request;
+  const node2 = await ensureNode(
+    ssh,
+    settings.node,
+    request.nodeVersion,
+    timing.bootstrap.nodeMs,
+    signal3
+  );
   const places = { node: node2, cache: settings.cache };
   let keeper3 = null;
   if (settings.bootstrap === "git-bundle") {
     const place2 = gitPlace(places, request.worktreeRoot, timing, request.log);
-    const git = await ensureGitTree(ssh, place2.tree, place2.root, timing.bootstrap);
+    const git = await ensureGitTree(ssh, place2.tree, place2.root, timing.bootstrap, signal3);
     if (git.kind === "sent")
       request.log(`Agent37 instance ${state.instanceId}: git history sent at ${git.commit}`);
     if (git.kind === "none")
@@ -83273,6 +83339,7 @@ function shareMachine(options) {
       const slept = await sleepAll(m);
       return slept === "slept" ? { kind: "slept", ...named4 } : { kind: "busy", ...named4, reason: slept.busy };
     },
+    beginExit: () => exiting.abort(),
     release() {
       releasing ??= releaseOnce();
       return releasing;
@@ -83423,6 +83490,7 @@ function createDaemonRemote(options) {
       return made;
     },
     sleepRemote: () => share2.sleep(),
+    beginExit: () => share2.beginExit(),
     release: async () => {
       await share2.release();
       released = true;
@@ -83535,6 +83603,7 @@ function withRemoteRelease(runner, remote) {
   if (remote === null) return runner;
   const close = runner.close.bind(runner);
   runner.close = async () => {
+    remote.beginExit();
     try {
       await close();
     } finally {
@@ -83612,7 +83681,7 @@ var init_daemon_lane = __esm({
     init_machine_share();
     init_remote_key();
     init_settings();
-    init_summary();
+    init_summary2();
     REMOTE_TOPIC = "remote-lane";
     REMOTE_SETTINGS_TOPIC = "remote-settings";
     REMOTE_REPOSITORY_TOPIC = "remote-lane:repository";
@@ -85055,30 +85124,6 @@ function isNode(difference, node2) {
   return difference === text3 || difference.endsWith(`: ${text3}`);
 }
 
-// src/core/status/remote-status.ts
-init_summary();
-var LISTING_FAILED = "runner testFiles failed: ";
-function remoteOf(notes) {
-  const text3 = notes.findLast((note) => note.topic === REMOTE_SUMMARY_TOPIC)?.text;
-  return text3 === void 0 || text3 === "" ? {} : { remote: text3 };
-}
-function listingFailedOf(notes, header2, daemon) {
-  if (header2.testFilesListed !== false || daemon.state !== "alive") return {};
-  const note = notes.findLast((n) => n.text.startsWith(LISTING_FAILED));
-  if (note === void 0 || note.revision !== header2.revision) return {};
-  return { listingFailed: note.text.slice(LISTING_FAILED.length) };
-}
-function remoteLines(s) {
-  return s.remote === void 0 ? [] : [`Remote: ${s.remote}`];
-}
-function unlistedText2(s, fallback2) {
-  if (s.listingFailed === void 0) return fallback2;
-  return `The daemon could not list this worktree's test files: ${s.listingFailed}. It lists them again at the next revision.`;
-}
-function isRemoteSummary(note) {
-  return note.topic === REMOTE_SUMMARY_TOPIC;
-}
-
 // src/core/status/runtime-files.ts
 init_policy2();
 init_json();
@@ -85340,7 +85385,6 @@ function notesLines(s, command, all2) {
   const groups3 = /* @__PURE__ */ new Map();
   const kept6 = [];
   for (const note of s.daemonNotes) {
-    if (isRemoteSummary(note)) continue;
     const exit2 = note.exitOf === void 0 ? void 0 : exits.get(note.text);
     if (exit2 !== void 0 && exit2[exit2.length - 1] !== note) continue;
     const what = all2 ? void 0 : note.stopped?.what;
@@ -85558,7 +85602,7 @@ import { join as join36 } from "node:path";
 
 // src/core/code/crap/status.ts
 init_checks();
-init_summary2();
+init_summary();
 function coverageStatusOf(store, worktreeId, policy) {
   const summary = readSummary(store.meta, worktreeId);
   if (summary === null) return void 0;
@@ -85589,7 +85633,7 @@ function coverageStatusOf(store, worktreeId, policy) {
 init_policy2();
 
 // src/core/delivery/code-deliver.ts
-init_summary2();
+init_summary();
 init_cursor();
 init_failed();
 init_pulled();
@@ -85598,7 +85642,7 @@ init_json();
 
 // src/core/delivery/code-coverage.ts
 init_seed();
-init_summary2();
+init_summary();
 init_text();
 
 // src/core/delivery/code-coverage-words.ts
@@ -85989,7 +86033,7 @@ function changedNotJudged(store, worktreeId, bounds) {
 }
 
 // src/core/delivery/code-untested.ts
-init_summary2();
+init_summary();
 
 // src/core/delivery/code-deliver.ts
 var MEASURE = "complexity";
@@ -87235,7 +87279,7 @@ function nextStep(s, context2 = { named: true }) {
     }
     case "unlisted":
       return same2(
-        unlistedText3(s),
+        unlistedText2(s),
         context2.named ? { kind: "none", text: "" } : { kind: "command", args: "status --wait 60000", text: "{command} waits for it" }
       );
     case "stale": {
@@ -87352,7 +87396,7 @@ function same2(reason2, step2) {
 function lookupOnly(on) {
   return on ? " (the baseline is lookup-only)" : "";
 }
-function unlistedText3(s) {
+function unlistedText2(s) {
   const listed12 = `${runnersHave(s.runners, false)} not listed revision ${s.revision}'s test files yet`;
   if (s.run === void 0 && s.yields === void 0) {
     return `${listed12}; no tier starts until the listing ends`;
@@ -87690,6 +87734,39 @@ function phaseLine(label3, phase, shown2, marks2) {
   return [`${label3}: ${plural(total, "test file")}: ${names9.join(", ")}${rest2}`];
 }
 
+// src/core/status/remote-status.ts
+init_store();
+var LISTING_FAILED = "runner testFiles failed: ";
+function remoteSummaryMetaKey(worktreeId) {
+  return worktreeMetaKey("remoteSummary", worktreeId);
+}
+function readRemoteSummary(store, worktreeId) {
+  const text3 = store.meta.get(remoteSummaryMetaKey(worktreeId));
+  return text3 === null || text3 === "" ? void 0 : text3;
+}
+function writeRemoteSummary(store, worktreeId, text3) {
+  const key3 = remoteSummaryMetaKey(worktreeId);
+  if (text3 === "") store.meta.delete(key3);
+  else store.meta.set(key3, text3);
+}
+function remoteOf(store, worktreeId) {
+  const text3 = readRemoteSummary(store, worktreeId);
+  return text3 === void 0 ? {} : { remote: text3 };
+}
+function listingFailedOf(notes, header2, daemon) {
+  if (header2.testFilesListed !== false || daemon.state !== "alive") return {};
+  const note = notes.findLast((n) => n.text.startsWith(LISTING_FAILED));
+  if (note === void 0 || note.revision !== header2.revision) return {};
+  return { listingFailed: note.text.slice(LISTING_FAILED.length) };
+}
+function remoteLines(s) {
+  return s.remote === void 0 ? [] : [`Remote: ${s.remote}`];
+}
+function unlistedText3(s, fallback2) {
+  if (s.listingFailed === void 0) return fallback2;
+  return `The daemon could not list this worktree's test files: ${s.listingFailed}. It lists them again at the next revision.`;
+}
+
 // src/core/status/squeal-mismatch.ts
 init_key_format();
 init_refused();
@@ -87723,7 +87800,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     ...delaysLines(result, command),
     // Row 005-90: before the listing, no count reads as all clear; one sentence says why.
     // Row 026-20 (lessons D1): or why the live daemon could not list them.
-    ...result.testFilesListed === false ? [unlistedText2(result, noResultsText(command))] : [],
+    ...result.testFilesListed === false ? [unlistedText3(result, noResultsText(command))] : [],
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     ...knownFailuresLine(result),
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
@@ -87775,7 +87852,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     // Row 011-275 (gh-120): the keys a runtime here does not apply, apart from the problems.
     ...ignoredConfigLines(result, command),
     ...excludedLine(result),
-    ...full ? ["", ...detailLines(result, now, command, allNotes)] : [`More: \`${command} status --full\` adds ${listText2(hiddenParts(result, command))}`]
+    ...full ? ["", ...detailLines(result, now, command, allNotes)] : [`More: \`${command} status --full\` adds ${listText(hiddenParts(result, command))}`]
   ];
   return `${lines.join("\n")}
 `;
@@ -87785,7 +87862,7 @@ function knownFailuresLine(s) {
   const current2 = splitByValidity(s.knownFailures).current.map((f) => f.check);
   return [`Known failures: ${failureCountText(current2)}${notCurrentText(s)}`];
 }
-function listText2(parts3) {
+function listText(parts3) {
   return parts3.length < 2 ? parts3.join("") : `${parts3.slice(0, -1).join(", ")} and ${parts3[parts3.length - 1]}`;
 }
 function slowLine(s, command) {
@@ -88606,7 +88683,7 @@ function readImports(store, worktreeId, keys, states) {
     let currentFiles = 0;
     let currentResults = 0;
     for (const file of files6) {
-      const reason2 = reasonOf4(file, here);
+      const reason2 = reasonOf3(file, here);
       if (reason2 === "current") currentFiles++;
       else notCurrent[reason2]++;
       currentResults += here.fromImport(testFileId(file)).get(record2.id) ?? 0;
@@ -88626,7 +88703,7 @@ function readImports(store, worktreeId, keys, states) {
     ];
   });
 }
-function reasonOf4(file, here) {
+function reasonOf3(file, here) {
   const key3 = here.keys.get(testFileId(file));
   if (key3?.key === file.key) return adoption(file, here);
   const environment = here.environments.get(file.project);
@@ -89316,7 +89393,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     notes,
     daemonNotes,
     // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
-    ...remoteOf(daemonNotes),
+    ...remoteOf(store, worktreeId),
     ...listingFailedOf(daemonNotes, header2, daemon),
     ...checkpoint2,
     ...vitestExcluded(at2),
@@ -94176,9 +94253,9 @@ var DaemonWriter = class {
         this.#token = answer4.token;
         return true;
       }
-      const pause = pauseOf(LEASE_PAUSES_MS, attempt2);
-      if (Date.now() + pause >= deadline) throw leaseBusy(answer4.holder);
-      await sleep6(pause);
+      const pause2 = pauseOf(LEASE_PAUSES_MS, attempt2);
+      if (Date.now() + pause2 >= deadline) throw leaseBusy(answer4.holder);
+      await sleep6(pause2);
     }
   }
   async send(batch, release3) {
@@ -94199,9 +94276,9 @@ var DaemonWriter = class {
     const deadline = Date.now() + this.#options.boundMs;
     let state = answer4;
     for (let attempt2 = 0; state.written === null; attempt2++) {
-      const pause = pauseOf(STATUS_PAUSES_MS, attempt2);
-      if (Date.now() + pause >= deadline) throw writeBusy();
-      await sleep6(pause);
+      const pause2 = pauseOf(STATUS_PAUSES_MS, attempt2);
+      if (Date.now() + pause2 >= deadline) throw writeBusy();
+      await sleep6(pause2);
       const next = await requestDaemon(
         socket,
         { type: "write-status", requestId: answer4.requestId },
@@ -94373,10 +94450,10 @@ function refusedLockHolders(databasePath) {
   if (process.platform !== "linux") return void 0;
   return refusedHoldersFrom(createProcSource(), databasePath);
 }
-function refusedHoldersFrom(source2, databasePath, pause = (ms2) => Atomics.wait(PAUSE, 0, 0, ms2)) {
+function refusedHoldersFrom(source2, databasePath, pause2 = (ms2) => Atomics.wait(PAUSE, 0, 0, ms2)) {
   let holders2 = holdersFrom(source2, databasePath);
   for (let read7 = 1; read7 < REFUSED_READS && namesNoHolder(holders2); read7++) {
-    pause(REFUSED_PAUSE_MS);
+    pause2(REFUSED_PAUSE_MS);
     holders2 = holdersFrom(source2, databasePath);
   }
   return holders2;
@@ -98301,10 +98378,10 @@ function namedLine(wait, command = "squeal") {
       }
     }
   }
-  const pause = (wait.leftForPause ?? []).length > 0 && (wait.outcome === "settled" || wait.outcome === "timeout") ? `; ${pauseText(wait, command)}` : "";
+  const pause2 = (wait.leftForPause ?? []).length > 0 && (wait.outcome === "settled" || wait.outcome === "timeout") ? `; ${pauseText(wait, command)}` : "";
   const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
   const next = waitAgainText(wait, result, command);
-  return `${line}${beside}${pause}${live}${worktreeText(wait.result)}${next}`;
+  return `${line}${beside}${pause2}${live}${worktreeText(wait.result)}${next}`;
 }
 function onlyLeftText(wait, command) {
   const why2 = leftForGroups(wait.leftGroups) ? "every selected test file waits for its group's moment" : "every selected test file is slow";
@@ -98568,9 +98645,9 @@ function whileBusy(store, deadline, write4) {
     } finally {
       setBusyTimeout(store, CLI_SOCKET_TIMEOUT_MS);
     }
-    const pause = busyBackoffMs(attempt2);
-    if (Date.now() + pause >= deadline) return { busyMs: Date.now() - started2 };
-    Atomics.wait(SLEEP2, 0, 0, pause);
+    const pause2 = busyBackoffMs(attempt2);
+    if (Date.now() + pause2 >= deadline) return { busyMs: Date.now() - started2 };
+    Atomics.wait(SLEEP2, 0, 0, pause2);
   }
 }
 var SLEEP2 = new Int32Array(new SharedArrayBuffer(4));
@@ -99429,7 +99506,7 @@ init_text();
 
 // src/cli/code-coverage.ts
 init_seed();
-init_summary2();
+init_summary();
 init_glob();
 init_text();
 
@@ -103852,9 +103929,9 @@ var EarlyWrites = class {
   #cancel = null;
   #busy = 0;
   /** `pass` writes what is queued; it never rejects. `pause` times the pauses between passes. */
-  constructor(pass2, pause = timerPause) {
+  constructor(pass2, pause2 = timerPause) {
     this.#pass = pass2;
-    this.#pause = pause;
+    this.#pause = pause2;
   }
   /** Whether `stop` was called: a pass then gives up at its next busy refusal. */
   get stopped() {
@@ -103889,9 +103966,9 @@ var EarlyWrites = class {
       const end = await this.#pass().catch(() => "left");
       if (this.#stopped) return;
       if (end === "left") {
-        const pause = PAUSES_MS[Math.min(this.#busy, PAUSES_MS.length - 1)] ?? MAX_PAUSE_MS;
+        const pause2 = PAUSES_MS[Math.min(this.#busy, PAUSES_MS.length - 1)] ?? MAX_PAUSE_MS;
         this.#busy += 1;
-        if (!await this.#paused(pause) || this.#stopped) return;
+        if (!await this.#paused(pause2) || this.#stopped) return;
         continue;
       }
       this.#busy = 0;
@@ -107513,6 +107590,7 @@ function startTimeOf(pid) {
 }
 
 // src/core/daemon/daemon.ts
+init_summary2();
 init_clock();
 init_hold_rows();
 
@@ -111189,11 +111267,11 @@ var IdleGc = class {
       this.#off(`it failed (${String(error)})`);
       return null;
     }
-    const pause = Math.round(performance.now() - start2);
+    const pause2 = Math.round(performance.now() - start2);
     const after3 = memory();
     this.#live = this.#heapInUse();
     const what = before5.kind === "private" ? "private memory" : "RSS";
-    return `a last-resort GC took ${what} from ${mib(before5.bytes)} to ${mib(after3.bytes)} MiB in a ${pause} ms pause`;
+    return `a last-resort GC took ${what} from ${mib(before5.bytes)} to ${mib(after3.bytes)} MiB in a ${pause2} ms pause`;
   }
   #stopping() {
     return this.#options.stopping?.() ?? false;
@@ -112647,7 +112725,10 @@ var Daemon = class {
   #runner = null;
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
   #vitest = null;
-  /** Review 0.1.616 B7: Vitest on its remote lane, which `squeal remote sleep` puts to sleep. */
+  /**
+   * Review 0.1.616 B7: Vitest on its remote lane, which `squeal remote sleep`
+   * puts to sleep. Review 0.1.623 B1: the exit's start aborts its acquire.
+   */
   #remoteLane = null;
   #loop = null;
   /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
@@ -113149,13 +113230,15 @@ var Daemon = class {
         version: this.#version,
         launch: this.options.runnerHost,
         policy: () => this.#policy,
-        note: (text3, topic) => this.#note(text3, void 0, void 0, topic),
-        lastNote: (topic) => readDaemonNotes(store, worktreeId).findLast((n) => n.topic === topic)?.text,
+        // Review 0.1.623 B2: the summary line in its own row, which no other note evicts.
+        note: (text3, topic) => topic === REMOTE_SUMMARY_TOPIC ? this.#remoteSummary(text3) : this.#note(text3, void 0, void 0, topic),
+        lastNote: (topic) => topic === REMOTE_SUMMARY_TOPIC ? readRemoteSummary(store, worktreeId) : readDaemonNotes(store, worktreeId).findLast((n) => n.topic === topic)?.text,
         log: this.#log,
         ...this.options.env === void 0 ? {} : { env: this.options.env },
         // Spec 026 D9 (row 026-13): a proven remote run's records, mapped there, stored as ours.
         remoteCoverage: (runId, testFile, record2) => this.#coverage?.recordMapped(runId, testFile, record2)
       });
+      this.#adoptRemote(remote);
       const onRemote = remote === null ? {} : { remote: remote.wrap };
       const host = this.#processHost();
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
@@ -113226,7 +113309,6 @@ var Daemon = class {
         )
       );
       this.#vitest = vitestRunner;
-      this.#remoteLane = remote;
       this.#runner = runner;
       await Promise.all([
         ...await openedAtStart(
@@ -113671,6 +113753,23 @@ var Daemon = class {
     })();
   }
   /**
+   * Spec 026 D12.1 (review 0.1.623 B2): the remote's summary line, kept in
+   * its own row (`writeRemoteSummary`); an empty one removes it.
+   */
+  #remoteSummary(text3) {
+    if (text3 !== "") this.#log(text3);
+    try {
+      writeRemoteSummary(this.opened.store, this.opened.worktreeId, text3);
+    } catch (error) {
+      this.#log(`could not persist the remote's summary (${text3}): ${String(error)}`);
+    }
+  }
+  /** Review 0.1.623 B1: `remote` kept; an exit that began during the start aborts its acquire. */
+  #adoptRemote(remote) {
+    this.#remoteLane = remote;
+    if (this.#exit !== null) remote?.beginExit();
+  }
+  /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
    * the tier in flight, abandons the open checkpoint; cancels it after a
    * stop or a step-down, `#cancelTiers`), `runner.close()`, what
@@ -113684,6 +113783,7 @@ var Daemon = class {
    */
   #shutdown(reason2, code, text3) {
     this.#exit ??= (async () => {
+      this.#remoteLane?.beginExit();
       this.#setPhase("stopping");
       this.#stopTimers();
       this.#shared?.close();

@@ -186,7 +186,8 @@ var WORKTREE_META_ROWS = {
   otherMachineKeys: { prefix: "other-machine-keys:", owner: "scheduler/other-machine-keys" },
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
   importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
-  sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }
+  sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" },
+  remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -3362,22 +3363,6 @@ function statusIdentity(root, latest, commit, daemon) {
   }
   if (daemon.state !== "alive") return { head: recorded, dirty: null, dirtyObservedAt: null };
   return { head: recorded, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
-}
-
-// src/core/runner-host/remote/summary.ts
-var REMOTE_SUMMARY_TOPIC = "remote-lane:summary";
-
-// src/core/status/remote-status.ts
-var LISTING_FAILED = "runner testFiles failed: ";
-function remoteOf(notes) {
-  const text2 = notes.findLast((note) => note.topic === REMOTE_SUMMARY_TOPIC)?.text;
-  return text2 === void 0 || text2 === "" ? {} : { remote: text2 };
-}
-function listingFailedOf(notes, header, daemon) {
-  if (header.testFilesListed !== false || daemon.state !== "alive") return {};
-  const note = notes.findLast((n) => n.text.startsWith(LISTING_FAILED));
-  if (note === void 0 || note.revision !== header.revision) return {};
-  return { listingFailed: note.text.slice(LISTING_FAILED.length) };
 }
 
 // src/core/keys/runtime-applied.ts
@@ -17791,6 +17776,26 @@ function listed2(files2) {
   };
 }
 
+// src/core/status/remote-status.ts
+var LISTING_FAILED = "runner testFiles failed: ";
+function remoteSummaryMetaKey(worktreeId) {
+  return worktreeMetaKey("remoteSummary", worktreeId);
+}
+function readRemoteSummary(store, worktreeId) {
+  const text2 = store.meta.get(remoteSummaryMetaKey(worktreeId));
+  return text2 === null || text2 === "" ? void 0 : text2;
+}
+function remoteOf(store, worktreeId) {
+  const text2 = readRemoteSummary(store, worktreeId);
+  return text2 === void 0 ? {} : { remote: text2 };
+}
+function listingFailedOf(notes, header, daemon) {
+  if (header.testFilesListed !== false || daemon.state !== "alive") return {};
+  const note = notes.findLast((n) => n.text.startsWith(LISTING_FAILED));
+  if (note === void 0 || note.revision !== header.revision) return {};
+  return { listingFailed: note.text.slice(LISTING_FAILED.length) };
+}
+
 // src/core/keys/key-format.ts
 var KEY_FORMAT_VERSION = 21;
 
@@ -17916,7 +17921,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     notes,
     daemonNotes,
     // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
-    ...remoteOf(daemonNotes),
+    ...remoteOf(store, worktreeId),
     ...listingFailedOf(daemonNotes, header, daemon),
     ...checkpoint2,
     ...vitestExcluded(at),
