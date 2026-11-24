@@ -9,7 +9,7 @@ import type { CandidateBatch } from "../types/watcher.js";
 import type { SchedulerContext } from "./context.js";
 import { isEditorScratch } from "./editor-scratch.js";
 import { recordHeadMove, rememberHead, reportHeadMove } from "./head-move.js";
-import type { Ledger } from "./ledger.js";
+import { type Ledger, WRITE_SLICE_FILES } from "./ledger.js";
 import { type ContentRekey, rekeyContent } from "./revision.js";
 import { touchedUnchanged } from "./stability.js";
 
@@ -98,9 +98,6 @@ export async function reconcileBatch(
   if (batch.trigger !== "watch") await reportHeadMove(context, ledger);
   return { applied, touched };
 }
-
-/** Spec 024 D5: the most files one write transaction of a bulk scheduler write takes. */
-export const WRITE_SLICE_FILES = 200;
 
 /**
  * Spec 024 D5: with more than `WRITE_SLICE_FILES` updates of paths no

@@ -9,7 +9,6 @@ import { SLOW_GROUP } from "../types/scheduler.js";
 import type { SetupOutcome } from "../types/state.js";
 import type { MarkedUnknown, ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { acceptedAt, currentChecks, type ReadAsOne } from "./accept.js";
-import { WRITE_SLICE_FILES } from "./batch.js";
 import { Checkpoints } from "./checkpoints.js";
 import { Claims } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -62,6 +61,14 @@ export interface Drained {
   readonly retired: readonly CheckId[];
   readonly setups: readonly SetupOutcome[];
 }
+
+/**
+ * Spec 024 D5: the most files one write transaction of a bulk scheduler
+ * write takes (`flushStatsAhead`, `Ledger.commitInSlices`). Defined here,
+ * not in `batch.ts`: `batch.ts` already reaches this module, so an import
+ * the other way would close a cycle (row 025-10).
+ */
+export const WRITE_SLICE_FILES = 200;
 
 /** A lookup `settle` skips: no hit, and nothing withheld. */
 const UNPROBED = { hits: [], mayWait: true } as const;
