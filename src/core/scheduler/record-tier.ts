@@ -202,7 +202,7 @@ function storeOtherMachine(
     storeResults(context, records, healsUnheld(store, [...entry.inputs, ...growth]));
   }
   const reason =
-    `ran on ${machineText(ran)}, not on ${machineText(keyed)} its key is for; ` +
+    `ran on ${machineText(ran)}, not on the machine its key is for (${machineText(keyed)}); ` +
     (ownKey === null ? "nothing stored" : "stored under the environment it ran in");
   record.otherMachine.push({ file, key, reason });
 }

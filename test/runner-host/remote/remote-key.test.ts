@@ -27,6 +27,7 @@ import {
   tagReportCore,
 } from "../../../src/core/runner-host/remote/remote-key.js";
 import { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
+import { readUnknownFiles } from "../../../src/core/scheduler/unknown-files.js";
 import { worktreeEnvironment } from "../../../src/core/store/environments.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 import type { AbsolutePath, WorktreeId } from "../../../src/core/types/common.js";
@@ -241,6 +242,13 @@ describe("a remote-key worktree in a shared store (026 D10.2)", SLOW, () => {
     expect(fallback.phase(F0)).not.toBe("current");
     const states = fallback.store.knownStates.list(fallback.worktreeId);
     expect(states.filter((s) => s.outcome === "pass")).toEqual([]);
+    expect(
+      [...readUnknownFiles(fallback.store, fallback.worktreeId as WorktreeId).values()].map(
+        (u) => u.reason,
+      ),
+    ).toEqual([
+      "ran on darwin/arm64, Node v26.13.0, not on the machine its key is for (linux/x64, Node v26.13.0); stored under the environment it ran in",
+    ]);
 
     const remote = side(other, { count: 1, policy: RUN_MISSING });
     onMachines(remote, LINUX, LINUX);
