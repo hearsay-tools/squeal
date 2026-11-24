@@ -115,9 +115,9 @@ function vitest(entry: Record<string, unknown>) {
     localRuns,
     closed,
     started,
-    /** The runner's own lane says its runs go there. */
-    connected: () =>
-      until(() => / go there/.test(notes.findLast(([t]) => t === "remote-lane")?.[1] ?? "")),
+    /** The lane of `topic` says its runs go there. */
+    connected: (topic = "remote-lane") =>
+      until(() => / go there/.test(notes.findLast(([t]) => t === topic)?.[1] ?? "")),
   };
 }
 
@@ -165,9 +165,12 @@ describe("the daemon's Vitest runner over a remote (row 026-11)", () => {
     const v = vitest({ lanes: ["slow"] });
     await v.runner.run([REF], run("vitest"));
     await v.runner.run([REF], run("vitest", { background: true }));
+    // No lane reached the machine yet: the pass's first slow tier runs here while it connects.
+    await v.runner.run([REF], run("slow:vitest"));
+    await v.connected("remote-lane:vitest slow:vitest");
     await v.runner.run([REF], run("slow:vitest"));
     await v.runner.run([REF], run("group:e2e:vitest"));
     expect(v.remoteRuns).toEqual(["slow:vitest"]);
-    expect(v.localRuns).toEqual(["vitest", "vitest", "group:e2e:vitest"]);
+    expect(v.localRuns).toEqual(["vitest", "vitest", "slow:vitest", "group:e2e:vitest"]);
   });
 });

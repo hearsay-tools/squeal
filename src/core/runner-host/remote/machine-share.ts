@@ -38,6 +38,8 @@ export interface MachineShare {
   current(): RemoteMachine | null;
   /** The machine awake, acquired at the first call, and the ssh target its channels take. */
   reach(): Promise<{ readonly machine: RemoteMachine; readonly ssh: SshTarget }>;
+  /** Reached and not put to sleep or lost since: a lane made per pass waits for its connect. */
+  awake(): boolean;
   /** A lane's remote run, connect or invalidation: the idle clock starts again. */
   activity(): void;
   /** `work` after every earlier `serial` work on the machine ended (a host's start). */
@@ -183,6 +185,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
       queue = run.catch(() => {});
       return run;
     },
+    awake: () => awake,
     activity() {
       last = now();
     },
