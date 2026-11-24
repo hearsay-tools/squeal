@@ -1,3 +1,4 @@
+import { coreEnvironmentInputs } from "../keys/environment.js";
 import { readRunLoads } from "../retry/load.js";
 import { executedCoreOf, machineText, sameMachine } from "../runner-host/remote/remote-key.js";
 import type { ProjectName, RelativePath } from "../types/common.js";
@@ -26,6 +27,17 @@ import { type StoreDecision, storeDecision, type TierEnd } from "./store-decisio
 import { storeResults } from "./store-results.js";
 import type { Tier, TierFile } from "./tiers.js";
 import { requeueSplit, timedOutReason } from "./timeout-split.js";
+
+/**
+ * Review 0.1.620 B1: the machine this process runs on. A report that names
+ * no machine for a file ran here: a remote run is always tagged with its
+ * remote's core, so the project's key alone never makes a run remote.
+ */
+const HERE: CoreEnvironmentInputs = coreEnvironmentInputs({
+  squealVersion: "",
+  installedDependencies: "",
+  allowlist: [],
+});
 
 /** A file the run did not complete: not started, crashed or timed out, or split (D12, task 001-179). */
 type Incomplete = Extract<StoreDecision, { kind: "not-started" | "unknown" | "split" }>;
@@ -161,9 +173,9 @@ function recordCompleted(record: TierRecord, entry: TierFile, decision: Complete
     // Task 003-43: the key it ran under lacks what the run loaded; it runs again at the key with it.
     record.grewEnvironment.push(file);
   } else if (decision.kind === "store") {
-    const ran = executedCoreOf(record.report, file.ref);
+    const ran = executedCoreOf(record.report, file.ref) ?? HERE;
     const keyed = context.keys.coreOf(file.ref.project);
-    if (ran !== undefined && keyed !== undefined && !sameMachine(ran, keyed)) {
+    if (keyed !== undefined && !sameMachine(ran, keyed)) {
       storeOtherMachine(record, entry, growth?.growth ?? [], { ran, keyed });
       return;
     }

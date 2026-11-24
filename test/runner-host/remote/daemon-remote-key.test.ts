@@ -3,23 +3,34 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { createFsHasher } from "../../../src/core/hash/hasher.js";
+import { encodeSegment, keyFromSegments } from "../../../src/core/keys/check-key.js";
 import { coreEnvironmentInputs } from "../../../src/core/keys/environment.js";
+import { environmentHash } from "../../../src/core/keys/environment-hash.js";
+import { KEY_FORMAT_VERSION } from "../../../src/core/keys/key-format.js";
 import type { RemoteHost } from "../../../src/core/runner-host/remote/connect.js";
-import { createDaemonRemote } from "../../../src/core/runner-host/remote/daemon-lane.js";
+import {
+  createDaemonRemote,
+  type DaemonRemote,
+  vitestOver,
+} from "../../../src/core/runner-host/remote/daemon-lane.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
 import { blobsAt } from "../../../src/core/runner-host/remote/lane-compare.js";
 import { executedCoreOf } from "../../../src/core/runner-host/remote/remote-key.js";
 import type { RemoteRunOptions } from "../../../src/core/runner-host/remote/tree-wire.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
-import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { CheckKey, CoreEnvironmentInputs, TestFileRef } from "../../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
-import type {
-  RunnerAdapter,
-  RunnerEnvironment,
-  RunOptions,
-  RunReport,
+import {
+  BESIDE_LANE_PREFIX,
+  type RunnerAdapter,
+  type RunnerEnvironment,
+  type RunOptions,
+  type RunReport,
 } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
+import { claimRepo, FakeRunner, fileName, side } from "../../scheduler/claims-fixture.js";
 import { REPORT } from "../fake-channel.js";
 
 /*
@@ -74,13 +85,14 @@ function fakeAdapter(
     files: readonly TestFileRef[],
     options: RunOptions & RemoteRunOptions,
   ) => Promise<RunReport>,
+  environment: RunnerEnvironment = ENV,
 ): RunnerAdapter {
   return {
     name,
     adapterVersion: "1",
     traits: NO_TRAITS,
     testFiles: async () => [REF, GIT],
-    environment: async () => [ENV],
+    environment: async () => [environment],
     affected: async () => ({ direct: [], transitive: [] }),
     closure: async (file) => ({ testFile: file, paths: [file.path] }),
     enumerate: async () => [],
@@ -128,6 +140,55 @@ function runOptions(background: boolean): RunOptions {
     timeoutMs: 30_000,
   };
 }
+
+/** `remote.json` naming a remote for `root` with `entry`, in a config home of its own. */
+function remoteConfig(root: string, entry: Record<string, unknown>): NodeJS.ProcessEnv {
+  const configHome = join(scratch, `cfg-${++seq}`);
+  mkdirSync(join(configHome, "squeal"), { recursive: true });
+  writeFileSync(
+    join(configHome, "squeal", "remote.json"),
+    JSON.stringify({ repositories: { [root]: { target: "box", ...entry } } }),
+  );
+  return { ...process.env, XDG_CONFIG_HOME: configHome, XDG_STATE_HOME: configHome };
+}
+
+/** The daemon's remote for `root` under `env`, its host the fake remote over `adapter`. */
+function daemonRemote(
+  root: AbsolutePath,
+  env: NodeJS.ProcessEnv,
+  adapter: RunnerAdapter,
+  notes: { topic: string; text: string }[] = [],
+): DaemonRemote {
+  const remote = createDaemonRemote({
+    root,
+    commonDir: join(root, ".git") as AbsolutePath,
+    version: "0.1.620",
+    launch: {
+      execPath: process.execPath,
+      execArgv: [],
+      cli: join(scratch, "cli.mjs") as AbsolutePath,
+    },
+    policy: () => DEFAULT_POLICY,
+    note: (text, topic) => notes.push({ topic, text }),
+    lastNote: (topic) => notes.findLast((n) => n.topic === topic)?.text,
+    log: () => {},
+    env,
+    startHost: async () => fakeHost(root, adapter),
+  });
+  if (remote === null) throw new Error("expected daemon remote");
+  return remote;
+}
+
+const START = {
+  options: { childEnv: {} },
+  policy: () => ({
+    observe: false,
+    exclude: [],
+    excludeProjects: [],
+    coverage: false,
+    coverageChildren: false,
+  }),
+};
 
 describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
   it("accepts a cross-platform remote, attaches remoteCore to environment(), names it in status, and tags remote vs local runs", async () => {
@@ -248,54 +309,14 @@ describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
 
   it("wires environmentMode from remote.json through createDaemonRemote", async () => {
     const root = fixtureRepo();
-    const configHome = join(scratch, `cfg-${++seq}`);
-    mkdirSync(join(configHome, "squeal"), { recursive: true });
-    writeFileSync(
-      join(configHome, "squeal", "remote.json"),
-      JSON.stringify({
-        repositories: {
-          [root]: {
-            target: "box",
-            lanes: "all",
-            planning: "remote",
-            environmentMode: "remote-key",
-          },
-        },
-      }),
-    );
+    const env = remoteConfig(root, {
+      lanes: "all",
+      planning: "remote",
+      environmentMode: "remote-key",
+    });
     const notes: { topic: string; text: string }[] = [];
-    const remoteAdapter = fakeAdapter("vitest");
-    const remote = createDaemonRemote({
-      root,
-      commonDir: join(root, ".git") as AbsolutePath,
-      version: "0.1.620",
-      launch: {
-        execPath: process.execPath,
-        execArgv: [],
-        cli: join(scratch, "cli.mjs") as AbsolutePath,
-      },
-      policy: () => DEFAULT_POLICY,
-      note: (text, topic) => notes.push({ topic, text }),
-      lastNote: (topic) => notes.findLast((n) => n.topic === topic)?.text,
-      log: () => {},
-      env: { ...process.env, XDG_CONFIG_HOME: configHome, XDG_STATE_HOME: configHome },
-      startHost: async () => fakeHost(root, remoteAdapter),
-    });
-    if (remote === null) throw new Error("expected daemon remote");
-    const wrapped = remote.wrap({
-      runner: "vitest",
-      local: fakeAdapter("vitest"),
-      start: {
-        options: { childEnv: {} },
-        policy: () => ({
-          observe: false,
-          exclude: [],
-          excludeProjects: [],
-          coverage: false,
-          coverageChildren: false,
-        }),
-      },
-    });
+    const remote = daemonRemote(root, env, fakeAdapter("vitest"), notes);
+    const wrapped = remote.wrap({ runner: "vitest", local: fakeAdapter("vitest"), start: START });
     try {
       const envs = await wrapped.environment();
       expect(envs[0]?.core?.platform).toBe(REMOTE_PLATFORM);
@@ -303,6 +324,117 @@ describe("withRemoteLane under environmentMode remote-key (026 D10)", () => {
       expect(notes.some((n) => n.text.includes("results keyed to remote environment"))).toBe(true);
     } finally {
       await wrapped.close();
+      await remote.release();
+    }
+  });
+});
+
+/*
+ * Review 0.1.620 B1: with `lanes: ["background"]` the runner's own lane keys
+ * the project under the remote's machine, and a slow, group or beside
+ * instance the lanes leave out runs here. Through `vitestOver`, the real
+ * scheduler and its store, each such run is stored only under this
+ * machine's key: no result and no current pass under the remote's.
+ */
+describe("a local instance the remote's lanes leave out, under remote-key (review 0.1.620 B1)", () => {
+  const F0 = fileName(0);
+  /** The core the claims fixture's scheduler reads here. */
+  const OWN = coreEnvironmentInputs({
+    squealVersion: "0.0.0-test",
+    installedDependencies: "none",
+    allowlist: DEFAULT_POLICY.env.allowlist,
+  });
+  const REMOTE: CoreEnvironmentInputs = {
+    ...OWN,
+    nodeVersion: LOCAL_NODE,
+    platform: REMOTE_PLATFORM,
+    arch: REMOTE_ARCH,
+  };
+
+  /** `path`'s key on `machine`, from the fake runner's environment. */
+  async function keyOn(
+    root: string,
+    path: string,
+    machine: CoreEnvironmentInputs,
+  ): Promise<CheckKey> {
+    const [environment] = await new FakeRunner([]).environment();
+    if (environment === undefined) throw new Error("the fake runner has an environment");
+    const { nodeVersion, platform, arch } = machine;
+    const core = { ...OWN, nodeVersion, platform, arch };
+    const envHash = environmentHash(core, environment, () => null, KEY_FORMAT_VERSION);
+    const hash = await createFsHasher(root, "sha1").hash(path);
+    return keyFromSegments(envHash, { project: "", path }, [encodeSegment(path, hash)]);
+  }
+
+  it.each([
+    ["a slow instance", "slow:vitest"],
+    ["a group's instance", "group:db:vitest"],
+    ["a beside instance", `${BESIDE_LANE_PREFIX}vitest`],
+  ])("stores %s's run only under this machine's key", { timeout: 60_000 }, async (_, at) => {
+    const { main } = claimRepo(1);
+    const root = main as AbsolutePath;
+    const local = side(main, { count: 1, policy: RUN_MISSING });
+    const [environment] = await local.runner.environment();
+    if (environment === undefined) throw new Error("the fake runner has an environment");
+    const runHere = local.runner.run.bind(local.runner);
+    const instance = (name: string) =>
+      fakeAdapter(name, async (files) => runHere(files), environment);
+    const remoteRan: string[] = [];
+    const there = fakeAdapter(
+      "vitest",
+      async (files) => {
+        remoteRan.push(...files.map((f) => f.path));
+        return runHere(files);
+      },
+      environment,
+    );
+    const env = remoteConfig(root, {
+      lanes: ["background"],
+      planning: "remote",
+      environmentMode: "remote-key",
+    });
+    const remote = daemonRemote(root, env, there);
+    const over = vitestOver(remote, {
+      fast: instance("vitest"),
+      lane: () => instance("vitest"),
+      beside: () => instance("vitest"),
+      start: () => START,
+    });
+    // The scheduler's tier, dispatched to the excluded instance at the adapter seam.
+    Object.assign(local.runner, {
+      environment: () => over.environment(),
+      run: (files: readonly TestFileRef[], options: RunOptions) =>
+        over.run(files, { ...options, lane: at }),
+    });
+    try {
+      await local.scheduler.start();
+      await local.quiet();
+      const [remoteKey, hereKey] = await Promise.all([
+        keyOn(root, F0, REMOTE),
+        keyOn(root, F0, OWN),
+      ]);
+      expect(remoteKey).not.toBe(hereKey);
+      // Keyed under the remote's machine, which ran nothing.
+      expect(local.keyOf(F0)).toBe(remoteKey);
+      expect(remoteRan).toEqual([]);
+      expect(local.runner.ran(F0)).toBe(1);
+      expect(local.store.results.byKey(remoteKey, 0)).toEqual([]);
+      expect(local.passing()).toBe(0);
+      expect(local.phase(F0)).not.toBe("current");
+      const here = local.store.results.byKey(hereKey, 0);
+      expect(here.map((r) => [r.check.kind, r.check.testPath, r.outcome]).sort()).toEqual([
+        ["file", F0, "pass"],
+        ["test", F0, "pass"],
+      ]);
+      // The lane itself names this machine for the excluded instance's run.
+      const report = await over.run([{ project: "", path: F0 }], {
+        ...runOptions(false),
+        lane: at,
+      });
+      expect(executedCoreOf(report, { project: "", path: F0 })?.platform).toBe(process.platform);
+      expect(executedCoreOf(report, { project: "", path: F0 })?.arch).toBe(process.arch);
+    } finally {
+      await over.close();
       await remote.release();
     }
   });

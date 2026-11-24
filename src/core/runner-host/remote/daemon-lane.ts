@@ -4,10 +4,11 @@ import { withSlowInstance } from "../../daemon/slow-instance.js";
 import { repositoryRootOf } from "../../daemon/user-config.js";
 import { worktreeIdOfRealPath } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
+import { coreEnvironmentInputs } from "../../keys/environment.js";
 import { runnerKeyingDeferred } from "../../scheduler/deferred-keying.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { RemoteSleepOutcome } from "../../types/daemon.js";
-import type { TestFileRef } from "../../types/keys.js";
+import type { CoreEnvironmentInputs, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import { BESIDE_LANE_PREFIX, isSlowLane, type RunnerAdapter } from "../../types/runner.js";
 import type { RunnerHostLaunch } from "../channel.js";
@@ -19,6 +20,7 @@ import { probeDisk } from "./disk-check.js";
 import { withRemoteLane } from "./lane.js";
 import { tiersText } from "./lane-tiers.js";
 import { FreshMachine, MachineEnding, type MachineShare, shareMachine } from "./machine-share.js";
+import { tagReportCore } from "./remote-key.js";
 import {
   laneLabel,
   loadRemoteSettings,
@@ -70,6 +72,12 @@ import {
  * Spec 026 D9 (row 026-13): under `coverage: "remote"` each host maps its
  * runs' coverage in the worktree's object format; a proven run's records
  * go to `remoteCoverage`, the daemon's records' writer, decoded and checked here.
+ *
+ * Review 0.1.620 B1: under `environmentMode: "remote-key"` the runner's own
+ * lane may key its project under the remote's machine. An instance none of
+ * the entry's tiers reach, a slow, group or beside one the `lanes` leave
+ * out, runs here only, and its runs are tagged with this machine's core
+ * (`tagReportCore`), so none is stored as the remote's result.
  */
 
 /** The note topic of the runner's own lane's one status line. */
@@ -168,7 +176,7 @@ export function remoteLaneOf(adapter: RunnerAdapter | null): DaemonRemoteLane | 
  * else `null`, with a note that says why every run is here.
  */
 export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote | null {
-  const { root, commonDir, launch } = options;
+  const { root, commonDir, launch, version } = options;
   const say = (text: string, topic = REMOTE_TOPIC) => {
     if (options.lastNote(topic) !== text) options.note(text, topic);
   };
@@ -222,8 +230,10 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
     lane,
     wrap: <R extends RunnerAdapter>(spec: LaneSpec<R>): R => {
       const tiers = lane.lanes.filter((tier) => spec.tiers?.includes(tier) ?? true);
-      if (!lane.runners.includes(spec.runner) || tiers.length === 0) {
-        return (spec.here ?? spec.local) as R;
+      if (!lane.runners.includes(spec.runner)) return (spec.here ?? spec.local) as R;
+      if (tiers.length === 0) {
+        const alone = spec.here ?? spec.local;
+        return (lane.environmentMode === "remote-key" ? ranHere(alone, version) : alone) as R;
       }
       const topic = spec.name === undefined ? REMOTE_TOPIC : `${REMOTE_TOPIC}:${spec.name}`;
       return laneOver(share, spec, tiers, {
@@ -238,6 +248,31 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
     sleepRemote: () => share.sleep(),
     release: () => share.release(),
   };
+}
+
+/** This machine's core, as the lane tags a run here with it (`lane.ts`). */
+function coreHere(version: string): CoreEnvironmentInputs {
+  return coreEnvironmentInputs({
+    squealVersion: version,
+    installedDependencies: "",
+    allowlist: [],
+  });
+}
+
+/**
+ * `adapter`, its every run's report tagged as run on this machine (B1). Its
+ * other members are its own, called on it.
+ */
+function ranHere(adapter: RunnerAdapter, version: string): RunnerAdapter {
+  const run: RunnerAdapter["run"] = async (testFiles, options) =>
+    tagReportCore(await adapter.run(testFiles, options), coreHere(version));
+  return new Proxy(adapter, {
+    get(target, name) {
+      if (name === "run") return run;
+      const value: unknown = Reflect.get(target, name, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
 }
 
 interface LaneContext {
