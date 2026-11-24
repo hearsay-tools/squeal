@@ -235,3 +235,97 @@ describe("the parts ci export refuses (spec 018 D9)", () => {
     expect(texts).toEqual(["config fields snapshotOptions.snapshotFormat differ"]);
   });
 });
+
+/** A part named `name` of shard `index/count` that ran `projects`, one test file in each. */
+function ran(name: string, projects: readonly string[], shard: [number, number]): NamedPart {
+  const base = part([]);
+  const [run] = base.projects;
+  if (run === undefined) throw new Error("part() holds one project");
+  const ran: Part = {
+    ...base,
+    projects: projects.map((project) => ({ ...run, descriptor: { ...DESCRIPTOR, project } })),
+    testFiles: projects.map((project) => ({ ...file(`test/${name}.test.ts`), project })),
+  };
+  return sharded(name, ran, shard);
+}
+
+/** Shards `1/count..count/count` of one run of `projects`, the files named `<prefix><index>`. */
+const suite = (prefix: string, projects: readonly string[], count: number): NamedPart[] =>
+  Array.from({ length: count }, (_, i) => ran(`${prefix}${i + 1}`, projects, [i + 1, count]));
+
+describe("the shards of runs over disjoint project sets (#276, row 018-78)", () => {
+  const app = ["server", "web", "contract", "api-client"];
+
+  it("takes two suites of equal or different shard counts, in any order", () => {
+    expect(partsRefusal([...suite("a", app, 8), ...suite("e", ["e2e"], 8)], COMMIT)).toBeNull();
+    expect(partsRefusal([...suite("a", app, 8), ...suite("e", ["e2e"], 1)], COMMIT)).toBeNull();
+    const shuffled = [...suite("e", ["e2e"], 3), ...suite("a", [...app].reverse(), 2)].reverse();
+    expect(partsRefusal(shuffled, COMMIT)).toBeNull();
+    // A part's project order does not split its run in two.
+    const mixed = [ran("a1", ["server", "web"], [1, 2]), ran("a2", ["web", "server"], [2, 2])];
+    expect(partsRefusal([...mixed, ...suite("e", ["e2e"], 1)], COMMIT)).toBeNull();
+  });
+
+  it.each([
+    [
+      "a missing shard",
+      [...suite("a", app, 3).slice(1), ...suite("e", ["e2e"], 2)],
+      `projects "api-client", "contract", "server", "web": no part of shard 1/3`,
+    ],
+    [
+      "a missing shard of the other suite",
+      [...suite("a", app, 3), ...suite("e", ["e2e"], 2).slice(0, 1)],
+      `projects "e2e": no part of shard 2/2`,
+    ],
+    [
+      "a duplicate shard",
+      [...suite("a", app, 2), ...suite("e", ["e2e"], 2), ran("x", ["e2e"], [2, 2])],
+      `projects "e2e": shard 2/2 has 2 parts: e2, x`,
+    ],
+    [
+      "mixed counts in one suite",
+      [...suite("a", app, 2), ran("e1", ["e2e"], [1, 2]), ran("e2", ["e2e"], [2, 3])],
+      `projects "e2e": the parts come from runs of 2, 3 shards`,
+    ],
+    [
+      "an out-of-range shard",
+      [...suite("a", app, 2), ran("e1", ["e2e"], [1, 2]), ran("e3", ["e2e"], [3, 2])],
+      `projects "e2e": e3 names shard 3/2`,
+    ],
+    [
+      "overlapping project sets",
+      [...suite("a", ["server", "web"], 1), ...suite("b", ["web", "e2e"], 1)],
+      `project "web" is in two project sets: b1 ran projects "e2e", "web", a1 ran projects "server", "web"`,
+    ],
+    [
+      "a shard split across sets",
+      [ran("ab", ["a", "b"], [1, 2]), ran("a", ["a"], [2, 2]), ran("b", ["b"], [2, 2])],
+      `project "a" is in two project sets: ab ran projects "a", "b", a ran projects "a"`,
+    ],
+    [
+      "a part of no project beside named projects",
+      [ran("none", [], [1, 1]), ...suite("e", ["e2e"], 1)],
+      "none ran no project, beside parts of other project sets",
+    ],
+  ] as const)("refuses %s", (_name, parts, text) => {
+    const refused = partsRefusal(parts, COMMIT);
+    expect(refused?.kind).toBe("shards");
+    expect(refused?.text).toContain(text);
+  });
+
+  it("keeps project names such as __proto__ and constructor apart", () => {
+    const odd = [...suite("p", ["__proto__"], 2), ...suite("c", ["constructor"], 1)];
+    expect(partsRefusal(odd, COMMIT)).toBeNull();
+    const refused = partsRefusal([...odd, ...suite("q", ["__proto__", ""], 1)], COMMIT);
+    expect(refused?.text).toContain(`project "__proto__" is in two project sets`);
+    const comma = [...suite("x", ["a,b"], 1), ...suite("y", ["a", "b"], 2)];
+    expect(partsRefusal(comma, COMMIT)).toBeNull();
+  });
+
+  it("keeps one run's texts when every part ran one project set", () => {
+    const refused = partsRefusal(suite("a", app, 2).slice(1), COMMIT);
+    expect(refused?.text).toBe(
+      "no part of shard 1/2: export the parts of every shard, after all of them passed",
+    );
+  });
+});

@@ -190,34 +190,89 @@ function runRefusal(file: string, run: PartProject, here: Place | undefined): Ru
  * Parts that are not each shard of one run once: shards of different
  * counts, a missing shard, or two parts of one shard (two Vitest processes
  * in one shard's command, or a shard run twice). The union of a partial set
- * would pass for the whole suite.
+ * would pass for the whole suite. Parts of runs over disjoint project sets
+ * (two sharded suites of one commit) are checked each set apart (#276,
+ * row 018-78); a project in two sets makes the sets no partition.
  */
 function shardRefusal(parts: readonly NamedPart[]): Refusal | null {
   if (parts.length === 0) return { kind: "shards", text: "no part to export" };
-  const counts = [...new Set(parts.map((p) => p.part.header.shard.count))].sort((a, b) => a - b);
-  if (counts.length > 1) {
-    return { kind: "shards", text: `the parts come from runs of ${counts.join(", ")} shards` };
+  const sets = projectSets(parts);
+  if (sets.length === 1) return sequenceRefusal(parts, "");
+  const empty = sets.find((set) => set.names.length === 0);
+  if (empty !== undefined) {
+    const text = `${files(empty.parts)} ran no project, beside parts of other project sets: export one run's parts, or parts of runs over disjoint projects`;
+    return { kind: "shards", text };
   }
+  const owner = new Map<ProjectName, ProjectSet>();
+  for (const set of sets) {
+    for (const name of set.names) {
+      const held = owner.get(name);
+      if (held === undefined) {
+        owner.set(name, set);
+        continue;
+      }
+      const text = `project ${JSON.stringify(name)} is in two project sets: ${files(held.parts)} ran ${label(held)}, ${files(set.parts)} ran ${label(set)}; parts of several runs must run disjoint projects`;
+      return { kind: "shards", text };
+    }
+  }
+  for (const set of sets) {
+    const refused = sequenceRefusal(set.parts, `${label(set)}: `);
+    if (refused !== null) return refused;
+  }
+  return null;
+}
+
+/** The parts that ran one set of projects, its names sorted. */
+interface ProjectSet {
+  readonly names: readonly ProjectName[];
+  readonly parts: NamedPart[];
+}
+
+/** `parts` by the set of projects each ran, in the order of the sets' names. */
+function projectSets(parts: readonly NamedPart[]): ProjectSet[] {
+  const sets = new Map<string, ProjectSet>();
+  for (const named of parts) {
+    const names = [...new Set(named.part.projects.map((p) => p.descriptor.project))].sort(compare);
+    const key = JSON.stringify(names);
+    const set = sets.get(key) ?? { names, parts: [] };
+    set.parts.push(named);
+    sets.set(key, set);
+  }
+  return [...sets].sort(([a], [b]) => compare(a, b)).map(([, set]) => set);
+}
+
+const label = (set: ProjectSet): string =>
+  `projects ${set.names.map((n) => JSON.stringify(n)).join(", ")}`;
+
+const files = (parts: readonly NamedPart[]): string => parts.map((p) => p.file).join(", ");
+
+/** `shardRefusal` of the parts of one run, each text after `prefix`. */
+function sequenceRefusal(parts: readonly NamedPart[], prefix: string): Refusal | null {
+  const refused = (text: string): Refusal => ({ kind: "shards", text: `${prefix}${text}` });
+  const counts = [...new Set(parts.map((p) => p.part.header.shard.count))].sort((a, b) => a - b);
+  if (counts.length > 1) return refused(`the parts come from runs of ${counts.join(", ")} shards`);
   const count = counts[0] as number;
   const byIndex = new Map<number, string[]>();
   for (const { file, part } of parts) {
     const { index } = part.header.shard;
     byIndex.set(index, [...(byIndex.get(index) ?? []), file]);
   }
-  for (const [index, files] of [...byIndex].sort(([a], [b]) => a - b)) {
+  for (const [index, held] of [...byIndex].sort(([a], [b]) => a - b)) {
     if (index < 1 || index > count) {
-      return { kind: "shards", text: `${files.join(", ")} names shard ${index}/${count}` };
+      return refused(`${held.join(", ")} names shard ${index}/${count}`);
     }
-    if (files.length > 1) {
-      const text = `shard ${index}/${count} has ${files.length} parts: ${files.join(", ")}; export takes one per shard`;
-      return { kind: "shards", text };
+    if (held.length > 1) {
+      return refused(
+        `shard ${index}/${count} has ${held.length} parts: ${held.join(", ")}; export takes one per shard`,
+      );
     }
   }
   const missing = Array.from({ length: count }, (_, i) => i + 1).filter((i) => !byIndex.has(i));
   if (missing.length === 0) return null;
   const named = missing.map((i) => `${i}/${count}`).join(", ");
-  const text = `no part of shard ${named}: export the parts of every shard, after all of them passed`;
-  return { kind: "shards", text };
+  return refused(
+    `no part of shard ${named}: export the parts of every shard, after all of them passed`,
+  );
 }
 
 /**
