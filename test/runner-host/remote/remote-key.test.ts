@@ -414,12 +414,12 @@ describe("the lane's comparison under remote-key (026 D10.2)", () => {
     const old = { ...MAC, nodeVersion: "v24.0.0" };
     const refused = await compare(pinned, host(pinned, old).remote, "remote-key");
     expect(refused.differences).toEqual([
-      `Node v24.0.0 on the remote does not meet the project's Node pin "26", ">=26.1" (${process.version} here)`,
+      `Node v24.0.0 on the remote does not meet the project's Node pin "26", ">=26.1" (${OWN.nodeVersion} here)`,
     ]);
     const none = scratch();
     expect(await nodePinsAt(none)).toEqual([]);
     expect((await compare(none, host(none, node).remote, "remote-key")).differences).toEqual([
-      `Node v26.99.0 on the remote, ${process.version} here`,
+      `Node v26.99.0 on the remote, ${OWN.nodeVersion} here`,
     ]);
   });
 });
