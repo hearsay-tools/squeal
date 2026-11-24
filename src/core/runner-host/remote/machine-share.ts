@@ -25,6 +25,11 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  * closed then, and is never recorded sleeping. The idle timer never holds
  * the daemon up; no ssh keepalive outlives it (`ControlPersist` is the
  * idle time).
+ *
+ * Review 0.1.617 B1: the daemon's exit starts no further work on the
+ * machine. A queued `serial` work and a later `reach` are refused; an
+ * acquire, wake, sleep or `serial` work in flight is waited for. Only then
+ * does the shared connection end and the machine get released, once.
  */
 
 /** What the machine asks of each lane on it: whether it may sleep, and its sleep (`RemoteLaneRunner`). */
@@ -42,8 +47,13 @@ export interface MachineShare {
   awake(): boolean;
   /** A lane's remote run, connect or invalidation: the idle clock starts again. */
   activity(): void;
-  /** `work` after every earlier `serial` work on the machine ended (a host's start). */
-  serial<T>(work: () => Promise<T>): Promise<T>;
+  /**
+   * `work` after every earlier `serial` work on the machine ended (a host's
+   * start); refused, unrun, once `signal` aborted or the daemon's exit began.
+   */
+  serial<T>(work: () => Promise<T>, signal?: AbortSignal): Promise<T>;
+  /** The daemon's exit began (`release`): no new work may reach the machine. */
+  ending(): boolean;
   /** A lane lost its channel: the machine may have slept by itself, so the next reach wakes it. */
   lost(): void;
   /** `lane` takes part in the machine's sleep until the returned call. */
@@ -67,6 +77,9 @@ const PERSIST_SECONDS = 600;
 /** A lane refused the machine's sleep. */
 class Busy extends Error {}
 
+/** Work refused because its lane closed or the daemon's exit began. */
+export class MachineEnding extends Error {}
+
 export function shareMachine(options: ShareOptions): MachineShare {
   const { lane, request, env } = options;
   const now = options.now ?? Date.now;
@@ -82,7 +95,11 @@ export function shareMachine(options: ShareOptions): MachineShare {
   let last = now();
   let timer: NodeJS.Timeout | null = null;
   let released = false;
+  let releasing: Promise<void> | null = null;
   let queue: Promise<unknown> = Promise.resolve();
+  /** A sleep in flight, which the daemon's exit waits for. */
+  let sleeping: Promise<unknown> = Promise.resolve();
+  const refused = () => new MachineEnding("the daemon's exit released the remote machine");
 
   const track = (write: () => void) => {
     try {
@@ -128,7 +145,12 @@ export function shareMachine(options: ShareOptions): MachineShare {
   };
 
   /** Every lane's channel closed, the connection ended, then the machine's own sleep, once. */
-  const sleepAll = async (m: RemoteMachine): Promise<LaneSleep> => {
+  const sleepAll = (m: RemoteMachine): Promise<LaneSleep> => {
+    const run = sleepChain(m);
+    sleeping = run.catch(() => {});
+    return run;
+  };
+  const sleepChain = async (m: RemoteMachine): Promise<LaneSleep> => {
     const busy = [...lanes].map((l) => l.busy()).find((why) => why !== null);
     if (busy !== undefined) return { busy };
     const asleep = async () => {
@@ -158,10 +180,13 @@ export function shareMachine(options: ShareOptions): MachineShare {
   const reachOnce = async (): Promise<RemoteMachine> => {
     if (machine === null) {
       const acquired = await provider.acquire(request, lane.providerConfig);
+      // Acquired during the exit too: recorded, and `release` waits for this and releases it.
       machine = acquired;
       track(() => recordMachine(recordOf(acquired, request, now()), env));
+      if (released) throw refused();
     } else if (!awake) {
       await machine.wake();
+      if (released) throw refused();
       track(() => updateMachine(key, { status: "awake", lastUsedAt: now() }, env));
     }
     awake = true;
@@ -170,21 +195,51 @@ export function shareMachine(options: ShareOptions): MachineShare {
     return machine;
   };
 
+  /** Every work in flight on the machine ended, then the connection closed and the machine released. */
+  const releaseOnce = async (): Promise<void> => {
+    released = true;
+    disarm();
+    // A queued work, refused at its turn, still waits for those before it.
+    await queue;
+    await reaching?.catch(() => {});
+    await sleeping;
+    const m = machine;
+    if (m === null) return;
+    awake = false;
+    const at = socket(m);
+    if (at !== null) await closeMaster(m.ssh, at);
+    try {
+      await m.release("daemon-exit");
+    } catch (error) {
+      request.log(`remote machine ${m.id} not released: ${String(error)}`);
+    }
+    track(() => updateMachine(key, { status: "detached" }, env));
+  };
+
   return {
     current: () => machine,
     async reach() {
+      if (released) throw refused();
       // Lanes that connect at once share one acquire or wake.
       reaching ??= reachOnce().finally(() => {
         reaching = null;
       });
       const reached = await reaching;
+      if (released) throw refused();
       return { machine: reached, ssh: target(reached) };
     },
-    serial<T>(work: () => Promise<T>): Promise<T> {
-      const run = queue.then(work, work);
+    serial<T>(work: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+      if (released) return Promise.reject(refused());
+      const turn = () => {
+        if (released) throw refused();
+        if (signal?.aborted === true) throw new MachineEnding("its lane closed");
+        return work();
+      };
+      const run = queue.then(turn, turn);
       queue = run.catch(() => {});
       return run;
     },
+    ending: () => released,
     awake: () => awake,
     activity() {
       last = now();
@@ -204,25 +259,16 @@ export function shareMachine(options: ShareOptions): MachineShare {
           reason: `remote ${lane.target ?? lane.provider} reached no machine yet`,
         };
       const named = { provider: m.provider, machine: m.id };
+      if (released) return { kind: "busy", ...named, reason: "the daemon's exit is releasing it" };
       if (!m.capabilities.sleepOnIdle) return { kind: "always-on", ...named };
       const slept = await sleepAll(m);
       return slept === "slept"
         ? { kind: "slept", ...named }
         : { kind: "busy", ...named, reason: slept.busy };
     },
-    async release() {
-      released = true;
-      disarm();
-      const m = machine;
-      if (m === null) return;
-      const at = socket(m);
-      if (at !== null) await closeMaster(m.ssh, at);
-      try {
-        await m.release("daemon-exit");
-      } catch (error) {
-        request.log(`remote machine ${m.id} not released: ${String(error)}`);
-      }
-      track(() => updateMachine(key, { status: "detached" }, env));
+    release() {
+      releasing ??= releaseOnce();
+      return releasing;
     },
   };
 }

@@ -13,7 +13,7 @@ import { hostedOptions } from "../vitest-host.js";
 import { startRemoteHost } from "./connect.js";
 import { withRemoteLane } from "./lane.js";
 import { tiersText } from "./lane-tiers.js";
-import { type MachineShare, shareMachine } from "./machine-share.js";
+import { MachineEnding, type MachineShare, shareMachine } from "./machine-share.js";
 import {
   laneLabel,
   loadRemoteSettings,
@@ -50,6 +50,11 @@ import {
  * `remote-lane:<runner> <name>`. `sleepRemote` and the idle sleep take
  * every lane (`MachineShare.sleep`); the daemon's exit releases the machine
  * once, after every runner closed (`withRemoteRelease`).
+ *
+ * Review 0.1.617 B1: a lane's connect is the machine's `serial` work under
+ * the lane's close signal. A host that started after its lane closed or the
+ * daemon's exit began is closed before the work ends, so the exit, which
+ * waits for every such work, finds no host open when it releases the machine.
  */
 
 /** The note topic of the runner's own lane's one status line. */
@@ -241,10 +246,12 @@ function laneOver<R extends RunnerAdapter>(
     ...(spec.here === undefined ? {} : { here: spec.here }),
     // One host starts at a time on the machine: the first sends the tree and installs, and the
     // next finds both done, instead of two writing and installing in one tree at once.
-    connect: () =>
+    connect: (signal) =>
       share.serial(async () => {
+        const gone = () => signal.aborted || share.ending();
         const { ssh, machine } = await share.reach();
-        return (options.startHost ?? startRemoteHost)({
+        if (gone()) throw new MachineEnding("its lane closed");
+        const host = await (options.startHost ?? startRemoteHost)({
           target: ssh,
           places: machine.places,
           launch,
@@ -257,7 +264,10 @@ function laneOver<R extends RunnerAdapter>(
           log: options.log,
           commands: options.policy().requires.commands,
         });
-      }),
+        if (!gone()) return host;
+        await host.adapter.close().catch(() => {});
+        throw new MachineEnding("its lane closed while its host started");
+      }, signal),
     allowlist: () => options.policy().env.allowlist,
     needsRepository: () => options.policy().remote.needsRepository,
     repository: context.repository,

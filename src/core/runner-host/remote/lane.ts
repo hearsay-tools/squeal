@@ -49,6 +49,9 @@ import type { RemoteRunReply } from "./tree-wire.js";
  * whether a sleep would be refused, so a machine shared by several lanes
  * sleeps only when none is busy; `activity` marks each remote run, connect
  * and invalidation for the machine's idle sleep (D7.3).
+ *
+ * Review 0.1.617 B1: `close` aborts the connect's signal and waits for the
+ * connect to end; a host it reached meanwhile is closed before `close` ends.
  */
 
 export interface RemoteLaneOptions {
@@ -72,7 +75,8 @@ export interface RemoteLaneOptions {
   readonly activity?: () => void;
   /** Spec 026 D8: called when the remote is lost (not refused): its machine may have slept by itself. */
   readonly lost?: () => void;
-  readonly connect: () => Promise<RemoteHost>;
+  /** Reaches the remote host; `signal` aborts when the lane closes, and a queued connect then starts none. */
+  readonly connect: (signal: AbortSignal) => Promise<RemoteHost>;
   readonly allowlist: () => readonly string[];
   /** Spec 021 D19.2: test-file globs that always run here. Absent: none. */
   readonly needsRepository?: () => readonly string[];
@@ -139,6 +143,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   let why = "not connected yet";
   /** The connect in flight, which a run of an `awaitConnect` lane waits for. */
   let connecting: Promise<void> = Promise.resolve();
+  /** Aborted at `close`: a connect not yet started starts no host. */
+  const closing = new AbortController();
+  /** The host a connect reached and still compares: `close` closes it at once. */
+  let comparing: RemoteHost | null = null;
   /** Paths invalidated since the last remote run, by path; sent before the next. */
   const pending = new Map<string, InvalidatedPath>();
   const queue = (paths: readonly InvalidatedPath[]) => {
@@ -175,7 +183,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     pending.clear();
     activity();
     connecting = options
-      .connect()
+      .connect(closing.signal)
       .then(compareFirst)
       .catch((error: unknown) => {
         // Spec 021 D19.1: a command the tests need, missing there, is a refusal, not a loss.
@@ -194,14 +202,18 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
    * run. Each run compares again (review 0.1.442 B1).
    */
   const compareFirst = async (host: RemoteHost) => {
-    const closed = () => void host.adapter.close().catch(() => {});
+    const closed = () => host.adapter.close().catch(() => {});
     if (state.kind !== "connecting") return closed();
     options.status(`remote ${target}: connected (Node ${host.node}), not yet compared`);
+    comparing = host;
     const unequal = await sendPending(host)
       .then(() => compared(host))
       .catch((error: Error) => [error.message]);
+    // Unless `close` took it meanwhile, and closed it.
+    const ours = comparing === host;
+    comparing = null;
     // Closed meanwhile: this host is no one's.
-    if (state.kind !== "connecting") closed();
+    if (state.kind !== "connecting") await (ours ? closed() : undefined);
     else if (runnerHostGone(host.adapter)) down("the host ended", false);
     else if (unequal.length > 0) down(unequal.join("; "), true, host);
     else {
@@ -504,9 +516,12 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       return "slept";
     },
     async close() {
-      const host = state.kind === "ready" ? state.host : null;
+      const host = state.kind === "ready" ? state.host : comparing;
+      comparing = null;
       state = { kind: "down", since: now(), retryAt: Number.POSITIVE_INFINITY, refused: false };
-      await Promise.allSettled([host?.adapter.close(), here.close()]);
+      closing.abort();
+      // A connect in flight ends too; it closes any host it reaches later (`compareFirst`).
+      await Promise.allSettled([connecting, host?.adapter.close(), here.close()]);
     },
   };
 }
