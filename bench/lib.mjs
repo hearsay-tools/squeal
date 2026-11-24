@@ -380,3 +380,26 @@ export function readDaemonLogs(logDir, copyTo) {
     hookWriteWait: hookWriteWaitLog(relay),
   };
 }
+
+/**
+ * The CLI as agents run it: `[cmd, ...prefix]`, the plugin's bin/squeal (D7's startup) when it
+ * has one, else `node` on its bundle. A Squeal command is `cmd` with `[...prefix, ...args]`.
+ */
+export function squealCommand(plugin, node) {
+  const launcher = join(plugin, "bin/squeal");
+  return existsSync(launcher)
+    ? [launcher]
+    : [node, "--disable-warning=ExperimentalWarning", join(plugin, "dist/cli/squeal.mjs")];
+}
+
+/**
+ * Spec 018's three CI steps as `{ record, export, import }`, each `[cmd, args]` through the
+ * CLI `[cmd, ...prefix]` (review 0.1.631 B3: the record ran `node` with an empty prefix).
+ */
+export function ciImportCommands([cmd, ...prefix], { parts, file, vitest }) {
+  return {
+    record: [cmd, [...prefix, "ci", "record", "--out", parts, "--", vitest, "run"]],
+    export: [cmd, [...prefix, "ci", "export", "--parts", parts, "--out", file]],
+    import: [cmd, [...prefix, "import", file]],
+  };
+}

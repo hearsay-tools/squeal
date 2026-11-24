@@ -31,12 +31,14 @@ import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
 import {
   background,
+  ciImportCommands,
   cpuJiffies,
   daemonPids,
   procStat,
   quantile,
   readDaemonLogs,
   sleep,
+  squealCommand,
   storeProcessMeter,
   storeProcessPids,
   timed,
@@ -87,9 +89,7 @@ const env = { ...process.env, PATH, HOME: home, XDG_RUNTIME_DIR: runtime };
 delete env.CLAUDE_PROJECT_DIR;
 // The CLI as agents run it: the plugin's bin/squeal (D7's startup), else its bundle directly.
 const launcher = join(o.plugin, "bin/squeal");
-const [cliCmd, ...cli] = existsSync(launcher)
-  ? [launcher]
-  : [NODE, "--disable-warning=ExperimentalWarning", join(o.plugin, "dist/cli/squeal.mjs")];
+const [cliCmd, ...cli] = squealCommand(o.plugin, NODE);
 const squeal = (root, args, timeoutMs) =>
   timed(cliCmd, [...cli, ...args], { env, cwd: root, timeoutMs });
 const git = (cwd, args) => timed("git", args, { cwd, env });
@@ -530,17 +530,18 @@ async function ciImport(up) {
   await timed("cp", ["-a", join(main, "node_modules"), join(up, "node_modules")]);
   const parts = join(work, "ci-parts");
   const file = join(work, "ci-export.json.gz");
-  const rec = await timed(
-    NODE,
-    [...cli, "ci", "record", "--out", parts, "--", join(up, "node_modules/.bin/vitest"), "run"],
-    { env: { ...env, CI: "true" }, cwd: up, timeoutMs: 3_600_000 },
-  );
-  const exp = await timed(cliCmd, [...cli, "ci", "export", "--parts", parts, "--out", file], {
-    env,
-    cwd: up,
-    timeoutMs: 600_000,
+  const steps = ciImportCommands([cliCmd, ...cli], {
+    parts,
+    file,
+    vitest: join(up, "node_modules/.bin/vitest"),
   });
-  const imp = await timed(cliCmd, [...cli, "import", file], { env, cwd: main, timeoutMs: 600_000 });
+  const rec = await timed(...steps.record, {
+    env: { ...env, CI: "true" },
+    cwd: up,
+    timeoutMs: 3_600_000,
+  });
+  const exp = await timed(...steps.export, { env, cwd: up, timeoutMs: 600_000 });
+  const imp = await timed(...steps.import, { env, cwd: main, timeoutMs: 600_000 });
   return {
     record: { ms: rec.ms, code: rec.code, tail: (rec.stdout + rec.stderr).slice(-400) },
     export: { ms: exp.ms, code: exp.code, tail: (exp.stdout + exp.stderr).slice(-600) },

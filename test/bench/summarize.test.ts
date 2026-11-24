@@ -55,6 +55,11 @@ interface Lib {
   ): Promise<Settle[]>;
   hookWriteWaitLog(text: string): WriteWait;
   longWriteCount(text: string): number;
+  squealCommand(plugin: string, node: string): string[];
+  ciImportCommands(
+    cli: string[],
+    paths: { parts: string; file: string; vitest: string },
+  ): Record<"record" | "export" | "import", [string, string[]]>;
 }
 interface Summarize {
   hookValues(rows: unknown[]): Values;
@@ -396,5 +401,40 @@ describe("stored runs still summarize", () => {
     expect(r.overall).toBeGreaterThan(0);
     expect(r.scorecard).toContain("`res.treeRss.max`");
     expect(r.scorecard).toContain("`hook.writeWait.p95`");
+  });
+});
+
+// Review 0.1.631 B3: `ff-ci` recorded with `node ci record ...` when the plugin shipped bin/squeal.
+describe("the CI record, export and import commands (review 0.1.631 B3)", () => {
+  const NODE = "/opt/node/bin/node";
+  const paths = { parts: "/w/ci-parts", file: "/w/ci-export.json.gz", vitest: "/up/vitest" };
+  const want = {
+    record: ["ci", "record", "--out", "/w/ci-parts", "--", "/up/vitest", "run"],
+    export: ["ci", "export", "--parts", "/w/ci-parts", "--out", "/w/ci-export.json.gz"],
+    import: ["import", "/w/ci-export.json.gz"],
+  };
+
+  it("runs every step through the plugin's bin/squeal when it has one", () => {
+    const plugin = join(tmp, "with-launcher");
+    mkdirSync(join(plugin, "bin"), { recursive: true });
+    writeFileSync(join(plugin, "bin/squeal"), "#!/bin/sh\n");
+    const cli = lib.squealCommand(plugin, NODE);
+    expect(cli).toEqual([join(plugin, "bin/squeal")]);
+    const c = lib.ciImportCommands(cli, paths);
+    expect(c.record).toEqual([join(plugin, "bin/squeal"), want.record]);
+    expect(c.export).toEqual([join(plugin, "bin/squeal"), want.export]);
+    expect(c.import).toEqual([join(plugin, "bin/squeal"), want.import]);
+  });
+
+  it("runs every step as node on the bundle when the plugin has no bin/squeal", () => {
+    const plugin = join(tmp, "without-launcher");
+    mkdirSync(plugin, { recursive: true });
+    const cli = lib.squealCommand(plugin, NODE);
+    const prefix = ["--disable-warning=ExperimentalWarning", join(plugin, "dist/cli/squeal.mjs")];
+    expect(cli).toEqual([NODE, ...prefix]);
+    const c = lib.ciImportCommands(cli, paths);
+    expect(c.record).toEqual([NODE, [...prefix, ...want.record]]);
+    expect(c.export).toEqual([NODE, [...prefix, ...want.export]]);
+    expect(c.import).toEqual([NODE, [...prefix, ...want.import]]);
   });
 });
