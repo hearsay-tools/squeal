@@ -1,9 +1,20 @@
+import { setImmediate as nextTurn } from "node:timers/promises";
 import type { RelativePath } from "../../types/common.js";
 import type { CheckKey, FileHash } from "../../types/keys.js";
-import { type BlobOf, holdsBlob, type KeyBasis, lintKey, programSegment } from "./keys.js";
+import {
+  type BlobOf,
+  createLintKeyer,
+  holdsBlob,
+  type KeyBasis,
+  type LintKeyOf,
+  programSegment,
+} from "./keys.js";
 import type { LintFileInputs, LintProvider } from "./provider.js";
 import type { LintSource, LintSourceFile as SourceFile } from "./types.js";
 import type { Unlisted } from "./unlisted.js";
+
+/** Files keyed or judged between two yields to the event loop (issue #274 F3.5). */
+export const YIELD_EVERY = 256;
 
 /** A file ESLint lints, keyed at its blob now (D5). */
 export interface Keyed {
@@ -32,6 +43,7 @@ export class Keyer {
   #listed: ReadonlySet<RelativePath> = new Set();
   #segment: string | null = null;
   #program: ReadonlySet<RelativePath> | null = null;
+  #keyOf: LintKeyOf | null = null;
 
   constructor(
     readonly basis: KeyBasis,
@@ -98,6 +110,8 @@ export class Keyer {
   #list(): readonly SourceFile[] {
     if (this.#listing !== null) return this.#listing;
     this.#blobs.clear();
+    // The keys' config segments were read from the blobs cleared here: read them again.
+    this.#keyOf = null;
     const listing = this.source.files();
     for (const file of listing) this.#blobs.set(file.path, file.hash);
     this.#listing = listing;
@@ -123,11 +137,14 @@ export class Keyer {
   /** The keys of those of `paths` ESLint lints and that have a file now. */
   async keys(paths: readonly RelativePath[]): Promise<Map<RelativePath, Keyed>> {
     const keyed = new Map<RelativePath, Keyed>();
+    let count = 0;
     for (const [path, inputs] of await this.inputs(paths)) {
+      if (++count % YIELD_EVERY === 0) await nextTurn();
       const blob = this.blobOf(path);
       if (blob === null) continue;
       const segment = inputs.wholeProgram ? this.segment : "";
-      const key = lintKey(path, inputs, this.basis, this.inputBlobOf, segment);
+      this.#keyOf ??= createLintKeyer(this.basis, this.inputBlobOf);
+      const key = this.#keyOf(path, inputs, segment);
       keyed.set(path, { blob, key, wholeProgram: inputs.wholeProgram });
     }
     return keyed;

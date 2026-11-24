@@ -1,4 +1,5 @@
 import { extname } from "node:path";
+import { setImmediate as nextTurn } from "node:timers/promises";
 import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
 import type { CheckKey } from "../../types/keys.js";
 import type { LintCheckId, LintKnownState, LintTool, LintTransition } from "../../types/lint.js";
@@ -13,7 +14,7 @@ import {
   pendingState,
   unknownState,
 } from "./judge.js";
-import type { Keyed, Keyer } from "./keyer.js";
+import { type Keyed, type Keyer, YIELD_EVERY } from "./keyer.js";
 import { environmentOf, holdsBlob, keyInputs, offeredSet, selectedSet } from "./keys.js";
 import type { LintFileInputs } from "./provider.js";
 import {
@@ -48,6 +49,13 @@ export interface RekeyContext {
   readonly recorded: () => void;
   /** Row 017-29: the closure paths a lint call read first (`ProviderSession.readByLint`). */
   readonly readByLint: ReadonlySet<RelativePath>;
+  /**
+   * Row 011-302, as amended by row 017-36 (issue #274 F3.6): told `true`
+   * once the provider's inputs settled, around the keying's work on the
+   * main thread, and `false` after it. Never while the provider's child
+   * processes or worker run.
+   */
+  readonly onKeying?: ((keying: boolean) => void) | undefined;
 }
 
 /** What a keying did, and what its parts take first. */
@@ -89,14 +97,12 @@ export async function rekey(
   keyer: Keyer,
   latest: RevisionNumber,
 ): Promise<Rekeyed | null> {
-  const { store, worktreeId, source } = ctx;
-  const scope = lintScope(worktreeId, ctx.tool);
-  const program = readProgram(store.meta, scope);
+  const scope = lintScope(ctx.worktreeId, ctx.tool);
+  const program = readProgram(ctx.store.meta, scope);
   const plan =
-    planOf(ctx, keyer, latest, readCursor(store.meta, scope)) ??
+    planOf(ctx, keyer, latest, readCursor(ctx.store.meta, scope)) ??
     programMoved(ctx, keyer, latest, program);
   if (plan === null) return null;
-  const { mode, candidates } = plan;
   let asked: Awaited<ReturnType<typeof inputsOf>>;
   try {
     asked = await inputsOf(ctx, keyer, plan, program.extensions);
@@ -104,6 +110,26 @@ export async function rekey(
     failKeying(ctx, plan, error);
     return null;
   }
+  ctx.onKeying?.(true);
+  try {
+    return await keyAsked(ctx, keyer, latest, plan, program, asked);
+  } finally {
+    ctx.onKeying?.(false);
+  }
+}
+
+/** D7 steps 2 and 3 once the provider gave its inputs: the keys, their states, one transaction. */
+async function keyAsked(
+  ctx: RekeyContext,
+  keyer: Keyer,
+  latest: RevisionNumber,
+  plan: Plan,
+  program: LintProgram,
+  asked: Awaited<ReturnType<typeof inputsOf>>,
+): Promise<Rekeyed> {
+  const { store, worktreeId, source } = ctx;
+  const scope = lintScope(worktreeId, ctx.tool);
+  const { mode, candidates } = plan;
   keyer.setExtensions(asked.extensions);
   const keys = await keyer.keys([...asked.inputs.keys()]);
   const whole = new Set(mode === "edit" ? program.files : []);
@@ -116,7 +142,7 @@ export async function rekey(
   const others =
     mode === "edit" && segment !== program.segment ? [...whole].filter((p) => !taken.has(p)) : [];
 
-  const writes = judgeAll(ctx, plan, keys);
+  const writes = await judgeAll(ctx, plan, keys);
   const stale = staleOthers(statesOf(ctx, others), others, writes);
   store.transaction(() => {
     writes.commit(ctx, plan.at);
@@ -233,14 +259,17 @@ async function inputsOf(
 ): Promise<{ inputs: Map<RelativePath, LintFileInputs>; extensions: Set<string> }> {
   const offered = plan.candidates.filter(offeredSet(ctx.source.ignored()));
   const selected = selectedSet(ctx.lint);
-  const inputs = await keyer.inputs(offered.filter(selected));
   const extensions = new Set(plan.mode === "edit" ? known : []);
-  const learn = (paths: Iterable<RelativePath>) => {
-    for (const path of paths) if (!holdsBlob(path, extensions)) extensions.add(extname(path));
-  };
-  learn(inputs.keys());
-  const unknown = offered.filter((p) => !selected(p) && !holdsBlob(p, extensions));
-  if (unknown.length > 0) learn((await keyer.inputs(unknown)).keys());
+  const picked = offered.filter(selected);
+  // Issue #274 F3.2: the files offered only to learn their extension go in the same call.
+  const extra = offered.filter((p) => !selected(p) && !holdsBlob(p, extensions));
+  const all = await keyer.inputs([...picked, ...extra]);
+  for (const path of all.keys()) if (!holdsBlob(path, extensions)) extensions.add(extname(path));
+  const inputs = new Map<RelativePath, LintFileInputs>();
+  for (const path of picked) {
+    const given = all.get(path);
+    if (given !== undefined) inputs.set(path, given);
+  }
   return { inputs, extensions };
 }
 
@@ -286,13 +315,20 @@ class Writes {
  * is gone, judged on a hit, `pending` on a miss. A first or config keying's
  * misses join the quiet set, and so record no transition when they lint.
  */
-function judgeAll(ctx: RekeyContext, plan: Plan, keys: ReadonlyMap<RelativePath, Keyed>): Writes {
+async function judgeAll(
+  ctx: RekeyContext,
+  plan: Plan,
+  keys: ReadonlyMap<RelativePath, Keyed>,
+): Promise<Writes> {
   const { store, worktreeId } = ctx;
   const edit = plan.mode === "edit";
   const writes = new Writes(
     edit ? readQuiet(store.meta, lintScope(worktreeId, ctx.tool)) : new Set(),
   );
+  let count = 0;
   for (const path of plan.candidates) {
+    // Issue #274 F3.5: no read here joins a transaction, so the event loop may run between them.
+    if (++count % YIELD_EVERY === 0) await nextTurn();
     const prior = plan.states.get(path) ?? null;
     const keyed = keys.get(path);
     const cause = edit && !writes.quiet.has(path) ? "edit" : "config";
