@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.620";
+  if (true) return "0.1.622";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -519,6 +519,7 @@ var init_store = __esm({
       ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
       omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
       unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
+      otherMachineKeys: { prefix: "other-machine-keys:", owner: "scheduler/other-machine-keys" },
       importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
       importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
       sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }
@@ -16135,6 +16136,63 @@ var init_remote_key = __esm({
   }
 });
 
+// src/core/scheduler/other-machine-keys.ts
+function otherMachineKeysMetaKey(worktreeId) {
+  return worktreeMetaKey("otherMachineKeys", worktreeId);
+}
+function readOtherMachineKeys(store, worktreeId) {
+  return parseOtherMachineKeys(store.meta.get(otherMachineKeysMetaKey(worktreeId)));
+}
+function parseOtherMachineKeys(raw) {
+  const entries3 = /* @__PURE__ */ new Map();
+  if (raw === null) return entries3;
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return entries3;
+  }
+  if (!Array.isArray(value)) return entries3;
+  for (const item of value) {
+    if (!isEntry4(item)) continue;
+    const [project, path, runId, currentKey2, storedKey] = item;
+    const testFile = {
+      project,
+      path
+    };
+    entries3.set(testFileId(testFile), {
+      testFile,
+      runId,
+      currentKey: currentKey2,
+      storedKey
+    });
+  }
+  return entries3;
+}
+function recordOtherMachineKeys(store, worktreeId, admitted, cleared, currentKeyOf) {
+  const entries3 = readOtherMachineKeys(store, worktreeId);
+  for (const testFile of cleared) entries3.delete(testFileId(testFile));
+  for (const entry4 of admitted) entries3.set(testFileId(entry4.testFile), entry4);
+  const kept6 = [];
+  for (const e of entries3.values()) {
+    if (currentKeyOf(e.testFile) !== e.currentKey) continue;
+    kept6.push([e.testFile.project, e.testFile.path, e.runId, e.currentKey, e.storedKey]);
+  }
+  const key3 = otherMachineKeysMetaKey(worktreeId);
+  if (kept6.length === 0) store.meta.delete(key3);
+  else store.meta.set(key3, JSON.stringify(kept6));
+}
+function isEntry4(value) {
+  return Array.isArray(value) && value.length === 5 && value.every((v) => typeof v === "string");
+}
+var init_other_machine_keys = __esm({
+  "src/core/scheduler/other-machine-keys.ts"() {
+    "use strict";
+    init_reverse_index();
+    init_store();
+  }
+});
+
 // src/core/scheduler/records.ts
 function fileCheck(ref3) {
   return { kind: "file", project: ref3.project, testPath: ref3.path };
@@ -17368,7 +17426,7 @@ function storeOtherMachine(record2, entry4, growth, { ran, keyed }) {
     storeResults(context2, records, healsUnheld(store, [...entry4.inputs, ...growth]));
   }
   const reason2 = `ran on ${machineText(ran)}, not on the machine its key is for (${machineText(keyed)}); ` + (ownKey === null ? "nothing stored" : "stored under the environment it ran in");
-  record2.otherMachine.push({ file, key: key3, reason: reason2 });
+  record2.otherMachine.push({ file, key: key3, reason: reason2, storedKey: ownKey });
 }
 function storeFile(record2, entry4, decision, storeKey) {
   const { context: context2, ledger, tier, report: report4 } = record2;
@@ -17417,6 +17475,20 @@ function endRecord(record2, environment) {
   );
   if (record2.setups !== false) recordSetups(record2, record2.setups);
   markUnknown(record2);
+  recordOtherMachine(record2);
+}
+function recordOtherMachine(record2) {
+  const { context: context2, ledger, tier } = record2;
+  if (record2.otherMachine.length === 0) return;
+  const admitted = [];
+  const cleared = [];
+  for (const { file, key: key3, storedKey } of record2.otherMachine) {
+    if (storedKey === null) cleared.push(file.ref);
+    else admitted.push({ testFile: file.ref, runId: tier.runId, currentKey: key3, storedKey });
+  }
+  recordOtherMachineKeys(context2.store, context2.worktreeId, admitted, cleared, (ref3) => {
+    return ledger.file(ref3)?.key;
+  });
 }
 function settleEnvironment(record2, environment) {
   const { ledger } = record2;
@@ -17471,6 +17543,7 @@ var init_record_tier = __esm({
     init_context();
     init_environment_growth();
     init_hold();
+    init_other_machine_keys();
     init_queue();
     init_records2();
     init_rerun();
@@ -20725,33 +20798,43 @@ function coverageOn(policy) {
   return policy.coverage.enabled && policy.complexity.enabled;
 }
 function mainStoreResultKey(store, worktreeId) {
+  const associations = otherMachineKeys(store, worktreeId);
   return (runId, testFile) => {
     const key3 = store.testFileKeys.list(worktreeId, [testFile])[0]?.key;
     if (key3 === null || key3 === void 0) return void 0;
     if (store.results.byKey(key3, 0).some((r) => ranFile(r, runId, testFile))) return key3;
-    return otherMachineKey(store, worktreeId, runId, testFile, key3);
+    const admitted = associations().get(testFileId(testFile));
+    if (admitted === void 0 || admitted.runId !== runId || admitted.currentKey !== key3) {
+      return void 0;
+    }
+    const { storedKey } = admitted;
+    if (storedKey === key3) return void 0;
+    const ours = store.results.byKey(storedKey, 0).some((r) => r.provenance.worktreeId === worktreeId && ranFile(r, runId, testFile));
+    return ours ? storedKey : void 0;
+  };
+}
+function otherMachineKeys(store, worktreeId) {
+  const row2 = otherMachineKeysMetaKey(worktreeId);
+  let raw = null;
+  let parsed3 = /* @__PURE__ */ new Map();
+  return () => {
+    const now = store.meta.get(row2);
+    if (now !== raw) {
+      raw = now;
+      parsed3 = parseOtherMachineKeys(now);
+    }
+    return parsed3;
   };
 }
 function ranFile(result, runId, testFile) {
   return result.provenance.runId === runId && result.check.project === testFile.project && result.check.testPath === testFile.path;
-}
-function otherMachineKey(store, worktreeId, runId, testFile, current2) {
-  const unknown5 = readUnknownFiles(store, worktreeId).get(testFileId(testFile));
-  if (unknown5 === void 0 || !unknown5.ran || unknown5.key !== current2) return void 0;
-  const newest = store.results.newestForTestFile(testFile);
-  const stored4 = newest[0]?.key;
-  if (stored4 === void 0 || stored4 === current2) return void 0;
-  const ours = newest.some(
-    (r) => r.provenance.worktreeId === worktreeId && ranFile(r, runId, testFile)
-  );
-  return ours ? stored4 : void 0;
 }
 var PROVIDER_FILE, CANDIDATES2, PROVIDER_MISSING_NOTE, RECORDING_RUNNERS, IN_PROCESS_ENVIRONMENTS;
 var init_runtime2 = __esm({
   "src/core/code/coverage/runtime.ts"() {
     "use strict";
     init_reverse_index();
-    init_unknown_files();
+    init_other_machine_keys();
     PROVIDER_FILE = "provider.mjs";
     CANDIDATES2 = ["../coverage/", "./coverage/", "./"];
     PROVIDER_MISSING_NOTE = "coverage stays off: Squeal's coverage provider (coverage/provider.mjs) is not beside its code (spec 015 D8)";

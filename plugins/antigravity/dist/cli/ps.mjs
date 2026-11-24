@@ -858,6 +858,7 @@ var WORKTREE_META_ROWS = {
   ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
   omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
   unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
+  otherMachineKeys: { prefix: "other-machine-keys:", owner: "scheduler/other-machine-keys" },
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
   importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
   sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }

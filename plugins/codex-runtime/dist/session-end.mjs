@@ -97,6 +97,7 @@ var WORKTREE_META_ROWS = {
   ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
   omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
   unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
+  otherMachineKeys: { prefix: "other-machine-keys:", owner: "scheduler/other-machine-keys" },
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
   importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
   sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }
@@ -5608,34 +5609,6 @@ var UNCONFIGURED3 = {
   ...NODE_TEST.unconfigured,
   ...PYTEST.unconfigured
 };
-
-// src/core/scheduler/unknown-files.ts
-function unknownFilesMetaKey(worktreeId) {
-  return worktreeMetaKey("unknownFiles", worktreeId);
-}
-function readUnknownFiles(store, worktreeId) {
-  const raw = store.meta.get(unknownFilesMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
-  let value;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-  if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
-  const entries = value.filter(isEntry3).map(knownCause);
-  return new Map(entries.map((e) => [testFileId(e.testFile), e]));
-}
-var CAUSES = ["timeout", "install", "runner", "setup"];
-function isEntry3(value) {
-  if (!isRecord(value) || !isRecord(value.testFile)) return false;
-  return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
-}
-function knownCause(entry3) {
-  if (entry3.cause === void 0 || CAUSES.includes(entry3.cause)) return entry3;
-  const { cause: _cause, ...rest } = entry3;
-  return rest;
-}
 
 // src/core/code/coverage/runtime.ts
 var RECORDING_RUNNERS = /* @__PURE__ */ new Set(["vitest", "node-test"]);
@@ -11687,6 +11660,34 @@ function waitedText(ms) {
 }
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
+// src/core/scheduler/unknown-files.ts
+function unknownFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("unknownFiles", worktreeId);
+}
+function readUnknownFiles(store, worktreeId) {
+  const raw = store.meta.get(unknownFilesMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+  if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
+  const entries = value.filter(isEntry3).map(knownCause);
+  return new Map(entries.map((e) => [testFileId(e.testFile), e]));
+}
+var CAUSES = ["timeout", "install", "runner", "setup"];
+function isEntry3(value) {
+  if (!isRecord(value) || !isRecord(value.testFile)) return false;
+  return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
+}
+function knownCause(entry3) {
+  if (entry3.cause === void 0 || CAUSES.includes(entry3.cause)) return entry3;
+  const { cause: _cause, ...rest } = entry3;
+  return rest;
+}
+
 // src/core/capacity/background.ts
 var DEFAULT_BACKGROUND_SHARE = 0.75;
 function isBackgroundShare(value) {
@@ -12602,7 +12603,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.620";
+  if (true) return "0.1.622";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
