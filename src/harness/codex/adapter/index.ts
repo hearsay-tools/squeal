@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import * as nodeModule from "node:module";
+import { isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { RUNTIME_ENTRY, RUNTIME_HOOKS, RuntimeError } from "./manifest.js";
 import { usesSquealAt } from "./repository.js";
@@ -62,6 +63,7 @@ export async function runAdapterHook(name: string, options: AdapterOptions = {})
   try {
     // A session's pin decides every hook; only a hook where Squeal is in use makes the first.
     runtime = selectRuntime({ pluginRoot, data, sessionId: input.sessionId, pin: inUse });
+    enableOwnCompileCache(env);
     module = await load(runtime.root);
   } catch (error) {
     if (inUse) diagnose(name, error, write);
@@ -105,6 +107,37 @@ function fields(stdin: string): { sessionId: string | null; cwd: string | null }
   } catch {
     return { sessionId: null, cwd: null };
   }
+}
+
+/**
+ * Spec 025 D7.2: Node's compile cache for the runtime bundle this process
+ * loads next, in Squeal's own directory, as the shell launchers set it, when
+ * `env` names no cache of the user's. Codex runs `node <adapter>` straight
+ * from `hooks.json`, which no release may change without every user trusting
+ * each hook again, so the adapter turns the cache on itself. It marks `env`
+ * as the launchers do, so the daemon a hook starts uses the cache too and its
+ * test processes leave it out. A Node without the API, a directory that
+ * cannot be made, or no absolute home changes nothing.
+ */
+function enableOwnCompileCache(env: NodeJS.ProcessEnv): void {
+  if (env.NODE_COMPILE_CACHE !== undefined) return;
+  const enable = (nodeModule as { enableCompileCache?: (dir: string) => { status: number } })
+    .enableCompileCache;
+  if (typeof enable !== "function") return;
+  const home = env.HOME ?? "";
+  const xdg = env.XDG_CACHE_HOME ?? "";
+  const base = xdg !== "" ? xdg : home !== "" ? join(home, ".cache") : "";
+  if (!isAbsolute(base)) return;
+  const dir = join(base, "squeal", "compile-cache");
+  try {
+    const { status } = enable(dir);
+    const { ENABLED, ALREADY_ENABLED } = nodeModule.constants.compileCacheStatus;
+    if (status !== ENABLED && status !== ALREADY_ENABLED) return;
+  } catch {
+    return;
+  }
+  env.NODE_COMPILE_CACHE = dir;
+  env.SQUEAL_OWN_COMPILE_CACHE = "1";
 }
 
 async function load(root: string): Promise<RuntimeModule> {
