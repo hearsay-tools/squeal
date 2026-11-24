@@ -1,4 +1,4 @@
-import { appendFileSync, utimesSync } from "node:fs";
+import { appendFileSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CODE_OFF } from "../helpers/policy.js";
@@ -85,5 +85,46 @@ describe("deferred runner keying in the daemon (spec 026 D1)", { timeout: 300_00
     );
     await edit(repo, "src/math.ts");
     none("after an edit once the host closed");
+  });
+
+  interface Served {
+    readonly repo: FixtureRepo;
+    readonly spawned: ReturnType<typeof suite.daemon>;
+  }
+
+  /** A fixture under `CONFIG`, its daemon serving, no runner host after unnamed status reads. */
+  async function served(): Promise<Served> {
+    const repo = suite.fixture({
+      "squeal.config.json": `${JSON.stringify(CONFIG)}\n`,
+      "README.md": "# fixture\n",
+    });
+    const spawned = suite.daemon(repo);
+    await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
+    const none = (when: string) =>
+      expect(runnerHosts(repo.root), `${when}\n${diagnose(repo, spawned)}`).toEqual([]);
+    await cli(repo, "status");
+    await cli(repo, "status", "--wait", "30000");
+    none("after an unnamed status");
+    return { repo, spawned };
+  }
+
+  /** `status --wait <path>`, which must end with a passing verdict. */
+  async function passes(daemon: Served, path: string) {
+    const { code, out } = await cli(daemon.repo, "status", "--wait", "150000", path);
+    expect(code, `${out}\n${diagnose(daemon.repo, daemon.spawned)}`).toBe(0);
+  }
+
+  it("a first-ever named wait on a test path opens the runner, as does a new test (review 0.1.616 B2)", async () => {
+    const daemon = await served();
+    await passes(daemon, "test/math.test.ts");
+    writeFileSync(
+      join(daemon.repo.root, "test/added.test.ts"),
+      'import { expect, it } from "vitest";\n\nit("adds", () => expect(1 + 1).toBe(2));\n',
+    );
+    await passes(daemon, "test/added.test.ts");
+  });
+
+  it("a first-ever named wait on a source path opens the runner (review 0.1.616 B2)", async () => {
+    await passes(await served(), "src/math.ts");
   });
 });

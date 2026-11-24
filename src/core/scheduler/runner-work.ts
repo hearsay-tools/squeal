@@ -183,7 +183,16 @@ export class RunnerWork {
    */
   queueRecheck(): void {
     // Spec 026 D1.2: the wake's refinement looks too, as `invalidate` does.
-    if (this.#deferred()) return;
+    if (!this.#deferred()) this.queueWake();
+  }
+
+  /**
+   * Review 0.1.616 B1: the recheck that lists and keys a runner an explicit
+   * request opened, queued even while the keying is deferred. A refinement
+   * queued and not started stands in, since its `invalidate` reports the
+   * runner's projects recreated too (`CompositeGate`).
+   */
+  queueWake(): void {
     if (this.#tasks.some((task) => task.refine === true && task.recorded !== true)) return;
     this.#tasks.push({
       run: () => {

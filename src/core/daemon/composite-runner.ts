@@ -1,9 +1,11 @@
 import { compare } from "../fs/compare.js";
+import type { RunnerGate } from "../scheduler/runner-gate.js";
 import type { ProjectName } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { RunnerAdapter, RunReport } from "../types/runner.js";
 import { declareTraits } from "../types/runner-traits.js";
 import { Flights, withheld } from "./composite-flights.js";
+import { CompositeGate } from "./composite-gate.js";
 import { MERGE_RULES, type Part } from "./report-merge.js";
 import type { RunnerSet } from "./runner-set.js";
 
@@ -33,16 +35,22 @@ import type { RunnerSet } from "./runner-set.js";
  * flight is stopped as `squeal stop` stops one, a replaced member's
  * finishes, and each is closed once its parts end. A part of either not
  * started yet is withheld: its files queue again for the reload's listing.
+ *
+ * Spec 026 D1 (review 0.1.616 B1): with `gate`, each member's keying calls
+ * go through it (`CompositeGate`), so a deferred runner gets none until an
+ * explicit request holds it open, whatever the other members do.
  */
 export function createCompositeRunner(
   adapters: readonly RunnerAdapter[],
   sets: readonly RunnerSet[] = [],
+  gate?: RunnerGate,
 ): RunnerAdapter {
   const all = () => [...adapters, ...sets.flatMap((set) => set.members())];
   // The sets change only at a reconcile below, so the members are read again only then.
   let members: readonly RunnerAdapter[] = all();
   const owners = new Map<ProjectName, RunnerAdapter>();
   const flights = new Flights();
+  const gated = new CompositeGate(gate);
 
   const own = (adapter: RunnerAdapter, projects: Iterable<ProjectName>): void => {
     for (const project of projects) {
@@ -77,7 +85,7 @@ export function createCompositeRunner(
     Promise.all(members.map(async (adapter) => ({ adapter, value: await call(adapter) })));
 
   const environment = async () => {
-    const parts = await each((adapter) => adapter.environment());
+    const parts = await each((adapter) => gated.environment(adapter));
     for (const { adapter, value } of parts)
       own(
         adapter,
@@ -135,28 +143,26 @@ export function createCompositeRunner(
     traits,
     async invalidate(paths) {
       const reconciled = reconcile();
-      const parts = await Promise.all(members.map((adapter) => adapter.invalidate(paths)));
-      const projects = new Set([...reconciled, ...parts.flatMap((part) => part.recreatedProjects)]);
+      const projects = new Set([...reconciled, ...(await gated.invalidate(members, paths))]);
       return { recreatedProjects: [...projects].sort(compare) };
     },
     async recheck() {
-      const parts = await Promise.all(
-        members.map((adapter) => adapter.recheck?.() ?? { recreatedProjects: [] }),
-      );
-      const projects = new Set(parts.flatMap((part) => part.recreatedProjects));
+      const projects = new Set(await gated.recheck(members));
       return { recreatedProjects: [...projects].sort(compare) };
     },
     async affected(changedPaths) {
-      const parts = await Promise.all(members.map((adapter) => adapter.affected(changedPaths)));
+      const parts = await Promise.all(
+        members.map((adapter) => gated.affected(adapter, changedPaths)),
+      );
       return {
         direct: parts.flatMap((part) => part.direct).sort(compareRefs),
         transitive: parts.flatMap((part) => part.transitive).sort(compareRefs),
       };
     },
-    closure: async (testFile) => (await ownerOf(testFile)).closure(testFile),
+    closure: async (testFile) => gated.closure(await ownerOf(testFile), testFile),
     enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
     async testFiles() {
-      const parts = await each((adapter) => adapter.testFiles());
+      const parts = await each((adapter) => gated.testFiles(adapter));
       for (const { adapter, value } of parts)
         own(
           adapter,
