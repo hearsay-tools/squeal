@@ -27,7 +27,7 @@ writeFileSync(join(scratch, ".venv/pyvenv.cfg"), "home = /usr/bin\n");
 
 const VERSION = "0.0.0-test";
 
-const nodeTest = (config: Record<string, unknown>): RunnerEnvironment => ({
+const nodeTestEnv = (config: Record<string, unknown>): RunnerEnvironment => ({
   project: "unit",
   runnerName: "node-test",
   runnerVersion: "v24.0.0",
@@ -53,7 +53,7 @@ function host(there: RunnerEnvironment, blobs?: Record<string, string | null>): 
       }),
       environment: async () => [there],
     } as RunnerAdapter,
-    node: process.version,
+    node: "v-test",
     coreEnvironment: async () => {
       const { squealVersion: _v, ...core } = coreEnvironmentInputs({
         squealVersion: VERSION,
@@ -85,12 +85,12 @@ function compare(here: RunnerEnvironment, there: RemoteHost) {
 
 describe("the comparison of a node:test or pytest remote (row 026-11)", () => {
   it("finds a node:test project equal with coverage on here and off there", async () => {
-    const here = nodeTest({ coverage: { provider: "squeal", version: 1 } });
-    expect(await compare(here, host(nodeTest({})))).toEqual([]);
+    const here = nodeTestEnv({ coverage: { provider: "squeal", version: 1 } });
+    expect(await compare(here, host(nodeTestEnv({})))).toEqual([]);
   });
 
   it("refuses a node:test project on another Node build", async () => {
-    const differ = await compare(nodeTest({}), host(nodeTest({ nodeBuild: "b2" })));
+    const differ = await compare(nodeTestEnv({}), host(nodeTestEnv({ nodeBuild: "b2" })));
     expect(differ.length).toBeGreaterThan(0);
   });
 
