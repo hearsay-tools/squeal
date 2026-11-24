@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.623";
+  if (true) return "0.1.624";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -219,6 +219,18 @@ var init_text = __esm({
 });
 
 // src/core/state/slow-text.ts
+function slotWaitText(slot2, why2) {
+  switch (why2) {
+    case "in use":
+      return `${slot2} (in use)`;
+    case "free":
+      return `${slot2} (taken at its last try, free now)`;
+    case "held":
+      return `${slot2} (taken at its last try)`;
+    case "turn":
+      return `${slot2} (its turn went to another worktree that waits for it)`;
+  }
+}
 function slotHeld(slot2) {
   if (slot2 === void 0) return false;
   const held4 = slot2.holders.reduce((sum3, h) => sum3 + h.permits, 0);
@@ -237,7 +249,11 @@ function filesText(paths) {
 }
 function slowWords(slot2) {
   return {
-    waitingFor: (wait) => wait === "slot" && slotHeld(slot2) ? SLOT_HELD : WAITING_FOR[wait],
+    waitingFor: (wait, why2) => {
+      if (wait !== "slot") return WAITING_FOR[wait];
+      if (slotHeld(slot2)) return SLOT_HELD;
+      return why2 === void 0 ? WAITING_FOR.slot : slotWaitText("the slow slot", why2);
+    },
     files: "slow files"
   };
 }
@@ -248,7 +264,7 @@ function pendingText(pending, activity, late, words) {
   if (activity === null) return `${pending} pending`;
   const reported2 = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, ${reported2}waiting for ${words.waitingFor(activity.for)}`;
+    return `${pending} pending, ${reported2}waiting for ${words.waitingFor(activity.for, activity.slot)}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;
@@ -368,9 +384,10 @@ function requestsText(group, command) {
   return `\`${command} status --at <commit> --run\` or \`${command} run ${group.name} <path>...\``;
 }
 function groupWords(group) {
-  const waitingFor = (wait) => {
+  const waitingFor = (wait, why2) => {
     if (wait === "fast") return followedGroupsText(group.after);
     if (wait === "slot") {
+      if (why2 !== void 0) return slotWaitText(`the ${group.name} group's slot`, why2);
       return `capacity (whether the ${group.name} group's slot or the shared worker pool holds it is not known)`;
     }
     return sharedWaitText(wait);
@@ -4426,12 +4443,26 @@ function groupEntries(raw) {
     return {};
   }
 }
+function slotAtOf(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const { dir: dir2, permits } = value;
+  if (typeof dir2 !== "string" || typeof permits !== "number" || !(permits >= 1)) return void 0;
+  return { dir: dir2, permits };
+}
 function toSlowActivity(value) {
   if (value === null) return null;
   if (typeof value !== "object") return void 0;
   const v = value;
   if (v.kind === "waiting" && WAITS.has(v.for)) {
-    return { kind: "waiting", for: v.for };
+    const wait = v.for;
+    const slot2 = wait === "slot" && SLOT_WAITS.has(v.slot) ? v.slot : void 0;
+    const at2 = slot2 === void 0 ? void 0 : slotAtOf(v.slotAt);
+    return {
+      kind: "waiting",
+      for: wait,
+      ...slot2 === void 0 ? {} : { slot: slot2 },
+      ...at2 === void 0 ? {} : { slotAt: at2 }
+    };
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
@@ -4483,13 +4514,14 @@ function recordFailureKeys(store, worktreeId, checks) {
   const newest = [...kept6].slice(-FAILURE_KEYS_KEPT);
   store.meta.set(failureKeysMetaKey(worktreeId), JSON.stringify(Object.fromEntries(newest)));
 }
-var WAITS, FAILURE_KEYS_KEPT;
+var WAITS, SLOT_WAITS, FAILURE_KEYS_KEPT;
 var init_state2 = __esm({
   "src/core/slow/state.ts"() {
     "use strict";
     init_scheduler();
     init_store();
     WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
+    SLOT_WAITS = /* @__PURE__ */ new Set(["held", "turn", "in use", "free"]);
     FAILURE_KEYS_KEPT = 1024;
   }
 });
@@ -9321,6 +9353,8 @@ function holdText(wait, command) {
     case "slow":
       return `: the slow tier runs other files, since ${timeText(wait.since)}`;
     case "slot":
+      if (wait.slot !== void 0)
+        return `: the slow tier waits for ${slotWaitText("the slow slot", wait.slot)}`;
       return ": the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known";
     case "pool":
       return ": the slow tier waits for the shared worker pool";
@@ -9347,6 +9381,8 @@ function groupHoldText(wait, command) {
     case "fast":
       return `: ${group} waits for ${followedGroupsText(wait.after)}`;
     case "slot":
+      if (lane.slot !== void 0)
+        return `: ${group} waits for ${slotWaitText(`the ${wait.group} group's slot`, lane.slot)}`;
       return `: ${group} waits for capacity; whether the ${wait.group} group's slot or the shared worker pool holds it is not known`;
     case "pool":
       return `: ${group} waits for the shared worker pool`;
@@ -9417,6 +9453,7 @@ var init_text2 = __esm({
     "use strict";
     init_flaky();
     init_group_text();
+    init_slow_text();
     init_text();
     init_gate();
     init_load();
@@ -12316,9 +12353,9 @@ import { existsSync as existsSync4 } from "node:fs";
 import { join as join16 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
-function recordHolding(db, files6) {
+function recordHolding(db, files6, at2 = Date.now()) {
   try {
-    const holder = db.prepare("SELECT pid, since FROM holder LIMIT 1").get();
+    const holder = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
     if (holder === void 0) return;
     db.exec("BEGIN");
     db.exec(
@@ -12330,12 +12367,63 @@ function recordHolding(db, files6) {
       holder.since,
       JSON.stringify(files6)
     );
+    appendRan(db, holder.worktree_id, files6, at2);
     db.exec("COMMIT");
   } catch {
     try {
       db.exec("ROLLBACK");
     } catch {
     }
+  }
+}
+function appendRan(db, worktreeId, files6, at2) {
+  if (typeof worktreeId !== "string") return;
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS ran (seq INTEGER PRIMARY KEY, worktree_id TEXT NOT NULL, project TEXT NOT NULL, path TEXT NOT NULL, at INTEGER NOT NULL)"
+  );
+  const insert = db.prepare("INSERT INTO ran (worktree_id, project, path, at) VALUES (?, ?, ?, ?)");
+  for (const file of files6) insert.run(worktreeId, file.project, file.path, at2);
+  db.prepare("DELETE FROM ran WHERE seq <= (SELECT MAX(seq) FROM ran) - ?").run(RAN_KEPT);
+}
+function partnerRuns(dir2, group, permits, own, now = Date.now()) {
+  const files6 = slotFiles(group);
+  const first2 = /* @__PURE__ */ new Map();
+  for (let i3 = 0; i3 < Math.max(1, permits); i3++) {
+    const path = join16(dir2, files6.permit(i3));
+    if (!existsSync4(path)) continue;
+    for (const run8 of ranOf(path, own, now - RAN_FRESH_MS)) {
+      const id = `${run8.project}\0${run8.path}`;
+      const known4 = first2.get(id);
+      if (known4 === void 0 || run8.at < known4.at) first2.set(id, run8);
+    }
+  }
+  return [...first2.values()].sort((a, b) => a.at - b.at);
+}
+function ranOf(path, own, since) {
+  let db;
+  try {
+    db = new DatabaseSync2(immutableUrl(path), { readOnly: true });
+  } catch {
+    return [];
+  }
+  try {
+    const rows = db.prepare(
+      "SELECT worktree_id, project, path, at FROM ran WHERE worktree_id != ? AND at >= ? ORDER BY seq"
+    ).all(own, since);
+    return rows.flatMap(
+      (row2) => typeof row2.worktree_id === "string" && typeof row2.project === "string" && typeof row2.path === "string" && typeof row2.at === "number" ? [
+        {
+          worktreeId: row2.worktree_id,
+          project: row2.project,
+          path: row2.path,
+          at: row2.at
+        }
+      ] : []
+    );
+  } catch {
+    return [];
+  } finally {
+    db.close();
   }
 }
 function holdingOf(db, pid, since) {
@@ -12359,17 +12447,6 @@ function isSlotFile(value) {
   const v = value;
   const duration2 = v.durationMs === null || typeof v.durationMs === "number";
   return typeof v.project === "string" && typeof v.path === "string" && duration2;
-}
-function lastHolders(dir2, group, permits) {
-  const files6 = slotFiles(group);
-  const records = [];
-  for (let i3 = 0; i3 < Math.max(1, permits); i3++) {
-    const path = join16(dir2, files6.permit(i3));
-    if (!existsSync4(path)) continue;
-    const record2 = readRecord(path);
-    if (typeof record2 !== "string") records.push(record2);
-  }
-  return records;
 }
 function readRecord(path) {
   let db;
@@ -12402,10 +12479,13 @@ function immutableUrl(path) {
   url.search = "immutable=1";
   return url;
 }
+var RAN_KEPT, RAN_FRESH_MS;
 var init_slot_holding = __esm({
   "src/core/slow/slot-holding.ts"() {
     "use strict";
     init_slot_files();
+    RAN_KEPT = 256;
+    RAN_FRESH_MS = 3 * 60 * 6e4;
   }
 });
 
@@ -12481,7 +12561,7 @@ function heldPermits(request) {
     try {
       free = permitFree(path);
     } catch {
-      held4.push({ file, record: { kind: "unreadable" } });
+      held4.push({ file, record: { kind: "unreadable" }, unknown: true });
       continue;
     }
     if (!free) held4.push({ file, record: permitRecord(path) });
@@ -20297,6 +20377,33 @@ var init_file_class = __esm({
   }
 });
 
+// src/core/state/slot-now.ts
+function slotNow(activity, group) {
+  const { slotAt, ...shown2 } = activity;
+  const published = shown2.slot;
+  if (shown2.for !== "slot" || slotAt === void 0) return shown2;
+  if (published !== "held" && published !== "turn") return shown2;
+  const now = permitsNow(slotAt.dir, slotAt.permits, group, published);
+  return { ...shown2, slot: now };
+}
+function permitsNow(dir2, permits, group, published) {
+  let held4;
+  try {
+    held4 = heldPermits({ dir: dir2, permits, group });
+  } catch {
+    return published;
+  }
+  if (held4.length < permits) return published === "held" ? "free" : "turn";
+  const proved = held4.filter((permit) => permit.unknown !== true).length;
+  return proved >= permits ? "in use" : published;
+}
+var init_slot_now = __esm({
+  "src/core/state/slot-now.ts"() {
+    "use strict";
+    init_slot();
+  }
+});
+
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
   const globs4 = slowGlobs(policy, policy.nodeTest);
@@ -20376,6 +20483,7 @@ function laneCounts(states, keys, inLane, classify5 = classifySlowFiles) {
 function liveActivity(store, worktreeId, keys, inLane, group) {
   const activity = readGroupActivity(store, worktreeId, group);
   if (activity?.kind === "waiting") {
+    if (activity.for === "slot") return slotNow(activity, group);
     if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
     const fast = keys.some((row2) => row2.pending !== null && !inLane(row2.testFile));
     return fast ? { kind: "waiting", for: "fast" } : null;
@@ -20413,6 +20521,7 @@ var init_slow2 = __esm({
     init_scheduler();
     init_store();
     init_derive();
+    init_slot_now();
   }
 });
 
@@ -62048,21 +62157,18 @@ var init_group_limits = __esm({
 });
 
 // src/core/scheduler/slot-follow.ts
-function followPartner(refs2, ledger, at2, own, holders2) {
+function followPartner(refs2, ledger, at2, runs2) {
   if (refs2.length < 2) return refs2;
   const ranks = refs2.map((ref3) => ledger.queue.rankAt(ref3, at2));
   if (!ranks.some((rank4) => rank4?.place !== void 0)) return refs2;
   const lead = ranks[0];
-  const partners = holders2().filter((record2) => record2.worktreeId !== own && record2.files !== void 0).sort((a, b) => b.since - a.since);
-  for (const record2 of partners) {
-    for (const file of record2.files ?? []) {
-      const index = refs2.findIndex((r) => r.project === file.project && r.path === file.path);
-      if (index === 0) return refs2;
-      const rank4 = ranks[index];
-      if (index < 0 || rank4?.place === void 0) continue;
-      if (lead != null && lead.rank < 0 && rank4.rank > lead.rank) continue;
-      return [refs2[index], ...refs2.filter((_, i3) => i3 !== index)];
-    }
+  for (const run8 of runs2()) {
+    const index = refs2.findIndex((r) => r.project === run8.project && r.path === run8.path);
+    if (index === 0) return refs2;
+    const rank4 = ranks[index];
+    if (index < 0 || rank4?.place === void 0) continue;
+    if (lead != null && lead.rank < 0 && rank4.rank > lead.rank) continue;
+    return [refs2[index], ...refs2.filter((_, i3) => i3 !== index)];
   }
   return refs2;
 }
@@ -62449,7 +62555,13 @@ var init_slow_tier = __esm({
           markSlotWaiter(dir2, context2.worktreeId, this.group);
           this.#marked = true;
         }
-        this.#publish({ kind: "waiting", for: "slot" });
+        const permits = this.#resolved(context2)?.limits.maxParallel ?? null;
+        this.#publish({
+          kind: "waiting",
+          for: "slot",
+          slot: yielded ? "turn" : "held",
+          ...permits === null ? {} : { slotAt: { dir: dir2, permits } }
+        });
         if (!yielded) this.#slotMissed(context2, dir2, at2);
         this.#arm();
         return "none";
@@ -62502,8 +62614,8 @@ var init_slow_tier = __esm({
         return [];
       }
       /**
-       * Row 023-78: `free` with the file another worktree last ran under the
-       * group's shared slot first, when a `status --at --run` request queued it
+       * Row 023-78: `free` with the file another worktree ran first under the
+       * group's shared slot first (row 023-83), when a `status --at --run` request queued it
        * here (`followPartner`). A group without `maxParallel` shares no slot.
        */
       #follow(view, group, free) {
@@ -62514,8 +62626,7 @@ var init_slow_tier = __esm({
           free,
           ledger,
           at2,
-          context2.worktreeId,
-          () => lastHolders(this.#slotDir(), this.group, permits)
+          () => partnerRuns(this.#slotDir(), this.group, permits, context2.worktreeId)
         );
       }
       /**
@@ -88838,7 +88949,10 @@ function retryWaitOf(ref3, reads2) {
   const fast = earliest2(runs2, fastFile);
   if (activity?.kind === "running") return { kind: "slow", since: activity.since };
   if (activity?.kind === "waiting") {
-    return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
+    if (activity.for === "fast") return { kind: "fast", since: fast };
+    if (activity.for === "slot" && activity.slot !== void 0)
+      return { kind: "slot", slot: activity.slot };
+    return { kind: activity.for };
   }
   return fast === null ? UNKNOWN : { kind: "fast", since: fast };
 }
@@ -118907,6 +119021,7 @@ function groupedSeconds(groups3, width) {
 init_policy2();
 init_slow();
 init_state2();
+init_store2();
 import { existsSync as existsSync72 } from "node:fs";
 
 // src/cli/status-at-estimate-holder.ts
@@ -118954,6 +119069,37 @@ function commonDirOf2(store, id) {
   return store.worktrees.get(id)?.commonDir ?? null;
 }
 
+// src/cli/status-at-estimate-stale.ts
+init_reverse_index();
+init_text();
+function staleRunWait(store, id, activity, queued, who, now) {
+  if (activity?.kind !== "running") return null;
+  const running2 = new Set(activity.paths ?? [activity.path]);
+  const named4 = queued.filter((ref3) => running2.has(ref3.path));
+  if (named4.length === 0) return null;
+  const still = new Set(
+    store.testFileKeys.list(id, named4).filter((row2) => row2.key !== null && row2.pending === "queued").map((row2) => testFileId(row2.testFile))
+  );
+  const open7 = store.runs.inFlight(id, 0);
+  const stale3 = named4.filter(
+    (ref3) => still.has(testFileId(ref3)) && open7.some(
+      (run8) => run8.testFiles.some((f) => f.project === ref3.project && f.path === ref3.path)
+    )
+  );
+  if (stale3.length === 0) return null;
+  return { reason: staleText(stale3, activity, who, now), capacity: false };
+}
+function staleText(stale3, activity, who, now) {
+  const paths = stale3.map((ref3) => ref3.path);
+  const last = paths.at(-1) ?? "";
+  const list3 = paths.length < 2 ? last : `${paths.slice(0, -1).join(", ")} and ${last}`;
+  const ranMs = Math.max(0, now - activity.since);
+  const leftMs = activity.lastDurationMs === null ? 0 : activity.lastDurationMs - ranMs;
+  const left = leftMs >= 1e3 ? `, about ${durationText(leftMs)} left` : "";
+  const one = stale3.length === 1;
+  return `${who}'s run of ${list3} to end: that run started before ${one ? "its" : "their"} inputs changed (running for ${durationText(ranMs)}${left}), so its result will not count, and ${one ? "the file runs" : "the files run"} again after it`;
+}
+
 // src/cli/status-at-estimate-waits.ts
 function waitingText(waiting2, files6) {
   const { reason: reason2, capacity } = waiting2;
@@ -118979,7 +119125,11 @@ function sideWaits(storeRoot, sides) {
   const none3 = sides.map(() => null);
   if (sides.every((side) => side.queued.length === 0)) return none3;
   const ids = sides.map((side) => side.id);
-  return readMainStore(storeRoot, none3, (store) => sides.map((side) => waitOf(store, side, ids)));
+  return readMainStore(
+    storeRoot,
+    none3,
+    (store) => readTransaction(store, () => sides.map((side) => waitOf(store, side, ids)))
+  );
 }
 var SIDE_NAMES = ["the commit worktree", "the working tree"];
 function waitOf(store, side, ids) {
@@ -118988,8 +119138,15 @@ function waitOf(store, side, ids) {
   const view = groupView(readPolicy(root));
   const groups3 = new Map(queued.map((ref3) => [view.of(ref3).name, view.of(ref3)]));
   const waits2 = [];
+  const who = SIDE_NAMES[ids.indexOf(id)] ?? "this worktree";
   for (const group of groups3.values()) {
     const activity = readGroupActivity(store, id, group.name);
+    const own = queued.filter((ref3) => view.of(ref3).name === group.name);
+    const stale3 = staleRunWait(store, id, activity, own, who, Date.now());
+    if (stale3 !== null) {
+      waits2.push(stale3);
+      continue;
+    }
     const wait = waitText2(group.name, activity);
     if (wait === null) return null;
     const holder = activity?.kind === "waiting" && activity.for === "slot";

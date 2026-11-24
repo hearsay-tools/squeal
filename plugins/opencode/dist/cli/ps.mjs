@@ -887,6 +887,7 @@ var slices = new AsyncLocalStorage();
 // src/core/slow/slot-holding.ts
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
+var RAN_FRESH_MS = 3 * 60 * 6e4;
 function immutableUrl(path) {
   const url = pathToFileURL(path);
   url.search = "immutable=1";
@@ -4373,12 +4374,27 @@ function isNumber2(value) {
 
 // src/core/slow/state.ts
 var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
+var SLOT_WAITS = /* @__PURE__ */ new Set(["held", "turn", "in use", "free"]);
+function slotAtOf(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const { dir, permits } = value;
+  if (typeof dir !== "string" || typeof permits !== "number" || !(permits >= 1)) return void 0;
+  return { dir, permits };
+}
 function toSlowActivity(value) {
   if (value === null) return null;
   if (typeof value !== "object") return void 0;
   const v = value;
   if (v.kind === "waiting" && WAITS.has(v.for)) {
-    return { kind: "waiting", for: v.for };
+    const wait = v.for;
+    const slot2 = wait === "slot" && SLOT_WAITS.has(v.slot) ? v.slot : void 0;
+    const at = slot2 === void 0 ? void 0 : slotAtOf(v.slotAt);
+    return {
+      kind: "waiting",
+      for: wait,
+      ...slot2 === void 0 ? {} : { slot: slot2 },
+      ...at === void 0 ? {} : { slotAt: at }
+    };
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;

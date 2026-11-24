@@ -1208,7 +1208,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.623";
+  if (true) return "0.1.624";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3786,12 +3786,27 @@ function groupEntries(raw) {
   }
 }
 var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
+var SLOT_WAITS = /* @__PURE__ */ new Set(["held", "turn", "in use", "free"]);
+function slotAtOf(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const { dir, permits } = value;
+  if (typeof dir !== "string" || typeof permits !== "number" || !(permits >= 1)) return void 0;
+  return { dir, permits };
+}
 function toSlowActivity(value) {
   if (value === null) return null;
   if (typeof value !== "object") return void 0;
   const v = value;
   if (v.kind === "waiting" && WAITS.has(v.for)) {
-    return { kind: "waiting", for: v.for };
+    const wait = v.for;
+    const slot2 = wait === "slot" && SLOT_WAITS.has(v.slot) ? v.slot : void 0;
+    const at = slot2 === void 0 ? void 0 : slotAtOf(v.slotAt);
+    return {
+      kind: "waiting",
+      for: wait,
+      ...slot2 === void 0 ? {} : { slot: slot2 },
+      ...at === void 0 ? {} : { slotAt: at }
+    };
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
@@ -3824,6 +3839,234 @@ function readFailureKeys(store, worktreeId) {
   } catch {
     return /* @__PURE__ */ new Map();
   }
+}
+
+// src/core/slow/slot.ts
+import { existsSync as existsSync2 } from "node:fs";
+import { dirname as dirname6, isAbsolute as isAbsolute6, join as join14 } from "node:path";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+
+// src/core/daemon/paths.ts
+import { chmodSync, lstatSync as lstatSync3, mkdirSync as mkdirSync2 } from "node:fs";
+import { dirname as dirname4, isAbsolute as isAbsolute5, join as join11 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? userTmpDir();
+}
+function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
+  mkdirSync2(dirname4(dir), { recursive: true });
+  try {
+    mkdirSync2(dir, { mode: 448 });
+    chmodSync(dir, 448);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir, uid, role);
+}
+function checkPrivateDir(dir, uid, role = "socket directory") {
+  const stat = lstatSync3(dir);
+  if (!stat.isDirectory()) {
+    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
+  }
+  if (stat.uid !== uid) {
+    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
+  }
+  if ((stat.mode & 63) !== 0) {
+    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
+  }
+}
+function userTmpDir(uid = currentUid()) {
+  return join11("/tmp", `squeal-${uid}`);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute5(xdg) ? xdg : null;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+
+// src/core/slow/slot-files.ts
+import { createHash as createHash6 } from "node:crypto";
+import { basename as basename3, join as join13 } from "node:path";
+
+// src/core/daemon/scratch.ts
+import { createHash as createHash5, randomBytes } from "node:crypto";
+import {
+  linkSync,
+  lstatSync as lstatSync4,
+  mkdirSync as mkdirSync3,
+  mkdtempSync,
+  readdirSync as readdirSync7,
+  readFileSync as readFileSync9,
+  renameSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync
+} from "node:fs";
+import { basename as basename2, dirname as dirname5, join as join12 } from "node:path";
+function repositoryId(commonDir) {
+  const dir = storePaths(commonDir).dir;
+  const file = join12(dir, "repository-id");
+  mkdirSync3(dir, { recursive: true });
+  const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
+  writeFileSync(draft, `${randomBytes(16).toString("hex")}
+`);
+  try {
+    linkSync(draft, file);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  } finally {
+    unlinkSync(draft);
+  }
+  return readFileSync9(file, "utf8").trim();
+}
+
+// src/core/slow/slot-files.ts
+var SLOW_LOCK_FILE = "slow.lock";
+var SLOW_GROUP2 = "slow";
+var GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+var GROUP_SLOT_SCOPES = ["user", "repository"];
+var DEFAULT_GROUP_SLOT_SCOPE = "repository";
+function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
+  const dir = (base, commonDir) => scope === "user" ? base : join13(base, `repo.${hash(repositoryId(commonDir))}`);
+  if (group === SLOW_GROUP2) {
+    return {
+      dir,
+      permit: (i) => i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`,
+      waiterPrefix: "slow.wait."
+    };
+  }
+  if (!GROUP_NAME.test(group)) throw new Error(`not a check group name: ${JSON.stringify(group)}`);
+  return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
+}
+function hash(text2) {
+  return createHash6("sha256").update(text2).digest("hex").slice(0, 16);
+}
+var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/slow/slot-holding.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
+var RAN_FRESH_MS = 3 * 60 * 6e4;
+function holdingOf(db, pid, since) {
+  let row;
+  try {
+    row = db.prepare("SELECT pid, since, files FROM holding LIMIT 1").get();
+  } catch {
+    return void 0;
+  }
+  if (row === void 0 || row.pid !== pid || row.since !== since) return void 0;
+  if (typeof row.files !== "string") return void 0;
+  try {
+    const parsed2 = JSON.parse(row.files);
+    return Array.isArray(parsed2) && parsed2.every(isSlotFile) ? parsed2 : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function isSlotFile(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  const duration = v.durationMs === null || typeof v.durationMs === "number";
+  return typeof v.project === "string" && typeof v.path === "string" && duration;
+}
+function readRecord(path) {
+  let db;
+  try {
+    db = new DatabaseSync2(immutableUrl(path), { readOnly: true });
+  } catch {
+    return "unreadable";
+  }
+  try {
+    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
+    if (row === void 0) return "missing";
+    const { pid, worktree_id: worktreeId, since } = row;
+    if (!Number.isSafeInteger(pid) || !Number.isSafeInteger(since)) return "unreadable";
+    if (typeof worktreeId !== "string") return "unreadable";
+    const files2 = holdingOf(db, pid, since);
+    return {
+      pid,
+      worktreeId,
+      since,
+      ...files2 === void 0 ? {} : { files: files2 }
+    };
+  } catch (error) {
+    return String(error).includes("no such table") ? "missing" : "unreadable";
+  } finally {
+    db.close();
+  }
+}
+function immutableUrl(path) {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
+}
+
+// src/core/slow/slot.ts
+function slowSlotDir(env = process.env, userDir = userTmpDir()) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join14(xdg, "squeal") : userDir;
+}
+function heldPermits(request) {
+  const { dir } = request;
+  const files2 = slotFiles(request.group);
+  if (!existsSync2(dir)) return [];
+  checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
+  const held = [];
+  for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
+    const file = files2.permit(i);
+    const path = join14(dir, file);
+    if (!existsSync2(path)) continue;
+    let free;
+    try {
+      free = permitFree(path);
+    } catch {
+      held.push({ file, record: { kind: "unreadable" }, unknown: true });
+      continue;
+    }
+    if (!free) held.push({ file, record: permitRecord(path) });
+  }
+  return held;
+}
+function permitRecord(path) {
+  const record = readRecord(path);
+  return typeof record === "string" ? { kind: record } : { kind: "holder", ...record };
+}
+function permitFree(path) {
+  const db = new DatabaseSync3(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("BEGIN EXCLUSIVE");
+    db.exec("ROLLBACK");
+    return true;
+  } catch (error) {
+    if (isBusy(error)) return false;
+    throw error;
+  } finally {
+    db.close();
+  }
+}
+
+// src/core/state/slot-now.ts
+function slotNow(activity, group) {
+  const { slotAt, ...shown } = activity;
+  const published = shown.slot;
+  if (shown.for !== "slot" || slotAt === void 0) return shown;
+  if (published !== "held" && published !== "turn") return shown;
+  const now = permitsNow(slotAt.dir, slotAt.permits, group, published);
+  return { ...shown, slot: now };
+}
+function permitsNow(dir, permits, group, published) {
+  let held;
+  try {
+    held = heldPermits({ dir, permits, group });
+  } catch {
+    return published;
+  }
+  if (held.length < permits) return published === "held" ? "free" : "turn";
+  const proved = held.filter((permit) => permit.unknown !== true).length;
+  return proved >= permits ? "in use" : published;
 }
 
 // src/core/state/slow.ts
@@ -3905,6 +4148,7 @@ function laneCounts(states, keys, inLane, classify2 = classifySlowFiles) {
 function liveActivity(store, worktreeId, keys, inLane, group) {
   const activity = readGroupActivity(store, worktreeId, group);
   if (activity?.kind === "waiting") {
+    if (activity.for === "slot") return slotNow(activity, group);
     if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
     const fast = keys.some((row) => row.pending !== null && !inLane(row.testFile));
     return fast ? { kind: "waiting", for: "fast" } : null;
@@ -4243,11 +4487,11 @@ function toKnownFailure(state, revision) {
 }
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync9, readlinkSync as readlinkSync3 } from "node:fs";
+import { readFileSync as readFileSync10, readlinkSync as readlinkSync3 } from "node:fs";
 function readProcStat(pid) {
   let text2;
   try {
-    text2 = readFileSync9(`/proc/${pid}/stat`, "utf8");
+    text2 = readFileSync10(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -4623,8 +4867,8 @@ function flag(value) {
 }
 
 // src/core/store/prune.ts
-import { existsSync as existsSync2, rmSync } from "node:fs";
-import { join as join11, resolve, sep as sep2 } from "node:path";
+import { existsSync as existsSync3, rmSync as rmSync2 } from "node:fs";
+import { join as join15, resolve, sep as sep2 } from "node:path";
 
 // src/core/store/prune-checkpoint.ts
 function* checkpointAfterWrites(conn, slices2) {
@@ -5194,7 +5438,7 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
   yield* vacuum(conn);
 }
 function isGone(root) {
-  return !existsSync2(join11(root, ".git"));
+  return !existsSync3(join15(root, ".git"));
 }
 var BATCH_KEYS = {
   // `WITHOUT ROWID`, keyed by `(worktree_id, path)`.
@@ -5305,7 +5549,7 @@ function pragmaNumber(conn, name2) {
 function removeRunLog(paths, logDir) {
   const runsDir = resolve(paths.runsDir);
   const target = resolve(logDir);
-  if (target.startsWith(runsDir + sep2)) rmSync(target, { recursive: true, force: true });
+  if (target.startsWith(runsDir + sep2)) rmSync2(target, { recursive: true, force: true });
 }
 
 // src/core/store/repos/consumers.ts
@@ -5521,7 +5765,7 @@ function createFailureRepo(conn) {
 }
 
 // src/core/store/repos/results.ts
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -5631,7 +5875,7 @@ function createResultRepo(conn) {
 function storeFailureText(conn, summary, errors) {
   if (summary === null && errors.length === 0) return null;
   const text2 = JSON.stringify(errors);
-  const id = createHash5("sha256").update(JSON.stringify([summary, text2])).digest("hex");
+  const id = createHash7("sha256").update(JSON.stringify([summary, text2])).digest("hex");
   conn.run(
     "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     id,
@@ -6791,34 +7035,34 @@ function readHeld(meta, scope) {
 }
 
 // src/core/lint/store/open.ts
-import { existsSync as existsSync5, mkdirSync as mkdirSync4 } from "node:fs";
-import { join as join14 } from "node:path";
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { existsSync as existsSync6, mkdirSync as mkdirSync6 } from "node:fs";
+import { join as join18 } from "node:path";
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/store/open.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync3, renameSync as renameSync2, rmSync as rmSync3 } from "node:fs";
-import { join as join13 } from "node:path";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { existsSync as existsSync5, mkdirSync as mkdirSync5, renameSync as renameSync3, rmSync as rmSync4 } from "node:fs";
+import { join as join17 } from "node:path";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/store/mark.ts
 import { randomUUID } from "node:crypto";
 import {
-  existsSync as existsSync3,
-  mkdirSync as mkdirSync2,
-  readFileSync as readFileSync10,
-  renameSync,
-  rmSync as rmSync2,
+  existsSync as existsSync4,
+  mkdirSync as mkdirSync4,
+  readFileSync as readFileSync11,
+  renameSync as renameSync2,
+  rmSync as rmSync3,
   statSync as statSync3,
-  writeFileSync
+  writeFileSync as writeFileSync2
 } from "node:fs";
-import { join as join12 } from "node:path";
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { join as join16 } from "node:path";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 var MARK_FINDERS = ["full-check", "daemon", "hook", "unknown"];
 var RECOVERY_LOCK = "store-recovery.sqlite";
 function markUnder(commonDir, file, mark, waitMs) {
   const paths = storePaths(commonDir);
-  mkdirSync2(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync2(join12(paths.locksDir, RECOVERY_LOCK));
+  mkdirSync4(paths.locksDir, { recursive: true });
+  const lock = new DatabaseSync4(join16(paths.locksDir, RECOVERY_LOCK));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.round(waitMs))}`);
     try {
@@ -6832,7 +7076,7 @@ function markUnder(commonDir, file, mark, waitMs) {
     dropStaleMark(paths.database);
     if (currentMark(paths.database) !== null) return "kept";
     const named2 = { ...mark, file: { dev: file.dev, ino: file.ino } };
-    writeFileSync(markPath(paths.database), JSON.stringify(named2), { flag: "wx" });
+    writeFileSync2(markPath(paths.database), JSON.stringify(named2), { flag: "wx" });
     return "marked";
   } finally {
     rollback(lock);
@@ -6852,13 +7096,13 @@ function dropStaleMark(database) {
   if (mark === null || names2(mark, database)) return;
   const aside = `${path}.stale-${randomUUID()}`;
   try {
-    renameSync(path, aside);
+    renameSync2(path, aside);
   } catch {
     return;
   }
   const moved = readMark(aside);
-  if (moved !== null && names2(moved, database) && !existsSync3(path)) renameSync(aside, path);
-  else rmSync2(aside, { force: true });
+  if (moved !== null && names2(moved, database) && !existsSync4(path)) renameSync2(aside, path);
+  else rmSync3(aside, { force: true });
 }
 function names2(mark, database) {
   if (mark.file === void 0) return true;
@@ -6868,7 +7112,7 @@ function names2(mark, database) {
 function readMark(path) {
   let text2;
   try {
-    text2 = readFileSync10(path, "utf8");
+    text2 = readFileSync11(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -7121,9 +7365,9 @@ function isStoreOpenFailure(value) {
 }
 function openStore(commonDir, options = {}) {
   const paths = storePaths(commonDir);
-  if (!existsSync4(paths.database)) {
+  if (!existsSync5(paths.database)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync3(paths.dir, { recursive: true });
+    mkdirSync5(paths.dir, { recursive: true });
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
@@ -7133,7 +7377,7 @@ function openStore(commonDir, options = {}) {
 function connect(paths, options) {
   let db;
   try {
-    db = new DatabaseSync3(paths.database);
+    db = new DatabaseSync5(paths.database);
     db.exec(`PRAGMA busy_timeout = ${busyTimeout(options)}`);
     const found2 = userVersion(db);
     if (found2 > SCHEMA_VERSION) {
@@ -7208,8 +7452,8 @@ function isCorruption(error) {
   return typeof code === "number" && [11, 26].includes(code & 255);
 }
 function recover(paths, options) {
-  mkdirSync3(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync3(join13(paths.locksDir, RECOVERY_LOCK));
+  mkdirSync5(paths.locksDir, { recursive: true });
+  const lock = new DatabaseSync5(join17(paths.locksDir, RECOVERY_LOCK));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock.exec("BEGIN EXCLUSIVE");
@@ -7239,11 +7483,11 @@ function foundBy(mark) {
 }
 function moveAside(database, at) {
   let movedTo = `${database}.corrupt-${at}`;
-  for (let n = 1; existsSync4(movedTo); n++) movedTo = `${database}.corrupt-${at}-${n}`;
-  renameSync2(database, movedTo);
-  if (existsSync4(`${database}-wal`)) renameSync2(`${database}-wal`, `${movedTo}-wal`);
-  rmSync3(`${database}-shm`, { force: true });
-  if (existsSync4(markPath(database))) renameSync2(markPath(database), markPath(movedTo));
+  for (let n = 1; existsSync5(movedTo); n++) movedTo = `${database}.corrupt-${at}-${n}`;
+  renameSync3(database, movedTo);
+  if (existsSync5(`${database}-wal`)) renameSync3(`${database}-wal`, `${movedTo}-wal`);
+  rmSync4(`${database}-shm`, { force: true });
+  if (existsSync5(markPath(database))) renameSync3(markPath(database), markPath(movedTo));
   return movedTo;
 }
 
@@ -7662,7 +7906,7 @@ function createMetaRepo2(conn) {
 
 // src/core/lint/store/open.ts
 function lintStorePath(commonDir) {
-  return join14(storePaths(commonDir).dir, "lint.sqlite");
+  return join18(storePaths(commonDir).dir, "lint.sqlite");
 }
 function isLintStoreOpenFailure(value) {
   return "reason" in value;
@@ -7670,9 +7914,9 @@ function isLintStoreOpenFailure(value) {
 function openLintStore(commonDir, policy, options = {}) {
   if (!policy.lint.enabled) return { reason: "off" };
   const path = lintStorePath(commonDir);
-  if (!existsSync5(path)) {
+  if (!existsSync6(path)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync4(storePaths(commonDir).dir, { recursive: true });
+    mkdirSync6(storePaths(commonDir).dir, { recursive: true });
   }
   const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
@@ -7680,7 +7924,7 @@ function openLintStore(commonDir, policy, options = {}) {
   }
   let db;
   try {
-    db = new DatabaseSync4(path);
+    db = new DatabaseSync6(path);
     db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
     const found2 = userVersion(db);
     if (found2 > LINT_SCHEMA_VERSION) {
@@ -7847,9 +8091,9 @@ function storeFileOrNull(commonDir) {
 }
 
 // src/core/code/store/open.ts
-import { existsSync as existsSync6, mkdirSync as mkdirSync5 } from "node:fs";
-import { join as join15 } from "node:path";
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { existsSync as existsSync7, mkdirSync as mkdirSync7 } from "node:fs";
+import { join as join19 } from "node:path";
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 
 // src/core/code/store/schema.ts
 var V13 = `
@@ -9417,7 +9661,7 @@ function createMetaRepo3(conn) {
 
 // src/core/code/store/open.ts
 function codeStorePath(commonDir) {
-  return join15(storePaths(commonDir).dir, "code.sqlite");
+  return join19(storePaths(commonDir).dir, "code.sqlite");
 }
 function isCodeStoreOpenFailure(value) {
   return "reason" in value;
@@ -9425,9 +9669,9 @@ function isCodeStoreOpenFailure(value) {
 function openCodeStore(commonDir, policy, options = {}) {
   if (!policy.complexity.enabled) return { reason: "off" };
   const path = codeStorePath(commonDir);
-  if (!existsSync6(path)) {
+  if (!existsSync7(path)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync5(storePaths(commonDir).dir, { recursive: true });
+    mkdirSync7(storePaths(commonDir).dir, { recursive: true });
   }
   const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
@@ -9435,7 +9679,7 @@ function openCodeStore(commonDir, policy, options = {}) {
   }
   let db;
   try {
-    db = new DatabaseSync5(path);
+    db = new DatabaseSync7(path);
     db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
     const found2 = userVersion(db);
     if (found2 > CODE_SCHEMA_VERSION) {
@@ -9515,11 +9759,11 @@ function nodeTestFiles(command, listing) {
 
 // src/runners/pytest/describe.ts
 import { realpathSync as realpathSync2 } from "node:fs";
-import { join as join17, resolve as resolve3 } from "node:path";
+import { join as join21, resolve as resolve3 } from "node:path";
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync7, readdirSync as readdirSync7, readFileSync as readFileSync11, statSync as statSync5 } from "node:fs";
-import { basename as basename2, dirname as dirname4, isAbsolute as isAbsolute5, join as join16, relative as relative2, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync8, readdirSync as readdirSync8, readFileSync as readFileSync12, statSync as statSync5 } from "node:fs";
+import { basename as basename4, dirname as dirname7, isAbsolute as isAbsolute7, join as join20, relative as relative2, resolve as resolve2 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -9527,16 +9771,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve2(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join16(declared, "bin", "python"));
-    if (existsSync7(declared)) return found("declared", dirname4(dirname4(declared)), declared);
-    const target = basename2(declared).startsWith("python") ? dirname4(dirname4(declared)) : declared;
+    if (isDirectory(declared)) return found("declared", declared, join20(declared, "bin", "python"));
+    if (existsSync8(declared)) return found("declared", dirname7(dirname7(declared)), declared);
+    const target = basename4(declared).startsWith("python") ? dirname7(dirname7(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join16(cwd, ".venv");
-  if (existsSync7(join16(venv, "pyvenv.cfg"))) return found("venv", venv, join16(venv, "bin", "python"));
+  const venv = join20(cwd, ".venv");
+  if (existsSync8(join20(venv, "pyvenv.cfg"))) return found("venv", venv, join20(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname4(dirname4(pdm)), pdm);
-  return none(root, cwd, [venv, join16(cwd, ".pdm-python")], venv);
+  if (pdm !== null) return found("pdm-python", dirname7(dirname7(pdm)), pdm);
+  return none(root, cwd, [venv, join20(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -9544,12 +9788,12 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text2;
   try {
-    text2 = readFileSync11(join16(cwd, ".pdm-python"), "utf8").trim();
+    text2 = readFileSync12(join20(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute5(text2) || toRelative(root, text2) === null || !existsSync7(text2)) return null;
+  if (!isAbsolute7(text2) || toRelative(root, text2) === null || !existsSync8(text2)) return null;
   return text2;
 }
 var LOCKFILES2 = [
@@ -9561,17 +9805,17 @@ var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
 function none(root, cwd, looked, target) {
   const venv = relative2(cwd, target) || ".";
   const dirs = [];
-  for (let dir = cwd; ; dir = dirname4(dir)) {
+  for (let dir = cwd; ; dir = dirname7(dir)) {
     dirs.push(dir);
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES2.find(([file]) => existsSync7(join16(dir, file)));
+    const hit = LOCKFILES2.find(([file]) => existsSync8(join20(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join16(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join20(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join16(dir, file));
+    const files2 = requirementsIn(dir).map((file) => join20(dir, file));
     if (files2.length === 0) continue;
     const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -9582,7 +9826,7 @@ function none(root, cwd, looked, target) {
 function requirementsIn(dir) {
   let names3;
   try {
-    names3 = readdirSync7(dir);
+    names3 = readdirSync8(dir);
   } catch (error) {
     if (isMissing(error)) return [];
     throw error;
@@ -9654,7 +9898,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve3(dir, first) === join17(env, "bin", name2);
+  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve3(dir, first) === join21(env, "bin", name2);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -9669,8 +9913,8 @@ function pytestFiles(command, listing) {
 }
 
 // src/runners/vitest/describe.ts
-import { readFileSync as readFileSync12 } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join18, relative as relative3, resolve as resolve4 } from "node:path";
+import { readFileSync as readFileSync13 } from "node:fs";
+import { isAbsolute as isAbsolute8, join as join22, relative as relative3, resolve as resolve4 } from "node:path";
 var UNCONFIGURED2 = { vitest: true };
 var REPORTER = "--reporter";
 var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
@@ -9747,22 +9991,22 @@ function vitestFiles(command, listing) {
   if (command.filters.length === 0) return vitest;
   const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref2) => matchesFilter(join18(root, ref2.path), filter, root));
+    const hits = vitest.filter((ref2) => matchesFilter(join22(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref2 of hits) selected2.add(ref2);
   }
   return vitest.filter((ref2) => selected2.has(ref2));
 }
 function matchesFilter(file, filter, root) {
-  if (isAbsolute6(filter) && file.startsWith(filter)) return true;
+  if (isAbsolute8(filter) && file.startsWith(filter)) return true;
   const testFile = relative3(root, file).toLocaleLowerCase();
   const rel = relative3(root, resolve4(root, filter));
-  const relativePath = filter.endsWith("/") ? join18(rel, "/") : rel;
+  const relativePath = filter.endsWith("/") ? join22(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync12(join18(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync13(join22(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
@@ -10163,110 +10407,9 @@ function planLintNews(input) {
   return { entries: sorted, writes, removals, deferred };
 }
 
-// src/core/slow/slot-files.ts
-import { createHash as createHash7 } from "node:crypto";
-import { basename as basename4, join as join21 } from "node:path";
-
-// src/core/daemon/scratch.ts
-import { createHash as createHash6, randomBytes } from "node:crypto";
-import {
-  linkSync,
-  lstatSync as lstatSync4,
-  mkdirSync as mkdirSync7,
-  mkdtempSync,
-  readdirSync as readdirSync8,
-  readFileSync as readFileSync13,
-  renameSync as renameSync3,
-  rmSync as rmSync4,
-  unlinkSync,
-  writeFileSync as writeFileSync2
-} from "node:fs";
-import { basename as basename3, dirname as dirname6, join as join20 } from "node:path";
-
-// src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync3, mkdirSync as mkdirSync6 } from "node:fs";
-import { dirname as dirname5, isAbsolute as isAbsolute7, join as join19 } from "node:path";
-function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? userTmpDir();
-}
-function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
-  mkdirSync6(dirname5(dir), { recursive: true });
-  try {
-    mkdirSync6(dir, { mode: 448 });
-    chmodSync(dir, 448);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  }
-  checkPrivateDir(dir, uid, role);
-}
-function checkPrivateDir(dir, uid, role = "socket directory") {
-  const stat = lstatSync3(dir);
-  if (!stat.isDirectory()) {
-    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
-  }
-  if (stat.uid !== uid) {
-    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
-  }
-  if ((stat.mode & 63) !== 0) {
-    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
-    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
-  }
-}
-function userTmpDir(uid = currentUid()) {
-  return join19("/tmp", `squeal-${uid}`);
-}
-function xdgRuntimeDir(env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? xdg : null;
-}
-function currentUid() {
-  return process.getuid?.() ?? 0;
-}
-
-// src/core/daemon/scratch.ts
-function repositoryId(commonDir) {
-  const dir = storePaths(commonDir).dir;
-  const file = join20(dir, "repository-id");
-  mkdirSync7(dir, { recursive: true });
-  const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
-  writeFileSync2(draft, `${randomBytes(16).toString("hex")}
-`);
-  try {
-    linkSync(draft, file);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  } finally {
-    unlinkSync(draft);
-  }
-  return readFileSync13(file, "utf8").trim();
-}
-
-// src/core/slow/slot-files.ts
-var SLOW_LOCK_FILE = "slow.lock";
-var SLOW_GROUP2 = "slow";
-var GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-var GROUP_SLOT_SCOPES = ["user", "repository"];
-var DEFAULT_GROUP_SLOT_SCOPE = "repository";
-function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
-  const dir = (base, commonDir) => scope === "user" ? base : join21(base, `repo.${hash(repositoryId(commonDir))}`);
-  if (group === SLOW_GROUP2) {
-    return {
-      dir,
-      permit: (i) => i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`,
-      waiterPrefix: "slow.wait."
-    };
-  }
-  if (!GROUP_NAME.test(group)) throw new Error(`not a check group name: ${JSON.stringify(group)}`);
-  return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
-}
-function hash(text2) {
-  return createHash7("sha256").update(text2).digest("hex").slice(0, 16);
-}
-var SLOT_WAITER_FRESH_MS = 3e4;
-
 // src/core/lint/pass/cpu-wait.ts
 var cpuWaitKey = (scope) => `lint-cpu-wait:${scope}`;
-function readRecord(meta, scope) {
+function readRecord2(meta, scope) {
   const raw = meta.get(cpuWaitKey(scope));
   if (raw === null) return null;
   try {
@@ -10280,7 +10423,7 @@ function readRecord(meta, scope) {
   }
 }
 function readCpuWait(meta, scope, now) {
-  const r = readRecord(meta, scope);
+  const r = readRecord2(meta, scope);
   if (r === null || now - r.at > SLOT_WAITER_FRESH_MS) return null;
   return { since: r.since, busy: r.busy, limit: r.limit };
 }
@@ -11080,19 +11223,19 @@ function scannedBy(store, worktreeId, startedAt) {
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync15 } from "node:fs";
-import { join as join23 } from "node:path";
+import { join as join24 } from "node:path";
 
 // src/core/fs/git-layout.ts
 import { createHash as createHash8 } from "node:crypto";
-import { existsSync as existsSync8, lstatSync as lstatSync5, readFileSync as readFileSync14, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname7, isAbsolute as isAbsolute8, join as join22, resolve as resolve5 } from "node:path";
+import { existsSync as existsSync9, lstatSync as lstatSync5, readFileSync as readFileSync14, realpathSync as realpathSync3 } from "node:fs";
+import { dirname as dirname8, isAbsolute as isAbsolute9, join as join23, resolve as resolve5 } from "node:path";
 var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
 function findWorktreeRoot(path) {
   let dir = resolve5(path);
-  if (existsSync8(dir)) dir = realpathSync3(dir);
+  if (existsSync9(dir)) dir = realpathSync3(dir);
   for (; ; ) {
-    if (existsSync8(join22(dir, ".git"))) return dir;
-    const parent2 = dirname7(dir);
+    if (existsSync9(join23(dir, ".git"))) return dir;
+    const parent2 = dirname8(dir);
     if (parent2 === dir) return null;
     dir = parent2;
   }
@@ -11112,10 +11255,10 @@ function resolveCommonDir(root) {
   if (!entry3.isFile) return realpathSync3(entry3.gitDir);
   const { gitDir } = entry3;
   if (lstatOrNull(gitDir) === null) return null;
-  const commondirFile = join22(gitDir, "commondir");
+  const commondirFile = join23(gitDir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync3(gitDir);
   const commondir = readFileSync14(commondirFile, "utf8").trim();
-  const common = isAbsolute8(commondir) ? commondir : resolve5(gitDir, commondir);
+  const common = isAbsolute9(commondir) ? commondir : resolve5(gitDir, commondir);
   return lstatOrNull(common) === null ? null : realpathSync3(common);
 }
 function lstatOrNull(path) {
@@ -11127,7 +11270,7 @@ function lstatOrNull(path) {
   }
 }
 function dotGit(root) {
-  const path = join22(root, ".git");
+  const path = join23(root, ".git");
   const stat = lstatOrNull(path);
   if (stat === null) return null;
   if (stat.isDirectory()) return { gitDir: path, isFile: false };
@@ -11143,17 +11286,17 @@ function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read3(join23(gitDir, "HEAD"));
+  let value = read3(join24(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref2 === void 0) return null;
-    value = read3(join23(gitDir, ref2)) ?? read3(join23(commonDir, ref2)) ?? packed(commonDir, ref2);
+    value = read3(join24(gitDir, ref2)) ?? read3(join24(commonDir, ref2)) ?? packed(commonDir, ref2);
   }
   return null;
 }
 function packed(commonDir, ref2) {
-  for (const line of (read3(join23(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read3(join24(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name2] = line.split(" ");
     if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -12430,6 +12573,18 @@ var WAITING_FOR = {
   pool: "the shared worker pool",
   load: "host load to drop"
 };
+function slotWaitText(slot2, why) {
+  switch (why) {
+    case "in use":
+      return `${slot2} (in use)`;
+    case "free":
+      return `${slot2} (taken at its last try, free now)`;
+    case "held":
+      return `${slot2} (taken at its last try)`;
+    case "turn":
+      return `${slot2} (its turn went to another worktree that waits for it)`;
+  }
+}
 var SLOT_HELD = "the slow slot another worktree's slow tier holds";
 function slotHeld(slot2) {
   if (slot2 === void 0) return false;
@@ -12449,7 +12604,11 @@ function filesText(paths) {
 }
 function slowWords(slot2) {
   return {
-    waitingFor: (wait) => wait === "slot" && slotHeld(slot2) ? SLOT_HELD : WAITING_FOR[wait],
+    waitingFor: (wait, why) => {
+      if (wait !== "slot") return WAITING_FOR[wait];
+      if (slotHeld(slot2)) return SLOT_HELD;
+      return why === void 0 ? WAITING_FOR.slot : slotWaitText("the slow slot", why);
+    },
     files: "slow files"
   };
 }
@@ -12460,7 +12619,7 @@ function pendingText(pending, activity, late, words) {
   if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for)}`;
+    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for, activity.slot)}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;
@@ -12553,9 +12712,10 @@ function requestsText(group, command) {
   return `\`${command} status --at <commit> --run\` or \`${command} run ${group.name} <path>...\``;
 }
 function groupWords(group) {
-  const waitingFor = (wait) => {
+  const waitingFor = (wait, why) => {
     if (wait === "fast") return followedGroupsText(group.after);
     if (wait === "slot") {
+      if (why !== void 0) return slotWaitText(`the ${group.name} group's slot`, why);
       return `capacity (whether the ${group.name} group's slot or the shared worker pool holds it is not known)`;
     }
     return sharedWaitText(wait);
@@ -12697,113 +12857,6 @@ function knownCause(entry3) {
 var DEFAULT_BACKGROUND_SHARE = 0.75;
 function isBackgroundShare(value) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
-}
-
-// src/core/slow/slot.ts
-import { existsSync as existsSync9 } from "node:fs";
-import { dirname as dirname8, isAbsolute as isAbsolute9, join as join24 } from "node:path";
-import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
-
-// src/core/slow/slot-holding.ts
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
-function holdingOf(db, pid, since) {
-  let row;
-  try {
-    row = db.prepare("SELECT pid, since, files FROM holding LIMIT 1").get();
-  } catch {
-    return void 0;
-  }
-  if (row === void 0 || row.pid !== pid || row.since !== since) return void 0;
-  if (typeof row.files !== "string") return void 0;
-  try {
-    const parsed2 = JSON.parse(row.files);
-    return Array.isArray(parsed2) && parsed2.every(isSlotFile) ? parsed2 : void 0;
-  } catch {
-    return void 0;
-  }
-}
-function isSlotFile(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value;
-  const duration = v.durationMs === null || typeof v.durationMs === "number";
-  return typeof v.project === "string" && typeof v.path === "string" && duration;
-}
-function readRecord2(path) {
-  let db;
-  try {
-    db = new DatabaseSync6(immutableUrl(path), { readOnly: true });
-  } catch {
-    return "unreadable";
-  }
-  try {
-    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
-    if (row === void 0) return "missing";
-    const { pid, worktree_id: worktreeId, since } = row;
-    if (!Number.isSafeInteger(pid) || !Number.isSafeInteger(since)) return "unreadable";
-    if (typeof worktreeId !== "string") return "unreadable";
-    const files2 = holdingOf(db, pid, since);
-    return {
-      pid,
-      worktreeId,
-      since,
-      ...files2 === void 0 ? {} : { files: files2 }
-    };
-  } catch (error) {
-    return String(error).includes("no such table") ? "missing" : "unreadable";
-  } finally {
-    db.close();
-  }
-}
-function immutableUrl(path) {
-  const url = pathToFileURL(path);
-  url.search = "immutable=1";
-  return url;
-}
-
-// src/core/slow/slot.ts
-function slowSlotDir(env = process.env, userDir = userTmpDir()) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join24(xdg, "squeal") : userDir;
-}
-function heldPermits(request) {
-  const { dir } = request;
-  const files2 = slotFiles(request.group);
-  if (!existsSync9(dir)) return [];
-  checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
-  const held = [];
-  for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
-    const file = files2.permit(i);
-    const path = join24(dir, file);
-    if (!existsSync9(path)) continue;
-    let free;
-    try {
-      free = permitFree(path);
-    } catch {
-      held.push({ file, record: { kind: "unreadable" } });
-      continue;
-    }
-    if (!free) held.push({ file, record: permitRecord(path) });
-  }
-  return held;
-}
-function permitRecord(path) {
-  const record = readRecord2(path);
-  return typeof record === "string" ? { kind: record } : { kind: "holder", ...record };
-}
-function permitFree(path) {
-  const db = new DatabaseSync7(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("BEGIN EXCLUSIVE");
-    db.exec("ROLLBACK");
-    return true;
-  } catch (error) {
-    if (isBusy(error)) return false;
-    throw error;
-  } finally {
-    db.close();
-  }
 }
 
 // src/core/daemon/outlived.ts
@@ -15873,7 +15926,10 @@ function retryWaitOf(ref2, reads) {
   const fast = earliest2(runs, fastFile);
   if (activity?.kind === "running") return { kind: "slow", since: activity.since };
   if (activity?.kind === "waiting") {
-    return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
+    if (activity.for === "fast") return { kind: "fast", since: fast };
+    if (activity.for === "slot" && activity.slot !== void 0)
+      return { kind: "slot", slot: activity.slot };
+    return { kind: activity.for };
   }
   return fast === null ? UNKNOWN : { kind: "fast", since: fast };
 }

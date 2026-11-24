@@ -2315,6 +2315,18 @@ var WAITING_FOR = {
   pool: "the shared worker pool",
   load: "host load to drop"
 };
+function slotWaitText(slot2, why) {
+  switch (why) {
+    case "in use":
+      return `${slot2} (in use)`;
+    case "free":
+      return `${slot2} (taken at its last try, free now)`;
+    case "held":
+      return `${slot2} (taken at its last try)`;
+    case "turn":
+      return `${slot2} (its turn went to another worktree that waits for it)`;
+  }
+}
 var SLOT_HELD = "the slow slot another worktree's slow tier holds";
 function slotHeld(slot2) {
   if (slot2 === void 0) return false;
@@ -2334,7 +2346,11 @@ function filesText(paths) {
 }
 function slowWords(slot2) {
   return {
-    waitingFor: (wait) => wait === "slot" && slotHeld(slot2) ? SLOT_HELD : WAITING_FOR[wait],
+    waitingFor: (wait, why) => {
+      if (wait !== "slot") return WAITING_FOR[wait];
+      if (slotHeld(slot2)) return SLOT_HELD;
+      return why === void 0 ? WAITING_FOR.slot : slotWaitText("the slow slot", why);
+    },
     files: "slow files"
   };
 }
@@ -2345,7 +2361,7 @@ function pendingText(pending, activity, late, words) {
   if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for)}`;
+    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for, activity.slot)}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;
@@ -2438,9 +2454,10 @@ function requestsText(group, command) {
   return `\`${command} status --at <commit> --run\` or \`${command} run ${group.name} <path>...\``;
 }
 function groupWords(group) {
-  const waitingFor = (wait) => {
+  const waitingFor = (wait, why) => {
     if (wait === "fast") return followedGroupsText(group.after);
     if (wait === "slot") {
+      if (why !== void 0) return slotWaitText(`the ${group.name} group's slot`, why);
       return `capacity (whether the ${group.name} group's slot or the shared worker pool holds it is not known)`;
     }
     return sharedWaitText(wait);
@@ -2880,7 +2897,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.623";
+  if (true) return "0.1.624";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4744,12 +4761,27 @@ function groupEntries(raw) {
   }
 }
 var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
+var SLOT_WAITS = /* @__PURE__ */ new Set(["held", "turn", "in use", "free"]);
+function slotAtOf(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const { dir, permits } = value;
+  if (typeof dir !== "string" || typeof permits !== "number" || !(permits >= 1)) return void 0;
+  return { dir, permits };
+}
 function toSlowActivity(value) {
   if (value === null) return null;
   if (typeof value !== "object") return void 0;
   const v = value;
   if (v.kind === "waiting" && WAITS.has(v.for)) {
-    return { kind: "waiting", for: v.for };
+    const wait = v.for;
+    const slot2 = wait === "slot" && SLOT_WAITS.has(v.slot) ? v.slot : void 0;
+    const at = slot2 === void 0 ? void 0 : slotAtOf(v.slotAt);
+    return {
+      kind: "waiting",
+      for: wait,
+      ...slot2 === void 0 ? {} : { slot: slot2 },
+      ...at === void 0 ? {} : { slotAt: at }
+    };
   }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
@@ -6915,6 +6947,7 @@ var SLOT_WAITER_FRESH_MS = 3e4;
 // src/core/slow/slot-holding.ts
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
+var RAN_FRESH_MS = 3 * 60 * 6e4;
 function holdingOf(db, pid, since) {
   let row;
   try {
@@ -6988,7 +7021,7 @@ function heldPermits(request) {
     try {
       free = permitFree(path);
     } catch {
-      held.push({ file, record: { kind: "unreadable" } });
+      held.push({ file, record: { kind: "unreadable" }, unknown: true });
       continue;
     }
     if (!free) held.push({ file, record: permitRecord(path) });
@@ -9210,6 +9243,27 @@ function countNotCurrent(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
 }
 var isRunning = (state) => state.pendingPhase === "running";
 
+// src/core/state/slot-now.ts
+function slotNow(activity, group) {
+  const { slotAt, ...shown } = activity;
+  const published = shown.slot;
+  if (shown.for !== "slot" || slotAt === void 0) return shown;
+  if (published !== "held" && published !== "turn") return shown;
+  const now = permitsNow(slotAt.dir, slotAt.permits, group, published);
+  return { ...shown, slot: now };
+}
+function permitsNow(dir, permits, group, published) {
+  let held;
+  try {
+    held = heldPermits({ dir, permits, group });
+  } catch {
+    return published;
+  }
+  if (held.length < permits) return published === "held" ? "free" : "turn";
+  const proved = held.filter((permit) => permit.unknown !== true).length;
+  return proved >= permits ? "in use" : published;
+}
+
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
   const globs4 = slowGlobs(policy, policy.nodeTest);
@@ -9289,6 +9343,7 @@ function laneCounts(states, keys, inLane, classify2 = classifySlowFiles) {
 function liveActivity(store, worktreeId, keys, inLane, group) {
   const activity = readGroupActivity(store, worktreeId, group);
   if (activity?.kind === "waiting") {
+    if (activity.for === "slot") return slotNow(activity, group);
     if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
     const fast = keys.some((row) => row.pending !== null && !inLane(row.testFile));
     return fast ? { kind: "waiting", for: "fast" } : null;
@@ -16467,7 +16522,10 @@ function retryWaitOf(ref2, reads) {
   const fast = earliest2(runs, fastFile);
   if (activity?.kind === "running") return { kind: "slow", since: activity.since };
   if (activity?.kind === "waiting") {
-    return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
+    if (activity.for === "fast") return { kind: "fast", since: fast };
+    if (activity.for === "slot" && activity.slot !== void 0)
+      return { kind: "slot", slot: activity.slot };
+    return { kind: activity.for };
   }
   return fast === null ? UNKNOWN : { kind: "fast", since: fast };
 }

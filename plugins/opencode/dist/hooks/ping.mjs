@@ -1572,6 +1572,13 @@ function coreEnvironmentInputs(options) {
 var LINT_KEYS = ["findings", "notDetermined", "running"];
 var TOOL_KEYS = ["files", ...LINT_KEYS];
 
+// src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+
+// src/core/slow/slot-holding.ts
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
+var RAN_FRESH_MS = 3 * 60 * 6e4;
+
 // src/core/retry/kept.ts
 var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
 
@@ -1638,12 +1645,6 @@ function waitedText(ms) {
   return durationText(ms, Math.floor);
 }
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
-
-// src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
-
-// src/core/slow/slot-holding.ts
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
