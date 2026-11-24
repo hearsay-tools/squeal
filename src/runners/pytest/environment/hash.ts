@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import { withoutOwnCompileCache } from "../../../core/env/compile-cache.js";
 import { compare } from "../../../core/fs/compare.js";
 import { toRelative } from "../../../core/fs/paths.js";
 import type { AbsolutePath } from "../../../core/types/common.js";
@@ -34,14 +35,16 @@ const ACTIVATION = ["VIRTUAL_ENV", "CONDA_PREFIX", "PYTHONHOME"] as const;
  * `CONDA_PREFIX` and `PYTHONHOME` of the daemon removed, so a test's own
  * `subprocess.run(["python", ...])` reaches the same environment." The
  * inherited activation's `bin` leaves `PATH` too; the project's `env` is
- * merged before `VIRTUAL_ENV` and `PATH` are set.
+ * merged before `VIRTUAL_ENV` and `PATH` are set. Squeal's own compile cache
+ * stays out, so a Node the tests start writes nothing into it; a user's or
+ * the project's own stays in (spec 025 D7.2).
  */
 export function runEnvironment(
   env: AbsolutePath,
   project: PytestProject,
   source: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
-  const result: NodeJS.ProcessEnv = { ...source };
+  const result: NodeJS.ProcessEnv = { ...withoutOwnCompileCache(source) };
   const foreign = new Set<string>();
   for (const name of ACTIVATION) {
     const value = source[name];

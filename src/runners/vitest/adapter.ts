@@ -1,6 +1,7 @@
 import type { TestSpecification, Vitest } from "vitest/node";
 import { withLoaded } from "../../core/ci/loaded-inputs.js";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
+import { dropOwnCompileCache } from "../../core/env/compile-cache.js";
 import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { findInstalledLockfile } from "../../core/keys/environment.js";
@@ -240,6 +241,9 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
       this.#reload = false;
     }
     const current = VitestAdapter.#runOf(new WeakRef(this), ++this.#generation);
+    // Spec 025 D7.2: workers spread this process's env at their spawn, and Vitest's `env` option
+    // cannot remove a variable, so Squeal's own compile cache leaves the env here.
+    dropOwnCompileCache();
     const env = { ...this.#childEnv, ...this.#observer.start().env };
     // Touches heard from here on are after this start read the disk; a failed start keeps all.
     const heard = this.#touches.mark();

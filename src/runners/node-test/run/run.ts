@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { withoutOwnCompileCache } from "../../../core/env/compile-cache.js";
 import { toAbsolute } from "../../../core/fs/paths.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import { ownNodeArgv0 } from "../../../core/process-label.js";
@@ -299,10 +300,11 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
  * before those of argv, so the recorder is installed before every project
  * preload (review wave 2.6 B1). An `--import` misses what a spawned Node's own
  * argv `--require` loads, which runs before it; a slow project keeps the
- * `--require` it had (004 D5), which records that too.
+ * `--require` it had (004 D5), which records that too. Squeal's own compile
+ * cache stays out; a project's or user's own stays in (spec 025 D7.2).
  */
 function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS.ProcessEnv {
-  const env = projectEnv(options.project, options.env ?? process.env);
+  const env = projectEnv(options.project, withoutOwnCompileCache(options.env ?? process.env));
   const nodeOptions = env.NODE_OPTIONS?.trim() ?? "";
   const recorder =
     options.project.slow === true
