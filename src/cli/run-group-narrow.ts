@@ -3,12 +3,13 @@ import type { CoveredFiles } from "../core/store/covered-files.js";
 import { plural } from "../core/text.js";
 import type { ResolvedGroup } from "../core/types/check-groups.js";
 import type { AbsolutePath, RelativePath, RevisionNumber } from "../core/types/common.js";
+import type { RunGroupResponse } from "../core/types/daemon.js";
 import type { NarrowRun } from "../core/types/scheduler.js";
 import { daemonSocket } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { worktreePath } from "./named-selection.js";
-import { andList, pendingText, takenRequest } from "./run-group.js";
-import { waitForGroup } from "./run-group-wait.js";
+import { andList, pendingText, type TakenGroup, takenRequest } from "./run-group.js";
+import { type GroupWait, waitForGroup } from "./run-group-wait.js";
 import { statusCommand } from "./status-command.js";
 import { LEFT_FOR } from "./status-wait-groups.js";
 import { requestFiles } from "./wait/covered.js";
@@ -56,34 +57,61 @@ export async function runNarrowCommand(
     if (inside === null) return usageError(`"${path}" is not inside the worktree ${root}`);
     rel.push(inside);
   }
-  const noVerdict = (text: string): number => {
-    if (waitMs === null) {
-      io.stderr(`squeal: ${text}\n`);
-      return 1;
-    }
-    io.stdout(`No verdict: ${text}\n`);
-    return 3;
-  };
+  const asked = await requestNarrow({ root, group, paths: rel, waitMs });
+  return narrowAnswer(asked, { group, waitMs, base: null }, io);
+}
+
+/** A narrow request the scheduler took: its selection and what `--wait` waits for. */
+export interface NarrowTaken {
+  readonly root: AbsolutePath;
+  readonly socketPath: AbsolutePath;
+  readonly deadline: number;
+  readonly requested: TakenGroup["requested"];
+  readonly narrow: NarrowRun;
+  readonly files: GroupWait["files"];
+  /** Row 011-328: the request's record of its files, when it was read. */
+  readonly covered: CoveredFiles | null;
+}
+
+/** `requestNarrow`'s answer: taken, still pending at the deadline, or why no verdict. */
+export type NarrowAsked =
+  | { readonly taken: NarrowTaken }
+  | { readonly root: AbsolutePath; readonly pending: RunGroupResponse }
+  | { readonly problem: string };
+
+/**
+ * Row 026-07: asks the daemon to run the test files of `group` that the
+ * root-relative `paths` select (`run-group-paths`), and waits for the
+ * scheduler to take it, by `waitMs` or `RECORD_WAIT_MS`.
+ */
+export async function requestNarrow({
+  root,
+  group,
+  paths,
+  waitMs,
+}: {
+  readonly root: AbsolutePath;
+  readonly group: ResolvedGroup;
+  readonly paths: readonly RelativePath[];
+  readonly waitMs: number | null;
+}): Promise<NarrowAsked> {
   const { name } = group;
   const deadline = Date.now() + (waitMs ?? RECORD_WAIT_MS);
   const socketPath = await daemonSocket(root, socketBound(deadline));
-  const request = { type: "run-group-paths", group: name, paths: rel } as const;
+  const request = { type: "run-group-paths", group: name, paths } as const;
   const first = await askWithin(socketPath, request, deadline);
   if (first === null)
-    return noVerdict(`no daemon running for ${root}; start one with squeal start`);
+    return { problem: `no daemon running for ${root}; start one with squeal start` };
   if ("unanswered" in first) {
-    return noVerdict(
-      `the daemon did not answer the request to run group ${name} for these paths${first.unanswered}; it may still take it once its current work allows`,
-    );
+    return {
+      problem: `the daemon did not answer the request to run group ${name} for these paths${first.unanswered}; it may still take it once its current work allows`,
+    };
   }
   const taken = await takenRequest(socketPath, first, deadline, name, NARROW_NOT_SUPPORTED);
-  if (typeof taken === "string") return noVerdict(taken);
-  if ("pending" in taken) {
-    io.stdout(pendingText(root, taken.pending, waitMs !== null));
-    return waitMs === null ? 0 : 3;
-  }
+  if (typeof taken === "string") return { problem: taken };
+  if ("pending" in taken) return { root, pending: taken.pending };
   // A daemon that took it without a selection ran the whole group's request: not a narrow run.
-  if (taken.narrow === undefined) return noVerdict(NARROW_NOT_SUPPORTED);
+  if (taken.narrow === undefined) return { problem: NARROW_NOT_SUPPORTED };
   const { requested } = taken;
   // Row 011-328: the selection as the request's record has it, read once; the answer's without one.
   const guess = { kind: "list", files: taken.narrow.selected } as const;
@@ -92,8 +120,44 @@ export async function runNarrowCommand(
     guess,
   );
   const narrow = recordedNarrow(taken.narrow, covered);
+  return { taken: { root, socketPath, deadline, requested, narrow, files, covered } };
+}
+
+/**
+ * The text answer to a narrow request: what the paths selected and left,
+ * and with `--wait` the selected files' verdict first. `base` (row 026-07):
+ * the line naming a pre-PR run's merge base, printed before what the paths
+ * select; the group's other files then also wait for CI.
+ */
+export async function narrowAnswer(
+  asked: NarrowAsked,
+  {
+    group,
+    waitMs,
+    base,
+  }: {
+    readonly group: ResolvedGroup;
+    readonly waitMs: number | null;
+    readonly base: string | null;
+  },
+  io: CliIo,
+): Promise<number> {
+  const { name } = group;
+  if ("problem" in asked) {
+    if (waitMs === null) {
+      io.stderr(`squeal: ${asked.problem}\n`);
+      return 1;
+    }
+    io.stdout(`No verdict: ${asked.problem}\n`);
+    return 3;
+  }
+  if ("pending" in asked) {
+    io.stdout(pendingText(asked.root, asked.pending, waitMs !== null));
+    return waitMs === null ? 0 : 3;
+  }
+  const { socketPath, deadline, requested, narrow, files } = asked.taken;
   const command = statusCommand(io.env ?? process.env);
-  const line = narrowText(group, requested, narrow, command);
+  const line = `${base ?? ""}${narrowText(group, requested, narrow, command, base !== null)}`;
   if (waitMs === null) {
     io.stdout(line);
     return 0;
@@ -106,7 +170,7 @@ export async function runNarrowCommand(
   }
   return waitForGroup(
     {
-      root,
+      root: asked.taken.root,
       socketPath,
       group: name,
       queued: requested.queued,
@@ -150,6 +214,7 @@ export function narrowText(
   requested: { readonly revision: RevisionNumber; readonly queued: number },
   narrow: NarrowRun,
   command: string,
+  orCi = false,
 ): string {
   const { name } = group;
   const selected = narrow.selected.length;
@@ -179,7 +244,7 @@ export function narrowText(
     const other = LEFT_FOR[group.at];
     const n = narrow.reached;
     lines.push(
-      `${plural(n, `other test file`)} of group ${name} ${n === 1 ? "reads" : "read"} these paths; ${n === 1 ? "it waits" : "they wait"} for ${other === null ? "" : `${other} or `}\`${command} run ${name}\`.`,
+      `${plural(n, `other test file`)} of group ${name} ${n === 1 ? "reads" : "read"} these paths; ${n === 1 ? "it waits" : "they wait"} for ${other === null ? "" : `${other} or `}\`${command} run ${name}\`${orCi ? " or CI; this narrow run did not run them" : ""}.`,
     );
   }
   for (const other of narrow.others) {

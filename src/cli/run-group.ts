@@ -8,6 +8,7 @@ import type { DaemonResponse, RunGroupResponse } from "../core/types/daemon.js";
 import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { deadlineText } from "./group-pending.js";
 import type { CliIo } from "./main.js";
+import { runBaseCommand } from "./run-group-base.js";
 import { runNarrowCommand } from "./run-group-narrow.js";
 import { waitForGroup } from "./run-group-wait.js";
 import type { RunLanes } from "./run-lanes.js";
@@ -20,7 +21,8 @@ import { untilTaken } from "./wait/wait.js";
  * `run <group>`'s usage line, printed after `run`'s usage with a group's
  * errors only, so `run`'s own errors read as before groups (row 019-15).
  */
-const GROUP_USAGE = "       squeal run <group> [<path>...] [--wait [<ms>]]\n";
+const GROUP_USAGE =
+  "       squeal run <group> --base <ref> [--wait [<ms>]] [--json]\n       squeal run <group> [<path>...] [--wait [<ms>]]\n";
 /** How long to wait for the scheduler to take the request without `--wait`. */
 const RECORD_WAIT_MS = 10_000;
 
@@ -38,6 +40,44 @@ export interface GroupArgs {
 export function groupArgs(lanes: RunLanes | null, wait: GroupArgs | string): GroupArgs | null {
   if (lanes !== null || typeof wait === "string") return null;
   return wait.rest.some((arg) => !arg.startsWith("-")) ? wait : null;
+}
+
+/**
+ * Row 026-07: the group's name, its paths, and `--base <ref>` and `--json`;
+ * else the usage problem: an unknown flag, `--base` without a ref, given
+ * twice or with paths, or `--json` without `--base`.
+ */
+function baseOptions(args: readonly string[]):
+  | {
+      readonly base: string | null;
+      readonly json: boolean;
+      readonly name: string;
+      readonly paths: string[];
+    }
+  | string {
+  let base: string | null = null;
+  let json = false;
+  const rest: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i] as string;
+    if (arg === "--json") json = true;
+    else if (arg === "--base") {
+      const ref = args[i + 1];
+      if (ref === undefined || ref.startsWith("-")) return "--base needs a ref";
+      if (base !== null) return "--base is given twice";
+      base = ref;
+      i++;
+    } else rest.push(arg);
+  }
+  const flag = rest.find((arg) => arg.startsWith("-"));
+  if (flag !== undefined) return `unknown argument "${flag}" with a group`;
+  const [name = "", ...paths] = rest;
+  // Row 026-07 (026 D4): `--base` selects the paths itself.
+  if (base !== null && paths.length > 0) {
+    return `--base takes no paths: squeal run ${name} --base ${base}`;
+  }
+  if (json && base === null) return "--json needs --base <ref>";
+  return { base, json, name, paths };
 }
 
 /** What the scheduler queued for the request (`RunGroupResponse.requested`). */
@@ -62,9 +102,9 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
     io.stderr(`squeal run: ${problem}\n${usage}${GROUP_USAGE}`);
     return 2;
   };
-  const flag = args.rest.find((arg) => arg.startsWith("-"));
-  if (flag !== undefined) return usageError(`unknown argument "${flag}" with a group`);
-  const [name = "", ...paths] = args.rest;
+  const options = baseOptions(args.rest);
+  if (typeof options === "string") return usageError(options);
+  const { name, paths } = options;
   const root = worktreeRoot(undefined, io);
   if (root === null) return 1;
   const { groups } = groupView(readPolicy(root));
@@ -73,6 +113,10 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
     return usageError(`no group "${name}"; the groups are ${andList(groups.map((g) => g.name))}`);
   }
   // Row 019-49 (019 D6 "Narrow run"): a lint group runs whole.
+  if (options.base !== null) {
+    const run = { root, group, ref: options.base, waitMs: args.waitMs, json: options.json };
+    return runBaseCommand(run, io, usageError);
+  }
   if (group.select.kind === "lint" && paths.length > 0) {
     return usageError(`group ${name} is a lint group, which takes no paths: squeal run ${name}`);
   }

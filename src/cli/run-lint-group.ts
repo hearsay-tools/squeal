@@ -31,7 +31,7 @@ export interface LintGroupRun {
   readonly waitMs: number | null;
 }
 
-type Requested = NonNullable<RunGroupResponse["requested"]>;
+export type Requested = NonNullable<RunGroupResponse["requested"]>;
 
 /**
  * Exit code 0 when requested, 1 when no daemon runs or the request failed.
@@ -52,9 +52,9 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
   };
   const deadline = Date.now() + (wait ?? RECORD_WAIT_MS);
   const socketPath = await daemonSocket(root, socketBound(deadline));
-  const state = await taken(root, socketPath, group.name, deadline);
+  const state = await requestLintGroup(root, socketPath, group.name, deadline);
   if (typeof state === "string") return noVerdict(state);
-  const line = requestedText(group.name, state);
+  const line = lintRequestedText(group.name, state);
   if (wait === null) {
     io.stdout(line);
     return 0;
@@ -74,7 +74,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
 const PENDING = "the request is pending, and the daemon takes it once its current work allows";
 
 /** The request, then `run-group-status` until the scheduler took it (`untilTaken`): what it queued, or why not. */
-async function taken(
+export async function requestLintGroup(
   root: AbsolutePath,
   socketPath: AbsolutePath,
   group: string,
@@ -109,7 +109,7 @@ async function taken(
 /** Row 011-337: the group's name, not the literal `<group>`. */
 const failed = (group: string, error: string) => `squeal run ${group} failed: ${error}`;
 
-function requestedText(group: string, { revision, queued }: Requested): string {
+export function lintRequestedText(group: string, { revision, queued }: Requested): string {
   if (queued === 0) {
     return `No lint checks of group ${group} to lint at revision ${revision}: none is pending.\n`;
   }
