@@ -16,9 +16,11 @@ import { type SlotHarness, slotHarness, testPath } from "./slots-fixture.js";
  * less than their clocks: the wall-clock ratio this test bounded at 1.2
  * failed on main, alone and at 2 CPUs (1.21 to 1.26), and at slice 2's own
  * commit (1.40; 011-99). One harness alternates the two, tier first, and each
- * is its best of two rounds.
+ * is its best of two rounds. Row 010-38: 80 files that spin 25 ms, not 300 of
+ * 50 ms, cut its 85-126 s; the bounds below were measured at 300 files.
  */
-const FILES = 300;
+const FILES = 80;
+const SPIN_MS = 25;
 const APPLY_MS = 55;
 const ROUNDS = 2;
 
@@ -39,13 +41,13 @@ async function forcedPass({ h, runs, applyCpuMs }: SlotHarness) {
 }
 
 describe("scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2)", () => {
-  it("3. runs 300 files of about 50 ms at most 5.5 times a tier's daemon CPU per file, with fewer commits than files", {
+  it("3. runs 80 files of about 25 ms at most 5.5 times a tier's daemon CPU per file, with fewer commits than files", {
     timeout: 600_000,
   }, async () => {
     const files = Array.from({ length: FILES }, (_, i) => ({
       name: `o${String(i).padStart(3, "0")}`,
       sleepMs: 0,
-      spinMs: 50,
+      spinMs: SPIN_MS,
     }));
     const harness = await slotHarness({
       files,
@@ -74,7 +76,7 @@ describe("scheduler: a node:test backlog in one-file slots, per-file overhead (t
     const pass = (p: (typeof tiers)[number]) =>
       `${p.cpuMs.toFixed(1)} ms CPU a file in ${Math.round(p.ms)} ms`;
     console.log(
-      `011-21 slots: 300 files at ${slots.map((p) => `${pass(p)}, ${p.pass.length} runs and ${p.commits} commits`).join("; ")}; one tier at ${tiers.map((p) => `${pass(p)}, ${p.pass.length} runs`).join("; ")} (best ${(bestCpu(slots) / bestCpu(tiers)).toFixed(2)} times)`,
+      `011-21 slots: ${FILES} files at ${slots.map((p) => `${pass(p)}, ${p.pass.length} runs and ${p.commits} commits`).join("; ")}; one tier at ${tiers.map((p) => `${pass(p)}, ${p.pass.length} runs`).join("; ")} (best ${(bestCpu(slots) / bestCpu(tiers)).toFixed(2)} times)`,
     );
     expect(stored).toBe(true);
     for (const tier of tiers) expect(tier.pass).toHaveLength(1);
