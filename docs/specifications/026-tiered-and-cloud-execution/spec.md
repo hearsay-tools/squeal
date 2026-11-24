@@ -169,6 +169,8 @@ All remote test execution (runner-host stdio protocol, tree delta sync, blob pro
      validate(config: Record<string, unknown>): string | null;
      /** Acquires or reuses a machine for one worktree and brings it to an SSH-ready state. */
      acquire(request: MachineRequest, config: Record<string, unknown>): Promise<RemoteMachine>;
+     /** Reattaches a tracked machine record without a running daemon (for `squeal remote sleep|prune`). */
+     reattach(record: TrackedMachineRecord, config: Record<string, unknown>, env?: NodeJS.ProcessEnv): RemoteMachine;
    }
    ```
 3. **Provider registry (`src/core/runner-host/remote/providers/index.ts`).** Maps `provider` kind strings (`"ssh"`, `"command"`, `"agent37"`) to `RemoteMachineProvider` instances. Adding any future provider (boat.dev, GCE, Fly, LAN daemon, etc.) adds one folder under `src/core/runner-host/remote/providers/<kind>/` and one registry line; zero changes to `lane.ts`, `connect.ts`, `tree*.ts`, or the scheduler.
