@@ -56,6 +56,7 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "stop":
     case "hold":
     case "resume":
+    case "remote-sleep":
       return { type: request.type };
     // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
     case "sync":
@@ -99,6 +100,9 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "hold-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "hold-status", requestId: request.requestId };
+    case "remote-sleep-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "remote-sleep-status", requestId: request.requestId };
     case "commit-ask":
     case "commit-read":
       return parseCommitAsk(request);

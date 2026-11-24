@@ -254,6 +254,39 @@ export interface ResumeRequest {
   readonly type: "resume";
 }
 
+/**
+ * Review 0.1.616 B7 (spec 026 D12.4): `squeal remote sleep` asks the
+ * worktree's daemon to close its idle remote channel, then to ask the
+ * machine to sleep. Answered at once with a request id, like `hold`; ask
+ * how it went with `RemoteSleepStatusRequest`. A daemon from before this
+ * request answers "unknown request type".
+ */
+export interface RemoteSleepRequest {
+  readonly type: "remote-sleep";
+}
+
+/** How a `remote-sleep` request went. */
+export interface RemoteSleepStatusRequest {
+  readonly type: "remote-sleep-status";
+  readonly requestId: string;
+}
+
+/** What a daemon's `remote-sleep` did (B7). */
+export type RemoteSleepOutcome =
+  /** The channel closed, then the machine was asked to sleep. */
+  | { readonly kind: "slept"; readonly provider: string; readonly machine: string }
+  /** A run or a connect is on the machine: nothing closed, nothing asked. */
+  | {
+      readonly kind: "busy";
+      readonly provider: string;
+      readonly machine: string;
+      readonly reason: string;
+    }
+  /** The machine does not sleep when idle, as a static `ssh` host: nothing to do. */
+  | { readonly kind: "always-on"; readonly provider: string; readonly machine: string }
+  /** The daemon has no remote lane, or its lane reached no machine yet. */
+  | { readonly kind: "none"; readonly reason: string };
+
 export type DaemonRequest =
   | PingRequest
   | NudgeRequest
@@ -284,7 +317,9 @@ export type DaemonRequest =
   | KeepRequest
   | KeepStatusRequest
   | CommitAskRequest
-  | CommitReadRequest;
+  | CommitReadRequest
+  | RemoteSleepRequest
+  | RemoteSleepStatusRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -569,6 +604,17 @@ export interface HoldResponse {
   readonly error: string | null;
 }
 
+/** State of one `remote-sleep` request (B7): `settled` once `outcome` or `error` is set. */
+export interface RemoteSleepResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "remote-sleep";
+  readonly requestId: string;
+  readonly settled: boolean;
+  readonly outcome: RemoteSleepOutcome | null;
+  readonly error: string | null;
+}
+
 export interface ResumeResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
@@ -604,6 +650,7 @@ export type DaemonResponse =
   | KeepResponse
   | CommitAskResponse
   | CommitReadResponse
+  | RemoteSleepResponse
   | DaemonErrorResponse;
 
 /**
