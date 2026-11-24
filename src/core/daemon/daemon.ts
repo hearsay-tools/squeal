@@ -1388,7 +1388,8 @@ class Daemon {
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    const requested = await requestGroup(this.#loop.scheduler, group, held, paths, options);
+    const { scheduler } = this.#loop;
+    const requested = await requestGroup(scheduler, group, held, paths, options, this.#policy);
     // Row 023-36 (T3, review wave-20 B8): only an accepted request flags its files.
     flagAccepted(this.#atRun, requested, options);
     return requested;

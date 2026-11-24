@@ -1000,9 +1000,9 @@ class TierScheduler implements Scheduler {
   }
 
   /** Spec 019 D6: `squeal run <group>` (`groupRequest`); `null` for a group the policy lacks. */
-  requestGroup(group: string): Promise<SlowSuiteRequest | null> {
+  requestGroup(group: string, paths?: readonly RelativePath[]): Promise<SlowSuiteRequest | null> {
     return this.#afterWake(groupRunners(this.#policy(), group), () =>
-      this.#intake.take(groupRequest(group, this.#groups, this.options.passes)),
+      this.#intake.take(groupRequest(group, this.#groups, this.options.passes, paths)),
     );
   }
 

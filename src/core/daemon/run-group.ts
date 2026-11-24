@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { groupView } from "../scheduler/slow.js";
 import {
   type AbsolutePath,
   type EpochMs,
@@ -12,6 +13,7 @@ import type {
   RunGroupResponse,
 } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
 import type { LockHolder, NarrowRun, NarrowRunOptions, Scheduler } from "../types/scheduler.js";
 import { requestDaemon } from "./client.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -112,7 +114,9 @@ export class MainSteps {
  * the request waits for the scheduler's lock, `held` hears each holder of
  * it; the watch ends once the scheduler took the request or failed it, so
  * the lock's turnover costs nothing when no request waits. A scheduler
- * without `watchLock` names no holder.
+ * without `watchLock` names no holder. With `paths`, a test group's narrow
+ * run (`requestGroupPaths`), or, for a lint group of `policy`, only those
+ * paths' lint checks (review 0.1.616 B4).
  */
 export async function requestGroup(
   scheduler: Scheduler,
@@ -120,6 +124,7 @@ export async function requestGroup(
   held?: Held,
   paths?: readonly RelativePath[],
   options?: NarrowRunOptions,
+  policy?: Policy,
 ): Promise<GroupRequested | null> {
   const groups = scheduler as Partial<Pick<Scheduler, "requestGroup" | "requestGroupPaths">>;
   if (typeof groups.requestGroup !== "function") throw new Error(GROUP_NOT_SUPPORTED);
@@ -130,12 +135,21 @@ export async function requestGroup(
   const stop = held === undefined ? undefined : watchHolder(scheduler, held);
   if (stop === undefined) held?.(null);
   try {
+    // Review 0.1.616 B4 (spec 026 D4.3): a lint group's paths release only their lint checks.
+    if (paths !== undefined && policy !== undefined && lintGroup(policy, group)) {
+      return await groups.requestGroup.call(scheduler, group, paths);
+    }
     if (paths !== undefined)
       return (await scheduler.requestGroupPaths?.(group, paths, options ?? {})) ?? null;
     return await groups.requestGroup.call(scheduler, group);
   } finally {
     stop?.();
   }
+}
+
+/** Whether `group` is a lint group of `policy`, the daemon's in force. */
+function lintGroup(policy: Policy, group: string): boolean {
+  return groupView(policy).groups.some((g) => g.name === group && g.select.kind === "lint");
 }
 
 /**

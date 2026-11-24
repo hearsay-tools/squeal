@@ -13,6 +13,7 @@ import { groupVerdictLine } from "./run-group-wait.js";
 import {
   lintGroupVerdictLine,
   lintRequestedText,
+  lintWaitFiles,
   requestLintGroup,
   runLintGroupCommand,
 } from "./run-lint-group.js";
@@ -25,8 +26,8 @@ import { runWait } from "./wait/wait.js";
  * [--json]`, the narrow pre-PR run. The paths changed since `git merge-base
  * <ref> HEAD` (the branch's commits, staged, unstaged and untracked files
  * git does not ignore, as 020 D2) go to 019 D6's narrow run for a test
- * group; a lint group lints its pending checks, the changed files' among
- * them. The answer names the merge base, the changed paths, the selection
+ * group; a lint group lints only the changed paths' lint checks (review
+ * 0.1.616 B4). The answer names the merge base, the changed paths, the selection
  * and its verdict, the group's files it left out and the paths that select
  * nothing. It never makes the group current.
  */
@@ -96,8 +97,8 @@ export async function runBaseCommand(
   }
   if (group.select.kind === "lint") {
     if (json) return lintJson(run, changes, io);
-    io.stdout(`${head}; group ${group.name} lints its pending lint checks, these among them.\n`);
-    return runLintGroupCommand({ root, group, waitMs }, io);
+    io.stdout(`${head}; group ${group.name} lints the lint checks of these paths.\n`);
+    return runLintGroupCommand({ root, group, waitMs, paths: changes.paths }, io);
   }
   const asked = await requestNarrow({ root, group, paths: changes.paths, waitMs });
   if (!json) return narrowAnswer(asked, { group, waitMs, base: `${head}.\n` }, io);
@@ -215,8 +216,8 @@ async function lintJson(
 ): Promise<number> {
   const deadline = Date.now() + (waitMs ?? RECORD_WAIT_MS);
   const socketPath = await daemonSocket(root, socketBound(deadline));
-  const state = await requestLintGroup(root, socketPath, group.name, deadline);
-  const note = `Group ${group.name} lints its pending lint checks, the changed paths' among them; a check current at its key keeps its result.`;
+  const state = await requestLintGroup(root, socketPath, group.name, deadline, changes.paths);
+  const note = `Group ${group.name} lints the changed paths' lint checks only; a check current at its key keeps its result.`;
   if (typeof state === "string") {
     const code = waitMs === null ? 1 : 3;
     io.stdout(jsonLine(baseJson(group, changes, { verdict: null, code, problem: state, note })));
@@ -225,7 +226,7 @@ async function lintJson(
   const requested = { revision: state.revision, queued: state.queued };
   let verdict: { line: string; code: number } | null = null;
   if (waitMs !== null) {
-    const files = { kind: "group", group: group.name } as const;
+    const files = lintWaitFiles(group.name, changes.paths);
     const outcome = await runWait({ wait: "lint group", root, socketPath, deadline, files });
     const command = statusCommand(io.env ?? process.env);
     const [line, code] = lintGroupVerdictLine(outcome, group, command);

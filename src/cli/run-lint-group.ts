@@ -1,7 +1,7 @@
 import { GROUP_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { plural } from "../core/text.js";
 import type { ResolvedGroup } from "../core/types/check-groups.js";
-import type { AbsolutePath } from "../core/types/common.js";
+import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { RunGroupResponse } from "../core/types/daemon.js";
 import { daemonSocket } from "./daemon-access.js";
 import { deadlineText } from "./group-pending.js";
@@ -29,6 +29,8 @@ export interface LintGroupRun {
   readonly group: ResolvedGroup;
   /** `null` without `--wait`; `Infinity` for a bare `--wait`. */
   readonly waitMs: number | null;
+  /** Review 0.1.616 B4: `--base`'s changed paths, whose lint checks alone it lints and waits for. */
+  readonly paths?: readonly RelativePath[];
 }
 
 export type Requested = NonNullable<RunGroupResponse["requested"]>;
@@ -41,7 +43,7 @@ export type Requested = NonNullable<RunGroupResponse["requested"]>;
  * deadline, as for a test group (row 019-26, review 0.1.398 B3).
  */
 export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise<number> {
-  const { root, group, waitMs: wait } = run;
+  const { root, group, waitMs: wait, paths } = run;
   const noVerdict = (text: string): number => {
     if (wait === null) {
       io.stderr(`squeal: ${text}\n`);
@@ -52,7 +54,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
   };
   const deadline = Date.now() + (wait ?? RECORD_WAIT_MS);
   const socketPath = await daemonSocket(root, socketBound(deadline));
-  const state = await requestLintGroup(root, socketPath, group.name, deadline);
+  const state = await requestLintGroup(root, socketPath, group.name, deadline, paths);
   if (typeof state === "string") return noVerdict(state);
   const line = lintRequestedText(group.name, state);
   if (wait === null) {
@@ -60,7 +62,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
     return 0;
   }
   // The lint group wait (`src/cli/wait/`): until none of the group's checks is left to lint.
-  const files = { kind: "group", group: group.name } as const;
+  const files = lintWaitFiles(group.name, paths);
   const outcome = await runWait({ wait: "lint group", root, socketPath, deadline, files });
   const [verdict, code] = lintGroupVerdictLine(
     outcome,
@@ -73,14 +75,29 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
 
 const PENDING = "the request is pending, and the daemon takes it once its current work allows";
 
-/** The request, then `run-group-status` until the scheduler took it (`untilTaken`): what it queued, or why not. */
+/** What a lint group's wait reads: the group's checks, or with `paths` theirs alone. */
+export function lintWaitFiles(group: string, paths: readonly RelativePath[] | undefined) {
+  return { kind: "group", group, ...(paths === undefined ? {} : { paths }) } as const;
+}
+
+/**
+ * The request, then `run-group-status` until the scheduler took it
+ * (`untilTaken`): what it queued, or why not. With `paths` (review 0.1.616
+ * B4), a `run-group-paths` request: only their lint checks lint; a daemon
+ * before it refuses a lint group's paths and lints none.
+ */
 export async function requestLintGroup(
   root: AbsolutePath,
   socketPath: AbsolutePath,
   group: string,
   deadline: number,
+  paths?: readonly RelativePath[],
 ): Promise<Requested | string> {
-  const first = await askWithin(socketPath, { type: "run-group", group }, deadline);
+  const request =
+    paths === undefined
+      ? ({ type: "run-group", group } as const)
+      : ({ type: "run-group-paths", group, paths } as const);
+  const first = await askWithin(socketPath, request, deadline);
   if (first === null) return "no daemon is running; start one with squeal start";
   if ("unanswered" in first) {
     return `the daemon did not answer the request to run group ${group}${first.unanswered}; it may still take it once its current work allows`;

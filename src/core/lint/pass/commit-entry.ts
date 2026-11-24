@@ -159,7 +159,10 @@ function blobsOf(
  * 019-45, and `manual`, row 019-47) releases them at the blob `blobOf`
  * gives. Stop's waiting entry
  * asks the same for a group at `stop` (D4 step 1). Returns how many checks
- * wait to lint; 0 while lint is off or its store cannot be read.
+ * wait to lint; 0 while lint is off or its store cannot be read. Review
+ * 0.1.616 B4 (spec 026 D4.3): with `paths`, `squeal run <group> --base
+ * <ref>`'s changed paths, only their waiting checks are released and
+ * counted; a path with no lint check of the group's tools is left out.
  */
 export function releaseLintGroup(
   commonDir: AbsolutePath,
@@ -167,6 +170,7 @@ export function releaseLintGroup(
   worktreeId: WorktreeId,
   group: string,
   blobOf: (path: RelativePath) => FileHash | null | undefined,
+  paths?: readonly RelativePath[],
 ): number {
   const { lint } = policy;
   const tools = lint.tools.filter((tool) => lintGroupOf(policy, tool)?.name === group);
@@ -174,17 +178,18 @@ export function releaseLintGroup(
     policy: () => (lint.enabled ? lint : null),
     open: () => openForReading(commonDir, lint),
   };
+  const only = paths === undefined ? null : new Set(paths);
   const read = withLint(source, ({ store }) => {
     let waiting = 0;
     for (const tool of tools) {
-      const paths = store.states
+      const released = store.states
         .list(worktreeId, { tool })
-        .filter(waitsToLint)
+        .filter((state) => waitsToLint(state) && (only?.has(state.check.path) ?? true))
         .map((state) => state.check.path);
-      waiting += paths.length;
+      waiting += released.length;
       // A request's release stays quiet: only a commit's is news (row 019-43).
       if (heldBy(policy, tool) !== null) {
-        add(store.meta, releaseKey(lintScope(worktreeId, tool)), blobsOf(paths, blobOf));
+        add(store.meta, releaseKey(lintScope(worktreeId, tool)), blobsOf(released, blobOf));
       }
     }
     return waiting;

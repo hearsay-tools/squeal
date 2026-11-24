@@ -386,9 +386,11 @@ export interface Scheduler {
    * not current is queued, and its lane runs them whatever its moment, as
    * `requestSlowSuite` does for the default `slow` group (it is
    * `requestGroup("slow")`). `null` for a group the policy in force does not
-   * have. For `tests` the files queue and the fast tiers run them.
+   * have. For `tests` the files queue and the fast tiers run them. Review
+   * 0.1.616 B4 (spec 026 D4.3): `paths` for a lint group only, whose
+   * waiting checks at those paths alone are released and counted.
    */
-  requestGroup(group: string): Promise<SlowSuiteRequest | null>;
+  requestGroup(group: string, paths?: readonly RelativePath[]): Promise<SlowSuiteRequest | null>;
   /**
    * Spec 019 D6 "Narrow run" (row 019-49): of group `group`, only the test
    * files `paths` select (`NarrowRun`) run now, whatever its moment; one

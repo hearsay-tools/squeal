@@ -1,3 +1,4 @@
+import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { SlowSuiteRequest } from "../types/scheduler.js";
@@ -95,12 +96,16 @@ export function focusRequest(
  * for a group the policy in force does not have. `groups`: its lanes.
  * Row 011-335: taken only after a reconciliation pass that started after
  * it, as `run --all` is, so an edit made just before it is in its answer;
- * `run --slow` and a lint group's release take it too.
+ * `run --slow` and a lint group's release take it too. Review 0.1.616 B4
+ * (spec 026 D4.3): with `paths`, a lint group releases only their checks;
+ * a test group with `paths` is refused, never run whole (a narrow run is
+ * `narrowRequest`'s).
  */
 export function groupRequest(
   group: string,
   groups: GroupTiers,
   passes: FeedPasses | undefined,
+  paths?: readonly RelativePath[],
 ): Request<SlowSuiteRequest | null> {
   const known = (policy: Policy) => groupView(policy).groups.some((g) => g.name === group);
   /** Row 011-325: the group's files, queued, current or not, are its covered files. */
@@ -140,7 +145,10 @@ export function groupRequest(
           const resolved = groupView(context.policy).groups.find((g) => g.name === group);
           if (resolved?.select.kind !== "lint") return null;
           return {
-            answer: { revision: ledger.revision.number, queued: releaseLint(context, group) },
+            answer: {
+              revision: ledger.revision.number,
+              queued: releaseLint(context, group, paths),
+            },
           };
         },
         work: () => void passes?.pass().catch(() => {}),
@@ -148,6 +156,11 @@ export function groupRequest(
       stage: (context, ledger, _, id) => {
         const revision = ledger.revision.number;
         if (!known(context.policy)) return { answer: null, covered: [] };
+        if (paths !== undefined) {
+          throw new Error(
+            `group ${group} is no longer a lint group: squeal run ${group} <path>...`,
+          );
+        }
         groups.lanes(context.policy);
         groups.get(group)?.request();
         const queued = queueGroup(context, ledger, group);
