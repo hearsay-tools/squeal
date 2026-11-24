@@ -87,7 +87,12 @@ describe("loadPolicy (spec 001 D11)", () => {
         quietMs: 3_000,
       },
       delivery: { uncoveredEdits: false },
-      daemon: { idleExitMinutes: 0.5, unusedExitMinutes: 10 },
+      // Spec 026 D2.2: which exit bounds the file sets.
+      daemon: {
+        idleExitMinutes: 0.5,
+        unusedExitMinutes: 10,
+        set: { idleExitMinutes: true, unusedExitMinutes: true },
+      },
       store: { retentionDays: 3, maxSizeMb: 200 },
       // Spec 015 D1; its keys' own tests are test/code/policy.test.ts.
       complexity: DEFAULT_POLICY.complexity,

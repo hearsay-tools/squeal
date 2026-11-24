@@ -19,6 +19,7 @@ import { oncePerClone } from "./clone-prune.js";
 import { type CommitLife, commitCheck } from "./commit-mode.js";
 import { CHECKPOINT_BUSY_MS, IdleCheckpoint, truncateWal } from "./idle-checkpoint.js";
 import { recordDaemonUsed } from "./last-use.js";
+import { daemonExits } from "./policy.js";
 import { SlicedPrune } from "./sliced-prune.js";
 import { SlicedWrites } from "./sliced-writes.js";
 import { type StoreFile, storeCondemned } from "./store-file.js";
@@ -273,8 +274,10 @@ export interface TimerContext {
  */
 export function startTimers(context: TimerContext): () => void {
   const { store, worktreeId, now, timings } = context;
-  const idleMs = context.policy.daemon.idleExitMinutes * 60_000;
-  const unusedMs = context.policy.daemon.unusedExitMinutes * 60_000;
+  // Spec 026 D2.2: an edit-free policy's unset bounds are 2 minutes (`daemonExits`).
+  const exits = daemonExits(context.policy);
+  const idleMs = exits.idleExitMinutes * 60_000;
+  const unusedMs = exits.unusedExitMinutes * 60_000;
   const checkMs = timings.checkMs ?? Math.min(5_000, Math.max(50, idleMs / 10));
   const expireMs = timings.expireMs ?? 60_000;
   const pruneMs = timings.pruneMs ?? 60 * 60_000;

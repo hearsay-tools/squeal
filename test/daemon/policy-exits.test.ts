@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
+import { daemonExits, loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 
 /*
@@ -10,9 +10,9 @@ import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
  * `edit` or `pause`, `daemon.unusedExitMinutes` defaults to 2 instead of 30,
  * and (the coordinator, 2026-11-24) a daemon with no consumer stops after
  * the lesser of `daemon.idleExitMinutes` and that bound unless
- * `daemon.idleExitMinutes` is set. An explicit key always wins. The one
- * loader resolves both, so the daemon, its reload and `squeal ps` read the
- * same numbers.
+ * `daemon.idleExitMinutes` is set. An explicit key always wins. The loader
+ * records which keys the file sets; `daemonExits` resolves both bounds for
+ * the daemon's timers, at each reload, and for `squeal ps` alike.
  */
 
 const dirs: string[] = [];
@@ -20,13 +20,18 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-function exits(config: object | null) {
+function dirWith(config: object | null): string {
   const dir = mkdtempSync(join(tmpdir(), "squeal-exits-"));
   dirs.push(dir);
   if (config !== null) writeFileSync(join(dir, POLICY_FILE), JSON.stringify(config));
+  return dir;
+}
+
+function exits(config: object | null) {
+  const dir = dirWith(config);
   const { policy, problems } = loadPolicy(dir);
   expect(problems).toEqual([]);
-  return policy.daemon;
+  return daemonExits(policy);
 }
 
 const MANUAL_TESTS = [{ name: "unit", runner: "vitest", at: "manual" }];
@@ -94,6 +99,37 @@ describe("the daemon's exit bounds by test policy (spec 026 D2.2, row 026-09)", 
     writeFileSync(join(dir, POLICY_FILE), JSON.stringify(config));
     const { policy, problems } = loadPolicy(dir);
     expect(problems).toHaveLength(2);
-    expect(policy.daemon).toEqual({ idleExitMinutes: 2, unusedExitMinutes: 2 });
+    expect(daemonExits(policy)).toEqual({ idleExitMinutes: 2, unusedExitMinutes: 2 });
+  });
+
+  it("records which bounds the file sets, and holds the defaults for the rest", () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-exits-"));
+    dirs.push(dir);
+    writeFileSync(join(dir, POLICY_FILE), JSON.stringify({ daemon: { unusedExitMinutes: 30 } }));
+    expect(loadPolicy(dir).policy.daemon).toEqual({
+      idleExitMinutes: 60,
+      unusedExitMinutes: 30,
+      set: { idleExitMinutes: false, unusedExitMinutes: true },
+    });
+    // An explicit 30 under an edit-free policy stays 30; the unset idle bound is capped by it.
+    writeFileSync(
+      join(dir, POLICY_FILE),
+      JSON.stringify({ ...EDIT_FREE, daemon: { unusedExitMinutes: 30 } }),
+    );
+    expect(daemonExits(loadPolicy(dir).policy)).toEqual({
+      idleExitMinutes: 30,
+      unusedExitMinutes: 30,
+    });
+  });
+
+  it("keeps a hand-built policy's bounds unless they are the defaults", () => {
+    const manual = loadPolicy(dirWith(EDIT_FREE)).policy;
+    const daemon = { idleExitMinutes: 5, unusedExitMinutes: 0.5 };
+    expect(daemonExits({ ...manual, daemon })).toEqual(daemon);
+    expect(daemonExits({ ...manual, daemon: DEFAULT_POLICY.daemon })).toEqual({
+      idleExitMinutes: 2,
+      unusedExitMinutes: 2,
+    });
+    expect(daemonExits(DEFAULT_POLICY)).toEqual(DEFAULT_POLICY.daemon);
   });
 });

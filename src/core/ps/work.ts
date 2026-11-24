@@ -1,7 +1,7 @@
 import { type BigIntStats, existsSync, statSync } from "node:fs";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { daemonUsedMetaKey, readDaemonUsed } from "../daemon/last-use.js";
-import { readPolicy } from "../daemon/policy.js";
+import { daemonExits, readPolicy } from "../daemon/policy.js";
 import { harnessAlive, toHarness } from "../delivery/harness-process.js";
 import { isRecord } from "../fs/json.js";
 import { immutableUrl } from "../slow/slot-holding.js";
@@ -356,10 +356,11 @@ const statIn = (table: ProcessTable) => (pid: number) => {
 
 /** 011 C10: the daemon's own `squeal.config.json`, through the loader that never throws. */
 function settingsOf(root: AbsolutePath | null): DaemonSettings {
-  const { daemon, runner } = root === null ? DEFAULT_POLICY : readPolicy(root);
+  const policy = root === null ? DEFAULT_POLICY : readPolicy(root);
+  const { runner } = policy;
   return {
-    idleExitMinutes: daemon.idleExitMinutes,
-    unusedExitMinutes: daemon.unusedExitMinutes,
+    // Spec 026 D2.2: the bounds the daemon keeps, as its timers resolve them.
+    ...daemonExits(policy),
     // `null` is no limit, which no process outlives.
     timeoutMs: runner.timeoutMs ?? Number.POSITIVE_INFINITY,
   };
