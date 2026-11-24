@@ -5,6 +5,7 @@ import {
   cpSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -23,12 +24,13 @@ import type { Store } from "../../src/core/types/store.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { TEST_VERSION } from "../fixed-version.js";
 import { git } from "../hash/git-repo.js";
-import { compileObserved } from "../helpers/build-inputs.js";
+import { compileObserved, sharedBuild } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";
 import {
   findProcesses,
   isAlive,
   killProcesses,
+  liveRunDirectory,
   type Stray,
   TEST_CACHE,
   testBuildDir,
@@ -63,6 +65,27 @@ export interface BuildOptions {
   readonly observe?: boolean;
 }
 
+/** The compiler's options for `buildCli`, but `--outDir`. */
+const CLI_BUILD = [
+  "-p",
+  join(repoRoot, "tsconfig.build.json"),
+  "--declaration",
+  "false",
+  "--sourceMap",
+  "false",
+] as const;
+
+/** What a CLI build depends on beside the files it compiles: options, configs, the compiler. */
+function cliRecipe(): string {
+  const read = (path: string) => readFileSync(join(repoRoot, path), "utf8");
+  return JSON.stringify([
+    CLI_BUILD,
+    read("tsconfig.json"),
+    read("tsconfig.build.json"),
+    read("node_modules/tsrs/package.json"),
+  ]);
+}
+
 /**
  * Builds `src` into a private `dist` so tests spawn the real `squeal` binary.
  * Under `node_modules/`, so the build resolves `vitest` and `chokidar`, with
@@ -70,20 +93,20 @@ export interface BuildOptions {
  * directory there, so the global teardown finds daemons it leaves (`strays.ts`).
  * Compiles with the pinned tsrs in fast mode (spec 010 D13) and stats each
  * file it compiled, so an edit the test's imports do not reach re-keys it
- * (011-141).
+ * (011-141). Row 010-36: compiled once per run and linked into each test
+ * file's own directory (`sharedBuild`); every call still stats those files.
  */
-export function buildCli(options: BuildOptions = {}): BuiltCli {
-  const dir = testBuildDir(expect.getState().testPath);
-  compileObserved([
-    "-p",
-    join(repoRoot, "tsconfig.build.json"),
-    "--outDir",
+export function buildCli(options: BuildOptions = {}, runDir = liveRunDirectory()): BuiltCli {
+  const dir = testBuildDir(expect.getState().testPath, runDir ?? undefined);
+  sharedBuild(
+    {
+      runDir,
+      name: "cli",
+      recipe: cliRecipe(),
+      build: (outdir) => compileObserved([...CLI_BUILD, "--outDir", outdir]),
+    },
     join(dir, "dist"),
-    "--declaration",
-    "false",
-    "--sourceMap",
-    "false",
-  ]);
+  );
   // Row 011-425: the version every test process reports, not the root manifest's.
   const manifest = { name: "squeal", version: TEST_VERSION, type: "module" };
   writeFileSync(join(dir, "package.json"), `${JSON.stringify(manifest)}\n`);
