@@ -457,6 +457,12 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     });
   };
 
+  /** A run that never goes remote: here, as the scheduler admitted it, the runner here now opened. */
+  const runDirect = (testFiles: readonly TestFileRef[], run: RunOptions): Promise<RunReport> => {
+    opened = true;
+    return here.run(testFiles, run);
+  };
+
   /**
    * What the policy does with a background run the remote cannot take (D13):
    * `local` runs it here; `not-run` leaves it not run.
@@ -613,10 +619,11 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     environment: () => local.environment(),
     ...planning,
     async run(testFiles, run) {
-      if (!goesRemote(run, tiers)) return here.run(testFiles, run);
+      // Review 0.1.619 B4: a run here opens the runner here, which gets each later invalidation.
+      if (!goesRemote(run, tiers)) return runDirect(testFiles, run);
       const split = route.split(testFiles);
       const { there } = split;
-      if (there.length === 0) return here.run(testFiles, run);
+      if (there.length === 0) return runDirect(testFiles, run);
       if (split.here.length === 0) return remoteTier(there, run);
       // D19.2: the repository's readers first, while the tier holds its local permits.
       const own = await runHere(split.here, run, "repository");

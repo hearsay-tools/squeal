@@ -10,6 +10,10 @@ import { background, ENV, options, REF, setup, until } from "./lane-fixture.js";
  * When the remote is down, `whenLost: "local"` plans here and `not-run`
  * rejects the call, naming the remote. A call in flight refuses a sleep;
  * after the lane closed, no call reaches the runner here.
+ *
+ * Review 0.1.619 B4: a run that stays here without asking the remote, a
+ * tier the lane does not send or a tier whose files all read the
+ * repository, opens the runner here: each later change and touch reaches it.
  */
 
 const REMOTE = { planning: "remote" as const, lanes: ["edit", "background"] as const };
@@ -121,5 +125,45 @@ describe("planning and the lane's sleep and close (026 D8.3, review 0.1.617)", (
     await expect(waiting).rejects.toThrow("remote box: its lane closed; not planned here");
     await expect(s.lane.testFiles()).rejects.toThrow(/its lane closed/);
     expect(s.localCalls).toEqual([]);
+  });
+});
+
+describe("a run here under remote planning opens the runner here (review 0.1.619 B4)", () => {
+  const GIT = { project: "", path: "test/git.test.ts" };
+  const CHANGE = { path: "src/a.ts", kind: "change" as const };
+  const TOUCH = { path: "src/a.ts", kind: "touch" as const };
+
+  it("sends later changes and touches here after a tier the lane does not send ran here", async () => {
+    const s = await setup({ planning: "remote", lanes: ["background"] });
+    await s.lane.run([REF], options({ lane: "vitest" }));
+    expect(s.localFiles).toEqual([REF.path]);
+    await s.lane.invalidate([CHANGE]);
+    await s.lane.invalidate([TOUCH]);
+    expect(s.localCalls).toEqual(["invalidate src/a.ts", "invalidate src/a.ts"]);
+    expect(s.remoteCalls.filter((c) => c.startsWith("invalidate"))).toHaveLength(2);
+  });
+
+  it("sends later changes and touches here after a tier whose files all read the repository", async () => {
+    const s = await setup({
+      ...REMOTE,
+      needsRepository: ["test/git.*"],
+      files: { "test/git.test.ts": "import '../src/a';\n" },
+    });
+    await s.lane.run([GIT], background());
+    expect(s.localFiles).toEqual([GIT.path]);
+    expect(s.remoteRuns).toEqual([]);
+    await s.lane.invalidate([CHANGE]);
+    await s.lane.invalidate([TOUCH]);
+    expect(s.localCalls).toEqual(["invalidate src/a.ts", "invalidate src/a.ts"]);
+  });
+
+  it("makes no call here while every run and invalidation goes remote", async () => {
+    const s = await setup(REMOTE);
+    await s.lane.run([REF], background());
+    await s.lane.invalidate([CHANGE]);
+    await s.lane.invalidate([TOUCH]);
+    expect(s.remoteRuns).toEqual([REF.path]);
+    expect(s.localCalls).toEqual([]);
+    expect(s.localFiles).toEqual([]);
   });
 });
