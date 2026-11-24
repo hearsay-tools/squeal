@@ -1,0 +1,83 @@
+{
+  "startedAt": "2026-11-24T22:32:53.964Z",
+  "squealVersion": "0.1.627 vs 0.1.631",
+  "plugins": [
+    {
+      "version": "0.1.627",
+      "label": "0.1.627"
+    },
+    {
+      "version": "0.1.631",
+      "label": "0.1.631"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    2453.3333333333335,
+    2459,
+    2458.3333333333335
+  ],
+  "loadavgAtStart": "0.23 0.17 0.08 1/392 6737",
+  "cells": [
+    {
+      "name": "ref@0.1.627",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.627",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.631",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.631",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.631",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.631",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.627",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.627",
+      "rep": 1
+    },
+    {
+      "name": "stress@0.1.627",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.627",
+      "rep": 1
+    },
+    {
+      "name": "stress@0.1.631",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.631",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-24T23:29:34.161Z"
+}

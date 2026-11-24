@@ -1,0 +1,156 @@
+{
+  "name": "wt-3@0.1.627",
+  "files": 500,
+  "worktrees": 3,
+  "load": 0,
+  "ageRounds": 0,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "cli": "bin/squeal",
+  "phases": {
+    "startMain": {
+      "ms": 419.0270790000004,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/wt-3@0.1.627/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `squea"
+    },
+    "runAll": {
+      "ms": 39081.197508,
+      "code": 0,
+      "tail": " files, 0 already current, 500 run now\nCheckpoint 462b0c41-d779-44cf-8374-e579c2bbc034 started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.7388644966408423
+    },
+    "startOthers": [
+      {
+        "ms": 281.5910220000005,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 2533.4754889999967,
+          "settled": true,
+          "polls": 3,
+          "waitingFor": null,
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      },
+      {
+        "ms": 305.9194339999958,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 244.3309819999995,
+          "settled": true,
+          "polls": 1,
+          "waitingFor": null,
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      }
+    ],
+    "storeQuiet": {
+      "ms": 4000.743217000003,
+      "settled": true,
+      "polls": 2,
+      "lastPct": 0
+    },
+    "idle": {
+      "ms": 60000,
+      "daemons": 3,
+      "storeProcessCpuPct": 0.01666666666666668,
+      "perDaemonCpuPct": [
+        0.2833333333333337,
+        0.26666666666666694,
+        0.25000000000000033
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 282020.056872,
+        "code": 0
+      },
+      {
+        "worktree": 1,
+        "ms": 249892.56948,
+        "code": 0
+      },
+      {
+        "worktree": 2,
+        "ms": 287100.009966,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.43901092940098024,
+    "sessionDaemonCpuS": [
+      14.03
+    ],
+    "edits": 57,
+    "sessionStoreProcessCpuS": 1.8,
+    "impact": {
+      "command": "impact",
+      "ms": 211.78054800000973,
+      "code": 0,
+      "peakRssBytes": 173502464
+    }
+  },
+  "store": {
+    "storeBytes": 16056320,
+    "walBytes": 15800232,
+    "codeBytes": 14495744,
+    "runsDirs": 178,
+    "rows": {
+      "results": 17038,
+      "runs": 178,
+      "revisions": 57,
+      "transitions": 1224
+    },
+    "longWrites": 2,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      284,
+      281
+    ]
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 431611904,
+    "maxTreeBytes": 2420224000
+  },
+  "storeProcess": {
+    "seen": 1,
+    "cpuS": 2.83,
+    "maxRssBytes": 221634560,
+    "written": 1062,
+    "failed": 0,
+    "queueWaitMaxMs": 164,
+    "busyMs": 15210,
+    "stops": 1,
+    "failedLines": 0,
+    "relay": {
+      "sent": 1062,
+      "direct": 1,
+      "failed": 0
+    }
+  },
+  "hookWriteWait": {
+    "seen": false,
+    "taken": 0,
+    "p95MaxMs": null,
+    "maxMs": null,
+    "longWaitsMs": []
+  }
+}

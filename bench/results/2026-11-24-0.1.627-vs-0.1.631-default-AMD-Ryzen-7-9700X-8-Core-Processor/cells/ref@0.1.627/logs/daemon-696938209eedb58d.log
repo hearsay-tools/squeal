@@ -1,0 +1,13 @@
+2026-11-24T22:33:45.552Z [10833] squeal daemon: serving /home/user/results/cells/ref@0.1.627/work/wt0 on /home/user/results/cells/ref@0.1.627/work/run/squeal-696938209eedb58d.sock
+2026-11-24T22:33:45.576Z [10833] squeal daemon: full integrity check: ok
+2026-11-24T22:34:42.904Z [10833] squeal daemon: code store: last minute: 103 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T22:35:28.061Z [10833] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 287 to 195 MiB in a 29 ms pause
+2026-11-24T22:35:42.904Z [10833] squeal daemon: code store: last minute: 7 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T22:36:36.616Z [10833] squeal daemon: busy, heap in use 63 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 221 to 179 MiB in a 41 ms pause; 28 MiB of heap in use after it
+2026-11-24T22:36:42.972Z [10833] squeal daemon: code store: last minute: 102 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T22:37:42.973Z [10833] squeal daemon: code store: last minute: 98 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T22:37:59.869Z [10833] squeal daemon: busy, heap in use 59 MiB over twice the last live size of 28 MiB: a last-resort GC took private memory from 268 to 170 MiB in a 34 ms pause; 28 MiB of heap in use after it
+2026-11-24T22:38:43.027Z [10833] squeal daemon: code store: last minute: 62 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T22:39:13.540Z [10833] squeal daemon: daemon stopped: squeal stop
+2026-11-24T22:39:13.546Z [10833] squeal daemon: code store: last minute: 36 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-24T22:39:13.826Z [10833] squeal daemon: daemon stopped: squeal stop
