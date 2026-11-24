@@ -41,7 +41,8 @@ bench/boat-run.sh --ref squeal--v0.1.579 --ref .                       # stage 2
 | `@lists` | store-7g, store-7g-wt3, store-7g-wt3-nolists, store-7g-lists1d | module lists (`loaded_modules`) |
 | `@ff` | ff, ff-known, ff-ci, ff-load50, ff-rebase | fast-forwards, pulls and rebases from the base branch (issue 261) |
 | `@size`, `@worktrees`, `@load` | one axis each, with ref | how one factor scales |
-| `@all` | every cell | the default |
+| `@scale` | size-l, scale-real | `status` and store reads at a real repository's check and function counts (opt-in) |
+| `@all` | every cell except the opt-in `scale-real` | the default |
 
 A paired cell takes about 35 minutes (about 45 with an aged store). `--steps 12` halves the sessions for a rough first look; `--repeat 3` shows whether a difference is larger than run-to-run noise. The groups live in `run-all.mjs` (`GROUPS`).
 
@@ -75,6 +76,8 @@ The boat.dev $20 plan (`box_20`) offers three sizes:
 | **M (reference)** | **500** | about 35 s |
 | L | 2000 | about 2.5 min |
 
+`gen-project.mjs <dir> <files> --cases N --functions M` changes the shape: N cases per test file (default 6), and a module `src/h<i>.ts` with M one-line exported functions next to each `src/m<i>.ts` (default none). The test file imports `h<i>_0` and its first case checks it; the session never edits `src/h<i>.ts`. `run-all.mjs` builds one template per shape (`p2000`, `p2000-c10-f30`).
+
 The project uses Squeal's shipped defaults (`squeal.config.json` is `{}`), so coverage and complexity are on and `baseline.onStart` is `lookup-only`.
 
 ## The cells
@@ -102,6 +105,9 @@ The benchmark varies one factor at a time from the reference cell, and adds one 
 | ff-ci | 500 | 1 | 0% (the same, its commit's results imported from a CI export) |
 | ff-load50 | 500 | 1 | 50% (the cold fast-forward on a half-busy machine) |
 | ff-rebase | 500 | 1 | 0% (the agent commits its edits and rebases instead) |
+| scale-real | 2000 | 1 | 0% (10 cases and 30 helper functions per file: 20,000 checks, about 62,000 functions; opt-in) |
+
+`scale-real` stands for a real repository's size: Squeal's own repository has about 20,000 checks. Its synthetic project has 2,000 test files of 10 cases (about 300 CPU-seconds for a full run) and 30 helper functions per module, so the store and `status` read at that scale. It is not part of a plain run or `@all`: name it (`--cells scale-real`) or its group (`--cells @scale`, with `size-l` beside it to compare).
 
 The two store cells run the reference cell on a store that already holds a week of history. After the full run, `age-store.mjs` adds rounds of history: every test file gets a new content key, with its results, one `loaded_modules` list of real-store size (about 50 KB) and the runs that recorded them. All of it is dated within the last 7 days and is older than the real rows. The shape follows Squeal's own store on 2026-11-20: 7.2 GB, 82% of it in `loaded_modules` (163k rows, 46 KB each) and 1.74M `results` rows. 326 rounds gives that store's `loaded_modules` row count; 70 rounds gives its rows per test file, scaled to 500 test files. The code store (`code.sqlite`, coverage and complexity) gets the same history: for every new key, a copy of that test file's real coverage record, dated like its results, and an 8 KB part that no record lists, standing for the larger records of a real repository. At 326 rounds that is about 1.4 GB; Squeal's own `code.sqlite` was 1.5 GB (coverage 193k rows) on 2026-11-20.
 
@@ -119,7 +125,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 2. Start the load and wait 5 s.
 3. In 1-worktree cells only: run plain `vitest run`, the reference without Squeal.
 4. Run `squeal start`, then `squeal run --all --wait` in the main worktree: a cold full run on an empty store.
-5. Run `squeal start` in every other worktree: each starts on the shared store and looks up results it does not have to run again.
+5. Run `squeal start` in every other worktree: each starts on the shared store and looks up results it does not have to run again. Then poll each of them with `squeal status --json` once a second until its start-up baseline is done: test files listed, and no check, test file without checks or code count pending (a field an older release does not print does not hold the wait). The wait shares a 5 minute bound; each worktree's `phases.startOthers[i].settle` records `{ ms, settled, polls }`. Before row 025-08 this baseline ran inside the idle minute, so `wt-3`'s idle CPU read 3.5% while the main worktree's daemon read 0.2%; `wt-3` and `wt-6` idle numbers from runs before it do not compare with later ones.
 6. Wait 60 s with no edits, to measure idle CPU.
 7. Run one scripted session per worktree, all at the same time, starting 3 s apart.
 8. Read the store and daemon numbers, then run `squeal stop` in every worktree.
@@ -146,6 +152,9 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | **Hooks** (every tool call pays for these) | | | |
 | `hook.preToolUse.p95` | ≤ 80 ms | ≤ 200 ms | Spec 001/012 budget for per-tool hooks: 80 ms p95, of which about 50 ms is Node start |
 | `hook.postToolBatch.p95` | ≤ 80 ms | ≤ 200 ms | Same budget |
+| `hook.preToolUse.p99`, `.max`, `hook.postToolBatch.p99`, `.max` | report | | The tails behind the p95s: the slowest 1% and the slowest call |
+| `hook.writeWait.p95`, `hook.writeWait.max` | report | | How long a hook's write waited in the daemon's queue for its main thread (spec 025 D9): the highest per-minute p95 and the longest wait, from the daemon log lines `hook writes: N taken, queue wait p95 P ms max M ms` and `long write wait: hook write waited N ms ...`. n/a for a release that does not log them |
+| `hook.longWriteWaits` | report | | Hook writes that waited over 250 ms for the daemon's main thread (`long write wait:` lines). These are not lock holds and do not count in `store.longWrites` |
 | `hook.sessionStart.max` | ≤ 750 ms | ≤ 2000 ms | SessionStart waits up to 750 ms for the daemon; every hook has a 2 s timeout |
 | `hook.stop.max` | ≤ 1500 ms | ≤ 2000 ms | `stop.waitMs` is capped at 1500 ms; 2 s timeout |
 | **Commands** | | | |
@@ -171,6 +180,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | **Resources** | | | |
 | `res.idleCpu.maxPct` | ≤ 1% | ≤ 5% | CPU over 60 s with no edits, as % of one core: the busiest daemon with its children, plus the code store's process |
 | `res.daemonRss.max` | ≤ 300 MiB | ≤ 600 MiB | Peak RSS of one daemon process; spec 021 measured 281 MiB idle on a large project |
+| `res.treeRss.max` | ≤ 1200 MiB | ≤ 2400 MiB | Peak RSS of the daemons with all their children (test runners, workers), per worktree: the peak of the sum over all daemon trees, divided by the worktrees, so wt-3 compares with ref. On 2026-11-22 and -24 runs: ref 1028–1168 MiB, size-l 1557–1925, wt-3 709–752. The test runners dominate it, so the limit sits just above the reference cell |
 | `res.cpuPerEdit` | report | | CPU during the sessions (daemons with their children, plus the code store's process), divided by the edits |
 | `res.storeProcess.cpuS`, `res.storeProcess.rss` | report | | The code store's process (spec 021 D22, from 0.1.575): CPU during the sessions and peak memory. It is a separate process, not a daemon's child |
 | **Store** | | | |
@@ -212,7 +222,7 @@ Agreed with the human on 2026-11-20 (paired runs the same day); `docs/process.md
 | `load.mjs` | Ambient CPU load |
 | `summarize.mjs` | `scorecard.md` and `scores.json` from a results directory; the limits and the score live here |
 | `trend.mjs` | `results/TREND.md`, every committed run by CPU model; `boat-run.sh` runs it |
-| `lib.mjs` | Timing, `/proc` reading, the seeded random generator |
+| `lib.mjs` | Timing, `/proc` reading, the seeded random generator, the settle wait and the daemon-log parsers |
 | `results/` | Committed scorecards and raw data of past runs |
 
 ## What it does not cover yet

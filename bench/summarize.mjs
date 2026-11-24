@@ -11,12 +11,11 @@
 // of the cell scores, times 100. "Report" metrics carry no score.
 //
 // Usage: node summarize.mjs <results dir>
+// Imported (tests), it runs nothing: `summarize(dir)` does the work and returns the scores.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { longWriteHolds, quantile } from "./lib.mjs";
-
-const dir = process.argv[2];
-const meta = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { hookWriteWaitLog, longWriteHolds, quantile } from "./lib.mjs";
 
 /** lower is better unless `higher`. */
 export const METRICS = [
@@ -34,6 +33,50 @@ export const METRICS = [
     unit: "ms",
     healthy: 80,
     warn: 200,
+    group: "Hooks",
+  },
+  // Row 025-08: the tails behind the p95s, and how long hook writes waited for the daemon's
+  // main thread (spec 025 D9; n/a for a Squeal version that does not log them).
+  {
+    id: "hook.preToolUse.p99",
+    what: "Hook before each tool call (slowest 1%)",
+    unit: "ms",
+    group: "Hooks",
+  },
+  {
+    id: "hook.preToolUse.max",
+    what: "Hook before each tool call (slowest)",
+    unit: "ms",
+    group: "Hooks",
+  },
+  {
+    id: "hook.postToolBatch.p99",
+    what: "Hook after each batch of tool calls (slowest 1%)",
+    unit: "ms",
+    group: "Hooks",
+  },
+  {
+    id: "hook.postToolBatch.max",
+    what: "Hook after each batch of tool calls (slowest)",
+    unit: "ms",
+    group: "Hooks",
+  },
+  {
+    id: "hook.writeWait.p95",
+    what: "Hook write wait for the daemon main thread (highest per-minute p95)",
+    unit: "ms",
+    group: "Hooks",
+  },
+  {
+    id: "hook.writeWait.max",
+    what: "Hook write wait for the daemon main thread (longest)",
+    unit: "ms",
+    group: "Hooks",
+  },
+  {
+    id: "hook.longWriteWaits",
+    what: "Hook writes that waited over 250 ms for the daemon main thread",
+    unit: "",
     group: "Hooks",
   },
   {
@@ -272,6 +315,16 @@ export const METRICS = [
     group: "Resources",
   },
   {
+    // Row 025-08: the daemon with its test runners and other children, per worktree (the peak
+    // of all daemon trees together, divided by the worktrees), so wt-3 and ref compare.
+    id: "res.treeRss.max",
+    what: "Daemon with its test runs, memory per worktree, peak",
+    unit: "MiB",
+    healthy: 1200,
+    warn: 2400,
+    group: "Resources",
+  },
+  {
     id: "res.cpuPerEdit",
     what: "CPU per edit: daemons with their test runs, plus the store process",
     unit: "s",
@@ -363,7 +416,7 @@ const INF = Number.POSITIVE_INFINITY;
 const HOOK_TIMEOUT_MS = 2000;
 const maxOrNull = (xs) => (xs.length ? Math.max(...xs) : null);
 
-function cellValues(cellDir) {
+export function cellValues(cellDir) {
   const cell = JSON.parse(readFileSync(join(cellDir, "cell.json"), "utf8"));
   const rows = [];
   for (const f of readdirSync(cellDir).filter((f) => /^session-wt\d+\.jsonl$/.test(f))) {
@@ -375,6 +428,7 @@ function cellValues(cellDir) {
   const by = (type) => steps.filter((s) => s.type === type);
   const v = {
     ...hookValues(rows),
+    ...writeWaitValues(cell, cellDir),
     ...commandValues(cell.phases, by),
     ...verdictValues(by),
     ...resourceValues(cell),
@@ -519,11 +573,15 @@ function judgeNotice(n, breaks, counts) {
   }
 }
 
-function hookValues(rows) {
+export function hookValues(rows) {
   const hooks = (name) => rows.filter((r) => r.kind === "hook" && r.hook === name).map((r) => r.ms);
   return {
     "hook.preToolUse.p95": quantile(hooks("pre-tool-use"), 0.95),
+    "hook.preToolUse.p99": quantile(hooks("pre-tool-use"), 0.99),
+    "hook.preToolUse.max": maxOrNull(hooks("pre-tool-use")),
     "hook.postToolBatch.p95": quantile(hooks("post-tool-batch"), 0.95),
+    "hook.postToolBatch.p99": quantile(hooks("post-tool-batch"), 0.99),
+    "hook.postToolBatch.max": maxOrNull(hooks("post-tool-batch")),
     "hook.sessionStart.max": maxOrNull(hooks("session-start")),
     "hook.stop.max": maxOrNull(hooks("stop")),
     "hook.overTimeout": rows.filter((r) => r.kind === "hook" && r.ms > HOOK_TIMEOUT_MS).length,
@@ -568,7 +626,29 @@ function verdictValues(by) {
   };
 }
 
-function resourceValues(cell) {
+/**
+ * Spec 025 D9's hook write waits: saved by the cell, or read from its copied daemon logs for a
+ * run made before row 025-08. Null when no log line names them (a Squeal version before D9).
+ */
+export function writeWaitValues(cell, cellDir) {
+  let w = cell.hookWriteWait;
+  const logs = join(cellDir, "logs");
+  if (!w && existsSync(logs)) {
+    const text = readdirSync(logs)
+      .filter((f) => !f.startsWith("store-"))
+      .map((f) => readFileSync(join(logs, f), "utf8"))
+      .join("\n");
+    w = hookWriteWaitLog(text);
+  }
+  const seen = Boolean(w?.seen);
+  return {
+    "hook.writeWait.p95": seen ? w.p95MaxMs : null,
+    "hook.writeWait.max": seen ? w.maxMs : null,
+    "hook.longWriteWaits": seen ? w.longWaitsMs.length : null,
+  };
+}
+
+export function resourceValues(cell) {
   const p = cell.phases;
   const busy = (p.sessionDaemonCpuS ?? []).filter((x) => x !== null);
   const storeCpu = p.sessionStoreProcessCpuS ?? 0;
@@ -577,6 +657,9 @@ function resourceValues(cell) {
   return {
     "res.idleCpu.maxPct": idle === null ? null : idle + (p.idle?.storeProcessCpuPct ?? 0),
     "res.daemonRss.max": cell.daemonRss.maxDaemonBytes / 2 ** 20,
+    "res.treeRss.max": cell.daemonRss.maxTreeBytes
+      ? cell.daemonRss.maxTreeBytes / Math.max(1, cell.worktrees ?? 1) / 2 ** 20
+      : null,
     "res.cpuPerEdit": p.edits ? (busy.reduce((a, b) => a + b, 0) + storeCpu) / p.edits : null,
     "res.storeProcess.cpuS": sp?.seen ? storeCpu : null,
     "res.storeProcess.rss": sp?.seen ? sp.maxRssBytes / 2 ** 20 : null,
@@ -647,7 +730,7 @@ function storeProcessValues(sp) {
   };
 }
 
-function grade(m, x) {
+export function grade(m, x) {
   if (m.healthy === undefined || x === null || Number.isNaN(x)) return null;
   if (m.higher) return x >= m.healthy ? 1 : x >= m.warn ? 0.5 : 0;
   return x <= m.healthy ? 1 : x <= m.warn ? 0.5 : 0;
@@ -660,22 +743,14 @@ const fmt = (m, x) => {
 };
 const mark = (g) => (g === null ? "" : g === 1 ? " ✅" : g === 0.5 ? " ⚠️" : " ❌");
 
-const cellsDir = join(dir, "cells");
-// A paired run (several plugins) lists each cell's versions side by side, in the plugins' order.
-const pluginOrder = (meta.plugins ?? []).map((p) => p.label);
-const names = [...meta.cells]
-  .sort((a, b) =>
-    a.base === b.base
-      ? pluginOrder.indexOf(a.plugin) - pluginOrder.indexOf(b.plugin) || (a.rep ?? 1) - (b.rep ?? 1)
-      : 0,
-  )
-  .map((c) => c.name)
-  .filter((n) => existsSync(join(cellsDir, n, "cell.json")));
-const results = Object.fromEntries(names.map((n) => [n, cellValues(join(cellsDir, n))]));
 /** Raw numbers the comparison shows for each cell: the ones a change to the store or the hooks moves. */
 const RAW = [
   "hook.preToolUse.p95",
   "hook.postToolBatch.p95",
+  "hook.preToolUse.p99",
+  "hook.postToolBatch.p99",
+  "hook.writeWait.max",
+  "hook.longWriteWaits",
   "hook.sessionStart.max",
   "cmd.status.p95",
   "ff.queued",
@@ -687,6 +762,7 @@ const RAW = [
   "res.idleCpu.maxPct",
   "res.cpuPerEdit",
   "res.daemonRss.max",
+  "res.treeRss.max",
   "res.storeProcess.rss",
   "store.longWrites",
   "store.longWrite.maxMs",
@@ -694,114 +770,176 @@ const RAW = [
   "cmd.impact.s",
   "res.impact.rss",
 ];
-
 const AREAS = ["Hooks", "Commands", "Verdicts", "Resources", "Store"];
-const scores = {};
-const areaScores = {};
-const gateFails = {};
-for (const n of names) {
-  const v = results[n].v;
-  gateFails[n] = METRICS.filter((m) => m.gate && v[m.id] !== null && v[m.id] > 0).map(
-    (m) => `${m.id} ${v[m.id]}`,
-  );
-  areaScores[n] = {};
-  for (const area of AREAS) {
-    const gs = METRICS.filter((m) => m.group === area)
-      .map((m) => grade(m, v[m.id]))
-      .filter((g) => g !== null);
-    areaScores[n][area] = gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null;
-  }
-  const present = AREAS.map((a) => areaScores[n][a]).filter((x) => x !== null);
-  scores[n] = present.length ? (100 * present.reduce((a, b) => a + b, 0)) / present.length : null;
-}
-const overall = names.length
-  ? names.reduce((a, n) => a + (scores[n] ?? 0), 0) / names.length
-  : null;
-const failed = names.filter((n) => gateFails[n].length > 0);
-/** Per area, the mean over the cells that have it: the run's partial scores. */
-const runAreas = Object.fromEntries(
-  AREAS.map((a) => {
-    const xs = names.map((n) => areaScores[n][a]).filter((x) => x !== null);
-    return [a, xs.length ? (100 * xs.reduce((x, y) => x + y, 0)) / xs.length : null];
-  }),
-);
 
-const lines = [];
-lines.push(`# Squeal performance scorecard`, "");
-lines.push(
-  `Squeal ${meta.squealVersion} · Node ${meta.node} · ${meta.cpuModel} · ${meta.vcpus} vCPU · ${meta.memGiB} GiB · SHA-256 ${Math.round(Math.max(...meta.sha256MiBPerS))} MiB/s · ${meta.startedAt}`,
-  "",
-);
-lines.push(
-  failed.length === 0
-    ? "**Correctness: PASS** (no wrong verdict, missed, false or misaddressed notice, hook over its 2 s timeout or failed session in any cell)"
-    : `**Correctness: FAILED** in ${failed.map((n) => `${n} (${gateFails[n].join(", ")})`).join("; ")}`,
-  "",
-  `**Overall score: ${overall?.toFixed(0)} / 100** (mean of the cell scores; a cell is the mean of its ${AREAS.length} areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)`,
-  "",
-);
-lines.push(
-  `| Area | ${AREAS.join(" | ")} |`,
-  `|---|${AREAS.map(() => "---:").join("|")}|`,
-  `| All cells | ${AREAS.map((a) => runAreas[a]?.toFixed(0) ?? "n/a").join(" | ")} |`,
-  "",
-);
-lines.push(
-  `| Cell | Files | Worktrees | Load | Aged rounds | Correct | Score | ${AREAS.join(" | ")} |`,
-  `|---|---:|---:|---:|---:|---|---:|${AREAS.map(() => "---:").join("|")}|`,
-);
-for (const n of names) {
-  const c = results[n].cell;
-  const area = (a) => (areaScores[n][a] === null ? "n/a" : (100 * areaScores[n][a]).toFixed(0));
-  lines.push(
-    `| ${n} | ${c.files} | ${c.worktrees} | ${c.load}% | ${c.ageRounds ?? 0}${c.churn ? " churn" : ""} | ${gateFails[n].length ? "❌" : "✅"} | ${scores[n]?.toFixed(0)} | ${AREAS.map(area).join(" | ")} |`,
+/** Writes scores.json into `dir`; returns the scorecard's Markdown and the scores. */
+export function summarize(dir) {
+  const run = scoreRun(dir);
+  const { meta, names, results, failed, gateFails, overall, runAreas, scores, areaScores } = run;
+  const values = Object.fromEntries(names.map((n) => [n, results[n].v]));
+  writeFileSync(
+    join(dir, "scores.json"),
+    `${JSON.stringify({ meta, correctness: failed.length === 0 ? "pass" : "failed", gateFails, overall, runAreas, scores, areaScores, values }, null, 2)}\n`,
   );
+  const lines = [...headerLines(run)];
+  if (run.pluginOrder.length > 1 || (meta.repeat ?? 1) > 1) lines.push(...comparison(run));
+  lines.push(...unhealthyLines(run), ...metricLines(run));
+  return { scorecard: lines.join("\n"), overall, scores, areaScores, gateFails, values };
 }
-const unhealthy = METRICS.filter((m) => !m.gate && m.healthy !== undefined)
-  .map((m) => ({
-    m,
-    cells: names
-      .map((n) => ({ n, x: results[n].v[m.id], g: grade(m, results[n].v[m.id]) }))
-      .filter((c) => c.g !== null && c.g < 1),
-  }))
-  .filter((u) => u.cells.length > 0);
-if (pluginOrder.length > 1 || (meta.repeat ?? 1) > 1) lines.push(...comparison());
-lines.push("", "## What is not healthy", "");
-if (unhealthy.length === 0) lines.push("Every scored metric is within its healthy limit.");
-for (const { m, cells } of unhealthy) {
-  const limit = `healthy ${m.higher ? "≥" : "≤"} ${m.healthy} ${m.unit}`.trim();
-  const list = cells.map((c) => `${c.n} ${fmt(m, c.x)}${mark(c.g)}`).join(", ");
-  lines.push(
-    `- **${m.group} · ${m.what}** (${limit}): ${cells.length} of ${names.length} cells: ${list}`,
-  );
-}
-lines.push("", "## Every metric");
-lines.push(
-  "",
-  `| Metric | Healthy | Warn | ${names.join(" | ")} |`,
-  `|---|---:|---:|${names.map(() => "---:").join("|")}|`,
-);
-let group = "";
-for (const m of METRICS) {
-  if (m.group !== group) {
-    group = m.group;
-    lines.push(`| **${group}** | | | ${names.map(() => "").join(" | ")} |`);
+
+/** Every cell's values, its gate failures and its scores per area. */
+function scoreRun(dir) {
+  const meta = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
+  const cellsDir = join(dir, "cells");
+  // A paired run (several plugins) lists each cell's versions side by side, in the plugins' order.
+  const pluginOrder = (meta.plugins ?? []).map((p) => p.label);
+  const names = [...meta.cells]
+    .sort((a, b) =>
+      a.base === b.base
+        ? pluginOrder.indexOf(a.plugin) - pluginOrder.indexOf(b.plugin) ||
+          (a.rep ?? 1) - (b.rep ?? 1)
+        : 0,
+    )
+    .map((c) => c.name)
+    .filter((n) => existsSync(join(cellsDir, n, "cell.json")));
+  const results = Object.fromEntries(names.map((n) => [n, cellValues(join(cellsDir, n))]));
+  const scores = {};
+  const areaScores = {};
+  const gateFails = {};
+  for (const n of names) {
+    const v = results[n].v;
+    gateFails[n] = METRICS.filter((m) => m.gate && v[m.id] !== null && v[m.id] > 0).map(
+      (m) => `${m.id} ${v[m.id]}`,
+    );
+    areaScores[n] = Object.fromEntries(AREAS.map((area) => [area, areaScore(area, v)]));
+    const present = AREAS.map((a) => areaScores[n][a]).filter((x) => x !== null);
+    scores[n] = present.length ? (100 * present.reduce((a, b) => a + b, 0)) / present.length : null;
   }
-  const lim = (x) => (x === undefined ? "report" : `${m.higher ? "≥" : "≤"} ${x}`);
-  const cell = (n) => {
-    const x = results[n].v[m.id];
-    if (m.gate) return x === null ? "n/a" : `${x}${x > 0 ? " ❌" : " ✅"}`;
-    return fmt(m, x) + mark(grade(m, x));
+  const overall = names.length
+    ? names.reduce((a, n) => a + (scores[n] ?? 0), 0) / names.length
+    : null;
+  const failed = names.filter((n) => gateFails[n].length > 0);
+  /** Per area, the mean over the cells that have it: the run's partial scores. */
+  const runAreas = Object.fromEntries(
+    AREAS.map((a) => {
+      const xs = names.map((n) => areaScores[n][a]).filter((x) => x !== null);
+      return [a, xs.length ? (100 * xs.reduce((x, y) => x + y, 0)) / xs.length : null];
+    }),
+  );
+  return {
+    meta,
+    pluginOrder,
+    names,
+    results,
+    scores,
+    areaScores,
+    gateFails,
+    overall,
+    failed,
+    runAreas,
   };
-  const healthy = m.gate ? "0 (gate)" : lim(m.healthy);
-  const warn = m.gate || m.healthy === undefined ? "" : lim(m.warn);
-  lines.push(`| ${m.what} (\`${m.id}\`) | ${healthy} | ${warn} | ${names.map(cell).join(" | ")} |`);
 }
-console.log(lines.join("\n"));
-writeFileSync(
-  join(dir, "scores.json"),
-  `${JSON.stringify({ meta, correctness: failed.length === 0 ? "pass" : "failed", gateFails, overall, runAreas, scores, areaScores, values: Object.fromEntries(names.map((n) => [n, results[n].v])) }, null, 2)}\n`,
-);
+
+function areaScore(area, v) {
+  const gs = METRICS.filter((m) => m.group === area)
+    .map((m) => grade(m, v[m.id]))
+    .filter((g) => g !== null);
+  return gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null;
+}
+
+function headerLines({
+  meta,
+  names,
+  results,
+  scores,
+  areaScores,
+  gateFails,
+  overall,
+  failed,
+  runAreas,
+}) {
+  const lines = [];
+  lines.push(`# Squeal performance scorecard`, "");
+  lines.push(
+    `Squeal ${meta.squealVersion} · Node ${meta.node} · ${meta.cpuModel} · ${meta.vcpus} vCPU · ${meta.memGiB} GiB · SHA-256 ${Math.round(Math.max(...meta.sha256MiBPerS))} MiB/s · ${meta.startedAt}`,
+    "",
+  );
+  lines.push(
+    failed.length === 0
+      ? "**Correctness: PASS** (no wrong verdict, missed, false or misaddressed notice, hook over its 2 s timeout or failed session in any cell)"
+      : `**Correctness: FAILED** in ${failed.map((n) => `${n} (${gateFails[n].join(", ")})`).join("; ")}`,
+    "",
+    `**Overall score: ${overall?.toFixed(0)} / 100** (mean of the cell scores; a cell is the mean of its ${AREAS.length} areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)`,
+    "",
+  );
+  lines.push(
+    `| Area | ${AREAS.join(" | ")} |`,
+    `|---|${AREAS.map(() => "---:").join("|")}|`,
+    `| All cells | ${AREAS.map((a) => runAreas[a]?.toFixed(0) ?? "n/a").join(" | ")} |`,
+    "",
+  );
+  lines.push(
+    `| Cell | Files | Worktrees | Load | Aged rounds | Correct | Score | ${AREAS.join(" | ")} |`,
+    `|---|---:|---:|---:|---:|---|---:|${AREAS.map(() => "---:").join("|")}|`,
+  );
+  for (const n of names) {
+    const c = results[n].cell;
+    const area = (a) => (areaScores[n][a] === null ? "n/a" : (100 * areaScores[n][a]).toFixed(0));
+    lines.push(
+      `| ${n} | ${c.files} | ${c.worktrees} | ${c.load}% | ${c.ageRounds ?? 0}${c.churn ? " churn" : ""} | ${gateFails[n].length ? "❌" : "✅"} | ${scores[n]?.toFixed(0)} | ${AREAS.map(area).join(" | ")} |`,
+    );
+  }
+  return lines;
+}
+
+function unhealthyLines({ names, results }) {
+  const unhealthy = METRICS.filter((m) => !m.gate && m.healthy !== undefined)
+    .map((m) => ({
+      m,
+      cells: names
+        .map((n) => ({ n, x: results[n].v[m.id], g: grade(m, results[n].v[m.id]) }))
+        .filter((c) => c.g !== null && c.g < 1),
+    }))
+    .filter((u) => u.cells.length > 0);
+  const lines = ["", "## What is not healthy", ""];
+  if (unhealthy.length === 0) lines.push("Every scored metric is within its healthy limit.");
+  for (const { m, cells } of unhealthy) {
+    const limit = `healthy ${m.higher ? "≥" : "≤"} ${m.healthy} ${m.unit}`.trim();
+    const list = cells.map((c) => `${c.n} ${fmt(m, c.x)}${mark(c.g)}`).join(", ");
+    lines.push(
+      `- **${m.group} · ${m.what}** (${limit}): ${cells.length} of ${names.length} cells: ${list}`,
+    );
+  }
+  return lines;
+}
+
+function metricLines({ names, results }) {
+  const lines = ["", "## Every metric"];
+  lines.push(
+    "",
+    `| Metric | Healthy | Warn | ${names.join(" | ")} |`,
+    `|---|---:|---:|${names.map(() => "---:").join("|")}|`,
+  );
+  let group = "";
+  for (const m of METRICS) {
+    if (m.group !== group) {
+      group = m.group;
+      lines.push(`| **${group}** | | | ${names.map(() => "").join(" | ")} |`);
+    }
+    const lim = (x) => (x === undefined ? "report" : `${m.higher ? "≥" : "≤"} ${x}`);
+    const cell = (n) => {
+      const x = results[n].v[m.id];
+      if (m.gate) return x === null ? "n/a" : `${x}${x > 0 ? " ❌" : " ✅"}`;
+      return fmt(m, x) + mark(grade(m, x));
+    };
+    const healthy = m.gate ? "0 (gate)" : lim(m.healthy);
+    const warn = m.gate || m.healthy === undefined ? "" : lim(m.warn);
+    lines.push(
+      `| ${m.what} (\`${m.id}\`) | ${healthy} | ${warn} | ${names.map(cell).join(" | ")} |`,
+    );
+  }
+  return lines;
+}
 
 /**
  * Paired or repeated runs: per cell and version, the mean score (with its
@@ -809,7 +947,8 @@ writeFileSync(
  * the mean of the raw numbers in `RAW`, so a change too small to move a score
  * band still shows.
  */
-function comparison() {
+function comparison(run) {
+  const { meta, pluginOrder } = run;
   const labels = pluginOrder.length ? pluginOrder : [undefined];
   const bases = [...new Set(meta.cells.map((c) => c.base ?? c.name))];
   const title =
@@ -827,17 +966,17 @@ function comparison() {
   );
   raw.push(`|---|---|${labels.map(() => "---:").join("|")}${labels.length > 1 ? "|---:" : ""}|`);
   for (const base of bases) {
-    if (runsOf(base, labels[0]).length === 0) continue;
+    if (runsOf(run, base, labels[0]).length === 0) continue;
     for (const label of labels) {
-      const row = scoreRow(base, label, labels[0]);
+      const row = scoreRow(run, base, label, labels[0]);
       if (row) out.push(row);
     }
-    raw.push(...rawRows(base, labels));
+    raw.push(...rawRows(run, base, labels));
   }
   return [...out, ...raw];
 }
 
-function runsOf(base, label) {
+function runsOf({ meta, results }, base, label) {
   return meta.cells
     .filter((c) => (c.base ?? c.name) === base && c.plugin === label && results[c.name])
     .map((c) => c.name);
@@ -852,10 +991,11 @@ function signed(d) {
   return `${d >= 0 ? "+" : ""}${d.toFixed(0)}`;
 }
 
-function scoreRow(base, label, first) {
-  const ns = runsOf(base, label);
+function scoreRow(run, base, label, first) {
+  const { scores, areaScores, gateFails } = run;
+  const ns = runsOf(run, base, label);
   if (ns.length === 0) return null;
-  const firstRuns = runsOf(base, first);
+  const firstRuns = runsOf(run, base, first);
   const sc = ns.map((n) => scores[n]).filter((x) => x !== null);
   const m = meanOf(sc);
   const firstScore = meanOf(firstRuns.map((n) => scores[n]));
@@ -872,11 +1012,11 @@ function scoreRow(base, label, first) {
   return `| ${base} | ${label ?? ""} | ${ns.length} | ${correct} | ${m?.toFixed(0) ?? "n/a"}${range} | ${d} | ${areas.join(" | ")} |`;
 }
 
-function rawRows(base, labels) {
+function rawRows(run, base, labels) {
   const rows = [];
   for (const id of RAW) {
     const m = METRICS.find((x) => x.id === id);
-    const vals = labels.map((l) => meanOf(runsOf(base, l).map((n) => results[n].v[id])));
+    const vals = labels.map((l) => meanOf(runsOf(run, base, l).map((n) => run.results[n].v[id])));
     if (vals.every((x) => x === null)) continue;
     let pct = "";
     if (labels.length > 1)
@@ -887,4 +1027,8 @@ function rawRows(base, labels) {
     rows.push(`| ${base} | ${m.what} | ${vals.map((x) => fmt(m, x)).join(" | ")}${pct} |`);
   }
   return rows;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  console.log(summarize(process.argv[2]).scorecard);
 }

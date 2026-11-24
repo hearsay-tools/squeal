@@ -1,20 +1,35 @@
 #!/usr/bin/env node
 // Writes a deterministic synthetic TypeScript + Vitest project for the benchmark.
-// Usage: node gen-project.mjs <dir> <testFiles>
+// Usage: node gen-project.mjs <dir> <testFiles> [--cases 6] [--functions 0]
 // Shape: modules in groups of 25. Each group is a binary tree: module k imports
 // its parent, the group root imports only src/core.ts. An edit to a leaf touches
 // one test file; an edit to a group root touches the whole group; an edit to
 // src/core.ts touches every test file. Each test file runs 6 cases of about 15 ms
 // of CPU each, so one file costs about 100 ms plus Vitest's per-file overhead.
+// Row 025-08, a real repository's scale: --cases sets the cases per test file, and
+// --functions N adds src/h<i>.ts with N small exported functions, which the test
+// file imports and its first case calls. The session never edits src/h<i>.ts.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseArgs } from "node:util";
 
-const [dir, countArg] = process.argv.slice(2);
+const {
+  values: opt,
+  positionals: [dir, countArg],
+} = parseArgs({
+  allowPositionals: true,
+  options: {
+    cases: { type: "string", default: "6" },
+    functions: { type: "string", default: "0" },
+  },
+});
 if (!dir || !countArg) {
-  console.error("usage: gen-project.mjs <dir> <testFiles>");
+  console.error("usage: gen-project.mjs <dir> <testFiles> [--cases 6] [--functions 0]");
   process.exit(2);
 }
 const count = Number(countArg);
+const caseCount = Number(opt.cases);
+const functions = Number(opt.functions);
 export const GROUP = 25;
 const parentOf = (i) => {
   const local = i % GROUP;
@@ -63,15 +78,33 @@ for (let i = 0; i < count; i++) {
     join(dir, `src/m${i}.ts`),
     `${imports.join("\n")}\n\nexport const V${i} = 0;\n\nexport function f${i}(x: number): number {\n  return ${base} + core(${i}) + ${i};\n}\n`,
   );
-  const cases = [0, 1, 2, 3, 4, 5]
+  // h<i>_k(x) = x + k: N one-line functions, as a real module holds many.
+  if (functions > 0) {
+    const fns = Array.from(
+      { length: functions },
+      (_, k) => `export function h${i}_${k}(x: number): number {\n  return x + ${k};\n}\n`,
+    );
+    writeFileSync(join(dir, `src/h${i}.ts`), fns.join("\n"));
+  }
+  const helper = functions > 0;
+  const cases = Array.from({ length: caseCount }, (_, x) => x)
     .map(
       (x) =>
-        `  it("case ${x}", () => {\n    spin(15);\n    expect(f${i}(${x})).toBe(${expected(i, x)});\n  });`,
+        `  it("case ${x}", () => {\n    spin(15);\n    expect(f${i}(${x})).toBe(${expected(i, x)});\n${helper && x === 0 ? `    expect(h${i}_0(${x})).toBe(${x});\n` : ""}  });`,
     )
     .join("\n");
+  const helperImport = helper ? `import { h${i}_0 } from "../src/h${i}.js";\n` : "";
   writeFileSync(
     join(dir, `test/m${i}.test.ts`),
-    `import { describe, expect, it } from "vitest";\nimport { f${i} } from "../src/m${i}.js";\n\nfunction spin(ms: number): number {\n  const end = performance.now() + ms;\n  let n = 0;\n  while (performance.now() < end) n++;\n  return n;\n}\n\ndescribe("m${i}", () => {\n${cases}\n});\n`,
+    `import { describe, expect, it } from "vitest";\nimport { f${i} } from "../src/m${i}.js";\n${helperImport}\nfunction spin(ms: number): number {\n  const end = performance.now() + ms;\n  let n = 0;\n  while (performance.now() < end) n++;\n  return n;\n}\n\ndescribe("m${i}", () => {\n${cases}\n});\n`,
   );
 }
-console.log(JSON.stringify({ dir, testFiles: count, groups: Math.ceil(count / GROUP) }));
+console.log(
+  JSON.stringify({
+    dir,
+    testFiles: count,
+    groups: Math.ceil(count / GROUP),
+    checks: count * caseCount,
+    functions: count * (1 + functions) + 1,
+  }),
+);

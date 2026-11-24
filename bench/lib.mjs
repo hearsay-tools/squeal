@@ -222,3 +222,70 @@ export function timedPeak(cmd, args, { env, cwd, timeoutMs = 600_000 } = {}) {
 export function longWriteHolds(text) {
   return [...text.matchAll(/write lock held (\d+) ms/g)].map((m) => Number(m[1]));
 }
+
+/**
+ * Whether a daemon's `status --json` shows its start-up baseline done: test files listed,
+ * nothing pending in the checks, the test files without checks or the code counts.
+ * A field an older Squeal version does not print does not hold the wait (row 025-08).
+ */
+export function baselineSettled(status) {
+  if (!status || typeof status !== "object") return false;
+  if (status.testFilesListed === false) return false;
+  if ((status.counts?.pending ?? 0) !== 0) return false;
+  if ((status.testFilesWithoutChecks?.pending ?? 0) !== 0) return false;
+  if (status.code && (status.code.pending ?? 0) !== 0) return false;
+  return true;
+}
+
+/**
+ * Polls `read(root)` (a parsed `status --json`, or null) for each root until `baselineSettled`,
+ * or until `timeoutMs` from the first poll. Roots wait one after the other; the deadline is shared.
+ * Returns one { ms, settled, polls } per root, in order.
+ */
+export async function waitForBaselines(
+  roots,
+  read,
+  { timeoutMs = 300_000, pollMs = 1000, now = () => performance.now(), wait = sleep } = {},
+) {
+  const t0 = now();
+  const out = [];
+  for (const root of roots) {
+    const r0 = now();
+    let polls = 0;
+    let settled = false;
+    for (;;) {
+      polls++;
+      settled = baselineSettled(await read(root));
+      if (settled || now() - t0 >= timeoutMs) break;
+      await wait(pollMs);
+    }
+    out.push({ ms: now() - r0, settled, polls });
+  }
+  return out;
+}
+
+/**
+ * Hook write waits from the daemon logs (spec 025 D9): each `long write wait: hook write waited
+ * N ms` line, and the periodic `hook writes: N taken, queue wait p95 P ms max M ms` summaries.
+ * `seen` is false when no such line exists, as with a Squeal version before D9.
+ */
+export function hookWriteWaitLog(text) {
+  const longWaitsMs = [...text.matchAll(/long write wait: hook write waited (\d+) ms/g)].map((m) =>
+    Number(m[1]),
+  );
+  const stats = { seen: longWaitsMs.length > 0, taken: 0, p95MaxMs: null, maxMs: null };
+  const re = /hook writes: (\d+) taken, queue wait p95 (\d+) ms max (\d+) ms/g;
+  for (const m of text.matchAll(re)) {
+    stats.seen = true;
+    stats.taken += Number(m[1]);
+    stats.p95MaxMs = Math.max(stats.p95MaxMs ?? 0, Number(m[2]));
+    stats.maxMs = Math.max(stats.maxMs ?? 0, Number(m[3]));
+  }
+  if (longWaitsMs.length > 0) stats.maxMs = Math.max(stats.maxMs ?? 0, ...longWaitsMs);
+  return { ...stats, longWaitsMs };
+}
+
+/** Store writes that held the lock over 250 ms; not D9's `long write wait:` lines, which are no lock holds. */
+export function longWriteCount(text) {
+  return (text.match(/long write(?! wait)/gi) ?? []).length;
+}

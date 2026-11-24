@@ -11,7 +11,8 @@
 //   2. start the ambient load, wait 5 s
 //   3. plain `vitest run` in the main worktree (1-worktree cells only): the no-Squeal reference
 //   4. `squeal start` in main, then `squeal run --all --wait`: cold full run on an empty store
-//   5. `squeal start` in each other worktree: start-up on a shared store (lookup-only)
+//   5. `squeal start` in each other worktree: start-up on a shared store (lookup-only), then
+//      wait until each of them has finished its start-up baseline (row 025-08)
 //   6. 60 s with no edits: idle CPU of the daemons
 //   7. one scripted session per worktree, all at once, starts 3 s apart
 //   8. store and daemon numbers, then `squeal stop` everywhere and the load stopped
@@ -33,6 +34,8 @@ import {
   background,
   cpuJiffies,
   daemonPids,
+  hookWriteWaitLog,
+  longWriteCount,
   longWriteHolds,
   procStat,
   quantile,
@@ -44,6 +47,7 @@ import {
   timed,
   timedPeak,
   treeRss,
+  waitForBaselines,
 } from "./lib.mjs";
 
 const { values: o } = parseArgs({
@@ -234,6 +238,22 @@ for (const root of roots.slice(1)) {
   } catch {}
   cell.phases.startOthers.push({ ms: r.ms, code: r.code, testFileCounts: counts });
 }
+// Row 025-08: the other worktrees list, key and count their files after `start` returns. Before
+// this wait, that work ran inside the idle minute and made wt-3's idle CPU read 3.5% (wt0 0.2%).
+// Each entry gets `settle`: { ms, settled, polls }; settled false means the shared 5 min bound hit.
+if (roots.length > 1) {
+  log("wait for the other worktrees' baselines");
+  const readStatus = async (root) => {
+    const st = await squeal(root, ["status", "--json"], 60_000);
+    try {
+      return JSON.parse(st.stdout);
+    } catch {
+      return null;
+    }
+  };
+  const settles = await waitForBaselines(roots.slice(1), readStatus, { timeoutMs: 300_000 });
+  for (const [i, settle] of settles.entries()) cell.phases.startOthers[i].settle = settle;
+}
 
 // 6. Idle.
 log("idle");
@@ -357,7 +377,7 @@ mkdirSync(join(out, "logs"), { recursive: true });
 if (existsSync(logDir)) {
   for (const f of readdirSync(logDir)) {
     const text = readFileSync(join(logDir, f), "utf8");
-    longWrites += (text.match(/long write/gi) ?? []).length;
+    longWrites += longWriteCount(text);
     holds.push(...longWriteHolds(text));
     lockFailures += (text.match(/SQLITE_BUSY|database is locked/gi) ?? []).length;
     if (f.startsWith("store-")) storeLog += text;
@@ -376,6 +396,8 @@ cell.storeProcess = {
   ...storeProcessLog(storeLog),
   relay: relayLog(relay),
 };
+// Spec 025 D9: how long hook writes waited for the daemon's main thread; seen false before D9.
+cell.hookWriteWait = hookWriteWaitLog(relay);
 cell.daemonRss = {
   maxDaemonBytes: Math.max(0, ...samples.map((s) => s.maxDaemonRss)),
   maxTreeBytes: Math.max(0, ...samples.map((s) => s.treeRss)),

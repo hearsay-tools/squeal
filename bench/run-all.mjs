@@ -9,7 +9,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cpus, freemem, totalmem } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { timed } from "./lib.mjs";
 
@@ -54,23 +55,21 @@ export const CELLS = [
   { name: "ff-ci", files: 500, worktrees: 1, load: 0, ff: "ci" },
   { name: "ff-load50", files: 500, worktrees: 1, load: 50, ff: "cold" },
   { name: "ff-rebase", files: 500, worktrees: 1, load: 0, ff: "cold", ffMode: "rebase" },
+  // Row 025-08: a real repository's scale for `status` reads: 2,000 test files of 10 cases
+  // (20,000 checks) and 30 helper functions per module (about 62,000 functions). Opt-in: not in
+  // @all, only by name or @scale (OPT_IN below); its full run alone is about 300 CPU-seconds.
+  { name: "scale-real", files: 2000, worktrees: 1, load: 0, cases: 10, functions: 30 },
 ];
+/** Cells a plain run and `@all` leave out; name them or their group. */
+export const OPT_IN = new Set(["scale-real"]);
 
-const { values: o } = parseArgs({
-  options: {
-    // Repeat --plugin to compare versions on one machine: every cell runs once per
-    // plugin, in alternating order (A B, then B A), so they share the CPU and its drift.
-    plugin: { type: "string", multiple: true },
-    out: { type: "string" },
-    cells: { type: "string" },
-    steps: { type: "string", default: "24" },
-    // Run each cell (and each version of it) this many times, to see run-to-run noise.
-    repeat: { type: "string", default: "1" },
-  },
-});
-const HERE = import.meta.dirname;
-const out = o.out;
-mkdirSync(out, { recursive: true });
+/** The template a cell runs on: one per project shape (files, cases per file, helper functions). */
+export function templateKey(c) {
+  const cases = c.cases ?? 6;
+  const functions = c.functions ?? 0;
+  return cases === 6 && functions === 0 ? `p${c.files}` : `p${c.files}-c${cases}-f${functions}`;
+}
+
 /**
  * Named groups for `--cells`: `@<group>` stands for its cells, and groups and
  * cells mix (`--cells @worktrees,churn`). An axis group varies one factor from
@@ -90,11 +89,13 @@ export const GROUPS = {
   hooks: ["ref", "wt-3", "stress"],
   contention: ["wt-3", "wt-6", "stress", "store-7g-wt3"],
   scheduler: ["ref", "wt-3", "load-50", "size-l"],
+  // Real repository scale (opt-in): size-l's file count, 10 cases and 30 functions per file.
+  scale: ["size-l", "scale-real"],
   all: [],
 };
-GROUPS.all = CELLS.map((c) => c.name);
-function selectCells(spec) {
-  if (!spec) return CELLS;
+GROUPS.all = CELLS.filter((c) => !OPT_IN.has(c.name)).map((c) => c.name);
+export function selectCells(spec) {
+  if (!spec) return CELLS.filter((c) => !OPT_IN.has(c.name));
   const names = new Set();
   for (const part of spec.split(",")) {
     const group = part.startsWith("@") ? GROUPS[part.slice(1)] : null;
@@ -107,132 +108,163 @@ function selectCells(spec) {
   }
   return CELLS.filter((c) => names.has(c.name));
 }
-const chosen = selectCells(o.cells);
-const log = (m) => console.log(`[${new Date().toISOString()}] ${m}`);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
 
-// Machine facts and a single-thread calibration: SHA-256 over 1 MiB for 3 s.
-function calibrate() {
-  const buf = Buffer.alloc(1 << 20, 7);
-  const end = performance.now() + 3000;
-  let n = 0;
-  while (performance.now() < end) {
-    createHash("sha256").update(buf).digest();
-    n++;
-  }
-  return n / 3;
-}
-const plugins = o.plugin.map((dir) => {
-  const version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
-  return { dir, version, label: version };
-});
-for (const [i, p] of plugins.entries()) {
-  if (plugins.some((q, j) => j !== i && q.version === p.version)) p.label = `${p.version}-${i + 1}`;
-}
-const paired = plugins.length > 1;
-// One run per cell and plugin. A paired run's name is `<cell>@<label>`.
-const repeat = Number(o.repeat);
-// Names: `<cell>`, `<cell>@<version>` when paired, `-r<n>` added when repeated. Never `#`:
-// the name is a folder in the project's path, and Vite cuts a path at `#` (2026-11-20: every test failed to load).
-const cells = chosen.flatMap((c, i) =>
-  Array.from({ length: repeat }, (_, k) => {
-    const order = (i + k) % 2 === 0 ? plugins : [...plugins].reverse();
-    return order.map((p) => ({
-      ...c,
-      name: `${c.name}${paired ? `@${p.label}` : ""}${repeat > 1 ? `-r${k + 1}` : ""}`,
-      base: c.name,
-      plugin: p.label,
-      rep: k + 1,
-    }));
-  }).flat(),
-);
-const meta = {
-  startedAt: new Date().toISOString(),
-  squealVersion: plugins.map((p) => p.version).join(" vs "),
-  plugins: plugins.map(({ version, label }) => ({ version, label })),
-  repeat,
-  node: process.version,
-  cpuModel: cpus()[0]?.model,
-  vcpus: cpus().length,
-  memGiB: +(totalmem() / 2 ** 30).toFixed(1),
-  freeMemGiB: +(freemem() / 2 ** 30).toFixed(1),
-  sha256MiBPerS: [calibrate(), calibrate(), calibrate()],
-  loadavgAtStart: readFileSync("/proc/loadavg", "utf8").trim(),
-  cells,
-};
-log(
-  `machine ${meta.cpuModel} x${meta.vcpus}, sha256 ${meta.sha256MiBPerS.map((x) => x.toFixed(0)).join("/")} MiB/s`,
-);
-writeFileSync(join(out, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
+/** The whole run: machine facts, templates, every chosen cell, the scorecard. */
+async function main() {
+  const { values: o } = parseArgs({
+    options: {
+      // Repeat --plugin to compare versions on one machine: every cell runs once per
+      // plugin, in alternating order (A B, then B A), so they share the CPU and its drift.
+      plugin: { type: "string", multiple: true },
+      out: { type: "string" },
+      cells: { type: "string" },
+      steps: { type: "string", default: "24" },
+      // Run each cell (and each version of it) this many times, to see run-to-run noise.
+      repeat: { type: "string", default: "1" },
+    },
+  });
+  const HERE = import.meta.dirname;
+  const out = o.out;
+  mkdirSync(out, { recursive: true });
+  const chosen = selectCells(o.cells);
+  const log = (m) => console.log(`[${new Date().toISOString()}] ${m}`);
 
-// Templates: one generated, committed, installed project per size.
-const templates = new Map();
-for (const files of [...new Set(cells.map((c) => c.files))]) {
-  const dir = join(`${out}-templates`, `p${files}`);
-  if (!existsSync(join(dir, "node_modules"))) {
-    log(`template ${files} files`);
-    await timed(process.execPath, [join(HERE, "gen-project.mjs"), dir, String(files)]);
-    const gitEnv = {
-      ...process.env,
-      GIT_AUTHOR_NAME: "bench",
-      GIT_AUTHOR_EMAIL: "bench@example.invalid",
-      GIT_COMMITTER_NAME: "bench",
-      GIT_COMMITTER_EMAIL: "bench@example.invalid",
-    };
-    const inst = await timed("pnpm", ["install", "--silent"], { cwd: dir, timeoutMs: 600_000 });
-    if (inst.code !== 0) throw new Error(`pnpm install failed: ${inst.stderr}`);
-    for (const args of [
-      ["init", "-q", "-b", "main"],
-      ["add", "-A"],
-      ["commit", "-qm", "bench project"],
-    ]) {
-      await timed("git", args, { cwd: dir, env: gitEnv });
+  // Machine facts and a single-thread calibration: SHA-256 over 1 MiB for 3 s.
+  function calibrate() {
+    const buf = Buffer.alloc(1 << 20, 7);
+    const end = performance.now() + 3000;
+    let n = 0;
+    while (performance.now() < end) {
+      createHash("sha256").update(buf).digest();
+      n++;
     }
+    return n / 3;
   }
-  templates.set(files, dir);
-}
-
-for (const c of cells) {
-  log(`cell ${c.name}: ${c.files} files, ${c.worktrees} worktrees, ${c.load}% load`);
-  const r = await timed(
-    process.execPath,
-    [
-      join(HERE, "run-cell.mjs"),
-      "--name",
-      c.name,
-      "--template",
-      templates.get(c.files),
-      "--files",
-      String(c.files),
-      "--worktrees",
-      String(c.worktrees),
-      "--load",
-      String(c.load),
-      "--plugin",
-      plugins.find((p) => p.label === c.plugin).dir,
-      "--out",
-      join(out, "cells", c.name),
-      "--steps",
-      o.steps,
-      "--age-rounds",
-      String(c.ageRounds ?? 0),
-      "--age-span-days",
-      String(c.spanDays ?? 7),
-      "--age-lists",
-      c.lists ?? "7d",
-      "--ff",
-      c.ff ?? "none",
-      "--ff-mode",
-      c.ffMode ?? "merge",
-      ...(c.churn ? ["--churn"] : []),
-    ],
-    { timeoutMs: 7_200_000 },
+  const plugins = o.plugin.map((dir) => {
+    const version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+    return { dir, version, label: version };
+  });
+  for (const [i, p] of plugins.entries()) {
+    if (plugins.some((q, j) => j !== i && q.version === p.version))
+      p.label = `${p.version}-${i + 1}`;
+  }
+  const paired = plugins.length > 1;
+  // One run per cell and plugin. A paired run's name is `<cell>@<label>`.
+  const repeat = Number(o.repeat);
+  // Names: `<cell>`, `<cell>@<version>` when paired, `-r<n>` added when repeated. Never `#`:
+  // the name is a folder in the project's path, and Vite cuts a path at `#` (2026-11-20: every test failed to load).
+  const cells = chosen.flatMap((c, i) =>
+    Array.from({ length: repeat }, (_, k) => {
+      const order = (i + k) % 2 === 0 ? plugins : [...plugins].reverse();
+      return order.map((p) => ({
+        ...c,
+        name: `${c.name}${paired ? `@${p.label}` : ""}${repeat > 1 ? `-r${k + 1}` : ""}`,
+        base: c.name,
+        plugin: p.label,
+        rep: k + 1,
+      }));
+    }).flat(),
   );
-  writeFileSync(join(out, `cell-${c.name}.log`), r.stdout + r.stderr);
-  log(`cell ${c.name} exit ${r.code} in ${(r.ms / 60000).toFixed(1)} min`);
-}
+  const meta = {
+    startedAt: new Date().toISOString(),
+    squealVersion: plugins.map((p) => p.version).join(" vs "),
+    plugins: plugins.map(({ version, label }) => ({ version, label })),
+    repeat,
+    node: process.version,
+    cpuModel: cpus()[0]?.model,
+    vcpus: cpus().length,
+    memGiB: +(totalmem() / 2 ** 30).toFixed(1),
+    freeMemGiB: +(freemem() / 2 ** 30).toFixed(1),
+    sha256MiBPerS: [calibrate(), calibrate(), calibrate()],
+    loadavgAtStart: readFileSync("/proc/loadavg", "utf8").trim(),
+    cells,
+  };
+  log(
+    `machine ${meta.cpuModel} x${meta.vcpus}, sha256 ${meta.sha256MiBPerS.map((x) => x.toFixed(0)).join("/")} MiB/s`,
+  );
+  writeFileSync(join(out, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
 
-meta.endedAt = new Date().toISOString();
-writeFileSync(join(out, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
-const s = await timed(process.execPath, [join(HERE, "summarize.mjs"), out]);
-writeFileSync(join(out, "scorecard.md"), s.stdout);
-console.log(s.stdout + s.stderr);
+  // Templates: one generated, committed, installed project per shape (templateKey).
+  const templates = new Map();
+  for (const c of cells) {
+    const key = templateKey(c);
+    if (templates.has(key)) continue;
+    const dir = join(`${out}-templates`, key);
+    if (!existsSync(join(dir, "node_modules"))) {
+      log(`template ${key}`);
+      await timed(process.execPath, [
+        join(HERE, "gen-project.mjs"),
+        dir,
+        String(c.files),
+        "--cases",
+        String(c.cases ?? 6),
+        "--functions",
+        String(c.functions ?? 0),
+      ]);
+      const gitEnv = {
+        ...process.env,
+        GIT_AUTHOR_NAME: "bench",
+        GIT_AUTHOR_EMAIL: "bench@example.invalid",
+        GIT_COMMITTER_NAME: "bench",
+        GIT_COMMITTER_EMAIL: "bench@example.invalid",
+      };
+      const inst = await timed("pnpm", ["install", "--silent"], { cwd: dir, timeoutMs: 600_000 });
+      if (inst.code !== 0) throw new Error(`pnpm install failed: ${inst.stderr}`);
+      for (const args of [
+        ["init", "-q", "-b", "main"],
+        ["add", "-A"],
+        ["commit", "-qm", "bench project"],
+      ]) {
+        await timed("git", args, { cwd: dir, env: gitEnv });
+      }
+    }
+    templates.set(key, dir);
+  }
+
+  for (const c of cells) {
+    log(`cell ${c.name}: ${c.files} files, ${c.worktrees} worktrees, ${c.load}% load`);
+    const r = await timed(
+      process.execPath,
+      [
+        join(HERE, "run-cell.mjs"),
+        "--name",
+        c.name,
+        "--template",
+        templates.get(templateKey(c)),
+        "--files",
+        String(c.files),
+        "--worktrees",
+        String(c.worktrees),
+        "--load",
+        String(c.load),
+        "--plugin",
+        plugins.find((p) => p.label === c.plugin).dir,
+        "--out",
+        join(out, "cells", c.name),
+        "--steps",
+        o.steps,
+        "--age-rounds",
+        String(c.ageRounds ?? 0),
+        "--age-span-days",
+        String(c.spanDays ?? 7),
+        "--age-lists",
+        c.lists ?? "7d",
+        "--ff",
+        c.ff ?? "none",
+        "--ff-mode",
+        c.ffMode ?? "merge",
+        ...(c.churn ? ["--churn"] : []),
+      ],
+      { timeoutMs: 7_200_000 },
+    );
+    writeFileSync(join(out, `cell-${c.name}.log`), r.stdout + r.stderr);
+    log(`cell ${c.name} exit ${r.code} in ${(r.ms / 60000).toFixed(1)} min`);
+  }
+
+  meta.endedAt = new Date().toISOString();
+  writeFileSync(join(out, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
+  const s = await timed(process.execPath, [join(HERE, "summarize.mjs"), out]);
+  writeFileSync(join(out, "scorecard.md"), s.stdout);
+  console.log(s.stdout + s.stderr);
+}
