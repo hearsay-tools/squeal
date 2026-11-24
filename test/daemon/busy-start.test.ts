@@ -23,16 +23,14 @@ describe("the baseline's last commit on a busy store (spec 021 D2)", SLOW, () =>
     const repo = createFixtureRepo();
     onTestFinished(repo.cleanup);
     const holder = threadLockHolder(storePaths(repo.commonDir).database, HOLD_MS);
-    const commit = Ledger.prototype.commit;
-    const spy = vi.spyOn(Ledger.prototype, "commit").mockImplementation(function (
+    const commit = Ledger.prototype.commitInSlices;
+    const spy = vi.spyOn(Ledger.prototype, "commitInSlices").mockImplementation(function (
       this: Ledger,
-      ...args: Parameters<Ledger["commit"]>
+      ...args: Parameters<Ledger["commitInSlices"]>
     ) {
-      const stack = fullStack();
-      // The baseline's last commit: not the first lookup's (`commitFirst`, row 011-227).
-      if (!holder.taken && stack.includes("at baseline") && !stack.includes("commitFirst")) {
-        holder.take();
-      }
+      // The baseline's last commit (`commitLast`, in slices since row 025-10): not the
+      // first lookup's (`commitFirst`, row 011-227).
+      if (!holder.taken && fullStack().includes("at commitLast")) holder.take();
       return commit.apply(this, args);
     });
     onTestFinished(() => spy.mockRestore());
