@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { slotFiles } from "../../src/core/slow/slot-files.js";
 import { acquireSlowSlot, type SlowSlot } from "../../src/core/slow/slot.js";
+import { slotFiles } from "../../src/core/slow/slot-files.js";
 import { slotNow } from "../../src/core/state/slot-now.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import type { SlotWait } from "../../src/core/types/status.js";
@@ -34,7 +34,8 @@ function slot(second: "malformed" | "free"): void {
   const owner = { pid: process.pid, worktreeId: "other-worktree" as WorktreeId };
   held = acquireSlowSlot({ dir, owner, permits: 2, group: GROUP });
   if (held === null) throw new Error("the test's slot permit was not taken");
-  if (second === "malformed") writeFileSync(join(dir, slotFiles(GROUP).permit(1)), "not a database");
+  if (second === "malformed")
+    writeFileSync(join(dir, slotFiles(GROUP).permit(1)), "not a database");
 }
 
 const now = (published: "held" | "turn"): SlotWait | undefined =>

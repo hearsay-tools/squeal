@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { onTestFinished } from "vitest";
-import { slotFiles } from "../../src/core/slow/slot-files.js";
 import { acquireSlowSlot } from "../../src/core/slow/slot.js";
+import { slotFiles } from "../../src/core/slow/slot-files.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import type { SlotAt, SlowTierActivity } from "../../src/core/types/status.js";
 
