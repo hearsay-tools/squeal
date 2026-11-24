@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { merge } from "../../src/core/daemon/composite-runner.js";
+import type { CoreEnvironmentInputs } from "../../src/core/types/keys.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import {
   A,
@@ -23,6 +24,16 @@ import {
  * present or absent is part of it. Each part sets only its row's field over
  * an empty report; every other field of the merged report stays empty.
  */
+
+const LINUX: CoreEnvironmentInputs = {
+  squealVersion: "0.1.620",
+  nodeVersion: "v26.13.0",
+  platform: "linux",
+  arch: "x64",
+  installedDependencies: "deps",
+  env: {},
+};
+const DARWIN: CoreEnvironmentInputs = { ...LINUX, platform: "darwin", arch: "arm64" };
 
 /** One cell: each part's `K` over an empty report, and the merged report's `K`. */
 interface Case<K extends keyof RunReport> {
@@ -299,6 +310,38 @@ const TABLE: { readonly [K in keyof RunReport]-?: readonly Case<K>[] } = {
       name: "over three, one without",
       parts: [{ startedProjects: ["web"] }, {}, { startedProjects: ["node"] }],
       merged: { startedProjects: ["node", "web"] },
+    },
+  ],
+  // Spec 026 D10 (row 026-14): the machine each part ran on.
+  executedCore: [
+    { name: "absent when no part names one", parts: [{}, {}], merged: {} },
+    {
+      name: "the one machine both parts ran on",
+      parts: [{ executedCore: LINUX }, { executedCore: LINUX }],
+      merged: { executedCore: LINUX },
+    },
+    {
+      name: "absent over two machines",
+      parts: [{ executedCore: LINUX }, { executedCore: DARWIN }],
+      merged: {},
+    },
+    { name: "absent when a part names none", parts: [{ executedCore: LINUX }, {}], merged: {} },
+  ],
+  fileCores: [
+    { name: "absent when no part names one", parts: [{}, {}], merged: {} },
+    {
+      name: "each part's files in the parts' order",
+      parts: [
+        { fileCores: [{ testFile: A, core: LINUX }] },
+        {},
+        { fileCores: [{ testFile: C, core: DARWIN }] },
+      ],
+      merged: {
+        fileCores: [
+          { testFile: A, core: LINUX },
+          { testFile: C, core: DARWIN },
+        ],
+      },
     },
   ],
 };

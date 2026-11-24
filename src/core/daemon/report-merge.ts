@@ -1,4 +1,5 @@
 import { compare } from "../fs/compare.js";
+import { mergedExecutedCore, mergedFileCores } from "../runner-host/remote/remote-key.js";
 import type { RunEnd, RunnerAdapter, RunReport } from "../types/runner.js";
 
 /*
@@ -86,4 +87,7 @@ export const MERGE_RULES: MergeRules = {
     const started = [...new Set(parts.flatMap(({ report }) => report.startedProjects ?? []))];
     return started.length === 0 ? undefined : started.sort(compare);
   },
+  // Spec 026 D10 (row 026-14): the one machine all parts ran on, else each file's.
+  executedCore: (parts) => mergedExecutedCore(parts.map((p) => p.report)),
+  fileCores: (parts) => mergedFileCores(parts.map((p) => p.report)),
 };

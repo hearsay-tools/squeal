@@ -1,7 +1,7 @@
 import type { CheckError, RunOutcome, TestCheckId } from "./check.js";
 import type { CheckPriority } from "./check-groups.js";
 import type { AbsolutePath, ProjectName, RelativePath, SourceLocation } from "./common.js";
-import type { TestFileRef } from "./keys.js";
+import type { CoreEnvironmentInputs, TestFileRef } from "./keys.js";
 import type { RunnerTraits } from "./runner-traits.js";
 
 /**
@@ -192,6 +192,15 @@ export interface RunnerEnvironment {
    * `globalSetup` entries. In no hash; absent when the runner gives none.
    */
   readonly roots?: readonly RelativePath[];
+  /**
+   * Spec 026 D10 (row 026-14): under a remote's `environmentMode:
+   * "remote-key"`, the remote machine's core inputs. The core keys the
+   * project under this core's Node version, platform and arch in place of
+   * its own process's; its installed dependencies and allow-listed variables
+   * stay this worktree's, which the lane checked equal. Absent: this
+   * worktree's own process.
+   */
+  readonly core?: CoreEnvironmentInputs;
 }
 
 /**
@@ -502,6 +511,12 @@ export interface ObservedInputs {
 }
 
 /** Everything one `run` call produced. Only test files passed to `run` appear here. */
+/** Spec 026 D10: a completed test file and the core whose machine ran it. */
+export interface FileCore {
+  readonly testFile: TestFileRef;
+  readonly core: CoreEnvironmentInputs;
+}
+
 export interface RunReport {
   readonly end: RunEnd;
   readonly durationMs: number;
@@ -584,6 +599,20 @@ export interface RunReport {
    * `completedFiles`. Absent: only the completed files' projects started.
    */
   readonly startedProjects?: readonly ProjectName[];
+  /**
+   * Spec 026 D10 (row 026-14): the core whose machine ran the completed
+   * files, when it may not be the one the project is keyed under (a remote
+   * lane, or this machine while keyed to a remote). A file run on another
+   * machine than its key's is stored under that machine's key only, never
+   * at the key it ran for (vision principle 2). Absent: the keyed machine.
+   */
+  readonly executedCore?: CoreEnvironmentInputs;
+  /**
+   * Spec 026 D10: per completed file, the core whose machine ran it, when
+   * the parts of a split ran on different machines; it takes precedence
+   * over `executedCore`. Absent: `executedCore` holds for every file.
+   */
+  readonly fileCores?: readonly FileCore[];
   /**
    * Test files that ran to completion and whose results the runner withheld,
    * not listed in `completedFiles`: bytes the run may have executed moved or
