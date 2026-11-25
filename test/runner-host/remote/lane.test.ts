@@ -212,7 +212,10 @@ describe("a remote lane's proof, file by file (row 026-24)", () => {
       file.path === B.path ? "src/b.ts" : "src/a.ts",
       ...(extra[file.path] ?? []),
     ];
-  /** The remote's report of the files it ran (the fixture's last remote run), and what each observed. */
+  /**
+   * The remote's report of the files it ran (the fixture's last remote run),
+   * what each observed, and a coverage record each, which the host's reply carries.
+   */
   const ranThere =
     (runs: () => readonly string[], observed: Readonly<Record<string, readonly string[]>>) =>
     async (): Promise<RunReport> => {
@@ -225,7 +228,8 @@ describe("a remote lane's proof, file by file (row 026-24)", () => {
           paths: [...(observed[testFile.path] ?? [])],
           directories: [],
         })),
-      };
+        coverage: files.map((testFile) => ({ testFile, record: testFile.path })),
+      } as RunReport;
     };
 
   it("keeps the siblings of a file that observed a git-ignored input, runs once, and leaves only it not run", async () => {
@@ -244,6 +248,12 @@ describe("a remote lane's proof, file by file (row 026-24)", () => {
     expect(paths(report)).toEqual(["test/a.test.ts", "test/c.test.ts"]);
     expect(report.observed?.map((o) => o.testFile)).toEqual([A, C]);
     expect(report.failure).toBe(IGNORED);
+    expect(report).not.toHaveProperty("coverage");
+    // D9: the proven siblings' records alone.
+    expect(s.coverage.flatMap((c) => c.records.map((r) => r.testFile.path))).toEqual([
+      "test/a.test.ts",
+      "test/c.test.ts",
+    ]);
     expect(s.logs.filter((line) => /sending again/.test(line))).toEqual([]);
     expect(s.statuses.at(-1)).toBe(
       "remote box: refused 1 files whose git-ignored inputs are not synced; not run",
@@ -263,6 +273,10 @@ describe("a remote lane's proof, file by file (row 026-24)", () => {
     expect(s.localFiles).toEqual(["test/b.test.ts"]);
     expect(paths(report)).toEqual(["test/a.test.ts", "test/b.test.ts", "test/c.test.ts"]);
     expect(report.failure).toBeNull();
+    expect(s.coverage.flatMap((c) => c.records.map((r) => r.testFile.path))).toEqual([
+      "test/a.test.ts",
+      "test/c.test.ts",
+    ]);
   });
 
   it("isolates a file whose closure holds a git-ignored input before the run, and runs its siblings there", async () => {
