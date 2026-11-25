@@ -175,7 +175,7 @@ describe("a daemon a hook started that holds no lock yet (row 011-251)", () => {
   // Row 011-251 (the coordinator, 2026-10-26): while only a hook's spawn mark is live, status, the
   // waits and the hooks' header say a daemon is starting, from the real store and marks. No
   // daemon validates, and nothing is credited.
-  const saved = { ...process.env };
+  const saved = process.env.XDG_RUNTIME_DIR;
   let runtimeDir: string;
   beforeEach(() => {
     runtimeDir = mkdtempSync("/tmp/sq-");
@@ -183,7 +183,8 @@ describe("a daemon a hook started that holds no lock yet (row 011-251)", () => {
   });
   afterEach(() => {
     rmSync(runtimeDir, { recursive: true, force: true });
-    process.env = { ...saved };
+    if (saved === undefined) delete process.env.XDG_RUNTIME_DIR;
+    else process.env.XDG_RUNTIME_DIR = saved;
   });
 
   /** A worktree at revision 4 whose record a stop cleared, and a hook's spawn mark after its last heartbeat. */
