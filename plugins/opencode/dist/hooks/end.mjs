@@ -10187,6 +10187,34 @@ function isRecord2(value) {
   return typeof v.id === "string" && typeof ref2 === "object" && ref2 !== null && typeof ref2.project === "string" && typeof ref2.path === "string" && typeof v.key === "string" && typeof v.session === "string" && RETRY_REASONS.includes(v.reason) && typeof v.askedAt === "number" && typeof v.askedIn === "string" && (v.claim === null || typeof v.claim === "object") && (v.end === null || typeof v.end === "object");
 }
 
+// src/core/retry/remote.ts
+var RUN_REMOTES_META_KEY = "failed-run-remotes";
+function keptRemote(remotes, runId, testFile) {
+  return remotes.get(runId)?.[testFileId(testFile)];
+}
+function readRunRemotes(store) {
+  const raw = store.meta.get(RUN_REMOTES_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (!isRecord3(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).flatMap(([runId, files]) => {
+        if (!isRecord3(files)) return [];
+        const kept2 = Object.entries(files).filter(
+          (e) => typeof e[1] === "string"
+        );
+        return [[runId, Object.fromEntries(kept2)]];
+      })
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // src/core/retry/recorded.ts
 function retryFactOf(records) {
   const newest = records.filter((r) => r.noResult !== true).at(-1);
@@ -10210,6 +10238,7 @@ function withRecorded(store, worktreeId, states, revision) {
   const failureKeys = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
+  const remotes = readRunRemotes(store);
   const notes = readFlakyNotes(store);
   return failing.map(({ state, failure: failure2 }) => {
     if (failure2.check.kind === "setup") return failure2;
@@ -10220,12 +10249,14 @@ function withRecorded(store, worktreeId, states, revision) {
     if (row === null) return { ...failure2, recordedUnknown: true };
     const { provenance } = row;
     const retry = retryFactOf(retriesAt(retries, testFile, row.key));
+    const remote = keptRemote(remotes, provenance.runId, testFile);
     const recorded = {
       worktreeId: provenance.worktreeId,
       worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
       revision: provenance.revision,
       recordedAt: provenance.recordedAt,
       loadPerCpu: loads.get(provenance.runId) ?? null,
+      ...remote === void 0 ? {} : { remote },
       ...retry === void 0 ? {} : { retry },
       ...notes.get(id)?.key === row.key ? {} : { noEarlierPass: true }
     };
@@ -12737,7 +12768,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.634";
+  if (true) return "0.1.635";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -15757,7 +15788,7 @@ function readRemoteSummary(store, worktreeId) {
   const text2 = store.meta.get(remoteSummaryMetaKey(worktreeId));
   return text2 === null || text2 === "" ? void 0 : text2;
 }
-function remoteOf(store, worktreeId) {
+function remoteOf2(store, worktreeId) {
   const text2 = readRemoteSummary(store, worktreeId);
   return text2 === void 0 ? {} : { remote: text2 };
 }
@@ -15894,7 +15925,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     notes,
     daemonNotes,
     // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
-    ...remoteOf(store, worktreeId),
+    ...remoteOf2(store, worktreeId),
     ...listingFailedOf(daemonNotes, header, daemon),
     ...checkpoint2,
     ...vitestExcluded(at),

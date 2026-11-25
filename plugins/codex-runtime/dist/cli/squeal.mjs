@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.634";
+  if (true) return "0.1.635";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -9481,6 +9481,57 @@ var init_load = __esm({
   }
 });
 
+// src/core/retry/remote.ts
+function remoteOf(report4, testFile) {
+  if (report4.fileRemotes === void 0) return report4.remote;
+  const id = testFileId(testFile);
+  return report4.fileRemotes.find((f) => testFileId(f.testFile) === id)?.remote;
+}
+function keptRemote(remotes, runId, testFile) {
+  return remotes.get(runId)?.[testFileId(testFile)];
+}
+function readRunRemotes(store) {
+  const raw = store.meta.get(RUN_REMOTES_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (!isRecord4(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).flatMap(([runId, files6]) => {
+        if (!isRecord4(files6)) return [];
+        const kept6 = Object.entries(files6).filter(
+          (e) => typeof e[1] === "string"
+        );
+        return [[runId, Object.fromEntries(kept6)]];
+      })
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function recordRunRemote(store, runId, testFile, remote) {
+  store.transaction(() => {
+    const remotes = readRunRemotes(store);
+    const files6 = { ...remotes.get(runId), [testFileId(testFile)]: remote };
+    remotes.delete(runId);
+    remotes.set(runId, files6);
+    const newest = [...remotes].slice(-RUN_REMOTES_KEPT);
+    store.meta.set(RUN_REMOTES_META_KEY, JSON.stringify(Object.fromEntries(newest)));
+  });
+}
+function isRecord4(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+var RUN_REMOTES_META_KEY, RUN_REMOTES_KEPT;
+var init_remote = __esm({
+  "src/core/retry/remote.ts"() {
+    "use strict";
+    init_reverse_index();
+    RUN_REMOTES_META_KEY = "failed-run-remotes";
+    RUN_REMOTES_KEPT = 1024;
+  }
+});
+
 // src/core/state/flaky.ts
 function readFlakyNotes(store) {
   const raw = store.meta.get(FLAKY_META_KEY);
@@ -9675,7 +9726,8 @@ function recordedText(facts, here, now, words) {
 function recordedWhereText(facts, here, now) {
   const where3 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
   const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
-  return `recorded${ago} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
+  const remote = facts.remote === void 0 ? "" : ` on remote ${facts.remote}`;
+  return `recorded${ago}${remote} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
 }
 function retryStateText(facts) {
   return facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
@@ -9814,6 +9866,11 @@ function recordFailedLoad(context2, runId, load, records) {
   if (load === null || !records.some((r) => r.outcome === "fail")) return;
   recordRunLoad(context2.store, runId, load);
 }
+function recordFailedRemote(context2, runId, report4, testFile, records) {
+  const remote = remoteOf(report4, testFile);
+  if (remote === void 0 || !records.some((r) => r.outcome === "fail")) return;
+  recordRunRemote(context2.store, runId, testFile, remote);
+}
 var init_retries = __esm({
   "src/core/scheduler/retries.ts"() {
     "use strict";
@@ -9821,6 +9878,7 @@ var init_retries = __esm({
     init_gate();
     init_load();
     init_records();
+    init_remote();
     init_text2();
     init_context();
     init_queue();
@@ -13339,7 +13397,7 @@ function isSquealRecorder(specifier) {
     }
   }
   if (!path.startsWith("/")) return false;
-  return RECORDERS.some((suffix) => path.endsWith(suffix));
+  return RECORDERS.some((suffix) => path.endsWith(suffix)) || REMOTE_RECORDER.test(path);
 }
 function withoutSquealRecorders(tokens) {
   const kept6 = [];
@@ -13370,7 +13428,7 @@ function ownNodeOptions(options) {
 function asWritten(token) {
   return /[ "]/.test(token) ? quoteNodeOption(token) : token;
 }
-var RECORDERS, UNOBSERVED, PRELOAD_FLAGS;
+var RECORDERS, REMOTE_RECORDER, UNOBSERVED, PRELOAD_FLAGS;
 var init_recorders = __esm({
   "src/runners/process/recorders.ts"() {
     "use strict";
@@ -13381,6 +13439,7 @@ var init_recorders = __esm({
       "/src/runners/observe/recorder.cjs",
       "/src/runners/node-test/runtime/recorder.cjs"
     ];
+    REMOTE_RECORDER = /\/squeal\/[^/]+\/(?:observe|node-test)\/recorder\.cjs$/;
     UNOBSERVED = JSON.stringify({ out: "" });
     PRELOAD_FLAGS = /* @__PURE__ */ new Set(["--require", "-r", "--import"]);
   }
@@ -15682,10 +15741,10 @@ var init_packages = __esm({
         const found4 = /* @__PURE__ */ new Set();
         const starts = /* @__PURE__ */ new Set();
         for (const { from, name: name3, manifest } of imports2) {
-          const local2 = this.#local(from);
-          const location2 = local2 === null ? null : this.#resolve(local2, name3);
+          const local3 = this.#local(from);
+          const location2 = local3 === null ? null : this.#resolve(local3, name3);
           const entry4 = location2 === null ? void 0 : this.#packages[location2];
-          if (location2 === null) found4.add(absent(local2 ?? from, name3));
+          if (location2 === null) found4.add(absent(local3 ?? from, name3));
           else if (manifest === true && entry4 !== void 0 && isInstalled(location2)) {
             found4.add(identityOf(location2, entry4));
           } else starts.add(location2);
@@ -16034,9 +16093,9 @@ var init_pnpm_graph = __esm({
         const found4 = /* @__PURE__ */ new Set();
         const starts = /* @__PURE__ */ new Set();
         for (const { from, name: name3, manifest } of imports2) {
-          const local2 = this.#local(from);
-          const targets3 = local2 === null ? [] : this.#resolve(local2, name3);
-          if (targets3.length === 0) found4.add(`absent:${local2 ?? from}>${name3}`);
+          const local3 = this.#local(from);
+          const targets3 = local3 === null ? [] : this.#resolve(local3, name3);
+          if (targets3.length === 0) found4.add(`absent:${local3 ?? from}>${name3}`);
           for (const target of targets3) {
             if (isMarker(target)) found4.add(target);
             else if (manifest === true) found4.add(this.#identity(target));
@@ -16494,13 +16553,13 @@ function remoteKeyStatusLine(target, remoteCore) {
 function machineText(core) {
   return `${core.platform}/${core.arch}, Node ${core.nodeVersion}`;
 }
-function nodeRefusal(remote, local2, pins) {
-  if (remote === local2) return null;
-  if (pins.length === 0) return `Node ${remote} on the remote, ${local2} here`;
+function nodeRefusal(remote, local3, pins) {
+  if (remote === local3) return null;
+  if (pins.length === 0) return `Node ${remote} on the remote, ${local3} here`;
   const unmet = pins.filter((pin2) => meetsPin(remote, pin2) !== true);
   if (unmet.length === 0) return null;
   const named4 = unmet.map((pin2) => JSON.stringify(pin2)).join(", ");
-  return `Node ${remote} on the remote does not meet the project's Node pin ${named4} (${local2} here)`;
+  return `Node ${remote} on the remote does not meet the project's Node pin ${named4} (${local3} here)`;
 }
 function meetsPin(version2, pin2) {
   const have = exactVersion(version2);
@@ -17874,6 +17933,7 @@ function storeFile(record2, entry4, decision, storeKey) {
   const inputs2 = [...entry4.inputs, ...growth?.growth ?? []];
   const prior = storeResults(context2, records, healsUnheld(store, inputs2));
   recordFailedLoad(context2, tier.runId, tier.loadPerCpu ?? null, records);
+  recordFailedRemote(context2, tier.runId, report4, file.ref, records);
   store.failures.keepReplaced(failing, records, (run9) => readRunLoads(store).get(run9) ?? null);
   if (forced && file.rerunKey === key3) endRerun(context2, file);
   if (forced) endRetry(context2, file, key3, records, tier.runId);
@@ -26923,27 +26983,27 @@ function describeDifferences(a, b) {
   }
   return differences2;
 }
-function importDifferences(exported2, local2) {
-  if (exported2.runnerName === "node-test" && local2.runnerName === "node-test") {
-    return tolerating(exported2, local2, NODE_TEST_CI_FIELDS);
+function importDifferences(exported2, local3) {
+  if (exported2.runnerName === "node-test" && local3.runnerName === "node-test") {
+    return tolerating(exported2, local3, NODE_TEST_CI_FIELDS);
   }
-  if (exported2.runnerName !== "vitest" || local2.runnerName !== "vitest") {
-    return describeDifferences(exported2, local2);
+  if (exported2.runnerName !== "vitest" || local3.runnerName !== "vitest") {
+    return describeDifferences(exported2, local3);
   }
   const tolerated = new Set(CI_FIELDS);
-  if (exported2.browser === false && local2.browser === false) tolerated.add("browser");
-  if (exported2.config.allowOnly === ONLY_REJECTED && local2.config.allowOnly === ONLY_ALLOWED) {
+  if (exported2.browser === false && local3.browser === false) tolerated.add("browser");
+  if (exported2.config.allowOnly === ONLY_REJECTED && local3.config.allowOnly === ONLY_ALLOWED) {
     tolerated.add("allowOnly");
   }
-  return tolerating(exported2, local2, tolerated);
+  return tolerating(exported2, local3, tolerated);
 }
-function tolerating(exported2, local2, tolerated) {
+function tolerating(exported2, local3, tolerated) {
   const leftOut3 = new Set(tolerated);
   const keyed = (d) => ({
     ...d,
     config: Object.fromEntries(Object.entries(d.config).filter(([name3]) => !leftOut3.has(name3)))
   });
-  return describeDifferences(keyed(exported2), keyed(local2));
+  return describeDifferences(keyed(exported2), keyed(local3));
 }
 function installedText(a, b) {
   if (a.installedDependencies === "none") return "no installed dependencies in the export";
@@ -27011,30 +27071,30 @@ var init_environment_descriptor = __esm({
 });
 
 // src/core/status/import-environment.ts
-function compareEnvironment(exported2, local2) {
-  if (local2 === null) return { kind: "unknown" };
-  if (local2.hash === exported2.hash) return { kind: "equal" };
-  if (exported2.descriptor === null || local2.descriptor === null) {
+function compareEnvironment(exported2, local3) {
+  if (local3 === null) return { kind: "unknown" };
+  if (local3.hash === exported2.hash) return { kind: "equal" };
+  if (exported2.descriptor === null || local3.descriptor === null) {
     return { kind: "differs", differences: [] };
   }
-  const differences2 = describeDifferences(exported2.descriptor, local2.descriptor).map((d) => d.text);
-  const passes = importDifferences(exported2.descriptor, local2.descriptor).length === 0;
+  const differences2 = describeDifferences(exported2.descriptor, local3.descriptor).map((d) => d.text);
+  const passes = importDifferences(exported2.descriptor, local3.descriptor).length === 0;
   return { kind: passes ? "passes" : "differs", differences: differences2 };
 }
-function blockingDifferences(exported2, local2) {
-  if (exported2 === null || local2 === null) return ["parts not recorded"];
-  return importDifferences(exported2, local2).map((d) => d.text);
+function blockingDifferences(exported2, local3) {
+  if (exported2 === null || local3 === null) return ["parts not recorded"];
+  return importDifferences(exported2, local3).map((d) => d.text);
 }
-function nodeGap(exported2, local2) {
-  if (exported2 === null || local2 === null) return { versions: null, onlyNode: false };
-  const versions2 = exported2.nodeVersion === local2.nodeVersion ? null : [exported2.nodeVersion, local2.nodeVersion];
-  const build = local2.config[NODE_BUILD];
+function nodeGap(exported2, local3) {
+  if (exported2 === null || local3 === null) return { versions: null, onlyNode: false };
+  const versions2 = exported2.nodeVersion === local3.nodeVersion ? null : [exported2.nodeVersion, local3.nodeVersion];
+  const build = local3.config[NODE_BUILD];
   const sameNode2 = {
     ...exported2,
-    nodeVersion: local2.nodeVersion,
+    nodeVersion: local3.nodeVersion,
     config: build === void 0 || exported2.config[NODE_BUILD] === void 0 ? exported2.config : { ...exported2.config, [NODE_BUILD]: build }
   };
-  return { versions: versions2, onlyNode: importDifferences(sameNode2, local2).length === 0 };
+  return { versions: versions2, onlyNode: importDifferences(sameNode2, local3).length === 0 };
 }
 function comparisonText(project, comparison) {
   const name3 = project === "" ? "Environment" : `Environment of project ${JSON.stringify(project)}`;
@@ -57838,7 +57898,7 @@ function rekeyFiles(store, bundle, rekeying) {
   if (rekeying.blobs === null) return out2;
   const at2 = commitSegments(rekeying.blobs);
   const exported2 = new Map(bundle.environments.map((e) => [e.project, e]));
-  const local2 = /* @__PURE__ */ new Map();
+  const local3 = /* @__PURE__ */ new Map();
   const entries3 = /* @__PURE__ */ new Map();
   const shared2 = (map, project) => {
     const key3 = MAP_KEY5[map](project);
@@ -57849,10 +57909,10 @@ function rekeyFiles(store, bundle, rekeying) {
   for (const file of bundle.testFiles) {
     const environment = exported2.get(file.project);
     if (environment === void 0 || !proven(file, environment, at2)) continue;
-    if (!local2.has(file.project)) {
-      local2.set(file.project, localHash(store, rekeying.worktreeId, environment));
+    if (!local3.has(file.project)) {
+      local3.set(file.project, localHash(store, rekeying.worktreeId, environment));
     }
-    const here = local2.get(file.project) ?? null;
+    const here = local3.get(file.project) ?? null;
     const stored4 = store.testFiles.get(file)?.closure.paths;
     if (here === null || stored4 === void 0) continue;
     const observed2 = {};
@@ -72606,9 +72666,9 @@ function enumerateSource2(source2, testFile, names9 = {}) {
       if (!unittest && body2.defs.has("__init__")) return;
       const inherited2 = /* @__PURE__ */ new Map();
       for (const base of bases3(definition(def))) {
-        const local2 = topClasses.get(base);
-        if (local2 !== void 0 && local2 !== def) {
-          for (const [name3, d] of scope(definition(local2).childForFieldName("body")).defs)
+        const local3 = topClasses.get(base);
+        if (local3 !== void 0 && local3 !== def) {
+          for (const [name3, d] of scope(definition(local3).childForFieldName("body")).defs)
             inherited2.set(name3, d);
         }
       }
@@ -74952,6 +75012,23 @@ function listedWhenFound(field) {
     return all2.length > 0 ? all2 : void 0;
   };
 }
+function mergedRemote(parts3) {
+  const first2 = parts3[0]?.remote;
+  if (first2 === void 0) return void 0;
+  const one = parts3.every((p) => p.fileRemotes === void 0 && p.remote === first2);
+  return one ? first2 : void 0;
+}
+function mergedFileRemotes(parts3) {
+  if (mergedRemote(parts3) !== void 0) return void 0;
+  const remotes = parts3.flatMap(remotesOf);
+  return remotes.length === 0 ? void 0 : remotes;
+}
+function remotesOf(report4) {
+  if (report4.fileRemotes !== void 0) return [...report4.fileRemotes];
+  const { remote } = report4;
+  if (remote === void 0) return [];
+  return report4.completedFiles.map((testFile) => ({ testFile, remote }));
+}
 var SEVERITY, MERGE_RULES;
 var init_report_merge = __esm({
   "src/core/daemon/report-merge.ts"() {
@@ -74997,7 +75074,10 @@ var init_report_merge = __esm({
       },
       // Spec 026 D10 (row 026-14): the one machine all parts ran on, else each file's.
       executedCore: (parts3) => mergedExecutedCore(parts3.map((p) => p.report)),
-      fileCores: (parts3) => mergedFileCores(parts3.map((p) => p.report))
+      fileCores: (parts3) => mergedFileCores(parts3.map((p) => p.report)),
+      // Spec 026 D12 (row 026-28): the one remote all parts ran on, else each remote file's.
+      remote: (parts3) => mergedRemote(parts3.map((p) => p.report)),
+      fileRemotes: (parts3) => mergedFileRemotes(parts3.map((p) => p.report))
     };
   }
 });
@@ -79912,7 +79992,9 @@ var init_bundle = __esm({
       'got=h.digest("hex");}catch{}',
       'const bundle=got===want?"present":got==="absent"?"absent":"differs";',
       'if(mode==="verify")process.exit(bundle==="present"?0:1);',
-      "process.stdout.write(JSON.stringify({node:process.version,platform:process.platform,arch:process.arch,bundle}));"
+      // Row 026-27: the remote's Git, in the same ssh call; `null` when it has none.
+      'let git=null;try{git=require("child_process").execFileSync("git",["--version"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();}catch{}',
+      "process.stdout.write(JSON.stringify({node:process.version,platform:process.platform,arch:process.arch,bundle,git}));"
     ].join("");
   }
 });
@@ -80341,10 +80423,6 @@ async function installTree(place2) {
   const last = readInstalled(place2.record);
   const same5 = last !== null && JSON.stringify(last.locks) === JSON.stringify(locks) && last.modules === existsSync62(join171(root, "node_modules"));
   const unchanged2 = same5 && last.installed !== void 0 && await fingerprint() === last.installed;
-  if (unchanged2) return { ran: false, command: null };
-  if (same5 && !place2.keepModules) {
-    await rm4(join171(root, "node_modules"), { recursive: true, force: true });
-  }
   const command = await installCommand(root, readJson4(join171(root, "package.json")));
   const env = await managerEnv(command, place2.env, {
     root,
@@ -80352,6 +80430,11 @@ async function installTree(place2) {
     tools: place2.tools ?? hostTools(),
     output: place2.output
   });
+  place2.onPath?.(env.PATH);
+  if (unchanged2) return { ran: false, command: null };
+  if (same5 && !place2.keepModules) {
+    await rm4(join171(root, "node_modules"), { recursive: true, force: true });
+  }
   await runOutput("sh", ["-c", command], { cwd: root, env, output: place2.output, what: command });
   const made = {
     locks,
@@ -80448,10 +80531,12 @@ async function startRemoteHost(options) {
     await remoteTreeDir(target, tree, deadlines.sshMs),
     options.coverage
   );
-  return remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
+  const host = await remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
     ...options,
     options: adapterOptions
   });
+  const git = ensured.check.git;
+  return git === void 0 ? host : { ...host, gitVersion: git };
 }
 async function remoteTreeDir(target, tree, deadlineMs) {
   const q = shellQuote(tree);
@@ -81227,22 +81312,22 @@ var init_blob_cache = __esm({
 });
 
 // src/core/runner-host/remote/environment.ts
-function environmentDifferences(given2, local2, options = {}) {
+function environmentDifferences(given2, local3, options = {}) {
   const texts2 = [];
   let remote = given2;
   if (options.mode === "remote-key") {
     const node2 = nodeRefusal(
       given2.core.nodeVersion,
-      local2.core.nodeVersion,
+      local3.core.nodeVersion,
       options.nodePins ?? []
     );
     if (node2 !== null) texts2.push(node2);
-    remote = { ...given2, core: onMachine(given2.core, local2.core) };
+    remote = { ...given2, core: onMachine(given2.core, local3.core) };
   }
-  const remoteOf2 = new Map(remote.runners.map((runner) => [runner.project, runner]));
-  for (const here of local2.runners) {
-    const there = remoteOf2.get(here.project);
-    remoteOf2.delete(here.project);
+  const remoteOf3 = new Map(remote.runners.map((runner) => [runner.project, runner]));
+  for (const here of local3.runners) {
+    const there = remoteOf3.get(here.project);
+    remoteOf3.delete(here.project);
     if (there === void 0) {
       texts2.push(`project ${JSON.stringify(here.project)} is not on the remote`);
       continue;
@@ -81254,9 +81339,9 @@ function environmentDifferences(given2, local2, options = {}) {
       false
     );
     const b = environmentRecord(
-      local2.core,
+      local3.core,
       withoutCoverage2(here),
-      (p) => local2.blob(p),
+      (p) => local3.blob(p),
       false
     );
     const stored4 = { project: here.project, ...b, recordedAt: 0 };
@@ -81266,7 +81351,7 @@ function environmentDifferences(given2, local2, options = {}) {
     );
     texts2.push(...found4.length > 0 ? found4 : ["the environment differs"]);
   }
-  for (const project of remoteOf2.keys()) {
+  for (const project of remoteOf3.keys()) {
     texts2.push(`project ${JSON.stringify(project)} is only on the remote`);
   }
   return [...new Set(texts2)];
@@ -81290,6 +81375,45 @@ var init_environment4 = __esm({
     init_environment_hash();
     init_import_environment();
     init_remote_key();
+  }
+});
+
+// src/core/runner-host/remote/git-version.ts
+import { execFileSync as execFileSync5 } from "node:child_process";
+function parseGitVersion(text3) {
+  const match2 = /(\d+)\.(\d+)(?:\.(\d+))?/.exec(text3);
+  if (match2 === null) return null;
+  return [Number(match2[1]), Number(match2[2]), Number(match2[3] ?? 0)];
+}
+function localGitVersion() {
+  if (local !== void 0) return local;
+  try {
+    local = execFileSync5("git", ["--version"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    local = null;
+  }
+  return local;
+}
+function gitVersionRefusal(remoteGit, localGit) {
+  if (remoteGit === void 0 || localGit === null) return null;
+  const here = parseGitVersion(localGit);
+  if (here === null) return null;
+  const hereText = here.join(".");
+  if (remoteGit === null) return `git is not installed on the remote (${hereText} here)`;
+  const there = parseGitVersion(remoteGit);
+  if (there === null) {
+    return `git on the remote printed ${JSON.stringify(remoteGit.slice(0, 80))} (${hereText} here)`;
+  }
+  if (there[0] > here[0] || there[0] === here[0] && there[1] >= here[1]) return null;
+  return `git ${there.join(".")} on the remote is older than ${hereText} here; upgrade Git on the remote or disable the remote lane`;
+}
+var local;
+var init_git_version = __esm({
+  "src/core/runner-host/remote/git-version.ts"() {
+    "use strict";
   }
 });
 
@@ -81341,6 +81465,11 @@ async function differences(host, options) {
     { core, runners: localRunners, blob: (p) => localBlobs[p] ?? null },
     remoteKey ? { mode: "remote-key", nodePins } : {}
   );
+  if (!remoteKey || sameMachine(remoteCore, core)) {
+    const local3 = options.localGitVersion !== void 0 ? options.localGitVersion : localGitVersion();
+    const refusal4 = gitVersionRefusal(host.gitVersion, local3);
+    if (refusal4 !== null) found4.push(refusal4);
+  }
   return { differences: found4, remoteCore };
 }
 async function nodePinsAt(root) {
@@ -81365,6 +81494,8 @@ var init_lane_compare = __esm({
     init_environment();
     init_node_pin();
     init_environment4();
+    init_git_version();
+    init_remote_key();
     init_tree2();
     init_tree_wire();
     INSTALL_DIFFERS = [
@@ -81376,7 +81507,7 @@ var init_lane_compare = __esm({
 
 // src/core/runner-host/remote/lane-planning.ts
 function remotePlanning(context2) {
-  const { local: local2, target } = context2;
+  const { local: local3, target } = context2;
   const plan2 = async (there, here) => {
     if (context2.ending()) throw new Error(`remote ${target}: its lane closed; not planned here`);
     const end = context2.begin();
@@ -81404,26 +81535,26 @@ function remotePlanning(context2) {
   const planning = {
     testFiles: () => plan2(
       (a) => a.testFiles(),
-      () => local2.testFiles()
+      () => local3.testFiles()
     ),
     environment: () => plan2(
       (a) => a.environment(),
-      () => local2.environment()
+      () => local3.environment()
     ),
     affected: (paths) => plan2(
       (a) => a.affected(paths),
-      () => local2.affected(paths)
+      () => local3.affected(paths)
     ),
     closure: (file) => plan2(
       (a) => a.closure(file),
-      () => local2.closure(file)
+      () => local3.closure(file)
     ),
     enumerate: (file) => plan2(
       (a) => a.enumerate(file),
-      () => local2.enumerate(file)
+      () => local3.enumerate(file)
     )
   };
-  const setups = local2.globalSetups?.bind(local2);
+  const setups = local3.globalSetups?.bind(local3);
   if (setups === void 0) return planning;
   return {
     ...planning,
@@ -81654,8 +81785,8 @@ var init_lane_tiers = __esm({
 // src/core/runner-host/remote/lane.ts
 import { join as join175 } from "node:path";
 function withRemoteLane(options) {
-  const { local: local2, target } = options;
-  const here = options.here ?? local2;
+  const { local: local3, target } = options;
+  const here = options.here ?? local3;
   const tiers = options.lanes ?? DEFAULT_TIERS;
   const tiersName = tiersText(tiers);
   const activity = options.activity ?? (() => {
@@ -81754,7 +81885,7 @@ function withRemoteLane(options) {
     else {
       state = { kind: "ready", host, proven: false };
       options.status(
-        remoteKey && remoteCore !== null ? remoteKeyStatusLine(target, remoteCore) : `remote ${target}: ${tiersName} runs ${remotePlans ? "and planning " : ""}of ${local2.name} go there (Node ${host.node}; environment equal)`
+        remoteKey && remoteCore !== null ? remoteKeyStatusLine(target, remoteCore) : `remote ${target}: ${tiersName} runs ${remotePlans ? "and planning " : ""}of ${local3.name} go there (Node ${host.node}; environment equal)`
       );
     }
   };
@@ -81906,7 +82037,7 @@ function withRemoteLane(options) {
     if (runnerHostGone(host.adapter)) return { lost: cutShort2(host, reply, files6) };
     const ran = reply.refused === void 0;
     const differ = reply.refused ?? await differing(reply);
-    const raw = stripped(reply);
+    const raw = { ...stripped(reply), remote: options.remoteLabel?.() ?? target };
     const report5 = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
     if (ran && differ.length === 0) {
       return { ran, split: null, syncable: [], part: provenPart(report5, reply.coverage, []) };
@@ -81931,7 +82062,7 @@ function withRemoteLane(options) {
     return { syncable: kinds2.syncable, split: splitProof(files6, inputs2, observed2, kinds2) };
   };
   const runInputs = async (host, testFiles3) => {
-    const planner = remotePlans ? host.adapter : local2;
+    const planner = remotePlans ? host.adapter : local3;
     if (remotePlans) await sendPending(host);
     const closures = await Promise.all(testFiles3.map((file) => planner.closure(file)));
     const configs = (await planner.environment()).flatMap((r) => r.files);
@@ -81946,7 +82077,7 @@ function withRemoteLane(options) {
       const token = `${run9.runId}:${++attempts}`;
       const grant = await admitRun((ask2) => host.admit(ask2), testFiles3, run9, {
         token,
-        tierWidth: (file, grant2) => local2.traits.tierWidth(file, grant2),
+        tierWidth: (file, grant2) => local3.traits.tierWidth(file, grant2),
         everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
         log: (line) => options.log(`remote ${target}: ${line}`)
       }).catch((error) => error);
@@ -81994,7 +82125,7 @@ function withRemoteLane(options) {
     provenAt = now();
     const at2 = new Date(provenAt).toISOString();
     options.status(
-      remoteKey && remoteCore !== null ? `${remoteKeyStatusLine(target, remoteCore)}; proven at ${at2} (blob ids equal before and after)` : `remote ${target}: ${tiersName} runs of ${local2.name} go there; proven at ${at2} (blob ids equal before and after)`
+      remoteKey && remoteCore !== null ? `${remoteKeyStatusLine(target, remoteCore)}; proven at ${at2} (blob ids equal before and after)` : `remote ${target}: ${tiersName} runs of ${local3.name} go there; proven at ${at2} (blob ids equal before and after)`
     );
   };
   const runHere = async (testFiles3, run9, dir2) => {
@@ -82072,13 +82203,13 @@ function withRemoteLane(options) {
       const later = [...failed7, ...refusedFiles];
       return later.length === 0 ? proven3 : deferredTo(proven3, later);
     }
-    const local3 = options.whenLost === "local";
-    const again2 = local3 ? [...failed7, ...refusedFiles] : failed7;
+    const local4 = options.whenLost === "local";
+    const again2 = local4 ? [...failed7, ...refusedFiles] : failed7;
     const ran = again2.length === 0 ? proven3 : merge3([
       { adapter: { name: `remote ${target}` }, report: proven3 },
       { adapter: { name: "here" }, report: await runHere(again2, run9, "here") }
     ]);
-    if (refused === void 0 || local3) return ran;
+    if (refused === void 0 || local4) return ran;
     notRun += refusedFiles.length;
     tell();
     const text3 = refusedText2(refused.refused);
@@ -82150,7 +82281,7 @@ function withRemoteLane(options) {
   const planning = remotePlans ? remotePlanning({
     target,
     whenLost: options.whenLost,
-    local: local2,
+    local: local3,
     host: planningHost,
     send: sendPending,
     lost: ended2,
@@ -82164,9 +82295,9 @@ function withRemoteLane(options) {
   if (options.eager !== false) connect2();
   return {
     ...here,
-    name: local2.name,
-    adapterVersion: local2.adapterVersion,
-    traits: local2.traits,
+    name: local3.name,
+    adapterVersion: local3.adapterVersion,
+    traits: local3.traits,
     invalidate(paths) {
       const names9 = paths.map((p) => p.path);
       blobCache.evict(names9);
@@ -82178,10 +82309,10 @@ function withRemoteLane(options) {
       }
       return here.invalidate(paths);
     },
-    affected: (paths) => local2.affected(paths),
-    closure: (file) => local2.closure(file),
-    enumerate: (file) => local2.enumerate(file),
-    testFiles: () => local2.testFiles(),
+    affected: (paths) => local3.affected(paths),
+    closure: (file) => local3.closure(file),
+    enumerate: (file) => local3.enumerate(file),
+    testFiles: () => local3.testFiles(),
     ...planning,
     async environment() {
       if (planning !== null) {
@@ -82189,7 +82320,7 @@ function withRemoteLane(options) {
         return remoteKey && state.kind === "ready" && remoteCore !== null ? attachRemoteCore(envs2, remoteCore) : envs2;
       }
       if (remoteKey && state.kind === "connecting") await ready2(true);
-      const envs = await local2.environment();
+      const envs = await local3.environment();
       return remoteKey && remoteCore !== null ? attachRemoteCore(envs, remoteCore) : envs;
     },
     async run(testFiles3, run9) {
@@ -82494,19 +82625,19 @@ import { createHash as createHash48, randomBytes as randomBytes5 } from "node:cr
 import { copyFile as copyFile2, link, mkdir as mkdir4, readdir as readdir11, rename as rename3, rm as rm5, stat as stat10 } from "node:fs/promises";
 import { join as join177, resolve as resolve41 } from "node:path";
 import { promisify as promisify4 } from "node:util";
-function fullBundleKey(local2) {
-  const lines = local2.refs.split("\n").filter((line) => !line.startsWith("ref "));
+function fullBundleKey(local3) {
+  const lines = local3.refs.split("\n").filter((line) => !line.startsWith("ref "));
   return createHash48("sha256").update(lines.join("\n")).digest("hex").slice(0, 24);
 }
-function expectedBundleRefs(local2) {
+function expectedBundleRefs(local3) {
   const tags = /* @__PURE__ */ new Map();
-  for (const line of local2.refs.split("\n")) {
+  for (const line of local3.refs.split("\n")) {
     if (!line.startsWith("tag ")) continue;
     const rest2 = line.slice(4);
     const space = rest2.indexOf(" ");
     if (space > 0) tags.set(rest2.slice(space + 1), rest2.slice(0, space));
   }
-  return { head: local2.head, tags };
+  return { head: local3.head, tags };
 }
 async function currentFullBundleKey(root, signal3) {
   try {
@@ -82524,13 +82655,13 @@ async function currentFullBundleKey(root, signal3) {
     return null;
   }
 }
-async function bundleMatchesState(bundlePath, local2, signal3) {
+async function bundleMatchesState(bundlePath, local3, signal3) {
   try {
     const { stdout } = await run5("git", ["bundle", "list-heads", bundlePath], {
       maxBuffer: 64 * 1024 * 1024,
       ...signal3 === void 0 ? {} : { signal: signal3 }
     });
-    const expected = expectedBundleRefs(local2);
+    const expected = expectedBundleRefs(local3);
     let head2;
     const tags = /* @__PURE__ */ new Map();
     for (const raw of stdout.split("\n")) {
@@ -82617,15 +82748,15 @@ async function pinToCaller(cached, target) {
     throw error;
   }
 }
-async function ensureCachedBundle(root, local2, cacheDir, cached, key3, signal3) {
-  if (await hasBundle(cached) && await bundleMatchesState(cached, local2, signal3)) return true;
+async function ensureCachedBundle(root, local3, cacheDir, cached, key3, signal3) {
+  if (await hasBundle(cached) && await bundleMatchesState(cached, local3, signal3)) return true;
   signal3?.throwIfAborted();
   if (await currentFullBundleKey(root, signal3) !== key3) return false;
   const tmp = join177(cacheDir, `${key3}.${process.pid}.${randomBytes5(4).toString("hex")}.tmp`);
   try {
     await createGitBundle(root, tmp, ["HEAD", "--tags"], signal3);
     signal3?.throwIfAborted();
-    if (!await bundleMatchesState(tmp, local2, signal3)) {
+    if (!await bundleMatchesState(tmp, local3, signal3)) {
       await rm5(tmp, { force: true }).catch(() => {
       });
       return false;
@@ -82640,7 +82771,7 @@ async function ensureCachedBundle(root, local2, cacheDir, cached, key3, signal3)
   await pruneCache(cacheDir, cached);
   return true;
 }
-async function trySharedCache(root, local2, target, deadlineMs, signal3) {
+async function trySharedCache(root, local3, target, deadlineMs, signal3) {
   const common = await gitCommonDir(root);
   if (common === null) return null;
   const cacheDir = join177(common, "squeal", "remote-bundles");
@@ -82668,9 +82799,9 @@ async function trySharedCache(root, local2, target, deadlineMs, signal3) {
   }
   try {
     signal3?.throwIfAborted();
-    const key3 = fullBundleKey(local2);
+    const key3 = fullBundleKey(local3);
     const cached = join177(cacheDir, `${key3}.bundle`);
-    if (!await ensureCachedBundle(root, local2, cacheDir, cached, key3, signal3)) return null;
+    if (!await ensureCachedBundle(root, local3, cacheDir, cached, key3, signal3)) return null;
     signal3?.throwIfAborted();
     try {
       await pinToCaller(cached, target);
@@ -82683,10 +82814,10 @@ async function trySharedCache(root, local2, target, deadlineMs, signal3) {
     acquired.release();
   }
 }
-async function sharedFullBundle(root, local2, callerDir, deadlineMs, signal3) {
+async function sharedFullBundle(root, local3, callerDir, deadlineMs, signal3) {
   signal3?.throwIfAborted();
   const fallback2 = join177(callerDir, "full.bundle");
-  const fromCache = await trySharedCache(root, local2, fallback2, deadlineMs, signal3);
+  const fromCache = await trySharedCache(root, local3, fallback2, deadlineMs, signal3);
   if (fromCache !== null) return fromCache;
   signal3?.throwIfAborted();
   await createGitBundle(root, fallback2, ["HEAD", "--tags"], signal3);
@@ -82763,30 +82894,30 @@ async function knownHere(root, commit) {
   );
 }
 async function ensureGitTree(target, tree, root, deadlines, signal3) {
-  const local2 = await localGitState(root).catch(() => null);
+  const local3 = await localGitState(root).catch(() => null);
   signal3?.throwIfAborted();
-  if (local2 === null) return { kind: "none", why: "the worktree has no commit yet" };
+  if (local3 === null) return { kind: "none", why: "the worktree has no commit yet" };
   const remote = await remoteGitState(target, tree, deadlines, signal3);
-  if (remote?.key === local2.key) return { kind: "present", commit: local2.head, state: remote };
+  if (remote?.key === local3.key) return { kind: "present", commit: local3.head, state: remote };
   const base = remote !== null && await knownHere(root, remote.head) ? remote.head : null;
   const dir2 = await mkdtemp(join178(tmpdir13(), "squeal-agent37-bundle-"));
   try {
-    const send = (since) => sendGit(target, tree, root, { local: local2, base: since, dir: dir2, deadlines, signal: signal3 });
+    const send = (since) => sendGit(target, tree, root, { local: local3, base: since, dir: dir2, deadlines, signal: signal3 });
     let sent = await send(base);
     if (sent === "missing" && base !== null) sent = await send(null);
     if (sent === "missing") return { kind: "none", why: "the git bundle lacked objects there" };
-    return { kind: "sent", commit: local2.head, state: sent };
+    return { kind: "sent", commit: local3.head, state: sent };
   } finally {
     await rm6(dir2, { recursive: true, force: true });
   }
 }
 async function sendGit(target, tree, root, send) {
-  const { local: local2, base, dir: dir2, deadlines, signal: signal3 } = send;
+  const { local: local3, base, dir: dir2, deadlines, signal: signal3 } = send;
   signal3?.throwIfAborted();
   let bundle = null;
   if (base === null) {
     try {
-      bundle = await sharedFullBundle(root, local2, dir2, deadlines.bundleMs, signal3);
+      bundle = await sharedFullBundle(root, local3, dir2, deadlines.bundleMs, signal3);
     } catch (error) {
       signal3?.throwIfAborted();
       const stderr = String(error.stderr ?? error).trim();
@@ -82810,7 +82941,7 @@ async function sendGit(target, tree, root, send) {
   }
   const input = Readable2.from(
     (async function* () {
-      yield Buffer.from(`${local2.refs}
+      yield Buffer.from(`${local3.refs}
 .
 `);
       if (bundle !== null) yield* createReadStream(bundle);
@@ -85070,6 +85201,8 @@ function laneOver(share2, spec, tiers, context2) {
   const launch = options.launch;
   const adapter = withRemoteLane({
     target,
+    // Row 026-28 (spec 026 D12): a remote failure names the machine that ran it.
+    remoteLabel: () => share2.current()?.id ?? target,
     eager: context2.eager,
     lanes: tiers,
     // A lane made per pass waits for its connect while the machine is known awake; while it is
@@ -85255,52 +85388,52 @@ var init_counter = __esm({
 });
 
 // src/core/shared/choose.ts
-async function remotesOf(root, signal3) {
-  const names9 = (textOf(await gitCall(root, ["remote"], local(signal3))) ?? "").split("\n").filter(Boolean);
+async function remotesOf2(root, signal3) {
+  const names9 = (textOf(await gitCall(root, ["remote"], local2(signal3))) ?? "").split("\n").filter(Boolean);
   return names9.includes("origin") ? ["origin", ...names9.filter((n) => n !== "origin")] : names9;
 }
 async function upstreamOf(root, signal3) {
-  for (const remote of await remotesOf(root, signal3)) {
+  for (const remote of await remotesOf2(root, signal3)) {
     const head2 = `refs/remotes/${remote}/HEAD`;
     const args2 = ["rev-parse", "--verify", "-q", "--symbolic-full-name", head2];
-    const branch = textOf(await gitCall(root, args2, local(signal3)));
+    const branch = textOf(await gitCall(root, args2, local2(signal3)));
     if (branch !== null && branch !== "" && branch !== head2) return { remote, branch };
   }
   return null;
 }
 async function advertisedUpstream(root, call2) {
-  const [remote] = await remotesOf(root, call2.signal);
+  const [remote] = await remotesOf2(root, call2.signal);
   if (remote === void 0) return null;
   const answer4 = await gitCall(root, ["ls-remote", "--symref", remote, "HEAD"], call2);
   const name3 = ADVERTISED_HEAD.exec(textOf(answer4) ?? "")?.[1];
   if (name3 === void 0) return null;
   const branch = `refs/remotes/${remote}/${name3}`;
   const args2 = ["rev-parse", "--verify", "-q", `${branch}^{commit}`];
-  const held4 = textOf(await gitCall(root, args2, local(call2.signal)));
+  const held4 = textOf(await gitCall(root, args2, local2(call2.signal)));
   return held4 === null || held4 === "" ? null : { remote, branch };
 }
 async function startPoint(root, head2, upstream, signal3) {
   const args2 = ["merge-base", head2, upstream.branch];
-  const base = textOf(await gitCall(root, args2, local(signal3)));
+  const base = textOf(await gitCall(root, args2, local2(signal3)));
   return base === null || base === "" ? null : base;
 }
 async function firstParents(root, from, signal3) {
   const args2 = ["rev-list", "--first-parent", `--max-count=${SEARCH_DEPTH}`, from];
-  return (textOf(await gitCall(root, args2, local(signal3))) ?? "").split("\n").filter(Boolean);
+  return (textOf(await gitCall(root, args2, local2(signal3))) ?? "").split("\n").filter(Boolean);
 }
 async function onFirstParentLine(root, branch, commit, signal3) {
   const args2 = ["rev-list", "--first-parent", branch, "--not", `${commit}^@`];
-  const walked = textOf(await gitCall(root, args2, local(signal3)));
+  const walked = textOf(await gitCall(root, args2, local2(signal3)));
   if (walked === null) return false;
   return walked.split("\n").filter(Boolean).at(-1) === commit;
 }
-var LOCAL_TIMEOUT_MS2, local, SEARCH_DEPTH, ADVERTISED_HEAD;
+var LOCAL_TIMEOUT_MS2, local2, SEARCH_DEPTH, ADVERTISED_HEAD;
 var init_choose = __esm({
   "src/core/shared/choose.ts"() {
     "use strict";
     init_git3();
     LOCAL_TIMEOUT_MS2 = 3e4;
-    local = (signal3) => signal3 === void 0 ? { timeoutMs: LOCAL_TIMEOUT_MS2 } : { timeoutMs: LOCAL_TIMEOUT_MS2, signal: signal3 };
+    local2 = (signal3) => signal3 === void 0 ? { timeoutMs: LOCAL_TIMEOUT_MS2 } : { timeoutMs: LOCAL_TIMEOUT_MS2, signal: signal3 };
     SEARCH_DEPTH = 1e3;
     ADVERTISED_HEAD = /^ref: refs\/heads\/(\S+)\tHEAD$/m;
   }
@@ -89210,7 +89343,7 @@ function writeRemoteSummary(store, worktreeId, text3) {
   if (text3 === "") store.meta.delete(key3);
   else store.meta.set(key3, text3);
 }
-function remoteOf(store, worktreeId) {
+function remoteOf2(store, worktreeId) {
   const text3 = readRemoteSummary(store, worktreeId);
   return text3 === void 0 ? {} : { remote: text3 };
 }
@@ -89705,14 +89838,14 @@ function results(why2) {
     ...why2.results.flatMap((entry4) => resultLines(why2, entry4))
   ];
 }
-function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir }) {
+function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir, remote }) {
   const p = result.provenance;
   const importId = importIdOf(p.worktreeId);
   const where3 = p.worktreeId === why2.worktreeId ? `${worktreeRoot2 ?? why2.worktreeRoot} (this worktree)` : importId !== null ? `imported from ${importSource(why2, importId)}` : worktreeRoot2 ?? `removed worktree ${p.worktreeId}`;
   const noLog = importId === null ? "run record pruned" : "none, an imported result has no run log";
   const lines = [
     `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where3}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
-    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why2, result) ? ", replaced the result behind this worktree's known state" : ""}`,
+    `${INDENT}run ${p.runId}${remote === void 0 ? "" : `, remote ${remote}`}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why2, result) ? ", replaced the result behind this worktree's known state" : ""}`,
     `${INDENT}log: ${logDir ?? noLog}`
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
@@ -89942,6 +90075,7 @@ init_header();
 init_producers();
 init_load();
 init_records();
+init_remote();
 function retryFactOf(records) {
   const newest = records.filter((r) => r.noResult !== true).at(-1);
   if (newest === void 0) return void 0;
@@ -89957,6 +90091,7 @@ function withRecorded(store, worktreeId, states, revision) {
   const failureKeys2 = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads2 = readRunLoads(store);
+  const remotes = readRunRemotes(store);
   const notes = readFlakyNotes(store);
   return failing.map(({ state, failure: failure2 }) => {
     if (failure2.check.kind === "setup") return failure2;
@@ -89967,12 +90102,14 @@ function withRecorded(store, worktreeId, states, revision) {
     if (row2 === null) return { ...failure2, recordedUnknown: true };
     const { provenance } = row2;
     const retry2 = retryFactOf(retriesAt(retries, testFile, row2.key));
+    const remote = keptRemote(remotes, provenance.runId, testFile);
     const recorded2 = {
       worktreeId: provenance.worktreeId,
       worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
       revision: provenance.revision,
       recordedAt: provenance.recordedAt,
       loadPerCpu: loads2.get(provenance.runId) ?? null,
+      ...remote === void 0 ? {} : { remote },
       ...retry2 === void 0 ? {} : { retry: retry2 },
       ...notes.get(id)?.key === row2.key ? {} : { noEarlierPass: true }
     };
@@ -90390,11 +90527,11 @@ function memoBy(idOf4, make) {
   };
 }
 function environmentOf(store, worktreeId, files6) {
-  const local2 = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
+  const local3 = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
   const projects2 = new Set(files6.map((f) => f.project)).size;
   const differing = /* @__PURE__ */ new Map();
   for (const f of files6) {
-    const ours = local2.get(f.project);
+    const ours = local3.get(f.project);
     if (ours !== void 0 && ours.hash !== f.environment) {
       differing.set(f.project, [f.environment, ours]);
     }
@@ -90995,7 +91132,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     notes,
     daemonNotes,
     // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
-    ...remoteOf(store, worktreeId),
+    ...remoteOf2(store, worktreeId),
     ...listingFailedOf(daemonNotes, header2, daemon),
     ...checkpoint2,
     ...vitestExcluded(at2),
@@ -91154,6 +91291,7 @@ function recoveryNote(raw) {
 // src/core/status/why.ts
 init_git_layout();
 init_reverse_index();
+init_remote();
 init_derive();
 init_flaky();
 init_inherited();
@@ -91478,11 +91616,16 @@ function report({ store, root, commonDir }, check3, includeLogs, session, kept6)
   const knownState2 = store.knownStates.get(worktreeId, check3);
   const all2 = store.results.listForCheck(check3, Number.MAX_SAFE_INTEGER);
   const logDirOf = (result) => store.runs.get(result.provenance.runId)?.logDir ?? null;
-  const entry4 = (result) => ({
-    result,
-    worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
-    logDir: logDirOf(result)
-  });
+  const remotes = readRunRemotes(store);
+  const entry4 = (result) => {
+    const remote = keptRemote(remotes, result.provenance.runId, testFileOf(check3));
+    return {
+      result,
+      worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
+      logDir: logDirOf(result),
+      ...remote === void 0 ? {} : { remote }
+    };
+  };
   const results3 = all2.slice(0, WHY_RESULT_LIMIT).map(entry4);
   const olderFailures = all2.slice(WHY_RESULT_LIMIT).filter((r) => r.outcome === "fail").slice(0, WHY_OLDER_FAILURE_LIMIT).map(entry4);
   const replacedFailures = replacedOfCheck(store, check3, worktreeRoots, kept6);
@@ -100750,8 +100893,8 @@ async function publishExport(input) {
   if (typeof bundle === "string") return { refused: bundle };
   const commit = bundle.header.commit;
   if (commit === null) return { refused: "the export names no commit (an unborn HEAD)" };
-  const local2 = (args2, input2) => gitCall(root, args2, { timeoutMs: LOCAL_TIMEOUT_MS, ...input2 === void 0 ? {} : { input: input2 } });
-  if ((await local2(["cat-file", "-e", `${commit}^{commit}`])).code !== 0) {
+  const local3 = (args2, input2) => gitCall(root, args2, { timeoutMs: LOCAL_TIMEOUT_MS, ...input2 === void 0 ? {} : { input: input2 } });
+  if ((await local3(["cat-file", "-e", `${commit}^{commit}`])).code !== 0) {
     return {
       refused: `this checkout does not hold commit ${commit}; publish from a checkout of it`
     };
@@ -100765,7 +100908,7 @@ async function publishExport(input) {
     return { refused: `cannot list ${remote}'s results refs: ${failureOf(existing2, timeoutMs)}` };
   }
   const line = textOf(
-    await local2(["rev-list", "--first-parent", `--max-count=${WALK_LIMIT}`, commit])
+    await local3(["rev-list", "--first-parent", `--max-count=${WALK_LIMIT}`, commit])
   );
   const position2 = new Map((line ?? "").split("\n").map((sha, i3) => [sha, i3]));
   const deleted = [];
@@ -100791,7 +100934,7 @@ async function publishExport(input) {
   );
   const updates = porcelain(push.stdout.toString("utf8"));
   if (!updates.get(ref3)) return { refused: `cannot push ${ref3}: ${failureOf(push, timeoutMs)}` };
-  const shallow = textOf(await local2(["rev-parse", "--is-shallow-repository"])) === "true";
+  const shallow = textOf(await local3(["rev-parse", "--is-shallow-repository"])) === "true";
   return {
     ref: ref3,
     result,
@@ -125875,8 +126018,8 @@ async function exportOf2(input, call2) {
   const ref3 = refOf3(prefix, commit);
   const upstream = await upstreamOf(root);
   if (upstream === null) return null;
-  const local2 = await localExport(root, ref3);
-  let bytes2 = local2;
+  const local3 = await localExport(root, ref3);
+  let bytes2 = local3;
   if (bytes2 === null) {
     if (policy.shared.ref === null) return null;
     const fetched = await fetched1(root, upstream.remote, ref3, call2);
@@ -126620,7 +126763,7 @@ function stopReruns(files6, args2, conditions, fromCwd) {
 }
 
 // src/core/commit/at-keys-side.ts
-import { execFileSync as execFileSync5 } from "node:child_process";
+import { execFileSync as execFileSync6 } from "node:child_process";
 import {
   chmodSync as chmodSync6,
   existsSync as existsSync85,
@@ -126723,7 +126866,7 @@ async function testSource(root, tests2, paths) {
       absentAt.add(path);
       continue;
     }
-    const bytes2 = execFileSync5("git", ["cat-file", "blob", entry4.blob], {
+    const bytes2 = execFileSync6("git", ["cat-file", "blob", entry4.blob], {
       cwd: root,
       maxBuffer: MAX_BLOB_BYTES,
       timeout: LS_TREE_TIMEOUT_MS
@@ -132626,7 +132769,7 @@ async function materializeFromGit(root, entries3, writeEntry) {
 // src/core/runner-host/remote/tree-host.ts
 init_tree_install();
 init_tree_wire();
-function createTreeHost(root, output, env = process.env) {
+function createTreeHost(root, output, env = process.env, tools2) {
   const state = dirname77(root);
   const recordPath = join221(state, "files.json");
   const installedPath = join221(state, "installed.json");
@@ -132711,7 +132854,18 @@ function createTreeHost(root, output, env = process.env) {
       const keepModules = Object.keys(files6).some((path) => path.startsWith("node_modules/"));
       return locked3(
         join221(state, "install.lock"),
-        () => installTree({ root, record: installedPath, locks, keepModules, output, env })
+        () => installTree({
+          root,
+          record: installedPath,
+          locks,
+          keepModules,
+          output,
+          env,
+          ...tools2 === void 0 ? {} : { tools: tools2 },
+          onPath: (path) => {
+            if (path !== void 0) env.PATH = path;
+          }
+        })
       );
     },
     async runDir(runId) {
