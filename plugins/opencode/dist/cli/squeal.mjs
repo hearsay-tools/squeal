@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.635";
+  if (true) return "0.1.636";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -82977,11 +82977,12 @@ if [ "$("$N" -v 2>/dev/null || true)" = "v$V" ]; then printf '%s\\n' "$N"; exit 
 D=$HOME/.local/node-v$V
 if [ ! -x "$D/bin/node" ]; then
   A=$(uname -m); case $A in x86_64) A=x64;; aarch64) A=arm64;; esac
-  F=node-v$V-linux-$A.tar.xz
+  if command -v xz >/dev/null 2>&1; then F=node-v$V-linux-$A.tar.xz; X=-xJf
+  else F=node-v$V-linux-$A.tar.gz; X=-xzf; fi
   W=$(mktemp -d); cd "$W"
   curl -fsSLO "https://nodejs.org/dist/v$V/$F"
   curl -fsSL "https://nodejs.org/dist/v$V/SHASUMS256.txt" | grep " $F\\$" | sha256sum -c - >&2
-  mkdir -p "$D"; tar -xJf "$F" -C "$D" --strip-components=1
+  mkdir -p "$D"; tar "$X" "$F" -C "$D" --strip-components=1
   cd /; rm -rf "$W"
 fi
 mkdir -p "$HOME/.local/bin"
@@ -83500,6 +83501,12 @@ var init_tunnel = __esm({
 });
 
 // src/core/runner-host/remote/providers/agent37/config.ts
+function defaultSshUser(template, mountPath) {
+  if (mountPath === "/root" || template === UBUNTU || template.startsWith(`${UBUNTU}@`)) {
+    return "root";
+  }
+  return "node";
+}
 function oneOf4(key3, value, allowed) {
   if (value === void 0 || allowed.includes(value)) return null;
   return `"${key3}" must be one of ${allowed.map((a) => `"${a}"`).join(", ")}`;
@@ -83543,6 +83550,16 @@ function sshKeyPathProblem(config) {
   if (path === void 0 || plainString(path) && path !== "") return null;
   return '"sshKeyPath" must be a non-empty path';
 }
+function templateProblem(config) {
+  const template = config.template;
+  if (template === void 0 || plainString(template) && TEMPLATE.test(template)) return null;
+  return '"template" must be a template name, optionally pinned, such as "agent37-ubuntu" or "my-vm@2"';
+}
+function sshUserProblem(config) {
+  const user = config.sshUser;
+  if (user === void 0 || plainString(user) && SSH_USER.test(user)) return null;
+  return '"sshUser" must be a login name, such as "root" or "node"';
+}
 function apiBaseUrlProblem(config) {
   if (config.apiBaseUrl === void 0 || httpUrl(config.apiBaseUrl)) return null;
   return '"apiBaseUrl" must be an http: or https: URL with no credential';
@@ -83569,7 +83586,7 @@ function agent37Settings(config) {
     apiBaseUrl: merged4.apiBaseUrl.replace(/\/+$/, "")
   };
 }
-var REGIONS, TYPES2, BOOTSTRAPS, AGENT37_DEFAULTS, KEYS2, AUTO_SLEEP_MINUTES, ENV_NAME, CHECKS;
+var REGIONS, TYPES2, BOOTSTRAPS, AGENT37_DEFAULTS, KEYS2, AUTO_SLEEP_MINUTES, ENV_NAME, TEMPLATE, SSH_USER, UBUNTU, CHECKS;
 var init_config3 = __esm({
   "src/core/runner-host/remote/providers/agent37/config.ts"() {
     "use strict";
@@ -83588,7 +83605,8 @@ var init_config3 = __esm({
       apiKeyEnv: "AGENT37_API_KEY",
       bootstrap: "git-bundle",
       apiBaseUrl: "https://api.agent37.com",
-      tunnelHostTemplate: TUNNEL_HOST_TEMPLATE
+      tunnelHostTemplate: TUNNEL_HOST_TEMPLATE,
+      template: "agent37-base"
     };
     KEYS2 = [
       "region",
@@ -83603,10 +83621,15 @@ var init_config3 = __esm({
       "apiBaseUrl",
       "tunnelHostTemplate",
       "node",
-      "cache"
+      "cache",
+      "template",
+      "sshUser"
     ];
     AUTO_SLEEP_MINUTES = { min: 5, max: 1440 };
     ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+    TEMPLATE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[A-Za-z0-9._-]{1,64})?$/;
+    SSH_USER = /^[A-Za-z_][A-Za-z0-9._-]{0,63}$/;
+    UBUNTU = "agent37-ubuntu";
     CHECKS = [
       (config) => unknownKey2(config, KEYS2),
       (config) => oneOf4("region", config.region, REGIONS),
@@ -83619,6 +83642,8 @@ var init_config3 = __esm({
       autoSleepProblem,
       apiKeyEnvProblem,
       sshKeyPathProblem,
+      templateProblem,
+      sshUserProblem,
       apiBaseUrlProblem,
       tunnelHostProblem,
       placesProblem
@@ -83722,7 +83747,12 @@ var init_api = __esm({
         this.#ok(method, path, answer4);
         const { body: body2 } = answer4;
         if (isRecord(body2) && typeof body2.id === "string" && typeof body2.status === "string") {
-          return { id: body2.id, status: body2.status };
+          return {
+            id: body2.id,
+            status: body2.status,
+            ...typeof body2.mount_path === "string" ? { mount_path: body2.mount_path } : {},
+            ...typeof body2.template === "string" ? { template: body2.template } : {}
+          };
         }
         throw new Error(`Agent37 ${method} ${path} answered no instance id and status`);
       }
@@ -83799,11 +83829,15 @@ var init_api = __esm({
 function stateOf4(value) {
   if (!isRecord(value) || !validInstanceId(value.instanceId)) return null;
   const text3 = (key3) => typeof value[key3] === "string" ? value[key3] : "";
+  const template = text3("template");
+  const sshUser = text3("sshUser");
   return {
     instanceId: value.instanceId,
     region: text3("region"),
     type: text3("type"),
-    bootstrap: text3("bootstrap")
+    bootstrap: text3("bootstrap"),
+    ...template === "" ? {} : { template },
+    ...sshUser === "" ? {} : { sshUser }
   };
 }
 function apiOf(settings, env, timing) {
@@ -83946,7 +83980,8 @@ var init_machine = __esm({
 function proxyWord(word2) {
   return shellQuote(word2).replaceAll("%", "%%");
 }
-function agent37Ssh(settings, id, env, cli) {
+function agent37Ssh(settings, id, env, cli, sshUser) {
+  const user = sshUser ?? settings.sshUser ?? defaultSshUser(settings.template);
   const tunnel = [...cli, "remote-tunnel", AGENT37, id];
   if (settings.apiKeyEnv !== AGENT37_DEFAULTS.apiKeyEnv)
     tunnel.push("--api-key-env", settings.apiKeyEnv);
@@ -83954,7 +83989,7 @@ function agent37Ssh(settings, id, env, cli) {
     tunnel.push("--host", tunnelHost(settings.tunnelHostTemplate, id));
   }
   return {
-    destination: `${SSH_USER}@${id}.agent37.app`,
+    destination: `${user}@${id}.agent37.app`,
     args: [
       "-o",
       `ProxyCommand=${tunnel.map(proxyWord).join(" ")}`,
@@ -83991,22 +84026,12 @@ async function acquire2(request, config, timing) {
   const tracked = trackedState(request, env);
   let state = null;
   stop2();
-  if (tracked !== null) {
-    const found4 = await api.inspect(tracked.instanceId, signal3).catch(aborted(stop2));
-    stop2();
-    if (found4 === null) {
-      request.log(`Agent37 instance ${tracked.instanceId} is gone; creating another`);
-    } else {
-      await untilRunning(api, tracked.instanceId, found4, timing, signal3).catch(aborted(stop2));
-      state = tracked;
-      request.log(`Agent37 instance ${tracked.instanceId} reused (${found4.status} before)`);
-    }
-  }
+  if (tracked !== null) state = await reuse(request, api, tracked, settings, timing, stop2);
   const created = state === null;
   if (state === null) {
     stop2();
     const made = await api.create({
-      template: "agent37-base",
+      template: settings.template,
       region: settings.region,
       type: settings.type,
       resources: { cpu: settings.vcpu, memory: settings.memoryGb, disk: settings.diskGb },
@@ -84026,9 +84051,13 @@ async function acquire2(request, config, timing) {
       instanceId: made.id,
       region: settings.region,
       type: settings.type,
-      bootstrap: settings.bootstrap
+      bootstrap: settings.bootstrap,
+      template: settings.template,
+      sshUser: settings.sshUser ?? defaultSshUser(settings.template, made.mount_path)
     };
-    request.log(`Agent37 instance ${made.id} created (${settings.region} ${settings.type})`);
+    request.log(
+      `Agent37 instance ${made.id} created (${settings.region} ${settings.type}, ${settings.template})`
+    );
     try {
       await untilRunning(api, made.id, made, timing, signal3);
     } catch (error) {
@@ -84053,6 +84082,29 @@ async function acquire2(request, config, timing) {
     return aborted(stop2)(error);
   }
 }
+async function reuse(request, api, tracked, settings, timing, stop2) {
+  const id = tracked.instanceId;
+  const template = tracked.template ?? AGENT37_DEFAULTS.template;
+  if (template !== settings.template) {
+    await api.remove(id).catch(() => {
+    });
+    request.log(
+      `Agent37 instance ${id} uses template ${template}, not ${settings.template}; replacing`
+    );
+    return null;
+  }
+  const { signal: signal3 } = request;
+  const found4 = await api.inspect(id, signal3).catch(aborted(stop2));
+  stop2();
+  if (found4 === null) {
+    request.log(`Agent37 instance ${id} is gone; creating another`);
+    return null;
+  }
+  await untilRunning(api, id, found4, timing, signal3).catch(aborted(stop2));
+  request.log(`Agent37 instance ${id} reused (${found4.status} before)`);
+  const sshUser = settings.sshUser ?? tracked.sshUser ?? defaultSshUser(template, found4.mount_path);
+  return sshUser === tracked.sshUser ? tracked : { ...tracked, template, sshUser };
+}
 function aborted(stop2) {
   return (error) => {
     stop2();
@@ -84060,7 +84112,7 @@ function aborted(stop2) {
   };
 }
 async function bootstrap(request, settings, state, env, timing) {
-  const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli);
+  const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli, state.sshUser);
   const { signal: signal3 } = request;
   const node2 = await ensureNode(
     ssh,
@@ -84126,7 +84178,7 @@ function createAgent37Provider(timing = {}) {
     }
   };
 }
-var AcquireAborted, SSH_USER, TIMING, agent37Provider;
+var AcquireAborted, TIMING, agent37Provider;
 var init_agent37 = __esm({
   "src/core/runner-host/remote/providers/agent37/index.ts"() {
     "use strict";
@@ -84142,7 +84194,6 @@ var init_agent37 = __esm({
         super("Agent37 acquire stopped: the daemon's exit began");
       }
     };
-    SSH_USER = "node";
     TIMING = {
       pollMs: 2e3,
       readyMs: 3e5,
@@ -95229,12 +95280,12 @@ function texts(differences2) {
 
 // src/core/ci/export-inputs.ts
 function certifier(root, keys, parts3) {
-  const reuse = new FileReuse(parts3, { atCommit: (commit) => treeAt(root, commit) });
+  const reuse2 = new FileReuse(parts3, { atCommit: (commit) => treeAt(root, commit) });
   const here = hereOf2(root, (path) => keys.cache.hashOf(path));
   return async (ref3, paths) => {
-    const holder = reuse.owner(ref3);
+    const holder = reuse2.owner(ref3);
     if (holder === null || "reason" in holder) return { uncertified: [...paths], endpoints: [] };
-    const { refused, endpoints } = await reuse.certify(holder, paths, here);
+    const { refused, endpoints } = await reuse2.certify(holder, paths, here);
     return { uncertified: refused?.uncertified ?? [], endpoints };
   };
 }
@@ -104713,12 +104764,12 @@ async function gatePlace(runners2, gate2) {
 // src/core/code/gate/parts.ts
 function partsEvidence(options) {
   const records = { changed: options.changed, children: options.children };
-  const reuse = new FileReuse(options.parts, {
+  const reuse2 = new FileReuse(options.parts, {
     records,
     atCommit: (commit) => treeAt2(options.root, commit)
   });
   const why2 = /* @__PURE__ */ new Map();
-  for (const { name: name3, why: reason2 } of reuse.unusable) {
+  for (const { name: name3, why: reason2 } of reuse2.unusable) {
     why2.set(reason2, [...why2.get(reason2) ?? [], name3]);
   }
   for (const [reason2, names9] of why2) {
@@ -104738,7 +104789,7 @@ function partsEvidence(options) {
     const refuse3 = (ref3, refusal4) => options.refused?.({ runner, path: ref3.path, ...refusal4 });
     const single = [];
     for (const ref3 of files6) {
-      const owner2 = reuse.owner(ref3);
+      const owner2 = reuse2.owner(ref3);
       if (owner2 === null) continue;
       if ("reason" in owner2) refuse3(ref3, owner2);
       else single.push({ ref: ref3, owner: owner2 });
@@ -104747,7 +104798,7 @@ function partsEvidence(options) {
     const certify = await environmentCheck(environment, options.environment);
     const candidates = [];
     for (const { ref: ref3, owner: owner2 } of single) {
-      const differs = reuse.environment(owner2, ref3.project, certify);
+      const differs = reuse2.environment(owner2, ref3.project, certify);
       if (differs !== null) {
         const project = JSON.stringify(ref3.project);
         tell(
@@ -104756,7 +104807,7 @@ function partsEvidence(options) {
         refuse3(ref3, differs);
         continue;
       }
-      const loaded = reuse.closure(owner2, await closure?.(ref3) ?? null);
+      const loaded = reuse2.closure(owner2, await closure?.(ref3) ?? null);
       if ("reason" in loaded) refuse3(ref3, loaded);
       else candidates.push({ ref: ref3, owner: owner2, closure: loaded });
     }
@@ -104764,7 +104815,7 @@ function partsEvidence(options) {
     here ??= readObjectFormat(options.root).then((format2) => contentHere(options.root, format2));
     const inputs2 = await inputsOf(options.root, candidates);
     for (const [at2, candidate] of candidates.entries()) {
-      const refused = await reuse.evidence(candidate.owner, inputs2[at2] ?? [], await here);
+      const refused = await reuse2.evidence(candidate.owner, inputs2[at2] ?? [], await here);
       if (refused !== null) refuse3(candidate.ref, refused.refusal);
       else found4.set(candidate.ref, given(candidate));
     }
