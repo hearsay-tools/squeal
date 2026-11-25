@@ -332,7 +332,7 @@ describe.skipIf(AGENT37_MISSING !== undefined)(
       expect(ps, ps).toMatch(
         new RegExp(`^ +host vitest +\\d+ +remote agent37 .* agent37:eu:vm:${id}, awake$`, "m"),
       );
-      expect(spawned.stderr()).toContain(`Agent37 instance ${id} created (eu vm)`);
+      expect(spawned.stderr()).toContain(`Agent37 instance ${id} created (eu vm, agent37-base)`);
       expect(spawned.stderr()).toMatch(new RegExp(`Agent37 instance ${id}: git history sent at`));
       const created = api.calls.find((c) => c.method === "POST" && c.path === "/v1/instances");
       expect(created?.body).toMatchObject({
