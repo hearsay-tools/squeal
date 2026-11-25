@@ -22,6 +22,12 @@ import type { RunOptions, RunReport } from "../../types/runner.js";
 export interface AdmitAsk {
   readonly want: number;
   readonly least: number;
+  /**
+   * Row 026-23: the attempt the grant is held for, which its run names
+   * (`RemoteRunOptions.admitToken`). Concurrent slots hold one grant each;
+   * a look drops only its own token's. Absent: the one untokened grant.
+   */
+  readonly token?: string;
 }
 
 /**
@@ -39,17 +45,19 @@ export interface AdmitAnswer {
 /** The remote machine's admission, which a remote runner host holds. */
 export interface HostAdmission {
   /**
-   * One look. A grant is held for the next run; one held unclaimed is
-   * returned first, so a look for 0 workers returns it and takes nothing.
+   * One look. A grant is held for the run that names its `token`; one that
+   * token held unclaimed is returned first, so a look for 0 workers returns
+   * it and takes nothing. An untokened look for 0 returns every held grant.
    */
   admit(ask: AdmitAsk): AdmitAnswer;
   /**
-   * The held grant, for the run that starts now: `UNGRANTED` after a look
-   * whose pool failed; `null` when none is held, as when its hold passed or
-   * a later look took its place, and then the run must not start (review
-   * 0.1.445 R1).
+   * The grant held for `token`, for the run that starts now: `UNGRANTED`
+   * after a look whose pool failed; `null` when none is held, as when its
+   * hold passed or a later look took its place, and then the run must not
+   * start (review 0.1.445 R1). Never another token's grant. Absent `token`:
+   * the untokened grant, else the oldest held.
    */
-  claim(): PoolLease | typeof UNGRANTED | null;
+  claim(token?: string): PoolLease | typeof UNGRANTED | null;
   /** Returns what it holds; its mark goes. */
   close(): void;
 }
@@ -66,26 +74,36 @@ export function createHostAdmission(
   holdMs = ADMITTED_HOLD_MS,
 ): HostAdmission {
   let pool: PermitPool | null = null;
-  let held: {
-    readonly lease: PoolLease | typeof UNGRANTED;
-    readonly timer: NodeJS.Timeout;
-  } | null = null;
+  /** Row 026-23: each attempt's grant, by its token; in insertion order, the oldest first. */
+  const held = new Map<HeldKey, HeldEntry>();
   let refusal: string | undefined;
-  const drop = () => {
-    if (held === null) return;
-    clearTimeout(held.timer);
-    if (held.lease !== UNGRANTED) held.lease.release();
-    held = null;
+  const take = (key: HeldKey): HeldEntry["lease"] | null => {
+    const entry = held.get(key);
+    if (entry === undefined) return null;
+    clearTimeout(entry.timer);
+    held.delete(key);
+    return entry.lease;
   };
-  /** Held for the next run until `holdMs` passes. */
-  const hold = (lease: PoolLease | typeof UNGRANTED) => {
-    const timer = setTimeout(drop, holdMs);
+  const drop = (key: HeldKey) => {
+    const lease = take(key);
+    if (lease !== null && lease !== UNGRANTED) lease.release();
+  };
+  const dropAll = () => {
+    for (const key of [...held.keys()]) drop(key);
+  };
+  /** Held for the run of `key` until `holdMs` passes. */
+  const hold = (key: HeldKey, lease: PoolLease | typeof UNGRANTED) => {
+    const timer = setTimeout(() => {
+      if (held.get(key)?.timer === timer) drop(key);
+    }, holdMs);
     timer.unref();
-    held = { lease, timer };
+    held.set(key, { lease, timer });
   };
   return {
-    admit({ want, least }) {
-      drop();
+    admit({ want, least, token }) {
+      const key = token ?? DEFAULT_KEY;
+      if (want < 1 && token === undefined) dropAll();
+      else drop(key);
       if (want < 1) return { grant: 0 };
       refusal = undefined;
       let lease: PoolLease | null;
@@ -95,27 +113,34 @@ export function createHostAdmission(
         });
         lease = pool.acquire(want, "fast", least, "backlog");
       } catch (error) {
-        hold(UNGRANTED);
+        hold(key, UNGRANTED);
         return { grant: want, failed: error instanceof Error ? error.message : String(error) };
       }
       if (lease === null) return refusal === undefined ? { grant: 0 } : { grant: 0, refusal };
       // As a tier's lease under its runner's width: the run's tail never states more than it asked.
-      hold(widthLease(lease, want));
+      hold(key, widthLease(lease, want));
       return { grant: lease.grant };
     },
-    claim() {
-      if (held === null) return null;
-      clearTimeout(held.timer);
-      const { lease } = held;
-      held = null;
-      return lease;
+    claim(token) {
+      if (token !== undefined) return take(token);
+      if (held.has(DEFAULT_KEY)) return take(DEFAULT_KEY);
+      const oldest = held.keys().next();
+      return oldest.done === true ? null : take(oldest.value);
     },
     close() {
-      drop();
+      dropAll();
       pool?.close();
       pool = null;
     },
   };
+}
+
+/** The key of the grant an untokened look holds. */
+const DEFAULT_KEY: unique symbol = Symbol("untokened");
+type HeldKey = string | typeof DEFAULT_KEY;
+interface HeldEntry {
+  readonly lease: PoolLease | typeof UNGRANTED;
+  readonly timer: NodeJS.Timeout;
 }
 
 /**
@@ -172,7 +197,8 @@ export async function remoteAdmission(
     }
     if (answer.grant > 0) {
       if (!cancelled()) return answer.grant;
-      await admit({ want: 0, least: 0 });
+      // Row 026-23: only this attempt's grant goes back, never a sibling slot's.
+      await admit({ want: 0, least: 0, ...(ask.token === undefined ? {} : { token: ask.token }) });
       return null;
     }
     if (answer.refusal !== undefined) wait.log(`on its machine, ${answer.refusal}`);
@@ -198,6 +224,8 @@ export function admitRun(
   run: RunOptions,
   wait: Omit<AdmissionWait, "cancel"> & {
     readonly tierWidth: (testFile: TestFileRef, grant: number) => number;
+    /** Row 026-23: the attempt's token, which its run names (`RemoteRunOptions.admitToken`). */
+    readonly token?: string;
   },
 ): Promise<number | null> {
   run.permits?.away();
@@ -206,7 +234,11 @@ export function admitRun(
       testFiles.length,
       Math.max(1, ...testFiles.map((file) => wait.tierWidth(file, grant))),
     );
-  const ask = { want: widthAt(testFiles.length), least: widthAt(1) };
+  const ask: AdmitAsk = {
+    want: widthAt(testFiles.length),
+    least: widthAt(1),
+    ...(wait.token === undefined ? {} : { token: wait.token }),
+  };
   return remoteAdmission(admit, ask, { ...wait, cancel: cancelOf(run) });
 }
 
@@ -214,6 +246,27 @@ export function admitRun(
 export function cancelOf(run: RunOptions): AbortSignal | undefined {
   const signals = [run.signal, run.stop].filter((signal) => signal !== undefined);
   return signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+}
+
+/**
+ * Row 026-23: `true` when `cancel` aborts before `promise` settles, else
+ * `false` once it settles. Absent `cancel`: it waits for `promise`.
+ */
+export function cancelledFirst(promise: Promise<unknown>, cancel?: AbortSignal): Promise<boolean> {
+  const settled = promise.then(
+    () => false,
+    () => false,
+  );
+  if (cancel === undefined) return settled;
+  if (cancel.aborted) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const aborted = () => resolve(true);
+    cancel.addEventListener("abort", aborted, { once: true });
+    void settled.then((value) => {
+      cancel.removeEventListener("abort", aborted);
+      resolve(value);
+    });
+  });
 }
 
 /**

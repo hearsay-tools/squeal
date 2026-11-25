@@ -216,7 +216,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
   const run = async (id: number, args: readonly unknown[]): Promise<RunReport> => {
     const [files, wire] = args as [RunReportFiles, WireRunOptions & RemoteRunOptions];
     const admission = wire.admitted === true ? options.admission : undefined;
-    const claimed = admission === undefined ? "ungranted" : admission.claim();
+    const claimed = admission === undefined ? "ungranted" : admission.claim(wire.admitToken);
     if (claimed === null) return { unadmitted: true } as RemoteRunReply as RunReport;
     const lease = claimed === "ungranted" ? null : claimed;
     try {
@@ -245,6 +245,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       alive,
       coverageFormat,
       admitted: _admitted,
+      admitToken: _admitToken,
       permits: _permits,
       ...data
     } = wire;
