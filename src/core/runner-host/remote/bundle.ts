@@ -65,7 +65,7 @@ export function checksumOf(root: string, files: readonly string[]): string {
 
 /**
  * Runs on the remote under the user's Node: `check <dir> <checksum>` prints
- * the remote's Node and whether the bundle at `<dir>` is `present` (whole),
+ * the remote's Node, its `git --version` (`null`: no Git) and whether the bundle at `<dir>` is `present` (whole),
  * `absent` or `differs`, and exits 0; `verify` exits 1 unless it is present.
  * Its walk and checksum are `readBundle`'s and `checksumOf`'s.
  */
@@ -79,7 +79,9 @@ export const CHECK_SCRIPT = [
   'got=h.digest("hex");}catch{}',
   'const bundle=got===want?"present":got==="absent"?"absent":"differs";',
   'if(mode==="verify")process.exit(bundle==="present"?0:1);',
-  "process.stdout.write(JSON.stringify({node:process.version,platform:process.platform,arch:process.arch,bundle}));",
+  // Row 026-27: the remote's Git, in the same ssh call; `null` when it has none.
+  'let git=null;try{git=require("child_process").execFileSync("git",["--version"],{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();}catch{}',
+  "process.stdout.write(JSON.stringify({node:process.version,platform:process.platform,arch:process.arch,bundle,git}));",
 ].join("");
 
 /** Where things live on the remote, relative to its home unless the user names an absolute cache. */
@@ -95,12 +97,14 @@ export function bundleDir(places: RemotePlaces, version: string): string {
   return `${places.cache}/squeal/${version}`;
 }
 
-/** What the remote said at the check: its Node, and the bundle there. */
+/** What the remote said at the check: its Node, its Git, and the bundle there. */
 export interface RemoteCheck {
   readonly node: string;
   readonly platform: string;
   readonly arch: string;
   readonly bundle: "present" | "absent" | "differs";
+  /** `git --version` there; `null`: no Git there; absent: an older bundle's check (row 026-27). */
+  readonly git?: string | null;
 }
 
 export interface EnsureOptions {

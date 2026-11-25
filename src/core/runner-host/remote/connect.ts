@@ -84,6 +84,11 @@ export interface RemoteHost {
   install(): Promise<InstallAnswer>;
   /** Node on the remote, as the check before the start saw it. */
   readonly node: string;
+  /**
+   * Row 026-27: `git --version` on the remote, as the same check saw it;
+   * `null`: no Git there; absent: not reported (a host over a test channel).
+   */
+  readonly gitVersion?: string | null;
 }
 
 export interface RemoteHostOptions {
@@ -184,10 +189,12 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
           await remoteTreeDir(target, tree, deadlines.sshMs),
           options.coverage,
         );
-  return remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
+  const host = await remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
     ...options,
     options: adapterOptions,
   });
+  const git = ensured.check.git;
+  return git === undefined ? host : { ...host, gitVersion: git };
 }
 
 /**

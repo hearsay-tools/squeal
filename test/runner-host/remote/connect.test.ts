@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -6,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, onTestFinished } from "vites
 import { squealVersion } from "../../../src/core/daemon/version.js";
 import {
   missingThere,
+  type RemoteHost,
   type RemoteHostOptions,
   RemoteRefusal,
   startRemoteHost,
@@ -34,6 +36,9 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 const places = { node: process.execPath, cache: ".cache" };
 
+/** Each host `connect` started, latest last. */
+const started: RemoteHost[] = [];
+
 /** A remote home under scratch, so its trees resolve `vitest` from the repository's `node_modules`. */
 function remote(): { home: string; ssh: string } {
   const home = join(scratchDir, `remote-home-${randomUUID()}`);
@@ -56,7 +61,7 @@ async function connect(
   lines: string[] = [],
   extra: Partial<RemoteHostOptions> = {},
 ): Promise<RunnerAdapter> {
-  const { adapter } = await startRemoteHost({
+  const host = await startRemoteHost({
     target: { destination: "build-box", ssh },
     places,
     launch: { execPath: process.execPath, execArgv: [], cli },
@@ -74,6 +79,8 @@ async function connect(
     log: (text) => lines.push(text),
     ...extra,
   });
+  started.push(host);
+  const { adapter } = host;
   onTestFinished(() => adapter.close());
   return adapter;
 }
@@ -99,6 +106,9 @@ describe("a remote runner host's first connect (row 021-13)", SLOW, () => {
       readFileSync(join(root, "src/math.ts"), "utf8"),
     );
     expect(existsSync(join(tree, ".env"))).toBe(false);
+    // Row 026-27: the remote's Git, from the check before the copy.
+    const git = execFileSync("git", ["--version"], { encoding: "utf8" }).trim();
+    expect(started.at(-1)?.gitVersion).toBe(git);
     expect(lines.some((line) => line.includes(`Squeal ${squealVersion()} copied`))).toBe(true);
     expect((await adapter.testFiles()).map((f) => f.path)).toContain("test/math.test.ts");
 

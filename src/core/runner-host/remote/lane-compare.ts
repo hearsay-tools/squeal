@@ -8,7 +8,8 @@ import type { RunnerAdapter } from "../../types/runner.js";
 import type { BlobCache, InstalledFingerprintCache } from "./blob-cache.js";
 import type { RemoteHost } from "./connect.js";
 import { environmentDifferences } from "./environment.js";
-import type { EnvironmentMode } from "./remote-key.js";
+import { gitVersionRefusal, localGitVersion } from "./git-version.js";
+import { type EnvironmentMode, sameMachine } from "./remote-key.js";
 import { readEntry } from "./tree.js";
 import { insideRoot } from "./tree-wire.js";
 
@@ -22,6 +23,10 @@ import { insideRoot } from "./tree-wire.js";
  * Spec 026 D10 (row 026-14): under `environmentMode: "remote-key"` the
  * remote's platform, arch and pinned Node may differ, and the comparison
  * gives the remote's core, which the lane keys its results under.
+ *
+ * Row 026-27: a remote whose results go under this machine's keys (under
+ * `match-local`, or `remote-key` on the same machine) must have a Git at
+ * least as new as this one's, by `major.minor` (`git-version.ts`).
  */
 
 export interface CompareOptions {
@@ -44,6 +49,8 @@ export interface CompareOptions {
   readonly blobCache?: BlobCache;
   /** Optional stat-guarded cache for local `installedDependenciesFingerprint`. */
   readonly installedCache?: InstalledFingerprintCache;
+  /** Row 026-27: `git --version` here; absent: read once (`localGitVersion`). */
+  readonly localGitVersion?: string | null;
 }
 
 /** The differences of the remote's install that an install there may mend. */
@@ -123,6 +130,13 @@ async function differences(host: RemoteHost, options: CompareOptions): Promise<R
     { core, runners: localRunners, blob: (p) => localBlobs[p] ?? null },
     remoteKey ? { mode: "remote-key", nodePins } : {},
   );
+  // Row 026-27: results stored under this machine's keys need a Git as new as this machine's.
+  if (!remoteKey || sameMachine(remoteCore, core)) {
+    const local =
+      options.localGitVersion !== undefined ? options.localGitVersion : localGitVersion();
+    const refusal = gitVersionRefusal(host.gitVersion, local);
+    if (refusal !== null) found.push(refusal);
+  }
   return { differences: found, remoteCore };
 }
 

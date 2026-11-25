@@ -70,6 +70,19 @@ describe("the bundle a remote gets (row 021-13)", () => {
     expect(check(join(scratch, "nowhere"))).toBe("absent");
   });
 
+  it("reports the remote's Git in the same check, and null without Git (row 026-27)", () => {
+    const run = (path: string) =>
+      JSON.parse(
+        execFileSync(process.execPath, ["-e", CHECK_SCRIPT, "check", scratch, "x"], {
+          encoding: "utf8",
+          env: { ...process.env, PATH: path },
+        }),
+      ).git;
+    const here = execFileSync("git", ["--version"], { encoding: "utf8" }).trim();
+    expect(run(process.env.PATH ?? "")).toBe(here);
+    expect(run(join(scratch, "no-bin"))).toBeNull();
+  });
+
   it("is none for a daemon from the sources", () => {
     expect(readBundle("/repo/src/cli/index.ts")).toBeNull();
   });
