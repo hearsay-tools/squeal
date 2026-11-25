@@ -84,6 +84,8 @@ export interface Setup {
   readonly planning?: "local" | "remote";
   /** Spec 026 D8.4: whether the machine's tree is a Git repository. */
   readonly hasGitRepository?: () => boolean;
+  /** Row 026-24: each file's closure, here and on the remote; absent, `src/a.ts` and `test/a.test.ts`. */
+  readonly closure?: (file: TestFileRef) => readonly string[];
 }
 
 let n = 0;
@@ -107,6 +109,7 @@ export async function setup({
   here,
   planning,
   hasGitRepository,
+  closure,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -148,7 +151,7 @@ export async function setup({
     },
     closure: async (testFile) => {
       calls.push(`closure ${testFile.path}`);
-      return { testFile, paths: ["src/a.ts", "test/a.test.ts"] };
+      return { testFile, paths: [...(closure?.(testFile) ?? ["src/a.ts", "test/a.test.ts"])] };
     },
     enumerate: async (testFile) => {
       calls.push(`enumerate ${testFile.path}`);
