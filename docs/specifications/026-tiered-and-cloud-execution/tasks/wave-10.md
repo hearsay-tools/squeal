@@ -23,7 +23,7 @@ Approved by the human (2026-11-25) after live Agent37 review on `cezar` (`hearsa
 
 - **Outcome**: `isSquealRecorder` (and `withoutSquealRecorders` / `ownNodeOptions`) strips Squeal's own `observe/recorder.cjs` and `node-test/recorder.cjs` when loaded from a remote bundle `<cache>/squeal/<version>/...` (path or `file:` URL), while continuing to reject non-Squeal paths such as `/work/app/observe/recorder.cjs`.
 - **Shape**: slice
-- **Spec / context**: `src/core/runner-host/remote/bundle.ts` copies the bundle to `<cache>/squeal/<version>/` (dropping `dist/`), causing 48 tests across 21 files in Squeal's own suite to fail on Agent37 because nested `node:test` and `squeal ci record` runs keep `--import file:///home/node/.squeal-remote/squeal/0.1.634/observe/recorder.cjs` in `NODE_OPTIONS`.
+- **Spec / context**: `src/core/runner-host/remote/bundle.ts` copies the bundle to `<cache>/squeal/<version>/` (dropping `dist/`), causing 48 tests across 21 files in Squeal's own suite to fail on Agent37 because nested `node:test` and `squeal ci record` runs keep `--import file://<cache>/squeal/0.1.634/observe/recorder.cjs` in `NODE_OPTIONS`.
 - **Starting seam**: `src/runners/process/recorders.ts` (`RECORDERS` and `isSquealRecorder`). Match remote bundle paths `/\/squeal\/[^/]+\/(?:observe|node-test)\/recorder\.cjs$/` alongside the existing four suffixes (and verify `test/runners/node-test/recorders.test.ts` negative cases stay `false`).
 - **Files owned**:
   - `src/runners/process/recorders.ts`

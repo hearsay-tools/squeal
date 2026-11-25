@@ -21,7 +21,7 @@ const PLUGIN = "/home/u/.claude/plugins/cache/squeal/squeal/0.1.40/dist";
 const OBSERVE = `${PLUGIN}/observe/recorder.cjs`;
 const NODE_TEST = `${PLUGIN}/node-test/recorder.cjs`;
 /** Task 026-26: a remote bundle at `<cache>/squeal/<version>/`, without `dist/`. */
-const REMOTE = "/home/node/.squeal-remote/squeal/0.1.634";
+const REMOTE = "/var/tmp/.squeal-remote/squeal/0.1.634";
 
 describe("isSquealRecorder", () => {
   it.each([
