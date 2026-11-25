@@ -10,6 +10,7 @@ import { spawnRunnerHost } from "../../src/core/runner-host/channel.js";
 import type { HostAdapterOptions, HostPolicy } from "../../src/core/runner-host/protocol.js";
 import { startHostProxy } from "../../src/core/runner-host/proxy.js";
 import { startRemoteHost, treeDir } from "../../src/core/runner-host/remote/connect.js";
+import { localGitVersion } from "../../src/core/runner-host/remote/git-version.js";
 import { withRemoteLane } from "../../src/core/runner-host/remote/lane.js";
 import type { WhenLost } from "../../src/core/runner-host/remote/settings.js";
 import type { RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
@@ -71,13 +72,14 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
   beforeAll(async () => {
     cli = await buildBundle(join(scratch, "dist"));
     remote = startRemote();
+    const gitVersion = localGitVersion() ?? "2.99.0";
     remote.exec(
       [
         "mkdir -p /opt/other-node",
         `printf '%s\\n' 'Object.defineProperty(process, "version", { value: "v0.0.1-other" });' > /opt/other-node/version.mjs`,
         `printf '#!/bin/sh\\nexec /opt/node/bin/node --import /opt/other-node/version.mjs "$@"\\n' > ${OTHER_NODE}`,
         `chmod +x ${OTHER_NODE}`,
-        `printf '#!/bin/sh\necho "$*" >> ${GIT_CALLS}\necho "fatal: not a git repository (or any of the parent directories): .git" >&2\nexit 128\n' > /usr/local/bin/git`,
+        `printf '#!/bin/sh\nif [ "$1" = "--version" ]; then echo "git version ${gitVersion}"; exit 0; fi\necho "$*" >> ${GIT_CALLS}\necho "fatal: not a git repository (or any of the parent directories): .git" >&2\nexit 128\n' > /usr/local/bin/git`,
         "chmod +x /usr/local/bin/git",
       ].join(" && "),
     );

@@ -231,6 +231,57 @@ describe("the tree's package manager on the host's PATH (row 026-25)", () => {
     ]);
     expect(process.env.PATH).toBe(before);
   });
+
+  it("provisions a stable pnpm when install repair deletes a pnpm that lived only in node_modules/.bin (review 0.1.635 B1)", async () => {
+    const dir = join(scratch, "pm-repair-b1");
+    const tools = join(dir, "tools");
+    const node = join(dir, "node");
+    mkdirSync(tools, { recursive: true });
+    mkdirSync(node, { recursive: true });
+    symlinkSync(process.execPath, join(node, "node"));
+    const calls = join(dir, "calls");
+    script(join(tools, "pnpm-template"), [
+      `echo "pnpm $*" >> ${JSON.stringify(calls)}`,
+      "mkdir -p node_modules/dep",
+      `printf '{"name":"dep","version":"1.0.0"}' > node_modules/dep/package.json`,
+    ]);
+    script(join(tools, "npm"), [
+      `echo "npm $*" >> ${JSON.stringify(calls)}`,
+      'while [ $# -gt 0 ]; do case "$1" in --prefix) P=$2; shift 2 ;; *) shift ;; esac; done',
+      'mkdir -p "$P/node_modules/.bin"',
+      `cp ${JSON.stringify(join(tools, "pnpm-template"))} "$P/node_modules/.bin/pnpm"`,
+    ]);
+    const treeDir = join(dir, "t");
+    const root = join(treeDir, "root");
+    const localBin = join(root, "node_modules", ".bin");
+    mkdirSync(localBin, { recursive: true });
+    script(join(localBin, "pnpm"), ["exit 99"]);
+    const managerTools = { nodeDir: node, npm: [join(tools, "npm")] as [string] };
+    const env = { PATH: `${localBin}:/usr/bin:/bin` };
+    const tree = createTreeHost(root, () => {}, env, managerTools);
+    const lock = file("pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
+    await tree.write(
+      await write([file("package.json", JSON.stringify({ packageManager: "pnpm@9.15.0" })), lock]),
+    );
+    // Old-format record with no `installed` fingerprint forces a repair (`rm(node_modules)`).
+    writeFileSync(
+      join(treeDir, "installed.json"),
+      JSON.stringify({ locks: { "pnpm-lock.yaml": lock.entry.blob }, modules: true }),
+    );
+
+    expect(await tree.install()).toEqual({
+      ran: true,
+      command: "pnpm install --frozen-lockfile",
+      again: true,
+    });
+    const stableBin = join(dir, "pm", "pnpm-9.15.0", "node_modules", ".bin");
+    expect(env.PATH).toBe(`${stableBin}:${localBin}:/usr/bin:/bin:${node}`);
+    const ran = readFileSync(calls, "utf8").trim().split("\n");
+    expect(ran.filter((line) => line.startsWith("npm "))).toHaveLength(1);
+    expect(ran.filter((line) => line.startsWith("pnpm "))).toEqual([
+      "pnpm install --frozen-lockfile",
+    ]);
+  });
 });
 
 describe("hosts sharing one tree (row 026-11, spec 026 D8.1)", () => {

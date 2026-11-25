@@ -80423,6 +80423,9 @@ async function installTree(place2) {
   const last = readInstalled(place2.record);
   const same5 = last !== null && JSON.stringify(last.locks) === JSON.stringify(locks) && last.modules === existsSync62(join171(root, "node_modules"));
   const unchanged2 = same5 && last.installed !== void 0 && await fingerprint() === last.installed;
+  if (!unchanged2 && same5 && !place2.keepModules) {
+    await rm4(join171(root, "node_modules"), { recursive: true, force: true });
+  }
   const command = await installCommand(root, readJson4(join171(root, "package.json")));
   const env = await managerEnv(command, place2.env, {
     root,
@@ -80432,9 +80435,6 @@ async function installTree(place2) {
   });
   place2.onPath?.(env.PATH);
   if (unchanged2) return { ran: false, command: null };
-  if (same5 && !place2.keepModules) {
-    await rm4(join171(root, "node_modules"), { recursive: true, force: true });
-  }
   await runOutput("sh", ["-c", command], { cwd: root, env, output: place2.output, what: command });
   const made = {
     locks,

@@ -82,6 +82,13 @@ export async function installTree(place: InstallPlace): Promise<InstallAnswer> {
     last.modules === existsSync(join(root, "node_modules"));
   const unchanged =
     same && last.installed !== undefined && (await fingerprint()) === last.installed;
+  // Row 021-24: the same lockfile, but its install changed since, or the record is an earlier
+  // release's, which holds no fingerprint to tell (review 0.1.454 B1): made again from scratch.
+  // Review 0.1.635 B1: remove a repaired `node_modules` before resolving `managerEnv`, so a
+  // manager that exists only inside `root/node_modules/.bin` is not selected and then deleted.
+  if (!unchanged && same && !place.keepModules) {
+    await rm(join(root, "node_modules"), { recursive: true, force: true });
+  }
   const command = await installCommand(root, readJson(join(root, "package.json")));
   const env = await managerEnv(command, place.env, {
     root,
@@ -91,11 +98,6 @@ export async function installTree(place: InstallPlace): Promise<InstallAnswer> {
   });
   place.onPath?.(env.PATH);
   if (unchanged) return { ran: false, command: null };
-  // Row 021-24: the same lockfile, but its install changed since, or the record is an earlier
-  // release's, which holds no fingerprint to tell (review 0.1.454 B1): made again from scratch.
-  if (same && !place.keepModules) {
-    await rm(join(root, "node_modules"), { recursive: true, force: true });
-  }
   await runOutput("sh", ["-c", command], { cwd: root, env, output: place.output, what: command });
   const made: Installed = {
     locks,
