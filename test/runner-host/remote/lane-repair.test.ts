@@ -80,9 +80,9 @@ describe("review 0.1.442 repairs of the remote lane", () => {
     expect(report.results).toEqual([]);
     expect(report.failure).toMatch(/nor end a file of it, within 800 ms/);
     expect(Date.now() - started).toBeLessThan(10_000);
-    // A new host replaces it once the backoff passed.
+    // A new host replaces it once the backoff passed; under not-run the run waits for it (row 026-23).
     s.advance(60_000);
-    await s.lane.run([REF], background());
+    await s.lane.run([REF], background({ timeoutMs: null }));
     expect(s.connects).toHaveLength(2);
   });
 
