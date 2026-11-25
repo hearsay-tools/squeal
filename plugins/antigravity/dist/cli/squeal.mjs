@@ -81808,27 +81808,48 @@ function withRemoteLane(options) {
   const blobsHere = (paths) => blobCache.blobs(paths);
   const remoteRun = async (host, testFiles3, run9) => {
     const inputs2 = await runInputs(host, testFiles3).catch((error) => error);
-    if (inputs2 instanceof Error) {
-      if (!runnerHostGone(host.adapter)) throw inputs2;
-      down("the host ended", false, host);
-      return { lost: lostReport(testFiles3) };
-    }
+    if (!(inputs2 instanceof Error)) return attemptTier(host, testFiles3, run9, inputs2);
+    if (!runnerHostGone(host.adapter)) throw inputs2;
+    down("the host ended", false, host);
+    return { lost: lostReport(testFiles3) };
+  };
+  const attemptTier = async (host, testFiles3, run9, inputs2) => {
     const tally3 = { parts: [], ignoredFiles: [], ignored: /* @__PURE__ */ new Set(), stayed: [] };
     let remaining = testFiles3;
     let counted3 = 0;
     do {
       const step2 = await attempt2(host, remaining, run9, inputs2);
       if (!("ran" in step2)) return step2;
-      if (step2.part !== null) tally3.parts.push(step2.part);
-      if (step2.split === null) remaining = [];
-      else {
-        remaining = next(tally3, remaining, step2.split, step2);
-        if (step2.ran || step2.syncable.length > 0 || step2.split.unsyncable.length === 0) counted3++;
+      if (failedToStart(tally3, step2)) {
+        return setupFailed(host, tally3, remaining, step2, inputs2.all.length);
       }
+      const onward = next(tally3, remaining, step2);
+      remaining = onward.again;
+      counted3 += onward.spent ? 1 : 0;
     } while (remaining.length > 0 && counted3 < 2);
     return settled2(host, tally3, remaining, inputs2.all.length);
   };
-  const next = (tally3, files6, split5, { ran, syncable }) => {
+  const failedToStart = (tally3, { part: part2 }) => {
+    if (part2 === null) return false;
+    tally3.parts.push(part2);
+    return part2.report.startupFailure !== void 0;
+  };
+  const setupFailed = (host, tally3, files6, { split: split5, syncable }, paths) => {
+    if (syncable.length > 0) {
+      options.log(`remote ${target}: tree differs at ${shown2(syncable)}; the next run sends it`);
+      queue(syncable.map((path) => ({ path, kind: "change" })));
+    }
+    const unproved = split5 === null ? [] : files6.filter((file) => !split5.proven.includes(file));
+    const joined2 = joinParts(tally3.parts, `remote ${target}`);
+    proven2(host, paths);
+    const listed12 = new Set(joined2.report.startupFailure?.testFiles.map(testFileId));
+    const later = [...tally3.ignoredFiles, ...unproved].filter((f) => !listed12.has(testFileId(f)));
+    const report5 = later.length === 0 ? joined2.report : deferredTo(joined2.report, later);
+    if (joined2.coverage.length > 0) coverageOf4.set(report5, joined2.coverage);
+    return report5;
+  };
+  const next = (tally3, files6, { ran, split: split5, syncable }) => {
+    if (split5 === null) return { again: [], spent: true };
     tally3.ignoredFiles.push(...split5.unsyncable);
     for (const path of split5.ignored) tally3.ignored.add(path);
     if (syncable.length > 0) {
@@ -81841,7 +81862,9 @@ function withRemoteLane(options) {
         `remote ${target}: ${ignoredReason(split5.ignored)}; refused ${split5.unsyncable.map((f) => f.path).join(", ")}`
       );
     }
-    return ran ? split5.retry : files6.filter((file) => !split5.unsyncable.includes(file));
+    const spent = ran || syncable.length > 0 || split5.unsyncable.length === 0;
+    if (ran) return { again: split5.retry, spent };
+    return { again: files6.filter((file) => !split5.unsyncable.includes(file)), spent };
   };
   const settled2 = (host, tally3, stayed, paths) => {
     const joined2 = joinParts(tally3.parts, `remote ${target}`);
@@ -82236,6 +82259,7 @@ var init_lane = __esm({
     "use strict";
     init_composite_runner();
     init_environment();
+    init_reverse_index();
     init_proxy();
     init_admission2();
     init_blob_cache();
