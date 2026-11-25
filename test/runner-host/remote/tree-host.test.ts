@@ -169,6 +169,70 @@ describe("a remote host's tree (row 021-13)", () => {
   });
 });
 
+describe("the tree's package manager on the host's PATH (row 026-25)", () => {
+  /** An executable shell script at `path`. */
+  const script = (path: string, lines: readonly string[]) => {
+    writeFileSync(path, ["#!/bin/sh", ...lines, ""].join("\n"));
+    chmodSync(path, 0o755);
+  };
+
+  it("puts the provisioned pnpm first on env.PATH, installed or still standing, never on process.env", async () => {
+    const dir = join(scratch, "pm-path");
+    const tools = join(dir, "tools");
+    const node = join(dir, "node");
+    mkdirSync(tools, { recursive: true });
+    mkdirSync(node, { recursive: true });
+    symlinkSync(process.execPath, join(node, "node"));
+    const calls = join(dir, "calls");
+    script(join(tools, "pnpm-template"), [
+      `echo "pnpm $*" >> ${JSON.stringify(calls)}`,
+      "mkdir -p node_modules/dep",
+      `printf '{"name":"dep","version":"1.0.0"}' > node_modules/dep/package.json`,
+    ]);
+    script(join(tools, "npm"), [
+      `echo "npm $*" >> ${JSON.stringify(calls)}`,
+      'while [ $# -gt 0 ]; do case "$1" in --prefix) P=$2; shift 2 ;; *) shift ;; esac; done',
+      'mkdir -p "$P/node_modules/.bin"',
+      `cp ${JSON.stringify(join(tools, "pnpm-template"))} "$P/node_modules/.bin/pnpm"`,
+    ]);
+    const root = join(dir, "t", "root");
+    mkdirSync(root, { recursive: true });
+    const managerTools = { nodeDir: node, npm: [join(tools, "npm")] as [string] };
+    const before = process.env.PATH;
+    const bin = join(dir, "pm", "pnpm-9.15.0", "node_modules", ".bin");
+    const expected = `${bin}:/usr/bin:/bin:${node}`;
+
+    const fresh = { PATH: "/usr/bin:/bin" };
+    const first = createTreeHost(root, () => {}, fresh, managerTools);
+    await first.write(
+      await write([
+        file("package.json", JSON.stringify({ packageManager: "pnpm@9.15.0" })),
+        file("pnpm-lock.yaml", "lockfileVersion: '9.0'\n"),
+      ]),
+    );
+    expect(await first.install()).toEqual({
+      ran: true,
+      command: "pnpm install --frozen-lockfile",
+    });
+    expect(fresh.PATH).toBe(expected);
+
+    // A host started later on the same tree: the install stands, the PATH is still its.
+    const later = { PATH: "/usr/bin:/bin" };
+    const second = createTreeHost(root, () => {}, later, managerTools);
+    expect(await second.install()).toEqual({ ran: false, command: null });
+    expect(later.PATH).toBe(expected);
+    expect(await second.install()).toEqual({ ran: false, command: null });
+    expect(later.PATH).toBe(expected);
+
+    const ran = readFileSync(calls, "utf8").trim().split("\n");
+    expect(ran.filter((line) => line.startsWith("npm "))).toHaveLength(1);
+    expect(ran.filter((line) => line.startsWith("pnpm "))).toEqual([
+      "pnpm install --frozen-lockfile",
+    ]);
+    expect(process.env.PATH).toBe(before);
+  });
+});
+
 describe("hosts sharing one tree (row 026-11, spec 026 D8.1)", () => {
   it("keeps another host's run logs, and removes its own ended runs' and a gone host's", async () => {
     const { root, tree } = host();

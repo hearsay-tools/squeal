@@ -22,6 +22,9 @@ import type { InstallAnswer } from "./tree-wire.js";
  *
  * Row 026-22: the install runs with the host's Node directory on `PATH`,
  * and with a `pnpm` or `yarn` it lacks installed first (`package-manager.ts`).
+ * Row 026-25: the tests need that manager too (`spawnSync pnpm` in a test),
+ * also when the install still stands, so the host gets that `PATH` through
+ * `onPath` on every install of a tree with a lockfile.
  */
 
 /** Committed lockfiles, as `installCommand` reads them (`src/core/scheduler/install-command.ts`). */
@@ -63,6 +66,8 @@ export interface InstallPlace {
   readonly managers?: string;
   /** The Node and npm that install a missing manager; by default this process's. */
   readonly tools?: ManagerTools;
+  /** Takes the install's `PATH`, with its Node and manager, run or not (row 026-25). */
+  readonly onPath?: (path: string | undefined) => void;
 }
 
 /** Installs the tree at `place.root` when its last install no longer stands; says whether it ran. */
@@ -77,12 +82,6 @@ export async function installTree(place: InstallPlace): Promise<InstallAnswer> {
     last.modules === existsSync(join(root, "node_modules"));
   const unchanged =
     same && last.installed !== undefined && (await fingerprint()) === last.installed;
-  if (unchanged) return { ran: false, command: null };
-  // Row 021-24: the same lockfile, but its install changed since, or the record is an earlier
-  // release's, which holds no fingerprint to tell (review 0.1.454 B1): made again from scratch.
-  if (same && !place.keepModules) {
-    await rm(join(root, "node_modules"), { recursive: true, force: true });
-  }
   const command = await installCommand(root, readJson(join(root, "package.json")));
   const env = await managerEnv(command, place.env, {
     root,
@@ -90,6 +89,13 @@ export async function installTree(place: InstallPlace): Promise<InstallAnswer> {
     tools: place.tools ?? hostTools(),
     output: place.output,
   });
+  place.onPath?.(env.PATH);
+  if (unchanged) return { ran: false, command: null };
+  // Row 021-24: the same lockfile, but its install changed since, or the record is an earlier
+  // release's, which holds no fingerprint to tell (review 0.1.454 B1): made again from scratch.
+  if (same && !place.keepModules) {
+    await rm(join(root, "node_modules"), { recursive: true, force: true });
+  }
   await runOutput("sh", ["-c", command], { cwd: root, env, output: place.output, what: command });
   const made: Installed = {
     locks,

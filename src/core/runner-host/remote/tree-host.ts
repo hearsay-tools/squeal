@@ -24,6 +24,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { installedDependenciesFingerprint } from "../../keys/environment.js";
+import type { ManagerTools } from "./package-manager.js";
 import { materializeFromGit } from "./tree-git.js";
 import { installTree, LOCKFILES } from "./tree-install.js";
 import {
@@ -82,12 +83,16 @@ type Held = Record<string, { blob: string; mode?: "x" | "link" }>;
 /**
  * The tree of a host whose root is `root`, its records in the directory
  * around it. `output` takes the install's output: the host's stderr, never
- * its protocol channel. The install runs with `env`.
+ * its protocol channel. The install runs with `env`, and each install sets
+ * `env.PATH` to its own, so the runs this host starts find the tree's Node
+ * and its `pnpm` or `yarn` (row 026-25). By default `env` is this process's.
+ * `tools` install a missing manager; by default this process's Node and npm.
  */
 export function createTreeHost(
   root: string,
   output: (text: string) => void,
   env: NodeJS.ProcessEnv = process.env,
+  tools?: ManagerTools,
 ): TreeHost {
   const state = dirname(root);
   const recordPath = join(state, "files.json");
@@ -181,7 +186,18 @@ export function createTreeHost(
       );
       const keepModules = Object.keys(files).some((path) => path.startsWith("node_modules/"));
       return locked(join(state, "install.lock"), () =>
-        installTree({ root, record: installedPath, locks, keepModules, output, env }),
+        installTree({
+          root,
+          record: installedPath,
+          locks,
+          keepModules,
+          output,
+          env,
+          ...(tools === undefined ? {} : { tools }),
+          onPath: (path) => {
+            if (path !== undefined) env.PATH = path;
+          },
+        }),
       );
     },
     async runDir(runId) {
