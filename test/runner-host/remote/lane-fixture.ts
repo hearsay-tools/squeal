@@ -16,6 +16,7 @@ import {
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
 import type { RemoteTier, WhenLost } from "../../../src/core/runner-host/remote/settings.js";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
+import type { RemoteRecord } from "../../../src/core/runner-host/remote/tree-wire.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type {
   RunnerAdapter,
@@ -242,6 +243,8 @@ export async function setup({
   const statuses: string[] = [];
   const logs: string[] = [];
   const repository: string[] = [];
+  /** Spec 026 D9: the records each proven run handed on (row 026-24). */
+  const coverage: { runId: string; records: RemoteRecord[] }[] = [];
   let clock = 1_000_000;
   const lane = withRemoteLane({
     target: "box",
@@ -255,6 +258,7 @@ export async function setup({
     log: (text) => logs.push(text),
     ...(needsRepository === undefined ? {} : { needsRepository: () => needsRepository }),
     repository: (text) => repository.push(text),
+    remoteCoverage: (runId, records) => coverage.push({ runId, records: [...records] }),
     now: () => clock,
     backoffMs: [60_000],
     ...(admitEveryMs === undefined ? {} : { admitEveryMs }),
@@ -282,6 +286,7 @@ export async function setup({
     statuses,
     logs,
     repository,
+    coverage,
     connects,
     events,
     activity,
