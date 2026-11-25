@@ -27,6 +27,10 @@ export interface Agent37Settings {
   readonly tunnelHostTemplate: string;
   readonly node: string;
   readonly cache: string;
+  /** Row 026-29: the system or workspace template, optionally pinned (`name@tag`). */
+  readonly template: string;
+  /** Row 026-29: the SSH login; unset, `defaultSshUser` picks it. */
+  readonly sshUser?: string;
 }
 
 export const AGENT37_DEFAULTS = {
@@ -40,6 +44,7 @@ export const AGENT37_DEFAULTS = {
   bootstrap: "git-bundle",
   apiBaseUrl: "https://api.agent37.com",
   tunnelHostTemplate: TUNNEL_HOST_TEMPLATE,
+  template: "agent37-base",
 } as const;
 
 const KEYS = [
@@ -56,12 +61,30 @@ const KEYS = [
   "tunnelHostTemplate",
   "node",
   "cache",
+  "template",
+  "sshUser",
 ] as const;
 
 /** Agent37's `idle_timeout_seconds` range, as minutes. */
 const AUTO_SLEEP_MINUTES = { min: 5, max: 1440 } as const;
 
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/** A template name, optionally pinned to a tag or a revision. */
+const TEMPLATE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[A-Za-z0-9._-]{1,64})?$/;
+const SSH_USER = /^[A-Za-z_][A-Za-z0-9._-]{0,63}$/;
+const UBUNTU = "agent37-ubuntu";
+
+/**
+ * The SSH login when `sshUser` is unset: `root` where the instance's disk
+ * is `/root` or the template is `agent37-ubuntu` (it has no `node` user),
+ * else `node`, the base image's user.
+ */
+export function defaultSshUser(template: string, mountPath?: string | null): string {
+  if (mountPath === "/root" || template === UBUNTU || template.startsWith(`${UBUNTU}@`)) {
+    return "root";
+  }
+  return "node";
+}
 
 function oneOf(key: string, value: unknown, allowed: readonly string[]): string | null {
   if (value === undefined || allowed.includes(value as string)) return null;
@@ -117,6 +140,18 @@ function sshKeyPathProblem(config: Config): string | null {
   return '"sshKeyPath" must be a non-empty path';
 }
 
+function templateProblem(config: Config): string | null {
+  const template = config.template;
+  if (template === undefined || (plainString(template) && TEMPLATE.test(template))) return null;
+  return '"template" must be a template name, optionally pinned, such as "agent37-ubuntu" or "my-vm@2"';
+}
+
+function sshUserProblem(config: Config): string | null {
+  const user = config.sshUser;
+  if (user === undefined || (plainString(user) && SSH_USER.test(user))) return null;
+  return '"sshUser" must be a login name, such as "root" or "node"';
+}
+
 function apiBaseUrlProblem(config: Config): string | null {
   if (config.apiBaseUrl === undefined || httpUrl(config.apiBaseUrl)) return null;
   return '"apiBaseUrl" must be an http: or https: URL with no credential';
@@ -144,6 +179,8 @@ const CHECKS: readonly ((config: Config) => string | null)[] = [
   autoSleepProblem,
   apiKeyEnvProblem,
   sshKeyPathProblem,
+  templateProblem,
+  sshUserProblem,
   apiBaseUrlProblem,
   tunnelHostProblem,
   placesProblem,

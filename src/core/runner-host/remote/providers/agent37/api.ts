@@ -18,6 +18,10 @@ import { apiKeyFor, LocalError, openEndpoint, proxyFor, safeReason } from "./net
 export interface Instance {
   readonly id: string;
   readonly status: string;
+  /** Row 026-29: the login's home, such as `/root` on `agent37-ubuntu`; absent when not sent. */
+  readonly mount_path?: string | null;
+  /** Row 026-29: the template the instance runs; absent when not sent. */
+  readonly template?: string | null;
 }
 
 /** What `POST /v1/instances` is sent. */
@@ -149,7 +153,12 @@ export class Agent37Api {
     this.#ok(method, path, answer);
     const { body } = answer;
     if (isRecord(body) && typeof body.id === "string" && typeof body.status === "string") {
-      return { id: body.id, status: body.status };
+      return {
+        id: body.id,
+        status: body.status,
+        ...(typeof body.mount_path === "string" ? { mount_path: body.mount_path } : {}),
+        ...(typeof body.template === "string" ? { template: body.template } : {}),
+      };
     }
     throw new Error(`Agent37 ${method} ${path} answered no instance id and status`);
   }

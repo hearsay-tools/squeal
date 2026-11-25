@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -80,5 +82,120 @@ describe("the Agent37 Node bootstrap without corepack (row 026-22)", { timeout: 
     await ensureNode(s.target, s.old, `v${VERSION}`, 20_000);
     expect(readlinkSync(join(s.links, "corepack"))).toBe(join(s.bin, "corepack"));
     expect(readFileSync(s.enabled, "utf8").trim()).toBe(`enable --install-directory ${s.links}`);
+  });
+});
+
+/*
+ * Row 026-29: an image with no `xz` (such as `agent37-ubuntu`) gets the
+ * `.tar.gz` build; one with `xz` the `.tar.xz`. A fake `curl` serves a
+ * real archive of a fake Node and its `SHASUMS256.txt` from here, so the
+ * real `sha256sum` checks it and the real `tar` unpacks it: nothing is
+ * downloaded. The `PATH` holds only links to the tools the script needs,
+ * with `xz` or without.
+ */
+const TOOLS = [
+  "sh",
+  "uname",
+  "mktemp",
+  "cat",
+  "grep",
+  "sha256sum",
+  "mkdir",
+  "tar",
+  "gzip",
+  "rm",
+  "ln",
+  "touch",
+  "mv",
+  "dirname",
+  "env",
+];
+
+function which(tool: string): string | null {
+  try {
+    return (
+      execFileSync("sh", ["-c", `command -v ${tool}`])
+        .toString()
+        .trim() || null
+    );
+  } catch {
+    return null;
+  }
+}
+
+const XZ = which("xz");
+
+/** A fake instance with no Node, whose `curl` serves archives built here, with `xz` on its PATH or not. */
+function fetching(xz: boolean) {
+  const dir = join(scratch, `f${++n}`);
+  const ssh = fakeSshAt(dir);
+  const arch = execFileSync("uname", ["-m"]).toString().trim();
+  const a = arch === "x86_64" ? "x64" : arch === "aarch64" ? "arm64" : arch;
+  const dist = join(dir, "dist");
+  const base = `node-v${VERSION}-linux-${a}`;
+  mkdirSync(join(dist, base, "bin"), { recursive: true });
+  script(join(dist, base, "bin", "node"), [`echo v${VERSION}`]);
+  const sums: string[] = [];
+  const kinds: [string, string][] = [["gz", "-czf"]];
+  if (XZ !== null) kinds.push(["xz", "-cJf"]);
+  for (const [ext, flag] of kinds) {
+    const file = `${base}.tar.${ext}`;
+    execFileSync("tar", [flag, join(dist, file), "-C", dist, base]);
+    sums.push(
+      `${createHash("sha256")
+        .update(readFileSync(join(dist, file)))
+        .digest("hex")}  ${file}`,
+    );
+  }
+  writeFileSync(join(dist, "SHASUMS256.txt"), `${sums.join("\n")}\n`);
+  const fetched = join(dir, "fetched");
+  // `curl -fsSLO <url>` saves the file here; `curl -fsSL <url>` prints it.
+  script(join(ssh.bin, "curl"), [
+    `for u in "$@"; do :; done; f=\${u##*/}; echo "$f" >> ${JSON.stringify(fetched)}`,
+    `case "$1" in -fsSLO) cat ${JSON.stringify(dist)}/"$f" > "$f";; *) cat ${JSON.stringify(dist)}/"$f";; esac`,
+  ]);
+  const tools = join(dir, "tools");
+  mkdirSync(tools);
+  for (const tool of [...TOOLS, ...(xz ? ["xz"] : [])]) {
+    const path = which(tool);
+    if (path !== null) symlinkSync(path, join(tools, tool));
+  }
+  const target: SshTarget = {
+    destination: "root@box",
+    env: { ...process.env, PATH: `${ssh.bin}:${tools}` },
+  };
+  const old = join(dir, "old-node");
+  script(old, ["echo v1.0.0"]);
+  return {
+    ssh,
+    target,
+    old,
+    fetched,
+    installed: join(ssh.home, `.local/node-v${VERSION}/bin/node`),
+    base,
+  };
+}
+
+describe("the Agent37 Node bootstrap's archive (row 026-29)", { timeout: 30_000 }, () => {
+  it("fetches the .tar.gz when the image has no xz", async () => {
+    const f = fetching(false);
+    const node = await ensureNode(f.target, f.old, `v${VERSION}`, 20_000);
+    expect(node).toBe(f.installed);
+    expect(readFileSync(f.fetched, "utf8").trim().split("\n")).toEqual([
+      `${f.base}.tar.gz`,
+      "SHASUMS256.txt",
+    ]);
+    expect(execFileSync(f.installed).toString().trim()).toBe(`v${VERSION}`);
+  });
+
+  it.skipIf(XZ === null)("fetches the .tar.xz when the image has xz", async () => {
+    const f = fetching(true);
+    const node = await ensureNode(f.target, f.old, `v${VERSION}`, 20_000);
+    expect(node).toBe(f.installed);
+    expect(readFileSync(f.fetched, "utf8").trim().split("\n")).toEqual([
+      `${f.base}.tar.xz`,
+      "SHASUMS256.txt",
+    ]);
+    expect(execFileSync(f.installed).toString().trim()).toBe(`v${VERSION}`);
   });
 });

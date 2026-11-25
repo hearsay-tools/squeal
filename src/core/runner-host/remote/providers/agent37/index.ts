@@ -7,11 +7,13 @@ import type {
   RemoteMachineProvider,
 } from "../../provider.js";
 import { type SshTarget, shellQuote } from "../../ssh.js";
+import type { Agent37Api } from "./api.js";
 import { BOOTSTRAP_DEADLINES, ensureGitTree, ensureNode } from "./bootstrap.js";
 import {
   AGENT37_DEFAULTS,
   type Agent37Settings,
   agent37Settings,
+  defaultSshUser,
   validateAgent37,
 } from "./config.js";
 import {
@@ -56,9 +58,6 @@ export class AcquireAborted extends Error {
   }
 }
 
-/** The login on the instance: the base image's user, whose home is the instance's disk. */
-const SSH_USER = "node";
-
 const TIMING: Agent37Timing = {
   pollMs: 2_000,
   readyMs: 300_000,
@@ -71,13 +70,19 @@ function proxyWord(word: string): string {
   return shellQuote(word).replaceAll("%", "%%");
 }
 
-/** How SSH reaches instance `id`: through the tunnel subcommand, host keys not pinned. */
+/**
+ * How SSH reaches instance `id`: through the tunnel subcommand, host keys
+ * not pinned. The login (row 026-29): `sshUser` found at acquire, else the
+ * configured one, else the template's default.
+ */
 export function agent37Ssh(
   settings: Agent37Settings,
   id: string,
   env: NodeJS.ProcessEnv,
   cli: readonly string[],
+  sshUser?: string,
 ): SshTarget {
+  const user = sshUser ?? settings.sshUser ?? defaultSshUser(settings.template);
   const tunnel = [...cli, "remote-tunnel", AGENT37, id];
   if (settings.apiKeyEnv !== AGENT37_DEFAULTS.apiKeyEnv)
     tunnel.push("--api-key-env", settings.apiKeyEnv);
@@ -85,7 +90,7 @@ export function agent37Ssh(
     tunnel.push("--host", tunnelHost(settings.tunnelHostTemplate, id));
   }
   return {
-    destination: `${SSH_USER}@${id}.agent37.app`,
+    destination: `${user}@${id}.agent37.app`,
     args: [
       "-o",
       `ProxyCommand=${tunnel.map(proxyWord).join(" ")}`,
@@ -131,24 +136,13 @@ async function acquire(
   const tracked = trackedState(request, env);
   let state: Agent37State | null = null;
   stop();
-  if (tracked !== null) {
-    const found = await api.inspect(tracked.instanceId, signal).catch(aborted(stop));
-    stop();
-    if (found === null) {
-      request.log(`Agent37 instance ${tracked.instanceId} is gone; creating another`);
-    } else {
-      // A tracked instance stays tracked: an abort leaves it to the record and `remote prune`.
-      await untilRunning(api, tracked.instanceId, found, timing, signal).catch(aborted(stop));
-      state = tracked;
-      request.log(`Agent37 instance ${tracked.instanceId} reused (${found.status} before)`);
-    }
-  }
+  if (tracked !== null) state = await reuse(request, api, tracked, settings, timing, stop);
   const created = state === null;
   if (state === null) {
     stop();
     // Never aborted in flight: an instance Agent37 made after a cut request has no id here to delete.
     const made = await api.create({
-      template: "agent37-base",
+      template: settings.template,
       region: settings.region,
       type: settings.type,
       resources: { cpu: settings.vcpu, memory: settings.memoryGb, disk: settings.diskGb },
@@ -168,8 +162,12 @@ async function acquire(
       region: settings.region,
       type: settings.type,
       bootstrap: settings.bootstrap,
+      template: settings.template,
+      sshUser: settings.sshUser ?? defaultSshUser(settings.template, made.mount_path),
     };
-    request.log(`Agent37 instance ${made.id} created (${settings.region} ${settings.type})`);
+    request.log(
+      `Agent37 instance ${made.id} created (${settings.region} ${settings.type}, ${settings.template})`,
+    );
     try {
       await untilRunning(api, made.id, made, timing, signal);
     } catch (error) {
@@ -194,6 +192,43 @@ async function acquire(
   }
 }
 
+/**
+ * The tracked instance, woken, when it is still usable: `null` when it is
+ * gone, or (row 026-29) made from another template than the configured
+ * one, which is deleted then. An older record names no template: it was
+ * made from the default.
+ */
+async function reuse(
+  request: MachineRequest,
+  api: Agent37Api,
+  tracked: Agent37State,
+  settings: Agent37Settings,
+  timing: Agent37Timing,
+  stop: () => void,
+): Promise<Agent37State | null> {
+  const id = tracked.instanceId;
+  const template = tracked.template ?? AGENT37_DEFAULTS.template;
+  if (template !== settings.template) {
+    await api.remove(id).catch(() => {});
+    request.log(
+      `Agent37 instance ${id} uses template ${template}, not ${settings.template}; replacing`,
+    );
+    return null;
+  }
+  const { signal } = request;
+  const found = await api.inspect(id, signal).catch(aborted(stop));
+  stop();
+  if (found === null) {
+    request.log(`Agent37 instance ${id} is gone; creating another`);
+    return null;
+  }
+  // A tracked instance stays tracked: an abort leaves it to the record and `remote prune`.
+  await untilRunning(api, id, found, timing, signal).catch(aborted(stop));
+  request.log(`Agent37 instance ${id} reused (${found.status} before)`);
+  const sshUser = settings.sshUser ?? tracked.sshUser ?? defaultSshUser(template, found.mount_path);
+  return sshUser === tracked.sshUser ? tracked : { ...tracked, template, sshUser };
+}
+
 /** A step's failure: `AcquireAborted` once the exit began (`stop` throws it), else the error itself. */
 function aborted(stop: () => void): (error: unknown) => never {
   return (error) => {
@@ -209,7 +244,7 @@ async function bootstrap(
   env: NodeJS.ProcessEnv,
   timing: Agent37Timing,
 ): Promise<RemoteMachine> {
-  const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli);
+  const ssh = agent37Ssh(settings, state.instanceId, env, timing.cli, state.sshUser);
   const { signal } = request;
   const node = await ensureNode(
     ssh,

@@ -30,6 +30,10 @@ export interface Agent37State {
   readonly region: string;
   readonly type: string;
   readonly bootstrap: string;
+  /** Row 026-29: the template it was made from; absent on older records (`agent37-base`). */
+  readonly template?: string;
+  /** Row 026-29: the SSH login found at acquire; absent on older records. */
+  readonly sshUser?: string;
 }
 
 export interface Agent37Timing {
@@ -45,11 +49,15 @@ export interface Agent37Timing {
 export function stateOf(value: unknown): Agent37State | null {
   if (!isRecord(value) || !validInstanceId(value.instanceId)) return null;
   const text = (key: string) => (typeof value[key] === "string" ? (value[key] as string) : "");
+  const template = text("template");
+  const sshUser = text("sshUser");
   return {
     instanceId: value.instanceId,
     region: text("region"),
     type: text("type"),
     bootstrap: text("bootstrap"),
+    ...(template === "" ? {} : { template }),
+    ...(sshUser === "" ? {} : { sshUser }),
   };
 }
 

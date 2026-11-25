@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, request as httpRequest } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
@@ -13,6 +15,7 @@ import {
   type RemoteMachine,
   recordOf,
 } from "../../../../src/core/runner-host/remote/provider.js";
+import { defaultSshUser } from "../../../../src/core/runner-host/remote/providers/agent37/config.js";
 import {
   AcquireAborted,
   createAgent37Provider,
@@ -146,6 +149,62 @@ describe("agent37 config (row 026-15)", () => {
   });
 });
 
+describe("agent37 template and sshUser config (row 026-29)", () => {
+  const validate = (config: Record<string, unknown>) =>
+    providerOf("agent37")?.validate({ node: "node", cache: "c", ...config });
+
+  it.each([
+    { template: "agent37-base" },
+    { template: "agent37-ubuntu" },
+    { template: "my-squeal-vm" },
+    { template: "agent37-ubuntu@2026.11.17a" },
+    { template: "my-squeal-vm@2" },
+    { sshUser: "root" },
+    { sshUser: "ubuntu" },
+    { sshUser: "_svc.user-1" },
+    { template: "my-squeal-vm", sshUser: "dev" },
+  ])("accepts %j", (config) => {
+    expect(validate(config)).toBeNull();
+  });
+
+  it.each([
+    [{ template: "" }, '"template" must be a template name'],
+    [{ template: "has space" }, '"template" must be a template name'],
+    [{ template: "a/b" }, '"template" must be a template name'],
+    [{ template: "@" }, '"template" must be a template name'],
+    [{ template: "vm@" }, '"template" must be a template name'],
+    [{ template: "@2" }, '"template" must be a template name'],
+    [{ template: "vm@1@2" }, '"template" must be a template name'],
+    [{ template: "vm;rm -rf x" }, '"template" must be a template name'],
+    [{ template: "$(id)" }, '"template" must be a template name'],
+    [{ template: "-vm" }, '"template" must be a template name'],
+    [{ template: "vm\n" }, '"template" must be a template name'],
+    [{ template: 7 }, '"template" must be a template name'],
+    [{ sshUser: "" }, '"sshUser" must be a login name'],
+    [{ sshUser: "a b" }, '"sshUser" must be a login name'],
+    [{ sshUser: "root@host" }, '"sshUser" must be a login name'],
+    [{ sshUser: "a/b" }, '"sshUser" must be a login name'],
+    [{ sshUser: "a;b" }, '"sshUser" must be a login name'],
+    [{ sshUser: "1root" }, '"sshUser" must be a login name'],
+    [{ sshUser: "-oProxyCommand=x" }, '"sshUser" must be a login name'],
+    [{ sshUser: "u".repeat(65) }, '"sshUser" must be a login name'],
+  ])("rejects %j", (config, problem) => {
+    expect(validate(config)).toContain(problem);
+  });
+
+  it.each([
+    ["agent37-base", undefined, "node"],
+    ["agent37-base", null, "node"],
+    ["agent37-ubuntu", undefined, "root"],
+    ["agent37-ubuntu@2026.11.17a", undefined, "root"],
+    ["agent37-ubuntu-custom", undefined, "node"],
+    ["my-custom", "/root", "root"],
+    ["my-custom", "/workspace", "node"],
+  ])("defaultSshUser(%j, %j) is %j", (template, mountPath, user) => {
+    expect(defaultSshUser(template, mountPath)).toBe(user);
+  });
+});
+
 describe("agent37 acquire (row 026-15)", () => {
   it("creates an EU vm, sends the git history over SSH, and tunnels SSH through squeal", async () => {
     const s = await setup({ sshKeyPath: "~/.ssh/agent37" });
@@ -177,6 +236,8 @@ describe("agent37 acquire (row 026-15)", () => {
       region: "eu",
       type: "vm",
       bootstrap: "git-bundle",
+      template: "agent37-base",
+      sshUser: "node",
     });
     expect(machine.places).toEqual({
       node: join(s.ssh.bin, "remote-node"),
@@ -214,7 +275,7 @@ describe("agent37 acquire (row 026-15)", () => {
     expect(existsSync(join(remote, "..", "git.bundle"))).toBe(false);
     expect(machine.gitCurrent?.()).toBe(true);
     expect(s.log).toEqual([
-      `Agent37 instance ${id} created (eu vm)`,
+      `Agent37 instance ${id} created (eu vm, agent37-base)`,
       expect.stringMatching(
         new RegExp(`^Agent37 instance ${id}: git history sent at [0-9a-f]{40}$`),
       ),
@@ -285,6 +346,130 @@ describe("agent37 acquire (row 026-15)", () => {
       "no Agent37 API key: set AGENT37_API_KEY",
     );
     expect(s.api.calls).toEqual([]);
+  });
+});
+
+/**
+ * The mock behind a forwarder that adds `extra` to every instance it
+ * answers, as an Agent37 that sends `mount_path` and `template` would.
+ */
+async function withFields(target: string, extra: Record<string, unknown>): Promise<string> {
+  const server = createServer((incoming, outgoing) => {
+    const chunks: Buffer[] = [];
+    incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
+    incoming.on("end", () => {
+      const sent = httpRequest(
+        `${target}${incoming.url ?? ""}`,
+        { method: incoming.method, headers: incoming.headers },
+        (answer) => {
+          const back: Buffer[] = [];
+          answer.on("data", (chunk: Buffer) => back.push(chunk));
+          answer.on("end", () => {
+            const body = JSON.parse(Buffer.concat(back).toString("utf8")) as Record<
+              string,
+              unknown
+            >;
+            const instance = typeof body.id === "string" && typeof body.status === "string";
+            outgoing
+              .writeHead(answer.statusCode ?? 500, { "Content-Type": "application/json" })
+              .end(JSON.stringify(instance ? { ...body, ...extra } : body));
+          });
+        },
+      );
+      sent.end(Buffer.concat(chunks));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  onTestFinished(() => {
+    server.closeAllConnections();
+    return new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+}
+
+/** Acquires with `config`, records the machine as the daemon would, and names its instance. */
+async function acquiredAs(s: Setup, config: Record<string, unknown>) {
+  const machine = await provider.acquire(s.request, { ...s.config, ...config });
+  recordMachine(recordOf(machine, s.request, Date.now()), s.env);
+  return { machine, id: (machine.state as { instanceId: string }).instanceId };
+}
+
+describe("agent37 template and SSH user at acquire (row 026-29)", () => {
+  it("creates from agent37-ubuntu and logs in as root", async () => {
+    const s = await setup({ template: "agent37-ubuntu", bootstrap: "tree-sync" });
+    const machine = await provider.acquire(s.request, s.config);
+    const id = [...s.api.instances.keys()][0] as string;
+    expect(s.api.calls[0]?.body).toMatchObject({ template: "agent37-ubuntu" });
+    expect(machine.ssh.destination).toBe(`root@${id}.agent37.app`);
+    expect(machine.state).toEqual({
+      instanceId: id,
+      region: "eu",
+      type: "vm",
+      bootstrap: "tree-sync",
+      template: "agent37-ubuntu",
+      sshUser: "root",
+    });
+    // The bootstrap ran as that login.
+    expect(s.ssh.argv()[0]).toContain(`root@${id}.agent37.app`);
+    expect(s.log[0]).toBe(`Agent37 instance ${id} created (eu vm, agent37-ubuntu)`);
+  });
+
+  it("logs in as root on a custom template whose disk is /root; sshUser overrides it", async () => {
+    const s = await setup({ template: "my-custom", bootstrap: "tree-sync" });
+    const apiBaseUrl = await withFields(s.api.url, { mount_path: "/root", template: "my-custom" });
+    const found = await provider.acquire(s.request, { ...s.config, apiBaseUrl });
+    expect(found.ssh.destination).toMatch(/^root@mock\d{6}\.agent37\.app$/);
+    expect(found.state).toMatchObject({ template: "my-custom", sshUser: "root" });
+    const t = await setup({ template: "my-custom", bootstrap: "tree-sync", sshUser: "ubuntu" });
+    const base = await withFields(t.api.url, { mount_path: "/root" });
+    const set = await provider.acquire(t.request, { ...t.config, apiBaseUrl: base });
+    expect(set.ssh.destination).toMatch(/^ubuntu@mock\d{6}\.agent37\.app$/);
+    expect(set.state).toMatchObject({ template: "my-custom", sshUser: "ubuntu" });
+  });
+
+  it("deletes the tracked instance and creates another when the template changed", async () => {
+    const s = await setup({ bootstrap: "tree-sync" });
+    const { id: old } = await acquiredAs(s, {});
+    s.api.calls.length = 0;
+    const { machine, id } = await acquiredAs(s, { template: "agent37-ubuntu@2026.11.17a" });
+    expect(id).not.toBe(old);
+    expect(s.api.instances.has(old)).toBe(false);
+    expect(calls(s.api)).toEqual([`DELETE /v1/instances/${old}`, "POST /v1/instances"]);
+    expect(s.api.calls[1]?.body).toMatchObject({ template: "agent37-ubuntu@2026.11.17a" });
+    expect(s.log).toContain(
+      `Agent37 instance ${old} uses template agent37-base, not agent37-ubuntu@2026.11.17a; replacing`,
+    );
+    expect(machine.ssh.destination).toBe(`root@${id}.agent37.app`);
+    // The record now names the new instance and its template.
+    const [record] = readMachines(s.env).machines;
+    expect(record?.state).toMatchObject({ instanceId: id, template: "agent37-ubuntu@2026.11.17a" });
+  });
+
+  it("reuses a record older than row 026-29 under the default template, as node", async () => {
+    const s = await setup({ bootstrap: "tree-sync" });
+    const { machine: first, id } = await acquiredAs(s, {});
+    // An older record: no template and no sshUser in its state.
+    const record = recordOf(first, s.request, Date.now());
+    const { template: _t, sshUser: _u, ...legacy } = record.state as Record<string, unknown>;
+    expect(legacy).toEqual({ instanceId: id, region: "eu", type: "vm", bootstrap: "tree-sync" });
+    recordMachine({ ...record, state: legacy }, s.env);
+    s.api.calls.length = 0;
+    const again = await provider.acquire(s.request, s.config);
+    expect(again.id).toBe(first.id);
+    expect(calls(s.api)).toEqual([`GET /v1/instances/${id}`]);
+    expect(again.ssh.destination).toBe(`node@${id}.agent37.app`);
+    expect(again.state).toEqual({ ...legacy, template: "agent37-base", sshUser: "node" });
+  });
+
+  it("keeps a reused instance's login, unless sshUser is set now", async () => {
+    const s = await setup({ template: "agent37-ubuntu", bootstrap: "tree-sync" });
+    const { machine: first, id } = await acquiredAs(s, {});
+    const kept = await provider.acquire(s.request, s.config);
+    expect(kept.state).toEqual(first.state);
+    expect(kept.ssh.destination).toBe(`root@${id}.agent37.app`);
+    const changed = await provider.acquire(s.request, { ...s.config, sshUser: "ubuntu" });
+    expect(changed.ssh.destination).toBe(`ubuntu@${id}.agent37.app`);
+    expect(changed.state).toMatchObject({ instanceId: id, sshUser: "ubuntu" });
   });
 });
 

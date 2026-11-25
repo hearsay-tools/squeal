@@ -42,7 +42,8 @@ export const BOOTSTRAP_DEADLINES: BootstrapDeadlines = {
 
 /**
  * Prints the Node to use: `$1` when it is version `$2`, else the one it
- * installs under `~/.local/node-v$2`, linked first on the login's `PATH`
+ * installs under `~/.local/node-v$2` (`.tar.xz`, or `.tar.gz` where the
+ * image has no `xz`, row 026-29), linked first on the login's `PATH`
  * so the lockfile install runs under it too. Node 25 and later ship no
  * corepack: it is linked and enabled only when present (an earlier
  * bootstrap's dangling link is removed), and the tree host
@@ -54,11 +55,12 @@ if [ "$("$N" -v 2>/dev/null || true)" = "v$V" ]; then printf '%s\\n' "$N"; exit 
 D=$HOME/.local/node-v$V
 if [ ! -x "$D/bin/node" ]; then
   A=$(uname -m); case $A in x86_64) A=x64;; aarch64) A=arm64;; esac
-  F=node-v$V-linux-$A.tar.xz
+  if command -v xz >/dev/null 2>&1; then F=node-v$V-linux-$A.tar.xz; X=-xJf
+  else F=node-v$V-linux-$A.tar.gz; X=-xzf; fi
   W=$(mktemp -d); cd "$W"
   curl -fsSLO "https://nodejs.org/dist/v$V/$F"
   curl -fsSL "https://nodejs.org/dist/v$V/SHASUMS256.txt" | grep " $F\\$" | sha256sum -c - >&2
-  mkdir -p "$D"; tar -xJf "$F" -C "$D" --strip-components=1
+  mkdir -p "$D"; tar "$X" "$F" -C "$D" --strip-components=1
   cd /; rm -rf "$W"
 fi
 mkdir -p "$HOME/.local/bin"

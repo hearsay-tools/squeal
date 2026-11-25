@@ -228,3 +228,39 @@ describe("NO_PROXY matching (row 026-15)", () => {
     expect(bypassesProxy(host, 443, { NO_PROXY: list })).toBe(bypass);
   });
 });
+
+describe("the Agent37 API client's instance fields (row 026-29)", () => {
+  it("reads mount_path and template when the API sends them", async () => {
+    const url = await reflecting(200, () => ({
+      id: "i1",
+      status: "running",
+      mount_path: "/root",
+      template: "agent37-ubuntu@2026.11.17a",
+      url: "https://i1.agent37.app",
+    }));
+    expect(await client(url, { AGENT37_API_KEY: KEY }).inspect("i1")).toEqual({
+      id: "i1",
+      status: "running",
+      mount_path: "/root",
+      template: "agent37-ubuntu@2026.11.17a",
+    });
+  });
+
+  it("leaves them out when absent or not strings", async () => {
+    const absent = await reflecting(200, () => ({ id: "i2", status: "sleeping" }));
+    const absentFound = await client(absent, { AGENT37_API_KEY: KEY }).inspect("i2");
+    expect(absentFound).toEqual({ id: "i2", status: "sleeping" });
+    expect(absentFound !== null && "mount_path" in absentFound).toBe(false);
+    expect(absentFound !== null && "template" in absentFound).toBe(false);
+    const odd = await reflecting(200, () => ({
+      id: "i3",
+      status: "running",
+      mount_path: null,
+      template: 5,
+    }));
+    expect(await client(odd, { AGENT37_API_KEY: KEY }).inspect("i3")).toEqual({
+      id: "i3",
+      status: "running",
+    });
+  });
+});
