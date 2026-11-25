@@ -9,8 +9,10 @@ import {
   readRetries,
   releaseRetries,
 } from "../retry/records.js";
+import { recordRunRemote, remoteOf } from "../retry/remote.js";
 import { loadRetryNoteText } from "../retry/text.js";
-import type { CheckKey } from "../types/keys.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { RunReport } from "../types/runner.js";
 import type { ResultRecord } from "../types/store-records.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
@@ -219,4 +221,21 @@ export function recordFailedLoad(
 ): void {
   if (load === null || !records.some((r) => r.outcome === "fail")) return;
   recordRunLoad(context.store, runId, load);
+}
+
+/**
+ * Row 026-28 (spec 026 D12): keeps the remote that ran `testFile` in a run
+ * that stored a failure of it, so the failure names that machine. A file
+ * that ran here keeps none.
+ */
+export function recordFailedRemote(
+  context: SchedulerContext,
+  runId: string,
+  report: RunReport,
+  testFile: TestFileRef,
+  records: readonly ResultRecord[],
+): void {
+  const remote = remoteOf(report, testFile);
+  if (remote === undefined || !records.some((r) => r.outcome === "fail")) return;
+  recordRunRemote(context.store, runId, testFile, remote);
 }

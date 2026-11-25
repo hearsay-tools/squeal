@@ -21,7 +21,7 @@ import {
   queueReruns,
   rememberReruns,
 } from "./rerun.js";
-import { endRetry, recordFailedLoad } from "./retries.js";
+import { endRetry, recordFailedLoad, recordFailedRemote } from "./retries.js";
 import { storeClosures } from "./revision.js";
 import { failStartup } from "./setup.js";
 import { type StoreDecision, storeDecision, type TierEnd } from "./store-decision.js";
@@ -255,6 +255,7 @@ function storeFile(
   const inputs = [...entry.inputs, ...(growth?.growth ?? [])];
   const prior = storeResults(context, records, healsUnheld(store, inputs));
   recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
+  recordFailedRemote(context, tier.runId, report, file.ref, records);
   store.failures.keepReplaced(failing, records, (run) => readRunLoads(store).get(run) ?? null);
   if (forced && file.rerunKey === key) endRerun(context, file);
   if (forced) endRetry(context, file, key, records, tier.runId);

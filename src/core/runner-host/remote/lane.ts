@@ -127,6 +127,12 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
 
 export interface RemoteLaneOptions {
   readonly target: string;
+  /**
+   * Row 026-28 (spec 026 D12): the name a proven remote report carries in
+   * `RunReport.remote`, such as the shared machine's id, read at each run.
+   * Absent: `target`.
+   */
+  readonly remoteLabel?: () => string;
   readonly whenLost: WhenLost;
   readonly root: AbsolutePath;
   readonly version: string;
@@ -661,7 +667,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     if (runnerHostGone(host.adapter)) return { lost: cutShort(host, reply, files) };
     const ran = reply.refused === undefined;
     const differ = reply.refused ?? (await differing(reply));
-    const raw = stripped(reply);
+    // Row 026-28: every file of a remote report ran there; a failure of one names it.
+    const raw = { ...stripped(reply), remote: options.remoteLabel?.() ?? target };
     const report = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
     if (ran && differ.length === 0) {
       return { ran, split: null, syncable: [], part: provenPart(report, reply.coverage, []) };

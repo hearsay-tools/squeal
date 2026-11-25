@@ -1,6 +1,7 @@
 import { worktreeIdFor } from "../fs/git-layout.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { withRecorded } from "../retry/recorded.js";
+import { keptRemote, readRunRemotes } from "../retry/remote.js";
 import { formatCheck, parseCheck } from "../state/check-name.js";
 import { checkIdentity, firstOfEachCheck, testFileOf } from "../state/derive.js";
 import { readFlakyNotes } from "../state/flaky.js";
@@ -24,6 +25,7 @@ import type {
   WhyNoMatch,
   WhyReport,
   WhyResult,
+  WhyResultEntry,
 } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { ReplacedFailure, ResultRecord } from "../types/store-records.js";
@@ -195,11 +197,17 @@ function report(
   const all = store.results.listForCheck(check, Number.MAX_SAFE_INTEGER);
   const logDirOf = (result: ResultRecord) =>
     store.runs.get(result.provenance.runId)?.logDir ?? null;
-  const entry = (result: ResultRecord) => ({
-    result,
-    worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
-    logDir: logDirOf(result),
-  });
+  const remotes = readRunRemotes(store);
+  const entry = (result: ResultRecord): WhyResultEntry => {
+    // Row 026-28 (spec 026 D12): a remote's failure names it.
+    const remote = keptRemote(remotes, result.provenance.runId, testFileOf(check));
+    return {
+      result,
+      worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
+      logDir: logDirOf(result),
+      ...(remote === undefined ? {} : { remote }),
+    };
+  };
   const results = all.slice(0, WHY_RESULT_LIMIT).map(entry);
   // Row 011-77 (gh-67 Q3): newest 20 passes never hide the check's older stored failures.
   const olderFailures = all

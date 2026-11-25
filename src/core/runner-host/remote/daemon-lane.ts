@@ -357,6 +357,8 @@ function laneOver<R extends RunnerAdapter>(
   const launch = options.launch as RunnerHostLaunch;
   const adapter = withRemoteLane({
     target,
+    // Row 026-28 (spec 026 D12): a remote failure names the machine that ran it.
+    remoteLabel: () => share.current()?.id ?? target,
     eager: context.eager,
     lanes: tiers,
     // A lane made per pass waits for its connect while the machine is known awake; while it is

@@ -517,6 +517,12 @@ export interface FileCore {
   readonly core: CoreEnvironmentInputs;
 }
 
+/** Spec 026 D12 (row 026-28): a completed test file and the remote machine that ran it. */
+export interface FileRemote {
+  readonly testFile: TestFileRef;
+  readonly remote: string;
+}
+
 export interface RunReport {
   readonly end: RunEnd;
   readonly durationMs: number;
@@ -613,6 +619,19 @@ export interface RunReport {
    * over `executedCore`. Absent: `executedCore` holds for every file.
    */
   readonly fileCores?: readonly FileCore[];
+  /**
+   * Spec 026 D12 (row 026-28): the remote machine that ran the completed
+   * files (its machine id, else the lane's target), so a failure it
+   * produced names it. Absent: this machine, or the parts of a split ran
+   * on different machines (`fileRemotes`).
+   */
+  readonly remote?: string;
+  /**
+   * Row 026-28: per completed file run remotely, its remote, when the parts
+   * of a split did not all run on one remote; it takes precedence over
+   * `remote`. A file not listed ran here.
+   */
+  readonly fileRemotes?: readonly FileRemote[];
   /**
    * Test files that ran to completion and whose results the runner withheld,
    * not listed in `completedFiles`: bytes the run may have executed moved or

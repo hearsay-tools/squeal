@@ -700,6 +700,12 @@ export interface RecordedFacts {
   readonly recordedAt?: EpochMs;
   /** The host's load per CPU when its run started; `null` when not kept. */
   readonly loadPerCpu: number | null;
+  /**
+   * Row 026-28 (spec 026 D12): the remote machine its run ran the test file
+   * on (machine id, else the lane's target). Absent: it ran here, or no
+   * remote was kept.
+   */
+  readonly remote?: string;
   /** The newest retry asked at the key; absent when none was. */
   readonly retry?: RetryFact;
   /**
@@ -1240,6 +1246,8 @@ export interface WhyResultEntry {
   readonly worktreeRoot: AbsolutePath | null;
   /** `runs/<run-id>/` of the producing run; `null` when the run record was pruned. */
   readonly logDir: AbsolutePath | null;
+  /** Row 026-28: the remote machine that produced it, when one did and it was kept. */
+  readonly remote?: string;
 }
 
 /**

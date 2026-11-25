@@ -344,6 +344,38 @@ const TABLE: { readonly [K in keyof RunReport]-?: readonly Case<K>[] } = {
       },
     },
   ],
+  // Row 026-28 (spec 026 D12): the one remote all parts ran on, else each remote file's.
+  remote: [
+    { name: "absent when no part names one", parts: [{}, {}], merged: {} },
+    {
+      name: "the one remote both parts ran on",
+      parts: [{ remote: "vm-1" }, { remote: "vm-1" }],
+      merged: { remote: "vm-1" },
+    },
+    {
+      name: "absent over two remotes",
+      parts: [{ remote: "vm-1" }, { remote: "vm-2" }],
+      merged: {},
+    },
+    { name: "absent when a part ran here", parts: [{ remote: "vm-1" }, {}], merged: {} },
+  ],
+  fileRemotes: [
+    { name: "absent when no part names one", parts: [{}, {}], merged: {} },
+    {
+      name: "each part's files in the parts' order",
+      parts: [
+        { fileRemotes: [{ testFile: A, remote: "vm-1" }] },
+        {},
+        { fileRemotes: [{ testFile: C, remote: "vm-2" }] },
+      ],
+      merged: {
+        fileRemotes: [
+          { testFile: A, remote: "vm-1" },
+          { testFile: C, remote: "vm-2" },
+        ],
+      },
+    },
+  ],
 };
 
 const CELLS = Object.entries(TABLE).flatMap(
@@ -354,5 +386,19 @@ const CELLS = Object.entries(TABLE).flatMap(
 describe("the report merge, one rule per field (row 011-330)", () => {
   it.each(CELLS)("$field: $name", ({ parts: fields, merged }) => {
     expect(merge(parts(fields))).toStrictEqual({ ...EMPTY, ...merged });
+  });
+
+  it("tags only the remote part's completed files of a split with a part here (row 026-28)", () => {
+    const here = { ...EMPTY, completedFiles: [A] };
+    const there = { ...EMPTY, completedFiles: [B, C], remote: "agent37:eu:vm:l1l8w0bsw8" };
+    const merged = merge([
+      { adapter: { name: "here" }, report: here },
+      { adapter: { name: "remote" }, report: there },
+    ]);
+    expect(merged.remote).toBeUndefined();
+    expect(merged.fileRemotes).toEqual([
+      { testFile: B, remote: "agent37:eu:vm:l1l8w0bsw8" },
+      { testFile: C, remote: "agent37:eu:vm:l1l8w0bsw8" },
+    ]);
   });
 });

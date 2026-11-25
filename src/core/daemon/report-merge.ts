@@ -1,6 +1,6 @@
 import { compare } from "../fs/compare.js";
 import { mergedExecutedCore, mergedFileCores } from "../runner-host/remote/remote-key.js";
-import type { RunEnd, RunnerAdapter, RunReport } from "../types/runner.js";
+import type { FileRemote, RunEnd, RunnerAdapter, RunReport } from "../types/runner.js";
 
 /*
  * The report merge (GLOSSARY.md; row 011-330): how the reports of a run's
@@ -90,4 +90,34 @@ export const MERGE_RULES: MergeRules = {
   // Spec 026 D10 (row 026-14): the one machine all parts ran on, else each file's.
   executedCore: (parts) => mergedExecutedCore(parts.map((p) => p.report)),
   fileCores: (parts) => mergedFileCores(parts.map((p) => p.report)),
+  // Spec 026 D12 (row 026-28): the one remote all parts ran on, else each remote file's.
+  remote: (parts) => mergedRemote(parts.map((p) => p.report)),
+  fileRemotes: (parts) => mergedFileRemotes(parts.map((p) => p.report)),
 };
+
+/** The report merge's `remote`: the remote every part ran on, when each part names the same one. */
+export function mergedRemote(parts: readonly RunReport[]): string | undefined {
+  const first = parts[0]?.remote;
+  if (first === undefined) return undefined;
+  const one = parts.every((p) => p.fileRemotes === undefined && p.remote === first);
+  return one ? first : undefined;
+}
+
+/**
+ * The report merge's `fileRemotes`, when the parts did not all run on one
+ * remote: each completed file of a part that ran remotely, with its remote.
+ * A part that names none ran here, so its files take none.
+ */
+export function mergedFileRemotes(parts: readonly RunReport[]): readonly FileRemote[] | undefined {
+  if (mergedRemote(parts) !== undefined) return undefined;
+  const remotes = parts.flatMap(remotesOf);
+  return remotes.length === 0 ? undefined : remotes;
+}
+
+/** Each completed file of `report` that ran remotely, with its remote. */
+function remotesOf(report: RunReport): FileRemote[] {
+  if (report.fileRemotes !== undefined) return [...report.fileRemotes];
+  const { remote } = report;
+  if (remote === undefined) return [];
+  return report.completedFiles.map((testFile) => ({ testFile, remote }));
+}

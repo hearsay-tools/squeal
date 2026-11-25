@@ -277,7 +277,10 @@ function results(why: WhyReport): string[] {
   ];
 }
 
-function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResultEntry): string[] {
+function resultLines(
+  why: WhyReport,
+  { result, worktreeRoot, logDir, remote }: WhyResultEntry,
+): string[] {
   const p = result.provenance;
   const importId = importIdOf(p.worktreeId);
   const where =
@@ -289,7 +292,7 @@ function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResult
   const noLog = importId === null ? "run record pruned" : "none, an imported result has no run log";
   const lines = [
     `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
-    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why, result) ? ", replaced the result behind this worktree's known state" : ""}`,
+    `${INDENT}run ${p.runId}${remote === undefined ? "" : `, remote ${remote}`}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why, result) ? ", replaced the result behind this worktree's known state" : ""}`,
     `${INDENT}log: ${logDir ?? noLog}`,
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);

@@ -269,14 +269,20 @@ export function recordedText(
   return `${lead}${recordedWhereText(facts, here, now)}; ${retry}`;
 }
 
-/** "recorded 3 min ago in this worktree at revision 4, load 2.00 per CPU when it ran". */
+/**
+ * "recorded 3 min ago in this worktree at revision 4, load 2.00 per CPU when
+ * it ran"; "recorded 3 min ago on remote vm-1 in this worktree …" for a
+ * failure a remote produced.
+ */
 export function recordedWhereText(facts: RecordedFacts, here: WorktreeId, now: EpochMs): string {
   const where =
     facts.worktreeId === here
       ? "this worktree"
       : (facts.worktreeRoot ?? `worktree ${facts.worktreeId}`);
   const ago = facts.recordedAt === undefined ? "" : ` ${agoText(now - facts.recordedAt)}`;
-  return `recorded${ago} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
+  // Row 026-28 (spec 026 D12): a remote's failure names it; one run here reads as before.
+  const remote = facts.remote === undefined ? "" : ` on remote ${facts.remote}`;
+  return `recorded${ago}${remote} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
 }
 
 /** The retry asked at a failure's inputs, or that none was. */

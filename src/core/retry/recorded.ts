@@ -10,6 +10,7 @@ import type { KnownFailure, RecordedFacts, RetryFact } from "../types/status.js"
 import type { Store } from "../types/store.js";
 import { readRunLoads } from "./load.js";
 import { type RetryRecord, readRetries, retriesAt } from "./records.js";
+import { keptRemote, readRunRemotes } from "./remote.js";
 
 /*
  * Spec 001 D6 as amended (001-368): "An inherited failure states the facts
@@ -51,7 +52,7 @@ export function passedRetry(
  * The known failures of `states` with `recorded`, from the result that
  * produced each: the run the state sink named when it derived the state
  * (`readFailureProducers`) at the key it recorded for the failure, its age,
- * load and the retry asked at that key.
+ * load, the remote that ran it (row 026-28) and the retry asked at that key.
  * Any other row of the check, a cached pass at a new key or an identical
  * same-key failure from a later run, gives none of its facts; with no named
  * producer still stored, or one that describes another state, the failure
@@ -76,6 +77,7 @@ export function withRecorded(
   const failureKeys = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
+  const remotes = readRunRemotes(store);
   const notes = readFlakyNotes(store);
   return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
@@ -86,12 +88,14 @@ export function withRecorded(
     if (row === null) return { ...failure, recordedUnknown: true };
     const { provenance } = row;
     const retry = retryFactOf(retriesAt(retries, testFile, row.key));
+    const remote = keptRemote(remotes, provenance.runId, testFile);
     const recorded: RecordedFacts = {
       worktreeId: provenance.worktreeId,
       worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
       revision: provenance.revision,
       recordedAt: provenance.recordedAt,
       loadPerCpu: loads.get(provenance.runId) ?? null,
+      ...(remote === undefined ? {} : { remote }),
       ...(retry === undefined ? {} : { retry }),
       ...(notes.get(id)?.key === row.key ? {} : { noEarlierPass: true }),
     };
