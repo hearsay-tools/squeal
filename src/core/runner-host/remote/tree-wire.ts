@@ -65,6 +65,11 @@ export interface RemoteRunOptions {
   readonly alive?: number;
   readonly admitted?: true;
   /**
+   * Row 026-23: the token of the grant the run claims (`AdmitAsk.token`),
+   * so concurrent runs never claim each other's. Absent: the untokened one.
+   */
+  readonly admitToken?: string;
+  /**
    * Spec 026 D9 (row 026-13): the host maps the run's coverage itself and
    * returns its records (`RemoteRunReply.coverage`), their blob ids in the
    * worktree's object format. Absent: it returns none.

@@ -11,7 +11,7 @@ import type {
   RunReport,
 } from "../../types/runner.js";
 import { runnerHostGone } from "../proxy.js";
-import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
+import { ADMIT_EVERY_MS, admitRun, cancelOf, cancelledFirst, notStarted } from "./admission.js";
 import { createBlobCache, createInstalledFingerprintCache } from "./blob-cache.js";
 import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { recordsWithout } from "./coverage.js";
@@ -86,6 +86,14 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * carries go to `remoteCoverage` only once its blob proof holds, less
  * those of files D19.2's guard sends here; a refused, lost, cancelled or
  * unadmitted run's are dropped with it.
+ *
+ * Row 026-23: each admission attempt holds its grant under its own token,
+ * which its run claims, so concurrent tiers never take each other's. A host
+ * goes down once: sibling runs that end on it later count no second failure
+ * and keep the first reason, and a host the lane moved on from takes no
+ * newer one down. A run the host's end cut short is lost, never completed.
+ * Under `whenLost: "not-run"` a run waits for a connect or wake in flight,
+ * as under `awaitConnect`, and ends not started when cancelled meanwhile.
  */
 
 export interface RemoteLaneOptions {
@@ -177,6 +185,9 @@ const NO_LEASE: Promise<() => void> = Promise.resolve(() => {});
 /** How many runs in a row may come after their grant went back before the remote counts as lost. */
 const LATE_RUNS = 3;
 
+/** `ready`'s answer when the run's cancel aborted while it waited for a connect. */
+const CANCELLED = Symbol("cancelled");
+
 type State =
   | { readonly kind: "connecting" }
   /** B7: closed for sleep (`going`: the machine is being asked); the next run connects. */
@@ -233,6 +244,13 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   const closing = new AbortController();
   /** The host a connect reached and still compares: `close` closes it at once. */
   let comparing: RemoteHost | null = null;
+  /**
+   * Row 026-23: the host the lane's state stands on, from its compare until
+   * it goes down; a `down` for any other host only closes it.
+   */
+  let standing: RemoteHost | null = null;
+  /** Row 026-23: makes each admission attempt's token unique (`AdmitAsk.token`). */
+  let attempts = 0;
   /** Paths invalidated since the last remote run, by path; sent before the next. */
   const pending = new Map<string, InvalidatedPath>();
   const queue = (paths: readonly InvalidatedPath[]) => {
@@ -246,9 +264,15 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     options.hasGitRepository ?? (() => false),
   );
 
-  /** The remote cannot take runs: closed, and tried again after a backoff. */
+  /**
+   * The remote cannot take runs: closed, and tried again after a backoff.
+   * Row 026-23: a `host` already down, or one the lane moved on from, is
+   * only closed: no second failure, no new reason, no newer host down.
+   */
   const down = (reason: string, refused: boolean, host?: RemoteHost) => {
     void host?.adapter.close().catch(() => {});
+    if (host !== undefined && host !== standing) return;
+    standing = null;
     remoteCore = null;
     const since = state.kind === "down" ? state.since : now();
     const wait = backoff[Math.min(failures, backoff.length - 1)] ?? 0;
@@ -270,6 +294,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   };
   const connect = () => {
     state = { kind: "connecting" };
+    standing = null;
     tried = true;
     provenAt = null;
     pending.clear();
@@ -298,6 +323,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     if (state.kind !== "connecting") return closed();
     options.status(`remote ${target}: connected (Node ${host.node}), not yet compared`);
     comparing = host;
+    standing = host;
     const unequal = await sendPending(host)
       .then(() => compared(host))
       .then(async (found) => {
@@ -311,7 +337,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     comparing = null;
     // Closed meanwhile: this host is no one's.
     if (state.kind !== "connecting") await (ours ? closed() : undefined);
-    else if (runnerHostGone(host.adapter)) down("the host ended", false);
+    else if (runnerHostGone(host.adapter)) down("the host ended", false, host);
     else if (unequal.length > 0) down(unequal.join("; "), true, host);
     else {
       state = { kind: "ready", host, proven: false };
@@ -342,24 +368,40 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   /**
    * The host when it can take a run now; else `null`, and a reconnect when
    * due. A lane that `awaitConnect`s, and a planning call (`wait`), answers
-   * once the connect ends; a planning call also waits for a sleep in flight.
+   * once the connect ends, and waits for a sleep in flight first. Row
+   * 026-23: `CANCELLED` when `cancel` aborts during either wait.
    */
-  const ready = async (wait = options.awaitConnect === true): Promise<RemoteHost | null> => {
-    if (wait && state.kind === "asleep" && state.going) await sleepEnd;
-    return reach(wait);
+  const ready = async (
+    wait = options.awaitConnect === true,
+    cancel?: AbortSignal,
+  ): Promise<RemoteHost | null | typeof CANCELLED> => {
+    if (wait && state.kind === "asleep" && state.going) {
+      if (await cancelledFirst(sleepEnd, cancel)) return CANCELLED;
+    }
+    return reach(wait, cancel);
   };
-  const reach = async (wait: boolean): Promise<RemoteHost | null> => {
+  const reach = async (
+    wait: boolean,
+    cancel?: AbortSignal,
+  ): Promise<RemoteHost | null | typeof CANCELLED> => {
     if (state.kind === "down" && now() >= state.retryAt) connect();
     if (state.kind === "asleep" && !state.going) connect();
-    if (state.kind === "connecting" && wait) await connecting;
+    if (state.kind === "connecting" && wait) {
+      if (await cancelledFirst(connecting, cancel)) return CANCELLED;
+    }
     const current = state as State;
     if (current.kind !== "ready") return null;
     const { host } = current;
     if (runnerHostGone(host.adapter)) {
-      down("the host ended", false);
+      down("the host ended", false, host);
       return null;
     }
     return host;
+  };
+  /** A planning call's host: it waits, uncancelled. */
+  const planningHost = async (): Promise<RemoteHost | null> => {
+    const host = await ready(true);
+    return host === CANCELLED ? null : host;
   };
 
   const blobCache = createBlobCache(options.root, now);
@@ -396,7 +438,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     const inputs = await runInputs(host, testFiles).catch((error: Error) => error);
     if (inputs instanceof Error) {
       if (!runnerHostGone(host.adapter)) throw inputs;
-      down("the host ended", false);
+      down("the host ended", false, host);
       return { lost: lostReport(testFiles) };
     }
     let stayed: readonly string[] = [];
@@ -406,7 +448,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       // reached the host; the remote changes only through these messages, sent in turn.
       const { differences: unequal, remoteCore: runCore } = await compared(host);
       if (runnerHostGone(host.adapter)) {
-        down("the host ended", false);
+        down("the host ended", false, host);
         return { lost: lostReport(testFiles) };
       }
       if (unequal.length > 0) {
@@ -417,8 +459,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       const reply = await admittedRun(host, testFiles, run, inputs).finally(end);
       if ("lost" in reply || "cancelled" in reply) return reply;
       if (runnerHostGone(host.adapter)) {
-        down(reply.failure ?? "the host ended", false);
-        return { lost: stripped(reply) };
+        down(reply.failure ?? "the host ended", false, host);
+        // Row 026-23: a report the host's end cut short stays lost, never `completed`.
+        const named = reply.end !== "completed" && reply.failure != null;
+        return { lost: named ? stripped(reply) : lostReport(testFiles) };
       }
       const after =
         reply.refused === undefined ? await blobsHere(Object.keys(reply.proof ?? {})) : {};
@@ -470,7 +514,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     (RunReport & RemoteRunReply) | { readonly lost: RunReport } | { readonly cancelled: RunReport }
   > => {
     for (let late = 1; ; late++) {
+      // Row 026-23: this attempt's own grant, which no concurrent tier's look drops.
+      const token = `${run.runId}:${++attempts}`;
       const grant = await admitRun((ask) => host.admit(ask), testFiles, run, {
+        token,
         tierWidth: (file, grant) => local.traits.tierWidth(file, grant),
         everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
         log: (line) => options.log(`remote ${target}: ${line}`),
@@ -487,6 +534,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         workers: grant,
         expected,
         admitted: true,
+        admitToken: token,
       } as RunOptions)) as RunReport & RemoteRunReply;
       if (reply.unadmitted !== true) return reply;
       if (late >= LATE_RUNS) {
@@ -592,8 +640,16 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     // Counted from before the host is picked: a sleep finds the run busy, not its host closed.
     remoteRuns++;
     activity();
-    const report = await ready()
-      .then((host) => (host === null ? null : remoteRun(host, testFiles, run)))
+    // Row 026-23: under `not-run` a run waits for a connect or wake in flight, as under `awaitConnect`.
+    const wait = options.awaitConnect === true || options.whenLost === "not-run";
+    const report = await ready(wait, cancelOf(run))
+      .then((host) =>
+        host === CANCELLED
+          ? { cancelled: notStarted() }
+          : host === null
+            ? null
+            : remoteRun(host, testFiles, run),
+      )
       .finally(() => {
         remoteRuns--;
         activity();
@@ -686,7 +742,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   };
   /** `host` ended during a call: down, unless the lane moved on from it meanwhile. */
   const ended = (host: RemoteHost) => {
-    if (state.kind === "ready" && state.host === host) down("the host ended", false);
+    if (state.kind === "ready" && state.host === host) down("the host ended", false, host);
   };
 
   /**
@@ -718,7 +774,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         target,
         whenLost: options.whenLost,
         local,
-        host: () => ready(true),
+        host: planningHost,
         send: sendPending,
         lost: ended,
         begin,
@@ -795,6 +851,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       if (refused !== null) return { busy: refused };
       const host = state.kind === "ready" ? state.host : null;
       state = { kind: "asleep", going: true };
+      standing = null;
       let asleep = () => {};
       sleepEnd = new Promise<void>((resolve) => {
         asleep = resolve;
@@ -813,6 +870,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     async close() {
       const host = state.kind === "ready" ? state.host : comparing;
       comparing = null;
+      standing = null;
       closed = true;
       state = { kind: "down", since: now(), retryAt: Number.POSITIVE_INFINITY, refused: false };
       closing.abort();
