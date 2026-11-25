@@ -9,6 +9,7 @@ import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
 import { ASKED_KEYS_META_KEY } from "../../src/core/retry/kept.js";
 import { RUN_LOADS_META_KEY } from "../../src/core/retry/load.js";
 import { RETRIES_META_KEY } from "../../src/core/retry/records.js";
+import { RUN_REMOTES_META_KEY } from "../../src/core/retry/remote.js";
 import { slowTokensMetaKey } from "../../src/core/slow/rank-store.js";
 import { FLAKY_META_KEY } from "../../src/core/state/flaky.js";
 import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
@@ -51,6 +52,7 @@ const SHARED_KEY_CONSTANTS = [
   "RERUN_FIRST_META_KEY",
   "RETRIES_META_KEY",
   "RUN_LOADS_META_KEY",
+  "RUN_REMOTES_META_KEY",
 ];
 
 function sources(dir: string): { path: string; text: string }[] {
@@ -81,6 +83,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
       RERUN_FIRST_META_KEY,
       RETRIES_META_KEY,
       RUN_LOADS_META_KEY,
+      RUN_REMOTES_META_KEY,
       observedMetaKey("gone"),
       observedDirectMetaKey("gone"),
       observedStartupMetaKey("gone"),
