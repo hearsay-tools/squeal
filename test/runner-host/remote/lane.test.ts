@@ -1,6 +1,8 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { RunReport } from "../../../src/core/types/runner.js";
 import { REPORT } from "../fake-channel.js";
 import { background, ENV, options, REF, setup } from "./lane-fixture.js";
 
@@ -172,5 +174,204 @@ describe("a remote lane (row 021-14)", () => {
     expect(report.completedFiles).toEqual([REF]);
     expect(s.localRuns).toHaveLength(1);
     expect(s.remoteRuns).toEqual([]);
+  });
+});
+
+/*
+ * Row 026-24 (gh-280): the proof holds file by file. A local git-ignored
+ * input is never sent (021 D10), so only the files that read it are
+ * refused, at once; their siblings keep the remote's results.
+ */
+describe("a remote lane's proof, file by file (row 026-24)", () => {
+  const A = REF;
+  const B = { project: "", path: "test/b.test.ts" };
+  const C = { project: "", path: "test/c.test.ts" };
+  const TIER = [A, B, C];
+  const paths = (report: RunReport) => report.completedFiles.map((f) => f.path).sort();
+  const IGNORED =
+    'remote box refused (git-ignored input dist/index.html exists locally and is not synced to remote); not run here (whenLost "not-run")';
+
+  /** A local tree with three test files and an ignored `dist/`, which the remote never gets. */
+  const tree = {
+    files: {
+      ".gitignore": "dist/\n",
+      "test/b.test.ts": "import '../src/b';\n",
+      "test/c.test.ts": "import '../src/a';\n",
+      "src/b.ts": "export const b = 1;\n",
+    },
+    before: (root: string) => {
+      mkdirSync(join(root, "dist"));
+      writeFileSync(join(root, "dist/index.html"), "<html>built here</html>\n");
+      writeFileSync(join(root, "dist/hsq.js"), "built here\n");
+    },
+  };
+  const closure =
+    (extra: Readonly<Record<string, readonly string[]>> = {}) =>
+    (file: TestFileRef) => [
+      file.path,
+      file.path === B.path ? "src/b.ts" : "src/a.ts",
+      ...(extra[file.path] ?? []),
+    ];
+  /** The remote's report of the files it ran (the fixture's last remote run), and what each observed. */
+  const ranThere =
+    (runs: () => readonly string[], observed: Readonly<Record<string, readonly string[]>>) =>
+    async (): Promise<RunReport> => {
+      const files = (runs().at(-1) ?? "").split(",").map((path) => ({ project: "", path }));
+      return {
+        ...REPORT,
+        completedFiles: files,
+        observed: files.map((testFile) => ({
+          testFile,
+          paths: [...(observed[testFile.path] ?? [])],
+          directories: [],
+        })),
+      };
+    };
+
+  it("keeps the siblings of a file that observed a git-ignored input, runs once, and leaves only it not run", async () => {
+    let runs: () => readonly string[] = () => [];
+    const s = await setup({
+      ...tree,
+      whenLost: "not-run",
+      closure: closure(),
+      remoteRun: () => ranThere(runs, { [B.path]: ["dist/index.html"] })(),
+    });
+    runs = () => s.remoteRuns;
+    const report = await s.lane.run(TIER, background());
+    expect(s.remoteRuns).toEqual(["test/a.test.ts,test/b.test.ts,test/c.test.ts"]);
+    expect(s.localRuns).toHaveLength(0);
+    expect(report.end).toBe("completed");
+    expect(paths(report)).toEqual(["test/a.test.ts", "test/c.test.ts"]);
+    expect(report.observed?.map((o) => o.testFile)).toEqual([A, C]);
+    expect(report.failure).toBe(IGNORED);
+    expect(s.logs.filter((line) => /sending again/.test(line))).toEqual([]);
+    expect(s.statuses.at(-1)).toBe(
+      "remote box: refused 1 files whose git-ignored inputs are not synced; not run",
+    );
+  });
+
+  it("runs only the file that observed a git-ignored input here under whenLost local", async () => {
+    let runs: () => readonly string[] = () => [];
+    const s = await setup({
+      ...tree,
+      closure: closure(),
+      remoteRun: () => ranThere(runs, { [B.path]: ["dist/index.html"] })(),
+    });
+    runs = () => s.remoteRuns;
+    const report = await s.lane.run(TIER, background());
+    expect(s.remoteRuns).toHaveLength(1);
+    expect(s.localFiles).toEqual(["test/b.test.ts"]);
+    expect(paths(report)).toEqual(["test/a.test.ts", "test/b.test.ts", "test/c.test.ts"]);
+    expect(report.failure).toBeNull();
+  });
+
+  it("isolates a file whose closure holds a git-ignored input before the run, and runs its siblings there", async () => {
+    let runs: () => readonly string[] = () => [];
+    const s = await setup({
+      ...tree,
+      closure: closure({ [B.path]: ["dist/hsq.js"] }),
+      remoteRun: () => ranThere(runs, {})(),
+    });
+    runs = () => s.remoteRuns;
+    const report = await s.lane.run(TIER, background());
+    // The host refused the first attempt before it ran; the second, without b, ran.
+    expect(s.remoteRuns).toEqual(["test/a.test.ts,test/c.test.ts"]);
+    expect(s.localFiles).toEqual(["test/b.test.ts"]);
+    expect(paths(report)).toEqual(["test/a.test.ts", "test/b.test.ts", "test/c.test.ts"]);
+    expect(s.logs).toContain(
+      "remote box: git-ignored input dist/hsq.js exists locally and is not synced to remote; refused test/b.test.ts",
+    );
+    expect(s.logs.filter((line) => /sending again/.test(line))).toEqual([]);
+    expect(existsSync(join(s.remoteRoot, "dist/hsq.js"))).toBe(false);
+  });
+
+  it("fails closed when no file of the tier holds the differing path", async () => {
+    let runs: () => readonly string[] = () => [];
+    const s = await setup({
+      ...tree,
+      whenLost: "not-run",
+      closure: closure(),
+      // Observed by a file outside the tier: nothing attributes the path, so it taints all.
+      remoteRun: async () => ({
+        ...(await ranThere(runs, {})()),
+        observed: [
+          {
+            testFile: { project: "", path: "test/z.test.ts" },
+            paths: ["dist/index.html"],
+            directories: [],
+          },
+        ],
+      }),
+    });
+    runs = () => s.remoteRuns;
+    const report = await s.lane.run(TIER, background());
+    expect(s.remoteRuns).toHaveLength(1);
+    expect(report.completedFiles).toEqual([]);
+    expect(report.failure).toBe(IGNORED);
+  });
+
+  it("retries only the file a tracked difference taints, and keeps its siblings' first results", async () => {
+    let runs: () => readonly string[] = () => [];
+    let moves = 1;
+    const s = await setup({
+      ...tree,
+      closure: closure(),
+      remoteRun: async (remoteRoot) => {
+        if (moves-- > 0) writeFileSync(join(remoteRoot, "src/b.ts"), "moved\n");
+        return ranThere(runs, {})();
+      },
+    });
+    runs = () => s.remoteRuns;
+    const report = await s.lane.run(TIER, background());
+    expect(s.remoteRuns).toEqual([
+      "test/a.test.ts,test/b.test.ts,test/c.test.ts",
+      "test/b.test.ts",
+    ]);
+    expect(s.logs).toContain("remote box: tree differs at src/b.ts; sending again");
+    expect(s.localRuns).toHaveLength(0);
+    expect(paths(report)).toEqual(["test/a.test.ts", "test/b.test.ts", "test/c.test.ts"]);
+  });
+
+  it("names a tracked difference that stayed after the retry, and keeps the proven siblings under whenLost not-run", async () => {
+    let runs: () => readonly string[] = () => [];
+    const s = await setup({
+      ...tree,
+      whenLost: "not-run",
+      closure: closure(),
+      remoteRun: async (remoteRoot) => {
+        writeFileSync(join(remoteRoot, "src/b.ts"), `moved ${Math.random()}\n`);
+        return ranThere(runs, {})();
+      },
+    });
+    runs = () => s.remoteRuns;
+    const report = await s.lane.run(TIER, background());
+    expect(s.remoteRuns).toHaveLength(2);
+    expect(paths(report)).toEqual(["test/a.test.ts", "test/c.test.ts"]);
+    expect(report.failure).toBe(
+      'remote box refused (its tree stayed different at src/b.ts); not run here (whenLost "not-run")',
+    );
+    expect(s.statuses.at(-1)).toBe(
+      "remote box: refused a run whose tree stayed different; not run",
+    );
+  });
+
+  it("treats a file deleted here as one a resend repairs: removed there, then run", async () => {
+    let runs: () => readonly string[] = () => [];
+    const s = await setup({
+      ...tree,
+      files: { ...tree.files, "src/gone.ts": "export const gone = 1;\n" },
+      closure: closure({ [B.path]: ["src/gone.ts"] }),
+      remoteRun: () => ranThere(runs, {})(),
+    });
+    runs = () => s.remoteRuns;
+    // The connect sent it; deleted here since, unseen, it stays there.
+    expect(existsSync(join(s.remoteRoot, "src/gone.ts"))).toBe(true);
+    rmSync(join(s.root, "src/gone.ts"));
+    const report = await s.lane.run(TIER, background());
+    expect(s.logs).toContain("remote box: tree differs at src/gone.ts; sending again");
+    expect(existsSync(join(s.remoteRoot, "src/gone.ts"))).toBe(false);
+    expect(s.remoteRuns).toEqual(["test/a.test.ts,test/b.test.ts,test/c.test.ts"]);
+    expect(s.localRuns).toHaveLength(0);
+    expect(paths(report)).toEqual(["test/a.test.ts", "test/b.test.ts", "test/c.test.ts"]);
   });
 });
