@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import type { HostCpu, TreeCpu } from "../../../src/core/capacity/cores.js";
 import { clearMark, readMarks, writeMark } from "../../../src/core/capacity/marks.js";
 import { createPermitPool, poolPermitFile } from "../../../src/core/capacity/pool.js";
@@ -17,6 +17,17 @@ import { takePermit } from "../../../src/core/slow/slot.js";
 import type { LocalPermits, RunOptions } from "../../../src/core/types/runner.js";
 import { REPORT } from "../fake-channel.js";
 import { background, REF, setup, until } from "./lane-fixture.js";
+
+/** Row 026-23: set, every runner host counts as gone, as when its close cut a run short. */
+const hostGone = vi.hoisted(() => ({ forced: false }));
+vi.mock("../../../src/core/runner-host/proxy.js", async (actual) => {
+  const real = await actual<typeof import("../../../src/core/runner-host/proxy.js")>();
+  return {
+    ...real,
+    runnerHostGone: (adapter: Parameters<typeof real.runnerHostGone>[0]) =>
+      hostGone.forced || real.runnerHostGone(adapter),
+  };
+});
 
 /*
  * Spec 021 D18, last bullet (row 021-21; the coordinator, request
@@ -245,5 +256,155 @@ describe("a remote lane under the remote machine's own ceiling (spec 021 D18, ro
     expect(free(here, 4)).toBe(4 - (ran.workers ?? 0));
     permits.release();
     expect(free(here, 4)).toBe(4);
+  });
+});
+
+/*
+ * Row 026-23: concurrent tiers on one remote host, as `node:test`'s backlog
+ * slots send them. Each attempt holds its grant under its own token; a host
+ * lost under several runs goes down once, with the first reason; a run the
+ * host's close cut short is lost, never completed.
+ */
+describe("concurrent remote tiers on one host (row 026-23)", () => {
+  /** The remote machine's admission at 2 of 24 CPUs busy; grants wait until `slots` attempts asked. */
+  function gatedAdmission(slots: number) {
+    const real = createHostAdmission((log) =>
+      createPermitPool({
+        dir: poolDir("remote"),
+        owner: { pid: process.pid, worktreeId: "runner-host:/remote/tree" },
+        hostSlots: 23,
+        cpus: 24,
+        cores: tree,
+        host: busy(2),
+        log,
+      }),
+    );
+    closing.push(real);
+    const asked = new Set<string | undefined>();
+    const held = new Set<string | undefined>();
+    let most = 0;
+    const admission: HostAdmission = {
+      admit: (ask) => {
+        asked.add(ask.token);
+        if (ask.want > 0 && asked.size < slots) return { grant: 0 };
+        const answer = real.admit(ask);
+        if (answer.grant > 0) held.add(ask.token);
+        most = Math.max(most, held.size);
+        return answer;
+      },
+      claim: (token) => {
+        held.delete(token);
+        return real.claim(token);
+      },
+      close: () => real.close(),
+    };
+    return { admission, most: () => most };
+  }
+
+  it("runs four concurrent tiers there, each on its own grant, with none unadmitted and no host closed", async () => {
+    const gate = gatedAdmission(4);
+    const s = await setup({
+      admission: gate.admission,
+      admitEveryMs: 3,
+      remoteRun: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        return { ...REPORT, completedFiles: [REF] };
+      },
+    });
+    const runs = [0, 1, 2, 3].map(async (i) => {
+      await new Promise((resolve) => setTimeout(resolve, i * 4));
+      return s.lane.run([REF], background());
+    });
+    const reports = await Promise.all(runs);
+    for (const report of reports) expect(report.completedFiles).toEqual([REF]);
+    expect(s.remoteRuns).toHaveLength(4);
+    expect(s.localRuns).toHaveLength(0);
+    // Grants were held side by side: the race the tokens settle was there.
+    expect(gate.most()).toBeGreaterThanOrEqual(2);
+    expect(s.logs.filter((line) => /grant went back/.test(line))).toEqual([]);
+    expect(s.events).toEqual(["connect"]);
+    expect(s.lane.report()).toMatchObject({ state: "ready" });
+  });
+
+  it("goes down once, with the first reason, when a host is lost under three runs", async () => {
+    let started = 0;
+    const s = await setup({
+      whenLost: "not-run",
+      deadlines: { aliveMs: 300 },
+      remoteRun: (_root, hang) => {
+        if (++started === 3) hang();
+        return new Promise(() => {});
+      },
+    });
+    const reports = await Promise.all([0, 1, 2].map(() => s.lane.run([REF], background())));
+    for (const report of reports) {
+      expect(report.end).not.toBe("completed");
+      expect(report.completedFiles).toEqual([]);
+    }
+    const reason =
+      "the vitest runner host did not answer run, nor tell it is alive, within 300 ms; Squeal stopped it";
+    const downs = s.logs.filter((line) => line.startsWith("remote box: the vitest runner host"));
+    expect(downs).toEqual([`remote box: ${reason}`]);
+    expect(s.lane.report()).toEqual({ state: "unreachable", reason });
+    expect(s.localRuns).toHaveLength(0);
+  });
+
+  it("keeps the first reason when a sibling run ends on the host another run took down", async () => {
+    let victim = "";
+    let claims = 0;
+    let end = () => {};
+    const admission: HostAdmission = {
+      admit: () => ({ grant: 1 }),
+      // Every run of the victim's tier comes after its grant went back: the third takes the host down.
+      claim: (token) => {
+        if (token?.startsWith(`${victim}:`) !== true) return UNGRANTED;
+        // As `node:test` does when its host closes: the sibling ends with no file and no failure.
+        if (++claims === 3) end();
+        return null;
+      },
+      close: () => {},
+    };
+    const s = await setup({
+      whenLost: "not-run",
+      admission,
+      remoteRun: () =>
+        new Promise((resolve) => {
+          end = () => resolve({ ...REPORT });
+        }),
+    });
+    const sibling = s.lane.run([REF], background());
+    await until(() => s.remoteRuns.length === 1);
+    const lateRun = background();
+    victim = lateRun.runId;
+    const late = await s.lane.run([REF], lateRun);
+    expect(late.end).toBe("crashed");
+    const cut = await sibling;
+    expect(cut.end).toBe("crashed");
+    expect(cut.completedFiles).toEqual([]);
+    // The host's exit under the sibling names no new reason: the first one stands.
+    expect(s.lane.report()).toEqual({
+      state: "unreachable",
+      reason: "its machine's grant went back before the run came, 3 times",
+    });
+  });
+
+  it("reports a run whose host is gone when its reply comes as lost, though the reply says completed", async () => {
+    const s = await setup({
+      whenLost: "not-run",
+      remoteRun: async () => {
+        // The host's close cut the run short: `node:test` ends with no file and no failure.
+        hostGone.forced = true;
+        return { ...REPORT };
+      },
+    });
+    try {
+      const report = await s.lane.run([REF], background());
+      expect(report.end).toBe("crashed");
+      expect(report.completedFiles).toEqual([]);
+      expect(report.failure).toBe("remote box unreachable during the run of 1 files");
+      expect(s.lane.report()).toEqual({ state: "unreachable", reason: "the host ended" });
+    } finally {
+      hostGone.forced = false;
+    }
   });
 });

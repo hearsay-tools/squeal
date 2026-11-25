@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { HostCpu, TreeCpu } from "../../../src/core/capacity/cores.js";
 import { clearMark, readMarks, writeMark } from "../../../src/core/capacity/marks.js";
 import {
@@ -13,6 +13,7 @@ import {
 import {
   type AdmitAnswer,
   type AdmitAsk,
+  cancelledFirst,
   createHostAdmission,
   type HostAdmission,
   machinePool,
@@ -240,5 +241,94 @@ describe("the daemon's wait for the remote machine (spec 021 D18, row 021-21)", 
       { want: 4, least: 1 },
       { want: 0, least: 0 },
     ]);
+  });
+});
+
+describe("concurrent grants, one per attempt's token (row 026-23)", () => {
+  test("holds each token's grant beside the others; a run claims only its own", () => {
+    const remote = admission(busy(2));
+    expect(remote.admit({ want: 2, least: 1, token: "r1:1" }).grant).toBe(2);
+    expect(remote.admit({ want: 3, least: 1, token: "r2:2" }).grant).toBe(3);
+    expect(free()).toBe(18);
+    // A token with no grant held takes none of the others'.
+    expect(remote.claim("r3:3")).toBeNull();
+    const second = remote.claim("r2:2");
+    const first = remote.claim("r1:1");
+    expect(second).toMatchObject({ grant: 3 });
+    expect(first).toMatchObject({ grant: 2 });
+    expect(remote.claim("r1:1")).toBeNull();
+    for (const lease of [first, second]) (lease as PoolLease).release();
+    expect(free()).toBe(23);
+  });
+
+  test("a look returns only its own token's held grant; an untokened look for 0 returns all", () => {
+    const remote = admission(busy(2));
+    remote.admit({ want: 2, least: 1, token: "a" });
+    remote.admit({ want: 3, least: 1, token: "b" });
+    expect(remote.admit({ want: 0, least: 0, token: "a" })).toEqual({ grant: 0 });
+    expect(free()).toBe(20);
+    expect(remote.claim("a")).toBeNull();
+    remote.admit({ want: 1, least: 1, token: "c" });
+    expect(remote.admit({ want: 0, least: 0 })).toEqual({ grant: 0 });
+    expect(free()).toBe(23);
+    expect(remote.claim("b")).toBeNull();
+  });
+
+  test("each grant's hold ends alone, and close returns every grant", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const remote = admission(busy(2), 200);
+      remote.admit({ want: 2, least: 1, token: "early" });
+      vi.advanceTimersByTime(120);
+      remote.admit({ want: 3, least: 1, token: "late" });
+      expect(free()).toBe(18);
+      vi.advanceTimersByTime(100);
+      // The early grant's hold passed; the late one's has not.
+      expect(free()).toBe(20);
+      expect(remote.claim("early")).toBeNull();
+      remote.admit({ want: 1, least: 1, token: "third" });
+      remote.close();
+      expect(free()).toBe(23);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("a cancel after a grant came returns that slot's grant only; a sibling's stays held", async () => {
+    const remote = admission(busy(2));
+    expect(remote.admit({ want: 2, least: 1, token: "sibling" }).grant).toBe(2);
+    const cancel = new AbortController();
+    const asks: AdmitAsk[] = [];
+    const granted = await remoteAdmission(
+      async (ask) => {
+        asks.push(ask);
+        const answer = remote.admit(ask);
+        cancel.abort();
+        return answer;
+      },
+      { want: 3, least: 1, token: "cancelled" },
+      { cancel: cancel.signal, everyMs: 5, log: () => {} },
+    );
+    expect(granted).toBeNull();
+    expect(asks).toEqual([
+      { want: 3, least: 1, token: "cancelled" },
+      { want: 0, least: 0, token: "cancelled" },
+    ]);
+    expect(free()).toBe(21);
+    expect(remote.claim("cancelled")).toBeNull();
+    expect(remote.claim("sibling")).toMatchObject({ grant: 2 });
+  });
+});
+
+describe("a wait that a cancel ends (row 026-23)", () => {
+  test("answers true at a cancel before the promise settles, false once it settles", async () => {
+    const cancel = new AbortController();
+    const pending = cancelledFirst(new Promise(() => {}), cancel.signal);
+    await sleep(10);
+    cancel.abort();
+    expect(await pending).toBe(true);
+    expect(await cancelledFirst(sleep(5), new AbortController().signal)).toBe(false);
+    expect(await cancelledFirst(sleep(5))).toBe(false);
+    expect(await cancelledFirst(new Promise(() => {}), AbortSignal.abort())).toBe(true);
   });
 });

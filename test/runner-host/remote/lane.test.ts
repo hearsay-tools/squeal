@@ -97,6 +97,7 @@ describe("a remote lane (row 021-14)", () => {
     });
     const lost = await s.lane.run([REF], background());
     expect(lost.end).toBe("timed-out");
+    // Row 026-23: in the backoff nothing connects, so the next run does not wait for one.
     expect(lost.completedFiles).toEqual([]);
     const report = await s.lane.run([REF], background());
     expect(report.end).toBe("crashed");
@@ -130,5 +131,46 @@ describe("a remote lane (row 021-14)", () => {
       /^remote box refused \(.*5\.0\.2 on the remote, 5\.0\.3 here.*\); not run here \(whenLost "not-run"\)$/,
     );
     expect(report.failure).not.toMatch(/unreachable/);
+  });
+
+  // Row 026-23: under not-run a run waits for a connect or a wake in flight, as under awaitConnect.
+  it("waits for a reconnect under whenLost not-run and runs there once it is ready", async () => {
+    const s = await setup({ whenLost: "not-run", eager: false });
+    const report = await s.lane.run([REF], background());
+    expect(report.end).toBe("completed");
+    expect(report.completedFiles).toEqual([REF]);
+    expect(s.connects).toHaveLength(1);
+    expect(s.remoteRuns).toEqual(["test/a.test.ts"]);
+    expect(s.localRuns).toHaveLength(0);
+    // A machine asleep wakes at the next run, which waits for it too.
+    expect(await s.lane.sleep(async () => {})).toBe("slept");
+    const woken = await s.lane.run([REF], background());
+    expect(woken.completedFiles).toEqual([REF]);
+    expect(s.connects).toHaveLength(2);
+    expect(s.remoteRuns).toHaveLength(2);
+  });
+
+  it("ends a run cancelled while it waits for the connect not started under whenLost not-run", async () => {
+    const s = await setup({ whenLost: "not-run", eager: false });
+    const report = await s.lane.run([REF], background({ signal: AbortSignal.abort("edit") }));
+    expect(report).toEqual({
+      end: "completed",
+      durationMs: 0,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: "cancelled while it waited for permits",
+    });
+    expect(s.remoteRuns).toEqual([]);
+    expect(s.localRuns).toHaveLength(0);
+    expect(s.statuses.filter((line) => /not run$/.test(line))).toEqual([]);
+  });
+
+  it("still runs here at once while connecting under whenLost local", async () => {
+    const s = await setup({ eager: false });
+    const report = await s.lane.run([REF], background());
+    expect(report.completedFiles).toEqual([REF]);
+    expect(s.localRuns).toHaveLength(1);
+    expect(s.remoteRuns).toEqual([]);
   });
 });

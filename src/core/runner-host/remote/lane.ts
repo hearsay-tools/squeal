@@ -11,7 +11,7 @@ import type {
   RunReport,
 } from "../../types/runner.js";
 import { runnerHostGone } from "../proxy.js";
-import { ADMIT_EVERY_MS, admitRun, cancelOf, cancelledFirst, notStarted } from "./admission.js";
+import { ADMIT_EVERY_MS, admitRun, cancelledFirst, cancelOf, notStarted } from "./admission.js";
 import { createBlobCache, createInstalledFingerprintCache } from "./blob-cache.js";
 import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { recordsWithout } from "./coverage.js";
@@ -458,12 +458,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       const end = await (options.gitLease?.() ?? NO_LEASE);
       const reply = await admittedRun(host, testFiles, run, inputs).finally(end);
       if ("lost" in reply || "cancelled" in reply) return reply;
-      if (runnerHostGone(host.adapter)) {
-        down(reply.failure ?? "the host ended", false, host);
-        // Row 026-23: a report the host's end cut short stays lost, never `completed`.
-        const named = reply.end !== "completed" && reply.failure != null;
-        return { lost: named ? stripped(reply) : lostReport(testFiles) };
-      }
+      if (runnerHostGone(host.adapter)) return { lost: cutShort(host, reply, testFiles) };
       const after =
         reply.refused === undefined ? await blobsHere(Object.keys(reply.proof ?? {})) : {};
       const differ =
@@ -545,6 +540,21 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         `remote ${target}: its machine's grant went back before the run came; asking again`,
       );
     }
+  };
+
+  /**
+   * The report of a run whose host ended under it, which goes down. Row
+   * 026-23: one the host's end cut short stays lost, never `completed`;
+   * only a report that names its end, such as a timeout, is kept.
+   */
+  const cutShort = (
+    host: RemoteHost,
+    reply: RunReport & RemoteRunReply,
+    testFiles: readonly TestFileRef[],
+  ): RunReport => {
+    down(reply.failure ?? "the host ended", false, host);
+    const named = reply.end !== "completed" && reply.failure != null;
+    return named ? stripped(reply) : lostReport(testFiles);
   };
 
   /** A lost run's report with nothing in it: every check of the tier `unknown`. */
