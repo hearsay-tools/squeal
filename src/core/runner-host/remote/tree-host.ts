@@ -193,8 +193,12 @@ export function createTreeHost(
         if (ended) await rm(join(runs, old), { recursive: true, force: true });
       }
       const dir = join(runs, `${mine}${runId.replace(/[^A-Za-z0-9_.-]/g, "_")}`);
-      await mkdir(dir, { recursive: true });
+      // Row 026-23: running before it exists, so a concurrent run's sweep never takes it.
       running.add(dir);
+      await mkdir(dir, { recursive: true }).catch((error: unknown) => {
+        running.delete(dir);
+        throw error;
+      });
       return dir;
     },
     async differing(expected) {
