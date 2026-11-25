@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { remoteHostOver } from "../../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
+import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
 import { readHeader } from "../../../src/core/state/header.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
@@ -111,6 +112,146 @@ describe("a split tier whose parts fail to start (review 0.1.457 B3)", () => {
     const report = await s.lane.run([A, B], background({ stop: stop.signal }));
     expect(s.remoteRuns).toEqual([]);
     expect(report.completedFiles).toEqual([A]);
+  });
+});
+
+describe("a remote attempt's setup failure beside the per-file proof (review 0.1.634 B1)", () => {
+  // The files of three projects; each closure holds its own source.
+  const PA = { project: "a", path: "test/a.test.ts" };
+  const PB = { project: "b", path: "test/b.test.ts" };
+  const PC = { project: "c", path: "test/c.test.ts" };
+  const tree = {
+    files: {
+      ".gitignore": "dist/\n",
+      "test/b.test.ts": "import '../src/b';\n",
+      "test/c.test.ts": "import '../src/c';\n",
+      "src/b.ts": "export const b = 1;\n",
+      "src/c.ts": "export const c = 1;\n",
+    },
+    before: (root: string) => {
+      mkdirSync(join(root, "dist"));
+      writeFileSync(join(root, "dist/index.html"), "<html>built here</html>\n");
+    },
+    closure: (file: TestFileRef) => [file.path, `src/${file.project}.ts`],
+  };
+  /** Not one exhausted refusal: no tree that stayed different, no refusal of the tier. */
+  const noRefusal = (s: { statuses: string[]; logs: string[] }, report: RunReport) => {
+    const said = [...s.statuses, ...s.logs, report.failure ?? ""];
+    expect(said.filter((line) => /stayed different|refused/.test(line))).toEqual([]);
+  };
+
+  it("runs no retry after a setup failure, and keeps that failure for the files a resend would repair", async () => {
+    const s = await setup({
+      ...tree,
+      whenLost: "not-run",
+      remoteRun: async (remoteRoot) => {
+        writeFileSync(join(remoteRoot, "src/b.ts"), "moved\n");
+        return failedSetup("a", "remote setup A failed", [PA, PB]);
+      },
+    });
+    const report = await s.lane.run([PA, PB], background());
+    expect(s.remoteRuns).toEqual(["test/a.test.ts,test/b.test.ts"]);
+    expect(s.localRuns).toHaveLength(0);
+    expect(report.startupFailure).toEqual(
+      failedSetup("a", "remote setup A failed", [PA, PB]).startupFailure,
+    );
+    expect(report.failure).toBe("global setup a/setup.ts failed");
+    noRefusal(s, report);
+    // The difference goes with the next message, so the next run is proven.
+    expect(s.logs).toContain("remote box: tree differs at src/b.ts; the next run sends it");
+  });
+
+  it("joins a file the setup failure does not name, and sends its difference before the next run", async () => {
+    let runs = 0;
+    const s = await setup({
+      ...tree,
+      whenLost: "not-run",
+      remoteRun: async (remoteRoot) => {
+        if (runs++ > 0) return { ...REPORT, completedFiles: [PB] };
+        writeFileSync(join(remoteRoot, "src/b.ts"), "moved\n");
+        return failedSetup("a", "remote setup A failed", [PA]);
+      },
+    });
+    const report = await s.lane.run([PA, PB], background());
+    expect(s.remoteRuns).toHaveLength(1);
+    expect(report.startupFailure?.projects).toEqual(["a"]);
+    expect(report.startupFailure?.testFiles).toEqual([PA, PB]);
+    noRefusal(s, report);
+    const next = await s.lane.run([PB], background());
+    expect(readFileSync(join(s.remoteRoot, "src/b.ts"), "utf8")).toBe("export const b = 1;\n");
+    expect(next.completedFiles).toEqual([PB]);
+    expect(s.localRuns).toHaveLength(0);
+  });
+
+  it.each<WhenLost>(["local", "not-run"])(
+    "defers a git-ignored file and a retried one under whenLost %s, runs nothing here",
+    async (whenLost) => {
+      const s = await setup({
+        ...tree,
+        whenLost,
+        remoteRun: async (remoteRoot) => {
+          writeFileSync(join(remoteRoot, "src/c.ts"), "moved\n");
+          return {
+            ...failedSetup("a", "remote setup A failed", [PA]),
+            observed: [{ testFile: PB, paths: ["dist/index.html"], directories: [] }],
+          };
+        },
+      });
+      const report = await s.lane.run([PA, PB, PC], background());
+      expect(s.remoteRuns).toHaveLength(1);
+      expect(s.localRuns).toHaveLength(0);
+      expect(report.startupFailure?.projects).toEqual(["a"]);
+      expect(report.startupFailure?.error.message).toBe("remote setup A failed");
+      expect(report.startupFailure?.testFiles).toEqual([PA, PB, PC]);
+      expect(report.failure).toBe("global setup a/setup.ts failed");
+      expect(s.statuses.filter((line) => /refused/.test(line))).toEqual([]);
+      expect(s.logs.filter((line) => /stayed different/.test(line))).toEqual([]);
+    },
+  );
+
+  it("defers a git-ignored file an earlier attempt refused before the run", async () => {
+    const s = await setup({
+      ...tree,
+      // b's closure holds the ignored page: the host refuses the first attempt before it runs.
+      closure: (file) => [...tree.closure(file), ...(file === PB ? ["dist/index.html"] : [])],
+      remoteRun: async () => failedSetup("a", "remote setup A failed", [PA]),
+    });
+    const report = await s.lane.run([PA, PB], background());
+    expect(s.remoteRuns).toEqual(["test/a.test.ts"]);
+    expect(s.localRuns).toHaveLength(0);
+    expect(report.startupFailure?.testFiles).toEqual([PA, PB]);
+    expect(s.statuses.filter((line) => /refused/.test(line))).toEqual([]);
+  });
+
+  it("defers the D19.2 guard's file and a differing one, runs nothing here and no second part", async () => {
+    const s = await setup({
+      ...tree,
+      remoteRun: async (remoteRoot) => {
+        writeFileSync(join(remoteRoot, "src/b.ts"), "moved\n");
+        return {
+          ...failedSetup("a", "remote setup A failed", [PA]),
+          completedFiles: [PC],
+          results: [
+            {
+              check: { kind: "test", project: "c", testPath: PC.path, fullName: "reads HEAD" },
+              outcome: "fail",
+              durationMs: 1,
+              location: null,
+              errors: [{ name: "Error", message: FATAL, stack: null, location: null, diff: null }],
+            },
+          ],
+        };
+      },
+    });
+    const report = await s.lane.run([PA, PB, PC], background());
+    expect(s.remoteRuns).toHaveLength(1);
+    expect(s.localRuns).toHaveLength(0);
+    expect(report.completedFiles).toEqual([]);
+    expect(report.results).toEqual([]);
+    expect(report.startupFailure?.projects).toEqual(["a"]);
+    expect(report.startupFailure?.testFiles).toEqual([PA, PB, PC]);
+    expect(s.repository.at(-1)).toContain(`run here: ${PC.path};`);
+    noRefusal(s, report);
   });
 });
 
