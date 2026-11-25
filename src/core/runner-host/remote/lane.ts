@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { merge } from "../../daemon/composite-runner.js";
 import { coreEnvironmentInputs } from "../../keys/environment.js";
+import { testFileId } from "../../keys/reverse-index.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { CoreEnvironmentInputs, TestFileRef } from "../../types/keys.js";
 import type {
@@ -116,6 +117,12 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * results are kept. A differing path that exists here but Git ignores is
  * never sent (021 D10), so its files are refused at once, not retried; the
  * policy runs only them here, or leaves only them not run.
+ *
+ * Review 0.1.634 B1: a report holds one setup failure (review 0.1.457 B3),
+ * so an attempt whose proven part failed to start ends the tier's remote
+ * run. No retry and no run here starts after it; its syncable differences
+ * go with the next message, and each file it did not prove joins that
+ * failure's files (`deferredTo`), never refused.
  */
 
 export interface RemoteLaneOptions {
@@ -494,34 +501,88 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     run: RunOptions,
   ): Promise<RemoteOutcome> => {
     const inputs = await runInputs(host, testFiles).catch((error: Error) => error);
-    if (inputs instanceof Error) {
-      if (!runnerHostGone(host.adapter)) throw inputs;
-      down("the host ended", false, host);
-      return { lost: lostReport(testFiles) };
-    }
+    if (!(inputs instanceof Error)) return attemptTier(host, testFiles, run, inputs);
+    if (!runnerHostGone(host.adapter)) throw inputs;
+    down("the host ended", false, host);
+    return { lost: lostReport(testFiles) };
+  };
+
+  /**
+   * The tier's attempts over `testFiles`, at most one retry: the one place
+   * that decides whether another attempt starts. None starts after a proven
+   * part that failed to start (`setupFailed`).
+   */
+  const attemptTier = async (
+    host: RemoteHost,
+    testFiles: readonly TestFileRef[],
+    run: RunOptions,
+    inputs: RunInputs,
+  ): Promise<RemoteOutcome> => {
     const tally: Tally = { parts: [], ignoredFiles: [], ignored: new Set(), stayed: [] };
     let remaining = testFiles;
     let counted = 0;
     do {
       const step = await attempt(host, remaining, run, inputs);
       if (!("ran" in step)) return step;
-      if (step.part !== null) tally.parts.push(step.part);
-      if (step.split === null) remaining = [];
-      else {
-        remaining = next(tally, remaining, step.split, step);
-        if (step.ran || step.syncable.length > 0 || step.split.unsyncable.length === 0) counted++;
+      // Review 0.1.634 B1: a report holds one setup failure; no attempt runs after it.
+      if (failedToStart(tally, step)) {
+        return setupFailed(host, tally, remaining, step, inputs.all.length);
       }
+      const onward = next(tally, remaining, step);
+      remaining = onward.again;
+      counted += onward.spent ? 1 : 0;
     } while (remaining.length > 0 && counted < 2);
     return settled(host, tally, remaining, inputs.all.length);
   };
 
-  /** The files of `remaining` that run again after one attempt's `split`, with the tally's refusals. */
+  /** `step`'s proven part, kept in `tally`; whether its run failed to start. */
+  const failedToStart = (tally: Tally, { part }: Attempt): boolean => {
+    if (part === null) return false;
+    tally.parts.push(part);
+    return part.report.startupFailure !== undefined;
+  };
+
+  /**
+   * Review 0.1.634 B1 (review 0.1.457 B3): the tier's remote run after an
+   * attempt whose proven part failed to start. Its syncable differences go
+   * with the next message to the host; every file not proven, retried or
+   * refused by this attempt or an earlier one, joins that setup failure's
+   * files (`deferredTo`), so the scheduler queues it again. No later
+   * attempt, and no run here, starts; nothing is refused.
+   */
+  const setupFailed = (
+    host: RemoteHost,
+    tally: Tally,
+    files: readonly TestFileRef[],
+    { split, syncable }: Attempt,
+    paths: number,
+  ): RunReport => {
+    if (syncable.length > 0) {
+      options.log(`remote ${target}: tree differs at ${shown(syncable)}; the next run sends it`);
+      queue(syncable.map((path) => ({ path, kind: "change" as const })));
+    }
+    const unproved = split === null ? [] : files.filter((file) => !split.proven.includes(file));
+    // A part's setup failure ends the parts, so it is the joined report's.
+    const joined = joinParts(tally.parts, `remote ${target}`) as ProvenPart;
+    proven(host, paths);
+    const listed = new Set(joined.report.startupFailure?.testFiles.map(testFileId));
+    const later = [...tally.ignoredFiles, ...unproved].filter((f) => !listed.has(testFileId(f)));
+    const report = later.length === 0 ? joined.report : deferredTo(joined.report, later);
+    if (joined.coverage.length > 0) coverageOf.set(report, joined.coverage);
+    return report;
+  };
+
+  /**
+   * The files of `files` that run again after one attempt, with the tally's
+   * refusals; `spent` when the attempt counts against the one retry (a
+   * host's refusal of git-ignored inputs alone does not).
+   */
   const next = (
     tally: Tally,
     files: readonly TestFileRef[],
-    split: ProofSplit,
-    { ran, syncable }: Attempt,
-  ): readonly TestFileRef[] => {
+    { ran, split, syncable }: Attempt,
+  ): { readonly again: readonly TestFileRef[]; readonly spent: boolean } => {
+    if (split === null) return { again: [], spent: true };
     tally.ignoredFiles.push(...split.unsyncable);
     for (const path of split.ignored) tally.ignored.add(path);
     if (syncable.length > 0) {
@@ -534,8 +595,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         `remote ${target}: ${ignoredReason(split.ignored)}; refused ${split.unsyncable.map((f) => f.path).join(", ")}`,
       );
     }
+    const spent = ran || syncable.length > 0 || split.unsyncable.length === 0;
     // Before the run, an untainted file has not run yet: it goes again with the retried ones.
-    return ran ? split.retry : files.filter((file) => !split.unsyncable.includes(file));
+    if (ran) return { again: split.retry, spent };
+    return { again: files.filter((file) => !split.unsyncable.includes(file)), spent };
   };
 
   /** What the attempts came to: the proven parts as one report, and the refused files with why. */
