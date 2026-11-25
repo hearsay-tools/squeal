@@ -2807,7 +2807,7 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 
 ## Feature 023: results at a commit
 
-Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16, wave 1 running; the human, 2026-11-16: an agent asks Squeal for the results at a commit, the checks with no result there, and has Squeal run those; chose one slice with auto-run, retention stays 7 days). First finding `specifications/018-ci-and-shared-results/research/results-at-commit.md`. Coordinator d36c4d53.
+Spec folder `specifications/023-results-at-commit/` (stage: shipped 2026-11-25, the human after round 12: "Ship it"; last code in 0.1.624; open rows proposed; approved 2026-11-16; the human, 2026-11-16: an agent asks Squeal for the results at a commit, the checks with no result there, and has Squeal run those; chose one slice with auto-run, retention stays 7 days). First finding `specifications/018-ci-and-shared-results/research/results-at-commit.md`. Coordinator d36c4d53.
 
 ### Wave 0: research (parallel; brief `specifications/023-results-at-commit/research/README.md`)
 

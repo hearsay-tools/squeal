@@ -1,6 +1,6 @@
 # 023 Results at a commit: before/after and red proofs without touching the user's tree
 
-Stage: approved by the human 2026-11-16 (names `squeal status --at` and `squeal proof`; checkout in the user cache folder with a git-folder fallback; refuse uncertain environment matches and missing source imports). Research: `../018-ci-and-shared-results/research/results-at-commit.md`, `research/temp-checkout.md`, `research/environment-at-commit.md`.
+Stage: shipped 2026-11-25 (the human, after dogfood round 12: "Ship it"; last code in 0.1.624); approved by the human 2026-11-16 (names `squeal status --at` and `squeal proof`; checkout in the user cache folder with a git-folder fallback; refuse uncertain environment matches and missing source imports). Research: `../018-ci-and-shared-results/research/results-at-commit.md`, `research/temp-checkout.md`, `research/environment-at-commit.md`.
 
 ## Problem
 

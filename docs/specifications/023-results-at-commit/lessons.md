@@ -1,5 +1,7 @@
 # 023 Results at a commit: dogfooding lessons
 
+Summary (2026-11-25, spec shipped): rounds 6 to 12 ran 140 sessions on the lab VM with no wrong before/after answer and no complete one; the dogfood repositories select more tests than a 1,200 s session can run, so answers are partial and say so. The last round's open proposals are board rows 023-88 to 023-92.
+
 ## Round 1 (023-10)
 
 Row 023-10, wave 12, worker 2d31de9d, 2026-11-18 16:57Z to 17:32Z. Squeal 0.1.563 as released (hub entry `c50cc3c`, tag `squeal--v0.1.563`), in Claude Code 2.1.300, model `claude-sonnet-5-5`, as the throwaway OS user `squeal-e2e`. The brief is `tasks/wave-12.md`. The scripts are in `tasks/023-10/bin/`, the setup and the raw data in `tasks/023-10/notes.md`.

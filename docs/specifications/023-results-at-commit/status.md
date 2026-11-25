@@ -1,6 +1,6 @@
 # 023 Results at a commit: status
 
-Stage: approved (2026-11-16); wave 1 running
+Stage: shipped (2026-11-25); last code released in 0.1.624
 Started: 2026-11-16
 
 ## Decisions so far
@@ -69,3 +69,4 @@ Started: 2026-11-16
 - 2026-11-22, 0.1.599 released with 0.1.598 (the human: "Release + round 7"): tag `squeal--v0.1.599` at `8ec19a127`, hub `7e42195`, GitHub latest with install.sh and both Codex runtime assets; RECORDER_VERSION 7 (observed Vitest results re-run once). Wave 29: dogfood round 7 (row 023-56) on the lab VM.
 - 2026-11-23, dogfood round 7 (row 023-56) on 0.1.599: 0 full, 18 partial and right, 2 honest, 0 wrong. The human: "If something is missing on the VM, install it for this session" (round 8 installs Chromium for its throwaway user). Wave 30: W1, W2, W3, W5, V2's rest (rows 023-58 to 023-62); round 8 is row 023-63.
 - 2026-11-23, wave 30 (rows 023-58 to 023-62: W1, W2, W3 with a scheduler cut for named files, W5, V2's rest) landed as 0.1.609 on main `dc6384520` (renumbered from 0.1.607 after 0.1.608 landed first). Reviews `0.1.607.md` FAIL, `0.1.609.md` FAIL on B2 only, `0.1.609-third.md` PASS. Not released.
+- 2026-11-25, the human: "Ship it" after dogfood round 12 (row 023-87). The spec ships with this recorded limit: in rounds 6 to 12 (140 sessions) no agent gave a wrong before/after answer, and none gave a complete one, because the two dogfood repositories select more tests than fit in a 1,200 s session (squawk: 97 browser files at 30 to 135 s each, one at a time per repository; Squeal: about 1,300 files). Answers name what they compared and what is still running. Open rows stay proposed for normal priority: 023-54, 023-55, 023-57, 023-81, 023-82, 023-86 (a recorder fix that needs a RECORDER_VERSION raise, the human's call), 023-88 to 023-92.
