@@ -17,6 +17,20 @@ import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { recordsWithout } from "./coverage.js";
 import { compareRemoteEnvironment } from "./lane-compare.js";
 import { type Planning, remotePlanning } from "./lane-planning.js";
+import {
+  classify,
+  ignoredReason,
+  inputsFor,
+  joinParts,
+  type ProofSplit,
+  type ProvenPart,
+  provenPart,
+  type RunInputs,
+  runInputsOf,
+  shown,
+  splitProof,
+  stayedReason,
+} from "./lane-proof.js";
 import { deferredTo, repositoryRoute, withoutFiles } from "./lane-repository.js";
 import { DEFAULT_TIERS, goesRemote, tiersText } from "./lane-tiers.js";
 import {
@@ -28,6 +42,7 @@ import {
 } from "./remote-key.js";
 import type { RemoteTier, WhenLost } from "./settings.js";
 import type { LaneReport } from "./summary.js";
+import { treePathsFor } from "./tree.js";
 import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
 
 /*
@@ -94,6 +109,13 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * newer one down. A run the host's end cut short is lost, never completed.
  * Under `whenLost: "not-run"` a run waits for a connect or wake in flight,
  * as under `awaitConnect`, and ends not started when cancelled meanwhile.
+ *
+ * Row 026-24 (gh-280): the proof holds file by file (`lane-proof.ts`). A
+ * differing path taints the files whose closure or observed inputs hold
+ * it, or every file when it is a config or no file holds it; the others'
+ * results are kept. A differing path that exists here but Git ignores is
+ * never sent (021 D10), so its files are refused at once, not retried; the
+ * policy runs only them here, or leaves only them not run.
  */
 
 export interface RemoteLaneOptions {
@@ -199,6 +221,42 @@ type State =
       readonly retryAt: number;
       readonly refused: boolean;
     };
+
+/** What a tier's remote run came to (`remoteRun`). */
+type RemoteOutcome =
+  | RunReport
+  | { readonly refused: string }
+  /** Row 026-24: the proven files' report, and the files the remote refused, with why. */
+  | {
+      readonly partial: RunReport;
+      readonly refused: string;
+      readonly files: readonly TestFileRef[];
+    }
+  | { readonly lost: RunReport }
+  | { readonly cancelled: RunReport };
+
+/** An outcome that ends a tier's remote run before its proof (`attempt`). */
+type Ended =
+  | { readonly refused: string }
+  | { readonly lost: RunReport }
+  | { readonly cancelled: RunReport };
+
+/** One attempt's proof: its proven part, and what taints the rest (`null`: nothing). */
+interface Attempt {
+  readonly ran: boolean;
+  readonly split: ProofSplit | null;
+  readonly syncable: readonly string[];
+  readonly part: ProvenPart | null;
+}
+
+/** What a tier's attempts kept and refused so far. */
+interface Tally {
+  readonly parts: ProvenPart[];
+  readonly ignoredFiles: TestFileRef[];
+  readonly ignored: Set<string>;
+  /** The syncable paths of the last attempt that differed. */
+  stayed: readonly string[];
+}
 
 /** `local` with its background runs on the remote `connect` reaches. */
 export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
@@ -420,78 +478,182 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   const blobsHere = (paths: readonly string[]) => blobCache.blobs(paths);
 
   /**
-   * The remote's run, proven over a current environment; `refused` after a
-   * second tree refusal or a differing environment (then down), `lost` when
-   * the host ended during it or its admission (then down), with its
-   * incomplete report; `cancelled` during its admission.
+   * The remote's run, proven over a current environment, file by file (row
+   * 026-24): the proven files' results, and the refused files with why;
+   * `refused` alone when no file was proven, after a differing environment
+   * (then down) or a refusal of every file; `lost` when the host ended
+   * during it or its admission (then down), with its incomplete report;
+   * `cancelled` during its admission. A lost, cancelled or environment-refused
+   * retry keeps nothing of the tier, as before. A syncable difference sends
+   * the files again and retries their files once; a git-ignored one refuses
+   * its files at once.
    */
   const remoteRun = async (
     host: RemoteHost,
     testFiles: readonly TestFileRef[],
     run: RunOptions,
-  ): Promise<
-    | RunReport
-    | { readonly refused: string }
-    | { readonly lost: RunReport }
-    | { readonly cancelled: RunReport }
-  > => {
+  ): Promise<RemoteOutcome> => {
     const inputs = await runInputs(host, testFiles).catch((error: Error) => error);
     if (inputs instanceof Error) {
       if (!runnerHostGone(host.adapter)) throw inputs;
       down("the host ended", false, host);
       return { lost: lostReport(testFiles) };
     }
-    let stayed: readonly string[] = [];
-    for (let attempt = 0; attempt < 2; attempt++) {
-      await sendPending(host);
-      // Review 0.1.442 B1: equal for this run, after the revision's files and any install
-      // reached the host; the remote changes only through these messages, sent in turn.
-      const { differences: unequal, remoteCore: runCore } = await compared(host);
-      if (runnerHostGone(host.adapter)) {
-        down("the host ended", false, host);
-        return { lost: lostReport(testFiles) };
+    const tally: Tally = { parts: [], ignoredFiles: [], ignored: new Set(), stayed: [] };
+    let remaining = testFiles;
+    let counted = 0;
+    do {
+      const step = await attempt(host, remaining, run, inputs);
+      if (!("ran" in step)) return step;
+      if (step.part !== null) tally.parts.push(step.part);
+      if (step.split === null) remaining = [];
+      else {
+        remaining = next(tally, remaining, step.split, step);
+        if (step.ran || step.syncable.length > 0 || step.split.unsyncable.length === 0) counted++;
       }
-      if (unequal.length > 0) {
-        down(unequal.join("; "), true, host);
-        return { refused: unequal.join("; ") };
-      }
-      const end = await (options.gitLease?.() ?? NO_LEASE);
-      const reply = await admittedRun(host, testFiles, run, inputs).finally(end);
-      if ("lost" in reply || "cancelled" in reply) return reply;
-      if (runnerHostGone(host.adapter)) return { lost: cutShort(host, reply, testFiles) };
-      const after =
-        reply.refused === undefined ? await blobsHere(Object.keys(reply.proof ?? {})) : {};
-      const differ =
-        reply.refused ?? Object.keys(after).filter((path) => after[path] !== reply.proof?.[path]);
-      if (differ.length === 0) {
-        proven(host, inputs.length);
-        const raw = stripped(reply);
-        const report = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
-        if (reply.coverage !== undefined) coverageOf.set(report, reply.coverage);
-        return report;
-      }
-      stayed = differ;
-      options.log(
-        `remote ${target}: tree differs at ${differ.slice(0, 5).join(", ")}; sending again`,
-      );
-      queue(differ.map((path) => ({ path, kind: "change" as const })));
+    } while (remaining.length > 0 && counted < 2);
+    return settled(host, tally, remaining, inputs.all.length);
+  };
+
+  /** The files of `remaining` that run again after one attempt's `split`, with the tally's refusals. */
+  const next = (
+    tally: Tally,
+    files: readonly TestFileRef[],
+    split: ProofSplit,
+    { ran, syncable }: Attempt,
+  ): readonly TestFileRef[] => {
+    tally.ignoredFiles.push(...split.unsyncable);
+    for (const path of split.ignored) tally.ignored.add(path);
+    if (syncable.length > 0) {
+      tally.stayed = syncable;
+      options.log(`remote ${target}: tree differs at ${shown(syncable)}; sending again`);
+      queue(syncable.map((path) => ({ path, kind: "change" as const })));
     }
-    options.status(
-      `remote ${target}: refused a run whose tree stayed different; ${options.whenLost === "local" ? "ran it here" : "not run"}`,
-    );
-    return { refused: `its tree stayed different at ${stayed.slice(0, 5).join(", ")}` };
+    if (split.unsyncable.length > 0) {
+      options.log(
+        `remote ${target}: ${ignoredReason(split.ignored)}; refused ${split.unsyncable.map((f) => f.path).join(", ")}`,
+      );
+    }
+    // Before the run, an untainted file has not run yet: it goes again with the retried ones.
+    return ran ? split.retry : files.filter((file) => !split.unsyncable.includes(file));
+  };
+
+  /** What the attempts came to: the proven parts as one report, and the refused files with why. */
+  const settled = (
+    host: RemoteHost,
+    tally: Tally,
+    stayed: readonly TestFileRef[],
+    paths: number,
+  ): RemoteOutcome => {
+    const joined = joinParts(tally.parts, `remote ${target}`);
+    if (joined !== null) {
+      proven(host, paths);
+      if (joined.coverage.length > 0) coverageOf.set(joined.report, joined.coverage);
+    }
+    const reasons = [
+      ...(tally.ignored.size > 0 ? [ignoredReason([...tally.ignored])] : []),
+      ...(stayed.length > 0 ? [stayedReason(tally.stayed)] : []),
+    ];
+    const then = options.whenLost === "local" ? "ran it here" : "not run";
+    if (stayed.length > 0) {
+      options.status(`remote ${target}: refused a run whose tree stayed different; ${then}`);
+    } else if (tally.ignoredFiles.length > 0) {
+      options.status(
+        `remote ${target}: refused ${tally.ignoredFiles.length} files whose git-ignored inputs are not synced; ${then}`,
+      );
+    }
+    const files = [...tally.ignoredFiles, ...stayed];
+    if (files.length === 0 && joined !== null) return joined.report;
+    if (joined === null) return { refused: reasons.join("; ") };
+    return { partial: joined.report, refused: reasons.join("; "), files };
+  };
+
+  /**
+   * One attempt over `files`: the environment compared, the run admitted
+   * and sent, and its proof split file by file; `ran` is false when the
+   * host refused it before the run. Lost, cancelled or an unequal
+   * environment end the tier's run.
+   */
+  const attempt = async (
+    host: RemoteHost,
+    files: readonly TestFileRef[],
+    run: RunOptions,
+    inputs: RunInputs,
+  ): Promise<Attempt | Ended> => {
+    await sendPending(host);
+    // Review 0.1.442 B1: equal for this run, after the revision's files and any install
+    // reached the host; the remote changes only through these messages, sent in turn.
+    const { differences: unequal, remoteCore: runCore } = await compared(host);
+    if (runnerHostGone(host.adapter)) {
+      down("the host ended", false, host);
+      return { lost: lostReport(files) };
+    }
+    if (unequal.length > 0) {
+      down(unequal.join("; "), true, host);
+      return { refused: unequal.join("; ") };
+    }
+    const end = await (options.gitLease?.() ?? NO_LEASE);
+    const reply = await admittedRun(host, files, run, inputsFor(inputs, files)).finally(end);
+    if ("lost" in reply || "cancelled" in reply) return reply;
+    if (runnerHostGone(host.adapter)) return { lost: cutShort(host, reply, files) };
+    const ran = reply.refused === undefined;
+    const differ = reply.refused ?? (await differing(reply));
+    const raw = stripped(reply);
+    const report = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
+    if (ran && differ.length === 0) {
+      return { ran, split: null, syncable: [], part: provenPart(report, reply.coverage, []) };
+    }
+    const { syncable, split } = await splitBy(files, inputs, reply, differ);
+    const unproved = files.filter((file) => !split.proven.includes(file));
+    const part =
+      ran && split.proven.length > 0 ? provenPart(report, reply.coverage, unproved) : null;
+    return { ran, split, syncable, part };
+  };
+
+  /** The paths whose blob ids after a run differ from this worktree's. */
+  const differing = async (reply: RemoteRunReply): Promise<string[]> => {
+    const after = await blobsHere(Object.keys(reply.proof ?? {}));
+    return Object.keys(after).filter((path) => after[path] !== reply.proof?.[path]);
+  };
+
+  /**
+   * `differ` split by the sync boundary (D10), read afresh, and `files` by
+   * what taints each. When Git cannot answer, every path counts as one a
+   * resend repairs, as before row 026-24.
+   */
+  const splitBy = async (
+    files: readonly TestFileRef[],
+    inputs: RunInputs,
+    reply: RunReport & RemoteRunReply,
+    differ: readonly string[],
+  ) => {
+    blobCache.evict(differ);
+    const [inTree, here] = await Promise.all([
+      treePathsFor(options.root, differ).catch(() => new Set(differ)),
+      blobsHere(differ),
+    ]);
+    const kinds = classify(differ, inTree, here);
+    const observed = reply.refused === undefined ? reply.observed : undefined;
+    return { syncable: kinds.syncable, split: splitProof(files, inputs, observed, kinds) };
   };
 
   /**
    * The paths a run's proof covers: its files' closures and the config files,
    * planned here, or under D8.3 by the host, after the queued paths reached it.
    */
-  const runInputs = async (host: RemoteHost, testFiles: readonly TestFileRef[]) => {
+  const runInputs = async (
+    host: RemoteHost,
+    testFiles: readonly TestFileRef[],
+  ): Promise<RunInputs> => {
     const planner = remotePlans ? host.adapter : local;
     if (remotePlans) await sendPending(host);
     const closures = await Promise.all(testFiles.map((file) => planner.closure(file)));
     const configs = (await planner.environment()).flatMap((r) => r.files);
-    return [...new Set([...closures.flatMap((c) => c.paths), ...configs])];
+    return runInputsOf(
+      testFiles,
+      closures.map((c) => c.paths),
+      configs,
+    );
   };
 
   /**
@@ -638,9 +800,11 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       failure:
         reason === null
           ? `remote ${target} unreachable; not run here (whenLost "not-run")`
-          : `remote ${target} refused (${reason}); not run here (whenLost "not-run")`,
+          : refusedText(reason),
     });
   };
+  const refusedText = (reason: string) =>
+    `remote ${target} refused (${reason}); not run here (whenLost "not-run")`;
 
   /** A background tier of files that may go remote: there when the remote takes it, else as D13 says. */
   const remoteTier = async (
@@ -665,37 +829,72 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         activity();
       });
     if (report === null) return instead(testFiles, run);
+    if ("partial" in report) return kept(report.partial, run, report);
     if ("refused" in report) return instead(testFiles, run, report.refused);
     if ("cancelled" in report) return report.cancelled;
-    if ("lost" in report) {
-      // Review 0.1.442 B4: nothing of the lost attempt is kept; under `local` its files run
-      // here now, unless the tier was cancelled meanwhile; under `not-run` they end unknown.
-      const cancelled = run.signal?.aborted === true || run.stop?.aborted === true;
-      if (options.whenLost === "local" && !cancelled) return instead(testFiles, run);
-      if (options.whenLost === "not-run") {
-        notRun += testFiles.length;
-        tell();
-      }
-      return report.lost;
+    if ("lost" in report) return lostTier(report.lost, testFiles, run);
+    return kept(report, run);
+  };
+
+  /**
+   * Review 0.1.442 B4: nothing of a lost attempt is kept; under `local` its
+   * files run here now, unless the tier was cancelled meanwhile; under
+   * `not-run` they end unknown.
+   */
+  const lostTier = (lost: RunReport, testFiles: readonly TestFileRef[], run: RunOptions) => {
+    const cancelled = run.signal?.aborted === true || run.stop?.aborted === true;
+    if (options.whenLost === "local" && !cancelled) return instead(testFiles, run);
+    if (options.whenLost === "not-run") {
+      notRun += testFiles.length;
+      tell();
     }
+    return lost;
+  };
+
+  /**
+   * A proven remote report, kept: D19.2's guard runs here its files that
+   * failed there as not a Git repository, and D9 hands on the records of
+   * the files whose results stand. Row 026-24: the files the remote
+   * `refused` run here under `local`; under `not-run` they stay not run,
+   * uncompleted, and the report's failure names why.
+   */
+  const kept = async (
+    report: RunReport,
+    run: RunOptions,
+    refused?: { readonly refused: string; readonly files: readonly TestFileRef[] },
+  ): Promise<RunReport> => {
     failures = 0;
     notRun = 0;
-    // D19.2's guard: a file that failed there as not a Git repository keeps no result; it runs here.
     const failed = route.guard(report);
-    // D9: the proven run's records, of the files whose results stand.
     const records = recordsWithout(coverageOf.get(report) ?? [], failed);
     if (records.length > 0) options.remoteCoverage?.(run.runId, records);
-    if (failed.length === 0) return report;
-    options.log(
-      `remote ${target}: ${failed.map((f) => f.path).join(", ")} failed there as not a Git repository; running here`,
-    );
-    const kept = withoutFiles(report, failed);
-    // B3: the remote's own setup failure stands; the failed files run here in a later tier.
-    if (kept.startupFailure !== undefined) return deferredTo(kept, failed);
-    return merge([
-      { adapter: { name: `remote ${target}` }, report: kept },
-      { adapter: { name: "here" }, report: await runHere(failed, run, "here") },
-    ]);
+    if (failed.length > 0) {
+      options.log(
+        `remote ${target}: ${failed.map((f) => f.path).join(", ")} failed there as not a Git repository; running here`,
+      );
+    }
+    const proven = failed.length === 0 ? report : withoutFiles(report, failed);
+    const refusedFiles = refused?.files ?? [];
+    // B3: the remote's own setup failure stands; the other files run in a later tier.
+    if (proven.startupFailure !== undefined) {
+      const later = [...failed, ...refusedFiles];
+      return later.length === 0 ? proven : deferredTo(proven, later);
+    }
+    const local = options.whenLost === "local";
+    const again = local ? [...failed, ...refusedFiles] : failed;
+    const ran =
+      again.length === 0
+        ? proven
+        : merge([
+            { adapter: { name: `remote ${target}` }, report: proven },
+            { adapter: { name: "here" }, report: await runHere(again, run, "here") },
+          ]);
+    if (refused === undefined || local) return ran;
+    notRun += refusedFiles.length;
+    tell();
+    const text = refusedText(refused.refused);
+    options.log(`${text}: ${refusedFiles.map((f) => f.path).join(", ")}`);
+    return { ...ran, failure: ran.failure === null ? text : `${ran.failure}; ${text}` };
   };
 
   /** D12.1: the lane's state as status names it. */
