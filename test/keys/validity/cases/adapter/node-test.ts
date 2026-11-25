@@ -367,6 +367,16 @@ export const NODE_TEST_RUNS: readonly Case[] = [
   },
   {
     kind: "adapter:node-test",
+    name: "an inherited --require by absolute path that is no Squeal recorder stays in NODE_OPTIONS and stores alike (row 026-26)",
+    why: "026-26: Squeal's recorders are now known in a remote bundle too, <cache>/squeal/<version>/{observe,node-test}/recorder.cjs, so a nested run drops them from the NODE_OPTIONS it inherits. Only Squeal's own suite on a remote meets that path; another absolute preload matches no recorder at either tree, stays in the project's NODE_OPTIONS, and each run stores what the last release stored, so no version moves",
+    input: {
+      files: OUTCOMES,
+      inherited: { NODE_OPTIONS: "--require /dev/null" },
+      runs: [{ files: OUTCOME_FILES }],
+    },
+  },
+  {
+    kind: "adapter:node-test",
     name: "a stopped node:test run under a store that is gone makes no folder and stores nothing, as the last release (row 018-38)",
     why: "018-38: a runner host whose daemon died stops each run it still starts, and the checkout holding the store may be gone; the candidate makes no folder there and reports nothing, where the last release made the folder again and started nothing, so neither stores a file. The run before it, under a store that is there, stores alike",
     input: {

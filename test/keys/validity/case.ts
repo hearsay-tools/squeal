@@ -537,6 +537,13 @@ export interface NodeTestInput {
    */
   readonly env?: Readonly<Record<string, string>>;
   /**
+   * Row 026-26: variables of the env the adapter inherits, set in the
+   * harness's `process.env` while the case runs, as a daemon's env holds
+   * them; default none. Squeal's recorders in an inherited `NODE_OPTIONS`
+   * are dropped, a project's own `env` is kept as written.
+   */
+  readonly inherited?: Readonly<Record<string, string>>;
+  /**
    * The adapter's `concurrency` (task 004-37): the files a run in the
    * adapter's own lane starts at once. A group lane's run starts every
    * file. Default none: every run starts every file.

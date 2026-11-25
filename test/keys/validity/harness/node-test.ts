@@ -41,7 +41,31 @@ import { goneLogDir, tell, traitsAsked, writeTree } from "./shared.js";
 const PROJECT = "validity";
 
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
-export async function nodeTestCase(input: NodeTestInput, scratch: string): Promise<CaseOutput> {
+export function nodeTestCase(input: NodeTestInput, scratch: string): Promise<CaseOutput> {
+  return withInherited(input.inherited ?? {}, () => runCase(input, scratch));
+}
+
+/**
+ * `run()` with `inherited` in `process.env`, as a daemon's env holds it
+ * (row 026-26), each variable as it was again after.
+ */
+async function withInherited<T>(
+  inherited: Readonly<Record<string, string>>,
+  run: () => Promise<T>,
+): Promise<T> {
+  const previous = Object.keys(inherited).map((name) => [name, process.env[name]] as const);
+  Object.assign(process.env, inherited);
+  try {
+    return await run();
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+}
+
+async function runCase(input: NodeTestInput, scratch: string): Promise<CaseOutput> {
   const root = realpathSync(writeTree(join(scratch, "worktree"), input.files)) as AbsolutePath;
   const tempDir = join(scratch, "tmp") as AbsolutePath;
   mkdirSync(tempDir, { recursive: true });
