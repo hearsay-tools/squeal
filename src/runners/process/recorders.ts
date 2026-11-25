@@ -13,6 +13,12 @@ const RECORDERS = [
 ] as const;
 
 /**
+ * Both recorders in a remote bundle, which `remote/bundle.ts` copies to
+ * `<cache>/squeal/<version>/` without its `dist/` (task 026-26).
+ */
+const REMOTE_RECORDER = /\/squeal\/[^/]+\/(?:observe|node-test)\/recorder\.cjs$/;
+
+/**
  * The settings in the processes of a run that does not observe, in place of
  * another Squeal's (task 001-431). They name no worktree, so no recorder
  * records with them, and that Squeal's spawn hook, still in the process that
@@ -33,7 +39,7 @@ export function isSquealRecorder(specifier: string): boolean {
     }
   }
   if (!path.startsWith("/")) return false;
-  return RECORDERS.some((suffix) => path.endsWith(suffix));
+  return RECORDERS.some((suffix) => path.endsWith(suffix)) || REMOTE_RECORDER.test(path);
 }
 
 const PRELOAD_FLAGS = new Set(["--require", "-r", "--import"]);

@@ -20,6 +20,8 @@ import {
 const PLUGIN = "/home/u/.claude/plugins/cache/squeal/squeal/0.1.40/dist";
 const OBSERVE = `${PLUGIN}/observe/recorder.cjs`;
 const NODE_TEST = `${PLUGIN}/node-test/recorder.cjs`;
+/** Task 026-26: a remote bundle at `<cache>/squeal/<version>/`, without `dist/`. */
+const REMOTE = "/home/node/.squeal-remote/squeal/0.1.634";
 
 describe("isSquealRecorder", () => {
   it.each([
@@ -28,6 +30,10 @@ describe("isSquealRecorder", () => {
     "/work/squeal/src/runners/observe/recorder.cjs",
     "/work/squeal/src/runners/node-test/runtime/recorder.cjs",
     pathToFileURL(OBSERVE).href,
+    `${REMOTE}/observe/recorder.cjs`,
+    `${REMOTE}/node-test/recorder.cjs`,
+    pathToFileURL(`${REMOTE}/observe/recorder.cjs`).href,
+    pathToFileURL(`${REMOTE}/node-test/recorder.cjs`).href,
   ])("%s is Squeal's", (specifier) => {
     expect(isSquealRecorder(specifier)).toBe(true);
   });
@@ -39,6 +45,12 @@ describe("isSquealRecorder", () => {
     "/work/app/observe/recorder.cjs",
     "/work/app/dist/observe/recorder.mjs",
     "recorder-pkg",
+    "squeal/0.1.634/observe/recorder.cjs",
+    "./squeal/0.1.634/node-test/recorder.cjs",
+    `${REMOTE}/observe/recorder.mjs`,
+    `${REMOTE}/node-test/recorder.mjs`,
+    `${REMOTE}/lib/observe/recorder.cjs`,
+    "/work/squeal/observe/recorder.cjs",
   ])("%s is not", (specifier) => {
     expect(isSquealRecorder(specifier)).toBe(false);
   });
@@ -58,6 +70,14 @@ describe("withoutSquealRecorders", () => {
     [
       [`--import=${pathToFileURL(OBSERVE).href}`, "--conditions", "dev"],
       ["--conditions", "dev"],
+    ],
+    [
+      ["--import", pathToFileURL(`${REMOTE}/observe/recorder.cjs`).href, "-r", "./setup.cjs"],
+      ["-r", "./setup.cjs"],
+    ],
+    [
+      [`--require=${REMOTE}/node-test/recorder.cjs`, "--import", "/work/app/observe/recorder.cjs"],
+      ["--import", "/work/app/observe/recorder.cjs"],
     ],
     [
       ["--require", "./setup.cjs", "--max-old-space-size=4096"],
@@ -84,6 +104,14 @@ describe("projectEnv", () => {
       NODE_TEST_CONTEXT: "child-v8",
     });
     expect(env).toEqual({ PATH: "/bin", SQUEAL_OBSERVE: UNOBSERVED });
+  });
+
+  it("drops a remote bundle's recorder, imported by file: URL (task 026-26)", () => {
+    const env = projectEnv(project(), {
+      PATH: "/bin",
+      NODE_OPTIONS: `--import ${pathToFileURL(`${REMOTE}/observe/recorder.cjs`).href}`,
+    });
+    expect(env).toStrictEqual({ PATH: "/bin" });
   });
 
   it("adds no SQUEAL_OBSERVE where none was inherited", () => {
