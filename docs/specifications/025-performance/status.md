@@ -1,8 +1,11 @@
 # 025: Performance improvements - status
 
-- **Stage:** in-progress (Wave 1 released in `0.1.600`, 2026-11-22; Wave 2 approved by the human 2026-11-24: "Write the rows and let's start")
+- **Stage:** shipped (Wave 1 released in `0.1.600`, 2026-11-22; Wave 2 released in `0.1.630`, 2026-11-24; Wave 3 released in `0.1.633`, 2026-11-25; D12 research recommends against Wave 4 candidates)
 - **Coordinator:** `0266d2c5` (Wave 2+; Wave 1 was `201d84ee`)
-- **Released:** Wave 1 (`025-01`..`025-05`) in `0.1.600` (tag `squeal--v0.1.600` at `e9c4a490c`, `v0` and `v0.1.600` there, hub `225bd33`, GitHub latest release with `install.sh` and both Codex runtime assets; candidate CI `45074688588` green on `7633b6de4`, exact-main CI `45080260007` green on `e9c4a490c`, Codex reviews `0.1.600-r2.md`, `0.1.600-r3.md`, and `0.1.600-validity.md` PASS; paired boat.dev scorecard `bench/results/2026-11-22-0.1.597-vs-0.1.600-default-AMD-Ryzen-7-9700X-8-Core-Processor/scorecard.md`: `ref` 71→88, `size-l` 46→61, `wt-3` 70→75, `store-7g-wt3` 63→68, Correctness PASS)
+- **Released:**
+  - Wave 1 (`025-01`..`025-05`) in `0.1.600` (tag `squeal--v0.1.600` at `e9c4a490c`, `v0` and `v0.1.600` there, hub `225bd33`, GitHub latest release with `install.sh` and both Codex runtime assets; candidate CI `45074688588` green on `7633b6de4`, exact-main CI `45080260007` green on `e9c4a490c`, Codex reviews `0.1.600-r2.md`, `0.1.600-r3.md`, and `0.1.600-validity.md` PASS; paired boat.dev scorecard `bench/results/2026-11-22-0.1.597-vs-0.1.600-default-AMD-Ryzen-7-9700X-8-Core-Processor/scorecard.md`: `ref` 71→88, `size-l` 46→61, `wt-3` 70→75, `store-7g-wt3` 63→68, Correctness PASS).
+  - Wave 2 (`025-06`..`025-09`) landed in `0.1.628` (`957897ae3`), released in `0.1.630` (`squeal--v0.1.630` at `3d4f20353`, hub `4051604`).
+  - Wave 3 (`025-10`..`025-13`) landed in `0.1.633` (`fe0ba088e`), released in `0.1.633` (tag `squeal--v0.1.633` at `4a137b77e`, `v0.1.633` and `v0` there, hub `4283da8`, GitHub latest release with `install.sh` + Codex runtime assets; exact-main CI `45546261664` green 8/8; also ships Spec 010 Wave 4 `0.1.632`, review `0.1.629-r2.md` PASS).
 
 ## Amendments
 
