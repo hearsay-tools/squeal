@@ -12,9 +12,12 @@ import {
   containerHostGone,
   createContainerRunner,
 } from "../../../src/core/runner-host/container/runner.js";
+import { readOtherMachineKeys } from "../../../src/core/scheduler/other-machine-keys.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
-import type { RunnerEnvironment } from "../../../src/core/types/runner.js";
+import type { RunnerEnvironment, RunOptions } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
+import { claimRepo, fileName, side } from "../../scheduler/claims-fixture.js";
 import { fakeAdapter, inProcessHost, POLICY, REPORT } from "../fake-channel.js";
 
 /*
@@ -50,7 +53,7 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 /** A fake Docker: `image` is what the tag names now, `null` for none. */
-function fakeDocker(state: { image: ImageInfo | null; node?: string }) {
+function fakeDocker(state: { image: ImageInfo | null; node?: string; probe?: string }) {
   const calls: string[] = [];
   let next = 0;
   const cli: DockerCli = {
@@ -65,7 +68,8 @@ function fakeDocker(state: { image: ImageInfo | null; node?: string }) {
     execSyncText: async (id, argv) => {
       calls.push(`exec ${id} ${argv[0]} ${argv[1]}`);
       if (argv[1] === "-p") return { code: 0, stdout: `${state.node ?? "22.19.0"}\n`, stderr: "" };
-      if (argv[1] === "-e") return { code: 0, stdout: "v22.19.0 linux x64", stderr: "" };
+      if (argv[1] === "-e")
+        return { code: 0, stdout: state.probe ?? "v22.19.0 linux x64", stderr: "" };
       return { code: 0, stdout: "dpkg\nlibpq5=15.8\n", stderr: "" };
     },
     spawnExec: () => {
@@ -261,5 +265,73 @@ describe("a consented container project (D5, D6)", () => {
     await expect(runner.testFiles()).rejects.toThrow();
     expect(containerHostGone(runner)).toBe(true);
     await runner.close();
+  });
+});
+
+/*
+ * Review 0.1.644 B2 (spec 027 D7): a completed container run names the
+ * container's machine, so the real scheduler stores it at the container
+ * key it ran for, and no host-machine variant of that key receives it.
+ */
+describe("a completed container run, through the scheduler (review 0.1.644 B2)", () => {
+  it("is stored and current at the container key when the container's Node is not this one", {
+    timeout: 60_000,
+  }, async () => {
+    const node = process.version === "v22.19.0" ? "v24.0.0" : "v22.19.0";
+    const { main } = claimRepo(1);
+    const local = side(main, { count: 1, policy: RUN_MISSING });
+    const [inner] = await local.runner.environment();
+    if (inner === undefined) throw new Error("the fake runner has an environment");
+    const runHere = local.runner.run.bind(local.runner);
+    const { cli } = fakeDocker({ image: image("sha256:one"), probe: `${node} linux x64` });
+    const made = make(cli, {
+      project: "",
+      paths: { ...paths, worktreeRoot: main },
+      rootAt: main,
+      openChannel: () =>
+        inProcessHost(
+          async () =>
+            fakeAdapter({
+              name: "pytest",
+              environment: async () => [inner],
+              testFiles: async () => local.runner.testFiles(),
+              run: async (files, options) => runHere(files, options),
+            }),
+          VERSION,
+          { rootStat: () => rootStatOf(main) },
+        ).channel,
+    });
+    const runner = await createContainerRunner(made.options);
+    try {
+      const [environment] = await runner.environment();
+      expect(environment?.core?.nodeVersion).toBe(node);
+      const F0 = fileName(0);
+      const report = await runner.run([{ project: "", path: F0 }], RUN);
+      expect(report.completedFiles).toEqual([{ project: "", path: F0 }]);
+      expect(report.executedCore?.nodeVersion).toBe(node);
+      expect(report.executedCore).toEqual(environment?.core);
+      // The scheduler's environment and runs are the container adapter's.
+      Object.assign(local.runner, {
+        environment: () => runner.environment(),
+        run: (files: readonly TestFileRef[], options: RunOptions) => runner.run(files, options),
+      });
+      await local.scheduler.start();
+      await local.quiet();
+      const key = local.keyOf(F0);
+      if (key === null || key === undefined) throw new Error("F0 is keyed");
+      // Nothing pending, and its test passes as current at the key it ran for.
+      expect(local.phase(F0)).toBeNull();
+      expect(local.passing()).toBe(1);
+      const stored = local.store.results.byKey(key, 0);
+      expect(stored.map((r) => [r.check.kind, r.outcome]).sort()).toEqual([
+        ["file", "pass"],
+        ["test", "pass"],
+      ]);
+      // No host-machine variant: the container key is the only key with results.
+      expect([...readOtherMachineKeys(local.store, local.worktreeId)]).toEqual([]);
+      expect(local.store.results.keysSince(0).map((k) => k.key)).toEqual([key]);
+    } finally {
+      await runner.close();
+    }
   });
 });

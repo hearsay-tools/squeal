@@ -12,6 +12,7 @@ import type { RunnerTraits } from "../../types/runner-traits.js";
 import type { HostChannel } from "../channel.js";
 import type { HostAdapterOptions, HostPolicy, HostRunner } from "../protocol.js";
 import { type HostDeadlines, runnerHostGone, startHostProxy } from "../proxy.js";
+import { tagReportCore } from "../remote/remote-key.js";
 import { type ContainerConsent, resolveContainerNetwork } from "./consent.js";
 import { type DockerCli, dockerCli } from "./docker.js";
 import {
@@ -342,7 +343,9 @@ export class ContainerAdapter implements RunnerAdapter {
       );
     }
     if (!this.#opened.ok) return unavailableReport(`${this.#opened.note} (${where})`);
-    const report = await this.#opened.live.proxy.run(testFiles, options);
+    const { live } = this.#opened;
+    // Review 0.1.644 B2: the run happened on the container's machine, which the scheduler stores it for.
+    const report = tagReportCore(await live.proxy.run(testFiles, options), live.core);
     return report.failure === null
       ? report
       : { ...report, failure: `${report.failure} (${where})` };
