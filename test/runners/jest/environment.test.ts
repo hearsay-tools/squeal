@@ -196,3 +196,74 @@ describe.each(JEST_MAJORS)("the Jest %i environment (spec 028 D2.3)", (major) =>
     expect(env?.resolvedConfig).toMatch(/28\.1\.3.*outside the supported/);
   });
 });
+
+/*
+ * Review 0.1.644 B4: every worktree file the config evaluation loads or
+ * reads is in the chain, on a read that fails too; test files and installed
+ * packages are not.
+ */
+describe.each(JEST_MAJORS)("the Jest %i config's imported files (B4)", (major) => {
+  const IMPORTING = `const { timeout } = require("./config/options.cjs");
+const fs = require("fs");
+const extra = JSON.parse(fs.readFileSync(require("path").join(__dirname, "config/extra.json"), "utf8"));
+module.exports = {
+  testEnvironment: "node",
+  testMatch: ["<rootDir>/test/**/*.test.js"],
+  testTimeout: timeout,
+  ...extra,
+};
+`;
+  const HELPERS = {
+    "jest.config.js": IMPORTING,
+    "config/options.cjs": `module.exports = { timeout: 1000 };\n`,
+    "config/extra.json": `{ "bail": 1 }\n`,
+  };
+
+  it("keys and watches modules and data files the config loads", SLOW, async () => {
+    const root = worktree(major, HELPERS);
+    const env = await environmentOf(root);
+    expect(env.files).toEqual(
+      expect.arrayContaining(["jest.config.js", "config/options.cjs", "config/extra.json"]),
+    );
+    expect(env.files).not.toContain("test/sum.test.js");
+    expect(env.files).not.toContain("src/sum.js");
+    expect(env.files.some((f) => f.includes("node_modules"))).toBe(false);
+    // The same in another worktree: the files are worktree-relative.
+    expect(await environmentOf(worktree(major, HELPERS))).toEqual(env);
+  });
+
+  it("follows an ESM import from a config module", SLOW, async () => {
+    const root = worktree(major, {
+      "jest.config.mjs": `import options from "./config/options.mjs";
+export default { testEnvironment: "node", testMatch: ["<rootDir>/test/**/*.test.js"], ...options };
+`,
+      "config/options.mjs": `export default { testTimeout: 1000 };\n`,
+    });
+    const env = await environmentOf(root, { ...PROJECT, config: "jest.config.mjs" });
+    expect(env.files).toEqual(expect.arrayContaining(["jest.config.mjs", "config/options.mjs"]));
+  });
+
+  it("keeps the helpers a failed read loaded", SLOW, async () => {
+    const root = worktree(major, {
+      ...HELPERS,
+      "config/options.cjs": `require("./deeper.cjs");\nthrow new Error("broken helper");\n`,
+      "config/deeper.cjs": `module.exports = {};\n`,
+    });
+    const resolution = resolveJest(PROJECT.name, root, root);
+    if (!resolution.ok) throw new Error(resolution.note);
+    const read = await readJestProject(root, PROJECT, resolution.install, SOURCE);
+    expect(read).toMatchObject({ ok: false, error: expect.stringContaining("broken helper") });
+    const env = jestEnvironment({
+      root,
+      project: PROJECT,
+      install: resolution.install,
+      read,
+      source: SOURCE,
+      adapterVersion: JEST_ADAPTER_VERSION,
+      observing: true,
+    });
+    expect(env.files).toEqual(
+      expect.arrayContaining(["jest.config.js", "config/options.cjs", "config/deeper.cjs"]),
+    );
+  });
+});
