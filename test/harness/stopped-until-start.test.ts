@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
-import { stoppedMetaKey } from "../../src/core/presence/stored.js";
+import { readStop } from "../../src/core/presence/stored.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
@@ -57,7 +57,7 @@ async function stoppedWith(argv: string[]): Promise<SquealRepo> {
   return r;
 }
 
-const mark = (r: SquealRepo) => r.store.meta.get(stoppedMetaKey(r.worktreeId));
+const mark = (r: SquealRepo) => readStop(r.store, r.worktreeId);
 
 describe("`squeal stop --until-start` (row 011-254)", () => {
   it("starts no daemon at any boundary through a fast-forward, a checkout and an edit, and names the mode", async () => {
@@ -81,7 +81,7 @@ describe("`squeal stop --until-start` (row 011-254)", () => {
     expect(text(batch)).toContain(MODE);
     expect(text(start)).toContain(MODE);
     expect(text(start)).not.toContain("hold --");
-    expect(JSON.parse(mark(r) ?? "null")).toMatchObject({ untilStart: true });
+    expect(mark(r)).toMatchObject({ untilStart: true });
     // No daemon ran, so no edit was recorded or queued.
     expect(r.store.worktrees.get(r.worktreeId)?.daemon).toBeNull();
     expect(text(start)).toMatch(/^SQUEAL · registered at revision 1\n/);
@@ -122,7 +122,7 @@ describe("`squeal stop --until-start` (row 011-254)", () => {
 
     expect(calls).toEqual([]);
     expect(plain.stdout).toBe(noDaemonLine(r.root, true));
-    expect(JSON.parse(mark(r) ?? "null")).toMatchObject({ untilStart: true });
+    expect(mark(r)).toMatchObject({ untilStart: true });
   });
 
   it("ends at `squeal start`, and the next boundary ensures a daemon", async () => {

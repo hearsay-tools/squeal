@@ -8,9 +8,10 @@ import { stopCommand } from "../../src/cli/stop.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { treePrint } from "../../src/core/delivery/stopped.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
-import { stoppedMetaKey } from "../../src/core/presence/stored.js";
+import { readStopFile } from "../../src/core/presence/marks.js";
+import type { StopMark } from "../../src/core/presence/stored.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import { storePaths } from "../../src/core/store/paths.js";
+import { lockFileFor, storePaths } from "../../src/core/store/paths.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { recorded } from "../harness/helpers.js";
@@ -66,15 +67,9 @@ function withStore(root: AbsolutePath): void {
   store.close();
 }
 
-function mark(root: AbsolutePath): { at: number; tree: string | null; untilStart?: true } | null {
-  const store = openStore(join(root, ".git") as AbsolutePath, { create: false });
-  if (isStoreOpenFailure(store)) return null;
-  try {
-    const text = store.meta.get(stoppedMetaKey(worktreeIdFor(root)));
-    return text === null ? null : JSON.parse(text);
-  } finally {
-    store.close();
-  }
+/** Row 021-39: the stop mark beside the worktree's lock file. */
+function mark(root: AbsolutePath): StopMark | null {
+  return readStopFile(lockFileFor(join(root, ".git") as AbsolutePath, worktreeIdFor(root)));
 }
 
 /** A stand-in daemon that answers ping and stop, and closes its socket on stop. */
@@ -171,14 +166,15 @@ describe("squeal stop --until-start (row 011-254, gh-104)", () => {
     expect((await stop(root, ["--until"])).code).toBe(2);
   });
 
-  it("creates the store with the mark alone where a policy file and no store exist, and SessionStart spawns no daemon", async () => {
+  it("creates the empty store and the mark beside the lock file where a policy file and no store exist, and SessionStart spawns no daemon", async () => {
     const root = checkout();
     writeFileSync(join(root, "squeal.config.json"), "{}\n");
     const database = storePaths(join(root, ".git") as AbsolutePath).database;
     expect(existsSync(database)).toBe(false);
 
     expect((await stop(root, ["--until-start"])).stdout).toBe(noDaemonLine(root, true));
-    expect(rowsOf(database)).toEqual([{ table: "meta", key: stoppedMetaKey(worktreeIdFor(root)) }]);
+    expect(rowsOf(database)).toEqual([]);
+    expect(mark(root)).toMatchObject({ at: 5_000, untilStart: true });
     const { calls, deps } = recording();
     const start = await runHook("session-start", recorded("session-start", root), deps);
 
@@ -191,6 +187,45 @@ describe("squeal stop --until-start (row 011-254, gh-104)", () => {
 
     expect((await stop(root, ["--until-start"])).stdout).toBe(noDaemonLine(root, true));
     expect(existsSync(storePaths(join(root, ".git") as AbsolutePath).database)).toBe(false);
+  });
+});
+
+/*
+ * Row 021-39 (#285): a stop mark the file system refuses is said as before:
+ * a plain stop warns and exits 0, `--until-start` exits 1.
+ */
+describe("a stop mark that cannot be written (row 021-39)", () => {
+  /** A checkout whose `locks` path is a file, so no mark can be written beside a lock file. */
+  function blocked(): AbsolutePath {
+    const root = checkout();
+    withStore(root);
+    const { locksDir } = storePaths(join(root, ".git") as AbsolutePath);
+    rmSync(locksDir, { recursive: true, force: true });
+    writeFileSync(locksDir, "");
+    return root;
+  }
+
+  it("warns and exits 0 for a plain stop", async () => {
+    const root = blocked();
+    const out = await stop(root);
+
+    expect(out.code).toBe(0);
+    expect(out.stdout).toBe(noDaemonLine(root));
+    expect(out.stderr).toMatch(
+      /^squeal: could not record the stop, so a hook may start a daemon again: /,
+    );
+    expect(mark(root)).toBeNull();
+  });
+
+  it("exits 1 for --until-start", async () => {
+    const root = blocked();
+    const out = await stop(root, ["--until-start"]);
+
+    expect(out.code).toBe(1);
+    expect(out.stdout).toBe(`No daemon running for ${root}\n`);
+    expect(out.stderr).toMatch(
+      /^squeal: could not record the stop: .*; a hook may start a daemon again\n$/,
+    );
   });
 });
 

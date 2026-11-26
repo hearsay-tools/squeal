@@ -58,6 +58,14 @@ export function changeMarker(store: Store): ChangeMarker | null {
   return { others: num(row, "others"), own: num(row, "own") };
 }
 
+/** Row 021-39: the store's paths, under a key a `Proxy` of the store forwards, as `CONNECTION`. */
+const STORE_PATHS = Symbol("squeal.storePaths");
+
+/** The paths of a store opened by `openStore`; `null` for any other store. */
+export function storePathsOf(store: Store): StorePaths | null {
+  return (store as { [STORE_PATHS]?: StorePaths })[STORE_PATHS] ?? null;
+}
+
 export function createStore(conn: Connection, schemaVersion: number, paths: StorePaths): Store {
   const worktrees = createWorktreeRepo(conn);
   const store: Store = {
@@ -83,6 +91,7 @@ export function createStore(conn: Connection, schemaVersion: number, paths: Stor
   };
   connections.set(store, conn);
   Object.defineProperty(store, CONNECTION, { value: conn });
+  Object.defineProperty(store, STORE_PATHS, { value: paths });
   return store;
 }
 

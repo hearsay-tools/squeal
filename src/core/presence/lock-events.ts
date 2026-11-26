@@ -1,9 +1,11 @@
-import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { mkdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { DaemonLock } from "../daemon/lock.js";
 import { lifeOf } from "../daemon/terminate.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
-import { spawnedAt, spawnMarkFor, startMarkFor } from "./marks.js";
+import { spawnedAt, spawnMarkFor, startMarkFor, stopMarkFor } from "./marks.js";
+import type { StopMark } from "./stored.js";
 
 /*
  * Row 011-294: the presence events stored as marks beside a worktree's
@@ -85,6 +87,34 @@ export function markSpawn(lockFile: AbsolutePath, at: EpochMs, heartbeatAt: Epoc
     // The write below fails too, and reads as no mark.
   }
   writeMark(spawnMarkFor(lockFile), { at });
+}
+
+/**
+ * Row 021-39 (#285): stopped, `squeal stop`'s mark beside `lockFile`, written
+ * by rename from a temp file of its own, so a reader never sees half of it
+ * and two writers never share one. No SQLite lock is taken. Throws what the
+ * file system throws, so the stop says it was not recorded.
+ */
+export function writeStopFile(lockFile: AbsolutePath, mark: StopMark): void {
+  mkdirSync(dirname(lockFile), { recursive: true });
+  const path = stopMarkFor(lockFile);
+  const temp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}`;
+  try {
+    writeFileSync(temp, JSON.stringify(mark));
+    renameSync(temp, path);
+  } catch (error) {
+    rmSync(temp, { force: true });
+    throw error;
+  }
+}
+
+/** Row 021-39: the stop is over; removes the stop mark beside `lockFile`. Throws all but its absence. */
+export function removeStopFile(lockFile: AbsolutePath): void {
+  try {
+    unlinkSync(stopMarkFor(lockFile));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }
 
 function writeMark(path: AbsolutePath, mark: object): void {

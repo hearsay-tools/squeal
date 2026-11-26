@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { stoppedMetaKey } from "../../src/core/presence/stored.js";
+import { readStop } from "../../src/core/presence/stored.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
@@ -249,9 +249,7 @@ describe.runIf(process.platform === "linux")("squeal hold (row 011-74)", SLOW, (
     const stop = spawnCli(suite.cli, ["stop", repo.root], { cwd: "/", env: repo.env });
     expect((await stop.exited).code).toBe(0);
     expect(holds(repo)).toHaveLength(1);
-    expect(withStore(repo, (store) => store.meta.get(stoppedMetaKey(repo.worktreeId)))).not.toBe(
-      null,
-    );
+    expect(withStore(repo, (store) => readStop(store, repo.worktreeId))).not.toBe(null);
 
     const ran = starts();
     suite.daemon(repo);

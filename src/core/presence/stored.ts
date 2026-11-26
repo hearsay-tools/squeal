@@ -1,8 +1,11 @@
+import { join } from "node:path";
 import { isRecord } from "../fs/json.js";
-import type { EpochMs, WorktreeId } from "../types/common.js";
+import { storePathsOf } from "../store/store.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import { daemonIncarnation } from "../types/daemon.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { DaemonRecord } from "../types/store-records.js";
+import { readStopFile, stopMarkOf } from "./marks.js";
 
 /*
  * Row 011-294: the meta rows daemon presence stores, by key, with their
@@ -59,21 +62,30 @@ export function stoppedMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("daemonStopped", worktreeId);
 }
 
-/** The worktree's stopped mark as stored, `null` with none or one unreadable. */
-export function readStop(store: Store, worktreeId: WorktreeId): StopMark | null {
-  const text = store.meta.get(stoppedMetaKey(worktreeId));
-  if (text === null) return null;
-  try {
-    const mark: unknown = JSON.parse(text);
-    if (!isRecord(mark) || typeof mark.at !== "number") return null;
-    return {
-      at: mark.at as EpochMs,
-      tree: typeof mark.tree === "string" ? mark.tree : null,
-      ...(mark.untilStart === true ? { untilStart: true } : {}),
-    };
-  } catch {
-    return null;
-  }
+/**
+ * The worktree's stopped mark as stored, `null` with none or one unreadable.
+ * Row 021-39 (#285): the mark beside its lock file (`lockFile`, else the
+ * store's own) first, then the `meta` row an earlier release wrote.
+ */
+export function readStop(
+  store: Store,
+  worktreeId: WorktreeId,
+  lockFile?: AbsolutePath,
+): StopMark | null {
+  const file = lockFile ?? stopLockFile(store, worktreeId);
+  const inFile = file === null ? null : readStopFile(file);
+  return inFile ?? readLegacyStop(store, worktreeId);
+}
+
+/** Row 021-39: the worktree's legacy stopped mark, the `meta` row; `null` with none or one unreadable. */
+export function readLegacyStop(store: Store, worktreeId: WorktreeId): StopMark | null {
+  return stopMarkOf(parsed(store.meta.get(stoppedMetaKey(worktreeId))));
+}
+
+/** The worktree's lock file by the store's paths; `null` for a store not opened by `openStore`. */
+export function stopLockFile(store: Store, worktreeId: WorktreeId): AbsolutePath | null {
+  const paths = storePathsOf(store);
+  return paths === null ? null : (join(paths.locksDir, `${worktreeId}.sqlite`) as AbsolutePath);
 }
 
 /*

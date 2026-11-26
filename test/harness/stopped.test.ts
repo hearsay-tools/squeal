@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
 import { stopHolds } from "../../src/core/delivery/stopped.js";
 import { readPresence } from "../../src/core/presence/decide.js";
-import { stoppedMetaKey } from "../../src/core/presence/stored.js";
+import { readStop } from "../../src/core/presence/stored.js";
 import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
@@ -136,7 +136,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     await hook(r, "post-tool-batch", deps);
 
     expect(calls).toEqual([expect.objectContaining({ root: r.root })]);
-    expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toBeNull();
+    expect(readStop(r.store, r.worktreeId)).toBeNull();
   });
 
   it("holds when git could not print the tree at the stop, and an edit after the next print clears it (review wave-1.10 B2)", async () => {
@@ -151,7 +151,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     await hook(r, "post-tool-batch", deps);
     await hook(r, "post-tool-batch", deps);
     expect(calls).toEqual([]);
-    expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toContain('"tree":"');
+    expect(readStop(r.store, r.worktreeId)?.tree).toEqual(expect.any(String));
 
     writeFileSync(join(r.root, "a.txt"), "edited\n");
     await hook(r, "post-tool-batch", deps);
@@ -171,7 +171,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     expect(await clearStoppedMark(r.root as AbsolutePath)).toBeNull();
 
     expect(await holds).toBe(false);
-    expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toBeNull();
+    expect(readStop(r.store, r.worktreeId)).toBeNull();
   });
 
   it("starts one after a second edit of a file the stop found modified", async () => {
@@ -200,7 +200,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     expect(await clearStoppedMark(r.root as AbsolutePath)).toBeNull();
     await hook(r, "stop", deps);
 
-    expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toBeNull();
+    expect(readStop(r.store, r.worktreeId)).toBeNull();
     expect(calls).toHaveLength(1);
   });
 

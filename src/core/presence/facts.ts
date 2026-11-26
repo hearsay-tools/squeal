@@ -102,7 +102,7 @@ export function readPresenceFacts(
     claim: once(() => readHandoff(store, worktreeId)),
     short: once(() => readShortHandoff(store, worktreeId)),
     rest: once(() => readRest(store, worktreeId)),
-    stop: once(() => readStop(store, worktreeId)),
+    stop: once(() => readStop(store, worktreeId, lockFile())),
     feedDelivered: once(() => readFeedDelivered(store, worktreeId)),
     marks: once(() => {
       const file = lockFile();

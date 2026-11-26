@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { writeStopFile } from "../../src/core/presence/lock-events.js";
 import { daemonStart } from "../../src/core/presence/marks.js";
 import {
   readEditLine,
@@ -39,6 +40,7 @@ vi.mock("node:fs", async (importOriginal) => {
     const name = String(path);
     if (log.on && name.endsWith(".starting")) log.events.push(".starting");
     if (log.on && name.endsWith(".spawned")) log.events.push(".spawned");
+    if (log.on && name.endsWith(".stopped")) log.events.push(".stopped");
     return (actual.readFileSync as (...args: unknown[]) => unknown)(path, ...rest);
   }) as typeof actual.readFileSync;
   return { ...actual, readFileSync };
@@ -66,10 +68,12 @@ afterEach(() => {
 function reads<T>(
   stored: Stored,
   read: (store: Store, id: WorktreeId, row: ReturnType<Store["worktrees"]["get"]>) => T,
+  prepare?: (id: WorktreeId, row: ReturnType<Store["worktrees"]["get"]>) => void,
 ) {
   const { store, id, release } = scratch(stored);
   releases.push(release);
   const row = store.worktrees.get(id);
+  prepare?.(id, row);
   const names = new Map([
     [daemonExitMetaKey(id), "exit"],
     [worktreeMetaKey("notes", id), "notes"],
@@ -125,9 +129,27 @@ describe("the hook's stop check reads as before (review 0.1.403 B2)", () => {
     expect(r).toEqual({ value: null, events: [] });
   });
 
-  it("reads the stop mark alone for a stale one", () => {
+  it("reads the file beside the lock, then the legacy row, for a stale one (row 021-39)", () => {
     const r = reads({ ...stale, stop }, (s, id, row) => readHookStop(s, id, row, at(0)));
-    expect(r.events).toEqual(["stop"]);
+    expect(r.events).toEqual([".stopped", "stop"]);
+    expect(r.value).toMatchObject({ untilStart: true });
+  });
+
+  /** Row 021-39: the stop mark as `squeal stop` writes it, beside the worktree's lock file. */
+  const stopFile = (id: WorktreeId, row: ReturnType<Store["worktrees"]["get"]>) => {
+    if (row === null) throw new Error("no row");
+    writeStopFile(lockFileFor(row.commonDir, id), { at: at(-30_000), tree: "t", untilStart: true });
+  };
+
+  it("reads nothing for a fresh heartbeat, a stop mark file beside it (row 021-39)", () => {
+    const r = reads(fresh, (s, id, row) => readHookStop(s, id, row, at(0)), stopFile);
+    expect(r).toEqual({ value: null, events: [] });
+  });
+
+  it("reads the file alone for a stale one, and no legacy row (row 021-39)", () => {
+    const r = reads(stale, (s, id, row) => readHookStop(s, id, row, at(0)), stopFile);
+    expect(r.events).toEqual([".stopped"]);
+    expect(r.value).toMatchObject({ untilStart: true });
   });
 });
 
