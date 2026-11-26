@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { worktreeStatesOf } from "../../src/core/state/file-class.js";
 import { openStore } from "../../src/core/store/open.js";
 import { ensureWriteMarkers } from "../../src/core/store/write-markers.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
@@ -142,5 +143,16 @@ describe("Stop lists the known states once (row 005-124)", () => {
     store.knownStates.list("w" as WorktreeId);
     store.knownStates.list("w" as WorktreeId);
     expect(lists.count).toBe(2);
+  });
+
+  it("the kept list is frozen and counted once; a fresh list is counted each time (row 025-18)", async () => {
+    const r = await registered();
+    keepStates(r.store);
+    const kept = r.store.knownStates.list(r.worktreeId);
+    expect(Object.isFrozen(kept)).toBe(true);
+    expect(worktreeStatesOf(kept)).toBe(worktreeStatesOf(kept));
+    const fresh = [...kept];
+    expect(worktreeStatesOf(fresh)).not.toBe(worktreeStatesOf(fresh));
+    expect(worktreeStatesOf(fresh)).toEqual(worktreeStatesOf(kept));
   });
 });

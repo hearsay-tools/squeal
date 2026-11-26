@@ -65,8 +65,13 @@ export function keepStates(store: Store): void {
         return kept.states;
       }
       const states = repo.list(worktreeId);
-      kept = mark === null ? null : { worktreeId, mark, states };
-      return states;
+      if (mark === null) {
+        kept = null;
+        return states;
+      }
+      // Frozen, so each count of it is made once (`worktreeStatesOf`, row 025-18).
+      kept = { worktreeId, mark, states: Object.freeze(states) };
+      return kept.states;
     },
     untold: (consumer) => repo.untold(consumer),
     get: (worktreeId, check) => repo.get(worktreeId, check),
