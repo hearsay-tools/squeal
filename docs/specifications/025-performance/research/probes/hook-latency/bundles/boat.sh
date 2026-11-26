@@ -6,8 +6,9 @@
 set -eu
 OUT=$1
 P=docs/specifications/025-performance/research/probes/hook-latency/bundles
-PAY=$(mktemp -d /tmp/hl-025-14.XXXXXX)/payload
-mkdir -p "$PAY"
+TOP=$(mktemp -d /tmp/hl-025-14.XXXXXX)
+PAY=$TOP/payload
+mkdir -p "$PAY" "$TOP/up"
 git archive HEAD src test plugins/claude-code package.json pnpm-lock.yaml pnpm-workspace.yaml \
   tsconfig.json tsconfig.build.json vitest.config.ts $P | tar x -C "$PAY"
 for t in squeal--v0.1.364 squeal--v0.1.409 squeal--v0.1.450 squeal--v0.1.568 squeal--v0.1.600 792ee0ccb; do
@@ -17,15 +18,20 @@ done
 retry() { for _ in 1 2 3 4 5; do "$@" && return 0; sleep 20; done; return 1; }
 ID=$(retry boat new --no-env --ttl 10800 --name hook-bundles-025-14 --json | tail -1 | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).id')
 echo "sandbox $ID"
-trap 'boat delete "$ID" --yes >/dev/null 2>&1 || true; rm -rf "$(dirname "$PAY")"' EXIT
+trap 'boat delete "$ID" --yes >/dev/null 2>&1 || true; rm -rf "$TOP"' EXIT
+# One file: a directory pushes file by file, which took minutes for ~40 MB.
+tar czf "$TOP/up/payload.tgz" -C "$TOP" payload
 for _ in 1 2 3 4 5; do
   boat ssh "$ID" -- "test -f /home/user/payload/$P/remote.sh" >/dev/null 2>&1 && break
   sleep 10
-  boat push "$ID" "$PAY" --to /home/user/payload >/dev/null || true
+  boat push "$ID" "$TOP/up" --to /home/user/up >/dev/null || true
+  boat ssh "$ID" -- "cd /home/user && tar xzf up/payload.tgz" >/dev/null 2>&1 || true
 done
-retry boat ssh "$ID" -- 'set -e; cd /tmp; curl -fsSL https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz | tar xJ; sudo cp -r node-v24.21.0-linux-x64/* /usr/local/ 2>/dev/null || cp -r node-v24.21.0-linux-x64/* $HOME/.local/; node --version'
-retry boat ssh "$ID" -- 'set -e; cd /home/user/payload; export PATH=/usr/local/bin:$HOME/.local/bin:$PATH; npm i -g pnpm@12.15.0 >/dev/null 2>&1 || sudo npm i -g pnpm@12.15.0 >/dev/null; pnpm install --frozen-lockfile > install.log 2>&1 || { tail -30 install.log; exit 1; }'
-boat ssh "$ID" -- "cd /home/user/payload && export PATH=/usr/local/bin:\$HOME/.local/bin:\$PATH && { [ -e started ] || (touch started; setsid nohup sh $P/remote.sh > remote.out 2>&1 < /dev/null &); }"
+# Node 24.21 as on the developer host, first on PATH (the image has another 24.x in /usr/local).
+NODE_PATH_SET='export PATH=$HOME/node24/bin:$PATH'
+retry boat ssh "$ID" -- "set -e; mkdir -p \$HOME/node24; curl -fsSL https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz | tar xJ -C \$HOME/node24 --strip-components=1; $NODE_PATH_SET; node --version"
+retry boat ssh "$ID" -- "set -e; cd /home/user/payload; $NODE_PATH_SET; npm i -g --prefix \$HOME/node24 pnpm@12.15.0 >/dev/null 2>&1; pnpm --version; pnpm install --frozen-lockfile > install.log 2>&1 || { tail -30 install.log; exit 1; }"
+boat ssh "$ID" -- "cd /home/user/payload && $NODE_PATH_SET && { [ -e started ] || (touch started; setsid nohup sh $P/remote.sh > remote.out 2>&1 < /dev/null &); }"
 until boat ssh "$ID" -- 'test -f /home/user/payload/results/done' >/dev/null 2>&1; do
   sleep 60
   boat ssh "$ID" -- 'tail -1 /home/user/payload/results/run.log' 2>/dev/null || true
