@@ -1,9 +1,9 @@
-import { mkdirSync, realpathSync } from "node:fs";
+import { mkdirSync, realpathSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Readable } from "node:stream";
 import { squealVersion } from "../core/daemon/version.js";
 import { serveRunnerHost } from "../core/runner-host/host.js";
-import { HOST_RUNNERS, type HostRunner } from "../core/runner-host/protocol.js";
+import { HOST_RUNNERS, type HostRunner, type RootStat } from "../core/runner-host/protocol.js";
 import { createHostAdmission, machinePool } from "../core/runner-host/remote/admission.js";
 import { createTreeHost } from "../core/runner-host/remote/tree-host.js";
 import { buildAdapter } from "../core/runner-host/runners.js";
@@ -67,6 +67,7 @@ export async function runnerHostCommand(
     },
     version: squealVersion(),
     around: hostWorkers(),
+    rootStat: () => rootStatOf(root),
     ...(parsed.tree
       ? {
           tree: createTreeHost(root, (text) => process.stderr.write(text)),
@@ -79,6 +80,20 @@ export async function runnerHostCommand(
   // The adapter closed or its bound passed; a handle a dependency left open must not keep the host.
   if (owned) setTimeout(() => process.exit(0), 500).unref();
   return 0;
+}
+
+/**
+ * Spec 027 D6 (row 027-05): the root's device and inode for `start`'s reply,
+ * which a daemon compares with its own to prove a container's bind mount.
+ * `undefined` when the root cannot be read: the daemon then refuses the host.
+ */
+export function rootStatOf(root: string): RootStat | undefined {
+  try {
+    const stat = statSync(root);
+    return { dev: stat.dev, ino: stat.ino };
+  } catch {
+    return undefined;
+  }
 }
 
 /**
