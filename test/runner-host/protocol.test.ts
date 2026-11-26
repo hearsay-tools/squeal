@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ExecutedSource } from "../../src/core/code/coverage/types.js";
 import { decodeCoverageRun, encodeCoverageRun } from "../../src/core/runner-host/coverage-wire.js";
-import { encodeLine, LineReader, MARKER } from "../../src/core/runner-host/protocol.js";
+import { encodeLine, errorOf, LineReader, MARKER } from "../../src/core/runner-host/protocol.js";
 
 /*
  * Spec 021 D6 (row 021-11): one JSON object per line, each line starting
@@ -134,5 +134,37 @@ describe("coverage payloads over the protocol", () => {
     );
     expect(back.files[1]?.children).toEqual({ root: "/w", dir: "/tmp/c" });
     expect(back.files[0]?.sources.get("/w/src/a.ts")).toEqual({ ...shared });
+  });
+});
+
+describe("runner host errors (025-23)", () => {
+  it("sends each message of the cause chain after the error's own", () => {
+    const reason = new TypeError("Cannot read properties of null (reading 'code')");
+    const error = new Error("Failed to load custom CoverageProviderModule from /p/x.mjs", {
+      cause: reason,
+    });
+    expect(errorOf(error)).toEqual({
+      message:
+        "Failed to load custom CoverageProviderModule from /p/x.mjs: Cannot read properties of null (reading 'code')",
+    });
+    expect(errorOf("plain")).toEqual({ message: "plain" });
+    expect(errorOf(new Error("alone"))).toEqual({ message: "alone" });
+  });
+
+  it("stays short: three causes, their first lines, cut, none repeated, no cycle", () => {
+    const long = "x".repeat(400);
+    const fourth = new Error("fourth", { cause: new Error("fifth") });
+    const third = new Error(`${long}\nat stack`, { cause: fourth });
+    const second = new Error("second: already said", { cause: third });
+    const first = new Error("top: second: already said", { cause: second });
+    expect(errorOf(first).message).toBe(`top: second: already said: ${"x".repeat(299)}…: fourth`);
+
+    const loop = new Error("a");
+    const back = new Error("b", { cause: loop });
+    loop.cause = back;
+    expect(errorOf(loop).message).toBe("a: b");
+    expect(errorOf(new Error("top", { cause: "a string reason" })).message).toBe(
+      "top: a string reason",
+    );
   });
 });

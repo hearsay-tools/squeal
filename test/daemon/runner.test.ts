@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
+import { errorOf } from "../../src/core/runner-host/protocol.js";
 import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
@@ -43,7 +44,7 @@ function fakeAdapter(log: string[]): RunnerAdapter {
 }
 
 /** A factory that fails while `errors` has entries, then builds a fake adapter. */
-function factory(errors: string[]) {
+function factory(errors: (string | Error)[]) {
   const log: string[] = [];
   let attempts = 0;
   return {
@@ -52,7 +53,7 @@ function factory(errors: string[]) {
     create: async () => {
       attempts++;
       const error = errors.shift();
-      if (error !== undefined) throw new Error(error);
+      if (error !== undefined) throw typeof error === "string" ? new Error(error) : error;
       return fakeAdapter(log);
     },
   };
@@ -161,6 +162,19 @@ describe("recovering runner: a broken config is a state, never an exit (review B
     const { adapter, failures } = runner(f);
     await adapter.open();
     expect(failures).toEqual(["vitest could not start: [PARSE_ERROR] Unexpected token"]);
+  });
+
+  it("keeps the messages of the error's cause chain, in process and from a runner host (025-23)", async () => {
+    const provider = "Failed to load custom CoverageProviderModule from /p/provider.mjs";
+    const reason = "Cannot read properties of null (reading 'code')";
+    const wrapped = () => new Error(provider, { cause: new TypeError(reason) });
+    const expected = `vitest could not start: ${provider}: ${reason}`;
+    // The runner host sends `errorOf`'s text, and its connection rejects with it alone.
+    const f = factory([wrapped(), new Error(errorOf(wrapped()).message)]);
+    const { adapter, failures } = runner(f);
+    await adapter.open();
+    await expect(adapter.invalidate(change)).rejects.toThrow(expected);
+    expect(failures).toEqual([expected]);
   });
 
   it("reports a changed error, not the same one twice", async () => {

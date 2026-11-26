@@ -3,6 +3,7 @@ import { join, posix } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { runGit, splitNul } from "../fs/git.js";
 import { isRecord } from "../fs/json.js";
+import { errorOf } from "../runner-host/protocol.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
@@ -266,10 +267,13 @@ async function projectsOf(adapter: RunnerAdapter): Promise<string[]> {
   return [...new Set((await adapter.environment()).map((e) => e.project))].sort();
 }
 
-/** Vite's config bundler colours its errors, and notes are plain text. */
+/**
+ * Vite's config bundler colours its errors, and notes are plain text. Row
+ * 025-23: with the messages of its `cause` chain, as the runner host sends
+ * them (`errorOf`).
+ */
 function messageOf(error: unknown): string {
-  const text = error instanceof Error ? error.message : String(error);
-  return stripVTControlCharacters(text).trim();
+  return stripVTControlCharacters(errorOf(error).message).trim();
 }
 
 /** `vitest.config.*`, `vitest.workspace.*`, `vitest.projects.*` or `vite.config.*`. */

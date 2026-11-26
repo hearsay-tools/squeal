@@ -244,7 +244,23 @@ export class LineReader {
   }
 }
 
-/** The text of a thrown value, for a reply's `e`. */
+/**
+ * The text of a thrown value, for a reply's `e`. Row 025-23: then each
+ * message of its `cause` chain, after `: `, so a wrapper such as Vitest's
+ * "Failed to load ..." keeps the reason under it. At most three causes, each
+ * its first line cut to 300 characters, and none the text already holds.
+ */
 export function errorOf(cause: unknown): HostError {
-  return { message: cause instanceof Error ? cause.message : String(cause) };
+  let message = cause instanceof Error ? cause.message : String(cause);
+  const seen = new Set<unknown>([cause]);
+  let next = cause instanceof Error ? cause.cause : undefined;
+  for (let depth = 0; depth < 3 && next !== undefined && !seen.has(next); depth++) {
+    seen.add(next);
+    const raw = next instanceof Error ? next.message : typeof next === "string" ? next : "";
+    const line = raw.trim().split("\n", 1)[0]?.trim() ?? "";
+    const text = line.length > 300 ? `${line.slice(0, 299)}…` : line;
+    if (text !== "" && !message.includes(text)) message += `: ${text}`;
+    next = next instanceof Error ? next.cause : undefined;
+  }
+  return { message };
 }

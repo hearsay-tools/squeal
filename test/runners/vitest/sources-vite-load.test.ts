@@ -27,7 +27,10 @@ interface Transforming {
   transformRequest(url: string): Promise<{ readonly code: string } | null>;
 }
 
-const VERSIONS: readonly (readonly [string, () => Promise<{ createServer: unknown; version: string }>])[] = [
+const VERSIONS: readonly (readonly [
+  string,
+  () => Promise<{ createServer: unknown; version: string }>,
+])[] = [
   ["8.4.0", () => import("vite")],
   ["8.3.8", () => import("vite-8.3")],
 ];
