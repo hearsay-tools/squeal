@@ -23,6 +23,7 @@ describe("core types", () => {
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000, hostIdleMinutes: null },
       nodeTest: [],
       pytest: [],
+      containers: {},
       vitest: { excludeProjects: [], exclude: [] },
       slow: {
         include: [],
