@@ -6,6 +6,7 @@ import {
   copyCiRuntime,
   copyCodeGrammar,
   copyCoverageRuntime,
+  copyJestRuntime,
   copyNodeTestRuntime,
   copyObserveRuntime,
   copyPluginTrees,
@@ -89,6 +90,7 @@ export async function buildOpencodeDist(outdir: string): Promise<Metafile> {
   copyCiRuntime(outdir);
   copyCoverageRuntime(outdir);
   copyPytestRuntime(outdir);
+  copyJestRuntime(outdir);
   copyCodeGrammar(outdir);
   return {
     inputs: { ...bridge.metafile.inputs, ...plugin.metafile.inputs },
