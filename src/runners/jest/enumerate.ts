@@ -163,8 +163,10 @@ function declare(
   const first = call.arguments[0];
   const title = first === undefined ? null : literalName(first);
   if (each || title === null) {
-    // Its children, or its cases, are known once the file has run.
-    const template = first === undefined ? "<anonymous>" : source.slice(first.start, first.end);
+    // Its children, or its cases, are known once the file has run: named by its title template,
+    // or by its source text when the title is computed.
+    const template =
+      title ?? (first === undefined ? "<anonymous>" : source.slice(first.start, first.end));
     found.push({ ancestors, title: template, templated: true, location });
     return;
   }
