@@ -206,8 +206,12 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
   }
 
   /** The live adapter answers what a freshly opened adapter on the same files answers. */
-  async function expectFresh(live: RunnerAdapter, root: AbsolutePath): Promise<void> {
-    const fresh = await createJestAdapter(PROJECT, { root });
+  async function expectFresh(
+    live: RunnerAdapter,
+    root: AbsolutePath,
+    project: JestProject = PROJECT,
+  ): Promise<void> {
+    const fresh = await createJestAdapter(project, { root });
     expect(await live.environment()).toEqual(await fresh.environment());
     expect(await live.testFiles()).toEqual(await fresh.testFiles());
     expect(await live.affected(["src/sum.js", "src/other.js"])).toEqual(
@@ -275,5 +279,108 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
     });
     expect((await adapter.environment())[0]?.runnerVersion).toMatch(new RegExp(`^${major}\\.`));
     await expectFresh(adapter, root);
+  });
+
+  // Review 0.1.644-r2 B4: a helper deleted and restored, or missing at the start.
+  const added = (path: string) => [{ path, kind: "add" as const }];
+  const deleted = (path: string) => [{ path, kind: "delete" as const }];
+  const healthy = new RegExp(`^${major}\\.`);
+
+  it("recovers when a deleted CJS helper is restored", SLOW, async () => {
+    const root = imported(CONFIG(`\n  ...require("./options.cjs"),`), {
+      "options.cjs": "module.exports = { testTimeout: 1000 };\n",
+    });
+    const adapter = await createJestAdapter(PROJECT, { root });
+    const [before] = await adapter.environment();
+    rmSync(join(root, "options.cjs"));
+    expect(await adapter.invalidate(deleted("options.cjs"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    const [broken] = await adapter.environment();
+    expect(broken?.runnerVersion).toBe("unavailable");
+    expect(broken?.files).toContain("options.cjs");
+    expect(await adapter.testFiles()).toEqual([]);
+    // An edit outside the chain waits: the project stays as it is.
+    expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
+    writeFileSync(join(root, "options.cjs"), "module.exports = { testTimeout: 9000 };\n");
+    expect(await adapter.invalidate(added("options.cjs"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    const [after] = await adapter.environment();
+    expect(after?.runnerVersion).toMatch(healthy);
+    expect(after?.resolvedConfig).not.toBe(before?.resolvedConfig);
+    expect(after?.resolvedConfig).toContain('"testTimeout":9000');
+    expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
+    await expectFresh(adapter, root);
+    // Healthy again: a source edit, or a speculative path of the failed read, reopens nothing.
+    writeFileSync(join(root, "src/sum.js"), "exports.sum = (a, b) => b + a;\n");
+    expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
+    expect(await adapter.invalidate(added("options.cjs.js"))).toEqual({ recreatedProjects: [] });
+  });
+
+  it("recovers when helpers missing at the start are created", SLOW, async () => {
+    const root = imported(
+      CONFIG(`
+  ...require("./options.cjs"),
+  ...JSON.parse(require("fs").readFileSync("./options.json", "utf8")),`),
+      {},
+    );
+    const notes: string[] = [];
+    const adapter = await createJestAdapter(PROJECT, { root, note: (text) => notes.push(text) });
+    const [missing] = await adapter.environment();
+    expect(missing?.runnerVersion).toBe("unavailable");
+    expect(missing?.files).toContain("options.cjs");
+    writeFileSync(join(root, "options.cjs"), "module.exports = { testTimeout: 9000 };\n");
+    // The require now succeeds and the read fails on the next missing file, which it then watches.
+    expect(await adapter.invalidate(added("options.cjs"))).toEqual({ recreatedProjects: [] });
+    expect((await adapter.environment())[0]?.files).toEqual(
+      expect.arrayContaining(["options.cjs", "options.json"]),
+    );
+    expect(notes).toEqual([
+      expect.stringMatching(/options\.cjs/),
+      expect.stringMatching(/options\.json/),
+    ]);
+    writeFileSync(join(root, "options.json"), `{ "bail": 1 }\n`);
+    expect(await adapter.invalidate(added("options.json"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    const [after] = await adapter.environment();
+    expect(after?.runnerVersion).toMatch(healthy);
+    expect(after?.resolvedConfig).toContain('"testTimeout":9000');
+    expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
+    await expectFresh(adapter, root);
+  });
+
+  it("recovers when a deleted ESM helper is restored", SLOW, async () => {
+    const esm: JestProject = { ...PROJECT, config: "jest.config.mjs" };
+    const root = imported(CONFIG(), {
+      "jest.config.mjs": `import options from "./options.mjs";
+export default {
+  testEnvironment: "node",
+  testMatch: ["<rootDir>/test/**/*.test.js"],
+  setupFiles: ["<rootDir>/setup/env.js"],
+  ...options,
+};
+`,
+      "options.mjs": "export default { testTimeout: 1000 };\n",
+    });
+    const adapter = await createJestAdapter(esm, { root });
+    expect((await adapter.environment())[0]?.files).toContain("options.mjs");
+    rmSync(join(root, "options.mjs"));
+    expect(await adapter.invalidate(deleted("options.mjs"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    const [broken] = await adapter.environment();
+    expect(broken?.runnerVersion).toBe("unavailable");
+    expect(broken?.files).toContain("options.mjs");
+    writeFileSync(join(root, "options.mjs"), "export default { testTimeout: 9000 };\n");
+    expect(await adapter.invalidate(added("options.mjs"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    const [after] = await adapter.environment();
+    expect(after?.runnerVersion).toMatch(healthy);
+    expect(after?.resolvedConfig).toContain('"testTimeout":9000');
+    expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
+    await expectFresh(adapter, root, esm);
   });
 });

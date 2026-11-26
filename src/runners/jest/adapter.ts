@@ -121,12 +121,19 @@ export async function createJestAdapter(
   let watched = watchedOf(root, project, state, source);
   if (!state.ok) note(state.note);
 
-  /** Reads the project again; notes a new failure, or that it reads again. */
+  /**
+   * Reads the project again; notes a new failure, or that it reads again.
+   * The one owner of `watched` (review 0.1.644-r2 B4): a read that fails
+   * keeps every path watched before it, so restoring a deleted helper reads
+   * again; a read that succeeds watches its own config chain only.
+   */
   const reopen = async (): Promise<void> => {
     const before = state.ok ? null : state.note;
+    const previous = watched;
     state = await open();
     observed = observing();
-    watched = watchedOf(root, project, state, source);
+    const fresh = watchedOf(root, project, state, source);
+    watched = state.ok ? fresh : new Set([...previous, ...fresh]);
     if (!state.ok && state.note !== before) note(state.note);
     else if (state.ok && before !== null) note(`it reads again (jest ${state.install.version})`);
   };
@@ -173,8 +180,9 @@ export async function createJestAdapter(
     testFiles: async () => (state.ok ? state.files.map(ref) : []),
     async environment() {
       if (!state.ok) {
-        const { note, configDeps } = state;
-        return [unavailableEnvironment(root, project, note, JEST_ADAPTER_VERSION, configDeps)];
+        // Its files are what it watches: an edit of any of them may make it read.
+        const files = [...watched].map((path) => toAbsolute(root, path));
+        return [unavailableEnvironment(root, project, state.note, JEST_ADAPTER_VERSION, files)];
       }
       const { install, read } = state;
       const environment = jestEnvironment({
