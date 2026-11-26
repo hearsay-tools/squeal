@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
+import { coreEnvironmentInputs } from "../../../src/core/keys/environment.js";
 import type { AdmitAsk, HostAdmission } from "../../../src/core/runner-host/remote/admission.js";
 import { UNGRANTED } from "../../../src/core/runner-host/remote/admission.js";
 import { isRemoteOutageReason } from "../../../src/core/runner-host/remote/daemon-lane.js";
@@ -253,20 +254,27 @@ describe("remote outage matching and concurrent sendPending serialization (wave 
       allowlist: () => [],
       status: () => {},
       log: () => {},
-      connect: async () => ({
-        adapter: fakeAdapter,
-        node: process.version,
-        coreEnvironment: async () => ({
-          nodeVersion: process.version,
-          platform: process.platform,
-          arch: process.arch,
+      connect: async () => {
+        const core = coreEnvironmentInputs({
+          squealVersion: "0.1.637",
           installedDependencies: "same",
-          env: {},
-        }),
-        blobs: async () => ({}),
-        admit: async () => ({ grant: 1 }),
-        install: async () => ({ ran: false, command: null }),
-      }),
+          allowlist: [],
+        });
+        return {
+          adapter: fakeAdapter,
+          node: core.nodeVersion,
+          coreEnvironment: async () => ({
+            nodeVersion: core.nodeVersion,
+            platform: core.platform,
+            arch: core.arch,
+            installedDependencies: "same",
+            env: {},
+          }),
+          blobs: async () => ({}),
+          admit: async () => ({ grant: 1 }),
+          install: async () => ({ ran: false, command: null }),
+        };
+      },
     });
     try {
       // Wait for initial ready, then queue an invalidation while ready.
