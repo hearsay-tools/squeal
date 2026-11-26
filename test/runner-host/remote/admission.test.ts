@@ -332,3 +332,85 @@ describe("a wait that a cancel ends (row 026-23)", () => {
     expect(await cancelledFirst(new Promise(() => {}), AbortSignal.abort())).toBe(true);
   });
 });
+
+describe("a wait the daemon's exit ends (row 026-30)", () => {
+  test("ends before the first look when the exit already began", async () => {
+    const asks: AdmitAsk[] = [];
+    const granted = await remoteAdmission(
+      async (ask) => {
+        asks.push(ask);
+        return { grant: 2 };
+      },
+      { want: 4, least: 1 },
+      { exit: AbortSignal.abort(), everyMs: 5, log: () => {} },
+    );
+    expect(granted).toBeNull();
+    expect(asks).toEqual([]);
+  });
+
+  test("ends at once between looks, with no look after it", async () => {
+    const exit = new AbortController();
+    const asks: AdmitAsk[] = [];
+    const waiting = remoteAdmission(
+      async (ask) => {
+        asks.push(ask);
+        return { grant: 0 };
+      },
+      { want: 4, least: 1 },
+      { exit: exit.signal, everyMs: 60_000, log: () => {} },
+    );
+    await sleep(20);
+    const at = Date.now();
+    exit.abort();
+    expect(await waiting).toBeNull();
+    expect(Date.now() - at).toBeLessThan(1_000);
+    expect(asks).toEqual([{ want: 4, least: 1 }]);
+  });
+
+  test("does not wait for a look the host never answers, and returns its grant if one comes", async () => {
+    const exit = new AbortController();
+    const asks: AdmitAsk[] = [];
+    let answer: (a: AdmitAnswer) => void = () => {};
+    const waiting = remoteAdmission(
+      (ask) => {
+        asks.push(ask);
+        if (ask.want === 0) return new Promise(() => {});
+        return new Promise((resolve) => {
+          answer = resolve;
+        });
+      },
+      { want: 4, least: 1, token: "r1:1" },
+      { exit: exit.signal, everyMs: 5, log: () => {} },
+    );
+    await sleep(10);
+    exit.abort();
+    expect(await waiting).toBeNull();
+    // The grant comes late: it goes back, and that look, never answered either, holds nothing up.
+    answer({ grant: 3 });
+    await sleep(10);
+    expect(asks).toEqual([
+      { want: 4, least: 1, token: "r1:1" },
+      { want: 0, least: 0, token: "r1:1" },
+    ]);
+  });
+
+  test("returns a grant that came as the exit began, without waiting for that look", async () => {
+    const exit = new AbortController();
+    const asks: AdmitAsk[] = [];
+    const granted = await remoteAdmission(
+      async (ask) => {
+        asks.push(ask);
+        if (ask.want === 0) return new Promise<AdmitAnswer>(() => {});
+        exit.abort();
+        return { grant: 3 };
+      },
+      { want: 4, least: 1 },
+      { exit: exit.signal, everyMs: 5, log: () => {} },
+    );
+    expect(granted).toBeNull();
+    expect(asks).toEqual([
+      { want: 4, least: 1 },
+      { want: 0, least: 0 },
+    ]);
+  });
+});

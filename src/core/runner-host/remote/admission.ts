@@ -170,6 +170,13 @@ export function machinePool(
 export interface AdmissionWait {
   /** Aborted by the tier's cancel or a stop: the wait ends at once. */
   readonly cancel?: AbortSignal | undefined;
+  /**
+   * Row 026-30: aborted by the daemon's exit. The wait ends at once, a
+   * look in flight included, and a grant that comes after goes back
+   * without being waited for, so a host that no longer answers never
+   * holds the exit up.
+   */
+  readonly exit?: AbortSignal | undefined;
   /** How often a refused run asks again: the scheduler's `CAPACITY_RECHECK_MS`. */
   readonly everyMs: number;
   /** The daemon's log: each ceiling refusal and a failed pool, as the local pool logs them. */
@@ -179,17 +186,30 @@ export interface AdmissionWait {
 /**
  * The daemon's side: asks the host (`admit`) until the remote machine
  * admits a run of `ask`, and answers the workers granted; `null` once
- * `cancel` aborts, after a grant that came meanwhile went back. Rejects
- * when the host does not answer.
+ * `cancel` aborts, after a grant that came meanwhile went back, or at once
+ * when `exit` aborts (row 026-30). Rejects when the host does not answer.
  */
 export async function remoteAdmission(
   admit: (ask: AdmitAsk) => Promise<AdmitAnswer>,
   ask: AdmitAsk,
   wait: AdmissionWait,
 ): Promise<number | null> {
-  const cancelled = () => wait.cancel?.aborted === true;
+  const { exit } = wait;
+  const exiting = () => exit?.aborted === true;
+  const cancelled = () => wait.cancel?.aborted === true || exiting();
+  // Row 026-23: only this attempt's grant goes back, never a sibling slot's.
+  const giveBack = () =>
+    admit({ want: 0, least: 0, ...(ask.token === undefined ? {} : { token: ask.token }) });
+  const signals = [wait.cancel, exit].filter((signal) => signal !== undefined);
+  const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
   while (!cancelled()) {
-    const answer = await admit(ask);
+    const asking = admit(ask);
+    if (exit !== undefined && (await cancelledFirst(asking, exit))) {
+      // A grant the look still brings goes back, unwaited: the host may never answer.
+      asking.then((late) => (late.grant > 0 ? giveBack() : undefined)).catch(() => {});
+      return null;
+    }
+    const answer = await asking;
     if (answer.failed !== undefined) {
       wait.log(
         `its machine's capacity pool failed (${answer.failed}); the run goes without a grant`,
@@ -197,12 +217,11 @@ export async function remoteAdmission(
     }
     if (answer.grant > 0) {
       if (!cancelled()) return answer.grant;
-      // Row 026-23: only this attempt's grant goes back, never a sibling slot's.
-      await admit({ want: 0, least: 0, ...(ask.token === undefined ? {} : { token: ask.token }) });
+      if (exiting()) giveBack().catch(() => {});
+      else await giveBack();
       return null;
     }
     if (answer.refusal !== undefined) wait.log(`on its machine, ${answer.refusal}`);
-    const signal = wait.cancel;
     await sleep(wait.everyMs, undefined, signal === undefined ? {} : { signal }).catch(() => {});
   }
   return null;
@@ -216,7 +235,7 @@ export const ADMIT_EVERY_MS = 2_000;
  * (`RunOptions.permits`), then the remote machine admits a tier of
  * `testFiles` as the scheduler sizes one, as wide as its runner runs it and
  * no narrower than at a grant of 1 (`tierWidth`, rows 001-366 and 011-97).
- * The workers granted there; `null` on a cancel meanwhile.
+ * The workers granted there; `null` on a cancel or the daemon's exit meanwhile.
  */
 export function admitRun(
   admit: (ask: AdmitAsk) => Promise<AdmitAnswer>,
@@ -226,6 +245,8 @@ export function admitRun(
     readonly tierWidth: (testFile: TestFileRef, grant: number) => number;
     /** Row 026-23: the attempt's token, which its run names (`RemoteRunOptions.admitToken`). */
     readonly token?: string;
+    /** Row 026-30: the daemon's exit, which ends the wait at once (`AdmissionWait.exit`). */
+    readonly exit?: AbortSignal | undefined;
   },
 ): Promise<number | null> {
   run.permits?.away();
