@@ -1,0 +1,37 @@
+=== plugin-0 vite=8.4.0 coverage=off
+Outstanding:
+  3 test files without a result: vitest: the Vitest instance failed to load modules and is recreated: Error: Cannot read properties of null (reading 'code'): test/m0.test.ts, test/m1.test.ts, test/m2.test.ts; `squeal retry test/m0.test.ts test/m1.test.ts test/m2.test.ts` runs each once
+Complexity: 0 functions over 20; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon, the 3 test files without a result one by one and 2 notes
+Revision: 0
+Known failures: 0; not current: 3 of 3 test files (3 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  3 test files without a result: vitest: the Vitest instance failed to load modules and is recreated: Error: Cannot read properties of null (reading 'code'): test/m0.test.ts, test/m1.test.ts, test/m2.test.ts; `squeal retry test/m0.test.ts test/m1.test.ts test/m2.test.ts` runs each once
+--- daemon log:
+2026-11-26T21:04:35.368Z [10296] squeal daemon: the Vitest instance failed to load modules and is recreated: Error: Cannot read properties of null (reading 'code')
+=== plugin-fix vite=8.4.0 coverage=on
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+Revision: 0
+Known failures: 0; all 3 test files current
+Affected checks: 21 passed (18 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.
+--- daemon log:
+=== plugin-fix vite=8.3.8 coverage=on
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+Revision: 0
+Known failures: 0; all 3 test files current
+Affected checks: 21 passed (18 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.
+--- daemon log:

@@ -1,0 +1,23 @@
+Squeal daemon spawned for ~/proj-float
+
+Revision: 0
+Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+=== float daemon log:
+Squeal daemon spawned for ~/proj-pin
+
+Revision: 0
+Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+=== pin daemon log:
+
+# The daemon logs, read afterwards (repro-daemon.sh's find missed them: they are in <project>/.git/squeal/logs/):
+== ~/proj-float/.git/squeal/logs/daemon-0f7b91b5e3ab4576.log   (vite 8.4.0)
+2026-11-26T20:59:36.545Z [7239] squeal daemon: vitest could not start: Failed to load custom CoverageProviderModule from ~/plugin-0/dist/coverage/provider.mjs; every check of this worktree is unknown until the config loads
+2026-11-26T20:59:37.266Z [7239] squeal daemon: serving ~/proj-float on ~/dr-float/squeal-0f7b91b5e3ab4576.sock
+2026-11-26T20:59:37.296Z [7239] squeal daemon: full integrity check: ok
+2026-11-26T21:00:01.323Z [7239] squeal daemon: daemon stopped: squeal stop
+== ~/proj-pin/.git/squeal/logs/daemon-f9c3a35eb8a12ed2.log   (vite 8.3.8)
+2026-11-26T21:00:04.379Z [7355] squeal daemon: serving ~/proj-pin on ~/dr-pin/squeal-f9c3a35eb8a12ed2.sock
+2026-11-26T21:00:04.402Z [7355] squeal daemon: full integrity check: ok
+2026-11-26T21:00:28.579Z [7355] squeal daemon: daemon stopped: squeal stop

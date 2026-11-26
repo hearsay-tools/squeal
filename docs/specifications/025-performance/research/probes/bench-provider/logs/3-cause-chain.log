@@ -1,0 +1,37 @@
+2026-11-26T21:01:50.797Z host pid 8640
+--- host depth 0
+Error: Failed to load custom CoverageProviderModule from ~/plugin-dbg/dist/coverage/provider.mjs
+    at resolveCoverageProviderModule (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/coverage._yXj5zeb.js:27:9)
+    at async getCoverageProvider (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:14941:25)
+    at async Vitest.initCoverageProvider (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:20843:28)
+    at async file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21037:5
+    at async Vitest.standalone (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21035:3)
+    at async #start (file://~/plugin-dbg/dist/cli/squeal.mjs:51107:11)
+    at async SizedVitestAdapter.open (file://~/plugin-dbg/dist/cli/squeal.mjs:51185:24)
+    at async createVitestAdapter (file://~/plugin-dbg/dist/cli/squeal.mjs:51802:3)
+    at async start2 (file://~/plugin-dbg/dist/cli/squeal.mjs:133092:15)
+    at async file://~/plugin-dbg/dist/cli/squeal.mjs:133929:14
+--- host depth 1
+Error: Cannot read properties of null (reading 'code')
+    at reviveInvokeError (file://~/proj-float/node_modules/.pnpm/vite@8.4.0/node_modules/vite/dist/node/module-runner.js:825:14)
+    at Object.invoke (file://~/proj-float/node_modules/.pnpm/vite@8.4.0/node_modules/vite/dist/node/module-runner.js:841:33)
+    at async ServerModuleRunner.getModuleInformation (file://~/proj-float/node_modules/.pnpm/vite@8.4.0/node_modules/vite/dist/node/module-runner.js:1525:7)
+    at async ServerModuleRunner.import (file://~/proj-float/node_modules/.pnpm/vite@8.4.0/node_modules/vite/dist/node/module-runner.js:1436:23)
+    at async resolveCoverageProviderModule (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/coverage._yXj5zeb.js:25:26)
+    at async getCoverageProvider (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:14941:25)
+    at async Vitest.initCoverageProvider (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:20843:28)
+    at async file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21037:5
+    at async Vitest.standalone (file://~/proj-float/node_modules/.pnpm/vitest@5.0.3_@vitest+coverage-v8@5.0.3_vite@8.4.0/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21035:3)
+    at async #start (file://~/plugin-dbg/dist/cli/squeal.mjs:51107:11)
+
+2026-11-26T21:01:50.848Z pid 8618
+--- depth 0
+Error: Failed to load custom CoverageProviderModule from ~/plugin-dbg/dist/coverage/provider.mjs
+    at #receive (file://~/plugin-dbg/dist/cli/squeal.mjs:71977:45)
+    at Socket.<anonymous> (file://~/plugin-dbg/dist/cli/squeal.mjs:71882:57)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:569:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:520:3)
+    at Readable.push (node:internal/streams/readable:400:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:194:23)
+

@@ -1,0 +1,5 @@
+patched
+["/@fs~/plugin-0/dist/coverage/provider.mjs",null,{"cached":false}]
+TypeError: Cannot read properties of null (reading 'code')
+    at loadAndTransform (file://~/proj-float/node_modules/.pnpm/vite@8.4.0/node_modules/vite/dist/node/chunks/node.js:19257:17)
+

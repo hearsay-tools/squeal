@@ -1,0 +1,12 @@
+=== plugin-0 vite=8.3.8 coverage=on
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 7 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+Revision: 0
+Known failures: 0; all 3 test files current
+Affected checks: 21 passed (18 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 7 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.
+--- daemon log:

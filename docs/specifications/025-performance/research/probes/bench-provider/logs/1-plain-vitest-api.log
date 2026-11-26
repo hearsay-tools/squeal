@@ -1,0 +1,11 @@
+-rw-rw-r-- 1 user user 8893 Nov 26 13:05 ~/plugin-0/dist/coverage/provider.mjs
+v24.22.1
+10.34.5
+=== float: 
+node v24.22.1 vitest 5.0.3 vite 8.4.0
+OK: ran 1 file(s); state errors: 0
+exit float: 0
+=== pin: 
+node v24.22.1 vitest 5.0.3 vite 8.3.8
+OK: ran 1 file(s); state errors: 0
+exit pin: 0
