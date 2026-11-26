@@ -12,6 +12,7 @@ import type { LaneSpec, RemoteStart } from "../runner-host/remote/daemon-lane.js
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { NodeTestProject, PolicyInputs } from "../types/policy.js";
 import type { RunnerAdapter } from "../types/runner.js";
+import { createContainerGuardRunner } from "./container-guard.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
@@ -103,6 +104,17 @@ function nodeTestRunner(
   project: NodeTestProject,
   options: NodeTestRunnersOptions,
 ): RecoveringRunner {
+  // Spec 027 D4.2 (review 0.1.643 B1): a container project never runs here or remotely.
+  if (project.container !== undefined) {
+    return createContainerGuardRunner({
+      runner: "node-test",
+      adapterVersion: NODE_TEST_ADAPTER_VERSION,
+      root: options.root,
+      project: { name: project.name, container: project.container },
+      traits: nodeTestTraits({ tierSize: options.tierSize }),
+      note: options.note,
+    });
+  }
   const adapterOptions: NodeTestAdapterOptions = {
     root: options.root,
     note: options.note,
