@@ -202,6 +202,32 @@ describe.each(JEST_MAJORS)("the Jest %i warm pool (spec 028 D7)", (major) => {
     });
   });
 
+  it("asks a transform's cache key again each batch, as a type checker needs", SLOW, async () => {
+    const root = worktree(major, {
+      "transform/side.js": `const fs = require("fs");
+const path = require("path");
+const side = () => fs.readFileSync(path.join(__dirname, "..", "data", "types.txt"), "utf8");
+module.exports = {
+  getCacheKey: (text, file) => file + text + side(),
+  process(text) {
+    if (side().includes("broken")) throw new Error("type error");
+    return { code: text };
+  },
+};
+`,
+      "data/types.txt": "ok\n",
+      "jest.config.js": CONFIG(`\n  transform: { "\\\\.js$": "<rootDir>/transform/side.js" },`),
+    });
+    const adapter = await open(root);
+    const first = await run(adapter, [MOCK]);
+    expect(outcomes(first.report)).toEqual({ "test/mock.test.js > mocked": "pass" });
+    writeFileSync(join(root, "data/types.txt"), "broken\n");
+    await adapter.invalidate([{ path: "data/types.txt", kind: "change" }]);
+    const second = await run(adapter, [MOCK]);
+    expect(only(second)).toBe(only(first));
+    expect(second.report.fileErrors.map((e) => e.testFile)).toEqual([MOCK]);
+  });
+
   it("replaces a worker above its memory limit after the batch", SLOW, async () => {
     const root = worktree(major);
     const adapter = await open(root, { ...PROJECT, warmMemoryLimitMb: 1 });

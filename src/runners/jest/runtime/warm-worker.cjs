@@ -22,14 +22,17 @@
  * what a test starts carries the run's marks while this process does not.
  *
  * A new resolver per batch, with Jest's resolver caches cleared as
- * `runJest` clears them: a changed `package.json` or a moved file resolves
- * as a fresh Jest would. An added or deleted file, or a config change,
+ * `runJest` clears them, and Jest's in-memory transforms forgotten: a
+ * changed `package.json` resolves, and a transform keyed on more than its
+ * file transforms, as a fresh Jest would. An added or deleted file, or a config change,
  * needs a new haste map: `warm.ts` starts a new worker then.
  *
  * Without its parent (the channel closes) it kills its own group at once,
  * so no worker outlives the runner that started it. Node built-ins only.
  */
 const fs = require("node:fs");
+const path = require("node:path");
+const { createRequire } = require("node:module");
 
 const RESET = Symbol.for("squeal.observeReset");
 
@@ -105,8 +108,44 @@ async function init(options) {
     watchman: false,
   });
   const { hasteFS, moduleMap } = await hasteMap.build();
-  context = { Runtime, config, hasteFS, moduleMap };
+  context = { Runtime, config, hasteFS, moduleMap, transforms: transformModules(config, options) };
   send({ type: "ready", pid: process.pid, rssBytes: rss() });
+}
+
+/**
+ * Every `@jest/transform` this Jest may run with: the test runner's, then `jest-runtime`'s and
+ * `@jest/core`'s. Each keeps, per config, the transforms of the process by path and mtime.
+ */
+function transformModules(config, options) {
+  const from = [
+    typeof config.runner === "string" ? config.runner : null,
+    path.join(options.runtimeDir, "package.json"),
+    path.join(options.coreDir, "package.json"),
+  ];
+  const found = new Set();
+  for (const file of from) {
+    if (file === null) continue;
+    try {
+      found.add(createRequire(file)("@jest/transform"));
+    } catch {
+      // not a dependency of that package
+    }
+  }
+  if (found.size === 0) throw new Error("no @jest/transform reachable from this Jest");
+  return [...found];
+}
+
+/**
+ * Forgets Jest's in-memory transforms before a batch. They are keyed by path and mtime, so a
+ * transform whose cache key reads other files (a type checker's `.d.ts`) would never run its
+ * key again for an unchanged test file. Each module now asks its transformer's cache key and
+ * Jest's disk cache again, as a new Jest process does.
+ */
+async function freshTransforms(transforms, config) {
+  for (const transform of transforms) {
+    const transformer = await transform.createScriptTransformer(config);
+    transformer._cache?.transformedFiles?.clear();
+  }
 }
 
 /** Sets the batch's own variables; the ones of the batch before go back to what they were. */
@@ -132,7 +171,8 @@ async function run(batch) {
     SQUEAL_JEST_EVENTS: batch.eventsFile,
     SQUEAL_JEST_COVERAGE_DIR: batch.coverageDir ?? "",
   });
-  const { Runtime, config, hasteFS, moduleMap } = context;
+  const { Runtime, config, hasteFS, moduleMap, transforms } = context;
+  await freshTransforms(transforms, config);
   const resolver = Runtime.createResolver(config, moduleMap);
   resolver.constructor.clearDefaultResolverCache?.();
   const testContext = { config, hasteFS, moduleMap, resolver };
