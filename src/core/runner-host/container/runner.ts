@@ -39,8 +39,11 @@ import { type ContainerRefusal, type ContainerState, checkImage, proveMount } fr
  * It reads consent before any Docker command, starts or reuses the managed
  * container, starts `squeal runner-host` in it over `docker exec -i`, and
  * admits nothing before the host's `rootStat` proves the live bind mount.
- * Before each batch and each run it checks the image: a rebuilt one closes
- * the host, removes the container, starts a new one and re-keys. A refusal
+ * Before each batch and each run it reads consent and the declared target
+ * again before any Docker command (review 0.1.644 B5): withdrawn consent
+ * ends the host and the container and runs nothing more; a changed target
+ * or a rebuilt image closes the host, removes the container, starts a new
+ * one and re-keys. A refusal
  * leaves the project's files unknown with one note and runs nothing on the
  * host. Its environments are keyed in the container's space (`key.ts`).
  */
@@ -55,9 +58,12 @@ export interface ContainerRunnerOptions {
   readonly worktreeId: string;
   readonly project: string;
   readonly targetName: string;
-  readonly target: ContainerTarget;
-  /** This machine's consent, read before each start; `null`: none, and no Docker command runs. */
+  /** The declared target, or how to read it live; `undefined`: no longer declared. */
+  readonly target: ContainerTarget | (() => ContainerTarget | undefined);
+  /** This machine's consent, read before each start and batch; `null`: none, and no Docker command runs. */
   readonly consent: () => ContainerConsent | null;
+  /** Why the target is not allowed here, for its note; default a short text. */
+  readonly unconsentedNote?: () => string;
   readonly paths: ContainerPaths;
   /** Squeal's CLI script, inside `paths.squealBundleDir`. */
   readonly squealCliPath: string;
@@ -79,6 +85,15 @@ interface Live {
   readonly container: ManagedContainer;
   readonly descriptor: ContainerKeyDescriptor;
   readonly core: ReturnType<typeof containerCore>;
+  /** The effective launch configuration it started with (`launchFingerprint`). */
+  readonly fingerprint: string;
+}
+
+/** Consent, the live target and its resolved network: what one start may use. */
+interface Admitted {
+  readonly consent: ContainerConsent;
+  readonly target: ContainerTarget;
+  readonly network: { readonly network?: string };
 }
 
 type Opened = { readonly ok: true; readonly live: Live } | (ContainerRefusal | Unconsented);
@@ -96,6 +111,18 @@ export function managedName(targetName: string, runner: string, project: string)
 /** The note topic of a container project's state. */
 export function containerTopic(runner: string, project: string): string {
   return `container:${runner}:${project}`;
+}
+
+/**
+ * Review 0.1.644 B5: the target's declared configuration and the consent's
+ * network and Compose project, which a live container must have started with.
+ */
+function launchFingerprint({ consent, target, network }: Admitted): string {
+  return JSON.stringify({
+    target,
+    network: network.network ?? null,
+    composeProject: consent.composeProject ?? null,
+  });
 }
 
 /** Opens a container adapter; a refusal is a state of it, never a rejection. */
@@ -136,7 +163,12 @@ export class ContainerAdapter implements RunnerAdapter {
   }
 
   async open(): Promise<void> {
-    this.#opened = await this.#start();
+    this.#settle(await this.#start());
+  }
+
+  /** Takes `opened` as the state, and tells its status and note when it changed. */
+  #settle(opened: Opened): void {
+    this.#opened = opened;
     const o = this.#options;
     o.status?.(this.#opened.ok ? "ready" : this.#opened.state);
     const text = this.#opened.ok ? "" : `${this.#opened.note} (in container ${o.targetName})`;
@@ -149,30 +181,42 @@ export class ContainerAdapter implements RunnerAdapter {
     this.#noted = text;
   }
 
-  async #start(): Promise<Opened> {
+  /** The live target. */
+  #target(): ContainerTarget | undefined {
+    const { target } = this.#options;
+    return typeof target === "function" ? target() : target;
+  }
+
+  /** Consent and the live target, read with no Docker command; refused, why. */
+  #admit(): Admitted | Unconsented {
     const o = this.#options;
+    const refused = (note: string): Unconsented => ({ ok: false, state: "unconsented", note });
     const consent = o.consent();
     if (consent === null) {
-      return {
-        ok: false,
-        state: "unconsented",
-        note: `container ${o.targetName}: not allowed on this machine`,
-      };
+      return refused(
+        o.unconsentedNote?.() ?? `container ${o.targetName}: not allowed on this machine`,
+      );
     }
-    const network = resolveContainerNetwork(o.target, consent);
-    if ("problem" in network) {
-      return {
-        ok: false,
-        state: "unconsented",
-        note: `container ${o.targetName}: ${network.problem}`,
-      };
+    const target = this.#target();
+    if (target === undefined) {
+      return refused(`container ${o.targetName}: no longer declared in squeal.config.json`);
     }
+    const network = resolveContainerNetwork(target, consent);
+    if ("problem" in network) return refused(`container ${o.targetName}: ${network.problem}`);
+    return { consent, target, network };
+  }
+
+  async #start(): Promise<Opened> {
+    const o = this.#options;
+    const admitted = this.#admit();
+    if ("ok" in admitted) return admitted;
+    const { consent, target, network } = admitted;
     const managed = {
       name: managedName(o.targetName, o.runner, o.project),
-      image: o.target.image,
+      image: target.image,
       ...network,
-      ...(o.target.workdir === undefined ? {} : { workdir: o.target.workdir }),
-      env: o.target.env,
+      ...(target.workdir === undefined ? {} : { workdir: target.workdir }),
+      env: target.env,
     };
     const ensured = await ensureContainer(o.worktreeId, managed, o.paths, {
       ...o.manager,
@@ -192,15 +236,15 @@ export class ContainerAdapter implements RunnerAdapter {
       const probe = await probeContainer(this.#cli, container.id);
       const services = await inspectServices(
         this.#cli,
-        o.target.dependencyServices,
+        target.dependencyServices,
         consent.composeProject,
       );
       descriptor = containerKeyDescriptor({
-        keyMode: o.target.keyMode,
+        keyMode: target.keyMode,
         image,
         probe,
-        dockerfileInputs: hashInputs(o.paths.worktreeRoot, o.target.dockerfileInputs),
-        targetEnv: o.target.env,
+        dockerfileInputs: hashInputs(o.paths.worktreeRoot, target.dockerfileInputs),
+        targetEnv: target.env,
         services,
       });
       core = containerCore(probe, o.version);
@@ -235,7 +279,8 @@ export class ContainerAdapter implements RunnerAdapter {
       await container.close().catch(() => {});
       return proof;
     }
-    return { ok: true, live: { proxy, container, descriptor, core } };
+    const fingerprint = launchFingerprint(admitted);
+    return { ok: true, live: { proxy, container, descriptor, core, fingerprint } };
   }
 
   readonly #defaultChannel = (container: ManagedContainer): HostChannel =>
@@ -246,20 +291,41 @@ export class ContainerAdapter implements RunnerAdapter {
       cli: this.#cli,
     });
 
-  /** D6.2: a rebuilt or removed image ends the host and the container; rebuilt starts again. */
-  async #rebuilt(): Promise<boolean> {
-    if (!this.#opened.ok) return false;
+  /**
+   * Review 0.1.644 B5 and D6.2, before each batch and run: consent and the
+   * live target are read before any Docker command. Withdrawn, the host and
+   * the container end and nothing more runs; a refusal retries the start; a
+   * changed launch configuration or a rebuilt or removed image replaces the
+   * container. Why the environment changed, or `null` when it did not.
+   */
+  async #reconcile(): Promise<string | null> {
+    const admitted = this.#admit();
+    const before = this.#noted;
+    if ("ok" in admitted) {
+      const was = this.#opened;
+      if (was.ok) await this.#teardown(was.live);
+      this.#settle(admitted);
+      return was.ok || this.#noted !== before ? "it is no longer allowed" : null;
+    }
+    if (!this.#opened.ok) {
+      // A refusal retries at each batch; a new state is a new environment.
+      await this.open();
+      return this.#opened.ok || this.#noted !== before ? "its container started" : null;
+    }
     const { live } = this.#opened;
-    const check = await checkImage(
-      this.#cli,
-      this.#options.target.image,
-      live.container.imageId,
-    ).catch(() => null);
-    if (check === null || ("changed" in check && !check.changed)) return false;
+    if (launchFingerprint(admitted) !== live.fingerprint) {
+      await this.#teardown(live);
+      await this.open();
+      return "its configuration changed and the container was replaced";
+    }
+    const check = await checkImage(this.#cli, admitted.target.image, live.container.imageId).catch(
+      () => null,
+    );
+    if (check === null || ("changed" in check && !check.changed)) return null;
     // A removed image: the new start refuses it as missing.
     await this.#teardown(live);
     await this.open();
-    return true;
+    return "its image was rebuilt and the container was replaced";
   }
 
   async #teardown(live: Live): Promise<void> {
@@ -273,23 +339,15 @@ export class ContainerAdapter implements RunnerAdapter {
   }
 
   async invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
-    if (!this.#opened.ok) {
-      // A refusal retries at each batch; a new state is a new environment.
-      const before = this.#noted;
-      await this.open();
-      const changed = this.#opened.ok || this.#owed || this.#noted !== before;
-      return changed ? this.#recreated() : { recreatedProjects: [] };
-    }
-    if (this.#owed || (await this.#rebuilt())) return this.#recreated();
-    return this.#opened.ok ? this.#opened.live.proxy.invalidate(paths) : this.#recreated();
+    if ((await this.#reconcile()) !== null || this.#owed) return this.#recreated();
+    return this.#opened.ok ? this.#opened.live.proxy.invalidate(paths) : { recreatedProjects: [] };
   }
 
   async recheck(): Promise<InvalidateResult> {
-    if (!this.#opened.ok) return { recreatedProjects: [] };
-    if (this.#owed || (await this.#rebuilt())) return this.#recreated();
+    if ((await this.#reconcile()) !== null || this.#owed) return this.#recreated();
     return this.#opened.ok
       ? ((await this.#opened.live.proxy.recheck?.()) ?? { recreatedProjects: [] })
-      : this.#recreated();
+      : { recreatedProjects: [] };
   }
 
   affected(changed: Parameters<RunnerAdapter["affected"]>[0]) {
@@ -336,13 +394,12 @@ export class ContainerAdapter implements RunnerAdapter {
 
   async run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
     const where = `in container ${this.#options.targetName}`;
-    if (this.#opened.ok && (await this.#rebuilt())) {
-      this.#owed = true;
-      return unavailableReport(
-        `${where}: its image was rebuilt; the container was replaced and the files are re-keyed before they run`,
-      );
-    }
+    const changed = await this.#reconcile();
     if (!this.#opened.ok) return unavailableReport(`${this.#opened.note} (${where})`);
+    if (changed !== null) {
+      this.#owed = true;
+      return unavailableReport(`${where}: ${changed}; the files are re-keyed before they run`);
+    }
     const { live } = this.#opened;
     // Review 0.1.644 B2: the run happened on the container's machine, which the scheduler stores it for.
     const report = tagReportCore(await live.proxy.run(testFiles, options), live.core);
