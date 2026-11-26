@@ -2192,8 +2192,12 @@ var ProcSource = class {
     if (text2 === null) return null;
     const listeners = [];
     for (const line of text2.split("\n")) {
-      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+-?\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
-      if (m !== null) listeners.push({ fileInode: Number(m[1]) });
+      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(\S.*?)\s+-?\d+\s+\*\s+\d+\b(?:.*?\bino:(\d+)\b)?/.exec(
+        line
+      );
+      if (m === null) continue;
+      if (m[2] !== void 0) listeners.push({ fileInode: Number(m[2]) });
+      else if (m[1]?.startsWith("/")) return null;
     }
     return listeners;
   }
@@ -3972,7 +3976,7 @@ var DEFAULT_POLICY = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [] }
+  remote: { allowed: true, needsRepository: [], runHere: [] }
 };
 
 // src/core/daemon/policy-node-test.ts
@@ -4308,9 +4312,10 @@ var commands = kept(
   (entry) => commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`
 );
 var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
+var runHere = kept("remote.runHere", (glob) => compiles([glob])?.problem ?? null);
 var REMOTE_SHAPE = {
   requires: { commands },
-  remote: { allowed: boolean3, needsRepository }
+  remote: { allowed: boolean3, needsRepository, runHere }
 };
 
 // src/core/daemon/policy-containers.ts

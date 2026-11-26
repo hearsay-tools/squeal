@@ -4595,7 +4595,7 @@ var DEFAULT_POLICY = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [] }
+  remote: { allowed: true, needsRepository: [], runHere: [] }
 };
 
 // src/core/daemon/config-file.ts
@@ -5013,9 +5013,10 @@ var commands = kept(
   (entry2) => commandName(entry2) ? null : `must be a command name such as "git", got ${JSON.stringify(entry2)}`
 );
 var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
+var runHere = kept("remote.runHere", (glob) => compiles([glob])?.problem ?? null);
 var REMOTE_SHAPE = {
   requires: { commands },
-  remote: { allowed: boolean3, needsRepository }
+  remote: { allowed: boolean3, needsRepository, runHere }
 };
 
 // src/core/daemon/policy-containers.ts
@@ -12724,7 +12725,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.646";
+  if (true) return "0.1.649";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

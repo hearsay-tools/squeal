@@ -910,8 +910,12 @@ var ProcSource = class {
     if (text === null) return null;
     const listeners = [];
     for (const line of text.split("\n")) {
-      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+-?\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
-      if (m !== null) listeners.push({ fileInode: Number(m[1]) });
+      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(\S.*?)\s+-?\d+\s+\*\s+\d+\b(?:.*?\bino:(\d+)\b)?/.exec(
+        line
+      );
+      if (m === null) continue;
+      if (m[2] !== void 0) listeners.push({ fileInode: Number(m[2]) });
+      else if (m[1]?.startsWith("/")) return null;
     }
     return listeners;
   }
