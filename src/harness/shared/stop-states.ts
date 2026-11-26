@@ -1,3 +1,4 @@
+import { changeMarker } from "../../core/store/store.js";
 import { statesMark } from "../../core/store/write-markers.js";
 import type { WorktreeId } from "../../core/types/common.js";
 import type { KnownState } from "../../core/types/state.js";
@@ -26,8 +27,14 @@ import type { KnownStateRepo, Store } from "../../core/types/store.js";
  *   snapshot. The hook writes no `known_states` row (only the daemon's state
  *   sink does), and a write it did make would move the marker in its own
  *   transaction, so a read after it reads again.
- * - A store without the triggers, or with no marker yet, gives `null`: every
- *   list reads in full, as before.
+ * - A store without the triggers, or with no marker yet (no daemon of
+ *   this release registered there; the latency test's store), falls back
+ *   to the connection's `PRAGMA data_version` (row 025-18), which moves when
+ *   any other connection commits: the daemon's state sink, or the daemon
+ *   writing this hook's sent batches. It does not move for this
+ *   connection's own writes, which never touch `known_states` but through
+ *   `upsertMany` and `removeMany` below, which drop the kept list. A store
+ *   not opened by `openStore` gives `null`: every list reads in full.
  *
  * Between the three reads the daemon can commit new states (a Stop waits up
  * to `stop.waitMs` and for the waiting entry's record): the marker then
@@ -53,7 +60,7 @@ export function keepStates(store: Store): void {
   const keeping: KnownStateRepo = {
     list: (worktreeId, files) => {
       if (files !== undefined) return repo.list(worktreeId, files);
-      const mark = statesMark(store, worktreeId);
+      const mark = markOf(store, worktreeId);
       if (mark !== null && kept?.worktreeId === worktreeId && kept.mark === mark) {
         return kept.states;
       }
@@ -73,4 +80,12 @@ export function keepStates(store: Store): void {
     },
   };
   (store as { knownStates: KnownStateRepo }).knownStates = keeping;
+}
+
+/** The trusted states marker, else the store's other-connection commit count (row 025-18). */
+function markOf(store: Store, worktreeId: WorktreeId): string | null {
+  const trusted = statesMark(store, worktreeId);
+  if (trusted !== null) return trusted;
+  const others = changeMarker(store)?.others;
+  return others === undefined ? null : `data_version ${others}`;
 }
