@@ -23,6 +23,7 @@ import type { DaemonLiveness, StatusSnapshot } from "../core/types/status.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
 import { timeoutText, waitAgainText } from "./no-verdict-lines.js";
+import { namedRemoteLines } from "./remote-outage-text.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import { askedLines } from "./status-wait-ask-lines.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
@@ -410,7 +411,12 @@ export function namedText(
           ...(wait.selection.base === undefined ? {} : { base: wait.selection.base }),
           ...(wait.locked === true ? { locked: true } : {}),
         })}\n`
-      : [`Revision: ${statusRevisionText(wait.result)}`, ...holdLines(wait.result.holds, command)]
+      : [
+          `Revision: ${statusRevisionText(wait.result)}`,
+          // Row 026-31 (gh-278): the remote outage that holds the selected files, as plain status.
+          ...namedRemoteLines(wait, command),
+          ...holdLines(wait.result.holds, command),
+        ]
           .map((line) => `${line}\n`)
           .join("");
   // Row 011-146 (C15): an older daemon's fallback is the first line.

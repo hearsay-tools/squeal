@@ -6,13 +6,16 @@ import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { NOT_RUN_BUDGET } from "../core/proof/verdict.js";
 import type { CommitSetup } from "../core/types/commit-ask.js";
-import type { AbsolutePath, RelativePath } from "../core/types/common.js";
+import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import type { Store } from "../core/types/store.js";
 import { daemonKeyed } from "./proof-green-rows.js";
 import { askGreen, type GreenAsk, type RunInput, readGreen } from "./proof-green-run.js";
 import { endOfRecords } from "./proof-run.js";
 import type { OpenSide, SideAnswer, SideFile } from "./proof-side.js";
+import { listingOutage, outageProofText, storeOutage } from "./remote-outage-text.js";
 import type { AtOptions } from "./status-at.js";
+import { idOf } from "./status-at-after.js";
 import { commitAllowlist, environmentOf } from "./status-at-call.js";
 import { type AtDaemons, type CommitDaemonInput, realDaemons } from "./status-at-daemons.js";
 import { keptAlive } from "./status-at-now-ask.js";
@@ -165,13 +168,49 @@ export async function withGreenDaemon<T>(
   };
   const value = await body(open);
   const refs = [...keyed.map((f) => f.ref), ...unlisted(input.files, keyed)];
-  for (const ref of refs) {
+  const blocked = refs.flatMap((ref): BlockedFile[] => {
     const file = keyed.find((f) => testFileId(f.ref) === testFileId(ref));
-    if (file === undefined) files.set(testFileId(ref), unknown(`no runner lists it at ${at}`));
-    else if ("notDetermined" in file.at)
-      files.set(testFileId(ref), unknown(file.at.notDetermined.detail));
-  }
+    if (file === undefined) return [{ ref, why: `no runner lists it at ${at}`, listing: true }];
+    if ("notDetermined" in file.at)
+      return [{ ref, why: file.at.notDetermined.detail, listing: false }];
+    return [];
+  });
+  const id = idOf(tree);
+  const texts =
+    blocked.length === 0
+      ? []
+      : await withStores(commonDir, async (main) => blockedTexts(main, id, blocked));
+  blocked.forEach(({ ref }, i) => {
+    files.set(testFileId(ref), unknown(texts[i] ?? ""));
+  });
   return answer(refs, ran, value);
+}
+
+/** A named file the commit daemon does not list (`listing`), or could not key, and why. */
+export interface BlockedFile {
+  readonly ref: TestFileRef;
+  readonly why: string;
+  readonly listing: boolean;
+}
+
+/**
+ * Row 026-31 (gh-278): each blocked file's unknown reason, with the remote
+ * outage the commit daemon (`id`, in `main`) recorded when it explains the
+ * side: one that keeps its files from being listed for a file it does not
+ * list, any for one it could not key. Never a pass: the side stays unknown.
+ */
+export function blockedTexts(
+  main: Store | null,
+  id: WorktreeId,
+  blocked: readonly BlockedFile[],
+): string[] {
+  const paths = blocked.map((b) => b.ref.path);
+  const listing = main === null ? null : listingOutage(main, id, main.testFileKeys.list(id), paths);
+  const any = main === null ? null : storeOutage(main, id, paths);
+  return blocked.map((b) => {
+    const outage = b.listing ? listing : any;
+    return outage === null ? b.why : `${b.why}: ${outageProofText(outage)}`;
+  });
 }
 
 /**

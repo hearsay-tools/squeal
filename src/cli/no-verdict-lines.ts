@@ -4,6 +4,7 @@ import { lockedText } from "../core/status/outstanding-text.js";
 import { shellWord } from "../core/text.js";
 import type { StatusSnapshot } from "../core/types/status.js";
 import { coverText, filesCounted, reasonGroups } from "./named-file-lines.js";
+import { outageText, type RemoteOutage, retryText, waitOutage } from "./remote-outage-text.js";
 import type { SyncState } from "./status-sync.js";
 import type { EndedNamed } from "./status-wait-lines.js";
 import { type NoVerdictReason, noVerdictText, type SelectionResult } from "./verdict.js";
@@ -27,12 +28,15 @@ import { type NoVerdictReason, noVerdictText, type SelectionResult } from "./ver
 export function timeoutText(wait: EndedNamed, result: SelectionResult, command: string): string {
   const { verdict } = wait;
   const reason = result.result === "none" ? result.reason : null;
+  // Row 026-31 (gh-278): a recorded remote outage that holds the selected files, named beside.
+  const outage = waitOutage(wait);
   if (reason === "lapsed") {
     const why =
       wait.locked === true
         ? lockedText(wait.result.daemon)
         : "the daemon's heartbeat had lapsed at the last read";
-    return `${why}; results are as of revision ${verdict.revision}`;
+    const remote = outage === null ? "" : `; ${outageNamed(wait, outage, command)}`;
+    return `${why}; results are as of revision ${verdict.revision}${remote}`;
   }
   const paused = new Set((wait.leftForPause ?? []).map(testFileId));
   const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
@@ -52,14 +56,27 @@ export function timeoutText(wait: EndedNamed, result: SelectionResult, command: 
   if (reason === "unlisted") {
     const listed = wait.result.refinedRevision;
     const cover = coverText(holding, listed != null && listed < verdict.revision ? listed : null);
-    const why = unlistedText(wait.result, verdict.revision, cover === null ? null : these);
+    const why =
+      outage === null
+        ? unlistedText(wait.result, verdict.revision, cover === null ? null : these)
+        : `revision ${verdict.revision} is not listed: ${outageText(outage)}; it is listed once the remote is ready`;
     const groups = reasonGroups(holding, command, wait.selection.base);
     const said = cover === null ? why : `${cover}; ${why}`;
     return groups === "" ? said : `${said}: ${groups}`;
   }
   const groups = reasonGroups(holding, command, wait.selection.base);
   const why = noVerdictText(verdict);
-  return why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
+  const said = why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
+  return outage === null ? said : `${said}; ${outageNamed(wait, outage, command)}`;
+}
+
+/** The outage and its step: `retry` once the remote is ready, or the listing when none is listed. */
+function outageNamed(wait: EndedNamed, outage: RemoteOutage, command: string): string {
+  const step =
+    wait.result.testFilesListed === false
+      ? "they are listed once the remote is ready"
+      : `once the remote is ready, ${retryText(command, namedPaths(wait))}`;
+  return `${outageText(outage)}; ${step}`;
 }
 
 /**
@@ -143,13 +160,16 @@ export function waitAgainText(wait: EndedNamed, result: SelectionResult, command
  */
 export function waitAgainCommand(wait: EndedNamed, command: string): string {
   const ms = wait.snapshot === true ? WAIT_AGAIN_MS : (wait.timeoutMs ?? WAIT_AGAIN_MS);
-  const named = wait.selection.paths.map((p) => p.path);
-  const paths =
-    named.length > PATHS_IN_COMMAND
-      ? "<same paths>"
-      : named
-          .map((p) => shellWord(p.startsWith("/") ? p : fromBase(wait.selection.base, p)))
-          .join(" ");
   const checks = (wait.focus?.texts ?? []).map((t) => ` --check ${shellWord(t)}`).join("");
-  return `${command} status --wait ${ms} ${paths}${checks}`;
+  return `${command} status --wait ${ms} ${namedPaths(wait)}${checks}`;
+}
+
+/** The wait's paths from the directory they were given in, `<same paths>` past `PATHS_IN_COMMAND`. */
+export function namedPaths(wait: EndedNamed): string {
+  const named = wait.selection.paths.map((p) => p.path);
+  return named.length > PATHS_IN_COMMAND
+    ? "<same paths>"
+    : named
+        .map((p) => shellWord(p.startsWith("/") ? p : fromBase(wait.selection.base, p)))
+        .join(" ");
 }

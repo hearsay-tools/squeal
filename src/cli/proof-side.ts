@@ -10,6 +10,7 @@ import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/commo
 import type { TestFileRef } from "../core/types/keys.js";
 import type { ResultRecord } from "../core/types/store-records.js";
 import { endOfRecords, forcedReason, runFiles } from "./proof-run.js";
+import { sideOutageText } from "./remote-outage-text.js";
 import { needsOf } from "./status-at-run-select.js";
 
 /*
@@ -204,7 +205,8 @@ export async function withSide<T>(
         : keyedRefs.some((r) => testFileId(r) === id)
           ? "not run (not needed)"
           : `no runner lists it at ${side.code.slice(0, 9)}`;
-    files.set(id, unknown(why));
+    // Row 026-31 (gh-278): a detail that records a remote outage names its policy and recovery.
+    files.set(id, unknown(sideOutageText(why)));
   }
   const checkoutMs = Math.round(performance.now() - started);
   return { files, refs, ran, changed, checkoutMs, value };

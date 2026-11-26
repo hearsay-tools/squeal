@@ -10,6 +10,7 @@ import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { Policy } from "../core/types/policy.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
+import { listingOutage, outageText, recoveryText } from "./remote-outage-text.js";
 
 /** A path `retry` found no key for: `rel` from the root, `shown` as the reply names it, `given` as the command did. */
 export interface NotKeyedPath {
@@ -46,6 +47,19 @@ export function notKeyed(
   if (why?.kind === "missing") {
     return { text: `Not retried: ${shown} does not exist in this worktree.` };
   }
+  // Row 026-31 (gh-278): a recorded remote outage that keeps the worktree's files from being listed.
+  const outage =
+    rel === null || why === null || why.kind === "unlisted-name"
+      ? null
+      : listingOutage(store, worktreeId, keys, [rel]);
+  if (outage !== null) {
+    return {
+      unlisted: true,
+      text:
+        `Not listed yet: ${shown} has no key because ${outageText(outage)}, so it has nothing to retry; ` +
+        `${recoveryText("squeal", shellWord(given), false)}.`,
+    };
+  }
   if (why?.kind === "unlisted") {
     return {
       unlisted: true,
@@ -61,8 +75,9 @@ export function notKeyed(
 /**
  * `missing`, no file at `rel`; `unlisted`, a file that may be a test file
  * and that no listed revision holds yet, with the clause naming the
- * revision; `other`, a file the daemon listed and did not key, or one no
- * runner built here can list. A file is new to the listing when it changed
+ * revision; `other`, a file the daemon listed and did not key;
+ * `unlisted-name`, one no runner built here can list (row 026-31: no
+ * remote outage explains it). A file is new to the listing when it changed
  * (its ctime) after the newest listed revision was recorded and after the
  * daemon that listed it started; with neither time known it reads as listed,
  * as before this row.
@@ -74,10 +89,12 @@ function unkeyedPath(
   rel: string,
   keys: readonly TestFileKeyRecord[],
   policy: Policy = readPolicy(root),
-): { readonly kind: "missing" | "other" } | { readonly kind: "unlisted"; readonly clause: string } {
+):
+  | { readonly kind: "missing" | "other" | "unlisted-name" }
+  | { readonly kind: "unlisted"; readonly clause: string } {
   const stat = statSync(join(root, rel), { throwIfNoEntry: false });
   if (stat === undefined) return { kind: "missing" };
-  if (!stat.isFile() || !mayList(root, rel, policy)) return { kind: "other" };
+  if (!stat.isFile() || !mayList(root, rel, policy)) return { kind: "unlisted-name" };
   const header = readHeader(store, worktreeId, undefined, keys);
   if (header.testFilesListed !== true) {
     return { kind: "unlisted", clause: "the daemon has not listed this worktree's test files yet" };
@@ -114,7 +131,8 @@ export function notRunTestFile(
   policy: Policy = readPolicy(root),
 ): boolean {
   if (!testFileName(root, rel, policy)) return false;
-  return unkeyedPath(store, worktreeId, root, rel, keys, policy).kind === "other";
+  const { kind } = unkeyedPath(store, worktreeId, root, rel, keys, policy);
+  return kind === "other" || kind === "unlisted-name";
 }
 
 /**
