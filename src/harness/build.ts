@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { type BuildOptions, build, type Metafile } from "esbuild";
+import { builtinsPlugin } from "./builtins.js";
 
 /*
  * Builds one harness plugin (spec 001 D9, spec 002 D5): every hook entry point
@@ -190,9 +191,12 @@ export function bundleOptions(
       __SQUEAL_NODE_FLOOR__: JSON.stringify(nodeFloor()),
     },
     // CommonJS dependencies (enhanced-resolve) require Node builtins; ESM output has no require.
+    // Read through `process.getBuiltinModule`, as every builtin is (row 025-16).
     banner: {
-      js: 'import { createRequire as __squealCreateRequire } from "node:module";\nconst require = __squealCreateRequire(import.meta.url);',
+      js: 'const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);',
     },
+    // Row 025-16: no bundle imports a builtin through the ESM facade.
+    plugins: [builtinsPlugin()],
     // Vitest and @parcel/watcher are resolved from the project at run time (B2); this keeps a
     // type-only or stray reference from pulling them in.
     external: ["vitest", "vitest/*", "@parcel/watcher"],
