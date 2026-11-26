@@ -1,0 +1,198 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { JestProject } from "../../../src/core/types/policy-jest.js";
+import type { RunnerEnvironment } from "../../../src/core/types/runner.js";
+import { createJestAdapter } from "../../../src/runners/jest/adapter.js";
+import {
+  JEST_UNAVAILABLE,
+  jestEnvironment,
+  readJestProject,
+} from "../../../src/runners/jest/environment.js";
+import { resolveJest } from "../../../src/runners/jest/resolve.js";
+import { JEST_ADAPTER_VERSION } from "../../../src/runners/jest/version.js";
+import { RECORDER_VERSION } from "../../../src/runners/observe/runtime.js";
+import { installJest, JEST_MAJORS, type JestMajor } from "../../helpers/jest-env.js";
+
+/*
+ * Spec 028 D2.3: a Jest project's environment is the same in two worktrees
+ * with the same files and packages, moves with its config, packages, env
+ * and arguments, drops what changes per run, and is honestly unavailable
+ * without a Jest to drive. Real Jest 29.7.0 and 30.5.2.
+ */
+
+const PROJECT: JestProject = {
+  name: "app",
+  config: "jest.config.js",
+  include: [],
+  exclude: [],
+  args: [],
+  env: {},
+};
+const SOURCE: NodeJS.ProcessEnv = { PATH: process.env.PATH, HOME: process.env.HOME };
+
+const CONFIG = (extra = "") => `module.exports = {
+  testEnvironment: "node",
+  testMatch: ["<rootDir>/test/**/*.test.js"],
+  setupFiles: ["<rootDir>/setup/env.js"],${extra}
+};
+`;
+
+const FILES: Readonly<Record<string, string>> = {
+  "package.json": `{ "name": "app", "private": true }\n`,
+  "jest.config.js": CONFIG(),
+  "setup/env.js": "globalThis.ready = true;\n",
+  "tsconfig.json": `{ "extends": "./tsconfig.base.json" }\n`,
+  "tsconfig.base.json": `{ "compilerOptions": { "strict": true } }\n`,
+  "src/sum.js": "exports.sum = (a, b) => a + b;\n",
+  "test/sum.test.js": `const { sum } = require("../src/sum");\ntest("adds", () => expect(sum(1, 2)).toBe(3));\n`,
+};
+
+const scratch = realpathSync(mkdtempSync(join(tmpdir(), "squeal-jest-environment-")));
+afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+let made = 0;
+
+/** A worktree of `FILES` and `extra`, with the installed Jest linked in unless `jest` is false. */
+function worktree(major: JestMajor, extra: Record<string, string> = {}, jest = true): AbsolutePath {
+  const root = join(scratch, `tree-${made++}`);
+  for (const [path, text] of Object.entries({ ...FILES, ...extra })) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
+  mkdirSync(join(root, "node_modules"), { recursive: true });
+  if (jest) {
+    const installed = realpathSync(join(installJest(major), "node_modules/jest"));
+    symlinkSync(installed, join(root, "node_modules/jest"));
+  }
+  return root as AbsolutePath;
+}
+
+async function environmentOf(
+  root: AbsolutePath,
+  project: JestProject = PROJECT,
+  source: NodeJS.ProcessEnv = SOURCE,
+  observing = true,
+): Promise<RunnerEnvironment> {
+  const resolution = resolveJest(project.name, root, root);
+  if (!resolution.ok) throw new Error(resolution.note);
+  const read = await readJestProject(root, project, resolution.install, source);
+  if (!read.ok) throw new Error(read.error);
+  return jestEnvironment({
+    root,
+    project,
+    install: resolution.install,
+    read,
+    source,
+    adapterVersion: JEST_ADAPTER_VERSION,
+    observing,
+  });
+}
+
+const SLOW = { timeout: 240_000 };
+
+describe.each(JEST_MAJORS)("the Jest %i environment (spec 028 D2.3)", (major) => {
+  it("is the same in two worktrees at different paths", SLOW, async () => {
+    const a = await environmentOf(worktree(major));
+    const b = await environmentOf(worktree(major));
+    expect(b).toEqual(a);
+    expect(a.runnerVersion).toMatch(new RegExp(`^${major}\\.`));
+    expect(a.resolvedConfig).not.toContain(scratch);
+    expect(a.resolvedConfig).toContain("<worktree>/setup/env.js");
+    expect(a.observedLoads).toBe(true);
+  });
+
+  it(
+    "watches the config chain: config, setup file, package.json, tsconfig and its extends",
+    SLOW,
+    async () => {
+      const env = await environmentOf(worktree(major));
+      expect(env.files).toEqual(
+        expect.arrayContaining([
+          "jest.config.js",
+          "setup/env.js",
+          "package.json",
+          "tsconfig.json",
+          "tsconfig.base.json",
+          "babel.config.js",
+          ".babelrc",
+        ]),
+      );
+      expect(env.files.some((f) => f.includes("node_modules"))).toBe(false);
+    },
+  );
+
+  it("drops what changes per run: cache directory, workers, seed", SLOW, async () => {
+    const plain = await environmentOf(worktree(major));
+    const volatile = await environmentOf(
+      worktree(major, {
+        "jest.config.js": CONFIG(`\n  cacheDirectory: "/tmp/elsewhere", maxWorkers: 3, seed: 7,`),
+      }),
+    );
+    expect(volatile.resolvedConfig).toBe(plain.resolvedConfig);
+    for (const key of ['"cacheDirectory"', '"maxWorkers"', '"seed"', '"id"']) {
+      expect(plain.resolvedConfig).not.toContain(key);
+    }
+  });
+
+  it(
+    "moves with the config, a package version, the args, the env and the recorder",
+    SLOW,
+    async () => {
+      const root = worktree(major);
+      const base = (await environmentOf(root)).resolvedConfig;
+      const typescript = `{ "name": "typescript", "version": "5.9.0" }\n`;
+      const changed = [
+        await environmentOf(
+          worktree(major, { "jest.config.js": CONFIG("\n  testTimeout: 9000,") }),
+        ),
+        await environmentOf(
+          worktree(major, { "node_modules/typescript/package.json": typescript }),
+        ),
+        await environmentOf(root, { ...PROJECT, args: ["--silent"] }),
+        await environmentOf(root, { ...PROJECT, env: { DB: "db-{worktreeSlot}" } }),
+        await environmentOf(root, PROJECT, { ...SOURCE, TZ: "Asia/Tokyo" }),
+        await environmentOf(root, PROJECT, { ...SOURCE, NODE_ENV: "production" }),
+        await environmentOf(root, PROJECT, SOURCE, false),
+      ].map((e) => e.resolvedConfig);
+      for (const config of changed) expect(config).not.toBe(base);
+      expect(new Set(changed).size).toBe(changed.length);
+      // Unexpanded: the template keys as written, never one slot's value.
+      expect(changed[3]).toContain("db-{worktreeSlot}");
+      expect(base).toContain(`"recorder":"${RECORDER_VERSION}"`);
+      expect(base).toContain(`"NODE_ENV":"test"`);
+    },
+  );
+
+  it(
+    "is unavailable, with no test files and crashed runs, when the worktree has no Jest",
+    SLOW,
+    async () => {
+      const notes: string[] = [];
+      const root = worktree(major, {}, false);
+      const adapter = await createJestAdapter(PROJECT, { root, note: (text) => notes.push(text) });
+      const [env] = await adapter.environment();
+      expect(env?.runnerVersion).toBe(JEST_UNAVAILABLE);
+      expect(env?.resolvedConfig).toContain('"state":"unavailable"');
+      expect(await adapter.testFiles()).toEqual([]);
+      expect(notes).toEqual([expect.stringMatching(/^jest project "app": .*no jest package/)]);
+      const report = await adapter.run([{ project: "app", path: "test/sum.test.js" }], {
+        runId: "r",
+        logDir: join(root, ".logs") as AbsolutePath,
+        timeoutMs: 60_000,
+      });
+      expect(report).toMatchObject({ end: "crashed", completedFiles: [] });
+      expect(report.failure).toMatch(/no jest package/);
+    },
+  );
+
+  it("is unavailable for a Jest outside 29 and 30", SLOW, async () => {
+    const old = `{ "name": "jest", "version": "28.1.3", "bin": "bin/jest.js" }\n`;
+    const root = worktree(major, { "node_modules/jest/package.json": old }, false);
+    const adapter = await createJestAdapter(PROJECT, { root });
+    const [env] = await adapter.environment();
+    expect(env?.runnerVersion).toBe(JEST_UNAVAILABLE);
+    expect(env?.resolvedConfig).toMatch(/28\.1\.3.*outside the supported/);
+  });
+});

@@ -1,9 +1,11 @@
+import { jestTraits } from "../../runners/jest/traits.js";
 import { nodeTestTraits } from "../../runners/node-test/traits.js";
 import { pytestTraits } from "../../runners/pytest/traits.js";
 import { vitestTraits } from "../../runners/vitest/traits.js";
 import type { CoverageRun } from "../code/coverage/types.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { PytestProject } from "../types/policy.js";
+import type { JestProject } from "../types/policy-jest.js";
 import type {
   AffectedTestFiles,
   EnumeratedCheck,
@@ -358,7 +360,7 @@ class HostProxy implements RunnerAdapter {
  * Spec 021 D7 (row 011-329): a proxy's traits, its runner kind's over the
  * values the host sent last, one choice per kind. node:test's and pytest's
  * width is the policy's `tierSize` the proxy sends (row 021-12), pytest's
- * slot its project's batch.
+ * and Jest's slot its project's batch.
  */
 function hostTraits(options: HostProxyOptions, values: () => HostValues): RunnerTraits {
   const tierSize = () => options.policy().tierSize;
@@ -373,6 +375,10 @@ function hostTraits(options: HostProxyOptions, values: () => HostValues): Runner
     case "pytest": {
       const project = options.options.process?.project as PytestProject | undefined;
       return pytestTraits({ tierSize, batchSize: () => project?.batchSize });
+    }
+    case "jest": {
+      const project = options.options.process?.project as JestProject | undefined;
+      return jestTraits({ tierSize, batchSize: () => project?.batchSize });
     }
   }
 }

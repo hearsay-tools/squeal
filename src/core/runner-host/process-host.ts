@@ -1,8 +1,10 @@
+import type { JestAdapterOptions } from "../../runners/jest/adapter.js";
 import type { NodeTestAdapterOptions } from "../../runners/node-test/adapter.js";
 import type { PytestAdapterOptions } from "../../runners/pytest/adapter.js";
 import type { CoverageRun } from "../code/coverage/types.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { NodeTestProject, PytestProject } from "../types/policy.js";
+import type { JestProject } from "../types/policy-jest.js";
 import type { RunnerAdapter } from "../types/runner.js";
 import { type RunnerHostLaunch, spawnRunnerHost } from "./channel.js";
 import type { HostAdapterOptions, HostPolicy, HostRunner } from "./protocol.js";
@@ -92,6 +94,41 @@ export function createHostedPytest(
     },
     policy: () => ({
       ...NO_VITEST_POLICY,
+      ...(options.concurrency === undefined ? {} : { tierSize: options.concurrency() }),
+    }),
+    ...(options.note === undefined ? {} : { note: options.note }),
+  });
+}
+
+/**
+ * What a hosted Jest adapter takes (spec 028 D6): the host reads the files
+ * per batch from the project's `batchSize`, and its runs inherit the host's
+ * environment (`ProcessHost.env`).
+ */
+export type HostedJestOptions = Omit<JestAdapterOptions, "batchSize" | "source">;
+
+/**
+ * A Jest adapter for `project` in a runner host. Policy
+ * `observe.runtimeInputs` and `runner.tierSize` go as the policy before each
+ * request.
+ */
+export function createHostedJest(
+  host: ProcessHost,
+  project: JestProject,
+  options: HostedJestOptions,
+): Promise<RunnerAdapter> {
+  return hosted(host, "jest", options.root, {
+    options: {
+      childEnv: options.childEnv ?? {},
+      process: {
+        project,
+        ...(options.tempDir === undefined ? {} : { tempDir: options.tempDir }),
+        ...(options.cacheDir === undefined ? {} : { cacheDir: options.cacheDir }),
+      },
+    },
+    policy: () => ({
+      ...NO_VITEST_POLICY,
+      observe: options.observe?.() ?? true,
       ...(options.concurrency === undefined ? {} : { tierSize: options.concurrency() }),
     }),
     ...(options.note === undefined ? {} : { note: options.note }),

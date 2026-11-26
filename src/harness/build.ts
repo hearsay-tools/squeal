@@ -65,6 +65,13 @@ export const CI_RUNTIME = [
  * the code counter share (row 016-36).
  */
 export const PYTEST_RUNTIME = "src/runners/pytest/runtime";
+
+/**
+ * Spec 028 D3, D5 (row 028-05): Jest's streaming reporter and observing
+ * runtime, dependency-free `.cjs` files Jest loads by path, which the
+ * bundled CLI finds at `<plugin>/dist/jest/` (`jestRuntimeDir`).
+ */
+export const JEST_RUNTIME = "src/runners/jest/runtime";
 export const PYTEST_GRAMMAR = "src/runners/python/tree-sitter-python.wasm";
 export const TREE_SITTER_RUNTIME = "node_modules/web-tree-sitter/web-tree-sitter.wasm";
 
@@ -272,6 +279,18 @@ export function copyCoverageRuntime(
   for (const file of files) copyFileSync(join(from, file), join(outdir, "coverage", file));
 }
 
+/** Copies the `.cjs` files of `from`, by default `JEST_RUNTIME`, into `<outdir>/jest/`, replaced as a whole. */
+export function copyJestRuntime(
+  outdir: string,
+  from: string = join(REPO_ROOT, JEST_RUNTIME),
+): void {
+  const files = existsSync(from) ? readdirSync(from).filter((f) => f.endsWith(".cjs")) : [];
+  if (files.length === 0) return;
+  rmSync(join(outdir, "jest"), { recursive: true, force: true });
+  mkdirSync(join(outdir, "jest"), { recursive: true });
+  for (const file of files) copyFileSync(join(from, file), join(outdir, "jest", file));
+}
+
 /**
  * Copies the `.py` files of `runtime` (never its `__pycache__`) and the two
  * `.wasm` files into `<outdir>/pytest/`, replaced as a whole. Throws when a
@@ -309,8 +328,8 @@ export function copyCodeGrammar(
 }
 
 /**
- * What `dist/` holds, built into `outdir`: the bundles, the node:test and
- * pytest runtimes, the code counter's grammar, the recorder and the coverage
+ * What `dist/` holds, built into `outdir`: the bundles, the node:test,
+ * pytest and Jest runtimes, the code counter's grammar, the recorder and the coverage
  * provider. Returns the
  * bundles' metafile, whose inputs a test that builds reports as read
  * (011-141).
@@ -326,6 +345,7 @@ export async function buildDist(
   copyCiRuntime(outdir);
   copyCoverageRuntime(outdir);
   copyPytestRuntime(outdir);
+  copyJestRuntime(outdir);
   copyCodeGrammar(outdir);
   return metafile;
 }
