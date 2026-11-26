@@ -13,6 +13,7 @@ import {
 import {
   type AdmitAnswer,
   type AdmitAsk,
+  admitRun,
   cancelledFirst,
   createHostAdmission,
   type HostAdmission,
@@ -20,6 +21,8 @@ import {
   remoteAdmission,
   UNGRANTED,
 } from "../../../src/core/runner-host/remote/admission.js";
+import type { RunOptions } from "../../../src/core/types/runner.js";
+import { nodeTestTraits } from "../../../src/runners/node-test/traits.js";
 
 /*
  * Spec 021 D18, last bullet (row 021-21): a remote runner host admits the
@@ -412,5 +415,115 @@ describe("a wait the daemon's exit ends (row 026-30)", () => {
       { want: 4, least: 1 },
       { want: 0, least: 0 },
     ]);
+  });
+});
+
+/*
+ * Row 026-33 (#292): a 4-CPU remote machine, 3 slots, ceiling 3. A 4-file
+ * node:test tier (`runner.tierSize` 4) asked its fewest workers, 4, above
+ * the slots, and every remote tier asked as a background one: an edit's
+ * tier waited behind the machine's background ceiling, or forever. Spec 021
+ * D18: edit tiers, named waits and checkpoints stay outside that ceiling.
+ */
+describe("a remote tier on a 4-CPU machine (row 026-33, #292)", () => {
+  /** The 4-CPU machine's admission over a pool in `dir`, its host at `machine`. */
+  function smallMachine(machine: HostCpu): HostAdmission {
+    const made = createHostAdmission((log) =>
+      createPermitPool({
+        dir,
+        owner: { pid: process.pid, worktreeId: "runner-host:/remote/tree" },
+        hostSlots: 3,
+        cpus: 4,
+        cores: tree,
+        host: machine,
+        log,
+      }),
+    );
+    closing.push(made);
+    return made;
+  }
+
+  const FILES = ["a", "b", "c", "d"].map((name) => ({
+    project: "",
+    path: `test/${name}.test.mjs`,
+  }));
+  const nodeTest = nodeTestTraits({ tierSize: () => 4 });
+  const runOf = (extra: Partial<RunOptions> = {}): RunOptions => ({
+    runId: "r",
+    logDir: join(root, "logs"),
+    timeoutMs: null,
+    ...extra,
+  });
+
+  /** `admitRun` against `remote`, each ask kept; `stop` aborts the run's wait after a refused look. */
+  function admitting(remote: HostAdmission, asks: AdmitAsk[], stop?: AbortController) {
+    return async (ask: AdmitAsk): Promise<AdmitAnswer> => {
+      asks.push(ask);
+      const answer = remote.admit(ask);
+      if (answer.grant === 0) stop?.abort();
+      return answer;
+    };
+  }
+
+  test("an edit's tier is admitted at once above the ceiling while a background tier runs, at most 3 wide", async () => {
+    backgroundRunsThere();
+    const remote = smallMachine(busy(4));
+    const asks: AdmitAsk[] = [];
+    const logs: string[] = [];
+    const grant = await admitRun(admitting(remote, asks), FILES, runOf(), {
+      tierWidth: (file, at) => nodeTest.tierWidth(file, at),
+      everyMs: 5,
+      log: (line) => logs.push(line),
+    });
+    // The background tier there holds one of the 3 slots: the edit's tier gets the other 2.
+    expect(grant).toBe(2);
+    expect(asks).toEqual([{ want: 4, least: 1, kind: "checkpoint" }]);
+    expect(logs).toEqual([]);
+  });
+
+  test("a background tier still waits behind the ceiling, and asks as one", async () => {
+    backgroundRunsThere();
+    const remote = smallMachine(busy(4));
+    const asks: AdmitAsk[] = [];
+    const logs: string[] = [];
+    const stop = new AbortController();
+    const grant = await admitRun(
+      admitting(remote, asks, stop),
+      FILES,
+      runOf({ background: true, signal: stop.signal }),
+      {
+        tierWidth: (file, at) => nodeTest.tierWidth(file, at),
+        everyMs: 5,
+        log: (line) => logs.push(line),
+      },
+    );
+    expect(grant).toBeNull();
+    expect(asks).toEqual([{ want: 4, least: 1 }]);
+    expect(logs).toEqual([
+      "on its machine, the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)",
+    ]);
+  });
+
+  test("a tier of least 4 is refused by the ceiling with its line, then granted 3 once no background tier runs", () => {
+    backgroundRunsThere();
+    const remote = smallMachine(busy(4));
+    expect(remote.admit({ want: 4, least: 4 })).toEqual({
+      grant: 0,
+      refusal:
+        "the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)",
+    });
+    clearMark(dir, "there");
+    expect(remote.admit({ want: 4, least: 4 })).toEqual({ grant: 3 });
+  });
+
+  test("a checkpoint ask is admitted above the ceiling to the permits the other tier leaves; an ask without a kind is a background one", () => {
+    backgroundRunsThere();
+    const remote = smallMachine(busy(4));
+    expect(remote.admit({ want: 4, least: 1 }).grant).toBe(0);
+    expect(remote.admit({ want: 4, least: 1, kind: "checkpoint" })).toEqual({ grant: 2 });
+    // A checkpoint of least 3 waits while the background tier holds one of the 3, never forever.
+    expect(remote.admit({ want: 4, least: 4, kind: "checkpoint" })).toEqual({ grant: 0 });
+    clearMark(dir, "there");
+    expect(remote.admit({ want: 4, least: 4, kind: "checkpoint" })).toEqual({ grant: 3 });
   });
 });
