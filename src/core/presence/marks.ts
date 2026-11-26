@@ -7,6 +7,7 @@ import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { WorktreeRecord } from "../types/store-records.js";
 import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
 import { once } from "./once.js";
+import type { StopMark } from "./stored.js";
 
 /*
  * Row 011-293: the reading half of the marks beside a worktree's daemon lock
@@ -36,6 +37,34 @@ export function startMarkFor(lockFile: AbsolutePath): AbsolutePath {
 /** Row 011-251: the spawn mark beside the daemon lock file `lockFile`. */
 export function spawnMarkFor(lockFile: AbsolutePath): AbsolutePath {
   return `${lockFile}.spawned` as AbsolutePath;
+}
+
+/**
+ * Row 021-39 (#285): the stop mark beside the daemon lock file `lockFile`,
+ * `squeal stop`'s, read before the legacy `meta` row (`readStop`). Its name
+ * ends past `.sqlite`, so `squeal remove` never reads it as a lock file.
+ */
+export function stopMarkFor(lockFile: AbsolutePath): AbsolutePath {
+  return `${lockFile}.stopped` as AbsolutePath;
+}
+
+/** The stop mark beside `lockFile`; `null` with none, or one that cannot be read or parsed. Never throws. */
+export function readStopFile(lockFile: AbsolutePath): StopMark | null {
+  try {
+    return stopMarkOf(JSON.parse(readFileSync(stopMarkFor(lockFile), "utf8")));
+  } catch {
+    return null;
+  }
+}
+
+/** A stop mark as stored, in a file or a `meta` row; `null` for any other value. */
+export function stopMarkOf(mark: unknown): StopMark | null {
+  if (!isRecord(mark) || typeof mark.at !== "number") return null;
+  return {
+    at: mark.at as EpochMs,
+    tree: typeof mark.tree === "string" ? mark.tree : null,
+    ...(mark.untilStart === true ? { untilStart: true } : {}),
+  };
 }
 
 /**

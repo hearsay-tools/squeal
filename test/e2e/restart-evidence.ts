@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import type { TestPause } from "../../src/core/daemon/test-pause.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
-import { stoppedMetaKey } from "../../src/core/presence/stored.js";
+import { readStop } from "../../src/core/presence/stored.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { BundleRun } from "../harness/bundle-helpers.js";
@@ -114,12 +114,16 @@ export function cliProcess(e: E2E, command: string, not?: number): number | null
   return null;
 }
 
-/** The worktree's stopped mark as the store keeps it (task 011-08), `null` while there is none. */
+/**
+ * The worktree's stopped mark (task 011-08) as stored, beside its lock file
+ * or in a legacy `meta` row (row 021-39), `null` while there is none.
+ */
 export function stopMark(root: string): string | null {
   const store = openStore(join(root, ".git"), { create: false, busyTimeoutMs: 2_000 });
   if (isStoreOpenFailure(store)) return null;
   try {
-    return store.meta.get(stoppedMetaKey(worktreeIdFor(root)));
+    const mark = readStop(store, worktreeIdFor(root));
+    return mark === null ? null : JSON.stringify(mark);
   } finally {
     store.close();
   }
