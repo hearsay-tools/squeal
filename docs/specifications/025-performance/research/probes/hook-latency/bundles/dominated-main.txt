@@ -1,0 +1,125 @@
+## pre-tool-use: 681351 bytes; top 12 disjoint lazy cuts remove 147729 bytes (22%)
+   34097 [12 files, 1 called!] core/code/store/store  <- core/code/store/open
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/hook > harness/shared/context > core/delivery/code-source > core/code/store/open > core/code/store/store
+   19007 [12 files] core/status/outstanding  <- core/status/snapshot
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/hook > harness/shared/context > core/status/snapshot > core/status/outstanding
+   15183 [2 files] core/keys/pnpm-install  <- core/keys/environment
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/deny > core/delivery/liveness > core/keys/environment > core/keys/pnpm-install
+   13787 [7 files, 1 called!] core/status/imports  <- core/status/snapshot
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/hook > harness/shared/context > core/status/snapshot > core/status/imports
+   13184 [7 files] core/lint/store/open  <- core/lint/surface/source
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/hook > harness/shared/context > core/lint/surface/source > core/lint/store/open
+    9597 [3 files] core/lint/surface/deliver  <- core/delivery/delivery, core/delivery/register
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/hook > harness/shared/context > core/delivery/delivery > core/lint/surface/deliver
+    9457 [3 files] core/store/prune  <- core/store/store
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/hook > harness/shared/context > core/delivery/delivery > core/store/store > core/store/prune
+    7662 [2 files] core/delivery/code-coverage  <- core/delivery/code-format, core/delivery/code-told, core/delivery/code-deliver
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/deny > core/delivery/format > core/delivery/code-format > core/delivery/code-coverage
+    7100 [1 files] core/delivery/code-format  <- core/delivery/content-title, core/delivery/format
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/deny > core/delivery/format > core/delivery/code-format
+    6340 [1 files] core/keys/pnpm-lockfile  <- core/keys/pnpm-install, core/keys/pnpm-graph, core/keys/environment
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/deny > core/delivery/liveness > core/keys/environment > core/keys/pnpm-lockfile
+    6163 [1 files] core/store/status-reads  <- core/status/imports, core/status/standing, core/status/snapshot
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/hook > harness/shared/context > core/status/snapshot > core/store/status-reads
+    6152 [1 files] core/keys/packages  <- core/keys/pnpm-graph, core/keys/environment
+         chain: harness/claude-code/hooks/pre-tool-use > harness/shared/deny > core/delivery/liveness > core/keys/environment > core/keys/packages
+## stop: 742684 bytes; top 12 disjoint lazy cuts remove 156828 bytes (21%)
+   39653 [14 files, 1 called!] core/code/store/open  <- core/delivery/code-source
+         chain: harness/claude-code/main > harness/shared/session-root > harness/shared/context > core/delivery/code-source > core/code/store/open
+   19016 [12 files] core/status/outstanding  <- core/status/snapshot
+         chain: harness/claude-code/main > harness/shared/session-root > harness/shared/context > core/status/snapshot > core/status/outstanding
+   15183 [2 files] core/keys/pnpm-install  <- core/keys/environment
+         chain: harness/claude-code/hooks/stop > harness/shared/stop > harness/shared/stop-decide > core/delivery/liveness > core/keys/environment > core/keys/pnpm-install
+   13789 [7 files, 1 called!] core/status/imports  <- core/status/snapshot
+         chain: harness/claude-code/main > harness/shared/session-root > harness/shared/context > core/status/snapshot > core/status/imports
+   13174 [7 files] core/lint/store/open  <- core/lint/surface/source
+         chain: harness/claude-code/hooks/stop > harness/shared/stop > core/state/required > core/lint/surface/source > core/lint/store/open
+   12448 [5 files] runners/descriptions  <- core/delivery/code-runners, harness/shared/test-command
+         chain: harness/claude-code/main > harness/claude-code/run > harness/claude-code/input > harness/shared/test-command > runners/descriptions
+    9457 [3 files] core/store/prune  <- core/store/store
+         chain: harness/claude-code/hooks/stop > harness/shared/stop > core/store/store > core/store/prune
+    7791 [1 files] core/delivery/code-format  <- core/delivery/content-title, core/delivery/format, harness/shared/stop-code
+         chain: harness/claude-code/hooks/stop > harness/shared/stop > core/delivery/format > core/delivery/code-format
+    7662 [2 files] core/delivery/code-coverage  <- core/delivery/code-format, core/delivery/code-told, core/delivery/code-deliver, harness/shared/stop-code
+         chain: harness/claude-code/hooks/stop > harness/shared/stop > core/delivery/format > core/delivery/code-format > core/delivery/code-coverage
+    6340 [1 files] core/keys/pnpm-lockfile  <- core/keys/pnpm-install, core/keys/pnpm-graph, core/keys/environment
+         chain: harness/claude-code/hooks/stop > harness/shared/stop > harness/shared/stop-decide > core/delivery/liveness > core/keys/environment > core/keys/pnpm-lockfile
+    6163 [1 files] core/store/status-reads  <- core/status/imports, core/status/standing, core/status/snapshot
+         chain: harness/claude-code/main > harness/shared/session-root > harness/shared/context > core/status/snapshot > core/store/status-reads
+    6152 [1 files] core/keys/packages  <- core/keys/pnpm-graph, core/keys/environment
+         chain: harness/claude-code/hooks/stop > harness/shared/stop > harness/shared/stop-decide > core/delivery/liveness > core/keys/environment > core/keys/packages
+## session-start: 670732 bytes; top 12 disjoint lazy cuts remove 150535 bytes (22%)
+   34079 [12 files, 1 called!] core/code/store/store  <- core/code/store/open
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/delivery/code-source > core/code/store/open > core/code/store/store
+   19007 [12 files] core/status/outstanding  <- core/status/snapshot
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/status/snapshot > core/status/outstanding
+   15183 [2 files] core/keys/pnpm-install  <- core/keys/environment
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/delivery/delivery > core/delivery/attribution > core/keys/environment > core/keys/pnpm-install
+   13789 [7 files, 1 called!] core/status/imports  <- core/status/snapshot
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/status/snapshot > core/status/imports
+   13179 [7 files] core/lint/store/open  <- core/lint/surface/source
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/lint/surface/source > core/lint/store/open
+   12411 [5 files, 1 called!] runners/descriptions  <- core/delivery/code-runners, harness/shared/test-command
+         chain: harness/claude-code/main > harness/claude-code/run > harness/claude-code/input > harness/shared/test-command > runners/descriptions
+    9444 [3 files] core/store/prune  <- core/store/store
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/ensure > core/store/store > core/store/prune
+    8377 [6 files] core/delivery/late  <- core/delivery/edits, core/delivery/header, core/delivery/register
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/delivery/delivery > core/delivery/edits > core/delivery/late
+    6412 [2 files] core/delivery/registered  <- core/delivery/attribution, core/delivery/code-since, core/delivery/own-count, core/delivery/edits +4
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/delivery/delivery > core/delivery/attribution > core/delivery/registered
+    6337 [1 files] core/keys/pnpm-lockfile  <- core/keys/pnpm-install, core/keys/pnpm-graph, core/keys/environment
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/delivery/delivery > core/delivery/attribution > core/keys/environment > core/keys/pnpm-lockfile
+    6160 [1 files] core/store/status-reads  <- core/status/imports, core/status/standing, core/status/snapshot
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/context > core/status/snapshot > core/store/status-reads
+    6157 [1 files] core/state/fingerprint  <- core/state/derive, core/state/baseline, core/state/shown-result, core/state/producers +5
+         chain: harness/claude-code/hooks/session-start > harness/shared/session > harness/shared/owed > core/delivery/format > core/state/fingerprint
+## user-prompt-submit: 708134 bytes; top 12 disjoint lazy cuts remove 164934 bytes (23%)
+   39638 [14 files, 1 called!] core/code/store/open  <- core/delivery/code-source
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/delivery/code-source > core/code/store/open
+   19007 [12 files] core/status/outstanding  <- core/status/snapshot
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/status/snapshot > core/status/outstanding
+   15183 [2 files] core/keys/pnpm-install  <- core/keys/environment
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/delivery/delivery > core/delivery/attribution > core/keys/environment > core/keys/pnpm-install
+   14274 [7 files] harness/shared/ensure  <- harness/shared/owed
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/owed > harness/shared/ensure
+   13787 [7 files, 1 called!] core/status/imports  <- core/status/snapshot
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/status/snapshot > core/status/imports
+   13184 [7 files] core/lint/store/open  <- core/lint/surface/source
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/lint/surface/source > core/lint/store/open
+   12448 [5 files] runners/descriptions  <- core/delivery/code-runners, harness/shared/test-command
+         chain: harness/claude-code/main > harness/claude-code/run > harness/claude-code/input > harness/shared/test-command > runners/descriptions
+    9457 [3 files] core/store/prune  <- core/store/store
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/delivery/delivery > core/store/store > core/store/prune
+    7791 [1 files] core/delivery/code-format  <- core/delivery/content-title, core/delivery/format
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > core/delivery/format > core/delivery/code-format
+    7662 [2 files] core/delivery/code-coverage  <- core/delivery/code-format, core/delivery/code-told, core/delivery/code-deliver
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > core/delivery/format > core/delivery/code-format > core/delivery/code-coverage
+    6340 [1 files] core/keys/pnpm-lockfile  <- core/keys/pnpm-install, core/keys/pnpm-graph, core/keys/environment
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/delivery/delivery > core/delivery/attribution > core/keys/environment > core/keys/pnpm-lockfile
+    6163 [1 files] core/store/status-reads  <- core/status/imports, core/status/standing, core/status/snapshot
+         chain: harness/claude-code/hooks/user-prompt-submit > harness/shared/prompt > harness/shared/context > core/status/snapshot > core/store/status-reads
+## post-tool-batch: 714077 bytes; top 12 disjoint lazy cuts remove 151331 bytes (21%)
+   34097 [12 files, 1 called!] core/code/store/store  <- core/code/store/open
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/hook > harness/shared/context > core/delivery/code-source > core/code/store/open > core/code/store/store
+   19049 [12 files] core/status/outstanding  <- core/status/snapshot
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/hook > harness/shared/context > core/status/snapshot > core/status/outstanding
+   15183 [2 files] core/keys/pnpm-install  <- core/keys/environment
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/hook > harness/shared/context > core/delivery/delivery > core/delivery/attribution > core/keys/environment > core/keys/pnpm-install
+   13789 [7 files, 1 called!] core/status/imports  <- core/status/snapshot
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/hook > harness/shared/context > core/status/snapshot > core/status/imports
+   13188 [7 files] core/lint/store/open  <- core/lint/surface/source
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/hook > harness/shared/context > core/lint/surface/source > core/lint/store/open
+   12448 [5 files] runners/descriptions  <- core/delivery/code-runners, harness/shared/test-command
+         chain: harness/claude-code/main > harness/claude-code/run > harness/claude-code/input > harness/shared/test-command > runners/descriptions
+    9457 [3 files] core/store/prune  <- core/store/store
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/deliver > harness/shared/ensure > core/store/store > core/store/prune
+    7791 [1 files] core/delivery/code-format  <- core/delivery/content-title, core/delivery/format
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/deliver > core/delivery/format > core/delivery/code-format
+    7662 [2 files] core/delivery/code-coverage  <- core/delivery/code-format, core/delivery/code-told, core/delivery/code-deliver
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/deliver > core/delivery/format > core/delivery/code-format > core/delivery/code-coverage
+    6340 [1 files] core/keys/pnpm-lockfile  <- core/keys/pnpm-install, core/keys/pnpm-graph, core/keys/environment
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/hook > harness/shared/context > core/delivery/delivery > core/delivery/attribution > core/keys/environment > core/keys/pnpm-lockfile
+    6174 [1 files] core/store/status-reads  <- core/status/imports, core/status/standing, core/status/snapshot
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/hook > harness/shared/context > core/status/snapshot > core/store/status-reads
+    6153 [1 files] core/state/fingerprint  <- core/state/derive, core/status/unknown-files, core/delivery/collapse, core/delivery/failure-groups +6
+         chain: harness/claude-code/hooks/post-tool-batch > harness/shared/deliver > core/delivery/format > core/state/fingerprint

@@ -1,0 +1,37 @@
+#!/bin/sh
+# Throwaway probe (row 025-14): runs remote.sh on a fresh boat.dev sandbox
+# (Node 24.21, this branch's sources, the committed hook bundles of the
+# release tags) and copies ./results back to $1. Deletes the sandbox.
+# Usage: sh boat.sh <resultsDir>   (from the repository root, probes committed)
+set -eu
+OUT=$1
+P=docs/specifications/025-performance/research/probes/hook-latency/bundles
+PAY=$(mktemp -d /tmp/hl-025-14.XXXXXX)/payload
+mkdir -p "$PAY"
+git archive HEAD src test plugins/claude-code package.json pnpm-lock.yaml pnpm-workspace.yaml \
+  tsconfig.json tsconfig.build.json vitest.config.ts $P | tar x -C "$PAY"
+for t in squeal--v0.1.364 squeal--v0.1.409 squeal--v0.1.450 squeal--v0.1.568 squeal--v0.1.600 792ee0ccb; do
+  mkdir -p "$PAY/tags/$t/dist"
+  for h in pre-tool-use stop; do git show "$t:plugins/claude-code/dist/$h.mjs" > "$PAY/tags/$t/dist/$h.mjs"; done
+done
+retry() { for _ in 1 2 3 4 5; do "$@" && return 0; sleep 20; done; return 1; }
+ID=$(retry boat new --no-env --ttl 10800 --name hook-bundles-025-14 --json | tail -1 | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).id')
+echo "sandbox $ID"
+trap 'boat delete "$ID" --yes >/dev/null 2>&1 || true; rm -rf "$(dirname "$PAY")"' EXIT
+for _ in 1 2 3 4 5; do
+  boat ssh "$ID" -- "test -f /home/user/payload/$P/remote.sh" >/dev/null 2>&1 && break
+  sleep 10
+  boat push "$ID" "$PAY" --to /home/user/payload >/dev/null || true
+done
+retry boat ssh "$ID" -- 'set -e; cd /tmp; curl -fsSL https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz | tar xJ; sudo cp -r node-v24.21.0-linux-x64/* /usr/local/ 2>/dev/null || cp -r node-v24.21.0-linux-x64/* $HOME/.local/; node --version'
+retry boat ssh "$ID" -- 'set -e; cd /home/user/payload; export PATH=/usr/local/bin:$HOME/.local/bin:$PATH; npm i -g pnpm@12.15.0 >/dev/null 2>&1 || sudo npm i -g pnpm@12.15.0 >/dev/null; pnpm install --frozen-lockfile > install.log 2>&1 || { tail -30 install.log; exit 1; }'
+boat ssh "$ID" -- "cd /home/user/payload && export PATH=/usr/local/bin:\$HOME/.local/bin:\$PATH && { [ -e started ] || (touch started; setsid nohup sh $P/remote.sh > remote.out 2>&1 < /dev/null &); }"
+until boat ssh "$ID" -- 'test -f /home/user/payload/results/done' >/dev/null 2>&1; do
+  sleep 60
+  boat ssh "$ID" -- 'tail -1 /home/user/payload/results/run.log' 2>/dev/null || true
+done
+retry boat ssh "$ID" -- 'cd /home/user/payload && tar czf /tmp/results.tgz results remote.out' >/dev/null
+mkdir -p "$OUT"
+retry boat scp "$ID:/tmp/results.tgz" "$OUT/results.tgz" >/dev/null
+tar xzf "$OUT/results.tgz" -C "$OUT" && rm "$OUT/results.tgz"
+echo "results in $OUT"

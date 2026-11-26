@@ -1,0 +1,174 @@
+
+## pre-tool-use @ squeal--v0.1.364: 471861 bytes, 232 source files
+
+## pre-tool-use @ squeal--v0.1.409: 551286 bytes, 263 source files
+  +79425 bytes, +31 files since squeal--v0.1.364
+  groups: core/presence +20062 (new), core/daemon +15757, core/code +8169, core/delivery +7532, core/state +6914, core/commit +5956 (new), core/lint +4982, harness/shared +3298
+  files:
+       5191  src/core/presence/views.ts (new)
+       4571  src/core/daemon/policy-checks.ts (new)
+       3971  src/core/delivery/held-connection.ts (new)
+       3525  src/core/daemon/check-groups.ts (new)
+       3523  src/core/code/coverage/parts.ts (new)
+       3317  src/core/commit/report.ts (new)
+       3241  src/core/state/group-text.ts (new)
+       3057  src/core/presence/findings.ts (new)
+       2927  src/core/daemon/policy-checks-settle.ts (new)
+       2917  src/core/presence/stored.ts (new)
+       2855  src/core/daemon/user-config.ts (new)
+       2553  src/core/code/store/coverage.ts
+
+## pre-tool-use @ squeal--v0.1.450: 612380 bytes, 293 source files
+  +61094 bytes, +30 files since squeal--v0.1.409
+  groups: core/delivery +18987, core/store +9705, core/status +9648, core/daemon +5646, core/(root) +4721, core/keys +4701, core/scheduler +1649, harness/shared +1499
+  files:
+       7171  src/core/delivery/sending-connection.ts (new)
+       5721  src/core/delivery/daemon-writer.ts (new)
+       5347  src/core/status/imports.ts (new)
+       4721  src/core/node-pin.ts (new)
+       3742  src/core/keys/environment-descriptor.ts (new)
+       3054  src/core/store/imports.ts (new)
+       2539  src/core/store/environments.ts (new)
+       1996  src/core/daemon/client.ts (new)
+       1288  src/core/delivery/sent-store.ts (new)
+       1273  src/core/status/feed-late.ts
+       1234  src/core/store/prune-rules.ts (new)
+       1114  src/core/scheduler/pool-wait.ts (new)
+
+## pre-tool-use @ squeal--v0.1.568: 657618 bytes, 323 source files
+  +45238 bytes, +30 files since squeal--v0.1.450
+  groups: core/delivery +24561, core/store +7189, core/scheduler +5040, core/daemon +3309, core/code +2159, core/status +2051, core/presence +895, harness/shared +791
+  files:
+       4297  src/core/delivery/late.ts (new)
+       3938  src/core/delivery/register.ts (new)
+       3189  src/core/state/header-part.ts (new)
+       3186  src/core/store/mark.ts (new)
+       3108  src/core/delivery/header-daemon.ts (new)
+       2105  src/core/delivery/view-mark.ts (new)
+       2074  src/core/delivery/content-title.ts (new)
+       1953  src/core/delivery/own-count.ts (new)
+       1882  src/core/store/view-seed.ts (new)
+       1872  src/core/delivery/late-format.ts (new)
+       1312  src/core/delivery/late-timings.ts (new)
+       1311  src/core/delivery/late-bound.ts (new)
+
+## pre-tool-use @ squeal--v0.1.600: 673560 bytes, 328 source files
+  +15942 bytes, +5 files since squeal--v0.1.568
+  groups: core/store +6856, core/delivery +2409, core/commit +2031, core/code +1537, core/lint +1145, core/status +1139, core/daemon +360, core/keys +325
+  files:
+       3187  src/core/store/prune-unused.ts (new)
+       1997  src/core/delivery/sending-connection.ts
+       1922  src/core/store/prune-keyed.ts (new)
+       1199  src/core/commit/text.ts
+        883  src/core/store/prune-checkpoint.ts (new)
+        852  src/core/status/imports.ts
+        832  src/core/commit/report.ts
+        814  src/core/store/prune-vacuum.ts (new)
+        778  src/core/code/store/coverage.ts
+        739  src/core/lint/pass/cpu-wait.ts (new)
+        625  src/core/store/view-seed.ts
+        495  src/core/store/open.ts
+
+## pre-tool-use @ 792ee0ccb: 693838 bytes, 335 source files
+  +20278 bytes, +7 files since squeal--v0.1.600
+  groups: core/store +7441, core/state +6088, core/slow +1664, core/retry +1167, core/daemon +960, core/scheduler +865, core/code +813, core/keys +466
+  files:
+       6198  src/core/store/status-reads.ts (new)
+       2208  src/core/state/file-class.ts
+       1821  src/core/slow/slot-holding.ts (new)
+       1386  src/core/state/group-text.ts
+       1159  src/core/state/groups.ts
+        886  src/core/retry/remote.ts (new)
+        853  src/core/status/remote-status.ts (new)
+        741  src/core/state/slot-now.ts (new)
+        722  src/core/scheduler/narrow-asks-row.ts (new)
+        717  src/core/daemon/policy.ts
+        696  src/core/code/store/states.ts
+        607  src/core/slow/state.ts
+
+## stop @ squeal--v0.1.364: 504932 bytes, 236 source files
+
+## stop @ squeal--v0.1.409: 604597 bytes, 276 source files
+  +99665 bytes, +40 files since squeal--v0.1.364
+  groups: core/presence +22925 (new), harness/shared +17074, core/daemon +14940, core/state +9234, core/code +8169, core/delivery +6768, core/commit +5956 (new), core/lint +5350
+  files:
+       5191  src/core/presence/views.ts (new)
+       4654  src/harness/shared/stop-text.ts (new)
+       4587  src/harness/shared/stop-decide.ts (new)
+       4571  src/core/daemon/policy-checks.ts (new)
+       3971  src/core/delivery/held-connection.ts (new)
+       3534  src/core/daemon/check-groups.ts (new)
+       3523  src/core/code/coverage/parts.ts (new)
+       3489  src/harness/shared/stop-required.ts (new)
+       3378  src/core/presence/findings.ts (new)
+       3317  src/core/commit/report.ts (new)
+       3243  src/core/state/group-text.ts (new)
+       3173  src/harness/shared/stop-lint.ts
+
+## stop @ squeal--v0.1.450: 667576 bytes, 305 source files
+  +62979 bytes, +29 files since squeal--v0.1.409
+  groups: core/delivery +19053, core/store +9705, core/status +9628, harness/shared +4968, core/(root) +4879, core/keys +4703, core/daemon +3868, core/scheduler +1649
+  files:
+       7171  src/core/delivery/sending-connection.ts (new)
+       5721  src/core/delivery/daemon-writer.ts (new)
+       5347  src/core/status/imports.ts (new)
+       4867  src/core/node-pin.ts (new)
+       3744  src/core/keys/environment-descriptor.ts (new)
+       3054  src/core/store/imports.ts (new)
+       2539  src/core/store/environments.ts (new)
+       1714  src/harness/shared/stop-required.ts
+       1339  src/core/status/feed-late.ts
+       1288  src/core/delivery/sent-store.ts (new)
+       1234  src/core/store/prune-rules.ts (new)
+       1114  src/core/scheduler/pool-wait.ts (new)
+
+## stop @ squeal--v0.1.568: 718891 bytes, 339 source files
+  +51315 bytes, +34 files since squeal--v0.1.450
+  groups: core/delivery +26099, core/store +9227, core/scheduler +5040, core/daemon +4587, harness/shared +2362, core/code +2161, core/retry +1676, core/presence +920
+  files:
+       4297  src/core/delivery/late.ts (new)
+       3938  src/core/delivery/register.ts (new)
+       3191  src/core/store/mark.ts (new)
+       3189  src/core/state/header-part.ts (new)
+       3108  src/core/delivery/header-daemon.ts (new)
+       2105  src/core/delivery/view-mark.ts (new)
+       2074  src/core/delivery/content-title.ts (new)
+       1953  src/core/delivery/own-count.ts (new)
+       1903  src/core/store/write-markers.ts (new)
+       1882  src/core/store/view-seed.ts (new)
+       1872  src/core/delivery/late-format.ts (new)
+       1413  src/core/delivery/format.ts
+
+## stop @ squeal--v0.1.600: 735104 bytes, 344 source files
+  +16213 bytes, +5 files since squeal--v0.1.568
+  groups: core/store +6856, core/delivery +2409, core/commit +2031, core/code +1537, core/lint +1419, core/status +1139, core/daemon +360, core/keys +325
+  files:
+       3187  src/core/store/prune-unused.ts (new)
+       1997  src/core/delivery/sending-connection.ts
+       1922  src/core/store/prune-keyed.ts (new)
+       1199  src/core/commit/text.ts
+        883  src/core/store/prune-checkpoint.ts (new)
+        852  src/core/status/imports.ts
+        832  src/core/commit/report.ts
+        814  src/core/store/prune-vacuum.ts (new)
+        778  src/core/code/store/coverage.ts
+        739  src/core/lint/pass/cpu-wait.ts (new)
+        625  src/core/store/view-seed.ts
+        495  src/core/store/open.ts
+
+## stop @ 792ee0ccb: 755753 bytes, 351 source files
+  +20649 bytes, +7 files since squeal--v0.1.600
+  groups: core/store +7454, core/state +6336, core/slow +1664, core/retry +1254, core/daemon +960, core/scheduler +865, core/code +813, core/keys +462
+  files:
+       6198  src/core/store/status-reads.ts (new)
+       2208  src/core/state/file-class.ts
+       1821  src/core/slow/slot-holding.ts (new)
+       1386  src/core/state/group-text.ts
+       1284  src/core/state/groups.ts
+        886  src/core/retry/remote.ts (new)
+        853  src/core/status/remote-status.ts (new)
+        741  src/core/state/slot-now.ts (new)
+        722  src/core/scheduler/narrow-asks-row.ts (new)
+        717  src/core/daemon/policy.ts
+        696  src/core/code/store/states.ts
+        607  src/core/slow/state.ts

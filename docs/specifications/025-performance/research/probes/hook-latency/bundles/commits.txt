@@ -1,0 +1,90 @@
+## pre-tool-use squeal--v0.1.364..squeal--v0.1.409
+15558 159c1063f build: bundles for Stop and texts per check group and squeal run <group> as 0.1.397 (019-14, 019-15, 019-16, 019-23)
+11274 7f97654d9 chore(release): 0.1.386 with row 011-288 (wave 64)
+10104 81779d2b0 build: squeal 0.1.365 coverage noise fixes
+9014 236275066 build: bundles for check groups and the Stop slow request as 0.1.395, Codex adapter 1.0.3 (019-07, 019-09)
+5588 3788dfc48 build: bundles for check-group lanes, slots per group, commit reports as 0.1.396 (019-10 to 019-13, 019-18)
+5535 c329f1446 chore(release): 0.1.383 with rows 011-274 to 011-278 and 011-282 (wave 61)
+3562 2ee14327d build: bundle runtime-file policy in 0.1.369
+2523 e8a98fed2 build: bundles for commit groups, lint groups at commit, and the wave 2 wording as 0.1.398 (019-22, 019-24, 019-25)
+## pre-tool-use squeal--v0.1.409..squeal--v0.1.450
+18488 0dbe84b3d chore: 0.1.442 bundles with spec 021 wave 2 (rows 021-12, 021-13, 021-14, 021-16, 021-18)
+16077 a231f0cbc chore: 0.1.417 bundles with rows 018-06 and 018-07 (squeal export and import)
+7292 f58d63e4e chore(018): 0.1.439 bundles and version for 018-30 and 018-31
+4992 4d62464e6 chore: 0.1.434 bundles with spec 021 wave 1 (rows 021-07 to 021-11)
+1717 9282ff4fd chore(release): 0.1.413, bundles for 011-308 and 011-309
+1674 95d2ce654 chore: 0.1.424 bundles with spec 020 wave 2 (020-09, 020-11, 020-12, 020-13) and 011-311
+1350 1b45fff24 chore: 0.1.432 bundles with spec 020 wave 5 and its repair (review 0.1.432 B1, B2)
+1335 a95f60a8e chore: 0.1.427 bundles with spec 020 wave 3 (020-07a/b/c, 020-08a/b, 020-10a/b)
+## pre-tool-use squeal--v0.1.450..squeal--v0.1.568
+13158 836046208 release: 0.1.538 (005-97) with bundles; review brief
+6134 164b30138 release: 0.1.548 (005-108, 005-106) with bundles; 001 D6 sentence; review brief
+4408 c59652b6b release: 0.1.545 (011-391, 005-105) with bundles; spec amendments; review brief
+2474 9a0467326 release: 0.1.527 (005-90, 005-91) with bundles; title says affects, lintWords split out; review brief
+2181 9383cab30 release: 0.1.550 (011-393, 015-127) with bundles
+2158 840411213 chore: 0.1.567, wave 122 bundles (rows 011-396 to 011-399, 011-401, 011-403)
+1894 a2f985020 release: 0.1.542 (005-102, 005-103) with bundles; eval results of 2026-11-17; review brief
+1666 611df9c2b release: 0.1.525 (005-89, 005-92) with bundles
+## pre-tool-use squeal--v0.1.568..squeal--v0.1.600
+4481 d0f4470f3 build: bundles as 0.1.569 (row 021-33; renumbered from reviewed cand/0.1.568-prune after spec 023's 0.1.568)
+3361 ed95c4656 build(025): bump to 0.1.600 on 0.1.599 and rebuild plugin bundles
+2811 c922bb4f0 build: bundles as 0.1.570 (wave 123: rows 011-404 to 011-407, 017-32, 017-33)
+1970 76d87f3db build: bundles as 0.1.575 (row 021-36, store process for code.sqlite, after the rebuild review repair)
+1045 601503623 chore: bundles for row 022-08 with repair 022-08r (0.1.593)
+1004 6cd7d51c9 build: bundles as 0.1.572 (wave 124: rows 011-410, 011-411, 011-412, 011-414)
+521 693971203 build: bundles as 0.1.570 after review 0.1.570 repairs (B1, B2, C1)
+325 923de50aa build: 0.1.579 (spec 018 wave 19: node:test in ci record, export and import; rows 018-47 to 018-50)
+## pre-tool-use squeal--v0.1.600..792ee0ccb
+8450 863ce6a70 build: 0.1.633 (Spec 025 Wave 3 + repairs rebased onto 0.1.632)
+2173 280bb222d build: 0.1.624 on 0.1.623 (spec 023 wave 40, rows 023-83, 023-84; rebased over spec 026 wave 6)
+2046 98a997db4 build: 0.1.610 on 0.1.609 (spec 023 wave 32, rows 023-64 to 023-68)
+1622 cfd0a0058 build: 0.1.612 on 0.1.611 (spec 023 wave 36, rows 023-76 to 023-79)
+1435 274c19672 build: 0.1.628 (Spec 025 Wave 2 rebased onto 0.1.627)
+1043 70b74a46d build: 0.1.635 (Spec 026 Wave 10: remote pnpm PATH, recorder strip, git guard, remote provenance)
+896 3d7cc0a1a build: 0.1.623 (spec 026 wave 6: row 026-20 D1-D3/O1 + CI E2E fixes)
+797 2d36c6b15 chore: bundles for the review 0.1.610 repair
+## stop squeal--v0.1.364..squeal--v0.1.409
+18186 159c1063f build: bundles for Stop and texts per check group and squeal run <group> as 0.1.397 (019-14, 019-15, 019-16, 019-23)
+11282 7f97654d9 chore(release): 0.1.386 with row 011-288 (wave 64)
+10116 81779d2b0 build: squeal 0.1.365 coverage noise fixes
+9054 236275066 build: bundles for check groups and the Stop slow request as 0.1.395, Codex adapter 1.0.3 (019-07, 019-09)
+6863 c329f1446 chore(release): 0.1.383 with rows 011-274 to 011-278 and 011-282 (wave 61)
+6734 7e8d7122f build: bundles for the Stop hold owner (019-45, review 0.1.406-r2 repair) as 0.1.406
+6330 b99989ad4 build: bundles for lint groups at pause and stop as 0.1.406 (019-45, review 0.1.406 repairs)
+5594 3788dfc48 build: bundles for check-group lanes, slots per group, commit reports as 0.1.396 (019-10 to 019-13, 019-18)
+## stop squeal--v0.1.409..squeal--v0.1.450
+16601 0dbe84b3d chore: 0.1.442 bundles with spec 021 wave 2 (rows 021-12, 021-13, 021-14, 021-16, 021-18)
+16076 a231f0cbc chore: 0.1.417 bundles with rows 018-06 and 018-07 (squeal export and import)
+7700 f58d63e4e chore(018): 0.1.439 bundles and version for 018-30 and 018-31
+4992 4d62464e6 chore: 0.1.434 bundles with spec 021 wave 1 (rows 021-07 to 021-11)
+3875 f28bf5c0d chore: 0.1.429 bundles with row 011-312 (#153)
+1717 9282ff4fd chore(release): 0.1.413, bundles for 011-308 and 011-309
+1688 95d2ce654 chore: 0.1.424 bundles with spec 020 wave 2 (020-09, 020-11, 020-12, 020-13) and 011-311
+1373 1b45fff24 chore: 0.1.432 bundles with spec 020 wave 5 and its repair (review 0.1.432 B1, B2)
+## stop squeal--v0.1.450..squeal--v0.1.568
+13194 836046208 release: 0.1.538 (005-97) with bundles; review brief
+6433 164b30138 release: 0.1.548 (005-108, 005-106) with bundles; 001 D6 sentence; review brief
+4415 c59652b6b release: 0.1.545 (011-391, 005-105) with bundles; spec amendments; review brief
+3805 f1454da6e release: 0.1.553 (005-113, 005-123, 005-124) with bundles; 001 D6 sentence; review brief
+3734 611df9c2b release: 0.1.525 (005-89, 005-92) with bundles
+2776 9a0467326 release: 0.1.527 (005-90, 005-91) with bundles; title says affects, lintWords split out; review brief
+2181 9383cab30 release: 0.1.550 (011-393, 015-127) with bundles
+2158 840411213 chore: 0.1.567, wave 122 bundles (rows 011-396 to 011-399, 011-401, 011-403)
+## stop squeal--v0.1.568..squeal--v0.1.600
+4481 d0f4470f3 build: bundles as 0.1.569 (row 021-33; renumbered from reviewed cand/0.1.568-prune after spec 023's 0.1.568)
+3361 ed95c4656 build(025): bump to 0.1.600 on 0.1.599 and rebuild plugin bundles
+3085 c922bb4f0 build: bundles as 0.1.570 (wave 123: rows 011-404 to 011-407, 017-32, 017-33)
+1970 76d87f3db build: bundles as 0.1.575 (row 021-36, store process for code.sqlite, after the rebuild review repair)
+1045 601503623 chore: bundles for row 022-08 with repair 022-08r (0.1.593)
+1004 6cd7d51c9 build: bundles as 0.1.572 (wave 124: rows 011-410, 011-411, 011-412, 011-414)
+521 693971203 build: bundles as 0.1.570 after review 0.1.570 repairs (B1, B2, C1)
+325 923de50aa build: 0.1.579 (spec 018 wave 19: node:test in ci record, export and import; rows 018-47 to 018-50)
+## stop squeal--v0.1.600..792ee0ccb
+8698 863ce6a70 build: 0.1.633 (Spec 025 Wave 3 + repairs rebased onto 0.1.632)
+2173 280bb222d build: 0.1.624 on 0.1.623 (spec 023 wave 40, rows 023-83, 023-84; rebased over spec 026 wave 6)
+2046 98a997db4 build: 0.1.610 on 0.1.609 (spec 023 wave 32, rows 023-64 to 023-68)
+1622 cfd0a0058 build: 0.1.612 on 0.1.611 (spec 023 wave 36, rows 023-76 to 023-79)
+1381 274c19672 build: 0.1.628 (Spec 025 Wave 2 rebased onto 0.1.627)
+1130 70b74a46d build: 0.1.635 (Spec 026 Wave 10: remote pnpm PATH, recorder strip, git guard, remote provenance)
+896 3d7cc0a1a build: 0.1.623 (spec 026 wave 6: row 026-20 D1-D3/O1 + CI E2E fixes)
+797 2d36c6b15 chore: bundles for the review 0.1.610 repair
