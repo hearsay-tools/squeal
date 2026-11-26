@@ -121,6 +121,7 @@ async function runCase(input: NodeTestInput, scratch: string): Promise<CaseOutpu
           run.storeGone === true ? goneLogDir(scratch, at) : join(scratch, "logs", String(at)),
         timeoutMs: run.timeoutMs ?? 60_000,
         ...(run.lane === undefined ? {} : { lane: run.lane }),
+        ...(run.workers === undefined ? {} : { workers: run.workers }),
         ...(run.storeGone === true ? { stop: AbortSignal.abort() } : {}),
       });
       const stored = storedRun(report, steps[steps.length - 1] as Decided);
