@@ -53,11 +53,21 @@ export function validTarget(target: unknown): target is string {
   return typeof target === "string" && /^[^-\s][^\s]*$/.test(target) && !/\p{Cc}/u.test(target);
 }
 
+/**
+ * Row 026-30: `ssh` leads a process group of its own, so the master it
+ * leaves in the background and its `ProxyCommand` never join the daemon's
+ * group, whose members no child of the daemon descends from are a test's
+ * leftovers to the daemon (`EscapedChildren`, spec 001 D12). It stays the
+ * daemon's child: nothing unrefs it.
+ */
+const OWN_GROUP = process.platform !== "win32";
+
 /** Starts `command` on the remote with three pipes: its stdin, stdout and stderr. */
 export function spawnSsh(target: SshTarget, command: string): ChildProcessWithoutNullStreams {
   return spawn(target.ssh ?? "ssh", sshArgs(target, command), {
     env: target.env ?? process.env,
     stdio: ["pipe", "pipe", "pipe"],
+    detached: OWN_GROUP,
   });
 }
 
@@ -79,7 +89,8 @@ const KEEP = 4_000;
  * ends or `deadlineMs` passed, when `ssh` is killed (spec 021 D13: every
  * remote step has a deadline). Never rejects. Row 026-20 (review 0.1.623
  * B1): once `signal` aborts, `ssh` is killed and the result resolves at
- * once, not when a process the command left holds its output.
+ * once, not when a process the command left holds its output; the
+ * deadline too (row 026-30).
  */
 export function sshRun(
   target: SshTarget,
@@ -114,14 +125,20 @@ export function sshRun(
     });
     // The remote may end without reading all of its input.
     child.stdin.on("error", () => {});
+    // Row 026-30: like an abort, the deadline resolves at once, whatever still holds ssh's output.
+    // Only `ssh` itself is killed, never its group: a master it left there serves other channels.
     const timer = setTimeout(() => {
       failure = `no answer within ${options.deadlineMs} ms`;
       child.kill("SIGKILL");
+      ended(null);
     }, options.deadlineMs);
     child.on("error", (error) => {
       failure ??= `could not start ssh: ${error.message}`;
     });
+    let settled = false;
     const ended = (code: number | null) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
       resolve({
@@ -197,7 +214,7 @@ export function closeMaster(target: SshTarget, socket: string, deadlineMs = 10_0
       child = spawn(
         target.ssh ?? "ssh",
         [...(target.args ?? []), "-o", `ControlPath=${socket}`, "-O", "exit", target.destination],
-        { env: target.env ?? process.env, stdio: "ignore" },
+        { env: target.env ?? process.env, stdio: "ignore", detached: OWN_GROUP },
       );
     } catch {
       resolve();

@@ -20,7 +20,8 @@ import {
  * through the proxy when one applies, then bridges SSH's stdin and stdout
  * to binary frames, honouring backpressure both ways. The key comes only
  * from the environment and is never printed, nor is any text the server or
- * a proxy sent. Every stage has a deadline: opening and the upgrade share
+ * a proxy sent, but for a close frame's short reason (row 026-30: a close
+ * the server started, or a drop, says why). Every stage has a deadline: opening and the upgrade share
  * `connectMs`, the close handshake after SSH's end has `closeMs`.
  */
 
@@ -91,6 +92,30 @@ export async function runTunnel(options: TunnelOptions): Promise<number> {
 }
 
 const ignore = () => {};
+
+/** The longest close reason a server's close frame gets in the tunnel's line. */
+const REASON_CHARS = 120;
+
+/**
+ * Row 026-30: why the server closed the WebSocket, from its close frame's
+ * payload (RFC 6455 5.5.1): the status code, then the reason with control
+ * characters dropped and at most `REASON_CHARS` long, so a reset the edge
+ * sent names itself in ssh's stderr. A frame carries no header nor key.
+ */
+export function closedBy(payload: Buffer): string {
+  if (payload.length < 2) return "server closed WebSocket (no status code)";
+  const code = payload.readUInt16BE(0);
+  const reason = payload
+    .subarray(2)
+    .toString("utf8")
+    .replace(/\p{Cc}+/gu, " ")
+    .trim()
+    .slice(0, REASON_CHARS)
+    .trim();
+  return reason === ""
+    ? `server closed WebSocket (code ${code})`
+    : `server closed WebSocket (code ${code}: ${reason})`;
+}
 
 interface Opening {
   readonly socket: Socket;
@@ -182,8 +207,9 @@ function bridge(
         if (ended) return;
         const to = socket as Socket;
         if (frame.opcode === OPCODE.close) {
-          if (!closing) to.end(encodeFrame(OPCODE.close, frame.payload.subarray(0, 2)));
-          finish(0);
+          if (closing) return finish(0);
+          to.end(encodeFrame(OPCODE.close, frame.payload.subarray(0, 2)));
+          finish(0, closedBy(frame.payload));
           return;
         }
         if (frame.opcode === OPCODE.ping) to.write(encodeFrame(OPCODE.pong, frame.payload));
@@ -222,9 +248,11 @@ function bridge(
       on(output, "drain", () => to.resume());
       on(to, "drain", () => input.resume());
       on(to, "error", (error: Error) => finish(open ? 0 : TUNNEL_FAILED, safeReason(error)));
-      on(to, "close", () =>
-        finish(open ? 0 : TUNNEL_FAILED, open ? undefined : "closed during the upgrade"),
-      );
+      on(to, "close", () => {
+        if (!open) return finish(TUNNEL_FAILED, "closed during the upgrade");
+        // Row 026-30: a drop SSH did not ask for says so; the close SSH's end asked for stays silent.
+        finish(0, closing ? undefined : "connection closed by peer");
+      });
       on(to, "data", (chunk: Buffer) => (open ? receive(chunk) : upgrade(chunk)));
     };
     on(output, "error", () => finish(0));
