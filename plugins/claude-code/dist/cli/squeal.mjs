@@ -59784,7 +59784,7 @@ function wrapperText(config, jestConfig, runtime, project) {
     `  const { config: root } = ${read7};`,
     `  const configDir = ${json3(dirname50(config))};`,
     `  const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);`,
-    `  const selected = inlineOptions(selectInline(root.projects, ${json3(project)}), rootDir);`,
+    `  const selected = inlineOptions(selectInline(root.projects, ${json3(project)}), configDir);`,
     `  return { ...root, rootDir, projects: [${selected2}] };`,
     `};`,
     ``
@@ -81409,9 +81409,8 @@ const configDeps = (cached) => {
     if (selector !== "") {
       const configDir = path.dirname(configPath);
       const root = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
-      const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);
-      raw = inlineOptions(selectInline(root.projects, selector), rootDir);
-      ({ projectConfig } = await readConfig(argv, { ...raw }, true, rootDir));
+      raw = inlineOptions(selectInline(root.projects, selector), configDir);
+      ({ projectConfig } = await readConfig(argv, { ...raw }, true, configDir));
     }
     try {
       if (raw === null) {

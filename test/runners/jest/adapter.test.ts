@@ -681,4 +681,113 @@ test("keeps inline globals without root globals", () => {
       expect(fastLoaded?.paths).toContain("unit/helper.cjs");
     },
   );
+
+  it(
+    "anchors inline children to the config directory even when the root config sets rootDir (review 0.1.646-r3 B2)",
+    SLOW,
+    async () => {
+      const root = join(scratch, `tree-${made++}`) as AbsolutePath;
+      const files: Record<string, string> = {
+        "package.json": `{ "name": "app", "private": true }\n`,
+        "workspace/global-setup.cjs": `const fs = require("fs");
+const path = require("path");
+module.exports = () => {
+  fs.writeFileSync(path.join(__dirname, "root-gs.ran"), "yes");
+};
+`,
+        "jest.config.cjs": `module.exports = {
+  rootDir: "workspace",
+  globalSetup: "<rootDir>/global-setup.cjs",
+  projects: [
+    {
+      displayName: "unit",
+      testEnvironment: "node",
+      testMatch: ["<rootDir>/unit/*.test.cjs"],
+    },
+    {
+      displayName: "rel",
+      rootDir: "sub",
+      testEnvironment: "node",
+      testMatch: ["<rootDir>/*.test.cjs"],
+    },
+  ],
+};
+`,
+        "unit/a.test.cjs": `test("root-dir contract", () => expect("actual failure").toBe("pass"));\n`,
+        "workspace/unit/a.test.cjs": `test("root-dir contract", () => expect(true).toBe(true));\n`,
+        "sub/b.test.cjs": `test("relative child", () => expect(1 + 1).toBe(2));\n`,
+        "workspace/sub/b.test.cjs": `test("relative child", () => expect("wrong").toBe("right"));\n`,
+      };
+      for (const [path, text] of Object.entries(files)) {
+        mkdirSync(dirname(join(root, path)), { recursive: true });
+        writeFileSync(join(root, path), text);
+      }
+      mkdirSync(join(root, "node_modules"));
+      const installed = realpathSync(join(installJest(major), "node_modules/jest"));
+      symlinkSync(installed, join(root, "node_modules/jest"));
+
+      const resolution = resolveJest("unit", root, root);
+      if (!resolution.ok) throw new Error(resolution.note);
+      // Native Jest selects config-dir unit/a.test.cjs (fails) and sub/b.test.cjs (passes).
+      const listedOut = execFileSync(
+        process.execPath,
+        [resolution.install.bin, "--config", "jest.config.cjs", "--listTests", "--json"],
+        { cwd: root, encoding: "utf8" },
+      );
+      const nativeListed = (JSON.parse(listedOut) as string[])
+        .map((p) => p.slice(root.length + 1))
+        .sort();
+      expect(nativeListed).toEqual(["sub/b.test.cjs", "unit/a.test.cjs"]);
+      const nativeRun = spawnSync(
+        process.execPath,
+        [
+          resolution.install.bin,
+          "--config",
+          "jest.config.cjs",
+          "--runInBand",
+          "--ci",
+          "--cacheDirectory",
+          join(root, "..", `native-r3-${made++}`),
+          "unit/a.test.cjs",
+        ],
+        { cwd: root, encoding: "utf8", timeout: 120_000 },
+      );
+      expect(nativeRun.status).toBe(1);
+      rmSync(join(root, "workspace/root-gs.ran"), { force: true });
+
+      const unitAdapter = await createJestAdapter(project("unit", "jest.config.cjs", "unit"), {
+        root,
+      });
+      const [unitEnv] = await unitAdapter.environment();
+      expect(unitEnv?.files).toContain("workspace/global-setup.cjs");
+      expect(unitEnv?.resolvedConfig).toContain(`"rootDir":"<worktree>"`);
+      const unitFiles = await unitAdapter.testFiles();
+      expect(unitFiles.map((f) => f.path)).toEqual(["unit/a.test.cjs"]);
+      const unitReport = await unitAdapter.run(unitFiles, {
+        runId: `r3-unit-${made}`,
+        logDir: join(root, "..", `logs-${made++}`) as AbsolutePath,
+        timeoutMs: 120_000,
+      });
+      expect(unitReport.end).toBe("completed");
+      expect(unitReport.results.map((r) => [r.check.fullName, r.outcome])).toEqual([
+        ["root-dir contract", "fail"],
+      ]);
+      expect(existsSync(join(root, "workspace/root-gs.ran"))).toBe(true);
+
+      const relAdapter = await createJestAdapter(project("rel", "jest.config.cjs", "rel"), {
+        root,
+      });
+      const relFiles = await relAdapter.testFiles();
+      expect(relFiles.map((f) => f.path)).toEqual(["sub/b.test.cjs"]);
+      const relReport = await relAdapter.run(relFiles, {
+        runId: `r3-rel-${made}`,
+        logDir: join(root, "..", `logs-${made++}`) as AbsolutePath,
+        timeoutMs: 120_000,
+      });
+      expect(relReport.end).toBe("completed");
+      expect(relReport.results.map((r) => [r.check.fullName, r.outcome])).toEqual([
+        ["relative child", "pass"],
+      ]);
+    },
+  );
 });

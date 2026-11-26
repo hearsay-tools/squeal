@@ -148,7 +148,7 @@ function wrapperText(
     `  const { config: root } = ${read};`,
     `  const configDir = ${json(dirname(config))};`,
     `  const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);`,
-    `  const selected = inlineOptions(selectInline(root.projects, ${json(project)}), rootDir);`,
+    `  const selected = inlineOptions(selectInline(root.projects, ${json(project)}), configDir);`,
     `  return { ...root, rootDir, projects: [${selected}] };`,
     `};`,
     ``,

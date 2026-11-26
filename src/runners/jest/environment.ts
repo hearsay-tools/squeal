@@ -126,9 +126,8 @@ const configDeps = (cached) => {
     if (selector !== "") {
       const configDir = path.dirname(configPath);
       const root = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
-      const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);
-      raw = inlineOptions(selectInline(root.projects, selector), rootDir);
-      ({ projectConfig } = await readConfig(argv, { ...raw }, true, rootDir));
+      raw = inlineOptions(selectInline(root.projects, selector), configDir);
+      ({ projectConfig } = await readConfig(argv, { ...raw }, true, configDir));
     }
     try {
       if (raw === null) {

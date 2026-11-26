@@ -92,7 +92,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "81c015023c39666cf8f9d32467fae70499f614bac9b1a4684c72407d0a11c944",
+      "sha256": "d3deb6e2d417ac2a53869222036b6add7ec42ea07e80745fbd1224455a78154c",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {
