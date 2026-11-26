@@ -140,9 +140,12 @@ export const CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
  * `states_non_pass` holds a worktree's states that do not pass, so status
  * counts them (`states.countNonPass`) without reading every passing one,
  * 67,000 complexity states on Squeal's own store (spec 025 D6.1).
- * `states_by_blob` and `views_by_check` let the prune test one count or one
- * check again under the write lock by a search, not a scan of `states`
- * (5.4 M rows on cezar's store) or `views` (row 021-33).
+ * `states_complexity_blob` and `views_by_check` let the prune test one count
+ * or one check again under the write lock by a search, not a scan of
+ * `states` (5.4 M rows on cezar's store) or `views` (row 021-33). The first
+ * holds only complexity states, the ones whose blob a pass reads a count by
+ * (`pass/bodies.ts`, row 021-38), so the crap and uncovered states a
+ * coverage step or a recount writes or deletes leave it alone.
  */
 export const CODE_INDEXES: Readonly<Record<string, string>> = {
   coverage_stored:
@@ -155,9 +158,21 @@ export const CODE_INDEXES: Readonly<Record<string, string>> = {
     "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
   states_non_pass:
     "CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'",
-  states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
+  states_complexity_blob:
+    "CREATE INDEX states_complexity_blob ON states (blob) WHERE measure = 'complexity'",
   views_by_check: "CREATE INDEX views_by_check ON views (check_id)",
 };
+
+/**
+ * Indexes this Squeal no longer makes, dropped by an opener that may create
+ * the file, under the same lock and second look as `CODE_INDEXES`; a reader
+ * leaves them. `states_by_blob` (row 021-33) held every state, and its upkeep
+ * took a recount's switch from 70 to 125 ms; `states_complexity_blob`
+ * replaces it (row 021-38). A daemon of 0.1.570 or later makes it again at its
+ * own creating open, and its prune needs it; without it that prune keeps
+ * every count (`hasIndexes`).
+ */
+export const CODE_RETIRED_INDEXES: readonly string[] = ["states_by_blob"];
 
 /**
  * Additive tables, by name, each with its own indexes, made at open before

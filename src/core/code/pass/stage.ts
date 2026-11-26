@@ -155,6 +155,15 @@ export async function quietEnd(
   // A path judged, gone or too big has no failed count to retry (row 015-18).
   for (const e of judged) end.failed.delete(e.path);
   const staged = await stageQuiet(ctx, judged, links, end.latest);
+  // Row 021-38: the removed functions' crap and uncovered states go in a turn before the switch,
+  // which then deletes a third of the rows it did. No coverage step writes them again, as it
+  // judges the new counts; a hook in between reads the old complexity states without them.
+  if (staged.removed.length > 0) {
+    await nextTurn();
+    store.transaction(() =>
+      store.states.removeOtherMeasures(worktreeId, staged.removed, "complexity"),
+    );
+  }
   // The switch takes a turn of its own, never a part's (row 015-56).
   await nextTurn();
   // Row 021-36: the adoption counts the staged rows, so they are written first.

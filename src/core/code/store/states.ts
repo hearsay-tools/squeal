@@ -52,6 +52,14 @@ export function ensureCodeCheck(
   return params;
 }
 
+/** The ids of the checks `listed` names, one parameter. */
+const LISTED_CHECKS = `SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
+  AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2`;
+
+/** `checks` as the parameter of `LISTED_CHECKS`. */
+const listed = (checks: readonly CodeCheckId[]): string =>
+  JSON.stringify(checks.map((c) => [c.path, c.qualifiedName, c.occurrence]));
+
 /** Columns of the check a row's `check_id` names, for a `JOIN checks c`. */
 export const CHECK_COLUMNS = "c.path, c.qualified_name, c.occurrence";
 
@@ -230,6 +238,15 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         }
       });
     },
+    removeOtherMeasures(worktreeId, checks, kept) {
+      if (checks.length === 0) return;
+      conn.run(
+        `DELETE FROM states WHERE worktree_id = ? AND measure != ? AND check_id IN (${LISTED_CHECKS})`,
+        worktreeId,
+        kept,
+        listed(checks),
+      );
+    },
     removeMeasure(worktreeId, measure, paths) {
       if (paths === undefined) {
         conn.run("DELETE FROM states WHERE worktree_id = ? AND measure = ?", worktreeId, measure);
@@ -303,11 +320,9 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         );
         if (removed.length > 0) {
           conn.run(
-            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (
-               SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
-                 AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2)`,
+            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (${LISTED_CHECKS})`,
             worktreeId,
-            JSON.stringify(removed.map((c) => [c.path, c.qualifiedName, c.occurrence])),
+            listed(removed),
           );
         }
         return written;

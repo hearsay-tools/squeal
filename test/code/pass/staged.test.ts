@@ -152,4 +152,35 @@ describe("a recount stages its states in parts (row 015-48)", () => {
     expect(kept).not.toBeNull();
     expect(states(store)).toEqual(NEW);
   });
+
+  // Row 021-38: they go in a turn of their own, so the switch deletes the complexity states only.
+  it("removes a renamed function's crap and uncovered states before the switch, never after it", async () => {
+    const { tree, store, hook } = await counted();
+    store.states.upsertMany(
+      store.states.list("w1", { measure: "complexity" }).flatMap((s) =>
+        (["crap", "uncovered"] as const).map((measure) => ({
+          ...s,
+          measure,
+          outcome: "pending" as const,
+          value: null,
+          threshold: null,
+        })),
+      ),
+    );
+    const coverage = (s: CodeStore) =>
+      s.states
+        .list("w1")
+        .filter((state) => state.measure !== "complexity")
+        .map((state) => `${state.check.qualifiedName} ${state.measure}`);
+    const reads: { states: string[]; coverage: string[] }[] = [];
+    const seen = await watched(tree, store, hook, () => {
+      reads.push(hook.read(() => ({ states: states(hook), coverage: coverage(hook) })));
+    });
+
+    for (const read of seen) expect([OLD, NEW]).toContainEqual(read.states);
+    const renamed = (read: { coverage: string[] }) => read.coverage.some((c) => c.startsWith("g "));
+    expect(reads.filter((read) => read.states.join() === NEW.join()).some(renamed)).toBe(false);
+    expect(reads.some((read) => read.states.join() === OLD.join() && !renamed(read))).toBe(true);
+    expect(coverage(store).sort()).toEqual(paths.flatMap(() => ["f crap", "f uncovered"]).sort());
+  });
 });

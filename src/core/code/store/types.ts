@@ -88,6 +88,16 @@ export interface CodeStateRepo {
    */
   removeMany(worktreeId: WorktreeId, checks: readonly CodeCheckId[]): void;
   /**
+   * Row 021-38: removes each check's states of every measure but `kept`, in
+   * one statement. A recount does so in a turn before its `adopt`, whose
+   * switch then deletes only `kept`'s states of its removed checks.
+   */
+  removeOtherMeasures(
+    worktreeId: WorktreeId,
+    checks: readonly CodeCheckId[],
+    kept: CodeMeasure,
+  ): void;
+  /**
    * Every check's state of `measure`: `coverage.enabled` went off, so D9's
    * states go (row 015-12). With `paths`, only their checks' states: a file
    * `coverage.exclude` leaves out keeps its complexity (row 015-64).

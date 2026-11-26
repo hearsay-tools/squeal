@@ -6,10 +6,11 @@ import { describe, expect, it } from "vitest";
 import { codeStorePath } from "../../src/core/code/store/open.js";
 import {
   CODE_INDEXES,
+  CODE_RETIRED_INDEXES,
   CODE_SCHEMA_VERSION,
   CODE_TABLES,
 } from "../../src/core/code/store/schema.js";
-import { commonDir, open } from "./helpers.js";
+import { check, commonDir, open } from "./helpers.js";
 
 /*
  * Row 015-44: the coverage records' index, which gives each record's stored
@@ -158,4 +159,63 @@ describe("the coverage records' index (row 015-44)", () => {
     }
     expect(indexed(codeStorePath(dir))).toBe(true);
   }, 30_000);
+});
+
+/** The index 0.1.570 to this row's base make at a creating open (row 021-33). */
+const OLD_BLOB_INDEX = "CREATE INDEX states_by_blob ON states (blob)";
+
+/** Which of the two indexes of states by blob the file holds. */
+function blobIndexes(path: string): string[] {
+  const db = new DatabaseSync(path, { readOnly: true });
+  try {
+    return db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE name IN ('states_by_blob', 'states_complexity_blob') ORDER BY name",
+      )
+      .all()
+      .map((row) => String(row.name));
+  } finally {
+    db.close();
+  }
+}
+
+describe("the index of complexity states by blob (row 021-38)", () => {
+  it("replaces an older daemon's index of every state at a creating open, never at a reader's", () => {
+    const dir = commonDir();
+    const path = codeStorePath(dir);
+    const first = open(dir);
+    first.states.upsertMany([
+      {
+        worktreeId: "w1",
+        check: check("Ledger.settle"),
+        measure: "complexity",
+        outcome: "fail",
+        value: 23,
+        threshold: 20,
+        countedAt: 1,
+        blob: "b1",
+        changedAt: 1,
+      },
+    ]);
+    first.close();
+    expect(CODE_RETIRED_INDEXES).toEqual(["states_by_blob"]);
+    expect(blobIndexes(path)).toEqual(["states_complexity_blob"]);
+
+    // An older daemon's creating open makes its index again beside this one, and writes on.
+    const db = new DatabaseSync(path);
+    db.exec(OLD_BLOB_INDEX);
+    db.exec("UPDATE states SET blob = 'b2'");
+    db.close();
+    expect(blobIndexes(path)).toEqual(["states_by_blob", "states_complexity_blob"]);
+
+    const reader = open(dir, { create: false });
+    expect(reader.states.list("w1").map((s) => s.blob)).toEqual(["b2"]);
+    reader.close();
+    expect(blobIndexes(path)).toEqual(["states_by_blob", "states_complexity_blob"]);
+
+    const store = open(dir);
+    expect(blobIndexes(path)).toEqual(["states_complexity_blob"]);
+    expect(store.schemaVersion).toBe(1);
+    expect(store.states.list("w1").map((s) => s.blob)).toEqual(["b2"]);
+  });
 });

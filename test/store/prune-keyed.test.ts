@@ -153,7 +153,7 @@ describe("a rule whose index the file lacks (row 021-33)", () => {
     const { dir, store } = liveCodeStore();
     store.counts.put(code.count("unused"), OLD);
     const conn = codeConnection(dir);
-    conn.db.exec("DROP INDEX states_by_blob");
+    conn.db.exec("DROP INDEX states_complexity_blob");
     const counts = noCodeRemoved();
     for (const slice of pruneCodeSlices(conn, CODE_OPTIONS, counts)) slice();
     expect(counts.countsRemoved).toBe(0);

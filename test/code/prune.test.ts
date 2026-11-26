@@ -79,6 +79,24 @@ describe("code store prune (015 D4, 011 C7)", () => {
     expect(store.counts.get("unjudged", "typescript", 1)).toBeNull();
   });
 
+  it("drops a count past the retention that only a crap or uncovered state names (row 021-38)", () => {
+    const store = open(commonDir());
+    store.counts.put(count("crap-only"), OLD);
+    store.counts.put(count("uncovered-only"), OLD);
+    store.files.upsertMany("w1", [file("src/a.ts", "pending")]);
+    store.states.upsertMany([
+      { ...failing("w1", "Ledger.settle"), measure: "crap", blob: "crap-only" },
+      { ...failing("w1", "Ledger.open"), measure: "uncovered", blob: "uncovered-only" },
+    ]);
+
+    const report = store.prune({ now: NOW, retentionDays: 7, worktrees: ["w1"], consumers: [] });
+
+    // A pass reads a count by a complexity state's blob only (`pass/bodies.ts`).
+    expect(report.countsRemoved).toBe(2);
+    expect(store.counts.get("crap-only", "typescript", 1)).toBeNull();
+    expect(store.counts.get("uncovered-only", "typescript", 1)).toBeNull();
+  });
+
   it("drops a removed worktree's rows, and its counts once they are past the retention", () => {
     const store = open(commonDir());
     store.counts.put(count("gone-old"), OLD);

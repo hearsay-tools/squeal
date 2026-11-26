@@ -100,6 +100,23 @@ describe("adopting staged states (row 015-48)", () => {
     expect(rows(store, "w1")).toEqual(["stays complexity pass 3 9"]);
   });
 
+  it("removes the other measures' states of each check, and keeps the named measure's (row 021-38)", () => {
+    const store = open(commonDir());
+    store.states.upsertMany([
+      state("w1", "gone"),
+      state("w1", "gone", { measure: "crap", outcome: "fail", value: 40 }),
+      state("w1", "gone", { measure: "uncovered", outcome: "fail", value: null }),
+      state("w1", "stays", { measure: "crap", outcome: "pending", value: null }),
+      state("w2", "gone", { measure: "crap", outcome: "pending", value: null }),
+    ]);
+
+    store.states.removeOtherMeasures("w1", [check("gone"), check("never")], "complexity");
+    expect(rows(store, "w1")).toEqual(["gone complexity pass 3 4", "stays crap pending null 4"]);
+    expect(rows(store, "w2")).toEqual(["gone crap pending null 4"]);
+    store.states.removeOtherMeasures("w1", [], "complexity");
+    expect(rows(store, "w1")).toHaveLength(2);
+  });
+
   it("writes nothing when nothing is staged", () => {
     const store = open(commonDir());
     store.states.upsertMany([state("w1", "kept")]);

@@ -88,13 +88,16 @@ const PER_WORKTREE = [
 ] as const;
 
 /**
- * A count no live file and no kept state names, older than the cutoff; the
- * parameter is the cutoff. Each test is a search, by `files_by_count` and
- * `states_by_blob`, so it is tested again per key under the write lock.
+ * A count no live file and no kept complexity state names, older than the
+ * cutoff; the parameter is the cutoff. A pass reads a count by the blob of a
+ * complexity state only (`pass/bodies.ts`); a crap or uncovered state's blob
+ * names none it reads (row 021-38). Each test is a search, by
+ * `files_by_count` and `states_complexity_blob`, so it is tested again per
+ * key under the write lock.
  */
 const UNUSED_COUNT = `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
     AND f.language = counts.language AND f.counter_version = counts.counter_version)
-  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.blob = counts.blob)`;
+  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.measure = 'complexity' AND s.blob = counts.blob)`;
 
 /**
  * A check nothing names. Each test is a search: `states` and `transitions`
@@ -150,7 +153,7 @@ export function* pruneCodeSlices(
   });
 
   // Row 021-33: a rule whose test needs an index the file lacks waits for an opener to make it.
-  const indexed = conn.read(() => hasIndexes(conn, "states_by_blob", "views_by_check"));
+  const indexed = conn.read(() => hasIndexes(conn, "states_complexity_blob", "views_by_check"));
   if (indexed) {
     yield* rule({
       table: "counts",
