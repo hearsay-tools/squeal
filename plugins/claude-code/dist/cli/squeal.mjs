@@ -70038,6 +70038,7 @@ var init_channel = __esm({
 
 // src/core/runner-host/slots.ts
 import { createHash as createHash39 } from "node:crypto";
+import { delimiter as delimiter7 } from "node:path";
 function slotPool(root, project, max) {
   const key3 = `${root}\0${project}\0${max ?? ""}`;
   let pool = pools.get(key3);
@@ -70070,7 +70071,10 @@ function slotVariables(slot2, toxParallelEnv) {
 function expandedVariables(env, templates, slot2) {
   const expanded = {};
   for (const [name3, template] of Object.entries(templates)) {
-    if (env[name3] === template) expanded[name3] = expandSlotTemplate(template, slot2);
+    const value = env[name3];
+    if (value === void 0) continue;
+    const entries3 = new Set(template.split(delimiter7));
+    expanded[name3] = value.split(delimiter7).map((entry4) => entries3.has(entry4) ? expandSlotTemplate(entry4, slot2) : entry4).join(delimiter7);
   }
   return expanded;
 }
@@ -71615,7 +71619,7 @@ var init_report3 = __esm({
 import { createHash as createHash40 } from "node:crypto";
 import { existsSync as existsSync51, mkdirSync as mkdirSync30, writeFileSync as writeFileSync21 } from "node:fs";
 import { tmpdir as tmpdir12 } from "node:os";
-import { delimiter as delimiter7, join as join146, relative as relative25, sep as sep29 } from "node:path";
+import { delimiter as delimiter8, join as join146, relative as relative25, sep as sep29 } from "node:path";
 import { fileURLToPath as fileURLToPath20 } from "node:url";
 async function runPytest(options) {
   const started2 = performance.now();
@@ -71630,16 +71634,7 @@ async function runPytest(options) {
   if (ours === null) return logGone(options.logDir);
   mkdirSync30(cacheDir, { recursive: true });
   const runtimeDir2 = options.runtimeDir ?? pytestRuntimeDir();
-  const env = {
-    ...environment.runEnv,
-    ...options.childEnv,
-    PYTHONPATH: [environment.runEnv.PYTHONPATH, runtimeDir2].filter((p) => p !== void 0 && p !== "").join(delimiter7),
-    SQUEAL_PYTEST_ROOT: options.root,
-    // The plugin names the file in progress for the processes a test starts (task 007-55);
-    // one inherited from a run around this daemon's would record pytest's own imports.
-    SQUEAL_PYTEST_FILE: void 0,
-    SQUEAL_PYTEST_CHECKS: void 0
-  };
+  const env = batchEnv(environment.runEnv, options, runtimeDir2);
   const args2 = pytestArgs(
     {
       project,
@@ -71731,8 +71726,13 @@ async function runPytest(options) {
       args: batch.args,
       cwd,
       env: {
-        ...env,
-        ...expandedVariables(env, project.env, slot2),
+        // D2.1: the slot expands the project's templates before the explicit `childEnv` and
+        // the runtime directory go over them, in `PATH` behind the activation's `bin` too.
+        ...batchEnv(
+          { ...environment.runEnv, ...expandedVariables(environment.runEnv, project.env, slot2) },
+          options,
+          runtimeDir2
+        ),
         ...slotVariables(slot2, project.slots?.toxParallelEnv === true),
         PYTHONPYCACHEPREFIX: bytecode.prefix,
         SQUEAL_PYTEST_EVENTS: events,
@@ -71810,6 +71810,18 @@ async function runPytest(options) {
       (f) => f.skipped === null ? [] : [{ testFile: f.testFile, reason: f.skipped }]
     ),
     notes
+  };
+}
+function batchEnv(runEnv2, options, runtimeDir2) {
+  return {
+    ...runEnv2,
+    ...options.childEnv,
+    PYTHONPATH: [options.childEnv?.PYTHONPATH ?? runEnv2.PYTHONPATH, runtimeDir2].filter((p) => p !== void 0 && p !== "").join(delimiter8),
+    SQUEAL_PYTEST_ROOT: options.root,
+    // The plugin names the file in progress for the processes a test starts (task 007-55);
+    // one inherited from a run around this daemon's would record pytest's own imports.
+    SQUEAL_PYTEST_FILE: void 0,
+    SQUEAL_PYTEST_CHECKS: void 0
   };
 }
 function completedOf(batch) {
@@ -73429,13 +73441,14 @@ var init_states4 = __esm({
 
 // src/runners/pytest/adapter-run.ts
 import { join as join152 } from "node:path";
-function currentFingerprint(environment) {
+function currentFingerprint(root, environment) {
   const { env, python } = environment.discovery;
-  return environmentFingerprint2(readEnvironmentFiles(env, python));
+  const refused = outsideEditables(root, env).length > 0 ? ":editable-outside" : "";
+  return `${environmentFingerprint2(readEnvironmentFiles(env, python))}${refused}`;
 }
 async function runProject(context2, testFiles3, runOptions) {
   const { root, project, environment, options } = context2;
-  const note = syncNote(project, environment.fingerprint, currentFingerprint(environment));
+  const note = syncNote(project, environment.fingerprint, currentFingerprint(root, environment));
   if (note !== null) return { kind: "moved", report: unavailable3(note) };
   const inGroup = groupRun2(runOptions.lane);
   const run9 = await runPytest({
@@ -73454,7 +73467,7 @@ async function runProject(context2, testFiles3, runOptions) {
     ...runOptions.stop === void 0 ? {} : { signal: runOptions.stop },
     ...runOptions.checks === void 0 ? {} : { checks: runOptions.checks }
   });
-  const after3 = syncNote(project, environment.fingerprint, currentFingerprint(environment));
+  const after3 = syncNote(project, environment.fingerprint, currentFingerprint(root, environment));
   if (after3 !== null) return { kind: "moved", report: unavailable3(after3) };
   const skipped2 = await Promise.all(
     run9.skippedFiles.map(
@@ -73516,7 +73529,7 @@ var init_adapter_run = __esm({
 // src/runners/pytest/environment/hash.ts
 import { createHash as createHash42 } from "node:crypto";
 import { realpathSync as realpathSync25 } from "node:fs";
-import { delimiter as delimiter8, join as join153 } from "node:path";
+import { delimiter as delimiter9, join as join153 } from "node:path";
 function runEnvironment(env, project, source2 = process.env) {
   const result = { ...withoutOwnCompileCache(source2) };
   const foreign2 = /* @__PURE__ */ new Set();
@@ -73526,8 +73539,8 @@ function runEnvironment(env, project, source2 = process.env) {
     delete result[name3];
   }
   Object.assign(result, project.env);
-  const path = (result.PATH ?? "").split(delimiter8).filter((p) => p !== "" && !foreign2.has(p));
-  result.PATH = [join153(env, "bin"), ...path].join(delimiter8);
+  const path = (result.PATH ?? "").split(delimiter9).filter((p) => p !== "" && !foreign2.has(p));
+  result.PATH = [join153(env, "bin"), ...path].join(delimiter9);
   result.VIRTUAL_ENV = env;
   return result;
 }
@@ -74940,7 +74953,7 @@ async function createPytestAdapter(project, options) {
   const ref3 = (path) => ({ project: project.name, path });
   const source2 = options.source ?? process.env;
   const readNow = async () => admitEnvironment(root, project, await readEnvironment2(root, project, source2));
-  const settle4 = async () => (await admit2(project, readNow, currentFingerprint, options.clock)).environment;
+  const settle4 = async () => (await admit2(project, readNow, (e) => currentFingerprint(root, e), options.clock)).environment;
   const place2 = () => {
     const dir3 = environmentDir(root, project);
     return { dir: dir3, settings: projectSettings(root, project, runEnvironment(dir3, project, source2)) };
@@ -75032,7 +75045,7 @@ async function createPytestAdapter(project, options) {
     return { recreatedProjects: moved4 ? [project.name] : [] };
   };
   const recheck = async () => {
-    const still = !stale3 && environment.state === "ready" && currentFingerprint(environment) === environment.fingerprint;
+    const still = !stale3 && environment.state === "ready" && currentFingerprint(root, environment) === environment.fingerprint;
     if (still) return { recreatedProjects: [] };
     const moved4 = await reread();
     if (!moved4.moved && !moved4.rebuild) return { recreatedProjects: [] };
@@ -80763,7 +80776,7 @@ import { spawn as spawn14 } from "node:child_process";
 import { randomBytes as randomBytes5 } from "node:crypto";
 import { accessSync as accessSync5, constants as constants13, existsSync as existsSync61, readFileSync as readFileSync73, statSync as statSync42 } from "node:fs";
 import { mkdir as mkdir2, open as open7, rename, rm as rm3, unlink } from "node:fs/promises";
-import { delimiter as delimiter9, dirname as dirname66, join as join171, resolve as resolve41 } from "node:path";
+import { delimiter as delimiter10, dirname as dirname66, join as join171, resolve as resolve41 } from "node:path";
 import { setTimeout as sleep20 } from "node:timers/promises";
 function hostTools() {
   const nodeDir = dirname66(process.execPath);
@@ -80784,7 +80797,7 @@ function managerSpec(name3, manifest, berry) {
 }
 function onPath4(name3, path, cwd) {
   if (path === void 0) return false;
-  return path.split(delimiter9).some((entry4) => {
+  return path.split(delimiter10).some((entry4) => {
     const dir2 = entry4 === "" ? cwd ?? "." : cwd !== void 0 ? resolve41(cwd, entry4) : entry4;
     return executable2(join171(dir2, name3));
   });
@@ -80799,8 +80812,8 @@ function executable2(path) {
 }
 function withPathDir(env, dir2) {
   if (env.PATH === void 0) return { ...env, PATH: dir2 };
-  const dirs = env.PATH.split(delimiter9);
-  return dirs.includes(dir2) ? env : { ...env, PATH: [...dirs, dir2].join(delimiter9) };
+  const dirs = env.PATH.split(delimiter10);
+  return dirs.includes(dir2) ? env : { ...env, PATH: [...dirs, dir2].join(delimiter10) };
 }
 async function managerEnv(command, env, place2) {
   const withNode = withPathDir(env, place2.tools.nodeDir);
@@ -80811,7 +80824,7 @@ async function managerEnv(command, env, place2) {
   const manifest = readJson3(join171(place2.root, "package.json"));
   const spec = managerSpec(name3, manifest, command.includes("--immutable"));
   const bin = await installedManager(spec, withNode, place2);
-  const nextPath = withNode.PATH === void 0 ? bin : `${bin}${delimiter9}${withNode.PATH}`;
+  const nextPath = withNode.PATH === void 0 ? bin : `${bin}${delimiter10}${withNode.PATH}`;
   return { ...withNode, PATH: nextPath };
 }
 async function withPublishLock(dir2, fn) {
@@ -135478,7 +135491,7 @@ import {
   rmSync as rmSync46
 } from "node:fs";
 import { tmpdir as tmpdir17 } from "node:os";
-import { delimiter as delimiter10, join as join225 } from "node:path";
+import { delimiter as delimiter11, join as join225 } from "node:path";
 
 // src/cli/antigravity/update.ts
 import { existsSync as existsSync96 } from "node:fs";
@@ -135824,7 +135837,7 @@ function pluginDirs(env) {
   return dirs;
 }
 function onPath5(name3, env) {
-  return (env.PATH ?? "").split(delimiter10).some((dir2) => {
+  return (env.PATH ?? "").split(delimiter11).some((dir2) => {
     if (dir2 === "") return false;
     try {
       accessSync6(join225(dir2, name3), constants16.X_OK);
