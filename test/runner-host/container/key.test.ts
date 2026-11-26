@@ -8,15 +8,23 @@ import {
   applyContainerEnvironment,
   type ContainerKeyInputs,
   type ContainerProbe,
+  ciContainerTargetEnv,
   containerCore,
   containerKeyDescriptor,
   hashInputs,
   inspectServices,
+  localContainerKey,
   parsePackages,
+  probeLocalContainer,
+  wrapContainerEnvironmentAdapter,
 } from "../../../src/core/runner-host/container/key.js";
 import { onMachine } from "../../../src/core/runner-host/remote/remote-key.js";
 import type { CoreEnvironmentInputs } from "../../../src/core/types/keys.js";
-import type { RunnerEnvironment } from "../../../src/core/types/runner.js";
+import {
+  CONTAINER_TARGET_DEFAULTS,
+  type ContainerTarget,
+} from "../../../src/core/types/policy-containers.js";
+import type { RunnerAdapter, RunnerEnvironment } from "../../../src/core/types/runner.js";
 
 /*
  * Spec 027 D7 (row 027-06): a container target's results are keyed apart
@@ -65,7 +73,7 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 function inputs(over: Partial<ContainerKeyInputs> = {}): ContainerKeyInputs {
   return {
-    keyMode: "build-content",
+    keyMode: "build-content" as const,
     image: IMAGE,
     probe: PROBE,
     dockerfileInputs: hashInputs(dir, ["Dockerfile", "uv.lock"]),
@@ -115,6 +123,20 @@ describe("build-content keys (D7.2, the default)", () => {
   it("matches across two builds with other image IDs and the same packages, inputs and env", () => {
     const rebuilt: ImageInfo = { ...IMAGE, id: "sha256:build-two", repoDigests: ["r@sha256:x"] };
     expect(keyOf({ image: rebuilt })).toBe(keyOf());
+  });
+
+  it("keys the target's env, never the image's, so no inspection is needed (review 0.1.644 B3)", () => {
+    const other: ImageInfo = { ...IMAGE, env: ["PATH=/usr/bin", "EXTRA_IMAGE_VAR=1"] };
+    expect(keyOf({ image: other })).toBe(keyOf());
+    const { image: _image, ...noImage } = inputs();
+    expect(containerKeyDescriptor({ ...noImage, keyMode: "build-content" })).toEqual(
+      containerKeyDescriptor(inputs()),
+    );
+    expect(containerKeyDescriptor(inputs())).toMatchObject({
+      env: [["DJANGO_SETTINGS_MODULE", "config.settings"]],
+    });
+    // `image-id` keeps keying the image's env.
+    expect(keyOf({ keyMode: "image-id", image: other })).not.toBe(keyOf({ keyMode: "image-id" }));
   });
 
   it("re-keys on a one-line change of a dockerfileInputs file, and on a missing one", () => {
@@ -208,5 +230,90 @@ describe("what the container shows of itself", () => {
     ]);
     expect(asked.every((args) => args[0] === "ps")).toBe(true);
     expect(asked[0]).toContain("--filter=label=com.docker.compose.project=sb-dev");
+  });
+});
+
+describe("the key a CI job inside the image gives (D7.2, review 0.1.644 B3)", () => {
+  const TARGET: ContainerTarget = {
+    ...CONTAINER_TARGET_DEFAULTS,
+    image: "example:latest",
+    dockerfileInputs: ["Dockerfile", "uv.lock"],
+    env: { DJANGO_SETTINGS_MODULE: "config.settings" },
+  };
+  const local = (env: NodeJS.ProcessEnv, target: ContainerTarget = TARGET) =>
+    localContainerKey({ target, root: dir, squealVersion: "0.1.0", env, probe: async () => PROBE });
+
+  it("reads this machine's Node, platform, arch and packages with no Docker", async () => {
+    const probe = await probeLocalContainer();
+    expect(probe).toMatchObject({ platform: process.platform, arch: process.arch });
+    expect(probe.nodeVersion).toMatch(/^v\d+\.\d+\.\d+/);
+    expect(["dpkg", "apk", "none"]).toContain(probe.packageManager);
+    expect(probe.packages).toEqual([...probe.packages].sort());
+  });
+
+  it("resolves the target's env from the job: templates kept, others the job's, unset left out", () => {
+    const target = {
+      MODE: "test",
+      DB: "app_{worktreeSlot}",
+      PORT: "{slot}0",
+      UNSET: "x",
+      SQUEAL_SLOT: "1",
+      HOME: "/root",
+    };
+    const job = { MODE: "other", DB: "app_ci", PORT: "9", SQUEAL_SLOT: "2", HOME: "/home/ci" };
+    expect(ciContainerTargetEnv(target, job)).toEqual({
+      MODE: "other",
+      DB: "app_{worktreeSlot}",
+      PORT: "{slot}0",
+    });
+    expect(
+      Object.keys(ciContainerTargetEnv({ ["__proto__"]: "a" }, JSON.parse('{"__proto__":"a"}'))),
+    ).toEqual(["__proto__"]);
+  });
+
+  it("equals the managed build-content key of the same inputs under any image ID and image env", async () => {
+    const ci = await local({ DJANGO_SETTINGS_MODULE: "config.settings", GITHUB_SHA: "abc" });
+    const managed = containerKeyDescriptor({
+      ...inputs({ services: [] }),
+      image: { ...IMAGE, id: "sha256:dev", env: ["PATH=/usr/bin", "EXTRA_IMAGE_VAR=1"] },
+    });
+    expect(ci.descriptor).toEqual(managed);
+    expect(ci.core).toEqual(containerCore(PROBE, "0.1.0"));
+    expect((await local({ DJANGO_SETTINGS_MODULE: "other" })).descriptor).not.toEqual(managed);
+    expect((await local({})).descriptor).not.toEqual(managed);
+  });
+
+  it("keys a declared dependency service as not running, and an image-id target as no image", async () => {
+    const withDb = await local(
+      { DJANGO_SETTINGS_MODULE: "config.settings" },
+      {
+        ...TARGET,
+        dependencyServices: ["db"],
+      },
+    );
+    expect(withDb.descriptor).toMatchObject({ services: [["db", "not-running", []]] });
+    const pinned = await local({}, { ...TARGET, keyMode: "image-id" });
+    expect(pinned.descriptor).toMatchObject({ keyMode: "image-id", imageId: "ci-uninspected" });
+    expect(pinned.descriptor).not.toEqual(containerKeyDescriptor(inputs({ keyMode: "image-id" })));
+  });
+
+  it("wraps only an adapter's environments; every other member answers as the adapter's own", async () => {
+    class Adapter {
+      readonly name = "node-test";
+      readonly #files = ["a.test.mjs"];
+      async environment() {
+        return [RUNNER];
+      }
+      async testFiles() {
+        return this.#files;
+      }
+    }
+    const key = await local({ DJANGO_SETTINGS_MODULE: "config.settings" });
+    const wrapped = wrapContainerEnvironmentAdapter(new Adapter() as unknown as RunnerAdapter, key);
+    expect(wrapped.name).toBe("node-test");
+    expect(await wrapped.testFiles()).toEqual(["a.test.mjs"]);
+    expect(await wrapped.environment()).toEqual(
+      applyContainerEnvironment([RUNNER], key.descriptor, key.core),
+    );
   });
 });
