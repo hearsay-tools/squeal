@@ -268,6 +268,7 @@ describe("the managed container (D5)", () => {
       "org.squeal.target": "backend",
       "org.squeal.image": IMAGE.id,
       "org.squeal.pid": "42",
+      "org.squeal.config": expect.stringMatching(/^[0-9a-f]{16}$/),
     });
     expect(run?.user).toEqual({ uid: 7, gid: 8 });
     expect(run?.mounts.map((m) => [m.source === m.target, m.readonly === true])).toEqual([
