@@ -18,6 +18,7 @@ import type { JestProject } from "../../../../src/core/types/policy-jest.js";
 import type { CheckRunResult, RunReport } from "../../../../src/core/types/runner.js";
 import { type JestInstall, resolveJest } from "../../../../src/runners/jest/resolve.js";
 import { type JestRunOptions, runJest } from "../../../../src/runners/jest/run/index.js";
+import { observeRecorder } from "../../../../src/runners/observe/runtime.js";
 import { installJest, JEST_MAJORS } from "../../../helpers/jest-env.js";
 
 /*
@@ -277,6 +278,46 @@ describe.each(JEST_MAJORS)("runJest on Jest %i (spec 028 D4, D5)", (major) => {
       expect(report.failure).toBeNull();
       expect(report.results.map((r) => [r.check.fullName, r.outcome])).toEqual([["sum", "pass"]]);
     }
+  }, 120_000);
+
+  it("reads a .ts config as Jest itself does: natively on 30, through ts-node on 29", async () => {
+    const root = project(installed, {
+      "test/sum.test.js": `test("sum", () => { expect(1 + 2).toBe(3); });\n`,
+      "jest.config.ts": `const config: { testEnvironment: string } = { testEnvironment: "node" };\nexport default config;\n`,
+    });
+    const { report } = await run(root, install, "ts", ["test/sum.test.js"], {
+      project: jestProject("ts", { config: "jest.config.ts" }),
+    });
+    if (major === 30) {
+      expect(report.failure).toBeNull();
+      expect(report.results.map((r) => [r.check.fullName, r.outcome])).toEqual([["sum", "pass"]]);
+    } else {
+      // The fixture has no ts-node; the failure carries Jest's own words for it.
+      expect(report.end).toBe("crashed");
+      expect(report.failure).toContain(
+        "'ts-node' is required for the TypeScript configuration files",
+      );
+    }
+  }, 120_000);
+
+  it("loads Squeal's recorder into the batch when the run observes", async () => {
+    // Row 028-04's runtime names the current test file; until then the recorder only loads.
+    const recorder = observeRecorder();
+    if (recorder === null) throw new Error("recorder.cjs not found");
+    const root = project(installed, {
+      "test/env.test.js": `test("observed", () => {
+  expect(process.env.NODE_OPTIONS).toContain(${JSON.stringify(recorder)});
+  expect(JSON.parse(process.env.SQUEAL_OBSERVE)).toMatchObject({ out: process.env.OUT, root: process.env.ROOT });
+});\n`,
+    });
+    const out = join(root, ".observed");
+    const { report } = await run(root, install, "observe", ["test/env.test.js"], {
+      observe: { recorder, out: out as AbsolutePath, skip: [] },
+      runEnv: { ...process.env, OUT: out, ROOT: root },
+    });
+    expect(report.results.map((r) => [r.outcome, r.errors[0]?.message])).toEqual([
+      ["pass", undefined],
+    ]);
   }, 120_000);
 
   it("reports files Jest never ran as unfinished, naming the exit", async () => {
