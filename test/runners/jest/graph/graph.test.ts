@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -6,6 +7,7 @@ import type { AbsolutePath } from "../../../../src/core/types/common.js";
 import { createJestGraph, type JestGraph } from "../../../../src/runners/jest/graph/index.js";
 import { compileModuleNameMapper } from "../../../../src/runners/jest/graph/mapper.js";
 import { snapshotPath } from "../../../../src/runners/jest/graph/snapshots.js";
+import { installJest, JEST_MAJORS } from "../../../helpers/jest-env.js";
 
 /*
  * Spec 028 D3.3: Jest's static closure and `affected()` over the shared JS/TS graph, before any
@@ -201,4 +203,80 @@ describe("compileModuleNameMapper", () => {
     expect(mapper.map("y")).toEqual(["/w/p/y"]);
     expect(mapper.notes).toEqual([expect.stringContaining('pattern "("')]);
   });
+});
+
+/*
+ * Review 0.1.643 B2: Jest looks files up in its `moduleFileExtensions` order, `.js` before `.ts`
+ * by default, and loads `./helper.js` as written; tsx's `.ts` first and `.js` alias do not apply.
+ * Each test file asserts the module real Jest loads, so a passing Jest run proves the graph's pick.
+ */
+const PRECEDENCE: Readonly<Record<string, string>> = {
+  "package.json": `{ "private": true }\n`,
+  "jest.config.js": `module.exports = { projects: ["<rootDir>/default", "<rootDir>/flipped"] };\n`,
+  "default/jest.config.js": `module.exports = { testEnvironment: "node", transform: {} };\n`,
+  "default/helper.js": `module.exports = "js";\n`,
+  "default/helper.ts": `module.exports = "ts";\n`,
+  "default/bare.test.js": `const s = require("./helper");\ntest("js", () => expect(s).toBe("js"));\n`,
+  "default/explicit.test.js": `const s = require("./helper.js");\ntest("js", () => expect(s).toBe("js"));\n`,
+  "flipped/jest.config.js": `module.exports = { testEnvironment: "node", transform: {}, moduleFileExtensions: ["ts", "js"] };\n`,
+  "flipped/helper.js": `module.exports = "js";\n`,
+  "flipped/helper.ts": `module.exports = "ts";\n`,
+  "flipped/bare.test.js": `const s = require("./helper");\ntest("ts", () => expect(s).toBe("ts"));\n`,
+};
+
+describe("Jest's moduleFileExtensions precedence", () => {
+  let tree: AbsolutePath;
+  beforeAll(() => {
+    tree = realpathSync(mkdtempSync(join(tmpdir(), "squeal-jest-ext-"))) as AbsolutePath;
+    for (const [path, text] of Object.entries(PRECEDENCE)) {
+      mkdirSync(dirname(join(tree, path)), { recursive: true });
+      writeFileSync(join(tree, path), text);
+    }
+  });
+  afterAll(() => rmSync(tree, { recursive: true, force: true }));
+
+  const graphIn = (dir: string, testFiles: string[], moduleFileExtensions?: string[]) =>
+    createJestGraph({
+      root: tree,
+      rootDir: join(tree, dir) as AbsolutePath,
+      testFiles,
+      moduleFileExtensions,
+    });
+
+  it("takes helper.js before helper.ts, bare or explicit, by default", async () => {
+    const graph = await graphIn("default", ["default/bare.test.js", "default/explicit.test.js"]);
+    for (const file of ["default/bare.test.js", "default/explicit.test.js"]) {
+      const { paths } = graph.closure(file);
+      expect(paths).toContain("default/helper.js");
+      expect(paths).not.toContain("default/helper.ts");
+    }
+    expect(graph.affected(["default/helper.js"])).toEqual({
+      direct: ["default/bare.test.js", "default/explicit.test.js"],
+      transitive: [],
+    });
+    expect(graph.affected(["default/helper.ts"])).toEqual({ direct: [], transitive: [] });
+  });
+
+  it("takes helper.ts first under moduleFileExtensions [ts, js]", async () => {
+    const graph = await graphIn("flipped", ["flipped/bare.test.js"], ["ts", ".js"]);
+    const { paths } = graph.closure("flipped/bare.test.js");
+    expect(paths).toContain("flipped/helper.ts");
+    expect(paths).not.toContain("flipped/helper.js");
+    expect(graph.affected(["flipped/helper.ts"]).direct).toEqual(["flipped/bare.test.js"]);
+  });
+
+  it.each(JEST_MAJORS)(
+    "matches the modules real Jest %i loads",
+    (major) => {
+      const bin = join(installJest(major), "node_modules/jest/bin/jest.js");
+      const run = spawnSync(process.execPath, [bin, "--ci", "--runInBand", "--no-cache"], {
+        cwd: tree,
+        encoding: "utf8",
+        timeout: 120_000,
+      });
+      expect(run.stderr).toMatch(/Tests:\s+3 passed, 3 total/);
+      expect(run.status).toBe(0);
+    },
+    240_000,
+  );
 });
