@@ -11,10 +11,16 @@ import {
   type OcKind,
   type OcRequest,
 } from "../../../src/harness/opencode/protocol.js";
-import { check, result } from "../../state/helpers.js";
-import { liveSocket, quietCli, runBundle, runtimeDir } from "../bundle-helpers.js";
+import {
+  adapterCompileCache,
+  latencyStore,
+  liveSocket,
+  quietCli,
+  runBundle,
+  runtimeDir,
+} from "../bundle-helpers.js";
 import { buildCodexBundles, codexInput, codexRecorded, sessionOf } from "../codex/helpers.js";
-import { type SquealRepo, squealRepo } from "../helpers.js";
+import type { SquealRepo } from "../helpers.js";
 import { buildOpencodeBundles } from "./helpers.js";
 
 /*
@@ -29,14 +35,19 @@ import { buildOpencodeBundles } from "./helpers.js";
  * cold runs each; above load average 4, and in CI, one round of
  * `LOADED_RUNS` is reported and nothing is asserted, as 002's latency test
  * does.
+ *
+ * Row 025-21: like with like on the compile cache. The bridge starts with
+ * Squeal's own cache under `XDG_CACHE_HOME` (row 025-20), here a temp
+ * directory; the Codex hooks get the same directory, as Codex's adapter sets
+ * it, unless this environment names a cache of its own, which both then use.
+ * One untimed call per side and pair fills it. The store carries the write
+ * markers a daemon arms.
  */
 
 const RUNS = 20;
 const ROUNDS = 3;
 const MARGIN_MS = 10;
 const MAX_LOAD = 4;
-const FILES = 50;
-const CHECKS_PER_FILE = 10;
 const LOADED_RUNS = 5;
 /** Half the test's timeout. */
 const REPORT_BY_MS = 200_000;
@@ -54,28 +65,6 @@ const OC_CHILD = "ses_ec4f61774ffeIWyJMttM94R8E9";
 function p95(samples: readonly number[]): number {
   const sorted = [...samples].sort((a, b) => a - b);
   return sorted[Math.ceil(sorted.length * 0.95) - 1] ?? Number.NaN;
-}
-
-/** A store the size of a small project: every check passing. */
-function seeded(): SquealRepo {
-  const r = squealRepo();
-  const results = [];
-  for (let f = 0; f < FILES; f++) {
-    const file = { project: "", path: `src/m${f}.test.ts` };
-    r.store.testFileKeys.upsertMany([
-      { worktreeId: r.worktreeId, testFile: file, key: `k${f}`, revision: 1, pending: null },
-    ]);
-    for (let c = 0; c < CHECKS_PER_FILE; c++) {
-      results.push(
-        result(check(`m${f} > case ${c}`, file), "pass", {
-          key: `k${f}`,
-          worktreeId: r.worktreeId,
-        }),
-      );
-    }
-  }
-  r.apply(r.pass(), ...results);
-  return r;
 }
 
 const consumer = (r: SquealRepo, sessionId: string, agentId: string = MAIN_AGENT): Consumer => ({
@@ -189,13 +178,22 @@ afterAll(() => {
 
 describe("the OpenCode bridge's per-hook cost beside Codex's", () => {
   it(`stays within ${MARGIN_MS} ms p95 of the matching Codex hook at calm load`, async () => {
-    const r = seeded();
+    const r = latencyStore();
     const dir = runtimeDir();
     await liveSocket(join(dir, `squeal-${r.worktreeId}.sock`));
     const quiet = quietCli().cli;
-    Object.assign(process.env, { XDG_RUNTIME_DIR: dir, SQUEAL_CLI: quiet });
-    // The Codex hooks get the environment the bridge inherits.
-    const env = { ...process.env } as Record<string, string>;
+    const userCacheHome = process.env.XDG_CACHE_HOME;
+    const cacheHome = runtimeDir();
+    Object.assign(process.env, {
+      XDG_RUNTIME_DIR: dir,
+      SQUEAL_CLI: quiet,
+      XDG_CACHE_HOME: cacheHome,
+    });
+    // The Codex hooks get the environment the bridge inherits, and the cache the bridge sets.
+    const env = {
+      ...process.env,
+      ...(process.env.NODE_COMPILE_CACHE === undefined ? adapterCompileCache(cacheHome) : {}),
+    } as Record<string, string>;
     const host = { worktree: r.root, pid: process.pid };
     const bridge = async (kind: OcKind, request: object) => {
       const command: BridgeCommand = {
@@ -228,6 +226,7 @@ describe("the OpenCode bridge's per-hook cost beside Codex's", () => {
       const asserted = calm();
       const [runs, maxRounds] = asserted ? [RUNS, ROUNDS] : [LOADED_RUNS, 1];
       const started = performance.now();
+      await bridge("ping", {}); // fills the compile cache, untimed
       const pings: number[] = [];
       for (let run = 0; run < runs; run++) pings.push((await bridge("ping", {})).ms);
       bare = p95(pings);
@@ -235,6 +234,13 @@ describe("the OpenCode bridge's per-hook cost beside Codex's", () => {
         let best: Row | null = null;
         let rounds = 0;
         const late = performance.now() - started > REPORT_BY_MS;
+        if (!late) {
+          // Fills the compile cache for both sides, untimed.
+          pair.before?.(r, 0);
+          await bridge(pair.opencode.kind, pair.opencode.request);
+          pair.before?.(r, 1);
+          await codex(pair);
+        }
         while (!late && rounds < maxRounds && (best === null || best.gap >= MARGIN_MS)) {
           rounds++;
           const oc: number[] = [];
@@ -272,7 +278,7 @@ describe("the OpenCode bridge's per-hook cost beside Codex's", () => {
       const load = loadavg();
       console.log(
         `OpenCode bridge beside Codex hooks, p95 ms, best of up to ${maxRounds} rounds of ${runs} ` +
-          `cold runs, interleaved; bare bridge (ping) p95 ${Math.round(bare)}; load ` +
+          `runs, compile cache warm, interleaved; bare bridge (ping) p95 ${Math.round(bare)}; load ` +
           `${load.map((l) => l.toFixed(2)).join(" ")}` +
           (asserted ? "" : `, above ${MAX_LOAD} or in CI: reported only`),
       );
@@ -283,6 +289,8 @@ describe("the OpenCode bridge's per-hook cost beside Codex's", () => {
     } finally {
       delete process.env.XDG_RUNTIME_DIR;
       delete process.env.SQUEAL_CLI;
+      if (userCacheHome === undefined) delete process.env.XDG_CACHE_HOME;
+      else process.env.XDG_CACHE_HOME = userCacheHome;
     }
   }, 400_000);
 });

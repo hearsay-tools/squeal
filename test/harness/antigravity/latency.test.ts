@@ -3,9 +3,17 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { writeTurn } from "../../../src/core/delivery/turn.js";
 import { type Consumer, MAIN_AGENT } from "../../../src/core/types/delivery.js";
-import { check, result } from "../../state/helpers.js";
-import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";
-import { FILE, type SquealRepo, squealRepo } from "../helpers.js";
+import { ANTIGRAVITY_PLUGIN_DIR } from "../../../src/harness/antigravity/build.js";
+import { check } from "../../state/helpers.js";
+import {
+  type BundleRun,
+  latencyStore,
+  liveSocket,
+  runBundle,
+  runLaunched,
+  runtimeDir,
+} from "../bundle-helpers.js";
+import { FILE, type SquealRepo } from "../helpers.js";
 import { antigravityRecorded, buildAntigravityBundles, CONVERSATION } from "./helpers.js";
 
 /*
@@ -19,14 +27,19 @@ import { antigravityRecorded, buildAntigravityBundles, CONVERSATION } from "./he
  * is asserted: one round of `LOADED_RUNS` per hook, and no hook starts after
  * `REPORT_BY_MS`, so the table comes well inside the timeout (lessons,
  * defect 6). The `sh` fast path's own budget is `fast-path.test.ts`'s.
+ *
+ * Row 025-21 (option A, human 2026-11-26, as row 025-19 for Claude Code): the
+ * budget holds the path Antigravity runs, hooks.json's `hooks/run [--if-squeal]
+ * node <bundle>` with Node's compile cache warm in a temp directory, one
+ * untimed run per case filling it, on a store with the write markers a daemon
+ * arms. The uncached direct run (`runBundle`) stays in the table, one round,
+ * not asserted.
  */
 
 const RUNS = 20;
 const ROUNDS = 3;
 const BUDGET_MS = 80;
 const MAX_LOAD = 4;
-const FILES = 50;
-const CHECKS_PER_FILE = 10;
 const LOADED_RUNS = 5;
 /** Half the test's 240 s timeout. */
 const REPORT_BY_MS = 120_000;
@@ -37,28 +50,6 @@ const calm = () => (loadavg()[0] ?? 0) <= MAX_LOAD && process.env.CI === undefin
 function p95(samples: readonly number[]): number {
   const sorted = [...samples].sort((a, b) => a - b);
   return sorted[Math.ceil(sorted.length * 0.95) - 1] ?? Number.NaN;
-}
-
-/** A store the size of a small project: every check passing. */
-function seeded(): SquealRepo {
-  const r = squealRepo();
-  const results = [];
-  for (let f = 0; f < FILES; f++) {
-    const file = { project: "", path: `src/m${f}.test.ts` };
-    r.store.testFileKeys.upsertMany([
-      { worktreeId: r.worktreeId, testFile: file, key: `k${f}`, revision: 1, pending: null },
-    ]);
-    for (let c = 0; c < CHECKS_PER_FILE; c++) {
-      results.push(
-        result(check(`m${f} > case ${c}`, file), "pass", {
-          key: `k${f}`,
-          worktreeId: r.worktreeId,
-        }),
-      );
-    }
-  }
-  r.apply(r.pass(), ...results);
-  return r;
 }
 
 type Hook = "session-start" | "pre-invocation" | "pre-tool-use" | "stop";
@@ -152,19 +143,25 @@ interface Row {
   readonly p50: number;
   readonly p95: number;
   readonly max: number;
+  readonly "direct p50": number;
+  readonly "direct p95": number;
 }
 
-/** One measured round of `runs` cold runs of `c`, each checked for its output. */
-async function round(c: Case, r: SquealRepo, env: Record<string, string>, runs: number) {
+/** How a run starts: through `hooks/run` with the cache warm, or the direct uncached `node <bundle>`. */
+type Start = (c: Case, stdin: string) => Promise<BundleRun>;
+
+/** hooks.json's launcher for `hook`: every hook but SessionStart passes `--if-squeal`. */
+const launcher = (hook: Hook): [string, ...string[]] => [
+  join(ANTIGRAVITY_PLUGIN_DIR, "hooks/run"),
+  ...(hook === "session-start" ? [] : ["--if-squeal"]),
+];
+
+/** One measured round of `runs` runs of `c` through `start`, each checked for its output. */
+async function round(c: Case, r: SquealRepo, start: Start, runs: number) {
   const samples: number[] = [];
   for (let run = 0; run < runs; run++) {
     c.before?.(r, run);
-    const out = await runBundle(
-      c.hook,
-      antigravityRecorded(c.fixture, r.root, c.overrides),
-      env,
-      dist,
-    );
+    const out = await start(c, antigravityRecorded(c.fixture, r.root, c.overrides));
     expect(out.code, `${c.name}: ${out.stderr}`).toBe(0);
     expect(out.stderr, c.name).toBe("");
     if (c.silent) expect(out.stdout, c.name).toBe("");
@@ -175,28 +172,42 @@ async function round(c: Case, r: SquealRepo, env: Record<string, string>, runs: 
   return samples;
 }
 
-/** The best of up to `maxRounds` rounds of `c`, none when `late`. */
+/** p50, p95 and max of `samples`, rounded. */
+function summary(samples: readonly number[]): { p50: number; p95: number; max: number } {
+  const sorted = [...samples].sort((x, y) => x - y);
+  return {
+    p50: Math.round(sorted[Math.floor(sorted.length / 2)] ?? Number.NaN),
+    p95: Math.round(p95(sorted)),
+    max: Math.round(sorted.at(-1) ?? Number.NaN),
+  };
+}
+
+/**
+ * The best of up to `maxRounds` launched rounds of `c` after one untimed run
+ * that fills the compile cache, and one direct uncached round; none when `late`.
+ */
 async function measure(
   c: Case,
   r: SquealRepo,
-  env: Record<string, string>,
+  [launched, direct]: readonly [Start, Start],
   [runs, maxRounds]: readonly [number, number],
   late: boolean,
 ): Promise<Row> {
   let best: number[] | null = null;
   let rounds = 0;
+  if (!late) await round(c, r, launched, 1);
   while (!late && rounds < maxRounds && (best === null || p95(best) >= BUDGET_MS)) {
     rounds++;
-    const samples = await round(c, r, env, runs);
+    const samples = await round(c, r, launched, runs);
     if (best === null || p95(samples) < p95(best)) best = samples;
   }
-  const sorted = [...(best ?? [])].sort((x, y) => x - y);
+  const uncached = summary(late ? [] : await round(c, r, direct, runs));
   return {
     hook: c.name,
     rounds,
-    p50: Math.round(sorted[Math.floor(sorted.length / 2)] ?? Number.NaN),
-    p95: Math.round(p95(sorted)),
-    max: Math.round(sorted.at(-1) ?? Number.NaN),
+    ...summary(best ?? []),
+    "direct p50": uncached.p50,
+    "direct p95": uncached.p95,
   };
 }
 
@@ -208,9 +219,10 @@ beforeAll(async () => {
 afterAll(() => cleanup());
 
 describe("bundled Antigravity hook latency", () => {
-  it(`stays under ${BUDGET_MS} ms p95 over ${RUNS} cold runs per hook`, async () => {
-    const r = seeded();
+  it(`stays under ${BUDGET_MS} ms p95 over ${RUNS} launched runs per hook, compile cache warm`, async () => {
+    const r = latencyStore();
     const dir = runtimeDir();
+    const cacheHome = runtimeDir();
     await liveSocket(join(dir, `squeal-${r.worktreeId}.sock`));
     const env = { XDG_RUNTIME_DIR: dir };
     const start = await runBundle(
@@ -224,14 +236,19 @@ describe("bundled Antigravity hook latency", () => {
     const asserted = calm();
     const shape: [number, number] = asserted ? [RUNS, ROUNDS] : [LOADED_RUNS, 1];
     const started = performance.now();
+    const starts: [Start, Start] = [
+      (c, stdin) => runLaunched(c.hook, stdin, cacheHome, env, dist, launcher(c.hook)),
+      (c, stdin) => runBundle(c.hook, stdin, env, dist),
+    ];
     const rows: Row[] = [];
     for (const c of CASES) {
-      rows.push(await measure(c, r, env, shape, performance.now() - started > REPORT_BY_MS));
+      rows.push(await measure(c, r, starts, shape, performance.now() - started > REPORT_BY_MS));
     }
 
     const load = loadavg()[0] ?? 0;
     console.log(
-      `Antigravity hook latency ms, best of up to ${shape[1]} rounds of ${shape[0]} cold runs, load ${load.toFixed(2)}` +
+      `Antigravity hook latency ms, hooks/run with a warm compile cache, best of up to ${shape[1]} rounds of ${shape[0]} runs; ` +
+        `direct: one round of uncached runBundle, not asserted; load ${load.toFixed(2)}` +
         (asserted ? "" : `, above ${MAX_LOAD} or in CI: reported only`),
     );
     console.table(rows);

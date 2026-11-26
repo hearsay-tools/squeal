@@ -4,9 +4,8 @@ import { Worker } from "node:worker_threads";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDeliveryHost, type DeliveryHost } from "../../../src/harness/pi/host.js";
 import type { PiRequest } from "../../../src/harness/pi/protocol.js";
-import { check, result } from "../../state/helpers.js";
-import { liveSocket, quietCli, runtimeDir } from "../bundle-helpers.js";
-import { SESSION, type SquealRepo, squealRepo } from "../helpers.js";
+import { latencyStore, liveSocket, quietCli, runtimeDir } from "../bundle-helpers.js";
+import { SESSION } from "../helpers.js";
 import { buildPiBundles } from "./helpers.js";
 
 /*
@@ -31,36 +30,12 @@ const RUNS = 50;
 const COLD_RUNS = 20;
 const BUDGET_MS = 80;
 const MAX_LOAD = 4;
-const FILES = 50;
-const CHECKS_PER_FILE = 10;
 
 const calm = () => (loadavg()[0] ?? 0) <= MAX_LOAD && process.env.CI === undefined;
 
 function p95(samples: readonly number[]): number {
   const sorted = [...samples].sort((a, b) => a - b);
   return sorted[Math.ceil(sorted.length * 0.95) - 1] ?? Number.NaN;
-}
-
-/** A store the size of a small project: every check passing. */
-function seeded(): SquealRepo {
-  const r = squealRepo();
-  const results = [];
-  for (let f = 0; f < FILES; f++) {
-    const file = { project: "", path: `src/m${f}.test.ts` };
-    r.store.testFileKeys.upsertMany([
-      { worktreeId: r.worktreeId, testFile: file, key: `k${f}`, revision: 1, pending: null },
-    ]);
-    for (let c = 0; c < CHECKS_PER_FILE; c++) {
-      results.push(
-        result(check(`m${f} > case ${c}`, file), "pass", {
-          key: `k${f}`,
-          worktreeId: r.worktreeId,
-        }),
-      );
-    }
-  }
-  r.apply(r.pass(), ...results);
-  return r;
 }
 
 let built = { dir: "", cleanup: () => {} };
@@ -77,7 +52,7 @@ async function timed(host: DeliveryHost, request: PiRequest): Promise<[number, u
 
 describe("the Pi delivery worker's round trip", () => {
   it(`stays under ${BUDGET_MS} ms p95 per call at calm load`, async () => {
-    const r = seeded();
+    const r = latencyStore();
     const dir = runtimeDir();
     await liveSocket(join(dir, `squeal-${r.worktreeId}.sock`));
     const env = {
