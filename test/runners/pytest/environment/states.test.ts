@@ -1,3 +1,4 @@
+import { chmodSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PytestProject } from "../../../../src/core/types/policy.js";
@@ -193,6 +194,7 @@ describe("environmentState (spec 007 D2)", () => {
   it("refuses .venv -> ../main/.venv whose editable points at main", () => {
     const parent = tempDir();
     const main = join(parent, "main");
+    write(main, { ".git/HEAD": "ref: refs/heads/main\n" });
     venv(main, ".venv", { "app-0.1.0.dist-info/direct_url.json": editable(main) });
     const root = join(parent, "w1");
     link(join(main, ".venv"), join(root, ".venv"));
@@ -252,6 +254,155 @@ describe("environmentState (spec 007 D2)", () => {
     });
     expect(environmentState(root, project())).toMatchObject({ state: "ready" });
   });
+});
+
+/*
+ * Spec 027 D3: an outside editable whose directory holds no package code, such
+ * as a container build stage's `/pkgs` with only `pyproject.toml`, `uv.lock`
+ * and `.venv`, does not block; every outside editable that can import code
+ * still does.
+ */
+describe("environmentState build-stage editables (spec 027 D3)", () => {
+  /** A uv build stage: `pkgs` holds metadata and its own `.venv` only. */
+  const buildStage = (pkgs: string, extra: Readonly<Record<string, string>> = {}): void =>
+    write(pkgs, {
+      "pyproject.toml": '[project]\nname = "sb_backend"\n',
+      "uv.lock": "version = 1\n",
+      ".venv/lib/python3.13/site-packages/django/__init__.py": "",
+      ".venv/bin/python": "",
+      ...extra,
+    });
+
+  /** The worktree's environment, with `sb_backend` editable from `pkgs` through `pth`. */
+  const stageEnv = (root: string, pkgs: string, pth: string, files = {}): void => {
+    venv(root, ".venv", {
+      "sb_backend-0.1.0.dist-info/direct_url.json": editable(pkgs),
+      "sb_backend-0.1.0.dist-info/RECORD":
+        "_sb_backend.pth,sha256=x,6\nsb_backend-0.1.0.dist-info/RECORD,,\n",
+      "_sb_backend.pth": pth,
+      ...files,
+    });
+  };
+
+  it("is ready with a /pkgs-style editable holding no code (done-when a)", () => {
+    const pkgs = tempDir();
+    const root = tempDir();
+    buildStage(pkgs);
+    stageEnv(root, pkgs, `${pkgs}\n`);
+    expect(environmentState(root, project())).toMatchObject({ state: "ready" });
+  });
+
+  it("is ready with an empty setuptools finder installed by the .pth", () => {
+    const pkgs = tempDir();
+    const root = tempDir();
+    buildStage(pkgs);
+    const finder = "__editable___sb_backend_0_1_0_finder";
+    stageEnv(root, pkgs, `import ${finder}; ${finder}.install()\n`, {
+      [`${finder}.py`]: "MAPPING: dict[str, str] = {}\nNAMESPACES: dict[str, list[str]] = {}\n",
+    });
+    expect(environmentState(root, project())).toMatchObject({ state: "ready" });
+  });
+
+  it.each([
+    ["a top-level module", { "manage.py": "" }],
+    ["a package", { "sb_backend/__init__.py": "" }],
+    ["a src-layout package", { "src/sb_backend/__init__.py": "" }],
+    ["a compiled extension", { "fast.cpython-313-x86_64-linux-gnu.so": "" }],
+  ])("refuses an outside editable holding %s (done-when b)", (_, files) => {
+    const pkgs = tempDir();
+    const root = tempDir();
+    buildStage(pkgs, files);
+    stageEnv(root, pkgs, `${pkgs}\n`);
+    expect(environmentState(root, project())).toMatchObject({
+      state: "editable-outside",
+      editables: [{ distribution: "sb_backend", path: pkgs }],
+    });
+  });
+
+  it.each([
+    ["a directory with code", (code: string) => `${code}\n`],
+    ["an arbitrary import line", () => "import sys; sys.path.insert(0, '/elsewhere')\n"],
+    ["a missing finder", () => "import __editable___x_finder; __editable___x_finder.install()\n"],
+  ])("refuses an empty editable whose .pth adds %s", (_, pth) => {
+    const pkgs = tempDir();
+    const code = tempDir();
+    const root = tempDir();
+    buildStage(pkgs);
+    write(code, { "sb_backend/__init__.py": "" });
+    stageEnv(root, pkgs, pth(code));
+    expect(environmentState(root, project())).toMatchObject({ state: "editable-outside" });
+  });
+
+  it("refuses an empty editable whose finder maps a module", () => {
+    const pkgs = tempDir();
+    const root = tempDir();
+    buildStage(pkgs);
+    const finder = "__editable___sb_backend_0_1_0_finder";
+    stageEnv(root, pkgs, `import ${finder}; ${finder}.install()\n`, {
+      [`${finder}.py`]: `MAPPING = {'sb_backend': '/elsewhere/sb_backend'}\nNAMESPACES = {}\n`,
+    });
+    expect(environmentState(root, project())).toMatchObject({ state: "editable-outside" });
+  });
+
+  it("refuses an empty editable without a RECORD to name its .pth files", () => {
+    const pkgs = tempDir();
+    const root = tempDir();
+    buildStage(pkgs);
+    venv(root, ".venv", { "sb_backend-0.1.0.dist-info/direct_url.json": editable(pkgs) });
+    expect(environmentState(root, project())).toMatchObject({ state: "editable-outside" });
+  });
+
+  it("refuses an empty editable inside a sibling git worktree (done-when c)", () => {
+    const parent = tempDir();
+    const sibling = join(parent, "w2");
+    write(sibling, { ".git": "gitdir: /repo/.git/worktrees/w2\n" });
+    const pkgs = join(sibling, "pkgs");
+    buildStage(pkgs);
+    const root = join(parent, "w1");
+    stageEnv(root, pkgs, `${pkgs}\n`);
+    expect(environmentState(root, project())).toMatchObject({
+      state: "editable-outside",
+      editables: [{ distribution: "sb_backend", path: pkgs }],
+    });
+  });
+
+  it("refuses an in-tree symlink to an outside directory with code (done-when d)", () => {
+    const other = tempDir();
+    const root = tempDir();
+    buildStage(other, { "app/__init__.py": "" });
+    link(other, join(root, "pkgs"));
+    stageEnv(root, join(root, "pkgs"), `${join(root, "pkgs")}\n`);
+    expect(environmentState(root, project())).toMatchObject({
+      state: "editable-outside",
+      editables: [{ distribution: "sb_backend", path: other }],
+    });
+  });
+
+  it("refuses a missing outside directory (done-when e)", () => {
+    const root = tempDir();
+    const pkgs = join(tempDir(), "gone");
+    stageEnv(root, pkgs, `${pkgs}\n`);
+    expect(environmentState(root, project())).toMatchObject({
+      state: "editable-outside",
+      editables: [{ distribution: "sb_backend", path: pkgs }],
+    });
+  });
+
+  it.skipIf(process.getuid?.() === 0)(
+    "refuses an unreadable outside directory (done-when e)",
+    () => {
+      const pkgs = tempDir();
+      const root = tempDir();
+      buildStage(pkgs);
+      stageEnv(root, pkgs, `${pkgs}\n`);
+      chmodSync(pkgs, 0o000);
+      try {
+        expect(environmentState(root, project())).toMatchObject({ state: "editable-outside" });
+      } finally {
+        chmodSync(pkgs, 0o755);
+      }
+    },
+  );
 });
 
 describe("syncNote (spec 007 D2)", () => {

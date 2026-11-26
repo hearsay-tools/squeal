@@ -1,7 +1,8 @@
-import { realpathSync } from "node:fs";
-import { join } from "node:path";
+import { lstatSync, readdirSync, realpathSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "smol-toml";
+import { isMissing } from "../../../core/fs/errors.js";
 import { isRecord } from "../../../core/fs/json.js";
 import { toRelative } from "../../../core/fs/paths.js";
 import type { AbsolutePath } from "../../../core/types/common.js";
@@ -117,12 +118,121 @@ export function outsideEditables(
     if (!name.endsWith(".dist-info")) continue;
     const named = editableDir(readOptional(join(site, name, "direct_url.json")));
     if (named === null || insideWorktree(root, named)) continue;
+    const path = realOr(named);
+    if (buildStageEmpty(site, join(site, name), path)) continue;
     found.push({
       distribution: name.slice(0, -".dist-info".length).split("-")[0] as string,
-      path: realOr(named),
+      path,
     });
   }
   return found;
+}
+
+/**
+ * Spec 027 D3: an outside editable that cannot import code, such as a
+ * container build stage's `/pkgs` holding only `pyproject.toml`, `uv.lock`
+ * and `.venv`. All must hold: the directory exists outside any git checkout;
+ * every `.pth` its `RECORD` lists adds only code-free directories or an empty
+ * setuptools finder; the directory holds no code outside `.venv` and
+ * `__pypackages__`. Any error or doubt refuses.
+ */
+function buildStageEmpty(site: AbsolutePath, distInfo: AbsolutePath, dir: AbsolutePath): boolean {
+  try {
+    if (!lstatSync(dir).isDirectory() || insideGitCheckout(dir)) return false;
+    const pths = recordedPths(readOptional(join(distInfo, "RECORD")));
+    if (pths === null || !pths.every((pth) => pthAddsNoCode(site, pth))) return false;
+    return codeFree(dir);
+  } catch {
+    // Unreadable or vanished: an editable we cannot prove empty stays refused.
+    return false;
+  }
+}
+
+/**
+ * Whether `dir` or an ancestor holds `.git`: another worktree or checkout,
+ * of this repository or any other. Stricter than "another worktree of this
+ * repository", and a build stage's directory has none.
+ */
+function insideGitCheckout(dir: AbsolutePath): boolean {
+  for (let at = dir; ; at = dirname(at)) {
+    if (exists(join(at, ".git"))) return true;
+    if (dirname(at) === at) return false;
+  }
+}
+
+/** Top-level `.pth` files a `RECORD` lists; `null` without a `RECORD`. */
+function recordedPths(record: string | null): readonly string[] | null {
+  if (record === null) return null;
+  return record
+    .split(/\r?\n/)
+    .map((line) => line.split(",")[0]?.replace(/^"|"$/g, "") ?? "")
+    .filter((path) => path.endsWith(".pth") && !/[\\/]/.test(path));
+}
+
+const FINDER_IMPORT = /^import (__editable___\w+_finder); \1\.install\(\)$/;
+const EMPTY_MAPPING = /^MAPPING(?:\s*:[^=\n]*)?\s*=\s*\{\}\s*$/m;
+const EMPTY_NAMESPACES = /^NAMESPACES(?:\s*:[^=\n]*)?\s*=\s*\{\}\s*$/m;
+
+/**
+ * Whether a `.pth` adds only code-free directories, as `site.addpackage`
+ * reads it: comments and blank lines skipped, `import` lines executed,
+ * other lines joined to the site directory. The only `import` line allowed
+ * installs a setuptools editable finder whose `MAPPING` and `NAMESPACES`
+ * are empty.
+ */
+function pthAddsNoCode(site: AbsolutePath, pth: string): boolean {
+  const text = readOptional(join(site, pth));
+  if (text === null) return false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trimEnd();
+    if (line === "" || line.startsWith("#")) continue;
+    if (/^import[ \t]/.test(line)) {
+      const finder = FINDER_IMPORT.exec(line)?.[1];
+      const source = finder === undefined ? null : readOptional(join(site, `${finder}.py`));
+      if (source === null || !EMPTY_MAPPING.test(source) || !EMPTY_NAMESPACES.test(source)) {
+        return false;
+      }
+      continue;
+    }
+    const dir = resolve(site, line);
+    if (!lstatSync(dir).isDirectory() || !codeFree(realOr(dir))) return false;
+  }
+  return true;
+}
+
+const CODE = /\.(?:py|pyc|pyd|so)$/;
+const SKIPPED = new Set([".venv", "__pypackages__"]);
+const SCAN_LIMIT = 10_000;
+
+/**
+ * Whether `dir` holds no Python module, compiled or source, at any depth
+ * outside `.venv` and `__pypackages__`. A symlink, a special file or more
+ * than `SCAN_LIMIT` entries count as code.
+ */
+function codeFree(dir: AbsolutePath): boolean {
+  const pending = [dir];
+  let seen = 0;
+  for (let at = pending.pop(); at !== undefined; at = pending.pop()) {
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+      if (++seen > SCAN_LIMIT) return false;
+      if (entry.isDirectory()) {
+        if (!SKIPPED.has(entry.name)) pending.push(join(at, entry.name));
+      } else if (!entry.isFile() || CODE.test(entry.name)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function exists(path: AbsolutePath): boolean {
+  try {
+    lstatSync(path);
+    return true;
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
 }
 
 /**
