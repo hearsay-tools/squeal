@@ -445,6 +445,7 @@ export const WORKTREE_META_ROWS = {
   importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
   sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" },
   remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" },
+  containerSummary: { prefix: "container-summary:", owner: "status/container-status" },
 } as const;
 
 export type WorktreeMetaRow = keyof typeof WORKTREE_META_ROWS;
