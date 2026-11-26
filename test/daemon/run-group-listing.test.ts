@@ -51,7 +51,9 @@ describe("a run-group request taken during a listing (row 011-397)", { timeout: 
     const revision = side.scheduler.listing?.();
     const told: HeldBy[] = [];
     const taken = requestGroup(side.scheduler, "tests", (holder) => told.push(holder), [TARGET]);
-    await expect.poll(() => told.at(-1)).toEqual({ kind: "listing", revision });
+    await expect
+      .poll(() => told.at(-1))
+      .toEqual({ kind: "listing", revision, stage: "invalidating" });
     gate.stop();
     await expect(taken).resolves.toMatchObject({ narrow: { selected: [{ path: TARGET }] } });
     expect(side.scheduler.listing?.()).toBeNull();
