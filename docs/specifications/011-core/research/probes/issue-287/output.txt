@@ -1,0 +1,109 @@
+{"load":"5.30 8.79 9.86 3/1967 2828536","cpus":16,"node":"v26.13.0"}
+VERSION 0.1.641
+CASE no-store
+The checks Squeal runs in this repository (squeal.config.json):
+
+browser
+  Selects: Vitest test files matching test/browser/**
+  Runs: only on request: Squeal does not start it; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000` does
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000`
+  Before a pull request: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --base <ref> --wait` runs only the test files your changes since <ref> select; the check's other files wait for `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser` or CI
+
+tests
+  Selects: the test files no other check selects, except those marked slow
+  Runs: after each edit
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run tests --wait 60000`
+
+slow
+  Selects: test files marked slow: slow.include test/slow/**
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run slow --wait 60000`
+
+lint
+  Selects: lint with eslint and oxlint
+  Runs: after each edit, on the edited file
+  Findings: `~/.codex/plugins/data/squeal-hearsay/bin/squeal lint`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+
+CASE registered-empty {"revision":0,"testFilesListed":false,"refinedRevision":null,"runnerPartPending":false}
+The checks Squeal runs in this repository (squeal.config.json):
+
+browser
+  Selects: Vitest test files matching test/browser/**
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000` does
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000`
+  Before a pull request: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --base <ref> --wait` runs only the test files your changes since <ref> select; the check's other files wait for `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser` or CI
+
+slow
+  Selects: test files marked slow: slow.include test/slow/**
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run slow --wait 60000`
+
+lint
+  Selects: lint with eslint and oxlint
+  Runs: after each edit, on the edited file
+  Findings: `~/.codex/plugins/data/squeal-hearsay/bin/squeal lint`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+
+CASE revision-2-unlisted {"revision":2,"testFilesListed":false,"refinedRevision":0,"runnerPartPending":true}
+The checks Squeal runs in this repository (squeal.config.json):
+
+browser
+  Selects: Vitest test files matching test/browser/**
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000` does
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000`
+  Before a pull request: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --base <ref> --wait` runs only the test files your changes since <ref> select; the check's other files wait for `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser` or CI
+
+slow
+  Selects: test files marked slow: slow.include test/slow/**
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run slow --wait 60000`
+
+lint
+  Selects: lint with eslint and oxlint
+  Runs: after each edit, on the edited file
+  Findings: `~/.codex/plugins/data/squeal-hearsay/bin/squeal lint`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+
+CASE listed-one-unit-file {"revision":2,"testFilesListed":true,"refinedRevision":2,"runnerPartPending":false}
+The checks Squeal runs in this repository (squeal.config.json):
+
+browser
+  Selects: Vitest test files matching test/browser/**
+  Test files now: 0
+  Runs: only on request: Squeal does not start it; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000` does
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --wait 60000`
+  Before a pull request: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser --base <ref> --wait` runs only the test files your changes since <ref> select; the check's other files wait for `~/.codex/plugins/data/squeal-hearsay/bin/squeal run browser` or CI
+
+tests
+  Selects: the test files no other check selects, except those marked slow
+  Test files now: 1
+  Runs: after each edit
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run tests --wait 60000`
+  Last result at revision 2: 1 not current
+
+slow
+  Selects: test files marked slow: slow.include test/slow/**
+  Test files now: 0
+  Runs: after each edit
+  Starts after: tests
+  Run it now: `~/.codex/plugins/data/squeal-hearsay/bin/squeal run slow --wait 60000`
+
+lint
+  Selects: lint with eslint and oxlint
+  Runs: after each edit, on the edited file
+  Findings: `~/.codex/plugins/data/squeal-hearsay/bin/squeal lint`
+
+Squeal does not cover typecheck, build or any other test suite: run those yourself.
+
+CONFIRMED: pending inventory hides tests; adding its first listed file restores it.
