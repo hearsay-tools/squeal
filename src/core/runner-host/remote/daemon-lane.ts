@@ -69,6 +69,7 @@ import { REMOTE_SUMMARY_TOPIC, remoteSummaryLine } from "./summary.js";
  * here. A machine whose tree is a Git repository takes `needsRepository`
  * files too; review 0.1.619 B3: only while its `.git` is at the worktree's
  * Git state, which the lane refreshes before each split (`refreshGit`).
+ * Row 021-40 (#294): `remote.runHere` files run here on every machine.
  *
  * Spec 026 D9 (row 026-13): under `coverage: "remote"` each host maps its
  * runs' coverage in the worktree's object format; a proven run's records
@@ -433,6 +434,7 @@ function laneOver<R extends RunnerAdapter>(
       }, signal),
     allowlist: () => options.policy().env.allowlist,
     needsRepository: () => options.policy().remote.needsRepository,
+    runHere: () => options.policy().remote.runHere,
     repository: context.repository,
     status: context.status,
     log: options.log,

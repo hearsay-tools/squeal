@@ -15,6 +15,11 @@ import { compiles } from "./policy-node-test.js";
  * that read the repository itself and so always run here. A bad entry of
  * either is one problem and is left out; the others are kept, as
  * `slow.include` keeps its good globs.
+ *
+ * Row 021-40 (#294): `remote.runHere`, the test files that read this
+ * machine itself (its kernel, processes or tools). They run here always,
+ * also when the remote's tree is a Git repository; a bad glob is left out
+ * as for `needsRepository`.
  */
 
 const boolean: Leaf = (v) => (typeof v === "boolean" ? null : "true or false");
@@ -50,8 +55,11 @@ const commands = kept("requires.commands", (entry) =>
 
 const needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
 
+/** Row 021-40 (#294): the test files that read this machine itself; they never go remote. */
+const runHere = kept("remote.runHere", (glob) => compiles([glob])?.problem ?? null);
+
 /** The keys of D9 and D19, spread into the loader's shape. */
 export const REMOTE_SHAPE: Shape = {
   requires: { commands },
-  remote: { allowed: boolean, needsRepository },
+  remote: { allowed: boolean, needsRepository, runHere },
 };

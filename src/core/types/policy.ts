@@ -295,6 +295,13 @@ export interface Policy {
      * here. Never merged with `requires.commands` (D19). Default `[]`.
      */
     readonly needsRepository: readonly string[];
+    /**
+     * Row 021-40 (#294): worktree-relative test-file globs whose tests read
+     * this machine itself (its kernel, processes or tools): they always run
+     * here, also on a remote whose tree is a Git repository. Unlike
+     * `needsRepository`, no condition sends them remote. Default `[]`.
+     */
+    readonly runHere: readonly string[];
   };
 }
 
@@ -528,7 +535,7 @@ export const DEFAULT_POLICY: Policy = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [] },
+  remote: { allowed: true, needsRepository: [], runHere: [] },
 };
 
 /** Spec 026 D2.2: the daemon's exit bounds, as `daemonExits` resolves them. */

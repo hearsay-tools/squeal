@@ -158,6 +158,32 @@ describe("a machine whose tree is a Git repository (026 D8.4)", () => {
   });
 });
 
+describe("remote.runHere (row 021-40, #294)", () => {
+  for (const planning of ["local", "remote"] as const) {
+    for (const git of [false, true]) {
+      it(`runs a runHere file here, planning ${planning}, ${git ? "with" : "without"} .git there`, async () => {
+        const s = await setup({
+          runHere: ["test/git.*"],
+          files: FILES,
+          planning,
+          hasGitRepository: () => git,
+        });
+        const report = await s.lane.run([REF, GIT], background());
+        expect(s.remoteRuns).toEqual([REF.path]);
+        expect(s.localFiles).toEqual([GIT.path]);
+        expect(paths(report)).toEqual([GIT.path, REF.path]);
+      });
+    }
+  }
+
+  it("changes no routing by default: the tier goes there whole", async () => {
+    const s = await setup({ runHere: [], files: FILES });
+    await s.lane.run([REF, GIT], background());
+    expect(s.remoteRuns).toEqual([`${REF.path},${GIT.path}`]);
+    expect(s.localFiles).toEqual([]);
+  });
+});
+
 describe("a report's files that failed as not a Git repository (021 D19.2)", () => {
   const error = (message: string, stack: string | null = null) => ({
     name: "Error",

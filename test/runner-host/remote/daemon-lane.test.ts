@@ -150,7 +150,7 @@ describe("the daemon's remote lane and remote.needsRepository (row 021-23)", () 
     onTestFinished(() => run.mockRestore());
     const policy = {
       ...DEFAULT_POLICY,
-      remote: { allowed: true, needsRepository: ["test/git.*"] },
+      remote: { allowed: true, needsRepository: ["test/git.*"], runHere: [] },
     };
     const { adapter, notes } = lane(
       (root: string) => ({
