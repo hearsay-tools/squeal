@@ -266,4 +266,54 @@ export default { testEnvironment: "node", testMatch: ["<rootDir>/test/**/*.test.
       expect.arrayContaining(["jest.config.js", "config/options.cjs", "config/deeper.cjs"]),
     );
   });
+
+  /** The child's read of `root`'s project. */
+  async function readOf(root: AbsolutePath, project: JestProject = PROJECT) {
+    const resolution = resolveJest(project.name, root, root);
+    if (!resolution.ok) throw new Error(resolution.note);
+    return readJestProject(root, project, resolution.install, SOURCE);
+  }
+  const deps = (root: AbsolutePath, read: { configDeps?: readonly string[] }) =>
+    (read.configDeps ?? []).map((path) => path.slice(root.length + 1));
+
+  // Review 0.1.644-r2 B4: creating what was missing reads the config again.
+  it("names the missing helper a failed require, read or import asked for", SLOW, async () => {
+    const required = worktree(major, { ...HELPERS, "config/options.cjs": "" });
+    rmSync(join(required, "config/options.cjs"));
+    const noRequire = await readOf(required);
+    expect(noRequire.ok).toBe(false);
+    expect(deps(required, noRequire)).toEqual(expect.arrayContaining(["config/options.cjs"]));
+
+    const readMissing = worktree(major, HELPERS);
+    rmSync(join(readMissing, "config/extra.json"));
+    const noRead = await readOf(readMissing);
+    expect(noRead.ok).toBe(false);
+    expect(deps(readMissing, noRead)).toEqual(
+      expect.arrayContaining(["jest.config.js", "config/options.cjs", "config/extra.json"]),
+    );
+
+    const esm = worktree(major, {
+      "jest.config.mjs": `import options from "./config/options.mjs";
+export default { testEnvironment: "node", testMatch: ["<rootDir>/test/**/*.test.js"], ...options };
+`,
+    });
+    const noImport = await readOf(esm, { ...PROJECT, config: "jest.config.mjs" });
+    expect(noImport.ok).toBe(false);
+    expect(deps(esm, noImport)).toEqual(expect.arrayContaining(["config/options.mjs"]));
+  });
+
+  it("keys no missing file a healthy read only probed", SLOW, async () => {
+    const root = worktree(major, {
+      "jest.config.js": `let extra = {};
+try { extra = require("./config/maybe.cjs"); } catch {}
+try { extra = JSON.parse(require("fs").readFileSync("./config/maybe.json", "utf8")); } catch {}
+module.exports = { testEnvironment: "node", testMatch: ["<rootDir>/test/**/*.test.js"], ...extra };
+`,
+    });
+    const read = await readOf(root);
+    expect(read.ok).toBe(true);
+    expect(deps(root, read).filter((path) => path.startsWith("config/"))).toEqual([]);
+    const env = await environmentOf(root);
+    expect(env.files.filter((path) => path.startsWith("config/"))).toEqual([]);
+  });
 });
