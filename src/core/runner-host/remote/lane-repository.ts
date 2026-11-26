@@ -52,24 +52,23 @@ export interface RepositoryRoute {
  * The route over `needsRepository`, read at each split, so a policy reload
  * applies to the next tier. Spec 026 D8.4 (row 026-12): while the remote's
  * tree is a Git repository (`remoteHasRepository`), the setting keeps no
- * file here; the guard's remembered files stay here still.
+ * file here; the guard's remembered files stay here still. Row 021-40
+ * (#294): the files `runHere` matches stay here with or without `.git`
+ * there, since they read this machine itself.
  */
 export function repositoryRoute(
   needsRepository: () => readonly string[],
   named: (text: string) => void,
   remoteHasRepository: () => boolean = () => false,
+  runHere: () => readonly string[] = () => [],
 ): RepositoryRoute {
   const failed = new Map<string, TestFileRef>();
-  let globs: readonly string[] = [];
-  let matches = createInputMatcher(globs);
-  const here = (file: TestFileRef) => {
-    const now = needsRepository();
-    if (now !== globs) {
-      globs = now;
-      matches = createInputMatcher(now);
-    }
-    return failed.has(testFileId(file)) || (!remoteHasRepository() && matches(file.path));
-  };
+  const needs = globMatcher(needsRepository);
+  const always = globMatcher(runHere);
+  const here = (file: TestFileRef) =>
+    failed.has(testFileId(file)) ||
+    always(file.path) ||
+    (!remoteHasRepository() && needs(file.path));
   return {
     split(testFiles) {
       const stays = testFiles.map(here);
@@ -93,6 +92,20 @@ export function repositoryRoute(
       );
       return found;
     },
+  };
+}
+
+/** A matcher over `globs`, compiled again only when the list it returns changes (a policy reload). */
+function globMatcher(globs: () => readonly string[]): (path: string) => boolean {
+  let last: readonly string[] = [];
+  let matches = createInputMatcher(last);
+  return (path) => {
+    const now = globs();
+    if (now !== last) {
+      last = now;
+      matches = createInputMatcher(now);
+    }
+    return matches(path);
   };
 }
 

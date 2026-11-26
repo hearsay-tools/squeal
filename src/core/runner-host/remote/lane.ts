@@ -93,6 +93,7 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * each invalidation there at once, and asks the runner here nothing until a
  * planning call or a run falls back to it. D8.4: on a machine whose tree is
  * a Git repository, `needsRepository` files go there too; D19.2's guard stays.
+ * Row 021-40 (#294): `runHere` files never go there; they read this machine.
  * Review 0.1.619 B3: before a tier that may go remote is split, the lane
  * asks `refreshRepository`, so `hasGitRepository` answers for the
  * worktree's Git state now; the call is busy for a sleep, like a planning call.
@@ -188,6 +189,8 @@ export interface RemoteLaneOptions {
   readonly ending?: () => boolean;
   /** Spec 021 D19.2: test-file globs that always run here. Absent: none. */
   readonly needsRepository?: () => readonly string[];
+  /** Row 021-40 (#294): test-file globs that always run here, also with `.git` there. Absent: none. */
+  readonly runHere?: () => readonly string[];
   /** The line that names the files a remote failed as not a Git repository. Absent: `status`. */
   readonly repository?: (text: string) => void;
   /** The lane's one status line, which replaces the last (D17); `report` changed with it. */
@@ -359,6 +362,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     options.needsRepository ?? (() => []),
     options.repository ?? options.status,
     options.hasGitRepository ?? (() => false),
+    options.runHere ?? (() => []),
   );
 
   /**
