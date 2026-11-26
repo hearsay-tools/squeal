@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { mkdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import type { DaemonLock } from "../daemon/lock.js";
 import { lifeOf } from "../daemon/terminate.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
-import { spawnedAt, spawnMarkFor, startMarkFor, stopMarkFor } from "./marks.js";
+import { spawnedAt, spawnMarkFor, startMarkFor, stopLockFor, stopMarkFor } from "./marks.js";
 import type { StopMark } from "./stored.js";
 
 /*
@@ -105,6 +106,40 @@ export function writeStopFile(lockFile: AbsolutePath, mark: StopMark): void {
   } catch (error) {
     rmSync(temp, { force: true });
     throw error;
+  }
+}
+
+/** How long a change of a stop mark waits for another one's lock: each holds it for a file write. */
+export const STOP_LOCK_BUSY_MS = 2_000;
+
+/**
+ * Row 021-39, review 0.1.639 B1: runs `fn` while this process holds the lock
+ * of the stop mark beside `lockFile` (`stopLockFor`), a `BEGIN EXCLUSIVE` on a
+ * database of its own, apart from `store.sqlite`, so a read of the mark and
+ * the change made from it are one step: no `squeal stop` or `squeal start`
+ * lands between them. `fn` is synchronous, so it holds no await. Waits
+ * `busyTimeoutMs` for another holder; throws when the lock cannot be taken.
+ * The OS releases it on any death.
+ */
+export function withStopFileLock<T>(
+  lockFile: AbsolutePath,
+  fn: () => T,
+  busyTimeoutMs: number = STOP_LOCK_BUSY_MS,
+): T {
+  mkdirSync(dirname(lockFile), { recursive: true });
+  const db = new DatabaseSync(stopLockFor(lockFile));
+  try {
+    db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(busyTimeoutMs))}`);
+    // As the daemon lock (spec 001 D10): the file's own lock, held until the connection closes.
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+    db.exec("BEGIN EXCLUSIVE");
+    try {
+      return fn();
+    } finally {
+      db.exec("ROLLBACK");
+    }
+  } finally {
+    db.close();
   }
 }
 

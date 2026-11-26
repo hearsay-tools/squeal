@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { runGit, splitNul } from "../fs/git.js";
 import { lstatOrNull, resolveCommonDir } from "../fs/git-layout.js";
 import { clearStopped, markStopped } from "../presence/events.js";
-import { removeStopFile, writeStopFile } from "../presence/lock-events.js";
+import { removeStopFile, withStopFileLock, writeStopFile } from "../presence/lock-events.js";
 import { readStopFile } from "../presence/marks.js";
 import { readStop, type StopMark, stopLockFile, stoppedMetaKey } from "../presence/stored.js";
 import { gitHead } from "../status/git-head.js";
@@ -52,9 +53,21 @@ export async function stopHolds(
   if (tree === null || tree === mark.tree) return true;
   // Row 021-39 (#285): a mark in the file beside the lock file changes there, with no store write.
   const lockFile = markLockFile(store, at);
-  const fileNow = lockFile === null ? null : readStopFile(lockFile);
-  if (lockFile !== null && fileNow !== null)
-    return fileStopHolds(store, at.id, lockFile, mark, fileNow, tree, write);
+  if (lockFile !== null && existsSync(dirname(lockFile))) {
+    let outcome: FileOutcome;
+    try {
+      // Review 0.1.639 B1: read, compared and changed under the mark's lock, with no await.
+      outcome = withStopFileLock(lockFile, () => fileOutcome(lockFile, mark, tree));
+    } catch {
+      return true;
+    }
+    if (outcome === "holds") return true;
+    if (outcome === "cleared") {
+      if (store.meta.get(stoppedMetaKey(at.id)) !== null)
+        await write(() => store.transaction(() => clearStopped(store, at.id)));
+      return false;
+    }
+  }
   // `squeal start` removed the file meanwhile and left no legacy mark.
   if (store.meta.get(stoppedMetaKey(at.id)) === null) return false;
   // Re-read after git answered: a `squeal start` that cleared the mark, or a
@@ -75,39 +88,34 @@ export async function stopHolds(
   );
 }
 
+/** What `fileOutcome` did to the mark file: it holds, the edit removed it, or there is none. */
+type FileOutcome = "holds" | "cleared" | "none";
+
 /**
- * `stopHolds` over the mark in the file beside `lockFile`, as it reads after
- * git printed `tree` (`fileNow`): a new stop or an `untilStart` one holds
- * (review wave-1.10 R2); a mark with no print takes `tree`; else the edit
- * removes the file, and a legacy `meta` mark beside it.
+ * `stopHolds` over the mark in the file beside `lockFile`, as it reads now,
+ * after git printed `tree`; call under its lock. A new stop or an
+ * `untilStart` one holds (review wave-1.10 R2); a mark with no print takes
+ * `tree`; else the edit removes the file. `none` with no file: a `squeal
+ * start` removed it, or the mark is a legacy one.
  */
-async function fileStopHolds(
-  store: Store,
-  id: WorktreeId,
-  lockFile: AbsolutePath,
-  mark: StopMark,
-  fileNow: StopMark,
-  tree: string,
-  write: <T>(work: () => T) => Promise<T>,
-): Promise<boolean> {
-  if (fileNow.at !== mark.at || fileNow.tree !== mark.tree || fileNow.untilStart === true)
-    return true;
+function fileOutcome(lockFile: AbsolutePath, mark: StopMark, tree: string): FileOutcome {
+  const now = readStopFile(lockFile);
+  if (now === null) return "none";
+  if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return "holds";
   if (mark.tree === null) {
     try {
       writeStopFile(lockFile, { at: mark.at, tree });
     } catch {
       // The mark keeps no print, and the next boundary takes one.
     }
-    return true;
+    return "holds";
   }
   try {
     removeStopFile(lockFile);
   } catch {
     // A mark left behind is voided by the heartbeat of the daemon this boundary starts.
   }
-  if (store.meta.get(stoppedMetaKey(id)) !== null)
-    await write(() => store.transaction(() => clearStopped(store, id)));
-  return false;
+  return "cleared";
 }
 
 /** The worktree's lock file, by the store's paths, else by the common dir of `at.root`. */

@@ -4,8 +4,8 @@ import { POLICY_FILE } from "../core/daemon/policy.js";
 import { treePrint } from "../core/delivery/stopped.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
 import { clearStopped } from "../core/presence/events.js";
-import { removeStopFile, writeStopFile } from "../core/presence/lock-events.js";
-import { readStopFile, stopMarkOf } from "../core/presence/marks.js";
+import { removeStopFile, withStopFileLock, writeStopFile } from "../core/presence/lock-events.js";
+import { readStopFile, stopMarkFor, stopMarkOf } from "../core/presence/marks.js";
 import { type StopMark, stoppedMetaKey } from "../core/presence/stored.js";
 import { isStoreOpenFailure, openReadOnly, openStore } from "../core/store/open.js";
 import { lockFileFor, storePaths } from "../core/store/paths.js";
@@ -64,13 +64,16 @@ export async function leaveStoppedMark(
     const error = createStore(commonDir, busyBoundMs);
     if (error !== null) return { error, untilStart: false };
   }
-  const until =
-    untilStart ||
-    readStopFile(lockFile)?.untilStart === true ||
-    legacyStop(database, id)?.untilStart === true;
-  const mark: StopMark = { at: at as EpochMs, tree, ...(until ? { untilStart: true } : {}) };
+  // Review 0.1.639 B1: read and written under the mark's lock, so no boundary's clear erases it.
+  let until = untilStart;
   try {
-    writeStopFile(lockFile, mark);
+    withStopFileLock(lockFile, () => {
+      until =
+        untilStart ||
+        readStopFile(lockFile)?.untilStart === true ||
+        legacyStop(database, id)?.untilStart === true;
+      writeStopFile(lockFile, { at: at as EpochMs, tree, ...(until ? { untilStart: true } : {}) });
+    });
   } catch (error) {
     return { error: (error as Error).message, untilStart: false };
   }
@@ -91,8 +94,11 @@ export async function clearStoppedMark(
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return null;
   const id = worktreeIdFor(root);
+  const lockFile = lockFileFor(commonDir, id);
   try {
-    removeStopFile(lockFileFor(commonDir, id));
+    // With no mark there is nothing to remove, and no lock or locks directory to create.
+    if (existsSync(stopMarkFor(lockFile)))
+      withStopFileLock(lockFile, () => removeStopFile(lockFile));
   } catch (error) {
     return (error as Error).message;
   }
