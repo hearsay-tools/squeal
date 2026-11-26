@@ -104,8 +104,29 @@ export function isNotable(state: KnownState): boolean {
   return state.outcome === "fail" || state.validity === "unknown" || state.check.kind === "setup";
 }
 
-/** `states`, as the list `knownStates.list` reads, counted as `WorktreeStates`. */
+/**
+ * Row 025-18: the counts of each frozen list, which cannot change. One Stop
+ * counts its kept states list (`keepStates`) for the decision's header and
+ * again for the turn's end; on a store of 500 checks each count is about
+ * 0.9 ms, and it grows with the checks.
+ */
+const counted = new WeakMap<readonly KnownState[], WorktreeStates>();
+
+/**
+ * `states`, as the list `knownStates.list` reads, counted as `WorktreeStates`.
+ * A frozen list is counted once (`counted`).
+ */
 export function worktreeStatesOf(states: readonly KnownState[]): WorktreeStates {
+  if (!Object.isFrozen(states)) return countStates(states);
+  let counts = counted.get(states);
+  if (counts === undefined) {
+    counts = countStates(states);
+    counted.set(states, counts);
+  }
+  return counts;
+}
+
+function countStates(states: readonly KnownState[]): WorktreeStates {
   const groups = new Map<string, { -readonly [K in keyof StatesGroup]: StatesGroup[K] }>();
   const own = new Map<string, KnownState[]>();
   for (const state of states) {
