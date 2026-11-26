@@ -39,6 +39,7 @@ import type { RunRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { knownFailureCounts } from "./checks.js";
 import { codeStatusOf } from "./code-status.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
+import { containersOf } from "./container-status.js";
 import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
@@ -222,6 +223,8 @@ function snapshot(
     daemonNotes,
     // Row 026-20 (D12.1, lessons D1): the remote's line, and why the listing failed.
     ...remoteOf(store, worktreeId),
+    // Spec 027 D7.3 (row 027-06): each container target's state and key mode.
+    ...containersOf(store, worktreeId),
     ...listingFailedOf(daemonNotes, header, daemon),
     ...checkpoint,
     ...vitestExcluded(at),

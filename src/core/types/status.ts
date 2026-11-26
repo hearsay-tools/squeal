@@ -979,6 +979,13 @@ export interface StatusSnapshot extends StatusHeader {
    */
   readonly remote?: string;
   /**
+   * Spec 027 D7.3 (row 027-06): each container target's state and key
+   * mode in one line, which plain status prints as `Containers:`, such as
+   * `container backend (ready, build-content)`. Absent while the daemon
+   * has seen no container project.
+   */
+  readonly containers?: string;
+  /**
    * Row 026-20 (lessons D1): why the live daemon could not list the current
    * revision's test files, while none is listed, such as a remote refused
    * under `whenLost: "not-run"`. Absent otherwise.
