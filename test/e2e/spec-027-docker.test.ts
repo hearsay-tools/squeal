@@ -133,6 +133,7 @@ describe("spec 027 stage 1 end to end, no Docker (row 027-07)", { timeout: 600_0
   it("runs concurrent batches in distinct slots with templated env, and no slot moves a key", async (ctx) => {
     const out = outside("sq-slots-");
     const policy = {
+      baseline: { onStart: "lookup-only" },
       checks: MANUAL_VITEST,
       runner: { tierSize: 4 },
       pytest: [
@@ -162,6 +163,9 @@ describe("spec 027 stage 1 end to end, no Docker (row 027-07)", { timeout: 600_0
 
     const first = suite.daemon(repo);
     await waitReady(repo, first);
+    // Run in one foreground checkpoint so host load cannot throttle backlog concurrency to 1.
+    const ran = await cli(repo, "run", "--fast", "--wait");
+    expect(ran.code, ran.out).toBe(0);
     const settled = await settle(repo, "4 slot files pass", (s) => passes(s) === 8);
     expect(settled.knownFailures).toEqual([]);
     const seen = readdirSync(out).map((f) => JSON.parse(readFileSync(join(out, f), "utf8")));
