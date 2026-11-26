@@ -1,6 +1,7 @@
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../code/coverage/runtime.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { NodeTestProject, PytestProject } from "../types/policy.js";
+import type { JestProject } from "../types/policy-jest.js";
 import type { AdapterHooks, HostedAdapter } from "./host.js";
 import type { HostStart, ProcessHostOptions } from "./protocol.js";
 import { HOST_PROVIDER } from "./remote/tree-wire.js";
@@ -95,6 +96,22 @@ export async function buildAdapter(
         ...(data.cacheDir === undefined ? {} : { cacheDir: data.cacheDir as AbsolutePath }),
       });
     }
+    case "jest": {
+      const { createJestAdapter } = await import("../../runners/jest/index.js");
+      const data = processOptions(start);
+      const project = data.project as JestProject;
+      const { batchSize } = project;
+      return createJestAdapter(project, {
+        root,
+        note: hooks.note,
+        childEnv: start.options.childEnv,
+        observe: () => hooks.policy().observe,
+        ...perRun(start, hooks),
+        ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
+        ...(data.tempDir === undefined ? {} : { tempDir: data.tempDir as AbsolutePath }),
+        ...(data.cacheDir === undefined ? {} : { cacheDir: data.cacheDir as AbsolutePath }),
+      });
+    }
     default:
       throw new Error(`runner host: no runner ${String(start.runner)}`);
   }
@@ -115,7 +132,7 @@ export function vitestCoverage(
   return { provider, tempDir: coverage.tempDir };
 }
 
-/** node:test's or pytest's data from `start`. */
+/** node:test's, pytest's or Jest's data from `start`. */
 function processOptions(start: HostStart): ProcessHostOptions {
   const data = start.options.process;
   if (data === undefined) throw new Error(`runner host: no project for ${start.runner}`);
