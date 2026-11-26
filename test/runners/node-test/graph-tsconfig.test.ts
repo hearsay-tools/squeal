@@ -2,16 +2,16 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { createNodeTestGraph } from "../../../src/runners/node-test/graph/index.js";
-import { readLoaderChain } from "../../../src/runners/node-test/graph/loader-chain.js";
-import { createResolver } from "../../../src/runners/node-test/graph/resolver.js";
+import { readLoaderChain } from "../../../src/runners/js-graph/loader-chain.js";
+import { createResolver } from "../../../src/runners/js-graph/resolver.js";
 import {
   aliasCandidates,
   compileAliases,
   parseJsonc,
   readTsconfigPaths,
   tsxSpecifier,
-} from "../../../src/runners/node-test/graph/tsconfig.js";
+} from "../../../src/runners/js-graph/tsconfig.js";
+import { createNodeTestGraph } from "../../../src/runners/node-test/graph/index.js";
 
 /**
  * Spec 003 D3 as amended: the tsconfig `extends` chain (S1) and the module

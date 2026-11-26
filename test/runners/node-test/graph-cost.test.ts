@@ -27,9 +27,8 @@ import {
 
 const work = vi.hoisted(() => ({ parses: 0, lookups: 0 }));
 
-vi.mock("../../../src/runners/node-test/graph/parse.js", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../../../src/runners/node-test/graph/parse.js")>();
+vi.mock("../../../src/runners/js-graph/parse.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../src/runners/js-graph/parse.js")>();
   return {
     ...actual,
     parseModule: (source: string, name: string) => {
@@ -39,9 +38,8 @@ vi.mock("../../../src/runners/node-test/graph/parse.js", async (importOriginal) 
   };
 });
 
-vi.mock("../../../src/runners/node-test/graph/resolver.js", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../../../src/runners/node-test/graph/resolver.js")>();
+vi.mock("../../../src/runners/js-graph/resolver.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../src/runners/js-graph/resolver.js")>();
   return {
     ...actual,
     createResolver: (...args: Parameters<typeof actual.createResolver>) => {

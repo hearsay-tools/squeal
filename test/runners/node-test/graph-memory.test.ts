@@ -22,7 +22,7 @@ it("releases build caches after cold builds, re-resolves, edits and listing chan
     resolve(import.meta.dirname, "../../../src/runners/node-test/graph/index.ts"),
   ).href;
   const parserModule = pathToFileURL(
-    resolve(import.meta.dirname, "../../../src/runners/node-test/graph/parse.ts"),
+    resolve(import.meta.dirname, "../../../src/runners/js-graph/parse.ts"),
   ).href;
   try {
     execFileSync(process.execPath, [generator, root]);

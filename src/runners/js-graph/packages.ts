@@ -1,6 +1,6 @@
-import { compare } from "../../../core/fs/compare.js";
-import type { RelativePath } from "../../../core/types/common.js";
-import type { PackageImport, RunnerPackages } from "../../../core/types/runner.js";
+import { compare } from "../../core/fs/compare.js";
+import type { RelativePath } from "../../core/types/common.js";
+import type { PackageImport, RunnerPackages } from "../../core/types/runner.js";
 
 /**
  * The builtin Spec 001 D3 sends to the whole fingerprint that a module

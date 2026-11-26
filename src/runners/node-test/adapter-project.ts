@@ -14,9 +14,7 @@ import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environ
 import { listTestFiles } from "./adapter-files.js";
 import { ProjectCoverage } from "./coverage.js";
 import { enumerate } from "./enumerate.js";
-import { MANIFEST } from "./graph/graph.js";
-import { createNodeTestGraph } from "./graph/index.js";
-import { INPUTS_HINT } from "./graph/preload-notes.js";
+import { createNodeTestGraph, INPUTS_HINT, MANIFEST } from "./graph/index.js";
 import { projectEnv } from "./recorders.js";
 import { coveragePayloads } from "./run/coverage.js";
 import type { ObservedClosure } from "./run/observed.js";

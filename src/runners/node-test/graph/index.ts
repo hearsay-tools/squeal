@@ -1,12 +1,19 @@
 import { realpathSync } from "node:fs";
 import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
 import type { InvalidatedPath, RunnerPackages } from "../../../core/types/runner.js";
-import { type AffectedPaths, Graph, type StaticClosure, type TestFileClosure } from "./graph.js";
-import { readLoaderChain } from "./loader-chain.js";
-import { parserReady } from "./parse.js";
-import { createResolver } from "./resolver.js";
+import {
+  type AffectedPaths,
+  Graph,
+  type StaticClosure,
+  type TestFileClosure,
+} from "../../js-graph/graph.js";
+import { readLoaderChain } from "../../js-graph/loader-chain.js";
+import { parserReady } from "../../js-graph/parse.js";
+import { createResolver } from "../../js-graph/resolver.js";
 
-export type { AffectedPaths, StaticClosure, TestFileClosure } from "./graph.js";
+export type { AffectedPaths, StaticClosure, TestFileClosure } from "../../js-graph/graph.js";
+export { MANIFEST } from "../../js-graph/graph.js";
+export { INPUTS_HINT } from "../../js-graph/preload-notes.js";
 
 export interface NodeTestGraphOptions {
   /** The worktree root; closures hold paths inside it only. */

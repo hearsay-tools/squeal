@@ -1,4 +1,4 @@
-import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { ModuleTable } from "./modules.js";
 
 export interface PreloadNotesInput {

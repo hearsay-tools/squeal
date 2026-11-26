@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { parseModule, parserReady } from "../../../src/runners/node-test/graph/parse.js";
+import { parseModule, parserReady } from "../../../src/runners/js-graph/parse.js";
 
 /**
  * Review wave 2, N3: only code marks a module incomplete. A `require (` in a
