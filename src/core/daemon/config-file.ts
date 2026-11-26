@@ -83,7 +83,10 @@ export function loadConfigFile<T extends object>(
     return last.loaded as LoadedConfig<T>;
   }
   const loaded = text === null ? { value: defaults, problems: [] } : parse(text, shape, defaults);
-  if (byPath === undefined) lastLoads.set(shape, (byPath = new Map()));
+  if (byPath === undefined) {
+    byPath = new Map();
+    lastLoads.set(shape, byPath);
+  }
   byPath.set(path, { text, defaults, loaded });
   return loaded;
 }

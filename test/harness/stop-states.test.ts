@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { openStore } from "../../src/core/store/open.js";
 import { ensureWriteMarkers } from "../../src/core/store/write-markers.js";
+import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { keepStates } from "../../src/harness/shared/stop-states.js";
@@ -96,13 +99,48 @@ describe("Stop lists the known states once (row 005-124)", () => {
     expect(lists.count).toBe(1);
   });
 
-  it("reads in full each time without the marker's triggers", async () => {
+  it("without the marker's triggers, keeps the list until another connection commits (row 025-18)", async () => {
     const r = squealRepo();
     r.apply(r.pass());
     keepStates(r.store);
     lists.count = 0;
-    r.store.knownStates.list(r.worktreeId);
-    r.store.knownStates.list(r.worktreeId);
+    const before = r.store.knownStates.list(r.worktreeId);
+    expect(r.store.knownStates.list(r.worktreeId)).toBe(before);
+    expect(lists.count).toBe(1);
+
+    // The daemon's state sink commits from its own connection.
+    const daemon = openStore(r.repo.commonDir as AbsolutePath);
+    if ("reason" in daemon) throw new Error(`no store: ${daemon.reason}`);
+    try {
+      daemon.knownStates.upsertMany(before.map((s) => ({ ...s, outcome: "fail" as const })));
+    } finally {
+      daemon.close();
+    }
+
+    expect(r.store.knownStates.list(r.worktreeId).map((s) => s.outcome)).toEqual(["fail"]);
+    expect(lists.count).toBe(2);
+  });
+
+  it("a Stop without the marker's triggers lists the states once (row 025-18)", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    await runHook("session-start", recorded("session-start", r.root), deps());
+    r.apply(r.fail());
+    const { out, lists } = await stopLists(r);
+    expect(out).toContain("PASS -> FAIL");
+    expect(lists).toBe(1);
+  });
+
+  it("a store a test made without a connection reads in full each time", () => {
+    const list = () => {
+      lists.count++;
+      return [];
+    };
+    const store = { knownStates: { list } } as unknown as Store;
+    keepStates(store);
+    lists.count = 0;
+    store.knownStates.list("w" as WorktreeId);
+    store.knownStates.list("w" as WorktreeId);
     expect(lists.count).toBe(2);
   });
 });
