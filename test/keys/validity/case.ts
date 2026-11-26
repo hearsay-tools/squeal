@@ -465,8 +465,9 @@ export interface PytestInput {
   /** The worktree's files; `<outside>` in a text names the directory `outside` is written to. */
   readonly files: Readonly<Record<string, string>>;
   /**
-   * Files of a directory beside the worktree, outside any git checkout, such
-   * as an editable install's project (row 027-03, spec 027 D3).
+   * Files of a directory outside the worktree and any git checkout, at one
+   * path per content both trees share, such as an editable install's project
+   * (row 027-03, spec 027 D3).
    */
   readonly outside?: Readonly<Record<string, string>>;
   /** The project's policy entry beyond its name; without `python`, the synced environment. */

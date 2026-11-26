@@ -1,4 +1,14 @@
-import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AbsolutePath } from "../../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../../src/core/types/keys.js";
@@ -125,9 +135,28 @@ function write(root: string, edits: NonNullable<PytestInput["runs"][number]["edi
   return invalidated;
 }
 
+/**
+ * `files` written beside every worktree, at one path per content under the
+ * temporary directory both trees share: an outside editable's note names
+ * its path, and the note is part of the environment's key (row 027-03).
+ */
+function outsideDir(files: Readonly<Record<string, string>>): string {
+  const hash = createHash("sha256").update(JSON.stringify(files)).digest("hex").slice(0, 16);
+  const dir = join(tmpdir(), `squeal-validity-outside-${hash}`);
+  if (existsSync(dir)) return realpathSync(dir);
+  // Written aside and renamed, so a concurrent side never reads a partial tree.
+  const aside = writeTree(mkdtempSync(`${dir}-`), files);
+  try {
+    renameSync(aside, dir);
+  } catch {
+    rmSync(aside, { recursive: true, force: true });
+  }
+  return realpathSync(dir);
+}
+
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
 export async function pytestCase(input: PytestInput, scratch: string): Promise<CaseOutput> {
-  const outside = writeTree(join(scratch, "outside"), input.outside ?? {});
+  const outside = outsideDir(input.outside ?? {});
   const files = Object.fromEntries(
     Object.entries(input.files).map(([path, text]) => [
       path,
