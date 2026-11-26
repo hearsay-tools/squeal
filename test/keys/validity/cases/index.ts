@@ -11,6 +11,7 @@ import { OWN_COMPILE_CACHE } from "./adapter/compile-cache.js";
 import { VITEST_ENVIRONMENT } from "./adapter/environment.js";
 import { NODE_TEST_RUNS } from "./adapter/node-test.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
+import { PYTEST_EDITABLE } from "./adapter/pytest-editable.js";
 import { PYTEST_PDM } from "./adapter/pytest-pdm.js";
 import { PYTEST_SLOTS, SLOT_POLICY } from "./adapter/pytest-slots.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
@@ -98,6 +99,7 @@ export const CASES: readonly Case[] = [
   ...PYTEST_PDM,
   ...PYTEST_SLOTS,
   ...SLOT_POLICY,
+  ...PYTEST_EDITABLE,
   ...NODE_TEST_RUNS,
   ...OWN_COMPILE_CACHE,
   ...LEAVING_LISTING,

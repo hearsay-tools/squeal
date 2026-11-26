@@ -127,7 +127,14 @@ function write(root: string, edits: NonNullable<PytestInput["runs"][number]["edi
 
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
 export async function pytestCase(input: PytestInput, scratch: string): Promise<CaseOutput> {
-  const root = realpathSync(writeTree(join(scratch, "worktree"), input.files)) as AbsolutePath;
+  const outside = writeTree(join(scratch, "outside"), input.outside ?? {});
+  const files = Object.fromEntries(
+    Object.entries(input.files).map(([path, text]) => [
+      path,
+      text.replaceAll("<outside>", outside),
+    ]),
+  );
+  const root = realpathSync(writeTree(join(scratch, "worktree"), files)) as AbsolutePath;
   const { project: entry = {} } = input;
   // D2's discovery finds the synced environment linked in as `.venv`; otherwise it is declared.
   if (input.venv === true) symlinkSync(environmentOf(input.python), join(root, ".venv"), "dir");
@@ -199,6 +206,9 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
   return {
     keys: { steps, loaded, recreated },
     outputs: { runs },
-    wording: { failures, notes: notes.map((n) => n.replaceAll(root, "<root>")) },
+    wording: {
+      failures,
+      notes: notes.map((n) => n.replaceAll(root, "<root>").replaceAll(outside, "<outside>")),
+    },
   };
 }

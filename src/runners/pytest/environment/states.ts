@@ -2,7 +2,6 @@ import { lstatSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "smol-toml";
-import { isMissing } from "../../../core/fs/errors.js";
 import { isRecord } from "../../../core/fs/json.js";
 import { toRelative } from "../../../core/fs/paths.js";
 import type { AbsolutePath } from "../../../core/types/common.js";
@@ -155,7 +154,8 @@ function buildStageEmpty(site: AbsolutePath, distInfo: AbsolutePath, dir: Absolu
  */
 function insideGitCheckout(dir: AbsolutePath): boolean {
   for (let at = dir; ; at = dirname(at)) {
-    if (exists(join(at, ".git"))) return true;
+    // Any error but a missing entry throws, and the caller refuses.
+    if (lstatSync(join(at, ".git"), { throwIfNoEntry: false }) !== undefined) return true;
     if (dirname(at) === at) return false;
   }
 }
@@ -186,18 +186,19 @@ function pthAddsNoCode(site: AbsolutePath, pth: string): boolean {
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trimEnd();
     if (line === "" || line.startsWith("#")) continue;
-    if (/^import[ \t]/.test(line)) {
-      const finder = FINDER_IMPORT.exec(line)?.[1];
-      const source = finder === undefined ? null : readOptional(join(site, `${finder}.py`));
-      if (source === null || !EMPTY_MAPPING.test(source) || !EMPTY_NAMESPACES.test(source)) {
-        return false;
-      }
-      continue;
-    }
-    const dir = resolve(site, line);
-    if (!lstatSync(dir).isDirectory() || !codeFree(realOr(dir))) return false;
+    const adds = /^import[ \t]/.test(line)
+      ? emptyFinder(site, line)
+      : lstatSync(resolve(site, line)).isDirectory() && codeFree(realOr(resolve(site, line)));
+    if (!adds) return false;
   }
   return true;
+}
+
+/** Whether an `import` line installs a setuptools finder that maps no module. */
+function emptyFinder(site: AbsolutePath, line: string): boolean {
+  const finder = FINDER_IMPORT.exec(line)?.[1];
+  const source = finder === undefined ? null : readOptional(join(site, `${finder}.py`));
+  return source !== null && EMPTY_MAPPING.test(source) && EMPTY_NAMESPACES.test(source);
 }
 
 const CODE = /\.(?:py|pyc|pyd|so)$/;
@@ -223,16 +224,6 @@ function codeFree(dir: AbsolutePath): boolean {
     }
   }
   return true;
-}
-
-function exists(path: AbsolutePath): boolean {
-  try {
-    lstatSync(path);
-    return true;
-  } catch (error) {
-    if (isMissing(error)) return false;
-    throw error;
-  }
 }
 
 /**
