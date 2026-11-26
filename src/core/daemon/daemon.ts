@@ -17,6 +17,7 @@ import { clearRecord, markExit, recordRegistration } from "../presence/events.js
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import type { RunnerHostLaunch } from "../runner-host/channel.js";
+import type { ContainerWiring } from "../runner-host/container/index.js";
 import type { DaemonRemote } from "../runner-host/remote/daemon-lane.js";
 import { REMOTE_SUMMARY_TOPIC } from "../runner-host/remote/summary.js";
 import { hostClock } from "../scheduler/clock.js";
@@ -26,6 +27,7 @@ import { ImportsSeen } from "../shared/imports-seen.js";
 import type { SharedReader } from "../shared/reader.js";
 import { slowSlotDir } from "../slow/slot.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
+import { containerSummaries, writeContainerSummary } from "../status/container-status.js";
 import { gitHead } from "../status/git-head.js";
 import { readRemoteSummary, writeRemoteSummary } from "../status/remote-status.js";
 import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
@@ -67,6 +69,7 @@ import {
 } from "./commit-mode.js";
 import { CommitStart } from "./commit-start.js";
 import { describeProblems } from "./config-file.js";
+import { consentFor } from "./container-guard.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { startFullCheck } from "./full-check.js";
@@ -444,6 +447,64 @@ class Daemon {
       log: this.#log,
     });
     return this.#relay.codeStoreOptions();
+  }
+
+  /**
+   * Spec 027 D5 (row 027-06): the container route of consented container
+   * projects, when the daemon starts runner hosts from a bundle it can
+   * mount; absent, such a project stays unknown (review 0.1.643 B1). Each
+   * target's state goes to its own status row. An earlier daemon's line is
+   * cleared first, and the worktree's orphaned containers are reaped when a
+   * consented target exists; without Docker that does nothing.
+   */
+  #containerWiring(
+    stateDir: AbsolutePath,
+    logRoot: AbsolutePath,
+    idleMs: () => number,
+  ): { readonly containers?: ContainerWiring } {
+    const launch = this.options.runnerHost;
+    const { root, worktreeId, commonDir, store } = this.opened;
+    try {
+      writeContainerSummary(store, worktreeId, "");
+    } catch (error) {
+      this.#log(`could not clear the container summary: ${message(error)}`);
+    }
+    if (launch === undefined) return {};
+    const projects = [...this.#policy.nodeTest, ...this.#policy.pytest];
+    const consented = projects.some(
+      (p) => p.container !== undefined && consentFor(root, p.container, this.options.env) !== null,
+    );
+    if (consented) {
+      void import("../runner-host/container/manager.js")
+        .then(({ reapOrphanedContainers }) => reapOrphanedContainers(worktreeId))
+        .then((removed) => {
+          if (removed.length > 0) this.#log(`removed ${removed.length} orphaned container(s)`);
+        })
+        .catch((error: unknown) => this.#log(`container sweep skipped: ${message(error)}`));
+    }
+    const summaries = containerSummaries();
+    const containers: ContainerWiring = {
+      containers: () => this.#policy.containers,
+      worktreeId,
+      bundleDir: dirname(launch.cli),
+      squealCliPath: launch.cli,
+      stateDir,
+      logRoot,
+      commonDir,
+      version: this.#version,
+      idleMs,
+      status: (entry) => {
+        const text = summaries.set(entry);
+        if (text === null) return;
+        this.#log(`containers: ${text}`);
+        try {
+          writeContainerSummary(store, worktreeId, text);
+        } catch (error) {
+          this.#log(`could not persist the container summary (${text}): ${message(error)}`);
+        }
+      },
+    };
+    return { containers };
   }
 
   /** Spec 021 D8: how node:test and pytest reach a local runner host, when the daemon has one. */
@@ -969,6 +1030,12 @@ class Daemon {
       const onRemote = remote === null ? {} : { remote: remote.wrap };
       // Spec 021 D8 (row 021-12): node:test and pytest in local runner hosts, as Vitest.
       const host = this.#processHost();
+      // Spec 027 D5 (row 027-06): consented container projects in their managed containers.
+      const inContainers = this.#containerWiring(
+        storePaths(commonDir).dir,
+        storePaths(commonDir).runsDir,
+        idleMs,
+      );
       // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
@@ -988,6 +1055,7 @@ class Daemon {
           collected: (run) => this.#coverage?.collected(run),
         },
         ...onRemote,
+        ...inContainers,
       });
       // Spec 007 D8: pytest's cache and bytecode live under the state directory (open question 3).
       const pytestRunners = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
@@ -1002,6 +1070,7 @@ class Daemon {
         latestNote: (topic) =>
           readDaemonNotes(store, this.opened.worktreeId).findLast((n) => n.topic === topic)?.text,
         ...onRemote,
+        ...inContainers,
       });
       // Spec 026 D8.1: the runner's own lane sends its edit and background tiers; each slow or
       // group lane, and a tier beside a named wait's batch, gets a remote host of its own per
