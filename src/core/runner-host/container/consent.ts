@@ -24,7 +24,7 @@ import { remoteUrls } from "../remote/settings.js";
  * problem and is left out; the others are kept. Reading consent never
  * starts `docker`.
  *
- *     { "allow": { "/home/me/app": { "enabled": true, "targets": ["backend"] } } }
+ *     { "allow": { "/work/app": { "enabled": true, "targets": ["backend"] } } }
  */
 
 export const CONTAINERS_FILE = "containers.json";
