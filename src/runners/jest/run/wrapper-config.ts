@@ -125,20 +125,31 @@ function wrapperText(
 ): string {
   const json = JSON.stringify;
   const read = `await readInitialOptions(${json(config)}, { skipMultipleConfigError: true })`;
+  if (project === undefined) {
+    return [
+      `"use strict";`,
+      `// Written by Squeal (spec 028 D4.1): the project's Jest config, read as Jest reads it.`,
+      `const { readInitialOptions } = require(${json(jestConfig)});`,
+      `module.exports = async () => {`,
+      `  const { config } = ${read};`,
+      runtime === null ? `  return config;` : `  return { ...config, runtime: ${json(runtime)} };`,
+      `};`,
+      ``,
+    ].join("\n");
+  }
+  const selected = runtime === null ? `selected` : `{ ...selected, runtime: ${json(runtime)} }`;
   return [
     `"use strict";`,
-    `// Written by Squeal (spec 028 D4.1): the project's Jest config, read as Jest reads it.`,
+    `// Written by Squeal (spec 028 D4.1): keep the root global scope and narrow projects to one inline child (review 0.1.646-r2 B2).`,
     `const { readInitialOptions } = require(${json(jestConfig)});`,
-    ...(project === undefined
-      ? [`module.exports = async () => {`, `  const { config } = ${read};`]
-      : [
-          `const path = require("path");`,
-          INLINE_PROJECT_RULE.trim(),
-          `module.exports = async () => {`,
-          `  const { config: root } = ${read};`,
-          `  const config = inlineOptions(selectInline(root.projects, ${json(project)}), ${json(dirname(config))});`,
-        ]),
-    runtime === null ? `  return config;` : `  return { ...config, runtime: ${json(runtime)} };`,
+    `const path = require("path");`,
+    INLINE_PROJECT_RULE.trim(),
+    `module.exports = async () => {`,
+    `  const { config: root } = ${read};`,
+    `  const configDir = ${json(dirname(config))};`,
+    `  const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);`,
+    `  const selected = inlineOptions(selectInline(root.projects, ${json(project)}), rootDir);`,
+    `  return { ...root, rootDir, projects: [${selected}] };`,
     `};`,
     ``,
   ].join("\n");

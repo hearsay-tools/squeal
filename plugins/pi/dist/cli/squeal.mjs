@@ -59761,18 +59761,31 @@ function writeWrapperConfig(options) {
 function wrapperText(config, jestConfig, runtime, project) {
   const json3 = JSON.stringify;
   const read7 = `await readInitialOptions(${json3(config)}, { skipMultipleConfigError: true })`;
+  if (project === void 0) {
+    return [
+      `"use strict";`,
+      `// Written by Squeal (spec 028 D4.1): the project's Jest config, read as Jest reads it.`,
+      `const { readInitialOptions } = require(${json3(jestConfig)});`,
+      `module.exports = async () => {`,
+      `  const { config } = ${read7};`,
+      runtime === null ? `  return config;` : `  return { ...config, runtime: ${json3(runtime)} };`,
+      `};`,
+      ``
+    ].join("\n");
+  }
+  const selected2 = runtime === null ? `selected` : `{ ...selected, runtime: ${json3(runtime)} }`;
   return [
     `"use strict";`,
-    `// Written by Squeal (spec 028 D4.1): the project's Jest config, read as Jest reads it.`,
+    `// Written by Squeal (spec 028 D4.1): keep the root global scope and narrow projects to one inline child (review 0.1.646-r2 B2).`,
     `const { readInitialOptions } = require(${json3(jestConfig)});`,
-    ...project === void 0 ? [`module.exports = async () => {`, `  const { config } = ${read7};`] : [
-      `const path = require("path");`,
-      INLINE_PROJECT_RULE.trim(),
-      `module.exports = async () => {`,
-      `  const { config: root } = ${read7};`,
-      `  const config = inlineOptions(selectInline(root.projects, ${json3(project)}), ${json3(dirname50(config))});`
-    ],
-    runtime === null ? `  return config;` : `  return { ...config, runtime: ${json3(runtime)} };`,
+    `const path = require("path");`,
+    INLINE_PROJECT_RULE.trim(),
+    `module.exports = async () => {`,
+    `  const { config: root } = ${read7};`,
+    `  const configDir = ${json3(dirname50(config))};`,
+    `  const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);`,
+    `  const selected = inlineOptions(selectInline(root.projects, ${json3(project)}), rootDir);`,
+    `  return { ...root, rootDir, projects: [${selected2}] };`,
     `};`,
     ``
   ].join("\n");
@@ -81216,7 +81229,10 @@ function configFiles2(root, project, read7, env) {
   files6.push(...read7.configDeps ?? []);
   if (read7.ok) {
     if (read7.preset !== null) files6.push(read7.preset);
-    for (const value of strings6(read7.project)) {
+    const globalHooks = [read7.global.globalSetup, read7.global.globalTeardown].filter(
+      (v) => typeof v === "string"
+    );
+    for (const value of [...strings6(read7.project), ...globalHooks]) {
       if (value.startsWith(root + sep35) && !value.includes(`${sep35}node_modules${sep35}`)) {
         if (isFile5(value)) files6.push(value);
       }
@@ -81393,8 +81409,9 @@ const configDeps = (cached) => {
     if (selector !== "") {
       const configDir = path.dirname(configPath);
       const root = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
-      raw = inlineOptions(selectInline(root.projects, selector), configDir);
-      ({ projectConfig } = await readConfig(argv, { ...raw }, true, configDir));
+      const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);
+      raw = inlineOptions(selectInline(root.projects, selector), rootDir);
+      ({ projectConfig } = await readConfig(argv, { ...raw }, true, rootDir));
     }
     try {
       if (raw === null) {

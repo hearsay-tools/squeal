@@ -1,5 +1,13 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
@@ -566,6 +574,111 @@ describe.each(JEST_MAJORS)("the Jest %i adapter on inline projects (B2)", (major
       expect(after?.resolvedConfig).toContain(`"KIND":"renamed"`);
       const fresh = await createJestAdapter(unit, { root });
       expect(await fresh.environment()).toEqual([after]);
+    },
+  );
+
+  it(
+    "keeps root global options (testTimeout, globalSetup) without leaking root project globals (review 0.1.646-r2 B2)",
+    SLOW,
+    async () => {
+      const root = join(scratch, `tree-${made++}`) as AbsolutePath;
+      const files: Record<string, string> = {
+        "package.json": `{ "name": "app", "private": true }\n`,
+        "global-setup.cjs": `const fs = require("fs");
+const path = require("path");
+module.exports = () => {
+  fs.writeFileSync(path.join(__dirname, "global-setup.ran"), "yes");
+};
+`,
+        "jest.config.cjs": `module.exports = {
+  testTimeout: 25,
+  globalSetup: "<rootDir>/global-setup.cjs",
+  globals: { ROOT_ONLY: "leak" },
+  projects: [
+    {
+      displayName: "unit",
+      rootDir: ".",
+      testEnvironment: "node",
+      testMatch: ["<rootDir>/unit/*.test.cjs"],
+      globals: { KIND: "unit" },
+    },
+    {
+      displayName: "other",
+      rootDir: ".",
+      testEnvironment: "node",
+      testMatch: ["<rootDir>/other/*.test.cjs"],
+    },
+  ],
+};
+`,
+        "unit/helper.cjs": `module.exports = 42;\n`,
+        "unit/slow.test.cjs": `test("respects root timeout", async () => {
+  await new Promise((resolve) => setTimeout(resolve, 150));
+});
+`,
+        "unit/fast.test.cjs": `const value = require("./helper.cjs");
+test("keeps inline globals without root globals", () => {
+  expect(KIND).toBe("unit");
+  expect(typeof ROOT_ONLY).toBe("undefined");
+  expect(value).toBe(42);
+});
+`,
+        "other/skip.test.cjs": `test("other", () => expect(1).toBe(1));\n`,
+      };
+      for (const [path, text] of Object.entries(files)) {
+        mkdirSync(dirname(join(root, path)), { recursive: true });
+        writeFileSync(join(root, path), text);
+      }
+      mkdirSync(join(root, "node_modules"));
+      const installed = realpathSync(join(installJest(major), "node_modules/jest"));
+      symlinkSync(installed, join(root, "node_modules/jest"));
+
+      const resolution = resolveJest("unit", root, root);
+      if (!resolution.ok) throw new Error(resolution.note);
+      // Native Jest fails the 150 ms test under the root testTimeout: 25.
+      const native = spawnSync(
+        process.execPath,
+        [
+          resolution.install.bin,
+          "--config",
+          "jest.config.cjs",
+          "--runInBand",
+          "--ci",
+          "--cacheDirectory",
+          join(root, "..", `native-cache-${made++}`),
+          "unit/slow.test.cjs",
+        ],
+        { cwd: root, encoding: "utf8", timeout: 120_000 },
+      );
+      expect(native.status).toBe(1);
+      expect(`${native.stdout}\n${native.stderr}`).toMatch(/Exceeded timeout of 25 ms/);
+      rmSync(join(root, "global-setup.ran"), { force: true });
+
+      const unit = project("unit", "jest.config.cjs", "unit");
+      const adapter = await createJestAdapter(unit, { root });
+      const [environment] = await adapter.environment();
+      expect(environment?.resolvedConfig).toContain(`"testTimeout":25`);
+      expect(environment?.files).toContain("global-setup.cjs");
+      const listed = await adapter.testFiles();
+      expect(listed.map((f) => f.path)).toEqual(["unit/fast.test.cjs", "unit/slow.test.cjs"]);
+
+      const report = await adapter.run(listed, {
+        runId: `r2-global-${made}`,
+        logDir: join(root, "..", `logs-${made++}`) as AbsolutePath,
+        timeoutMs: 120_000,
+      });
+      expect(report.end).toBe("completed");
+      expect(report.completedFiles).toEqual(listed);
+      expect(report.fileErrors).toEqual([]);
+      const byName = Object.fromEntries(report.results.map((r) => [r.check.fullName, r]));
+      expect(byName["keeps inline globals without root globals"]?.outcome).toBe("pass");
+      expect(byName["respects root timeout"]?.outcome).toBe("fail");
+      expect(byName["respects root timeout"]?.errors[0]?.message).toMatch(
+        /Exceeded timeout of 25 ms/,
+      );
+      expect(existsSync(join(root, "global-setup.ran"))).toBe(true);
+      const fastLoaded = report.loaded?.find((l) => l.testFile.path === "unit/fast.test.cjs");
+      expect(fastLoaded?.paths).toContain("unit/helper.cjs");
     },
   );
 });

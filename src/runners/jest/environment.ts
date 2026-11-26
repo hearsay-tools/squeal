@@ -126,8 +126,9 @@ const configDeps = (cached) => {
     if (selector !== "") {
       const configDir = path.dirname(configPath);
       const root = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
-      raw = inlineOptions(selectInline(root.projects, selector), configDir);
-      ({ projectConfig } = await readConfig(argv, { ...raw }, true, configDir));
+      const rootDir = typeof root.rootDir !== "string" || root.rootDir === "" ? configDir : path.resolve(configDir, root.rootDir);
+      raw = inlineOptions(selectInline(root.projects, selector), rootDir);
+      ({ projectConfig } = await readConfig(argv, { ...raw }, true, rootDir));
     }
     try {
       if (raw === null) {
@@ -403,7 +404,10 @@ export function configFiles(
   files.push(...(read.configDeps ?? []));
   if (read.ok) {
     if (read.preset !== null) files.push(read.preset);
-    for (const value of strings(read.project)) {
+    const globalHooks = [read.global.globalSetup, read.global.globalTeardown].filter(
+      (v): v is string => typeof v === "string",
+    );
+    for (const value of [...strings(read.project), ...globalHooks]) {
       if (value.startsWith(root + sep) && !value.includes(`${sep}node_modules${sep}`)) {
         if (isFile(value)) files.push(value);
       }
