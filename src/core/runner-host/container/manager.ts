@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
+import { PassThrough } from "node:stream";
 import { channelOf, type HostChannel } from "../channel.js";
-import type { HostRunner, RootStat } from "../protocol.js";
+import { frameOf, type HostRunner, type RootStat } from "../protocol.js";
 import {
   type BindMount,
   type DockerCli,
@@ -253,6 +254,46 @@ export function openRunnerHostChannel(
     options.runner,
   ];
   return channelOf(cli.spawnExec(container.id, argv));
+}
+
+/**
+ * D6: `channel` with its output read on the way through, so the `rootStat`
+ * of the host's `start` reply is known once the proxy's start resolved;
+ * the proxy itself keeps no field it does not read.
+ */
+export function rootStatTap(channel: HostChannel): {
+  readonly channel: HostChannel;
+  rootStat(): RootStat | undefined;
+} {
+  const output = new PassThrough();
+  output.setEncoding("utf8");
+  let found: RootStat | undefined;
+  let seen = false;
+  let partial = "";
+  channel.output.on("data", (chunk: string | Buffer) => {
+    const text = String(chunk);
+    if (!seen) {
+      const lines = (partial + text).split("\n");
+      partial = lines.pop() ?? "";
+      for (const line of lines) {
+        const frame = frameOf(line);
+        if (frame === null) continue;
+        let reply: { r?: { protocol?: unknown; rootStat?: RootStat } | null } = {};
+        try {
+          reply = JSON.parse(frame) as typeof reply;
+        } catch {
+          continue;
+        }
+        if (reply.r === undefined || reply.r === null || reply.r.protocol === undefined) continue;
+        seen = true;
+        found = reply.r.rootStat;
+        break;
+      }
+    }
+    output.write(text);
+  });
+  channel.output.on("end", () => output.end());
+  return { channel: { ...channel, output }, rootStat: () => found };
 }
 
 /**

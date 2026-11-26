@@ -1,5 +1,11 @@
+import { createHash } from "node:crypto";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import type { AbsolutePath } from "../../types/common.js";
+import type { ContainerKeyMode, ContainerTarget } from "../../types/policy-containers.js";
 import type { HostChannel } from "../channel.js";
 import type { RootStat } from "../protocol.js";
+import type { HostDeadlines } from "../proxy.js";
 import { dockerCli } from "./docker.js";
 import {
   type ChannelOptions,
@@ -12,6 +18,7 @@ import {
   verifyMount,
 } from "./manager.js";
 import type { ContainerRefusal } from "./preflight.js";
+import type { ContainerTargetState } from "./runner.js";
 
 /*
  * Spec 027 D5 and D6 (row 027-05): the one call the daemon makes to run a
@@ -53,4 +60,71 @@ export async function startContainerHost(
     channel: opened,
     verify: (rootStat) => verifyMount(paths.worktreeRoot, rootStat, { channel: opened, container }),
   };
+}
+
+/**
+ * Spec 027 D5 (row 027-06): what the daemon gives a container project's
+ * runner beside the project itself. Absent, a consented project stays
+ * unknown (review 0.1.643 B1): there is no container route to run it on.
+ */
+export interface ContainerWiring {
+  /** Policy `containers`, read at each start. */
+  readonly containers: () => Readonly<Record<string, ContainerTarget>>;
+  readonly worktreeId: string;
+  /** Squeal's bundle, mounted read-only; `squealCliPath` is inside it. */
+  readonly bundleDir: string;
+  readonly squealCliPath: string;
+  /** Squeal's state directory: the worktree's container cache goes under it. */
+  readonly stateDir: AbsolutePath;
+  /** Where runs write their logs, mounted at its own path. */
+  readonly logRoot: AbsolutePath;
+  /** Where `containers.json` consent is matched by remote URL. */
+  readonly commonDir: AbsolutePath;
+  /** This Squeal's version. */
+  readonly version: string;
+  /** Told each project's target state, for `squeal status`. */
+  readonly status?: (summary: ContainerSummaryEntry) => void;
+  readonly idleMs?: () => number;
+  readonly manager?: ManagerOptions;
+  readonly deadlines?: Partial<HostDeadlines>;
+  readonly openChannel?: (container: ManagedContainer) => HostChannel;
+}
+
+/** One project's container target state, as the daemon keeps it for `squeal status`. */
+export interface ContainerSummaryEntry {
+  readonly target: string;
+  readonly runner: string;
+  readonly project: string;
+  readonly state: ContainerTargetState;
+  readonly keyMode: ContainerKeyMode;
+}
+
+/**
+ * The same-path mounts of `root`'s containers: the bundle, the logs and a
+ * cache directory of the worktree under the state directory, made here so
+ * a mount never names a missing path.
+ */
+export function containerPaths(wiring: ContainerWiring, root: AbsolutePath): ContainerPaths {
+  const id = createHash("sha256").update(root).digest("hex").slice(0, 16);
+  const worktreeCacheDir = join(wiring.stateDir, "containers", id);
+  for (const dir of [worktreeCacheDir, join(worktreeCacheDir, "tmp"), wiring.logRoot]) {
+    mkdirSync(dir, { recursive: true });
+  }
+  return {
+    worktreeRoot: root,
+    squealBundleDir: wiring.bundleDir,
+    worktreeCacheDir,
+    worktreeLogRoot: wiring.logRoot,
+  };
+}
+
+/** A project's temp and pytest cache directories inside the mounted cache (D5.1). */
+export function containerWorkDirs(
+  paths: ContainerPaths,
+  project: string,
+): { readonly tempDir: string; readonly cacheDir: string } {
+  const id = createHash("sha256").update(project).digest("hex").slice(0, 16);
+  const cacheDir = join(paths.worktreeCacheDir, "pytest", id);
+  mkdirSync(cacheDir, { recursive: true });
+  return { tempDir: join(paths.worktreeCacheDir, "tmp"), cacheDir };
 }
