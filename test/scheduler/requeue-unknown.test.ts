@@ -39,7 +39,7 @@ interface Faulty {
   closureFails: boolean;
 }
 
-function ended(files: readonly TestFileRef[], end: RunEnd, failure: string | null): RunReport {
+function ended(_files: readonly TestFileRef[], end: RunEnd, failure: string | null): RunReport {
   return { end, durationMs: 1, completedFiles: [], results: [], fileErrors: [], failure };
 }
 

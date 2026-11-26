@@ -925,9 +925,13 @@ class Daemon {
       // Spec 021 D9, D12 (rows 021-13, 021-14): the remote lane the user names for this
       // repository in remote.json, when its squeal.config.json allows one. Spec 026 D8 (row
       // 026-11): every runner it names, and each tier, over one machine.
-      const { createDaemonRemote, vitestOver, vitestRemoteStart, withRemoteRelease } = await import(
-        "../runner-host/remote/daemon-lane.js"
-      );
+      const {
+        createDaemonRemote,
+        isRemoteOutageReason,
+        vitestOver,
+        vitestRemoteStart,
+        withRemoteRelease,
+      } = await import("../runner-host/remote/daemon-lane.js");
       const remote = createDaemonRemote({
         root,
         commonDir,
@@ -948,6 +952,18 @@ class Daemon {
         // Spec 026 D9 (row 026-13): a proven remote run's records, mapped there, stored as ours.
         remoteCoverage: (runId, testFile, record) =>
           this.#coverage?.recordMapped(runId, testFile, record),
+        // Wave 12 (rows 026-30 + 026-32): once a remote recovers from an outage, re-queue the
+        // files left unknown by that outage so they heal automatically.
+        onRecovered: () => {
+          void this.#loop?.scheduler
+            .requeueUnknown?.(isRemoteOutageReason)
+            .then((count) => {
+              if (count > 0) this.#log(`remote recovery: re-queued ${count} unknown test file(s)`);
+            })
+            .catch((error: unknown) =>
+              this.#log(`remote recovery: could not re-queue unknown files: ${message(error)}`),
+            );
+        },
       });
       this.#adoptRemote(remote);
       const onRemote = remote === null ? {} : { remote: remote.wrap };

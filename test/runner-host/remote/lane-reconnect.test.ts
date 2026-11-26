@@ -2,6 +2,9 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import type { AdmitAsk, HostAdmission } from "../../../src/core/runner-host/remote/admission.js";
 import { UNGRANTED } from "../../../src/core/runner-host/remote/admission.js";
+import { isRemoteOutageReason } from "../../../src/core/runner-host/remote/daemon-lane.js";
+import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
+import { vitestTraits } from "../../../src/runners/vitest/traits.js";
 import { REPORT } from "../fake-channel.js";
 import { background, REF, setup } from "./lane-fixture.js";
 
@@ -190,5 +193,102 @@ describe("the Git lease and the daemon's exit around the wait for permits (row 0
     expect(report.failure).toBe("cancelled while it waited for permits");
     expect(events).toEqual(["admit 1"]);
     expect(s.remoteRuns).toEqual([]);
+  });
+});
+
+describe("remote outage matching and concurrent sendPending serialization (wave 12 integration)", () => {
+  it("matches only remote outage and refusal unknown reasons", () => {
+    expect(
+      isRemoteOutageReason(
+        'remote agent37 unreachable during the run of 6 files (the host ended); not run here (whenLost "not-run")',
+      ),
+    ).toBe(true);
+    expect(
+      isRemoteOutageReason('remote box refused (degraded disk); not run here (whenLost "not-run")'),
+    ).toBe(true);
+    expect(
+      isRemoteOutageReason(
+        'vitest: remote agent37 unreachable since 2026-11-26T00:00:00.000Z (the host ended); not planned here (whenLost "not-run")',
+      ),
+    ).toBe(true);
+    expect(isRemoteOutageReason("runner crashed")).toBe(false);
+    expect(isRemoteOutageReason("timed out after 60 s")).toBe(false);
+    expect(isRemoteOutageReason("inputs changed during 3 runs in a row")).toBe(false);
+  });
+
+  it("holds concurrent remote closure calls until an in-flight invalidation finishes", async () => {
+    const events: string[] = [];
+    let finishInvalidate: () => void = () => {};
+    const invDone = new Promise<void>((resolve) => {
+      finishInvalidate = resolve;
+    });
+    const fakeAdapter = {
+      name: "vitest",
+      adapterVersion: "1",
+      traits: vitestTraits(),
+      invalidate: async () => {
+        events.push("invalidate:start");
+        await invDone;
+        events.push("invalidate:end");
+        return { recreatedProjects: [] };
+      },
+      affected: async () => ({ direct: [], transitive: [] }),
+      closure: async (ref: typeof REF) => {
+        events.push(`closure:${ref.path}`);
+        return { testFile: ref, paths: [ref.path] };
+      },
+      enumerate: async () => [],
+      testFiles: async () => [REF],
+      environment: async () => [],
+      run: async () => REPORT,
+      close: async () => {},
+    };
+    const lane = withRemoteLane({
+      target: "box",
+      root: "/tmp/squeal-send-pending-test",
+      version: "0.1.637",
+      local: fakeAdapter,
+      planning: "remote",
+      whenLost: "not-run",
+      allowlist: () => [],
+      status: () => {},
+      log: () => {},
+      connect: async () => ({
+        adapter: fakeAdapter,
+        node: process.version,
+        coreEnvironment: async () => ({
+          nodeVersion: process.version,
+          platform: process.platform,
+          arch: process.arch,
+          installedDependencies: "same",
+          env: {},
+        }),
+        blobs: async () => ({}),
+        admit: async () => ({ grant: 1 }),
+        install: async () => ({ ran: false, command: null }),
+      }),
+    });
+    try {
+      // Wait for initial ready, then queue an invalidation while ready.
+      await lane.testFiles();
+      const inv = lane.invalidate([{ path: "src/a.ts", kind: "change" }]);
+      while (!events.includes("invalidate:start")) await sleep(5);
+      // Two concurrent closures arrive while `invalidate` is still in flight.
+      const c1 = lane.closure({ project: "unit", path: "test/one.test.ts" });
+      const c2 = lane.closure({ project: "unit", path: "test/two.test.ts" });
+      await sleep(20);
+      // Neither closure may overtake the in-flight invalidation/tree write.
+      expect(events).toEqual(["invalidate:start"]);
+      finishInvalidate();
+      await Promise.all([inv, c1, c2]);
+      expect(events[0]).toBe("invalidate:start");
+      expect(events[1]).toBe("invalidate:end");
+      expect(events.slice(2).sort()).toEqual([
+        "closure:test/one.test.ts",
+        "closure:test/two.test.ts",
+      ]);
+    } finally {
+      await lane.close();
+    }
   });
 });

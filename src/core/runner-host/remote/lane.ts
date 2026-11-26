@@ -459,11 +459,28 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         options.log(`remote ${target}: its first affected failed: ${error.message}`),
       );
 
+  /** In-flight `sendPending` for a host, so concurrent planning calls wait for tree writes. */
+  let sending: { readonly host: RemoteHost; readonly done: Promise<InvalidateResult> } | null =
+    null;
+
   /** The paths invalidated since the last message to the host, sent now; the host's answer. */
   const sendPending = async (host: RemoteHost): Promise<InvalidateResult> => {
+    while (sending !== null && sending.host === host) {
+      const prev = sending.done;
+      await prev.catch(() => {});
+      if (sending?.done === prev) break;
+    }
     const queued = [...pending.values()];
+    if (queued.length === 0) return NOTHING;
     pending.clear();
-    return queued.length > 0 ? host.adapter.invalidate(queued) : NOTHING;
+    const done = host.adapter.invalidate(queued);
+    const entry = { host, done };
+    sending = entry;
+    try {
+      return await done;
+    } finally {
+      if (sending === entry) sending = null;
+    }
   };
 
   /**

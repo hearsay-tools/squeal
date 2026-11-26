@@ -179,6 +179,11 @@ export interface DaemonRemoteLane {
   sleepRemote(): Promise<RemoteSleepOutcome>;
 }
 
+/** Whether an unknown-file reason came from a remote outage or refusal (row 026-30/026-32). */
+export function isRemoteOutageReason(reason: string): boolean {
+  return /\bremote \S+ (?:unreachable|refused)\b/.test(reason);
+}
+
 /** Whether `adapter` is a remote lane that can put its machine to sleep. */
 export function sleepsRemote(adapter: RunnerAdapter): adapter is RunnerAdapter & DaemonRemoteLane {
   return typeof (adapter as Partial<DaemonRemoteLane>).sleepRemote === "function";
