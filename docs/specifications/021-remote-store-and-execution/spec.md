@@ -42,7 +42,7 @@ The human rejected moving the whole workspace to another machine ("just shruggin
 `hold`, the `stop` mark, the mark clear in `start`, and `start`'s handoff claim use the bounded retry of row 011-212 (`whileBusy`, `src/cli/store-writes.ts`): 2 s per try inside a 10 s bound. When the write does not land within the bound:
 
 - `hold` does not start the held command. It exits non-zero and names the holder when D5 can (#162).
-- `stop --until-start` exits non-zero: "could not record the stop: the store is busy" (#158).
+- `stop --until-start` exits non-zero: "could not record the stop: the store is busy" (#158). Amended 2026-11-26 (row 021-39, #285): each worktree's stop mark now lives in an atomic per-worktree file `<commonDir>/squeal/locks/<worktreeId>.sqlite.stopped`, serialized per worktree by `<lockFile>.stopped.lock`, so another worktree daemon's `store.sqlite` write lock no longer stalls `stop` or drops the mark; `readStop`, `stopHolds`, and `clearStoppedMark` retain read/clear fallback for legacy `meta` `daemon-stopped:<id>` rows (with `whileBusy` and D15 routing when a legacy row exists), and filesystem write failures still exit 1 for `--until-start` and warn + exit 0 for plain `stop`.
 - `start` exits non-zero when the mark is still there (#108).
 
 A test holds `BEGIN IMMEDIATE` in a second process for 1.5 s (the fixture holder of `store-contention.md` Q3) and for longer than the bound, and checks both outcomes for each command.
