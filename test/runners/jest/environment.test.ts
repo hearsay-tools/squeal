@@ -276,21 +276,21 @@ export default { testEnvironment: "node", testMatch: ["<rootDir>/test/**/*.test.
   const deps = (root: AbsolutePath, read: { configDeps?: readonly string[] }) =>
     (read.configDeps ?? []).map((path) => path.slice(root.length + 1));
 
-  // Review 0.1.644-r2 B4: creating what was missing reads the config again.
-  it("names the missing helper a failed require, read or import asked for", SLOW, async () => {
+  // Review 0.1.644-r3 B4: nothing guesses what a missing path would resolve to;
+  // an unavailable project reads again on any edit instead (adapter.test.ts).
+  it("names no missing file a failed require, read or import asked for", SLOW, async () => {
     const required = worktree(major, { ...HELPERS, "config/options.cjs": "" });
     rmSync(join(required, "config/options.cjs"));
     const noRequire = await readOf(required);
-    expect(noRequire.ok).toBe(false);
-    expect(deps(required, noRequire)).toEqual(expect.arrayContaining(["config/options.cjs"]));
+    expect(noRequire).toMatchObject({ ok: false, error: expect.stringContaining("options") });
+    expect(deps(required, noRequire).filter((path) => path.startsWith("config/"))).toEqual([]);
 
     const readMissing = worktree(major, HELPERS);
     rmSync(join(readMissing, "config/extra.json"));
     const noRead = await readOf(readMissing);
     expect(noRead.ok).toBe(false);
-    expect(deps(readMissing, noRead)).toEqual(
-      expect.arrayContaining(["jest.config.js", "config/options.cjs", "config/extra.json"]),
-    );
+    expect(deps(readMissing, noRead)).toContain("config/options.cjs");
+    expect(deps(readMissing, noRead)).not.toContain("config/extra.json");
 
     const esm = worktree(major, {
       "jest.config.mjs": `import options from "./config/options.mjs";
@@ -299,7 +299,7 @@ export default { testEnvironment: "node", testMatch: ["<rootDir>/test/**/*.test.
     });
     const noImport = await readOf(esm, { ...PROJECT, config: "jest.config.mjs" });
     expect(noImport.ok).toBe(false);
-    expect(deps(esm, noImport)).toEqual(expect.arrayContaining(["config/options.mjs"]));
+    expect(deps(esm, noImport).filter((path) => path.startsWith("config/"))).toEqual([]);
   });
 
   it("keys no missing file a healthy read only probed", SLOW, async () => {

@@ -217,6 +217,7 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
     expect(await live.affected(["src/sum.js", "src/other.js"])).toEqual(
       await fresh.affected(["src/sum.js", "src/other.js"]),
     );
+    expect(await live.closure(SUM)).toEqual(await fresh.closure(SUM));
   }
 
   it("recreates the project when an imported helper changes a scalar option", SLOW, async () => {
@@ -272,7 +273,9 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
     expect(broken?.files).toContain("options.cjs");
     expect(await adapter.testFiles()).toEqual([]);
     expect(notes).toEqual([expect.stringMatching(/not yet/)]);
+    // Any edit reads it again; still broken, it keys as it did.
     expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
+    expect(notes).toHaveLength(1);
     writeFileSync(join(root, "options.cjs"), "module.exports = { testTimeout: 9000 };\n");
     expect(await adapter.invalidate(changed("options.cjs"))).toEqual({
       recreatedProjects: ["app"],
@@ -281,7 +284,11 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
     await expectFresh(adapter, root);
   });
 
-  // Review 0.1.644-r2 B4: a helper deleted and restored, or missing at the start.
+  /*
+   * Reviews 0.1.644-r2 and -r3 B4: a helper deleted and restored, or missing
+   * at the start. Nothing guesses the missing path: an unavailable project
+   * reads again on any edit, a healthy one only on its config chain.
+   */
   const added = (path: string) => [{ path, kind: "add" as const }];
   const deleted = (path: string) => [{ path, kind: "delete" as const }];
   const healthy = new RegExp(`^${major}\\.`);
@@ -298,9 +305,9 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
     });
     const [broken] = await adapter.environment();
     expect(broken?.runnerVersion).toBe("unavailable");
-    expect(broken?.files).toContain("options.cjs");
+    expect(broken?.files).not.toContain("options.cjs");
     expect(await adapter.testFiles()).toEqual([]);
-    // An edit outside the chain waits: the project stays as it is.
+    // An unrelated edit reads it again; still broken, it keys as it did.
     expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
     writeFileSync(join(root, "options.cjs"), "module.exports = { testTimeout: 9000 };\n");
     expect(await adapter.invalidate(added("options.cjs"))).toEqual({
@@ -312,7 +319,7 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
     expect(after?.resolvedConfig).toContain('"testTimeout":9000');
     expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
     await expectFresh(adapter, root);
-    // Healthy again: a source edit, or a speculative path of the failed read, reopens nothing.
+    // Healthy again: a source edit, or a path the failed read missed, reopens nothing.
     writeFileSync(join(root, "src/sum.js"), "exports.sum = (a, b) => b + a;\n");
     expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
     expect(await adapter.invalidate(added("options.cjs.js"))).toEqual({ recreatedProjects: [] });
@@ -329,13 +336,12 @@ describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (
     const adapter = await createJestAdapter(PROJECT, { root, note: (text) => notes.push(text) });
     const [missing] = await adapter.environment();
     expect(missing?.runnerVersion).toBe("unavailable");
-    expect(missing?.files).toContain("options.cjs");
     writeFileSync(join(root, "options.cjs"), "module.exports = { testTimeout: 9000 };\n");
-    // The require now succeeds and the read fails on the next missing file, which it then watches.
+    // The require now succeeds and the read fails on the next missing file.
     expect(await adapter.invalidate(added("options.cjs"))).toEqual({ recreatedProjects: [] });
-    expect((await adapter.environment())[0]?.files).toEqual(
-      expect.arrayContaining(["options.cjs", "options.json"]),
-    );
+    const [half] = await adapter.environment();
+    expect(half?.files).toContain("options.cjs");
+    expect(half?.files).not.toContain("options.json");
     expect(notes).toEqual([
       expect.stringMatching(/options\.cjs/),
       expect.stringMatching(/options\.json/),
@@ -372,7 +378,7 @@ export default {
     });
     const [broken] = await adapter.environment();
     expect(broken?.runnerVersion).toBe("unavailable");
-    expect(broken?.files).toContain("options.mjs");
+    expect(broken?.files).not.toContain("options.mjs");
     writeFileSync(join(root, "options.mjs"), "export default { testTimeout: 9000 };\n");
     expect(await adapter.invalidate(added("options.mjs"))).toEqual({
       recreatedProjects: ["app"],
@@ -382,5 +388,60 @@ export default {
     expect(after?.resolvedConfig).toContain('"testTimeout":9000');
     expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
     await expectFresh(adapter, root, esm);
+  });
+
+  // Review 0.1.644-r3 B4: `require("./options")` resolves to a folder's `index.js`.
+  it.each([
+    ["an empty options/ folder", true],
+    ["no options/ folder", false],
+  ])("recovers when a missing directory import is created, with %s", SLOW, async (_, folder) => {
+    const root = imported(CONFIG(`\n  ...require("./options"),`), {});
+    if (folder) mkdirSync(join(root, "options"));
+    const adapter = await createJestAdapter(PROJECT, { root });
+    expect((await adapter.environment())[0]?.runnerVersion).toBe("unavailable");
+    expect(await adapter.testFiles()).toEqual([]);
+    mkdirSync(join(root, "options"), { recursive: true });
+    writeFileSync(join(root, "options/index.js"), "module.exports = { testTimeout: 9000 };\n");
+    expect(await adapter.invalidate(added("options/index.js"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    const [after] = await adapter.environment();
+    expect(after?.runnerVersion).toMatch(healthy);
+    expect(after?.resolvedConfig).toContain('"testTimeout":9000');
+    expect(after?.files).toContain("options/index.js");
+    expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
+    await expectFresh(adapter, root);
+    writeFileSync(join(root, "src/sum.js"), "exports.sum = (a, b) => b + a;\n");
+    expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
+    // The helper is in the chain now: its edit reads the config again.
+    writeFileSync(join(root, "options/index.js"), "module.exports = { testTimeout: 1000 };\n");
+    expect(await adapter.invalidate(changed("options/index.js"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    expect((await adapter.environment())[0]?.resolvedConfig).toContain('"testTimeout":1000');
+  });
+
+  it("recovers when a missing directory import is created with a package main", SLOW, async () => {
+    const root = imported(CONFIG(`\n  ...require("./options"),`), {});
+    const adapter = await createJestAdapter(PROJECT, { root });
+    expect((await adapter.environment())[0]?.runnerVersion).toBe("unavailable");
+    mkdirSync(join(root, "options"));
+    writeFileSync(join(root, "options/package.json"), `{ "main": "./custom.cjs" }\n`);
+    // Its main is still missing: the read fails again.
+    expect(await adapter.invalidate(added("options/package.json"))).toEqual({
+      recreatedProjects: [],
+    });
+    writeFileSync(join(root, "options/custom.cjs"), "module.exports = { testTimeout: 9000 };\n");
+    expect(await adapter.invalidate(added("options/custom.cjs"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    const [after] = await adapter.environment();
+    expect(after?.runnerVersion).toMatch(healthy);
+    expect(after?.resolvedConfig).toContain('"testTimeout":9000');
+    expect(after?.files).toContain("options/custom.cjs");
+    expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
+    await expectFresh(adapter, root);
+    writeFileSync(join(root, "src/sum.js"), "exports.sum = (a, b) => b + a;\n");
+    expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
   });
 });
