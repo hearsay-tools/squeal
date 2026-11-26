@@ -1,5 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { createPermitPool, type PermitPool, type PoolLease } from "../../capacity/pool.js";
+import {
+  createPermitPool,
+  type PermitPool,
+  type PoolLease,
+  type PoolTierKind,
+} from "../../capacity/pool.js";
 import { loadUserConfig } from "../../daemon/user-config.js";
 import { widthLease } from "../../scheduler/capacity.js";
 import { slowSlotDir } from "../../slow/slot.js";
@@ -28,6 +33,14 @@ export interface AdmitAsk {
    * a look drops only its own token's. Absent: the one untokened grant.
    */
   readonly token?: string;
+  /**
+   * Row 026-33 (#292): what the run is, for the remote pool's gate. A
+   * `checkpoint`, a run someone waits for (an edit's tier, a focused or a
+   * named wait's batch, a slow or a group's run), stays outside the
+   * machine's background ceiling (D18). Absent, or from an older daemon:
+   * `backlog`, a background tier's.
+   */
+  readonly kind?: PoolTierKind;
 }
 
 /**
@@ -100,7 +113,7 @@ export function createHostAdmission(
     held.set(key, { lease, timer });
   };
   return {
-    admit({ want, least, token }) {
+    admit({ want, least, token, kind }) {
       const key = token ?? DEFAULT_KEY;
       if (want < 1 && token === undefined) dropAll();
       else drop(key);
@@ -111,7 +124,7 @@ export function createHostAdmission(
         pool ??= open((line) => {
           refusal = line;
         });
-        lease = pool.acquire(want, "fast", least, "backlog");
+        lease = pool.acquire(want, "fast", least, kind === "checkpoint" ? kind : "backlog");
       } catch (error) {
         hold(key, UNGRANTED);
         return { grant: want, failed: error instanceof Error ? error.message : String(error) };
@@ -231,11 +244,13 @@ export async function remoteAdmission(
 export const ADMIT_EVERY_MS = 2_000;
 
 /**
- * The daemon's side for one background run: its local permits go back
+ * The daemon's side for one remote run: its local permits go back
  * (`RunOptions.permits`), then the remote machine admits a tier of
  * `testFiles` as the scheduler sizes one, as wide as its runner runs it and
  * no narrower than at a grant of 1 (`tierWidth`, rows 001-366 and 011-97).
- * The workers granted there; `null` on a cancel or the daemon's exit meanwhile.
+ * Only a background run asks under the machine's background ceiling; any
+ * other asks as a checkpoint (D18, row 026-33). The workers granted there;
+ * `null` on a cancel or the daemon's exit meanwhile.
  */
 export function admitRun(
   admit: (ask: AdmitAsk) => Promise<AdmitAnswer>,
@@ -259,6 +274,7 @@ export function admitRun(
     want: widthAt(testFiles.length),
     least: widthAt(1),
     ...(wait.token === undefined ? {} : { token: wait.token }),
+    ...(run.background === true ? {} : { kind: "checkpoint" as const }),
   };
   return remoteAdmission(admit, ask, { ...wait, cancel: cancelOf(run) });
 }

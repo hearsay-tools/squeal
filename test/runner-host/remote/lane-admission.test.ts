@@ -16,7 +16,7 @@ import { TierPermits } from "../../../src/core/scheduler/local-permits.js";
 import { takePermit } from "../../../src/core/slow/slot.js";
 import type { LocalPermits, RunOptions } from "../../../src/core/types/runner.js";
 import { REPORT } from "../fake-channel.js";
-import { background, REF, setup, until } from "./lane-fixture.js";
+import { background, options, REF, setup, until } from "./lane-fixture.js";
 
 /** Row 026-23: set, every runner host counts as gone, as when its close cut a run short. */
 const hostGone = vi.hoisted(() => ({ forced: false }));
@@ -256,6 +256,84 @@ describe("a remote lane under the remote machine's own ceiling (spec 021 D18, ro
     expect(free(here, 4)).toBe(4 - (ran.workers ?? 0));
     permits.release();
     expect(free(here, 4)).toBe(4);
+  });
+});
+
+/*
+ * Row 026-33 (#292): a lane that sends edit tiers remote (026 D8.1) asks the
+ * remote machine for them as checkpoints. On a 4-CPU machine, 3 slots and a
+ * ceiling of 3, above the ceiling while another background tier runs, an
+ * edit's tier is admitted at once at no more than the slots; a background
+ * tier still waits behind the ceiling.
+ */
+describe("a remote edit tier outside the remote machine's background ceiling (row 026-33, #292)", () => {
+  const SMALL_REFUSAL =
+    "remote box: on its machine, the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)";
+
+  /** The 4-CPU remote machine's admission over a pool in `dir`, its host at 4 busy CPUs. */
+  function smallRemoteIn(dir: string, asks: AdmitAsk[]): HostAdmission {
+    const real = createHostAdmission((log) =>
+      createPermitPool({
+        dir,
+        owner: { pid: process.pid, worktreeId: "runner-host:/remote/tree" },
+        hostSlots: 3,
+        cpus: 4,
+        cores: tree,
+        host: busy(4),
+        log,
+      }),
+    );
+    closing.push(real);
+    return {
+      admit: (ask) => {
+        asks.push(ask);
+        return real.admit(ask);
+      },
+      claim: (token) => real.claim(token),
+      close: () => real.close(),
+    };
+  }
+
+  it("admits an edit's tier at once, at most 3 wide, with no refusal", async () => {
+    const remote = poolDir("remote");
+    backgroundThere(remote);
+    const asks: AdmitAsk[] = [];
+    const workers: number[] = [];
+    const { lane, remoteRuns, logs } = await setup({
+      admission: smallRemoteIn(remote, asks),
+      admitEveryMs: 20,
+      lanes: ["edit", "background"],
+      remoteRun: async (_root, _hang, options) => {
+        workers.push(options.workers ?? -1);
+        return { ...REPORT, completedFiles: [REF] };
+      },
+    });
+    const report = await lane.run([REF], options({ lane: "vitest" }));
+    expect(report.completedFiles).toEqual([REF]);
+    expect(remoteRuns).toHaveLength(1);
+    expect(workers).toHaveLength(1);
+    expect(workers[0]).toBeGreaterThanOrEqual(1);
+    expect(workers[0]).toBeLessThanOrEqual(3);
+    expect(asks.filter((ask) => ask.want > 0).map((ask) => ask.kind)).toEqual(["checkpoint"]);
+    expect(logs.filter((line) => /ceiling refused/.test(line))).toEqual([]);
+  });
+
+  it("keeps a background tier behind the ceiling on the same machine", async () => {
+    const remote = poolDir("remote");
+    backgroundThere(remote);
+    const asks: AdmitAsk[] = [];
+    const { lane, remoteRuns, logs } = await setup({
+      admission: smallRemoteIn(remote, asks),
+      admitEveryMs: 20,
+      lanes: ["edit", "background"],
+    });
+    const cancel = new AbortController();
+    const running = lane.run([REF], background({ workers: 4, signal: cancel.signal }));
+    await until(() => logs.includes(SMALL_REFUSAL));
+    expect(remoteRuns).toHaveLength(0);
+    expect(asks.filter((ask) => ask.want > 0).every((ask) => ask.kind === undefined)).toBe(true);
+    cancel.abort("edit");
+    expect((await running).completedFiles).toEqual([]);
   });
 });
 

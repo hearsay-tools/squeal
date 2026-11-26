@@ -154,9 +154,12 @@ describe("runner traits: each runner kind's statement", () => {
   it.each([
     ["node:test", nodeTestTraits({ tierSize: () => 4 })],
     ["pytest", pytestTraits({ tierSize: () => 4 })],
-  ])("%s runs runner.tierSize wide at a larger grant and the grant wide at a smaller one", (_, traits) => {
-    expect([8, 4, 3, 2, 1, 0].map((grant) => traits.tierWidth(A, grant))).toEqual([
-      4, 4, 3, 2, 1, 1,
-    ]);
-  });
+  ])(
+    "%s runs runner.tierSize wide at a larger grant and the grant wide at a smaller one",
+    (_, traits) => {
+      expect([8, 4, 3, 2, 1, 0].map((grant) => traits.tierWidth(A, grant))).toEqual([
+        4, 4, 3, 2, 1, 1,
+      ]);
+    },
+  );
 });
