@@ -1,5 +1,6 @@
 import { isAbsolute, posix } from "node:path";
-import type { PytestProject } from "../types/policy.js";
+import { isRecord } from "../fs/json.js";
+import type { PytestProject, SlotPolicy } from "../types/policy.js";
 import {
   boolean,
   type EntryCheck,
@@ -24,12 +25,36 @@ const FIELDS: Readonly<Record<keyof PytestProject, Field>> = {
   exclude: globs,
   slow: boolean,
   batchSize: positiveInteger,
+  slots,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
 
 /** D6: files per pytest process; absent means the adapter's default of 5. */
 function positiveInteger(value: unknown): string | null {
   return Number.isInteger(value) && (value as number) > 0 ? null : "a positive integer";
+}
+
+/** Every key of `SlotPolicy`. */
+const SLOT_FIELDS: Readonly<Record<keyof SlotPolicy, Field>> = {
+  toxParallelEnv: boolean,
+  max: positiveInteger,
+};
+
+/** Spec 027 D2.3: `slots.toxParallelEnv` a boolean, `slots.max` a positive integer, no other key. */
+function slots(value: unknown): string | { readonly problem: string } | null {
+  if (!isRecord(value)) return "an object with toxParallelEnv and max";
+  for (const key of Object.keys(value)) {
+    if (!Object.hasOwn(SLOT_FIELDS, key)) return { problem: `has an unknown key "${key}"` };
+  }
+  for (const [key, field] of Object.entries(SLOT_FIELDS)) {
+    const given = value[key];
+    if (given === undefined) continue;
+    const expected = field(given);
+    if (expected !== null) {
+      return { problem: `key "${key}" must be ${String(expected)}, got ${JSON.stringify(given)}` };
+    }
+  }
+  return null;
 }
 
 /**

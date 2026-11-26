@@ -5,6 +5,12 @@ import { delimiter, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toAbsolute } from "../../../core/fs/paths.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
+import {
+  expandedVariables,
+  slotOf,
+  slotPool,
+  slotVariables,
+} from "../../../core/runner-host/slots.js";
 import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
 import type { TestFileRef } from "../../../core/types/keys.js";
 import type { PytestProject } from "../../../core/types/policy.js";
@@ -156,7 +162,10 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   let expired = false;
   let cancelled = false;
   const timers: NodeJS.Timeout[] = [];
+  // Spec 027 D1: a batch waiting for a slot another run of this project holds stops waiting.
+  const stopped = new AbortController();
   const stopAll = () => {
+    stopped.abort();
     for (const group of running) group.kill("SIGTERM");
     timers.push(
       setTimeout(() => {
@@ -184,38 +193,61 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     ...keptDirs(environment.discovery.env, environment.discovery.python),
     runtimeDir,
   ]);
+  const slots = slotPool(options.root, project.name, project.slots?.max);
   const worker = async () => {
     for (
       let batch = queue.shift();
       batch !== undefined && !expired && !cancelled && ours();
       batch = queue.shift()
     ) {
-      const events = join(options.logDir, `events-${batch.index}.jsonl`);
-      const group = startGroup({
-        command: python,
-        args: batch.args,
-        cwd,
-        env: {
-          ...env,
-          PYTHONPYCACHEPREFIX: bytecode.prefix,
-          SQUEAL_PYTEST_EVENTS: events,
-          ...focusedEnv(batch),
-        },
-        stdout: join(options.logDir, `stdout-${batch.index}.log`),
-        stderr: join(options.logDir, `stderr-${batch.index}.log`),
-      });
-      running.add(group);
-      batch.exit = await group.exited;
-      // This runs in the exit's own turn, so a stop or deadline flag set by now came while the
-      // process ran, and `stopAll` signalled it.
-      batch.signalled = expired || cancelled;
-      running.delete(group);
-      const parsed = parsePytestEvents(readOr(events));
-      batch.read = readBatch(parsed, batch.files, rootdir, paths, basetemp.dir(batch.index));
-      batch.edges = parsed.filter(isEdge);
+      const held = await slots.acquire(stopped.signal);
+      if (held === null) break;
+      try {
+        // A stop that came while this batch waited for its slot leaves it unrun.
+        if (expired || cancelled || !ours()) break;
+        await runBatch(batch, held);
+      } finally {
+        slots.release(held);
+      }
     }
   };
-  const width = Math.max(1, Math.min(options.concurrency ?? batches.length, batches.length));
+  const runBatch = async (batch: Batch, held: number) => {
+    const slot = slotOf(options.root, held);
+    const events = join(options.logDir, `events-${batch.index}.jsonl`);
+    const group = startGroup({
+      command: python,
+      args: batch.args,
+      cwd,
+      env: {
+        ...env,
+        ...expandedVariables(env, project.env, slot),
+        ...slotVariables(slot, project.slots?.toxParallelEnv === true),
+        PYTHONPYCACHEPREFIX: bytecode.prefix,
+        SQUEAL_PYTEST_EVENTS: events,
+        ...focusedEnv(batch),
+      },
+      stdout: join(options.logDir, `stdout-${batch.index}.log`),
+      stderr: join(options.logDir, `stderr-${batch.index}.log`),
+    });
+    running.add(group);
+    batch.exit = await group.exited;
+    // This runs in the exit's own turn, so a stop or deadline flag set by now came while the
+    // process ran, and `stopAll` signalled it.
+    batch.signalled = expired || cancelled;
+    running.delete(group);
+    const parsed = parsePytestEvents(readOr(events));
+    batch.read = readBatch(parsed, batch.files, rootdir, paths, basetemp.dir(batch.index));
+    batch.edges = parsed.filter(isEdge);
+  };
+  // D2.4: no more batches at once than the project has slots.
+  const width = Math.max(
+    1,
+    Math.min(
+      options.concurrency ?? batches.length,
+      batches.length,
+      project.slots?.max ?? batches.length,
+    ),
+  );
   try {
     await Promise.all(Array.from({ length: width }, worker));
   } finally {

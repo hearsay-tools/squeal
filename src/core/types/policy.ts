@@ -422,6 +422,16 @@ export interface PytestProject {
   readonly slow?: boolean;
   /** Spec 007 D6: test files per pytest process. Absent means 5. */
   readonly batchSize?: number;
+  /** Spec 027 D1, D2: what each batch's slot exports and how many slots there are. */
+  readonly slots?: SlotPolicy;
+}
+
+/** Spec 027 D1, D2 (row 027-02): a project's per-batch slots. */
+export interface SlotPolicy {
+  /** Export `TOX_PARALLEL_ENV=<worktreeSlot>` too, for pytest-django's test database. Absent means `false`. */
+  readonly toxParallelEnv?: boolean;
+  /** At most this many batches at once, slots `1..max`. Absent means the tier's concurrency. */
+  readonly max?: number;
 }
 
 /** True when `A` and `B` are the same type. */
