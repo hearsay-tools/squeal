@@ -447,7 +447,7 @@ describe("a remote tier on a 4-CPU machine (row 026-33, #292)", () => {
     project: "",
     path: `test/${name}.test.mjs`,
   }));
-  const nodeTest = nodeTestTraits({ tierSize: () => 4 });
+  const tierSized = nodeTestTraits({ tierSize: () => 4 });
   const runOf = (extra: Partial<RunOptions> = {}): RunOptions => ({
     runId: "r",
     logDir: join(root, "logs"),
@@ -471,7 +471,7 @@ describe("a remote tier on a 4-CPU machine (row 026-33, #292)", () => {
     const asks: AdmitAsk[] = [];
     const logs: string[] = [];
     const grant = await admitRun(admitting(remote, asks), FILES, runOf(), {
-      tierWidth: (file, at) => nodeTest.tierWidth(file, at),
+      tierWidth: (file, at) => tierSized.tierWidth(file, at),
       everyMs: 5,
       log: (line) => logs.push(line),
     });
@@ -492,7 +492,7 @@ describe("a remote tier on a 4-CPU machine (row 026-33, #292)", () => {
       FILES,
       runOf({ background: true, signal: stop.signal }),
       {
-        tierWidth: (file, at) => nodeTest.tierWidth(file, at),
+        tierWidth: (file, at) => tierSized.tierWidth(file, at),
         everyMs: 5,
         log: (line) => logs.push(line),
       },
