@@ -1,6 +1,6 @@
 # 027 Docker execution: lessons (row 027-07)
 
-Row `027-07`, Wave 4, 2026-11-26. This file has the end-to-end proof, the live dogfooding of Spec 027 on a throwaway copy of `apptension/saas-boilerplate`, and the answer to Open Question 2. Every number below was measured in this session. Times are wall-clock times on Linux x64, 16 CPUs, Docker Engine 28.5.1 (rootful), Compose v5.6.1, one-minute load 4 to 6 from other agents' daemons and tests.
+Row `027-07`, Wave 4, 2026-11-26. This file has the end-to-end proof, the live dogfooding of Spec 027 on a throwaway copy of `saas-boilerplate`, and the answer to Open Question 2. Every number below was measured in this session. Times are wall-clock times on Linux x64, 16 CPUs, Docker Engine 28.5.1 (rootful), Compose v5.6.1, one-minute load 4 to 6 from other agents' daemons and tests.
 
 ## Setup
 

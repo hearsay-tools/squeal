@@ -18,6 +18,7 @@ Started: 2026-11-26
 - 2026-11-26, the human: approved Jest 29 + 30 in the kit, subprocess-per-batch first then recycled warm host, plain-Jest-only opt-in `denyWhenCurrent` (no Nx interception, no command rewriting), and drafting both Spec 027 and Spec 028.
 - 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `028-02` to `028-08`).
 - 2026-11-26, the human: approved both Spec 027 and Spec 028 to start building, in parallel (`027 Wave 1 + 028 Wave 0`). Coordinator briefed `tasks/wave-0.md` (`028-02`) and dispatched Wave 0.
+- 2026-11-26, waves 0 to 2 landed on `main` (`0.1.642` to `0.1.644`, released in `squeal--v0.1.645`). Candidate `0.1.646` (Wave 3 `028-06` + Spec 027 Wave 4 `027-07`) received FAIL (`reviews/0.1.646.md`) on B1 (plain Jest recognition config proof), B2 (inline `projects` objects dropped in `seedJest`), B3 (`install.sh` version sync), and N1 (`ts-jest-dts.test.ts` affected-only selection). Folded D5.3 coverage flags (`--coverageReporters=none --coverageThreshold={}`) and D1.1 optional `project` selector for inline `projects` entries into `spec.md`; dispatched Wave 3.5 repairs.
 
 ## Open questions
 

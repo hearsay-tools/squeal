@@ -31,6 +31,8 @@ Many TypeScript and React repositories, including `apptension/saas-boilerplate` 
      readonly name: string;
      /** Repo-relative path to the Jest config file (or package.json with a `jest` key). */
      readonly config: string;
+     /** Optional inline project selector inside a root `projects` array: unique `displayName` or `#<index>`. */
+     readonly project?: string;
      /** Optional working directory; defaults to the config file's directory. */
      readonly cwd?: string;
      readonly include: readonly string[];
@@ -118,7 +120,7 @@ Many TypeScript and React repositories, including `apptension/saas-boilerplate` 
    - Snapshot failures (`snapshot.unmatched > 0`, missing snapshots under `--ci`, obsolete keys) are surfaced in the failure summary/diagnostics.
    - Deterministic failure fingerprinting strips temp paths and ANSI codes.
 3. **V8 coverage (Spec 015 integration):**
-   - When coverage is enabled, passes `--coverage --coverageProvider=v8 --coverageReporters=` (no disk report spam).
+   - When coverage is enabled, passes `--coverage --coverageProvider=v8 --coverageReporters=none --coverageThreshold={}` (avoids loading an empty reporter name, writes no worktree coverage report, and prevents full-project thresholds from failing Squeal's affected batches).
    - In `onTestFileResult`, extracts `testResult.v8Coverage` (`[{ codeTransformResult, result }]`) and maps transformed V8 `ScriptCoverage` + source maps into Spec 015's relative `CoverageRecord` format (reusing Squeal's existing V8 coverage mapper).
 
 ### D6. Core seams, Spec 016 correctness kit, and opt-in command recognition
