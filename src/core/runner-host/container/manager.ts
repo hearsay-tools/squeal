@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { channelOf, type HostChannel } from "../channel.js";
 import type { HostRunner, RootStat } from "../protocol.js";
 import {
@@ -28,6 +28,8 @@ export const LABELS = {
   target: "org.squeal.target",
   image: "org.squeal.image",
   pid: "org.squeal.pid",
+  /** Review 0.1.643 N3: the launch stamp (`launchStamp`) a reused container must carry. */
+  config: "org.squeal.config",
 } as const;
 
 /** What the manager reads of a container target: the image, its network and its env. */
@@ -36,6 +38,8 @@ export interface ManagedTarget {
   readonly image: string;
   /** Resolved already (consent's `networkOverride` and `{composeProject}`); absent, Docker's default. */
   readonly network?: string;
+  /** Spec 027 D4: the working directory inside; part of the launch stamp only. */
+  readonly workdir?: string;
   readonly env?: Readonly<Record<string, string>>;
 }
 
@@ -100,6 +104,25 @@ export function containerEnv(paths: ContainerPaths, target: ManagedTarget): Reco
 }
 
 /**
+ * Review 0.1.643 N3: a short stamp of what a container was launched with,
+ * its mounts, network, working directory and env. A running container is
+ * reused only when its `org.squeal.config` label is this stamp, so a
+ * changed bundle, cache or log path, network or env starts a new one.
+ */
+export function launchStamp(paths: ContainerPaths, target: ManagedTarget): string {
+  const env = containerEnv(paths, target);
+  const stamp = JSON.stringify({
+    mounts: containerMounts(paths),
+    network: target.network ?? null,
+    workdir: target.workdir ?? null,
+    env: Object.keys(env)
+      .sort()
+      .map((name) => [name, env[name]]),
+  });
+  return createHash("sha256").update(stamp).digest("hex").slice(0, 16);
+}
+
+/**
  * The running managed container of `worktreeId` and `target` on the image
  * `target.image` names now, started when there is none, and checked for
  * Node. One of another image, or stopped, is removed first; one another
@@ -129,9 +152,18 @@ export async function ensureContainer(
   const alive = options.isPidAlive ?? pidAlive;
   const managed = (id: string, name: string) => managedHandle(cli, id, name, image.id, target.name);
   const own = listed.filter((c) => c.pid === String(pid) || !ownerAlive(c.pid, alive));
-  const reused = own.find(
+  const stamp = launchStamp(paths, target);
+  const candidate = own.find(
     (c) => c.pid === String(pid) && c.state === "running" && c.image === image.id,
   );
+  // N3: the listing names no stamp, so the candidate is listed again by its stamp's label.
+  const stamped =
+    candidate === undefined
+      ? []
+      : await cli
+          .psManaged({ labels: { [LABELS.config]: stamp }, id: candidate.id })
+          .catch(() => []);
+  const reused = stamped.some((c) => c.id === candidate?.id) ? candidate : undefined;
   for (const stale of own) if (stale !== reused) await cli.removeManaged(stale.id).catch(() => {});
   if (reused !== undefined) return { ok: true, container: managed(reused.id, reused.name) };
 
@@ -157,6 +189,7 @@ export async function ensureContainer(
         [LABELS.target]: target.name,
         [LABELS.image]: image.id,
         [LABELS.pid]: String(pid),
+        [LABELS.config]: stamp,
       },
       ...(target.network === undefined ? {} : { network: target.network }),
       mounts,
