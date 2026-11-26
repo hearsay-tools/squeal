@@ -2,10 +2,22 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
-import type { AbsolutePath } from "../../../src/core/types/common.js";
+import { readHead } from "../../../src/core/daemon-loop/head.js";
+import { createFsHasher } from "../../../src/core/hash/hasher.js";
+import { statCandidates } from "../../../src/core/revision/reconcile.js";
+import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
+import { recordsForFile } from "../../../src/core/scheduler/records.js";
+import { describeFailure } from "../../../src/core/state/fingerprint.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  RelativePath,
+  WorktreeId,
+} from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { JestProject } from "../../../src/core/types/policy-jest.js";
 import type { RunReport } from "../../../src/core/types/runner.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { createJestAdapter } from "../../../src/runners/jest/index.js";
 import { installJest, JEST_MAJORS, type JestMajor } from "../../helpers/jest-env.js";
 import { initRepository, OpenWorktree } from "../../kit/worktrees.js";
@@ -16,8 +28,9 @@ import { initRepository, OpenWorktree } from "../../kit/worktrees.js";
  * with `fs.readFileSync` in the batch process, outside Jest's module
  * registry. `recorder.cjs` names the test file Jest is running from
  * `Symbol.for("squeal.currentTestFile")`, so in one batch of two files each
- * `.d.ts` keys only the file whose transform read it, and its edit reaches
- * only that file. The fixture has no `ts-jest`: the transform here reads
+ * `.d.ts` keys only the file whose transform read it, and its edit re-keys
+ * and re-runs only that file while the other's stored pass stays current
+ * (review 0.1.646 N1). The fixture has no `ts-jest`: the transform here reads
  * the file a `// @types` comment names, in its cache key and its `process`,
  * and fails the file as a type error when the declarations say `broken`.
  */
@@ -102,16 +115,62 @@ function worktree(major: JestMajor): { root: AbsolutePath; common: AbsolutePath 
   };
 }
 
-/** Both files in one batch, recorded as the core records a tier. */
-function runBoth(open: OpenWorktree, root: string): Promise<RunReport> {
-  return open.record([A, B], () =>
-    open.adapter.run([A, B], {
+/** `files` in one batch, recorded as the core records a tier. */
+function runFiles(
+  open: OpenWorktree,
+  root: string,
+  files: readonly TestFileRef[],
+): Promise<RunReport> {
+  return open.record(files, () =>
+    open.adapter.run(files, {
       runId: `run-${made}`,
       logDir: join(root, "..", `logs-${made++}`) as AbsolutePath,
       timeoutMs: 120_000,
     }),
   );
 }
+
+/**
+ * The core behind an open worktree: its keys and its store connection. The
+ * kit keeps both to itself; the selection below asks them what the
+ * scheduler asks at an edit (`rekeyContent`, then `Ledger.lookup`).
+ */
+interface Core {
+  readonly keys: WorktreeKeys;
+  readonly store: Store;
+}
+
+const core = (open: OpenWorktree) => open as unknown as Core;
+
+/** Stores each completed file's results under its key, as `recordCompleted` stores a tier's. */
+function storeCompleted({ keys, store }: Core, report: RunReport): void {
+  for (const ref of report.completedFiles) {
+    const key = keys.index.key(ref);
+    if (key === null) throw new Error(`${ref.path} has no key to store its results under`);
+    const provenance = {
+      worktreeId: "a" as WorktreeId,
+      revision: 0,
+      commit: null,
+      dirty: true,
+      runId: `run-${made}`,
+      recordedAt: Date.now() as EpochMs,
+    };
+    store.results.putMany(
+      recordsForFile({
+        ref,
+        key,
+        report,
+        previousChecks: [],
+        provenance,
+        describe: describeFailure,
+      }),
+    );
+  }
+}
+
+/** The stored results of `ref`'s current key: none means it is no longer current and runs. */
+const stored = ({ keys, store }: Core, ref: TestFileRef) =>
+  store.results.byKey(keys.index.key(ref), 0);
 
 const outcomes = (report: RunReport) =>
   Object.fromEntries(report.results.map((r) => [r.check.fullName, r.outcome]));
@@ -124,7 +183,7 @@ describe.each(JEST_MAJORS)("a type-checking transform's .d.ts reads on Jest %i",
     );
     onTestFinished(() => open.close());
 
-    const first = await runBoth(open, root);
+    const first = await runFiles(open, root, [A, B]);
     expect(first.end).toBe("completed");
     expect(outcomes(first)).toEqual({ a: "pass", b: "pass" });
     // One batch ran both files: attribution is per test file, not per process.
@@ -139,23 +198,39 @@ describe.each(JEST_MAJORS)("a type-checking transform's .d.ts reads on Jest %i",
     expect(await open.keyed(B)).toContain("types/b.d.ts");
     expect(await open.keyed(B)).not.toContain("types/a.d.ts");
 
-    // The edit of `a.d.ts` reaches `a` alone: the static graph knows no `.d.ts`, the keys do.
-    writeFileSync(join(root, "types/a.d.ts"), "export declare const a: broken;\n");
+    storeCompleted(core(open), first);
+    const { keys } = core(open);
+    const before = [A, B].map((f) => keys.index.key(f));
+    expect([A, B].map((f) => stored(core(open), f).length > 0)).toEqual([true, true]);
+
+    // The edit of `a.d.ts` takes the core's path: a revision, the content re-key, the lookups.
+    writeFileSync(join(root, "types/a.d.ts"), "export declare const a: broken[];\n");
+    const changed = ["types/a.d.ts" as RelativePath];
+    const paths = await statCandidates(changed, createFsHasher(root, "sha1"));
+    const revision = await keys.reconcile({ trigger: "watch", paths }, () => readHead(root));
+    expect(revision?.changes.map((c) => c.path)).toEqual(changed);
+    const moved = keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
+    expect(moved.map((c) => c.testFile.path)).toEqual([A.path]);
     expect(await open.adapter.invalidate([{ path: "types/a.d.ts", kind: "change" }])).toEqual({
       recreatedProjects: [],
     });
+    // The static graph knows no `.d.ts`: only the key `a`'s transform read it into reaches `a`.
     expect(await open.adapter.affected(["types/a.d.ts"])).toEqual({ direct: [], transitive: [] });
-    const keyed = await Promise.all([A, B].map((f) => open.keyed(f)));
-    expect(keyed.map((paths) => paths.includes("types/a.d.ts"))).toEqual([true, false]);
+    const stale = [A, B].filter((f) => stored(core(open), f).length === 0);
+    expect(stale).toEqual([A]);
 
-    // Run again, both in one batch: `a` fails on its declarations, `b` is untouched.
-    const second = await runBoth(open, root);
-    expect(second.completedFiles.map((f) => f.path).sort()).toEqual([A.path, B.path]);
-    expect(outcomes(second)).toEqual({ b: "pass" });
+    // Only the file no longer current runs: `a` fails on its declarations, `b` keeps its pass.
+    const second = await runFiles(open, root, stale);
+    expect(second.completedFiles.map((f) => f.path)).toEqual([A.path]);
+    expect(outcomes(second)).toEqual({});
     expect(second.fileErrors.map((e) => e.testFile.path)).toEqual([A.path]);
     expect(second.fileErrors[0]?.errors[0]?.message).toContain(
       "type error: a.test.js does not match its declarations",
     );
+    expect(keys.index.key(A)).not.toBe(before[0]);
+    expect(keys.index.key(B)).toBe(before[1]);
+    const kept = stored(core(open), B).map((r) => `${r.check.kind} ${r.outcome}`);
+    expect(kept.sort()).toEqual(["file pass", "test pass"]);
     expect(await open.keyed(A)).toContain("types/a.d.ts");
     expect(await open.keyed(B)).not.toContain("types/a.d.ts");
   });
