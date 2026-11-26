@@ -1,0 +1,8 @@
+/home/user/payload/results/out-base.json: 22 same, 0 differ
+/home/user/payload/results/out-builtins+cut+minify.json: 22 same, 0 differ
+/home/user/payload/results/out-builtins.json: 22 same, 0 differ
+/home/user/payload/results/out-cut.json: 22 same, 0 differ
+/home/user/payload/results/out-lazy+cut+minify.json: 22 same, 0 differ
+/home/user/payload/results/out-lazy.json: 22 same, 0 differ
+/home/user/payload/results/out-minify.json: 22 same, 0 differ
+/home/user/payload/results/out-split.json: 22 same, 0 differ

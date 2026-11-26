@@ -1,0 +1,40 @@
+
+without compile cache, node v24.21.0
+  pre-tool-use         empty             0 KB  20.4/28.3  +0.0
+  pre-tool-use         builtins          8 KB  32.3/43.9  +11.9
+  pre-tool-use         0.1.364         461 KB  39.4/48.4  +19.0
+  pre-tool-use         0.1.409         538 KB  41.5/50.3  +21.1
+  pre-tool-use         0.1.450         598 KB  42.4/50.7  +22.0
+  pre-tool-use         0.1.568         642 KB  44.3/51.0  +23.9
+  pre-tool-use         0.1.600         658 KB  45.6/63.5  +25.2
+  pre-tool-use         main            678 KB  43.6/58.9  +23.2
+  pre-tool-use         builtins+cut+min  414 KB  29.7/38.2  +9.4
+  stop                 empty             0 KB  20.1/29.4  +0.0
+  stop                 builtins          8 KB  30.7/41.4  +10.5
+  stop                 0.1.364         493 KB  36.9/47.5  +16.7
+  stop                 0.1.409         590 KB  40.9/50.8  +20.8
+  stop                 0.1.450         652 KB  40.6/51.7  +20.5
+  stop                 0.1.568         702 KB  42.9/58.3  +22.8
+  stop                 0.1.600         718 KB  43.2/52.6  +23.0
+  stop                 main            738 KB  42.4/56.0  +22.3
+  stop                 builtins+cut+min  461 KB  28.7/39.6  +8.6
+
+with compile cache, node v24.21.0
+  pre-tool-use         empty             0 KB  20.1/26.4  +0.0
+  pre-tool-use         builtins          8 KB  35.0/45.5  +14.9
+  pre-tool-use         0.1.364         461 KB  36.6/45.4  +16.6
+  pre-tool-use         0.1.409         538 KB  38.0/51.0  +18.0
+  pre-tool-use         0.1.450         598 KB  35.1/47.3  +15.0
+  pre-tool-use         0.1.568         642 KB  36.6/46.3  +16.5
+  pre-tool-use         0.1.600         658 KB  35.0/48.3  +14.9
+  pre-tool-use         main            678 KB  36.5/49.5  +16.5
+  pre-tool-use         builtins+cut+min  414 KB  23.5/28.5  +3.4
+  stop                 empty             0 KB  23.2/32.6  +0.0
+  stop                 builtins          8 KB  34.8/49.8  +11.6
+  stop                 0.1.364         493 KB  36.5/43.5  +13.3
+  stop                 0.1.409         590 KB  35.2/52.3  +11.9
+  stop                 0.1.450         652 KB  37.0/63.5  +13.8
+  stop                 0.1.568         702 KB  35.6/56.4  +12.3
+  stop                 0.1.600         718 KB  37.9/57.7  +14.7
+  stop                 main            738 KB  37.2/51.1  +14.0
+  stop                 builtins+cut+min  461 KB  25.8/34.7  +2.6
