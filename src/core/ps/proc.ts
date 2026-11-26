@@ -177,9 +177,10 @@ class ProcSource implements PsSource {
         );
       if (m === null) continue;
       if (m[2] !== undefined) listeners.push({ fileInode: Number(m[2]) });
-      // A socket bound to a file always has `ino:` from the kernel's unix_diag. Without that
-      // module ss falls back to `/proc/net/unix`, which has no file inode: cannot read (#294).
-      else if (m[1]?.startsWith("/")) return null;
+      // A socket bound to a file, by an absolute or a relative path, always has `ino:` from the
+      // kernel's unix_diag; an abstract (`@`) or unbound (`*`) one never has. Without that module
+      // ss falls back to `/proc/net/unix`, which has no file inode: cannot read (#294).
+      else if (m[1] !== "*" && !m[1]?.startsWith("@")) return null;
     }
     return listeners;
   }
