@@ -270,7 +270,9 @@ describe("JEST.context (spec 028 D6.3)", () => {
   });
 
   it("falls through for an inline project inside a root multi-project config", () => {
-    const dir = tree({ "jest.config.cjs": "module.exports = { projects: [{ displayName: 'unit' }] };\n" });
+    const dir = tree({
+      "jest.config.cjs": "module.exports = { projects: [{ displayName: 'unit' }] };\n",
+    });
     expect(found(dir, { config: "jest.config.cjs", project: "unit" })).toEqual([]);
   });
 });
