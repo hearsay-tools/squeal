@@ -10,6 +10,7 @@ import {
 } from "../runner-host/process-host.js";
 import type { AbsolutePath, ProjectName } from "../types/common.js";
 import type { PytestProject } from "../types/policy.js";
+import { createContainerGuardRunner } from "./container-guard.js";
 import { hosted, NO_VITEST_POLICY, type RemoteWrap } from "./node-test-runners.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
@@ -75,6 +76,17 @@ export function createPytestRunnerSet(
 
 function pytestRunner(project: PytestProject, options: PytestRunnersOptions): RecoveringRunner {
   const { batchSize } = project;
+  // Spec 027 D4.2 (review 0.1.643 B1): a container project never runs here or remotely.
+  if (project.container !== undefined) {
+    return createContainerGuardRunner({
+      runner: "pytest",
+      adapterVersion: PYTEST_ADAPTER_VERSION,
+      root: options.root,
+      project: { name: project.name, container: project.container },
+      traits: pytestTraits({ tierSize: options.tierSize, batchSize: () => batchSize }),
+      note: options.note,
+    });
+  }
   // A host reads the files per batch from the project, as here (`HostedPytestOptions`).
   const adapterOptions = {
     root: options.root,
