@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { realpathSync } from "node:fs";
 
 /*
  * Spec 027 D1, D2 (row 027-02): every concurrent batch process holds a
@@ -24,21 +23,10 @@ export interface Slot {
 export class SlotPool {
   readonly #held = new Set<number>();
   readonly #waiting: (() => void)[] = [];
-  #max: number | undefined;
+  readonly #max: number | undefined;
 
   constructor(max?: number) {
     this.#max = max;
-  }
-
-  /** The cap, changed by a policy reload; slots held above it stay held until released. */
-  set max(max: number | undefined) {
-    this.#max = max;
-    this.#wake();
-  }
-
-  /** The slots held now, ascending. */
-  get held(): readonly number[] {
-    return [...this.#held].sort((a, b) => a - b);
   }
 
   /** The lowest free slot, once one is free; `null` when `signal` aborts first. */
@@ -82,31 +70,26 @@ export class SlotPool {
 const pools = new Map<string, SlotPool>();
 
 /**
- * The process's one pool for a worktree's project, so two runs of the same
- * project at once never share a slot; `max` is the project's current cap.
+ * The process's one pool for a worktree's project and cap, so two runs of
+ * the same project at once never share a slot. A policy reload that changes
+ * `max` starts a new pool for the runs after it.
  */
 export function slotPool(root: string, project: string, max?: number): SlotPool {
-  const key = `${root}\0${project}`;
+  const key = `${root}\0${project}\0${max ?? ""}`;
   let pool = pools.get(key);
   if (pool === undefined) {
     pool = new SlotPool(max);
     pools.set(key, pool);
-  } else pool.max = max;
+  }
   return pool;
 }
 
-/** D1.2: the first 8 hex characters of SHA-256 of the worktree's real path. */
+/** D1.2: the first 8 hex characters of SHA-256 of the worktree's path, a real path. */
 export function worktreeSlotToken(root: string): string {
-  let real = root;
-  try {
-    real = realpathSync(root);
-  } catch {
-    // A worktree gone mid-run keeps the path it was given.
-  }
-  return createHash("sha256").update(real).digest("hex").slice(0, 8);
+  return createHash("sha256").update(root).digest("hex").slice(0, 8);
 }
 
-/** `slot` in the worktree at `root`. */
+/** `slot` in the worktree at `root`, a real path. */
 export function slotOf(root: string, slot: number): Slot {
   return { slot, worktreeSlot: `${worktreeSlotToken(root)}_${slot}` };
 }

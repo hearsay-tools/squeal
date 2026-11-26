@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -23,13 +23,24 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const SLOT = { slot: 3, worktreeSlot: "abcd1234_3" };
 
+/** The slots among `1..upTo` that `pool` holds now: every free one is taken, then given back. */
+async function heldOf(pool: SlotPool, upTo: number): Promise<number[]> {
+  const taken: number[] = [];
+  for (let slot = await pool.acquire(AbortSignal.timeout(50)); slot !== null; ) {
+    taken.push(slot);
+    slot = slot > upTo ? null : await pool.acquire(AbortSignal.timeout(50));
+  }
+  for (const slot of taken) pool.release(slot);
+  return Array.from({ length: upTo }, (_, i) => i + 1).filter((n) => !taken.includes(n));
+}
+
 describe("SlotPool (027 D1.1)", () => {
   it("gives the lowest free slot from 1 and gives a released slot again", async () => {
     const pool = new SlotPool();
     expect([await pool.acquire(), await pool.acquire(), await pool.acquire()]).toEqual([1, 2, 3]);
     pool.release(2);
     expect(await pool.acquire()).toBe(2);
-    expect(pool.held).toEqual([1, 2, 3]);
+    expect(await heldOf(pool, 3)).toEqual([1, 2, 3]);
   });
 
   it("never gives a slot above max: an acquire waits for a release", async () => {
@@ -45,7 +56,7 @@ describe("SlotPool (027 D1.1)", () => {
     pool.release(1);
     await waiting;
     expect(third).toBe(1);
-    expect(pool.held).toEqual([1, 2]);
+    expect(await heldOf(pool, 2)).toEqual([1, 2]);
   });
 
   it("stops a waiting acquire with null when its signal aborts", async () => {
@@ -55,35 +66,29 @@ describe("SlotPool (027 D1.1)", () => {
     const waiting = pool.acquire(stop.signal);
     stop.abort();
     expect(await waiting).toBeNull();
-    expect(pool.held).toEqual([1]);
+    expect(await heldOf(pool, 1)).toEqual([1]);
     expect(await pool.acquire(stop.signal)).toBeNull();
   });
 
-  it("ignores a release of a slot not held", () => {
+  it("ignores a release of a slot not held", async () => {
     const pool = new SlotPool();
     pool.release(4);
-    expect(pool.held).toEqual([]);
+    expect(await heldOf(pool, 3)).toEqual([]);
   });
 
-  it("is one pool per worktree and project, taking the current max", async () => {
+  it("is one pool per worktree, project and cap", () => {
     const a = slotPool(dir, "unit-a", 1);
-    expect(slotPool(dir, "unit-a")).toBe(a);
-    expect(slotPool(dir, "unit-b")).not.toBe(a);
-    await a.acquire();
-    slotPool(dir, "unit-a", 2);
-    expect(await a.acquire()).toBe(2);
-    a.release(1);
-    a.release(2);
+    expect(slotPool(dir, "unit-a", 1)).toBe(a);
+    expect(slotPool(dir, "unit-a", 2)).not.toBe(a);
+    expect(slotPool(dir, "unit-a")).not.toBe(a);
+    expect(slotPool(dir, "unit-b", 1)).not.toBe(a);
   });
 });
 
 describe("worktreeSlotToken (027 D1.2)", () => {
-  it("is the first 8 hex characters of SHA-256 of the worktree's real path", () => {
+  it("is the first 8 hex characters of SHA-256 of the worktree's path", () => {
     const expected = createHash("sha256").update(dir).digest("hex").slice(0, 8);
     expect(worktreeSlotToken(dir)).toBe(expected);
-    const link = join(dir, "link");
-    symlinkSync(dir, link);
-    expect(worktreeSlotToken(link)).toBe(expected);
     expect(slotOf(dir, 2)).toEqual({ slot: 2, worktreeSlot: `${expected}_2` });
   });
 

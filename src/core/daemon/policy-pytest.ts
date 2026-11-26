@@ -35,26 +35,16 @@ function positiveInteger(value: unknown): string | null {
 }
 
 /** Every key of `SlotPolicy`. */
-const SLOT_FIELDS: Readonly<Record<keyof SlotPolicy, Field>> = {
+const SLOT_FIELDS: Readonly<Record<string, Field>> = {
   toxParallelEnv: boolean,
   max: positiveInteger,
-};
+} satisfies Record<keyof SlotPolicy, Field>;
 
 /** Spec 027 D2.3: `slots.toxParallelEnv` a boolean, `slots.max` a positive integer, no other key. */
-function slots(value: unknown): string | { readonly problem: string } | null {
-  if (!isRecord(value)) return "an object with toxParallelEnv and max";
-  for (const key of Object.keys(value)) {
-    if (!Object.hasOwn(SLOT_FIELDS, key)) return { problem: `has an unknown key "${key}"` };
-  }
-  for (const [key, field] of Object.entries(SLOT_FIELDS)) {
-    const given = value[key];
-    if (given === undefined) continue;
-    const expected = field(given);
-    if (expected !== null) {
-      return { problem: `key "${key}" must be ${String(expected)}, got ${JSON.stringify(given)}` };
-    }
-  }
-  return null;
+function slots(value: unknown): string | null {
+  const valid =
+    isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
+  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 
 /**

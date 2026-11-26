@@ -139,6 +139,7 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
     env: entry.env ?? {},
     include: entry.include ?? ["**/test_*.py"],
     ...(entry.exclude === undefined ? {} : { exclude: entry.exclude }),
+    ...(entry.slots === undefined ? {} : { slots: entry.slots }),
   };
   const notes: string[] = [];
   const proof = join(scratch, "proof");

@@ -13,7 +13,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { slotPool, worktreeSlotToken } from "../../../../src/core/runner-host/slots.js";
+import {
+  type SlotPool,
+  slotPool,
+  worktreeSlotToken,
+} from "../../../../src/core/runner-host/slots.js";
 import type { AbsolutePath } from "../../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../../src/core/types/keys.js";
 import type { PytestProject } from "../../../../src/core/types/policy.js";
@@ -126,6 +130,17 @@ function start(p: PytestProject, sleep: number, extra: Partial<PytestRunOptions>
 const slotsOf = (seen: readonly Seen[]) => seen.map((s) => Number(s.vars.SQUEAL_SLOT)).sort();
 const token = worktreeSlotToken(root);
 
+/** The slots among `1..upTo` that `pool` holds now: every free one is taken, then given back. */
+async function heldOf(pool: SlotPool, upTo: number): Promise<number[]> {
+  const taken: number[] = [];
+  for (let slot = await pool.acquire(AbortSignal.timeout(50)); slot !== null; ) {
+    taken.push(slot);
+    slot = slot > upTo ? null : await pool.acquire(AbortSignal.timeout(50));
+  }
+  for (const slot of taken) pool.release(slot);
+  return Array.from({ length: upTo }, (_, i) => i + 1).filter((n) => !taken.includes(n));
+}
+
 describe("runPytest's per-batch slots (spec 027 D1, D2)", () => {
   it("gives concurrent batches distinct slots 1..N with expanded env, and releases them", async () => {
     const { run, seen, collisions } = start(project("plain"), 0.5);
@@ -144,7 +159,7 @@ describe("runPytest's per-batch slots (spec 027 D1, D2)", () => {
         RUNNING: expect.any(String),
       });
     }
-    expect(slotPool(root, "plain").held).toEqual([]);
+    expect(await heldOf(slotPool(root, "plain"), 4)).toEqual([]);
   });
 
   it("exports TOX_PARALLEL_ENV as the worktree slot when slots.toxParallelEnv is true", async () => {
@@ -161,7 +176,7 @@ describe("runPytest's per-batch slots (spec 027 D1, D2)", () => {
     expect(seen()).toHaveLength(4);
     expect(new Set(slotsOf(seen()))).toEqual(new Set([1, 2]));
     for (const { vars } of seen()) expect(Number(vars.RUNNING)).toBeLessThanOrEqual(2);
-    expect(slotPool(root, "capped").held).toEqual([]);
+    expect(await heldOf(slotPool(root, "capped"), 4)).toEqual([]);
   });
 
   it("never gives two runs of one project at once the same slot", async () => {
@@ -170,7 +185,7 @@ describe("runPytest's per-batch slots (spec 027 D1, D2)", () => {
     const two = start(shared, 0.5, { files: refs("shared").slice(2) });
     await Promise.all([one.run, two.run]);
     expect(slotsOf([...one.seen(), ...two.seen()])).toEqual([1, 2, 3, 4]);
-    expect(slotPool(root, "shared").held).toEqual([]);
+    expect(await heldOf(slotPool(root, "shared"), 4)).toEqual([]);
   });
 
   it("releases the slots of batches a stop's SIGTERM ended", async () => {
@@ -180,11 +195,11 @@ describe("runPytest's per-batch slots (spec 027 D1, D2)", () => {
       if (waited > 20_000) throw new Error("the fake python never started");
       await new Promise((r) => setTimeout(r, 20));
     }
-    expect(slotPool(root, "stopped").held).toEqual([1, 2, 3, 4]);
+    expect(await heldOf(slotPool(root, "stopped"), 4)).toEqual([1, 2, 3, 4]);
     stop.abort();
     const { report } = await run;
     expect(report.end).toBe("completed");
-    expect(slotPool(root, "stopped").held).toEqual([]);
+    expect(await heldOf(slotPool(root, "stopped"), 4)).toEqual([]);
   });
 
   it("keys every slot alike: the environment hash reads the unexpanded templates", () => {

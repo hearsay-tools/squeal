@@ -12,6 +12,7 @@ import { VITEST_ENVIRONMENT } from "./adapter/environment.js";
 import { NODE_TEST_RUNS } from "./adapter/node-test.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
 import { PYTEST_PDM } from "./adapter/pytest-pdm.js";
+import { PYTEST_SLOTS, SLOT_POLICY } from "./adapter/pytest-slots.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
 import { VITEST_GLOBS } from "./adapter/vitest-globs.js";
 import { VITEST_RECLOSURE } from "./adapter/vitest-reclosure.js";
@@ -95,6 +96,8 @@ export const CASES: readonly Case[] = [
   ...VITEST_ENVIRONMENT,
   ...PYTEST_RUNS,
   ...PYTEST_PDM,
+  ...PYTEST_SLOTS,
+  ...SLOT_POLICY,
   ...NODE_TEST_RUNS,
   ...OWN_COMPILE_CACHE,
   ...LEAVING_LISTING,

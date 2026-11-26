@@ -472,6 +472,8 @@ export interface PytestInput {
     readonly env?: Readonly<Record<string, string>>;
     /** Relative to the worktree, in place of the synced environment. */
     readonly python?: string;
+    /** Spec 027 D1, D2 (row 027-02): the project's per-batch slots. */
+    readonly slots?: { readonly toxParallelEnv?: boolean; readonly max?: number };
   };
   /** The synced environment linked in as `.venv`, which D2's discovery finds, in place of a declared one. */
   readonly venv?: true;

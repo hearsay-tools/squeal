@@ -239,15 +239,8 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     batch.read = readBatch(parsed, batch.files, rootdir, paths, basetemp.dir(batch.index));
     batch.edges = parsed.filter(isEdge);
   };
-  // D2.4: no more batches at once than the project has slots.
-  const width = Math.max(
-    1,
-    Math.min(
-      options.concurrency ?? batches.length,
-      batches.length,
-      project.slots?.max ?? batches.length,
-    ),
-  );
+  // D2.4: a project's `slots.max` caps the batches at once, since a batch waits for its slot.
+  const width = Math.max(1, Math.min(options.concurrency ?? batches.length, batches.length));
   try {
     await Promise.all(Array.from({ length: width }, worker));
   } finally {

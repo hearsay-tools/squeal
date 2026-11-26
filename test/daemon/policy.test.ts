@@ -285,18 +285,14 @@ describe("loadPolicy pytest slots (spec 027 D2.3)", () => {
     expect(loadPolicy(rootWith(absent)).policy.pytest[0]).not.toHaveProperty("slots");
   });
 
-  it.each([
-    [true, '"pytest[0].slots" must be an object with toxParallelEnv and max, got true'],
-    [{ max: 0 }, '"pytest[0].slots" key "max" must be a positive integer, got 0'],
-    [{ max: 1.5 }, '"pytest[0].slots" key "max" must be a positive integer, got 1.5'],
-    [
-      { toxParallelEnv: "yes" },
-      '"pytest[0].slots" key "toxParallelEnv" must be true or false, got "yes"',
-    ],
-    [{ enabled: false }, '"pytest[0].slots" has an unknown key "enabled"'],
-  ])("skips a project whose slots is %j", (slots, problem) => {
-    const { policy, problems } = loadPolicy(rootWith(pytest(slots)));
-    expect(policy.pytest).toEqual([]);
-    expect(problems).toEqual([`${problem}; project "app" is skipped`]);
-  });
+  it.each([true, { max: 0 }, { max: 1.5 }, { toxParallelEnv: "yes" }, { enabled: false }])(
+    "skips a project whose slots is %j",
+    (slots) => {
+      const { policy, problems } = loadPolicy(rootWith(pytest(slots)));
+      expect(policy.pytest).toEqual([]);
+      expect(problems).toEqual([
+        `"pytest[0].slots" must be { toxParallelEnv?: true or false, max?: a positive integer }, got ${JSON.stringify(slots)}; project "app" is skipped`,
+      ]);
+    },
+  );
 });
