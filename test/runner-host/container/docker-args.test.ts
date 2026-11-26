@@ -158,6 +158,10 @@ describe("Docker arguments (D4)", () => {
       );
     }
     expect(() => guarded("run", ["--mount=type=volume,source=v,target=/v"], [])).toThrow(/bind/);
+    expect(() => guarded("run", ["--mount=source=v,type=bind,target=/v"], [])).toThrow(/bind/);
+    expect(() =>
+      guarded("run", ["--init", "--pull=never", "--pull=always", "--user=1:1"], ["img"]),
+    ).toThrow(/--pull=always/);
     expect(() => guarded("run", ["--pull=never", "--user=1:1"], ["img"])).toThrow(/--init/);
     expect(() => guarded("run", ["--init", "--user=1:1"], ["img"])).toThrow(/--pull=never/);
     expect(() => guarded("run", ["--init", "--pull=never"], ["img"])).toThrow(/--user/);
