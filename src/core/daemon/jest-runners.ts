@@ -9,7 +9,7 @@ import { createHostedJest, type ProcessHost } from "../runner-host/process-host.
 import type { AbsolutePath, ProjectName } from "../types/common.js";
 import type { JestProject } from "../types/policy-jest.js";
 import { createContainerGuardRunner } from "./container-guard.js";
-import { hosted, NO_VITEST_POLICY } from "./node-test-runners.js";
+import { hosted, NO_VITEST_POLICY, type RemoteWrap } from "./node-test-runners.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
@@ -45,6 +45,8 @@ export interface JestRunnersOptions {
   readonly host?: ProcessHost | undefined;
   /** Spec 021 D20: how long a host stays up with no call; absent, for good. */
   readonly idleMs?: () => number;
+  /** Spec 026 D8.2, spec 028 D7.4 (row 028-07): puts a project's runner on the remote lane; absent, every run is here. */
+  readonly remote?: RemoteWrap;
   /** Spec 027 D5 (row 027-06): the daemon's container route; absent, container projects stay unknown. */
   readonly containers?: ContainerWiring;
   /** Spec 028 D5.3, spec 015 D8: coverage in the projects' runs; absent, none. */
@@ -57,8 +59,8 @@ export interface JestRunnersOptions {
  * project waits for the first call or `open()`. No Jest, an unsupported one,
  * a config that does not read and a graph that cannot be built are handled
  * inside the adapter, so each costs that project's checks only and never
- * rejects a composite call. No remote lane yet: Jest joins `REMOTE_RUNNERS`
- * in row 028-07 (D7).
+ * rejects a composite call. A remote lane that names Jest takes its tiers
+ * there (spec 028 D7.4); a container project never goes there.
  */
 export function createJestRunners(
   projects: readonly JestProject[],
@@ -113,7 +115,7 @@ function jestRunner(project: JestProject, options: JestRunnersOptions): Recoveri
     ...(options.coverage === undefined ? {} : { coverage: options.coverage }),
   };
   const { host } = options;
-  return createRecoveringRunner({
+  const runner = createRecoveringRunner({
     name: "jest",
     adapterVersion: JEST_ADAPTER_VERSION,
     create: () =>
@@ -128,5 +130,32 @@ function jestRunner(project: JestProject, options: JestRunnersOptions): Recoveri
     traits,
     onFailure: (text) => options.note(`${text} (jest project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`jest project ${JSON.stringify(project.name)} started`),
+  });
+  if (options.remote === undefined) return runner;
+  // Spec 026 D8.2, 028 D7.4: as a local host's start (`createHostedJest`); the remote moves the
+  // temp and cache directories under its tree, and keeps coverage only when it maps it (`connect.ts`).
+  const { coverage } = adapterOptions;
+  return options.remote({
+    runner: "jest",
+    name: `jest ${project.name}`,
+    local: runner,
+    start: {
+      options: {
+        childEnv: adapterOptions.childEnv ?? {},
+        process: {
+          project,
+          tempDir: adapterOptions.tempDir,
+          cacheDir: adapterOptions.cacheDir,
+          ...(coverage === undefined ? {} : { coverage: true }),
+        },
+      },
+      policy: () => ({
+        ...NO_VITEST_POLICY,
+        observe: options.observe(),
+        coverage: coverage?.enabled() ?? false,
+        tierSize: options.tierSize(),
+      }),
+      note: options.note,
+    },
   });
 }

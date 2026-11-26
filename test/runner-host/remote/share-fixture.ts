@@ -26,6 +26,7 @@ export const PROJECTS: Record<RemoteRunner, string> = {
   vitest: "",
   "node-test": "unit",
   pytest: "py",
+  jest: "jest",
 };
 
 export const refOf = (runner: RemoteRunner) => ({

@@ -30,8 +30,8 @@ export const REMOTE_FILE = "remote.json";
 /** What the remote's lane does when its host is lost or hung (spec 021 D13). */
 export type WhenLost = "local" | "not-run";
 
-/** The runners a remote may serve (spec 026 D6.4). */
-export const REMOTE_RUNNERS = ["vitest", "node-test", "pytest"] as const;
+/** The runners a remote may serve (spec 026 D6.4; Jest since spec 028 D7.4). */
+export const REMOTE_RUNNERS = ["vitest", "node-test", "pytest", "jest"] as const;
 export type RemoteRunner = (typeof REMOTE_RUNNERS)[number];
 /** The tiers a remote may serve (spec 026 D6.4). */
 export const REMOTE_TIERS = ["background", "edit", "slow", "group"] as const;

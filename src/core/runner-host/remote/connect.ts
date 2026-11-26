@@ -100,7 +100,7 @@ export interface RemoteHostOptions {
   readonly version: string;
   /** The local worktree's root. */
   readonly root: AbsolutePath;
-  /** Spec 026 D6.4: a remote serves `REMOTE_RUNNERS` only; Jest joins in spec 028 D7. */
+  /** Spec 026 D6.4: a remote serves `REMOTE_RUNNERS` only (Jest since spec 028 D7.4). */
   readonly runner: RemoteRunner;
   readonly options: HostAdapterOptions;
   readonly policy: () => HostPolicy;
@@ -221,8 +221,9 @@ export async function remoteTreeDir(
 
 /**
  * `options` as a remote host over the tree at the absolute `tree` takes
- * them (D8.2): node:test's and pytest's temp directory is `<tree>/tmp`,
- * pytest's cache directory `<tree>/cache/<its last name here>`. D9: under
+ * them (D8.2): node:test's, pytest's and Jest's temp directory is
+ * `<tree>/tmp`, pytest's and Jest's cache directory `<tree>/cache/<its last
+ * name here>`. D9: under
  * `coverage: "remote"`, Vitest's provider is the host's own and its
  * payloads go to `<tree>/tmp/coverage`.
  */
@@ -249,7 +250,7 @@ export function remoteAdapterOptions(
   };
 }
 
-/** Spec 021 D12: `options` without coverage, Vitest's and node:test's. */
+/** Spec 021 D12: `options` without coverage, Vitest's, node:test's and Jest's. */
 function withoutCoverage(options: HostAdapterOptions): HostAdapterOptions {
   const { coverage: _off, process: data, ...rest } = options;
   if (data === undefined) return rest;
