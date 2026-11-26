@@ -93,3 +93,48 @@ describe("a tier's fewest workers on a ceiling below them (review 0.1.584 B1)", 
     expect(backlogShareSlots(7.5, 9)).toBe(8);
   });
 });
+
+/*
+ * Row 026-33 (#292): a tier's fewest workers above what the pool can ever
+ * grant, its slots or the project's, never deadlocks the look. A 4-CPU
+ * machine has 3 slots; a 4-file node:test tier asked `least` 4 there and
+ * was refused at every look, with no refusal line, until the daemon ended.
+ */
+describe("a tier's fewest workers above the pool's most (row 026-33, #292)", () => {
+  test("a 3-slot pool grants 3 to a tier of least 4", () => {
+    expect(daemon("me", 0.75).acquire(4, "fast", 4, "backlog")?.grant).toBe(3);
+  });
+
+  test("a project of 2 slots on an 8-slot pool grants 2 to a tier of least 4", () => {
+    const pool = createPermitPool({
+      ...options("me", 0.75),
+      hostSlots: 8,
+      cpus: 8,
+      project: { id: "p", slots: 2 },
+    });
+    closing.push(pool);
+    expect(pool.acquire(4, "fast", 4, "backlog")?.grant).toBe(2);
+  });
+
+  test("a checkpoint tier of least 4 on a 3-slot pool gets 3", () => {
+    expect(daemon("me", 0.75).acquire(4, "fast", 4, "checkpoint")?.grant).toBe(3);
+  });
+
+  test("the remote runner host's admission on 4 CPUs and 3 slots grants 3 to a tier of least 4", () => {
+    const admission = createHostAdmission(() => createPermitPool(options("remote", 0.75)));
+    closing.push(admission);
+    expect(admission.admit({ want: 4, least: 4 }).grant).toBe(3);
+  });
+
+  test("the clamped tier still waits behind a held permit, and the mark states the clamped floor", () => {
+    const holder = daemon("holder", 0.75);
+    expect(holder.acquire(1, "fast", 1, "checkpoint")?.grant).toBe(1);
+    const me = daemon("me", 0.75);
+    // 2 of 3 permits free: fewer than the clamped floor, 3.
+    expect(me.acquire(4, "fast", 4, "checkpoint")).toBeNull();
+    expect(readMarks(dir, "reader", Date.now()).find((m) => m.id === "me")).toMatchObject({
+      grant: 0,
+      least: 3,
+    });
+  });
+});

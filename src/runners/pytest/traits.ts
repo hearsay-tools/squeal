@@ -18,8 +18,11 @@ export interface PytestTraitValues {
 export function pytestTraits(values: PytestTraitValues = {}): RunnerTraits {
   const { tierSize, batchSize } = values;
   return declareTraits({
-    // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
-    tierWidth: () => tierSize?.(),
+    // A run starts `runner.tierSize` processes at once, no more than its grant (row 026-33, #292).
+    tierWidth: (_, grant) => {
+      const size = tierSize?.();
+      return size === undefined ? undefined : Math.min(size, grant);
+    },
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
     besideBacklog: () => true,
     // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
