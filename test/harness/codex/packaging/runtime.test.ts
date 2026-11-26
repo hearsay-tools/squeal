@@ -145,7 +145,7 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     for (const file of bundles) {
       const path = join(built.dir, file);
       expect(readFileSync(path, "utf8"), file).toMatch(
-        /^(#!.*\n)?import \{ createRequire as __squealCreateRequire \} from "node:module";\nconst require = __squealCreateRequire\(import\.meta\.url\);\n/,
+        /^(#!.*\n)?const require = process\.getBuiltinModule\("node:module"\)\.createRequire\(import\.meta\.url\);\n/,
       );
       execFileSync(process.execPath, ["--check", path]);
     }

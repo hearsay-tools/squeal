@@ -64,11 +64,9 @@ describe("the Pi package", () => {
     );
   });
 
-  it("bundles an extension that imports only Node built-ins", () => {
-    const imports = [
-      ...readFileSync(join(built.dir, "extension.mjs"), "utf8").matchAll(/from "([^"]+)"/g),
-    ].map((m) => m[1]);
-    expect(imports.length).toBeGreaterThan(0);
-    for (const from of imports) expect(from).toMatch(/^node:/);
+  it("bundles an extension that imports nothing, its Node built-ins read with getBuiltinModule (025-16)", () => {
+    const text = readFileSync(join(built.dir, "extension.mjs"), "utf8");
+    expect([...text.matchAll(/^import .*from "([^"]+)"|^import "([^"]+)"/gm)]).toEqual([]);
+    expect(text).toMatch(/process\.getBuiltinModule\("node:/);
   });
 });
