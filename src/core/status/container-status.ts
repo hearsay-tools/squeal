@@ -64,22 +64,44 @@ export function containerSummaryText(entries: readonly ContainerStateEntry[]): s
     .join("; ");
 }
 
+/** A configured container project, as the policy declares it now. */
+export interface ActiveContainerProject {
+  readonly runner: string;
+  readonly project: string;
+  readonly target: string;
+}
+
 /**
- * The daemon's live set of entries by runner and project; `set` returns
- * the summary text when it changed, else `null`.
+ * The daemon's live set of entries by runner and project. `set` returns
+ * the summary text when it changed, else `null`. `reconcile` drops each
+ * entry whose project is no longer configured, or now names another
+ * target (review 0.1.644 N1), and returns the new text when it changed:
+ * `""` once no entry is left, which removes the status row.
  */
 export function containerSummaries(): {
   set(entry: ContainerStateEntry): string | null;
+  reconcile(active: readonly ActiveContainerProject[]): string | null;
 } {
   const entries = new Map<string, ContainerStateEntry>();
+  const keyOf = (e: { runner: string; project: string }) => `${e.runner}\0${e.project}`;
   let last = "";
+  const changed = (): string | null => {
+    const text = containerSummaryText([...entries.values()]);
+    if (text === last) return null;
+    last = text;
+    return text;
+  };
   return {
     set(entry) {
-      entries.set(`${entry.runner}\0${entry.project}`, entry);
-      const text = containerSummaryText([...entries.values()]);
-      if (text === last) return null;
-      last = text;
-      return text;
+      entries.set(keyOf(entry), entry);
+      return changed();
+    },
+    reconcile(active) {
+      const targets = new Map(active.map((a) => [keyOf(a), a.target]));
+      for (const [key, entry] of entries) {
+        if (targets.get(key) !== entry.target) entries.delete(key);
+      }
+      return changed();
     },
   };
 }

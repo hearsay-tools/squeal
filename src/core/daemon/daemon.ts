@@ -27,7 +27,11 @@ import { ImportsSeen } from "../shared/imports-seen.js";
 import type { SharedReader } from "../shared/reader.js";
 import { slowSlotDir } from "../slow/slot.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
-import { containerSummaries, writeContainerSummary } from "../status/container-status.js";
+import {
+  type ActiveContainerProject,
+  containerSummaries,
+  writeContainerSummary,
+} from "../status/container-status.js";
 import { gitHead } from "../status/git-head.js";
 import { readRemoteSummary, writeRemoteSummary } from "../status/remote-status.js";
 import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
@@ -290,6 +294,8 @@ class Daemon {
    * puts to sleep. Review 0.1.623 B1: the exit's start aborts its acquire.
    */
   #remoteLane: DaemonRemote | null = null;
+  /** Review 0.1.644 N1: drops retired container projects from the status line at a reload. */
+  #reconcileContainers: (policy: Policy) => void = () => {};
   #loop: DaemonLoop | null = null;
   /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
   #code: CodePass | null = null;
@@ -491,6 +497,18 @@ class Daemon {
       return {};
     }
     const summaries = containerSummaries();
+    const persist = (text: string): void => {
+      this.#log(`containers: ${text === "" ? "none configured" : text}`);
+      try {
+        writeContainerSummary(store, worktreeId, text);
+      } catch (error) {
+        this.#log(`could not persist the container summary (${text}): ${message(error)}`);
+      }
+    };
+    this.#reconcileContainers = (policy) => {
+      const text = summaries.reconcile(activeContainerProjects(policy));
+      if (text !== null) persist(text);
+    };
     const containers: ContainerWiring = {
       containers: () => this.#policy.containers,
       worktreeId,
@@ -502,14 +520,14 @@ class Daemon {
       version: this.#version,
       idleMs,
       status: (entry) => {
+        // A retired project's late report (a run that ended after the reload) is not shown.
+        const configured = activeContainerProjects(this.#policy).some(
+          (a) =>
+            a.runner === entry.runner && a.project === entry.project && a.target === entry.target,
+        );
+        if (!configured) return;
         const text = summaries.set(entry);
-        if (text === null) return;
-        this.#log(`containers: ${text}`);
-        try {
-          writeContainerSummary(store, worktreeId, text);
-        } catch (error) {
-          this.#log(`could not persist the container summary (${text}): ${message(error)}`);
-        }
+        if (text !== null) persist(text);
       },
     };
     return { containers };
@@ -761,6 +779,7 @@ class Daemon {
       unparsed === true ? { ...loaded, nodeTest, pytest, complexity, coverage, crap } : loaded,
     );
     this.#policy = policy;
+    this.#reconcileContainers(policy);
     if (this.#phase !== "stopping") this.#startTimers();
     const found = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
     this.#note(`${POLICY_FILE} changed; policy reloaded${found}`);
@@ -1831,4 +1850,20 @@ export async function openedAtStart(
   const opened = later ? [] : [vitest.open()];
   if (host !== undefined) return opened;
   return [...opened, ...sets.flatMap((set) => set.members().map((runner) => runner.open()))];
+}
+
+/** Review 0.1.644 N1: the container projects `policy` configures, by runner. */
+function activeContainerProjects(policy: Policy): ActiveContainerProject[] {
+  const of = (
+    runner: string,
+    projects: readonly { readonly name: string; readonly container?: string }[],
+  ) =>
+    projects.flatMap((p) =>
+      p.container === undefined ? [] : [{ runner, project: p.name, target: p.container }],
+    );
+  return [
+    ...of("node-test", policy.nodeTest),
+    ...of("pytest", policy.pytest),
+    ...of("jest", policy.jest),
+  ];
 }

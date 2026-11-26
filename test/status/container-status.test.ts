@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it, onTestFinished } from "vitest";
+import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { appendNote } from "../../src/core/notes.js";
 import {
   containerLines,
@@ -10,6 +13,8 @@ import {
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { MAX_PERSISTED_NOTES } from "../../src/core/types/scheduler.js";
+import { createFixtureRepo, SLOW, waitFor, withStore } from "../daemon/helpers.js";
+import { CODE_OFF } from "../helpers/policy.js";
 import { appendRevisions, fakeRepo, seedStore } from "./helpers.js";
 
 /*
@@ -86,5 +91,79 @@ describe("the container summary line (D7.3)", () => {
     writeContainerSummary(store, wt, "");
     expect(readContainerSummary(store, wt)).toBeUndefined();
     expect(plain().lines.filter((l) => l.startsWith("Containers:"))).toEqual([]);
+  });
+});
+
+/*
+ * Review 0.1.644 N1: a policy reload drops each container project the new
+ * policy no longer configures, or configures in another target, from the
+ * line; the last one removed clears the row.
+ */
+describe("the container summary at a policy reload (review 0.1.644 N1)", () => {
+  it("drops retired projects and stale targets, and is empty once none is left", () => {
+    const live = containerSummaries();
+    live.set(entry("a", "api", "ready"));
+    live.set(entry("w", "workers", "unconsented"));
+    expect(live.reconcile([{ runner: "pytest", project: "api", target: "a" }])).toBe(
+      "container a (ready, build-content)",
+    );
+    // Nothing changed: no new line.
+    expect(live.reconcile([{ runner: "pytest", project: "api", target: "a" }])).toBeNull();
+    // The project moved to target `b`: `a` goes before `b` reports a state.
+    expect(live.reconcile([{ runner: "pytest", project: "api", target: "b" }])).toBe("");
+    expect(live.set(entry("b", "api", "ready"))).toBe("container b (ready, build-content)");
+    // Another runner's project of the same name is another project.
+    expect(live.reconcile([{ runner: "jest", project: "api", target: "b" }])).toBe("");
+    expect(live.reconcile([])).toBeNull();
+  });
+
+  it("in a live daemon: a moved target leaves the line, and removing the last project clears it", {
+    ...SLOW,
+  }, async () => {
+    const config = (pytest: object[]) =>
+      `${JSON.stringify({
+        ...CODE_OFF,
+        containers: { a: { image: "squeal-test/a" }, b: { image: "squeal-test/b" } },
+        pytest,
+      })}\n`;
+    const repo = createFixtureRepo({
+      files: {
+        "squeal.config.json": config([
+          { name: "py", cwd: "py", include: ["tests/test_*.py"], container: "a" },
+        ]),
+        "py/tests/test_a.py": "def test_a():\n    assert True\n",
+      },
+    });
+    onTestFinished(repo.cleanup);
+    // A CLI inside a complete bundle gives the daemon its container route. No consent
+    // exists in the test's config directory, so no Docker command runs.
+    const cli = join(import.meta.dirname, "..", "..", "plugins", "claude-code", "dist", "cli");
+    const daemon = await startDaemon({
+      root: repo.root,
+      env: repo.env,
+      log: () => {},
+      timings: { checkMs: 50 },
+      runnerHost: { execPath: process.execPath, execArgv: [], cli: join(cli, "squeal.mjs") },
+    });
+    if ("reason" in daemon) throw new Error(daemon.message);
+    onTestFinished(async () => {
+      await daemon.stop("stop-requested");
+    });
+    await daemon.ready;
+    const summary = () => withStore(repo, (store) => readContainerSummary(store, repo.worktreeId));
+    await waitFor(() => summary() === "container a (unconsented, build-content)", 60_000, "a");
+
+    writeFileSync(
+      join(repo.root, "squeal.config.json"),
+      config([{ name: "py", cwd: "py", include: ["tests/test_*.py"], container: "b" }]),
+    );
+    await waitFor(() => summary() === "container b (unconsented, build-content)", 60_000, "b");
+
+    writeFileSync(
+      join(repo.root, "squeal.config.json"),
+      config([{ name: "py", cwd: "py", include: ["tests/test_*.py"] }]),
+    );
+    await waitFor(() => summary() === undefined, 60_000, "cleared");
+    expect(summary()).toBeUndefined();
   });
 });
