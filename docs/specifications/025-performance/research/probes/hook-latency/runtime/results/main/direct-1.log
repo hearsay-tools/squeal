@@ -1,0 +1,748 @@
+
+ RUN  v5.0.3 <sandbox-home>/repo
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":0,"ms":49.45161299999995}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":1,"ms":43.735067999999956}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":2,"ms":42.88221300000009}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":3,"ms":41.30810100000008}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":4,"ms":46.07379900000001}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":5,"ms":42.444856999999956}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":6,"ms":41.81549099999984}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":7,"ms":43.56600299999991}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":8,"ms":48.593890999999985}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":9,"ms":45.889185}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":10,"ms":44.26238400000011}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":11,"ms":44.349586000000045}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":12,"ms":50.632921000000124}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":13,"ms":45.15265700000009}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":14,"ms":42.16070500000001}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":15,"ms":46.043865000000096}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":16,"ms":40.575080999999955}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":17,"ms":40.32175899999993}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":18,"ms":41.738956000000144}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start","run":19,"ms":40.021406999999954}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":0,"ms":46.586238000000094}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":1,"ms":42.80861600000003}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":2,"ms":43.617437999999765}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":3,"ms":43.86545100000012}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":4,"ms":47.93108100000018}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":5,"ms":43.30183799999986}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":6,"ms":45.361177000000225}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":7,"ms":46.02937699999984}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":8,"ms":46.54800599999999}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":9,"ms":46.18418700000029}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":10,"ms":43.566201999999976}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":11,"ms":45.818330999999944}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":12,"ms":45.69078400000035}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":13,"ms":42.79762500000015}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":14,"ms":42.978843999999754}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":15,"ms":42.158781999999974}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":16,"ms":43.61588499999971}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":17,"ms":46.45986200000016}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":18,"ms":46.10647999999992}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":19,"ms":44.00689599999987}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":0,"ms":42.838912000000164}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":1,"ms":40.35587200000009}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":2,"ms":37.85193100000015}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":3,"ms":37.23500899999999}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":4,"ms":38.15523800000028}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":5,"ms":42.15576599999986}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":6,"ms":39.86870199999976}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":7,"ms":38.32655900000009}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":8,"ms":36.43124500000022}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":9,"ms":36.94053799999983}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":10,"ms":36.196997999999894}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":11,"ms":36.15299600000026}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":12,"ms":36.44443199999978}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":13,"ms":39.347487}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":14,"ms":35.3075259999996}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":15,"ms":35.6423920000002}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":16,"ms":38.82190500000024}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":17,"ms":39.24853200000007}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":18,"ms":37.40473499999962}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":19,"ms":38.679709}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":0,"ms":36.06203400000004}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":1,"ms":32.86111300000039}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":2,"ms":32.67416400000002}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":3,"ms":33.36483499999986}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":4,"ms":32.37135699999999}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":5,"ms":33.47369800000024}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":6,"ms":30.980888999999934}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":7,"ms":30.74481700000024}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":8,"ms":38.172540000000026}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":9,"ms":31.31479300000001}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":10,"ms":33.13232899999957}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":11,"ms":32.16502199999968}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":12,"ms":37.12545299999965}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":13,"ms":41.306618999999955}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":14,"ms":39.276002999999946}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":15,"ms":44.49573000000055}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":16,"ms":37.05407000000014}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":17,"ms":32.40929899999992}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":18,"ms":34.758028000000195}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":19,"ms":34.394248999999945}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":0,"ms":39.8772570000001}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":1,"ms":39.59791600000062}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":2,"ms":37.75287599999956}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":3,"ms":39.631609000000026}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":4,"ms":45.04707099999996}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":5,"ms":38.19219599999997}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":6,"ms":37.645526000000245}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":7,"ms":37.50023399999918}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":8,"ms":41.65441800000008}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":9,"ms":35.137608}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":10,"ms":41.09978200000023}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":11,"ms":38.04569300000003}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":12,"ms":42.1792489999998}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":13,"ms":39.623421999999664}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":14,"ms":37.59565199999997}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":15,"ms":37.46578899999986}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":16,"ms":39.0770820000007}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":17,"ms":37.229347999999845}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":18,"ms":38.097461000000294}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":19,"ms":38.561549000000014}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":0,"ms":52.007150000000365}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":1,"ms":47.784748000000036}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":2,"ms":49.95894099999987}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":3,"ms":50.42525300000034}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":4,"ms":46.47099199999957}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":5,"ms":48.2546769999999}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":6,"ms":47.36823800000002}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":7,"ms":48.04705699999977}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":8,"ms":50.243382999999994}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":9,"ms":49.617253000000346}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":10,"ms":51.28396799999973}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":11,"ms":44.512870000000476}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":12,"ms":51.547090000000026}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":13,"ms":47.93179299999974}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":14,"ms":49.53990900000008}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":15,"ms":50.8712059999998}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":16,"ms":50.46288299999924}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":17,"ms":49.352576999999656}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":18,"ms":49.87316100000044}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop","run":19,"ms":50.396128999999746}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":0,"ms":49.21346900000026}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":1,"ms":47.953913000000284}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":2,"ms":45.73692899999969}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":3,"ms":48.276827000000594}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":4,"ms":51.62608700000055}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":5,"ms":51.98543899999913}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":6,"ms":45.26495800000066}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":7,"ms":47.849928999999975}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":8,"ms":48.670563000000584}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":9,"ms":49.01692000000003}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":10,"ms":51.450440000000526}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":11,"ms":45.57037799999944}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":12,"ms":47.513300999999956}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":13,"ms":49.06254600000011}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":14,"ms":47.151614000000336}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":15,"ms":45.504455000000235}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":16,"ms":46.92604300000039}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":17,"ms":45.245632000000114}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":18,"ms":43.78159500000038}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":19,"ms":48.6338939999996}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":0,"ms":43.765323999999964}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":1,"ms":41.26683400000002}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":2,"ms":42.09318799999983}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":3,"ms":41.231518000000506}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":4,"ms":41.774992999999995}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":5,"ms":40.05702400000064}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":6,"ms":45.55893699999979}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":7,"ms":42.77540500000032}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":8,"ms":42.82342299999982}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":9,"ms":46.00998099999924}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":10,"ms":41.85679600000003}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":11,"ms":43.41626199999973}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":12,"ms":47.876718999999866}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":13,"ms":45.545992999999726}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":14,"ms":41.29281399999945}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":15,"ms":48.289380000000165}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":16,"ms":51.6583870000004}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":17,"ms":45.37247899999966}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":18,"ms":41.471426000000065}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":19,"ms":41.921628000000055}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":0,"ms":37.743467999999666}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":1,"ms":41.493007000000034}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":2,"ms":40.964068000000225}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":3,"ms":41.567996000000676}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":4,"ms":37.60881700000027}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":5,"ms":38.01256099999955}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":6,"ms":39.94292900000073}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":7,"ms":38.599888999999166}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":8,"ms":42.70499199999904}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":9,"ms":41.81770400000096}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":10,"ms":42.46784800000023}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":11,"ms":41.04439700000148}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":12,"ms":39.58650300000045}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":13,"ms":38.23228199999903}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":14,"ms":42.31930199999988}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":15,"ms":39.38000800000009}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":16,"ms":39.09805099999903}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":17,"ms":39.79286899999897}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":18,"ms":37.259414000000106}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":19,"ms":38.509179000000586}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":0,"ms":31.29218000000037}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":1,"ms":32.54353900000024}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":2,"ms":32.367159000001266}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":3,"ms":33.924199000000954}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":4,"ms":31.792795999999726}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":5,"ms":31.253477000000203}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":6,"ms":31.23905999999988}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":7,"ms":33.270588000001226}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":8,"ms":30.956183000000237}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":9,"ms":31.371737999999823}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":10,"ms":30.1219919999985}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":11,"ms":30.47867899999983}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":12,"ms":32.60209700000087}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":13,"ms":31.14003600000069}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":14,"ms":32.20626799999991}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":15,"ms":30.97368500000084}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":16,"ms":30.293845000000147}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":17,"ms":31.479020000000673}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":18,"ms":31.48863700000038}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-end","run":19,"ms":30.5247159999999}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":0,"ms":27.59933699999965}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":1,"ms":27.390086000001247}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":2,"ms":27.661143000001175}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":3,"ms":26.707910000000993}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":4,"ms":27.625895999999557}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":5,"ms":27.955692999999883}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":6,"ms":31.230193999999756}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":7,"ms":30.26233499999944}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":8,"ms":29.505119999999806}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":9,"ms":27.847101000001203}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":10,"ms":27.405596000000514}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":11,"ms":30.046581000000515}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":12,"ms":32.23713599999974}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":13,"ms":26.893287999999302}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":14,"ms":28.54199999999946}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":15,"ms":27.477981}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":16,"ms":26.520300000000134}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":17,"ms":27.76647899999989}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":18,"ms":28.18804700000146}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"waiter","run":19,"ms":28.023440999999366}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":0,"ms":41.56776700000046}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":1,"ms":42.691476999998486}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":2,"ms":42.288524000001416}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":3,"ms":47.564916999999696}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":4,"ms":43.07497200000034}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":5,"ms":42.74227300000166}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":6,"ms":45.99823800000013}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":7,"ms":44.685725000001185}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":8,"ms":44.017705000000205}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":9,"ms":43.60580699999991}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":10,"ms":43.41541000000143}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":11,"ms":48.40776099999857}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":12,"ms":43.21355299999959}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":13,"ms":46.12393300000076}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":14,"ms":48.72297100000105}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":15,"ms":47.5623119999982}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":16,"ms":46.8978189999998}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":17,"ms":46.0423609999998}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":18,"ms":46.595964000000095}
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":19,"ms":44.66023700000005}
+hook latency ms, best of up to 3 rounds of 20 cold runs, load 1.18
+┌─────────┬───────────────────────────────────────┬────────┬─────┬─────┬─────┬────────┐
+│ (index) │ hook                                  │ rounds │ p50 │ p95 │ max │ budget │
+├─────────┼───────────────────────────────────────┼────────┼─────┼─────┼─────┼────────┤
+│ 0       │ 'session-start'                       │ 1      │ 44  │ 49  │ 51  │ 80     │
+│ 1       │ 'post-tool-batch'                     │ 1      │ 45  │ 47  │ 48  │ 80     │
+│ 2       │ 'pre-tool-use'                        │ 1      │ 38  │ 42  │ 43  │ 80     │
+│ 3       │ 'pre-tool-use (Bash, silent)'         │ 1      │ 33  │ 41  │ 44  │ 80     │
+│ 4       │ 'pre-tool-use (test command, denied)' │ 1      │ 39  │ 42  │ 45  │ 80     │
+│ 5       │ 'stop'                                │ 1      │ 50  │ 52  │ 52  │ 80     │
+│ 6       │ 'stop (silent)'                       │ 1      │ 48  │ 52  │ 52  │ 80     │
+│ 7       │ 'user-prompt-submit'                  │ 1      │ 43  │ 48  │ 52  │ 80     │
+│ 8       │ 'user-prompt-submit (silent)'         │ 1      │ 40  │ 42  │ 43  │ 80     │
+│ 9       │ 'session-end'                         │ 1      │ 31  │ 33  │ 34  │ 80     │
+│ 10      │ 'waiter'                              │ 1      │ 28  │ 31  │ 32  │ 80     │
+│ 11      │ 'session-start (spawn)'               │ 1      │ 45  │ 48  │ 49  │ 200    │
+└─────────┴───────────────────────────────────────┴────────┴─────┴─────┴─────┴────────┘
+
+ ✓ runtime-probe/claude.test.ts (1 test) 9903ms
+   ✓ bundled hook latency (1)
+     ✓ stays under 80 ms p95 over 20 cold runs per hook 9902ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:25:18
+   Duration  10.96s (tests 91%, transform 8%, import 2%)

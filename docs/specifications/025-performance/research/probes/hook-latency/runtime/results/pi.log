@@ -1,0 +1,22 @@
+
+ RUN  v5.0.3 <sandbox-home>/repo
+
+stdout | runtime-probe/pi.test.ts > the Pi delivery worker's round trip > stays under 80 ms p95 per call at calm load
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 0.70 0.33 0.12
+┌─────────┬──────────────────────────────┬─────┬──────┬──────┐
+│ (index) │ call                         │ p50 │ p95  │ max  │
+├─────────┼──────────────────────────────┼─────┼──────┼──────┤
+│ 0       │ 'ping'                       │ 0   │ 0.1  │ 0.2  │
+│ 1       │ 'boundary (delivers)'        │ 3.3 │ 5.1  │ 9.3  │
+│ 2       │ 'boundary (silent)'          │ 2.6 │ 3.3  │ 3.7  │
+│ 3       │ 'boundary on a fresh worker' │ 43  │ 46.9 │ 49.7 │
+└─────────┴──────────────────────────────┴─────┴──────┴──────┘
+
+ ✓ runtime-probe/pi.test.ts (1 test) 1589ms
+   ✓ the Pi delivery worker's round trip (1)
+     ✓ stays under 80 ms p95 per call at calm load 1340ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:20:46
+   Duration  2.83s (tests 57%, transform 35%, import 7%)

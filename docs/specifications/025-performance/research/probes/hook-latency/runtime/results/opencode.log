@@ -1,0 +1,28 @@
+
+ RUN  v5.0.3 <sandbox-home>/repo
+
+stdout | runtime-probe/opencode.test.ts > the OpenCode bridge's per-hook cost beside Codex's > stays within 10 ms p95 of the matching Codex hook at calm load
+OpenCode bridge beside Codex hooks, p95 ms, best of up to 3 rounds of 20 cold runs, interleaved; bare bridge (ping) p95 28; load 0.86 0.39 0.15
+┌─────────┬────────────────────────────────────────────┬────────┬─────────────┬─────────────┬──────────┬─────┐
+│ (index) │ pair                                       │ rounds │ opencodeP50 │ opencodeP95 │ codexP95 │ gap │
+├─────────┼────────────────────────────────────────────┼────────┼─────────────┼─────────────┼──────────┼─────┤
+│ 0       │ 'register | session-start'                 │ 1      │ 46          │ 52          │ 52       │ 0   │
+│ 1       │ 'prompt | user-prompt-submit'              │ 1      │ 45          │ 57          │ 49       │ 8   │
+│ 2       │ 'before edit | pre-tool-use apply_patch'   │ 1      │ 42          │ 48          │ 47       │ 0   │
+│ 3       │ 'before bash | pre-tool-use Bash (silent)' │ 1      │ 38          │ 42          │ 41       │ 1   │
+│ 4       │ 'after | post-tool-use'                    │ 1      │ 48          │ 53          │ 56       │ -3  │
+│ 5       │ 'after | post-tool-use (silent)'           │ 1      │ 47          │ 53          │ 50       │ 3   │
+│ 6       │ 'stop | stop'                              │ 1      │ 56          │ 60          │ 65       │ -5  │
+│ 7       │ 'stop | stop (silent)'                     │ 1      │ 56          │ 61          │ 62       │ -1  │
+│ 8       │ 'endTurn | interrupt (silent)'             │ 1      │ 40          │ 47          │ 44       │ 3   │
+│ 9       │ 'end child | subagent-stop (silent)'       │ 1      │ 36          │ 40          │ 57       │ -17 │
+└─────────┴────────────────────────────────────────────┴────────┴─────────────┴─────────────┴──────────┴─────┘
+
+ ✓ runtime-probe/opencode.test.ts (1 test) 20013ms
+   ✓ the OpenCode bridge's per-hook cost beside Codex's (1)
+     ✓ stays within 10 ms p95 of the matching Codex hook at calm load 19363ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:20:49
+   Duration  21.25s (tests 94%, transform 5%, import 1%)

@@ -1,0 +1,12 @@
+
+ RUN  v5.0.3 <sandbox-home>/repo
+
+stdout | runtime-probe/header.test.ts > measures header conversion with the same input
+HEADER [{"name":"600","states":500,"p50":0.11182000000007974,"p95":0.2621390000001611,"max":1.7378370000001269},{"name":"main","states":500,"p50":0.17145000000004984,"p95":0.3579090000000633,"max":1.8433550000002015}]
+
+ ✓ runtime-probe/header.test.ts (1 test) 57ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:25:58
+   Duration  1.30s (transform 79%, import 16%, tests 5%)

@@ -1,0 +1,47 @@
+{
+  "startedAt": "2026-11-26T09:17:50.966Z",
+  "squealVersion": "0.1.600 vs 0.1.636",
+  "plugins": [
+    {
+      "version": "0.1.600",
+      "label": "0.1.600"
+    },
+    {
+      "version": "0.1.636",
+      "label": "0.1.636"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD Ryzen 9 9950X 16-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 7,
+  "sha256MiBPerS": [
+    2575,
+    2610.6666666666665,
+    2597.3333333333335
+  ],
+  "loadavgAtStart": "0.15 0.03 0.01 1/376 44418",
+  "cells": [
+    {
+      "name": "ref@0.1.600",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.600",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.636",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.636",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-26T09:23:49.477Z"
+}

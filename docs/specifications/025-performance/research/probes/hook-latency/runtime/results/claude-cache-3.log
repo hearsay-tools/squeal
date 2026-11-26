@@ -1,0 +1,30 @@
+
+ RUN  v5.0.3 <sandbox-home>/repo
+
+stdout | runtime-probe/claude.test.ts > bundled hook latency > stays under 80 ms p95 over 20 cold runs per hook
+hook latency ms, best of up to 3 rounds of 20 cold runs, load 1.50
+┌─────────┬───────────────────────────────────────┬────────┬─────┬─────┬─────┬────────┐
+│ (index) │ hook                                  │ rounds │ p50 │ p95 │ max │ budget │
+├─────────┼───────────────────────────────────────┼────────┼─────┼─────┼─────┼────────┤
+│ 0       │ 'session-start'                       │ 1      │ 37  │ 41  │ 44  │ 80     │
+│ 1       │ 'post-tool-batch'                     │ 1      │ 36  │ 40  │ 41  │ 80     │
+│ 2       │ 'pre-tool-use'                        │ 1      │ 30  │ 33  │ 34  │ 80     │
+│ 3       │ 'pre-tool-use (Bash, silent)'         │ 1      │ 27  │ 30  │ 32  │ 80     │
+│ 4       │ 'pre-tool-use (test command, denied)' │ 1      │ 31  │ 37  │ 39  │ 80     │
+│ 5       │ 'stop'                                │ 1      │ 42  │ 46  │ 46  │ 80     │
+│ 6       │ 'stop (silent)'                       │ 1      │ 43  │ 47  │ 49  │ 80     │
+│ 7       │ 'user-prompt-submit'                  │ 1      │ 38  │ 43  │ 44  │ 80     │
+│ 8       │ 'user-prompt-submit (silent)'         │ 1      │ 34  │ 36  │ 39  │ 80     │
+│ 9       │ 'session-end'                         │ 1      │ 31  │ 38  │ 40  │ 80     │
+│ 10      │ 'waiter'                              │ 1      │ 24  │ 29  │ 29  │ 80     │
+│ 11      │ 'session-start (spawn)'               │ 1      │ 41  │ 45  │ 47  │ 200    │
+└─────────┴───────────────────────────────────────┴────────┴─────┴─────┴─────┴────────┘
+
+ ✓ runtime-probe/claude.test.ts (1 test) 8478ms
+   ✓ bundled hook latency (1)
+     ✓ stays under 80 ms p95 over 20 cold runs per hook 8477ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:22:57
+   Duration  9.58s (tests 89%, transform 9%, import 2%)

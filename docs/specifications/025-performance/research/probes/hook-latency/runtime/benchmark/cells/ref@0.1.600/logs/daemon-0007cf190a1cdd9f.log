@@ -1,0 +1,8 @@
+2026-11-26T09:18:37.556Z [48548] squeal daemon: serving <sandbox-home>/results/cells/ref@0.1.600/work/wt0 on <sandbox-home>/results/cells/ref@0.1.600/work/run/squeal-0007cf190a1cdd9f.sock
+2026-11-26T09:18:37.589Z [48548] squeal daemon: full integrity check: ok
+2026-11-26T09:19:36.000Z [48548] squeal daemon: code store: last minute: 98 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T09:20:11.037Z [48548] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 302 to 224 MiB in a 24 ms pause
+2026-11-26T09:20:36.022Z [48548] squeal daemon: code store: last minute: 23 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T09:20:51.500Z [48548] squeal daemon: daemon stopped: squeal stop
+2026-11-26T09:20:51.505Z [48548] squeal daemon: code store: last minute: 20 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T09:20:51.544Z [48548] squeal daemon: daemon stopped: squeal stop

@@ -1,0 +1,64 @@
+
+ RUN  v5.0.3 <sandbox-home>/repo
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"session-start","run":0,"ms":77.62533100000019}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"post-tool-batch","run":0,"ms":72.76727000000005}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"pre-tool-use","run":0,"ms":67.25009799999998}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (Bash, silent)","run":0,"ms":63.670658}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"pre-tool-use (test command, denied)","run":0,"ms":62.90225099999998}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"stop","run":0,"ms":79.71212100000002}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"stop (silent)","run":0,"ms":78.67515200000003}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit","run":0,"ms":72.8167820000001}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"user-prompt-submit (silent)","run":0,"ms":67.16113099999984}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"session-end","run":0,"ms":61.425530999999864}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"waiter","run":0,"ms":55.578483000000006}
+
+stdout | runtime-trace/claude.test.ts > bundled hook latency > stays under 10000 ms p95 over 1 cold runs per hook
+{"probe":true,"hook":"session-start (spawn)","run":0,"ms":94.87095400000021}
+hook latency ms, best of up to 1 rounds of 1 cold runs, load 1.36
+┌─────────┬───────────────────────────────────────┬────────┬─────┬─────┬─────┬────────┐
+│ (index) │ hook                                  │ rounds │ p50 │ p95 │ max │ budget │
+├─────────┼───────────────────────────────────────┼────────┼─────┼─────┼─────┼────────┤
+│ 0       │ 'session-start'                       │ 1      │ 78  │ 78  │ 78  │ 10000  │
+│ 1       │ 'post-tool-batch'                     │ 1      │ 73  │ 73  │ 73  │ 10000  │
+│ 2       │ 'pre-tool-use'                        │ 1      │ 67  │ 67  │ 67  │ 10000  │
+│ 3       │ 'pre-tool-use (Bash, silent)'         │ 1      │ 64  │ 64  │ 64  │ 10000  │
+│ 4       │ 'pre-tool-use (test command, denied)' │ 1      │ 63  │ 63  │ 63  │ 10000  │
+│ 5       │ 'stop'                                │ 1      │ 80  │ 80  │ 80  │ 10000  │
+│ 6       │ 'stop (silent)'                       │ 1      │ 79  │ 79  │ 79  │ 10000  │
+│ 7       │ 'user-prompt-submit'                  │ 1      │ 73  │ 73  │ 73  │ 10000  │
+│ 8       │ 'user-prompt-submit (silent)'         │ 1      │ 67  │ 67  │ 67  │ 10000  │
+│ 9       │ 'session-end'                         │ 1      │ 61  │ 61  │ 61  │ 10000  │
+│ 10      │ 'waiter'                              │ 1      │ 56  │ 56  │ 56  │ 10000  │
+│ 11      │ 'session-start (spawn)'               │ 1      │ 95  │ 95  │ 95  │ 200    │
+└─────────┴───────────────────────────────────────┴────────┴─────┴─────┴─────┴────────┘
+
+ ✓ runtime-trace/claude.test.ts (1 test) 955ms
+   ✓ bundled hook latency (1)
+     ✓ stays under 10000 ms p95 over 1 cold runs per hook 954ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:25:53
+   Duration  2.05s (tests 48%, transform 43%, import 9%)

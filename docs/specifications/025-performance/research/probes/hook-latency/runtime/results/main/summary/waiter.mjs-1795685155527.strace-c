@@ -1,0 +1,59 @@
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- -------------------
+ 74.57    0.036816         231       159        28 futex
+ 17.35    0.008564        2141         4           epoll_pwait
+  2.10    0.001038          41        25           tgkill
+  0.89    0.000441           3       122           munmap
+  0.64    0.000318          63         5         3 clock_nanosleep
+  0.62    0.000308           3        88           rt_sigprocmask
+  0.48    0.000239           2       114           mmap
+  0.41    0.000203           3        61           madvise
+  0.35    0.000175           5        34           close
+  0.30    0.000150           6        24         1 openat
+  0.27    0.000135           2        53           getpid
+  0.24    0.000118          16         7           clone3
+  0.23    0.000112           1        65           rt_sigaction
+  0.21    0.000104          17         6           write
+  0.16    0.000079           2        35           mprotect
+  0.12    0.000060           7         8           prctl
+  0.09    0.000046           5         8           rseq
+  0.09    0.000044           1        31           read
+  0.09    0.000042           1        25         4 rt_sigreturn
+  0.07    0.000035           4         8           set_robust_list
+  0.06    0.000032          10         3           io_uring_enter
+  0.06    0.000029          29         1           rename
+  0.05    0.000026           8         3           io_uring_setup
+  0.05    0.000025           2        11           prlimit64
+  0.05    0.000024           0        30        14 fcntl
+  0.05    0.000023           0        27           fstat
+  0.04    0.000021           0        48           brk
+  0.04    0.000018           1        16           getuid
+  0.03    0.000016           2         6           gettid
+  0.03    0.000016           0        29         1 statx
+  0.03    0.000013           1         9         7 ioctl
+  0.02    0.000012           4         3           epoll_create1
+  0.02    0.000012           3         4           pipe2
+  0.02    0.000011           0        15           geteuid
+  0.02    0.000011           5         2         2 epoll_ctl
+  0.02    0.000009           0        15           getgid
+  0.02    0.000008           1         7           getsockname
+  0.02    0.000008           1         7           getsockopt
+  0.01    0.000006           6         1           pwrite64
+  0.01    0.000006           2         3           eventfd2
+  0.01    0.000005           0        15           capget
+  0.01    0.000004           4         1           uname
+  0.01    0.000004           4         1           sched_getparam
+  0.01    0.000004           4         1           sched_getscheduler
+  0.00    0.000002           0        15           getegid
+  0.00    0.000001           0         3         3 mkdir
+  0.00    0.000001           0         2           sched_getaffinity
+  0.00    0.000000           0         2           pread64
+  0.00    0.000000           0         3         1 access
+  0.00    0.000000           0         1           execve
+  0.00    0.000000           0         1           getcwd
+  0.00    0.000000           0         1           readlink
+  0.00    0.000000           0         1           arch_prctl
+  0.00    0.000000           0         1           set_tid_address
+  0.00    0.000000           0         2           getrandom
+------ ----------- ----------- --------- --------- -------------------
+100.00    0.049374          42      1172        64 total
