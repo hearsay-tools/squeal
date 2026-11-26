@@ -4,16 +4,18 @@ import type { InvalidatedPath, RunnerPackages } from "../../../core/types/runner
 import {
   type AffectedPaths,
   Graph,
+  MANIFEST,
   type StaticClosure,
   type TestFileClosure,
 } from "../../js-graph/graph.js";
 import { readLoaderChain } from "../../js-graph/loader-chain.js";
 import { parserReady } from "../../js-graph/parse.js";
+import { INPUTS_HINT } from "../../js-graph/preload-notes.js";
 import { createResolver } from "../../js-graph/resolver.js";
 
 export type { AffectedPaths, StaticClosure, TestFileClosure } from "../../js-graph/graph.js";
-export { MANIFEST } from "../../js-graph/graph.js";
-export { INPUTS_HINT } from "../../js-graph/preload-notes.js";
+/** The graph's manifest pattern and inputs hint, for the adapter's notes; one import keeps the bundle's module order. */
+export { INPUTS_HINT, MANIFEST };
 
 export interface NodeTestGraphOptions {
   /** The worktree root; closures hold paths inside it only. */
