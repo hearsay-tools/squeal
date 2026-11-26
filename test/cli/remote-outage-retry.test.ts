@@ -85,8 +85,8 @@ function worktree(latest: number, refined: number, listedAt: number, keyed = tru
 }
 
 /** The lane's note and summary: `then` is `N files not run` under not-run, `running here` under local. */
-function remoteDown(store: Store, id: WorktreeId, then: string) {
-  writeRemoteSummary(store, id, SUMMARY);
+function remoteDown(store: Store, id: WorktreeId, then: string, summary = SUMMARY) {
+  writeRemoteSummary(store, id, summary);
   appendNote(store, id, {
     at: 1 as EpochMs,
     revision: 4 as RevisionNumber,
@@ -157,6 +157,19 @@ describe("squeal retry names a recorded remote outage that keeps the listing (ro
     );
     // Under whenLost local the reply is as before.
     remoteDown(w.store, w.id, "running here");
+    expect(await retry([NEW], w.root)).toEqual(before);
+  });
+
+  it("before the listing, with the listing planned here: the remote's outage explains nothing (review 0.1.637 B4)", async () => {
+    const w = worktree(4, 3, 3);
+    w.write(NEW);
+    const before = await retry([NEW], w.root);
+    remoteDown(
+      w.store,
+      w.id,
+      "2 files not run",
+      SUMMARY.replace("planning remote", "planning local"),
+    );
     expect(await retry([NEW], w.root)).toEqual(before);
   });
 

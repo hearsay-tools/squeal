@@ -47,6 +47,12 @@ export interface OutageEvidence {
   readonly listingFailed?: string | undefined;
   /** The selected files' recorded unknown reasons. */
   readonly reasons: readonly string[];
+  /**
+   * The worktree has not listed its test files (or keyed none), so a remote
+   * that plans them may be what holds them. Without it only direct
+   * evidence, a selected file's reason or a listing failure, names an outage.
+   */
+  readonly unlisted?: boolean;
 }
 
 const NOT_RUN = 'whenLost "not-run"';
@@ -54,10 +60,18 @@ const LISTING_FAILED = "runner testFiles failed: ";
 const DOWN = new Set(["unreachable", "refused", "not connected"]);
 const SUMMARY_STATE =
   /: (awake|sleeping|connecting|not connected|degraded-disk|refused|unreachable|released)(?: \((.*?)\))?(?:;|$)/;
+const PLANNING_REMOTE = /; planning remote(?:;|$)/;
 
-/** The outage the evidence records, or `null` when none applies under `whenLost: "not-run"`. */
+/**
+ * The outage the evidence records, or `null` when none applies under
+ * `whenLost: "not-run"`. Review 0.1.637 B4: a lane note never stands in for
+ * the cause of a selected file. Direct evidence (a selected file's reason,
+ * the listing failure) names the outage, and notes and the summary of the
+ * same remote only add its reason and time; with none, the outage holds the
+ * files only while they are not listed and the remote plans them.
+ */
 export function outageOf(evidence: OutageEvidence): RemoteOutage | null {
-  const summary = summaryOutage(evidence.summary);
+  const summary = summaryState(evidence.summary);
   if (evidence.summary !== undefined && summary === null) return null;
   const direct = [
     ...evidence.reasons,
@@ -65,47 +79,77 @@ export function outageOf(evidence: OutageEvidence): RemoteOutage | null {
   ]
     .map(reasonOutage)
     .find((o) => o !== null);
-  const notes = summary === null ? [] : evidence.notes;
-  const laneNote = notes
+  // A summary that says the remote is healthy again ends the outage its older records name.
+  if (summary !== null && !DOWN.has(summary.state)) {
+    return direct === undefined || sameRemote(summary.remote, direct.remote) ? null : direct;
+  }
+  // With no summary only direct evidence counts.
+  if (summary === null) return direct ?? null;
+  const down = summary as RemoteOutage;
+  const lanes = evidence.notes
     .filter((n) => n.topic === "remote-lane" || n.topic?.startsWith("remote-lane:") === true)
     .map((n) => laneNoteOutage(n.text))
-    .findLast((o) => o !== undefined);
-  // The lane's newest note says its files run here (`whenLost: "local"`): no outage holds them.
-  if (direct === undefined && laneNote === null) return null;
-  const listing = notes
+    .filter((n) => n !== undefined);
+  const listings = evidence.notes
     .filter((n) => n.text.startsWith(LISTING_FAILED))
     .map((n) => reasonOutage(n.text.slice(LISTING_FAILED.length)))
-    .findLast((o) => o !== null);
-  const found = direct ?? laneNote ?? listing;
-  if (found === undefined || found === null) return null;
-  const more = [laneNote, listing, summary].find(
-    (o) => o != null && (o.remote === found.remote || o === summary),
-  );
+    .filter((o) => o !== null);
+  const newest = (remote: string) => [
+    ...lanes.flatMap((n) => (n.outage !== null && sameRemote(n.remote, remote) ? [n.outage] : [])),
+    ...listings.filter((o) => sameRemote(o.remote, remote)),
+  ];
+  if (direct !== undefined) return enriched(direct, [...newest(direct.remote).reverse(), down]);
+  if (evidence.unlisted !== true) return null;
+  // The remote's newest lane note says its files run here (`whenLost: "local"`): no outage holds them.
+  const lane = lanes.findLast((n) => sameRemote(n.remote, down.remote));
+  if (lane !== undefined && lane.outage === null) return null;
+  const listing = listings.findLast((o) => sameRemote(o.remote, down.remote));
+  const planned = PLANNING_REMOTE.test(evidence.summary ?? "") ? lane?.outage : undefined;
+  const found = planned ?? listing;
+  if (found === undefined) return null;
+  return enriched(found, [...newest(found.remote).reverse(), down]);
+}
+
+/** `found` with the reason and the time it lacks, from the first of `others` of the same remote that records it. */
+function enriched(found: RemoteOutage, others: readonly RemoteOutage[]): RemoteOutage {
+  const same = others.filter((o) => sameRemote(o.remote, found.remote));
   return {
     ...found,
-    reason: found.reason ?? more?.reason ?? null,
-    since: found.since ?? more?.since ?? null,
+    reason: found.reason ?? same.find((o) => o.reason !== null)?.reason ?? null,
+    since: found.since ?? same.find((o) => o.since !== null)?.since ?? null,
   };
+}
+
+/** A lane's target (`cmd:lan-1`) and the summary's provider and machine (`command cmd:lan-1`) name one remote. */
+function sameRemote(a: string, b: string): boolean {
+  return a === b || a.endsWith(` ${b}`) || b.endsWith(` ${a}`);
 }
 
 /** The outage a snapshot records for files whose unknown reasons are `reasons`. */
 export function snapshotOutage(
   s: Pick<StatusSnapshot, "remote" | "listingFailed" | "daemonNotes">,
   reasons: readonly (string | null | undefined)[],
+  unlisted = false,
 ): RemoteOutage | null {
   return outageOf({
     summary: s.remote,
     notes: s.daemonNotes,
     listingFailed: s.listingFailed,
     reasons: reasons.filter((r): r is string => typeof r === "string"),
+    unlisted,
   });
 }
 
-/** The outage the store records for `worktreeId`, with the unknown reasons of `paths`. */
+/**
+ * The outage the store records for `worktreeId` that explains `paths`: by
+ * their own unknown reasons, or, with `unlisted`, the remote that plans the
+ * files the worktree has not listed.
+ */
 export function storeOutage(
   store: Store,
   worktreeId: WorktreeId,
   paths: readonly string[] = [],
+  unlisted = false,
 ): RemoteOutage | null {
   const wanted = new Set(paths);
   const reasons = [...readUnknownFiles(store, worktreeId).values()]
@@ -115,6 +159,7 @@ export function storeOutage(
     summary: readRemoteSummary(store, worktreeId),
     notes: readDaemonNotes(store, worktreeId),
     reasons,
+    unlisted,
   });
 }
 
@@ -132,7 +177,7 @@ export function listingOutage(
   const header = readHeader(store, worktreeId, undefined, keys);
   const unlisted =
     header.testFilesListed !== true || header.runnerPartPending === true || keys.length === 0;
-  return unlisted ? storeOutage(store, worktreeId, paths) : null;
+  return unlisted ? storeOutage(store, worktreeId, paths, true) : null;
 }
 
 /** `remote cmd:lan-1 unreachable since <ISO> (the host ended); nothing runs here in its place (whenLost "not-run")`. */
@@ -159,16 +204,19 @@ export function retryText(command: string, paths: string): string {
 }
 
 /**
- * A named wait's outage: one recorded while a selected file has no current
- * result or the revision is not listed; `null` with every file current.
+ * A named wait's outage: one a selected file with no current result
+ * records, or the remote that plans the files of a revision not listed;
+ * `null` with every file current, or when the outage explains no selected
+ * file (review 0.1.637 B4: a local timeout beside another runner's outage).
  */
 export function waitOutage(wait: EndedNamed): RemoteOutage | null {
-  const blocked =
-    wait.result.testFilesListed === false || wait.files.some((f) => f.state !== "current");
-  if (!blocked) return null;
+  const unlisted = wait.result.testFilesListed === false;
+  const held = wait.files.filter((f) => f.state !== "current");
+  if (!unlisted && held.length === 0) return null;
   return snapshotOutage(
     wait.result,
-    wait.files.map((f) => f.unknown?.reason),
+    held.map((f) => f.unknown?.reason),
+    unlisted,
   );
 }
 
@@ -185,7 +233,8 @@ const proofRecoveryText = "the side stays unknown; run the proof again once the 
 
 /** `why`, a side's unknown detail, with the policy and the recovery when it records a remote outage. */
 export function sideOutageText(why: string): string {
-  return reasonOutage(why) === null ? why : `${why}; ${proofRecoveryText}`;
+  if (reasonOutage(why) === null || why.endsWith(proofRecoveryText)) return why;
+  return `${why}; ${proofRecoveryText}`;
 }
 
 /** A proof side's outage: the remote, its reason and time, the policy, the recovery. */
@@ -196,18 +245,25 @@ export function outageProofText(o: RemoteOutage): string {
 /**
  * A recorded reason that names a remote: a run's failure (`remote X refused
  * (why); not run here (whenLost "not-run")`, `remote X unreachable; not run
- * here ...`) or a listing failure (`remote X unreachable since T (why); not
- * planned here (whenLost "not-run")`, `remote X refused: why; ...`).
+ * here ...`, and since row 026-30 a lost run's `remote X unreachable during
+ * the run of N files (why); not run here (whenLost "not-run"); waits retry
+ * once X reconnects ...`) or a listing failure (`remote X unreachable since
+ * T (why); not planned here (whenLost "not-run")`, `remote X refused: why;
+ * ...`). A runner's prefix (`vitest: `) may come first; `why` keeps its own
+ * parentheses, as in `the vitest runner host exited (signal SIGKILL)`.
  */
 export function reasonOutage(text: string): RemoteOutage | null {
   if (!text.includes(NOT_RUN)) return null;
-  const run = /remote (\S+) (refused \((.*)\)|unreachable); not run here/.exec(text);
+  const run =
+    /remote (\S+) (?:refused \((.*)\)|unreachable(?: during the run of \d+ files \((.*)\))?); not run here/.exec(
+      text,
+    );
   if (run !== null) {
-    const refused = run[2]?.startsWith("refused") === true;
+    const [, remote, refusal, lost] = run;
     return {
-      remote: run[1] as string,
-      state: refused ? "refused" : "unreachable",
-      reason: refused ? (run[3] ?? null) : null,
+      remote: remote as string,
+      state: refusal === undefined ? "unreachable" : "refused",
+      reason: refusal ?? lost ?? null,
       since: null,
     };
   }
@@ -228,30 +284,38 @@ export function reasonOutage(text: string): RemoteOutage | null {
 
 /**
  * The lane's status note: `remote X refused: why; 3 files not run`, `remote X
- * unreachable since T (why); running here`. `undefined`: not such a note;
- * `null`: its files run here (`whenLost: "local"`).
+ * unreachable since T (why); running here`, with its remote. `undefined`:
+ * not such a note; `outage` `null`: its files run here (`whenLost: "local"`).
  */
-function laneNoteOutage(text: string): RemoteOutage | null | undefined {
+function laneNoteOutage(
+  text: string,
+): { readonly remote: string; readonly outage: RemoteOutage | null } | undefined {
   const m = /^remote (\S+) (?:refused: (.*)|unreachable since (\S+) \((.*)\)); (.+)$/.exec(text);
   if (m === null) return undefined;
-  const [, remote, refusal, since, why, then] = m;
-  if (then === "running here") return null;
+  const [, at, refusal, since, why, then] = m;
+  const remote = at as string;
+  if (then === "running here") return { remote, outage: null };
   return {
-    remote: remote as string,
-    state: refusal === undefined ? "unreachable" : "refused",
-    reason: refusal ?? why ?? null,
-    since: since ?? null,
+    remote,
+    outage: {
+      remote,
+      state: refusal === undefined ? "unreachable" : "refused",
+      reason: refusal ?? why ?? null,
+      since: since ?? null,
+    },
   };
 }
 
-/** The summary's outage when it says the remote is down; `null` otherwise. */
-function summaryOutage(summary: string | undefined): RemoteOutage | null {
+/** The summary's remote and its state, with the reason it gives; `null` when it names no state. */
+function summaryState(
+  summary: string | undefined,
+): (Omit<RemoteOutage, "state"> & { readonly state: string }) | null {
   if (summary === undefined) return null;
   const m = SUMMARY_STATE.exec(summary);
-  if (m === null || !DOWN.has(m[1] as string)) return null;
+  if (m === null) return null;
   return {
     remote: summary.slice(0, m.index),
-    state: m[1] as RemoteOutage["state"],
+    state: m[1] as string,
     reason: m[2] ?? null,
     since: null,
   };

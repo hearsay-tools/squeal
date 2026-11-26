@@ -13,7 +13,13 @@ import { daemonKeyed } from "./proof-green-rows.js";
 import { askGreen, type GreenAsk, type RunInput, readGreen } from "./proof-green-run.js";
 import { endOfRecords } from "./proof-run.js";
 import type { OpenSide, SideAnswer, SideFile } from "./proof-side.js";
-import { listingOutage, outageProofText, storeOutage } from "./remote-outage-text.js";
+import {
+  listingOutage,
+  outageProofText,
+  reasonOutage,
+  sideOutageText,
+  storeOutage,
+} from "./remote-outage-text.js";
 import type { AtOptions } from "./status-at.js";
 import { idOf } from "./status-at-after.js";
 import { commitAllowlist, environmentOf } from "./status-at-call.js";
@@ -195,20 +201,27 @@ export interface BlockedFile {
 
 /**
  * Row 026-31 (gh-278): each blocked file's unknown reason, with the remote
- * outage the commit daemon (`id`, in `main`) recorded when it explains the
- * side: one that keeps its files from being listed for a file it does not
- * list, any for one it could not key. Never a pass: the side stays unknown.
+ * outage the commit daemon (`id`, in `main`) recorded when it explains that
+ * file: its own detail or recorded reason names it, or, for a file the
+ * daemon does not list, the remote keeps the daemon's files from being
+ * listed. Review 0.1.637 B4: read per file, so a sibling's unrelated detail
+ * stays as it was. Never a pass: the side stays unknown.
  */
 export function blockedTexts(
   main: Store | null,
   id: WorktreeId,
   blocked: readonly BlockedFile[],
 ): string[] {
-  const paths = blocked.map((b) => b.ref.path);
-  const listing = main === null ? null : listingOutage(main, id, main.testFileKeys.list(id), paths);
-  const any = main === null ? null : storeOutage(main, id, paths);
+  const keys = main?.testFileKeys.list(id) ?? [];
   return blocked.map((b) => {
-    const outage = b.listing ? listing : any;
+    if (reasonOutage(b.why) !== null) return sideOutageText(b.why);
+    const paths = [b.ref.path];
+    const outage =
+      main === null
+        ? null
+        : b.listing
+          ? listingOutage(main, id, keys, paths)
+          : storeOutage(main, id, paths);
     return outage === null ? b.why : `${b.why}: ${outageProofText(outage)}`;
   });
 }
