@@ -173,6 +173,8 @@ Two settings in `squeal.config.json`, kept apart on purpose (the human, 2026-11-
 
 A guard backs the second setting: a remote run whose failure says the directory is not a Git repository (Git's own "not a git repository" text) stores no result for that file, reruns it here, and status names it with the hint to add it to `remote.needsRepository`. A false failure is never stored as current.
 
+3. **`remote.runHere`** (row 021-40, [#294](https://github.com/hearsay-tools/squeal/issues/294)): test-file patterns whose tests read this machine itself (its kernel, processes or tools). They always run here while a remote lane is on, also when the remote tree is a Git repository (026 D8.4) and under remote planning; no condition sends them remote. A remote result for such a file would be a result about the remote machine stored under a key every worktree shares. Default `[]`.
+
 ### D20. Idle local runner hosts close
 
 The human, 2026-11-12, after the host ran out of memory: "speed is still important but high parallelism is even more important. Many devs don't have 48g of ram just for their agents and test runners." And on the limit: "just a setting. Keep it simple. No need to tweak it on the fly based on the host total memory etc. The default could be based on that, but that's it."
