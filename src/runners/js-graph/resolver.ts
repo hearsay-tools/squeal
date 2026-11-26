@@ -79,6 +79,17 @@ export interface TsconfigSource {
   readonly tsconfigPath?: string | undefined;
 }
 
+/**
+ * Under tsx's rules, a runner's own file lookup in place of tsx's: Jest's `moduleFileExtensions`
+ * order and no `.js` alias (spec 028 D3.3, review 0.1.643 B2). Node's own rules ignore it.
+ */
+export interface ExtensionRules {
+  /** The extensions tried, in order, leading dot included; tsx's order when not given. */
+  readonly extensions?: readonly string[] | undefined;
+  /** What an asked extension may load instead, in order; tsx's `.js`-means-`.ts` when not given. */
+  readonly extensionAlias?: Readonly<Record<string, readonly string[]>> | undefined;
+}
+
 /** The one tsconfig tsx reads for the process: its chain, and its aliases. */
 interface ProjectTsconfig {
   readonly chain: TsconfigPaths;
@@ -98,6 +109,7 @@ export function createResolver(
   chain: LoaderChain,
   root: AbsolutePath,
   source: TsconfigSource = {},
+  rules: ExtensionRules = {},
 ): Resolver {
   let fileSystem = new enhanced.CachedInputFileSystem(fs, Number.POSITIVE_INFINITY);
   let resolvers = new Map<string, ReturnType<typeof enhanced.ResolverFactory.createResolver>>();
@@ -108,6 +120,7 @@ export function createResolver(
   const aliasesOf = new WeakMap<TsconfigPaths, PathAliases | null>();
   let scopes = new Map<string, ModuleFormat>();
   const tsx = chain.rules === "tsx";
+  const alias = (rules.extensionAlias ?? TSX_ALIAS) as Record<string, string[]>;
 
   const exists = (path: string) => {
     try {
@@ -197,7 +210,7 @@ export function createResolver(
         conditionNames: ["node", kind, ...chain.conditions],
         symlinks: true,
         ...(tsx
-          ? { extensions: TSX_EXTENSIONS, extensionAlias: TSX_ALIAS }
+          ? { extensions: [...(rules.extensions ?? TSX_EXTENSIONS)], extensionAlias: alias }
           : kind === "import"
             ? { extensions: [], fullySpecified: true }
             : { extensions: NODE_REQUIRE_EXTENSIONS }),
@@ -319,7 +332,7 @@ export function createResolver(
     if (!tsx || path === null) return null;
     const asked = extname(specifier);
     const got = extname(path);
-    if (TSX_ALIAS[asked] === undefined || got === asked) return null;
+    if (alias[asked] === undefined || got === asked) return null;
     const twin = path.slice(0, -got.length) + asked;
     return exists(twin) ? ([twin, path] as const) : null;
   }

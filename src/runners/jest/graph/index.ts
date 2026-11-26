@@ -39,6 +39,8 @@ export interface JestGraphOptions {
   readonly tsconfigPath?: string | undefined;
   /** The test environment's export conditions, such as `browser` under jsdom. */
   readonly conditions?: readonly string[] | undefined;
+  /** Jest's `moduleFileExtensions`, with or without a leading dot; Jest's default when not given. */
+  readonly moduleFileExtensions?: readonly string[] | undefined;
 }
 
 /** One test file's static closure, its setup files' closures and its snapshot path included. */
@@ -52,7 +54,8 @@ export interface JestClosure extends TestFileClosure {
 /**
  * The static module graph of one Jest project (spec 028 D3.3), before any run observed it: the
  * shared JS/TS graph under Jest's resolution, `moduleNameMapper` first, with tsconfig `paths`,
- * `.jsx`, workspace links at their real paths, and the setup files in every test file's closure.
+ * `moduleFileExtensions` in Jest's order and no `.js`-means-`.ts` alias (review 0.1.643 B2),
+ * workspace links at their real paths, and the setup files in every test file's closure.
  * Every path in and out is relative to the worktree root.
  */
 export interface JestGraph {
@@ -76,6 +79,20 @@ export interface JestGraph {
 /** The tsconfig names tried from `rootDir` up, in the order `resolve.ts`'s ts-node hygiene takes them. */
 const TSCONFIGS = ["tsconfig.spec.json", "tsconfig.json", "tsconfig.base.json"] as const;
 
+/** Jest 29 and 30's default `moduleFileExtensions`. */
+const MODULE_FILE_EXTENSIONS = [
+  "js",
+  "mjs",
+  "cjs",
+  "jsx",
+  "ts",
+  "mts",
+  "cts",
+  "tsx",
+  "json",
+  "node",
+];
+
 export async function createJestGraph(options: JestGraphOptions): Promise<JestGraph> {
   await parserReady;
   const root = realpathSync(options.root) as AbsolutePath;
@@ -92,8 +109,12 @@ export async function createJestGraph(options: JestGraphOptions): Promise<JestGr
     unrecognized: [],
   };
   const tsconfigPath = options.tsconfigPath ?? nearestTsconfig(rootDir, root);
+  const extensions = (options.moduleFileExtensions ?? MODULE_FILE_EXTENSIONS).map((ext) =>
+    ext.startsWith(".") ? ext : `.${ext}`,
+  );
+  // tsx's rules for tsconfig `paths` and module formats, with Jest's own file lookup.
   const resolver = mappedResolver(
-    createResolver(chain, root, { cwd: rootDir, tsconfigPath }),
+    createResolver(chain, root, { cwd: rootDir, tsconfigPath }, { extensions, extensionAlias: {} }),
     mapper,
   );
   const graph = new Graph(root, rootDir, chain, resolver);

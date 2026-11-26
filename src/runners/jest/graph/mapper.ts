@@ -1,4 +1,4 @@
-import { extname, isAbsolute, normalize, resolve } from "node:path";
+import { normalize, resolve } from "node:path";
 import type { AbsolutePath } from "../../../core/types/common.js";
 import type { Resolution, Resolver } from "../../js-graph/resolver.js";
 
@@ -64,46 +64,28 @@ export function compileModuleNameMapper(
   };
 }
 
-/** Extensions Jest resolves by default that the shared resolver's rules leave out. */
-const MORE_EXTENSIONS = [".jsx"] as const;
-
 const UNRESOLVED = { path: null, builtin: false, pair: null } as const;
 
 /**
  * `inner`, with Jest's `moduleNameMapper` applied first: a specifier a pattern matches resolves
  * to the first of its mapped specifiers that resolves, from the same importer, or to nothing
- * (Jest's "Could not locate module ... mapped as"), never to itself. A relative or absolute
- * specifier that does not resolve is tried once more with `.jsx`, which Jest's default
- * `moduleFileExtensions` hold. The reads and absent candidates of every attempt stay in the
- * result, so a mapped target created later re-resolves the importer.
+ * (Jest's "Could not locate module ... mapped as"), never to itself. `inner` holds Jest's
+ * `moduleFileExtensions`, so a mapped target tries them in Jest's order. The reads and absent
+ * candidates of every attempt stay in the result, so a mapped target created later re-resolves
+ * the importer.
  */
 export function mappedResolver(inner: Resolver, mapper: CompiledMapper): Resolver {
-  const once = (specifier: string, importer: AbsolutePath, kind: "import" | "require") => {
-    const first = inner.resolve(specifier, importer, kind);
-    if (first.path !== null || first.builtin || !isPathLike(specifier) || extname(specifier)) {
-      return first;
-    }
-    return merge([
-      first,
-      ...MORE_EXTENSIONS.flatMap((ext) => [
-        inner.resolve(`${specifier}${ext}`, importer, kind),
-        inner.resolve(`${specifier.replace(/\/$/, "")}/index${ext}`, importer, kind),
-      ]),
-    ]);
-  };
   return {
     resolve(specifier, importer, kind) {
       const mapped = mapper.map(specifier);
-      if (mapped === null) return once(specifier, importer, kind);
-      return merge(mapped.map((target) => once(target, importer, kind)));
+      if (mapped === null) return inner.resolve(specifier, importer, kind);
+      return merge(mapped.map((target) => inner.resolve(target, importer, kind)));
     },
     moduleFormat: (file) => inner.moduleFormat(file),
     release: () => inner.release(),
     clear: () => inner.clear(),
   };
 }
-
-const isPathLike = (specifier: string) => specifier.startsWith(".") || isAbsolute(specifier);
 
 /**
  * The first attempt that resolved, carrying the reads of the attempts before it; or none, with
