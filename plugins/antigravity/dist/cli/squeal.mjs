@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.645";
+  if (true) return "0.1.647";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -15146,7 +15146,7 @@ var init_pool = __esm({
         this.#idleSince = null;
         this.#quiet.end();
         const wanted = Math.max(1, Math.floor(want));
-        const fewest2 = Math.min(wanted, Math.max(1, Math.floor(least)));
+        const fewest2 = Math.min(wanted, this.#most(), Math.max(1, Math.floor(least)));
         const { others, inUse, demand, shares, entitled, target } = this.#share(
           wanted,
           lane,
@@ -15274,6 +15274,15 @@ var init_pool = __esm({
           target = Math.min(target, Math.max(0, project.slots - held4 - inUse));
         }
         return { others, inUse, demand, shares, entitled, target };
+      }
+      /**
+       * The most permits one tier can ever hold (row 026-33): the slots, under
+       * the project's cap when it has one. A tier's fewest workers stop here.
+       */
+      #most() {
+        const { project } = this.#options;
+        if (project === void 0 || !(project.slots >= 1)) return this.#hostSlots;
+        return Math.min(this.#hostSlots, Math.floor(project.slots));
       }
       /**
        * The workers the fair shares of a tier of `kind` divide: a checkpoint's
@@ -48976,8 +48985,11 @@ var init_run = __esm({
 function nodeTestTraits(values = {}) {
   const { tierSize } = values;
   return declareTraits({
-    // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
-    tierWidth: () => tierSize?.(),
+    // A run starts `runner.tierSize` files at once, no more than its grant (row 026-33, #292).
+    tierWidth: (_, grant) => {
+      const size = tierSize?.();
+      return size === void 0 ? void 0 : Math.min(size, grant);
+    },
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
     besideBacklog: () => true,
     // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
@@ -49098,7 +49110,7 @@ async function openProject(context2) {
         timeoutMs: runOptions.timeoutMs,
         // A group's tier starts every file it holds (004 D2, D4; 019 D3): the scheduler sized it
         // to the slot's permits, and a file queued here would start after an edit or a close.
-        ...options.concurrency === void 0 || groupRun(runOptions.lane) ? {} : { concurrency: options.concurrency() },
+        ...concurrencyOf(groupRun(runOptions.lane), options.concurrency?.(), runOptions.workers),
         ...env === void 0 ? {} : { env },
         ...runOptions.observeIgnored === true ? { observeIgnored: true } : {},
         ...runOptions.stop === void 0 ? {} : { signal: runOptions.stop },
@@ -49136,6 +49148,12 @@ function observedOf2(seen2, files6, preloadStatic) {
     ...observed3.length > 0 ? { observed: observed3 } : {},
     ...project === void 0 || preloads.length === 0 ? {} : { environmentObserved: [{ project, paths: preloads }] }
   };
+}
+function concurrencyOf(inGroup, size, workers) {
+  if (inGroup) return {};
+  if (workers === void 0) return size === void 0 ? {} : { concurrency: size };
+  const granted = Math.max(1, Math.floor(workers));
+  return { concurrency: size === void 0 ? granted : Math.min(size, granted) };
 }
 function groupRun(lane) {
   return lane !== void 0 && isGroupLane(lane);
@@ -61630,8 +61648,11 @@ var init_run4 = __esm({
 function pytestTraits(values = {}) {
   const { tierSize, batchSize } = values;
   return declareTraits({
-    // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
-    tierWidth: () => tierSize?.(),
+    // A run starts `runner.tierSize` processes at once, no more than its grant (row 026-33, #292).
+    tierWidth: (_, grant) => {
+      const size = tierSize?.();
+      return size === void 0 ? void 0 : Math.min(size, grant);
+    },
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
     besideBacklog: () => true,
     // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
@@ -78883,7 +78904,7 @@ async function runProject(context2, testFiles3, runOptions) {
     logDir: join168(runOptions.logDir, "pytest", encodeURIComponent(project.name)),
     timeoutMs: runOptions.timeoutMs,
     // A group's tier starts every file it holds, each alone (004 D2, 007 D6, 019 D3).
-    ...options.concurrency === void 0 || inGroup ? {} : { concurrency: options.concurrency() },
+    ...concurrencyOf2(inGroup, options.concurrency?.(), runOptions.workers),
     ...options.batchSize === void 0 ? {} : { batchSize: options.batchSize() },
     ...inGroup ? { alone: () => true } : {},
     ...options.cacheDir === void 0 ? {} : { cacheDir: options.cacheDir },
@@ -78904,6 +78925,12 @@ async function runProject(context2, testFiles3, runOptions) {
     skippedFiles: run9.skippedFiles
   };
   return { kind: "ran", run: run9, report: report4 };
+}
+function concurrencyOf2(inGroup, size, workers) {
+  if (inGroup) return {};
+  if (workers === void 0) return size === void 0 ? {} : { concurrency: size };
+  const granted = Math.max(1, Math.floor(workers));
+  return { concurrency: size === void 0 ? granted : Math.min(size, granted) };
 }
 function groupRun2(lane) {
   return lane !== void 0 && isGroupLane(lane);
@@ -86889,7 +86916,7 @@ function createHostAdmission(open8, holdMs = ADMITTED_HOLD_MS) {
     held4.set(key3, { lease, timer });
   };
   return {
-    admit({ want, least, token: token2 }) {
+    admit({ want, least, token: token2, kind }) {
       const key3 = token2 ?? DEFAULT_KEY;
       if (want < 1 && token2 === void 0) dropAll();
       else drop2(key3);
@@ -86900,7 +86927,7 @@ function createHostAdmission(open8, holdMs = ADMITTED_HOLD_MS) {
         pool ??= open8((line) => {
           refusal4 = line;
         });
-        lease = pool.acquire(want, "fast", least, "backlog");
+        lease = pool.acquire(want, "fast", least, kind === "checkpoint" ? kind : "backlog");
       } catch (error) {
         hold(key3, UNGRANTED);
         return { grant: want, failed: error instanceof Error ? error.message : String(error) };
@@ -86976,7 +87003,8 @@ function admitRun(admit3, testFiles3, run9, wait) {
   const ask2 = {
     want: widthAt(testFiles3.length),
     least: widthAt(1),
-    ...wait.token === void 0 ? {} : { token: wait.token }
+    ...wait.token === void 0 ? {} : { token: wait.token },
+    ...run9.background === true ? {} : { kind: "checkpoint" }
   };
   return remoteAdmission(admit3, ask2, { ...wait, cancel: cancelOf(run9) });
 }
