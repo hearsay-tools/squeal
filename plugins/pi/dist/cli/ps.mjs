@@ -1491,8 +1491,8 @@ function orphanTestProcesses(c) {
       c.name("flag orphan-test-process", why);
       continue;
     }
-    const token = mark.split(":")[0];
-    found2.push({ pid, reason: `its mark's token ${token} names no live daemon, on both samples` });
+    const token2 = mark.split(":")[0];
+    found2.push({ pid, reason: `its mark's token ${token2} names no live daemon, on both samples` });
   }
   return found2;
 }
@@ -3824,6 +3824,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
+  containers: {},
   vitest: { excludeProjects: [], exclude: [] },
   slow: {
     include: [],
@@ -3915,7 +3916,8 @@ var FIELDS = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  prepare
+  prepare,
+  container: nonEmptyString
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -4163,68 +4165,16 @@ var CODE_SHAPE = {
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
-// src/core/daemon/policy-gate.ts
-var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
-var GATE_SHAPE = { gate: { groups } };
-
-// src/core/daemon/policy-lint.ts
-var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
-var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
-var TOOL_NAMES = ["eslint", "oxlint"];
-var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
-var LINT_SHAPE = {
-  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
-};
-
-// src/core/daemon/policy-node.ts
-var node = (v) => v === "project" || v === "session" ? null : '"project" or "session"';
-var NODE_SHAPE = { node };
-
-// src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute10, posix as posix2 } from "node:path";
-var FIELDS2 = {
-  name: nonEmptyString,
-  cwd: insideRoot,
-  python: nonEmptyString,
-  args: strings,
-  env: variables,
-  include: globs,
-  exclude: globs,
-  slow: boolean,
-  batchSize: positiveInteger3,
-  slots
-};
-var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
-function positiveInteger3(value) {
-  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
-}
-var SLOT_FIELDS = {
-  toxParallelEnv: boolean,
-  max: positiveInteger3
-};
-function slots(value) {
-  const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
-  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
-}
-function pytestProjects(value, path) {
-  return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
-}
-function withDefaults2(entry) {
-  return { ...entry, args: entry.args ?? [], env: entry.env ?? {} };
-}
-var pythonInsideRoot = (entry) => {
-  const python = entry.python;
-  if (python === void 0 || isAbsolute10(python)) return null;
-  const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
-  if (insideRoot(path) === null) return null;
-  return {
-    key: "python",
-    problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
-  };
+// src/core/types/policy-containers.ts
+var CONTAINER_TARGET_DEFAULTS = {
+  keyMode: "build-content",
+  dockerfileInputs: [],
+  dependencyServices: [],
+  env: {}
 };
 
 // src/core/daemon/policy-remote.ts
-var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var kept = (key, bad) => (value) => {
   if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) {
     return "an array of strings";
@@ -4248,7 +4198,137 @@ var commands = kept(
 var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
 var REMOTE_SHAPE = {
   requires: { commands },
-  remote: { allowed: boolean4, needsRepository }
+  remote: { allowed: boolean3, needsRepository }
+};
+
+// src/core/daemon/policy-containers.ts
+function dockerToken(value) {
+  return typeof value === "string" && /^[^-\s]\S*$/.test(value) && !new RegExp("\\p{Cc}", "u").test(value);
+}
+var token = (what) => (v) => dockerToken(v) ? null : `${what} with no space, control character or leading "-"`;
+var KEY_MODES = ["build-content", "image-id"];
+var keyMode = (v) => KEY_MODES.includes(v) ? null : '"build-content" or "image-id"';
+var workdir = (v) => typeof v === "string" && v.startsWith("/") && !new RegExp("\\p{Cc}", "u").test(v) ? null : "an absolute POSIX path such as /app";
+var listOf = (what, each) => (v) => Array.isArray(v) && v.every(each) ? null : `an array of ${what}`;
+var repositoryPath = (v) => typeof v === "string" && v !== "" && !v.startsWith("\\") && insideRoot(v) === null;
+var FIELDS2 = {
+  image: token("an image name"),
+  network: token("a network name"),
+  workdir,
+  keyMode,
+  dockerfileInputs: listOf("repository-relative paths", repositoryPath),
+  dependencyServices: listOf("service names", dockerToken),
+  env: variables
+};
+function targetProblem(entry) {
+  if (!isRecord(entry)) return `must be an object, got ${JSON.stringify(entry)}`;
+  const unknown = Object.keys(entry).find((key) => !Object.hasOwn(FIELDS2, key));
+  if (unknown !== void 0) return `has unknown key "${unknown}"`;
+  if (entry.image === void 0) return 'has no "image"';
+  for (const [key, field] of Object.entries(FIELDS2)) {
+    const given = entry[key];
+    if (given === void 0) continue;
+    const expected = field(given);
+    if (expected !== null) {
+      const why = typeof expected === "object" ? expected.problem : `must be ${expected}`;
+      return `"${key}" ${why}, got ${JSON.stringify(given)}`;
+    }
+  }
+  return null;
+}
+function containerTargets(value) {
+  if (!isRecord(value)) return "an object from target name to a container target";
+  const kept2 = {};
+  const problems = [];
+  for (const [name2, entry] of Object.entries(value)) {
+    const problem = commandName(name2) ? targetProblem(entry) : 'has a name with a space, "/", "\\", control character or leading "-"';
+    if (problem === null) {
+      kept2[name2] = {
+        ...CONTAINER_TARGET_DEFAULTS,
+        ...entry
+      };
+    } else problems.push(`"containers.${name2}" ${problem}; it is left out`);
+  }
+  return { kept: kept2, problems };
+}
+var RUNNER_LISTS = ["nodeTest", "pytest"];
+function settleContainers(policy) {
+  const problems = [];
+  let settled = policy;
+  for (const list of RUNNER_LISTS) {
+    const projects = policy[list];
+    const kept2 = projects.filter((project) => {
+      const { container } = project;
+      if (container === void 0 || Object.hasOwn(policy.containers, container)) return true;
+      problems.push(
+        `"${list}" project ${JSON.stringify(project.name)} names container ${JSON.stringify(container)}, which "containers" does not declare; it is skipped`
+      );
+      return false;
+    });
+    if (kept2.length !== projects.length) settled = { ...settled, [list]: kept2 };
+  }
+  return { policy: settled, problems };
+}
+
+// src/core/daemon/policy-gate.ts
+var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
+var GATE_SHAPE = { gate: { groups } };
+
+// src/core/daemon/policy-lint.ts
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var TOOL_NAMES = ["eslint", "oxlint"];
+var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
+var LINT_SHAPE = {
+  lint: { enabled: boolean4, include: globs3, exclude: globs3, blocking: boolean4, tools }
+};
+
+// src/core/daemon/policy-node.ts
+var node = (v) => v === "project" || v === "session" ? null : '"project" or "session"';
+var NODE_SHAPE = { node };
+
+// src/core/daemon/policy-pytest.ts
+import { isAbsolute as isAbsolute10, posix as posix2 } from "node:path";
+var FIELDS3 = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  python: nonEmptyString,
+  args: strings,
+  env: variables,
+  include: globs,
+  exclude: globs,
+  slow: boolean,
+  batchSize: positiveInteger3,
+  slots,
+  container: nonEmptyString
+};
+var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger3(value) {
+  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
+var SLOT_FIELDS = {
+  toxParallelEnv: boolean,
+  max: positiveInteger3
+};
+function slots(value) {
+  const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
+  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
+}
+function pytestProjects(value, path) {
+  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, pythonInsideRoot);
+}
+function withDefaults2(entry) {
+  return { ...entry, args: entry.args ?? [], env: entry.env ?? {} };
+}
+var pythonInsideRoot = (entry) => {
+  const python = entry.python;
+  if (python === void 0 || isAbsolute10(python)) return null;
+  const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
+  if (insideRoot(path) === null) return null;
+  return {
+    key: "python",
+    problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
+  };
 };
 
 // src/core/keys/observed.ts
@@ -4380,6 +4460,8 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  // Spec 027 D4 (row 027-04).
+  containers: containerTargets,
   vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
   slow: {
     include: slowInclude,
@@ -4417,12 +4499,13 @@ function loadPolicy(root) {
 }
 var lastPolicies = /* @__PURE__ */ new Map();
 function settle(loaded) {
-  const settled = settleChecks(loaded.value);
+  const contained = settleContainers(loaded.value);
+  const settled = settleChecks(contained.policy);
   return {
     policy: withExits(
-      settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks }
+      settled.problems.length === 0 ? contained.policy : { ...contained.policy, checks: settled.checks }
     ),
-    problems: [...loaded.problems, ...settled.problems],
+    problems: [...loaded.problems, ...contained.problems, ...settled.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
@@ -4609,8 +4692,8 @@ function readOne(db, d, runsOf, table, namespace, ownStart, unknown) {
       "work",
       `its row is a predecessor's: its record, token and last use are ${UNKNOWN2} until it registers`
     );
-  const token = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version), null);
-  const record = row2 === null || theirs ? null : recordOf(row2, token);
+  const token2 = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version), null);
+  const record = row2 === null || theirs ? null : recordOf(row2, token2);
   const counts = new Map(
     all(db, PENDING, id).map((r) => [str2(r, "pending"), num2(r, "n")])
   );
@@ -4678,7 +4761,7 @@ ${agentId}`;
   return {
     record,
     recordedStartedAt: startedAt,
-    token,
+    token: token2,
     pending: counts.get("queued") ?? 0,
     running: counts.get("running") ?? 0,
     tiers,
@@ -4699,7 +4782,7 @@ var OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
 var CONSUMERS = `SELECT session_id, agent_id FROM consumers
   WHERE worktree_id = ? ORDER BY session_id, agent_id`;
 var UNKNOWN2 = "has a format this release does not know";
-function recordOf(row2, token) {
+function recordOf(row2, token2) {
   const socketPath = strOrNull2(row2, "daemon_socket");
   if (socketPath === null) return null;
   return {
@@ -4708,7 +4791,7 @@ function recordOf(row2, token) {
     heartbeatAt: num2(row2, "daemon_heartbeat_at"),
     heartbeatIntervalMs: num2(row2, "daemon_heartbeat_interval_ms"),
     squealVersion: str2(row2, "daemon_version"),
-    ...token === null ? {} : { token }
+    ...token2 === null ? {} : { token: token2 }
   };
 }
 var NO_SLOW = { waits: false, running: [] };

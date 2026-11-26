@@ -457,6 +457,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
+  containers: {},
   vitest: { excludeProjects: [], exclude: [] },
   slow: {
     include: [],
@@ -638,7 +639,8 @@ var FIELDS = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  prepare
+  prepare,
+  container: nonEmptyString
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -886,68 +888,16 @@ var CODE_SHAPE = {
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
-// src/core/daemon/policy-gate.ts
-var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
-var GATE_SHAPE = { gate: { groups } };
-
-// src/core/daemon/policy-lint.ts
-var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
-var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
-var TOOL_NAMES = ["eslint", "oxlint"];
-var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
-var LINT_SHAPE = {
-  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
-};
-
-// src/core/daemon/policy-node.ts
-var node = (v) => v === "project" || v === "session" ? null : '"project" or "session"';
-var NODE_SHAPE = { node };
-
-// src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute2, posix as posix3 } from "node:path";
-var FIELDS2 = {
-  name: nonEmptyString,
-  cwd: insideRoot,
-  python: nonEmptyString,
-  args: strings,
-  env: variables,
-  include: globs,
-  exclude: globs,
-  slow: boolean,
-  batchSize: positiveInteger3,
-  slots
-};
-var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
-function positiveInteger3(value) {
-  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
-}
-var SLOT_FIELDS = {
-  toxParallelEnv: boolean,
-  max: positiveInteger3
-};
-function slots(value) {
-  const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
-  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
-}
-function pytestProjects(value, path) {
-  return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
-}
-function withDefaults2(entry2) {
-  return { ...entry2, args: entry2.args ?? [], env: entry2.env ?? {} };
-}
-var pythonInsideRoot = (entry2) => {
-  const python = entry2.python;
-  if (python === void 0 || isAbsolute2(python)) return null;
-  const path = posix3.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
-  if (insideRoot(path) === null) return null;
-  return {
-    key: "python",
-    problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
-  };
+// src/core/types/policy-containers.ts
+var CONTAINER_TARGET_DEFAULTS = {
+  keyMode: "build-content",
+  dockerfileInputs: [],
+  dependencyServices: [],
+  env: {}
 };
 
 // src/core/daemon/policy-remote.ts
-var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var kept = (key, bad) => (value) => {
   if (!Array.isArray(value) || !value.every((entry2) => typeof entry2 === "string")) {
     return "an array of strings";
@@ -971,7 +921,137 @@ var commands = kept(
 var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
 var REMOTE_SHAPE = {
   requires: { commands },
-  remote: { allowed: boolean4, needsRepository }
+  remote: { allowed: boolean3, needsRepository }
+};
+
+// src/core/daemon/policy-containers.ts
+function dockerToken(value) {
+  return typeof value === "string" && /^[^-\s]\S*$/.test(value) && !new RegExp("\\p{Cc}", "u").test(value);
+}
+var token = (what) => (v) => dockerToken(v) ? null : `${what} with no space, control character or leading "-"`;
+var KEY_MODES = ["build-content", "image-id"];
+var keyMode = (v) => KEY_MODES.includes(v) ? null : '"build-content" or "image-id"';
+var workdir = (v) => typeof v === "string" && v.startsWith("/") && !new RegExp("\\p{Cc}", "u").test(v) ? null : "an absolute POSIX path such as /app";
+var listOf = (what, each) => (v) => Array.isArray(v) && v.every(each) ? null : `an array of ${what}`;
+var repositoryPath = (v) => typeof v === "string" && v !== "" && !v.startsWith("\\") && insideRoot(v) === null;
+var FIELDS2 = {
+  image: token("an image name"),
+  network: token("a network name"),
+  workdir,
+  keyMode,
+  dockerfileInputs: listOf("repository-relative paths", repositoryPath),
+  dependencyServices: listOf("service names", dockerToken),
+  env: variables
+};
+function targetProblem(entry2) {
+  if (!isRecord(entry2)) return `must be an object, got ${JSON.stringify(entry2)}`;
+  const unknown = Object.keys(entry2).find((key) => !Object.hasOwn(FIELDS2, key));
+  if (unknown !== void 0) return `has unknown key "${unknown}"`;
+  if (entry2.image === void 0) return 'has no "image"';
+  for (const [key, field] of Object.entries(FIELDS2)) {
+    const given = entry2[key];
+    if (given === void 0) continue;
+    const expected = field(given);
+    if (expected !== null) {
+      const why = typeof expected === "object" ? expected.problem : `must be ${expected}`;
+      return `"${key}" ${why}, got ${JSON.stringify(given)}`;
+    }
+  }
+  return null;
+}
+function containerTargets(value) {
+  if (!isRecord(value)) return "an object from target name to a container target";
+  const kept2 = {};
+  const problems = [];
+  for (const [name2, entry2] of Object.entries(value)) {
+    const problem = commandName(name2) ? targetProblem(entry2) : 'has a name with a space, "/", "\\", control character or leading "-"';
+    if (problem === null) {
+      kept2[name2] = {
+        ...CONTAINER_TARGET_DEFAULTS,
+        ...entry2
+      };
+    } else problems.push(`"containers.${name2}" ${problem}; it is left out`);
+  }
+  return { kept: kept2, problems };
+}
+var RUNNER_LISTS = ["nodeTest", "pytest"];
+function settleContainers(policy) {
+  const problems = [];
+  let settled2 = policy;
+  for (const list of RUNNER_LISTS) {
+    const projects = policy[list];
+    const kept2 = projects.filter((project) => {
+      const { container } = project;
+      if (container === void 0 || Object.hasOwn(policy.containers, container)) return true;
+      problems.push(
+        `"${list}" project ${JSON.stringify(project.name)} names container ${JSON.stringify(container)}, which "containers" does not declare; it is skipped`
+      );
+      return false;
+    });
+    if (kept2.length !== projects.length) settled2 = { ...settled2, [list]: kept2 };
+  }
+  return { policy: settled2, problems };
+}
+
+// src/core/daemon/policy-gate.ts
+var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
+var GATE_SHAPE = { gate: { groups } };
+
+// src/core/daemon/policy-lint.ts
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var TOOL_NAMES = ["eslint", "oxlint"];
+var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
+var LINT_SHAPE = {
+  lint: { enabled: boolean4, include: globs3, exclude: globs3, blocking: boolean4, tools }
+};
+
+// src/core/daemon/policy-node.ts
+var node = (v) => v === "project" || v === "session" ? null : '"project" or "session"';
+var NODE_SHAPE = { node };
+
+// src/core/daemon/policy-pytest.ts
+import { isAbsolute as isAbsolute2, posix as posix3 } from "node:path";
+var FIELDS3 = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  python: nonEmptyString,
+  args: strings,
+  env: variables,
+  include: globs,
+  exclude: globs,
+  slow: boolean,
+  batchSize: positiveInteger3,
+  slots,
+  container: nonEmptyString
+};
+var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger3(value) {
+  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
+var SLOT_FIELDS = {
+  toxParallelEnv: boolean,
+  max: positiveInteger3
+};
+function slots(value) {
+  const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
+  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
+}
+function pytestProjects(value, path) {
+  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, pythonInsideRoot);
+}
+function withDefaults2(entry2) {
+  return { ...entry2, args: entry2.args ?? [], env: entry2.env ?? {} };
+}
+var pythonInsideRoot = (entry2) => {
+  const python = entry2.python;
+  if (python === void 0 || isAbsolute2(python)) return null;
+  const path = posix3.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
+  if (insideRoot(path) === null) return null;
+  return {
+    key: "python",
+    problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
+  };
 };
 
 // src/core/keys/observed.ts
@@ -1103,6 +1183,8 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  // Spec 027 D4 (row 027-04).
+  containers: containerTargets,
   vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
   slow: {
     include: slowInclude,
@@ -1140,12 +1222,13 @@ function loadPolicy(root) {
 }
 var lastPolicies = /* @__PURE__ */ new Map();
 function settle(loaded) {
-  const settled2 = settleChecks(loaded.value);
+  const contained = settleContainers(loaded.value);
+  const settled2 = settleChecks(contained.policy);
   return {
     policy: withExits(
-      settled2.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled2.checks }
+      settled2.problems.length === 0 ? contained.policy : { ...contained.policy, checks: settled2.checks }
     ),
-    problems: [...loaded.problems, ...settled2.problems],
+    problems: [...loaded.problems, ...contained.problems, ...settled2.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
@@ -1180,7 +1263,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.642";
+  if (true) return "0.1.643";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3028,10 +3111,10 @@ function createWorktreeRepo(conn) {
     if (raw === null) return void 0;
     try {
       const value = JSON.parse(str(raw, "value"));
-      const token = toDaemonToken(value, startedAt, version);
-      if (token === null || token === void 0) return void 0;
+      const token2 = toDaemonToken(value, startedAt, version);
+      if (token2 === null || token2 === void 0) return void 0;
       const executable = isRecord(value) ? value.executable : void 0;
-      return typeof executable === "string" ? { token, executable } : { token };
+      return typeof executable === "string" ? { token: token2, executable } : { token: token2 };
     } catch {
       return void 0;
     }
@@ -3057,8 +3140,8 @@ function createWorktreeRepo(conn) {
   const toRecord2 = (row) => {
     const record = fromRow(row);
     const d = record.daemon;
-    const token = d === null ? void 0 : tokenRowOf(record.id, d.startedAt, d.squealVersion);
-    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, ...token } };
+    const token2 = d === null ? void 0 : tokenRowOf(record.id, d.startedAt, d.squealVersion);
+    return token2 === void 0 || d === null ? record : { ...record, daemon: { ...d, ...token2 } };
   };
   return {
     get: (id) => {
@@ -3126,8 +3209,8 @@ function createWorktreeRepo(conn) {
       const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
       if (row === null || startedAt === null) return null;
       const squealVersion2 = strOrNull(row, "daemon_version");
-      const token = tokenOf(id, startedAt, squealVersion2);
-      return { startedAt, squealVersion: squealVersion2, ...token === void 0 ? {} : { token } };
+      const token2 = tokenOf(id, startedAt, squealVersion2);
+      return { startedAt, squealVersion: squealVersion2, ...token2 === void 0 ? {} : { token: token2 } };
     },
     remove: (id) => {
       conn.transaction(() => {
@@ -6431,8 +6514,8 @@ function readCommandHolds(store, worktreeId) {
 }
 function isCommandHold(entry2) {
   if (!isRecord(entry2)) return false;
-  const { token, since, until, command, wrapper, child } = entry2;
-  return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
+  const { token: token2, since, until, command, wrapper, child } = entry2;
+  return typeof token2 === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
 }
 
 // src/core/status/open-runs.ts
@@ -14464,18 +14547,18 @@ var DaemonWriter = class {
   async send(batch, release2) {
     const socket = this.#socketPath();
     if (socket === null) return "not-taken";
-    const token = this.#token;
+    const token2 = this.#token;
     if (release2) this.#token = null;
     const request = {
       type: "write",
       worktreeId: this.#options.worktreeId,
       storeSchema: this.#options.storeSchema,
-      token,
+      token: token2,
       release: release2,
       batch: encodeBatch(batch)
     };
     const answer = await this.#ask(socket, request);
-    if (!isWrite(answer)) return this.#notTaken("not-taken", socket, token);
+    if (!isWrite(answer)) return this.#notTaken("not-taken", socket, token2);
     const deadline = Date.now() + this.#options.boundMs;
     let state = answer;
     for (let attempt = 0; state.written === null; attempt++) {
@@ -14491,15 +14574,15 @@ var DaemonWriter = class {
       state = next;
     }
     if (state.written) return "written";
-    return this.#notTaken("not-taken", socket, release2 ? null : token);
+    return this.#notTaken("not-taken", socket, release2 ? null : token2);
   }
   async release() {
-    const token = this.#token;
+    const token2 = this.#token;
     const socket = this.#socket;
     this.#token = null;
-    if (token === null || socket === null || socket === void 0) return;
+    if (token2 === null || socket === null || socket === void 0) return;
     const { worktreeId } = this.#options;
-    await this.#ask(socket, { type: "release", worktreeId, token });
+    await this.#ask(socket, { type: "release", worktreeId, token: token2 });
   }
   #socketPath() {
     if (this.#off) return null;
@@ -14529,12 +14612,12 @@ var DaemonWriter = class {
    * holds there (`token`) is ended first: its process lives on, and would
    * keep it (review 0.1.442 B3).
    */
-  async #notTaken(answer, socket, token) {
+  async #notTaken(answer, socket, token2) {
     this.#off = true;
     this.#token = null;
-    if (socket !== void 0 && token !== void 0 && token !== null) {
+    if (socket !== void 0 && token2 !== void 0 && token2 !== null) {
       const { worktreeId } = this.#options;
-      await this.#ask(socket, { type: "release", worktreeId, token }).catch(() => null);
+      await this.#ask(socket, { type: "release", worktreeId, token: token2 }).catch(() => null);
     }
     return answer;
   }
@@ -14544,8 +14627,8 @@ var DaemonWriter = class {
 };
 function isLease(answer) {
   if (answer === null || !answer.ok || answer.type !== "lease") return false;
-  const { token, holder } = answer;
-  return (token === null || typeof token === "string") && holder !== void 0;
+  const { token: token2, holder } = answer;
+  return (token2 === null || typeof token2 === "string") && holder !== void 0;
 }
 function isWrite(answer) {
   if (answer === null || !answer.ok || answer.type !== "write") return false;
