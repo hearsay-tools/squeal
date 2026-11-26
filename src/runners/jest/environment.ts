@@ -41,8 +41,8 @@ export type JestRead =
       readonly ok: false;
       readonly error: string;
       /**
-       * What the evaluation loaded or read before it failed, and the worktree
-       * files it asked for that were missing; absent when the child gave no answer.
+       * The existing worktree files the evaluation loaded or read before it
+       * failed, never a missing one; absent when the child gave no answer.
        */
       readonly configDeps?: readonly AbsolutePath[];
     };
@@ -55,15 +55,14 @@ const READ_TIMEOUT_MS = 60_000;
  * reads with `fs` (review 0.1.644 B4), then walks `roots` (skipping
  * `node_modules` and `.git`) for the files Jest's SearchSource would select.
  * Its JSON is the last line it prints, with the recorded files on a failure
- * too. A failure also names the worktree files a path `require`, `import` or
- * read asked for and did not find, so their creation reads the config again
- * (review 0.1.644-r2 B4); a healthy read names only files that exist.
+ * too. It names only files that exist: it never guesses what a missing path
+ * would resolve to. A project whose config fails to read retries on any edit
+ * instead (the adapter's `invalidate`, review 0.1.644-r3 B4).
  */
 const READER = String.raw`
 const path = require("path");
 const fs = require("fs");
-const Module = require("module");
-const { createRequire, registerHooks } = Module;
+const { createRequire, registerHooks } = require("module");
 const { fileURLToPath } = require("url");
 const [jestConfig, configPath, worktree] = process.argv.slice(1);
 const print = (value) => process.stdout.write("\n" + JSON.stringify(value) + "\n");
@@ -80,30 +79,16 @@ const record = (target) => {
     else if (Buffer.isBuffer(target)) seen.add(path.resolve(target.toString()));
   } catch {}
 };
-const local = (file) => {
-  const root = roots.find((r) => file.startsWith(r + path.sep));
-  return root === undefined ? null : worktree + file.slice(root.length);
-};
-const isPath = (request) =>
-  typeof request === "string" && (request.startsWith("./") || request.startsWith("../") || path.isAbsolute(request));
-const EXTS = [".js", ".cjs", ".mjs", ".ts", ".cts", ".mts", ".json"];
-// A missing file a worktree module asked for: creating it may repair the config (review 0.1.644-r2 B4).
-const missed = (base) => {
-  record(base);
-  if (path.extname(base) === "") for (const ext of EXTS) record(base + ext);
-};
-const configDeps = (cached, failed) => {
+const configDeps = (cached) => {
   for (const file of Object.keys(require.cache)) if (!cached.has(file)) seen.add(file);
   const out = new Set();
   for (const file of seen) {
-    const at = local(file);
-    if (at === null) continue;
-    const parts = at.slice(worktree.length + 1).split(path.sep);
+    const root = roots.find((r) => file.startsWith(r + path.sep));
+    if (root === undefined) continue;
+    const local = worktree + file.slice(root.length);
+    const parts = local.slice(worktree.length + 1).split(path.sep);
     if (parts.includes("node_modules") || parts.includes(".git")) continue;
-    // A healthy read keys what exists; a failed one also watches what was missing.
-    let stat = null;
-    try { stat = fs.statSync(at); } catch {}
-    if (stat !== null ? stat.isFile() : failed) out.add(at);
+    try { if (fs.statSync(local).isFile()) out.add(local); } catch {}
   }
   return [...out].sort();
 };
@@ -112,37 +97,8 @@ const configDeps = (cached, failed) => {
   const cached = new Set(Object.keys(require.cache));
   let hooks = null;
   try {
-    hooks = registerHooks({
-      resolve(specifier, context, next) {
-        try {
-          const resolved = next(specifier, context);
-          record(resolved.url);
-          return resolved;
-        } catch (error) {
-          const parent = context.parentURL;
-          if (recording && typeof parent === "string" && parent.startsWith("file:")
-            && (isPath(specifier) || specifier.startsWith("file:"))) {
-            try { const at = fileURLToPath(new URL(specifier, parent)); if (local(at) !== null) record(at); } catch {}
-          }
-          throw error;
-        }
-      },
-      load(url, context, next) { record(url); return next(url, context); },
-    });
+    hooks = registerHooks({ load(url, context, next) { record(url); return next(url, context); } });
   } catch {}
-  const resolveFilename = Module._resolveFilename;
-  Module._resolveFilename = function (request, parent, ...rest) {
-    const from = parent && typeof parent.filename === "string" && local(parent.filename) !== null
-      && isPath(request) ? parent.filename : null;
-    try {
-      const resolved = resolveFilename.call(this, request, parent, ...rest);
-      if (from !== null) record(resolved);
-      return resolved;
-    } catch (error) {
-      if (from !== null) missed(path.resolve(path.dirname(from), request));
-      throw error;
-    }
-  };
   const wrapped = [[fs, "readFileSync"], [fs, "readFile"], [fs.promises, "readFile"]];
   const originals = wrapped.map(([owner, name]) => owner[name]);
   wrapped.forEach(([owner, name], i) => {
@@ -163,14 +119,13 @@ const configDeps = (cached, failed) => {
       }
     } catch {}
   } catch (error) {
-    throw Object.assign(new Error(String((error && error.message) || error)), { deps: configDeps(cached, true) });
+    throw Object.assign(new Error(String((error && error.message) || error)), { deps: configDeps(cached) });
   } finally {
     recording = false;
-    Module._resolveFilename = resolveFilename;
     wrapped.forEach(([owner, name], i) => { owner[name] = originals[i]; });
     try { if (hooks !== null) hooks.deregister(); } catch {}
   }
-  deps = configDeps(cached, false);
+  deps = configDeps(cached);
   const util = require(createRequire(path.join(jestConfig, "package.json")).resolve("jest-util"));
   const exts = new Set(projectConfig.moduleFileExtensions.map((e) => "." + e));
   const match = projectConfig.testMatch.length > 0 ? util.globsToMatcher(projectConfig.testMatch) : null;
@@ -360,7 +315,7 @@ export function unavailableEnvironment(
   project: JestProject,
   note: string,
   adapterVersion: string,
-  /** The files the adapter watches while it cannot read: an edit of one may fix it. */
+  /** What a config that failed to read had loaded: an edit of one may fix it. */
   configDeps: readonly AbsolutePath[] = [],
 ): RunnerEnvironment {
   const cwd = slashes(relative(root, jestCwd(root, project)));

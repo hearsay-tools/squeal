@@ -71,7 +71,7 @@ type Opened =
       readonly ok: false;
       readonly note: string;
       readonly install: JestInstall | null;
-      /** The files a failed config evaluation loaded: an edit of one reads the project again. */
+      /** The existing files a failed config evaluation loaded, keyed while it stays unavailable. */
       readonly configDeps: readonly AbsolutePath[];
     };
 
@@ -79,9 +79,11 @@ type Opened =
  * The Jest adapter of one configured project (spec 028 D1 to D6). Never
  * rejects for the project's sake: no Jest, an unsupported one or a config
  * that does not read is one note, `runnerVersion` "unavailable", no test
- * files and every run `crashed`, so its checks stay `unknown`. Each batch
- * looks again; the first that reads recreates the project. A change of any
- * file of the config chain, or of `observe.runtimeInputs`, reads the
+ * files and every run `crashed`, so its checks stay `unknown`. Without a
+ * Jest each batch looks again; with a config that does not read, each batch
+ * that changes any file reads it again (review 0.1.644-r3 B4). The first
+ * read that succeeds recreates the project. Once it reads, only a change of
+ * a file of its config chain, or of `observe.runtimeInputs`, reads the
  * project again and recreates it, which re-keys every check (D2.3).
  */
 export async function createJestAdapter(
@@ -121,19 +123,12 @@ export async function createJestAdapter(
   let watched = watchedOf(root, project, state, source);
   if (!state.ok) note(state.note);
 
-  /**
-   * Reads the project again; notes a new failure, or that it reads again.
-   * The one owner of `watched` (review 0.1.644-r2 B4): a read that fails
-   * keeps every path watched before it, so restoring a deleted helper reads
-   * again; a read that succeeds watches its own config chain only.
-   */
+  /** Reads the project again; notes a new failure, or that it reads again. */
   const reopen = async (): Promise<void> => {
     const before = state.ok ? null : state.note;
-    const previous = watched;
     state = await open();
     observed = observing();
-    const fresh = watchedOf(root, project, state, source);
-    watched = state.ok ? fresh : new Set([...previous, ...fresh]);
+    watched = watchedOf(root, project, state, source);
     if (!state.ok && state.note !== before) note(state.note);
     else if (state.ok && before !== null) note(`it reads again (jest ${state.install.version})`);
   };
@@ -147,16 +142,23 @@ export async function createJestAdapter(
     }),
     async invalidate(changed) {
       const current = state;
-      // No Jest yet costs a lookup per batch, no process; a config that did not read waits for an edit.
-      const recreate =
-        (!current.ok && current.install === null) ||
-        observed !== observing() ||
-        changed.some((p) => watched.has(p.path));
-      if (recreate || !current.ok) {
-        if (!recreate) return { recreatedProjects: [] };
+      if (!current.ok) {
+        /*
+         * Review 0.1.644-r3 B4: an unavailable project lists no tests and
+         * holds no graph, so any edit may be the one that repairs its config
+         * (a restored helper, a created `options/index.js`, a package `main`,
+         * an alias), and nothing guesses which. No Jest yet costs a lookup per
+         * batch, no process; a config that did not read waits for an edit.
+         */
+        if (current.install !== null && changed.length === 0) return { recreatedProjects: [] };
         await reopen();
         // A project that stays unavailable keys as it did: nothing to recreate.
-        return { recreatedProjects: current.ok || state.ok ? [project.name] : [] };
+        return { recreatedProjects: state.ok ? [project.name] : [] };
+      }
+      // Healthy: only its config chain or the recorder setting reads it again.
+      if (observed !== observing() || changed.some((p) => watched.has(p.path))) {
+        await reopen();
+        return { recreatedProjects: [project.name] };
       }
       current.graph.invalidate(changed);
       if (changed.some((p) => p.kind === "add" || p.kind === "delete")) {
@@ -180,9 +182,8 @@ export async function createJestAdapter(
     testFiles: async () => (state.ok ? state.files.map(ref) : []),
     async environment() {
       if (!state.ok) {
-        // Its files are what it watches: an edit of any of them may make it read.
-        const files = [...watched].map((path) => toAbsolute(root, path));
-        return [unavailableEnvironment(root, project, state.note, JEST_ADAPTER_VERSION, files)];
+        const { note, configDeps } = state;
+        return [unavailableEnvironment(root, project, note, JEST_ADAPTER_VERSION, configDeps)];
       }
       const { install, read } = state;
       const environment = jestEnvironment({
