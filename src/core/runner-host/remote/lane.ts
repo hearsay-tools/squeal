@@ -831,14 +831,24 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   /**
    * The report of a run whose host ended under it, which goes down. Row
    * 026-23: one the host's end cut short stays lost, never `completed`;
-   * only a report that names its end, such as a timeout, is kept.
+   * only a report that names its end, such as a timeout, is kept. Review
+   * 0.1.637 B1: under `not-run` the host's own cause is wrapped in the
+   * lane's loss text, so the daemon's recovery queues the files again; a
+   * timeout keeps its end.
    */
   const cutShort = (
     host: RemoteHost,
     reply: RunReport & RemoteRunReply,
     testFiles: readonly TestFileRef[],
   ): RunReport => {
-    down(reply.failure ?? "the host ended", false, host);
+    const cause = reply.failure ?? "the host ended";
+    down(cause, false, host);
+    if (options.whenLost === "not-run") {
+      const lost = lostReport(testFiles, cause);
+      return reply.end === "timed-out"
+        ? { ...lost, end: "timed-out", durationMs: reply.durationMs }
+        : lost;
+    }
     const named = reply.end !== "completed" && reply.failure != null;
     return named ? stripped(reply) : lostReport(testFiles);
   };

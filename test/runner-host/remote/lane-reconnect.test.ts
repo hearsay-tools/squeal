@@ -5,7 +5,11 @@ import type { AdmitAsk, HostAdmission } from "../../../src/core/runner-host/remo
 import { UNGRANTED } from "../../../src/core/runner-host/remote/admission.js";
 import { isRemoteOutageReason } from "../../../src/core/runner-host/remote/daemon-lane.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
+import type { RunnerAdapter } from "../../../src/core/types/runner.js";
 import { vitestTraits } from "../../../src/runners/vitest/traits.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
+import { type CatchUpSide, catchUpRepo, catchUpSide } from "../../scheduler/catch-up-fixture.js";
+import { SLOW } from "../../scheduler/cleanup.js";
 import { REPORT } from "../fake-channel.js";
 import { background, REF, setup } from "./lane-fixture.js";
 
@@ -55,6 +59,11 @@ describe("one reconnect after a dropped channel (row 026-30)", () => {
     const lost = await s.lane.run([REF], background());
     expect(lost.end).toBe("crashed");
     expect(lost.completedFiles).toEqual([]);
+    // Review 0.1.637 B1: the proxy's own cause, wrapped in the target and the policy.
+    expect(lost.failure).toMatch(
+      /^remote box unreachable during the run of 1 files \(.*exited.*\); not run here \(whenLost "not-run"\); waits retry once box reconnects/,
+    );
+    expect(isRemoteOutageReason(lost.failure ?? "")).toBe(true);
     expect(s.connects).toHaveLength(2);
     expect(reconnects(s.logs)).toHaveLength(1);
     // Within the backoff, the next tier neither connects nor waits.
@@ -135,6 +144,71 @@ describe("the lane's recovery after an outage (row 026-30)", () => {
     s.advance(60_000);
     await s.lane.run([REF], background());
     expect(recovered).toBe(1);
+  });
+});
+
+describe("the lane's lost files queued again at its recovery (review 0.1.637 B1)", () => {
+  const FILES = ["a", "b"].map((name) => ({
+    path: `test/${name}.test.ts`,
+    ms: 1,
+    imports: [`src/${name}.ts`],
+  }));
+
+  it("runs and passes the files both dropped channels left unknown", SLOW, async () => {
+    let drop = false;
+    let side: CatchUpSide | undefined;
+    let requeued: Promise<number | undefined> | undefined;
+    const s = await setup({
+      whenLost: "not-run",
+      // As the daemon's: the scheduler queues again the files the real matcher accepts.
+      onRecovered: () => {
+        requeued = side?.scheduler.requeueUnknown?.(isRemoteOutageReason);
+      },
+      remoteRun: async (_, _hang, _options, kill) => {
+        if (!drop) return { ...REPORT, completedFiles: [REF] };
+        kill();
+        return new Promise(() => {});
+      },
+    });
+    // While the channel drops, the scheduler's runs go through the lane and end with its report.
+    const throughLane = (runner: RunnerAdapter): RunnerAdapter =>
+      new Proxy(runner, {
+        get(target, prop, receiver) {
+          if (prop === "run" && drop) return () => s.lane.run([REF], background());
+          const value = Reflect.get(target, prop, receiver) as unknown;
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    const repo = catchUpRepo(FILES);
+    const f = catchUpSide(repo, repo.main, {
+      files: FILES,
+      hostSlots: 1,
+      tierSize: 1,
+      policy: RUN_MISSING,
+      wrapRunner: throughLane,
+    });
+    side = f;
+    const [A, B] = FILES.map((file) => file.path) as [string, string];
+    await f.scheduler.start();
+    await f.quiet();
+    expect(f.current(A)).toBe(true);
+
+    drop = true;
+    await f.edit("watch", "src/a.ts");
+    await f.quiet();
+    expect(f.current(A)).toBe(false);
+    expect(reconnects(s.logs)).toHaveLength(1);
+    const runsA = f.runner.runsOf(A).length;
+
+    // Past the backoff the lane connects again, ready: its recovery queues A again at the same key.
+    drop = false;
+    s.advance(60_000);
+    expect((await s.lane.run([REF], background())).end).toBe("completed");
+    expect(await requeued).toBe(1);
+    await f.quiet();
+    expect(f.runner.runsOf(A).length).toBe(runsA + 1);
+    expect(f.current(A)).toBe(true);
+    expect(f.current(B)).toBe(true);
   });
 });
 
