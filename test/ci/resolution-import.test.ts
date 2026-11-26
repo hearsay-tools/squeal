@@ -1,3 +1,5 @@
+// Row 023-93: first, before Vitest's node API loads.
+import "./no-ci.js";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -104,17 +106,14 @@ function io(cwd: string): CliIo & { out: string[] } {
   return { out, cwd, env: {}, stdout: add, stderr: add };
 }
 
-/** CI's export of `origin`'s commit, recorded with `CI` unset so the environments are equal. */
+/** CI's export of `origin`'s commit, recorded and exported without CI (`./no-ci.js`) so the environments are equal. */
 async function exported(origin: string, said: (text: string) => void = () => {}): Promise<string> {
   const job = cloneOf(origin, "ci");
   const parts = join(dirname(origin), "parts");
-  const recorded = await recordVitest(job, parts, ["--update=none"], { CI: "" });
+  const recorded = await recordVitest(job, parts, ["--update=none"], { CI: undefined });
   expect(recorded.code, recorded.said).toBe(0);
   const file = join(dirname(origin), "results.json.gz");
-  const made = await ci(["export", "--parts", parts, "--out", file], job, {
-    ...process.env,
-    CI: "",
-  });
+  const made = await ci(["export", "--parts", parts, "--out", file], job);
   expect(made.code, made.said).toBe(0);
   said(made.said);
   return file;
