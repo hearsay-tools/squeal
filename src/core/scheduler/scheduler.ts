@@ -26,6 +26,7 @@ import {
   type LockHolder,
   type NarrowRunOptions,
   type NarrowRunRequest,
+  type RefinementProgress,
   type Rest,
   type Scheduler,
   type SchedulerCloseOptions,
@@ -102,6 +103,7 @@ import { STEP_OPERATION, StepLive, unplaced } from "./step-live.js";
 import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
 import { cancels, endTier, executeTier, laneOf, type Tier } from "./tiers.js";
+import { readUnknownFiles } from "./unknown-files.js";
 import { type WakeSlot, Wakes } from "./wakes.js";
 import { WarmUp } from "./warm-up.js";
 import { TierYields } from "./yields.js";
@@ -990,6 +992,51 @@ class TierScheduler implements Scheduler {
   /** Row 011-397: the newest revision while a runner part runs with the lock free (`Scheduler.listing`). */
   listing(): RevisionNumber | null {
     return this.#runnerWork.refining ? (this.#ledger?.revision.number ?? null) : null;
+  }
+
+  /** Row 026-32: the step of the runner part `listing` names (`Scheduler.refinementProgress`). */
+  refinementProgress(): RefinementProgress | null {
+    const progress = this.#runnerWork.progress;
+    if (progress === null) return null;
+    return { ...progress, revision: this.#ledger?.revision.number ?? progress.revision };
+  }
+
+  /**
+   * Row 026-32: queues again the `unknown` files whose stored reason
+   * `match`es and whose key is still the one they were marked at
+   * (`Scheduler.requeueUnknown`). A blocked file waits for its runner to
+   * recover (`settleFailures`); a queued or running one needs nothing.
+   */
+  async requeueUnknown(match: (reason: string) => boolean): Promise<number> {
+    if (this.#closed || this.#context === null || this.#ledger === null) return 0;
+    const count = await this.#lock.run(async () => {
+      if (this.#closed) return 0;
+      const { context, ledger } = this.#started();
+      const stored = readUnknownFiles(context.store, context.worktreeId);
+      const refs: TestFileRef[] = [];
+      for (const file of ledger.files.values()) {
+        if (file.unknownKey === null || file.unknownKey !== file.key) continue;
+        if (file.blocked !== null || file.phase !== null) continue;
+        const entry = stored.get(file.id);
+        if (entry === undefined || entry.key !== file.key || !match(entry.reason)) continue;
+        file.unknownKey = null;
+        ledger.touch(file);
+        refs.push(file.ref);
+      }
+      if (refs.length === 0) return 0;
+      ledger.settle(refs, NOTHING_CHANGED);
+      try {
+        ledger.commit();
+      } catch (error) {
+        // On a busy store the ledger still owes the queue: the pump's commit writes it.
+        if (this.#busy === null || !isBusy(error)) {
+          this.#note(`could not record the re-queued unknown test files: ${String(error)}`);
+        }
+      }
+      return refs.length;
+    }, "re-queueing recovered unknown test files");
+    if (count > 0) this.#pump();
+    return count;
   }
 
   /** Spec 004 D2 trigger (b); the slow tier still waits for pending fast work. */

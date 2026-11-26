@@ -6,6 +6,7 @@ import type { ProjectName, RelativePath, RevisionNumber } from "../types/common.
 import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
 import type { InvalidatedPath, RunnerClosure, RunnerEnvironment } from "../types/runner.js";
+import type { RefinementStage } from "../types/scheduler.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
 import { demote, type EditCut, editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
@@ -21,8 +22,41 @@ import {
   storeClosures,
   toInvalidatedPath,
 } from "./revision.js";
-import { runnerPartBound } from "./runner-work-bound.js";
+import { type RunnerPartBound, runnerPartBound } from "./runner-work-bound.js";
 import { affectedAsk, askAffected } from "./stored-affected.js";
+
+/**
+ * Row 026-32 (#283): the most `runner.closure` calls of one runner part in
+ * flight at once. Over a remote runner each call is a round trip, so 2,000
+ * of them one after another held a revision's results for minutes.
+ */
+export const CLOSURE_CONCURRENCY = 16;
+
+/** Row 026-32: told each step of a runner part as it starts, and each closure as it settles. */
+export type RefinementListener = (stage: RefinementStage, done?: number, total?: number) => void;
+
+/**
+ * Calls `each` on every item, at most `limit` at a time, and returns the
+ * answers in the items' order. Once `stop` is true no further call starts;
+ * the items not called have no answer (`undefined`). `each` must not reject.
+ */
+export async function mapBounded<T, R>(
+  items: readonly T[],
+  limit: number,
+  each: (item: T) => Promise<R>,
+  stop: () => boolean = () => false,
+): Promise<(R | undefined)[]> {
+  const answers = new Array<R | undefined>(items.length).fill(undefined);
+  let next = 0;
+  const lane = async (): Promise<void> => {
+    while (next < items.length && !stop()) {
+      const index = next++;
+      answers[index] = await each(items[index] as T);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, limit), items.length) }, lane));
+  return answers;
+}
 
 /**
  * What the runner said about one revision: the runner phase of its
@@ -83,7 +117,12 @@ export interface RunnerPart {
  * Each call is bounded (`RunnerPartBound`, task 001-228): one past the
  * bound is abandoned as if it failed, with a note, and the calls after it
  * are not made, so a stalled runner holds a revision's results and every
- * wait for them no longer than the bound.
+ * wait for them no longer than the bound. Closures are asked for
+ * `CLOSURE_CONCURRENCY` at a time (row 026-32), and kept in the order they
+ * were asked for, as are their failures.
+ *
+ * `onProgress` is told each step as it starts (row 026-32), so a request
+ * waiting on the runner part can say which one holds it.
  *
  * Refinements run one at a time and in revision order, so each sees the
  * runner as every earlier one left it. A queued one that has not started
@@ -98,6 +137,7 @@ export async function fetchRunnerPart(
   carried: Iterable<TestFileRef>,
   touched: readonly RelativePath[] = [],
   rechecked?: readonly ProjectName[],
+  onProgress: RefinementListener = () => {},
 ): Promise<RunnerPart> {
   const { keys, runner } = context;
   const bound = runnerPartBound(context);
@@ -111,6 +151,7 @@ export async function fetchRunnerPart(
     ...touched.map((path) => ({ path, kind: "touch" as const })),
   ];
 
+  if (rechecked === undefined) onProgress("invalidating");
   const invalidated =
     rechecked === undefined
       ? await tryRunner(
@@ -121,19 +162,21 @@ export async function fetchRunnerPart(
         )
       : { recreatedProjects: rechecked };
   const recreated = new Set<ProjectName>(invalidated?.recreatedProjects ?? []);
-  const environments =
-    recreated.size > 0 || content.environment || retrying
-      ? await tryRunner(
-          context,
-          "environment",
-          () => bound.call(() => runner.environment()),
-          (reason) => failed(failures, null, reason),
-        )
-      : null;
-  const listed =
-    structural || recreated.size > 0 || ledger.listingFailed
-      ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound))
-      : undefined;
+  const reads = recreated.size > 0 || content.environment || retrying;
+  if (reads) onProgress("environment");
+  const environments = reads
+    ? await tryRunner(
+        context,
+        "environment",
+        () => bound.call(() => runner.environment()),
+        (reason) => failed(failures, null, reason),
+      )
+    : null;
+  const lists = structural || recreated.size > 0 || ledger.listingFailed;
+  if (lists) onProgress("listing");
+  const listed = lists
+    ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound))
+    : undefined;
 
   // Test files as the listing leaves them: the ones to re-resolve are among these.
   const exists = new Set(
@@ -161,6 +204,7 @@ export async function fetchRunnerPart(
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
   // Row 021-30: the stored import graph answers where it can vouch; the host walks otherwise.
   const ask = affectedAsk(changes, content, { recreated, retrying, listed, failures });
+  onProgress("affected");
   const { affected, stored } = await askAffected(context, ledger, ask, paths, () =>
     tryRunner(context, `affected (${listPaths(paths)})`, () =>
       bound.call(() => runner.affected(paths)),
@@ -169,29 +213,19 @@ export async function fetchRunnerPart(
   pick(affected?.direct ?? []);
   pick(affected?.transitive ?? []);
 
-  const closures: RunnerClosure[] = [];
-  for (const ref of reresolve.values()) {
-    const closure = await tryRunner(
-      context,
-      `closure of ${ref.path}`,
-      () => bound.call(() => runner.closure(ref)),
-      (reason) => failed(failures, ref.project, reason),
-    );
-    if (closure !== null) closures.push(closure);
-  }
+  const closures = await fetchClosures(
+    context,
+    bound,
+    [...reresolve.values()],
+    failures,
+    onProgress,
+  );
   // Last, so an abandoned call for the bare sources costs no closure (011-25).
-  const cut =
-    affected === null || content.catchUp === true
-      ? undefined
-      : await fetchEditCut(
-          context,
-          refsOf(ledger, listed),
-          paths,
-          affected,
-          bound,
-          closures,
-          stored,
-        );
+  const cuts = affected !== null && content.catchUp !== true;
+  if (cuts) onProgress("edit-cut");
+  const cut = !cuts
+    ? undefined
+    : await fetchEditCut(context, refsOf(ledger, listed), paths, affected, bound, closures, stored);
   return {
     revision,
     retrying,
@@ -204,6 +238,46 @@ export async function fetchRunnerPart(
     reresolved: [...reresolve.values()],
     closures,
   };
+}
+
+/**
+ * The closures of `refs`, `CLOSURE_CONCURRENCY` at a time (row 026-32),
+ * in `refs`' order; a failed call is left out and its reason recorded in
+ * `failures` in that order too, so the first failure of a project names it
+ * as when they were asked one by one. Once the bound abandons a call the
+ * rest fail at once with its reason (`RunnerPartBound`).
+ */
+async function fetchClosures(
+  context: SchedulerContext,
+  bound: RunnerPartBound,
+  refs: readonly TestFileRef[],
+  failures: Failures,
+  onProgress: RefinementListener,
+): Promise<RunnerClosure[]> {
+  const { runner } = context;
+  let done = 0;
+  onProgress("closures", done, refs.length);
+  const answers = await mapBounded(refs, CLOSURE_CONCURRENCY, async (ref) => {
+    let reason: string | null = null;
+    const closure = await tryRunner(
+      context,
+      `closure of ${ref.path}`,
+      () => bound.call(() => runner.closure(ref)),
+      (why) => {
+        reason = why;
+      },
+    );
+    done += 1;
+    onProgress("closures", done, refs.length);
+    return { ref, closure, reason: reason as string | null };
+  });
+  const closures: RunnerClosure[] = [];
+  for (const answer of answers) {
+    if (answer === undefined) continue;
+    if (answer.closure !== null) closures.push(answer.closure);
+    if (answer.reason !== null) failed(failures, answer.ref.project, answer.reason);
+  }
+  return closures;
 }
 
 /**

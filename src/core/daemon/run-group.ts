@@ -14,7 +14,13 @@ import type {
 } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import type { LockHolder, NarrowRun, NarrowRunOptions, Scheduler } from "../types/scheduler.js";
+import type {
+  LockHolder,
+  NarrowRun,
+  NarrowRunOptions,
+  RefinementStage,
+  Scheduler,
+} from "../types/scheduler.js";
 import { requestDaemon } from "./client.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 
@@ -59,8 +65,17 @@ export const GROUP_REQUEST_MS = 2_000;
 export type HeldBy =
   | { readonly kind: "startup"; readonly since: EpochMs }
   | { readonly kind: "scheduler"; readonly operation: string | null; readonly since: EpochMs }
-  /** Row 011-397: the lock is free while Squeal lists revisions up to `revision`. */
-  | { readonly kind: "listing"; readonly revision: number }
+  /**
+   * Row 011-397: the lock is free while Squeal lists revisions up to
+   * `revision`; row 026-32: at step `stage`, `done` of `total` test files.
+   */
+  | {
+      readonly kind: "listing";
+      readonly revision: number;
+      readonly stage?: RefinementStage;
+      readonly done?: number;
+      readonly total?: number;
+    }
   | null;
 
 /** The main thread tells the socket what holds a request, each time it changes (row 011-302). */
@@ -153,6 +168,27 @@ function lintGroup(policy: Policy, group: string): boolean {
 }
 
 /**
+ * Row 011-397: the listing a request waits for while the lock is free;
+ * row 026-32: with the runner part's step and progress where the
+ * scheduler tells them. `null` while none runs.
+ */
+function listingOf(scheduler: Scheduler): HeldBy {
+  const progress = scheduler.refinementProgress?.() ?? null;
+  if (progress !== null) {
+    const { revision, stage, done, total } = progress;
+    return {
+      kind: "listing",
+      revision,
+      stage,
+      ...(done === undefined ? {} : { done }),
+      ...(total === undefined ? {} : { total }),
+    };
+  }
+  const revision = scheduler.listing?.() ?? null;
+  return revision === null ? null : { kind: "listing", revision };
+}
+
+/**
  * Row 011-302: tells `held` each holder of the scheduler's lock; row
  * 011-397: while the lock is free, the listing the request waits for
  * (`Scheduler.listing`), read at each change and every `LISTING_CHECK_MS`,
@@ -162,13 +198,7 @@ function watchHolder(scheduler: Scheduler, held: Held): (() => void) | undefined
   let lock: LockHolder | null = null;
   let told: string | undefined;
   const tell = () => {
-    const revision = lock === null ? (scheduler.listing?.() ?? null) : null;
-    const holder: HeldBy =
-      lock !== null
-        ? { kind: "scheduler", ...lock }
-        : revision === null
-          ? null
-          : { kind: "listing", revision };
+    const holder: HeldBy = lock !== null ? { kind: "scheduler", ...lock } : listingOf(scheduler);
     const text = JSON.stringify(holder);
     if (text === told) return;
     told = text;
@@ -248,7 +278,7 @@ export function groupRequests(
     if (held === undefined) return { kind: "unanswered", heldMs: since(request.at), ...stepped };
     if (held === null) return { kind: "unknown", ...stepped };
     if (held.kind === "startup") return { kind: "startup", heldMs: since(held.since), ...stepped };
-    if (held.kind === "listing") return { kind: "listing", revision: held.revision, ...stepped };
+    if (held.kind === "listing") return { ...held, ...stepped };
     const { operation } = held;
     return { kind: "scheduler", operation, heldMs: since(held.since), ...stepped };
   };

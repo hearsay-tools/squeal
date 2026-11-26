@@ -4,11 +4,12 @@ import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
 import type { RunnerClosure } from "../types/runner.js";
+import type { RefinementProgress } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
 import { OwedRunnerWork } from "./deferred-keying.js";
 import type { Ledger } from "./ledger.js";
 import { type ApplyHost, applyRefinement, recordRefined } from "./refine-apply.js";
-import { fetchRunnerPart, recheckRunner } from "./refinement.js";
+import { CLOSURE_CONCURRENCY, fetchRunnerPart, mapBounded, recheckRunner } from "./refinement.js";
 import type { ContentRekey } from "./revision.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 import { type QueuedRefine, supersede } from "./superseded.js";
@@ -62,6 +63,8 @@ export class RunnerWork {
   readonly #tasks: RunnerTask[] = [];
   /** A refinement is in its runner phase: shifted off `#tasks`, not applied yet. */
   #refining = false;
+  /** Row 026-32: the step the runner phase runs, `null` before its first step and once it ends. */
+  #progress: RefinementProgress | null = null;
   /** Test files whose closure went stale while a refinement fetched it; the next one resolves them again. */
   readonly #carried = new Map<string, TestFileRef>();
   /** Spec 026 D1.2: the runner work deferred keying owes the next wake (`catchUp`). */
@@ -75,6 +78,11 @@ export class RunnerWork {
 
   get refining(): boolean {
     return this.#refining;
+  }
+
+  /** Row 026-32: the step of the refinement in its runner phase; `null` when none runs. */
+  get progress(): RefinementProgress | null {
+    return this.#refining ? this.#progress : null;
   }
 
   /**
@@ -296,15 +304,22 @@ export class RunnerWork {
     try {
       ledger.refineChanges = new Set();
       const bound = runnerPartBound(context);
-      const closures: RunnerClosure[] = [];
-      for (const ref of refs) {
-        if (this.host.closed()) return;
-        try {
-          closures.push(await bound.call(() => context.runner.closure(ref)));
-        } catch {
-          // Its next refinement or run walks it, as before this pass.
-        }
-      }
+      // Row 026-32: `CLOSURE_CONCURRENCY` at a time, kept in `refs`' order.
+      const answers = await mapBounded(
+        refs,
+        CLOSURE_CONCURRENCY,
+        async (ref): Promise<RunnerClosure | null> => {
+          try {
+            return await bound.call(() => context.runner.closure(ref));
+          } catch {
+            // Its next refinement or run walks it, as before this pass.
+            return null;
+          }
+        },
+        () => this.host.closed(),
+      );
+      if (this.host.closed()) return;
+      const closures = answers.filter((closure) => closure !== undefined && closure !== null);
       await this.host.lock.run(async () => {
         const changed = ledger.refineChanges ?? new Set<RelativePath>();
         ledger.refineChanges = null;
@@ -351,6 +366,14 @@ export class RunnerWork {
         carried,
         touched,
         rechecked,
+        (stage, done, total) => {
+          this.#progress = {
+            revision: revision.number,
+            stage,
+            ...(done === undefined ? {} : { done }),
+            ...(total === undefined ? {} : { total }),
+          };
+        },
       );
       await applyRefinement(this.host, context, ledger, part, refined, (stale) => {
         for (const ref of stale) this.#carried.set(testFileId(ref), ref);
@@ -369,6 +392,7 @@ export class RunnerWork {
     } finally {
       ledger.refineChanges = null;
       this.#refining = false;
+      this.#progress = null;
     }
   }
 

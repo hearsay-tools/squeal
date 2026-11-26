@@ -30,7 +30,7 @@ import type {
   WriteStatusRequest,
 } from "./daemon-writes.js";
 import type { TestFileRef } from "./keys.js";
-import type { NarrowRun } from "./scheduler.js";
+import type { NarrowRun, RefinementStage } from "./scheduler.js";
 import type { CheckpointLane, CheckpointRecord, DaemonRecord } from "./store-records.js";
 
 /*
@@ -460,7 +460,9 @@ export interface RunGroupResponse {
  *   when it named nothing;
  * - `listing`: the scheduler's lock is free while Squeal lists the
  *   worktree's revisions, up to `revision`, which a request waits for
- *   (row 011-397; before it, `unknown`);
+ *   (row 011-397; before it, `unknown`); row 026-32: `stage` is the step
+ *   of the runner part, with `done` of `total` test files while it counts
+ *   them, all absent before its first step and from a daemon before it;
  * - `unknown`: the main thread read the request and recorded no holder.
  *
  * `step` is a step the main thread said it runs, which may block it (lint
@@ -470,7 +472,13 @@ export type GroupHolder = (
   | { readonly kind: "unanswered"; readonly heldMs: number }
   | { readonly kind: "startup"; readonly heldMs: number }
   | { readonly kind: "scheduler"; readonly operation: string | null; readonly heldMs: number }
-  | { readonly kind: "listing"; readonly revision: number }
+  | {
+      readonly kind: "listing";
+      readonly revision: number;
+      readonly stage?: RefinementStage;
+      readonly done?: number;
+      readonly total?: number;
+    }
   | { readonly kind: "unknown" }
 ) & { readonly step: { readonly operation: string; readonly heldMs: number } | null };
 

@@ -91,10 +91,31 @@ function heldText(holder: GroupHolder): string | null {
         : `it waits for the scheduler, which has been ${holder.operation} for ${age(holder.heldMs)}`;
     // Row 011-397: the lock is free while the revisions are listed, as after an edit.
     case "listing":
-      return `it waits while Squeal lists revision ${holder.revision}`;
+      return listingText(holder);
     case "unanswered":
     case "unknown":
       return null;
+  }
+}
+
+/** Row 026-32: which step of the runner part holds the request, where the daemon tells it. */
+function listingText(holder: Extract<GroupHolder, { kind: "listing" }>): string {
+  const { revision, done, total } = holder;
+  switch (holder.stage ?? "listing") {
+    case "listing":
+      return `it waits while Squeal lists revision ${revision}`;
+    case "invalidating":
+      return `it waits while Squeal updates the runner for revision ${revision} (invalidate / install)`;
+    case "environment":
+      return `it waits while Squeal reads the runner environment for revision ${revision}`;
+    case "affected":
+      return `it waits while Squeal computes affected test files for revision ${revision}`;
+    case "closures":
+      return total !== undefined && total > 0
+        ? `it waits while Squeal resolves test closures for revision ${revision} (${done ?? 0}/${total} test files)`
+        : `it waits while Squeal resolves test closures for revision ${revision}`;
+    case "edit-cut":
+      return `it waits while Squeal classifies affected test files for revision ${revision}`;
   }
 }
 

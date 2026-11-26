@@ -5,6 +5,29 @@ import { type CancelCause, SLOW_LANE_PREFIX } from "./runner.js";
 import type { CheckpointKind, CheckpointLane, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
+/**
+ * Row 026-32 (#283): the steps of a revision's runner part, in order
+ * (`fetchRunnerPart`): `invalidating` the changed paths (a recreate and its
+ * install included), reading the `environment`, `listing` the test files,
+ * asking which are `affected`, resolving their `closures`, and the
+ * `edit-cut` that classifies an edit's reach.
+ */
+export type RefinementStage =
+  | "invalidating"
+  | "environment"
+  | "listing"
+  | "affected"
+  | "closures"
+  | "edit-cut";
+
+/** Row 026-32: the step a runner part runs; `done` of `total` test files while it counts them. */
+export interface RefinementProgress {
+  readonly revision: RevisionNumber;
+  readonly stage: RefinementStage;
+  readonly done?: number;
+  readonly total?: number;
+}
+
 /** Spec 019 D2: the default group of every covered test file not marked slow. Its lanes are the runners'. */
 export const TESTS_GROUP = "tests";
 /** Spec 019 D2: the default group of every file marked slow (004 D1). Its lanes are `slow:<runner lane>`. */
@@ -417,6 +440,20 @@ export interface Scheduler {
    * can name it; `null` while none runs. Absent: a scheduler before it.
    */
   listing?(): RevisionNumber | null;
+  /**
+   * Row 026-32 (#283): which step of the runner part runs while the lock is
+   * free, with its progress where it counts files; `null` while none runs or
+   * before its first step. Absent: a scheduler before it (`listing` only).
+   */
+  refinementProgress?(): RefinementProgress | null;
+  /**
+   * Row 026-32: queues again each `unknown` file whose stored reason
+   * `match`es (a remote runner's outage, once it reconnects) and whose key
+   * has not moved since, then pumps. A blocked, queued or running file and
+   * one marked for another reason stay. Returns how many were queued; `0`
+   * when closed or not started. Absent: a scheduler before it.
+   */
+  requeueUnknown?(match: (reason: string) => boolean): Promise<number>;
   /**
    * Row 011-356: tells `listener` each scheduler step as it ends, until the
    * returned function is called (the model test's per-step checks).
