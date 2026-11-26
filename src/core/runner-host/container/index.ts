@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { AbsolutePath } from "../../types/common.js";
 import type { ContainerKeyMode, ContainerTarget } from "../../types/policy-containers.js";
 import type { HostChannel } from "../channel.js";
@@ -97,6 +97,34 @@ export interface ContainerSummaryEntry {
   readonly project: string;
   readonly state: ContainerTargetState;
   readonly keyMode: ContainerKeyMode;
+}
+
+/** The runtime files each in-container runner host reads beside its CLI (review 0.1.644 B1). */
+const RUNTIME_ASSETS = [
+  join("observe", "recorder.cjs"),
+  join("jest", "squeal-reporter.cjs"),
+  join("pytest", "squeal_pytest.py"),
+] as const;
+
+/**
+ * Spec 027 D5.1 (review 0.1.644 B1): the Squeal bundle root to mount for
+ * the CLI at `cliPath`. An installed bundle has its CLI at
+ * `<root>/cli/squeal.mjs` beside `jest/`, `pytest/`, `observe/`,
+ * `node-test/` and `code/`; a flat bundle has those beside the CLI. The
+ * root holds the CLI and every runtime file; `null` for a source layout
+ * or an incomplete directory, which is never mounted.
+ */
+export function bundleRootFor(cliPath: string): string | null {
+  const cli = resolve(cliPath);
+  const dir = dirname(cli);
+  const candidates = basename(dir) === "cli" ? [dirname(dir), dir] : [dir];
+  for (const root of candidates) {
+    const inside = relative(root, cli);
+    if (inside === "" || inside.startsWith("..") || isAbsolute(inside)) continue;
+    if (!existsSync(cli)) continue;
+    if (RUNTIME_ASSETS.every((asset) => existsSync(join(root, asset)))) return root;
+  }
+  return null;
 }
 
 /**
