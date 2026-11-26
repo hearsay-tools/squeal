@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 const SRC = join(import.meta.dirname, "../../../src");
 const SHARED = join(SRC, "harness/shared");
-const RUNNER = /vitest|\bvite\b|node\W*test|pytest|python|\.py\b/i;
+const RUNNER = /vitest|\bvite\b|node\W*test|pytest|python|\.py\b|jest/i;
 /** An import of a runner's folder; the registry is the one runner module the harness may import. */
 const RUNNER_IMPORT = /from\s+["'][^"']*\/runners\/(?!descriptions\.js["'])/;
 
@@ -30,7 +30,7 @@ describe("what names a runner (spec 016 D5)", () => {
   });
 
   it("is each runner's description, so the rule above can fail", () => {
-    for (const runner of ["vitest", "node-test", "pytest"]) {
+    for (const runner of ["vitest", "node-test", "pytest", "jest"]) {
       expect(text(join(SRC, "runners", runner, "describe.ts")), runner).toMatch(RUNNER);
     }
   });

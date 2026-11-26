@@ -2,6 +2,7 @@ import { posix } from "node:path";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { NodeTestProject, Policy } from "../core/types/policy.js";
+import { JEST, type JestCommand, type JestContext, type JestCoverage } from "./jest/describe.js";
 import {
   NODE_TEST,
   type NodeTestCommand,
@@ -43,18 +44,19 @@ export interface ConfiguredProject {
 }
 
 /** What Squeal covers of each runner in one worktree, one part per runner (task 001-234). */
-export type RunnerCoverage = VitestCoverage & NodeTestCoverage & PytestCoverage;
+export type RunnerCoverage = VitestCoverage & NodeTestCoverage & PytestCoverage & JestCoverage;
 
 /** Spec 005 D8 step 1: what recognition reads besides the command, one part per runner. */
 export type CommandContext = VitestContext &
   NodeTestContext &
-  PytestContext & {
+  PytestContext &
+  JestContext & {
     /** `false` when the command runs from a directory other than the worktree root. Absent means `true`. */
     readonly atRoot?: boolean;
   };
 
 /** A recognized test command: what it runs, before resolution to test files. */
-export type TestCommand = VitestCommand | NodeTestCommand | PytestCommand;
+export type TestCommand = VitestCommand | NodeTestCommand | PytestCommand | JestCommand;
 
 /** What a runner reads of a worktree for its part of the coverage, as the daemon reads it. */
 export interface CoverageRead {
@@ -110,13 +112,14 @@ export interface RunnerDescription {
 }
 
 /** Every runner, in the order recognition tries their commands. */
-export const DESCRIPTIONS: readonly RunnerDescription[] = [VITEST, NODE_TEST, PYTEST];
+export const DESCRIPTIONS: readonly RunnerDescription[] = [VITEST, NODE_TEST, PYTEST, JEST];
 
 /** The runners' part of the coverage of a repository whose root is not read yet. */
 export const UNCONFIGURED: RunnerCoverage = {
   ...VITEST.unconfigured,
   ...NODE_TEST.unconfigured,
   ...PYTEST.unconfigured,
+  ...JEST.unconfigured,
 };
 
 /** Every runner's projects squeal.config.json configures. */
@@ -142,6 +145,7 @@ export function runnerCoverage(policy: Policy, root: AbsolutePath): RunnerCovera
     ...VITEST.coverage(read(VITEST)),
     ...NODE_TEST.coverage(read(NODE_TEST)),
     ...PYTEST.coverage(read(PYTEST)),
+    ...JEST.coverage(read(JEST)),
   };
 }
 
@@ -151,6 +155,7 @@ export function commandContext(policy: Policy, root: AbsolutePath, cwd: string):
     ...VITEST.context(policy, root, cwd),
     ...NODE_TEST.context(policy, root, cwd),
     ...PYTEST.context(policy, root, cwd),
+    ...JEST.context(policy, root, cwd),
     atRoot: cwd === root,
   };
 }
