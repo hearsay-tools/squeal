@@ -1,0 +1,16 @@
+2026-11-26T22:53:53.330Z [66441] squeal daemon: serving /home/user/results/cells/wt-3@0.1.640/work/wt1 on /home/user/results/cells/wt-3@0.1.640/work/run/squeal-52df8983b26398cd.sock
+2026-11-26T22:54:47.555Z [66441] squeal daemon: code store: last minute: 45 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T22:54:57.590Z [66441] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 249 to 168 MiB in a 45 ms pause
+2026-11-26T22:55:47.488Z [66441] squeal daemon: hook writes: 14 taken, queue wait p95 2 ms max 2 ms
+2026-11-26T22:55:47.554Z [66441] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T22:56:20.470Z [66441] squeal daemon: busy, heap in use 51 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 214 to 160 MiB in a 53 ms pause; 28 MiB of heap in use after it
+2026-11-26T22:56:47.488Z [66441] squeal daemon: hook writes: 18 taken, queue wait p95 2 ms max 2 ms
+2026-11-26T22:56:47.556Z [66441] squeal daemon: code store: last minute: 119 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T22:57:47.489Z [66441] squeal daemon: hook writes: 14 taken, queue wait p95 5 ms max 5 ms
+2026-11-26T22:57:47.556Z [66441] squeal daemon: code store: last minute: 118 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T22:58:47.491Z [66441] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-26T22:58:47.561Z [66441] squeal daemon: code store: last minute: 34 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T22:58:55.590Z [66441] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-26T22:58:55.603Z [66441] squeal daemon: code store: last minute: 7 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T22:58:55.710Z [66441] squeal daemon: hook writes: 2 taken, queue wait p95 46 ms max 46 ms
+2026-11-26T22:58:55.715Z [66441] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

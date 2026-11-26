@@ -1,0 +1,27 @@
+2026-11-26T23:04:27.630Z [91796] squeal daemon: serving /home/user/results/cells/stress@0.1.640/work/wt4 on /home/user/results/cells/stress@0.1.640/work/run/squeal-cf7594d27a9bbce6.sock
+2026-11-26T23:05:19.683Z [91796] squeal daemon: code store: last minute: 47 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:05:29.744Z [91796] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 265 to 168 MiB in a 68 ms pause
+2026-11-26T23:06:19.581Z [91796] squeal daemon: hook writes: 6 taken, queue wait p95 3 ms max 3 ms
+2026-11-26T23:06:19.684Z [91796] squeal daemon: code store: last minute: 28 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:07:19.582Z [91796] squeal daemon: hook writes: 10 taken, queue wait p95 4 ms max 4 ms
+2026-11-26T23:07:19.683Z [91796] squeal daemon: code store: last minute: 64 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:08:19.585Z [91796] squeal daemon: hook writes: 13 taken, queue wait p95 4 ms max 4 ms
+2026-11-26T23:08:19.684Z [91796] squeal daemon: code store: last minute: 55 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:09:19.586Z [91796] squeal daemon: hook writes: 8 taken, queue wait p95 16 ms max 16 ms
+2026-11-26T23:09:19.684Z [91796] squeal daemon: code store: last minute: 45 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:10:18.077Z [91796] squeal daemon: busy, heap in use 53 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 209 to 165 MiB in a 133 ms pause; 29 MiB of heap in use after it
+2026-11-26T23:10:19.591Z [91796] squeal daemon: hook writes: 14 taken, queue wait p95 18 ms max 18 ms
+2026-11-26T23:10:19.684Z [91796] squeal daemon: code store: last minute: 45 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:11:19.591Z [91796] squeal daemon: hook writes: 7 taken, queue wait p95 9 ms max 9 ms
+2026-11-26T23:11:19.684Z [91796] squeal daemon: code store: last minute: 60 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:11:27.983Z [91796] squeal daemon: the background ceiling refused a backlog tier: 3.4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-26T23:11:27.984Z [91796] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-26T23:12:19.591Z [91796] squeal daemon: hook writes: 4 taken, queue wait p95 0 ms max 0 ms
+2026-11-26T23:12:19.684Z [91796] squeal daemon: code store: last minute: 18 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T23:12:29.852Z [91796] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 213 to 162 MiB in a 70 ms pause
+2026-11-26T23:16:15.004Z [91796] squeal daemon: the background ceiling let a backlog tier start after 287 s and 145 refused looks
+2026-11-26T23:16:15.006Z [91796] squeal daemon: the pool granted the vitest lane's tier after 287 s of waiting for CPU
+2026-11-26T23:16:28.202Z [91796] squeal daemon: daemon stopped: squeal stop
+2026-11-26T23:16:29.334Z [91796] squeal daemon: coverage: 10 completed test files got no record since this daemon started: 10 closed (the writer closed first); the last: test/m419.test.ts: the writer closed first
+2026-11-26T23:16:29.396Z [91796] squeal daemon: hook writes: 2 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T23:16:29.397Z [91796] squeal daemon: daemon stopped: squeal stop

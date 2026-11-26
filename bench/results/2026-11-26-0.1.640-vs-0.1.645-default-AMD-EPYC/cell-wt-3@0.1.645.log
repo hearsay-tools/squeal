@@ -1,0 +1,7 @@
+[2026-11-26T22:45:12.706Z] wt-3@0.1.645: squeal start + run --all
+[2026-11-26T22:46:00.429Z] wt-3@0.1.645: wait for the other worktrees' baselines
+[2026-11-26T22:46:04.169Z] wt-3@0.1.645: wait for the store process to go quiet
+[2026-11-26T22:46:08.171Z] wt-3@0.1.645: idle
+[2026-11-26T22:47:08.177Z] wt-3@0.1.645: sessions
+[2026-11-26T22:52:41.825Z] wt-3@0.1.645: collect
+[2026-11-26T22:52:47.582Z] wt-3@0.1.645: done

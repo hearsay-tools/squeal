@@ -1,0 +1,15 @@
+2026-11-26T23:00:16.244Z [86357] store process: serving /home/user/results/cells/stress@0.1.640/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/stress@0.1.640/work/run/squeal-code-7bf03a1a6f94f2fc.sock
+2026-11-26T23:01:16.244Z [86357] store process: last minute: edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 115 ms; record: 2 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 123 ms
+2026-11-26T23:02:16.244Z [86357] store process: last minute: record: 31 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 211 ms
+2026-11-26T23:04:16.244Z [86357] store process: last minute: record: 25 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 171 ms
+2026-11-26T23:05:16.244Z [86357] store process: last minute: edit: 190 written, 0 failed, queue wait p50 0 ms max 165 ms, busy 1230 ms; record: 55 written, 0 failed, queue wait p50 0 ms max 122 ms, busy 1372 ms
+2026-11-26T23:06:16.244Z [86357] store process: last minute: edit: 48 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 126 ms; record: 102 written, 0 failed, queue wait p50 0 ms max 3 ms, busy 371 ms
+2026-11-26T23:07:16.244Z [86357] store process: last minute: edit: 72 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 189 ms; record: 265 written, 0 failed, queue wait p50 0 ms max 2 ms, busy 1154 ms
+2026-11-26T23:08:16.244Z [86357] store process: last minute: edit: 77 written, 0 failed, queue wait p50 0 ms max 6 ms, busy 240 ms; record: 247 written, 0 failed, queue wait p50 0 ms max 61 ms, busy 1337 ms
+2026-11-26T23:09:16.245Z [86357] store process: last minute: edit: 64 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 189 ms; record: 247 written, 0 failed, queue wait p50 0 ms max 6 ms, busy 1294 ms
+2026-11-26T23:10:16.245Z [86357] store process: last minute: edit: 47 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 157 ms; record: 167 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1029 ms
+2026-11-26T23:11:16.245Z [86357] store process: last minute: edit: 24 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 85 ms; record: 109 written, 0 failed, queue wait p50 0 ms max 5 ms, busy 529 ms
+2026-11-26T23:12:16.245Z [86357] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 16 ms; record: 22 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 95 ms
+2026-11-26T23:14:16.262Z [86357] store process: last minute: record: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 45 ms
+2026-11-26T23:16:29.336Z [86357] store process: stopping (stopped): no batches since the last line
+2026-11-26T23:16:29.365Z [86357] store process: ended (stopped)
