@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { isRecord } from "../../core/fs/json.js";
 import { toAbsolute } from "../../core/fs/paths.js";
@@ -74,20 +74,59 @@ export const JEST = {
   slowProjects: () => [],
 } satisfies RunnerDescription;
 
-/** The Jest projects whose `cwd`, real, is `cwd`, each with its `package.json` scripts. */
+/**
+ * The Jest projects a plain `jest` run from `cwd` runs as configured: the
+ * project's `cwd`, real, is `cwd`, its config sits there too, and Jest's own
+ * config search there finds that config and no other (review 0.1.646 B1).
+ * A custom config name, a `cwd` apart from the config's directory, or a
+ * search Jest would refuse, runs the files under another config: no match.
+ */
 function jestHere(
   root: AbsolutePath,
   cwd: string,
   projects: readonly JestProject[],
 ): readonly JestHere[] {
   return projects.flatMap((project) => {
-    const dir =
-      project.cwd === undefined
-        ? (dirname(toAbsolute(root, project.config)) as AbsolutePath)
-        : toAbsolute(root, project.cwd);
-    if (realPath(dir) !== cwd) return [];
-    return [{ project, dir, scripts: scriptsIn(dir) }];
+    const config = toAbsolute(root, project.config);
+    const dir = project.cwd === undefined ? dirname(config) : toAbsolute(root, project.cwd);
+    if (realPath(dir) !== cwd || realPath(dirname(config)) !== cwd) return [];
+    if (!discovers(dir, config)) return [];
+    return [{ project, dir: dir as AbsolutePath, scripts: scriptsIn(dir) }];
   });
+}
+
+/** The config file names Jest 29 and 30 search a directory for, before `package.json`. */
+const CONFIG_NAMES: readonly string[] = [
+  "jest.config.js",
+  "jest.config.ts",
+  "jest.config.mjs",
+  "jest.config.cjs",
+  "jest.config.mts",
+  "jest.config.cts",
+  "jest.config.json",
+];
+
+/**
+ * Whether Jest's config search in `dir` finds `config` alone: each config
+ * file name there, and a `package.json` with a `jest` key, is a candidate;
+ * Jest refuses more than one, and none sends its search elsewhere. An
+ * unreadable `package.json` leaves the search in doubt.
+ */
+function discovers(dir: string, config: string): boolean {
+  const candidates = CONFIG_NAMES.map((name) => join(dir, name)).filter(isFile);
+  const manifest = join(dir, "package.json");
+  if (isFile(manifest)) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(readFileSync(manifest, "utf8"));
+    } catch {
+      return false;
+    }
+    if (isRecord(parsed) && Object.hasOwn(parsed, "jest")) candidates.push(manifest);
+  }
+  if (candidates.length !== 1) return false;
+  const found = realPath(candidates[0] as string);
+  return found !== null && found === realPath(config);
 }
 
 /**
@@ -186,6 +225,15 @@ function realPath(path: string): string | null {
     return realpathSync(resolve(path));
   } catch {
     return null;
+  }
+}
+
+/** Whether `path` is a file, as Jest's config search asks; a symbolic link to one is. */
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
   }
 }
 

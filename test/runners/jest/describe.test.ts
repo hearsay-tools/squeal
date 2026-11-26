@@ -1,6 +1,7 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
@@ -14,6 +15,7 @@ import {
   type TestCommand,
 } from "../../../src/runners/descriptions.js";
 import type { JestHere } from "../../../src/runners/jest/describe.js";
+import { installJest, JEST_MAJORS } from "../../helpers/jest-env.js";
 
 /* Spec 028 D6.3 on 005 D8 step 1: each recognized plain Jest form, and each fall-through. */
 
@@ -200,11 +202,28 @@ describe("resolveTestFiles, Jest (spec 028 D6.3)", () => {
 describe("JEST.context (spec 028 D6.3)", () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "squeal-jest-describe-"))) as AbsolutePath;
   afterAll(() => rmSync(root, { recursive: true, force: true }));
+  let made = 0;
+
+  /** A fresh directory below `root` holding `files`. */
+  const tree = (files: Record<string, string>): AbsolutePath => {
+    const dir = join(root, `tree-${made++}`) as AbsolutePath;
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(dir, path)), { recursive: true });
+      writeFileSync(join(dir, path), text);
+    }
+    return dir;
+  };
+  /** The names of the projects a command run from `cwd` below `dir` matches. */
+  const found = (dir: AbsolutePath, project: Partial<JestProject>, cwd = dir) =>
+    commandContext({ ...DEFAULT_POLICY, jest: [{ ...WEB, ...project }] }, dir, cwd).jest?.map(
+      (h) => h.project.name,
+    );
 
   it("finds the one project run from the real directory, with its package.json scripts", () => {
     const dir = join(root, "packages/web");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "package.json"), JSON.stringify({ scripts: { test: "jest", n: 1 } }));
+    writeFileSync(join(dir, "jest.config.ts"), "export default {};\n");
     const policy = {
       ...DEFAULT_POLICY,
       jest: [WEB, { ...WEB, name: "api", config: "packages/api/jest.config.ts" }],
@@ -221,4 +240,94 @@ describe("JEST.context (spec 028 D6.3)", () => {
     });
     expect(commandContext(policy, root, root).jest).toEqual([]);
   });
+
+  it("matches only the config Jest's own search finds there, alone (review 0.1.646 B1)", () => {
+    const CJS = { "jest.config.cjs": "module.exports = {};\n" };
+    const POLICY = { "policy.jest.cjs": "module.exports = {};\n" };
+    const at = (config: string) => ({ config });
+    expect(found(tree({ ...CJS }), at("jest.config.cjs"))).toEqual(["web"]);
+    expect(found(tree({ ...CJS, ...POLICY }), at("policy.jest.cjs"))).toEqual([]);
+    expect(found(tree({ ...POLICY }), at("policy.jest.cjs"))).toEqual([]);
+    expect(found(tree({ ...CJS, "jest.config.js": "" }), at("jest.config.cjs"))).toEqual([]);
+    expect(found(tree({ ...CJS, "jest.config.mts": "" }), at("jest.config.cjs"))).toEqual([]);
+    const withKey = { "package.json": JSON.stringify({ jest: { testEnvironment: "node" } }) };
+    expect(found(tree({ ...CJS, ...withKey }), at("jest.config.cjs"))).toEqual([]);
+    expect(found(tree({ ...withKey }), at("package.json"))).toEqual(["web"]);
+    const scripts = { "package.json": JSON.stringify({ scripts: { test: "jest" } }) };
+    expect(found(tree({ ...CJS, ...scripts }), at("jest.config.cjs"))).toEqual(["web"]);
+    expect(found(tree({ ...CJS, "package.json": "{ not json" }), at("jest.config.cjs"))).toEqual(
+      [],
+    );
+    expect(found(tree({}), at("jest.config.cjs"))).toEqual([]);
+  });
+
+  it("falls through for a policy cwd apart from its config's directory", () => {
+    const dir = tree({ "jest.config.cjs": "module.exports = {};\n", "sub/a.test.cjs": "" });
+    const sub = { config: "jest.config.cjs", cwd: "sub" };
+    expect(found(dir, sub, join(dir, "sub"))).toEqual([]);
+    expect(found(dir, sub)).toEqual([]);
+    expect(found(dir, { config: "jest.config.cjs", cwd: "." })).toEqual(["web"]);
+  });
 });
+
+describe.each(JEST_MAJORS)(
+  "plain Jest recognition on real Jest %i (review 0.1.646 B1)",
+  (major) => {
+    const scratch = realpathSync(mkdtempSync(join(tmpdir(), "squeal-jest-plain-")));
+    afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+    const config = (flag: string) =>
+      `module.exports = { testEnvironment: "node", testMatch: ["<rootDir>/*.test.cjs"], globals: { FLAG: "${flag}" } };\n`;
+    const TEST = `test("same test file", () => expect(FLAG).toBe("configured"));\n`;
+
+    /** A directory with `a.test.cjs`, the installed Jest, and `configs`. */
+    function project(name: string, configs: Record<string, string>): AbsolutePath {
+      const dir = join(scratch, name);
+      mkdirSync(join(dir, "node_modules"), { recursive: true });
+      for (const [path, text] of Object.entries({ "a.test.cjs": TEST, ...configs })) {
+        writeFileSync(join(dir, path), text);
+      }
+      const jest = realpathSync(join(installJest(major), "node_modules/jest"));
+      symlinkSync(jest, join(dir, "node_modules/jest"));
+      return dir as AbsolutePath;
+    }
+    const jestExit = (dir: string, args: readonly string[]) =>
+      spawnSync(process.execPath, [join(dir, "node_modules/jest/bin/jest.js"), ...args], {
+        cwd: dir,
+        encoding: "utf8",
+        timeout: 120_000,
+      }).status;
+    const APP: JestProject = { ...WEB, name: "app" };
+    const ARGS = ["--runInBand", "--ci", "a.test.cjs"];
+    const COMMAND = `jest ${ARGS.join(" ")}`;
+    const SLOW = { timeout: 240_000 };
+
+    it("does not match a custom config whose run a plain command does not repeat", SLOW, () => {
+      const dir = project("custom", {
+        "policy.jest.cjs": config("configured"),
+        "jest.config.cjs": config("direct"),
+      });
+      expect(jestExit(dir, ["--config", "policy.jest.cjs", ...ARGS])).toBe(0);
+      expect(jestExit(dir, ARGS)).toBe(1);
+      const policy = { ...DEFAULT_POLICY, jest: [{ ...APP, config: "policy.jest.cjs" }] };
+      expect(recognizeTestCommand(COMMAND, commandContext(policy, dir, dir))).toBeNull();
+    });
+
+    it("matches the config plain Jest finds alone, with no cwd or its own directory", SLOW, () => {
+      const dir = project("plain", { "jest.config.cjs": config("configured") });
+      expect(jestExit(dir, ARGS)).toBe(0);
+      const recognized = { runner: "jest", project: "app", dir, paths: ["a.test.cjs"] };
+      for (const cwd of [undefined, "."]) {
+        const app = { ...APP, config: "jest.config.cjs", ...(cwd === undefined ? {} : { cwd }) };
+        const context = commandContext({ ...DEFAULT_POLICY, jest: [app] }, dir, dir);
+        expect(recognizeTestCommand(COMMAND, context)).toEqual(recognized);
+      }
+      mkdirSync(join(dir, "sub"));
+      const away = { ...APP, config: "jest.config.cjs", cwd: "sub" };
+      const policy = { ...DEFAULT_POLICY, jest: [away] };
+      expect(recognizeTestCommand(COMMAND, commandContext(policy, dir, dir))).toBeNull();
+      expect(
+        recognizeTestCommand(COMMAND, commandContext(policy, dir, join(dir, "sub"))),
+      ).toBeNull();
+    });
+  },
+);
