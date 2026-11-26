@@ -3,11 +3,12 @@ import { join } from "node:path";
 import { createJestAdapter } from "../../runners/jest/adapter.js";
 import { jestTraits } from "../../runners/jest/traits.js";
 import { JEST_ADAPTER_VERSION } from "../../runners/jest/version.js";
+import type { ContainerWiring } from "../runner-host/container/index.js";
 import { createHostedJest, type ProcessHost } from "../runner-host/process-host.js";
 import type { AbsolutePath, ProjectName } from "../types/common.js";
 import type { JestProject } from "../types/policy-jest.js";
-import { type ContainerGuardOptions, createContainerGuardRunner } from "./container-guard.js";
-import { hosted } from "./node-test-runners.js";
+import { createContainerGuardRunner } from "./container-guard.js";
+import { hosted, NO_VITEST_POLICY } from "./node-test-runners.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
@@ -43,6 +44,8 @@ export interface JestRunnersOptions {
   readonly host?: ProcessHost | undefined;
   /** Spec 021 D20: how long a host stays up with no call; absent, for good. */
   readonly idleMs?: () => number;
+  /** Spec 027 D5 (row 027-06): the daemon's container route; absent, container projects stay unknown. */
+  readonly containers?: ContainerWiring;
 }
 
 /**
@@ -75,14 +78,24 @@ function jestRunner(project: JestProject, options: JestRunnersOptions): Recoveri
   // Spec 027 D4.2: a container project never runs on this host or remotely.
   if (project.container !== undefined) {
     return createContainerGuardRunner({
-      // `container-guard.ts` (row 027-06's) lists node:test and pytest; it reads the runner as a
-      // name and a note topic only.
-      runner: "jest" as ContainerGuardOptions["runner"],
+      runner: "jest",
       adapterVersion: JEST_ADAPTER_VERSION,
       root: options.root,
       project: { name: project.name, container: project.container },
       traits,
       note: options.note,
+      ...(options.containers === undefined ? {} : { containers: options.containers }),
+      start: ({ tempDir, cacheDir }) => ({
+        options: {
+          childEnv: options.childEnv ?? {},
+          process: { project, tempDir, cacheDir },
+        },
+        policy: () => ({
+          ...NO_VITEST_POLICY,
+          observe: options.observe(),
+          tierSize: options.tierSize(),
+        }),
+      }),
     });
   }
   // A host reads the files per batch from the project, as here (`HostedJestOptions`).

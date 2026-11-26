@@ -300,8 +300,14 @@ export function vitestDetected(root: string): boolean {
  * `policy`: no other runner is configured, or `vitestDetected` holds. The one
  * rule for the daemon, the gate, the header's listing runners and `retry`.
  */
-export function runsVitest(root: string, policy: Pick<Policy, "nodeTest" | "pytest">): boolean {
-  return policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root);
+export function runsVitest(
+  root: string,
+  policy: Pick<Policy, "nodeTest" | "pytest"> & Partial<Pick<Policy, "jest">>,
+): boolean {
+  return (
+    policy.nodeTest.length + policy.pytest.length + (policy.jest?.length ?? 0) === 0 ||
+    vitestDetected(root)
+  );
 }
 
 /** A tracked `package.json`, by its directory relative to the root (`""` for the root). */

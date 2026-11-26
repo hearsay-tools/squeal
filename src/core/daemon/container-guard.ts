@@ -43,7 +43,7 @@ export type ContainerStart = (dirs: { readonly tempDir: string; readonly cacheDi
 };
 
 export interface ContainerGuardOptions {
-  readonly runner: "node-test" | "pytest";
+  readonly runner: "node-test" | "pytest" | "jest";
   readonly adapterVersion: string;
   readonly root: AbsolutePath;
   readonly project: { readonly name: string; readonly container: string };
