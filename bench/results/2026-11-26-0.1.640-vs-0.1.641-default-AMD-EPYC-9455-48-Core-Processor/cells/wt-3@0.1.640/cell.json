@@ -1,0 +1,153 @@
+{
+  "name": "wt-3@0.1.640",
+  "files": 500,
+  "worktrees": 3,
+  "load": 0,
+  "ageRounds": 0,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "cli": "bin/squeal",
+  "phases": {
+    "startMain": {
+      "ms": 567.0987429999996,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/wt-3@0.1.640/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `squea"
+    },
+    "runAll": {
+      "ms": 1144.2476779999997,
+      "code": 0,
+      "tail": "Checkpoint 06fd1485-50b2-45e6-88f4-f45536191357 completed at revision 0: no known failures; 0 test files, 0 already current, 0 run now\nCheckpoint 06fd1485-50b2-45e6-88f4-f45536191357 started at revision 0: 0 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; the daemon listed no test files\nAffected checks: 0 passed, 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: counting, 600 of 1002 files.\nMore: `squeal status --full` adds the worktree and daemon and 6 notes\n",
+      "busyMean": 0.3686868686868687
+    },
+    "startOthers": [
+      {
+        "ms": 270.82675299999937,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 300264.80947000004,
+          "settled": false,
+          "polls": 271,
+          "waitingFor": "listing",
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      },
+      {
+        "ms": 423.792872,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 137.24530400004005,
+          "settled": false,
+          "polls": 1,
+          "waitingFor": "listing",
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      }
+    ],
+    "storeQuiet": {
+      "ms": 2000.504139000026,
+      "settled": true,
+      "polls": 1,
+      "lastPct": 0
+    },
+    "idle": {
+      "ms": 60000,
+      "daemons": 3,
+      "storeProcessCpuPct": 0,
+      "perDaemonCpuPct": [
+        0.0833333333333336,
+        0.08333333333333341,
+        0.06666666666666664
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 628594.563616,
+        "code": 0
+      },
+      {
+        "worktree": 1,
+        "ms": 1984405.596812,
+        "code": 0
+      },
+      {
+        "worktree": 2,
+        "ms": 2018030.6846249998,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.024565978699285826,
+    "sessionDaemonCpuS": [
+      11.200000000000001
+    ],
+    "edits": 57,
+    "sessionStoreProcessCpuS": 0.5599999999999998,
+    "impact": {
+      "command": "impact",
+      "ms": 139.9550989996642,
+      "code": 0,
+      "peakRssBytes": 77697024
+    }
+  },
+  "store": {
+    "storeBytes": 610304,
+    "walBytes": 226632,
+    "codeBytes": 10756096,
+    "runsDirs": 0,
+    "rows": {
+      "results": 0,
+      "runs": 0,
+      "revisions": 57,
+      "transitions": 0
+    },
+    "longWrites": 0,
+    "lockFailures": 0,
+    "longWriteHoldsMs": []
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 263409664,
+    "maxTreeBytes": 950087680
+  },
+  "storeProcess": {
+    "seen": 1,
+    "cpuS": 1.66,
+    "maxRssBytes": 184803328,
+    "written": 354,
+    "failed": 0,
+    "queueWaitMaxMs": 39,
+    "busyMs": 1358,
+    "stops": 1,
+    "failedLines": 0,
+    "relay": {
+      "sent": 354,
+      "direct": 1,
+      "failed": 0
+    }
+  },
+  "hookWriteWait": {
+    "seen": true,
+    "taken": 1501,
+    "p95MaxMs": 5,
+    "maxMs": 119,
+    "longWaitsMs": []
+  }
+}

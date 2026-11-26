@@ -1,0 +1,7 @@
+[2026-11-26T16:19:09.104Z] stress@0.1.641: squeal start + run --all
+[2026-11-26T16:19:16.608Z] stress@0.1.641: wait for the other worktrees' baselines
+[2026-11-26T16:24:17.695Z] stress@0.1.641: wait for the store process to go quiet
+[2026-11-26T16:24:19.698Z] stress@0.1.641: idle
+[2026-11-26T16:25:19.707Z] stress@0.1.641: sessions
+[2026-11-26T16:59:11.391Z] stress@0.1.641: collect
+[2026-11-26T16:59:17.119Z] stress@0.1.641: done

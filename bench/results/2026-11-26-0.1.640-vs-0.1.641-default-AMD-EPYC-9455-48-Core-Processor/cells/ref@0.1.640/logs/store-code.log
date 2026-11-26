@@ -1,0 +1,12 @@
+2026-11-26T13:55:13.636Z [10725] store process: serving /home/user/results/cells/ref@0.1.640/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/ref@0.1.640/work/run/squeal-code-b561d1b9845c1675.sock
+2026-11-26T13:56:13.636Z [10725] store process: last minute: edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 82 ms; record: 2 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 43 ms
+2026-11-26T13:57:13.637Z [10725] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 16 ms; record: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1 ms
+2026-11-26T13:58:13.638Z [10725] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 3 ms; record: 1 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 0 ms
+2026-11-26T13:59:13.638Z [10725] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 15 ms; record: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1 ms
+2026-11-26T14:01:13.640Z [10725] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 4 ms; record: 1 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1 ms
+2026-11-26T14:02:13.639Z [10725] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 21 ms; record: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 4 ms
+2026-11-26T14:03:13.648Z [10725] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 3 ms; record: 1 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1 ms
+2026-11-26T14:04:13.651Z [10725] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 12 ms; record: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 2 ms
+2026-11-26T14:05:13.652Z [10725] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 3 ms; record: 1 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 0 ms
+2026-11-26T14:06:39.870Z [10725] store process: stopping (stopped): edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 14 ms; record: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 3 ms
+2026-11-26T14:06:39.884Z [10725] store process: ended (stopped)

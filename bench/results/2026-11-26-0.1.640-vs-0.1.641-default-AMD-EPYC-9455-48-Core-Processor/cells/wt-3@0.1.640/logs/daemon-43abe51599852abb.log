@@ -1,0 +1,28 @@
+2026-11-26T14:58:55.816Z [66484] squeal daemon: vitest could not start: Failed to load custom CoverageProviderModule from /home/user/plugin-0/dist/coverage/provider.mjs; every check of this worktree is unknown until the config loads
+2026-11-26T14:58:55.954Z [66484] squeal daemon: serving /home/user/results/cells/wt-3@0.1.640/work/wt0 on /home/user/results/cells/wt-3@0.1.640/work/run/squeal-43abe51599852abb.sock
+2026-11-26T14:58:55.991Z [66484] squeal daemon: full integrity check: ok
+2026-11-26T14:59:55.286Z [66484] squeal daemon: code store: last minute: 46 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:00:00.333Z [66484] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 191 to 151 MiB in a 44 ms pause
+2026-11-26T15:05:55.218Z [66484] squeal daemon: hook writes: 35 taken, queue wait p95 1 ms max 5 ms
+2026-11-26T15:05:55.286Z [66484] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:06:55.217Z [66484] squeal daemon: hook writes: 52 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:06:55.286Z [66484] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:07:55.217Z [66484] squeal daemon: hook writes: 40 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:07:55.285Z [66484] squeal daemon: code store: last minute: 8 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:08:55.218Z [66484] squeal daemon: hook writes: 57 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:08:55.285Z [66484] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:09:55.218Z [66484] squeal daemon: hook writes: 53 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:09:55.285Z [66484] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:10:55.218Z [66484] squeal daemon: hook writes: 41 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:10:55.285Z [66484] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:11:55.217Z [66484] squeal daemon: hook writes: 52 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:11:55.285Z [66484] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:12:55.218Z [66484] squeal daemon: hook writes: 43 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:12:55.285Z [66484] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:13:55.218Z [66484] squeal daemon: hook writes: 56 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:14:55.218Z [66484] squeal daemon: hook writes: 55 taken, queue wait p95 1 ms max 119 ms
+2026-11-26T15:14:55.285Z [66484] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:15:33.402Z [66484] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-26T15:15:33.441Z [66484] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T15:15:33.500Z [66484] squeal daemon: hook writes: 13 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T15:15:33.503Z [66484] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

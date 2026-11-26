@@ -1,0 +1,83 @@
+{
+  "startedAt": "2026-11-26T13:54:24.833Z",
+  "squealVersion": "0.1.640 vs 0.1.641",
+  "plugins": [
+    {
+      "version": "0.1.640",
+      "label": "0.1.640"
+    },
+    {
+      "version": "0.1.641",
+      "label": "0.1.641"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD EPYC 9455 48-Core Processor",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    1941.3333333333333,
+    1866.6666666666667,
+    1932.6666666666667
+  ],
+  "loadavgAtStart": "0.49 0.16 0.06 1/394 6556",
+  "cells": [
+    {
+      "name": "ref@0.1.640",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.640",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.641",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.641",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.641",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.641",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.640",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.640",
+      "rep": 1
+    },
+    {
+      "name": "stress@0.1.640",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.640",
+      "rep": 1
+    },
+    {
+      "name": "stress@0.1.641",
+      "files": 500,
+      "worktrees": 6,
+      "load": 100,
+      "base": "stress",
+      "plugin": "0.1.641",
+      "rep": 1
+    }
+  ],
+  "endedAt": "2026-11-26T16:59:17.158Z"
+}
