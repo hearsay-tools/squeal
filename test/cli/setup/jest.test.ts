@@ -124,6 +124,110 @@ describe.each(JEST_MAJORS)("seedJest on Jest %i (spec 028 D1.2)", { timeout: 60_
   });
 });
 
+/** Review 0.1.646 B2's root config: inline projects only, two named, one unnamed, two of one name. */
+const INLINE: Readonly<Record<string, string>> = {
+  "package.json": json({ name: "app", private: true }),
+  "jest.config.cjs": `const project = (displayName, dir) => ({
+  ...(displayName === null ? {} : { displayName }),
+  rootDir: ".",
+  testEnvironment: "node",
+  testMatch: ["<rootDir>/" + dir + "/*.test.cjs"],
+});
+module.exports = {
+  projects: [
+    project("unit", "unit"),
+    project("integration", "integration"),
+    project(null, "plain"),
+    project("dup", "d1"),
+    project("dup", "d2"),
+  ],
+};
+`,
+  "unit/a.test.cjs": TEST,
+  "integration/b.test.cjs": TEST,
+  "plain/c.test.cjs": TEST,
+  "d1/d.test.cjs": TEST,
+  "d2/e.test.cjs": TEST,
+};
+
+/** A folder glob beside an inline project with options of its own. */
+const MIXED: Readonly<Record<string, string>> = {
+  "package.json": json({ name: "mono", private: true }),
+  "jest.config.js": `module.exports = {
+  projects: [
+    "<rootDir>/packages/*",
+    { displayName: "e2e", testEnvironment: "node", globals: { E2E: true }, testMatch: ["<rootDir>/e2e/*.test.js"] },
+  ],
+};
+`,
+  "packages/a/jest.config.js":
+    'module.exports = { displayName: "alpha", testEnvironment: "node" };\n',
+  "packages/a/test/a.test.js": TEST,
+  "e2e/flow.test.js": 'test("e2e", () => expect(E2E).toBe(true));\n',
+};
+
+describe.each(JEST_MAJORS)(
+  "inline Jest projects on Jest %i (review 0.1.646 B2)",
+  { timeout: 60_000 },
+  (major) => {
+    it("seeds each inline object by its displayName, else by #<index>", async () => {
+      const seed = await seedJest(repo(major, INLINE), tracked(INLINE), ENV);
+      const config = "jest.config.cjs";
+      expect(seed.projects).toEqual([
+        { name: "jest", config, project: "#2" },
+        { name: "dup", config, project: "#3" },
+        { name: "jest-2", config, project: "#4" },
+        { name: "integration", config, project: "integration" },
+        { name: "unit", config, project: "unit" },
+      ]);
+      expect(seed.notes).toContain(
+        "Jest config jest.config.cjs lists 5 projects: Squeal seeds each, not the config itself",
+      );
+      expect(seed.notes).toContain(
+        'seeded jest project "unit" from jest.config.cjs (project "unit")',
+      );
+      expect(seed.notes.join("\n")).not.toMatch(/inline object|^jest project "/m);
+    });
+
+    it("seeds a folder glob by its configs and an inline object by the root config", async () => {
+      const seed = await seedJest(repo(major, MIXED), tracked(MIXED), ENV);
+      expect(seed.projects).toEqual([
+        { name: "e2e", config: "jest.config.js", project: "e2e" },
+        { name: "alpha", config: "packages/a/jest.config.js" },
+      ]);
+    });
+
+    it("writes the selector on apply, and reads it back as declared", async () => {
+      const root = repo(major, { ...INLINE, "squeal.config.json": json({}) });
+      const plan = await buildPlan(root, { env: ENV });
+      expect(plan.runners.jest?.map((p) => [p.name, p.project, p.cwd, p.source])).toEqual([
+        ["jest", "#2", "", "seed"],
+        ["dup", "#3", "", "seed"],
+        ["jest-2", "#4", "", "seed"],
+        ["integration", "integration", "", "seed"],
+        ["unit", "unit", "", "seed"],
+      ]);
+      const stdout = await setupYes(root);
+      expect(stdout).toContain('seeded jest project "unit" in squeal.config.json');
+      expect(config(root).jest).toEqual([
+        { name: "jest", config: "jest.config.cjs", project: "#2" },
+        { name: "dup", config: "jest.config.cjs", project: "#3" },
+        { name: "jest-2", config: "jest.config.cjs", project: "#4" },
+        { name: "integration", config: "jest.config.cjs", project: "integration" },
+        { name: "unit", config: "jest.config.cjs", project: "unit" },
+      ]);
+      const after = await buildPlan(root, { env: ENV });
+      expect(after.runners.jest?.map((p) => [p.name, p.project, p.source])).toEqual([
+        ["jest", "#2", "config"],
+        ["dup", "#3", "config"],
+        ["jest-2", "#4", "config"],
+        ["integration", "integration", "config"],
+        ["unit", "unit", "config"],
+      ]);
+    });
+  },
+);
+
 describe("seedJest without Jest installed (spec 028 D1.2)", () => {
   it("seeds from file names, with a note, and skips a config that may list projects", async () => {
     const files = {

@@ -13,14 +13,16 @@ import { resolveJest } from "../runners/jest/resolve.js";
  * Each config file and each `package.json` with a `jest` key is read once
  * with the project's own `jest-config`, in a child process. A root config
  * that lists `projects` (`@nx/jest`'s `getJestProjectsAsync()` too) is
- * expanded into its projects and not seeded itself. A config without
+ * expanded into its projects and not seeded itself: a file or folder entry
+ * by its own config, an inline project object by the root config and its
+ * selector (`JestProject.project`, review 0.1.646 B2). A config without
  * `projects` that sits above other Jest configs is a catch-all that would
  * run their tests without their transforms, and a root config that selects
  * no test file catches nothing: each is skipped with a note.
  */
 
 /** A `jest` entry as written: `include`, `exclude`, `args` and `env` are left to their defaults. */
-export type SeededJest = Pick<JestProject, "name" | "config" | "cwd">;
+export type SeededJest = Pick<JestProject, "name" | "config" | "cwd" | "project">;
 
 export interface JestSeed {
   readonly projects: readonly SeededJest[];
@@ -42,6 +44,13 @@ const SKIPPED = /(^|\/)(node_modules|fixtures|__fixtures__|\.[^/]*)(\/|$)/;
 
 /** Config reads at once: each is a Node process that loads the project's Jest. */
 const READS_AT_ONCE = 4;
+
+/** One project to seed: a config, and the inline project of it when it is one. */
+interface Entry {
+  readonly config: string;
+  readonly project?: string;
+  readonly read: JestRead | null;
+}
 
 /** One candidate config and what its read found. */
 interface Candidate {
@@ -71,9 +80,10 @@ export async function seedJest(
     read: reads[i] ?? null,
   }));
   const notes: string[] = [];
-  const entries: { config: string; read: JestRead | null }[] = [];
-  const add = (config: string, read: JestRead | null) => {
-    if (!entries.some((e) => e.config === config)) entries.push({ config, read });
+  const entries: Entry[] = [];
+  const add = (entry: Entry) => {
+    const same = (e: Entry) => e.config === entry.config && e.project === entry.project;
+    if (!entries.some(same)) entries.push(entry);
   };
   for (const candidate of found) {
     const { config, read } = candidate;
@@ -82,8 +92,7 @@ export async function seedJest(
       notes.push(
         `Jest config ${config} lists ${listed.length} project${listed.length === 1 ? "" : "s"}: Squeal seeds each, not the config itself`,
       );
-      const expanded = await expand(root, config, listed, env, notes);
-      for (const project of expanded) add(project.config, project.read);
+      for (const entry of await expand(root, candidate, listed, env, notes)) add(entry);
       continue;
     }
     const skip = catchAll(candidate, found);
@@ -97,15 +106,17 @@ export async function seedJest(
       );
       continue;
     }
-    add(config, read);
+    add({ config, read });
   }
   const names = new Set(taken);
   const projects: SeededJest[] = [];
-  for (const { config, read } of entries.sort((a, b) => compare(a.config, b.config))) {
+  entries.sort((a, b) => compare(a.config, b.config) || compare(a.project ?? "", b.project ?? ""));
+  for (const { config, project, read } of entries) {
     const name = uniqueName(displayName(read), dirOf(config), names);
     names.add(name);
-    projects.push({ name, config });
-    notes.push(`seeded jest project "${name}" from ${config}`);
+    projects.push({ name, config, ...(project === undefined ? {} : { project }) });
+    const inline = project === undefined ? "" : ` (project ${JSON.stringify(project)})`;
+    notes.push(`seeded jest project "${name}" from ${config}${inline}`);
     if (read === null) {
       notes.push(
         `jest project "${name}": jest is not installed yet, so its config was not read; its checks stay unknown until jest 29 or 30 is installed`,
@@ -129,15 +140,20 @@ function candidates(root: AbsolutePath, tracked: readonly string[]): string[] {
     .sort(compare);
 }
 
-/** Reads one config with the Jest installed for its folder; `null` when there is none. */
+/**
+ * Reads one config, or its inline project `selector`, with the Jest
+ * installed for its folder; `null` when there is none.
+ */
 async function readConfig(
   root: AbsolutePath,
   config: string,
   env: Readonly<Record<string, string | undefined>>,
+  selector?: string,
 ): Promise<JestRead | null> {
   const project: JestProject = {
     name: config,
     config,
+    ...(selector === undefined ? {} : { project: selector }),
     include: [],
     exclude: [],
     args: [],
@@ -155,24 +171,21 @@ function projectsOf(read: JestRead | null): readonly unknown[] {
 }
 
 /**
- * The config of each project a root config lists, read; a folder takes the
- * first Jest config in it, else its `package.json`, as Jest finds one.
+ * Each project a root config lists, read: a file or folder entry by its
+ * config (a folder takes the first Jest config in it, else its
+ * `package.json`, as Jest finds one), an inline object by the root config
+ * and the selector its read names.
  */
 async function expand(
   root: AbsolutePath,
-  from: string,
+  { config: from, read }: Candidate,
   listed: readonly unknown[],
   env: Readonly<Record<string, string | undefined>>,
   notes: string[],
-): Promise<{ config: string; read: JestRead | null }[]> {
+): Promise<Entry[]> {
   const configs: string[] = [];
   for (const entry of listed) {
-    if (typeof entry !== "string") {
-      notes.push(
-        `Jest config ${from} lists a project as an inline object; Squeal seeds projects from config files only: move it to its own jest.config file`,
-      );
-      continue;
-    }
+    if (typeof entry !== "string") continue;
     const config = projectConfig(root, entry);
     if (config === null) {
       notes.push(
@@ -180,8 +193,15 @@ async function expand(
       );
     } else if (!configs.includes(config)) configs.push(config);
   }
-  const reads = await pool(configs, (config) => readConfig(root, config, env));
-  return configs.map((config, i) => ({ config, read: reads[i] ?? null }));
+  const selectors = read?.ok === true ? (read.inlineProjects ?? []) : [];
+  const [files, inline] = await Promise.all([
+    pool(configs, (config) => readConfig(root, config, env)),
+    pool(selectors, (selector) => readConfig(root, from, env, selector)),
+  ]);
+  return [
+    ...configs.map((config, i) => ({ config, read: files[i] ?? null })),
+    ...selectors.map((project, i) => ({ config: from, project, read: inline[i] ?? null })),
+  ];
 }
 
 /** A listed project's config file, worktree-relative; `null` for none inside the worktree. */

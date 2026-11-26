@@ -19,6 +19,8 @@ export interface JestRunner {
   readonly name: string;
   /** Worktree-relative: the Jest config file, or a `package.json` with a `jest` key. */
   readonly config: string;
+  /** The inline project of `config`'s `projects` (`JestProject.project`); absent, `config` itself. */
+  readonly project?: string;
   /** Worktree-relative folder Jest runs from, `""` for the root. */
   readonly cwd: string;
   readonly source: "config" | "seed";
@@ -48,6 +50,7 @@ export async function jestRunners(
       projects: policy.jest.map((p) => ({
         name: p.name,
         config: p.config,
+        ...(p.project === undefined ? {} : { project: p.project }),
         cwd: p.cwd ?? dirOf(p.config),
         source: "config",
         notes: [],
@@ -67,6 +70,7 @@ export async function jestRunners(
     projects: seed.projects.map((p) => ({
       name: p.name,
       config: p.config,
+      ...(p.project === undefined ? {} : { project: p.project }),
       cwd: p.cwd ?? dirOf(p.config),
       source: "seed",
       notes: seed.notes.filter(own(p.name)),
@@ -102,9 +106,10 @@ export function writeJestSeed(root: AbsolutePath, plan: SetupPlan): string[] {
     if (text !== "") return [];
   }
   if (declaresJest(config)) return [];
-  config.jest = seeded.map(({ name, config: file, cwd }) => ({
+  config.jest = seeded.map(({ name, config: file, project, cwd }) => ({
     name,
     config: file,
+    ...(project === undefined ? {} : { project }),
     ...(cwd === dirOf(file) ? {} : { cwd }),
   }));
   const indent = /^([ \t]+)"/m.exec(text)?.[1] ?? 2;
