@@ -90,7 +90,7 @@ Without the cache, loading grew **3 to 4 ms by 0.1.450 and 4 to 6 ms by main**. 
 
 ## 4. Candidate cuts, measured
 
-**Method.** `build-variant.ts` builds the hook bundles with `bundleOptions` and one change each, into scratch directories. Every variant printed the same stdout and no stderr as the base build in every case (`parity.mjs`: 22 of 22 runs each, `SQUEAL_HOOK_DEBUG=1`). Then all variants ran interleaved on one seeded store, 30 runs per case and variant, without and with the compile cache. *Verified by experiment.*
+**Method.** `build-variant.ts` builds the hook bundles with `bundleOptions` and one change each, into scratch directories. Every variant printed the same stdout and no stderr as the base build in every case (`parity.mjs`: 22 of 22 runs each, `SQUEAL_HOOK_DEBUG=1`). Then all variants ran interleaved on one seeded store, without and with the compile cache: 30 runs per case and variant in run 1, four rounds of 20 in the rounds run. *Verified by experiment.*
 
 - `minify`: `minifyWhitespace` and `minifySyntax` (no identifier renaming). 678 → 517 KB.
 - `split`: `splitting: true` over the hook entries with shared chunks. Each hook then loads 4 to 7 files whose sum is larger than the single bundle (`pre-tool-use` 709 KB in 4 files, `stop` 752 KB in 7).
@@ -110,7 +110,7 @@ Quiet host (9700X, four rounds of 20 runs, `boat/rounds/rounds-*.txt`). Base: po
 | `user-prompt-submit` | 43.3/50.8 | −1.3/−0.8 | −1.6/−4.0 | −2.0/+0.9 | **−4.6/−7.0** | 40.6/48.6 | −1.9/−1.4 | −4.4/−7.0 | −1.8/+0.3 | **−5.3/−6.3** |
 | `user-prompt-submit` (silent) | 40.8/50.7 | −1.0/−0.8 | −2.8/−2.4 | −2.3/−2.2 | **−4.4/−6.8** | 36.5/46.0 | −1.1/+0.1 | −2.2/−1.8 | −0.7/+1.6 | **−4.2/−2.1** |
 
-`session-start`'s no-cache p95 changes come from base rounds with neighbour spikes (base round p95 69 to 120 ms); read its p50 only. "All three" is `builtins+cut+minify`.
+`session-start`'s no-cache p95 changes come from base rounds with neighbour spikes (base round p95: best 69 ms, median 90 ms); read its p50 only. "All three" is `builtins+cut+minify`.
 
 On the development host (one round of 20, load 2.5 to 3.3, `host/var-*.txt`), where a run takes 1.4 to 1.6 times as long, the same changes are about twice as large: `builtins` −4.3 to −5.6 ms p50 (one case +1.0), `cut` −2.2 to −4.4, `minify` −0.8 to −3.4, `lazy+cut+minify` **−4.4 to −10.1 ms p50 and −6.0 to −12.3 ms p95** without the cache, −4.3 to −8.5 ms p50 with it. There `stop` went from 84.6/92.2 to 76.9/86.2 ms without the cache and from 72.2/79.3 to 67.9/75.9 ms with it.
 
