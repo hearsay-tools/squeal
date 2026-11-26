@@ -63,3 +63,18 @@ file and its test. Done when: a test shows the bridge's environment carries the 
 user's value; `test/harness/opencode/latency.test.ts` passes; `test/keys/launchers.test.ts` still passes.
 
 Use /worker.
+
+## 025-21: the other harness latency tests measure what users run (slice; opus medium; coordinator's call, test-only, 2026-11-26)
+
+Outcome: the 80 ms p95 budget in `test/harness/{codex,antigravity,opencode,pi}/latency.test.ts` holds on the path
+each harness really starts, as 025-19 did for Claude Code (the human's option A). On candidate 0.1.641 at load 1.2
+to 1.7, Codex and Antigravity `stop` read exactly 80 ms p95 in one of three sequential rounds, on uncached direct
+`runBundle` runs over fixture stores without write markers. Read `hook-runtime.md` "Startup paths". Changes:
+(1) every `seeded()` store calls `ensureWriteMarkers` after seeding, as `test/harness/latency.test.ts` does;
+(2) Antigravity starts each hook through `plugins/antigravity/hooks/run` with a warm compile cache (reuse
+`runLaunched` from `test/harness/bundle-helpers.ts`, adding a plugin-dir parameter if needed); (3) Codex runs its
+runtime bundles with the compile cache warm in a temp dir, as its adapter does (`src/harness/codex/adapter/index.ts`
+`enableCompileCache`), or through the adapter if that is practical; (4) the uncached direct run stays printed, not
+asserted. Budget, load gate and CI gate unchanged. OpenCode's margin check against Codex must compare like with like.
+Owns those four test files and `test/harness/bundle-helpers.ts`. Done when: the four tests pass three sequential
+rounds in a row on this host at load <= 4 against the committed `dist`.
