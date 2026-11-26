@@ -229,7 +229,9 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
     return null;
   }
   const meanwhile = lane.whenLost === "local" ? "run here" : "are not run";
+  // Spec 028 D7.4: no check group selects Jest projects, so Jest keying is never deferred.
   const eager = (runner: RemoteRunner) =>
+    runner === "jest" ||
     !runnerKeyingDeferred(options.policy(), runner === "node-test" ? "nodeTest" : runner);
   const runs = `${tiersText(lane.lanes)} runs of ${lane.runners.join(", ")}`;
   say(
