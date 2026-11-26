@@ -268,6 +268,11 @@ describe("JEST.context (spec 028 D6.3)", () => {
     expect(found(dir, sub)).toEqual([]);
     expect(found(dir, { config: "jest.config.cjs", cwd: "." })).toEqual(["web"]);
   });
+
+  it("falls through for an inline project inside a root multi-project config", () => {
+    const dir = tree({ "jest.config.cjs": "module.exports = { projects: [{ displayName: 'unit' }] };\n" });
+    expect(found(dir, { config: "jest.config.cjs", project: "unit" })).toEqual([]);
+  });
 });
 
 describe.each(JEST_MAJORS)(

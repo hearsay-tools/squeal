@@ -87,6 +87,8 @@ function jestHere(
   projects: readonly JestProject[],
 ): readonly JestHere[] {
   return projects.flatMap((project) => {
+    // An inline sub-project of a root `projects` config: plain `jest` runs the whole root config.
+    if (project.project !== undefined) return [];
     const config = toAbsolute(root, project.config);
     const dir = project.cwd === undefined ? dirname(config) : toAbsolute(root, project.cwd);
     if (realPath(dir) !== cwd || realPath(dirname(config)) !== cwd) return [];
