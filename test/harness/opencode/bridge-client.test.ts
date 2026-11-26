@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type BridgeCommand,
   bridgeStart,
@@ -51,6 +51,11 @@ function pidFile(): string {
   pidFiles.push(path);
   return path;
 }
+
+// Row 025-20: a bridge with no cache of the user's writes Squeal's own, here a temp one, not this host's.
+beforeEach(() => {
+  vi.stubEnv("XDG_CACHE_HOME", tempDir("squeal-oc-cache-"));
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -203,6 +208,85 @@ describe("callBridge", () => {
     const carried = bridgeStart("/b.mjs", { ...env, NODE_USE_ENV_PROXY: "1" });
     expect(carried.env).toEqual({ ...env, SQUEAL_CARRIED_NODE_USE_ENV_PROXY: "1" });
     expect(carried.args.at(-1)).toBe("/b.mjs");
+  });
+
+  describe("Node's compile cache (row 025-20, spec 025 D7.2)", () => {
+    const OWN = "/x/squeal/compile-cache";
+    it.each([
+      { name: "XDG_CACHE_HOME", env: { HOME: "/h", XDG_CACHE_HOME: "/x" }, cache: OWN },
+      {
+        name: "HOME without XDG_CACHE_HOME",
+        env: { HOME: "/x/.." },
+        cache: "/x/../.cache/squeal/compile-cache",
+      },
+      {
+        name: "HOME with an empty XDG_CACHE_HOME",
+        env: { HOME: "/h", XDG_CACHE_HOME: "" },
+        cache: "/h/.cache/squeal/compile-cache",
+      },
+    ])("is Squeal's own, marked, when the user set none: from $name", ({ env, cache }) => {
+      expect(bridgeStart("/b.mjs", env).env).toEqual({
+        ...env,
+        NODE_COMPILE_CACHE: cache,
+        SQUEAL_OWN_COMPILE_CACHE: "1",
+      });
+    });
+
+    it.each([
+      { name: "a user's cache", env: { HOME: "/h", NODE_COMPILE_CACHE: "/mine" } },
+      { name: "a user's empty cache", env: { HOME: "/h", NODE_COMPILE_CACHE: "" } },
+      { name: "no home", env: { PATH: "/bin" } },
+      { name: "a relative base", env: { HOME: "h", XDG_CACHE_HOME: "c" } },
+    ])("leaves the environment as it is with $name", ({ env }) => {
+      expect(bridgeStart("/b.mjs", env).env).toBe(env);
+    });
+
+    it("rides with the carried proxy switch", () => {
+      const env = { HOME: "/h", NODE_USE_ENV_PROXY: "1" };
+      expect(bridgeStart("/b.mjs", env).env).toEqual({
+        HOME: "/h",
+        NODE_COMPILE_CACHE: "/h/.cache/squeal/compile-cache",
+        SQUEAL_OWN_COMPILE_CACHE: "1",
+        SQUEAL_CARRIED_NODE_USE_ENV_PROXY: "1",
+      });
+    });
+
+    const CACHE_PROBE = `
+      import { getCompileCacheDir } from "node:module";
+      const e = process.env;
+      process.stdout.write(JSON.stringify({ answer: { dir: getCompileCacheDir() ?? null, cache: e.NODE_COMPILE_CACHE ?? null, own: e.SQUEAL_OWN_COMPILE_CACHE ?? null } }));
+    `;
+
+    it("starts the bridge with Node's cache on in Squeal's own directory when the user set none", async () => {
+      vi.stubEnv("NODE_COMPILE_CACHE", undefined);
+      vi.stubEnv("SQUEAL_OWN_COMPILE_CACHE", undefined);
+      const base = process.env.XDG_CACHE_HOME ?? "";
+      const own = join(base, "squeal", "compile-cache");
+      const answer = await callBridge<{ dir: string | null; cache: string; own: string }>(
+        bridge(CACHE_PROBE),
+        {},
+        tempDir("squeal-oc-cwd-"),
+        10_000,
+      );
+      expect(answer).toMatchObject({ cache: own, own: "1" });
+      // Node enabled it there, in a directory of its version.
+      expect(answer?.dir?.startsWith(`${own}/`)).toBe(true);
+      expect(existsSync(answer?.dir ?? "")).toBe(true);
+    });
+
+    it("keeps a user's cache, unmarked", async () => {
+      const mine = tempDir("squeal-oc-mine-");
+      vi.stubEnv("NODE_COMPILE_CACHE", mine);
+      vi.stubEnv("SQUEAL_OWN_COMPILE_CACHE", undefined);
+      const answer = await callBridge<{ dir: string | null; cache: string; own: string | null }>(
+        bridge(CACHE_PROBE),
+        {},
+        tempDir("squeal-oc-cwd-"),
+        10_000,
+      );
+      expect(answer).toMatchObject({ cache: mine, own: null });
+      expect(answer?.dir?.startsWith(`${mine}/`)).toBe(true);
+    });
   });
 
   it.skipIf(BUN === null)(
