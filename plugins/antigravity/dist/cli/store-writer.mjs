@@ -727,9 +727,10 @@ var CODE_INDEXES = {
   states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
   states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
   states_non_pass: "CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'",
-  states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
+  states_complexity_blob: "CREATE INDEX states_complexity_blob ON states (blob) WHERE measure = 'complexity'",
   views_by_check: "CREATE INDEX views_by_check ON views (check_id)"
 };
+var CODE_RETIRED_INDEXES = ["states_by_blob"];
 var CODE_TABLES = {
   coverage_parts: `
 CREATE TABLE coverage_parts (
@@ -1538,15 +1539,15 @@ function createCoverageRepo(conn, sent) {
     )) {
       ids.set(str(row, "hash"), num(row, "id"));
     }
-    const listed = record.parts.map((part) => ids.get(part.hash));
-    if (listed.some((id) => id === void 0)) {
+    const listed2 = record.parts.map((part) => ids.get(part.hash));
+    if (listed2.some((id) => id === void 0)) {
       throw new Error("squeal code store: a coverage part is missing after its insert");
     }
     conn.run(
       UPSERT,
       key.resultKey,
       key.providerVersion,
-      manifestBytes(record, listed),
+      manifestBytes(record, listed2),
       stored2
     );
   };
@@ -1634,7 +1635,7 @@ var PER_WORKTREE = [
 ];
 var UNUSED_COUNT = `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
     AND f.language = counts.language AND f.counter_version = counts.counter_version)
-  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.blob = counts.blob)`;
+  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.measure = 'complexity' AND s.blob = counts.blob)`;
 var UNUSED_CHECK = `NOT EXISTS (SELECT 1 FROM states s
     WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
   AND NOT EXISTS (SELECT 1 FROM transitions t
@@ -1663,7 +1664,7 @@ function* pruneCodeSlices(conn, options, counts) {
       counts.viewsRemoved += n;
     }
   });
-  const indexed = conn.read(() => hasIndexes(conn, "states_by_blob", "views_by_check"));
+  const indexed = conn.read(() => hasIndexes(conn, "states_complexity_blob", "views_by_check"));
   if (indexed) {
     yield* rule({
       table: "counts",
@@ -1694,7 +1695,17 @@ function* pruneCodeSlices(conn, options, counts) {
       }
     });
   }
+  yield* dropRetired(conn);
   yield* vacuum(conn);
+}
+function* dropRetired(conn) {
+  const held = () => CODE_RETIRED_INDEXES.filter((name) => hasIndexes(conn, name));
+  if (conn.read(held).length === 0) return;
+  yield () => conn.transaction(() => {
+    const names = held();
+    for (const name of names) conn.db.exec(`DROP INDEX ${name}`);
+    return names.length > 0;
+  });
 }
 function deadWorktrees(conn, live) {
   const kept = /* @__PURE__ */ new Set([...live, ...live.map((id) => stagedId(id))]);
@@ -1757,6 +1768,9 @@ function ensureCodeCheck(conn, check) {
   );
   return params;
 }
+var LISTED_CHECKS = `SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
+  AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2`;
+var listed = (checks) => JSON.stringify(checks.map((c) => [c.path, c.qualifiedName, c.occurrence]));
 var CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
 function checkFrom2(row) {
   return {
@@ -1896,6 +1910,15 @@ function createStateRepo(conn) {
         }
       });
     },
+    removeOtherMeasures(worktreeId, checks, kept) {
+      if (checks.length === 0) return;
+      conn.run(
+        `DELETE FROM states WHERE worktree_id = ? AND measure != ? AND check_id IN (${LISTED_CHECKS})`,
+        worktreeId,
+        kept,
+        listed(checks)
+      );
+    },
     removeMeasure(worktreeId, measure, paths) {
       if (paths === void 0) {
         conn.run("DELETE FROM states WHERE worktree_id = ? AND measure = ?", worktreeId, measure);
@@ -1962,11 +1985,9 @@ function createStateRepo(conn) {
         );
         if (removed.length > 0) {
           conn.run(
-            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (
-               SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
-                 AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2)`,
+            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (${LISTED_CHECKS})`,
             worktreeId,
-            JSON.stringify(removed.map((c) => [c.path, c.qualifiedName, c.occurrence]))
+            listed(removed)
           );
         }
         return written;
@@ -2237,6 +2258,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     }
     switchToWal(db, busyTimeoutMs);
     db.exec("PRAGMA synchronous = NORMAL");
+    for (const pragma of CONNECTION_PRAGMAS) db.exec(pragma);
     const version = migrate(db, CODE_MIGRATIONS);
     if (options.create !== false) makeIndexes(db);
     return createCodeStore(options.connection?.(db) ?? new Connection(db), version, path);

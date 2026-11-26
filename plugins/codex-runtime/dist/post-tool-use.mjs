@@ -3753,9 +3753,10 @@ var CODE_INDEXES = {
   states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
   states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
   states_non_pass: "CREATE INDEX states_non_pass ON states (worktree_id, measure, outcome) WHERE outcome != 'pass'",
-  states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
+  states_complexity_blob: "CREATE INDEX states_complexity_blob ON states (blob) WHERE measure = 'complexity'",
   views_by_check: "CREATE INDEX views_by_check ON views (check_id)"
 };
+var CODE_RETIRED_INDEXES = ["states_by_blob"];
 var CODE_TABLES = {
   coverage_parts: `
 CREATE TABLE coverage_parts (
@@ -4569,15 +4570,15 @@ function createCoverageRepo(conn, sent) {
     )) {
       ids.set(str(row, "hash"), num(row, "id"));
     }
-    const listed3 = record.parts.map((part) => ids.get(part.hash));
-    if (listed3.some((id) => id === void 0)) {
+    const listed4 = record.parts.map((part) => ids.get(part.hash));
+    if (listed4.some((id) => id === void 0)) {
       throw new Error("squeal code store: a coverage part is missing after its insert");
     }
     conn.run(
       UPSERT,
       key.resultKey,
       key.providerVersion,
-      manifestBytes(record, listed3),
+      manifestBytes(record, listed4),
       stored4
     );
   };
@@ -4665,7 +4666,7 @@ var PER_WORKTREE = [
 ];
 var UNUSED_COUNT = `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
     AND f.language = counts.language AND f.counter_version = counts.counter_version)
-  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.blob = counts.blob)`;
+  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.measure = 'complexity' AND s.blob = counts.blob)`;
 var UNUSED_CHECK = `NOT EXISTS (SELECT 1 FROM states s
     WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
   AND NOT EXISTS (SELECT 1 FROM transitions t
@@ -4694,7 +4695,7 @@ function* pruneCodeSlices(conn, options, counts) {
       counts.viewsRemoved += n;
     }
   });
-  const indexed = conn.read(() => hasIndexes(conn, "states_by_blob", "views_by_check"));
+  const indexed = conn.read(() => hasIndexes(conn, "states_complexity_blob", "views_by_check"));
   if (indexed) {
     yield* rule({
       table: "counts",
@@ -4725,7 +4726,17 @@ function* pruneCodeSlices(conn, options, counts) {
       }
     });
   }
+  yield* dropRetired(conn);
   yield* vacuum(conn);
+}
+function* dropRetired(conn) {
+  const held = () => CODE_RETIRED_INDEXES.filter((name2) => hasIndexes(conn, name2));
+  if (conn.read(held).length === 0) return;
+  yield () => conn.transaction(() => {
+    const names3 = held();
+    for (const name2 of names3) conn.db.exec(`DROP INDEX ${name2}`);
+    return names3.length > 0;
+  });
 }
 function deadWorktrees(conn, live) {
   const kept3 = /* @__PURE__ */ new Set([...live, ...live.map((id) => stagedId(id))]);
@@ -4788,6 +4799,9 @@ function ensureCodeCheck(conn, check) {
   );
   return params;
 }
+var LISTED_CHECKS = `SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
+  AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2`;
+var listed = (checks) => JSON.stringify(checks.map((c) => [c.path, c.qualifiedName, c.occurrence]));
 var CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
 function checkFrom2(row) {
   return {
@@ -4927,6 +4941,15 @@ function createStateRepo(conn) {
         }
       });
     },
+    removeOtherMeasures(worktreeId, checks, kept3) {
+      if (checks.length === 0) return;
+      conn.run(
+        `DELETE FROM states WHERE worktree_id = ? AND measure != ? AND check_id IN (${LISTED_CHECKS})`,
+        worktreeId,
+        kept3,
+        listed(checks)
+      );
+    },
     removeMeasure(worktreeId, measure2, paths) {
       if (paths === void 0) {
         conn.run("DELETE FROM states WHERE worktree_id = ? AND measure = ?", worktreeId, measure2);
@@ -4993,11 +5016,9 @@ function createStateRepo(conn) {
         );
         if (removed.length > 0) {
           conn.run(
-            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (
-               SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
-                 AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2)`,
+            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (${LISTED_CHECKS})`,
             worktreeId,
-            JSON.stringify(removed.map((c) => [c.path, c.qualifiedName, c.occurrence]))
+            listed(removed)
           );
         }
         return written2;
@@ -5268,6 +5289,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     }
     switchToWal(db, busyTimeoutMs);
     db.exec("PRAGMA synchronous = NORMAL");
+    for (const pragma of CONNECTION_PRAGMAS) db.exec(pragma);
     const version = migrate(db, CODE_MIGRATIONS);
     if (options.create !== false) makeIndexes2(db);
     return createCodeStore(options.connection?.(db) ?? new Connection(db), version, path);
@@ -6970,9 +6992,9 @@ function lintStep(store, consumer, at, seenUpTo2) {
   const lastId = store.transitions.lastId(worktreeId);
   const transitions = store.transitions.after(worktreeId, fromId(mark));
   const paths = [...new Set(candidatesOf(mark, transitions).map((n) => lintCheckOf(n).path))];
-  const listed3 = (filter) => store.states.list(worktreeId, filter);
+  const listed4 = (filter) => store.states.list(worktreeId, filter);
   const states = new Map(
-    (paths.length === 0 ? [] : listed3({ paths })).map((s) => [lintCheckName(s.check), s])
+    (paths.length === 0 ? [] : listed4({ paths })).map((s) => [lintCheckName(s.check), s])
   );
   const view = new Map(store.views.list(consumer).map((v) => [lintCheckName(v.check), v]));
   const keying = readKeying(store.meta, worktreeId);
@@ -6987,7 +7009,7 @@ function lintStep(store, consumer, at, seenUpTo2) {
     at
   });
   let all = null;
-  const due = summaryOf(store, consumer, keying, mark, () => all ??= listed3({}));
+  const due = summaryOf(store, consumer, keying, mark, () => all ??= listed4({}));
   const told = plan.entries.slice(0, LINT_LISTED_MAX);
   const notices = noticesOf(store, worktreeId);
   const next = {
@@ -8241,16 +8263,16 @@ import { isAbsolute as isAbsolute7, join as join16 } from "node:path";
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
 var PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
 function staleHiddenLockfile(dir, lockfile) {
-  const listed3 = lockfile === null ? null : packagesIn(lockfile);
-  if (listed3 === null) return "not valid JSON";
+  const listed4 = lockfile === null ? null : packagesIn(lockfile);
+  if (listed4 === null) return "not valid JSON";
   const lockTime = lstatSync3(join16(dir, HIDDEN_LOCKFILE)).mtimeMs;
-  const folders = packageFolders(dir, workspaces(listed3));
+  const folders = packageFolders(dir, workspaces(listed4));
   const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted3 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
+  const unlisted3 = folders.filter((folder) => !Object.hasOwn(listed4, folder.path)).map((folder) => folder.path);
   const newer = folders.filter(
-    (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
+    (folder) => Object.hasOwn(listed4, folder.path) && folder.mtimeMs > lockTime
   );
-  const missing = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
+  const missing = Object.keys(listed4).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts = [
     ["not listed in it", unlisted3],
     ["newer than it", newer.map((folder) => folder.path)],
@@ -8294,8 +8316,8 @@ function insideInstall(path) {
 function isWorkspace(path) {
   return insideInstall(path) && !isInstalledFolder(path);
 }
-function workspaces(listed3) {
-  return Object.keys(listed3).filter(isWorkspace);
+function workspaces(listed4) {
+  return Object.keys(listed4).filter(isWorkspace);
 }
 function packageFolders(dir, workspaceFolders) {
   const folders = [];
@@ -8559,8 +8581,8 @@ function npmReading(dir, base, content, scans) {
     return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
   }
   if (hidden === null) return WHOLE;
-  const listed3 = packagesOf(content);
-  const graph = listed3 === null || base === null ? null : new InstalledGraph(dir, base, listed3, scans);
+  const listed4 = packagesOf(content);
+  const graph = listed4 === null || base === null ? null : new InstalledGraph(dir, base, listed4, scans);
   return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
 }
 var WHOLE = { manager: null, stale: null, text: null, graph: null };
@@ -9457,8 +9479,8 @@ function lintParts(lint2) {
 }
 function toolPart(counts) {
   const { tool, files: files2, findings, notDetermined, running, unlisted: unlisted3 = 0 } = counts;
-  const listed3 = unlisted3 > 0 ? "listed file" : "file";
-  const of = `of ${plural(files2, listed3)}`;
+  const listed4 = unlisted3 > 0 ? "listed file" : "file";
+  const of = `of ${plural(files2, listed4)}`;
   const complete = files2 - notDetermined - running;
   if (complete === files2 && unlisted3 === 0) {
     return `lint (${tool}): ${plural(findings, "finding")} in ${files2} ${of}`;
@@ -9964,11 +9986,11 @@ function consumerInTurn(store, worktreeId) {
 function groupTextsShown(policy) {
   return policy.checks.length > 0;
 }
-function testsAtEdit(policy, listed3) {
+function testsAtEdit(policy, listed4) {
   const view = groupView(policy);
-  const owns = (name2) => listed3.some((row) => view.of(row.testFile).name === name2);
+  const owns = (name2) => listed4.some((row) => view.of(row.testFile).name === name2);
   return view.groups.some(
-    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed3.length === 0 || owns(group.name))
+    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed4.length === 0 || owns(group.name))
   );
 }
 function groupLaneCounts(states, keys, policy) {
@@ -10634,9 +10656,9 @@ function closureFor(store, worktreeId) {
 function loaderCounts(store, worktreeId) {
   let closures;
   const read4 = () => {
-    const listed3 = new Set(store.testFileKeys.list(worktreeId).map((r) => testFileId(r.testFile)));
+    const listed4 = new Set(store.testFileKeys.list(worktreeId).map((r) => testFileId(r.testFile)));
     const trusts = closureTrust(store, worktreeId);
-    return store.testFiles.list().filter((r) => listed3.has(testFileId(r.testFile)) && trusts(r)).map((r) => r.closure.paths);
+    return store.testFiles.list().filter((r) => listed4.has(testFileId(r.testFile)) && trusts(r)).map((r) => r.closure.paths);
   };
   return (path) => {
     closures ??= read4();
@@ -11627,10 +11649,10 @@ function codeStep(store, consumer, { at, since, limit }, write2, reads) {
     toldAt: at,
     pulled: pulledReader(store.meta, worktreeId)
   });
-  const listed3 = plan.entries.slice(0, CODE_LISTED_MAX);
+  const listed4 = plan.entries.slice(0, CODE_LISTED_MAX);
   const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => !isStillFail(e.kind)).length;
   if (write2) {
-    const full = new Set(listed3.map(codeKey));
+    const full = new Set(listed4.map(codeKey));
     store.views.removeMany(consumer, plan.removals);
     store.views.writeMany(
       consumer,
@@ -11639,7 +11661,7 @@ function codeStep(store, consumer, { at, since, limit }, write2, reads) {
   }
   const writes = plan.removals.length + plan.writes.length + tooBig.length > 0;
   if (plan.entries.length === 0 && tooBig.length === 0) return { news: null, writes };
-  const entries = listed3.map((e) => ({
+  const entries = listed4.map((e) => ({
     ...e,
     line: e.kind === "removed" ? null : lineOf(store, worktreeId, e.check),
     ...evidenceOf(store, worktreeId, e)
@@ -13359,7 +13381,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.636";
+  if (true) return "0.1.638";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -13783,11 +13805,11 @@ function recordUncoveredTold(store, consumer, told) {
   else if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
 }
 function unreadByTests(store, worktreeId, paths) {
-  const listed3 = store.testFileKeys.list(worktreeId);
-  if (listed3.length === 0) return null;
+  const listed4 = store.testFileKeys.list(worktreeId);
+  if (listed4.length === 0) return null;
   const closureOf = closureFor(store, worktreeId);
   const unread2 = new Set(paths);
-  for (const { testFile } of listed3) {
+  for (const { testFile } of listed4) {
     const closure = closureOf(testFile);
     if (closure === void 0) return null;
     unread2.delete(testFile.path);
@@ -15806,14 +15828,14 @@ function describeDifferences(a, b) {
     differences.push({
       part: "config",
       names: fields,
-      text: `config fields ${listed(fields)} differ${ci}`
+      text: `config fields ${listed2(fields)} differ${ci}`
     });
   }
   if (files2.length > 0) {
     differences.push({
       part: "files",
       names: files2,
-      text: `config and setup files differ: ${listed(files2)}`
+      text: `config and setup files differ: ${listed2(files2)}`
     });
   }
   return differences;
@@ -15857,20 +15879,20 @@ function envDifference(a, b) {
     return {
       part: "env",
       names: apart,
-      text: `allow-listed variables differ (names: ${listed(apart)})`
+      text: `allow-listed variables differ (names: ${listed2(apart)})`
     };
   }
   return {
     part: "env",
     names: [...b],
-    text: `allow-listed variables differ (values: ${listed(b)})`
+    text: `allow-listed variables differ (values: ${listed2(b)})`
   };
 }
 function differingNames(a, b) {
   const names3 = /* @__PURE__ */ new Set([...a.keys(), ...b.keys()]);
   return [...names3].filter((n) => !a.has(n) || !b.has(n) || a.get(n) !== b.get(n)).sort(compare);
 }
-function listed(names3) {
+function listed2(names3) {
   const shown = names3.slice(0, SHOWN).join(", ");
   return names3.length > SHOWN ? `${shown} and ${names3.length - SHOWN} more` : shown;
 }
@@ -16845,9 +16867,9 @@ function pendingTestFilesOf(phases) {
   for (const { testFile, phase } of phases.values()) {
     (phase === "running" ? running : queued).push(testFile);
   }
-  return { running: listed2(running), queued: listed2(queued) };
+  return { running: listed3(running), queued: listed3(queued) };
 }
-function listed2(files2) {
+function listed3(files2) {
   const sorted = files2.sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   return {
     files: sorted.slice(0, PHASE_FILES_LISTED),
@@ -17798,14 +17820,14 @@ function unknownBlocks(entries, command) {
     const first = group[0]?.check;
     const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
     const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText(from(o))})`);
-    const listed3 = files2.slice(0, 5).join(", ");
+    const listed4 = files2.slice(0, 5).join(", ");
     const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
     return block2(
       `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
       [
         counts.join(", "),
         cap(reason, SUMMARY_MAX_CHARS),
-        `${listed3}${more}`,
+        `${listed4}${more}`,
         first === void 0 ? null : `Full reason: ${command} why ${shellWord(checkName(first))}`
       ],
       group.map((e) => ({ check: e.check, shown: "unknown" }))
