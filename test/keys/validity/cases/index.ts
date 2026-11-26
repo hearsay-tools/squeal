@@ -46,6 +46,7 @@ import { OBSERVED_READS } from "./observe/reads.js";
 import { OBSERVED_REWRITES } from "./observe/rewrites.js";
 import { OBSERVED_STARTED } from "./observe/started.js";
 import { OBSERVED_WRITTEN } from "./observe/written.js";
+import { CONTAINER_POLICY } from "./policy-containers.js";
 import { PRUNE_KEYS } from "./prune/keys.js";
 import { PRUNE_SLICES } from "./prune/slices.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
@@ -99,6 +100,7 @@ export const CASES: readonly Case[] = [
   ...PYTEST_PDM,
   ...PYTEST_SLOTS,
   ...SLOT_POLICY,
+  ...CONTAINER_POLICY,
   ...PYTEST_EDITABLE,
   ...NODE_TEST_RUNS,
   ...OWN_COMPILE_CACHE,
