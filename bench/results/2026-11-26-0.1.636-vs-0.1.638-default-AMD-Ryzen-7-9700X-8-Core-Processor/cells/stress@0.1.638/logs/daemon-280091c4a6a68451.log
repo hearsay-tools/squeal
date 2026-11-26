@@ -1,0 +1,27 @@
+2026-11-26T11:14:22.884Z [160978] squeal daemon: serving /home/user/results/cells/stress@0.1.638/work/wt0 on /home/user/results/cells/stress@0.1.638/work/run/squeal-280091c4a6a68451.sock
+2026-11-26T11:14:23.346Z [160978] squeal daemon: full integrity check: ok
+2026-11-26T11:15:19.504Z [160978] squeal daemon: code store: last minute: 45 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:16:19.509Z [160978] squeal daemon: code store: last minute: 21 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:17:19.509Z [160978] squeal daemon: code store: last minute: 32 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:18:04.639Z [160978] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 231 to 192 MiB in a 55 ms pause
+2026-11-26T11:18:19.508Z [160978] squeal daemon: hook writes: 2 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T11:19:19.509Z [160978] squeal daemon: hook writes: 12 taken, queue wait p95 11 ms max 11 ms
+2026-11-26T11:19:19.512Z [160978] squeal daemon: code store: last minute: 60 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:20:19.515Z [160978] squeal daemon: hook writes: 8 taken, queue wait p95 8 ms max 8 ms
+2026-11-26T11:20:19.515Z [160978] squeal daemon: code store: last minute: 67 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:21:19.520Z [160978] squeal daemon: hook writes: 15 taken, queue wait p95 3 ms max 3 ms
+2026-11-26T11:21:19.521Z [160978] squeal daemon: code store: last minute: 56 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:21:41.175Z [160978] squeal daemon: busy, heap in use 53 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 245 to 193 MiB in a 70 ms pause; 29 MiB of heap in use after it
+2026-11-26T11:21:48.895Z [160978] squeal daemon: the store was busy for 0 s (another connection held its write lock); ran once it was free: a hook's or command's writes
+2026-11-26T11:22:19.517Z [160978] squeal daemon: hook writes: 14 taken, queue wait p95 14 ms max 14 ms
+2026-11-26T11:22:19.521Z [160978] squeal daemon: code store: last minute: 58 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:22:35.696Z [160978] squeal daemon: long write: store.sqlite write lock held 312 ms by reconcileBatch < process.processTicksAndRejections < #pass; 8005 rows written
+2026-11-26T11:22:38.371Z [160978] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-26T11:23:04.379Z [160978] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-26T11:23:19.518Z [160978] squeal daemon: hook writes: 4 taken, queue wait p95 2 ms max 2 ms
+2026-11-26T11:23:19.521Z [160978] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:23:40.821Z [160978] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 242 to 182 MiB in a 74 ms pause
+2026-11-26T11:26:34.023Z [160978] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-26T11:27:43.772Z [160978] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-26T11:27:43.801Z [160978] squeal daemon: hook writes: 2 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T11:27:43.839Z [160978] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

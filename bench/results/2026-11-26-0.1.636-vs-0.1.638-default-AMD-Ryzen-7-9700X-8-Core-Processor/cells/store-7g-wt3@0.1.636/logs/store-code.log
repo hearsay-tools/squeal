@@ -1,0 +1,18 @@
+2026-11-26T11:41:54.834Z [214598] store process: serving /home/user/results/cells/store-7g-wt3@0.1.636/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/store-7g-wt3@0.1.636/work/run/squeal-code-bf2b874dd25d6c6e.sock
+2026-11-26T11:42:36.017Z [214598] store process: stopping (stopped): edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 173 ms; record: 52 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 722 ms
+2026-11-26T11:42:36.094Z [214598] store process: ended (stopped)
+2026-11-26T11:48:31.286Z [221732] store process: serving /home/user/results/cells/store-7g-wt3@0.1.636/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/store-7g-wt3@0.1.636/work/run/squeal-code-bf2b874dd25d6c6e.sock
+2026-11-26T11:49:31.287Z [221732] store process: last minute: edit: 75 written, 0 failed, queue wait p50 0 ms max 33 ms, busy 477 ms; record: 22 written, 0 failed, queue wait p50 0 ms max 202 ms, busy 774 ms
+2026-11-26T11:50:00.481Z [221732] store process: long write: code.sqlite write lock held 940 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:50:17.368Z [221732] store process: long write: code.sqlite write lock held 257 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:50:31.287Z [221732] store process: last minute: edit: 34 written, 0 failed, queue wait p50 0 ms max 1131 ms, busy 4194 ms; record: 82 written, 0 failed, queue wait p50 0 ms max 183 ms, busy 7822 ms
+2026-11-26T11:50:53.930Z [221732] store process: long write: code.sqlite write lock held 327 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 5 rows written
+2026-11-26T11:51:03.307Z [221732] store process: long write: code.sqlite write lock held 317 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 42 rows written
+2026-11-26T11:51:06.706Z [221732] store process: long write: code.sqlite write lock held 602 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:51:31.287Z [221732] store process: last minute: edit: 45 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 977 ms; record: 211 written, 0 failed, queue wait p50 0 ms max 423 ms, busy 8547 ms
+2026-11-26T11:52:31.287Z [221732] store process: last minute: edit: 53 written, 0 failed, queue wait p50 0 ms max 187 ms, busy 1102 ms; record: 230 written, 0 failed, queue wait p50 0 ms max 85 ms, busy 4069 ms
+2026-11-26T11:53:31.287Z [221732] store process: last minute: edit: 39 written, 0 failed, queue wait p50 0 ms max 26 ms, busy 671 ms; record: 131 written, 0 failed, queue wait p50 0 ms max 61 ms, busy 1461 ms
+2026-11-26T11:54:31.288Z [221732] store process: last minute: record: 36 written, 0 failed, queue wait p50 0 ms max 57 ms, busy 895 ms
+2026-11-26T11:55:31.288Z [221732] store process: last minute: record: 60 written, 0 failed, queue wait p50 0 ms max 64 ms, busy 1493 ms
+2026-11-26T11:55:55.825Z [221732] store process: stopping (stopped): record: 35 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1207 ms
+2026-11-26T11:55:55.951Z [221732] store process: ended (stopped)

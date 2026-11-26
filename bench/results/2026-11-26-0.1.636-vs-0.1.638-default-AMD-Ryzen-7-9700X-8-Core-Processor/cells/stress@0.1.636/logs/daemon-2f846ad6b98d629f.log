@@ -1,0 +1,27 @@
+2026-11-26T11:02:58.803Z [140557] squeal daemon: serving /home/user/results/cells/stress@0.1.636/work/wt1 on /home/user/results/cells/stress@0.1.636/work/run/squeal-2f846ad6b98d629f.sock
+2026-11-26T11:03:52.317Z [140557] squeal daemon: code store: last minute: 50 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:04:02.478Z [140557] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 233 to 157 MiB in a 52 ms pause
+2026-11-26T11:04:40.500Z [140557] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-26T11:04:40.501Z [140557] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-26T11:04:41.195Z [140557] squeal daemon: the pool granted the vitest lane's tier after 1 s of waiting for CPU
+2026-11-26T11:04:52.350Z [140557] squeal daemon: hook writes: 12 taken, queue wait p95 2 ms max 2 ms
+2026-11-26T11:04:52.351Z [140557] squeal daemon: code store: last minute: 34 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:05:52.354Z [140557] squeal daemon: hook writes: 8 taken, queue wait p95 3 ms max 3 ms
+2026-11-26T11:05:52.354Z [140557] squeal daemon: code store: last minute: 75 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:06:16.174Z [140557] squeal daemon: busy, heap in use 52 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 222 to 168 MiB in a 65 ms pause; 28 MiB of heap in use after it
+2026-11-26T11:06:52.354Z [140557] squeal daemon: hook writes: 14 taken, queue wait p95 67 ms max 67 ms
+2026-11-26T11:06:52.355Z [140557] squeal daemon: code store: last minute: 69 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:07:52.354Z [140557] squeal daemon: hook writes: 8 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T11:07:52.355Z [140557] squeal daemon: code store: last minute: 82 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:08:33.905Z [140557] squeal daemon: long write: store.sqlite write lock held 252 ms by reconcileBatch < #pass < withBusySlice; 8005 rows written
+2026-11-26T11:08:35.933Z [140557] squeal daemon: the background ceiling refused a backlog tier: 4.2 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-26T11:08:35.934Z [140557] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-26T11:08:52.354Z [140557] squeal daemon: hook writes: 11 taken, queue wait p95 181 ms max 181 ms
+2026-11-26T11:08:52.355Z [140557] squeal daemon: code store: last minute: 54 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T11:09:37.710Z [140557] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 245 to 156 MiB in a 82 ms pause
+2026-11-26T11:12:40.285Z [140557] squeal daemon: the background ceiling let a backlog tier start after 244 s and 123 refused looks
+2026-11-26T11:12:40.286Z [140557] squeal daemon: the pool granted the vitest lane's tier after 244 s of waiting for CPU
+2026-11-26T11:13:40.497Z [140557] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-26T11:13:52.363Z [140557] squeal daemon: hook writes: 2 taken, queue wait p95 2 ms max 2 ms
+2026-11-26T11:14:08.905Z [140557] squeal daemon: coverage: 99 completed test files got no record since this daemon started: 99 closed (the writer closed first); the last: test/m134.test.ts: the writer closed first
+2026-11-26T11:14:08.971Z [140557] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

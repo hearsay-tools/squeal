@@ -1,0 +1,14 @@
+2026-11-26T10:42:38.728Z [58601] squeal daemon: serving /home/user/results/cells/wt-6@0.1.638/work/wt3 on /home/user/results/cells/wt-6@0.1.638/work/run/squeal-cd9215cc3e5121f1.sock
+2026-11-26T10:43:34.431Z [58601] squeal daemon: code store: last minute: 43 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T10:43:39.526Z [58601] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 288 to 169 MiB in a 33 ms pause
+2026-11-26T10:44:34.455Z [58601] squeal daemon: hook writes: 14 taken, queue wait p95 6 ms max 6 ms
+2026-11-26T10:44:34.456Z [58601] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T10:45:34.468Z [58601] squeal daemon: hook writes: 20 taken, queue wait p95 2 ms max 2 ms
+2026-11-26T10:45:34.468Z [58601] squeal daemon: code store: last minute: 87 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T10:45:41.935Z [58601] squeal daemon: busy, heap in use 51 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 221 to 164 MiB in a 59 ms pause; 28 MiB of heap in use after it
+2026-11-26T10:46:34.505Z [58601] squeal daemon: hook writes: 14 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T10:46:34.505Z [58601] squeal daemon: code store: last minute: 70 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T10:47:34.507Z [58601] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-26T10:47:34.508Z [58601] squeal daemon: code store: last minute: 36 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T10:47:38.024Z [58601] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-26T10:47:38.225Z [58601] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

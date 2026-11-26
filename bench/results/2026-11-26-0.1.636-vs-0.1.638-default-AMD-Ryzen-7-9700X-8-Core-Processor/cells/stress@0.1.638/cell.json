@@ -1,0 +1,246 @@
+{
+  "name": "stress@0.1.638",
+  "files": 500,
+  "worktrees": 6,
+  "load": 100,
+  "ageRounds": 0,
+  "ageLists": "7d",
+  "ff": null,
+  "churn": false,
+  "cli": "bin/squeal",
+  "phases": {
+    "startMain": {
+      "ms": 612.7234520000002,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/stress@0.1.638/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `squ"
+    },
+    "runAll": {
+      "ms": 163975.59084,
+      "code": 0,
+      "tail": " files, 0 already current, 500 run now\nCheckpoint e5deceda-f50b-49fe-8a60-be36fa62065e started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 1 note\n",
+      "busyMean": 0.9999392895490471
+    },
+    "startOthers": [
+      {
+        "ms": 395.5675570000021,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 4048.948678000015,
+          "settled": true,
+          "polls": 4,
+          "waitingFor": null,
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      },
+      {
+        "ms": 385.57007000001613,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 247.23402900001383,
+          "settled": true,
+          "polls": 1,
+          "waitingFor": null,
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      },
+      {
+        "ms": 413.5313899999892,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 298.5247479999962,
+          "settled": true,
+          "polls": 1,
+          "waitingFor": null,
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      },
+      {
+        "ms": 560.7396460000018,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 258.2007460000168,
+          "settled": true,
+          "polls": 1,
+          "waitingFor": null,
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      },
+      {
+        "ms": 674.0521009999793,
+        "code": 0,
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "settle": {
+          "ms": 1371.8621439999843,
+          "settled": true,
+          "polls": 2,
+          "waitingFor": null,
+          "code": {
+            "files": 1002,
+            "pending": 0
+          }
+        }
+      }
+    ],
+    "storeQuiet": {
+      "ms": 4003.5414900000033,
+      "settled": true,
+      "polls": 2,
+      "lastPct": 0
+    },
+    "idle": {
+      "ms": 60000,
+      "daemons": 6,
+      "storeProcessCpuPct": 0,
+      "perDaemonCpuPct": [
+        0.26666666666666666,
+        0.1833333333333332,
+        0.1833333333333336,
+        0.18333333333333357,
+        0.24999999999999994,
+        0.1833333333333332
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 558545.182004,
+        "code": 0
+      },
+      {
+        "worktree": 1,
+        "ms": 592505.832407,
+        "code": 0
+      },
+      {
+        "worktree": 2,
+        "ms": 542239.785792,
+        "code": 0
+      },
+      {
+        "worktree": 3,
+        "ms": 502774.573921,
+        "code": 0
+      },
+      {
+        "worktree": 4,
+        "ms": 604826.943521,
+        "code": 0
+      },
+      {
+        "worktree": 5,
+        "ms": 521812.16671300004,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.9998866762757106,
+    "sessionDaemonCpuS": [
+      32.11,
+      53.12
+    ],
+    "edits": 114,
+    "sessionStoreProcessCpuS": 2.51,
+    "impact": {
+      "command": "impact",
+      "ms": 303.9298870000057,
+      "code": 0,
+      "peakRssBytes": 122306560
+    }
+  },
+  "store": {
+    "storeBytes": 18763776,
+    "walBytes": 19887272,
+    "codeBytes": 19615744,
+    "runsDirs": 303,
+    "rows": {
+      "results": 10213,
+      "runs": 304,
+      "revisions": 114,
+      "transitions": 2088
+    },
+    "longWrites": 13,
+    "lockFailures": 0,
+    "longWriteHoldsMs": [
+      259,
+      333,
+      312,
+      360,
+      303,
+      1528,
+      529,
+      307,
+      875,
+      567,
+      463,
+      264,
+      432
+    ]
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 370778112,
+    "maxTreeBytes": 4382879744
+  },
+  "storeProcess": {
+    "seen": 1,
+    "cpuS": 4.01,
+    "maxRssBytes": 260075520,
+    "written": 1777,
+    "failed": 0,
+    "queueWaitMaxMs": 5371,
+    "busyMs": 37952,
+    "stops": 1,
+    "failedLines": 0,
+    "relay": {
+      "sent": 1777,
+      "direct": 1,
+      "failed": 0
+    }
+  },
+  "hookWriteWait": {
+    "seen": true,
+    "taken": 352,
+    "p95MaxMs": 230,
+    "maxMs": 230,
+    "longWaitsMs": []
+  }
+}

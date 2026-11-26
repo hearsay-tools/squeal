@@ -1,0 +1,8 @@
+[2026-11-26T11:41:50.757Z] store-7g-wt3@0.1.636: squeal start + run --all
+[2026-11-26T11:42:35.917Z] store-7g-wt3@0.1.636: age store: 326 rounds
+[2026-11-26T11:48:23.732Z] store-7g-wt3@0.1.636: wait for the other worktrees' baselines
+[2026-11-26T11:48:31.728Z] store-7g-wt3@0.1.636: wait for the store process to go quiet
+[2026-11-26T11:48:37.733Z] store-7g-wt3@0.1.636: idle
+[2026-11-26T11:49:37.740Z] store-7g-wt3@0.1.636: sessions
+[2026-11-26T11:55:55.211Z] store-7g-wt3@0.1.636: collect
+[2026-11-26T11:56:00.190Z] store-7g-wt3@0.1.636: done

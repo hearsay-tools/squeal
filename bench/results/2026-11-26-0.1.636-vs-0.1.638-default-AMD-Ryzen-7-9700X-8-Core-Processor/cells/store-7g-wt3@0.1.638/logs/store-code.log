@@ -1,0 +1,12 @@
+2026-11-26T11:28:47.302Z [186173] store process: serving /home/user/results/cells/store-7g-wt3@0.1.638/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/store-7g-wt3@0.1.638/work/run/squeal-code-6154e3b6dcf4fdaf.sock
+2026-11-26T11:29:21.511Z [186173] store process: stopping (stopped): edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 140 ms; record: 54 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 422 ms
+2026-11-26T11:29:21.603Z [186173] store process: ended (stopped)
+2026-11-26T11:34:51.298Z [192813] store process: serving /home/user/results/cells/store-7g-wt3@0.1.638/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/store-7g-wt3@0.1.638/work/run/squeal-code-6154e3b6dcf4fdaf.sock
+2026-11-26T11:35:51.301Z [192813] store process: last minute: edit: 75 written, 0 failed, queue wait p50 0 ms max 15 ms, busy 563 ms; record: 28 written, 0 failed, queue wait p50 0 ms max 96 ms, busy 609 ms
+2026-11-26T11:36:51.301Z [192813] store process: last minute: edit: 42 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 821 ms; record: 128 written, 0 failed, queue wait p50 0 ms max 20 ms, busy 1467 ms
+2026-11-26T11:37:51.301Z [192813] store process: last minute: edit: 54 written, 0 failed, queue wait p50 0 ms max 31 ms, busy 770 ms; record: 226 written, 0 failed, queue wait p50 0 ms max 17 ms, busy 2906 ms
+2026-11-26T11:38:51.301Z [192813] store process: last minute: edit: 57 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1110 ms; record: 251 written, 0 failed, queue wait p50 0 ms max 89 ms, busy 2327 ms
+2026-11-26T11:39:51.302Z [192813] store process: last minute: edit: 18 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 399 ms; record: 49 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 505 ms
+2026-11-26T11:40:51.301Z [192813] store process: last minute: record: 110 written, 0 failed, queue wait p50 0 ms max 221 ms, busy 3007 ms
+2026-11-26T11:41:39.816Z [192813] store process: stopping (stopped): record: 67 written, 0 failed, queue wait p50 0 ms max 80 ms, busy 1140 ms
+2026-11-26T11:41:39.934Z [192813] store process: ended (stopped)

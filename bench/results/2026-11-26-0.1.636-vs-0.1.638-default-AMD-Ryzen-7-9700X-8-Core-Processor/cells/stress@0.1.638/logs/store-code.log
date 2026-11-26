@@ -1,0 +1,22 @@
+2026-11-26T11:14:23.138Z [161079] store process: serving /home/user/results/cells/stress@0.1.638/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/stress@0.1.638/work/run/squeal-code-e94064c66f2a1be4.sock
+2026-11-26T11:15:23.139Z [161079] store process: last minute: edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 182 ms; record: 2 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 222 ms
+2026-11-26T11:16:23.138Z [161079] store process: last minute: record: 21 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 239 ms
+2026-11-26T11:17:23.138Z [161079] store process: last minute: edit: 190 written, 0 failed, queue wait p50 0 ms max 173 ms, busy 1140 ms; record: 70 written, 0 failed, queue wait p50 0 ms max 193 ms, busy 1537 ms
+2026-11-26T11:18:23.138Z [161079] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 89 ms; record: 4 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 68 ms
+2026-11-26T11:19:23.140Z [161079] store process: last minute: edit: 78 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 855 ms; record: 214 written, 0 failed, queue wait p50 0 ms max 140 ms, busy 2882 ms
+2026-11-26T11:20:22.947Z [161079] store process: long write: code.sqlite write lock held 1528 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:20:23.141Z [161079] store process: last minute: edit: 63 written, 0 failed, queue wait p50 0 ms max 41 ms, busy 2213 ms; record: 245 written, 0 failed, queue wait p50 0 ms max 158 ms, busy 4349 ms
+2026-11-26T11:20:24.660Z [161079] store process: long write: code.sqlite write lock held 529 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:20:27.444Z [161079] store process: long write: code.sqlite write lock held 307 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:20:34.947Z [161079] store process: long write: code.sqlite write lock held 875 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:20:36.528Z [161079] store process: long write: code.sqlite write lock held 567 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:20:37.439Z [161079] store process: long write: code.sqlite write lock held 463 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:20:42.178Z [161079] store process: long write: code.sqlite write lock held 264 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:20:44.794Z [161079] store process: long write: code.sqlite write lock held 432 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 2 rows written
+2026-11-26T11:21:23.141Z [161079] store process: last minute: edit: 93 written, 0 failed, queue wait p50 0 ms max 2648 ms, busy 6471 ms; record: 234 written, 0 failed, queue wait p50 0 ms max 5371 ms, busy 10871 ms
+2026-11-26T11:22:23.141Z [161079] store process: last minute: edit: 68 written, 0 failed, queue wait p50 0 ms max 62 ms, busy 743 ms; record: 254 written, 0 failed, queue wait p50 0 ms max 48 ms, busy 3114 ms
+2026-11-26T11:23:23.141Z [161079] store process: last minute: edit: 27 written, 0 failed, queue wait p50 0 ms max 44 ms, busy 402 ms; record: 132 written, 0 failed, queue wait p50 0 ms max 15 ms, busy 1916 ms
+2026-11-26T11:24:23.142Z [161079] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 279 ms; record: 21 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 266 ms
+2026-11-26T11:27:23.154Z [161079] store process: last minute: record: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 114 ms
+2026-11-26T11:28:35.833Z [161079] store process: stopping (stopped): no batches since the last line
+2026-11-26T11:28:35.948Z [161079] store process: ended (stopped)
