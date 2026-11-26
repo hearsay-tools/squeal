@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.644";
+  if (true) return "0.1.645";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -20168,6 +20168,58 @@ var init_edit_timings = __esm({
   }
 });
 
+// src/core/runner-host/protocol.ts
+function encodeLine(message3) {
+  return `${MARKER}${JSON.stringify(message3)}
+`;
+}
+function frameOf(line) {
+  const at2 = line.indexOf(MARKER);
+  return at2 < 0 ? null : line.slice(at2 + MARKER.length);
+}
+function errorOf(cause) {
+  let message3 = cause instanceof Error ? cause.message : String(cause);
+  const seen2 = /* @__PURE__ */ new Set([cause]);
+  let next = cause instanceof Error ? cause.cause : void 0;
+  for (let depth = 0; depth < 3 && next !== void 0 && !seen2.has(next); depth++) {
+    seen2.add(next);
+    const raw = next instanceof Error ? next.message : typeof next === "string" ? next : "";
+    const line = raw.trim().split("\n", 1)[0]?.trim() ?? "";
+    const text3 = line.length > 300 ? `${line.slice(0, 299)}\u2026` : line;
+    if (text3 !== "" && !message3.includes(text3)) message3 += `: ${text3}`;
+    next = next instanceof Error ? next.cause : void 0;
+  }
+  return { message: message3 };
+}
+var RUNNER_HOST_PROTOCOL, MARKER, HOST_RUNNERS, LineReader;
+var init_protocol = __esm({
+  "src/core/runner-host/protocol.ts"() {
+    "use strict";
+    RUNNER_HOST_PROTOCOL = 1;
+    MARKER = "squeal-runner-host ";
+    HOST_RUNNERS = ["vitest", "node-test", "pytest", "jest"];
+    LineReader = class {
+      /** The unfinished line, in the chunks it arrived in. */
+      #pending = [];
+      /** The protocol lines `chunk` completes, each parsed. A line that does not parse throws. */
+      push(chunk) {
+        const messages = [];
+        let from = 0;
+        for (let end = chunk.indexOf("\n"); end >= 0; end = chunk.indexOf("\n", from)) {
+          this.#pending.push(chunk.slice(from, end));
+          const line = this.#pending.join("");
+          this.#pending = [];
+          from = end + 1;
+          const frame = frameOf(line);
+          if (frame !== null) messages.push(JSON.parse(frame));
+        }
+        if (from < chunk.length) this.#pending.push(chunk.slice(from));
+        return messages;
+      }
+    };
+  }
+});
+
 // src/core/types/runner-traits.ts
 function declareTraits(stated = {}) {
   const { omittedTestFiles, slowWidth, tierWidth: tierWidth2, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
@@ -20452,8 +20504,7 @@ async function projectsOf(adapter) {
   return [...new Set((await adapter.environment()).map((e) => e.project))].sort();
 }
 function messageOf(error) {
-  const text3 = error instanceof Error ? error.message : String(error);
-  return stripVTControlCharacters3(text3).trim();
+  return stripVTControlCharacters3(errorOf(error).message).trim();
 }
 function vitestDetected(root) {
   let names9;
@@ -20508,6 +20559,7 @@ var init_runner2 = __esm({
     "use strict";
     init_git();
     init_json();
+    init_protocol();
     init_runner_traits();
     init_runner_idle();
     VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
@@ -50089,6 +50141,10 @@ var init_sources2 = __esm({
        * the stat, and the check sees it. Idempotent; `stale` attaches first, so
        * a project server added later is stamped from its next load, and what it
        * cached before has no stamp, so it is stale.
+       *
+       * Row 025-23: the wrapper passes every argument on. Vite 8.4.0 calls
+       * `load(id, { withMetadata: true })` and reads `.code` on the result; a
+       * one-argument wrapper gave it `null`, and Vitest could not start.
        */
       attach(vitest) {
         for (const environment of environments(vitest)) {
@@ -50097,10 +50153,11 @@ var init_sources2 = __esm({
           const reads2 = { stamps: /* @__PURE__ */ new Map(), virtual: /* @__PURE__ */ new Map() };
           this.#containers.set(container, reads2);
           const load = container.load.bind(container);
-          container.load = async (id) => {
+          const stamped = async (id, ...rest2) => {
             await this.#stamp(reads2, id);
-            return load(id);
+            return load(id, ...rest2);
           };
+          container.load = stamped;
         }
       }
       /**
@@ -51223,7 +51280,7 @@ function classify4(vitest, specs, collector, error, paths) {
   const text3 = errorTexts(error);
   const owner2 = setupOwner(vitest, specs, text3);
   const checkError2 = toCheckError2(error, paths);
-  const location2 = owner2 ? frameOf(text3, owner2.file, paths) : null;
+  const location2 = owner2 ? frameOf2(text3, owner2.file, paths) : null;
   return {
     projects: owner2?.projects ?? runProjects(specs),
     testFiles: [...collector.requested],
@@ -51278,7 +51335,7 @@ function errorTexts(error) {
   }
   return texts2.join("\n");
 }
-function frameOf(text3, file, paths) {
+function frameOf2(text3, file, paths) {
   const escaped = file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match2 = new RegExp(`(?:file://)?${escaped}:(\\d+):(\\d+)`).exec(text3);
   return match2 ? paths.location(file, Number(match2[1]), Number(match2[2])) : null;
@@ -58162,47 +58219,6 @@ var init_channel = __esm({
   }
 });
 
-// src/core/runner-host/protocol.ts
-function encodeLine(message3) {
-  return `${MARKER}${JSON.stringify(message3)}
-`;
-}
-function frameOf2(line) {
-  const at2 = line.indexOf(MARKER);
-  return at2 < 0 ? null : line.slice(at2 + MARKER.length);
-}
-function errorOf2(cause) {
-  return { message: cause instanceof Error ? cause.message : String(cause) };
-}
-var RUNNER_HOST_PROTOCOL, MARKER, HOST_RUNNERS, LineReader;
-var init_protocol = __esm({
-  "src/core/runner-host/protocol.ts"() {
-    "use strict";
-    RUNNER_HOST_PROTOCOL = 1;
-    MARKER = "squeal-runner-host ";
-    HOST_RUNNERS = ["vitest", "node-test", "pytest", "jest"];
-    LineReader = class {
-      /** The unfinished line, in the chunks it arrived in. */
-      #pending = [];
-      /** The protocol lines `chunk` completes, each parsed. A line that does not parse throws. */
-      push(chunk) {
-        const messages = [];
-        let from = 0;
-        for (let end = chunk.indexOf("\n"); end >= 0; end = chunk.indexOf("\n", from)) {
-          this.#pending.push(chunk.slice(from, end));
-          const line = this.#pending.join("");
-          this.#pending = [];
-          from = end + 1;
-          const frame = frameOf2(line);
-          if (frame !== null) messages.push(JSON.parse(frame));
-        }
-        if (from < chunk.length) this.#pending.push(chunk.slice(from));
-        return messages;
-      }
-    };
-  }
-});
-
 // src/core/runner-host/container/preflight.ts
 import { statSync as statSync27 } from "node:fs";
 function parseNodeVersion(text3) {
@@ -58416,7 +58432,7 @@ function rootStatTap(channel2) {
       const lines = (partial + text3).split("\n");
       partial = lines.pop() ?? "";
       for (const line of lines) {
-        const frame = frameOf2(line);
+        const frame = frameOf(line);
         if (frame === null) continue;
         let reply = {};
         try {
@@ -99783,7 +99799,7 @@ var DaemonWriter = class {
         { type: "write-status", requestId: answer4.requestId },
         SMALL_REQUEST_TIMEOUT_MS
       );
-      if (!isWrite(next)) throw new Error(`squeal: ${errorOf(next)}`);
+      if (!isWrite(next)) throw new Error(`squeal: ${errorOf2(next)}`);
       state = next;
     }
     if (state.written) return "written";
@@ -99851,7 +99867,7 @@ function isWrite(answer4) {
 function pauseOf(pauses2, attempt2) {
   return pauses2[Math.min(attempt2, pauses2.length - 1)] ?? 0;
 }
-function errorOf(response) {
+function errorOf2(response) {
   return response.ok ? `unexpected answer ${response.type}` : response.error;
 }
 function busy(message3) {
@@ -136800,13 +136816,13 @@ async function serveRunnerHost(options) {
       },
       (cause) => {
         tellValues();
-        send({ id, e: errorOf2(cause) });
+        send({ id, e: errorOf(cause) });
       }
     );
   };
   const lines = createInterface2({ input: options.input, crlfDelay: Number.POSITIVE_INFINITY });
   lines.on("line", (line) => {
-    const frame = frameOf2(line);
+    const frame = frameOf(line);
     if (frame === null) return;
     let message3;
     try {

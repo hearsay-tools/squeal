@@ -13599,7 +13599,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.644";
+  if (true) return "0.1.645";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -14985,7 +14985,7 @@ var DaemonWriter = class {
         { type: "write-status", requestId: answer.requestId },
         SMALL_REQUEST_TIMEOUT_MS
       );
-      if (!isWrite(next)) throw new Error(`squeal: ${errorOf(next)}`);
+      if (!isWrite(next)) throw new Error(`squeal: ${errorOf2(next)}`);
       state = next;
     }
     if (state.written) return "written";
@@ -15053,7 +15053,7 @@ function isWrite(answer) {
 function pauseOf(pauses2, attempt) {
   return pauses2[Math.min(attempt, pauses2.length - 1)] ?? 0;
 }
-function errorOf(response) {
+function errorOf2(response) {
   return response.ok ? `unexpected answer ${response.type}` : response.error;
 }
 function busy(message) {
