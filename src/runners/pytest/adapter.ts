@@ -136,7 +136,7 @@ export async function createPytestAdapter(
   const readNow = async () =>
     admitEnvironment(root, project, await readEnvironment(root, project, source));
   const settle = async () =>
-    (await admit(project, readNow, currentFingerprint, options.clock)).environment;
+    (await admit(project, readNow, (e) => currentFingerprint(root, e), options.clock)).environment;
   const place = () => {
     const dir = environmentDir(root, project);
     return { dir, settings: projectSettings(root, project, runEnvironment(dir, project, source)) };
@@ -246,7 +246,7 @@ export async function createPytestAdapter(
     const still =
       !stale &&
       environment.state === "ready" &&
-      currentFingerprint(environment) === environment.fingerprint;
+      currentFingerprint(root, environment) === environment.fingerprint;
     if (still) return { recreatedProjects: [] };
     const moved = await reread();
     if (!moved.moved && !moved.rebuild) return { recreatedProjects: [] };

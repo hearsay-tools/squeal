@@ -10,7 +10,7 @@ import type { PytestAdapterOptions } from "./adapter.js";
 import { type CollectionNames, enumerate } from "./enumerate.js";
 import { environmentFingerprint, readEnvironmentFiles } from "./environment/fingerprint.js";
 import type { PytestEnvironment } from "./environment/index.js";
-import { syncNote } from "./environment/states.js";
+import { outsideEditables, syncNote } from "./environment/states.js";
 import { type PytestRun, runPytest } from "./run/run.js";
 
 export type ReadyEnvironment = Extract<PytestEnvironment, { state: "ready" }>;
@@ -28,10 +28,17 @@ export type RunOutcome =
   | { readonly kind: "ran"; readonly run: PytestRun; readonly report: RunReport }
   | { readonly kind: "moved"; readonly report: RunReport };
 
-/** D2's fingerprint of the environment as it is now. */
-export function currentFingerprint(environment: ReadyEnvironment): string {
+/**
+ * D2's fingerprint of the environment as it is now. Spec 027 D3 (review
+ * 0.1.642, B1): an admitted outside editable's directory and finder are not
+ * among the fingerprint's files, so the admission condition is read again
+ * here; once an outside editable resolves code, the fingerprint moves, and
+ * admission, a quiet recheck and a run's before and after checks all see it.
+ */
+export function currentFingerprint(root: AbsolutePath, environment: ReadyEnvironment): string {
   const { env, python } = environment.discovery;
-  return environmentFingerprint(readEnvironmentFiles(env, python));
+  const refused = outsideEditables(root, env).length > 0 ? ":editable-outside" : "";
+  return `${environmentFingerprint(readEnvironmentFiles(env, python))}${refused}`;
 }
 
 /**
@@ -50,7 +57,7 @@ export async function runProject(
   runOptions: RunOptions,
 ): Promise<RunOutcome> {
   const { root, project, environment, options } = context;
-  const note = syncNote(project, environment.fingerprint, currentFingerprint(environment));
+  const note = syncNote(project, environment.fingerprint, currentFingerprint(root, environment));
   if (note !== null) return { kind: "moved", report: unavailable(note) };
   const inGroup = groupRun(runOptions.lane);
   const run = await runPytest({
@@ -69,7 +76,7 @@ export async function runProject(
     ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
     ...(runOptions.checks === undefined ? {} : { checks: runOptions.checks }),
   });
-  const after = syncNote(project, environment.fingerprint, currentFingerprint(environment));
+  const after = syncNote(project, environment.fingerprint, currentFingerprint(root, environment));
   if (after !== null) return { kind: "moved", report: unavailable(after) };
   const skipped = await Promise.all(
     run.skippedFiles.map(({ testFile }) =>
