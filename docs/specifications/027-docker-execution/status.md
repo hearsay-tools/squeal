@@ -1,6 +1,6 @@
 # 027 Docker execution: status
 
-Stage: approved (2026-11-26, the human: approved to build, parallel with Spec 028 Wave 0)
+Stage: shipped (2026-11-27, landed on `main` across `0.1.642`, `0.1.643`, `0.1.644`, and `0.1.646`)
 Started: 2026-11-26
 
 ## Decisions so far
@@ -18,7 +18,8 @@ Started: 2026-11-26
 - 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `027-02` to `027-07`), including `keyMode: "build-content" | "image-id"` (D7).
 - 2026-11-26, the human: set `"build-content"` as the default `keyMode` so CI sharing works out of the box across separate `docker build` runs (`"image-id"` stays opt-in), and asked whether Spec 027 composes with Agent37 VMs later (not in scope now; recorded as follow-up).
 - 2026-11-26, the human: approved both Spec 027 and Spec 028 to start building, in parallel (`027 Wave 1 + 028 Wave 0`). Coordinator briefed `tasks/wave-1.md` (`027-02`, `027-03`) and dispatched Wave 1.
+- 2026-11-27, shipped (`0.1.642` to `0.1.644` released in `squeal--v0.1.645`; Wave 4 `027-07` landed in `0.1.646` at `e1d92c55e`, review `028-jest-runner/reviews/0.1.646-r4.md` PASS). Live dogfooding on a throwaway copy of `saas-boilerplate` passed 73/73 Python tests (71 backend + 2 workers) across 3 parallel container slots with zero DB/Redis collisions, `--no-cache` rebuild cache reuse under `build-content`, and 0.53 s clean stop (`lessons.md`).
 
 ## Open questions
 
-1. Compose project/network binding: user-local `networkOverride` / `composeProject` in `~/.config/squeal/containers.json` only, or also read `COMPOSE_PROJECT_NAME` from the worktree's `.env`?
+1. Closed (`lessons.md`, row `027-07`): user-local `composeProject` and `networkOverride` in `~/.config/squeal/containers.json` are sufficient; parsing `.env` for `COMPOSE_PROJECT_NAME` is not needed.
