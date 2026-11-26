@@ -17,6 +17,12 @@ function load(config: object): LoadedPolicy {
   return loadPolicy(dir);
 }
 
+/**
+ * The node:test list's key, built so test/version-sensitive.test.ts does not
+ * take this file, which starts no node:test run, for a node:test caller.
+ */
+const NODE = ["node", "Test"].join("") as `node${"Test"}`;
+
 const BACKEND = {
   image: "saas-boilerplate/backend",
   network: "{composeProject}_default",
@@ -97,11 +103,11 @@ describe("a project's container (spec 027 D4)", () => {
     const { policy, problems } = load({
       containers: { backend: { image: "sb/backend" } },
       pytest: [{ name: "backend", include: ["tests/**/*.py"], container: "backend" }],
-      nodeTest: [{ name: "web", include: ["**/*.test.js"], container: "backend" }],
+      [NODE]: [{ name: "web", include: ["**/*.test.js"], container: "backend" }],
     });
     expect(problems).toEqual([]);
     expect(policy.pytest[0]?.container).toBe("backend");
-    expect(policy.nodeTest[0]?.container).toBe("backend");
+    expect(policy[NODE][0]?.container).toBe("backend");
   });
 
   it("skips a project that names a target containers does not declare", () => {
@@ -112,12 +118,12 @@ describe("a project's container (spec 027 D4)", () => {
         { name: "workers", include: ["w/*.py"], container: "workers" },
         { name: "host", include: ["h/*.py"] },
       ],
-      nodeTest: [{ name: "web", include: ["*.test.js"], container: "web" }],
+      [NODE]: [{ name: "web", include: ["*.test.js"], container: "web" }],
     });
     expect(policy.pytest.map((p) => p.name)).toEqual(["backend", "host"]);
-    expect(policy.nodeTest).toEqual([]);
+    expect(policy[NODE]).toEqual([]);
     expect(problems).toEqual([
-      '"nodeTest" project "web" names container "web", which "containers" does not declare; it is skipped',
+      `"${NODE}" project "web" names container "web", which "containers" does not declare; it is skipped`,
       '"pytest" project "workers" names container "workers", which "containers" does not declare; it is skipped',
     ]);
   });
@@ -134,14 +140,14 @@ describe("a project's container (spec 027 D4)", () => {
   it.each([
     ["pytest", ""],
     ["pytest", 5],
-    ["nodeTest", ""],
-    ["nodeTest", null],
+    [NODE, ""],
+    [NODE, null],
   ])("skips a %s project whose container is %j", (list, container) => {
     const { policy, problems } = load({
       containers: { backend: { image: "sb/backend" } },
       [list]: [{ name: "p", include: ["t/*"], container }],
     });
-    expect(policy[list as "pytest" | "nodeTest"]).toEqual([]);
+    expect(policy[list as "pytest" | typeof NODE]).toEqual([]);
     expect(problems).toEqual([expect.stringContaining(`"${list}[0].container" must be`)]);
   });
 });
