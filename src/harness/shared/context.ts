@@ -8,11 +8,11 @@ import { openSentStore, type WriterFor } from "../../core/delivery/sent-store.js
 import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs/git-layout.js";
 import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/source.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/open.js";
-import { createStatusBuilder } from "../../core/status/snapshot.js";
 import { isCorruption, isStoreOpenFailure, openStore } from "../../core/store/open.js";
 import { storePaths } from "../../core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../core/types/common.js";
 import { type Consumer, type HarnessDelivery, MAIN_AGENT } from "../../core/types/delivery.js";
+import type { StatusBuilder } from "../../core/types/status.js";
 import type { Store } from "../../core/types/store.js";
 import type { HarnessProcess } from "../../core/types/store-records.js";
 
@@ -50,6 +50,18 @@ export function usesSqueal(location: HookLocation): boolean {
     existsSync(join(location.root, "squeal.config.json"))
   );
 }
+
+/**
+ * Row 025-17: no hook asks its delivery for `status()`, so a hook context
+ * carries no status builder, and the hook bundles leave `status/snapshot`
+ * and what only it imports out (76 to 84 KB each). `squeal status` reads
+ * `readStatus`.
+ */
+const NO_STATUS: StatusBuilder = {
+  build() {
+    throw new Error("a hook context builds no status; squeal status reads it (row 025-17)");
+  },
+};
 
 export interface HookContext extends HookLocation {
   readonly store: Store;
@@ -152,7 +164,7 @@ export function openContext(
     // Spec 017 D8: read only while the worktree's `lint.enabled` holds, in the same budget.
     const lint = lintStoreSource(location.commonDir, location.root, { busyTimeoutMs });
     const delivery = createDelivery(store, {
-      status: createStatusBuilder(store, { now }),
+      status: NO_STATUS,
       now,
       ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
       ...(options.harnessProcess === undefined ? {} : { harnessProcess: options.harnessProcess }),
