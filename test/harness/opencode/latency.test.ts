@@ -41,7 +41,10 @@ import { buildOpencodeBundles } from "./helpers.js";
  * directory; the Codex hooks get the same directory, as Codex's adapter sets
  * it, unless this environment names a cache of its own, which both then use.
  * One untimed call per side and pair fills it. The store carries the write
- * markers a daemon arms.
+ * markers a daemon arms. After the warm rounds, each pair runs one more
+ * interleaved round with Node's compile cache off on both sides, the bridge's
+ * own cache included, reported and not asserted (review 0.1.641 S1), as the
+ * other harnesses' direct rounds are.
  */
 
 const RUNS = 20;
@@ -164,7 +167,12 @@ interface Row {
   opencodeP95: number;
   codexP95: number;
   gap: number;
+  "uncached opencodeP95"?: number;
+  "uncached codexP95"?: number;
 }
+
+/** Node's switch that turns its compile cache off, whatever cache directory is set. */
+const NO_CACHE = "NODE_DISABLE_COMPILE_CACHE";
 
 let opencodeDist = { dir: "", cleanup: () => {} };
 let codexDist = { dir: "", cleanup: () => {} };
@@ -205,16 +213,54 @@ describe("the OpenCode bridge's per-hook cost beside Codex's", () => {
       const answer = await callBridge<object>(command, event, r.root, 2_000);
       return { ms: performance.now() - started, answer };
     };
-    const codex = async (pair: Pair) => {
+    const codex = async (pair: Pair, uncached = false) => {
       const input = codexRecorded(
         pair.codex.mode ?? "exec",
         pair.codex.fixture,
         r.root,
         IN_SESSION,
       );
-      const out = await runBundle(pair.codex.hook, input, env, codexDist.dir);
+      const runEnv = uncached ? { ...env, [NO_CACHE]: "1" } : env;
+      const out = await runBundle(pair.codex.hook, input, runEnv, codexDist.dir);
       expect(out.code, `${pair.name}: ${out.stderr}`).toBe(0);
       return out;
+    };
+
+    /** One round of `runs` runs per side, interleaved, the side going first alternating. */
+    const round = async (pair: Pair, runs: number, uncached: boolean) => {
+      const oc: number[] = [];
+      const cx: number[] = [];
+      for (let run = 0; run < runs; run++) {
+        // Alternate which side goes first, so neither always meets the other's after-effects.
+        const sides = [
+          async () => {
+            pair.before?.(r, run);
+            const { ms, answer } = await bridge(pair.opencode.kind, pair.opencode.request);
+            expect(answer, pair.name).not.toBeNull();
+            oc.push(ms);
+          },
+          async () => {
+            pair.before?.(r, run);
+            const out = await codex(pair, uncached);
+            if (pair.name.endsWith("(silent)")) expect(out.stdout, pair.name).toBe("");
+            cx.push(out.ms);
+          },
+        ];
+        if (run % 2 === 1) sides.reverse();
+        for (const side of sides) await side();
+      }
+      return { opencodeP95: Math.round(p95(oc)), codexP95: Math.round(p95(cx)) };
+    };
+    /** `round` with the compile cache off on both sides; the bridge reads `process.env`. */
+    const uncachedRound = async (pair: Pair, runs: number) => {
+      const before = process.env[NO_CACHE];
+      process.env[NO_CACHE] = "1";
+      try {
+        return await round(pair, runs, true);
+      } finally {
+        if (before === undefined) delete process.env[NO_CACHE];
+        else process.env[NO_CACHE] = before;
+      }
     };
 
     const rows: Row[] = [];
@@ -243,42 +289,24 @@ describe("the OpenCode bridge's per-hook cost beside Codex's", () => {
         }
         while (!late && rounds < maxRounds && (best === null || best.gap >= MARGIN_MS)) {
           rounds++;
-          const oc: number[] = [];
-          const cx: number[] = [];
-          for (let run = 0; run < runs; run++) {
-            // Alternate which side goes first, so neither always meets the other's after-effects.
-            const sides = [
-              async () => {
-                pair.before?.(r, run);
-                const { ms, answer } = await bridge(pair.opencode.kind, pair.opencode.request);
-                expect(answer, pair.name).not.toBeNull();
-                oc.push(ms);
-              },
-              async () => {
-                pair.before?.(r, run);
-                const out = await codex(pair);
-                if (pair.name.endsWith("(silent)")) expect(out.stdout, pair.name).toBe("");
-                cx.push(out.ms);
-              },
-            ];
-            if (run % 2 === 1) sides.reverse();
-            for (const side of sides) await side();
-          }
-          const row = {
-            pair: pair.name,
-            rounds,
-            opencodeP95: Math.round(p95(oc)),
-            codexP95: Math.round(p95(cx)),
-            gap: Math.round(p95(oc) - p95(cx)),
-          };
+          const p = await round(pair, runs, false);
+          const row = { pair: pair.name, rounds, ...p, gap: p.opencodeP95 - p.codexP95 };
           if (best === null || row.gap < best.gap) best = row;
         }
-        if (best !== null) rows.push({ ...best, rounds });
+        if (best === null) continue;
+        const uncached = await uncachedRound(pair, runs);
+        rows.push({
+          ...best,
+          rounds,
+          "uncached opencodeP95": uncached.opencodeP95,
+          "uncached codexP95": uncached.codexP95,
+        });
       }
       const load = loadavg();
       console.log(
         `OpenCode bridge beside Codex hooks, p95 ms, best of up to ${maxRounds} rounds of ${runs} ` +
-          `runs, compile cache warm, interleaved; bare bridge (ping) p95 ${Math.round(bare)}; load ` +
+          `runs, compile cache warm, interleaved; uncached: one round with the cache off on both ` +
+          `sides, not asserted; bare bridge (ping) p95 ${Math.round(bare)}; load ` +
           `${load.map((l) => l.toFixed(2)).join(" ")}` +
           (asserted ? "" : `, above ${MAX_LOAD} or in CI: reported only`),
       );
