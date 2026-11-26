@@ -260,7 +260,7 @@ describe("the key a CI job inside the image gives (D7.2, review 0.1.644 B3)", ()
       SQUEAL_SLOT: "1",
       HOME: "/root",
     };
-    const job = { MODE: "other", DB: "app_ci", PORT: "9", SQUEAL_SLOT: "2", HOME: "/home/ci" };
+    const job = { MODE: "other", DB: "app_ci", PORT: "9", SQUEAL_SLOT: "2", HOME: "/tmp/ci" };
     expect(ciContainerTargetEnv(target, job)).toEqual({
       MODE: "other",
       DB: "app_{worktreeSlot}",
