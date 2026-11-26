@@ -309,7 +309,8 @@ class LockFilePool implements PermitPool {
     // The tier that asks states its own demand from now on (row 011-424).
     this.#quiet.end();
     const wanted = Math.max(1, Math.floor(want));
-    const fewest = Math.min(wanted, Math.max(1, Math.floor(least)));
+    // Row 026-33 (#292): never more than the pool can ever grant, or no look would admit the tier.
+    const fewest = Math.min(wanted, this.#most(), Math.max(1, Math.floor(least)));
     const { others, inUse, demand, shares, entitled, target } = this.#share(
       wanted,
       lane,
@@ -453,6 +454,16 @@ class LockFilePool implements PermitPool {
       target = Math.min(target, Math.max(0, project.slots - held - inUse));
     }
     return { others, inUse, demand, shares, entitled, target };
+  }
+
+  /**
+   * The most permits one tier can ever hold (row 026-33): the slots, under
+   * the project's cap when it has one. A tier's fewest workers stop here.
+   */
+  #most(): number {
+    const { project } = this.#options;
+    if (project === undefined || !(project.slots >= 1)) return this.#hostSlots;
+    return Math.min(this.#hostSlots, Math.floor(project.slots));
   }
 
   /**

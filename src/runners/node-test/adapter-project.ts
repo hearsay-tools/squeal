@@ -164,9 +164,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         timeoutMs: runOptions.timeoutMs,
         // A group's tier starts every file it holds (004 D2, D4; 019 D3): the scheduler sized it
         // to the slot's permits, and a file queued here would start after an edit or a close.
-        ...(options.concurrency === undefined || groupRun(runOptions.lane)
-          ? {}
-          : { concurrency: options.concurrency() }),
+        ...concurrencyOf(groupRun(runOptions.lane), options.concurrency?.(), runOptions.workers),
         ...(env === undefined ? {} : { env }),
         ...(runOptions.observeIgnored === true ? { observeIgnored: true } : {}),
         ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
@@ -223,6 +221,22 @@ function observedOf(
 
 /** The adapter's name, and so its runs' own lane (spec 003 D7, task 001-140). */
 const NODE_TEST_LANE = "node-test";
+
+/**
+ * The files a run starts at once (row 026-33, #292): the project's
+ * concurrency, no more than the tier's grant, `workers`, at least 1; none
+ * stated in a group's run, which starts every file, or with neither.
+ */
+function concurrencyOf(
+  inGroup: boolean,
+  size: number | undefined,
+  workers: number | undefined,
+): { concurrency?: number } {
+  if (inGroup) return {};
+  if (workers === undefined) return size === undefined ? {} : { concurrency: size };
+  const granted = Math.max(1, Math.floor(workers));
+  return { concurrency: size === undefined ? granted : Math.min(size, granted) };
+}
 
 /**
  * A run in a check group's lane, `slow:node-test` or `group:<name>:node-test`
