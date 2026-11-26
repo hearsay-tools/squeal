@@ -107,18 +107,8 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   if (ours === null) return logGone(options.logDir);
   mkdirSync(cacheDir, { recursive: true });
   const runtimeDir = options.runtimeDir ?? pytestRuntimeDir();
-  const env: NodeJS.ProcessEnv = {
-    ...environment.runEnv,
-    ...options.childEnv,
-    PYTHONPATH: [environment.runEnv.PYTHONPATH, runtimeDir]
-      .filter((p) => p !== undefined && p !== "")
-      .join(delimiter),
-    SQUEAL_PYTEST_ROOT: options.root,
-    // The plugin names the file in progress for the processes a test starts (task 007-55);
-    // one inherited from a run around this daemon's would record pytest's own imports.
-    SQUEAL_PYTEST_FILE: undefined,
-    SQUEAL_PYTEST_CHECKS: undefined,
-  };
+  // Spec 027 D2.1: the templates unexpanded here, so the arguments read what the keys read.
+  const env = batchEnv(environment.runEnv, options, runtimeDir);
   const args = pytestArgs(
     {
       project,
@@ -219,8 +209,13 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       args: batch.args,
       cwd,
       env: {
-        ...env,
-        ...expandedVariables(env, project.env, slot),
+        // D2.1: the slot expands the project's templates before the explicit `childEnv` and
+        // the runtime directory go over them, in `PATH` behind the activation's `bin` too.
+        ...batchEnv(
+          { ...environment.runEnv, ...expandedVariables(environment.runEnv, project.env, slot) },
+          options,
+          runtimeDir,
+        ),
         ...slotVariables(slot, project.slots?.toxParallelEnv === true),
         PYTHONPYCACHEPREFIX: bytecode.prefix,
         SQUEAL_PYTEST_EVENTS: events,
@@ -313,6 +308,29 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       f.skipped === null ? [] : [{ testFile: f.testFile, reason: f.skipped }],
     ),
     notes,
+  };
+}
+
+/**
+ * A batch's environment from the run environment: the explicit `childEnv`
+ * over it, `PYTHONPATH` included, and `squeal_pytest`'s directory behind it.
+ */
+function batchEnv(
+  runEnv: NodeJS.ProcessEnv,
+  options: Pick<PytestRunOptions, "childEnv" | "root">,
+  runtimeDir: AbsolutePath,
+): NodeJS.ProcessEnv {
+  return {
+    ...runEnv,
+    ...options.childEnv,
+    PYTHONPATH: [options.childEnv?.PYTHONPATH ?? runEnv.PYTHONPATH, runtimeDir]
+      .filter((p) => p !== undefined && p !== "")
+      .join(delimiter),
+    SQUEAL_PYTEST_ROOT: options.root,
+    // The plugin names the file in progress for the processes a test starts (task 007-55);
+    // one inherited from a run around this daemon's would record pytest's own imports.
+    SQUEAL_PYTEST_FILE: undefined,
+    SQUEAL_PYTEST_CHECKS: undefined,
   };
 }
 

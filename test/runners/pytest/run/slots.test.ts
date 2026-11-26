@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
   type SlotPool,
@@ -26,7 +26,11 @@ import {
   pytestVariables,
   runEnvironment,
 } from "../../../../src/runners/pytest/environment/hash.js";
-import { type PytestRunOptions, runPytest } from "../../../../src/runners/pytest/run/run.js";
+import {
+  type PytestRunOptions,
+  pytestRuntimeDir,
+  runPytest,
+} from "../../../../src/runners/pytest/run/run.js";
 
 /*
  * Spec 027 D1, D2 (row 027-02): each pytest batch runs in a slot of its
@@ -58,6 +62,8 @@ writeFileSync(
     '  echo "REDIS=$REDIS"',
     '  echo "DB=$DB"',
     '  echo "PLAIN=$PLAIN"',
+    '  echo "PATH=$PATH"',
+    '  echo "PYTHONPATH=$PYTHONPATH"',
     '  echo "RUNNING=$(ls "$FAKE_LOCKS" | grep -c \'^run-\')"',
     '} > "$out"',
     "echo ready",
@@ -74,10 +80,14 @@ const ENV = {
   DB: '{"dbname":"workers_test_{worktreeSlot}","n":{slot0}}',
   PLAIN: "{not-a-slot}",
 };
-const project = (name: string, slots?: PytestProject["slots"]): PytestProject => ({
+const project = (
+  name: string,
+  slots?: PytestProject["slots"],
+  env: Readonly<Record<string, string>> = ENV,
+): PytestProject => ({
   name,
   args: [],
-  env: ENV,
+  env,
   include: ["tests/test_*.py"],
   ...(slots === undefined ? {} : { slots }),
 });
@@ -127,6 +137,15 @@ function start(p: PytestProject, sleep: number, extra: Partial<PytestRunOptions>
   return { run, seen, collisions, logDir };
 }
 
+const RUNTIME = pytestRuntimeDir();
+const BIN = join(root, "env", "bin");
+/** The project's own `PATH` and `PYTHONPATH`, each with a slot-local entry (B2 of review 0.1.642). */
+const PATHS = {
+  ...ENV,
+  PATH: `${process.env.PATH}${delimiter}/tools/{slot}`,
+  PYTHONPATH: ["/modules/{slot0}", "/gen/{worktreeSlot}"].join(delimiter),
+};
+
 const slotsOf = (seen: readonly Seen[]) => seen.map((s) => Number(s.vars.SQUEAL_SLOT)).sort();
 const token = worktreeSlotToken(root);
 
@@ -156,6 +175,8 @@ describe("runPytest's per-batch slots (spec 027 D1, D2)", () => {
         REDIS: `redis://127.0.0.1:6379/${slot}`,
         DB: `{"dbname":"workers_test_${token}_${slot}","n":${slot - 1}}`,
         PLAIN: "{not-a-slot}",
+        PATH: expect.any(String),
+        PYTHONPATH: RUNTIME,
         RUNNING: expect.any(String),
       });
     }
@@ -225,5 +246,41 @@ describe("runPytest's per-batch slots (spec 027 D1, D2)", () => {
     const slotOne = { ...p, env: { ...ENV, REDIS: "redis://127.0.0.1:6379/1" } };
     expect(environmentHash({ ...inputs, project: slotOne })).not.toBe(hash);
     expect(environmentHash({ ...inputs, project: project("keyed", { max: 3 }) })).toBe(hash);
+  });
+  it("expands PATH and PYTHONPATH templates behind the env's bin and before the runtime directory", async () => {
+    const { run, seen } = start(project("paths", undefined, PATHS), 0);
+    await run;
+    expect(slotsOf(seen())).toEqual([1, 2, 3, 4]);
+    for (const { vars } of seen()) {
+      const slot = Number(vars.SQUEAL_SLOT);
+      expect(vars.PATH).toBe([BIN, process.env.PATH, `/tools/${slot}`].join(delimiter));
+      expect(vars.PYTHONPATH).toBe(
+        [`/modules/${slot - 1}`, `/gen/${token}_${slot}`, RUNTIME].join(delimiter),
+      );
+      expect(vars.REDIS).toBe(`redis://127.0.0.1:6379/${slot}`);
+    }
+  });
+
+  it("lets an explicit childEnv override the project's env, PATH and PYTHONPATH too", async () => {
+    const locks = join(root, "locks", randomUUID());
+    mkdirSync(locks, { recursive: true });
+    const PATH = `${process.env.PATH}${delimiter}/child/{slot}`;
+    const { run, seen } = start(project("child", undefined, PATHS), 0, {
+      childEnv: {
+        FAKE_LOCKS: locks,
+        FAKE_SLEEP: "0",
+        PLAIN: "child {slot}",
+        PATH,
+        PYTHONPATH: "/child/{slot}",
+      },
+    });
+    await run;
+    expect(seen()).toHaveLength(4);
+    for (const { vars } of seen()) {
+      expect(vars.PLAIN).toBe("child {slot}");
+      expect(vars.PATH).toBe(PATH);
+      expect(vars.PYTHONPATH).toBe(["/child/{slot}", RUNTIME].join(delimiter));
+      expect(vars.REDIS).toBe(`redis://127.0.0.1:6379/${vars.SQUEAL_SLOT}`);
+    }
   });
 });

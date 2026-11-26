@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { delimiter } from "node:path";
 
 /*
  * Spec 027 D1, D2 (row 027-02): every concurrent batch process holds a
@@ -121,9 +122,13 @@ export function slotVariables(slot: Slot, toxParallelEnv: boolean): Record<strin
 }
 
 /**
- * D2.1: `templates` (a project's `env`) expanded for `slot`, for each
- * variable `env` still holds as the template; one set over it by another
- * source keeps its own value.
+ * D2.1: `templates` (a project's `env`) expanded for `slot`, over `env`, the
+ * environment a runner composed from them before any explicit override.
+ * Each entry (split on the path delimiter) of a variable's value that is an
+ * entry of its template expands, so a value the runner built around the
+ * template, such as `PATH` behind an activation's `bin` or `PYTHONPATH`
+ * before a runtime directory, expands its template's part too; a value set
+ * by another source, holding none of the template's entries, keeps its own.
  */
 export function expandedVariables(
   env: Readonly<Record<string, string | undefined>>,
@@ -132,7 +137,13 @@ export function expandedVariables(
 ): Record<string, string> {
   const expanded: Record<string, string> = {};
   for (const [name, template] of Object.entries(templates)) {
-    if (env[name] === template) expanded[name] = expandSlotTemplate(template, slot);
+    const value = env[name];
+    if (value === undefined) continue;
+    const entries = new Set(template.split(delimiter));
+    expanded[name] = value
+      .split(delimiter)
+      .map((entry) => (entries.has(entry) ? expandSlotTemplate(entry, slot) : entry))
+      .join(delimiter);
   }
   return expanded;
 }

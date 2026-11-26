@@ -26,6 +26,9 @@ export const PYTEST_SLOTS: readonly Case[] = (
       env: {
         SQUEAL_VALIDITY_REDIS: "redis://127.0.0.1:6379/{slot}",
         SQUEAL_VALIDITY_DB: '{"dbname":"workers_{worktreeSlot}","index":{slot0}}',
+        // Review 0.1.642 B2: Squeal composes these around the templates, which still expand.
+        PATH: "/usr/bin:/bin:/tmp/squeal-validity-tools-{slot}",
+        PYTHONPATH: "/tmp/squeal-validity-modules-{slot0}",
       },
       slots: { toxParallelEnv: true, max: 1 },
     },

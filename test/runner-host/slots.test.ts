@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
   expandedVariables,
@@ -128,8 +128,30 @@ describe("slotVariables (027 D1.3)", () => {
 
 describe("expandedVariables (027 D2.1)", () => {
   it("expands each template the environment still holds, and leaves an overridden one", () => {
-    const templates = { A: "a{slot}", B: "b{slot}", C: "plain" };
+    const templates = { A: "a{slot}", B: "b{slot}", C: "plain", E: "e{slot}" };
     const env = { A: "a{slot}", B: "set by another source", C: "plain", D: "d{slot}" };
-    expect(expandedVariables(env, templates, SLOT)).toEqual({ A: "a3", C: "plain" });
+    expect(expandedVariables(env, templates, SLOT)).toEqual({
+      A: "a3",
+      B: "set by another source",
+      C: "plain",
+    });
+  });
+
+  it("expands a template's entries in a path list composed around it (review 0.1.642 B2)", () => {
+    const templates = {
+      PATH: ["/usr/bin", "/tools/{slot}"].join(delimiter),
+      PYTHONPATH: "/gen/{worktreeSlot}",
+      DB: '{"n":{slot0},"x":"{slot}"}',
+    };
+    const env = {
+      PATH: ["/env/bin", "/usr/bin", "/tools/{slot}"].join(delimiter),
+      PYTHONPATH: ["/gen/{worktreeSlot}", "/runtime/{slot}"].join(delimiter),
+      DB: templates.DB,
+    };
+    expect(expandedVariables(env, templates, SLOT)).toEqual({
+      PATH: ["/env/bin", "/usr/bin", "/tools/3"].join(delimiter),
+      PYTHONPATH: ["/gen/abcd1234_3", "/runtime/{slot}"].join(delimiter),
+      DB: '{"n":2,"x":"3"}',
+    });
   });
 });
