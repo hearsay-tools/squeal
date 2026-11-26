@@ -189,3 +189,91 @@ describe.each(JEST_MAJORS)("the Jest %i adapter (spec 028 D6)", (major) => {
     );
   });
 });
+
+/*
+ * Review 0.1.644 B4: a module the config imports is part of its chain. Its
+ * edit recreates the project, and the live adapter then answers as a fresh one.
+ */
+describe.each(JEST_MAJORS)("the Jest %i adapter's imported config files (B4)", (major) => {
+  const changed = (path: string) => [{ path, kind: "change" as const }];
+
+  /** A worktree whose config is `config`, with `files` beside it. */
+  function imported(config: string, files: Record<string, string>): AbsolutePath {
+    const root = worktree(major);
+    writeFileSync(join(root, "jest.config.js"), config);
+    for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
+    return root;
+  }
+
+  /** The live adapter answers what a freshly opened adapter on the same files answers. */
+  async function expectFresh(live: RunnerAdapter, root: AbsolutePath): Promise<void> {
+    const fresh = await createJestAdapter(PROJECT, { root });
+    expect(await live.environment()).toEqual(await fresh.environment());
+    expect(await live.testFiles()).toEqual(await fresh.testFiles());
+    expect(await live.affected(["src/sum.js", "src/other.js"])).toEqual(
+      await fresh.affected(["src/sum.js", "src/other.js"]),
+    );
+  }
+
+  it("recreates the project when an imported helper changes a scalar option", SLOW, async () => {
+    const root = imported(CONFIG(`\n  ...require("./options.cjs"),`), {
+      "options.cjs": "module.exports = { testTimeout: 1000 };\n",
+    });
+    const adapter = await createJestAdapter(PROJECT, { root });
+    const [before] = await adapter.environment();
+    expect(before?.files).toContain("options.cjs");
+    writeFileSync(join(root, "options.cjs"), "module.exports = { testTimeout: 9000 };\n");
+    expect(await adapter.invalidate(changed("options.cjs"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    expect((await adapter.environment())[0]?.resolvedConfig).not.toBe(before?.resolvedConfig);
+    await expectFresh(adapter, root);
+  });
+
+  it("follows a nested helper chain into testMatch and moduleNameMapper", SLOW, async () => {
+    const root = imported(
+      `module.exports = { testEnvironment: "node", ...require("./a.cjs") };\n`,
+      {
+        "a.cjs": `module.exports = { setupFiles: ["<rootDir>/setup/env.js"], ...require("./b.cjs") };\n`,
+        "b.cjs": `module.exports = { testMatch: ["<rootDir>/test/**/*.test.js"] };\n`,
+        "src/alias.js": "exports.sum = (a, b) => a + b;\n",
+      },
+    );
+    const adapter = await createJestAdapter(PROJECT, { root });
+    const [before] = await adapter.environment();
+    expect(before?.files).toEqual(expect.arrayContaining(["a.cjs", "b.cjs"]));
+    expect(await adapter.testFiles()).toEqual([OTHER, SUM]);
+    writeFileSync(
+      join(root, "b.cjs"),
+      `module.exports = {
+  testMatch: ["<rootDir>/test/sum.test.js"],
+  moduleNameMapper: { "^\\\\.\\\\./src/sum$": "<rootDir>/src/alias.js" },
+};
+`,
+    );
+    expect(await adapter.invalidate(changed("b.cjs"))).toEqual({ recreatedProjects: ["app"] });
+    expect(await adapter.testFiles()).toEqual([SUM]);
+    expect(await adapter.affected(["src/alias.js"])).toEqual({ direct: [SUM], transitive: [] });
+    await expectFresh(adapter, root);
+  });
+
+  it("recovers when a helper that threw is fixed", SLOW, async () => {
+    const root = imported(CONFIG(`\n  ...require("./options.cjs"),`), {
+      "options.cjs": `throw new Error("not yet");\n`,
+    });
+    const notes: string[] = [];
+    const adapter = await createJestAdapter(PROJECT, { root, note: (text) => notes.push(text) });
+    const [broken] = await adapter.environment();
+    expect(broken?.runnerVersion).toBe("unavailable");
+    expect(broken?.files).toContain("options.cjs");
+    expect(await adapter.testFiles()).toEqual([]);
+    expect(notes).toEqual([expect.stringMatching(/not yet/)]);
+    expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
+    writeFileSync(join(root, "options.cjs"), "module.exports = { testTimeout: 9000 };\n");
+    expect(await adapter.invalidate(changed("options.cjs"))).toEqual({
+      recreatedProjects: ["app"],
+    });
+    expect((await adapter.environment())[0]?.runnerVersion).toMatch(new RegExp(`^${major}\\.`));
+    await expectFresh(adapter, root);
+  });
+});

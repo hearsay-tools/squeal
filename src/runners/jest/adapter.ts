@@ -67,7 +67,13 @@ type Opened =
       readonly graph: JestGraph;
       files: RelativePath[];
     }
-  | { readonly ok: false; readonly note: string; readonly install: JestInstall | null };
+  | {
+      readonly ok: false;
+      readonly note: string;
+      readonly install: JestInstall | null;
+      /** The files a failed config evaluation loaded: an edit of one reads the project again. */
+      readonly configDeps: readonly AbsolutePath[];
+    };
 
 /**
  * The Jest adapter of one configured project (spec 028 D1 to D6). Never
@@ -93,16 +99,20 @@ export async function createJestAdapter(
 
   const open = async (): Promise<Opened> => {
     const resolution = resolveJest(project.name, jestCwd(root, project), root);
-    if (!resolution.ok) return { ok: false, note: resolution.note, install: null };
+    if (!resolution.ok) return { ok: false, note: resolution.note, install: null, configDeps: [] };
     const { install } = resolution;
     const read = await readJestProject(root, project, install, source);
-    if (!read.ok) return { ok: false, note: `${read.error}; its checks stay unknown`, install };
+    if (!read.ok) {
+      const configDeps = read.configDeps ?? [];
+      return { ok: false, note: `${read.error}; its checks stay unknown`, install, configDeps };
+    }
     const files = listed(root, project, read);
     try {
       return { ok: true, install, read, graph: await graphOf(root, project, read, files), files };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      return { ok: false, note: `its module graph cannot be built: ${reason}`, install };
+      const note = `its module graph cannot be built: ${reason}`;
+      return { ok: false, note, install, configDeps: read.configDeps };
     }
   };
 
@@ -163,7 +173,8 @@ export async function createJestAdapter(
     testFiles: async () => (state.ok ? state.files.map(ref) : []),
     async environment() {
       if (!state.ok) {
-        return [unavailableEnvironment(root, project, state.note, JEST_ADAPTER_VERSION)];
+        const { note, configDeps } = state;
+        return [unavailableEnvironment(root, project, note, JEST_ADAPTER_VERSION, configDeps)];
       }
       const { install, read } = state;
       const environment = jestEnvironment({
@@ -277,7 +288,9 @@ function watchedOf(
   state: Opened,
   source: NodeJS.ProcessEnv,
 ): ReadonlySet<RelativePath> {
-  const read: JestRead = state.ok ? state.read : { ok: false, error: "" };
+  const read: JestRead = state.ok
+    ? state.read
+    : { ok: false, error: "", configDeps: state.configDeps };
   const env =
     state.install === null ? source : projectProcessEnv(root, project, state.install, source);
   return new Set(configFiles(root, project, read, env));

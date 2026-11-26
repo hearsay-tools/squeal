@@ -34,36 +34,92 @@ export type JestRead =
       readonly testPaths: readonly AbsolutePath[];
       /** The raw config's `preset`, resolved to its file; `null` without one. */
       readonly preset: AbsolutePath | null;
+      /** Worktree files the config's evaluation loaded or read, outside `node_modules` and `.git`. */
+      readonly configDeps: readonly AbsolutePath[];
     }
-  | { readonly ok: false; readonly error: string };
+  | {
+      readonly ok: false;
+      readonly error: string;
+      /** What the evaluation loaded or read before it failed; absent when the child gave no answer. */
+      readonly configDeps?: readonly AbsolutePath[];
+    };
 
 const READ_TIMEOUT_MS = 60_000;
 
 /**
- * Reads `jest-config` at argv[1] on the config at argv[2], then walks
- * `roots` (skipping `node_modules` and `.git`) for the files Jest's
- * SearchSource would select. Its JSON is the last line it prints.
+ * Reads `jest-config` at argv[1] on the config at argv[2], recording every
+ * worktree file (argv[3]) the evaluation loads by `require` or `import`, or
+ * reads with `fs` (review 0.1.644 B4), then walks `roots` (skipping
+ * `node_modules` and `.git`) for the files Jest's SearchSource would select.
+ * Its JSON is the last line it prints, with the recorded files on a failure too.
  */
 const READER = String.raw`
 const path = require("path");
 const fs = require("fs");
-const { createRequire } = require("module");
-const [jestConfig, configPath] = process.argv.slice(1);
+const { createRequire, registerHooks } = require("module");
+const { fileURLToPath } = require("url");
+const [jestConfig, configPath, worktree] = process.argv.slice(1);
 const print = (value) => process.stdout.write("\n" + JSON.stringify(value) + "\n");
+const roots = [worktree];
+try { roots.push(fs.realpathSync(worktree)); } catch {}
+const seen = new Set();
+let recording = false;
+const record = (target) => {
+  if (!recording) return;
+  try {
+    if (target instanceof URL || (typeof target === "string" && target.startsWith("file:"))) {
+      seen.add(fileURLToPath(target));
+    } else if (typeof target === "string") seen.add(path.resolve(target));
+    else if (Buffer.isBuffer(target)) seen.add(path.resolve(target.toString()));
+  } catch {}
+};
+const configDeps = (cached) => {
+  for (const file of Object.keys(require.cache)) if (!cached.has(file)) seen.add(file);
+  const out = new Set();
+  for (const file of seen) {
+    const root = roots.find((r) => file.startsWith(r + path.sep));
+    if (root === undefined) continue;
+    const local = worktree + file.slice(root.length);
+    const parts = local.slice(worktree.length + 1).split(path.sep);
+    if (parts.includes("node_modules") || parts.includes(".git")) continue;
+    try { if (fs.statSync(local).isFile()) out.add(local); } catch {}
+  }
+  return [...out].sort();
+};
 (async () => {
   const { readConfig, readInitialOptions } = require(jestConfig);
-  const { projectConfig, globalConfig } = await readConfig({ $0: "jest", _: [], ci: true }, configPath);
-  let preset = null;
+  const cached = new Set(Object.keys(require.cache));
+  let hooks = null;
   try {
-    const raw = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
-    if (typeof raw.preset === "string") {
-      const from = createRequire(path.join(projectConfig.rootDir, "package.json"));
-      const named = raw.preset.startsWith(".") ? path.resolve(projectConfig.rootDir, raw.preset) : raw.preset;
-      for (const candidate of [named, named + "/jest-preset"]) {
-        try { preset = from.resolve(candidate); break; } catch {}
-      }
-    }
+    hooks = registerHooks({ load(url, context, next) { record(url); return next(url, context); } });
   } catch {}
+  const wrapped = [[fs, "readFileSync"], [fs, "readFile"], [fs.promises, "readFile"]];
+  const originals = wrapped.map(([owner, name]) => owner[name]);
+  wrapped.forEach(([owner, name], i) => {
+    owner[name] = function (target, ...rest) { record(target); return originals[i].call(this, target, ...rest); };
+  });
+  let projectConfig, globalConfig, preset = null, deps;
+  recording = true;
+  try {
+    ({ projectConfig, globalConfig } = await readConfig({ $0: "jest", _: [], ci: true }, configPath));
+    try {
+      const raw = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
+      if (typeof raw.preset === "string") {
+        const from = createRequire(path.join(projectConfig.rootDir, "package.json"));
+        const named = raw.preset.startsWith(".") ? path.resolve(projectConfig.rootDir, raw.preset) : raw.preset;
+        for (const candidate of [named, named + "/jest-preset"]) {
+          try { preset = from.resolve(candidate); break; } catch {}
+        }
+      }
+    } catch {}
+  } catch (error) {
+    throw Object.assign(new Error(String((error && error.message) || error)), { deps: configDeps(cached) });
+  } finally {
+    recording = false;
+    wrapped.forEach(([owner, name], i) => { owner[name] = originals[i]; });
+    try { if (hooks !== null) hooks.deregister(); } catch {}
+  }
+  deps = configDeps(cached);
   const util = require(createRequire(path.join(jestConfig, "package.json")).resolve("jest-util"));
   const exts = new Set(projectConfig.moduleFileExtensions.map((e) => "." + e));
   const match = projectConfig.testMatch.length > 0 ? util.globsToMatcher(projectConfig.testMatch) : null;
@@ -85,8 +141,12 @@ const print = (value) => process.stdout.write("\n" + JSON.stringify(value) + "\n
     }
   };
   for (const root of projectConfig.roots) walk(root);
-  print({ ok: true, project: projectConfig, global: globalConfig, testPaths: [...found].sort(), preset });
-})().catch((error) => print({ ok: false, error: String((error && error.message) || error) }));
+  print({ ok: true, project: projectConfig, global: globalConfig, testPaths: [...found].sort(), preset, configDeps: deps });
+})().catch((error) => print({
+  ok: false,
+  error: String((error && error.message) || error),
+  ...(error && Array.isArray(error.deps) ? { configDeps: error.deps } : {}),
+}));
 `;
 
 /**
@@ -123,7 +183,7 @@ export function readJestProject(
   source: NodeJS.ProcessEnv,
 ): Promise<JestRead> {
   const env = projectProcessEnv(root, project, install, source);
-  const args = ["-e", READER, install.config, toAbsolute(root, project.config)];
+  const args = ["-e", READER, install.config, toAbsolute(root, project.config), root];
   return new Promise((done) => {
     execFile(
       process.execPath,
@@ -249,6 +309,8 @@ export function unavailableEnvironment(
   project: JestProject,
   note: string,
   adapterVersion: string,
+  /** What a config that failed to read had loaded: an edit of one may fix it. */
+  configDeps: readonly AbsolutePath[] = [],
 ): RunnerEnvironment {
   const cwd = slashes(relative(root, jestCwd(root, project)));
   const config = { config: project.config, state: "unavailable", note };
@@ -259,7 +321,7 @@ export function unavailableEnvironment(
     runnerVersion: JEST_UNAVAILABLE,
     adapterVersion,
     resolvedConfig: portablePaths(root)(JSON.stringify(config)),
-    files: inside(root, [toAbsolute(root, project.config)]),
+    files: inside(root, [toAbsolute(root, project.config), ...configDeps]),
     observedLoads: true,
   };
 }
@@ -269,7 +331,8 @@ export function unavailableEnvironment(
  * configs from the project's `rootDir` up to the worktree root, the nearest
  * `package.json` and tsconfig with its `extends` chain, ts-node's pinned
  * project, and every project file the resolved config names (setup files,
- * a local transformer, environment or resolver). Worktree-relative, sorted.
+ * a local transformer, environment or resolver), and every worktree file
+ * the config's evaluation loaded or read. Worktree-relative, sorted.
  */
 export function configFiles(
   root: AbsolutePath,
@@ -288,6 +351,8 @@ export function configFiles(
   for (const path of [tsconfig, env.TS_NODE_PROJECT]) {
     if (path !== undefined) files.push(...extendsChain(resolve(jestCwd(root, project), path)));
   }
+  // Review 0.1.644 B4: what the config imported or read, on a read that failed too.
+  files.push(...(read.configDeps ?? []));
   if (read.ok) {
     if (read.preset !== null) files.push(read.preset);
     for (const value of strings(read.project)) {
