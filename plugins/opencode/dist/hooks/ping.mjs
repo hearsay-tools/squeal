@@ -450,11 +450,20 @@ var FIELDS2 = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  batchSize: positiveInteger3
+  batchSize: positiveInteger3,
+  slots
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
 function positiveInteger3(value) {
   return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
+var SLOT_FIELDS = {
+  toxParallelEnv: boolean,
+  max: positiveInteger3
+};
+function slots(value) {
+  const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
+  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 function pytestProjects(value, path) {
   return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);

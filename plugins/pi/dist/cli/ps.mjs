@@ -2836,7 +2836,7 @@ function memoryShare(privateBytes, host) {
 var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
 var REPOSITORY_PERMIT = /^(slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
 var readPool = (source, places, daemons, readings = [source.locks()], cpus3 = source.host().cpus) => {
-  const { slots, ceiling } = capacityOf(places.userConfig, cpus3);
+  const { slots: slots2, ceiling } = capacityOf(places.userConfig, cpus3);
   const holders = /* @__PURE__ */ new Map();
   for (const locks of readings)
     for (const [file, pids3] of holdersOf(locks ?? [])) holders.set(file, pids3);
@@ -2854,8 +2854,8 @@ var readPool = (source, places, daemons, readings = [source.locks()], cpus3 = so
     }
   }
   if (readings.some((locks) => locks === null))
-    return { pool: { slots, held: null, ceiling }, permits: /* @__PURE__ */ new Map(), foreign };
-  return { pool: { slots, held, ceiling }, permits, foreign };
+    return { pool: { slots: slots2, held: null, ceiling }, permits: /* @__PURE__ */ new Map(), foreign };
+  return { pool: { slots: slots2, held, ceiling }, permits, foreign };
 };
 function holdersOf(locks) {
   const holders = /* @__PURE__ */ new Map();
@@ -4191,11 +4191,20 @@ var FIELDS2 = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  batchSize: positiveInteger3
+  batchSize: positiveInteger3,
+  slots
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
 function positiveInteger3(value) {
   return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
+var SLOT_FIELDS = {
+  toxParallelEnv: boolean,
+  max: positiveInteger3
+};
+function slots(value) {
+  const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
+  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 function pytestProjects(value, path) {
   return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
@@ -4636,8 +4645,8 @@ function readOne(db, d, runsOf, table, namespace, ownStart, unknown) {
   );
   const harnesses = meta("harnessProcess", "consumer harnesses", slotsOf, {});
   const versions = meta("consumerVersion", "consumer versions", slotsOf, {});
-  const slot2 = (slots, of, what, decode) => {
-    const value = slots?.[of];
+  const slot2 = (slots2, of, what, decode) => {
+    const value = slots2?.[of];
     const decoded = value === void 0 ? null : decode(value);
     if (decoded === void 0) name2(what, `its slot ${UNKNOWN2}`);
     return decoded ?? null;

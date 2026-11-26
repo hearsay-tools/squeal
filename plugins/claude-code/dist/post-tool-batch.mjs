@@ -4956,11 +4956,20 @@ var FIELDS2 = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  batchSize: positiveInteger3
+  batchSize: positiveInteger3,
+  slots
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
 function positiveInteger3(value) {
   return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
+var SLOT_FIELDS = {
+  toxParallelEnv: boolean,
+  max: positiveInteger3
+};
+function slots(value) {
+  const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
+  return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 function pytestProjects(value, path) {
   return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
@@ -5213,7 +5222,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.641";
+  if (true) return "0.1.642";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -13826,11 +13835,11 @@ function read3(store, worktreeId) {
     const value = JSON.parse(raw);
     if (!isRecord(value) || !Array.isArray(value.snapshots) || !isRecord(value.slots)) return EMPTY;
     const snapshots = value.snapshots.map(toKeys);
-    const slots = {};
+    const slots2 = {};
     for (const [slot2, at] of Object.entries(value.slots)) {
-      if (typeof at === "number" && snapshots[at] !== void 0) slots[slot2] = at;
+      if (typeof at === "number" && snapshots[at] !== void 0) slots2[slot2] = at;
     }
-    return { snapshots, slots };
+    return { snapshots, slots: slots2 };
   } catch {
     return EMPTY;
   }
@@ -13852,7 +13861,7 @@ function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept: kept2 }
   }
   const snapshots = [];
   const indexOf = /* @__PURE__ */ new Map();
-  const slots = {};
+  const slots2 = {};
   for (const [at, keys] of named2) {
     const id = identity2(keys);
     let index = indexOf.get(id);
@@ -13860,9 +13869,9 @@ function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept: kept2 }
       index = snapshots.push(keys) - 1;
       indexOf.set(id, index);
     }
-    slots[at] = index;
+    slots2[at] = index;
   }
-  store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify({ snapshots, slots }));
+  store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify({ snapshots, slots: slots2 }));
 }
 function beforeEditsFor(store, worktreeId, slot2, since) {
   let keys;
@@ -14016,11 +14025,11 @@ function tellRegistered(store, consumer, revision, {
   };
 }
 function registeredSlots(store, worktreeId, at) {
-  const slots = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
+  const slots2 = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
   for (const [k, v] of Object.entries(readAll(store, parkedMetaKey(worktreeId)))) {
-    if (isRecord(v) && isNumber4(v.leftTime) && v.leftTime >= at - CONSUMER_EXPIRY_MS) slots.add(k);
+    if (isRecord(v) && isNumber4(v.leftTime) && v.leftTime >= at - CONSUMER_EXPIRY_MS) slots2.add(k);
   }
-  return slots;
+  return slots2;
 }
 function fresh(since, scanned, head) {
   return {
