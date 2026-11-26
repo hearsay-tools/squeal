@@ -13,6 +13,7 @@ import type { Store } from "../types/store.js";
 import {
   describeProblems,
   type Leaf,
+  type LoadedConfig,
   loadConfigFile,
   positiveInteger,
   type Shape,
@@ -136,6 +137,18 @@ const SHAPE: Shape = {
  */
 export function loadPolicy(root: string): LoadedPolicy {
   const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, UNSET_EXITS);
+  // Row 025-18: the same load (the file's text unchanged) settles to the same policy.
+  const last = lastPolicies.get(root);
+  if (last?.loaded === loaded) return last.policy;
+  const policy = settle(loaded);
+  lastPolicies.set(root, { loaded, policy });
+  return policy;
+}
+
+/** Row 025-18: each root's last policy and the load it was settled from (`loadConfigFile`). */
+const lastPolicies = new Map<string, { readonly loaded: object; readonly policy: LoadedPolicy }>();
+
+function settle(loaded: LoadedConfig<Policy>): LoadedPolicy {
   // Spec 019 D1: what `checks` needs from the other keys and among its groups.
   const settled = settleChecks(loaded.value);
   return {

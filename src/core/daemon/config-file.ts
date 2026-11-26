@@ -40,22 +40,55 @@ export const positiveInteger: Leaf = (v) =>
   Number.isInteger(v) && (v as number) > 0 ? null : "a positive integer";
 
 /**
+ * Row 025-18: the last load of each file by each shape, with the text it was
+ * loaded from. One Stop loads `squeal.config.json` seven times and one
+ * SessionStart nine (`research/hook-runtime.md`, "Runtime work"); a load of
+ * unchanged text returns the earlier result in place of parsing and merging
+ * again. The file is still read every time, so an edit is seen by the next
+ * load in every process, a long-lived one (the daemon, Pi's worker,
+ * OpenCode's bridge) included. Results are shared: `LoadedConfig` is read-only.
+ */
+const lastLoads = new WeakMap<Shape, Map<string, LastLoad>>();
+interface LastLoad {
+  /** The file's text, `null` when it was missing. */
+  readonly text: string | null;
+  readonly defaults: object;
+  readonly loaded: LoadedConfig<object>;
+}
+
+/**
  * Reads the JSON file at `path` and applies it over `defaults` by `shape`.
  * A missing file is the defaults with no problems. A file that cannot be
  * read, is not JSON or is not an object is the defaults with one problem.
+ * The same text with the same `shape` and `defaults` gives the same result
+ * object (`lastLoads`).
  */
 export function loadConfigFile<T extends object>(
   path: string,
   shape: Shape,
   defaults: T,
 ): LoadedConfig<T> {
-  let text: string;
+  let text: string | null;
   try {
     text = readFileSync(path, "utf8");
   } catch (error) {
-    if (isMissing(error)) return { value: defaults, problems: [] };
-    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
+    if (!isMissing(error)) {
+      return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
+    }
+    text = null;
   }
+  let byPath = lastLoads.get(shape);
+  const last = byPath?.get(path);
+  if (last !== undefined && last.text === text && last.defaults === defaults) {
+    return last.loaded as LoadedConfig<T>;
+  }
+  const loaded = text === null ? { value: defaults, problems: [] } : parse(text, shape, defaults);
+  if (byPath === undefined) lastLoads.set(shape, (byPath = new Map()));
+  byPath.set(path, { text, defaults, loaded });
+  return loaded;
+}
+
+function parse<T extends object>(text: string, shape: Shape, defaults: T): LoadedConfig<T> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
