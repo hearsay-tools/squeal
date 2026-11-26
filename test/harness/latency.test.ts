@@ -6,6 +6,7 @@ import { testCommandDeniedMetaKey } from "../../src/core/delivery/test-command-d
 import { writeTurn } from "../../src/core/delivery/turn.js";
 import { omittedTestFilesMetaKey } from "../../src/core/scheduler/omitted-test-files.js";
 import { storePaths } from "../../src/core/store/paths.js";
+import { ensureWriteMarkers } from "../../src/core/store/write-markers.js";
 import { check, result } from "../state/helpers.js";
 import {
   type BundleRun,
@@ -64,7 +65,7 @@ function p95(samples: readonly number[]): number {
   return sorted[Math.ceil(sorted.length * 0.95) - 1] ?? Number.NaN;
 }
 
-/** A store the size of a small project: every check passing, one consumer registered. */
+/** A store the size of a small project: every check passing, one consumer registered, write markers armed. */
 function seeded(): SquealRepo {
   const r = squealRepo();
   const results = [];
@@ -83,6 +84,9 @@ function seeded(): SquealRepo {
     }
   }
   r.apply(r.pass(), ...results);
+  // A real store has the states-marker triggers a daemon arms at start (row 025-18):
+  // without them hooks take a slower path users never take.
+  ensureWriteMarkers(r.store);
   return r;
 }
 
