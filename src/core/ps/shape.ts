@@ -1,4 +1,5 @@
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { PsContainer } from "./containers.js";
 import type { MemoryKind, PsPlatform } from "./source.js";
 import type { PsStoreProcess } from "./store-processes.js";
 
@@ -34,6 +35,8 @@ export interface PsSnapshot {
   readonly checkouts?: readonly PsCheckout[];
   /** Spec 021 D22.2 (row 021-36): the store processes; absent from a snapshot that did not read them. */
   readonly storeProcesses?: readonly PsStoreProcess[];
+  /** Spec 027 D7.3 (row 027-06): Squeal's managed containers; absent from a snapshot that did not list them. */
+  readonly containers?: readonly PsContainer[];
   /** Every flag of the snapshot: on daemons, processes, orphans, files and checkouts. */
   readonly flags: number;
   readonly unknown: readonly PsUnknown[];
