@@ -2958,8 +2958,8 @@ Spec folder `specifications/025-performance/` (stage: shipped; originally drafte
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 025-14 Research: what each hook bundle loads but never runs, why it grew per release, start-cost split (compile, top-level evaluation, own work), candidate cuts with measured savings | running | `research/hook-bundles.md`; probes under `research/probes/hook-latency/` | Tagged findings and a recommended cut set with measured p50/p95 |
-| 025-15 Research: hook run-time work at 0.1.364, 0.1.600 and main, the `stop` step after 0.1.600, each harness's hook start path (compile cache, proxy), the other four latency tests, and test path versus users' path | running | `research/hook-runtime.md` | Tagged findings with the numbers for the human's test-path choice |
+| 025-14 Research: what each hook bundle loads but never runs, why it grew per release, start-cost split (compile, top-level evaluation, own work), candidate cuts with measured savings | running (researcher `f404c1f9`, claude opus high) | `research/hook-bundles.md`; probes under `research/probes/hook-latency/` | Tagged findings and a recommended cut set with measured p50/p95 |
+| 025-15 Research: hook run-time work at 0.1.364, 0.1.600 and main, the `stop` step after 0.1.600, each harness's hook start path (compile cache, proxy), the other four latency tests, and test path versus users' path | running (researcher `7a3ea88a`, codex gpt-6-astra high) | `research/hook-runtime.md` | Tagged findings with the numbers for the human's test-path choice |
 
 ## Feature 026: tiered local checks and cloud sandboxes
 
