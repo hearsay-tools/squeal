@@ -3,6 +3,7 @@ import { commitLine } from "../commit/text.js";
 import { heldUntilAsked } from "../daemon/check-groups.js";
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
 import { publishedNarrowAsks } from "../scheduler/narrow-asks-row.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
@@ -157,18 +158,69 @@ function requestedOf(
 ): (at: CheckMoment, inLane: (ref: TestFileRef) => boolean) => Requested {
   const none: Requested = { asked: 0, outside: [] };
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => none;
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  const asked =
-    daemon === null ? new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  const isAsked = askedAtKey(store, worktreeId);
   const pending = keys.filter((row) => row.pending !== null);
-  const isAsked = (row: TestFileKeyRecord) =>
-    row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
   return (at, inLane) => {
     if (!heldUntilAsked(at)) return none;
     const lane = pending.filter((row) => inLane(row.testFile));
     const outside = lane.filter((row) => !isAsked(row)).map((row) => row.testFile);
     return { asked: lane.length - outside.length, outside };
   };
+}
+
+/** Whether the live daemon published a narrow ask for the row's file at its key now (row 023-67). */
+function askedAtKey(store: Store, worktreeId: WorktreeId): (row: TestFileKeyRecord) => boolean {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  const asked =
+    daemon === null ? new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  return (row) => row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
+}
+
+const NONE_ON_REQUEST: ReadonlySet<string> = new Set();
+
+/**
+ * Row 011-426 (gh-293; 011 C6): the queued test files, by `testFileId`, that
+ * wait for a request and so never run by themselves: each file of a group
+ * at `commit` or `manual` (`heldUntilAsked`) whose key row is queued and
+ * that no narrow request asked for at its key (`askedAtKey`). None while
+ * a `run --all` checkpoint is open, which runs every held file; and none of
+ * a group whose lane runs while no narrow ask names a file of it: that lane
+ * runs a request for the whole group (`squeal run <group>`, or a commit's
+ * ask, which the daemon does not publish). A held file not asked stays on
+ * request while its lane runs a narrow request for other files. The one
+ * set the header's counts, status's file lists and `status --wait` read.
+ */
+export function onRequestFiles(
+  store: Store,
+  worktreeId: WorktreeId,
+  keys: readonly TestFileKeyRecord[],
+  policy: Policy | null,
+): ReadonlySet<string> {
+  if (policy === null || !groupTextsShown(policy)) return NONE_ON_REQUEST;
+  const view = groupView(policy);
+  const held = view.groups.filter(
+    (group) => group.index !== null && group.select.kind === "tests" && heldUntilAsked(group.at),
+  );
+  if (held.length === 0 || runAllOpen(store, worktreeId)) return NONE_ON_REQUEST;
+  const isAsked = askedAtKey(store, worktreeId);
+  const out = new Set<string>();
+  for (const group of held) {
+    const inLane = (ref: TestFileRef) => view.of(ref) === group;
+    const lane = keys.filter((row) => row.pending !== null && inLane(row.testFile));
+    const queued = lane.filter((row) => row.pending === "queued" && !isAsked(row));
+    if (queued.length === 0) continue;
+    const narrow = lane.some(isAsked);
+    if (!narrow && liveActivity(store, worktreeId, keys, inLane, group.name) !== null) continue;
+    for (const row of queued) out.add(testFileId(row.testFile));
+  }
+  return out;
+}
+
+/** Whether a `run --all` checkpoint is open or owed (`readCheckpointProgress`). */
+function runAllOpen(store: Store, worktreeId: WorktreeId): boolean {
+  const progress = readCheckpointProgress(store, worktreeId);
+  if (progress?.kind !== "run-all") return false;
+  return progress.owed !== undefined || store.checkpoints.get(progress.id)?.end === null;
 }
 
 /** Row 023-79: of a held group's pending files, how many a request queued, and the others. */

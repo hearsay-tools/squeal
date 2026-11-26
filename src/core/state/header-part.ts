@@ -30,6 +30,8 @@ import { type LaneCounts, laneCounts, type SlowPolicyView, slowPolicyView } from
 export interface HeaderPart {
   /** The policy it was made under, to tell a kept part from a stale one. */
   readonly policy: Policy | null;
+  /** Row 011-426: the on-request files it counted (`onRequestFiles`), to tell a kept part from a stale one. */
+  readonly onRequest: ReadonlySet<string>;
   readonly view: SlowPolicyView | null;
   readonly counted: StateCounts;
   readonly testFilesWithoutChecks: TestFileCounts;
@@ -50,7 +52,8 @@ export interface HeaderPart {
 /**
  * The header's part from `states`, `keys` and `policy`. A caller that passes
  * `isSlow` gets `slowPending` from it whatever the policy says; `openFiles`
- * are counted running (C15).
+ * are counted running (C15), queued `onRequest` files on request (row
+ * 011-426).
  */
 export function headerPart(
   states: readonly KnownState[],
@@ -58,8 +61,9 @@ export function headerPart(
   policy: Policy | null,
   isSlow?: (testFile: TestFileRef) => boolean,
   openFiles?: ReadonlySet<string>,
+  onRequest: ReadonlySet<string> = new Set(),
 ): HeaderPart {
-  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles);
+  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles, onRequest);
 }
 
 /** `headerPart` from the worktree's states counted (spec 025 D11, row 025-11). */
@@ -69,6 +73,7 @@ export function headerPartOf(
   policy: Policy | null,
   isSlow?: (testFile: TestFileRef) => boolean,
   openFiles?: ReadonlySet<string>,
+  onRequest: ReadonlySet<string> = new Set(),
 ): HeaderPart {
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
@@ -78,10 +83,11 @@ export function headerPartOf(
   const owned = slowLane !== undefined && (slowLane.testFiles > 0 || keys.length === 0 || !shown);
   return {
     policy,
+    onRequest,
     view,
     counted: countStates(states),
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    notCurrent: notCurrentOf(states, keys, openFiles),
+    notCurrent: notCurrentOf(states, keys, openFiles, onRequest),
     listed: keys.length > 0,
     ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),
     ...(owned ? { slowLane } : {}),

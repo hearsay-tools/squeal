@@ -1,7 +1,12 @@
 import { plural } from "../text.js";
 import type { CheckId } from "../types/check.js";
-import type { PendingPhase, Validity } from "../types/state.js";
-import type { KnownFailureCounts, StatusHeader, ValidityCounts } from "../types/status.js";
+import type { Validity } from "../types/state.js";
+import type {
+  KnownFailureCounts,
+  PendingByPhase,
+  StatusHeader,
+  ValidityCounts,
+} from "../types/status.js";
 
 /** Checks counted apart (spec 005 D1; 001 D4: one file-level check per test file). */
 export interface CheckCounts {
@@ -171,23 +176,39 @@ function testsText({ counts, fileLevelCounts: fileLevel, testsByPhase }: StatusH
     stale: tests("stale"),
     unknown: tests("unknown"),
   };
-  const total = parts.running + parts.queued + parts.stale + parts.unknown;
+  const total = parts.running + parts.queued + parts.onRequest + parts.stale + parts.unknown;
   return total === 0 ? "" : `, ${plural(total, "test")} (${partsText(parts)})`;
 }
 
-/** `pending` by `phases`, all of it queued when the header has no phases. */
+/**
+ * `pending` by `phases`, all of it queued when the header has no phases;
+ * on request none in a payload before the field (row 011-426).
+ */
 function splitPending(
   pending: number,
-  phases: Readonly<Record<PendingPhase, number>> | undefined,
-): Record<PendingPhase, number> {
-  return phases === undefined ? { running: 0, queued: pending } : { ...phases };
+  phases: PendingByPhase | undefined,
+): Required<PendingByPhase> {
+  if (phases === undefined) return { running: 0, queued: pending, onRequest: 0 };
+  return { running: phases.running, queued: phases.queued, onRequest: phases.onRequest ?? 0 };
 }
 
-const NOT_CURRENT = ["running", "queued", "stale", "unknown"] as const;
+/** Each part of what is not current, in order, and its words. */
+const NOT_CURRENT = {
+  running: "running",
+  queued: "queued",
+  // Row 011-426 (gh-293): a held group's files wait for a request, never "queued".
+  onRequest: "on request",
+  stale: "stale",
+  unknown: "unknown",
+} as const;
 
-/** `2 queued, 6 stale`: C4's pending split by phase, then stale and unknown, zeros left out. */
-function partsText(parts: Readonly<Record<(typeof NOT_CURRENT)[number], number>>): string {
-  return NOT_CURRENT.filter((part) => parts[part] > 0)
-    .map((part) => `${parts[part]} ${part}`)
+/**
+ * `2 queued, 98 on request, 6 stale`: C4's pending split by phase, then
+ * stale and unknown, zeros left out.
+ */
+function partsText(parts: Readonly<Record<keyof typeof NOT_CURRENT, number>>): string {
+  return (Object.keys(NOT_CURRENT) as (keyof typeof NOT_CURRENT)[])
+    .filter((part) => parts[part] > 0)
+    .map((part) => `${parts[part]} ${NOT_CURRENT[part]}`)
     .join(", ");
 }

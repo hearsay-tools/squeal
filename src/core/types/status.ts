@@ -41,6 +41,17 @@ import type {
 } from "./store-records.js";
 
 /** Tally of checks by validity class at the current revision (D5). */
+
+/**
+ * Pending checks or test files by phase (011 C6, row 011-26). Row 011-426
+ * (gh-293): `onRequest` counts the queued ones of a group that runs only on
+ * request (`onRequestFiles`), which `queued` leaves out; absent when zero
+ * and from payloads before the field.
+ */
+export type PendingByPhase = Readonly<Record<PendingPhase, number>> & {
+  readonly onRequest?: number;
+};
+
 export type ValidityCounts = Readonly<Record<Validity, number>>;
 
 /**
@@ -343,15 +354,16 @@ export interface StatusHeader {
   /**
    * The `pending` test files of `testFileCounts` by phase: running while
    * their row, a check or an open run of the live daemon holds them (C15),
-   * else queued. Set by `readHeader`.
+   * else on request when they wait for a request (`onRequestFiles`, row
+   * 011-426), else queued. Set by `readHeader`.
    */
-  readonly testFilesByPhase?: Readonly<Record<PendingPhase, number>>;
+  readonly testFilesByPhase?: PendingByPhase;
   /**
    * The pending tests among `counts.pending` by phase, as
    * `testFilesByPhase` reads it; file-level checks are counted as their
    * files. Set by `readHeader`.
    */
-  readonly testsByPhase?: Readonly<Record<PendingPhase, number>>;
+  readonly testsByPhase?: PendingByPhase;
   readonly fullSuite: FullSuiteState;
   /**
    * Whether a daemon is validating, from the heartbeat in `worktrees.daemon`.
@@ -879,12 +891,16 @@ export interface SharedStatus {
 export interface CheckBreakdown {
   /** Checks with `current` validity, by known outcome. */
   readonly currentByOutcome: Readonly<Record<KnownOutcome, number>>;
-  /** Checks with `pending` validity, by phase. A pending check with no phase counts as `queued`. */
-  readonly pendingByPhase: Readonly<Record<PendingPhase, number>>;
+  /**
+   * Checks with `pending` validity, by phase. A pending check with no phase
+   * counts as `queued`, or `onRequest` when its file waits for a request
+   * (row 011-426).
+   */
+  readonly pendingByPhase: PendingByPhase;
   /** The file-level checks among `currentByOutcome` (spec 005 D1); absent, the counts are printed whole. */
   readonly fileLevelByOutcome?: Readonly<Record<KnownOutcome, number>>;
   /** The file-level checks among `pendingByPhase` (spec 005 D1); absent, the counts are printed whole. */
-  readonly fileLevelByPhase?: Readonly<Record<PendingPhase, number>>;
+  readonly fileLevelByPhase?: PendingByPhase;
   /** Test files with a key in this worktree (`test_file_keys`). */
   readonly testFiles: number;
   /**

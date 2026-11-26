@@ -14,6 +14,7 @@ import { pendingRetriesOf } from "../retry/pending.js";
 import { withRecorded } from "../retry/recorded.js";
 import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
 import { phasesOf, type WorktreeStates } from "../state/file-class.js";
+import { onRequestFiles } from "../state/groups.js";
 import { readHeaderOf } from "../state/header.js";
 import { META_STORE_RECOVERED } from "../store/open.js";
 import { importCountsByFile, readWorktreeStates } from "../store/status-reads.js";
@@ -30,6 +31,7 @@ import type {
   CheckpointInProgress,
   DaemonLiveness,
   InheritedSource,
+  PendingByPhase,
   StatusBuilder,
   StatusResult,
   StatusSnapshot,
@@ -166,6 +168,13 @@ function snapshot(
   // Row 011-73 (C6, C9): the holds on its validation, which the queued files wait for.
   const holds = readHolds(store, worktree, daemon, now);
   const header = readHeaderOf(store, worktreeId, states, keys, held);
+  // Row 011-426: the files the header counts on request, listed and broken down apart.
+  const onRequest = onRequestFiles(
+    store,
+    worktreeId,
+    keys,
+    worktree === null ? null : readPolicy(worktree.root),
+  );
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withTestFileFrames(
     store,
@@ -216,7 +225,7 @@ function snapshot(
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
     ...importsOf(store, worktreeId, keys, at),
-    breakdown: breakdown(states, keys, held),
+    breakdown: breakdown(states, keys, held, onRequest),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
@@ -236,7 +245,7 @@ function snapshot(
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),
     outstanding,
-    pendingTestFiles: pendingTestFilesOf(phases),
+    pendingTestFiles: pendingTestFilesOf(phases, onRequest),
     ...(slowSlot === undefined ? {} : { slowSlot }),
     ...(focused.length === 0 ? {} : { focused }),
     ...codeStatusOf(
@@ -380,12 +389,13 @@ function breakdown(
   states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   running: ReadonlySet<string>,
+  onRequest: ReadonlySet<string>,
 ): CheckBreakdown {
   const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
-  const pendingByPhase = { queued: 0, running: 0 };
+  const pendingByPhase = { queued: 0, running: 0, onRequest: 0 };
   const fileLevelByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
-  const fileLevelByPhase = { queued: 0, running: 0 };
+  const fileLevelByPhase = { queued: 0, running: 0, onRequest: 0 };
   for (const g of states.groups) {
     if (g.kind === "setup" || g.validity !== "current") continue;
     currentByOutcome[g.outcome] += g.count;
@@ -393,12 +403,14 @@ function breakdown(
   }
   for (const [id, file] of states.files) {
     const held = running.has(id);
+    // Row 011-426: the queued checks of a file that waits for a request are on request.
+    const queued = onRequest.has(id) ? "onRequest" : "queued";
     for (const kind of ["test", "file"] as const) {
       const phases = phasesOf(file.pending[kind], held, filePhase.get(id));
-      pendingByPhase.queued += phases.queued;
+      pendingByPhase[queued] += phases.queued;
       pendingByPhase.running += phases.running;
       if (kind !== "file") continue;
-      fileLevelByPhase.queued += phases.queued;
+      fileLevelByPhase[queued] += phases.queued;
       fileLevelByPhase.running += phases.running;
     }
   }
@@ -406,15 +418,20 @@ function breakdown(
   const without = keys.filter((k) => !withChecks(testFileId(k.testFile)));
   return {
     currentByOutcome,
-    pendingByPhase,
+    pendingByPhase: phasesWithoutZero(pendingByPhase),
     fileLevelByOutcome,
-    fileLevelByPhase,
+    fileLevelByPhase: phasesWithoutZero(fileLevelByPhase),
     testFiles: keys.length,
     testFilesWithoutChecks: without.length,
     testFilesWithoutChecksRunning: without.filter(
       (k) => k.pending === "running" || (k.pending !== null && running.has(testFileId(k.testFile))),
     ).length,
   };
+}
+
+/** Row 011-426: `onRequest` only when not zero, as payloads before it read. */
+function phasesWithoutZero({ onRequest, ...phases }: Required<PendingByPhase>): PendingByPhase {
+  return onRequest === 0 ? phases : { ...phases, onRequest };
 }
 
 /**

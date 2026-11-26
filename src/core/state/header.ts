@@ -11,7 +11,7 @@ import type { FullSuiteState, KnownFailure, StatusHeader } from "../types/status
 import type { Store } from "../types/store.js";
 import type { CheckpointRecord, TestFileKeyRecord } from "../types/store-records.js";
 import type { WorktreeStates } from "./file-class.js";
-import { groupTiersOf, readCommitLine } from "./groups.js";
+import { groupTiersOf, onRequestFiles, readCommitLine } from "./groups.js";
 import { type HeaderPart, headerPart, headerPartOf } from "./header-part.js";
 import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
@@ -59,8 +59,8 @@ export function readHeader(
   isSlow?: (testFile: TestFileRef) => boolean,
   openFiles?: ReadonlySet<string>,
 ): StatusHeader {
-  return headerWith(store, worktreeId, keys, (policy) =>
-    headerPart(states, keys, policy, isSlow, openFiles),
+  return headerWith(store, worktreeId, keys, (policy, onRequest) =>
+    headerPart(states, keys, policy, isSlow, openFiles, onRequest),
   );
 }
 
@@ -76,8 +76,8 @@ export function readHeaderOf(
   keys: readonly TestFileKeyRecord[],
   openFiles?: ReadonlySet<string>,
 ): StatusHeader {
-  return headerWith(store, worktreeId, keys, (policy) =>
-    headerPartOf(states, keys, policy, undefined, openFiles),
+  return headerWith(store, worktreeId, keys, (policy, onRequest) =>
+    headerPartOf(states, keys, policy, undefined, openFiles, onRequest),
   );
 }
 
@@ -88,14 +88,16 @@ export function readHeaderOf(
  * commit, the refined revision, the install wait, checkpoints, the policy,
  * the lanes' activity, the commit line and the optimizer note, in the order
  * the header always read them (`test/presence/reads.test.ts`). `readHeader`
- * makes the part each time; a caller that kept the states, the keys and the
- * policy may give the part it made from them.
+ * makes the part each time; a caller that kept the states, the keys, the
+ * policy and the on-request files may give the part it made from them. Row
+ * 011-426: the on-request files (`onRequestFiles`) are read now, after the
+ * policy, since a request or a lane's run changes them with no state write.
  */
 export function headerWith(
   store: Store,
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
-  partOf: (policy: Policy | null) => HeaderPart,
+  partOf: (policy: Policy | null, onRequest: ReadonlySet<string>) => HeaderPart,
 ): StatusHeader {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
@@ -107,7 +109,7 @@ export function headerWith(
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === undefined ? null : readPolicy(root);
-  const part = partOf(policy);
+  const part = partOf(policy, onRequestFiles(store, worktreeId, keys, policy));
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } =
     part.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);

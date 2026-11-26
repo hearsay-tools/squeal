@@ -8,7 +8,7 @@ import type {
   ResultOrigin,
   Validity,
 } from "../types/state.js";
-import type { ValidityCounts } from "../types/status.js";
+import type { PendingByPhase, ValidityCounts } from "../types/status.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
 
@@ -214,8 +214,8 @@ export function classOf(
 /** What `notCurrentText` counts, from one pass over a worktree's states and key rows. */
 export interface NotCurrentCounts {
   readonly testFileCounts: ValidityCounts;
-  readonly testFilesByPhase: Readonly<Record<PendingPhase, number>>;
-  readonly testsByPhase: Readonly<Record<PendingPhase, number>>;
+  readonly testFilesByPhase: PendingByPhase;
+  readonly testsByPhase: PendingByPhase;
 }
 
 /**
@@ -224,14 +224,17 @@ export interface NotCurrentCounts {
  * A pending check without a phase takes its file's, else is queued; a file
  * or check of a file an open run holds (`openFiles`, `testFileId`s) is
  * running, though a re-key queued it under its new key (C15), as status's
- * breakdown counts checks.
+ * breakdown counts checks. Row 011-426: a queued file in `onRequest`
+ * (`onRequestFiles`, `testFileId`s), and its queued tests, are on request,
+ * `onRequest` in each count, absent when zero.
  */
 export function countNotCurrent(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
   openFiles: ReadonlySet<string> = new Set(),
+  onRequest: ReadonlySet<string> = new Set(),
 ): NotCurrentCounts {
-  return notCurrentOf(worktreeStatesOf(states), keys, openFiles);
+  return notCurrentOf(worktreeStatesOf(states), keys, openFiles, onRequest);
 }
 
 /** `countNotCurrent` from the worktree's states counted (row 025-11). */
@@ -239,10 +242,11 @@ export function notCurrentOf(
   states: WorktreeStates,
   keys: readonly TestFileKeyRecord[],
   openFiles: ReadonlySet<string> = new Set(),
+  onRequest: ReadonlySet<string> = new Set(),
 ): NotCurrentCounts {
   const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const testFilesByPhase = { running: 0, queued: 0 };
-  const testsByPhase = { running: 0, queued: 0 };
+  const testFilesByPhase = { running: 0, queued: 0, onRequest: 0 };
+  const testsByPhase = { running: 0, queued: 0, onRequest: 0 };
   for (const row of keys) {
     const id = testFileId(row.testFile);
     const own = states.files.get(id)?.checks;
@@ -250,13 +254,22 @@ export function notCurrentOf(
     testFileCounts[fileClass]++;
     if (fileClass !== "pending") continue;
     const running = openFiles.has(id) || row.pending === "running" || own?.running === true;
-    testFilesByPhase[running ? "running" : "queued"]++;
+    testFilesByPhase[running ? "running" : onRequest.has(id) ? "onRequest" : "queued"]++;
   }
   const filePhase = new Map(keys.map((row) => [testFileId(row.testFile), row.pending]));
   for (const [id, file] of states.files) {
     const phases = phasesOf(file.pending.test, openFiles.has(id), filePhase.get(id));
-    testsByPhase.queued += phases.queued;
+    testsByPhase[onRequest.has(id) ? "onRequest" : "queued"] += phases.queued;
     testsByPhase.running += phases.running;
   }
-  return { testFileCounts, testFilesByPhase, testsByPhase };
+  return {
+    testFileCounts,
+    testFilesByPhase: withoutZero(testFilesByPhase),
+    testsByPhase: withoutZero(testsByPhase),
+  };
+}
+
+/** Row 011-426: `onRequest` only when not zero, as payloads before it read. */
+function withoutZero({ onRequest, ...phases }: Required<PendingByPhase>): PendingByPhase {
+  return onRequest === 0 ? phases : { ...phases, onRequest };
 }

@@ -46,16 +46,24 @@ export function pendingPhasesOf(
   return phases;
 }
 
-/** The pending test files by phase (`pendingPhasesOf`), the first `PHASE_FILES_LISTED` of each. */
+/**
+ * The pending test files by phase (`pendingPhasesOf`), the first
+ * `PHASE_FILES_LISTED` of each. Row 011-426 (gh-293): a queued file in
+ * `onRequest` (`onRequestFiles`, `testFileId`s) is listed on request, out
+ * of `queued`, as `testFilesByPhase` counts it; absent with none.
+ */
 export function pendingTestFilesOf(
   phases: ReadonlyMap<string, { readonly testFile: TestFileRef; readonly phase: PendingPhase }>,
+  onRequest: ReadonlySet<string> = new Set(),
 ): PendingTestFiles {
   const running: TestFileRef[] = [];
   const queued: TestFileRef[] = [];
-  for (const { testFile, phase } of phases.values()) {
-    (phase === "running" ? running : queued).push(testFile);
+  const held: TestFileRef[] = [];
+  for (const [id, { testFile, phase }] of phases) {
+    (phase === "running" ? running : onRequest.has(id) ? held : queued).push(testFile);
   }
-  return { running: listed(running), queued: listed(queued) };
+  const own = held.length === 0 ? {} : { onRequest: listed(held) };
+  return { running: listed(running), queued: listed(queued), ...own };
 }
 
 function listed(files: TestFileRef[]): PhaseFiles {

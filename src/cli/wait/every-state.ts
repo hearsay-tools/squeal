@@ -18,7 +18,8 @@ import { type HeldRead, newsSince, type StartView } from "../status-wait-held.js
  * again only when the marker moved, or when it cannot be trusted, as before. The news since the start is kept too while the revision stays
  * (`newsSince` is a function of the start, the states and the revision).
  * Row 011-345: so is the header's part made from the states, the rows and
- * the policy (`headerPart`), kept while the policy reads the same; the
+ * the policy (`headerPart`), kept while the policy and the on-request
+ * files (row 011-426) read the same; the
  * revision, the runner part and every other input read fresh each poll
  * (`headerWith`).
  */
@@ -61,11 +62,14 @@ export function readEvery(store: Store, id: WorktreeId, start: StartView, every:
   const states = kept?.states ?? store.knownStates.list(id);
   const keys = kept?.keys ?? store.testFileKeys.list(id);
   let part: HeaderPart | undefined;
-  const header = headerWith(store, id, keys, (policy) => {
+  const header = headerWith(store, id, keys, (policy, onRequest) => {
+    // Row 011-426: a request or a lane's run moves the on-request files with no state write.
     part =
-      kept?.part !== undefined && isDeepStrictEqual(kept.part.policy, policy)
+      kept?.part !== undefined &&
+      isDeepStrictEqual(kept.part.policy, policy) &&
+      isDeepStrictEqual(kept.part.onRequest, onRequest)
         ? kept.part
-        : headerPart(states, keys, policy);
+        : headerPart(states, keys, policy, undefined, undefined, onRequest);
     return part;
   });
   const news =

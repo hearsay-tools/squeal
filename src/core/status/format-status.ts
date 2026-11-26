@@ -207,7 +207,8 @@ export function formatUnavailable(result: StatusUnavailable, command = "squeal")
 
 /**
  * "47 passed (40 tests, 7 test files loaded), 3 running (3 tests), 12
- * queued (9 tests, 3 test files loaded)", then skipped, stale and unknown
+ * queued (9 tests, 3 test files loaded)", then on request (row 011-426),
+ * skipped, stale and unknown
  * when there are any, each count naming its tests and file-level checks
  * apart (spec 005 D1). Before the daemon listed the test files, zero counts would
  * read as complete, so the line is not printed (row 005-90). While the runner
@@ -227,6 +228,12 @@ function affected(s: StatusSnapshot, command: string): string {
       ? undefined
       : files.unknown + fileLevelByOutcome.unknown;
   const optional: [number, string, number | undefined][] = [
+    // Row 011-426 (gh-293): the queued checks of files that wait for a request.
+    [
+      pendingByPhase.onRequest ?? 0,
+      "on request",
+      fileLevelByPhase && (fileLevelByPhase.onRequest ?? 0),
+    ],
     [currentByOutcome.skip, "skipped", fileLevelByOutcome?.skip],
     [s.counts.stale, "stale", files?.stale],
     [s.counts.unknown + currentByOutcome.unknown, "unknown", unknownFiles],

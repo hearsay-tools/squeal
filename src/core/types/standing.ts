@@ -444,8 +444,14 @@ export interface PhaseFiles {
   readonly omitted: number;
 }
 
-/** The pending test files by phase, as `testFilesByPhase` counts them (row 011-58). */
-export type PendingTestFiles = Readonly<Record<PendingPhase, PhaseFiles>>;
+/**
+ * The pending test files by phase, as `testFilesByPhase` counts them (row
+ * 011-58); `onRequest` the queued ones that wait for a request (row 011-426),
+ * absent with none and from payloads before the field.
+ */
+export type PendingTestFiles = Readonly<Record<PendingPhase, PhaseFiles>> & {
+  readonly onRequest?: PhaseFiles;
+};
 
 /**
  * The holders of the slow slot's permits this worktree's daemon may take
