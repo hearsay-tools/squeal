@@ -3,7 +3,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterEach, expect } from "vitest";
-import { PLUGIN_DIST } from "../../src/harness/claude-code/build.js";
+import { PLUGIN_DIR, PLUGIN_DIST } from "../../src/harness/claude-code/build.js";
 import { tempDir } from "../store/helpers.js";
 
 export interface BundleRun {
@@ -33,6 +33,30 @@ export function runBundle(
   return runNode(["--disable-warning=ExperimentalWarning", join(dist, `${name}.mjs`)], stdin, env);
 }
 
+/**
+ * Runs a hook bundle the way users run it since row 025-07: through the plugin's
+ * `hooks/run node --disable-warning=... <bundle>`, with Node's compile cache in
+ * `cacheHome` (`XDG_CACHE_HOME`), which `hooks/run` fills. The node path is this
+ * process's, so it ends in `/node` as the launcher requires. Row 025-19.
+ */
+export function runLaunched(
+  name: string,
+  stdin: string,
+  cacheHome: string,
+  env: Readonly<Record<string, string>> = {},
+  dist: string = DIST,
+): Promise<BundleRun> {
+  const args = [
+    process.execPath,
+    "--disable-warning=ExperimentalWarning",
+    join(dist, `${name}.mjs`),
+  ];
+  return runTimed(join(PLUGIN_DIR, "hooks/run"), args, stdin, {
+    ...env,
+    XDG_CACHE_HOME: cacheHome,
+  });
+}
+
 /** Runs `node <args>` in `cwd` with a minimal environment plus `env`, stdin piped, timed. */
 export function runNode(
   args: readonly string[],
@@ -40,9 +64,19 @@ export function runNode(
   env: Readonly<Record<string, string>> = {},
   cwd?: string,
 ): Promise<BundleRun> {
+  return runTimed(process.execPath, args, stdin, env, cwd);
+}
+
+function runTimed(
+  command: string,
+  args: readonly string[],
+  stdin: string,
+  env: Readonly<Record<string, string>>,
+  cwd?: string,
+): Promise<BundleRun> {
   return new Promise((resolve, reject) => {
     const started = performance.now();
-    const child = spawn(process.execPath, args, {
+    const child = spawn(command, args, {
       env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
       ...(cwd === undefined ? {} : { cwd }),
     });

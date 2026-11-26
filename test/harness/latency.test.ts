@@ -7,7 +7,13 @@ import { writeTurn } from "../../src/core/delivery/turn.js";
 import { omittedTestFilesMetaKey } from "../../src/core/scheduler/omitted-test-files.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { check, result } from "../state/helpers.js";
-import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
+import {
+  type BundleRun,
+  liveSocket,
+  runBundle,
+  runLaunched,
+  runtimeDir,
+} from "./bundle-helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
@@ -29,6 +35,12 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * spawn and waits for no heartbeat, so the budget stays an upper bound. The
  * daemon is a stand-in CLI that writes the heartbeat, a real daemon's first
  * store write.
+ *
+ * Row 025-19 (option A, human 2026-11-26): the budget holds the path users run,
+ * `hooks/run node <bundle>` with Node's compile cache warm in a temp directory
+ * (row 025-07), one untimed run per case filling it. The uncached direct run
+ * (`runBundle`) stays in the table, one round, not asserted: it shows a
+ * release's startup growth.
  */
 
 const RUNS = 20;
@@ -165,10 +177,21 @@ const CASES: readonly Case[] = [
   },
 ];
 
+/** p50, p95 and max of `samples`, rounded. */
+function summary(samples: readonly number[]): { p50: number; p95: number; max: number } {
+  const sorted = [...samples].sort((x, y) => x - y);
+  return {
+    p50: Math.round(sorted[Math.floor(sorted.length / 2)] ?? Number.NaN),
+    p95: Math.round(p95(sorted)),
+    max: Math.round(sorted.at(-1) ?? Number.NaN),
+  };
+}
+
 describe("bundled hook latency", () => {
-  it(`stays under ${BUDGET_MS} ms p95 over ${RUNS} cold runs per hook`, async () => {
+  it(`stays under ${BUDGET_MS} ms p95 over ${RUNS} launched runs per hook, compile cache warm`, async () => {
     const r = seeded();
     const dir = runtimeDir();
+    const cacheHome = runtimeDir();
     await liveSocket(join(dir, `squeal-${r.worktreeId}.sock`));
     await runBundle("session-start", recorded("session-start", r.root), {
       XDG_RUNTIME_DIR: dir,
@@ -184,43 +207,58 @@ describe("bundled hook latency", () => {
       p95: number;
       max: number;
       budget: number;
+      "direct p50": number;
+      "direct p95": number;
     }[] = [];
+    /** One run of `c` through `start`, its output checked. */
+    const timed = async (
+      c: Case,
+      run: number,
+      start: (stdin: string, env: Record<string, string>) => Promise<BundleRun>,
+    ): Promise<number> => {
+      c.before?.(r, run);
+      const out = await start(recorded(c.input, r.root, c.overrides), {
+        XDG_RUNTIME_DIR: dir,
+        ...c.env,
+      });
+      expect(out.code, `${c.hook}: ${out.stderr}`).toBe(0);
+      if (c.name?.endsWith("(silent)")) expect(out.stdout, c.name).toBe("");
+      if (c.name?.endsWith("(denied)")) expect(out.stdout, c.name).toContain('"deny"');
+      return out.ms;
+    };
     // Last: the stand-in leaves a daemon record whose socket nobody listens on.
     for (const c of [...CASES, spawnCase(r)]) {
       const budget = c.budget ?? BUDGET_MS;
+      const launched = (stdin: string, env: Record<string, string>) =>
+        runLaunched(c.hook, stdin, cacheHome, env);
+      const direct = (stdin: string, env: Record<string, string>) => runBundle(c.hook, stdin, env);
       let best: number[] | null = null;
       let rounds = 0;
       const late = performance.now() - started > REPORT_BY_MS;
+      if (!late) await timed(c, 0, launched); // fills the compile cache, untimed
       while (!late && rounds < maxRounds && (best === null || p95(best) >= budget)) {
         rounds++;
         const samples: number[] = [];
-        for (let run = 0; run < runs; run++) {
-          c.before?.(r, run);
-          const out = await runBundle(c.hook, recorded(c.input, r.root, c.overrides), {
-            XDG_RUNTIME_DIR: dir,
-            ...c.env,
-          });
-          expect(out.code, `${c.hook}: ${out.stderr}`).toBe(0);
-          if (c.name?.endsWith("(silent)")) expect(out.stdout, c.name).toBe("");
-          if (c.name?.endsWith("(denied)")) expect(out.stdout, c.name).toContain('"deny"');
-          samples.push(out.ms);
-        }
+        for (let run = 0; run < runs; run++) samples.push(await timed(c, run, launched));
         if (best === null || p95(samples) < p95(best)) best = samples;
       }
-      const sorted = [...(best ?? [])].sort((x, y) => x - y);
+      const uncached: number[] = [];
+      for (let run = 0; !late && run < runs; run++) uncached.push(await timed(c, run, direct));
+      const directSummary = summary(uncached);
       rows.push({
         hook: c.name ?? c.hook,
         rounds,
-        p50: Math.round(sorted[Math.floor(sorted.length / 2)] ?? Number.NaN),
-        p95: Math.round(p95(sorted)),
-        max: Math.round(sorted.at(-1) ?? Number.NaN),
+        ...summary(best ?? []),
         budget,
+        "direct p50": directSummary.p50,
+        "direct p95": directSummary.p95,
       });
     }
 
     const load = loadavg()[0] ?? 0;
     console.log(
-      `hook latency ms, best of up to ${maxRounds} rounds of ${runs} cold runs, load ${load.toFixed(2)}` +
+      `hook latency ms, hooks/run with a warm compile cache, best of up to ${maxRounds} rounds of ${runs} runs; ` +
+        `direct: one round of uncached runBundle, not asserted; load ${load.toFixed(2)}` +
         (asserted ? "" : `, above ${MAX_LOAD} or in CI: reported only`),
     );
     console.table(rows);
