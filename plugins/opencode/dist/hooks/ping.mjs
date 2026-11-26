@@ -1860,6 +1860,9 @@ var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
 // src/core/daemon/log-file.ts
 var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
 
+// src/core/presence/lock-events.ts
+import { DatabaseSync as DatabaseSync10 } from "node:sqlite";
+
 // src/harness/shared/hand-off.ts
 var HandOff = class {
   #taken = [];

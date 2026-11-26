@@ -1540,6 +1540,24 @@ function startMarkFor(lockFile) {
 function spawnMarkFor(lockFile) {
   return `${lockFile}.spawned`;
 }
+function stopMarkFor(lockFile) {
+  return `${lockFile}.stopped`;
+}
+function readStopFile(lockFile) {
+  try {
+    return stopMarkOf(JSON.parse(readFileSync3(stopMarkFor(lockFile), "utf8")));
+  } catch {
+    return null;
+  }
+}
+function stopMarkOf(mark) {
+  if (!isRecord(mark) || typeof mark.at !== "number") return null;
+  return {
+    at: mark.at,
+    tree: typeof mark.tree === "string" ? mark.tree : null,
+    ...mark.untilStart === true ? { untilStart: true } : {}
+  };
+}
 function readLockMarks(lockFile, now) {
   return {
     start: once(() => {
@@ -1613,6 +1631,1849 @@ function writtenAt(path, now) {
 }
 
 // src/core/presence/stored.ts
+import { join as join4 } from "node:path";
+
+// src/core/store/codec.ts
+function str(row, column) {
+  const value = row[column];
+  if (typeof value !== "string") throw new TypeError(`squeal store: ${column} is not text`);
+  return value;
+}
+function strOrNull(row, column) {
+  return row[column] === null ? null : str(row, column);
+}
+function num(row, column) {
+  const value = row[column];
+  if (typeof value !== "number") throw new TypeError(`squeal store: ${column} is not a number`);
+  return value;
+}
+function numOrNull(row, column) {
+  return row[column] === null ? null : num(row, column);
+}
+function bool(row, column) {
+  return num(row, column) !== 0;
+}
+function json(row, column) {
+  return JSON.parse(str(row, column));
+}
+function oneOf3(row, column, values) {
+  const value = str(row, column);
+  if (!values.includes(value)) {
+    throw new TypeError(`squeal store: ${column} has unexpected value ${value}`);
+  }
+  return value;
+}
+function oneOfOrNull(row, column, values) {
+  return row[column] === null ? null : oneOf3(row, column, values);
+}
+function locationParams(location2) {
+  return [location2?.path ?? null, location2?.line ?? null, location2?.column ?? null];
+}
+function location(row) {
+  const path = strOrNull(row, "location_path");
+  if (path === null) return null;
+  return { path, line: num(row, "location_line"), column: num(row, "location_column") };
+}
+function checkParams(check) {
+  return [
+    check.project,
+    check.testPath,
+    check.kind,
+    check.kind === "test" ? check.fullName : ""
+  ];
+}
+function checkFrom(row) {
+  const project = str(row, "check_project");
+  const testPath = str(row, "check_test_path");
+  const kind = oneOf3(row, "check_kind", ["test", "file", "setup"]);
+  if (kind !== "test") return { kind, project, testPath };
+  return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
+}
+var OUTCOMES = ["pass", "fail", "skip"];
+function toResult(row) {
+  return {
+    check: checkFrom(row),
+    key: str(row, "key"),
+    outcome: oneOf3(row, "outcome", OUTCOMES),
+    durationMs: num(row, "duration_ms"),
+    location: location(row),
+    fingerprint: strOrNull(row, "fingerprint"),
+    summary: strOrNull(row, "summary"),
+    errors: row.errors === null ? [] : json(row, "errors"),
+    provenance: {
+      worktreeId: str(row, "worktree_id"),
+      revision: num(row, "revision"),
+      commit: strOrNull(row, "commit_sha"),
+      dirty: bool(row, "dirty"),
+      runId: str(row, "run_id"),
+      recordedAt: num(row, "recorded_at")
+    }
+  };
+}
+var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
+var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+function inTestFiles(column, files2) {
+  if (files2.length === 0) return { sql: "0", params: [] };
+  const values = files2.map(() => "(?, ?)").join(", ");
+  return {
+    sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
+    params: files2.flatMap((f) => [f.project, f.path])
+  };
+}
+function findCheckId(conn, check) {
+  const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
+  return row === null ? null : num(row, "id");
+}
+function ensureCheckId(conn, check, seenAt) {
+  conn.run(
+    `INSERT INTO checks (project, test_path, kind, full_name, templated, first_seen_at)
+     VALUES (?, ?, ?, ?, 0, ?) ON CONFLICT DO NOTHING`,
+    ...checkParams(check),
+    seenAt
+  );
+  const id = findCheckId(conn, check);
+  if (id === null) throw new Error(`squeal store: check row missing after insert`);
+  return id;
+}
+function flag(value) {
+  return value ? 1 : 0;
+}
+
+// src/core/store/prune.ts
+import { existsSync as existsSync2, rmSync } from "node:fs";
+import { join as join3, resolve, sep } from "node:path";
+
+// src/core/store/prune-checkpoint.ts
+function* checkpointAfterWrites(conn, slices2) {
+  for (const slice of slices2) {
+    let wrote = false;
+    yield () => {
+      const before = writeMark(conn);
+      withoutAutoCheckpoint(conn, slice);
+      wrote = writeMark(conn) !== before;
+      return wrote;
+    };
+    if (wrote) yield () => checkpoint(conn);
+  }
+}
+function withoutAutoCheckpoint(conn, fn) {
+  const own = Number(conn.get("PRAGMA wal_autocheckpoint")?.wal_autocheckpoint);
+  conn.db.exec("PRAGMA wal_autocheckpoint = 0");
+  try {
+    fn();
+  } finally {
+    conn.db.exec(`PRAGMA wal_autocheckpoint = ${own}`);
+  }
+}
+function checkpoint(conn) {
+  conn.get("PRAGMA wal_checkpoint(PASSIVE)");
+}
+function writeMark(conn) {
+  const changes = conn.get("SELECT total_changes() AS n")?.n;
+  const pages = conn.get("PRAGMA page_count")?.page_count;
+  return `${String(changes)}:${String(pages)}`;
+}
+
+// src/core/store/repos/meta-list.ts
+function readMetaList(conn, key, guard) {
+  const row = conn.get("SELECT value FROM meta WHERE key = ?", key);
+  if (row === null) return [];
+  let value;
+  try {
+    value = JSON.parse(strOrNull(row, "value") ?? "[]");
+  } catch {
+    return [];
+  }
+  return Array.isArray(value) ? value.filter(guard) : [];
+}
+function writeMetaList(conn, key, entries) {
+  if (entries.length === 0) conn.run("DELETE FROM meta WHERE key = ?", key);
+  else {
+    conn.run(
+      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+      key,
+      JSON.stringify(entries)
+    );
+  }
+}
+
+// src/core/store/repos/replaced.ts
+var REPLACED_META_KEY = "replaced-failures";
+var REPLACED_PER_CHECK = 4;
+var REPLACED_KEPT = 1024;
+var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
+  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
+  WHERE r.key = ? AND r.outcome = 'fail'`;
+function failingAt(conn, key) {
+  return conn.all(FAILING_AT, key).map((row) => ({ result: toResult(row), failureId: strOrNull(row, "failure_id") }));
+}
+function readReplaced(conn) {
+  return readMetaList(conn, REPLACED_META_KEY, isEntry);
+}
+function keepReplaced(conn, failing, records, loadOf2) {
+  if (failing.length === 0) return 0;
+  const passes = new Map(
+    records.filter((r) => r.outcome === "pass").map((r) => [identity(r.check), r])
+  );
+  const added = [];
+  for (const { result, failureId } of failing) {
+    const pass2 = passes.get(identity(result.check));
+    if (pass2 === void 0 || pass2.key !== result.key) continue;
+    added.push({
+      check: result.check,
+      key: result.key,
+      provenance: result.provenance,
+      durationMs: result.durationMs,
+      location: result.location,
+      fingerprint: result.fingerprint,
+      summary: result.summary,
+      failureId,
+      loadPerCpu: loadOf2(result.provenance.runId),
+      replacedBy: {
+        runId: pass2.provenance.runId,
+        worktreeId: pass2.provenance.worktreeId,
+        recordedAt: pass2.provenance.recordedAt
+      }
+    });
+  }
+  if (added.length === 0) return 0;
+  conn.transaction(
+    () => writeMetaList(conn, REPLACED_META_KEY, capped([...readReplaced(conn), ...added]))
+  );
+  return added.length;
+}
+function expireReplaced(conn, cutoff) {
+  const entries = readReplaced(conn);
+  const kept2 = entries.filter((e) => e.provenance.recordedAt >= cutoff);
+  if (kept2.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept2);
+  return entries.length - kept2.length;
+}
+function keptByReplaced(conn) {
+  const entries = readReplaced(conn);
+  return {
+    runs: entries.map((e) => e.provenance.runId),
+    texts: entries.flatMap((e) => e.failureId === null ? [] : [e.failureId])
+  };
+}
+function capped(entries) {
+  const seen = /* @__PURE__ */ new Set();
+  const perCheck = /* @__PURE__ */ new Map();
+  const kept2 = [];
+  for (let i = entries.length - 1; i >= 0 && kept2.length < REPLACED_KEPT; i--) {
+    const entry3 = entries[i];
+    const check = identity(entry3.check);
+    const id = JSON.stringify([check, entry3.key, entry3.provenance.runId]);
+    const count2 = perCheck.get(check) ?? 0;
+    if (seen.has(id) || count2 >= REPLACED_PER_CHECK) continue;
+    seen.add(id);
+    perCheck.set(check, count2 + 1);
+    kept2.push(entry3);
+  }
+  return kept2.reverse();
+}
+function identity(check) {
+  return JSON.stringify(checkParams(check));
+}
+function isEntry(value) {
+  if (!isRecord(value) || !isRecord(value.check) || !isRecord(value.provenance)) return false;
+  const { check, provenance: p, replacedBy: by } = value;
+  return typeof check.project === "string" && typeof check.testPath === "string" && typeof check.kind === "string" && typeof value.key === "string" && typeof p.runId === "string" && typeof p.worktreeId === "string" && typeof p.revision === "number" && typeof p.recordedAt === "number" && typeof value.durationMs === "number" && (value.failureId === null || typeof value.failureId === "string") && (value.loadPerCpu === null || typeof value.loadPerCpu === "number") && isRecord(by) && typeof by.runId === "string" && typeof by.worktreeId === "string" && typeof by.recordedAt === "number";
+}
+
+// src/core/store/repos/unknown-runs.ts
+var UNKNOWN_RUNS_META_KEY = "unknown-runs";
+function readUnknownRuns(conn) {
+  return readMetaList(conn, UNKNOWN_RUNS_META_KEY, isEntry2);
+}
+function recordUnknownRuns(conn, worktreeId, revision, marked2, at) {
+  const added = marked2.flatMap(
+    ({ testFiles: testFiles2, reason, runId }) => testFiles2.map((testFile) => ({ worktreeId, testFile, runId, revision, reason, at }))
+  );
+  if (added.length === 0) return;
+  conn.transaction(() => {
+    const ids = new Set(added.map(idOf));
+    const kept2 = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
+    const newest = new Map(added.map((r) => [idOf(r), r]));
+    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept2, ...newest.values()]);
+  });
+}
+var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
+    ON s.worktree_id = ? AND s.check_id = c.id
+  WHERE c.project = ? AND c.test_path = ? AND s.outcome = 'unknown'
+    AND s.observed_at = ? AND s.summary = ? LIMIT 1`;
+function dropFallenUnknownRuns(conn) {
+  const records = readUnknownRuns(conn);
+  const kept2 = standing(conn, records);
+  if (kept2.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept2);
+  return records.length - kept2.length;
+}
+function hasFallenUnknownRuns(conn) {
+  const records = readUnknownRuns(conn);
+  return standing(conn, records).length < records.length;
+}
+function keptByUnknownRuns(conn) {
+  return readUnknownRuns(conn).flatMap((r) => r.runId === null ? [] : [r.runId]);
+}
+function standing(conn, records) {
+  return records.filter((r) => conn.get(STANDS, ...standsParams(r)) !== null);
+}
+function standsParams(r) {
+  return [r.worktreeId, r.testFile.project, r.testFile.path, r.revision, r.reason];
+}
+function idOf(r) {
+  return JSON.stringify([r.worktreeId, r.testFile.project, r.testFile.path]);
+}
+function isEntry2(value) {
+  if (!isRecord(value) || !isRecord(value.testFile)) return false;
+  return typeof value.worktreeId === "string" && typeof value.testFile.project === "string" && typeof value.testFile.path === "string" && (value.runId === null || typeof value.runId === "string") && typeof value.revision === "number" && typeof value.reason === "string" && typeof value.at === "number";
+}
+
+// src/core/store/prune-rules.ts
+var DAY_MS = 24 * 60 * 60 * 1e3;
+var EVICTION_BATCH = 32;
+var DELETE_BATCH = 256;
+var VACUUM_PAGES = 8;
+var VACUUM_SLICE_MS = 100;
+var LIST_DELETE_BATCH = 32;
+var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+  WHERE k.key IS NOT NULL`;
+var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
+var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
+  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
+    SELECT 1 FROM results n
+    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
+      AND (n.recorded_at > results.recorded_at
+           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
+var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
+var UNREFERENCED_RUN = `NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
+  AND id NOT IN (SELECT value FROM json_each(?))`;
+function keptRuns(conn) {
+  return JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
+}
+var LAST_COMPLETED_CHECKPOINTS = `
+  SELECT id FROM (
+    SELECT (SELECT x.id FROM checkpoints x
+            WHERE x.worktree_id = w.id AND x.end_state = 'completed'
+            ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1) AS id
+    FROM worktrees w
+  ) WHERE id IS NOT NULL`;
+
+// src/core/store/prune-keyed.ts
+function* deleteByKey(conn, rule) {
+  const batch = rule.batch ?? DELETE_BATCH;
+  const columns = rule.key.join(", ");
+  const after = rule.key.map(() => "?").join(", ");
+  const read4 = (from) => `SELECT ${columns} FROM ${rule.table}
+     WHERE ${from ? `(${columns}) > (${after}) AND ` : ""}(${rule.search})
+     ORDER BY ${columns} LIMIT ${batch}`;
+  const first = read4(false);
+  const next = read4(true);
+  const named2 = rule.key.map((_, i) => `value ->> ${i}`).join(", ");
+  const remove = `DELETE FROM ${rule.table}
+    WHERE (${columns}) IN (SELECT ${named2} FROM json_each(?)) AND (${rule.recheck ?? rule.search})`;
+  const searchParams = rule.searchParams ?? [];
+  let last = null;
+  for (; ; ) {
+    let keys = [];
+    yield () => {
+      const rows = conn.read(
+        () => last === null ? conn.all(first, ...searchParams) : conn.all(next, ...last, ...searchParams)
+      );
+      keys = rows.map((row) => rule.key.map((column) => row[column]));
+      return false;
+    };
+    if (keys.length === 0) return;
+    const list = JSON.stringify(keys);
+    yield () => {
+      const n = conn.transaction(
+        () => conn.run(remove, list, ...rule.recheckParams?.() ?? searchParams)
+      );
+      rule.removed?.(n);
+      return n > 0;
+    };
+    if (keys.length < batch) return;
+    last = keys[keys.length - 1] ?? null;
+  }
+}
+var worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
+    SELECT min(worktree_id) FROM ${table}
+    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
+      FROM ids WHERE ids.id IS NOT NULL)
+  SELECT id FROM ids WHERE id IS NOT NULL`;
+function worktreeIdList(conn, table) {
+  return JSON.stringify(conn.all(worktreeIdsOf(table)).map((row) => row.id));
+}
+function hasIndexes(conn, ...names3) {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?";
+  return names3.every((name2) => conn.get(sql, name2) !== null);
+}
+
+// src/core/store/loaded-modules.ts
+var LOADED_MODULES_TABLE = "loaded_modules";
+function* emptyLoadedModules(conn) {
+  if (!conn.read(() => hasLoadedModulesTable(conn))) return;
+  const deletes = deleteByKey(conn, {
+    table: LOADED_MODULES_TABLE,
+    key: ["project", "path", "key"],
+    search: "1",
+    batch: LIST_DELETE_BATCH
+  });
+  yield* checkpointAfterWrites(conn, deletes);
+}
+function hasLoadedModulesTable(conn) {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
+  return conn.get(sql, LOADED_MODULES_TABLE) !== null;
+}
+
+// src/core/store/prune-unused.ts
+var PRUNABLE_BY_KEY = `NOT EXISTS (SELECT 1 FROM test_file_keys k
+    JOIN worktrees w ON w.id = k.worktree_id WHERE k.key = results.key)
+  AND NOT (EXISTS (SELECT 1 FROM worktrees m WHERE m.id = results.worktree_id AND m.is_main = 1)
+    AND NOT EXISTS (SELECT 1 FROM results n JOIN worktrees m ON m.id = n.worktree_id AND m.is_main = 1
+      WHERE n.check_id = results.check_id
+        AND (n.recorded_at > results.recorded_at
+             OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))
+  AND recorded_at < ?`;
+function dropEndedCheckpoints(conn, cutoff, counts) {
+  return deleteByKey(conn, {
+    table: "checkpoints",
+    key: ["id"],
+    search: `id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
+      AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+      AND (worktree_id NOT IN (SELECT id FROM worktrees)
+           OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
+    searchParams: [cutoff],
+    recheck: `NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+      AND CASE WHEN EXISTS (SELECT 1 FROM worktrees w WHERE w.id = checkpoints.worktree_id)
+        THEN id IS NOT (SELECT x.id FROM checkpoints x
+               WHERE x.worktree_id = checkpoints.worktree_id AND x.end_state = 'completed'
+               ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1)
+             AND end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?
+        ELSE 1 END`,
+    recheckParams: () => [cutoff],
+    removed: (n) => {
+      counts.checkpointsRemoved += n;
+    }
+  });
+}
+function* dropUnusedChecks(conn, counts) {
+  if (!conn.read(() => hasIndexes(conn, "consumer_views_by_check"))) return;
+  yield* deleteByKey(conn, {
+    table: "checks",
+    key: ["id"],
+    search: `id NOT IN (
+      SELECT check_id FROM results UNION SELECT check_id FROM known_states
+      UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM known_states s
+        WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM transitions t
+        WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM consumer_views v WHERE v.check_id = checks.id)`,
+    recheckParams: () => [
+      worktreeIdList(conn, "known_states"),
+      worktreeIdList(conn, "transitions")
+    ],
+    removed: (n) => {
+      counts.checksRemoved += n;
+    }
+  });
+}
+function dropOrphanTexts(conn) {
+  return deleteByKey(conn, {
+    table: "failure_texts",
+    key: ["id"],
+    search: `id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    searchParams: [keptTexts(conn)],
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.failure_id = failure_texts.id)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    recheckParams: () => [keptTexts(conn)]
+  });
+}
+function keptTexts(conn) {
+  return JSON.stringify(keptByReplaced(conn).texts);
+}
+
+// src/core/store/prune-vacuum.ts
+function vacuum(conn, clock = () => performance.now()) {
+  return checkpointAfterWrites(conn, vacuumSlices(conn, clock));
+}
+function* vacuumSlices(conn, clock) {
+  let free = freePages(conn);
+  while (free > 0) {
+    yield () => conn.transaction(() => vacuumFor(conn, clock));
+    const left = freePages(conn);
+    if (left >= free) return;
+    free = left;
+  }
+}
+function vacuumFor(conn, clock) {
+  const start = clock();
+  let free = freePages(conn);
+  while (free > 0) {
+    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
+    const left = freePages(conn);
+    if (left >= free) return;
+    free = left;
+    if (clock() - start >= VACUUM_SLICE_MS) return;
+  }
+}
+function freePages(conn) {
+  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
+}
+
+// src/core/store/repos/worktrees.ts
+var WORKTREE_SCOPED_TABLES = [
+  "revisions",
+  "file_hashes",
+  "test_file_keys",
+  "known_states",
+  "transitions",
+  "consumer_views",
+  "consumers"
+];
+var tokenKey = (id) => worktreeMetaKey("daemonToken", id);
+function toDaemonToken(value, startedAt, version) {
+  if (!isRecord(value) || typeof value.token !== "string") return void 0;
+  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
+}
+function createWorktreeRepo(conn) {
+  const tokenRowOf = (id, startedAt, version) => {
+    const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
+    if (raw === null) return void 0;
+    try {
+      const value = JSON.parse(str(raw, "value"));
+      const token = toDaemonToken(value, startedAt, version);
+      if (token === null || token === void 0) return void 0;
+      const executable = isRecord(value) ? value.executable : void 0;
+      return typeof executable === "string" ? { token, executable } : { token };
+    } catch {
+      return void 0;
+    }
+  };
+  const tokenOf = (id, startedAt, version) => tokenRowOf(id, startedAt, version)?.token;
+  const writeToken = (id, d) => {
+    if (d.token === void 0) {
+      conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
+      return;
+    }
+    const value = {
+      startedAt: d.startedAt,
+      squealVersion: d.squealVersion,
+      token: d.token,
+      ...d.executable === void 0 ? {} : { executable: d.executable }
+    };
+    conn.run(
+      "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      tokenKey(id),
+      JSON.stringify(value)
+    );
+  };
+  const toRecord2 = (row) => {
+    const record = fromRow(row);
+    const d = record.daemon;
+    const token = d === null ? void 0 : tokenRowOf(record.id, d.startedAt, d.squealVersion);
+    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, ...token } };
+  };
+  return {
+    get: (id) => {
+      const row = conn.get("SELECT * FROM worktrees WHERE id = ?", id);
+      return row === null ? null : toRecord2(row);
+    },
+    list: () => conn.all("SELECT * FROM worktrees ORDER BY id").map(toRecord2),
+    upsert: (record) => {
+      const d = record.daemon;
+      conn.run(
+        `INSERT INTO worktrees (id, root, common_dir, is_main, registered_at, daemon_socket,
+           daemon_started_at, daemon_heartbeat_at, daemon_heartbeat_interval_ms, daemon_version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET root = excluded.root, common_dir = excluded.common_dir,
+           is_main = excluded.is_main, registered_at = excluded.registered_at,
+           daemon_socket = excluded.daemon_socket, daemon_started_at = excluded.daemon_started_at,
+           daemon_heartbeat_at = excluded.daemon_heartbeat_at,
+           daemon_heartbeat_interval_ms = excluded.daemon_heartbeat_interval_ms,
+           daemon_version = excluded.daemon_version`,
+        record.id,
+        record.root,
+        record.commonDir,
+        flag(record.isMain),
+        record.registeredAt,
+        d?.socketPath ?? null,
+        d?.startedAt ?? null,
+        d?.heartbeatAt ?? record.lastHeartbeatAt ?? null,
+        d?.heartbeatIntervalMs ?? null,
+        d?.squealVersion ?? null
+      );
+      if (d !== null) writeToken(record.id, d);
+    },
+    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
+    // the start time and version too, and the token row, the identity `lastDaemon` reads (tasks
+    // 001-268, 001-270); with no
+    // socket every other read finds no daemon.
+    setDaemon: (id, d) => {
+      conn.run(
+        `UPDATE worktrees SET daemon_socket = ?,
+           daemon_started_at = COALESCE(?, daemon_started_at),
+           daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
+           daemon_heartbeat_interval_ms = ?,
+           daemon_version = COALESCE(?, daemon_version) WHERE id = ?`,
+        d?.socketPath ?? null,
+        d?.startedAt ?? null,
+        d?.heartbeatAt ?? null,
+        d?.heartbeatIntervalMs ?? null,
+        d?.squealVersion ?? null,
+        id
+      );
+      if (d !== null) writeToken(id, d);
+    },
+    heartbeat: (id, at) => {
+      conn.run(
+        "UPDATE worktrees SET daemon_heartbeat_at = ? WHERE id = ? AND daemon_socket IS NOT NULL",
+        at,
+        id
+      );
+    },
+    lastDaemon: (id) => {
+      const row = conn.get(
+        "SELECT daemon_started_at, daemon_version FROM worktrees WHERE id = ?",
+        id
+      );
+      const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
+      if (row === null || startedAt === null) return null;
+      const squealVersion2 = strOrNull(row, "daemon_version");
+      const token = tokenOf(id, startedAt, squealVersion2);
+      return { startedAt, squealVersion: squealVersion2, ...token === void 0 ? {} : { token } };
+    },
+    remove: (id) => {
+      conn.transaction(() => {
+        conn.run("DELETE FROM worktrees WHERE id = ?", id);
+        for (const table of WORKTREE_SCOPED_TABLES) {
+          conn.run(`DELETE FROM ${table} WHERE worktree_id = ?`, id);
+        }
+        for (const row of Object.keys(WORKTREE_META_ROWS)) {
+          conn.run("DELETE FROM meta WHERE key = ?", worktreeMetaKey(row, id));
+        }
+      });
+    }
+  };
+}
+function fromRow(row) {
+  const socketPath = strOrNull(row, "daemon_socket");
+  const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
+  return {
+    id: str(row, "id"),
+    root: str(row, "root"),
+    commonDir: str(row, "common_dir"),
+    isMain: bool(row, "is_main"),
+    registeredAt: num(row, "registered_at"),
+    daemon: socketPath === null ? null : {
+      socketPath,
+      startedAt: num(row, "daemon_started_at"),
+      heartbeatAt: num(row, "daemon_heartbeat_at"),
+      heartbeatIntervalMs: num(row, "daemon_heartbeat_interval_ms"),
+      squealVersion: str(row, "daemon_version")
+    },
+    ...socketPath === null && lastHeartbeatAt !== null ? { lastHeartbeatAt } : {}
+  };
+}
+
+// src/core/store/prune.ts
+function prune(conn, worktrees, paths, options) {
+  const counts = noneRemoved();
+  for (const slice of pruneSlices(conn, worktrees, paths, options, counts)) slice();
+  return pruneReport(conn, counts);
+}
+function noneRemoved() {
+  return {
+    resultsRemoved: 0,
+    runsRemoved: 0,
+    checkpointsRemoved: 0,
+    checksRemoved: 0,
+    worktreesRemoved: 0
+  };
+}
+function pruneReport(conn, counts) {
+  return {
+    ...counts,
+    bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size")
+  };
+}
+function* pruneSlices(conn, worktrees, paths, options, counts) {
+  const cutoff = options.now - options.retentionDays * DAY_MS;
+  for (const worktree of worktrees.list()) {
+    if (!isGone(worktree.root)) continue;
+    yield* removeWorktree(conn, worktrees, worktree, counts);
+  }
+  yield* writeIf(
+    conn,
+    () => readReplaced(conn).some((entry3) => entry3.provenance.recordedAt < cutoff),
+    () => expireReplaced(conn, cutoff)
+  );
+  yield* writeIf(
+    conn,
+    () => hasFallenUnknownRuns(conn),
+    () => dropFallenUnknownRuns(conn)
+  );
+  yield* dropPrunable(conn, cutoff, counts);
+  if (options.maxSizeMb !== null) {
+    yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
+  }
+  yield* emptyLoadedModules(conn);
+  yield* dropRuns(conn, paths, cutoff, counts);
+  yield* dropEndedCheckpoints(conn, cutoff, counts);
+  yield* dropUnusedChecks(conn, counts);
+  yield* vacuum(conn);
+}
+function* writeIf(conn, needed, write2) {
+  let due = false;
+  yield () => {
+    due = conn.read(needed);
+    return false;
+  };
+  if (due) yield () => conn.transaction(write2) > 0;
+}
+function isGone(root) {
+  return !existsSync2(join3(root, ".git"));
+}
+var BATCH_KEYS = {
+  // `WITHOUT ROWID`, keyed by `(worktree_id, path)`.
+  file_hashes: "path"
+};
+function* removeWorktree(conn, worktrees, worktree, counts) {
+  for (const table of WORKTREE_SCOPED_TABLES) {
+    const key = BATCH_KEYS[table] ?? "rowid";
+    let removed = DELETE_BATCH;
+    while (removed === DELETE_BATCH) {
+      removed = 0;
+      yield () => {
+        if (!isGone(worktree.root)) return false;
+        removed = conn.transaction(
+          () => conn.run(
+            `DELETE FROM ${table} WHERE worktree_id = ? AND ${key} IN (
+               SELECT ${key} FROM ${table} WHERE worktree_id = ? LIMIT ?)`,
+            worktree.id,
+            worktree.id,
+            DELETE_BATCH
+          )
+        );
+        return removed > 0;
+      };
+    }
+  }
+  yield () => {
+    if (!isGone(worktree.root)) return;
+    worktrees.remove(worktree.id);
+    counts.worktreesRemoved++;
+  };
+}
+function* dropRuns(conn, paths, cutoff, counts) {
+  const DROPPABLE = `${UNREFERENCED_RUN}
+    AND (worktree_id NOT IN (SELECT id FROM worktrees)
+         OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))`;
+  const ids = conn.read(() => conn.all(`SELECT id FROM runs WHERE ${DROPPABLE}`, keptRuns(conn), cutoff)).map((row) => str(row, "id"));
+  for (let at = 0; at < ids.length; at += DELETE_BATCH) {
+    const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
+    yield () => {
+      const dropped = conn.transaction(
+        () => conn.all(
+          `DELETE FROM runs WHERE id IN (SELECT value FROM json_each(?)) AND ${DROPPABLE}
+           RETURNING log_dir`,
+          batch,
+          keptRuns(conn),
+          cutoff
+        )
+      );
+      for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
+      counts.runsRemoved += dropped.length;
+      return dropped.length > 0;
+    };
+  }
+}
+function* dropPrunable(conn, cutoff, counts) {
+  const ids = conn.read(() => conn.all(`SELECT rowid AS id FROM results WHERE ${PRUNABLE}`, cutoff)).map((row) => num(row, "id"));
+  for (let at = 0; at < ids.length; at += DELETE_BATCH) {
+    const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
+    yield () => {
+      const n = conn.transaction(
+        () => conn.run(
+          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE_BY_KEY}`,
+          batch,
+          cutoff
+        )
+      );
+      counts.resultsRemoved += n;
+      return n > 0;
+    };
+  }
+  yield* dropOrphanTexts(conn);
+}
+function* evictToCap(conn, capBytes, counts) {
+  const tiers = [UNPROTECTED, `key NOT IN (${LIVE_KEYS})`];
+  for (const tier of tiers) {
+    while (usedBytes(conn) > capBytes) {
+      let batch = 0;
+      yield () => {
+        batch = conn.transaction(() => {
+          const n = conn.run(
+            `DELETE FROM results WHERE rowid IN (
+               SELECT rowid FROM results WHERE ${tier} ORDER BY last_used_at, rowid LIMIT ?)`,
+            EVICTION_BATCH
+          );
+          dropOrphanFailureTexts(conn);
+          return n;
+        });
+        counts.resultsRemoved += batch;
+        return batch > 0;
+      };
+      if (batch === 0) break;
+    }
+  }
+}
+function dropOrphanFailureTexts(conn) {
+  conn.run(
+    `DELETE FROM failure_texts
+     WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
+       AND id NOT IN (SELECT value FROM json_each(?))`,
+    keptTexts(conn)
+  );
+}
+function usedBytes(conn) {
+  const pages = pragmaNumber(conn, "page_count") - pragmaNumber(conn, "freelist_count");
+  return pages * pragmaNumber(conn, "page_size");
+}
+function pragmaNumber(conn, name2) {
+  const row = conn.get(`PRAGMA ${name2}`);
+  if (row === null) throw new Error(`squeal store: PRAGMA ${name2} returned nothing`);
+  return num(row, name2);
+}
+function removeRunLog(paths, logDir) {
+  const runsDir = resolve(paths.runsDir);
+  const target = resolve(logDir);
+  if (target.startsWith(runsDir + sep)) rmSync(target, { recursive: true, force: true });
+}
+
+// src/core/store/repos/consumers.ts
+var OUTCOMES2 = ["pass", "fail", "skip", "unknown"];
+var WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
+function consumerParams(c) {
+  return [c.worktreeId, c.sessionId, c.agentId];
+}
+function createConsumerRepo(conn) {
+  const unregister = (consumer) => conn.transaction(() => {
+    conn.run(`DELETE FROM consumer_views WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
+    conn.run(`DELETE FROM consumers WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
+  });
+  const idleSince = (cutoff) => conn.all(
+    `SELECT * FROM consumers
+         WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
+         ORDER BY worktree_id, session_id, agent_id`,
+    cutoff,
+    cutoff
+  ).map(toConsumer);
+  return {
+    get: (consumer) => {
+      const row = conn.get(
+        `SELECT * FROM consumers WHERE ${WHERE_CONSUMER}`,
+        ...consumerParams(consumer)
+      );
+      return row === null ? null : toConsumer(row);
+    },
+    list: (worktreeId) => conn.all(
+      "SELECT * FROM consumers WHERE worktree_id = ? ORDER BY session_id, agent_id",
+      worktreeId
+    ).map(toConsumer),
+    /**
+     * A registration starts from an empty view: spec 001 D6 seeds the view
+     * on registration (row 005-106: the states that are not `pass` while the
+     * store keeps birth marks, else every known state), so entries left by
+     * an earlier registration of the same consumer are dropped.
+     */
+    register: (consumer, at) => conn.transaction(() => {
+      unregister(consumer);
+      conn.run(
+        `INSERT INTO consumers (worktree_id, session_id, agent_id, registered_at, last_seen_at)
+           VALUES (?, ?, ?, ?, ?)`,
+        ...consumerParams(consumer),
+        at,
+        at
+      );
+      return { consumer, registeredAt: at, lastSeenAt: at, lastDeliveredAt: null };
+    }),
+    touch: (consumer, at, delivered) => {
+      conn.run(
+        `UPDATE consumers SET last_seen_at = ?,
+           last_delivered_at = CASE WHEN ? THEN ? ELSE last_delivered_at END
+         WHERE ${WHERE_CONSUMER}`,
+        at,
+        delivered ? 1 : 0,
+        at,
+        ...consumerParams(consumer)
+      );
+    },
+    unregister,
+    expire: (cutoff) => conn.transaction(() => {
+      const expired = idleSince(cutoff).map((record) => record.consumer);
+      for (const consumer of expired) unregister(consumer);
+      return expired;
+    }),
+    idleSince
+  };
+}
+function toConsumer(row) {
+  return {
+    consumer: {
+      worktreeId: str(row, "worktree_id"),
+      sessionId: str(row, "session_id"),
+      agentId: str(row, "agent_id")
+    },
+    registeredAt: num(row, "registered_at"),
+    lastSeenAt: num(row, "last_seen_at"),
+    lastDeliveredAt: numOrNull(row, "last_delivered_at")
+  };
+}
+function createViewRepo(conn) {
+  return {
+    list: (consumer, files2) => {
+      const only = files2 === void 0 ? null : inTestFiles("v.check_id", files2);
+      return conn.all(
+        `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
+           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
+             ${only === null ? "" : `AND ${only.sql}`}
+           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+        ...consumerParams(consumer),
+        ...only?.params ?? []
+      ).map(toView);
+    },
+    writeMany: (consumer, entries) => conn.transaction(() => {
+      for (const e of entries) {
+        conn.run(
+          `INSERT OR REPLACE INTO consumer_views
+               (worktree_id, session_id, agent_id, check_id, outcome, fingerprint, told_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          ...consumerParams(consumer),
+          ensureCheckId(conn, e.check, e.toldAt),
+          e.outcome,
+          e.fingerprint,
+          e.toldAt
+        );
+      }
+    }),
+    removeMany: (consumer, checks) => conn.transaction(() => {
+      for (const check of checks) {
+        const id = findCheckId(conn, check);
+        if (id === null) continue;
+        conn.run(
+          `DELETE FROM consumer_views WHERE ${WHERE_CONSUMER} AND check_id = ?`,
+          ...consumerParams(consumer),
+          id
+        );
+      }
+    })
+  };
+}
+function toView(row) {
+  return {
+    check: checkFrom(row),
+    outcome: oneOf3(row, "outcome", OUTCOMES2),
+    fingerprint: strOrNull(row, "fingerprint"),
+    toldAt: num(row, "told_at")
+  };
+}
+
+// src/core/store/repos/failures.ts
+var FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
+function rowWhere(alias, { worktreeId, since, errors = [] }) {
+  const sql = [`${alias}.failure_id IS NOT NULL`, `${alias}.outcome = 'fail'`];
+  const params = [];
+  if (worktreeId !== null) {
+    sql.push(`${alias}.worktree_id = ?`);
+    params.push(worktreeId);
+  }
+  if (since !== null) {
+    sql.push(`${alias}.recorded_at >= ?`);
+    params.push(since);
+  }
+  if (errors.length > 0) {
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) e JOIN failure_texts t
+      ON t.id = ${alias}.failure_id WHERE instr(t.summary, e.value) > 0)`);
+    params.push(JSON.stringify(errors));
+  }
+  return { sql, params };
+}
+function where(selection) {
+  const { paths, checks } = selection;
+  const { sql, params } = rowWhere("r", selection);
+  if (paths.length > 0) {
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
+      OR substr(c.test_path, 1, length(p.value) + 1) = p.value || '/')`);
+    params.push(JSON.stringify(paths));
+  }
+  if (checks !== null) {
+    sql.push(`r.check_id IN (SELECT k.id FROM json_each(?) j JOIN checks k
+      ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
+      AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
+    params.push(JSON.stringify(checks.map(checkParams)));
+  }
+  if (selection.perCheck === true) {
+    const newer = rowWhere("n", selection);
+    sql.push(`NOT EXISTS (SELECT 1 FROM results n WHERE n.check_id = r.check_id
+      AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.rowid > r.rowid))
+      AND ${newer.sql.join(" AND ")})`);
+    params.push(...newer.params);
+  }
+  return { sql: sql.join(" AND "), params };
+}
+var FAILURE_STATEMENTS = {
+  list: (selection, limit) => {
+    const w = where(selection);
+    return {
+      sql: `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM ${FAILING_ROWS}
+        LEFT JOIN failure_texts f ON f.id = r.failure_id
+        WHERE ${w.sql} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
+      params: [...w.params, limit]
+    };
+  },
+  count: (selection) => {
+    const w = where(selection);
+    return { sql: `SELECT COUNT(*) AS n FROM ${FAILING_ROWS} WHERE ${w.sql}`, params: w.params };
+  },
+  failingChecks: (selection) => {
+    const w = where(selection);
+    return {
+      sql: `SELECT DISTINCT ${CHECK_COLUMNS} FROM ${FAILING_ROWS} WHERE ${w.sql}
+        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      params: w.params
+    };
+  }
+};
+function createFailureRepo(conn) {
+  const all = ({ sql, params }) => conn.all(sql, ...params);
+  return {
+    list: (selection, limit) => all(FAILURE_STATEMENTS.list(selection, limit)).map(toResult),
+    count: (selection) => num(all(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
+    failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom),
+    failingAt: (key) => failingAt(conn, key),
+    keepReplaced: (failing, records, loadOf2) => keepReplaced(conn, failing, records, loadOf2),
+    replaced: () => readReplaced(conn),
+    text: (id) => {
+      const row = conn.get("SELECT summary, errors FROM failure_texts WHERE id = ?", id);
+      return row === null ? null : { summary: strOrNull(row, "summary"), errors: json(row, "errors") };
+    },
+    recordUnknownRuns: (worktreeId, revision, marked2, at) => recordUnknownRuns(conn, worktreeId, revision, marked2, at),
+    unknownRuns: (worktreeId) => readUnknownRuns(conn).filter((r) => r.worktreeId === worktreeId)
+  };
+}
+
+// src/core/store/repos/results.ts
+import { createHash as createHash2 } from "node:crypto";
+var SELECT_RESULTS = `
+  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
+  FROM results r
+  JOIN checks c ON c.id = r.check_id
+  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+var KEYS_SINCE = `
+  SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
+  WHERE recorded_at > ? GROUP BY key`;
+var KEYS_WITH_RESULTS = `
+  SELECT value AS key FROM json_each(?)
+  WHERE EXISTS (SELECT 1 FROM results WHERE key = value)`;
+var KEYS_WITH_RESULTS_CHUNK = 1e3;
+var NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
+var COPY_SET = `
+  INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
+    location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
+    recorded_at, last_used_at)
+  SELECT check_id, ?, outcome, duration_ms, location_path, location_line, location_column,
+    fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
+    last_used_at
+  FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
+var RESULT_TOUCH_INTERVAL_MS = 36e5;
+function createResultRepo(conn) {
+  return {
+    byKey: (key, usedAt = Date.now()) => {
+      if (usedAt > 0) {
+        conn.run(
+          "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
+          usedAt,
+          key,
+          Math.max(0, usedAt - RESULT_TOUCH_INTERVAL_MS)
+        );
+      }
+      return conn.all(
+        `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+        key
+      ).map(toResult);
+    },
+    checksForKey: (key) => conn.all(
+      `SELECT ${CHECK_COLUMNS} FROM results r JOIN checks c ON c.id = r.check_id
+           WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      key
+    ).map(checkFrom),
+    newestForTestFile: ({ project, path }) => conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
+    listForCheck: (check, limit) => {
+      const id = findCheckId(conn, check);
+      if (id === null) return [];
+      return conn.all(
+        `${SELECT_RESULTS} WHERE r.check_id = ?
+           ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
+        id,
+        limit
+      ).map(toResult);
+    },
+    copyNewest: (key, from) => {
+      if (from.length === 0) return false;
+      const newest = conn.get(
+        `SELECT key FROM results WHERE key IN (${from.map(() => "?").join(", ")})
+         GROUP BY key ORDER BY MAX(recorded_at) DESC, key LIMIT 1`,
+        ...from
+      );
+      if (newest === null) return false;
+      return conn.run(COPY_SET, key, str(newest, "key"), key) > 0;
+    },
+    keysSince: (since) => conn.all(KEYS_SINCE, since).map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
+    keysWithResults: (keys) => {
+      const unique = [...new Set(keys)];
+      const found2 = [];
+      for (let i = 0; i < unique.length; i += KEYS_WITH_RESULTS_CHUNK) {
+        const chunk = JSON.stringify(unique.slice(i, i + KEYS_WITH_RESULTS_CHUNK));
+        for (const row of conn.all(KEYS_WITH_RESULTS, chunk)) found2.push(str(row, "key"));
+      }
+      return found2;
+    },
+    putMany: (records) => conn.transaction(() => {
+      for (const r of records) {
+        const p = r.provenance;
+        conn.run(
+          `INSERT OR REPLACE INTO results (check_id, key, outcome, duration_ms, location_path,
+               location_line, location_column, fingerprint, failure_id, worktree_id, revision,
+               commit_sha, dirty, run_id, recorded_at, last_used_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ensureCheckId(conn, r.check, p.recordedAt),
+          r.key,
+          r.outcome,
+          r.durationMs,
+          ...locationParams(r.location),
+          r.fingerprint,
+          storeFailureText(conn, r.summary, r.errors),
+          p.worktreeId,
+          p.revision,
+          p.commit,
+          flag(p.dirty),
+          p.runId,
+          p.recordedAt,
+          p.recordedAt
+        );
+      }
+    })
+  };
+}
+function storeFailureText(conn, summary, errors) {
+  if (summary === null && errors.length === 0) return null;
+  const text2 = JSON.stringify(errors);
+  const id = createHash2("sha256").update(JSON.stringify([summary, text2])).digest("hex");
+  conn.run(
+    "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+    id,
+    summary,
+    text2
+  );
+  return id;
+}
+
+// src/core/store/repos/runs.ts
+var RUN_ENDS = ["completed", "crashed", "timed-out"];
+var CHECKPOINT_KINDS = ["run-all", "baseline"];
+var CHECKPOINT_ENDS = ["completed", "abandoned"];
+function createRunRepo(conn) {
+  return {
+    start: (record) => {
+      conn.run(
+        `INSERT INTO runs (id, worktree_id, revision, test_files, checkpoint_id, log_dir, started_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        record.id,
+        record.worktreeId,
+        record.revision,
+        JSON.stringify(record.testFiles),
+        record.checkpointId,
+        record.logDir,
+        record.startedAt
+      );
+      return { ...record, endedAt: null, end: null };
+    },
+    finish: (id, end, at) => {
+      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at, id);
+    },
+    get: (id) => {
+      const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
+      return row === null ? null : toRun(row);
+    },
+    inFlight: (worktreeId, startedSince) => conn.all(
+      `SELECT * FROM runs WHERE worktree_id = ? AND end_state IS NULL AND started_at >= ?
+           ORDER BY started_at, rowid`,
+      worktreeId,
+      startedSince
+    ).map(toRun)
+  };
+}
+function toRun(row) {
+  return {
+    id: str(row, "id"),
+    worktreeId: str(row, "worktree_id"),
+    revision: num(row, "revision"),
+    testFiles: json(row, "test_files"),
+    checkpointId: strOrNull(row, "checkpoint_id"),
+    logDir: str(row, "log_dir"),
+    startedAt: num(row, "started_at"),
+    endedAt: numOrNull(row, "ended_at"),
+    end: oneOfOrNull(row, "end_state", RUN_ENDS)
+  };
+}
+function createCheckpointRepo(conn) {
+  const lanes = (worktreeId) => readLanes(conn, worktreeId);
+  const withLane = (row) => {
+    const record = toCheckpoint(row);
+    const lane = lanes(record.worktreeId)[record.id];
+    return lane === void 0 ? record : { ...record, lane };
+  };
+  return {
+    start: (record) => {
+      conn.run(
+        `INSERT INTO checkpoints (id, worktree_id, revision, kind, test_files, started_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        record.id,
+        record.worktreeId,
+        record.revision,
+        record.kind,
+        JSON.stringify(record.testFiles),
+        record.startedAt
+      );
+      if (record.lane !== void 0) writeLane(conn, record.worktreeId, record.id, record.lane);
+      return { ...record, completedAt: null, end: null };
+    },
+    finish: (id, end, at) => {
+      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at, id);
+    },
+    get: (id) => {
+      const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
+      return row === null ? null : withLane(row);
+    },
+    lastCompleted: (worktreeId) => {
+      const row = conn.get(
+        `SELECT * FROM checkpoints WHERE worktree_id = ? AND end_state = 'completed'
+         ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
+        worktreeId
+      );
+      return row === null ? null : withLane(row);
+    },
+    lastCompletedFull: (worktreeId) => {
+      const oneLane = Object.keys(lanes(worktreeId));
+      const row = conn.get(
+        `SELECT * FROM checkpoints WHERE worktree_id = ? AND end_state = 'completed'
+           AND id NOT IN (SELECT value FROM json_each(?))
+         ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
+        worktreeId,
+        JSON.stringify(oneLane)
+      );
+      return row === null ? null : toCheckpoint(row);
+    }
+  };
+}
+function readLanes(conn, worktreeId) {
+  const row = conn.get(
+    "SELECT value FROM meta WHERE key = ?",
+    worktreeMetaKey("checkpointLanes", worktreeId)
+  );
+  if (row === null) return {};
+  try {
+    return toCheckpointLanes(JSON.parse(str(row, "value"))) ?? {};
+  } catch {
+    return {};
+  }
+}
+function toCheckpointLanes(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const lanes = {};
+  for (const [id, lane] of Object.entries(value)) {
+    if (lane === "fast" || lane === "slow") lanes[id] = lane;
+  }
+  return lanes;
+}
+function writeLane(conn, worktreeId, id, lane) {
+  const lanes = readLanes(conn, worktreeId);
+  const live = new Set(
+    conn.all(
+      "SELECT id FROM checkpoints WHERE id IN (SELECT value FROM json_each(?))",
+      JSON.stringify(Object.keys(lanes))
+    ).map((row) => str(row, "id"))
+  );
+  const kept2 = Object.entries(lanes).filter(([id2]) => live.has(id2));
+  conn.run(
+    "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    worktreeMetaKey("checkpointLanes", worktreeId),
+    JSON.stringify(Object.fromEntries([...kept2, [id, lane]]))
+  );
+}
+function toCheckpoint(row) {
+  return {
+    id: str(row, "id"),
+    worktreeId: str(row, "worktree_id"),
+    revision: num(row, "revision"),
+    kind: oneOf3(row, "kind", CHECKPOINT_KINDS),
+    testFiles: json(row, "test_files"),
+    startedAt: num(row, "started_at"),
+    completedAt: numOrNull(row, "completed_at"),
+    end: oneOfOrNull(row, "end_state", CHECKPOINT_ENDS)
+  };
+}
+
+// src/core/types/state.ts
+var IMPORT_MARK = "import:";
+function importMark(importId) {
+  return `${IMPORT_MARK}${importId}`;
+}
+function importIdOf(worktreeId) {
+  return worktreeId.startsWith(IMPORT_MARK) ? worktreeId.slice(IMPORT_MARK.length) : null;
+}
+function originWorktree(origin) {
+  if (origin.kind === "own") return null;
+  return origin.kind === "inherited" ? origin.worktreeId : importMark(origin.importId);
+}
+
+// src/core/store/repos/states.ts
+var OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
+var VALIDITIES = ["current", "pending", "stale", "unknown"];
+var PENDING = ["queued", "running"];
+var KINDS = [
+  "first-seen-fail",
+  "pass-to-fail",
+  "fail-to-pass",
+  "fail-changed",
+  "to-unknown"
+];
+var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+function createKnownStateRepo(conn) {
+  return {
+    list: (worktreeId, files2) => {
+      const only = files2 === void 0 ? null : inTestFiles("s.check_id", files2);
+      return conn.all(
+        `${SELECT_STATES} WHERE s.worktree_id = ? ${only === null ? "" : `AND ${only.sql}`}
+           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+        worktreeId,
+        ...only?.params ?? []
+      ).map(toKnownState);
+    },
+    untold: (consumer) => conn.all(
+      `${SELECT_STATES} WHERE s.worktree_id = ? AND NOT EXISTS (
+             SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+               AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      consumer.worktreeId,
+      consumer.sessionId,
+      consumer.agentId
+    ).map(toKnownState),
+    get: (worktreeId, check) => {
+      const id = findCheckId(conn, check);
+      if (id === null) return null;
+      const row = conn.get(
+        `${SELECT_STATES} WHERE s.worktree_id = ? AND s.check_id = ?`,
+        worktreeId,
+        id
+      );
+      return row === null ? null : toKnownState(row);
+    },
+    upsertMany: (states) => conn.transaction(() => {
+      const now = Date.now();
+      for (const s of states) {
+        const origin = s.origin;
+        conn.run(
+          `INSERT OR REPLACE INTO known_states (worktree_id, check_id, outcome, validity,
+               pending_phase, observed_at, commit_sha, origin_kind, origin_worktree,
+               origin_commit, duration_ms, location_path, location_line, location_column,
+               summary, fingerprint)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          s.worktreeId,
+          ensureCheckId(conn, s.check, now),
+          s.outcome,
+          s.validity,
+          s.pendingPhase,
+          s.observedAt,
+          s.commit,
+          storedKind(origin),
+          origin === null ? null : originWorktree(origin),
+          origin === null || origin.kind === "own" ? null : origin.commit,
+          s.durationMs,
+          ...locationParams(s.location),
+          s.summary,
+          s.fingerprint
+        );
+      }
+    }),
+    removeMany: (worktreeId, checks) => conn.transaction(() => {
+      for (const check of checks) {
+        const id = findCheckId(conn, check);
+        if (id === null) continue;
+        conn.run(
+          "DELETE FROM known_states WHERE worktree_id = ? AND check_id = ?",
+          worktreeId,
+          id
+        );
+      }
+    })
+  };
+}
+function storedKind(origin) {
+  return origin === null || origin.kind === "imported" ? null : origin.kind;
+}
+function toOrigin(row) {
+  const stored4 = strOrNull(row, "origin_kind");
+  const kind = stored4 === "own" || stored4 === "inherited" ? stored4 : null;
+  if (stored4 !== null && kind === null) return null;
+  if (kind === null) {
+    const marked2 = strOrNull(row, "origin_worktree");
+    const importId = marked2 === null ? null : importIdOf(marked2);
+    if (importId === null) return null;
+    return { kind: "imported", importId, commit: strOrNull(row, "origin_commit") };
+  }
+  if (kind === "own") return { kind };
+  return {
+    kind,
+    worktreeId: str(row, "origin_worktree"),
+    commit: strOrNull(row, "origin_commit")
+  };
+}
+function toKnownState(row) {
+  return {
+    worktreeId: str(row, "worktree_id"),
+    check: checkFrom(row),
+    outcome: oneOf3(row, "outcome", OUTCOMES3),
+    validity: oneOf3(row, "validity", VALIDITIES),
+    pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
+    observedAt: numOrNull(row, "observed_at"),
+    commit: strOrNull(row, "commit_sha"),
+    origin: toOrigin(row),
+    durationMs: numOrNull(row, "duration_ms"),
+    location: location(row),
+    summary: strOrNull(row, "summary"),
+    fingerprint: strOrNull(row, "fingerprint")
+  };
+}
+function createTransitionRepo(conn) {
+  return {
+    append: (transitions) => conn.transaction(() => {
+      for (const t of transitions) {
+        conn.run(
+          `INSERT INTO transitions (worktree_id, check_id, kind, from_outcome, to_outcome,
+               from_fingerprint, to_fingerprint, revision, at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          t.worktreeId,
+          ensureCheckId(conn, t.check, t.at),
+          t.kind,
+          t.from,
+          t.to,
+          t.fromFingerprint,
+          t.toFingerprint,
+          t.revision,
+          t.at
+        );
+      }
+    }),
+    history: (worktreeId, check) => {
+      const id = findCheckId(conn, check);
+      if (id === null) return [];
+      return conn.all(
+        `SELECT t.*, ${CHECK_COLUMNS} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
+        worktreeId,
+        id
+      ).map(toTransition);
+    }
+  };
+}
+function toTransition(row) {
+  return {
+    worktreeId: str(row, "worktree_id"),
+    check: checkFrom(row),
+    kind: oneOf3(row, "kind", KINDS),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES3),
+    to: oneOf3(row, "to_outcome", OUTCOMES3),
+    fromFingerprint: strOrNull(row, "from_fingerprint"),
+    toFingerprint: strOrNull(row, "to_fingerprint"),
+    revision: num(row, "revision"),
+    at: num(row, "at")
+  };
+}
+
+// src/core/store/repos/test-files.ts
+var METHODS = ["static imports plus declared inputs"];
+var PENDING2 = ["queued", "running"];
+function createTestFileRepo(conn) {
+  return {
+    get: (testFile) => {
+      const row = conn.get(
+        "SELECT * FROM test_files WHERE project = ? AND path = ?",
+        testFile.project,
+        testFile.path
+      );
+      return row === null ? null : toTestFile(row);
+    },
+    list: () => conn.all("SELECT * FROM test_files ORDER BY project, path").map(toTestFile),
+    put: (record) => {
+      conn.run(
+        `INSERT OR REPLACE INTO test_files
+           (project, path, closure_paths, complete, method, updated_at, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        record.testFile.project,
+        record.testFile.path,
+        JSON.stringify(record.closure.paths),
+        flag(record.closure.complete),
+        record.closure.method,
+        record.updatedAt,
+        record.updatedBy
+      );
+    },
+    remove: (testFile) => {
+      conn.run(
+        "DELETE FROM test_files WHERE project = ? AND path = ?",
+        testFile.project,
+        testFile.path
+      );
+    }
+  };
+}
+function toTestFile(row) {
+  const testFile = { project: str(row, "project"), path: str(row, "path") };
+  return {
+    testFile,
+    closure: {
+      testFile,
+      paths: json(row, "closure_paths"),
+      complete: bool(row, "complete"),
+      method: oneOf3(row, "method", METHODS)
+    },
+    updatedAt: num(row, "updated_at"),
+    updatedBy: str(row, "updated_by")
+  };
+}
+function createTestFileKeyRepo(conn) {
+  return {
+    list: (worktreeId, files2) => {
+      if (files2?.length === 0) return [];
+      const only = files2 === void 0 ? "" : `AND (project, path) IN (VALUES ${files2.map(() => "(?, ?)").join(", ")})`;
+      return conn.all(
+        `SELECT * FROM test_file_keys WHERE worktree_id = ? ${only} ORDER BY project, path`,
+        worktreeId,
+        ...(files2 ?? []).flatMap((f) => [f.project, f.path])
+      ).map(toTestFileKey);
+    },
+    withKey: (key) => conn.all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key).map(toTestFileKey),
+    upsertMany: (records) => conn.transaction(() => {
+      for (const r of records) {
+        conn.run(
+          `INSERT OR REPLACE INTO test_file_keys
+               (worktree_id, project, path, key, revision, pending)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+          r.worktreeId,
+          r.testFile.project,
+          r.testFile.path,
+          r.key,
+          r.revision,
+          r.pending
+        );
+      }
+    }),
+    remove: (worktreeId, testFiles2) => conn.transaction(() => {
+      for (const t of testFiles2) {
+        conn.run(
+          "DELETE FROM test_file_keys WHERE worktree_id = ? AND project = ? AND path = ?",
+          worktreeId,
+          t.project,
+          t.path
+        );
+      }
+    }),
+    releaseRunning: (worktreeId) => {
+      conn.run(
+        "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
+        worktreeId
+      );
+    },
+    claimed: (worktreeId, key, live) => conn.get(
+      `SELECT 1 AS one FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+         WHERE k.key = ? AND k.pending = 'running' AND k.worktree_id <> ? AND ${LIVE} LIMIT 1`,
+      key,
+      worktreeId,
+      live.now,
+      live.graceIntervals
+    ) !== null,
+    sharers: (worktreeId, live) => {
+      const row = conn.get(
+        `SELECT COUNT(DISTINCT k.worktree_id) AS n FROM test_file_keys own
+         JOIN test_file_keys k ON k.key = own.key AND k.worktree_id <> own.worktree_id
+         JOIN worktrees w ON w.id = k.worktree_id
+         WHERE own.worktree_id = ? AND own.pending = 'queued' AND k.pending IS NOT NULL AND ${LIVE}`,
+        worktreeId,
+        live.now,
+        live.graceIntervals
+      );
+      return row === null ? 0 : num(row, "n");
+    }
+  };
+}
+var LIVE = `w.daemon_socket IS NOT NULL
+  AND w.daemon_heartbeat_at >= ? - ? * w.daemon_heartbeat_interval_ms`;
+function toTestFileKey(row) {
+  return {
+    worktreeId: str(row, "worktree_id"),
+    testFile: { project: str(row, "project"), path: str(row, "path") },
+    key: strOrNull(row, "key"),
+    revision: num(row, "revision"),
+    pending: oneOfOrNull(row, "pending", PENDING2)
+  };
+}
+function isProjectRunner(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.project === "string" && typeof v.runner === "string";
+}
+function createCheckRepo(conn) {
+  const runners = (worktreeId) => new Map(
+    readMetaList(conn, worktreeMetaKey("runners", worktreeId), isProjectRunner).map((e) => [
+      e.project,
+      e.runner
+    ])
+  );
+  const recordRunners = (worktreeId, named2) => {
+    const kept2 = runners(worktreeId);
+    let changed = false;
+    for (const [project, runner] of named2) {
+      if (runner === void 0 || kept2.get(project) === runner) continue;
+      kept2.set(project, runner);
+      changed = true;
+    }
+    if (!changed) return;
+    const entries = [...kept2].map(([project, runner]) => ({ project, runner }));
+    writeMetaList(conn, worktreeMetaKey("runners", worktreeId), entries);
+  };
+  return {
+    listByTestFile: (testFile) => conn.all(
+      `SELECT c.*, ${CHECK_COLUMNS} FROM checks c WHERE c.project = ? AND c.test_path = ?
+           ORDER BY c.kind, c.full_name`,
+      testFile.project,
+      testFile.path
+    ).map(toCheck),
+    upsertMany: (records) => conn.transaction(() => {
+      for (const r of records) {
+        const id = ensureCheckId(conn, r.check, r.firstSeenAt);
+        conn.run(
+          `UPDATE checks SET location_path = ?, location_line = ?, location_column = ?,
+               templated = ? WHERE id = ?`,
+          ...locationParams(r.location),
+          flag(r.templated),
+          id
+        );
+      }
+    }),
+    runnersOf: runners,
+    recordRunners
+  };
+}
+function toCheck(row) {
+  return {
+    check: checkFrom(row),
+    location: location(row),
+    templated: bool(row, "templated"),
+    firstSeenAt: num(row, "first_seen_at")
+  };
+}
+
+// src/core/store/repos/workspace.ts
+var TRIGGERS = ["watch", "interval", "start", "dropped-events"];
+function createRevisionRepo(conn) {
+  return {
+    append: (revision) => conn.transaction(() => {
+      const row = conn.get(
+        "SELECT coalesce(max(number), 0) AS n FROM revisions WHERE worktree_id = ?",
+        revision.worktreeId
+      );
+      const stored4 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
+      conn.run(
+        `INSERT INTO revisions (worktree_id, number, created_at, head, dirty, trigger, changes)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        stored4.worktreeId,
+        stored4.number,
+        stored4.createdAt,
+        stored4.head,
+        flag(stored4.dirty),
+        stored4.trigger,
+        JSON.stringify(stored4.changes)
+      );
+      return stored4;
+    }),
+    latest: (worktreeId) => {
+      const row = conn.get(
+        "SELECT * FROM revisions WHERE worktree_id = ? ORDER BY number DESC LIMIT 1",
+        worktreeId
+      );
+      return row === null ? null : toRevision(row);
+    },
+    lastAtOtherHead: (worktreeId, head) => {
+      const row = conn.get(
+        `SELECT number FROM revisions WHERE worktree_id = ? AND head IS NOT ?
+         ORDER BY number DESC LIMIT 1`,
+        worktreeId,
+        head
+      );
+      return row === null ? null : num(row, "number");
+    },
+    get: (worktreeId, number) => {
+      const row = conn.get(
+        "SELECT * FROM revisions WHERE worktree_id = ? AND number = ?",
+        worktreeId,
+        number
+      );
+      return row === null ? null : toRevision(row);
+    },
+    range: (worktreeId, after, upTo) => conn.all(
+      `SELECT * FROM revisions WHERE worktree_id = ? AND number > ? AND number <= ?
+           ORDER BY number`,
+      worktreeId,
+      after,
+      upTo
+    ).map(toRevision)
+  };
+}
+function toRevision(row) {
+  return {
+    worktreeId: str(row, "worktree_id"),
+    number: num(row, "number"),
+    createdAt: num(row, "created_at"),
+    head: strOrNull(row, "head"),
+    dirty: bool(row, "dirty"),
+    trigger: oneOf3(row, "trigger", TRIGGERS),
+    changes: json(row, "changes")
+  };
+}
+function createFileHashRepo(conn) {
+  return {
+    get: (worktreeId, path) => {
+      const row = conn.get(
+        "SELECT * FROM file_hashes WHERE worktree_id = ? AND path = ?",
+        worktreeId,
+        path
+      );
+      return row === null ? null : toFileHash(row);
+    },
+    list: (worktreeId) => conn.all("SELECT * FROM file_hashes WHERE worktree_id = ? ORDER BY path", worktreeId).map(toFileHash),
+    upsertMany: (worktreeId, records) => conn.transaction(() => {
+      for (const r of records) {
+        conn.run(
+          `INSERT OR REPLACE INTO file_hashes
+               (worktree_id, path, mtime_ms, ctime_ms, size, inode, hash)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          worktreeId,
+          r.path,
+          r.mtimeMs,
+          r.ctimeMs,
+          r.size,
+          r.inode,
+          r.hash
+        );
+      }
+    }),
+    removeMany: (worktreeId, paths) => conn.transaction(() => {
+      for (const path of paths) {
+        conn.run("DELETE FROM file_hashes WHERE worktree_id = ? AND path = ?", worktreeId, path);
+      }
+    })
+  };
+}
+function toFileHash(row) {
+  return {
+    path: str(row, "path"),
+    mtimeMs: num(row, "mtime_ms"),
+    ctimeMs: num(row, "ctime_ms"),
+    size: num(row, "size"),
+    inode: num(row, "inode"),
+    hash: str(row, "hash")
+  };
+}
+
+// src/core/store/store.ts
+var connections = /* @__PURE__ */ new WeakMap();
+function connectionOf(store) {
+  const conn = connections.get(store);
+  if (conn === void 0) throw new Error("squeal store: not opened by openStore");
+  return conn;
+}
+var CONNECTION = /* @__PURE__ */ Symbol("squeal.connection");
+function readTransaction(store, fn) {
+  const conn = store[CONNECTION];
+  if (conn === void 0) throw new Error("squeal store: not opened by openStore");
+  return conn.read(fn);
+}
+function changeMarker(store) {
+  const conn = store[CONNECTION];
+  if (conn === void 0) return null;
+  const row = conn.get(
+    "SELECT data_version AS others, total_changes() AS own FROM pragma_data_version"
+  );
+  if (row === null) throw new Error("squeal store: no data_version");
+  return { others: num(row, "others"), own: num(row, "own") };
+}
+var STORE_PATHS = /* @__PURE__ */ Symbol("squeal.storePaths");
+function storePathsOf(store) {
+  return store[STORE_PATHS] ?? null;
+}
+function createStore(conn, schemaVersion, paths) {
+  const worktrees = createWorktreeRepo(conn);
+  const store = {
+    schemaVersion,
+    worktrees,
+    revisions: createRevisionRepo(conn),
+    fileHashes: createFileHashRepo(conn),
+    testFiles: createTestFileRepo(conn),
+    testFileKeys: createTestFileKeyRepo(conn),
+    checks: createCheckRepo(conn),
+    results: createResultRepo(conn),
+    failures: createFailureRepo(conn),
+    runs: createRunRepo(conn),
+    checkpoints: createCheckpointRepo(conn),
+    knownStates: createKnownStateRepo(conn),
+    transitions: createTransitionRepo(conn),
+    consumers: createConsumerRepo(conn),
+    views: createViewRepo(conn),
+    meta: createMetaRepo(conn),
+    transaction: (fn) => conn.transaction(fn),
+    prune: (options) => prune(conn, worktrees, paths, options),
+    close: () => conn.close()
+  };
+  connections.set(store, conn);
+  Object.defineProperty(store, CONNECTION, { value: conn });
+  Object.defineProperty(store, STORE_PATHS, { value: paths });
+  return store;
+}
+function createMetaRepo(conn) {
+  return {
+    get: (key) => {
+      const row = conn.get("SELECT value FROM meta WHERE key = ?", key);
+      return row === null ? null : str(row, "value");
+    },
+    set: (key, value) => {
+      conn.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", key, value);
+    },
+    delete: (key) => {
+      conn.run("DELETE FROM meta WHERE key = ?", key);
+    }
+  };
+}
+
+// src/core/presence/stored.ts
 function daemonExitMetaKey(worktreeId) {
   return worktreeMetaKey("daemonExit", worktreeId);
 }
@@ -1628,20 +3489,17 @@ function readRest(store, worktreeId) {
 function stoppedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonStopped", worktreeId);
 }
-function readStop(store, worktreeId) {
-  const text2 = store.meta.get(stoppedMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const mark = JSON.parse(text2);
-    if (!isRecord(mark) || typeof mark.at !== "number") return null;
-    return {
-      at: mark.at,
-      tree: typeof mark.tree === "string" ? mark.tree : null,
-      ...mark.untilStart === true ? { untilStart: true } : {}
-    };
-  } catch {
-    return null;
-  }
+function readStop(store, worktreeId, lockFile) {
+  const file = lockFile ?? stopLockFile(store, worktreeId);
+  const inFile = file === null ? null : readStopFile(file);
+  return inFile ?? readLegacyStop(store, worktreeId);
+}
+function readLegacyStop(store, worktreeId) {
+  return stopMarkOf(parsed(store.meta.get(stoppedMetaKey(worktreeId))));
+}
+function stopLockFile(store, worktreeId) {
+  const paths = storePathsOf(store);
+  return paths === null ? null : join4(paths.locksDir, `${worktreeId}.sqlite`);
 }
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
@@ -1727,7 +3585,7 @@ function readPresenceFacts(store, worktreeId, now, row, commonDir) {
     claim: once(() => readHandoff(store, worktreeId)),
     short: once(() => readShortHandoff(store, worktreeId)),
     rest: once(() => readRest(store, worktreeId)),
-    stop: once(() => readStop(store, worktreeId)),
+    stop: once(() => readStop(store, worktreeId, lockFile())),
     feedDelivered: once(() => readFeedDelivered(store, worktreeId)),
     marks: once(() => {
       const file = lockFile();
@@ -2107,19 +3965,6 @@ function newsView(p, told) {
   return withLateHeartbeat(p, withRecordFacts(p, withStop(p, live), false));
 }
 
-// src/core/types/state.ts
-var IMPORT_MARK = "import:";
-function importMark(importId) {
-  return `${IMPORT_MARK}${importId}`;
-}
-function importIdOf(worktreeId) {
-  return worktreeId.startsWith(IMPORT_MARK) ? worktreeId.slice(IMPORT_MARK.length) : null;
-}
-function originWorktree(origin) {
-  if (origin.kind === "own") return null;
-  return origin.kind === "inherited" ? origin.worktreeId : importMark(origin.importId);
-}
-
 // src/core/state/fingerprint.ts
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -2188,7 +4033,7 @@ function normalize(line) {
     return typeof replacement === "string" ? text2.replace(pattern, replacement) : text2.replace(pattern, replacement);
   }, line);
 }
-function where(location2) {
+function where2(location2) {
   return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
 }
 var PHASE_PREFIX = {
@@ -2199,7 +4044,7 @@ var PHASE_PREFIX = {
 function describeFailure(errors, fallback2) {
   const first = errors[0];
   if (first === void 0) {
-    return { fingerprint: `fail @ ${where(fallback2)}`, summary: "failed without an error message" };
+    return { fingerprint: `fail @ ${where2(fallback2)}`, summary: "failed without an error message" };
   }
   const line = firstLine2(first.message);
   const location2 = first.location ?? fallback2;
@@ -2211,7 +4056,7 @@ function describeFailure(errors, fallback2) {
   const summary = more > 0 ? `${text2} (${more} more error${more === 1 ? "" : "s"})` : text2;
   const recorder = errors.find((e) => e.recorder !== void 0)?.recorder;
   return {
-    fingerprint: `${first.name}: ${normalize(line)} @ ${where(location2)}`,
+    fingerprint: `${first.name}: ${normalize(line)} @ ${where2(location2)}`,
     summary: withRecorder(
       withDiff(summary, first.diff === null ? null : diffText(first.diff)),
       recorder
@@ -2294,11 +4139,11 @@ function readFlakyNotes(store) {
     return /* @__PURE__ */ new Map();
   }
 }
-var OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail"]);
+var OUTCOMES4 = /* @__PURE__ */ new Set(["pass", "fail"]);
 function isNote(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
-  return typeof v.key === "string" && OUTCOMES.has(v.from) && OUTCOMES.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number" && (v.failure === void 0 || typeof v.failure === "string");
+  return typeof v.key === "string" && OUTCOMES4.has(v.from) && OUTCOMES4.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number" && (v.failure === void 0 || typeof v.failure === "string");
 }
 var NO_EARLIER_PASS_TEXT = "no pass at these inputs is on record before";
 function flakyText(note) {
@@ -2892,18 +4737,18 @@ import { isDeepStrictEqual } from "node:util";
 
 // src/core/daemon/version.ts
 import { readdirSync as readdirSync2, readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname3, join as join3 } from "node:path";
+import { dirname as dirname3, join as join5 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.638";
+  if (true) return "0.1.639";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname3(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join3(dir, "package.json"));
+    const version = readVersion(join5(dir, "package.json"));
     if (version !== null) return version;
     const parent2 = dirname3(dir);
     if (parent2 === dir) return null;
@@ -3002,18 +4847,18 @@ function readRevisionCommit(store, worktreeId, latest = store.revisions.latest(w
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync7 } from "node:fs";
-import { join as join5 } from "node:path";
+import { join as join7 } from "node:path";
 
 // src/core/fs/git-layout.ts
-import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync2, lstatSync, readFileSync as readFileSync6, realpathSync as realpathSync2 } from "node:fs";
-import { dirname as dirname4, isAbsolute as isAbsolute3, join as join4, resolve } from "node:path";
+import { createHash as createHash3 } from "node:crypto";
+import { existsSync as existsSync3, lstatSync, readFileSync as readFileSync6, realpathSync as realpathSync2 } from "node:fs";
+import { dirname as dirname4, isAbsolute as isAbsolute3, join as join6, resolve as resolve2 } from "node:path";
 var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
 function findWorktreeRoot(path) {
-  let dir = resolve(path);
-  if (existsSync2(dir)) dir = realpathSync2(dir);
+  let dir = resolve2(path);
+  if (existsSync3(dir)) dir = realpathSync2(dir);
   for (; ; ) {
-    if (existsSync2(join4(dir, ".git"))) return dir;
+    if (existsSync3(join6(dir, ".git"))) return dir;
     const parent2 = dirname4(dir);
     if (parent2 === dir) return null;
     dir = parent2;
@@ -3023,7 +4868,7 @@ function worktreeIdFor(root) {
   return worktreeIdOfRealPath(realpathSync2(root));
 }
 function worktreeIdOfRealPath(realPath3) {
-  return createHash2("sha256").update(realPath3).digest("hex").slice(0, 16);
+  return createHash3("sha256").update(realPath3).digest("hex").slice(0, 16);
 }
 function gitDirOf(root) {
   return dotGit(root)?.gitDir ?? null;
@@ -3034,10 +4879,10 @@ function resolveCommonDir(root) {
   if (!entry3.isFile) return realpathSync2(entry3.gitDir);
   const { gitDir } = entry3;
   if (lstatOrNull(gitDir) === null) return null;
-  const commondirFile = join4(gitDir, "commondir");
+  const commondirFile = join6(gitDir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync2(gitDir);
   const commondir = readFileSync6(commondirFile, "utf8").trim();
-  const common = isAbsolute3(commondir) ? commondir : resolve(gitDir, commondir);
+  const common = isAbsolute3(commondir) ? commondir : resolve2(gitDir, commondir);
   return lstatOrNull(common) === null ? null : realpathSync2(common);
 }
 function lstatOrNull(path) {
@@ -3049,13 +4894,13 @@ function lstatOrNull(path) {
   }
 }
 function dotGit(root) {
-  const path = join4(root, ".git");
+  const path = join6(root, ".git");
   const stat = lstatOrNull(path);
   if (stat === null) return null;
   if (stat.isDirectory()) return { gitDir: path, isFile: false };
   if (!stat.isFile()) return null;
   const match = GITDIR_LINE.exec(readFileSync6(path, "utf8"));
-  return match?.[1] ? { gitDir: resolve(root, match[1]), isFile: true } : null;
+  return match?.[1] ? { gitDir: resolve2(root, match[1]), isFile: true } : null;
 }
 
 // src/core/status/git-head.ts
@@ -3065,17 +4910,17 @@ function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read(join5(gitDir, "HEAD"));
+  let value = read(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref2 === void 0) return null;
-    value = read(join5(gitDir, ref2)) ?? read(join5(commonDir, ref2)) ?? packed(commonDir, ref2);
+    value = read(join7(gitDir, ref2)) ?? read(join7(commonDir, ref2)) ?? packed(commonDir, ref2);
   }
   return null;
 }
 function packed(commonDir, ref2) {
-  for (const line of (read(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name2] = line.split(" ");
     if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -3181,11 +5026,11 @@ function readUnknownFiles(store, worktreeId) {
     return /* @__PURE__ */ new Map();
   }
   if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
-  const entries = value.filter(isEntry).map(knownCause);
+  const entries = value.filter(isEntry3).map(knownCause);
   return new Map(entries.map((e) => [testFileId(e.testFile), e]));
 }
 var CAUSES = ["timeout", "install", "runner", "setup"];
-function isEntry(value) {
+function isEntry3(value) {
   if (!isRecord(value) || !isRecord(value.testFile)) return false;
   return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
 }
@@ -3807,21 +5652,21 @@ function nodeTestFiles(command, listing) {
 
 // src/runners/pytest/describe.ts
 import { realpathSync as realpathSync3 } from "node:fs";
-import { join as join8, resolve as resolve3 } from "node:path";
+import { join as join10, resolve as resolve4 } from "node:path";
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync3, readdirSync as readdirSync3, readFileSync as readFileSync8, statSync as statSync2 } from "node:fs";
-import { basename as basename2, dirname as dirname5, isAbsolute as isAbsolute5, join as join7, relative as relative2, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync4, readdirSync as readdirSync3, readFileSync as readFileSync8, statSync as statSync2 } from "node:fs";
+import { basename as basename2, dirname as dirname5, isAbsolute as isAbsolute5, join as join9, relative as relative2, resolve as resolve3 } from "node:path";
 
 // src/core/fs/paths.ts
-import { isAbsolute as isAbsolute4, join as join6, relative, sep } from "node:path";
+import { isAbsolute as isAbsolute4, join as join8, relative, sep as sep2 } from "node:path";
 function toRelative(root, abs) {
   const rel = relative(root, abs);
-  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute4(rel)) return null;
-  return sep === "/" ? rel : rel.split(sep).join("/");
+  if (rel === "" || rel === ".." || rel.startsWith(`..${sep2}`) || isAbsolute4(rel)) return null;
+  return sep2 === "/" ? rel : rel.split(sep2).join("/");
 }
 function toAbsolute(root, rel) {
-  return join6(root, ...rel.split("/"));
+  return join8(root, ...rel.split("/"));
 }
 
 // src/runners/pytest/environment/discover.ts
@@ -3831,17 +5676,17 @@ function projectDir(root, project) {
 function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
-    const declared = resolve2(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join7(declared, "bin", "python"));
-    if (existsSync3(declared)) return found("declared", dirname5(dirname5(declared)), declared);
+    const declared = resolve3(cwd, project.python);
+    if (isDirectory(declared)) return found("declared", declared, join9(declared, "bin", "python"));
+    if (existsSync4(declared)) return found("declared", dirname5(dirname5(declared)), declared);
     const target = basename2(declared).startsWith("python") ? dirname5(dirname5(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join7(cwd, ".venv");
-  if (existsSync3(join7(venv, "pyvenv.cfg"))) return found("venv", venv, join7(venv, "bin", "python"));
+  const venv = join9(cwd, ".venv");
+  if (existsSync4(join9(venv, "pyvenv.cfg"))) return found("venv", venv, join9(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
   if (pdm !== null) return found("pdm-python", dirname5(dirname5(pdm)), pdm);
-  return none(root, cwd, [venv, join7(cwd, ".pdm-python")], venv);
+  return none(root, cwd, [venv, join9(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -3849,12 +5694,12 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text2;
   try {
-    text2 = readFileSync8(join7(cwd, ".pdm-python"), "utf8").trim();
+    text2 = readFileSync8(join9(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute5(text2) || toRelative(root, text2) === null || !existsSync3(text2)) return null;
+  if (!isAbsolute5(text2) || toRelative(root, text2) === null || !existsSync4(text2)) return null;
   return text2;
 }
 var LOCKFILES = [
@@ -3871,12 +5716,12 @@ function none(root, cwd, looked, target) {
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES.find(([file]) => existsSync3(join7(dir, file)));
+    const hit = LOCKFILES.find(([file]) => existsSync4(join9(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join7(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join9(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join7(dir, file));
+    const files2 = requirementsIn(dir).map((file) => join9(dir, file));
     if (files2.length === 0) continue;
     const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -3934,7 +5779,7 @@ function pytestHere(root, cwd, projects2) {
 }
 function realPath(path) {
   try {
-    return realpathSync3(resolve3(path));
+    return realpathSync3(resolve4(path));
   } catch {
     return null;
   }
@@ -3953,13 +5798,13 @@ function pytestCommand(words, here) {
     if (OUTPUT_FLAG.test(word)) continue;
     const path = word.split("::")[0];
     if (word.startsWith("-") || path === "") return null;
-    paths.push(resolve3(dir, path));
+    paths.push(resolve4(dir, path));
   }
   return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve3(dir, first) === join8(env, "bin", name2);
+  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join10(env, "bin", name2);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -3975,11 +5820,11 @@ function pytestFiles(command, listing) {
 
 // src/runners/vitest/describe.ts
 import { readFileSync as readFileSync10 } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join10, relative as relative3, resolve as resolve4 } from "node:path";
+import { isAbsolute as isAbsolute6, join as join12, relative as relative3, resolve as resolve5 } from "node:path";
 
 // src/core/daemon/runner.ts
 import { readdirSync as readdirSync4, readFileSync as readFileSync9 } from "node:fs";
-import { join as join9, posix as posix4 } from "node:path";
+import { join as join11, posix as posix4 } from "node:path";
 
 // src/core/types/runner-traits.ts
 function declareTraits(stated = {}) {
@@ -4011,7 +5856,7 @@ function vitestDetected(root) {
     return false;
   }
   if (names3.some((name2) => VITEST_CONFIG.test(name2))) return true;
-  return listsVitest(readManifest(join9(root, "package.json")));
+  return listsVitest(readManifest(join11(root, "package.json")));
 }
 function runsVitest(root, policy) {
   return policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root);
@@ -4108,7 +5953,7 @@ function vitestFiles(command, listing) {
   if (command.filters.length === 0) return vitest;
   const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref2) => matchesFilter(join10(root, ref2.path), filter, root));
+    const hits = vitest.filter((ref2) => matchesFilter(join12(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref2 of hits) selected2.add(ref2);
   }
@@ -4117,13 +5962,13 @@ function vitestFiles(command, listing) {
 function matchesFilter(file, filter, root) {
   if (isAbsolute6(filter) && file.startsWith(filter)) return true;
   const testFile = relative3(root, file).toLocaleLowerCase();
-  const rel = relative3(root, resolve4(root, filter));
-  const relativePath = filter.endsWith("/") ? join10(rel, "/") : rel;
+  const rel = relative3(root, resolve5(root, filter));
+  const relativePath = filter.endsWith("/") ? join12(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync10(join10(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync10(join12(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
@@ -4949,1828 +6794,6 @@ function readCheckpointProgress(store, worktreeId) {
   }
 }
 
-// src/core/store/codec.ts
-function str(row, column) {
-  const value = row[column];
-  if (typeof value !== "string") throw new TypeError(`squeal store: ${column} is not text`);
-  return value;
-}
-function strOrNull(row, column) {
-  return row[column] === null ? null : str(row, column);
-}
-function num(row, column) {
-  const value = row[column];
-  if (typeof value !== "number") throw new TypeError(`squeal store: ${column} is not a number`);
-  return value;
-}
-function numOrNull(row, column) {
-  return row[column] === null ? null : num(row, column);
-}
-function bool(row, column) {
-  return num(row, column) !== 0;
-}
-function json(row, column) {
-  return JSON.parse(str(row, column));
-}
-function oneOf3(row, column, values) {
-  const value = str(row, column);
-  if (!values.includes(value)) {
-    throw new TypeError(`squeal store: ${column} has unexpected value ${value}`);
-  }
-  return value;
-}
-function oneOfOrNull(row, column, values) {
-  return row[column] === null ? null : oneOf3(row, column, values);
-}
-function locationParams(location2) {
-  return [location2?.path ?? null, location2?.line ?? null, location2?.column ?? null];
-}
-function location(row) {
-  const path = strOrNull(row, "location_path");
-  if (path === null) return null;
-  return { path, line: num(row, "location_line"), column: num(row, "location_column") };
-}
-function checkParams(check) {
-  return [
-    check.project,
-    check.testPath,
-    check.kind,
-    check.kind === "test" ? check.fullName : ""
-  ];
-}
-function checkFrom(row) {
-  const project = str(row, "check_project");
-  const testPath = str(row, "check_test_path");
-  const kind = oneOf3(row, "check_kind", ["test", "file", "setup"]);
-  if (kind !== "test") return { kind, project, testPath };
-  return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
-}
-var OUTCOMES2 = ["pass", "fail", "skip"];
-function toResult(row) {
-  return {
-    check: checkFrom(row),
-    key: str(row, "key"),
-    outcome: oneOf3(row, "outcome", OUTCOMES2),
-    durationMs: num(row, "duration_ms"),
-    location: location(row),
-    fingerprint: strOrNull(row, "fingerprint"),
-    summary: strOrNull(row, "summary"),
-    errors: row.errors === null ? [] : json(row, "errors"),
-    provenance: {
-      worktreeId: str(row, "worktree_id"),
-      revision: num(row, "revision"),
-      commit: strOrNull(row, "commit_sha"),
-      dirty: bool(row, "dirty"),
-      runId: str(row, "run_id"),
-      recordedAt: num(row, "recorded_at")
-    }
-  };
-}
-var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
-var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
-function inTestFiles(column, files2) {
-  if (files2.length === 0) return { sql: "0", params: [] };
-  const values = files2.map(() => "(?, ?)").join(", ");
-  return {
-    sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
-    params: files2.flatMap((f) => [f.project, f.path])
-  };
-}
-function findCheckId(conn, check) {
-  const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
-  return row === null ? null : num(row, "id");
-}
-function ensureCheckId(conn, check, seenAt) {
-  conn.run(
-    `INSERT INTO checks (project, test_path, kind, full_name, templated, first_seen_at)
-     VALUES (?, ?, ?, ?, 0, ?) ON CONFLICT DO NOTHING`,
-    ...checkParams(check),
-    seenAt
-  );
-  const id = findCheckId(conn, check);
-  if (id === null) throw new Error(`squeal store: check row missing after insert`);
-  return id;
-}
-function flag(value) {
-  return value ? 1 : 0;
-}
-
-// src/core/store/prune.ts
-import { existsSync as existsSync4, rmSync } from "node:fs";
-import { join as join11, resolve as resolve5, sep as sep2 } from "node:path";
-
-// src/core/store/prune-checkpoint.ts
-function* checkpointAfterWrites(conn, slices2) {
-  for (const slice of slices2) {
-    let wrote = false;
-    yield () => {
-      const before = writeMark(conn);
-      withoutAutoCheckpoint(conn, slice);
-      wrote = writeMark(conn) !== before;
-      return wrote;
-    };
-    if (wrote) yield () => checkpoint(conn);
-  }
-}
-function withoutAutoCheckpoint(conn, fn) {
-  const own = Number(conn.get("PRAGMA wal_autocheckpoint")?.wal_autocheckpoint);
-  conn.db.exec("PRAGMA wal_autocheckpoint = 0");
-  try {
-    fn();
-  } finally {
-    conn.db.exec(`PRAGMA wal_autocheckpoint = ${own}`);
-  }
-}
-function checkpoint(conn) {
-  conn.get("PRAGMA wal_checkpoint(PASSIVE)");
-}
-function writeMark(conn) {
-  const changes = conn.get("SELECT total_changes() AS n")?.n;
-  const pages = conn.get("PRAGMA page_count")?.page_count;
-  return `${String(changes)}:${String(pages)}`;
-}
-
-// src/core/store/repos/meta-list.ts
-function readMetaList(conn, key, guard) {
-  const row = conn.get("SELECT value FROM meta WHERE key = ?", key);
-  if (row === null) return [];
-  let value;
-  try {
-    value = JSON.parse(strOrNull(row, "value") ?? "[]");
-  } catch {
-    return [];
-  }
-  return Array.isArray(value) ? value.filter(guard) : [];
-}
-function writeMetaList(conn, key, entries) {
-  if (entries.length === 0) conn.run("DELETE FROM meta WHERE key = ?", key);
-  else {
-    conn.run(
-      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-      key,
-      JSON.stringify(entries)
-    );
-  }
-}
-
-// src/core/store/repos/replaced.ts
-var REPLACED_META_KEY = "replaced-failures";
-var REPLACED_PER_CHECK = 4;
-var REPLACED_KEPT = 1024;
-var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
-  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
-  WHERE r.key = ? AND r.outcome = 'fail'`;
-function failingAt(conn, key) {
-  return conn.all(FAILING_AT, key).map((row) => ({ result: toResult(row), failureId: strOrNull(row, "failure_id") }));
-}
-function readReplaced(conn) {
-  return readMetaList(conn, REPLACED_META_KEY, isEntry2);
-}
-function keepReplaced(conn, failing, records, loadOf2) {
-  if (failing.length === 0) return 0;
-  const passes = new Map(
-    records.filter((r) => r.outcome === "pass").map((r) => [identity(r.check), r])
-  );
-  const added = [];
-  for (const { result, failureId } of failing) {
-    const pass2 = passes.get(identity(result.check));
-    if (pass2 === void 0 || pass2.key !== result.key) continue;
-    added.push({
-      check: result.check,
-      key: result.key,
-      provenance: result.provenance,
-      durationMs: result.durationMs,
-      location: result.location,
-      fingerprint: result.fingerprint,
-      summary: result.summary,
-      failureId,
-      loadPerCpu: loadOf2(result.provenance.runId),
-      replacedBy: {
-        runId: pass2.provenance.runId,
-        worktreeId: pass2.provenance.worktreeId,
-        recordedAt: pass2.provenance.recordedAt
-      }
-    });
-  }
-  if (added.length === 0) return 0;
-  conn.transaction(
-    () => writeMetaList(conn, REPLACED_META_KEY, capped([...readReplaced(conn), ...added]))
-  );
-  return added.length;
-}
-function expireReplaced(conn, cutoff) {
-  const entries = readReplaced(conn);
-  const kept2 = entries.filter((e) => e.provenance.recordedAt >= cutoff);
-  if (kept2.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept2);
-  return entries.length - kept2.length;
-}
-function keptByReplaced(conn) {
-  const entries = readReplaced(conn);
-  return {
-    runs: entries.map((e) => e.provenance.runId),
-    texts: entries.flatMap((e) => e.failureId === null ? [] : [e.failureId])
-  };
-}
-function capped(entries) {
-  const seen = /* @__PURE__ */ new Set();
-  const perCheck = /* @__PURE__ */ new Map();
-  const kept2 = [];
-  for (let i = entries.length - 1; i >= 0 && kept2.length < REPLACED_KEPT; i--) {
-    const entry3 = entries[i];
-    const check = identity(entry3.check);
-    const id = JSON.stringify([check, entry3.key, entry3.provenance.runId]);
-    const count2 = perCheck.get(check) ?? 0;
-    if (seen.has(id) || count2 >= REPLACED_PER_CHECK) continue;
-    seen.add(id);
-    perCheck.set(check, count2 + 1);
-    kept2.push(entry3);
-  }
-  return kept2.reverse();
-}
-function identity(check) {
-  return JSON.stringify(checkParams(check));
-}
-function isEntry2(value) {
-  if (!isRecord(value) || !isRecord(value.check) || !isRecord(value.provenance)) return false;
-  const { check, provenance: p, replacedBy: by } = value;
-  return typeof check.project === "string" && typeof check.testPath === "string" && typeof check.kind === "string" && typeof value.key === "string" && typeof p.runId === "string" && typeof p.worktreeId === "string" && typeof p.revision === "number" && typeof p.recordedAt === "number" && typeof value.durationMs === "number" && (value.failureId === null || typeof value.failureId === "string") && (value.loadPerCpu === null || typeof value.loadPerCpu === "number") && isRecord(by) && typeof by.runId === "string" && typeof by.worktreeId === "string" && typeof by.recordedAt === "number";
-}
-
-// src/core/store/repos/unknown-runs.ts
-var UNKNOWN_RUNS_META_KEY = "unknown-runs";
-function readUnknownRuns(conn) {
-  return readMetaList(conn, UNKNOWN_RUNS_META_KEY, isEntry3);
-}
-function recordUnknownRuns(conn, worktreeId, revision, marked2, at) {
-  const added = marked2.flatMap(
-    ({ testFiles: testFiles2, reason, runId }) => testFiles2.map((testFile) => ({ worktreeId, testFile, runId, revision, reason, at }))
-  );
-  if (added.length === 0) return;
-  conn.transaction(() => {
-    const ids = new Set(added.map(idOf));
-    const kept2 = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
-    const newest = new Map(added.map((r) => [idOf(r), r]));
-    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept2, ...newest.values()]);
-  });
-}
-var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
-    ON s.worktree_id = ? AND s.check_id = c.id
-  WHERE c.project = ? AND c.test_path = ? AND s.outcome = 'unknown'
-    AND s.observed_at = ? AND s.summary = ? LIMIT 1`;
-function dropFallenUnknownRuns(conn) {
-  const records = readUnknownRuns(conn);
-  const kept2 = standing(conn, records);
-  if (kept2.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept2);
-  return records.length - kept2.length;
-}
-function hasFallenUnknownRuns(conn) {
-  const records = readUnknownRuns(conn);
-  return standing(conn, records).length < records.length;
-}
-function keptByUnknownRuns(conn) {
-  return readUnknownRuns(conn).flatMap((r) => r.runId === null ? [] : [r.runId]);
-}
-function standing(conn, records) {
-  return records.filter((r) => conn.get(STANDS, ...standsParams(r)) !== null);
-}
-function standsParams(r) {
-  return [r.worktreeId, r.testFile.project, r.testFile.path, r.revision, r.reason];
-}
-function idOf(r) {
-  return JSON.stringify([r.worktreeId, r.testFile.project, r.testFile.path]);
-}
-function isEntry3(value) {
-  if (!isRecord(value) || !isRecord(value.testFile)) return false;
-  return typeof value.worktreeId === "string" && typeof value.testFile.project === "string" && typeof value.testFile.path === "string" && (value.runId === null || typeof value.runId === "string") && typeof value.revision === "number" && typeof value.reason === "string" && typeof value.at === "number";
-}
-
-// src/core/store/prune-rules.ts
-var DAY_MS = 24 * 60 * 60 * 1e3;
-var EVICTION_BATCH = 32;
-var DELETE_BATCH = 256;
-var VACUUM_PAGES = 8;
-var VACUUM_SLICE_MS = 100;
-var LIST_DELETE_BATCH = 32;
-var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
-  WHERE k.key IS NOT NULL`;
-var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
-var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
-  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
-    SELECT 1 FROM results n
-    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
-      AND (n.recorded_at > results.recorded_at
-           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
-var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
-var UNREFERENCED_RUN = `NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
-  AND id NOT IN (SELECT value FROM json_each(?))`;
-function keptRuns(conn) {
-  return JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
-}
-var LAST_COMPLETED_CHECKPOINTS = `
-  SELECT id FROM (
-    SELECT (SELECT x.id FROM checkpoints x
-            WHERE x.worktree_id = w.id AND x.end_state = 'completed'
-            ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1) AS id
-    FROM worktrees w
-  ) WHERE id IS NOT NULL`;
-
-// src/core/store/prune-keyed.ts
-function* deleteByKey(conn, rule) {
-  const batch = rule.batch ?? DELETE_BATCH;
-  const columns = rule.key.join(", ");
-  const after = rule.key.map(() => "?").join(", ");
-  const read4 = (from) => `SELECT ${columns} FROM ${rule.table}
-     WHERE ${from ? `(${columns}) > (${after}) AND ` : ""}(${rule.search})
-     ORDER BY ${columns} LIMIT ${batch}`;
-  const first = read4(false);
-  const next = read4(true);
-  const named2 = rule.key.map((_, i) => `value ->> ${i}`).join(", ");
-  const remove = `DELETE FROM ${rule.table}
-    WHERE (${columns}) IN (SELECT ${named2} FROM json_each(?)) AND (${rule.recheck ?? rule.search})`;
-  const searchParams = rule.searchParams ?? [];
-  let last = null;
-  for (; ; ) {
-    let keys = [];
-    yield () => {
-      const rows = conn.read(
-        () => last === null ? conn.all(first, ...searchParams) : conn.all(next, ...last, ...searchParams)
-      );
-      keys = rows.map((row) => rule.key.map((column) => row[column]));
-      return false;
-    };
-    if (keys.length === 0) return;
-    const list = JSON.stringify(keys);
-    yield () => {
-      const n = conn.transaction(
-        () => conn.run(remove, list, ...rule.recheckParams?.() ?? searchParams)
-      );
-      rule.removed?.(n);
-      return n > 0;
-    };
-    if (keys.length < batch) return;
-    last = keys[keys.length - 1] ?? null;
-  }
-}
-var worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
-    SELECT min(worktree_id) FROM ${table}
-    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
-      FROM ids WHERE ids.id IS NOT NULL)
-  SELECT id FROM ids WHERE id IS NOT NULL`;
-function worktreeIdList(conn, table) {
-  return JSON.stringify(conn.all(worktreeIdsOf(table)).map((row) => row.id));
-}
-function hasIndexes(conn, ...names3) {
-  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?";
-  return names3.every((name2) => conn.get(sql, name2) !== null);
-}
-
-// src/core/store/loaded-modules.ts
-var LOADED_MODULES_TABLE = "loaded_modules";
-function* emptyLoadedModules(conn) {
-  if (!conn.read(() => hasLoadedModulesTable(conn))) return;
-  const deletes = deleteByKey(conn, {
-    table: LOADED_MODULES_TABLE,
-    key: ["project", "path", "key"],
-    search: "1",
-    batch: LIST_DELETE_BATCH
-  });
-  yield* checkpointAfterWrites(conn, deletes);
-}
-function hasLoadedModulesTable(conn) {
-  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
-  return conn.get(sql, LOADED_MODULES_TABLE) !== null;
-}
-
-// src/core/store/prune-unused.ts
-var PRUNABLE_BY_KEY = `NOT EXISTS (SELECT 1 FROM test_file_keys k
-    JOIN worktrees w ON w.id = k.worktree_id WHERE k.key = results.key)
-  AND NOT (EXISTS (SELECT 1 FROM worktrees m WHERE m.id = results.worktree_id AND m.is_main = 1)
-    AND NOT EXISTS (SELECT 1 FROM results n JOIN worktrees m ON m.id = n.worktree_id AND m.is_main = 1
-      WHERE n.check_id = results.check_id
-        AND (n.recorded_at > results.recorded_at
-             OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))
-  AND recorded_at < ?`;
-function dropEndedCheckpoints(conn, cutoff, counts) {
-  return deleteByKey(conn, {
-    table: "checkpoints",
-    key: ["id"],
-    search: `id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
-      AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
-      AND (worktree_id NOT IN (SELECT id FROM worktrees)
-           OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
-    searchParams: [cutoff],
-    recheck: `NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
-      AND CASE WHEN EXISTS (SELECT 1 FROM worktrees w WHERE w.id = checkpoints.worktree_id)
-        THEN id IS NOT (SELECT x.id FROM checkpoints x
-               WHERE x.worktree_id = checkpoints.worktree_id AND x.end_state = 'completed'
-               ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1)
-             AND end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?
-        ELSE 1 END`,
-    recheckParams: () => [cutoff],
-    removed: (n) => {
-      counts.checkpointsRemoved += n;
-    }
-  });
-}
-function* dropUnusedChecks(conn, counts) {
-  if (!conn.read(() => hasIndexes(conn, "consumer_views_by_check"))) return;
-  yield* deleteByKey(conn, {
-    table: "checks",
-    key: ["id"],
-    search: `id NOT IN (
-      SELECT check_id FROM results UNION SELECT check_id FROM known_states
-      UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
-    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.check_id = checks.id)
-      AND NOT EXISTS (SELECT 1 FROM known_states s
-        WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
-      AND NOT EXISTS (SELECT 1 FROM transitions t
-        WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
-      AND NOT EXISTS (SELECT 1 FROM consumer_views v WHERE v.check_id = checks.id)`,
-    recheckParams: () => [
-      worktreeIdList(conn, "known_states"),
-      worktreeIdList(conn, "transitions")
-    ],
-    removed: (n) => {
-      counts.checksRemoved += n;
-    }
-  });
-}
-function dropOrphanTexts(conn) {
-  return deleteByKey(conn, {
-    table: "failure_texts",
-    key: ["id"],
-    search: `id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
-      AND id NOT IN (SELECT value FROM json_each(?))`,
-    searchParams: [keptTexts(conn)],
-    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.failure_id = failure_texts.id)
-      AND id NOT IN (SELECT value FROM json_each(?))`,
-    recheckParams: () => [keptTexts(conn)]
-  });
-}
-function keptTexts(conn) {
-  return JSON.stringify(keptByReplaced(conn).texts);
-}
-
-// src/core/store/prune-vacuum.ts
-function vacuum(conn, clock = () => performance.now()) {
-  return checkpointAfterWrites(conn, vacuumSlices(conn, clock));
-}
-function* vacuumSlices(conn, clock) {
-  let free = freePages(conn);
-  while (free > 0) {
-    yield () => conn.transaction(() => vacuumFor(conn, clock));
-    const left = freePages(conn);
-    if (left >= free) return;
-    free = left;
-  }
-}
-function vacuumFor(conn, clock) {
-  const start = clock();
-  let free = freePages(conn);
-  while (free > 0) {
-    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
-    const left = freePages(conn);
-    if (left >= free) return;
-    free = left;
-    if (clock() - start >= VACUUM_SLICE_MS) return;
-  }
-}
-function freePages(conn) {
-  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
-}
-
-// src/core/store/repos/worktrees.ts
-var WORKTREE_SCOPED_TABLES = [
-  "revisions",
-  "file_hashes",
-  "test_file_keys",
-  "known_states",
-  "transitions",
-  "consumer_views",
-  "consumers"
-];
-var tokenKey = (id) => worktreeMetaKey("daemonToken", id);
-function toDaemonToken(value, startedAt, version) {
-  if (!isRecord(value) || typeof value.token !== "string") return void 0;
-  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
-}
-function createWorktreeRepo(conn) {
-  const tokenRowOf = (id, startedAt, version) => {
-    const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
-    if (raw === null) return void 0;
-    try {
-      const value = JSON.parse(str(raw, "value"));
-      const token = toDaemonToken(value, startedAt, version);
-      if (token === null || token === void 0) return void 0;
-      const executable = isRecord(value) ? value.executable : void 0;
-      return typeof executable === "string" ? { token, executable } : { token };
-    } catch {
-      return void 0;
-    }
-  };
-  const tokenOf = (id, startedAt, version) => tokenRowOf(id, startedAt, version)?.token;
-  const writeToken = (id, d) => {
-    if (d.token === void 0) {
-      conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
-      return;
-    }
-    const value = {
-      startedAt: d.startedAt,
-      squealVersion: d.squealVersion,
-      token: d.token,
-      ...d.executable === void 0 ? {} : { executable: d.executable }
-    };
-    conn.run(
-      "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-      tokenKey(id),
-      JSON.stringify(value)
-    );
-  };
-  const toRecord2 = (row) => {
-    const record = fromRow(row);
-    const d = record.daemon;
-    const token = d === null ? void 0 : tokenRowOf(record.id, d.startedAt, d.squealVersion);
-    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, ...token } };
-  };
-  return {
-    get: (id) => {
-      const row = conn.get("SELECT * FROM worktrees WHERE id = ?", id);
-      return row === null ? null : toRecord2(row);
-    },
-    list: () => conn.all("SELECT * FROM worktrees ORDER BY id").map(toRecord2),
-    upsert: (record) => {
-      const d = record.daemon;
-      conn.run(
-        `INSERT INTO worktrees (id, root, common_dir, is_main, registered_at, daemon_socket,
-           daemon_started_at, daemon_heartbeat_at, daemon_heartbeat_interval_ms, daemon_version)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT (id) DO UPDATE SET root = excluded.root, common_dir = excluded.common_dir,
-           is_main = excluded.is_main, registered_at = excluded.registered_at,
-           daemon_socket = excluded.daemon_socket, daemon_started_at = excluded.daemon_started_at,
-           daemon_heartbeat_at = excluded.daemon_heartbeat_at,
-           daemon_heartbeat_interval_ms = excluded.daemon_heartbeat_interval_ms,
-           daemon_version = excluded.daemon_version`,
-        record.id,
-        record.root,
-        record.commonDir,
-        flag(record.isMain),
-        record.registeredAt,
-        d?.socketPath ?? null,
-        d?.startedAt ?? null,
-        d?.heartbeatAt ?? record.lastHeartbeatAt ?? null,
-        d?.heartbeatIntervalMs ?? null,
-        d?.squealVersion ?? null
-      );
-      if (d !== null) writeToken(record.id, d);
-    },
-    // Clearing keeps `daemon_heartbeat_at`: the last heartbeat (review wave 4.5, N5). It keeps
-    // the start time and version too, and the token row, the identity `lastDaemon` reads (tasks
-    // 001-268, 001-270); with no
-    // socket every other read finds no daemon.
-    setDaemon: (id, d) => {
-      conn.run(
-        `UPDATE worktrees SET daemon_socket = ?,
-           daemon_started_at = COALESCE(?, daemon_started_at),
-           daemon_heartbeat_at = COALESCE(?, daemon_heartbeat_at),
-           daemon_heartbeat_interval_ms = ?,
-           daemon_version = COALESCE(?, daemon_version) WHERE id = ?`,
-        d?.socketPath ?? null,
-        d?.startedAt ?? null,
-        d?.heartbeatAt ?? null,
-        d?.heartbeatIntervalMs ?? null,
-        d?.squealVersion ?? null,
-        id
-      );
-      if (d !== null) writeToken(id, d);
-    },
-    heartbeat: (id, at) => {
-      conn.run(
-        "UPDATE worktrees SET daemon_heartbeat_at = ? WHERE id = ? AND daemon_socket IS NOT NULL",
-        at,
-        id
-      );
-    },
-    lastDaemon: (id) => {
-      const row = conn.get(
-        "SELECT daemon_started_at, daemon_version FROM worktrees WHERE id = ?",
-        id
-      );
-      const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
-      if (row === null || startedAt === null) return null;
-      const squealVersion2 = strOrNull(row, "daemon_version");
-      const token = tokenOf(id, startedAt, squealVersion2);
-      return { startedAt, squealVersion: squealVersion2, ...token === void 0 ? {} : { token } };
-    },
-    remove: (id) => {
-      conn.transaction(() => {
-        conn.run("DELETE FROM worktrees WHERE id = ?", id);
-        for (const table of WORKTREE_SCOPED_TABLES) {
-          conn.run(`DELETE FROM ${table} WHERE worktree_id = ?`, id);
-        }
-        for (const row of Object.keys(WORKTREE_META_ROWS)) {
-          conn.run("DELETE FROM meta WHERE key = ?", worktreeMetaKey(row, id));
-        }
-      });
-    }
-  };
-}
-function fromRow(row) {
-  const socketPath = strOrNull(row, "daemon_socket");
-  const lastHeartbeatAt = numOrNull(row, "daemon_heartbeat_at");
-  return {
-    id: str(row, "id"),
-    root: str(row, "root"),
-    commonDir: str(row, "common_dir"),
-    isMain: bool(row, "is_main"),
-    registeredAt: num(row, "registered_at"),
-    daemon: socketPath === null ? null : {
-      socketPath,
-      startedAt: num(row, "daemon_started_at"),
-      heartbeatAt: num(row, "daemon_heartbeat_at"),
-      heartbeatIntervalMs: num(row, "daemon_heartbeat_interval_ms"),
-      squealVersion: str(row, "daemon_version")
-    },
-    ...socketPath === null && lastHeartbeatAt !== null ? { lastHeartbeatAt } : {}
-  };
-}
-
-// src/core/store/prune.ts
-function prune(conn, worktrees, paths, options) {
-  const counts = noneRemoved();
-  for (const slice of pruneSlices(conn, worktrees, paths, options, counts)) slice();
-  return pruneReport(conn, counts);
-}
-function noneRemoved() {
-  return {
-    resultsRemoved: 0,
-    runsRemoved: 0,
-    checkpointsRemoved: 0,
-    checksRemoved: 0,
-    worktreesRemoved: 0
-  };
-}
-function pruneReport(conn, counts) {
-  return {
-    ...counts,
-    bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size")
-  };
-}
-function* pruneSlices(conn, worktrees, paths, options, counts) {
-  const cutoff = options.now - options.retentionDays * DAY_MS;
-  for (const worktree of worktrees.list()) {
-    if (!isGone(worktree.root)) continue;
-    yield* removeWorktree(conn, worktrees, worktree, counts);
-  }
-  yield* writeIf(
-    conn,
-    () => readReplaced(conn).some((entry3) => entry3.provenance.recordedAt < cutoff),
-    () => expireReplaced(conn, cutoff)
-  );
-  yield* writeIf(
-    conn,
-    () => hasFallenUnknownRuns(conn),
-    () => dropFallenUnknownRuns(conn)
-  );
-  yield* dropPrunable(conn, cutoff, counts);
-  if (options.maxSizeMb !== null) {
-    yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
-  }
-  yield* emptyLoadedModules(conn);
-  yield* dropRuns(conn, paths, cutoff, counts);
-  yield* dropEndedCheckpoints(conn, cutoff, counts);
-  yield* dropUnusedChecks(conn, counts);
-  yield* vacuum(conn);
-}
-function* writeIf(conn, needed, write2) {
-  let due = false;
-  yield () => {
-    due = conn.read(needed);
-    return false;
-  };
-  if (due) yield () => conn.transaction(write2) > 0;
-}
-function isGone(root) {
-  return !existsSync4(join11(root, ".git"));
-}
-var BATCH_KEYS = {
-  // `WITHOUT ROWID`, keyed by `(worktree_id, path)`.
-  file_hashes: "path"
-};
-function* removeWorktree(conn, worktrees, worktree, counts) {
-  for (const table of WORKTREE_SCOPED_TABLES) {
-    const key = BATCH_KEYS[table] ?? "rowid";
-    let removed = DELETE_BATCH;
-    while (removed === DELETE_BATCH) {
-      removed = 0;
-      yield () => {
-        if (!isGone(worktree.root)) return false;
-        removed = conn.transaction(
-          () => conn.run(
-            `DELETE FROM ${table} WHERE worktree_id = ? AND ${key} IN (
-               SELECT ${key} FROM ${table} WHERE worktree_id = ? LIMIT ?)`,
-            worktree.id,
-            worktree.id,
-            DELETE_BATCH
-          )
-        );
-        return removed > 0;
-      };
-    }
-  }
-  yield () => {
-    if (!isGone(worktree.root)) return;
-    worktrees.remove(worktree.id);
-    counts.worktreesRemoved++;
-  };
-}
-function* dropRuns(conn, paths, cutoff, counts) {
-  const DROPPABLE = `${UNREFERENCED_RUN}
-    AND (worktree_id NOT IN (SELECT id FROM worktrees)
-         OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))`;
-  const ids = conn.read(() => conn.all(`SELECT id FROM runs WHERE ${DROPPABLE}`, keptRuns(conn), cutoff)).map((row) => str(row, "id"));
-  for (let at = 0; at < ids.length; at += DELETE_BATCH) {
-    const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
-    yield () => {
-      const dropped = conn.transaction(
-        () => conn.all(
-          `DELETE FROM runs WHERE id IN (SELECT value FROM json_each(?)) AND ${DROPPABLE}
-           RETURNING log_dir`,
-          batch,
-          keptRuns(conn),
-          cutoff
-        )
-      );
-      for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
-      counts.runsRemoved += dropped.length;
-      return dropped.length > 0;
-    };
-  }
-}
-function* dropPrunable(conn, cutoff, counts) {
-  const ids = conn.read(() => conn.all(`SELECT rowid AS id FROM results WHERE ${PRUNABLE}`, cutoff)).map((row) => num(row, "id"));
-  for (let at = 0; at < ids.length; at += DELETE_BATCH) {
-    const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
-    yield () => {
-      const n = conn.transaction(
-        () => conn.run(
-          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE_BY_KEY}`,
-          batch,
-          cutoff
-        )
-      );
-      counts.resultsRemoved += n;
-      return n > 0;
-    };
-  }
-  yield* dropOrphanTexts(conn);
-}
-function* evictToCap(conn, capBytes, counts) {
-  const tiers = [UNPROTECTED, `key NOT IN (${LIVE_KEYS})`];
-  for (const tier of tiers) {
-    while (usedBytes(conn) > capBytes) {
-      let batch = 0;
-      yield () => {
-        batch = conn.transaction(() => {
-          const n = conn.run(
-            `DELETE FROM results WHERE rowid IN (
-               SELECT rowid FROM results WHERE ${tier} ORDER BY last_used_at, rowid LIMIT ?)`,
-            EVICTION_BATCH
-          );
-          dropOrphanFailureTexts(conn);
-          return n;
-        });
-        counts.resultsRemoved += batch;
-        return batch > 0;
-      };
-      if (batch === 0) break;
-    }
-  }
-}
-function dropOrphanFailureTexts(conn) {
-  conn.run(
-    `DELETE FROM failure_texts
-     WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
-       AND id NOT IN (SELECT value FROM json_each(?))`,
-    keptTexts(conn)
-  );
-}
-function usedBytes(conn) {
-  const pages = pragmaNumber(conn, "page_count") - pragmaNumber(conn, "freelist_count");
-  return pages * pragmaNumber(conn, "page_size");
-}
-function pragmaNumber(conn, name2) {
-  const row = conn.get(`PRAGMA ${name2}`);
-  if (row === null) throw new Error(`squeal store: PRAGMA ${name2} returned nothing`);
-  return num(row, name2);
-}
-function removeRunLog(paths, logDir) {
-  const runsDir = resolve5(paths.runsDir);
-  const target = resolve5(logDir);
-  if (target.startsWith(runsDir + sep2)) rmSync(target, { recursive: true, force: true });
-}
-
-// src/core/store/repos/consumers.ts
-var OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
-var WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
-function consumerParams(c) {
-  return [c.worktreeId, c.sessionId, c.agentId];
-}
-function createConsumerRepo(conn) {
-  const unregister = (consumer) => conn.transaction(() => {
-    conn.run(`DELETE FROM consumer_views WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
-    conn.run(`DELETE FROM consumers WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
-  });
-  const idleSince = (cutoff) => conn.all(
-    `SELECT * FROM consumers
-         WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
-         ORDER BY worktree_id, session_id, agent_id`,
-    cutoff,
-    cutoff
-  ).map(toConsumer);
-  return {
-    get: (consumer) => {
-      const row = conn.get(
-        `SELECT * FROM consumers WHERE ${WHERE_CONSUMER}`,
-        ...consumerParams(consumer)
-      );
-      return row === null ? null : toConsumer(row);
-    },
-    list: (worktreeId) => conn.all(
-      "SELECT * FROM consumers WHERE worktree_id = ? ORDER BY session_id, agent_id",
-      worktreeId
-    ).map(toConsumer),
-    /**
-     * A registration starts from an empty view: spec 001 D6 seeds the view
-     * on registration (row 005-106: the states that are not `pass` while the
-     * store keeps birth marks, else every known state), so entries left by
-     * an earlier registration of the same consumer are dropped.
-     */
-    register: (consumer, at) => conn.transaction(() => {
-      unregister(consumer);
-      conn.run(
-        `INSERT INTO consumers (worktree_id, session_id, agent_id, registered_at, last_seen_at)
-           VALUES (?, ?, ?, ?, ?)`,
-        ...consumerParams(consumer),
-        at,
-        at
-      );
-      return { consumer, registeredAt: at, lastSeenAt: at, lastDeliveredAt: null };
-    }),
-    touch: (consumer, at, delivered) => {
-      conn.run(
-        `UPDATE consumers SET last_seen_at = ?,
-           last_delivered_at = CASE WHEN ? THEN ? ELSE last_delivered_at END
-         WHERE ${WHERE_CONSUMER}`,
-        at,
-        delivered ? 1 : 0,
-        at,
-        ...consumerParams(consumer)
-      );
-    },
-    unregister,
-    expire: (cutoff) => conn.transaction(() => {
-      const expired = idleSince(cutoff).map((record) => record.consumer);
-      for (const consumer of expired) unregister(consumer);
-      return expired;
-    }),
-    idleSince
-  };
-}
-function toConsumer(row) {
-  return {
-    consumer: {
-      worktreeId: str(row, "worktree_id"),
-      sessionId: str(row, "session_id"),
-      agentId: str(row, "agent_id")
-    },
-    registeredAt: num(row, "registered_at"),
-    lastSeenAt: num(row, "last_seen_at"),
-    lastDeliveredAt: numOrNull(row, "last_delivered_at")
-  };
-}
-function createViewRepo(conn) {
-  return {
-    list: (consumer, files2) => {
-      const only = files2 === void 0 ? null : inTestFiles("v.check_id", files2);
-      return conn.all(
-        `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
-           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
-             ${only === null ? "" : `AND ${only.sql}`}
-           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-        ...consumerParams(consumer),
-        ...only?.params ?? []
-      ).map(toView);
-    },
-    writeMany: (consumer, entries) => conn.transaction(() => {
-      for (const e of entries) {
-        conn.run(
-          `INSERT OR REPLACE INTO consumer_views
-               (worktree_id, session_id, agent_id, check_id, outcome, fingerprint, told_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          ...consumerParams(consumer),
-          ensureCheckId(conn, e.check, e.toldAt),
-          e.outcome,
-          e.fingerprint,
-          e.toldAt
-        );
-      }
-    }),
-    removeMany: (consumer, checks) => conn.transaction(() => {
-      for (const check of checks) {
-        const id = findCheckId(conn, check);
-        if (id === null) continue;
-        conn.run(
-          `DELETE FROM consumer_views WHERE ${WHERE_CONSUMER} AND check_id = ?`,
-          ...consumerParams(consumer),
-          id
-        );
-      }
-    })
-  };
-}
-function toView(row) {
-  return {
-    check: checkFrom(row),
-    outcome: oneOf3(row, "outcome", OUTCOMES3),
-    fingerprint: strOrNull(row, "fingerprint"),
-    toldAt: num(row, "told_at")
-  };
-}
-
-// src/core/store/repos/failures.ts
-var FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
-function rowWhere(alias, { worktreeId, since, errors = [] }) {
-  const sql = [`${alias}.failure_id IS NOT NULL`, `${alias}.outcome = 'fail'`];
-  const params = [];
-  if (worktreeId !== null) {
-    sql.push(`${alias}.worktree_id = ?`);
-    params.push(worktreeId);
-  }
-  if (since !== null) {
-    sql.push(`${alias}.recorded_at >= ?`);
-    params.push(since);
-  }
-  if (errors.length > 0) {
-    sql.push(`EXISTS (SELECT 1 FROM json_each(?) e JOIN failure_texts t
-      ON t.id = ${alias}.failure_id WHERE instr(t.summary, e.value) > 0)`);
-    params.push(JSON.stringify(errors));
-  }
-  return { sql, params };
-}
-function where2(selection) {
-  const { paths, checks } = selection;
-  const { sql, params } = rowWhere("r", selection);
-  if (paths.length > 0) {
-    sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
-      OR substr(c.test_path, 1, length(p.value) + 1) = p.value || '/')`);
-    params.push(JSON.stringify(paths));
-  }
-  if (checks !== null) {
-    sql.push(`r.check_id IN (SELECT k.id FROM json_each(?) j JOIN checks k
-      ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
-      AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
-    params.push(JSON.stringify(checks.map(checkParams)));
-  }
-  if (selection.perCheck === true) {
-    const newer = rowWhere("n", selection);
-    sql.push(`NOT EXISTS (SELECT 1 FROM results n WHERE n.check_id = r.check_id
-      AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.rowid > r.rowid))
-      AND ${newer.sql.join(" AND ")})`);
-    params.push(...newer.params);
-  }
-  return { sql: sql.join(" AND "), params };
-}
-var FAILURE_STATEMENTS = {
-  list: (selection, limit) => {
-    const w = where2(selection);
-    return {
-      sql: `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM ${FAILING_ROWS}
-        LEFT JOIN failure_texts f ON f.id = r.failure_id
-        WHERE ${w.sql} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
-      params: [...w.params, limit]
-    };
-  },
-  count: (selection) => {
-    const w = where2(selection);
-    return { sql: `SELECT COUNT(*) AS n FROM ${FAILING_ROWS} WHERE ${w.sql}`, params: w.params };
-  },
-  failingChecks: (selection) => {
-    const w = where2(selection);
-    return {
-      sql: `SELECT DISTINCT ${CHECK_COLUMNS} FROM ${FAILING_ROWS} WHERE ${w.sql}
-        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-      params: w.params
-    };
-  }
-};
-function createFailureRepo(conn) {
-  const all = ({ sql, params }) => conn.all(sql, ...params);
-  return {
-    list: (selection, limit) => all(FAILURE_STATEMENTS.list(selection, limit)).map(toResult),
-    count: (selection) => num(all(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
-    failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom),
-    failingAt: (key) => failingAt(conn, key),
-    keepReplaced: (failing, records, loadOf2) => keepReplaced(conn, failing, records, loadOf2),
-    replaced: () => readReplaced(conn),
-    text: (id) => {
-      const row = conn.get("SELECT summary, errors FROM failure_texts WHERE id = ?", id);
-      return row === null ? null : { summary: strOrNull(row, "summary"), errors: json(row, "errors") };
-    },
-    recordUnknownRuns: (worktreeId, revision, marked2, at) => recordUnknownRuns(conn, worktreeId, revision, marked2, at),
-    unknownRuns: (worktreeId) => readUnknownRuns(conn).filter((r) => r.worktreeId === worktreeId)
-  };
-}
-
-// src/core/store/repos/results.ts
-import { createHash as createHash3 } from "node:crypto";
-var SELECT_RESULTS = `
-  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
-  FROM results r
-  JOIN checks c ON c.id = r.check_id
-  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
-var KEYS_SINCE = `
-  SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
-  WHERE recorded_at > ? GROUP BY key`;
-var KEYS_WITH_RESULTS = `
-  SELECT value AS key FROM json_each(?)
-  WHERE EXISTS (SELECT 1 FROM results WHERE key = value)`;
-var KEYS_WITH_RESULTS_CHUNK = 1e3;
-var NEWEST_OF_FILE = `${SELECT_RESULTS}
-  WHERE c.project = ? AND c.test_path = ? AND r.key = (
-    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
-    WHERE c2.project = ? AND c2.test_path = ?
-    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
-  ORDER BY c.kind, c.full_name`;
-var COPY_SET = `
-  INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
-    location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
-    recorded_at, last_used_at)
-  SELECT check_id, ?, outcome, duration_ms, location_path, location_line, location_column,
-    fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
-    last_used_at
-  FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
-var RESULT_TOUCH_INTERVAL_MS = 36e5;
-function createResultRepo(conn) {
-  return {
-    byKey: (key, usedAt = Date.now()) => {
-      if (usedAt > 0) {
-        conn.run(
-          "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
-          usedAt,
-          key,
-          Math.max(0, usedAt - RESULT_TOUCH_INTERVAL_MS)
-        );
-      }
-      return conn.all(
-        `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-        key
-      ).map(toResult);
-    },
-    checksForKey: (key) => conn.all(
-      `SELECT ${CHECK_COLUMNS} FROM results r JOIN checks c ON c.id = r.check_id
-           WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-      key
-    ).map(checkFrom),
-    newestForTestFile: ({ project, path }) => conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
-    listForCheck: (check, limit) => {
-      const id = findCheckId(conn, check);
-      if (id === null) return [];
-      return conn.all(
-        `${SELECT_RESULTS} WHERE r.check_id = ?
-           ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
-        id,
-        limit
-      ).map(toResult);
-    },
-    copyNewest: (key, from) => {
-      if (from.length === 0) return false;
-      const newest = conn.get(
-        `SELECT key FROM results WHERE key IN (${from.map(() => "?").join(", ")})
-         GROUP BY key ORDER BY MAX(recorded_at) DESC, key LIMIT 1`,
-        ...from
-      );
-      if (newest === null) return false;
-      return conn.run(COPY_SET, key, str(newest, "key"), key) > 0;
-    },
-    keysSince: (since) => conn.all(KEYS_SINCE, since).map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
-    keysWithResults: (keys) => {
-      const unique = [...new Set(keys)];
-      const found2 = [];
-      for (let i = 0; i < unique.length; i += KEYS_WITH_RESULTS_CHUNK) {
-        const chunk = JSON.stringify(unique.slice(i, i + KEYS_WITH_RESULTS_CHUNK));
-        for (const row of conn.all(KEYS_WITH_RESULTS, chunk)) found2.push(str(row, "key"));
-      }
-      return found2;
-    },
-    putMany: (records) => conn.transaction(() => {
-      for (const r of records) {
-        const p = r.provenance;
-        conn.run(
-          `INSERT OR REPLACE INTO results (check_id, key, outcome, duration_ms, location_path,
-               location_line, location_column, fingerprint, failure_id, worktree_id, revision,
-               commit_sha, dirty, run_id, recorded_at, last_used_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ensureCheckId(conn, r.check, p.recordedAt),
-          r.key,
-          r.outcome,
-          r.durationMs,
-          ...locationParams(r.location),
-          r.fingerprint,
-          storeFailureText(conn, r.summary, r.errors),
-          p.worktreeId,
-          p.revision,
-          p.commit,
-          flag(p.dirty),
-          p.runId,
-          p.recordedAt,
-          p.recordedAt
-        );
-      }
-    })
-  };
-}
-function storeFailureText(conn, summary, errors) {
-  if (summary === null && errors.length === 0) return null;
-  const text2 = JSON.stringify(errors);
-  const id = createHash3("sha256").update(JSON.stringify([summary, text2])).digest("hex");
-  conn.run(
-    "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-    id,
-    summary,
-    text2
-  );
-  return id;
-}
-
-// src/core/store/repos/runs.ts
-var RUN_ENDS = ["completed", "crashed", "timed-out"];
-var CHECKPOINT_KINDS = ["run-all", "baseline"];
-var CHECKPOINT_ENDS = ["completed", "abandoned"];
-function createRunRepo(conn) {
-  return {
-    start: (record) => {
-      conn.run(
-        `INSERT INTO runs (id, worktree_id, revision, test_files, checkpoint_id, log_dir, started_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        record.id,
-        record.worktreeId,
-        record.revision,
-        JSON.stringify(record.testFiles),
-        record.checkpointId,
-        record.logDir,
-        record.startedAt
-      );
-      return { ...record, endedAt: null, end: null };
-    },
-    finish: (id, end, at) => {
-      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at, id);
-    },
-    get: (id) => {
-      const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
-      return row === null ? null : toRun(row);
-    },
-    inFlight: (worktreeId, startedSince) => conn.all(
-      `SELECT * FROM runs WHERE worktree_id = ? AND end_state IS NULL AND started_at >= ?
-           ORDER BY started_at, rowid`,
-      worktreeId,
-      startedSince
-    ).map(toRun)
-  };
-}
-function toRun(row) {
-  return {
-    id: str(row, "id"),
-    worktreeId: str(row, "worktree_id"),
-    revision: num(row, "revision"),
-    testFiles: json(row, "test_files"),
-    checkpointId: strOrNull(row, "checkpoint_id"),
-    logDir: str(row, "log_dir"),
-    startedAt: num(row, "started_at"),
-    endedAt: numOrNull(row, "ended_at"),
-    end: oneOfOrNull(row, "end_state", RUN_ENDS)
-  };
-}
-function createCheckpointRepo(conn) {
-  const lanes = (worktreeId) => readLanes(conn, worktreeId);
-  const withLane = (row) => {
-    const record = toCheckpoint(row);
-    const lane = lanes(record.worktreeId)[record.id];
-    return lane === void 0 ? record : { ...record, lane };
-  };
-  return {
-    start: (record) => {
-      conn.run(
-        `INSERT INTO checkpoints (id, worktree_id, revision, kind, test_files, started_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        record.id,
-        record.worktreeId,
-        record.revision,
-        record.kind,
-        JSON.stringify(record.testFiles),
-        record.startedAt
-      );
-      if (record.lane !== void 0) writeLane(conn, record.worktreeId, record.id, record.lane);
-      return { ...record, completedAt: null, end: null };
-    },
-    finish: (id, end, at) => {
-      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at, id);
-    },
-    get: (id) => {
-      const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
-      return row === null ? null : withLane(row);
-    },
-    lastCompleted: (worktreeId) => {
-      const row = conn.get(
-        `SELECT * FROM checkpoints WHERE worktree_id = ? AND end_state = 'completed'
-         ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
-        worktreeId
-      );
-      return row === null ? null : withLane(row);
-    },
-    lastCompletedFull: (worktreeId) => {
-      const oneLane = Object.keys(lanes(worktreeId));
-      const row = conn.get(
-        `SELECT * FROM checkpoints WHERE worktree_id = ? AND end_state = 'completed'
-           AND id NOT IN (SELECT value FROM json_each(?))
-         ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
-        worktreeId,
-        JSON.stringify(oneLane)
-      );
-      return row === null ? null : toCheckpoint(row);
-    }
-  };
-}
-function readLanes(conn, worktreeId) {
-  const row = conn.get(
-    "SELECT value FROM meta WHERE key = ?",
-    worktreeMetaKey("checkpointLanes", worktreeId)
-  );
-  if (row === null) return {};
-  try {
-    return toCheckpointLanes(JSON.parse(str(row, "value"))) ?? {};
-  } catch {
-    return {};
-  }
-}
-function toCheckpointLanes(value) {
-  if (typeof value !== "object" || value === null) return void 0;
-  const lanes = {};
-  for (const [id, lane] of Object.entries(value)) {
-    if (lane === "fast" || lane === "slow") lanes[id] = lane;
-  }
-  return lanes;
-}
-function writeLane(conn, worktreeId, id, lane) {
-  const lanes = readLanes(conn, worktreeId);
-  const live = new Set(
-    conn.all(
-      "SELECT id FROM checkpoints WHERE id IN (SELECT value FROM json_each(?))",
-      JSON.stringify(Object.keys(lanes))
-    ).map((row) => str(row, "id"))
-  );
-  const kept2 = Object.entries(lanes).filter(([id2]) => live.has(id2));
-  conn.run(
-    "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-    worktreeMetaKey("checkpointLanes", worktreeId),
-    JSON.stringify(Object.fromEntries([...kept2, [id, lane]]))
-  );
-}
-function toCheckpoint(row) {
-  return {
-    id: str(row, "id"),
-    worktreeId: str(row, "worktree_id"),
-    revision: num(row, "revision"),
-    kind: oneOf3(row, "kind", CHECKPOINT_KINDS),
-    testFiles: json(row, "test_files"),
-    startedAt: num(row, "started_at"),
-    completedAt: numOrNull(row, "completed_at"),
-    end: oneOfOrNull(row, "end_state", CHECKPOINT_ENDS)
-  };
-}
-
-// src/core/store/repos/states.ts
-var OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
-var VALIDITIES = ["current", "pending", "stale", "unknown"];
-var PENDING = ["queued", "running"];
-var KINDS = [
-  "first-seen-fail",
-  "pass-to-fail",
-  "fail-to-pass",
-  "fail-changed",
-  "to-unknown"
-];
-var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
-function createKnownStateRepo(conn) {
-  return {
-    list: (worktreeId, files2) => {
-      const only = files2 === void 0 ? null : inTestFiles("s.check_id", files2);
-      return conn.all(
-        `${SELECT_STATES} WHERE s.worktree_id = ? ${only === null ? "" : `AND ${only.sql}`}
-           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-        worktreeId,
-        ...only?.params ?? []
-      ).map(toKnownState);
-    },
-    untold: (consumer) => conn.all(
-      `${SELECT_STATES} WHERE s.worktree_id = ? AND NOT EXISTS (
-             SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
-               AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
-           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-      consumer.worktreeId,
-      consumer.sessionId,
-      consumer.agentId
-    ).map(toKnownState),
-    get: (worktreeId, check) => {
-      const id = findCheckId(conn, check);
-      if (id === null) return null;
-      const row = conn.get(
-        `${SELECT_STATES} WHERE s.worktree_id = ? AND s.check_id = ?`,
-        worktreeId,
-        id
-      );
-      return row === null ? null : toKnownState(row);
-    },
-    upsertMany: (states) => conn.transaction(() => {
-      const now = Date.now();
-      for (const s of states) {
-        const origin = s.origin;
-        conn.run(
-          `INSERT OR REPLACE INTO known_states (worktree_id, check_id, outcome, validity,
-               pending_phase, observed_at, commit_sha, origin_kind, origin_worktree,
-               origin_commit, duration_ms, location_path, location_line, location_column,
-               summary, fingerprint)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          s.worktreeId,
-          ensureCheckId(conn, s.check, now),
-          s.outcome,
-          s.validity,
-          s.pendingPhase,
-          s.observedAt,
-          s.commit,
-          storedKind(origin),
-          origin === null ? null : originWorktree(origin),
-          origin === null || origin.kind === "own" ? null : origin.commit,
-          s.durationMs,
-          ...locationParams(s.location),
-          s.summary,
-          s.fingerprint
-        );
-      }
-    }),
-    removeMany: (worktreeId, checks) => conn.transaction(() => {
-      for (const check of checks) {
-        const id = findCheckId(conn, check);
-        if (id === null) continue;
-        conn.run(
-          "DELETE FROM known_states WHERE worktree_id = ? AND check_id = ?",
-          worktreeId,
-          id
-        );
-      }
-    })
-  };
-}
-function storedKind(origin) {
-  return origin === null || origin.kind === "imported" ? null : origin.kind;
-}
-function toOrigin(row) {
-  const stored4 = strOrNull(row, "origin_kind");
-  const kind = stored4 === "own" || stored4 === "inherited" ? stored4 : null;
-  if (stored4 !== null && kind === null) return null;
-  if (kind === null) {
-    const marked2 = strOrNull(row, "origin_worktree");
-    const importId = marked2 === null ? null : importIdOf(marked2);
-    if (importId === null) return null;
-    return { kind: "imported", importId, commit: strOrNull(row, "origin_commit") };
-  }
-  if (kind === "own") return { kind };
-  return {
-    kind,
-    worktreeId: str(row, "origin_worktree"),
-    commit: strOrNull(row, "origin_commit")
-  };
-}
-function toKnownState(row) {
-  return {
-    worktreeId: str(row, "worktree_id"),
-    check: checkFrom(row),
-    outcome: oneOf3(row, "outcome", OUTCOMES4),
-    validity: oneOf3(row, "validity", VALIDITIES),
-    pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
-    observedAt: numOrNull(row, "observed_at"),
-    commit: strOrNull(row, "commit_sha"),
-    origin: toOrigin(row),
-    durationMs: numOrNull(row, "duration_ms"),
-    location: location(row),
-    summary: strOrNull(row, "summary"),
-    fingerprint: strOrNull(row, "fingerprint")
-  };
-}
-function createTransitionRepo(conn) {
-  return {
-    append: (transitions) => conn.transaction(() => {
-      for (const t of transitions) {
-        conn.run(
-          `INSERT INTO transitions (worktree_id, check_id, kind, from_outcome, to_outcome,
-               from_fingerprint, to_fingerprint, revision, at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          t.worktreeId,
-          ensureCheckId(conn, t.check, t.at),
-          t.kind,
-          t.from,
-          t.to,
-          t.fromFingerprint,
-          t.toFingerprint,
-          t.revision,
-          t.at
-        );
-      }
-    }),
-    history: (worktreeId, check) => {
-      const id = findCheckId(conn, check);
-      if (id === null) return [];
-      return conn.all(
-        `SELECT t.*, ${CHECK_COLUMNS} FROM transitions t JOIN checks c ON c.id = t.check_id
-           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
-        worktreeId,
-        id
-      ).map(toTransition);
-    }
-  };
-}
-function toTransition(row) {
-  return {
-    worktreeId: str(row, "worktree_id"),
-    check: checkFrom(row),
-    kind: oneOf3(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES4),
-    to: oneOf3(row, "to_outcome", OUTCOMES4),
-    fromFingerprint: strOrNull(row, "from_fingerprint"),
-    toFingerprint: strOrNull(row, "to_fingerprint"),
-    revision: num(row, "revision"),
-    at: num(row, "at")
-  };
-}
-
-// src/core/store/repos/test-files.ts
-var METHODS = ["static imports plus declared inputs"];
-var PENDING2 = ["queued", "running"];
-function createTestFileRepo(conn) {
-  return {
-    get: (testFile) => {
-      const row = conn.get(
-        "SELECT * FROM test_files WHERE project = ? AND path = ?",
-        testFile.project,
-        testFile.path
-      );
-      return row === null ? null : toTestFile(row);
-    },
-    list: () => conn.all("SELECT * FROM test_files ORDER BY project, path").map(toTestFile),
-    put: (record) => {
-      conn.run(
-        `INSERT OR REPLACE INTO test_files
-           (project, path, closure_paths, complete, method, updated_at, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        record.testFile.project,
-        record.testFile.path,
-        JSON.stringify(record.closure.paths),
-        flag(record.closure.complete),
-        record.closure.method,
-        record.updatedAt,
-        record.updatedBy
-      );
-    },
-    remove: (testFile) => {
-      conn.run(
-        "DELETE FROM test_files WHERE project = ? AND path = ?",
-        testFile.project,
-        testFile.path
-      );
-    }
-  };
-}
-function toTestFile(row) {
-  const testFile = { project: str(row, "project"), path: str(row, "path") };
-  return {
-    testFile,
-    closure: {
-      testFile,
-      paths: json(row, "closure_paths"),
-      complete: bool(row, "complete"),
-      method: oneOf3(row, "method", METHODS)
-    },
-    updatedAt: num(row, "updated_at"),
-    updatedBy: str(row, "updated_by")
-  };
-}
-function createTestFileKeyRepo(conn) {
-  return {
-    list: (worktreeId, files2) => {
-      if (files2?.length === 0) return [];
-      const only = files2 === void 0 ? "" : `AND (project, path) IN (VALUES ${files2.map(() => "(?, ?)").join(", ")})`;
-      return conn.all(
-        `SELECT * FROM test_file_keys WHERE worktree_id = ? ${only} ORDER BY project, path`,
-        worktreeId,
-        ...(files2 ?? []).flatMap((f) => [f.project, f.path])
-      ).map(toTestFileKey);
-    },
-    withKey: (key) => conn.all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key).map(toTestFileKey),
-    upsertMany: (records) => conn.transaction(() => {
-      for (const r of records) {
-        conn.run(
-          `INSERT OR REPLACE INTO test_file_keys
-               (worktree_id, project, path, key, revision, pending)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-          r.worktreeId,
-          r.testFile.project,
-          r.testFile.path,
-          r.key,
-          r.revision,
-          r.pending
-        );
-      }
-    }),
-    remove: (worktreeId, testFiles2) => conn.transaction(() => {
-      for (const t of testFiles2) {
-        conn.run(
-          "DELETE FROM test_file_keys WHERE worktree_id = ? AND project = ? AND path = ?",
-          worktreeId,
-          t.project,
-          t.path
-        );
-      }
-    }),
-    releaseRunning: (worktreeId) => {
-      conn.run(
-        "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
-        worktreeId
-      );
-    },
-    claimed: (worktreeId, key, live) => conn.get(
-      `SELECT 1 AS one FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
-         WHERE k.key = ? AND k.pending = 'running' AND k.worktree_id <> ? AND ${LIVE} LIMIT 1`,
-      key,
-      worktreeId,
-      live.now,
-      live.graceIntervals
-    ) !== null,
-    sharers: (worktreeId, live) => {
-      const row = conn.get(
-        `SELECT COUNT(DISTINCT k.worktree_id) AS n FROM test_file_keys own
-         JOIN test_file_keys k ON k.key = own.key AND k.worktree_id <> own.worktree_id
-         JOIN worktrees w ON w.id = k.worktree_id
-         WHERE own.worktree_id = ? AND own.pending = 'queued' AND k.pending IS NOT NULL AND ${LIVE}`,
-        worktreeId,
-        live.now,
-        live.graceIntervals
-      );
-      return row === null ? 0 : num(row, "n");
-    }
-  };
-}
-var LIVE = `w.daemon_socket IS NOT NULL
-  AND w.daemon_heartbeat_at >= ? - ? * w.daemon_heartbeat_interval_ms`;
-function toTestFileKey(row) {
-  return {
-    worktreeId: str(row, "worktree_id"),
-    testFile: { project: str(row, "project"), path: str(row, "path") },
-    key: strOrNull(row, "key"),
-    revision: num(row, "revision"),
-    pending: oneOfOrNull(row, "pending", PENDING2)
-  };
-}
-function isProjectRunner(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value;
-  return typeof v.project === "string" && typeof v.runner === "string";
-}
-function createCheckRepo(conn) {
-  const runners = (worktreeId) => new Map(
-    readMetaList(conn, worktreeMetaKey("runners", worktreeId), isProjectRunner).map((e) => [
-      e.project,
-      e.runner
-    ])
-  );
-  const recordRunners = (worktreeId, named2) => {
-    const kept2 = runners(worktreeId);
-    let changed = false;
-    for (const [project, runner] of named2) {
-      if (runner === void 0 || kept2.get(project) === runner) continue;
-      kept2.set(project, runner);
-      changed = true;
-    }
-    if (!changed) return;
-    const entries = [...kept2].map(([project, runner]) => ({ project, runner }));
-    writeMetaList(conn, worktreeMetaKey("runners", worktreeId), entries);
-  };
-  return {
-    listByTestFile: (testFile) => conn.all(
-      `SELECT c.*, ${CHECK_COLUMNS} FROM checks c WHERE c.project = ? AND c.test_path = ?
-           ORDER BY c.kind, c.full_name`,
-      testFile.project,
-      testFile.path
-    ).map(toCheck),
-    upsertMany: (records) => conn.transaction(() => {
-      for (const r of records) {
-        const id = ensureCheckId(conn, r.check, r.firstSeenAt);
-        conn.run(
-          `UPDATE checks SET location_path = ?, location_line = ?, location_column = ?,
-               templated = ? WHERE id = ?`,
-          ...locationParams(r.location),
-          flag(r.templated),
-          id
-        );
-      }
-    }),
-    runnersOf: runners,
-    recordRunners
-  };
-}
-function toCheck(row) {
-  return {
-    check: checkFrom(row),
-    location: location(row),
-    templated: bool(row, "templated"),
-    firstSeenAt: num(row, "first_seen_at")
-  };
-}
-
-// src/core/store/repos/workspace.ts
-var TRIGGERS = ["watch", "interval", "start", "dropped-events"];
-function createRevisionRepo(conn) {
-  return {
-    append: (revision) => conn.transaction(() => {
-      const row = conn.get(
-        "SELECT coalesce(max(number), 0) AS n FROM revisions WHERE worktree_id = ?",
-        revision.worktreeId
-      );
-      const stored4 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
-      conn.run(
-        `INSERT INTO revisions (worktree_id, number, created_at, head, dirty, trigger, changes)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        stored4.worktreeId,
-        stored4.number,
-        stored4.createdAt,
-        stored4.head,
-        flag(stored4.dirty),
-        stored4.trigger,
-        JSON.stringify(stored4.changes)
-      );
-      return stored4;
-    }),
-    latest: (worktreeId) => {
-      const row = conn.get(
-        "SELECT * FROM revisions WHERE worktree_id = ? ORDER BY number DESC LIMIT 1",
-        worktreeId
-      );
-      return row === null ? null : toRevision(row);
-    },
-    lastAtOtherHead: (worktreeId, head) => {
-      const row = conn.get(
-        `SELECT number FROM revisions WHERE worktree_id = ? AND head IS NOT ?
-         ORDER BY number DESC LIMIT 1`,
-        worktreeId,
-        head
-      );
-      return row === null ? null : num(row, "number");
-    },
-    get: (worktreeId, number) => {
-      const row = conn.get(
-        "SELECT * FROM revisions WHERE worktree_id = ? AND number = ?",
-        worktreeId,
-        number
-      );
-      return row === null ? null : toRevision(row);
-    },
-    range: (worktreeId, after, upTo) => conn.all(
-      `SELECT * FROM revisions WHERE worktree_id = ? AND number > ? AND number <= ?
-           ORDER BY number`,
-      worktreeId,
-      after,
-      upTo
-    ).map(toRevision)
-  };
-}
-function toRevision(row) {
-  return {
-    worktreeId: str(row, "worktree_id"),
-    number: num(row, "number"),
-    createdAt: num(row, "created_at"),
-    head: strOrNull(row, "head"),
-    dirty: bool(row, "dirty"),
-    trigger: oneOf3(row, "trigger", TRIGGERS),
-    changes: json(row, "changes")
-  };
-}
-function createFileHashRepo(conn) {
-  return {
-    get: (worktreeId, path) => {
-      const row = conn.get(
-        "SELECT * FROM file_hashes WHERE worktree_id = ? AND path = ?",
-        worktreeId,
-        path
-      );
-      return row === null ? null : toFileHash(row);
-    },
-    list: (worktreeId) => conn.all("SELECT * FROM file_hashes WHERE worktree_id = ? ORDER BY path", worktreeId).map(toFileHash),
-    upsertMany: (worktreeId, records) => conn.transaction(() => {
-      for (const r of records) {
-        conn.run(
-          `INSERT OR REPLACE INTO file_hashes
-               (worktree_id, path, mtime_ms, ctime_ms, size, inode, hash)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          worktreeId,
-          r.path,
-          r.mtimeMs,
-          r.ctimeMs,
-          r.size,
-          r.inode,
-          r.hash
-        );
-      }
-    }),
-    removeMany: (worktreeId, paths) => conn.transaction(() => {
-      for (const path of paths) {
-        conn.run("DELETE FROM file_hashes WHERE worktree_id = ? AND path = ?", worktreeId, path);
-      }
-    })
-  };
-}
-function toFileHash(row) {
-  return {
-    path: str(row, "path"),
-    mtimeMs: num(row, "mtime_ms"),
-    ctimeMs: num(row, "ctime_ms"),
-    size: num(row, "size"),
-    inode: num(row, "inode"),
-    hash: str(row, "hash")
-  };
-}
-
-// src/core/store/store.ts
-var connections = /* @__PURE__ */ new WeakMap();
-function connectionOf(store) {
-  const conn = connections.get(store);
-  if (conn === void 0) throw new Error("squeal store: not opened by openStore");
-  return conn;
-}
-var CONNECTION = /* @__PURE__ */ Symbol("squeal.connection");
-function readTransaction(store, fn) {
-  const conn = store[CONNECTION];
-  if (conn === void 0) throw new Error("squeal store: not opened by openStore");
-  return conn.read(fn);
-}
-function changeMarker(store) {
-  const conn = store[CONNECTION];
-  if (conn === void 0) return null;
-  const row = conn.get(
-    "SELECT data_version AS others, total_changes() AS own FROM pragma_data_version"
-  );
-  if (row === null) throw new Error("squeal store: no data_version");
-  return { others: num(row, "others"), own: num(row, "own") };
-}
-function createStore(conn, schemaVersion, paths) {
-  const worktrees = createWorktreeRepo(conn);
-  const store = {
-    schemaVersion,
-    worktrees,
-    revisions: createRevisionRepo(conn),
-    fileHashes: createFileHashRepo(conn),
-    testFiles: createTestFileRepo(conn),
-    testFileKeys: createTestFileKeyRepo(conn),
-    checks: createCheckRepo(conn),
-    results: createResultRepo(conn),
-    failures: createFailureRepo(conn),
-    runs: createRunRepo(conn),
-    checkpoints: createCheckpointRepo(conn),
-    knownStates: createKnownStateRepo(conn),
-    transitions: createTransitionRepo(conn),
-    consumers: createConsumerRepo(conn),
-    views: createViewRepo(conn),
-    meta: createMetaRepo(conn),
-    transaction: (fn) => conn.transaction(fn),
-    prune: (options) => prune(conn, worktrees, paths, options),
-    close: () => conn.close()
-  };
-  connections.set(store, conn);
-  Object.defineProperty(store, CONNECTION, { value: conn });
-  return store;
-}
-function createMetaRepo(conn) {
-  return {
-    get: (key) => {
-      const row = conn.get("SELECT value FROM meta WHERE key = ?", key);
-      return row === null ? null : str(row, "value");
-    },
-    set: (key, value) => {
-      conn.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", key, value);
-    },
-    delete: (key) => {
-      conn.run("DELETE FROM meta WHERE key = ?", key);
-    }
-  };
-}
-
 // src/core/scheduler/claims.ts
 var CLAIM_GRACE_MS = 6e3;
 var CLAIM_UNBOUNDED_MS = 6e5;
@@ -6998,7 +7021,7 @@ function isBackgroundShare(value) {
 
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync2 } from "node:fs";
-import { dirname as dirname6, isAbsolute as isAbsolute7, join as join12 } from "node:path";
+import { dirname as dirname6, isAbsolute as isAbsolute7, join as join13 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
@@ -7026,7 +7049,7 @@ function checkPrivateDir(dir, uid, role = "socket directory") {
   }
 }
 function userTmpDir(uid = currentUid()) {
-  return join12("/tmp", `squeal-${uid}`);
+  return join13("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -7038,12 +7061,12 @@ function currentUid() {
 
 // src/core/slow/slot.ts
 import { existsSync as existsSync5 } from "node:fs";
-import { dirname as dirname8, isAbsolute as isAbsolute8, join as join15 } from "node:path";
+import { dirname as dirname8, isAbsolute as isAbsolute8, join as join16 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/slow/slot-files.ts
 import { createHash as createHash5 } from "node:crypto";
-import { basename as basename4, join as join14 } from "node:path";
+import { basename as basename4, join as join15 } from "node:path";
 
 // src/core/daemon/scratch.ts
 import { createHash as createHash4, randomBytes } from "node:crypto";
@@ -7059,10 +7082,10 @@ import {
   unlinkSync,
   writeFileSync
 } from "node:fs";
-import { basename as basename3, dirname as dirname7, join as join13 } from "node:path";
+import { basename as basename3, dirname as dirname7, join as join14 } from "node:path";
 function repositoryId(commonDir) {
   const dir = storePaths(commonDir).dir;
-  const file = join13(dir, "repository-id");
+  const file = join14(dir, "repository-id");
   mkdirSync3(dir, { recursive: true });
   const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
   writeFileSync(draft, `${randomBytes(16).toString("hex")}
@@ -7084,7 +7107,7 @@ var GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 var GROUP_SLOT_SCOPES = ["user", "repository"];
 var DEFAULT_GROUP_SLOT_SCOPE = "repository";
 function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
-  const dir = (base, commonDir) => scope === "user" ? base : join14(base, `repo.${hash(repositoryId(commonDir))}`);
+  const dir = (base, commonDir) => scope === "user" ? base : join15(base, `repo.${hash(repositoryId(commonDir))}`);
   if (group === SLOW_GROUP2) {
     return {
       dir,
@@ -7161,7 +7184,7 @@ function immutableUrl(path) {
 // src/core/slow/slot.ts
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute8(xdg) ? join15(xdg, "squeal") : userDir;
+  return xdg !== void 0 && xdg !== "" && isAbsolute8(xdg) ? join16(xdg, "squeal") : userDir;
 }
 function heldPermits(request) {
   const { dir } = request;
@@ -7171,7 +7194,7 @@ function heldPermits(request) {
   const held = [];
   for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
     const file = files2.permit(i);
-    const path = join15(dir, file);
+    const path = join16(dir, file);
     if (!existsSync5(path)) continue;
     let free;
     try {
@@ -7358,13 +7381,13 @@ var CAPACITY_RECHECK_MS = 2e3;
 // src/core/keys/hidden-lockfile.ts
 import { createHash as createHash6 } from "node:crypto";
 import { lstatSync as lstatSync4, readdirSync as readdirSync7, readFileSync as readFileSync13, readlinkSync as readlinkSync2 } from "node:fs";
-import { isAbsolute as isAbsolute9, join as join16 } from "node:path";
+import { isAbsolute as isAbsolute9, join as join17 } from "node:path";
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
 var PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
 function staleHiddenLockfile(dir, lockfile) {
   const listed4 = lockfile === null ? null : packagesIn(lockfile);
   if (listed4 === null) return "not valid JSON";
-  const lockTime = lstatSync4(join16(dir, HIDDEN_LOCKFILE)).mtimeMs;
+  const lockTime = lstatSync4(join17(dir, HIDDEN_LOCKFILE)).mtimeMs;
   const folders = packageFolders(dir, workspaces(listed4));
   const seen = new Set(folders.map((folder) => folder.path));
   const unlisted3 = folders.filter((folder) => !Object.hasOwn(listed4, folder.path)).map((folder) => folder.path);
@@ -7384,7 +7407,7 @@ function packageFoldersFingerprint(dir, lockfile) {
   const folders = packageFolders(dir, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
   folders.sort((a, b) => compare(a.path, b.path));
   const entries = folders.map(
-    ({ path, link }) => link ? [path, "link", readlinkSync2(join16(dir, path))] : [path, ...nameAndVersion(dir, path)]
+    ({ path, link }) => link ? [path, "link", readlinkSync2(join17(dir, path))] : [path, ...nameAndVersion(dir, path)]
   );
   return createHash6("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries])).digest("hex");
 }
@@ -7423,15 +7446,15 @@ function packageFolders(dir, workspaceFolders) {
   const visit = (path, entry3) => {
     if (!entry3.isSymbolicLink() && !entry3.isDirectory()) return;
     const link = entry3.isSymbolicLink();
-    folders.push({ path, link, mtimeMs: lstatSync4(join16(dir, path)).mtimeMs });
+    folders.push({ path, link, mtimeMs: lstatSync4(join17(dir, path)).mtimeMs });
     if (!link) walk(`${path}/node_modules`);
   };
   const walk = (modules) => {
-    for (const entry3 of entriesOf2(join16(dir, modules))) {
+    for (const entry3 of entriesOf2(join17(dir, modules))) {
       if (entry3.name.startsWith(".")) continue;
       const path = `${modules}/${entry3.name}`;
       if (entry3.name.startsWith("@") && entry3.isDirectory()) {
-        for (const child of entriesOf2(join16(dir, path))) visit(`${path}/${child.name}`, child);
+        for (const child of entriesOf2(join17(dir, path))) visit(`${path}/${child.name}`, child);
       } else {
         visit(path, entry3);
       }
@@ -7451,7 +7474,7 @@ function entriesOf2(path) {
 }
 function nameAndVersion(dir, path) {
   try {
-    const manifest = JSON.parse(readFileSync13(join16(dir, path, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync13(join17(dir, path, "package.json"), "utf8"));
     if (!isRecord(manifest)) return [null, null];
     return [manifest.name ?? null, manifest.version ?? null];
   } catch {
@@ -7464,11 +7487,11 @@ function example(paths) {
 }
 
 // src/core/keys/packages.ts
-import { join as join18, posix as posix5 } from "node:path";
+import { join as join19, posix as posix5 } from "node:path";
 
 // src/core/keys/package-scans.ts
 import { readdirSync as readdirSync8, readFileSync as readFileSync14 } from "node:fs";
-import { join as join17 } from "node:path";
+import { join as join18 } from "node:path";
 var NOT_RUNTIME = [
   /\.d\.[cm]?ts(?:\.map)?$/,
   /^package\.json$/,
@@ -7511,7 +7534,7 @@ function hasRuntimeFile(dir) {
   if (entries === null) return true;
   return entries.some((entry3) => {
     if (entry3.name === "node_modules") return false;
-    if (entry3.isDirectory()) return hasRuntimeFile(join17(dir, entry3.name));
+    if (entry3.isDirectory()) return hasRuntimeFile(join18(dir, entry3.name));
     return !NOT_RUNTIME.some((pattern) => pattern.test(entry3.name));
   });
 }
@@ -7520,7 +7543,7 @@ function referencesOpaque(dir) {
   if (entries === null) return true;
   return entries.some((entry3) => {
     if (entry3.name === "node_modules") return false;
-    const path = join17(dir, entry3.name);
+    const path = join18(dir, entry3.name);
     if (entry3.isDirectory()) return referencesOpaque(path);
     if (!entry3.isFile() || !CODE.test(entry3.name) || DECLARATION.test(entry3.name)) return false;
     try {
@@ -7595,7 +7618,7 @@ var InstalledGraph = class {
   opaque(identities) {
     return identities.some((identity3) => {
       const location2 = this.#locations.get(identity3);
-      return location2 !== void 0 && this.scans.opaque(this.#scanId(identity3), join18(this.dir, location2));
+      return location2 !== void 0 && this.scans.opaque(this.#scanId(identity3), join19(this.dir, location2));
     });
   }
   /** A worktree-relative directory relative to the install, or `null` when outside it. */
@@ -7633,7 +7656,7 @@ var InstalledGraph = class {
         continue;
       }
       const identity3 = identityOf(location2, entry3);
-      if (this.scans.typesOnly(this.#scanId(identity3), join18(this.dir, location2))) {
+      if (this.scans.typesOnly(this.#scanId(identity3), join19(this.dir, location2))) {
         identities.push(`${location2}@types-only`);
         continue;
       }
@@ -7697,10 +7720,10 @@ function packagesOf(content) {
 // src/core/keys/pnpm-install.ts
 import { createHash as createHash8 } from "node:crypto";
 import { lstatSync as lstatSync5, readdirSync as readdirSync9, readFileSync as readFileSync15, readlinkSync as readlinkSync3 } from "node:fs";
-import { join as join20 } from "node:path";
+import { join as join21 } from "node:path";
 
 // src/core/keys/pnpm-graph.ts
-import { join as join19, posix as posix6 } from "node:path";
+import { join as join20, posix as posix6 } from "node:path";
 
 // src/core/keys/pnpm-lockfile.ts
 import { createHash as createHash7 } from "node:crypto";
@@ -7959,7 +7982,7 @@ var PnpmGraph = class {
     return identities.some((identity3) => {
       if (identity3.startsWith("unknown:") || identity3.startsWith("nointegrity:")) return true;
       const folder = this.#packageFolders.get(identity3);
-      return folder !== void 0 && this.scans.opaque(this.#scanId(identity3), join19(this.dir, folder));
+      return folder !== void 0 && this.scans.opaque(this.#scanId(identity3), join20(this.dir, folder));
     });
   }
   /** A worktree-relative directory relative to the install, or `null` when outside it. */
@@ -8031,7 +8054,7 @@ var PnpmGraph = class {
   /** Whether `id` is an installed snapshot whose package has no runtime file (task 001-109). */
   #typesOnly(id) {
     const base = this.#base(id);
-    return base.startsWith(`${id}#`) && this.scans.typesOnly(this.#scanId(base), join19(this.dir, this.#folderOf(id)));
+    return base.startsWith(`${id}#`) && this.scans.typesOnly(this.#scanId(base), join20(this.dir, this.#folderOf(id)));
   }
   /** The package folder of snapshot `id`, relative to the install. */
   #folderOf(id) {
@@ -8113,7 +8136,7 @@ function pnpmReading(dir, base, content, scans) {
 function layoutOf(dir) {
   let modules;
   try {
-    modules = JSON.parse(readFileSync15(join20(dir, PNPM_MODULES), "utf8"));
+    modules = JSON.parse(readFileSync15(join21(dir, PNPM_MODULES), "utf8"));
   } catch {
     return null;
   }
@@ -8122,7 +8145,7 @@ function layoutOf(dir) {
   return modules;
 }
 function stalePnpmLockfile(dir, graph) {
-  const lockTime = lstatSync5(join20(dir, PNPM_LOCKFILE)).mtimeMs;
+  const lockTime = lstatSync5(join21(dir, PNPM_LOCKFILE)).mtimeMs;
   const stale = { unlisted: [], newer: [], missing: [], installed: [] };
   checkVirtualStore(dir, graph, lockTime, stale);
   checkImporters(dir, graph, lockTime, stale);
@@ -8140,7 +8163,7 @@ function checkVirtualStore(dir, graph, lockTime, stale) {
     if (graph.skipped.has(id)) continue;
     const modules = `${PNPM_VIRTUAL_STORE}/${folder}/node_modules`;
     const path = `${modules}/${id.slice(0, id.indexOf("@", 1))}`;
-    const stat = lstatSync5(join20(dir, path), { throwIfNoEntry: false });
+    const stat = lstatSync5(join21(dir, path), { throwIfNoEntry: false });
     if (stat === void 0) stale.missing.push(path);
     else if (stat.mtimeMs > lockTime) stale.newer.push(path);
     for (const [name2, ref2] of graph.lockfile.snapshots.get(id) ?? []) {
@@ -8156,12 +8179,12 @@ function checkVirtualStore(dir, graph, lockTime, stale) {
 function checkImporters(dir, graph, lockTime, stale) {
   for (const [importer, declared] of graph.lockfile.importers) {
     const modules = importer === "." ? "node_modules" : `${importer}/node_modules`;
-    const present = new Set(namesIn(join20(dir, modules)));
+    const present = new Set(namesIn(join21(dir, modules)));
     for (const name2 of present) {
       const path = `${modules}/${name2}`;
       if (!declared.has(name2) && !(importer === "." && graph.publicHoisted.has(name2))) {
         stale.unlisted.push(path);
-      } else if (lstatSync5(join20(dir, path)).mtimeMs > lockTime) stale.newer.push(path);
+      } else if (lstatSync5(join21(dir, path)).mtimeMs > lockTime) stale.newer.push(path);
     }
     const links = new Map([...declared].map(([name2, ref2]) => [name2, childOf(name2, ref2)]));
     for (const [alias, id] of importer === "." ? graph.publicHoisted : []) {
@@ -8179,24 +8202,24 @@ function expectLink(graph, stale, path, target, there) {
   } else if (!there) stale.missing.push(path);
 }
 function exists(dir, path) {
-  return lstatSync5(join20(dir, path), { throwIfNoEntry: false }) !== void 0;
+  return lstatSync5(join21(dir, path), { throwIfNoEntry: false }) !== void 0;
 }
 function pnpmPackageFoldersFingerprint(dir, importers) {
   const roots = /* @__PURE__ */ new Set(["node_modules", `${PNPM_VIRTUAL_STORE}/node_modules`]);
   for (const importer of importers)
     roots.add(importer === "." ? "node_modules" : `${importer}/node_modules`);
-  for (const folder of entriesOf4(join20(dir, PNPM_VIRTUAL_STORE))) {
+  for (const folder of entriesOf4(join21(dir, PNPM_VIRTUAL_STORE))) {
     if (folder.isDirectory() && folder.name !== "node_modules") {
       roots.add(`${PNPM_VIRTUAL_STORE}/${folder.name}/node_modules`);
     }
   }
   const entries = [];
   const walk = (at) => {
-    for (const name2 of namesIn(join20(dir, at))) {
+    for (const name2 of namesIn(join21(dir, at))) {
       const path = `${at}/${name2}`;
-      const link = lstatSync5(join20(dir, path)).isSymbolicLink();
+      const link = lstatSync5(join21(dir, path)).isSymbolicLink();
       entries.push(
-        link ? [path, "link", readlinkSync3(join20(dir, path))] : [path, ...manifestOf(dir, path)]
+        link ? [path, "link", readlinkSync3(join21(dir, path))] : [path, ...manifestOf(dir, path)]
       );
       if (!link) walk(`${path}/node_modules`);
     }
@@ -8209,7 +8232,7 @@ function namesIn(modules) {
   for (const entry3 of entriesOf4(modules)) {
     if (entry3.name.startsWith(".")) continue;
     if (entry3.name.startsWith("@") && entry3.isDirectory()) {
-      for (const child of entriesOf4(join20(modules, entry3.name)))
+      for (const child of entriesOf4(join21(modules, entry3.name)))
         names3.push(`${entry3.name}/${child.name}`);
     } else names3.push(entry3.name);
   }
@@ -8224,7 +8247,7 @@ function entriesOf4(path) {
 }
 function manifestOf(dir, path) {
   try {
-    const manifest = JSON.parse(readFileSync15(join20(dir, path, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync15(join21(dir, path, "package.json"), "utf8"));
     return isRecord(manifest) ? [manifest.name ?? null, manifest.version ?? null] : [null, null];
   } catch {
     return [null, null];
@@ -10453,14 +10476,14 @@ import {
   statSync as statSync4,
   writeFileSync as writeFileSync2
 } from "node:fs";
-import { join as join21 } from "node:path";
+import { join as join22 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 var MARK_FINDERS = ["full-check", "daemon", "hook", "unknown"];
 var RECOVERY_LOCK = "store-recovery.sqlite";
 function markUnder(commonDir, file, mark, waitMs) {
   const paths = storePaths(commonDir);
   mkdirSync4(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync4(join21(paths.locksDir, RECOVERY_LOCK));
+  const lock = new DatabaseSync4(join22(paths.locksDir, RECOVERY_LOCK));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.round(waitMs))}`);
     try {
@@ -10538,7 +10561,7 @@ function fileOf(value) {
 
 // src/core/store/open.ts
 import { existsSync as existsSync7, mkdirSync as mkdirSync5, renameSync as renameSync3, rmSync as rmSync4 } from "node:fs";
-import { join as join22 } from "node:path";
+import { join as join23 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/store/schema.ts
@@ -10857,7 +10880,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync5(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync5(join22(paths.locksDir, RECOVERY_LOCK));
+  const lock = new DatabaseSync5(join23(paths.locksDir, RECOVERY_LOCK));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock.exec("BEGIN EXCLUSIVE");
@@ -10924,7 +10947,7 @@ function storeFileOrNull(commonDir) {
 
 // src/core/code/store/open.ts
 import { existsSync as existsSync8, mkdirSync as mkdirSync6 } from "node:fs";
-import { join as join23 } from "node:path";
+import { join as join24 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/code/store/schema.ts
@@ -12532,7 +12555,7 @@ function createMetaRepo2(conn) {
 
 // src/core/code/store/open.ts
 function codeStorePath(commonDir) {
-  return join23(storePaths(commonDir).dir, "code.sqlite");
+  return join24(storePaths(commonDir).dir, "code.sqlite");
 }
 function isCodeStoreOpenFailure(value) {
   return "reason" in value;
@@ -13077,7 +13100,7 @@ function findingsOf(store, state) {
 
 // src/core/lint/store/open.ts
 import { existsSync as existsSync9, mkdirSync as mkdirSync7 } from "node:fs";
-import { join as join24 } from "node:path";
+import { join as join25 } from "node:path";
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 
 // src/core/lint/store/schema.ts
@@ -13467,7 +13490,7 @@ function createMetaRepo3(conn) {
 
 // src/core/lint/store/open.ts
 function lintStorePath(commonDir) {
-  return join24(storePaths(commonDir).dir, "lint.sqlite");
+  return join25(storePaths(commonDir).dir, "lint.sqlite");
 }
 function isLintStoreOpenFailure(value) {
   return "reason" in value;
@@ -15812,7 +15835,7 @@ var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 import { execFileSync } from "node:child_process";
 import { readFileSync as readFileSync17, realpathSync as realpathSync5, statSync as statSync6 } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname as dirname9, isAbsolute as isAbsolute11, join as join25 } from "node:path";
+import { delimiter, dirname as dirname9, isAbsolute as isAbsolute11, join as join26 } from "node:path";
 
 // src/harness/opencode/host.ts
 var floor;
@@ -15864,7 +15887,7 @@ function readPin(root) {
   for (const name2 of PIN_FILES) {
     let text2;
     try {
-      text2 = readFileSync17(join25(root, name2), "utf8");
+      text2 = readFileSync17(join26(root, name2), "utf8");
     } catch {
       continue;
     }
@@ -15876,21 +15899,21 @@ function readPin(root) {
   return null;
 }
 function nodeSetting(root) {
-  return loadConfigFile(join25(root, "squeal.config.json"), NODE_SHAPE, {
+  return loadConfigFile(join26(root, "squeal.config.json"), NODE_SHAPE, {
     node: "project"
   }).value.node;
 }
 function managerCandidates(version, env) {
   const home = env.HOME ?? homedir();
-  const data = env.XDG_DATA_HOME ?? join25(home, ".local", "share");
-  const fnm = env.FNM_DIR === void 0 ? [join25(data, "fnm"), join25(home, ".fnm"), join25(home, "Library", "Application Support", "fnm")] : [env.FNM_DIR];
+  const data = env.XDG_DATA_HOME ?? join26(home, ".local", "share");
+  const fnm = env.FNM_DIR === void 0 ? [join26(data, "fnm"), join26(home, ".fnm"), join26(home, "Library", "Application Support", "fnm")] : [env.FNM_DIR];
   return [
-    join25(env.NVM_DIR ?? join25(home, ".nvm"), "versions", "node", `v${version}`, "bin", "node"),
-    ...fnm.map((dir) => join25(dir, "node-versions", `v${version}`, "installation", "bin", "node")),
-    join25(env.VOLTA_HOME ?? join25(home, ".volta"), "tools", "image", "node", version, "bin", "node"),
-    join25(env.ASDF_DATA_DIR ?? join25(home, ".asdf"), "installs", "nodejs", version, "bin", "node"),
-    join25(env.MISE_DATA_DIR ?? join25(data, "mise"), "installs", "node", version, "bin", "node"),
-    join25(env.N_PREFIX ?? "/usr/local", "n", "versions", "node", version, "bin", "node")
+    join26(env.NVM_DIR ?? join26(home, ".nvm"), "versions", "node", `v${version}`, "bin", "node"),
+    ...fnm.map((dir) => join26(dir, "node-versions", `v${version}`, "installation", "bin", "node")),
+    join26(env.VOLTA_HOME ?? join26(home, ".volta"), "tools", "image", "node", version, "bin", "node"),
+    join26(env.ASDF_DATA_DIR ?? join26(home, ".asdf"), "installs", "nodejs", version, "bin", "node"),
+    join26(env.MISE_DATA_DIR ?? join26(data, "mise"), "installs", "node", version, "bin", "node"),
+    join26(env.N_PREFIX ?? "/usr/local", "n", "versions", "node", version, "bin", "node")
   ];
 }
 function installed(version, env) {
@@ -15905,7 +15928,7 @@ function onPath(version, root, env) {
   const seen = /* @__PURE__ */ new Set();
   for (const dir of (env.PATH ?? "").split(delimiter)) {
     if (!isAbsolute11(dir)) continue;
-    const candidate = join25(dir, "node");
+    const candidate = join26(dir, "node");
     const resolved = real(candidate);
     if (resolved === null || resolved === own || seen.has(resolved)) continue;
     seen.add(resolved);
@@ -16148,7 +16171,7 @@ function originOf(row) {
 
 // src/core/status/code-status.ts
 import { readFileSync as readFileSync18 } from "node:fs";
-import { join as join26 } from "node:path";
+import { join as join27 } from "node:path";
 
 // src/core/code/crap/checks.ts
 function coverageChecks(policy) {
@@ -16249,7 +16272,7 @@ function codeStatusOf(store, worktreeId, at, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync18(join26(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync18(join27(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
@@ -16889,11 +16912,11 @@ function retriedRuns(store, worktreeId) {
 // src/core/daemon/user-config.ts
 import { readFileSync as readFileSync19, realpathSync as realpathSync6 } from "node:fs";
 import { availableParallelism as availableParallelism2, homedir as homedir2 } from "node:os";
-import { dirname as dirname10, isAbsolute as isAbsolute12, join as join27, resolve as resolve8 } from "node:path";
+import { dirname as dirname10, isAbsolute as isAbsolute12, join as join28, resolve as resolve8 } from "node:path";
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
-  const base = xdg !== void 0 && xdg !== "" && isAbsolute12(xdg) ? xdg : join27(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2(), ".config");
-  return join27(base, "squeal", "config.json");
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute12(xdg) ? xdg : join28(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2(), ".config");
+  return join28(base, "squeal", "config.json");
 }
 function defaultHostSlots2(cpus = availableParallelism2()) {
   return Math.max(1, cpus - 1);
@@ -18087,7 +18110,7 @@ import {
   rmSync as rmSync5,
   writeFileSync as writeFileSync3
 } from "node:fs";
-import { join as join28 } from "node:path";
+import { join as join29 } from "node:path";
 var AGENT_SEPARATOR = "\0";
 function rootKey(input) {
   return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
@@ -18117,8 +18140,8 @@ function forgetRoot(input, roots) {
   roots?.delete(rootKey(input));
 }
 function sessionRootFiles(env) {
-  const dir = join28(runtimeDir(env), "squeal-sessions");
-  const path = (key) => join28(dir, keyFile(key));
+  const dir = join29(runtimeDir(env), "squeal-sessions");
+  const path = (key) => join29(dir, keyFile(key));
   return {
     get: (key) => {
       try {
@@ -18143,7 +18166,7 @@ function sessionRootFiles(env) {
         if (key.includes(AGENT_SEPARATOR)) return;
         const agents = `${keyFile(key)}-`;
         for (const name2 of readdirSync10(dir)) {
-          if (name2.startsWith(agents)) rmSync5(join28(dir, name2), { force: true });
+          if (name2.startsWith(agents)) rmSync5(join29(dir, name2), { force: true });
         }
       } catch {
       }

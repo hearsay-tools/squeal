@@ -784,11 +784,32 @@ function shellWord(word) {
 }
 
 // src/core/ps/discover.ts
-import { readFileSync as readFileSync7, statSync } from "node:fs";
+import { readFileSync as readFileSync8, statSync } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join13 } from "node:path";
 
 // src/core/daemon/lock-wait.ts
 var VACANT_LOCK_WAIT_MS = 3e4;
+
+// src/core/store/codec.ts
+var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+
+// src/core/store/repos/replaced.ts
+var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
+  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
+  WHERE r.key = ? AND r.outcome = 'fail'`;
+
+// src/core/store/prune-rules.ts
+var DAY_MS = 24 * 60 * 60 * 1e3;
+var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+  WHERE k.key IS NOT NULL`;
+var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
+var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
+  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
+    SELECT 1 FROM results n
+    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
+      AND (n.recorded_at > results.recorded_at
+           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
+var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
 
 // src/core/types/store.ts
 var WORKTREE_META_ROWS = {
@@ -868,24 +889,88 @@ function worktreeMetaKey(row2, worktreeId) {
   return `${WORKTREE_META_ROWS[row2].prefix}${worktreeId}`;
 }
 
-// src/core/presence/stored.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+// src/core/store/repos/worktrees.ts
+function toDaemonToken(value, startedAt, version) {
+  if (!isRecord(value) || typeof value.token !== "string") return void 0;
+  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
+}
 
-// src/core/ps/reads.ts
-import { lstatSync as lstatSync3, readdirSync as readdirSync4 } from "node:fs";
-import { join as join12 } from "node:path";
+// src/core/store/repos/results.ts
+var SELECT_RESULTS = `
+  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
+  FROM results r
+  JOIN checks c ON c.id = r.check_id
+  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+var NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
 
-// src/core/slow/slot.ts
-import { dirname as dirname7, isAbsolute as isAbsolute4, join as join11 } from "node:path";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+// src/core/store/repos/runs.ts
+function toCheckpointLanes(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const lanes = {};
+  for (const [id, lane] of Object.entries(value)) {
+    if (lane === "fast" || lane === "slow") lanes[id] = lane;
+  }
+  return lanes;
+}
+
+// src/core/store/repos/states.ts
+var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
 
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
+
+// src/core/daemon/terminate.ts
+import { readdirSync as readdirSync4, readFileSync as readFileSync7 } from "node:fs";
+import { readFile } from "node:fs/promises";
+var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+async function commandLine(pid) {
+  try {
+    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+  } catch {
+    return "";
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync7("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
+
+// src/core/presence/stored.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/ps/reads.ts
+import { lstatSync as lstatSync3, readdirSync as readdirSync5 } from "node:fs";
+import { join as join12 } from "node:path";
+
+// src/core/slow/slot.ts
+import { dirname as dirname7, isAbsolute as isAbsolute4, join as join11 } from "node:path";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
 // src/core/slow/slot-holding.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 var RAN_FRESH_MS = 3 * 60 * 6e4;
 function immutableUrl(path) {
@@ -904,7 +989,7 @@ function slowSlotDir(env = process.env, userDir = userTmpDir()) {
 var NODE_COMMS = /* @__PURE__ */ new Set(["node-MainThread", "MainThread", "node"]);
 function names(dir) {
   try {
-    return readdirSync4(dir).sort();
+    return readdirSync5(dir).sort();
   } catch {
     return [];
   }
@@ -1102,7 +1187,7 @@ function antigravityInstalled(script) {
   if (gemini === void 0) return null;
   const manifest = join13(gemini, "config", "plugins", "squeal", "plugin.json");
   try {
-    const version = JSON.parse(readFileSync7(manifest, "utf8")).version;
+    const version = JSON.parse(readFileSync8(manifest, "utf8")).version;
     return { manifest, version: typeof version === "string" && version !== "" ? version : null };
   } catch {
     return { manifest, version: null };
@@ -1402,7 +1487,7 @@ var NOT_INSTALLED_MS = 60 * 6e4;
 var NO_LOCKS = "the source has no lock state (D10)";
 var ONE_READING = "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
 var NO_MARKS = "the source reads no marks (D10)";
-var flag = (model) => {
+var flag2 = (model) => {
   const unknown = [];
   const named2 = /* @__PURE__ */ new Set();
   const name2 = (what, why) => {
@@ -1478,7 +1563,7 @@ function daemonFlags(c, d) {
   const bundle = bundleOf(d.script);
   if (!existsSync3(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
   const older = olderOf(c, d, work);
-  const life = phase === "serving" && work?.record != null ? lifeOf(c, pid, work, work.record.heartbeatIntervalMs) : null;
+  const life = phase === "serving" && work?.record != null ? lifeOf2(c, pid, work, work.record.heartbeatIntervalMs) : null;
   let state = life?.state ?? null;
   if (typeof older === "string") state ??= older;
   else if (older !== null) {
@@ -1578,7 +1663,7 @@ function hungOf(c, d) {
   }
   return `its heartbeat is ${sentenceDuration(age2)} old on both samples, past two intervals`;
 }
-function lifeOf(c, pid, work, intervalMs) {
+function lifeOf2(c, pid, work, intervalMs) {
   const now = c.model.now;
   const grace = heartbeatGraceMs(intervalMs);
   const idleMs = work.settings.idleExitMinutes * 6e4;
@@ -1722,30 +1807,6 @@ import { basename as basename4 } from "node:path";
 import { readdirSync as readdirSync7, readFileSync as readFileSync10, readlinkSync, statSync as statSync2 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join16 } from "node:path";
-
-// src/core/daemon/terminate.ts
-import { readdirSync as readdirSync5, readFileSync as readFileSync8 } from "node:fs";
-import { readFile } from "node:fs/promises";
-var TICKS_PER_SECOND = 100;
-var COMMAND_CHARS = 120;
-async function commandLine(pid) {
-  try {
-    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
-  } catch {
-    return "";
-  }
-}
-function uptimeTicks() {
-  if (process.platform !== "linux") return 0;
-  try {
-    return Math.floor(
-      Number(readFileSync8("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
-    );
-  } catch {
-    return 0;
-  }
-}
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
@@ -2547,14 +2608,6 @@ function leaseProcessAlive(holder) {
   }
 }
 
-// src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
-
-// src/core/daemon/test-pause.ts
-import { channel } from "node:diagnostics_channel";
-var TEST_PAUSE_CHANNEL = "squeal:test-pause";
-var pauses = channel(TEST_PAUSE_CHANNEL);
-
 // src/core/checkout/marker.ts
 import { readFileSync as readFileSync12, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join18 } from "node:path";
@@ -3241,10 +3294,10 @@ function daemonOf(d, all2, name2) {
   else if (d.work.lastUsedAt === null && !all2.has(`${of} work`))
     name2(`${of} lastUsedAt`, "its store records no last use of its own (D9)");
 }
-function waitedFor(reaped, once) {
+function waitedFor(reaped, once2) {
   if (reaped === 0) return "";
-  const whom = reaped < once ? `${reaped} of them` : once === 1 ? "it" : "them";
-  return `; the ancestor that waited for ${whom} counts ${once === 1 ? "its" : "their"} CPU`;
+  const whom = reaped < once2 ? `${reaped} of them` : once2 === 1 ? "it" : "them";
+  return `; the ancestor that waited for ${whom} counts ${once2 === 1 ? "its" : "their"} CPU`;
 }
 function afterParent(n) {
   return n === 1 ? "after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it" : "after their parents did, or under ones whose children's times grew too little, so no sample shows which processes waited for them";
@@ -3893,7 +3946,7 @@ function entryProblem(entry, at, kept2, fields, required, check) {
 // src/core/daemon/policy-checks.ts
 var show = (value) => value === void 0 ? "undefined" : JSON.stringify(value);
 var must = (expected, ok) => (value, path) => ok(value) ? null : `"${path}" must be ${expected}, got ${show(value)}`;
-var oneOf = (values) => must(`one of ${values.map((v) => `"${v}"`).join(", ")}`, (v) => values.includes(v));
+var oneOf2 = (values) => must(`one of ${values.map((v) => `"${v}"`).join(", ")}`, (v) => values.includes(v));
 var isNumber = (v) => typeof v === "number" && Number.isFinite(v);
 var positiveInteger2 = must("a positive integer", (v) => Number.isInteger(v) && v > 0);
 var atLeastZero = must("a number >= 0", (v) => isNumber(v) && v >= 0);
@@ -3940,10 +3993,10 @@ var object = (rules) => (value, path) => {
 var limits = object({
   maxParallel: positiveInteger2,
   maxWorkers: positiveInteger2,
-  priority: oneOf(["normal", "low"]),
+  priority: oneOf2(["normal", "low"]),
   deferUnderLoad: object({ maxLoadPerCpu: aboveZero, maxDeferMs: atLeastZero })
 });
-var moment = oneOf(CHECK_MOMENTS);
+var moment = oneOf2(CHECK_MOMENTS);
 var COMMON = {
   name,
   at: moment,
@@ -3954,7 +4007,7 @@ var COMMON = {
 };
 var TEST_RULES = object({
   ...COMMON,
-  runner: oneOf(CHECK_RUNNERS),
+  runner: oneOf2(CHECK_RUNNERS),
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
@@ -4272,7 +4325,7 @@ var orNull = (leaf) => (v) => {
   const expected = v === null ? null : leaf(v);
   return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
 };
-var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var oneOf3 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
   interrupt: { onRegression: boolean5 },
   stop: {
@@ -4287,7 +4340,7 @@ var SHAPE = {
   // Spec 019 D1.
   checks: checkGroups,
   testCommand: { denyWhenCurrent: boolean5 },
-  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
+  baseline: { onStart: oneOf3("lookup-then-run-missing", "lookup-only") },
   inputs,
   runtimeFiles,
   observe: { runtimeInputs: boolean5 },
@@ -4308,9 +4361,9 @@ var SHAPE = {
     maxLoadPerCpu: aboveZero3,
     maxDeferMs: atLeastZero2,
     maxParallel: positiveInteger,
-    rank: oneOf2("tokens", "duration"),
+    rank: oneOf3("tokens", "duration"),
     // Spec 004 D2, D7 as amended 2026-10-18 (row 004-80).
-    trigger: oneOf2("continuous", "idle"),
+    trigger: oneOf3("continuous", "idle"),
     quietMs: atLeastZero2
   },
   delivery: { uncoveredEdits: boolean5 },
@@ -4409,22 +4462,6 @@ function toSlowActivity(value) {
     };
   }
   return void 0;
-}
-
-// src/core/store/repos/runs.ts
-function toCheckpointLanes(value) {
-  if (typeof value !== "object" || value === null) return void 0;
-  const lanes = {};
-  for (const [id, lane] of Object.entries(value)) {
-    if (lane === "fast" || lane === "slow") lanes[id] = lane;
-  }
-  return lanes;
-}
-
-// src/core/store/repos/worktrees.ts
-function toDaemonToken(value, startedAt, version) {
-  if (!isRecord(value) || typeof value.token !== "string") return void 0;
-  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 
 // src/core/ps/work.ts
@@ -4837,7 +4874,7 @@ ${USAGE}`);
     shape = await takeSnapshot({
       source,
       places: placesOf(io.env ?? process.env, commonDir, options),
-      flag: options.flag ?? flag,
+      flag: options.flag ?? flag2,
       full: parsed2.full,
       repo: parsed2.repo,
       sampleMs: SAMPLE_MS,
