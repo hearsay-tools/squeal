@@ -46,7 +46,11 @@ const { runProject } = await import("../../../src/runners/pytest/adapter-run.js"
 const context = {
   root: "/r",
   project: { name: "py" },
-  environment: { state: "ready", fingerprint: "f", discovery: { env: {}, python: "python" } },
+  environment: {
+    state: "ready",
+    fingerprint: "f",
+    discovery: { env: "/r/.venv", python: "python" },
+  },
   names: {},
   options: { concurrency: () => 4 },
 } as unknown as Parameters<typeof runProject>[0];
