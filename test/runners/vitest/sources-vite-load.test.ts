@@ -1,11 +1,12 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import type { RunnableDevEnvironment } from "vite-8.4";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Vitest } from "vitest/node";
 import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
-import { SourceStamps } from "../../../src/runners/vitest/sources.js";
+import { type Load, SourceStamps } from "../../../src/runners/vitest/sources.js";
 import { SLOW } from "./helpers.js";
 
 /*
@@ -14,9 +15,16 @@ import { SLOW } from "./helpers.js";
  * wrapper that dropped the second argument got `null` back for a file no
  * plugin loads, and Vite threw "Cannot read properties of null (reading
  * 'code')", so Vitest could not start. Each case runs a real Vite dev server
- * of one version through the wrapper: 8.4.0 is the repository's `vite`, 8.3.8
- * the `vite-8.3` alias, which calls `load(id)` alone.
+ * of one version through the wrapper: 8.4.0 is the `vite-8.4` alias, 8.3.2
+ * the repository's `vite`, which Vitest runs on and which calls `load(id)`
+ * alone. The repository stays on 8.3 until a release with this fix is
+ * installed, since an installed Squeal without it gives no result on 8.4.0.
  */
+
+// Vite 8.4.0's overloaded `load` is a `Load`, and a `Load` takes its second argument.
+type Load84 = RunnableDevEnvironment["pluginContainer"]["load"];
+expectTypeOf<Load84>().toExtend<Load>();
+expectTypeOf<Load>().toBeCallableWith("/src/mod.ts", { withMetadata: true });
 
 interface Server {
   readonly environments: Record<string, unknown>;
@@ -31,8 +39,8 @@ const VERSIONS: readonly (readonly [
   string,
   () => Promise<{ createServer: unknown; version: string }>,
 ])[] = [
-  ["8.4.0", () => import("vite")],
-  ["8.3.8", () => import("vite-8.3")],
+  ["8.4.0", () => import("vite-8.4")],
+  ["8.3.2", () => import("vite")],
 ];
 
 describe("vitest adapter: the load wrapper on each Vite version (025-23)", SLOW, () => {

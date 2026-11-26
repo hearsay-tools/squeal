@@ -42,7 +42,7 @@ interface Hashed {
  * A plugin container's `load`, whatever arguments its Vite version passes:
  * Vite 8.4.0 overloads it with a second, `{ withMetadata: true }`.
  */
-type Load = (id: string, ...rest: unknown[]) => Promise<unknown>;
+export type Load = (id: string, ...rest: unknown[]) => Promise<unknown>;
 
 /** One plugin container's reads. */
 interface Reads {
