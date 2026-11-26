@@ -118,6 +118,11 @@ export interface DaemonRemoteOptions {
   readonly remoteCoverage?: (runId: string, testFile: TestFileRef, record: SharedRecord) => void;
   /** Spec 026 D11: measures the machine's disk; absent, `probeDisk`. For tests. */
   readonly probeDisk?: typeof probeDisk;
+  /**
+   * Row 026-30: a lane is ready again after an outage that left files not
+   * run (`RemoteLaneOptions.onRecovered`). Absent: none.
+   */
+  readonly onRecovered?: () => void;
 }
 
 export interface DaemonLaneOptions extends DaemonRemoteOptions {
@@ -370,6 +375,9 @@ function laneOver<R extends RunnerAdapter>(
     hasGitRepository: () => share.gitCurrent(),
     refreshRepository: (signal) => share.refreshGit(signal),
     gitLease: () => share.gitLease(),
+    // Row 026-30: the exit ends a wait for remote permits and starts no reconnect.
+    exitSignal: share.exitSignal,
+    ...(options.onRecovered === undefined ? {} : { onRecovered: options.onRecovered }),
     remoteCoverage: (runId, records) => {
       for (const remote of records) {
         const record = sharedOf(remote);

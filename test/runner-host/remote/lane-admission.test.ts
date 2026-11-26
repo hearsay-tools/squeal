@@ -401,7 +401,9 @@ describe("concurrent remote tiers on one host (row 026-23)", () => {
       const report = await s.lane.run([REF], background());
       expect(report.end).toBe("crashed");
       expect(report.completedFiles).toEqual([]);
-      expect(report.failure).toBe("remote box unreachable during the run of 1 files");
+      expect(report.failure).toBe(
+        'remote box unreachable during the run of 1 files (the host ended); not run here (whenLost "not-run"); waits retry once box reconnects or run squeal retry',
+      );
       expect(s.lane.report()).toEqual({ state: "unreachable", reason: "the host ended" });
     } finally {
       hostGone.forced = false;

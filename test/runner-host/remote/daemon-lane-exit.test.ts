@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
+import type { HostAdmission } from "../../../src/core/runner-host/remote/admission.js";
 import {
   createDaemonRemote,
   type DaemonRemote,
@@ -36,6 +37,8 @@ interface Setup {
   readonly remote: DaemonRemote;
   readonly started: string[];
   readonly log: string[];
+  /** The lanes' status lines. */
+  readonly notes: string[];
   /** Lets a held bootstrap (the instance's Node) answer. */
   readonly go: () => void;
   /** Whether the bootstrap asked the instance's Node. */
@@ -45,7 +48,7 @@ interface Setup {
 }
 
 /** An eager Agent37 lane (`tree-sync`) over the mock API and a fake `ssh`; `holdNode` holds the bootstrap. */
-async function setup(holdNode = false): Promise<Setup> {
+async function setup(holdNode = false, admission?: HostAdmission): Promise<Setup> {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "repo");
   mkdirSync(join(root, "src"), { recursive: true });
@@ -92,18 +95,22 @@ async function setup(holdNode = false): Promise<Setup> {
   const remoteRoot = join(dir, "remote", "root");
   mkdirSync(remoteRoot, { recursive: true });
   const started: string[] = [];
-  const serve = servedHosts(real, remoteRoot, () => async (files) => ({
-    ...REPORT,
-    completedFiles: [...files],
-  }));
+  const serve = servedHosts(
+    real,
+    remoteRoot,
+    () => async (files) => ({ ...REPORT, completedFiles: [...files] }),
+    [],
+    admission,
+  );
   const log: string[] = [];
+  const notes: string[] = [];
   const remote = createDaemonRemote({
     root: real,
     commonDir: join(real, ".git"),
     version: VERSION,
     launch: { execPath: process.execPath, execArgv: [], cli: join(dir, "squeal.mjs") },
     policy: () => DEFAULT_POLICY,
-    note: () => {},
+    note: (text) => notes.push(text),
     lastNote: () => undefined,
     log: (line) => log.push(line),
     env,
@@ -119,6 +126,7 @@ async function setup(holdNode = false): Promise<Setup> {
     remote,
     started,
     log,
+    notes,
     go: () => writeFileSync(go, ""),
     bootstrapping: () => existsSync(asked),
     runner: () =>
@@ -186,5 +194,40 @@ describe("the daemon's exit during an Agent37 acquire (review 0.1.623 B1)", () =
     expect(calls(s.api).filter((c) => c.startsWith("DELETE"))).toEqual([]);
     expect(calls(s.api)).toContain(`POST /v1/instances/${id}/sleep`);
     expect(readMachines(s.env).machines.map((m) => m.status)).toEqual(["detached"]);
+  });
+});
+
+describe("the daemon's exit during a wait for remote permits (row 026-30)", () => {
+  it("ends the wait at once, the run not started, and the runner closes", async () => {
+    let looks = 0;
+    // The machine never admits a run: before row 026-30 the wait outlived the exit.
+    const refusing: HostAdmission = {
+      admit: (ask) => {
+        if (ask.want > 0) looks++;
+        return { grant: 0 };
+      },
+      claim: () => null,
+      close: () => {},
+    };
+    const s = await setup(false, refusing);
+    const runner = s.runner();
+    // Ready: a run goes there, not here as while the lane connects.
+    await until(() => s.notes.some((text) => text.includes(" go there")));
+    const running = runner.run([{ project: "", path: "test/a.test.ts" }], {
+      runId: "r-exit",
+      logDir: join(scratch, `exit-logs-${n}`),
+      timeoutMs: 60_000,
+      background: true,
+      lane: "vitest",
+    });
+    await until(() => looks > 0);
+    const at = Date.now();
+    s.remote.beginExit();
+    const report = await running;
+    expect(Date.now() - at).toBeLessThan(2_000);
+    expect(report.completedFiles).toEqual([]);
+    expect(report.failure).toBe("cancelled while it waited for permits");
+    await runner.close();
+    expect(Date.now() - at).toBeLessThan(5_000);
   });
 });

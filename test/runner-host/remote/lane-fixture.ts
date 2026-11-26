@@ -87,6 +87,10 @@ export interface Setup {
   readonly hasGitRepository?: () => boolean;
   /** Row 026-24: each file's closure, here and on the remote; absent, `src/a.ts` and `test/a.test.ts`. */
   readonly closure?: (file: TestFileRef) => readonly string[];
+  /** Row 026-30: the lane's Git lease, the daemon's exit and its recovery call. */
+  readonly gitLease?: () => Promise<() => void>;
+  readonly exitSignal?: AbortSignal;
+  readonly onRecovered?: () => void;
 }
 
 let n = 0;
@@ -111,6 +115,9 @@ export async function setup({
   planning,
   hasGitRepository,
   closure,
+  gitLease,
+  exitSignal,
+  onRecovered,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -268,6 +275,9 @@ export async function setup({
     ...(here === undefined ? {} : { here: here(local) }),
     ...(planning === undefined ? {} : { planning }),
     ...(hasGitRepository === undefined ? {} : { hasGitRepository }),
+    ...(gitLease === undefined ? {} : { gitLease }),
+    ...(exitSignal === undefined ? {} : { exitSignal }),
+    ...(onRecovered === undefined ? {} : { onRecovered }),
     activity: () => activity.push(clock),
   });
   onTestFinished(() => lane.close());

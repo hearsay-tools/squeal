@@ -1,5 +1,6 @@
 import { onTestFinished } from "vitest";
 import type { HostedAdapter } from "../../../src/core/runner-host/host.js";
+import type { HostAdmission } from "../../../src/core/runner-host/remote/admission.js";
 import {
   type RemoteHost,
   type RemoteHostOptions,
@@ -61,17 +62,20 @@ export function fake(runner: RemoteRunner, run: HostedAdapter["run"]): HostedAda
 /**
  * A `startRemoteHost` whose hosts are served here over the tree at
  * `remoteRoot`, each running with `run`; `closed` gets each host's runner
- * and the time it closed.
+ * and the time it closed; `admission`, the machine's (row 026-30), else
+ * one that admits every run.
  */
 export function servedHosts(
   root: string,
   remoteRoot: string,
   run: (options: RemoteHostOptions) => HostedAdapter["run"],
   closed: [string, number][] = [],
+  admission?: HostAdmission,
 ): (options: RemoteHostOptions) => Promise<RemoteHost> {
   return async (options) => {
     const served = inProcessHost(async () => fake(options.runner, run(options)), VERSION, {
       tree: createTreeHost(remoteRoot, () => {}),
+      ...(admission === undefined ? {} : { admission }),
     });
     onTestFinished(() => served.channel.kill());
     const host = await remoteHostOver(served.channel, "v-test", {

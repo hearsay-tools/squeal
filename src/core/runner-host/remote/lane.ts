@@ -123,6 +123,15 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * run. No retry and no run here starts after it; its syncable differences
  * go with the next message, and each file it did not prove joins that
  * failure's files (`deferredTo`), never refused.
+ *
+ * Row 026-30: a run holds `gitLease` only once its machine granted it
+ * permits, so a refresh never waits on a run that waits for permits, and
+ * the daemon's exit (`exitSignal`) ends that wait. Under `whenLost:
+ * "not-run"` a tier whose channel dropped, not timed out nor cancelled,
+ * connects once more at once and runs there again once; when that fails
+ * too its files end not run, and the backoff holds for later tiers. Its
+ * failure names the reason and the policy. Once the lane is ready again
+ * after files were left not run, `onRecovered` says so.
  */
 
 export interface RemoteLaneOptions {
@@ -191,6 +200,16 @@ export interface RemoteLaneOptions {
   readonly admitEveryMs?: number;
   /** Connect now (default), or at the first background run (S2: a deferred runner). */
   readonly eager?: boolean;
+  /**
+   * Row 026-30: aborted when the daemon's exit begins (`MachineShare.exitSignal`):
+   * a wait for remote permits ends, and no reconnect starts. Absent: never.
+   */
+  readonly exitSignal?: AbortSignal;
+  /**
+   * Row 026-30: the lane is ready again after an outage that left files not
+   * run; called once per such recovery, never at a first connect. Absent: none.
+   */
+  readonly onRecovered?: () => void;
 }
 
 /** What `RemoteLaneRunner.sleep` did: slept, or not because a run or a connect is on the remote. */
@@ -293,6 +312,13 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   let state: State = { kind: "down", since: now(), retryAt: 0, refused: false };
   let failures = 0;
   let notRun = 0;
+  /** Row 026-30: files were left not run since the lane was last ready (`onRecovered`). */
+  let hadOutage = false;
+  /** Row 026-30: `count` more files left not run, an outage a later ready recovers from. */
+  const leftNotRun = (count: number) => {
+    notRun += count;
+    if (count > 0) hadOutage = true;
+  };
   /** Remote runs in flight: a sleep waits for none (B7). */
   let remoteRuns = 0;
   /** D8.3: planning calls and invalidations on the remote in flight: a sleep waits for none. */
@@ -417,6 +443,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
           ? remoteKeyStatusLine(target, remoteCore)
           : `remote ${target}: ${tiersName} runs ${remotePlans ? "and planning " : ""}of ${local.name} go there (Node ${host.node}; environment equal)`,
       );
+      if (hadOutage) {
+        hadOutage = false;
+        options.onRecovered?.();
+      }
     }
   };
 
@@ -661,8 +691,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       down(unequal.join("; "), true, host);
       return { refused: unequal.join("; ") };
     }
-    const end = await (options.gitLease?.() ?? NO_LEASE);
-    const reply = await admittedRun(host, files, run, inputsFor(inputs, files)).finally(end);
+    const reply = await admittedRun(host, files, run, inputsFor(inputs, files));
     if ("lost" in reply || "cancelled" in reply) return reply;
     if (runnerHostGone(host.adapter)) return { lost: cutShort(host, reply, files) };
     const ran = reply.refused === undefined;
@@ -730,7 +759,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
    * D18 (row 021-21): the run admitted by the remote machine and sent there.
    * A run that came after its grant went back did not start (review 0.1.445
    * R1): the machine is asked again, up to `LATE_RUNS` times in a row, then
-   * the remote counts as lost.
+   * the remote counts as lost. Row 026-30: the run holds the Git lease from
+   * its grant to its end.
    */
   const admittedRun = async (
     host: RemoteHost,
@@ -748,21 +778,28 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
         tierWidth: (file, grant) => local.traits.tierWidth(file, grant),
         everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
         log: (line) => options.log(`remote ${target}: ${line}`),
+        exit: options.exitSignal,
       }).catch((error: Error) => error);
       if (grant instanceof Error) {
         down(runnerHostGone(host.adapter) ? "the host ended" : grant.message, false, host);
         return { lost: lostReport(testFiles) };
       }
       if (grant === null) return { cancelled: notStarted() };
-      const expected = await blobsHere(inputs);
+      // Row 026-30: the Git lease from the grant on, never across the wait for permits.
+      const end = await (options.gitLease?.() ?? NO_LEASE);
       const { permits: _permits, ...sent } = run;
-      const reply = (await host.adapter.run(testFiles, {
-        ...sent,
-        workers: grant,
-        expected,
-        admitted: true,
-        admitToken: token,
-      } as RunOptions)) as RunReport & RemoteRunReply;
+      const reply = await blobsHere(inputs)
+        .then(
+          (expected) =>
+            host.adapter.run(testFiles, {
+              ...sent,
+              workers: grant,
+              expected,
+              admitted: true,
+              admitToken: token,
+            } as RunOptions) as Promise<RunReport & RemoteRunReply>,
+        )
+        .finally(end);
       if (reply.unadmitted !== true) return reply;
       if (late >= LATE_RUNS) {
         down(`its machine's grant went back before the run came, ${LATE_RUNS} times`, false, host);
@@ -789,15 +826,25 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     return named ? stripped(reply) : lostReport(testFiles);
   };
 
-  /** A lost run's report with nothing in it: every check of the tier `unknown`. */
-  const lostReport = (testFiles: readonly TestFileRef[]): RunReport => ({
-    end: "crashed",
-    durationMs: 0,
-    completedFiles: [],
-    results: [],
-    fileErrors: [],
-    failure: `remote ${target} unreachable during the run of ${testFiles.length} files`,
-  });
+  /**
+   * A lost run's report with nothing in it: every check of the tier
+   * `unknown`. Row 026-30 (#278): under `not-run` it names `reason`, the
+   * lane's own by default, the policy and how the files run again.
+   */
+  const lostReport = (testFiles: readonly TestFileRef[], reason = why): RunReport => {
+    const lost = `remote ${target} unreachable during the run of ${testFiles.length} files`;
+    return {
+      end: "crashed",
+      durationMs: 0,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure:
+        options.whenLost === "not-run"
+          ? `${lost} (${reason}); not run here (whenLost "not-run"); waits retry once ${target} reconnects or run squeal retry`
+          : lost,
+    };
+  };
 
   /** Status names the first proven run of a connection; later ones go to the log alone. */
   const proven = (host: RemoteHost, paths: number) => {
@@ -858,7 +905,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     refusal?: string,
   ): Promise<RunReport> => {
     if (options.whenLost === "local") return runHere(testFiles, run, "here");
-    notRun += testFiles.length;
+    leftNotRun(testFiles.length);
     tell();
     const reason = refusal ?? (state.kind === "down" && state.refused ? why : null);
     return Promise.resolve({
@@ -894,6 +941,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
             ? null
             : remoteRun(host, testFiles, run),
       )
+      .then((outcome): RemoteOutcome | null | Promise<RemoteOutcome> => {
+        if (outcome === null || !("lost" in outcome)) return outcome;
+        return droppedOnce(outcome.lost, run) ? reconnectOnce(outcome, testFiles, run) : outcome;
+      })
       .finally(() => {
         remoteRuns--;
         activity();
@@ -907,6 +958,42 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   };
 
   /**
+   * Row 026-30: a dropped channel under `not-run`, not a timeout (a host
+   * that stopped answering), the tier's cancel or the lane's end, is worth
+   * one reconnect at once: a WebSocket reset is over by then.
+   */
+  const droppedOnce = (lost: RunReport, run: RunOptions): boolean =>
+    options.whenLost === "not-run" &&
+    lost.end !== "timed-out" &&
+    run.signal?.aborted !== true &&
+    run.stop?.aborted !== true &&
+    !closed &&
+    options.ending?.() !== true &&
+    options.exitSignal?.aborted !== true;
+
+  /**
+   * Row 026-30: one connect now, past the backoff, and the tier's run there
+   * once more when it is ready; `lost` stands when either fails or the
+   * tier's cancel or the exit comes meanwhile. A connect a sibling tier
+   * started already, or the host it reached, serves this one too.
+   */
+  const reconnectOnce = async (
+    lost: { readonly lost: RunReport },
+    testFiles: readonly TestFileRef[],
+    run: RunOptions,
+  ): Promise<RemoteOutcome> => {
+    options.log(
+      `remote ${target}: connection dropped (${why}); reconnecting once before giving up`,
+    );
+    if (state.kind === "down" || (state.kind === "asleep" && !state.going)) connect();
+    const signals = [cancelOf(run), options.exitSignal].filter((signal) => signal !== undefined);
+    const cancel = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+    const host = await reach(true, cancel);
+    if (host === CANCELLED || host === null) return lost;
+    return remoteRun(host, testFiles, run);
+  };
+
+  /**
    * Review 0.1.442 B4: nothing of a lost attempt is kept; under `local` its
    * files run here now, unless the tier was cancelled meanwhile; under
    * `not-run` they end unknown.
@@ -915,7 +1002,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     const cancelled = run.signal?.aborted === true || run.stop?.aborted === true;
     if (options.whenLost === "local" && !cancelled) return instead(testFiles, run);
     if (options.whenLost === "not-run") {
-      notRun += testFiles.length;
+      leftNotRun(testFiles.length);
       tell();
     }
     return lost;
@@ -960,7 +1047,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
             { adapter: { name: "here" }, report: await runHere(again, run, "here") },
           ]);
     if (refused === undefined || local) return ran;
-    notRun += refusedFiles.length;
+    leftNotRun(refusedFiles.length);
     tell();
     const text = refusedText(refused.refused);
     options.log(`${text}: ${refusedFiles.map((f) => f.path).join(", ")}`);
