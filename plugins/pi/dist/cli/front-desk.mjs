@@ -1,9 +1,17 @@
-import { createRequire as __squealCreateRequire } from "node:module";
-const require = __squealCreateRequire(import.meta.url);
+const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
 
-// src/core/daemon/front-desk.ts
-import { randomUUID as randomUUID5 } from "node:crypto";
-import { parentPort } from "node:worker_threads";
+// squeal-builtin:node:crypto
+var $mod;
+var $load = () => $mod ??= process.getBuiltinModule("node:crypto");
+var $pick = (n) => $load()[n];
+var randomBytes = /* @__PURE__ */ $pick("randomBytes");
+var randomUUID = /* @__PURE__ */ $pick("randomUUID");
+
+// squeal-builtin:node:worker_threads
+var $mod2;
+var $load2 = () => $mod2 ??= process.getBuiltinModule("node:worker_threads");
+var $pick2 = (n) => $load2()[n];
+var parentPort = /* @__PURE__ */ $pick2("parentPort");
 
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
@@ -61,17 +69,20 @@ var CommitDesk = class {
   }
 };
 
-// src/core/daemon/handlers.ts
-import { randomUUID as randomUUID4 } from "node:crypto";
-
 // src/core/types/daemon.ts
 function daemonIncarnation(daemon) {
   if (daemon?.token === void 0) return null;
   return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
 
-// src/core/daemon/write-protocol.ts
-import { isAbsolute } from "node:path";
+// squeal-builtin:node:path
+var $mod3;
+var $load3 = () => $mod3 ??= process.getBuiltinModule("node:path");
+var $pick3 = (n) => $load3()[n];
+var basename = /* @__PURE__ */ $pick3("basename");
+var dirname = /* @__PURE__ */ $pick3("dirname");
+var isAbsolute = /* @__PURE__ */ $pick3("isAbsolute");
+var join = /* @__PURE__ */ $pick3("join");
 
 // src/core/daemon/keep-protocol.ts
 var MAX_RECORDS = 1e5;
@@ -337,6 +348,18 @@ function isBase64(value) {
 
 // src/core/store/codec.ts
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+
+// squeal-builtin:node:fs
+var $mod4;
+var $load4 = () => $mod4 ??= process.getBuiltinModule("node:fs");
+var $pick4 = (n) => $load4()[n];
+var chmodSync = /* @__PURE__ */ $pick4("chmodSync");
+var mkdirSync = /* @__PURE__ */ $pick4("mkdirSync");
+var readFileSync = /* @__PURE__ */ $pick4("readFileSync");
+var readlinkSync = /* @__PURE__ */ $pick4("readlinkSync");
+var renameSync = /* @__PURE__ */ $pick4("renameSync");
+var rmSync = /* @__PURE__ */ $pick4("rmSync");
+var statSync = /* @__PURE__ */ $pick4("statSync");
 
 // src/core/store/repos/replaced.ts
 var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
@@ -802,7 +825,6 @@ function errorResponse(error) {
 }
 
 // src/core/daemon/request-desk.ts
-import { randomUUID } from "node:crypto";
 var REMEMBERED = 16;
 var RequestDesk = class {
   #context;
@@ -854,8 +876,13 @@ var RequestDesk = class {
   }
 };
 
+// squeal-builtin:node:net
+var $mod5;
+var $load5 = () => $mod5 ??= process.getBuiltinModule("node:net");
+var $pick5 = (n) => $load5()[n];
+var createServer = /* @__PURE__ */ $pick5("createServer");
+
 // src/core/daemon/run-group.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
 var GROUP_NOT_SUPPORTED = "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
 var NARROW_NOT_SUPPORTED = "squeal run <group> <path>... is not supported by this daemon, which predates narrow runs, and it ran nothing; `squeal stop`, then `squeal start`, starts the installed version";
 var MainSteps = class {
@@ -914,7 +941,7 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
   };
   return {
     start(group, paths, options) {
-      const requestId = randomUUID2();
+      const requestId = randomUUID();
       const request = {
         group,
         paths,
@@ -976,11 +1003,7 @@ function versionParts(version) {
   return match === null ? null : match.slice(1).map(Number);
 }
 
-// src/core/daemon/write-desk.ts
-import { randomUUID as randomUUID3 } from "node:crypto";
-
 // src/core/delivery/harness-process.ts
-import { readFileSync, readlinkSync } from "node:fs";
 function readProcStat(pid) {
   let text;
   try {
@@ -1074,7 +1097,7 @@ var WriteDesk = class {
     if (other !== null) return other;
     const current = this.#current();
     if (current !== null) return this.#leaseAnswer(null, current.holder);
-    const token = randomUUID3();
+    const token = randomUUID();
     this.#lease = {
       token,
       holder: request.holder,
@@ -1114,7 +1137,7 @@ var WriteDesk = class {
       lease.pending++;
       if (request.release) lease.releasing = true;
     }
-    const requestId = randomUUID3();
+    const requestId = randomUUID();
     const state = { written: null, error: null };
     this.#writes.set(requestId, state);
     for (const old of this.#writes.keys()) {
@@ -1317,7 +1340,7 @@ function createHandlers(context) {
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID4();
+        const requestId = randomUUID();
         const state = { checkpoint: null, error: null };
         remember2(requests, requestId, state);
         const full = {
@@ -1343,7 +1366,7 @@ function createHandlers(context) {
       case "run-slow": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID4();
+        const requestId = randomUUID();
         const state = { requested: null, error: null };
         remember2(slowRequests, requestId, state);
         const request2 = context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
@@ -1380,7 +1403,7 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         context.onActivity();
-        const requestId = randomUUID4();
+        const requestId = randomUUID();
         const state = { revision: null, readers: null, error: null };
         remember2(syncRequests, requestId, state);
         context.requestSync(request.paths).then(
@@ -1402,7 +1425,7 @@ function createHandlers(context) {
       case "hold": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestHold === void 0) return errorResponse("this daemon cannot hold");
-        const requestId = randomUUID4();
+        const requestId = randomUUID();
         const state = { holding: null, error: null };
         remember2(holdRequests, requestId, state);
         context.requestHold().then(
@@ -1425,7 +1448,7 @@ function createHandlers(context) {
         if (context.requestRemoteSleep === void 0) {
           return errorResponse("this daemon has no remote lane to sleep");
         }
-        const requestId = randomUUID4();
+        const requestId = randomUUID();
         const state = { outcome: null, error: null };
         remember2(sleepRequests, requestId, state);
         context.requestRemoteSleep().then(
@@ -1503,10 +1526,6 @@ function remember2(requests, requestId, state) {
 }
 
 // src/core/daemon/server.ts
-import { randomBytes } from "node:crypto";
-import { chmodSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
-import { createServer } from "node:net";
-import { basename, dirname, join } from "node:path";
 var IDLE_CONNECTION_MS = 2e3;
 async function createDaemonServer(socketPath, handle) {
   mkdirSync(dirname(socketPath), { recursive: true, mode: 448 });
@@ -1521,9 +1540,9 @@ async function createDaemonServer(socketPath, handle) {
   return {
     socketPath,
     close() {
-      closing ??= new Promise((resolve) => {
+      closing ??= new Promise((resolve2) => {
         if (stillBound(socketPath, bound)) rmSync(socketPath, { force: true });
-        server2.close(() => resolve());
+        server2.close(() => resolve2());
         for (const socket of connections) socket.destroy();
       });
       return closing;
@@ -1536,11 +1555,11 @@ async function bindAt(server2, socketPath) {
     Math.max(2, basename(socketPath).length)
   );
   const staging = join(dirname(socketPath), name);
-  await new Promise((resolve, reject) => {
+  await new Promise((resolve2, reject) => {
     server2.once("error", reject);
     server2.listen(staging, () => {
       server2.off("error", reject);
-      resolve();
+      resolve2();
     });
   });
   try {
@@ -1549,7 +1568,7 @@ async function bindAt(server2, socketPath) {
     renameSync(staging, socketPath);
     return { dev, ino };
   } catch (error) {
-    await new Promise((resolve) => server2.close(() => resolve()));
+    await new Promise((resolve2) => server2.close(() => resolve2()));
     throw error;
   }
 }
@@ -1620,19 +1639,19 @@ function bind(identity) {
     startedAt: identity.startedAt,
     token: identity.token,
     phase: () => phase,
-    requestFullSuite: (request) => new Promise((resolve, reject) => {
-      const id = randomUUID5();
-      waiting.set(id, { resolve, reject });
+    requestFullSuite: (request) => new Promise((resolve2, reject) => {
+      const id = randomUUID();
+      waiting.set(id, { resolve: resolve2, reject });
       post({ type: "run-all", id, request });
     }),
-    requestSlowSuite: () => new Promise((resolve, reject) => {
-      const id = randomUUID5();
-      waitingSlow.set(id, { resolve, reject });
+    requestSlowSuite: () => new Promise((resolve2, reject) => {
+      const id = randomUUID();
+      waitingSlow.set(id, { resolve: resolve2, reject });
       post({ type: "run-slow", id });
     }),
-    requestGroup: (group, held, paths, options) => new Promise((resolve, reject) => {
-      const id = randomUUID5();
-      waitingGroup.set(id, { resolve, reject, held });
+    requestGroup: (group, held, paths, options) => new Promise((resolve2, reject) => {
+      const id = randomUUID();
+      waitingGroup.set(id, { resolve: resolve2, reject, held });
       const narrow = {
         ...paths === void 0 ? {} : { paths },
         ...options === void 0 ? {} : { options }
@@ -1640,20 +1659,20 @@ function bind(identity) {
       post({ type: "run-group", id, group, ...narrow });
     }),
     mainStep: () => steps.current(),
-    requestSync: (paths) => new Promise((resolve, reject) => {
-      const id = randomUUID5();
-      waitingSync.set(id, { resolve, reject });
+    requestSync: (paths) => new Promise((resolve2, reject) => {
+      const id = randomUUID();
+      waitingSync.set(id, { resolve: resolve2, reject });
       post({ type: "sync", id, ...paths === void 0 ? {} : { paths } });
     }),
-    requestHold: () => new Promise((resolve, reject) => {
-      const id = randomUUID5();
-      waitingHold.set(id, { resolve, reject });
+    requestHold: () => new Promise((resolve2, reject) => {
+      const id = randomUUID();
+      waitingHold.set(id, { resolve: resolve2, reject });
       post({ type: "hold", id });
     }),
     requestResume: async () => post({ type: "resume" }),
-    requestRemoteSleep: () => new Promise((resolve, reject) => {
-      const id = randomUUID5();
-      waitingSleep.set(id, { resolve, reject });
+    requestRemoteSleep: () => new Promise((resolve2, reject) => {
+      const id = randomUUID();
+      waitingSleep.set(id, { resolve: resolve2, reject });
       post({ type: "remote-sleep", id });
     }),
     onActivity: () => post({ type: "activity" }),
@@ -1667,19 +1686,19 @@ function bind(identity) {
     ...commitDesk === null ? {} : { commitDesk },
     ...identity.storeSchema === void 0 ? {} : {
       storeSchema: identity.storeSchema,
-      requestWrite: (batch) => new Promise((resolve, reject) => {
-        const id = randomUUID5();
-        waitingWrite.set(id, { resolve, reject });
+      requestWrite: (batch) => new Promise((resolve2, reject) => {
+        const id = randomUUID();
+        waitingWrite.set(id, { resolve: resolve2, reject });
         post({ type: "write", id, batch, queuedAt: Date.now() });
       }),
-      requestImport: (request) => new Promise((resolve) => {
-        const id = randomUUID5();
-        waitingImport.set(id, resolve);
+      requestImport: (request) => new Promise((resolve2) => {
+        const id = randomUUID();
+        waitingImport.set(id, resolve2);
         post({ type: "import", id, request });
       }),
-      requestKeep: (request) => new Promise((resolve) => {
-        const id = randomUUID5();
-        waitingKeep.set(id, resolve);
+      requestKeep: (request) => new Promise((resolve2) => {
+        const id = randomUUID();
+        waitingKeep.set(id, resolve2);
         post({ type: "keep", id, request });
       })
     }
@@ -1766,15 +1785,15 @@ function receive(message) {
       return;
     }
     case "import-result": {
-      const resolve = waitingImport.get(message.id);
+      const resolve2 = waitingImport.get(message.id);
       waitingImport.delete(message.id);
-      resolve?.(message.outcome);
+      resolve2?.(message.outcome);
       return;
     }
     case "keep-result": {
-      const resolve = waitingKeep.get(message.id);
+      const resolve2 = waitingKeep.get(message.id);
       waitingKeep.delete(message.id);
-      resolve?.(message.outcome);
+      resolve2?.(message.outcome);
       return;
     }
     case "close":

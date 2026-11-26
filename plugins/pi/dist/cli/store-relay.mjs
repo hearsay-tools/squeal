@@ -1,18 +1,55 @@
-import { createRequire as __squealCreateRequire } from "node:module";
-const require = __squealCreateRequire(import.meta.url);
+const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
 
-// src/core/store-process/relay-thread.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
-import { setTimeout as sleep2 } from "node:timers/promises";
-import { parentPort, workerData } from "node:worker_threads";
+// squeal-builtin:node:fs
+var $mod;
+var $load = () => $mod ??= process.getBuiltinModule("node:fs");
+var $pick = (n) => $load()[n];
+var closeSync = /* @__PURE__ */ $pick("closeSync");
+var constants = /* @__PURE__ */ $pick("constants");
+var copyFileSync = /* @__PURE__ */ $pick("copyFileSync");
+var existsSync = /* @__PURE__ */ $pick("existsSync");
+var ftruncateSync = /* @__PURE__ */ $pick("ftruncateSync");
+var mkdirSync = /* @__PURE__ */ $pick("mkdirSync");
+var openSync = /* @__PURE__ */ $pick("openSync");
+var readFileSync = /* @__PURE__ */ $pick("readFileSync");
+var readdirSync = /* @__PURE__ */ $pick("readdirSync");
+var readlinkSync = /* @__PURE__ */ $pick("readlinkSync");
+var statSync = /* @__PURE__ */ $pick("statSync");
 
-// src/core/code/store/open.ts
-import { join as join2 } from "node:path";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+// squeal-builtin:node:sqlite
+var $mod2;
+var $load2 = () => $mod2 ??= process.getBuiltinModule("node:sqlite");
+var $pick2 = (n) => $load2()[n];
+var DatabaseSync = /* @__PURE__ */ $pick2("DatabaseSync");
+
+// squeal-builtin:node:timers/promises
+var $mod3;
+var $load3 = () => $mod3 ??= process.getBuiltinModule("node:timers/promises");
+var $pick3 = (n) => $load3()[n];
+var setTimeout2 = /* @__PURE__ */ $pick3("setTimeout");
+
+// squeal-builtin:node:worker_threads
+var $mod4;
+var $load4 = () => $mod4 ??= process.getBuiltinModule("node:worker_threads");
+var $pick4 = (n) => $load4()[n];
+var parentPort = /* @__PURE__ */ $pick4("parentPort");
+var workerData = /* @__PURE__ */ $pick4("workerData");
+
+// squeal-builtin:node:path
+var $mod5;
+var $load5 = () => $mod5 ??= process.getBuiltinModule("node:path");
+var $pick5 = (n) => $load5()[n];
+var basename = /* @__PURE__ */ $pick5("basename");
+var dirname = /* @__PURE__ */ $pick5("dirname");
+var join = /* @__PURE__ */ $pick5("join");
+
+// squeal-builtin:node:async_hooks
+var $mod6;
+var $load6 = () => $mod6 ??= process.getBuiltinModule("node:async_hooks");
+var $pick6 = (n) => $load6()[n];
+var AsyncLocalStorage = /* @__PURE__ */ $pick6("AsyncLocalStorage");
 
 // src/core/store/connection.ts
-import { AsyncLocalStorage } from "node:async_hooks";
 var observer = null;
 function observeWrites(next) {
   observer = next;
@@ -29,14 +66,7 @@ function isBusy(error) {
   return typeof code === "number" && [5, 6].includes(code & 255);
 }
 
-// src/core/store/open.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-
-// src/core/store/mark.ts
-import { DatabaseSync } from "node:sqlite";
-
 // src/core/store/paths.ts
-import { basename, dirname, join } from "node:path";
 function storePaths(commonDir) {
   const dir = join(commonDir, "squeal");
   return {
@@ -374,9 +404,14 @@ CREATE TABLE coverage (
 var CODE_MIGRATIONS = [(db) => db.exec(V12)];
 var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 
+// squeal-builtin:node:zlib
+var $mod7;
+var $load7 = () => $mod7 ??= process.getBuiltinModule("node:zlib");
+var $pick7 = (n) => $load7()[n];
+var constants2 = /* @__PURE__ */ $pick7("constants");
+
 // src/core/code/coverage/parts.ts
-import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
-var SYNC = { finishFlush: constants.Z_SYNC_FLUSH };
+var SYNC = { finishFlush: constants2.Z_SYNC_FLUSH };
 var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
 var RECORD_HEAD = stored('{"v":1,"sources":[');
 var COMMA = stored(",");
@@ -397,9 +432,14 @@ function stored(text, last = false) {
 // src/core/code/store/parts.ts
 var PART_REFRESH_MS = 60 * 6e4;
 
+// squeal-builtin:node:fs/promises
+var $mod8;
+var $load8 = () => $mod8 ??= process.getBuiltinModule("node:fs/promises");
+var $pick8 = (n) => $load8()[n];
+var readFile = /* @__PURE__ */ $pick8("readFile");
+
 // src/core/hash/blob.ts
-import { constants as constants2 } from "node:fs";
-var OPEN_FLAGS = constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK;
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/code/coverage/sourcemap.ts
 var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -415,12 +455,16 @@ var CHECK_ID = `(SELECT id FROM checks WHERE ${CHECK_WHERE})`;
 
 // src/core/code/store/open.ts
 function codeStorePath(commonDir) {
-  return join2(storePaths(commonDir).dir, "code.sqlite");
+  return join(storePaths(commonDir).dir, "code.sqlite");
 }
 
+// squeal-builtin:node:net
+var $mod9;
+var $load9 = () => $mod9 ??= process.getBuiltinModule("node:net");
+var $pick9 = (n) => $load9()[n];
+var createConnection = /* @__PURE__ */ $pick9("createConnection");
+
 // src/core/daemon/client.ts
-import { statSync } from "node:fs";
-import { createConnection } from "node:net";
 function endpointAt(socketPath) {
   try {
     const { dev, ino, ctimeNs, birthtimeNs } = statSync(socketPath, { bigint: true });
@@ -490,7 +534,6 @@ function failure(code, message) {
 }
 
 // src/core/delivery/harness-process.ts
-import { readFileSync, readlinkSync } from "node:fs";
 function readProcStat(pid) {
   let text;
   try {
@@ -499,15 +542,15 @@ function readProcStat(pid) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const open = text.indexOf("(");
+  const open2 = text.indexOf("(");
   const close = text.lastIndexOf(")");
   const rest = text.slice(close + 2).split(" ");
   const ppid = Number(rest[1]);
   const startTime = Number(rest[19]);
-  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+  if (open2 < 0 || close < open2 || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
     throw new Error(`unreadable /proc/${pid}/stat`);
   }
-  return { comm: text.slice(open + 1, close), state: rest[0] ?? "", ppid, startTime };
+  return { comm: text.slice(open2 + 1, close), state: rest[0] ?? "", ppid, startTime };
 }
 function pidNamespace() {
   try {
@@ -529,13 +572,13 @@ function leaseProcess(pid = process.pid) {
   return { pid, startTime, pidNamespace: startTime === null ? null : namespace };
 }
 
-// src/core/daemon/lock.ts
-import { mkdirSync } from "node:fs";
-import { dirname as dirname2 } from "node:path";
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+// squeal-builtin:node:diagnostics_channel
+var $mod10;
+var $load10 = () => $mod10 ??= process.getBuiltinModule("node:diagnostics_channel");
+var $pick10 = (n) => $load10()[n];
+var channel = /* @__PURE__ */ $pick10("channel");
 
 // src/core/daemon/test-pause.ts
-import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
 
@@ -553,8 +596,8 @@ function acquireDaemonLock(path) {
   return lock;
 }
 function lockDatabase(path) {
-  mkdirSync(dirname2(path), { recursive: true });
-  const db = new DatabaseSync4(path);
+  mkdirSync(dirname(path), { recursive: true });
+  const db = new DatabaseSync(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
@@ -609,14 +652,21 @@ function encodeParam(value) {
 // src/core/delivery/daemon-writer.ts
 var SMALL_REQUEST_TIMEOUT_MS = 250;
 
-// src/core/ps/proc.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync4, readlinkSync as readlinkSync2, statSync as statSync2 } from "node:fs";
-import { availableParallelism } from "node:os";
-import { join as join3 } from "node:path";
+// squeal-builtin:node:os
+var $mod11;
+var $load11 = () => $mod11 ??= process.getBuiltinModule("node:os");
+var $pick11 = (n) => $load11()[n];
+var availableParallelism = /* @__PURE__ */ $pick11("availableParallelism");
+
+// squeal-builtin:node:child_process
+var $mod12;
+var $load12 = () => $mod12 ??= process.getBuiltinModule("node:child_process");
+var $pick12 = (n) => $load12()[n];
+var execFile = /* @__PURE__ */ $pick12("execFile");
+var execFileSync = /* @__PURE__ */ $pick12("execFileSync");
+var spawn = /* @__PURE__ */ $pick12("spawn");
 
 // src/core/daemon/terminate.ts
-import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
-import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
 async function commandLine(pid) {
@@ -631,18 +681,18 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync2("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
   }
 }
 
-// src/core/daemon/outlived.ts
-import { execFile } from "node:child_process";
-import { readdirSync as readdirSync2, readFileSync as readFileSync3 } from "node:fs";
-import { readFile as readFile2 } from "node:fs/promises";
-import { promisify } from "node:util";
+// squeal-builtin:node:util
+var $mod13;
+var $load13 = () => $mod13 ??= process.getBuiltinModule("node:util");
+var $pick13 = (n) => $load13()[n];
+var promisify = /* @__PURE__ */ $pick13("promisify");
 
 // src/runners/process/recorders.ts
 var UNOBSERVED = JSON.stringify({ out: "" });
@@ -653,7 +703,7 @@ var CHUNK = 64;
 function procRow(pid) {
   let text;
   try {
-    text = readFileSync3(`/proc/${pid}/stat`, "latin1");
+    text = readFileSync(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -670,7 +720,7 @@ function procRow(pid) {
 var PROC = {
   mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
   async list() {
-    const names = readdirSync2("/proc").filter((name) => /^\d+$/.test(name));
+    const names = readdirSync("/proc").filter((name) => /^\d+$/.test(name));
     const rows = [];
     for (let at = 0; at < names.length; at += CHUNK) {
       if (at > 0) await new Promise((done) => setImmediate(done));
@@ -684,7 +734,7 @@ var PROC = {
   async variable(pid, variable) {
     let environ;
     try {
-      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
+      environ = `\0${await readFile(`/proc/${pid}/environ`, "latin1")}`;
     } catch {
       return null;
     }
@@ -782,7 +832,6 @@ var HOST = process.platform === "linux" ? PROC : process.platform === "darwin" ?
 var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 
 // src/core/ps/source.ts
-import { execFileSync } from "node:child_process";
 var runCommand = (command, args) => {
   try {
     return execFileSync(command, args, {
@@ -809,7 +858,7 @@ var ProcSource = class {
   #cpus;
   #run;
   constructor(options) {
-    this.#proc = join3(options.root ?? "/", "proc");
+    this.#proc = join(options.root ?? "/", "proc");
     this.#cpus = options.availableParallelism ?? availableParallelism;
     this.#run = options.run ?? runCommand;
   }
@@ -856,10 +905,10 @@ var ProcSource = class {
     return { bytes: anon + shmem, swapBytes: swap ?? null };
   }
   fds(pid) {
-    const dir = join3(this.#proc, String(pid), "fd");
+    const dir = join(this.#proc, String(pid), "fd");
     let names;
     try {
-      names = readdirSync3(dir);
+      names = readdirSync(dir);
     } catch {
       return null;
     }
@@ -897,7 +946,7 @@ var ProcSource = class {
     let dev;
     let ino;
     try {
-      ({ dev, ino } = statSync2(path, { bigint: true }));
+      ({ dev, ino } = statSync(path, { bigint: true }));
     } catch {
       return null;
     }
@@ -939,7 +988,7 @@ var ProcSource = class {
   }
   #pids() {
     try {
-      return readdirSync3(this.#proc).filter(isPid).map(Number);
+      return readdirSync(this.#proc).filter(isPid).map(Number);
     } catch {
       return [];
     }
@@ -948,9 +997,9 @@ var ProcSource = class {
   #row(pid) {
     const text = this.#read(`${pid}/stat`);
     if (text === null) return null;
-    const open = text.indexOf("(");
+    const open2 = text.indexOf("(");
     const close = text.lastIndexOf(")");
-    if (open < 0 || close < open) return null;
+    if (open2 < 0 || close < open2) return null;
     const f = text.slice(close + 2).split(" ");
     const [ppid, utime, stime, cutime, cstime, nice, startTicks] = [
       f[1],
@@ -966,7 +1015,7 @@ var ProcSource = class {
     return {
       pid,
       ppid: ppid ?? 0,
-      comm: text.slice(open + 1, close),
+      comm: text.slice(open2 + 1, close),
       state: f[0] ?? null,
       startTicks: startTicks ?? 0,
       cpuTicks: (utime ?? 0) + (stime ?? 0),
@@ -977,28 +1026,28 @@ var ProcSource = class {
   }
   #uid(pid) {
     try {
-      return statSync2(join3(this.#proc, String(pid))).uid;
+      return statSync(join(this.#proc, String(pid))).uid;
     } catch {
       return null;
     }
   }
   #read(path) {
     try {
-      return readFileSync4(join3(this.#proc, path), "utf8");
+      return readFileSync(join(this.#proc, path), "utf8");
     } catch {
       return null;
     }
   }
   #bytes(path) {
     try {
-      return readFileSync4(join3(this.#proc, path));
+      return readFileSync(join(this.#proc, path));
     } catch {
       return null;
     }
   }
   #link(path) {
     try {
-      return readlinkSync2(join3(this.#proc, path));
+      return readlinkSync(join(this.#proc, path));
     } catch {
       return null;
     }
@@ -1032,7 +1081,6 @@ function cpuTime(text) {
 }
 
 // src/core/store/long-write.ts
-import { basename as basename2 } from "node:path";
 var LONG_WRITE_MS = 250;
 var sink = null;
 function logLongWrites(to) {
@@ -1052,7 +1100,7 @@ function startWrite(db) {
     const ms = performance.now() - at;
     if (sink === null || ms <= LONG_WRITE_MS) return;
     sink({
-      database: basename2(fileOf(db)),
+      database: basename(fileOf(db)),
       operation: operationOf(new Error().stack ?? ""),
       ms: Math.round(ms),
       rows: totalChanges(db) - changes
@@ -1345,17 +1393,14 @@ function busyText(error) {
 }
 
 // src/core/store-process/paths.ts
-import { join as join4 } from "node:path";
 function storeProcessLockPath(commonDir, file) {
-  return join4(storePaths(commonDir).locksDir, `store-${file}.sqlite`);
+  return join(storePaths(commonDir).locksDir, `store-${file}.sqlite`);
 }
 function storeProcessLogPath(commonDir, file) {
-  return join4(storePaths(commonDir).dir, "logs", `store-${file}.log`);
+  return join(storePaths(commonDir).dir, "logs", `store-${file}.log`);
 }
 
 // src/core/store-process/release.ts
-import { existsSync } from "node:fs";
-import { setTimeout as sleep } from "node:timers/promises";
 var STARTING_MS = 2e3;
 async function release(at, token, leaving, startingMs = STARTING_MS) {
   if (token === null && leaving) await untilServing(at, startingMs);
@@ -1375,30 +1420,15 @@ async function untilServing(at, ms) {
     const lock = acquireDaemonLock(lockPath);
     lock?.release();
     if (lock !== null) return;
-    await sleep(25);
+    await setTimeout2(25);
   }
 }
 
-// src/core/store-process/spawn.ts
-import { spawn } from "node:child_process";
-import { closeSync as closeSync2, mkdirSync as mkdirSync3 } from "node:fs";
-
 // src/core/daemon/log-file.ts
-import {
-  closeSync,
-  copyFileSync,
-  fstatSync,
-  ftruncateSync,
-  mkdirSync as mkdirSync2,
-  openSync,
-  statSync as statSync3,
-  writeSync
-} from "node:fs";
-import { dirname as dirname3 } from "node:path";
 var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
 function rotateDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
   try {
-    if (statSync3(path).size < maxBytes) return;
+    if (statSync(path).size < maxBytes) return;
     copyFileSync(path, `${path}.1`);
     const fd = openSync(path, "r+");
     try {
@@ -1411,7 +1441,7 @@ function rotateDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
 }
 function openDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
   try {
-    mkdirSync2(dirname3(path), { recursive: true });
+    mkdirSync(dirname(path), { recursive: true });
     rotateDaemonLog(path, maxBytes);
     return openSync(path, "a", 384);
   } catch {
@@ -1420,7 +1450,6 @@ function openDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
 }
 
 // src/core/process-label.ts
-import { basename as basename3, delimiter, dirname as dirname4, resolve } from "node:path";
 var PROJECT_MAX = 32;
 function argv0For(label, platform = process.platform) {
   return label !== null && platform === "linux" ? label : void 0;
@@ -1429,7 +1458,7 @@ function storeCheckLabel(commonDir) {
   return `squeal ${projectComponent(projectOf(commonDir) ?? "store")} check`;
 }
 function projectOf(commonDir) {
-  return commonDir !== null && basename3(commonDir) === ".git" ? basename3(dirname4(commonDir)) : null;
+  return commonDir !== null && basename(commonDir) === ".git" ? basename(dirname(commonDir)) : null;
 }
 function projectComponent(name) {
   const safe = name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -1444,7 +1473,7 @@ function spawnStoreProcess(commonDir, launch, env = process.env) {
   let log = null;
   try {
     const cwd = storePaths(commonDir).dir;
-    mkdirSync3(cwd, { recursive: true });
+    mkdirSync(cwd, { recursive: true });
     log = openDaemonLog(storeProcessLogPath(commonDir, "code"));
     const quiet = launch.execArgv.some((arg) => arg.startsWith("--disable-warning")) ? [] : ["--disable-warning=ExperimentalWarning"];
     const child = spawn(
@@ -1467,7 +1496,7 @@ function spawnStoreProcess(commonDir, launch, env = process.env) {
   } finally {
     if (log !== null) {
       try {
-        closeSync2(log);
+        closeSync(log);
       } catch {
       }
     }
@@ -1549,7 +1578,7 @@ function serve(data2) {
       db.raw.exec(`PRAGMA busy_timeout = ${busyMs}`);
       return db.writer.write(data2.worktreeId, job.seq, job.statements).end === "superseded" ? "superseded" : "written";
     },
-    sleep: (ms) => sleep2(ms),
+    sleep: (ms) => setTimeout2(ms),
     now: () => performance.now()
   };
   const lease = async (instance) => {
@@ -1590,7 +1619,7 @@ function timingOf(timing) {
   return { ...OWNER_TIMING, ...timing };
 }
 function openHere(commonDir) {
-  const raw = new DatabaseSync5(codeStorePath(commonDir));
+  const raw = new DatabaseSync(codeStorePath(commonDir));
   raw.exec("PRAGMA synchronous = NORMAL");
   return { raw, writer: new GuardedWriter(raw) };
 }
@@ -1612,7 +1641,7 @@ function storeProcessHolder(lockPath) {
 }
 function cmdlineOf(pid) {
   try {
-    return readFileSync5(`/proc/${pid}/cmdline`, "utf8").split("\0");
+    return readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0");
   } catch {
     return [];
   }

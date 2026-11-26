@@ -1,14 +1,26 @@
-import { createRequire as __squealCreateRequire } from "node:module";
-const require = __squealCreateRequire(import.meta.url);
+const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
 
-// src/core/store-process/writer-thread.ts
-import { parentPort, workerData } from "node:worker_threads";
+// squeal-builtin:node:worker_threads
+var $mod;
+var $load = () => $mod ??= process.getBuiltinModule("node:worker_threads");
+var $pick = (n) => $load()[n];
+var parentPort = /* @__PURE__ */ $pick("parentPort");
+var workerData = /* @__PURE__ */ $pick("workerData");
 
-// src/core/store/long-write.ts
-import { basename } from "node:path";
+// squeal-builtin:node:path
+var $mod2;
+var $load2 = () => $mod2 ??= process.getBuiltinModule("node:path");
+var $pick2 = (n) => $load2()[n];
+var basename = /* @__PURE__ */ $pick2("basename");
+var join = /* @__PURE__ */ $pick2("join");
+
+// squeal-builtin:node:async_hooks
+var $mod3;
+var $load3 = () => $mod3 ??= process.getBuiltinModule("node:async_hooks");
+var $pick3 = (n) => $load3()[n];
+var AsyncLocalStorage = /* @__PURE__ */ $pick3("AsyncLocalStorage");
 
 // src/core/store/connection.ts
-import { AsyncLocalStorage } from "node:async_hooks";
 var Connection = class {
   #statements = /* @__PURE__ */ new Map();
   #depth = 0;
@@ -195,19 +207,22 @@ function totalChanges(db) {
   return Number(statement.get()?.n);
 }
 
-// src/core/code/store/open.ts
-import { existsSync, mkdirSync } from "node:fs";
-import { join as join2 } from "node:path";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+// squeal-builtin:node:fs
+var $mod4;
+var $load4 = () => $mod4 ??= process.getBuiltinModule("node:fs");
+var $pick4 = (n) => $load4()[n];
+var constants = /* @__PURE__ */ $pick4("constants");
+var existsSync = /* @__PURE__ */ $pick4("existsSync");
+var mkdirSync = /* @__PURE__ */ $pick4("mkdirSync");
+var statSync = /* @__PURE__ */ $pick4("statSync");
 
-// src/core/store/open.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-
-// src/core/store/mark.ts
-import { DatabaseSync } from "node:sqlite";
+// squeal-builtin:node:sqlite
+var $mod5;
+var $load5 = () => $mod5 ??= process.getBuiltinModule("node:sqlite");
+var $pick5 = (n) => $load5()[n];
+var DatabaseSync = /* @__PURE__ */ $pick5("DatabaseSync");
 
 // src/core/store/paths.ts
-import { basename as basename2, dirname, join } from "node:path";
 function storePaths(commonDir) {
   const dir = join(commonDir, "squeal");
   return {
@@ -797,15 +812,15 @@ var HoldingConnection = class extends Connection {
     this.#begin();
     this.#held = true;
     holders.set(this.#file, this);
-    let open = true;
+    let open2 = true;
     const end = () => {
-      open = false;
+      open2 = false;
       this.#held = false;
       release(this.#file, this);
     };
     return {
       commit: () => {
-        if (!open) return;
+        if (!open2) return;
         try {
           this.db.exec("COMMIT");
         } catch (error) {
@@ -816,7 +831,7 @@ var HoldingConnection = class extends Connection {
         }
       },
       rollback: () => {
-        if (!open) return;
+        if (!open2) return;
         end();
         rollback(this.db);
       }
@@ -834,7 +849,7 @@ var HoldingConnection = class extends Connection {
   heldElsewhere() {
     const other = holders.get(this.#file);
     if (other === void 0 || other === this) return null;
-    return new Promise((resolve) => waiters.push({ file: this.#file, resolve }));
+    return new Promise((resolve2) => waiters.push({ file: this.#file, resolve: resolve2 }));
   }
   /**
    * A write here while another connection of this thread holds the database
@@ -1105,17 +1120,17 @@ var SendingConnection = class extends HoldingConnection {
     this.#readable();
     const held = [];
     this.#held = held;
-    let open = true;
+    let open2 = true;
     return {
       commit: () => {
-        if (!open) return;
-        open = false;
+        if (!open2) return;
+        open2 = false;
         this.#held = null;
         this.#track(this.#send(held, true), false);
       },
       rollback: () => {
-        if (!open) return;
-        open = false;
+        if (!open2) return;
+        open2 = false;
         this.#held = null;
         this.#track(this.#sender.release(), false);
       }
@@ -1308,8 +1323,13 @@ function toFile(row) {
   };
 }
 
-// src/core/code/coverage/parts.ts
-import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
+// squeal-builtin:node:zlib
+var $mod6;
+var $load6 = () => $mod6 ??= process.getBuiltinModule("node:zlib");
+var $pick6 = (n) => $load6()[n];
+var constants2 = /* @__PURE__ */ $pick6("constants");
+var deflateRawSync = /* @__PURE__ */ $pick6("deflateRawSync");
+var inflateRawSync = /* @__PURE__ */ $pick6("inflateRawSync");
 
 // src/core/fs/compare.ts
 function compare(a, b) {
@@ -1317,7 +1337,7 @@ function compare(a, b) {
 }
 
 // src/core/code/coverage/parts.ts
-var SYNC = { finishFlush: constants.Z_SYNC_FLUSH };
+var SYNC = { finishFlush: constants2.Z_SYNC_FLUSH };
 var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
 var RECORD_HEAD = stored('{"v":1,"sources":[');
 var COMMA = stored(",");
@@ -1588,8 +1608,7 @@ function createCoverageRepo(conn, sent) {
 }
 
 // src/core/hash/blob.ts
-import { constants as constants2 } from "node:fs";
-var OPEN_FLAGS = constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK;
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/code/coverage/sourcemap.ts
 var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -2228,7 +2247,7 @@ function createMetaRepo(conn) {
 
 // src/core/code/store/open.ts
 function codeStorePath(commonDir) {
-  return join2(storePaths(commonDir).dir, "code.sqlite");
+  return join(storePaths(commonDir).dir, "code.sqlite");
 }
 function isCodeStoreOpenFailure(value) {
   return "reason" in value;
@@ -2246,7 +2265,7 @@ function openCodeStore(commonDir, policy, options = {}) {
   }
   let db;
   try {
-    db = new DatabaseSync3(path);
+    db = new DatabaseSync(path);
     db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
     const found = userVersion(db);
     if (found > CODE_SCHEMA_VERSION) {
@@ -2285,7 +2304,6 @@ function makeIndexes(db) {
 }
 
 // src/core/daemon/idle-checkpoint.ts
-import { statSync } from "node:fs";
 var PASSIVE_CHECKPOINT_BYTES = 4 * 1024 * 1024;
 function passiveCheckpoint(db, walPath, minBytes = PASSIVE_CHECKPOINT_BYTES) {
   if (db.isTransaction) return null;

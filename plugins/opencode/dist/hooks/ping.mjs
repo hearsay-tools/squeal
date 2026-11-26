@@ -1,14 +1,46 @@
-import { createRequire as __squealCreateRequire } from "node:module";
-const require = __squealCreateRequire(import.meta.url);
+const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
 
-// src/harness/opencode/bridge.ts
-import { readFileSync as readFileSync7 } from "node:fs";
-import { fileURLToPath } from "node:url";
+// squeal-builtin:node:fs
+var $mod;
+var $load = () => $mod ??= process.getBuiltinModule("node:fs");
+var $pick = (n) => $load()[n];
+var constants = /* @__PURE__ */ $pick("constants");
+var existsSync = /* @__PURE__ */ $pick("existsSync");
+var readFileSync = /* @__PURE__ */ $pick("readFileSync");
+var readdirSync = /* @__PURE__ */ $pick("readdirSync");
+var readlinkSync = /* @__PURE__ */ $pick("readlinkSync");
+var realpathSync = /* @__PURE__ */ $pick("realpathSync");
+var statSync = /* @__PURE__ */ $pick("statSync");
+
+// squeal-builtin:node:url
+var $mod2;
+var $load2 = () => $mod2 ??= process.getBuiltinModule("node:url");
+var $pick2 = (n) => $load2()[n];
+var fileURLToPath = /* @__PURE__ */ $pick2("fileURLToPath");
+
+// squeal-builtin:node:path
+var $mod3;
+var $load3 = () => $mod3 ??= process.getBuiltinModule("node:path");
+var $pick3 = (n) => $load3()[n];
+var basename = /* @__PURE__ */ $pick3("basename");
+var dirname = /* @__PURE__ */ $pick3("dirname");
+var isAbsolute = /* @__PURE__ */ $pick3("isAbsolute");
+var join = /* @__PURE__ */ $pick3("join");
+var posix = /* @__PURE__ */ $pick3("posix");
+var relative = /* @__PURE__ */ $pick3("relative");
+var resolve = /* @__PURE__ */ $pick3("resolve");
+var sep = /* @__PURE__ */ $pick3("sep");
 
 // src/core/fs/json.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+// squeal-builtin:node:util
+var $mod4;
+var $load4 = () => $mod4 ??= process.getBuiltinModule("node:util");
+var $pick4 = (n) => $load4()[n];
+var promisify = /* @__PURE__ */ $pick4("promisify");
 
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
@@ -58,9 +90,9 @@ function compile(glob, original) {
   }
   return out;
 }
-function matchingBrace(glob, open, original) {
+function matchingBrace(glob, open2, original) {
   let depth = 0;
-  for (let i = open; i < glob.length; i++) {
+  for (let i = open2; i < glob.length; i++) {
     if (glob[i] === "{") depth++;
     else if (glob[i] === "}" && --depth === 0) return i;
   }
@@ -189,7 +221,6 @@ var GIB = 2 ** 30;
 var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
 
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute, posix } from "node:path";
 function compiles(globs4) {
   for (const glob of globs4) {
     try {
@@ -440,7 +471,6 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute2, posix as posix2 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -464,8 +494,8 @@ function withDefaults2(entry) {
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
-  if (python === void 0 || isAbsolute2(python)) return null;
-  const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
+  if (python === void 0 || isAbsolute(python)) return null;
+  const path = posix.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
     key: "python",
@@ -501,8 +531,13 @@ var REMOTE_SHAPE = {
   remote: { allowed: boolean4, needsRepository }
 };
 
+// squeal-builtin:node:crypto
+var $mod5;
+var $load5 = () => $mod5 ??= process.getBuiltinModule("node:crypto");
+var $pick5 = (n) => $load5()[n];
+var createHash = /* @__PURE__ */ $pick5("createHash");
+
 // src/core/keys/observed.ts
-import { createHash } from "node:crypto";
 var ABSENT_LISTING = createHash("sha1").update("\0absent").digest("hex");
 var EMPTY_LISTING = createHash("sha1").update("\0empty").digest("hex");
 
@@ -664,15 +699,14 @@ function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-// src/core/store/mark.ts
-import { DatabaseSync } from "node:sqlite";
+// squeal-builtin:node:async_hooks
+var $mod6;
+var $load6 = () => $mod6 ??= process.getBuiltinModule("node:async_hooks");
+var $pick6 = (n) => $load6()[n];
+var AsyncLocalStorage = /* @__PURE__ */ $pick6("AsyncLocalStorage");
 
 // src/core/store/connection.ts
-import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
-
-// src/core/store/open.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/schema.ts
 var V1 = `
@@ -908,9 +942,6 @@ var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN check
 // src/core/store/open.ts
 var JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
 
-// src/core/code/store/open.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
-
 // src/core/code/store/schema.ts
 var V12 = `
 CREATE TABLE meta (
@@ -1004,9 +1035,14 @@ CREATE TABLE coverage (
 var CODE_MIGRATIONS = [(db) => db.exec(V12)];
 var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 
+// squeal-builtin:node:zlib
+var $mod7;
+var $load7 = () => $mod7 ??= process.getBuiltinModule("node:zlib");
+var $pick7 = (n) => $load7()[n];
+var constants2 = /* @__PURE__ */ $pick7("constants");
+
 // src/core/code/coverage/parts.ts
-import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
-var SYNC = { finishFlush: constants.Z_SYNC_FLUSH };
+var SYNC = { finishFlush: constants2.Z_SYNC_FLUSH };
 var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
 var RECORD_HEAD = stored('{"v":1,"sources":[');
 var COMMA = stored(",");
@@ -1027,9 +1063,14 @@ function stored(text, last = false) {
 // src/core/code/store/parts.ts
 var PART_REFRESH_MS = 60 * 6e4;
 
+// squeal-builtin:node:fs/promises
+var $mod8;
+var $load8 = () => $mod8 ??= process.getBuiltinModule("node:fs/promises");
+var $pick8 = (n) => $load8()[n];
+var readFile = /* @__PURE__ */ $pick8("readFile");
+
 // src/core/hash/blob.ts
-import { constants as constants2 } from "node:fs";
-var OPEN_FLAGS = constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK;
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/code/coverage/sourcemap.ts
 var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -1084,19 +1125,10 @@ function nodeTestFiles(command, listing) {
   return files.every((ref2) => ref2 !== void 0) ? [...new Set(files)] : null;
 }
 
-// src/runners/pytest/describe.ts
-import { realpathSync } from "node:fs";
-import { join as join3, resolve as resolve2 } from "node:path";
-
-// src/runners/pytest/environment/discover.ts
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, isAbsolute as isAbsolute4, join as join2, relative as relative2, resolve } from "node:path";
-
 // src/core/fs/paths.ts
-import { isAbsolute as isAbsolute3, join, relative, sep } from "node:path";
 function toRelative(root, abs) {
   const rel = relative(root, abs);
-  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute3(rel)) return null;
+  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
   return sep === "/" ? rel : rel.split(sep).join("/");
 }
 function toAbsolute(root, rel) {
@@ -1111,16 +1143,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join2(declared, "bin", "python"));
+    if (isDirectory(declared)) return found("declared", declared, join(declared, "bin", "python"));
     if (existsSync(declared)) return found("declared", dirname(dirname(declared)), declared);
     const target = basename(declared).startsWith("python") ? dirname(dirname(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join2(cwd, ".venv");
-  if (existsSync(join2(venv, "pyvenv.cfg"))) return found("venv", venv, join2(venv, "bin", "python"));
+  const venv = join(cwd, ".venv");
+  if (existsSync(join(venv, "pyvenv.cfg"))) return found("venv", venv, join(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
   if (pdm !== null) return found("pdm-python", dirname(dirname(pdm)), pdm);
-  return none(root, cwd, [venv, join2(cwd, ".pdm-python")], venv);
+  return none(root, cwd, [venv, join(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -1128,12 +1160,12 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text;
   try {
-    text = readFileSync(join2(cwd, ".pdm-python"), "utf8").trim();
+    text = readFileSync(join(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute4(text) || toRelative(root, text) === null || !existsSync(text)) return null;
+  if (!isAbsolute(text) || toRelative(root, text) === null || !existsSync(text)) return null;
   return text;
 }
 var LOCKFILES = [
@@ -1143,21 +1175,21 @@ var LOCKFILES = [
 ];
 var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
 function none(root, cwd, looked, target) {
-  const venv = relative2(cwd, target) || ".";
+  const venv = relative(cwd, target) || ".";
   const dirs = [];
   for (let dir = cwd; ; dir = dirname(dir)) {
     dirs.push(dir);
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES.find(([file]) => existsSync(join2(dir, file)));
+    const hit = LOCKFILES.find(([file]) => existsSync(join(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join2(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files = requirementsIn(dir).map((file) => join2(dir, file));
+    const files = requirementsIn(dir).map((file) => join(dir, file));
     if (files.length === 0) continue;
-    const install = files.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
+    const install = files.map((file) => `-r ${relative(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
     return { kind: "none", looked, command, from: files[0] };
   }
@@ -1213,7 +1245,7 @@ function pytestHere(root, cwd, projects) {
 }
 function realPath(path) {
   try {
-    return realpathSync(resolve2(path));
+    return realpathSync(resolve(path));
   } catch {
     return null;
   }
@@ -1232,13 +1264,13 @@ function pytestCommand(words, here) {
     if (OUTPUT_FLAG.test(word)) continue;
     const path = word.split("::")[0];
     if (word.startsWith("-") || path === "") return null;
-    paths.push(resolve2(dir, path));
+    paths.push(resolve(dir, path));
   }
   return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve2(dir, first) === join3(env, "bin", name2);
+  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve(dir, first) === join(env, "bin", name2);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -1252,13 +1284,11 @@ function pytestFiles(command, listing) {
   return own.filter((ref2) => named2.has(ref2.path));
 }
 
-// src/runners/vitest/describe.ts
-import { readFileSync as readFileSync3 } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join5, relative as relative3, resolve as resolve3 } from "node:path";
-
-// src/core/daemon/runner.ts
-import { readdirSync as readdirSync2, readFileSync as readFileSync2 } from "node:fs";
-import { join as join4, posix as posix3 } from "node:path";
+// squeal-builtin:node:child_process
+var $mod9;
+var $load9 = () => $mod9 ??= process.getBuiltinModule("node:child_process");
+var $pick9 = (n) => $load9()[n];
+var execFile = /* @__PURE__ */ $pick9("execFile");
 
 // src/core/types/runner-traits.ts
 function declareTraits(stated = {}) {
@@ -1285,12 +1315,12 @@ var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[
 function vitestDetected(root) {
   let names2;
   try {
-    names2 = readdirSync2(root);
+    names2 = readdirSync(root);
   } catch {
     return false;
   }
   if (names2.some((name2) => VITEST_CONFIG.test(name2))) return true;
-  return listsVitest(readManifest2(join4(root, "package.json")));
+  return listsVitest(readManifest2(join(root, "package.json")));
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -1301,7 +1331,7 @@ function listsVitest(manifest) {
 }
 function readManifest2(path) {
   try {
-    return JSON.parse(readFileSync2(path, "utf8"));
+    return JSON.parse(readFileSync(path, "utf8"));
   } catch {
     return null;
   }
@@ -1384,22 +1414,22 @@ function vitestFiles(command, listing) {
   if (command.filters.length === 0) return vitest;
   const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref2) => matchesFilter(join5(root, ref2.path), filter, root));
+    const hits = vitest.filter((ref2) => matchesFilter(join(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref2 of hits) selected2.add(ref2);
   }
   return vitest.filter((ref2) => selected2.has(ref2));
 }
 function matchesFilter(file, filter, root) {
-  if (isAbsolute5(filter) && file.startsWith(filter)) return true;
-  const testFile = relative3(root, file).toLocaleLowerCase();
-  const rel = relative3(root, resolve3(root, filter));
-  const relativePath = filter.endsWith("/") ? join5(rel, "/") : rel;
+  if (isAbsolute(filter) && file.startsWith(filter)) return true;
+  const testFile = relative(root, file).toLocaleLowerCase();
+  const rel = relative(root, resolve(root, filter));
+  const relativePath = filter.endsWith("/") ? join(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync3(join5(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
@@ -1418,9 +1448,6 @@ var UNCONFIGURED3 = {
 
 // src/core/slow/slot-files.ts
 var SLOT_WAITER_FRESH_MS = 3e4;
-
-// src/core/lint/store/open.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/lint/store/schema.ts
 var V13 = `
@@ -1494,17 +1521,17 @@ var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 var DAEMON_START_GRACE_MS = 1e4;
 var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
 
-// src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+// squeal-builtin:node:diagnostics_channel
+var $mod10;
+var $load10 = () => $mod10 ??= process.getBuiltinModule("node:diagnostics_channel");
+var $pick10 = (n) => $load10()[n];
+var channel = /* @__PURE__ */ $pick10("channel");
 
 // src/core/daemon/test-pause.ts
-import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync4 } from "node:fs";
-import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
 async function commandLine(pid) {
@@ -1519,7 +1546,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync4("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -1585,11 +1612,7 @@ function tallyOf(own) {
 }
 var NO_STATES = tallyOf([]);
 
-// src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
-
 // src/core/slow/slot-holding.ts
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 var RAN_FRESH_MS = 3 * 60 * 6e4;
 
 // src/core/retry/kept.ts
@@ -1613,24 +1636,23 @@ var MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and
 var MAX_READ_BYTES = 1024 * 1024;
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync5, readlinkSync } from "node:fs";
 function readProcStat(pid) {
   let text;
   try {
-    text = readFileSync5(`/proc/${pid}/stat`, "utf8");
+    text = readFileSync(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const open = text.indexOf("(");
+  const open2 = text.indexOf("(");
   const close = text.lastIndexOf(")");
   const rest = text.slice(close + 2).split(" ");
   const ppid = Number(rest[1]);
   const startTime = Number(rest[19]);
-  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+  if (open2 < 0 || close < open2 || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
     throw new Error(`unreadable /proc/${pid}/stat`);
   }
-  return { comm: text.slice(open + 1, close), state: rest[0] ?? "", ppid, startTime };
+  return { comm: text.slice(open2 + 1, close), state: rest[0] ?? "", ppid, startTime };
 }
 function pidNamespace() {
   try {
@@ -1659,12 +1681,6 @@ function waitedText(ms) {
 }
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
-// src/core/daemon/outlived.ts
-import { execFile } from "node:child_process";
-import { readdirSync as readdirSync4, readFileSync as readFileSync6 } from "node:fs";
-import { readFile as readFile2 } from "node:fs/promises";
-import { promisify } from "node:util";
-
 // src/runners/process/recorders.ts
 var UNOBSERVED = JSON.stringify({ out: "" });
 
@@ -1674,7 +1690,7 @@ var CHUNK = 64;
 function procRow(pid) {
   let text;
   try {
-    text = readFileSync6(`/proc/${pid}/stat`, "latin1");
+    text = readFileSync(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -1691,7 +1707,7 @@ function procRow(pid) {
 var PROC = {
   mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
   async list() {
-    const names2 = readdirSync4("/proc").filter((name2) => /^\d+$/.test(name2));
+    const names2 = readdirSync("/proc").filter((name2) => /^\d+$/.test(name2));
     const rows = [];
     for (let at = 0; at < names2.length; at += CHUNK) {
       if (at > 0) await new Promise((done) => setImmediate(done));
@@ -1705,7 +1721,7 @@ var PROC = {
   async variable(pid, variable) {
     let environ;
     try {
-      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
+      environ = `\0${await readFile(`/proc/${pid}/environ`, "latin1")}`;
     } catch {
       return null;
     }
@@ -1808,18 +1824,12 @@ var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 
-// src/core/scheduler/capacity.ts
-var CAPACITY_RECHECK_MS = 2e3;
-
 // src/core/scheduler/record-tier.ts
 var HERE = coreEnvironmentInputs({
   squealVersion: "",
   installedDependencies: "",
   allowlist: []
 });
-
-// src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
 
 // src/core/status/stopping.ts
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
@@ -1840,28 +1850,10 @@ function endInOrder(items, end, undo) {
 }
 
 // src/core/status/open.ts
-import { DatabaseSync as DatabaseSync9 } from "node:sqlite";
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
-
-// src/core/keys/environment-descriptor.ts
-import { createHash as createHash2 } from "node:crypto";
-function configFieldHash(value) {
-  return digest(JSON.stringify(value));
-}
-function digest(text) {
-  return createHash2("sha256").update(text).digest("hex");
-}
-var ONLY_REJECTED = configFieldHash(false);
-var ONLY_ALLOWED = configFieldHash(true);
-
-// src/core/scheduler/pool-wait.ts
-var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
 
 // src/core/daemon/log-file.ts
 var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
-
-// src/core/presence/lock-events.ts
-import { DatabaseSync as DatabaseSync10 } from "node:sqlite";
 
 // src/harness/shared/hand-off.ts
 var HandOff = class {
@@ -1936,13 +1928,13 @@ function endThenClose(taken, end) {
 }
 var HAND_OFF_BOUND_MS = HOOK_TIMEOUT_MS;
 function written(stream, text, boundMs) {
-  return new Promise((resolve4, reject) => {
+  return new Promise((resolve2, reject) => {
     const timer = setTimeout(() => reject(new Error("output not written in time")), boundMs);
     try {
       stream.write(text, (error) => {
         clearTimeout(timer);
         if (error) reject(error);
-        else resolve4();
+        else resolve2();
       });
     } catch (error) {
       clearTimeout(timer);
@@ -1973,12 +1965,12 @@ function findHarnessProcess(lookup = {}) {
   let pid = lookup.ppid ?? process.ppid;
   try {
     for (let hop = 0; hop < MAX_HOPS && pid > 1; hop++) {
-      const stat = read(pid);
-      if (stat === null || stat.state === "Z" || stat.comm === "systemd") return null;
-      if (!SKIPPED.has(stat.comm)) {
-        return { pid, startTime: stat.startTime, pidNamespace: namespace };
+      const stat2 = read(pid);
+      if (stat2 === null || stat2.state === "Z" || stat2.comm === "systemd") return null;
+      if (!SKIPPED.has(stat2.comm)) {
+        return { pid, startTime: stat2.startTime, pidNamespace: namespace };
       }
-      pid = stat.ppid;
+      pid = stat2.ppid;
     }
   } catch {
     return null;
@@ -2055,13 +2047,13 @@ function ackOf(request) {
 function awaitSignal(boundMs) {
   let finish = () => {
   };
-  const commit = new Promise((resolve4) => {
+  const commit = new Promise((resolve2) => {
     const on = () => end(true);
     const timer = setTimeout(() => end(false), Math.max(0, boundMs));
     const end = (value) => {
       clearTimeout(timer);
       process.off(VERDICT_SIGNAL, on);
-      resolve4(value);
+      resolve2(value);
     };
     finish = end;
     process.on(VERDICT_SIGNAL, on);
@@ -2128,7 +2120,7 @@ async function runEntry(module, kind, handler) {
   ignoreVerdictSignal();
   let stdin = "";
   try {
-    stdin = readFileSync7(0, "utf8");
+    stdin = readFileSync(0, "utf8");
   } catch {
   }
   await runBridge(stdin, new URL(module), kind, handler);

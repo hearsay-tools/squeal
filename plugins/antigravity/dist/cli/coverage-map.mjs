@@ -1,21 +1,44 @@
-import { createRequire as __squealCreateRequire } from "node:module";
-const require = __squealCreateRequire(import.meta.url);
+const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
 
-// src/core/code/coverage/map-worker.ts
-import { readFileSync as readFileSync4 } from "node:fs";
-import { parentPort, workerData } from "node:worker_threads";
+// squeal-builtin:node:fs
+var $mod;
+var $load = () => $mod ??= process.getBuiltinModule("node:fs");
+var $pick = (n) => $load()[n];
+var constants = /* @__PURE__ */ $pick("constants");
+var existsSync = /* @__PURE__ */ $pick("existsSync");
+var readFileSync = /* @__PURE__ */ $pick("readFileSync");
+var readdirSync = /* @__PURE__ */ $pick("readdirSync");
+var statSync = /* @__PURE__ */ $pick("statSync");
 
-// src/core/code/coverage/mapper.ts
-import { existsSync, readdirSync, readFileSync as readFileSync3, rmSync, statSync } from "node:fs";
-import { join } from "node:path";
+// squeal-builtin:node:worker_threads
+var $mod2;
+var $load2 = () => $mod2 ??= process.getBuiltinModule("node:worker_threads");
+var $pick2 = (n) => $load2()[n];
+var parentPort = /* @__PURE__ */ $pick2("parentPort");
+var workerData = /* @__PURE__ */ $pick2("workerData");
 
-// src/core/code/coverage/own.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { isAbsolute, relative, sep } from "node:path";
+// squeal-builtin:node:path
+var $mod3;
+var $load3 = () => $mod3 ??= process.getBuiltinModule("node:path");
+var $pick3 = (n) => $load3()[n];
+var isAbsolute = /* @__PURE__ */ $pick3("isAbsolute");
+var join = /* @__PURE__ */ $pick3("join");
+var relative = /* @__PURE__ */ $pick3("relative");
+var sep = /* @__PURE__ */ $pick3("sep");
+
+// squeal-builtin:node:url
+var $mod4;
+var $load4 = () => $mod4 ??= process.getBuiltinModule("node:url");
+var $pick4 = (n) => $load4()[n];
+var fileURLToPath = /* @__PURE__ */ $pick4("fileURLToPath");
+
+// squeal-builtin:node:crypto
+var $mod5;
+var $load5 = () => $mod5 ??= process.getBuiltinModule("node:crypto");
+var $pick5 = (n) => $load5()[n];
+var createHash = /* @__PURE__ */ $pick5("createHash");
 
 // src/core/hash/blob.ts
-import { createHash } from "node:crypto";
-import { constants } from "node:fs";
 function blobHash(bytes, format2) {
   return createHash(format2).update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
 }
@@ -129,10 +152,12 @@ function validMappings(mappings, lengths, text) {
   return true;
 }
 
-// src/core/code/coverage/record.ts
-import { createHash as createHash2 } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+// squeal-builtin:node:zlib
+var $mod6;
+var $load6 = () => $mod6 ??= process.getBuiltinModule("node:zlib");
+var $pick6 = (n) => $load6()[n];
+var constants2 = /* @__PURE__ */ $pick6("constants");
+var deflateRawSync = /* @__PURE__ */ $pick6("deflateRawSync");
 
 // src/core/fs/compare.ts
 function compare(a, b) {
@@ -146,7 +171,7 @@ var Counts = class {
   #counts = [];
   constructor(functions, wrapper) {
     const ranges = functions.flatMap((fn) => fn.ranges).map((r) => ({ start: r.startOffset - wrapper, end: r.endOffset - wrapper, count: r.count })).filter((r) => r.end > r.start).sort((a, b) => a.start - b.start || b.end - a.end);
-    const open = [];
+    const open2 = [];
     let at = Number.NEGATIVE_INFINITY;
     const emit = (to, count) => {
       if (to > at) {
@@ -157,17 +182,17 @@ var Counts = class {
       at = Math.max(at, to);
     };
     const close = (until) => {
-      for (let top = open.at(-1); top !== void 0 && top.end <= until; top = open.at(-1)) {
+      for (let top = open2.at(-1); top !== void 0 && top.end <= until; top = open2.at(-1)) {
         emit(top.end, top.count);
-        open.pop();
+        open2.pop();
       }
     };
     for (const range of ranges) {
       close(range.start);
-      const top = open.at(-1);
+      const top = open2.at(-1);
       if (top === void 0) at = range.start;
       else emit(range.start, top.count);
-      open.push({
+      open2.push({
         end: top === void 0 ? range.end : Math.min(range.end, top.end),
         count: range.count
       });
@@ -473,7 +498,7 @@ function blobOf(path, executed, format2, blobs2) {
     } catch {
       continue;
     }
-    if (createHash2("sha1").update(bytes).digest("hex") !== sha1) continue;
+    if (createHash("sha1").update(bytes).digest("hex") !== sha1) continue;
     const blob = blobHash(bytes, format2);
     if (blobs2.size >= BLOB_CACHE_LIMIT) blobs2.clear();
     blobs2.set(sha1, blob);
@@ -522,15 +547,13 @@ function asRun(path, rel) {
 }
 function read(path) {
   try {
-    return readFileSync2(path);
+    return readFileSync(path);
   } catch {
     return null;
   }
 }
 
 // src/core/code/coverage/parts.ts
-import { createHash as createHash3 } from "node:crypto";
-import { constants as constants2, deflateRawSync, inflateRawSync } from "node:zlib";
 var SYNC = { finishFlush: constants2.Z_SYNC_FLUSH };
 var COMPRESS_OVER = 1024;
 var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
@@ -546,7 +569,7 @@ function shareRecord(record, recordVersion) {
     const head = partHead(source.path);
     return {
       at: index.get(source.path) ?? 0,
-      hash: createHash3("sha256").update(`${recordVersion}
+      hash: createHash("sha256").update(`${recordVersion}
 ${text}`).digest("hex"),
       bytes: Buffer.concat([stored(head), rest(text.slice(head.length), text.length)])
     };
@@ -594,7 +617,7 @@ function withChildren(own, children, format2, skip = () => false) {
         dropped.push(`${name}: over ${CHILD_FILE_LIMIT_TEXT} (${size} bytes)`);
         continue;
       }
-      const payload = JSON.parse(readFileSync3(path, "utf8"));
+      const payload = JSON.parse(readFileSync(path, "utf8"));
       records.push(ownRecord(children.root, payload, format2, skip));
     } catch (error) {
       dropped.push(`${name}: ${String(error)}`);
@@ -632,7 +655,7 @@ function runOf(id) {
   return run;
 }
 function take(job) {
-  const payload = JSON.parse(readFileSync4(job.payload, "utf8"));
+  const payload = JSON.parse(readFileSync(job.payload, "utf8"));
   if (job.ownRoot !== void 0) {
     answer(job, ownRecord(job.ownRoot, payload, format));
     return;

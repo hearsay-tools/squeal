@@ -1,8 +1,10 @@
-import { createRequire as __squealCreateRequire } from "node:module";
-const require = __squealCreateRequire(import.meta.url);
+const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
 
-// src/harness/pi/entries/extension.ts
-import { Worker } from "node:worker_threads";
+// squeal-builtin:node:worker_threads
+var $mod;
+var $load = () => $mod ??= process.getBuiltinModule("node:worker_threads");
+var $pick = (n) => $load()[n];
+var Worker = /* @__PURE__ */ $pick("Worker");
 
 // src/harness/pi/host.ts
 function createDeliveryHost(start) {

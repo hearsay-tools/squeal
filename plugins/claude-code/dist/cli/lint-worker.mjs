@@ -1,26 +1,69 @@
-import { createRequire as __squealCreateRequire } from "node:module";
-const require = __squealCreateRequire(import.meta.url);
+const require = process.getBuiltinModule("node:module").createRequire(import.meta.url);
 
-// src/core/lint/provider/worker.ts
-import { parentPort, workerData } from "node:worker_threads";
+// squeal-builtin:node:worker_threads
+var $mod;
+var $load = () => $mod ??= process.getBuiltinModule("node:worker_threads");
+var $pick = (n) => $load()[n];
+var parentPort = /* @__PURE__ */ $pick("parentPort");
+var workerData = /* @__PURE__ */ $pick("workerData");
+var node_worker_threads_default = /* @__PURE__ */ $load();
 
-// src/core/lint/provider/observe.ts
-import fs2 from "node:fs";
-import { registerHooks, syncBuiltinESMExports } from "node:module";
-import { sep as sep3 } from "node:path";
-import { fileURLToPath as fileURLToPath3, pathToFileURL } from "node:url";
+// squeal-builtin:node:fs
+var $mod2;
+var $load2 = () => $mod2 ??= process.getBuiltinModule("node:fs");
+var $pick2 = (n) => $load2()[n];
+var constants = /* @__PURE__ */ $pick2("constants");
+var existsSync = /* @__PURE__ */ $pick2("existsSync");
+var globSync = /* @__PURE__ */ $pick2("globSync");
+var readFileSync = /* @__PURE__ */ $pick2("readFileSync");
+var readdirSync = /* @__PURE__ */ $pick2("readdirSync");
+var readlinkSync = /* @__PURE__ */ $pick2("readlinkSync");
+var realpathSync = /* @__PURE__ */ $pick2("realpathSync");
+var statSync = /* @__PURE__ */ $pick2("statSync");
+var node_fs_default = /* @__PURE__ */ $load2();
+
+// squeal-builtin:node:module
+var $mod3;
+var $load3 = () => $mod3 ??= process.getBuiltinModule("node:module");
+var $pick3 = (n) => $load3()[n];
+var createRequire = /* @__PURE__ */ $pick3("createRequire");
+var registerHooks = /* @__PURE__ */ $pick3("registerHooks");
+var syncBuiltinESMExports = /* @__PURE__ */ $pick3("syncBuiltinESMExports");
+var node_module_default = /* @__PURE__ */ $load3();
+
+// squeal-builtin:node:path
+var $mod4;
+var $load4 = () => $mod4 ??= process.getBuiltinModule("node:path");
+var $pick4 = (n) => $load4()[n];
+var basename = /* @__PURE__ */ $pick4("basename");
+var delimiter = /* @__PURE__ */ $pick4("delimiter");
+var dirname = /* @__PURE__ */ $pick4("dirname");
+var isAbsolute = /* @__PURE__ */ $pick4("isAbsolute");
+var join = /* @__PURE__ */ $pick4("join");
+var relative = /* @__PURE__ */ $pick4("relative");
+var resolve = /* @__PURE__ */ $pick4("resolve");
+var sep = /* @__PURE__ */ $pick4("sep");
+
+// squeal-builtin:node:url
+var $mod5;
+var $load5 = () => $mod5 ??= process.getBuiltinModule("node:url");
+var $pick5 = (n) => $load5()[n];
+var fileURLToPath = /* @__PURE__ */ $pick5("fileURLToPath");
+var pathToFileURL = /* @__PURE__ */ $pick5("pathToFileURL");
+
+// squeal-builtin:node:crypto
+var $mod6;
+var $load6 = () => $mod6 ??= process.getBuiltinModule("node:crypto");
+var $pick6 = (n) => $load6()[n];
+var createHash = /* @__PURE__ */ $pick6("createHash");
 
 // src/core/hash/blob.ts
-import { createHash } from "node:crypto";
-import { constants } from "node:fs";
 function blobHash(bytes, format2) {
   return createHash(format2).update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
 }
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/lint/provider/loaded.ts
-import { isAbsolute, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 var NODE_MODULES = `${sep}node_modules${sep}`;
 function sortLoaded(urls, root2) {
   const closure = /* @__PURE__ */ new Set();
@@ -59,17 +102,13 @@ function packageRoot(path) {
 }
 
 // src/core/lint/provider/wraps.ts
-import fs from "node:fs";
-import { isAbsolute as isAbsolute2, resolve, sep as sep2 } from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
-import workerThreads from "node:worker_threads";
 var LOADER = "node:internal/modules/";
-var OWN = /* @__PURE__ */ new Set([import.meta.url, fileURLToPath2(import.meta.url)]);
+var OWN = /* @__PURE__ */ new Set([import.meta.url, fileURLToPath(import.meta.url)]);
 function absolute(path) {
-  if (path instanceof URL) return path.protocol === "file:" ? fileURLToPath2(path) : null;
+  if (path instanceof URL) return path.protocol === "file:" ? fileURLToPath(path) : null;
   const text = Buffer.isBuffer(path) ? path.toString() : path;
   if (typeof text !== "string") return null;
-  return isAbsolute2(text) ? text : resolve(text);
+  return isAbsolute(text) ? text : resolve(text);
 }
 function callSites(below, limit) {
   const { prepareStackTrace, stackTraceLimit } = Error;
@@ -102,14 +141,14 @@ function decoded(bytes, options) {
   return bytes.toString(encoding);
 }
 function wrapReads(observer2) {
-  const { readFileSync: readFileSync4, readFile } = fs;
-  const readAsync = fs.promises.readFile;
+  const { readFileSync: readFileSync2, readFile } = node_fs_default;
+  const readAsync = node_fs_default.promises.readFile;
   const sync = function(...args) {
     const [path, options] = args;
     const file = absolute(path);
-    if (file === null) return Reflect.apply(readFileSync4, this, args);
+    if (file === null) return Reflect.apply(readFileSync2, this, args);
     const reader = callerOf(sync);
-    const bytes = observer2.inside(() => Reflect.apply(readFileSync4, this, [path, raw(options)]));
+    const bytes = observer2.inside(() => Reflect.apply(readFileSync2, this, [path, raw(options)]));
     observer2.read(file, bytes, reader);
     return decoded(bytes, options);
   };
@@ -136,19 +175,19 @@ function wrapReads(observer2) {
     observer2.read(file, bytes, reader);
     return decoded(bytes, options);
   };
-  fs.readFileSync = sync;
-  fs.readFile = callback;
-  fs.promises.readFile = promised;
+  node_fs_default.readFileSync = sync;
+  node_fs_default.readFile = callback;
+  node_fs_default.promises.readFile = promised;
 }
 var WRITE_ONLY = /* @__PURE__ */ new Set(["w", "wx", "xw", "a", "ax", "xa", "as", "sa"]);
 function reads(flags) {
   if (flags === void 0 || flags === null || typeof flags === "function") return true;
   if (typeof flags === "string") return !WRITE_ONLY.has(flags);
-  return typeof flags === "number" && (flags & 3) !== fs.constants.O_WRONLY;
+  return typeof flags === "number" && (flags & 3) !== node_fs_default.constants.O_WRONLY;
 }
 function wrapOpens(observer2) {
-  const { openSync, open, createReadStream, openAsBlob } = fs;
-  const openAsync = fs.promises.open;
+  const { openSync, open: open2, createReadStream, openAsBlob } = node_fs_default;
+  const openAsync = node_fs_default.promises.open;
   const flagged = (original) => {
     const wrapped = function(...args) {
       if (reads(args[1]) && !loaderOpen(wrapped)) observer2.opened(args[0]);
@@ -156,14 +195,14 @@ function wrapOpens(observer2) {
     };
     return wrapped;
   };
-  fs.openSync = flagged(openSync);
-  fs.open = flagged(open);
-  fs.promises.open = flagged(openAsync);
-  fs.createReadStream = function(...args) {
+  node_fs_default.openSync = flagged(openSync);
+  node_fs_default.open = flagged(open2);
+  node_fs_default.promises.open = flagged(openAsync);
+  node_fs_default.createReadStream = function(...args) {
     observer2.opened(args[0]);
     return Reflect.apply(createReadStream, this, args);
   };
-  fs.openAsBlob = function(...args) {
+  node_fs_default.openAsBlob = function(...args) {
     observer2.opened(args[0]);
     return Reflect.apply(openAsBlob, this, args);
   };
@@ -171,14 +210,14 @@ function wrapOpens(observer2) {
 var STARTER_FRAMES = 32;
 var ESLINT = /^(eslint|eslint9|@eslint\/.+)$/;
 function wrapWorkers(observer2) {
-  const { Worker } = workerThreads;
+  const { Worker } = node_worker_threads_default;
   const Watched = class extends Worker {
     constructor(...args) {
       super(...args);
       observer2.started(starterOf(callSites(Watched, STARTER_FRAMES)));
     }
   };
-  workerThreads.Worker = Watched;
+  node_worker_threads_default.Worker = Watched;
 }
 function starterOf(sites) {
   const names = [];
@@ -195,15 +234,15 @@ function starterOf(sites) {
   return names.length > 0 ? names.join(", called by ") : eslint;
 }
 function packageOf(file) {
-  const path = file.startsWith("file:") ? fileURLToPath2(file) : file;
-  const parts = path.split(`${sep2}node_modules${sep2}`);
+  const path = file.startsWith("file:") ? fileURLToPath(file) : file;
+  const parts = path.split(`${sep}node_modules${sep}`);
   if (parts.length < 2) return path;
-  const [scope = path, name] = (parts.at(-1) ?? "").split(sep2);
+  const [scope = path, name] = (parts.at(-1) ?? "").split(sep);
   return scope.startsWith("@") && name !== void 0 ? `${scope}/${name}` : scope;
 }
 
 // src/core/lint/provider/observe.ts
-var TYPESCRIPT = `${sep3}node_modules${sep3}typescript${sep3}`;
+var TYPESCRIPT = `${sep}node_modules${sep}typescript${sep}`;
 var Observer = class _Observer {
   constructor(roots, format2) {
     this.roots = roots;
@@ -229,7 +268,7 @@ var Observer = class _Observer {
   pending = /* @__PURE__ */ new Map();
   /** Sets the hooks and the recorders in this thread; call once, before ESLint loads. */
   static install(root2, format2) {
-    const observer2 = new _Observer([fs2.realpathSync(root2), root2], format2);
+    const observer2 = new _Observer([node_fs_default.realpathSync(root2), root2], format2);
     registerHooks({
       resolve(specifier, context, nextResolve) {
         const result = nextResolve(specifier, context);
@@ -264,7 +303,7 @@ var Observer = class _Observer {
   }
   module(url) {
     this.urls.add(url);
-    if (url.startsWith("file:")) this.files.add(fileURLToPath3(url.split("?")[0] ?? url));
+    if (url.startsWith("file:")) this.files.add(fileURLToPath(url.split("?")[0] ?? url));
   }
   /** A module's source as the load hook got it: bytes, or the text of the loader's read. */
   loaded(url, source) {
@@ -272,7 +311,7 @@ var Observer = class _Observer {
     this.loaderRead = null;
     if (!url.startsWith("file:")) return;
     const query = url.indexOf("?");
-    const path = keyPath(fileURLToPath3(query < 0 ? url : url.slice(0, query)), this.roots);
+    const path = keyPath(fileURLToPath(query < 0 ? url : url.slice(0, query)), this.roots);
     if (path === null) return;
     const slot = query < 0 ? "module" : "module?";
     if (source instanceof Uint8Array) this.use(path, slot, blobHash(source, this.format));
@@ -384,9 +423,6 @@ function firstLine(error) {
 }
 
 // src/core/lint/provider/rooted.ts
-import fs3, { realpathSync } from "node:fs";
-import { syncBuiltinESMExports as syncBuiltinESMExports2 } from "node:module";
-import { isAbsolute as isAbsolute3, resolve as resolve2, sep as sep4 } from "node:path";
 var PATH_ARGUMENTS = {
   access: [0],
   appendFile: [0],
@@ -429,8 +465,8 @@ var PATH_ARGUMENTS = {
 function runFromRoot(root2) {
   const directory = realpathSync(root2);
   process.cwd = () => directory;
-  rootFunctions(fs3, fs3.promises, directory);
-  syncBuiltinESMExports2();
+  rootFunctions(node_fs_default, node_fs_default.promises, directory);
+  syncBuiltinESMExports();
 }
 function rootFunctions(host, promised, directory) {
   for (const [name, at] of Object.entries(PATH_ARGUMENTS)) {
@@ -449,8 +485,8 @@ function rootFunctions(host, promised, directory) {
 }
 function rootedPath(path, directory) {
   const text = Buffer.isBuffer(path) ? path.toString() : path;
-  if (typeof text !== "string" || text === "" || isAbsolute3(text)) return path;
-  return resolve2(directory, text) + (text.endsWith(sep4) ? sep4 : "");
+  if (typeof text !== "string" || text === "" || isAbsolute(text)) return path;
+  return resolve(directory, text) + (text.endsWith(sep) ? sep : "");
 }
 function rootedCall(original, at, directory, made = /* @__PURE__ */ new Map()) {
   const known = made.get(original);
@@ -473,12 +509,6 @@ function ownProperties(call) {
   return Reflect.ownKeys(call).filter((key) => !common.has(key)).map((key) => [key, Reflect.get(call, key)]);
 }
 
-// src/core/lint/provider/session.ts
-import { existsSync as existsSync3, readFileSync as readFileSync3, realpathSync as realpathSync3 } from "node:fs";
-import { createRequire as createRequire2 } from "node:module";
-import { join as join5, sep as sep7 } from "node:path";
-import { pathToFileURL as pathToFileURL2 } from "node:url";
-
 // src/core/lint/provider/install.ts
 var TRACKED_LOCKFILES = /* @__PURE__ */ new Set([
   "pnpm-lock.yaml",
@@ -491,8 +521,6 @@ var TRACKED_LOCKFILES = /* @__PURE__ */ new Set([
 var INSTALL_INPUTS = ["package.json", ...TRACKED_LOCKFILES];
 
 // src/core/lint/provider/lookup.ts
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
 var LOOKUP_FLAG = "v10_config_lookup_from_file";
 var FLAT_CONFIG = /^eslint\.config\.[cm]?[jt]s$/;
 var DAEMON_FLAGS = process.env.ESLINT_FLAGS;
@@ -541,75 +569,53 @@ function lookupEslint(make, nested, given = DAEMON_FLAGS, env = process.env) {
 }
 
 // src/core/lint/provider/pnpm.ts
-import { existsSync, readlinkSync } from "node:fs";
-import Module from "node:module";
-import { delimiter, dirname, join as join2, resolve as resolve3, sep as sep5 } from "node:path";
 function pnpmShimPaths(root2) {
   const modules = modulesOf(root2);
   if (modules === null) return [];
-  const hoisted = join2(modules, ".pnpm", "node_modules");
+  const hoisted = join(modules, ".pnpm", "node_modules");
   if (!existsSync(hoisted)) return [];
   let target;
   try {
-    target = resolve3(modules, readlinkSync(join2(modules, "eslint")));
+    target = resolve(modules, readlinkSync(join(modules, "eslint")));
   } catch {
     return [hoisted];
   }
-  const store = join2(modules, ".pnpm") + sep5;
-  return target.startsWith(store) ? [join2(target, "node_modules"), dirname(target), hoisted] : [hoisted];
+  const store = join(modules, ".pnpm") + sep;
+  return target.startsWith(store) ? [join(target, "node_modules"), dirname(target), hoisted] : [hoisted];
 }
 function useNodePath(paths) {
   if (paths.length === 0) return;
   const given = process.env.NODE_PATH;
   process.env.NODE_PATH = [...paths, ...given ? [given] : []].join(delimiter);
-  Module._initPaths();
+  node_module_default._initPaths();
 }
 function modulesOf(root2) {
   for (let dir = root2; ; dir = dirname(dir)) {
-    const modules = join2(dir, "node_modules");
-    if (existsSync(join2(modules, "eslint", "package.json"))) return modules;
+    const modules = join(dir, "node_modules");
+    if (existsSync(join(modules, "eslint", "package.json"))) return modules;
     if (dirname(dir) === dir) return null;
   }
 }
 
-// src/core/lint/provider/program.ts
-import {
-  existsSync as existsSync2,
-  globSync,
-  readdirSync as readdirSync3,
-  readFileSync as readFileSync2,
-  realpathSync as realpathSync2,
-  statSync as statSync3
-} from "node:fs";
-import { createRequire } from "node:module";
-import { basename, dirname as dirname2, isAbsolute as isAbsolute4, join as join4, resolve as resolve4, sep as sep6 } from "node:path";
-
 // src/core/lint/pass/state.ts
-import {
-  readdirSync as readdirSync2,
-  readFileSync,
-  readlinkSync as readlinkSync2,
-  statSync
-} from "node:fs";
-import { join as join3 } from "node:path";
 function written(stat) {
   return `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}:${stat.ino}`;
 }
 function folderEntries(path) {
   let entries;
   try {
-    entries = readdirSync2(path, { withFileTypes: true });
+    entries = readdirSync(path, { withFileTypes: true });
   } catch {
     return null;
   }
   return entries.map((e) => {
-    if (e.isSymbolicLink()) return `l ${e.name} ${linkOf(join3(path, e.name))}`;
+    if (e.isSymbolicLink()) return `l ${e.name} ${linkOf(join(path, e.name))}`;
     return `${e.isDirectory() ? "d" : "f"} ${e.name}`;
   }).sort().join("\n");
 }
 function linkOf(path) {
   try {
-    return readlinkSync2(path);
+    return readlinkSync(path);
   } catch {
     return "";
   }
@@ -620,7 +626,6 @@ ${read}`;
 }
 
 // src/core/lint/provider/watch.ts
-import { statSync as statSync2 } from "node:fs";
 var Watch = class {
   constructor(now) {
     this.now = now;
@@ -679,7 +684,7 @@ var Watch = class {
 var RACY_MS = 1e3;
 var racy = 0;
 function stateOf(path, now) {
-  const stat = statSync2(path, { throwIfNoEntry: false });
+  const stat = statSync(path, { throwIfNoEntry: false });
   if (stat === void 0) return "missing";
   if (now() - Math.max(stat.mtimeMs, stat.ctimeMs) < RACY_MS) return `racy ${++racy}`;
   return written(stat);
@@ -689,16 +694,16 @@ function stateOf(path, now) {
 function loadedTypeScript(packages) {
   const root2 = packages.find((p) => basename(p) === "typescript");
   if (root2 === void 0) return null;
-  return createRequire(join4(root2, "package.json"))(root2);
+  return createRequire(join(root2, "package.json"))(root2);
 }
 function findTsconfigs(root2) {
   const found = [];
   const walk = (dir) => {
-    for (const entry of readdirSync3(dir, { withFileTypes: true })) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (entry.isDirectory()) {
         if (entry.name !== "node_modules" && !entry.name.startsWith("."))
-          walk(join4(dir, entry.name));
-      } else if (entry.name === "tsconfig.json") found.push(join4(dir, entry.name));
+          walk(join(dir, entry.name));
+      } else if (entry.name === "tsconfig.json") found.push(join(dir, entry.name));
     }
   };
   walk(root2);
@@ -707,7 +712,7 @@ function findTsconfigs(root2) {
 function namedTsconfigs(options, root2) {
   const base = typeof options.tsconfigRootDir === "string" ? options.tsconfigRootDir : root2;
   const named = Array.isArray(options.project) ? options.project : [options.project];
-  return named.filter((p) => typeof p === "string").flatMap((p) => /[*?[{]/.test(p) ? globSync(p, { cwd: base }) : [p]).map((p) => isAbsolute4(p) ? p : resolve4(base, p)).sort();
+  return named.filter((p) => typeof p === "string").flatMap((p) => /[*?[{]/.test(p) ? globSync(p, { cwd: base }) : [p]).map((p) => isAbsolute(p) ? p : resolve(base, p)).sort();
 }
 function parseTsconfig(ts, path, readFile = sysText) {
   try {
@@ -729,7 +734,7 @@ function sameRoots(a, b) {
   const roots = (parsed) => [...parsed?.files ?? []].sort().join("\0");
   return roots(a) === roots(b);
 }
-var NODE_MODULES2 = `${sep6}node_modules${sep6}`;
+var NODE_MODULES2 = `${sep}node_modules${sep}`;
 var JAVASCRIPT = /\.[cm]?jsx?$/;
 var JSDOC_IMPORT = /@import\s[^"'@]*?\bfrom\s*["']([^"'\n]+)["']|\bimport\(\s*["']([^"'\n]+)["']\s*\)/g;
 var RECURSIVE = 1;
@@ -825,7 +830,7 @@ var ProgramReader = class {
     let cache = null;
     const resolver = {
       module: (name, file, mode) => {
-        cache ??= ts.createModuleResolutionCache(dirname2(tsconfig), (n) => n, options);
+        cache ??= ts.createModuleResolutionCache(dirname(tsconfig), (n) => n, options);
         const result = ts.resolveModuleName(name, file, options, this.host, cache, void 0, mode);
         return [result.resolvedModule?.resolvedFileName, result];
       },
@@ -842,7 +847,7 @@ var ProgramReader = class {
       seen.add(file);
       queue2.push(file);
     };
-    const inferred = join4(dirname2(tsconfig), "__inferred type names__.ts");
+    const inferred = join(dirname(tsconfig), "__inferred type names__.ts");
     for (const name of ts.getAutomaticTypeDirectiveNames(options, this.host)) {
       follow(resolver.type(name, inferred)[0]);
     }
@@ -870,7 +875,7 @@ var ProgramReader = class {
       const failed = lookups.failedLookupLocations;
       if (target === void 0 && failed === void 0) unsure = true;
       for (const path of [...failed ?? [], ...target ? [target] : []]) {
-        if (!path.includes(NODE_MODULES2)) watched.add(dirname2(path));
+        if (!path.includes(NODE_MODULES2)) watched.add(dirname(path));
       }
       for (const path of lookups.affectingLocations ?? []) {
         if (!path.includes(NODE_MODULES2)) watched.add(path);
@@ -884,8 +889,8 @@ var ProgramReader = class {
     }
     for (const name of specifiers.types) found(`types ${name}`, resolver.type(name, file));
     for (const path of specifiers.paths) {
-      const target = referenced(resolve4(dirname2(file), path));
-      watched.add(dirname2(resolve4(dirname2(file), path)));
+      const target = referenced(resolve(dirname(file), path));
+      watched.add(dirname(resolve(dirname(file), path)));
       names.set(`path ${path}`, target ?? "");
       if (target !== void 0) targets.push(target);
     }
@@ -942,16 +947,16 @@ function globFolders(parsed) {
     if (!recursive) return;
     let entries;
     try {
-      entries = readdirSync3(dir, { withFileTypes: true });
+      entries = readdirSync(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
       if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-      const path = join4(dir, entry.name);
+      const path = join(dir, entry.name);
       if (entry.isDirectory()) visit(path, true);
-      else if (entry.isSymbolicLink() && statSync3(path, { throwIfNoEntry: false })?.isDirectory()) {
-        const real = realpathSync2(path);
+      else if (entry.isSymbolicLink() && statSync(path, { throwIfNoEntry: false })?.isDirectory()) {
+        const real = realpathSync(path);
         if (links.has(real)) continue;
         links.add(real);
         visit(path, true);
@@ -964,11 +969,11 @@ function globFolders(parsed) {
   return out;
 }
 function referenced(path) {
-  return [path, `${path}.ts`, `${path}.tsx`, `${path}.d.ts`].find((p) => existsSync2(p));
+  return [path, `${path}.ts`, `${path}.tsx`, `${path}.d.ts`].find((p) => existsSync(p));
 }
 function bytesOf(path) {
   try {
-    return readFileSync2(path);
+    return readFileSync(path);
   } catch {
     return void 0;
   }
@@ -1062,19 +1067,19 @@ var EslintSession = class _EslintSession {
   };
   /** D3 discovery; `off` with D9's reason. */
   static async open(given, observer2, format2 = "sha1") {
-    const root2 = realpathSync3(given);
-    const require2 = createRequire2(join5(root2, "package.json"));
+    const root2 = realpathSync(given);
+    const require2 = createRequire(join(root2, "package.json"));
     let manifest;
     try {
       manifest = require2.resolve("eslint/package.json");
     } catch {
       return { off: `no ESLint installed in ${given}` };
     }
-    const version = String(JSON.parse(readFileSync3(manifest, "utf8")).version);
+    const version = String(JSON.parse(readFileSync(manifest, "utf8")).version);
     const major = Number.parseInt(version, 10);
     if (major !== 9 && major !== 10) return { off: `ESLint ${major} is not supported` };
     useNodePath(pnpmShimPaths(root2));
-    const api = await import(pathToFileURL2(require2.resolve("eslint")).href);
+    const api = await import(pathToFileURL(require2.resolve("eslint")).href);
     const ESLint = api.loadESLint ? await api.loadESLint({ cwd: root2 }) : api.ESLint;
     if (ESLint.configType !== void 0 && ESLint.configType !== "flat") {
       return { off: "eslintrc configs are not supported; ESLint 9 and 10 read eslint.config.*" };
@@ -1108,7 +1113,7 @@ var EslintSession = class _EslintSession {
    */
   async refreshed() {
     let loads = true;
-    await this.computed(join5(this.root, PROBE)).catch((error) => {
+    await this.computed(join(this.root, PROBE)).catch((error) => {
       if (error instanceof Unobserved) throw error;
       loads = noConfig(error);
     });
@@ -1243,9 +1248,9 @@ var EslintSession = class _EslintSession {
   /** The root's manifest and lockfiles there, held at their bytes now (row 017-20). */
   holdInstalls() {
     for (const name of INSTALL_INPUTS) {
-      const file = join5(this.root, name);
-      if (!existsSync3(file)) continue;
-      const path = this.observer.hold(file, readFileSync3(file));
+      const file = join(this.root, name);
+      if (!existsSync(file)) continue;
+      const path = this.observer.hold(file, readFileSync(file));
       if (path !== null) this.installs.add(path);
     }
   }
@@ -1257,7 +1262,7 @@ var EslintSession = class _EslintSession {
     let results;
     try {
       results = await this.eslint.lintText(file.text, {
-        filePath: join5(this.root, file.path),
+        filePath: join(this.root, file.path),
         warnIgnored: false
       });
     } catch (error) {
@@ -1272,7 +1277,7 @@ var EslintSession = class _EslintSession {
    * D9's reason when the config does not load. Throws `Unobserved`.
    */
   async configOf(path) {
-    const abs = join5(this.root, path);
+    const abs = join(this.root, path);
     try {
       return await this.computed(abs);
     } catch (error) {
@@ -1323,7 +1328,7 @@ var EslintSession = class _EslintSession {
         ...options.parserOptions,
         ecmaVersion: options.ecmaVersion,
         sourceType: options.sourceType,
-        filePath: join5(this.root, file.path)
+        filePath: join(this.root, file.path)
       }).services?.program;
     } catch {
       return void 0;
@@ -1353,7 +1358,7 @@ var EslintSession = class _EslintSession {
   rootless(json) {
     let out = json;
     for (const root2 of /* @__PURE__ */ new Set([this.root, this.given])) {
-      out = out.split(JSON.stringify(root2 + sep7).slice(1, -1)).join(`${ROOT_TOKEN}/`);
+      out = out.split(JSON.stringify(root2 + sep).slice(1, -1)).join(`${ROOT_TOKEN}/`);
       out = out.split(JSON.stringify(root2).slice(1, -1)).join(ROOT_TOKEN);
     }
     return out;
@@ -1395,7 +1400,7 @@ port?.on("message", (message2) => {
 async function handle(message2) {
   try {
     const answer = await answerOf(message2);
-    await new Promise((resolve5) => setTimeout(resolve5, 0));
+    await new Promise((resolve2) => setTimeout(resolve2, 0));
     send({ type: "done", id: message2.id, answer });
   } catch (error) {
     send({ type: "error", id: message2.id, message: firstLine(error) });
