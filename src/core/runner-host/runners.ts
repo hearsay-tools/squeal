@@ -110,6 +110,9 @@ export async function buildAdapter(
         ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
         ...(data.tempDir === undefined ? {} : { tempDir: data.tempDir as AbsolutePath }),
         ...(data.cacheDir === undefined ? {} : { cacheDir: data.cacheDir as AbsolutePath }),
+        ...(data.coverage === true
+          ? { coverage: { enabled: () => hooks.policy().coverage, collected: hooks.coverage } }
+          : {}),
       });
     }
     default:

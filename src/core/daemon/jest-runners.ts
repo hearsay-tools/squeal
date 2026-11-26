@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { createJestAdapter } from "../../runners/jest/adapter.js";
 import { jestTraits } from "../../runners/jest/traits.js";
 import { JEST_ADAPTER_VERSION } from "../../runners/jest/version.js";
+import type { RunnerCoverageOptions } from "../code/coverage/types.js";
 import type { ContainerWiring } from "../runner-host/container/index.js";
 import { createHostedJest, type ProcessHost } from "../runner-host/process-host.js";
 import type { AbsolutePath, ProjectName } from "../types/common.js";
@@ -46,6 +47,8 @@ export interface JestRunnersOptions {
   readonly idleMs?: () => number;
   /** Spec 027 D5 (row 027-06): the daemon's container route; absent, container projects stay unknown. */
   readonly containers?: ContainerWiring;
+  /** Spec 028 D5.3, spec 015 D8: coverage in the projects' runs; absent, none. */
+  readonly coverage?: RunnerCoverageOptions;
 }
 
 /**
@@ -107,6 +110,7 @@ function jestRunner(project: JestProject, options: JestRunnersOptions): Recoveri
     tempDir: options.tempDir,
     cacheDir: jestCacheDir(options.stateDir, options.root, project.name),
     ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
+    ...(options.coverage === undefined ? {} : { coverage: options.coverage }),
   };
   const { host } = options;
   return createRecoveringRunner({

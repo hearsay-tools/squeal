@@ -109,14 +109,15 @@ export type HostedJestOptions = Omit<JestAdapterOptions, "batchSize" | "source">
 
 /**
  * A Jest adapter for `project` in a runner host. Policy
- * `observe.runtimeInputs` and `runner.tierSize` go as the policy before each
- * request.
+ * `observe.runtimeInputs`, `runner.tierSize` and coverage's `enabled` go as
+ * the policy before each request; the runs' coverage comes back as events.
  */
 export function createHostedJest(
   host: ProcessHost,
   project: JestProject,
   options: HostedJestOptions,
 ): Promise<RunnerAdapter> {
+  const { coverage } = options;
   return hosted(host, "jest", options.root, {
     options: {
       childEnv: options.childEnv ?? {},
@@ -124,14 +125,17 @@ export function createHostedJest(
         project,
         ...(options.tempDir === undefined ? {} : { tempDir: options.tempDir }),
         ...(options.cacheDir === undefined ? {} : { cacheDir: options.cacheDir }),
+        ...(coverage === undefined ? {} : { coverage: true }),
       },
     },
     policy: () => ({
       ...NO_VITEST_POLICY,
       observe: options.observe?.() ?? true,
+      coverage: coverage?.enabled() ?? false,
       ...(options.concurrency === undefined ? {} : { tierSize: options.concurrency() }),
     }),
     ...(options.note === undefined ? {} : { note: options.note }),
+    ...(coverage === undefined ? {} : { coverage: coverage.collected }),
   });
 }
 

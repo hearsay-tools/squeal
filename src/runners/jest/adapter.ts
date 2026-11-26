@@ -19,6 +19,7 @@ import { makeLogDir } from "../log-dir.js";
 import { observedInputs } from "../observe/inputs.js";
 import { takeRecorded } from "../observe/read.js";
 import { observeRecorder } from "../observe/runtime.js";
+import { type JestCoverage, ProjectCoverage } from "./coverage.js";
 import { enumerate } from "./enumerate.js";
 import {
   configFiles,
@@ -56,6 +57,8 @@ export interface JestAdapterOptions {
   readonly cacheDir?: AbsolutePath;
   /** The environment the project's processes inherit; default this process's. */
   readonly source?: NodeJS.ProcessEnv;
+  /** Spec 028 D5.3, spec 015 D8: coverage in the runs the adapter makes anyway; absent, none. */
+  readonly coverage?: JestCoverage;
 }
 
 /** The project as it last read: its Jest, config, test files and static graph. */
@@ -98,6 +101,7 @@ export async function createJestAdapter(
   const note = (text: string) => options.note?.(`${label}: ${text}`, topic);
   const observing = () => options.observe?.() ?? true;
   const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
+  const coverage = new ProjectCoverage(options.coverage, note);
 
   const open = async (): Promise<Opened> => {
     const resolution = resolveJest(project.name, jestCwd(root, project), root);
@@ -164,7 +168,8 @@ export async function createJestAdapter(
       if (changed.some((p) => p.kind === "add" || p.kind === "delete")) {
         if (mayList(current.read, changed)) await relist(root, project, source, current);
       }
-      return { recreatedProjects: [] };
+      // A policy that turned coverage on or off re-keys the project's checks once (015 D8).
+      return { recreatedProjects: coverage.changed() ? [project.name] : [] };
     },
     async affected(changed) {
       if (!state.ok) return { direct: [], transitive: [] };
@@ -194,12 +199,14 @@ export async function createJestAdapter(
         source,
         adapterVersion: JEST_ADAPTER_VERSION,
         observing: observed,
+        covering: coverage.key(),
       });
       return [environment];
     },
     async run(testFiles, runOptions) {
       if (!state.ok) return unavailable(`${label}: ${state.note}`);
-      return runProject(state.install, testFiles, runOptions);
+      const covered = coverage.covered(state.graph, state.files);
+      return runProject(state.install, testFiles, runOptions, covered);
     },
     close: async () => {},
   };
@@ -208,6 +215,7 @@ export async function createJestAdapter(
     install: JestInstall,
     testFiles: readonly TestFileRef[],
     runOptions: RunOptions,
+    covered: ((testFile: TestFileRef) => boolean) | undefined,
   ): Promise<RunReport> {
     const logDir = join(
       runOptions.logDir,
@@ -220,7 +228,7 @@ export async function createJestAdapter(
       recorder !== null && makeLogDir(out) ? { recorder, out, skip: skipped(root) } : null;
     const { tempDir } = options;
     const batchSize = options.batchSize?.();
-    const { report } = await runJest({
+    const ran = await runJest({
       root,
       project,
       install,
@@ -241,7 +249,12 @@ export async function createJestAdapter(
       childEnv: { ...options.childEnv, ...runOptions.childEnv },
       ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
       ...(observe === null ? {} : { observe }),
+      ...(covered === undefined
+        ? {}
+        : { coverage: { dir: join(logDir, "cov") as AbsolutePath, covered } }),
     });
+    const { report } = ran;
+    if (covered !== undefined) coverage.collect(runOptions.runId, ran.coverage, paths);
     if (observe === null) return report;
     const seen = observedInputs(takeRecorded(out), report.completedFiles, paths);
     return seen.length === 0 ? report : { ...report, observed: seen };

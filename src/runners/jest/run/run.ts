@@ -16,10 +16,19 @@ import type { TestFileRef } from "../../../core/types/keys.js";
 import type { SlotPolicy } from "../../../core/types/policy.js";
 import type { JestProject } from "../../../core/types/policy-jest.js";
 import type { RunReport } from "../../../core/types/runner.js";
-import { logGoneReport, markLogDir } from "../../log-dir.js";
+import { logGoneReport, makeLogDir, markLogDir } from "../../log-dir.js";
 import { observeEnv, unobservedEnv } from "../../observe/runtime.js";
 import { startGroup } from "../../process/group.js";
 import { runLogJson } from "../../run-summary.js";
+import {
+  batchCoverageDir,
+  COVERAGE_DIR_VARIABLE,
+  coverageGroups,
+  dropUnkept,
+  JEST_COVERAGE_ARGS,
+  type JestCoveragePayload,
+  payloadsOf,
+} from "../coverage.js";
 import { type JestInstall, tsNodeHygiene } from "../resolve.js";
 import { parseJestEvents, readEvents, sizeOf } from "./events.js";
 import { type BatchOutcome, ending, readJestBatch } from "./results.js";
@@ -59,10 +68,21 @@ export interface JestRunOptions {
     readonly out: AbsolutePath;
     readonly skip: readonly AbsolutePath[];
   };
+  /**
+   * Spec 028 D5.3: the files `covered` names run in batches of their own
+   * with `JEST_COVERAGE_ARGS`, each writing its payloads to a folder of
+   * `dir`; absent, no batch takes coverage.
+   */
+  readonly coverage?: {
+    readonly dir: AbsolutePath;
+    readonly covered: (testFile: TestFileRef) => boolean;
+  };
 }
 
 export interface JestRun {
   readonly report: RunReport;
+  /** The payloads of the files the report completes; every other payload is deleted. */
+  readonly coverage: readonly JestCoveragePayload[];
 }
 
 export const DEFAULT_BATCH_SIZE = 5;
@@ -74,6 +94,9 @@ export const KILL_GRACE_MS = 2_000;
 interface Batch extends BatchOutcome {
   readonly args: readonly string[];
   readonly events: string;
+  /** Where its reporter writes its payloads; `null` for a batch without coverage. */
+  readonly coverage: AbsolutePath | null;
+  payloads: readonly JestCoveragePayload[];
 }
 
 /**
@@ -94,7 +117,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
   const config = toAbsolute(root, project.config);
   const cwd = project.cwd === undefined ? dirname(config) : toAbsolute(root, project.cwd);
   const ours = markLogDir(options.logDir);
-  if (ours === null) return { report: logGoneReport(options.logDir) };
+  if (ours === null) return { report: logGoneReport(options.logDir), coverage: [] };
   const cacheDir = options.cacheDir ?? defaultCacheDir(root, project);
   const runtimeDir = jestRuntimeDir();
   const wrapper = writeWrapperConfig({
@@ -107,7 +130,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
         : options.observeRuntimePath,
   });
   const reporter = options.reporterPath ?? join(runtimeDir, "squeal-reporter.cjs");
-  const common = [
+  const common = (covered: boolean) => [
     install.bin,
     "--config",
     wrapper,
@@ -121,21 +144,25 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
     // Paths, not patterns: the same on 29 and 30, and no file name is read as a regex.
     "--runTestsByPath",
     ...project.args,
+    // After the project's own arguments, so its `--coverage=false` does not turn Squeal's off.
+    ...(covered ? JEST_COVERAGE_ARGS : []),
     "--",
   ];
-  const batches: Batch[] = split(
-    options.files,
-    options.batchSize ?? project.batchSize ?? DEFAULT_BATCH_SIZE,
-    options.alone,
-  ).map((files, index) => ({
-    index,
-    files,
-    args: [...common, ...files.map((f) => toAbsolute(root, f.path))],
-    events: join(options.logDir, `events-${index}.jsonl`),
-    exit: null,
-    cut: null,
-    reports: [],
-  }));
+  const size = options.batchSize ?? project.batchSize ?? DEFAULT_BATCH_SIZE;
+  const { coverage } = options;
+  const batches: Batch[] = coverageGroups(options.files, coverage?.covered)
+    .flatMap(({ files, covered }) => split(files, size, options.alone).map((f) => ({ f, covered })))
+    .map(({ f: files, covered }, index) => ({
+      index,
+      files,
+      args: [...common(covered), ...files.map((f) => toAbsolute(root, f.path))],
+      events: join(options.logDir, `events-${index}.jsonl`),
+      coverage: covered && coverage !== undefined ? batchCoverageDir(coverage.dir, index) : null,
+      payloads: [],
+      exit: null,
+      cut: null,
+      reports: [],
+    }));
 
   const base = baseEnv(options, config);
   const running = new Map<Batch, { kill(signal: NodeJS.Signals): void }>();
@@ -181,6 +208,9 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
       ...slotVariables(slot, project.slots?.toxParallelEnv === true),
       SQUEAL_JEST_EVENTS: batch.events,
       SQUEAL_JEST_RUNTIME: install.runtime,
+      // Made here, never by the reporter: a removed log folder stays removed (row 018-38).
+      [COVERAGE_DIR_VARIABLE]:
+        batch.coverage !== null && makeLogDir(batch.coverage) ? batch.coverage : undefined,
     };
     const group = startGroup({
       command: process.execPath,
@@ -193,11 +223,15 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
     running.set(batch, group);
     batch.exit = await group.exited;
     running.delete(batch);
-    batch.reports = readJestBatch(
-      parseJestEvents(readEvents(batch.events, batch.cut)),
-      batch.files,
-      paths,
-    );
+    const events = parseJestEvents(readEvents(batch.events, batch.cut));
+    batch.reports = readJestBatch(events, batch.files, paths);
+    if (batch.coverage !== null) {
+      batch.payloads = payloadsOf(
+        events,
+        batch.reports.map((r) => r.testFile),
+        paths,
+      );
+    }
   };
   const queue = [...batches];
   const worker = async () => {
@@ -238,8 +272,15 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
       ? {}
       : { loaded: loaded.map((f) => ({ testFile: f.testFile, paths: f.loaded })) }),
   };
+  const completed = new Set(report.completedFiles);
+  const covered = batches.flatMap((b) => b.payloads).filter((p) => completed.has(p.testFile));
+  const dirs = batches.flatMap((b) => (b.coverage === null ? [] : [b.coverage]));
   // Row 018-38: a log folder removed, or made again, while the batches ran took their records.
-  if (!ours()) return { report: logGoneReport(options.logDir) };
+  if (!ours()) {
+    dropUnkept(dirs, []);
+    return { report: logGoneReport(options.logDir), coverage: [] };
+  }
+  dropUnkept(dirs, covered);
   const log = batches.map((b) => ({
     files: b.files.map((f) => f.path),
     command: [process.execPath, ...b.args],
@@ -247,7 +288,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
     cut: b.cut,
   }));
   writeFileSync(join(options.logDir, "run.json"), runLogJson({ cwd, batches: log }, report));
-  return { report };
+  return { report, coverage: covered };
 }
 
 /**

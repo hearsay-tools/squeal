@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { coverageMarker } from "../../core/code/coverage/record.js";
 import { compare } from "../../core/fs/compare.js";
 import { toAbsolute } from "../../core/fs/paths.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
@@ -220,6 +221,12 @@ export interface JestEnvironmentInput {
   readonly adapterVersion: string;
   /** Runs carry `recorder.cjs` (policy `observe.runtimeInputs`): its version is keyed. */
   readonly observing: boolean;
+  /**
+   * Spec 028 D5.3: runs take Squeal's coverage, so the key names its
+   * provider and version (spec 015 D8); absent or false, the key is as
+   * without coverage.
+   */
+  readonly covering?: boolean;
 }
 
 /** Projects config fields that change per run, machine or worktree and never an outcome. */
@@ -285,6 +292,7 @@ export function jestEnvironment(input: JestEnvironmentInput): RunnerEnvironment 
     env: Object.entries(project.env).sort(([a], [b]) => compare(a, b)),
     variables: descriptors,
     ...(input.observing ? { recorder: RECORDER_VERSION } : {}),
+    ...(input.covering === true ? { coverage: coverageMarker(false) } : {}),
     ...(read.ok
       ? {
           project: omit(read.project, VOLATILE_PROJECT),
