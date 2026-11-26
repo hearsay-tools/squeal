@@ -105,6 +105,22 @@ const variants: [string, StatusSnapshot, object][] = [
     },
     { verdict: "unknown" },
   ],
+  // Row 011-426 (gh-293): a held group's files that wait for a request are pending, never a pass.
+  [
+    "on request",
+    {
+      ...settled,
+      counts: { ...settled.counts, pending: 2 },
+      testFileCounts: { current: 4, pending: 2, stale: 0, unknown: 0 },
+      testFilesByPhase: { running: 0, queued: 0, onRequest: 2 },
+      testsByPhase: { running: 0, queued: 0, onRequest: 2 },
+      breakdown: {
+        ...settled.breakdown,
+        pendingByPhase: { queued: 0, running: 0, onRequest: 2 },
+      },
+    },
+    { verdict: "unknown" },
+  ],
   [
     "stale and unknown",
     {

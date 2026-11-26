@@ -16,6 +16,7 @@ import type { Store } from "../../core/types/store.js";
 import { type DaemonSync, SYNC_POLL_MS } from "../status-sync.js";
 import { type EditWindow, heldPending, lastHeard, splitNews } from "../status-wait-edit.js";
 import { type HeldRead, readHeld, type StartView, startView } from "../status-wait-held.js";
+import { onRequestGroupsOf } from "../status-wait-settled.js";
 import { type HeldSlow, heldSlowLeft, pendingSlow } from "../status-wait-slow.js";
 import { holdOfWait } from "../verdict.js";
 import type { DaemonWatch, HeartbeatLapse } from "../wait-liveness.js";
@@ -78,6 +79,12 @@ export interface StatusWaitEdit {
   readonly testFiles: number;
   readonly pending: number;
   readonly otherTransitions: number;
+  /**
+   * Row 011-426 (gh-293): the groups at `commit` or `manual` whose files the
+   * edits affect and no request runs (`onRequestGroupsOf`), in `checks`
+   * order; absent with none.
+   */
+  readonly onRequestGroups?: readonly string[];
 }
 
 /** The slow files a `run --slow --wait` held for (`holdSlow`), and those still pending by path. */
@@ -243,6 +250,10 @@ function endOf(
   watch: DaemonWatch,
   now: () => EpochMs,
 ): StatusWaitEnded {
+  const groups =
+    window === undefined || seen === null
+      ? []
+      : onRequestGroupsOf(store, id, window.files, seen.states);
   const edit: StatusWaitEdit | undefined =
     window === undefined
       ? undefined
@@ -252,6 +263,7 @@ function endOf(
           pending: seen === null ? 0 : heldPending(window, seen.keys),
           otherTransitions:
             splitNews(window, readHeld(store, id, view, null).news).other - news.slowNews,
+          ...(groups.length === 0 ? {} : { onRequestGroups: groups }),
         };
   const result = buildSnapshot(store, root, now());
   const slow =

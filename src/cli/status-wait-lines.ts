@@ -29,6 +29,7 @@ import { askedLines } from "./status-wait-ask-lines.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
 import { groupsQuietText, leftForGroups, leftGroupText } from "./status-wait-groups.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
+import { nothingRunsLine } from "./status-wait-settled.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
 import { anyPending } from "./wait/listing.js";
 import type { HeartbeatLapse } from "./wait-liveness.js";
@@ -49,7 +50,19 @@ export function waitLine(wait: EndedWait, command = "squeal"): string {
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
   const live = wait.outcome === "no-daemon" ? "" : waitLiveText(wait);
-  return `${line}${slow}${live}${worktreeText(wait.result)}`;
+  return `${line}${slow}${live}${worktreeText(wait.result)}${nothingRunsAfter(wait, command)}`;
+}
+
+/**
+ * Row 011-426 (gh-293): last on a quiet verdict line, so a `tail -1` keeps
+ * it (row 011-26), the sentence that says nothing left runs by itself
+ * (`nothingRunsLine`), with the runs of the on-request groups whose files
+ * the edits affect; empty otherwise.
+ */
+function nothingRunsAfter(wait: EndedWait, command: string): string {
+  if (wait.outcome !== "quiet") return "";
+  const line = nothingRunsLine(wait.result, wait.edit?.onRequestGroups ?? [], command);
+  return line === null ? "" : `. ${line}`;
 }
 
 /**
@@ -241,6 +254,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const paths = pathsText(selection);
   let beside = wait.outcome === "unmatched" || paths === "" ? "" : `; ${paths}`;
   let line: string;
+  let nothing: string | null = null;
   switch (wait.outcome) {
     case "unmatched":
       line = `No verdict: ${paths}`;
@@ -296,6 +310,10 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
           why === null
             ? `Named test files at revision ${verdict.revision}: ${counted}`
             : none(groups === "" ? why : `${why}: ${groups}`);
+        // Row 011-426: every selected file is current; the worktree's rest may run only on request.
+        // A selected file left for its group's moment is not current (`pauseText` names its run).
+        const left = (wait.leftForPause ?? []).length > 0;
+        if (why === null && !snapshot && !left) nothing = nothingRunsLine(wait.result, [], command);
       }
     }
   }
@@ -307,7 +325,8 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
   // Row 011-243 (gh-99): last, what comes next and its command.
   const next = waitAgainText(wait, result, command);
-  return `${line}${beside}${pause}${live}${worktreeText(wait.result)}${next}`;
+  const nothingLine = nothing === null ? "" : `. ${nothing}`;
+  return `${line}${beside}${pause}${live}${worktreeText(wait.result)}${next}${nothingLine}`;
 }
 
 /**

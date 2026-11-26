@@ -7,6 +7,7 @@ import { baseOf } from "./named-selection.js";
 import { statusCommand } from "./status-command.js";
 import { syncDaemon } from "./status-sync.js";
 import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.js";
+import { nothingRunsByItself } from "./status-wait-settled.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitOptions } from "./wait/status.js";
 import { SETTLE_MS, STATUS_POLL_MS, type StatusWaitOutcome } from "./wait/status-table.js";
 import { statusWait } from "./wait/wait.js";
@@ -41,6 +42,12 @@ export interface StatusWaitPayload {
   readonly transitions: number;
   /** Present when the daemon named the edit's test files (task 001-186). */
   readonly edit?: StatusWaitEdit;
+  /**
+   * Row 011-426 (gh-293): set on a quiet wait when nothing left runs by
+   * itself (`nothingRunsByItself`), as the line after the verdict says;
+   * `edit.onRequestGroups` names the runs it gives.
+   */
+  readonly nothingRunsByItself?: true;
 }
 
 /**
@@ -178,6 +185,9 @@ export async function statusWaitCommand(
       waitedMs: Math.round(wait.waitedMs),
       transitions: wait.transitions,
       ...(wait.edit === undefined ? {} : { edit: wait.edit }),
+      ...(wait.outcome === "quiet" && nothingRunsByItself(wait.result)
+        ? { nothingRunsByItself: true as const }
+        : {}),
     };
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}\n`);
     io.stderr(line);

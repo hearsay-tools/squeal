@@ -370,7 +370,8 @@ const CAUGHT_UNKNOWN =
 /**
  * The clause after a `Known failures:` count, or after a wait verdict line's `known failures`,
  * from row 011-26 (011 C6 as amended 2026-10-20): `not current: 8 of 10 test files (2 queued, 6
- * stale), 80 tests (20 queued, 60 stale)`, its test files' parts, then its tests'. A count may
+ * stale), 80 tests (20 queued, 60 stale)`, its test files' parts, then its tests'. Row 011-426:
+ * `98 on request`, a held group's files that wait for a request, are pending too. A count may
  * hold its own `; ` (Stop's `and 2 more; \`squeal status\` lists every one`), so the clause is
  * the last on its line.
  */
@@ -428,7 +429,9 @@ function clauseCounts(t) {
   const short = MORE.test(t) && !/^Test files without checks: /m.test(t) && NOT_CURRENT.test(t);
   if (affected !== undefined && !/^none counted/.test(affected) && !short) {
     const counts = [
-      count(/(\d+) running/, affected) + count(/(\d+) queued/, affected),
+      count(/(\d+) running/, affected) +
+        count(/(\d+) queued/, affected) +
+        count(/(\d+) on request/, affected),
       count(/(\d+) stale/, affected),
       count(/(\d+) unknown/, affected),
     ];
@@ -438,7 +441,7 @@ function clauseCounts(t) {
     const [, files, tests = ""] = NOT_CURRENT.exec(t);
     const both = (re) => count(re, files) + count(re, tests);
     const counts = [
-      both(/(\d+) running/) + both(/(\d+) queued/),
+      both(/(\d+) running/) + both(/(\d+) queued/) + both(/(\d+) on request/),
       both(/(\d+) stale/),
       both(/(\d+) unknown/),
     ];
