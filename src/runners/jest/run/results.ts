@@ -215,55 +215,112 @@ function projectFrame(text: string, paths: WorktreePaths): SourceLocation | null
   return null;
 }
 
-/** What `ending` reads of a batch: its files, how its process ended, its stderr log's index. */
+/** What `ending` reads of a batch: its files, how its process ended, its stderr log's index, its reports. */
 export interface BatchOutcome {
   readonly index: number;
   readonly files: readonly TestFileRef[];
   exit: ProcessExit | null;
+  /** The events file's size when Squeal signalled the process; `null` when Squeal did not. */
+  cut: number | null;
+  /** Its completed files (`readJestBatch`). */
+  reports: readonly JestFileReport[];
 }
 
 /**
- * `timed-out` when the deadline passed; `completed` when every file
- * completed; otherwise `completed` naming the unfinished files when some
- * completed, `crashed` when none did.
+ * How a run ends and which of its completed files it reports. `timed-out`
+ * when the deadline passed; `completed` when every file completed;
+ * otherwise `completed` naming the unfinished or withheld files when some
+ * completed, `crashed` when none did. On a stop (`cancelled`), what
+ * completed, no failure (Kit K8).
+ *
+ * A batch whose files all completed but whose process then ended abnormally
+ * (`abnormal`), as a `globalTeardown` that throws after the reporter flushed
+ * every file (review 0.1.643 B3), is withheld: its files are not completed,
+ * since the scheduler stores a result only for a completed file.
  */
 export function ending(
   batches: readonly BatchOutcome[],
-  done: ReadonlySet<TestFileRef>,
-  expired: boolean,
+  state: { readonly expired: boolean; readonly cancelled: boolean },
   options: {
     readonly files: readonly TestFileRef[];
     readonly timeoutMs: number | null;
     readonly logDir: AbsolutePath;
+    readonly paths: WorktreePaths;
   },
-): { end: RunEnd; failure: string | null } {
+): { end: RunEnd; failure: string | null; done: JestFileReport[] } {
+  const withheld = batches.filter((b) => abnormal(b, options.logDir));
+  const done = batches.filter((b) => !withheld.includes(b)).flatMap((b) => b.reports);
+  if (state.cancelled) return { end: "completed", failure: null, done };
   const total = options.files.length;
-  if (expired) {
-    return {
-      end: "timed-out",
-      failure: `deadline of ${options.timeoutMs} ms passed with ${total - done.size} of ${total} test files unfinished`,
-    };
+  if (state.expired) {
+    const left = total - done.length;
+    const failure = `deadline of ${options.timeoutMs} ms passed with ${left} of ${total} test files unfinished`;
+    return { end: "timed-out", failure, done };
   }
-  const unfinished = batches.filter((b) => b.files.some((f) => !done.has(f)));
-  if (unfinished.length === 0) return { end: "completed", failure: null };
-  const what = unfinished.map((b) => {
-    const names = b.files.filter((f) => !done.has(f)).map((f) => f.path);
-    return `${names.join(", ")} (${describeExit(b, options.logDir)})`;
+  const finished = new Set(batches.flatMap((b) => b.reports.map((r) => r.testFile)));
+  const unfinished = batches.filter((b) => b.files.some((f) => !finished.has(f)));
+  const what = withheld.map((b) => {
+    const names = b.files.map((f) => f.path).join(", ");
+    const log = options.paths.relativizeText(stderrLog(b, options.logDir));
+    return `jest exited abnormally after ${names} completed (${describeExit(b, options)}; log ${log})`;
   });
-  const failure = `jest ended without a result for ${what.join(", ")}`;
-  return { end: done.size === 0 ? "crashed" : "completed", failure };
+  if (unfinished.length > 0) {
+    const each = unfinished.map((b) => {
+      const names = b.files.filter((f) => !finished.has(f)).map((f) => f.path);
+      return `${names.join(", ")} (${describeExit(b, options)})`;
+    });
+    what.push(`jest ended without a result for ${each.join(", ")}`);
+  }
+  if (what.length === 0) return { end: "completed", failure: null, done };
+  return { end: done.length === 0 ? "crashed" : "completed", failure: what.join("; "), done };
 }
 
-function describeExit(batch: BatchOutcome, logDir: AbsolutePath): string {
+/**
+ * A batch Squeal did not signal whose files all completed, yet whose process
+ * did not end as Jest does after them: an error starting it, a signal, an
+ * exit code other than 0 and 1, exit 1 that no failed test or file error of
+ * the batch explains, or exit 1 with Jest's words for a throwing
+ * `globalTeardown` in its stderr, the same on 29 and 30 (`runGlobalHook`).
+ */
+function abnormal(batch: BatchOutcome, logDir: AbsolutePath): boolean {
+  const exit = batch.exit;
+  if (exit === null || batch.cut !== null) return false;
+  if (batch.reports.length < batch.files.length) return false;
+  if (exit.error !== null || exit.signal !== null) return true;
+  if (exit.code === 0) return false;
+  if (exit.code !== 1) return true;
+  const failed = batch.reports.some(
+    (r) => r.fileError !== null || r.results.some((c) => c.outcome === "fail"),
+  );
+  return !failed || readOr(stderrLog(batch, logDir)).includes(TEARDOWN_ERROR);
+}
+
+const TEARDOWN_ERROR = "Jest: Got error running globalTeardown - ";
+
+/** Lines and characters of the stderr log an exit's description quotes. */
+const EXCERPT_LINES = 3;
+const EXCERPT_CHARS = 600;
+
+function stderrLog(batch: BatchOutcome, logDir: AbsolutePath): string {
+  return join(logDir, `stderr-${batch.index}.log`);
+}
+
+function describeExit(
+  batch: BatchOutcome,
+  options: { readonly logDir: AbsolutePath; readonly paths: WorktreePaths },
+): string {
   const exit = batch.exit;
   if (exit === null) return "not started";
   if (exit.error !== null) return `cannot run node: ${exit.error}`;
   const how = exit.signal === null ? `exit code ${exit.code}` : `signal ${exit.signal}`;
   // Stack frames name Jest's own files; the lines around them say what went wrong.
-  const tail = readOr(join(logDir, `stderr-${batch.index}.log`))
+  const tail = options.paths
+    .relativizeText(readOr(stderrLog(batch, options.logDir)))
     .split("\n")
     .filter((line) => line.trim() !== "" && !/^\s+at /.test(line))
-    .slice(-3)
-    .map((line) => line.trim());
-  return tail.length === 0 ? how : `${how}: ${tail.join(" | ")}`;
+    .slice(-EXCERPT_LINES)
+    .map((line) => line.trim())
+    .join(" | ");
+  if (tail === "") return how;
+  return `${how}: ${tail.length > EXCERPT_CHARS ? `${tail.slice(0, EXCERPT_CHARS)}…` : tail}`;
 }

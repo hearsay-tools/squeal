@@ -22,7 +22,7 @@ import { startGroup } from "../../process/group.js";
 import { runLogJson } from "../../run-summary.js";
 import { type JestInstall, tsNodeHygiene } from "../resolve.js";
 import { parseJestEvents, readEvents, sizeOf } from "./events.js";
-import { type BatchOutcome, ending, type JestFileReport, readJestBatch } from "./results.js";
+import { type BatchOutcome, ending, readJestBatch } from "./results.js";
 import { writeWrapperConfig } from "./wrapper-config.js";
 
 export interface JestRunOptions {
@@ -70,13 +70,10 @@ export const DEFAULT_BATCH_SIZE = 5;
 /** SIGKILL follows SIGTERM after this long (D4.2). */
 export const KILL_GRACE_MS = 2_000;
 
-/** One Jest process of a tier. */
+/** One Jest process of a tier; events past its `cut` are not trusted. */
 interface Batch extends BatchOutcome {
   readonly args: readonly string[];
   readonly events: string;
-  /** The events file's size when Squeal signalled the process: what came later is not trusted. */
-  cut: number | null;
-  reports: readonly JestFileReport[];
 }
 
 /**
@@ -227,10 +224,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
     options.signal?.removeEventListener("abort", onAbort);
   }
 
-  const done = batches.flatMap((b) => b.reports);
-  const { end, failure } = cancelled
-    ? { end: "completed" as const, failure: null }
-    : ending(batches, new Set(done.map((f) => f.testFile)), expired, options);
+  const { end, failure, done } = ending(batches, { expired, cancelled }, { ...options, paths });
   const loaded = done.filter((f) => f.loaded.length > 0);
   const report: RunReport = {
     end,

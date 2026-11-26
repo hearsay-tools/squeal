@@ -13,6 +13,7 @@ import {
   readEvents,
 } from "../../../../src/runners/jest/run/events.js";
 import {
+  type BatchOutcome,
   checkNames,
   ending,
   readJestBatch,
@@ -223,25 +224,109 @@ describe("toCheckError", () => {
 });
 
 describe("ending", () => {
-  const options = { files: [A, B], timeoutMs: 500, logDir: "/nowhere" as AbsolutePath };
+  const logDir = mkdtempSync(join(tmpdir(), "squeal-jest-ending-")) as AbsolutePath;
+  afterAll(() => rmSync(logDir, { recursive: true, force: true }));
+  const options = { files: [A, B], timeoutMs: 500, logDir: "/nowhere" as AbsolutePath, paths };
   const exit = { code: 1, signal: null, error: null };
+  const ran = { expired: false, cancelled: false };
+  const passed = (file: TestFileRef) =>
+    readJestBatch([fileResult(file, { testResults: [testCase("ok")] })], [file], paths);
+  const failed = (file: TestFileRef) =>
+    readJestBatch(
+      [fileResult(file, { testResults: [testCase("no", { status: "failed" })] })],
+      [file],
+      paths,
+    );
+  const batch = (index: number, file: TestFileRef, extra: Partial<BatchOutcome> = {}) => ({
+    index,
+    files: [file],
+    exit: { code: 0, signal: null, error: null },
+    cut: null,
+    reports: passed(file),
+    ...extra,
+  });
 
   it("names the unfinished files and their exit; crashed when none completed", () => {
-    expect(ending([{ index: 0, files: [A, B], exit }], new Set([A]), false, options)).toEqual({
+    const some = { index: 0, files: [A, B], exit, cut: null, reports: passed(A) };
+    expect(ending([some], ran, options)).toEqual({
       end: "completed",
       failure: "jest ended without a result for test/b.test.js (exit code 1)",
+      done: passed(A),
     });
-    const none = ending([{ index: 0, files: [A, B], exit: null }], new Set(), false, options);
+    const none = ending(
+      [{ index: 0, files: [A, B], exit: null, cut: null, reports: [] }],
+      ran,
+      options,
+    );
     expect(none).toEqual({
       end: "crashed",
       failure: "jest ended without a result for test/a.test.js, test/b.test.js (not started)",
+      done: [],
     });
   });
 
   it("is timed-out on the deadline", () => {
-    expect(ending([{ index: 0, files: [A, B], exit }], new Set([A]), true, options)).toEqual({
+    const some = { index: 0, files: [A, B], exit, cut: 10, reports: passed(A) };
+    expect(ending([some], { expired: true, cancelled: false }, options)).toEqual({
       end: "timed-out",
       failure: "deadline of 500 ms passed with 1 of 2 test files unfinished",
+      done: passed(A),
+    });
+  });
+
+  it("keeps an exit 1 that a failed test or a file error explains (review 0.1.643 B3)", () => {
+    const loadError = readJestBatch(
+      [fileResult(B, { testExecError: { message: "boom", stack: null } })],
+      [B],
+      paths,
+    );
+    const batches = [
+      batch(0, A, { exit, reports: failed(A) }),
+      batch(1, B, { exit, reports: loadError }),
+    ];
+    expect(ending(batches, ran, options)).toEqual({
+      end: "completed",
+      failure: null,
+      done: [...failed(A), ...loadError],
+    });
+  });
+
+  it("withholds a batch that ended abnormally after its last file, quoting its stderr", () => {
+    writeFileSync(
+      join(logDir, "stderr-0.log"),
+      `\u001b[31mError: Jest: Got error running globalTeardown - ${ROOT}/teardown.cjs, reason: PROOF\u001b[39m\n    at hook (${ROOT}/node_modules/x.js:1:1)\n`,
+    );
+    const where = { ...options, logDir };
+    const teardown = ending([batch(0, A, { exit }), batch(1, B)], ran, where);
+    expect(teardown).toEqual({
+      end: "completed",
+      failure: `jest exited abnormally after test/a.test.js completed (exit code 1: Error: Jest: Got error running globalTeardown - teardown.cjs, reason: PROOF; log ${logDir}/stderr-0.log)`,
+      done: passed(B),
+    });
+    // Jest's words for the teardown withhold the batch though a failed test explains exit 1.
+    expect(ending([batch(0, A, { exit, reports: failed(A) })], ran, where).end).toBe("crashed");
+    for (const how of [
+      { code: 2, signal: null, error: null },
+      { code: null, signal: "SIGKILL" as const, error: null },
+      { code: null, signal: null, error: "ENOENT" },
+    ]) {
+      const one = ending([batch(1, B, { exit: how, reports: failed(B) })], ran, options);
+      expect(one.end).toBe("crashed");
+      expect(one.done).toEqual([]);
+      expect(one.failure).toMatch(/^jest exited abnormally after test\/b\.test\.js completed \(/);
+    }
+  });
+
+  it("never withholds a batch Squeal signalled, and reports no failure on a stop (Kit K8)", () => {
+    const signalled = { code: null, signal: "SIGTERM" as const, error: null };
+    const stopped = [
+      batch(0, A, { exit: signalled, cut: 100 }),
+      batch(1, B, { exit: { code: 2, signal: null, error: null } }),
+    ];
+    expect(ending(stopped, { expired: false, cancelled: true }, options)).toEqual({
+      end: "completed",
+      failure: null,
+      done: passed(A),
     });
   });
 });

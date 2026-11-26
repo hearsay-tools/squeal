@@ -258,6 +258,58 @@ describe.each(JEST_MAJORS)("runJest on Jest %i (spec 028 D4, D5)", (major) => {
     );
   }, 120_000);
 
+  /** A project whose `globalTeardown` runs `teardown` after every test file has reported. */
+  function tornDown(teardown: string, test: string): AbsolutePath {
+    return project(installed, {
+      "jest.config.js": `module.exports = { testEnvironment: "node", globalTeardown: "<rootDir>/teardown.cjs" };\n`,
+      "teardown.cjs": `module.exports = () => { ${teardown} };\n`,
+      "test/case.test.js": test,
+    });
+  }
+  const PASSING = `test("passes", () => { expect(1).toBe(1); });\n`;
+  const FAILING = `test("fails", () => { expect(1).toBe(2); });\n`;
+
+  it("withholds a passing file whose batch's globalTeardown throws (review 0.1.643 B3)", async () => {
+    const root = tornDown(`throw new Error("TEARDOWN_PROOF_643");`, PASSING);
+    const { report } = await run(root, install, "teardown", ["test/case.test.js"]);
+    expect(report.end).toBe("crashed");
+    expect(report.completedFiles).toEqual([]);
+    expect(report.results).toEqual([]);
+    expect(report.failure).toMatch(
+      /^jest exited abnormally after test\/case\.test\.js completed \(exit code 1: Error: Jest: Got error running globalTeardown - teardown\.cjs, reason: TEARDOWN_PROOF_643; log \.squeal-log\/run\d+\/stderr-0\.log\)$/,
+    );
+    // A failed test explains exit 1, but Jest's words for the teardown still withhold the batch.
+    const failing = tornDown(`throw new Error("TEARDOWN_PROOF_643");`, FAILING);
+    const { report: both } = await run(failing, install, "teardown", ["test/case.test.js"]);
+    expect(both.end).toBe("crashed");
+    expect(both.completedFiles).toEqual([]);
+    expect(both.failure).toContain("TEARDOWN_PROOF_643");
+  }, 120_000);
+
+  it("withholds a batch that exits 2 or dies of a signal after its last file", async () => {
+    const two = tornDown("process.exit(2);", FAILING);
+    const { report } = await run(two, install, "exit2", ["test/case.test.js"]);
+    expect(report.end).toBe("crashed");
+    expect(report.completedFiles).toEqual([]);
+    expect(report.failure).toMatch(
+      /^jest exited abnormally after test\/case\.test\.js completed \(exit code 2; log .+\/stderr-0\.log\)$/,
+    );
+    const killed = tornDown(`process.kill(process.pid, "SIGKILL");`, PASSING);
+    const { report: signalled } = await run(killed, install, "signal", ["test/case.test.js"]);
+    expect(signalled.end).toBe("crashed");
+    expect(signalled.completedFiles).toEqual([]);
+    expect(signalled.failure).toMatch(/\(signal SIGKILL; log .+\/stderr-0\.log\)$/);
+  }, 120_000);
+
+  it("keeps an ordinary failing test's exit 1 a completed run with its fail result", async () => {
+    const root = project(installed, { "test/case.test.js": FAILING });
+    const { report } = await run(root, install, "failing", ["test/case.test.js"]);
+    expect(report.end).toBe("completed");
+    expect(report.failure).toBeNull();
+    expect(report.completedFiles.map((f) => f.path)).toEqual(["test/case.test.js"]);
+    expect(report.results.map((r) => [r.check.fullName, r.outcome])).toEqual([["fails", "fail"]]);
+  }, 120_000);
+
   it("reads an .mjs async config and a package.json jest key, rootDir kept", async () => {
     const tests = { "test/sum.test.js": `test("sum", () => { expect(1 + 2).toBe(3); });\n` };
     const mjs = project(installed, {
