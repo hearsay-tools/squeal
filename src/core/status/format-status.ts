@@ -18,6 +18,7 @@ import {
 import { codeStatusLines, coverageStatusLines } from "./code-status.js";
 import { commitLines } from "./commit-lines.js";
 import { configProblemsLine } from "./config-problems.js";
+import { containerLines } from "./container-status.js";
 import { delaysLines } from "./feed-late.js";
 import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
@@ -105,6 +106,8 @@ export function formatStatus(
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     // Spec 026 D12.1 (row 026-20): the remote's one line, while one is named.
     ...remoteLines(result),
+    // Spec 027 D7.3 (row 027-06): each container target's state and key mode, while one is seen.
+    ...containerLines(result),
     // Spec 018 D5: an import none of whose results is current because the environment differs.
     ...importDefaultLines(result),
     // Spec 018 D19: shared results recorded on another Node than the daemon runs, said once.
