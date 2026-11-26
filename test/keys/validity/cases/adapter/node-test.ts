@@ -220,6 +220,13 @@ const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] 
 
 const OUTCOME_FILES = ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"];
 
+/** Row 026-33: two passing files, for a run at a grant below its concurrency. */
+const TWO_PASSING: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "test/one.test.mjs": lines('import { test } from "node:test";', "", 'test("one", () => {});'),
+  "test/two.test.mjs": lines('import { test } from "node:test";', "", 'test("two", () => {});'),
+};
+
 /**
  * Row 005-88: a worktree whose `.git` names a git dir whose `commondir` is a
  * directory, so reading the layout throws.
@@ -324,6 +331,16 @@ export const NODE_TEST_RUNS: readonly Case[] = [
         { files: OUTCOME_FILES, lane: "slow:node-test" },
         { files: OUTCOME_FILES, lane: "node-test" },
       ],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a run at a grant of 1 below its concurrency stores alike (row 026-33)",
+    why: "026-33 (#292): a run outside a group's lane starts no more files at once than its grant, `RunOptions.workers`, which the last release ignored; how many start at once decides no outcome, so the run stores what the last release stored",
+    input: {
+      files: TWO_PASSING,
+      concurrency: 2,
+      runs: [{ files: ["test/one.test.mjs", "test/two.test.mjs"], lane: "node-test", workers: 1 }],
     },
   },
   {

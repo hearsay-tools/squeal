@@ -213,6 +213,7 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
             run.storeGone === true ? goneLogDir(scratch, at) : join(scratch, "logs", String(at)),
           timeoutMs: run.timeoutMs ?? 60_000,
           ...(checks === undefined ? {} : { checks }),
+          ...(run.workers === undefined ? {} : { workers: run.workers }),
           ...(run.storeGone === true ? { stop: AbortSignal.abort() } : {}),
         });
       rmSync(proof, { force: true });

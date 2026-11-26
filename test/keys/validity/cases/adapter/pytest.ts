@@ -589,6 +589,20 @@ export const PYTEST_RUNS: readonly Case[] = [
       runs: [{ files: ["tests/test_pass.py"] }],
     },
   },
+  {
+    kind: "adapter:pytest",
+    name: "a run at a grant of 1 stores alike (row 026-33)",
+    why: "026-33 (#292): a run outside a group's lane starts no more batch processes at once than its grant, `RunOptions.workers`, which the last release ignored; how many start at once decides no outcome, so the run stores what the last release stored",
+    input: {
+      python: "3.13",
+      files: {
+        "pyproject.toml": CONFIG,
+        "tests/test_one.py": lines("def test_one():", "    assert True"),
+        "tests/test_two.py": lines("def test_two():", "    assert True"),
+      },
+      runs: [{ files: ["tests/test_one.py", "tests/test_two.py"], workers: 1 }],
+    },
+  },
   ...pytest(
     "a plugin that turns on a refused flag runs nothing",
     "007 D6: the runtime refuses a flag that changes what runs wherever it was set, and the run stores nothing",

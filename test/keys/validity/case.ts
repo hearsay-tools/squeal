@@ -501,6 +501,12 @@ export interface PytestInput {
      * Its processes write their records into that folder.
      */
     readonly storeGone?: true;
+    /**
+     * Row 026-33 (#292): the tier's grant (`RunOptions.workers`), which caps
+     * the processes a run outside a group's lane starts at once; a release
+     * before it ignores it. Default none.
+     */
+    readonly workers?: number;
   }[];
   /** Paths whose affected test files are read at open and after each run. */
   readonly affected?: readonly string[];
@@ -528,6 +534,12 @@ export interface NodeTestInput {
     readonly storeGone?: true;
     /** The run's deadline (`RunOptions.timeoutMs`); default 60 s. */
     readonly timeoutMs?: number;
+    /**
+     * Row 026-33 (#292): the tier's grant (`RunOptions.workers`), which caps
+     * the processes a run outside a group's lane starts at once; a release
+     * before it ignores it. Default none.
+     */
+    readonly workers?: number;
   }[];
   /**
    * Spec 020 rows 020-43 and 020-44: the gate's adapter options, which a
