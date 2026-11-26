@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type DockerCli, dockerCli } from "../../../src/core/runner-host/container/docker.js";
+import { bundleRootFor } from "../../../src/core/runner-host/container/index.js";
 import {
   type ContainerPaths,
   containerEnv,
@@ -308,9 +309,11 @@ describe.skipIf(NODE_IMAGE === undefined)("a real runner host in a container (N2
   const worktreeId = `${RUN_ID}-n2`;
   beforeEach(() => {
     dir = realpathSync(mkdtempSync(join(tmpdir(), "squeal-ct-n2-")));
+    const bundleDir = bundleRootFor(BUNDLE_CLI);
+    if (bundleDir === null) throw new Error(`bundle root not found for ${BUNDLE_CLI}`);
     paths = {
       worktreeRoot: join(dir, "wt"),
-      squealBundleDir: BUNDLE,
+      squealBundleDir: bundleDir,
       worktreeCacheDir: join(dir, "cache"),
       worktreeLogRoot: join(dir, "logs"),
     };
@@ -374,7 +377,9 @@ test("hangs", () => {
       note: () => {},
     });
 
-  it("reaps a cancelled run, then the exec's end, and closes to zero containers", async () => {
+  it("reaps a cancelled run, then the exec's end, and closes to zero containers", {
+    timeout: 60_000,
+  }, async () => {
     const runner = await open();
     const [file] = await runner.testFiles();
     if (file === undefined) throw new Error("the host listed no test file");
