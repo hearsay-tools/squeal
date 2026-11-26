@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.647";
+  if (true) return "0.1.649";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4529,7 +4529,7 @@ var init_policy = __esm({
       shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
       node: "project",
       requires: { commands: [] },
-      remote: { allowed: true, needsRepository: [] }
+      remote: { allowed: true, needsRepository: [], runHere: [] }
     };
   }
 });
@@ -4991,7 +4991,7 @@ var init_policy_containers = __esm({
 function commandName(entry4) {
   return /^[^-\s/\\][^\s/\\]*$/.test(entry4) && !new RegExp("\\p{Cc}", "u").test(entry4);
 }
-var boolean3, kept, commands, needsRepository, REMOTE_SHAPE;
+var boolean3, kept, commands, needsRepository, runHere, REMOTE_SHAPE;
 var init_policy_remote = __esm({
   "src/core/daemon/policy-remote.ts"() {
     "use strict";
@@ -5015,9 +5015,10 @@ var init_policy_remote = __esm({
       (entry4) => commandName(entry4) ? null : `must be a command name such as "git", got ${JSON.stringify(entry4)}`
     );
     needsRepository = kept("remote.needsRepository", (glob2) => compiles([glob2])?.problem ?? null);
+    runHere = kept("remote.runHere", (glob2) => compiles([glob2])?.problem ?? null);
     REMOTE_SHAPE = {
       requires: { commands },
-      remote: { allowed: boolean3, needsRepository }
+      remote: { allowed: boolean3, needsRepository, runHere }
     };
   }
 });
@@ -14641,8 +14642,12 @@ var init_proc = __esm({
         if (text3 === null) return null;
         const listeners = [];
         for (const line of text3.split("\n")) {
-          const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+-?\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
-          if (m !== null) listeners.push({ fileInode: Number(m[1]) });
+          const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(\S.*?)\s+-?\d+\s+\*\s+\d+\b(?:.*?\bino:(\d+)\b)?/.exec(
+            line
+          );
+          if (m === null) continue;
+          if (m[2] !== void 0) listeners.push({ fileInode: Number(m[2]) });
+          else if (m[1] !== "*" && !m[1]?.startsWith("@")) return null;
         }
         return listeners;
       }
@@ -87915,18 +87920,11 @@ function missingRepository(error) {
   const texts2 = [error.message, ...(error.causes ?? []).map((cause) => cause.message)];
   return texts2.some((text3) => MISSING_REPOSITORY.test(text3));
 }
-function repositoryRoute(needsRepository2, named4, remoteHasRepository = () => false) {
+function repositoryRoute(needsRepository2, named4, remoteHasRepository = () => false, runHere2 = () => []) {
   const failed7 = /* @__PURE__ */ new Map();
-  let globs4 = [];
-  let matches5 = createInputMatcher(globs4);
-  const here = (file) => {
-    const now = needsRepository2();
-    if (now !== globs4) {
-      globs4 = now;
-      matches5 = createInputMatcher(now);
-    }
-    return failed7.has(testFileId(file)) || !remoteHasRepository() && matches5(file.path);
-  };
+  const needs = globMatcher(needsRepository2);
+  const always = globMatcher(runHere2);
+  const here = (file) => failed7.has(testFileId(file)) || always(file.path) || !remoteHasRepository() && needs(file.path);
   return {
     split(testFiles3) {
       const stays2 = testFiles3.map(here);
@@ -87947,6 +87945,18 @@ function repositoryRoute(needsRepository2, named4, remoteHasRepository = () => f
       );
       return found4;
     }
+  };
+}
+function globMatcher(globs4) {
+  let last = [];
+  let matches5 = createInputMatcher(last);
+  return (path) => {
+    const now = globs4();
+    if (now !== last) {
+      last = now;
+      matches5 = createInputMatcher(now);
+    }
+    return matches5(path);
   };
 }
 function notARepository(report4) {
@@ -88173,7 +88183,8 @@ function withRemoteLane(options) {
   const route = repositoryRoute(
     options.needsRepository ?? (() => []),
     options.repository ?? options.status,
-    options.hasGitRepository ?? (() => false)
+    options.hasGitRepository ?? (() => false),
+    options.runHere ?? (() => [])
   );
   const down = (reason2, refused, host) => {
     void host?.adapter.close().catch(() => {
@@ -88504,7 +88515,7 @@ function withRemoteLane(options) {
       remoteKey && remoteCore !== null ? `${remoteKeyStatusLine(target, remoteCore)}; proven at ${at2} (blob ids equal before and after)` : `remote ${target}: ${tiersName} runs of ${local3.name} go there; proven at ${at2} (blob ids equal before and after)`
     );
   };
-  const runHere = async (testFiles3, run9, dir2) => {
+  const runHere2 = async (testFiles3, run9, dir2) => {
     const { permits, ...rest2 } = run9;
     opened3 = true;
     const workers = permits === void 0 ? run9.workers : await permits.back(cancelOf(run9));
@@ -88522,7 +88533,7 @@ function withRemoteLane(options) {
     return remoteKey ? tagReportCore(report5, localCore()) : report5;
   };
   const instead = async (testFiles3, run9, refusal4) => {
-    if (options.whenLost === "local") return runHere(testFiles3, run9, "here");
+    if (options.whenLost === "local") return runHere2(testFiles3, run9, "here");
     leftNotRun(testFiles3.length);
     tell();
     const reason2 = refusal4 ?? (state.kind === "down" && state.refused ? why2 : null);
@@ -88598,7 +88609,7 @@ function withRemoteLane(options) {
     const again2 = local4 ? [...failed7, ...refusedFiles] : failed7;
     const ran = again2.length === 0 ? proven3 : merge4([
       { adapter: { name: `remote ${target}` }, report: proven3 },
-      { adapter: { name: "here" }, report: await runHere(again2, run9, "here") }
+      { adapter: { name: "here" }, report: await runHere2(again2, run9, "here") }
     ]);
     if (refused === void 0 || local4) return ran;
     leftNotRun(refusedFiles.length);
@@ -88721,7 +88732,7 @@ function withRemoteLane(options) {
       const { there } = split6;
       if (there.length === 0) return runDirect(testFiles3, run9);
       if (split6.here.length === 0) return remoteTier(there, run9);
-      const own = await runHere(split6.here, run9, "repository");
+      const own = await runHere2(split6.here, run9, "repository");
       if (run9.stop?.aborted === true) return own;
       if (own.startupFailure !== void 0) return deferredTo(own, there);
       return merge4([
@@ -89386,6 +89397,7 @@ function laneOver(share2, spec, tiers, context2) {
     }, signal3),
     allowlist: () => options.policy().env.allowlist,
     needsRepository: () => options.policy().remote.needsRepository,
+    runHere: () => options.policy().remote.runHere,
     repository: context2.repository,
     status: context2.status,
     log: options.log,
@@ -123669,7 +123681,7 @@ var NODE_TEST3 = "node:test project";
 async function slowCandidates(facts, policy, runners2) {
   const projects2 = runners2.nodeTest.map((p) => ({
     name: p.name,
-    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix25.join(p.cwd, g2)))),
+    files: facts.tracked.filter(globMatcher2(p.include.map((g2) => posix25.join(p.cwd, g2)))),
     slow: policy.nodeTest.some((q) => q.name === p.name && q.slow === true)
   }));
   const universe = [.../* @__PURE__ */ new Set([...facts.testFiles.paths, ...projects2.flatMap((p) => p.files)])];
@@ -123693,7 +123705,7 @@ async function slowCandidates(facts, policy, runners2) {
     }
   }
   for (const p of projects2) for (const file of p.files) add3(file, `${NODE_TEST3} ${p.name}`);
-  const declared = globMatcher(policy.slow.include);
+  const declared = globMatcher2(policy.slow.include);
   const slowProject = new Set(projects2.filter((p) => p.slow).flatMap((p) => p.files));
   const isDeclared = (file) => declared(file) || slowProject.has(file);
   for (const file of universe) if (isDeclared(file)) add3(file, "declared slow");
@@ -123729,12 +123741,12 @@ function excludeProposal(dir2, files6, evidenced, universe, runners2, isVitest) 
   const named4 = files6.filter((f) => evidenced.has(f));
   if (named4.length === 0) return null;
   const glob2 = dir2 === "" ? "**" : `${dir2}/**`;
-  const selected2 = universe.filter(globMatcher([glob2]));
+  const selected2 = universe.filter(globMatcher2([glob2]));
   const globs4 = selected2.every((f) => evidenced.has(f)) ? [glob2] : named4;
   return {
     globs: globs4,
     into: globs4.flatMap(
-      (g2) => excludeInto(runners2, g2, selected2.filter(globMatcher([g2])), isVitest)
+      (g2) => excludeInto(runners2, g2, selected2.filter(globMatcher2([g2])), isVitest)
     ),
     kept: files6.filter((f) => !named4.includes(f))
   };
@@ -123745,7 +123757,7 @@ function scriptFiles(facts, manifest, name3, universe, depth) {
   const parsed3 = parseTestScript(text3);
   if (parsed3 !== null && typeof parsed3 !== "string") {
     return facts.tracked.filter(
-      globMatcher(parsed3.include.map((g2) => posix25.join(manifest.dir, g2)))
+      globMatcher2(parsed3.include.map((g2) => posix25.join(manifest.dir, g2)))
     );
   }
   const npm = /^npm run (\S+)(?: (?:-w|--workspace)(?: |=)(\S+))?\s*$/.exec(text3);
@@ -123770,11 +123782,11 @@ function inputsFor2(policy, files6) {
   if (Array.isArray(inputs2)) return [...inputs2];
   const out2 = [];
   for (const [testGlob, globs4] of Object.entries(inputs2)) {
-    if (files6.some(globMatcher([testGlob]))) out2.push(...globs4.filter((g2) => !out2.includes(g2)));
+    if (files6.some(globMatcher2([testGlob]))) out2.push(...globs4.filter((g2) => !out2.includes(g2)));
   }
   return out2;
 }
-function globMatcher(globs4) {
+function globMatcher2(globs4) {
   const patterns = globs4.flatMap((glob2) => {
     try {
       return [globToRegExp(glob2)];
