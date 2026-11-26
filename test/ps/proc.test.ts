@@ -252,6 +252,26 @@ describe("locks and listeners", () => {
     ]);
   });
 
+  test("unixListeners is null when ss has no file inodes (no unix_diag, #294)", () => {
+    // Without the unix_diag module ss reads /proc/net/unix: no `<->`, no `ino:`, Send-Q 0.
+    const fallback = [
+      SS_XLE.split("\n")[0],
+      "u_str LISTEN 0      0      @/tmp/.X11-unix/X0 31337            * 0",
+      "u_str LISTEN 0      0      /tmp/probe-439.sock 3829            * 0",
+      "",
+    ].join("\n");
+    expect(createProcSource({ root, run: () => fallback }).unixListeners()).toBeNull();
+  });
+
+  test("unixListeners is empty, not null, when only abstract sockets listen", () => {
+    const abstract = [
+      SS_XLE.split("\n")[0],
+      "u_str LISTEN 0      4096   @/tmp/.X11-unix/X0 31337            * 0",
+      "",
+    ].join("\n");
+    expect(createProcSource({ root, run: () => abstract }).unixListeners()).toEqual([]);
+  });
+
   test("unixListeners is null without ss", () => {
     expect(createProcSource({ root, run: () => null }).unixListeners()).toBeNull();
   });

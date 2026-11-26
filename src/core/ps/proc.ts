@@ -171,8 +171,15 @@ class ProcSource implements PsSource {
     for (const line of text.split("\n")) {
       // `u_str LISTEN <recv-q> <send-q> <bound name> <socket inode> * 0 ... ino:<file inode>`.
       // ss prints the socket inode as a signed 32-bit number, so past 2^31 it is negative (row 014-48).
-      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+-?\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
-      if (m !== null) listeners.push({ fileInode: Number(m[1]) });
+      const m =
+        /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(\S.*?)\s+-?\d+\s+\*\s+\d+\b(?:.*?\bino:(\d+)\b)?/.exec(
+          line,
+        );
+      if (m === null) continue;
+      if (m[2] !== undefined) listeners.push({ fileInode: Number(m[2]) });
+      // A socket bound to a file always has `ino:` from the kernel's unix_diag. Without that
+      // module ss falls back to `/proc/net/unix`, which has no file inode: cannot read (#294).
+      else if (m[1]?.startsWith("/")) return null;
     }
     return listeners;
   }
