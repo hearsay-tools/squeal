@@ -132,6 +132,7 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
       "coverage/provider.mjs",
       "jest/observe-runtime.cjs",
       "jest/squeal-reporter.cjs",
+      "jest/warm-worker.cjs",
       "node-test/recorder.cjs",
       "node-test/reporter.mjs",
       "observe/fs.cjs",
