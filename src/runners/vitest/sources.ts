@@ -38,6 +38,12 @@ interface Hashed {
   readonly hashedAt: EpochMs;
 }
 
+/**
+ * A plugin container's `load`, whatever arguments its Vite version passes:
+ * Vite 8.4.0 overloads it with a second, `{ withMetadata: true }`.
+ */
+type Load = (id: string, ...rest: unknown[]) => Promise<unknown>;
+
 /** One plugin container's reads. */
 interface Reads {
   /**
@@ -124,6 +130,10 @@ export class SourceStamps {
    * the stat, and the check sees it. Idempotent; `stale` attaches first, so
    * a project server added later is stamped from its next load, and what it
    * cached before has no stamp, so it is stale.
+   *
+   * Row 025-23: the wrapper passes every argument on. Vite 8.4.0 calls
+   * `load(id, { withMetadata: true })` and reads `.code` on the result; a
+   * one-argument wrapper gave it `null`, and Vitest could not start.
    */
   attach(vitest: Vitest): void {
     for (const environment of environments(vitest)) {
@@ -131,11 +141,12 @@ export class SourceStamps {
       if (this.#containers.has(container)) continue;
       const reads: Reads = { stamps: new Map(), virtual: new Map() };
       this.#containers.set(container, reads);
-      const load = container.load.bind(container);
-      container.load = async (id) => {
+      const load = container.load.bind(container) as Load;
+      const stamped: Load = async (id, ...rest) => {
         await this.#stamp(reads, id);
-        return load(id);
+        return load(id, ...rest);
       };
+      container.load = stamped as typeof container.load;
     }
   }
 
