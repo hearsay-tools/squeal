@@ -175,6 +175,19 @@ export interface HostStarted {
     readonly members: readonly ("recheck" | "globalSetups")[];
   };
   readonly values: HostValues;
+  /**
+   * Spec 027 D6 (row 027-05): the device and inode of the host's root, as the
+   * host sees it. A container host's must equal the daemon's own `statSync`
+   * of the worktree, which proves a live bind mount and never baked code.
+   * Absent from a host that could not read it, or one older than 027-05.
+   */
+  readonly rootStat?: RootStat;
+}
+
+/** A directory's identity on its machine: `statSync`'s `dev` and `ino`. */
+export interface RootStat {
+  readonly dev: number;
+  readonly ino: number;
 }
 
 /**

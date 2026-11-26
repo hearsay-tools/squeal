@@ -15,6 +15,7 @@ import {
   type HostStart,
   type HostStarted,
   type HostValues,
+  type RootStat,
   RUNNER_HOST_PROTOCOL,
   type WireRunOptions,
 } from "./protocol.js";
@@ -80,6 +81,12 @@ export interface ServeOptions {
    * Absent, a local host: the daemon's own pool admits its runs.
    */
   readonly admission?: HostAdmission;
+  /**
+   * Spec 027 D6 (row 027-05): the root's device and inode, read at `start`
+   * for its reply's `rootStat`; `undefined` when it cannot be read. Absent,
+   * the reply carries none.
+   */
+  readonly rootStat?: () => RootStat | undefined;
 }
 
 const CLOSE_MS = 5_000;
@@ -184,6 +191,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
     building = null;
     const values = valuesOf(built);
     sent = JSON.stringify(values);
+    const rootStat = options.rootStat?.();
     return {
       protocol: RUNNER_HOST_PROTOCOL,
       version: options.version,
@@ -204,6 +212,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         ],
       },
       values,
+      ...(rootStat === undefined ? {} : { rootStat }),
     };
   };
 
