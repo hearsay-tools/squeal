@@ -78,3 +78,23 @@ runtime bundles with the compile cache warm in a temp dir, as its adapter does (
 asserted. Budget, load gate and CI gate unchanged. OpenCode's margin check against Codex must compare like with like.
 Owns those four test files and `test/harness/bundle-helpers.ts`. Done when: the four tests pass three sequential
 rounds in a row on this host at load <= 4 against the committed `dist`.
+
+## Wave 4.5: repair of review `reviews/0.1.641.md` (FAIL on `f529511fd`)
+
+### 025-16 repair (repair; opus high)
+
+Fix B1 to B3 of `reviews/0.1.641.md` in `src/harness/builtins.ts` and its callers; fold in S1. CI `45813103996`
+confirms B2 (every `cli/squeal.mjs` drifts between Node 22 and 24) and B3 (`test/e2e/spec-026-{tiered,remote}`
+fail to load: `Cannot use plugins in synchronous API calls`). Lead for B1 and B2: make each virtual builtin
+module CommonJS, `module.exports = process.getBuiltinModule("node:x")`, so esbuild reads properties off the live
+object at use and enumerates no exports at build time; or another design with the same two properties. Then
+measure it against the base (`bb99751b5`) and the current plugin, interleaved: the gain must stay. If no design
+keeps both the semantics and the gain on every Node bundle, restrict the plugin to the hook entries and say why.
+B3: the synchronous caller `test/e2e/spec-026-build.ts` moves to the async `build`, or the plugin is applied
+where every caller is async; shipped bundles and what the e2e suites build must stay alike. S1: the OpenCode
+latency test prints an uncached diagnostic line like the other three. Owns `src/harness/build.ts`,
+`src/harness/builtins.ts`, `test/harness/builtins-bundle.test.ts`, `test/e2e/spec-026-build.ts`,
+`test/harness/opencode/latency.test.ts`. Done when: the review's B1 probe (named, namespace and dynamic imports
+see a replaced `fs.readFileSync` after `syncBuiltinESMExports`) passes as a test; a scratch build is
+byte-identical on Node 22.19, 24.21 and 26.13 for every bundle, `cli/squeal.mjs` included; both e2e files load;
+hooks are measured faster than the base. Do not run `pnpm run build` in your tree. Use /worker.
