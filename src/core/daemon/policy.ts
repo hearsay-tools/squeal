@@ -24,6 +24,7 @@ import { settleChecks } from "./policy-checks-settle.js";
 import { CODE_SHAPE } from "./policy-code.js";
 import { containerTargets, settleContainers } from "./policy-containers.js";
 import { GATE_SHAPE } from "./policy-gate.js";
+import { jestProjects } from "./policy-jest.js";
 import { LINT_SHAPE } from "./policy-lint.js";
 import { NODE_SHAPE } from "./policy-node.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
@@ -99,6 +100,8 @@ const SHAPE: Shape = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  // Spec 028 D1 (row 028-05).
+  jest: (v) => jestProjects(v, "jest"),
   // Spec 027 D4 (row 027-04).
   containers: containerTargets,
   vitest: { excludeProjects: strings, exclude: (v) => strings(v) ?? compiles(v as string[]) },
@@ -152,8 +155,10 @@ export function loadPolicy(root: string): LoadedPolicy {
 const lastPolicies = new Map<string, { readonly loaded: object; readonly policy: LoadedPolicy }>();
 
 function settle(loaded: LoadedConfig<Policy>): LoadedPolicy {
+  // Spec 028 D1: a Jest project's name is unique across the runners.
+  const named = settleJestNames(loaded.value);
   // Spec 027 D4: each project's `container` names a declared target.
-  const contained = settleContainers(loaded.value);
+  const contained = settleContainers(named.policy);
   // Spec 019 D1: what `checks` needs from the other keys and among its groups.
   const settled = settleChecks(contained.policy);
   return {
@@ -162,10 +167,34 @@ function settle(loaded: LoadedConfig<Policy>): LoadedPolicy {
         ? contained.policy
         : { ...contained.policy, checks: settled.checks },
     ),
-    problems: [...loaded.problems, ...contained.problems, ...settled.problems],
+    problems: [...loaded.problems, ...named.problems, ...contained.problems, ...settled.problems],
     ...(loaded.unparsed === true ? { unparsed: true } : {}),
     ...(loaded.unknownKeys === undefined ? {} : { unknownKeys: loaded.unknownKeys }),
   };
+}
+
+/**
+ * Spec 028 D1: project names are unique across the runners. A `jest` entry
+ * whose name a `nodeTest` or `pytest` project holds is one problem and is
+ * skipped (001 D11); the other lists stay as they load, and `jestProjects`
+ * already skips a name repeated within `jest`. Returns `policy` itself when
+ * none is.
+ */
+function settleJestNames(policy: Policy): {
+  readonly policy: Policy;
+  readonly problems: readonly string[];
+} {
+  if (policy.jest.length === 0) return { policy, problems: [] };
+  const taken = new Set([...policy.nodeTest, ...policy.pytest].map((project) => project.name));
+  const problems: string[] = [];
+  const jest = policy.jest.filter((project) => {
+    if (!taken.has(project.name)) return true;
+    problems.push(
+      `"jest" project ${JSON.stringify(project.name)} has the name of another project, and names are unique across runners; it is skipped`,
+    );
+    return false;
+  });
+  return { policy: jest.length === policy.jest.length ? policy : { ...policy, jest }, problems };
 }
 
 /**
