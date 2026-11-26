@@ -1808,9 +1808,6 @@ var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 
-// src/core/scheduler/capacity.ts
-var CAPACITY_RECHECK_MS = 2e3;
-
 // src/core/scheduler/record-tier.ts
 var HERE = coreEnvironmentInputs({
   squealVersion: "",
@@ -1842,20 +1839,6 @@ function endInOrder(items, end, undo) {
 // src/core/status/open.ts
 import { DatabaseSync as DatabaseSync9 } from "node:sqlite";
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
-
-// src/core/keys/environment-descriptor.ts
-import { createHash as createHash2 } from "node:crypto";
-function configFieldHash(value) {
-  return digest(JSON.stringify(value));
-}
-function digest(text) {
-  return createHash2("sha256").update(text).digest("hex");
-}
-var ONLY_REJECTED = configFieldHash(false);
-var ONLY_ALLOWED = configFieldHash(true);
-
-// src/core/scheduler/pool-wait.ts
-var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
 
 // src/core/daemon/log-file.ts
 var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;

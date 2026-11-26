@@ -139,14 +139,31 @@ var SLOT_WAITER_FRESH_MS = 3e4;
 // src/core/daemon/config-file.ts
 import { readFileSync as readFileSync2 } from "node:fs";
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var lastLoads = /* @__PURE__ */ new WeakMap();
 function loadConfigFile(path, shape, defaults) {
   let text2;
   try {
     text2 = readFileSync2(path, "utf8");
   } catch (error) {
-    if (isMissing(error)) return { value: defaults, problems: [] };
-    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
+    if (!isMissing(error)) {
+      return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
+    }
+    text2 = null;
   }
+  let byPath2 = lastLoads.get(shape);
+  const last = byPath2?.get(path);
+  if (last !== void 0 && last.text === text2 && last.defaults === defaults) {
+    return last.loaded;
+  }
+  const loaded = text2 === null ? { value: defaults, problems: [] } : parse(text2, shape, defaults);
+  if (byPath2 === void 0) {
+    byPath2 = /* @__PURE__ */ new Map();
+    lastLoads.set(shape, byPath2);
+  }
+  byPath2.set(path, { text: text2, defaults, loaded });
+  return loaded;
+}
+function parse(text2, shape, defaults) {
   let parsed2;
   try {
     parsed2 = JSON.parse(text2);
@@ -4383,6 +4400,14 @@ var SHAPE = {
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join24(root, POLICY_FILE), SHAPE, UNSET_EXITS);
+  const last = lastPolicies.get(root);
+  if (last?.loaded === loaded) return last.policy;
+  const policy = settle(loaded);
+  lastPolicies.set(root, { loaded, policy });
+  return policy;
+}
+var lastPolicies = /* @__PURE__ */ new Map();
+function settle(loaded) {
   const settled = settleChecks(loaded.value);
   return {
     policy: withExits(

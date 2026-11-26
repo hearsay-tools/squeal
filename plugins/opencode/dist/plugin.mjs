@@ -25,8 +25,17 @@ var COMMIT_GRACE_MS = 2e3;
 var PROXY_SWITCH = "NODE_USE_ENV_PROXY";
 var CARRIED_SWITCH = "SQUEAL_CARRIED_NODE_USE_ENV_PROXY";
 var RESTORE_SWITCH = `data:text/javascript,process.env.${PROXY_SWITCH}=process.env.${CARRIED_SWITCH};delete process.env.${CARRIED_SWITCH}`;
-function bridgeStart(entry, env) {
+var CACHE_SWITCH = "NODE_COMPILE_CACHE";
+var OWN_CACHE_MARK = "SQUEAL_OWN_COMPILE_CACHE";
+function withOwnCompileCache(env) {
+  if (env[CACHE_SWITCH] !== void 0) return env;
+  const base = env.XDG_CACHE_HOME || (env.HOME ? `${env.HOME}/.cache` : "");
+  if (!base.startsWith("/")) return env;
+  return { ...env, [CACHE_SWITCH]: `${base}/squeal/compile-cache`, [OWN_CACHE_MARK]: "1" };
+}
+function bridgeStart(entry, userEnv) {
   const flags = ["--disable-warning=ExperimentalWarning"];
+  const env = withOwnCompileCache(userEnv);
   const value = env[PROXY_SWITCH];
   if (value === void 0) return { args: [...flags, entry], env };
   const { [PROXY_SWITCH]: _switch, ...rest } = env;
