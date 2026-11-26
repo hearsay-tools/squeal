@@ -1,6 +1,6 @@
 import type { ProjectName, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { FileState } from "./files.js";
+import { clearUnknown, type FileState } from "./files.js";
 import type { Ledger, SettleOptions } from "./ledger.js";
 import type { RecordedCause } from "./unknown-files.js";
 
@@ -75,7 +75,7 @@ function unblock(ledger: Ledger): TestFileRef[] {
   for (const file of ledger.files.values()) {
     if (file.blocked === null) continue;
     file.blocked = null;
-    file.unknownKey = null;
+    clearUnknown(file);
     // Its known states are re-derived from the results under its key.
     ledger.touch(file);
     refs.push(file.ref);

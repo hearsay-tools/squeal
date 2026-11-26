@@ -22,7 +22,7 @@ import { claimOf } from "./claims.js";
 import type { ElapsedMs } from "./clock.js";
 import { CommitAsks } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
-import { classify } from "./files.js";
+import { classify, clearUnknown } from "./files.js";
 import {
   fullWidth,
   poolLaneOf,
@@ -925,7 +925,7 @@ export function queueGroup(context: SchedulerContext, ledger: Ledger, group: str
       file.blocked === null &&
       classify(file) !== "current",
   );
-  for (const file of open) file.unknownKey = null;
+  for (const file of open) clearUnknown(file);
   const pending = open.filter((file) => file.phase !== null);
   const misses = ledger.settle(
     open.filter((file) => file.phase === null).map((file) => file.ref),

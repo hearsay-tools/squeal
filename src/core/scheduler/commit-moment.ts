@@ -7,7 +7,7 @@ import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
-import { classify } from "./files.js";
+import { classify, clearUnknown } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { groupView } from "./slow.js";
 
@@ -90,7 +90,7 @@ export function askCommitGroups(
     if (closure === undefined || closure.some((path) => change.differing.has(path))) continue;
     if (!everyFile && !closure.some((path) => change.changed.has(path))) continue;
     asks.set(group, [...(asks.get(group) ?? []), { ref: file.ref, key }]);
-    file.unknownKey = null;
+    clearUnknown(file);
     if (file.phase === null) misses.push(file.ref);
   }
   if (asks.size === 0) return;

@@ -3,7 +3,7 @@ import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { CheckpointLane, CheckpointRecord } from "../types/store-records.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
-import { classify, type FileState } from "./files.js";
+import { classify, clearUnknown, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { priorityOf } from "./queue.js";
 import type { BacklogQuiet } from "./quiet.js";
@@ -78,7 +78,7 @@ export function queueFullSuite(
     const queue = joins ? [] : runnable;
     for (const file of queue) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
   } else {
-    for (const file of open) file.unknownKey = null;
+    for (const file of open) clearUnknown(file);
     const pending = open.filter((file) => file.phase !== null);
     const misses = ledger.settle(
       refs(open.filter((file) => file.phase === null)),

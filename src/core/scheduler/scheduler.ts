@@ -58,6 +58,7 @@ import {
   keyingDeferred,
   stopRunners,
 } from "./deferred-keying.js";
+import { clearUnknown } from "./files.js";
 import { focusedWaiting } from "./focused.js";
 import { requeueFocusedTier } from "./focused-record.js";
 import { GroupTiers } from "./group-tiers.js";
@@ -103,7 +104,6 @@ import { STEP_OPERATION, StepLive, unplaced } from "./step-live.js";
 import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
 import { cancels, endTier, executeTier, laneOf, type Tier } from "./tiers.js";
-import { readUnknownFiles } from "./unknown-files.js";
 import { type WakeSlot, Wakes } from "./wakes.js";
 import { WarmUp } from "./warm-up.js";
 import { TierYields } from "./yields.js";
@@ -1002,7 +1002,7 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Row 026-32: queues again the `unknown` files whose stored reason
+   * Row 026-32: queues again the `unknown` files whose recorded reason
    * `match`es and whose key is still the one they were marked at
    * (`Scheduler.requeueUnknown`). A blocked file waits for its runner to
    * recover (`settleFailures`); a queued or running one needs nothing.
@@ -1011,15 +1011,15 @@ class TierScheduler implements Scheduler {
     if (this.#closed || this.#context === null || this.#ledger === null) return 0;
     const count = await this.#lock.run(async () => {
       if (this.#closed) return 0;
-      const { context, ledger } = this.#started();
-      const stored = readUnknownFiles(context.store, context.worktreeId);
+      const { ledger } = this.#started();
       const refs: TestFileRef[] = [];
+      // Review 0.1.637 B2: the ledger's own reasons, never the stored 256-file sample.
       for (const file of ledger.files.values()) {
-        if (file.unknownKey === null || file.unknownKey !== file.key) continue;
+        if (file.key === null || file.unknownKey !== file.key || file.unknownReason === null)
+          continue;
         if (file.blocked !== null || file.phase !== null) continue;
-        const entry = stored.get(file.id);
-        if (entry === undefined || entry.key !== file.key || !match(entry.reason)) continue;
-        file.unknownKey = null;
+        if (!match(file.unknownReason)) continue;
+        clearUnknown(file);
         ledger.touch(file);
         refs.push(file.ref);
       }

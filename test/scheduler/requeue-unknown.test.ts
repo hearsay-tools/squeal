@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { readUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
+import { readUnknownFiles, UNKNOWN_FILES_KEPT } from "../../src/core/scheduler/unknown-files.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunEnd, RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
+  type CatchUpFile,
   type CatchUpRunner,
   type CatchUpSide,
   catchUpRepo,
@@ -21,6 +22,7 @@ import { SLOW } from "./cleanup.js";
 
 const OUTAGE = "remote runner unreachable: connection reset by peer";
 const isOutage = (reason: string) => reason.includes("remote runner unreachable");
+const CRASH = "worker exited with code 1";
 
 const FILES = ["a", "b", "c"].map((name) => ({
   path: `test/${name}.test.ts`,
@@ -33,8 +35,12 @@ interface Faulty {
   readonly side: CatchUpSide;
   /** Runs holding one of these end with the remote's outage. */
   readonly outage: Set<string>;
+  /** The failure those runs report. */
+  outageReason: string;
   /** Runs holding one of these time out. */
   readonly timesOut: Set<string>;
+  /** Runs holding one of these crash on their own, the remote reachable. */
+  readonly crashes: Set<string>;
   /** Closure calls fail while set. */
   closureFails: boolean;
 }
@@ -43,8 +49,14 @@ function ended(_files: readonly TestFileRef[], end: RunEnd, failure: string | nu
   return { end, durationMs: 1, completedFiles: [], results: [], fileErrors: [], failure };
 }
 
-function faultySide(): Faulty {
-  const faulty = { outage: new Set<string>(), timesOut: new Set<string>(), closureFails: false };
+function faultySide(files: readonly CatchUpFile[] = FILES, tierSize = 1): Faulty {
+  const faulty = {
+    outage: new Set<string>(),
+    outageReason: OUTAGE,
+    timesOut: new Set<string>(),
+    crashes: new Set<string>(),
+    closureFails: false,
+  };
   const wrap = (runner: CatchUpRunner): RunnerAdapter =>
     new Proxy(runner, {
       get(target, prop, receiver) {
@@ -56,19 +68,21 @@ function faultySide(): Faulty {
           if (prop === "run") {
             const files = args[0] as readonly TestFileRef[];
             if (files.some((f) => faulty.outage.has(f.path)))
-              return ended(files, "crashed", OUTAGE);
+              return ended(files, "crashed", faulty.outageReason);
             if (files.some((f) => faulty.timesOut.has(f.path)))
               return ended(files, "timed-out", null);
+            if (files.some((f) => faulty.crashes.has(f.path)))
+              return ended(files, "crashed", CRASH);
           }
           return method.apply(target, args);
         };
       },
     });
-  const repo = catchUpRepo(FILES);
+  const repo = catchUpRepo(files);
   const side = catchUpSide(repo, repo.main, {
-    files: FILES,
+    files,
     hostSlots: 1,
-    tierSize: 1,
+    tierSize,
     policy: RUN_MISSING,
     wrapRunner: wrap,
   });
@@ -148,5 +162,54 @@ describe("Scheduler.requeueUnknown (row 026-32)", SLOW, () => {
     const f = await outageLeft();
     await f.side.scheduler.close();
     expect(await f.side.scheduler.requeueUnknown?.(() => true)).toBe(0);
+  });
+
+  it("heals every outage file past the stored sample's cap (review 0.1.637 B2)", SLOW, async () => {
+    const count = UNKNOWN_FILES_KEPT + 4;
+    const many = Array.from({ length: count }, (_, i) => ({
+      path: `test/many-${i}.test.ts`,
+      ms: 1,
+      imports: ["src/shared.ts"],
+    }));
+    const own = (name: string): CatchUpFile => ({
+      path: `test/${name}.test.ts`,
+      ms: 1,
+      imports: [`src/${name}.ts`],
+    });
+    const timeout = own("timeout");
+    const crash = own("crash");
+    const f = faultySide([...many, timeout, crash], 512);
+    f.outageReason = `remote box unreachable; not run here (whenLost "not-run")`;
+    const unknownLeft = () => many.filter((file) => !f.side.current(file.path)).length;
+    await f.side.scheduler.start();
+    await f.side.quiet();
+    expect(unknownLeft()).toBe(0);
+
+    // Each cause ends its own run: the unrelated files are edited one at a time.
+    f.timesOut.add(timeout.path);
+    await f.side.edit("watch", "src/timeout.ts");
+    await f.side.quiet();
+    f.crashes.add(crash.path);
+    await f.side.edit("watch", "src/crash.ts");
+    await f.side.quiet();
+    for (const file of many) f.outage.add(file.path);
+    await f.side.edit("watch", "src/shared.ts");
+    await f.side.quiet();
+    expect(unknownLeft()).toBe(count);
+    expect(f.side.current(timeout.path)).toBe(false);
+    expect(f.side.current(crash.path)).toBe(false);
+    // The stored sample keeps only the newest entries: it cannot name every outage file.
+    expect(readUnknownFiles(f.side.store, f.side.worktreeId).size).toBe(UNKNOWN_FILES_KEPT);
+
+    f.outage.clear();
+    const healed = await f.side.scheduler.requeueUnknown?.((reason) =>
+      reason.startsWith("remote box unreachable"),
+    );
+    expect(healed).toBe(count);
+    await f.side.quiet();
+    expect(unknownLeft()).toBe(0);
+    expect(f.side.current(timeout.path)).toBe(false);
+    expect(f.side.current(crash.path)).toBe(false);
+    expect(await f.side.scheduler.requeueUnknown?.(() => false)).toBe(0);
   });
 });

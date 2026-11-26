@@ -58,6 +58,12 @@ export interface FileState {
    */
   unknownKey: CheckKey | null;
   /**
+   * The reason the run at `unknownKey` gave (review 0.1.637 B2): the complete
+   * source `Scheduler.requeueUnknown` matches, where the stored sample is
+   * capped. Set and cleared with `unknownKey` (`clearUnknown`).
+   */
+  unknownReason: string | null;
+  /**
    * Consecutive tiers whose results the stability check discarded at a key
    * that did not move (review S5).
    */
@@ -92,6 +98,12 @@ export interface FileState {
   tierCap: number | null;
 }
 
+/** Ends a file's `unknown` mark: its key and reason go together (review 0.1.637 B2). */
+export function clearUnknown(file: FileState): void {
+  file.unknownKey = null;
+  file.unknownReason = null;
+}
+
 export function newFileState(ref: TestFileRef): FileState {
   return {
     ref,
@@ -107,6 +119,7 @@ export function newFileState(ref: TestFileRef): FileState {
     leftPendingAt: null,
     runningKey: null,
     unknownKey: null,
+    unknownReason: null,
     discards: 0,
     rerunKey: null,
     rerunPending: false,

@@ -12,7 +12,7 @@ import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { coveredOf } from "./covered-files.js";
 import { editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
-import { classify, type FileState } from "./files.js";
+import { classify, clearUnknown, type FileState } from "./files.js";
 import type { GroupTiers } from "./group-tiers.js";
 import type { Ledger } from "./ledger.js";
 import { answeredOf } from "./promoted-tier.js";
@@ -226,7 +226,7 @@ export function queueNarrow(
   const open = [...ids]
     .flatMap((id) => ledger.files.get(id) ?? [])
     .filter((file) => file.key !== null && file.blocked === null && classify(file) !== "current");
-  for (const file of open) file.unknownKey = null;
+  for (const file of open) clearUnknown(file);
   const pending = open.filter((file) => file.phase !== null);
   const misses = ledger.settle(
     open.filter((file) => file.phase === null).map((file) => file.ref),

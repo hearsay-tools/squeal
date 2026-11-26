@@ -16,6 +16,7 @@ import {
   checkId,
   classify,
   clearKeyedAt,
+  clearUnknown,
   durationOf,
   type FileState,
   newFileState,
@@ -484,7 +485,7 @@ export class Ledger {
     file.checks = checks;
     file.failing = results.some((r) => r.outcome === "fail");
     file.durationMs = durationOf(results) ?? file.durationMs;
-    file.unknownKey = null;
+    clearUnknown(file);
     file.discards = 0;
     file.blocked = null;
     file.tierCap = null;
@@ -595,6 +596,7 @@ export class Ledger {
         ...(cause === undefined ? {} : { cause }),
       });
       file.unknownKey = key;
+      file.unknownReason = reason;
       if (key === file.key) this.#discharge(file);
       // A file queued again for a newer key during the run still needs that run.
       if (file.key === key && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
