@@ -41,6 +41,7 @@ describe("jestProjects (spec 028 D1)", () => {
       env: { TZ: "UTC" },
       slow: true,
       batchSize: 3,
+      warmMemoryLimitMb: 512,
       container: "node22",
     };
     expect(kept([entry])).toEqual({ kept: [entry], problems: [] });
@@ -116,6 +117,21 @@ describe("jestProjects (spec 028 D1)", () => {
       '"jest[2].include" must be a non-empty array of strings, got []; project "c" is skipped',
       '"jest[3].container" must be a non-empty string, got ""; project "d" is skipped',
       '"jest[5].name" repeats "e" of an earlier project; it is skipped',
+    ]);
+  });
+
+  it("skips a warmMemoryLimitMb that is no positive integer (spec 028 D7.2)", () => {
+    const result = kept([
+      { name: "a", config: "jest.config.js", warmMemoryLimitMb: 0 },
+      { name: "b", config: "jest.config.js", warmMemoryLimitMb: 1.5 },
+      { name: "c", config: "jest.config.js", warmMemoryLimitMb: "512" },
+      { name: "d", config: "jest.config.js", warmMemoryLimitMb: 1 },
+    ]);
+    expect(result.kept.map((p) => [p.name, p.warmMemoryLimitMb])).toEqual([["d", 1]]);
+    expect(result.problems).toEqual([
+      '"jest[0].warmMemoryLimitMb" must be a positive integer, got 0; project "a" is skipped',
+      '"jest[1].warmMemoryLimitMb" must be a positive integer, got 1.5; project "b" is skipped',
+      '"jest[2].warmMemoryLimitMb" must be a positive integer, got "512"; project "c" is skipped',
     ]);
   });
 

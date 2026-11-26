@@ -32,7 +32,10 @@ import {
 import { type JestInstall, tsNodeHygiene } from "../resolve.js";
 import { parseJestEvents, readEvents, sizeOf } from "./events.js";
 import { type BatchOutcome, ending, readJestBatch } from "./results.js";
+import { type JestWarmPool, KILL_GRACE_MS, type WarmRun, type WarmStart } from "./warm.js";
 import { writeWrapperConfig } from "./wrapper-config.js";
+
+export { KILL_GRACE_MS };
 
 export interface JestRunOptions {
   /** The worktree root, a real path. */
@@ -77,6 +80,14 @@ export interface JestRunOptions {
     readonly dir: AbsolutePath;
     readonly covered: (testFile: TestFileRef) => boolean;
   };
+  /**
+   * Spec 028 D7: batches run on these warm workers when nothing asks for a
+   * Jest process per batch: no `args`, no global setup or teardown
+   * (`hasGlobalHooks`), no slot templates. Absent, a process per batch.
+   */
+  readonly warmPool?: JestWarmPool;
+  /** The project's config names a `globalSetup` or `globalTeardown`, which only a Jest process runs. */
+  readonly hasGlobalHooks?: boolean;
 }
 
 export interface JestRun {
@@ -87,9 +98,6 @@ export interface JestRun {
 
 export const DEFAULT_BATCH_SIZE = 5;
 
-/** SIGKILL follows SIGTERM after this long (D4.2). */
-export const KILL_GRACE_MS = 2_000;
-
 /** One Jest process of a tier; events past its `cut` are not trusted. */
 interface Batch extends BatchOutcome {
   readonly args: readonly string[];
@@ -97,6 +105,8 @@ interface Batch extends BatchOutcome {
   /** Where its reporter writes its payloads; `null` for a batch without coverage. */
   readonly coverage: AbsolutePath | null;
   payloads: readonly JestCoveragePayload[];
+  /** D7: the warm worker's pid that ran it; `null` for a process of its own. */
+  worker: number | null;
 }
 
 /**
@@ -160,6 +170,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
       events: join(options.logDir, `events-${index}.jsonl`),
       coverage: covered && coverage !== undefined ? batchCoverageDir(coverage.dir, index) : null,
       payloads: [],
+      worker: null,
       exit: null,
       cut: null,
       reports: [],
@@ -199,28 +210,71 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
   else options.signal?.addEventListener("abort", onAbort, { once: true });
 
   const slots = slotPool(root, project.name, project.slots?.max);
+  const warm = warmPoolOf(options);
+  const warmStart = (covered: boolean, env: NodeJS.ProcessEnv): WarmStart => ({
+    workerPath: join(runtimeDir, "warm-worker.cjs") as AbsolutePath,
+    install,
+    cwd,
+    wrapperPath: wrapper,
+    jestCacheDir: join(cacheDir, "jest") as AbsolutePath,
+    reporterPath: reporter,
+    coverage: covered,
+    observing: options.observe !== undefined,
+    env: { ...env, ...observed(options, env) },
+    logDir: join(cacheDir, "warm") as AbsolutePath,
+  });
   const runBatch = async (batch: Batch, held: number) => {
     const slot = slotOf(root, held);
-    const env = {
-      // Spec 027 D2.1: the slot expands the project's templates before `childEnv` goes over them.
-      ...base,
-      ...expandedVariables(base, project.env, slot),
+    // Spec 027 D2.1: the slot expands the project's templates before `childEnv` goes over them.
+    const own = { ...base, ...expandedVariables(base, project.env, slot) };
+    const marks = {
       ...options.childEnv,
       ...slotVariables(slot, project.slots?.toxParallelEnv === true),
-      SQUEAL_JEST_EVENTS: batch.events,
-      SQUEAL_JEST_RUNTIME: install.runtime,
-      // Made here, never by the reporter: a removed log folder stays removed (row 018-38).
-      [COVERAGE_DIR_VARIABLE]:
-        batch.coverage !== null && makeLogDir(batch.coverage) ? batch.coverage : undefined,
     };
-    const group = startGroup({
-      command: process.execPath,
-      args: batch.args,
-      cwd,
-      env: { ...env, ...observed(options, env) },
-      stdout: join(options.logDir, `stdout-${batch.index}.log`),
-      stderr: join(options.logDir, `stderr-${batch.index}.log`),
-    });
+    // Made here, never by the reporter: a removed log folder stays removed (row 018-38).
+    const coverageDir =
+      batch.coverage !== null && makeLogDir(batch.coverage) ? batch.coverage : undefined;
+    const stderr = join(options.logDir, `stderr-${batch.index}.log`);
+    let group: Pick<WarmRun, "exited" | "kill">;
+    if (warm === undefined) {
+      const env = {
+        ...own,
+        ...marks,
+        SQUEAL_JEST_EVENTS: batch.events,
+        SQUEAL_JEST_RUNTIME: install.runtime,
+        [COVERAGE_DIR_VARIABLE]: coverageDir,
+      };
+      group = startGroup({
+        command: process.execPath,
+        args: batch.args,
+        cwd,
+        env: { ...env, ...observed(options, env) },
+        stdout: join(options.logDir, `stdout-${batch.index}.log`),
+        stderr,
+      });
+    } else {
+      // D7: a run's marks go per batch, so a worker serves every run of the same start.
+      const run = warm.run(
+        warmStart(batch.coverage !== null, { ...own, SQUEAL_JEST_RUNTIME: install.runtime }),
+        {
+          files: batch.files.map((f) => toAbsolute(root, f.path)),
+          eventsFile: batch.events,
+          coverageDir: coverageDir ?? null,
+          ...(options.observe === undefined
+            ? {}
+            : {
+                observe: {
+                  out: options.observe.out,
+                  skip: [...options.observe.skip, options.logDir],
+                },
+              }),
+          env: marks,
+          stderr,
+        },
+      );
+      batch.worker = run.pid ?? null;
+      group = run;
+    }
     running.set(batch, group);
     batch.exit = await group.exited;
     running.delete(batch);
@@ -284,7 +338,8 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
   dropUnkept(dirs, covered);
   const log = batches.map((b) => ({
     files: b.files.map((f) => f.path),
-    command: [process.execPath, ...b.args],
+    command: b.worker === null ? [process.execPath, ...b.args] : null,
+    worker: b.worker,
     exit: b.exit,
     cut: b.cut,
   }));
@@ -318,6 +373,21 @@ function observed(options: JestRunOptions, env: NodeJS.ProcessEnv): Record<strin
     skip: [...observe.skip, options.logDir],
   };
   return observeEnv(observe.recorder, settings, env.NODE_OPTIONS);
+}
+
+/** `{slot}`, `{slot0}` or `{worktreeSlot}` in a project's `env` (spec 027 D2.1). */
+const SLOT_TEMPLATE = /\{(slot|slot0|worktreeSlot)\}/;
+
+/**
+ * D7: the warm pool, when nothing of the project needs a Jest process per
+ * batch: its own `args`, a global setup or teardown, or a slot per batch.
+ */
+function warmPoolOf(options: JestRunOptions): JestWarmPool | undefined {
+  const { project } = options;
+  if (options.warmPool === undefined || options.hasGlobalHooks === true) return undefined;
+  if (project.args.length > 0 || project.slots !== undefined) return undefined;
+  if (Object.values(project.env).some((value) => SLOT_TEMPLATE.test(value))) return undefined;
+  return options.warmPool;
 }
 
 /** The tier in batches of `size`, in the order given; a file `alone` names gets one of its own. */

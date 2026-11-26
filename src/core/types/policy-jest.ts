@@ -31,6 +31,12 @@ export interface JestProject {
   readonly slow?: boolean;
   /** Spec 028 D4: test files per Jest process. Absent means 5. */
   readonly batchSize?: number;
+  /**
+   * Spec 028 D7.2: the resident memory, in MiB, above which a warm Jest
+   * worker is replaced after its batch. Absent means `min(1024, 10% of the
+   * machine's memory)`, at least 256. It changes no outcome, so no key.
+   */
+  readonly warmMemoryLimitMb?: number;
   /** Spec 027: the container target the project runs in. Absent means the host. */
   readonly container?: string;
 }

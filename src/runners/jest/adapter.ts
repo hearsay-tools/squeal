@@ -33,6 +33,7 @@ import {
 import { createJestGraph, type JestGraph, type ModuleNameMapper } from "./graph/index.js";
 import { type JestInstall, resolveJest } from "./resolve.js";
 import { runJest } from "./run/run.js";
+import { defaultWarmMemoryLimitBytes, JestWarmPool } from "./run/warm.js";
 import { jestTraits } from "./traits.js";
 import { JEST_ADAPTER_VERSION } from "./version.js";
 
@@ -59,7 +60,13 @@ export interface JestAdapterOptions {
   readonly source?: NodeJS.ProcessEnv;
   /** Spec 028 D5.3, spec 015 D8: coverage in the runs the adapter makes anyway; absent, none. */
   readonly coverage?: JestCoverage;
+  /** Spec 028 D7: batches run on warm workers where the project allows it. Default on. */
+  readonly warm?: boolean;
+  /** D7.4: an idle warm worker exits after this long; default 60 s. */
+  readonly warmIdleMs?: number;
 }
+
+const MIB = 1024 * 1024;
 
 /** The project as it last read: its Jest, config, test files and static graph. */
 type Opened =
@@ -102,6 +109,17 @@ export async function createJestAdapter(
   const observing = () => options.observe?.() ?? true;
   const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
   const coverage = new ProjectCoverage(options.coverage, note);
+  const warmPool =
+    options.warm === false
+      ? undefined
+      : new JestWarmPool({
+          memoryLimitBytes: () =>
+            project.warmMemoryLimitMb === undefined
+              ? defaultWarmMemoryLimitBytes()
+              : project.warmMemoryLimitMb * MIB,
+          ...(options.warmIdleMs === undefined ? {} : { idleMs: options.warmIdleMs }),
+          ...(options.concurrency === undefined ? {} : { keep: options.concurrency }),
+        });
 
   const open = async (): Promise<Opened> => {
     const resolution = resolveJest(project.name, jestCwd(root, project), root);
@@ -127,8 +145,12 @@ export async function createJestAdapter(
   let watched = watchedOf(root, project, state, source);
   if (!state.ok) note(state.note);
 
-  /** Reads the project again; notes a new failure, or that it reads again. */
+  /**
+   * Reads the project again; notes a new failure, or that it reads again.
+   * No warm worker of the old read runs again (D7.3).
+   */
   const reopen = async (): Promise<void> => {
+    await warmPool?.recycle();
     const before = state.ok ? null : state.note;
     state = await open();
     observed = observing();
@@ -169,7 +191,10 @@ export async function createJestAdapter(
         if (mayList(current.read, changed)) await relist(root, project, source, current);
       }
       // A policy that turned coverage on or off re-keys the project's checks once (015 D8).
-      return { recreatedProjects: coverage.changed() ? [project.name] : [] };
+      const toggled = coverage.changed();
+      // D7.3: a warm worker's haste map knows no added or deleted file; a source edit it sees.
+      if (toggled || changed.some((p) => p.kind !== "change")) await warmPool?.recycle();
+      return { recreatedProjects: toggled ? [project.name] : [] };
     },
     async affected(changed) {
       if (!state.ok) return { direct: [], transitive: [] };
@@ -206,13 +231,16 @@ export async function createJestAdapter(
     async run(testFiles, runOptions) {
       if (!state.ok) return unavailable(`${label}: ${state.note}`);
       const covered = coverage.covered(state.graph, state.files);
-      return runProject(state.install, testFiles, runOptions, covered);
+      return runProject(state.install, state.read, testFiles, runOptions, covered);
     },
-    close: async () => {},
+    close: async () => {
+      await warmPool?.close();
+    },
   };
 
   async function runProject(
     install: JestInstall,
+    read: Extract<JestRead, { ok: true }>,
     testFiles: readonly TestFileRef[],
     runOptions: RunOptions,
     covered: ((testFile: TestFileRef) => boolean) | undefined,
@@ -249,6 +277,7 @@ export async function createJestAdapter(
       childEnv: { ...options.childEnv, ...runOptions.childEnv },
       ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
       ...(observe === null ? {} : { observe }),
+      ...(warmPool === undefined ? {} : { warmPool, hasGlobalHooks: hasGlobalHooks(read) }),
       ...(covered === undefined
         ? {}
         : { coverage: { dir: join(logDir, "cov") as AbsolutePath, covered } }),
@@ -259,6 +288,13 @@ export async function createJestAdapter(
     const seen = observedInputs(takeRecorded(out), report.completedFiles, paths);
     return seen.length === 0 ? report : { ...report, observed: seen };
   }
+}
+
+/** A `globalSetup` or `globalTeardown`, global or the project's: only a Jest process runs them (D7). */
+function hasGlobalHooks(read: Extract<JestRead, { ok: true }>): boolean {
+  return [read.global, read.project].some(
+    (config) => config.globalSetup != null || config.globalTeardown != null,
+  );
 }
 
 /** Jest's listed files, narrowed by the project's `include` and less its `exclude`, from `cwd`. */

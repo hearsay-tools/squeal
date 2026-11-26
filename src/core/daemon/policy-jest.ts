@@ -27,7 +27,7 @@ const CONFIG_EXTENSIONS: readonly string[] = [
 /** D1: a file inside the worktree, relative to its root. */
 const configPath: Field = (v) => nonEmptyString(v) ?? insideRoot(v);
 
-/** D4: files per Jest process; absent means the adapter's default of 5. */
+/** D4 `batchSize`, files per Jest process; D7.2 `warmMemoryLimitMb`, MiB. */
 const positiveInteger: Field = (v) =>
   Number.isInteger(v) && (v as number) > 0 ? null : "a positive integer";
 
@@ -43,6 +43,7 @@ const FIELDS: Readonly<Record<keyof JestProject, Field>> = {
   env: variables,
   slow: boolean,
   batchSize: positiveInteger,
+  warmMemoryLimitMb: positiveInteger,
   container: nonEmptyString,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "config"]);
