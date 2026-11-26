@@ -60,3 +60,14 @@ The 93 seconds are **virtual time**, seeded as 33 seconds of startup plus 60 sec
 Needed to settle root cause: the affected daemon's startup log/step timings and runtime identity, plus a later sync result or a controlled retry after it becomes ready. No restart was performed; no success after the original timeout is known. Related issues are overlap candidates only, so do not close this as a duplicate on this evidence.
 
 Sources: [issue #291](https://github.com/hearsay-tools/squeal/issues/291), the pinned source files and existing test cited above, `docs/specifications/011-core/spec.md` C2/C4/C6/C9/C15 and its `status.md` (including the 2026-11-20 C15 startup-listing amendment), and [throwaway probe](probes/issue-291/probe.ts).
+
+Final scoped status command:
+
+```sh
+~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/011-core/research/issue-291.md docs/specifications/011-core/research/probes/issue-291/probe.ts
+```
+
+It exited 3 at revision 2: neither named path is in any test file's closure.
+Worktree counts were known failures 0, with 124 of 2302 test files not current
+(1 running, 123 unknown). These unrelated incomplete checks are not a suite pass;
+the direct probe's assertions are the experimental verification for this report.
