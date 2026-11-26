@@ -32,9 +32,11 @@ const WEB: JestProject = {
 const here = (project: Partial<JestProject> = {}, scripts: Record<string, string> = {}) =>
   ({ project: { ...WEB, ...project }, dir: DIR, scripts }) as JestHere;
 
+/** No other runner's project, from a directory below the root. */
+const NONE = commandContext(DEFAULT_POLICY, ROOT, DIR);
+
 const away = (jest: readonly JestHere[] = [here()]): CommandContext => ({
-  scripts: { test: "vitest run" },
-  nodeTest: [],
+  ...NONE,
   jest,
   atRoot: false,
 });
