@@ -88,6 +88,60 @@ describe("holderText (row 011-302)", () => {
   });
 });
 
+/** Row 026-32 (gh-283): a listing holder at revision 18, with the runner part's step. */
+const listing = (fields: Partial<Extract<GroupHolder, { kind: "listing" }>> = {}): GroupHolder => ({
+  kind: "listing",
+  revision: 18,
+  step: null,
+  ...fields,
+});
+
+describe("holderText names the runner part's step (row 026-32, gh-283)", () => {
+  it.each<[GroupHolder, string]>([
+    // A daemon before it tells no step: the words stay as they were.
+    [listing(), "it waits while Squeal lists revision 18"],
+    [listing({ stage: "listing" }), "it waits while Squeal lists revision 18"],
+    [
+      listing({ stage: "invalidating" }),
+      "it waits while Squeal updates the runner for revision 18 (invalidate / install)",
+    ],
+    [
+      listing({ stage: "environment" }),
+      "it waits while Squeal reads the runner environment for revision 18",
+    ],
+    [
+      listing({ stage: "affected" }),
+      "it waits while Squeal computes affected test files for revision 18",
+    ],
+    [
+      listing({ stage: "closures", done: 412, total: 2_276 }),
+      "it waits while Squeal resolves test closures for revision 18 (412/2276 test files)",
+    ],
+    [
+      listing({ stage: "closures", total: 30 }),
+      "it waits while Squeal resolves test closures for revision 18 (0/30 test files)",
+    ],
+    [
+      listing({ stage: "closures", done: 0, total: 0 }),
+      "it waits while Squeal resolves test closures for revision 18",
+    ],
+    [
+      listing({ stage: "closures" }),
+      "it waits while Squeal resolves test closures for revision 18",
+    ],
+    [
+      listing({ stage: "edit-cut" }),
+      "it waits while Squeal classifies affected test files for revision 18",
+    ],
+    [
+      listing({ stage: "closures", done: 3, total: 9, step: KEYING }),
+      "the daemon's main thread has been keying lint checks for 1 min 47 s; it waits while Squeal resolves test closures for revision 18 (3/9 test files)",
+    ],
+  ])("%j", (holder, words) => {
+    expect(holderText(holder, null)).toBe(words);
+  });
+});
+
 describe("heartbeatSilence (row 011-302)", () => {
   afterEach(closeFakeDaemons);
 
