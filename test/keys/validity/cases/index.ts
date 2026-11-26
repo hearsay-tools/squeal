@@ -43,6 +43,7 @@ import { RECURSIVE_LISTING } from "./listing/recursive.js";
 import { REWRITTEN_SCRATCH } from "./listing/rewritten.js";
 import { FAILED_IMPORTS } from "./observe/failed-import.js";
 import { OBSERVED_READS } from "./observe/reads.js";
+import { OBSERVED_RESET } from "./observe/reset.js";
 import { OBSERVED_REWRITES } from "./observe/rewrites.js";
 import { OBSERVED_STARTED } from "./observe/started.js";
 import { OBSERVED_WRITTEN } from "./observe/written.js";
@@ -70,6 +71,7 @@ export const CASES: readonly Case[] = [
   ...OBSERVED_REWRITES,
   ...OBSERVED_STARTED,
   ...FAILED_IMPORTS,
+  ...OBSERVED_RESET,
   ...INHERIT,
   ...IMPORTED,
   ...RETIRED,
