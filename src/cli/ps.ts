@@ -4,6 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { currentUid } from "../core/daemon/paths.js";
 import { userConfigPath } from "../core/daemon/user-config.js";
 import { findWorktreeRoot, resolveCommonDir } from "../core/fs/git-layout.js";
+import { listManagedContainers, type PsContainer } from "../core/ps/containers.js";
 import { createDarwinSource } from "../core/ps/darwin.js";
 import { flag } from "../core/ps/flags.js";
 import { readLocks, renderLocks } from "../core/ps/locks.js";
@@ -11,7 +12,7 @@ import type { Flag, PsPlaces } from "../core/ps/model.js";
 import { createProcSource } from "../core/ps/proc.js";
 import { render } from "../core/ps/render.js";
 import type { PsSnapshot } from "../core/ps/shape.js";
-import { SAMPLE_MS, takeSnapshot } from "../core/ps/snapshot.js";
+import { SAMPLE_MS, type SnapshotOptions, takeSnapshot } from "../core/ps/snapshot.js";
 import type { PsSource } from "../core/ps/source.js";
 import { machinesPath } from "../core/runner-host/remote/machines-store.js";
 import type { AbsolutePath } from "../core/types/common.js";
@@ -52,6 +53,8 @@ export interface PsCommandOptions {
   /** The directory `squeal-<uid>` and the other `squeal-*` directories lie in: `/tmp` (011 C9). */
   readonly tempDir?: AbsolutePath;
   readonly uid?: number;
+  /** Spec 027 D7.3: lists the managed containers; default Docker's, only over the real source. */
+  readonly containers?: () => Promise<readonly PsContainer[]>;
 }
 
 interface PsArgs {
@@ -95,6 +98,7 @@ export async function psCommand(
       sampleMs: SAMPLE_MS,
       now: io.now ?? Date.now,
       wait: options.wait ?? ((ms) => sleep(ms)),
+      ...containerLister(options),
     });
   } catch (error) {
     // Exit 1 says a flag holds; a snapshot that failed has no answer.
@@ -182,4 +186,11 @@ function placesOf(
     // Spec 026 D12.2 (row 026-20): names a remote runner host's machine.
     remoteMachines: machinesPath(env),
   };
+}
+
+/** A fake source's snapshot never asks the host's Docker (row 027-06). */
+function containerLister(options: PsCommandOptions): Pick<SnapshotOptions, "containers"> {
+  const lister =
+    options.containers ?? (options.sourceFor === undefined ? listManagedContainers : undefined);
+  return lister === undefined ? {} : { containers: lister };
 }
