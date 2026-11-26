@@ -48,6 +48,14 @@ export function stopMarkFor(lockFile: AbsolutePath): AbsolutePath {
   return `${lockFile}.stopped` as AbsolutePath;
 }
 
+/**
+ * Row 021-39, review 0.1.639 B1: the lock that serializes every change of the
+ * stop mark beside `lockFile` (`withStopFileLock`). A reader takes none.
+ */
+export function stopLockFor(lockFile: AbsolutePath): AbsolutePath {
+  return `${lockFile}.stopped.lock` as AbsolutePath;
+}
+
 /** The stop mark beside `lockFile`; `null` with none, or one that cannot be read or parsed. Never throws. */
 export function readStopFile(lockFile: AbsolutePath): StopMark | null {
   try {
