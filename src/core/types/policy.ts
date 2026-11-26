@@ -1,6 +1,7 @@
 import type { CheckGroup } from "./check-groups.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import type { LintTool } from "./lint.js";
+import type { ContainerTarget } from "./policy-containers.js";
 
 /**
  * Project policy from `squeal.config.json` at the repository root.
@@ -117,6 +118,13 @@ export interface Policy {
    * skipped (001 D11). Default `[]`.
    */
   readonly pytest: readonly PytestProject[];
+  /**
+   * Spec 027 D4: named container targets, which a project names with its
+   * `container` key. A bad target is a problem and is left out (001 D11);
+   * a project naming a target this map lacks is skipped. A declaration
+   * grants nothing without the user's own consent. Default `{}`.
+   */
+  readonly containers: Readonly<Record<string, ContainerTarget>>;
   readonly vitest: {
     /**
      * Spec 001 D11 (task 001-349): Vitest project names Squeal never runs,
@@ -386,6 +394,8 @@ export interface NodeTestProject {
    * does not open an entry that has one. Absent means none.
    */
   readonly prepare?: NodeTestPrepare;
+  /** Spec 027 D4: the `containers` target the project runs in. Absent means the host. */
+  readonly container?: string;
 }
 
 /** Spec 020 D15.1: a node:test entry's `prepare` command. */
@@ -424,6 +434,8 @@ export interface PytestProject {
   readonly batchSize?: number;
   /** Spec 027 D1, D2: what each batch's slot exports and how many slots there are. */
   readonly slots?: SlotPolicy;
+  /** Spec 027 D4: the `containers` target the project runs in. Absent means the host. */
+  readonly container?: string;
 }
 
 /** Spec 027 D1, D2 (row 027-02): a project's per-batch slots. */
@@ -471,6 +483,7 @@ export const DEFAULT_POLICY: Policy = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
+  containers: {},
   vitest: { excludeProjects: [], exclude: [] },
   slow: {
     include: [],

@@ -22,6 +22,7 @@ import { hostIdleMinutes } from "./host-idle.js";
 import { checkGroups } from "./policy-checks.js";
 import { settleChecks } from "./policy-checks-settle.js";
 import { CODE_SHAPE } from "./policy-code.js";
+import { containerTargets, settleContainers } from "./policy-containers.js";
 import { GATE_SHAPE } from "./policy-gate.js";
 import { LINT_SHAPE } from "./policy-lint.js";
 import { NODE_SHAPE } from "./policy-node.js";
@@ -98,6 +99,8 @@ const SHAPE: Shape = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  // Spec 027 D4 (row 027-04).
+  containers: containerTargets,
   vitest: { excludeProjects: strings, exclude: (v) => strings(v) ?? compiles(v as string[]) },
   slow: {
     include: slowInclude,
@@ -149,13 +152,17 @@ export function loadPolicy(root: string): LoadedPolicy {
 const lastPolicies = new Map<string, { readonly loaded: object; readonly policy: LoadedPolicy }>();
 
 function settle(loaded: LoadedConfig<Policy>): LoadedPolicy {
+  // Spec 027 D4: each project's `container` names a declared target.
+  const contained = settleContainers(loaded.value);
   // Spec 019 D1: what `checks` needs from the other keys and among its groups.
-  const settled = settleChecks(loaded.value);
+  const settled = settleChecks(contained.policy);
   return {
     policy: withExits(
-      settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
+      settled.problems.length === 0
+        ? contained.policy
+        : { ...contained.policy, checks: settled.checks },
     ),
-    problems: [...loaded.problems, ...settled.problems],
+    problems: [...loaded.problems, ...contained.problems, ...settled.problems],
     ...(loaded.unparsed === true ? { unparsed: true } : {}),
     ...(loaded.unknownKeys === undefined ? {} : { unknownKeys: loaded.unknownKeys }),
   };
