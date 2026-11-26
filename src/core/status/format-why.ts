@@ -1,6 +1,6 @@
 import { basename, dirname } from "node:path";
 import { closureLine } from "../delivery/provenance.js";
-import { recordedText } from "../retry/text.js";
+import { ranWhereText, recordedText } from "../retry/text.js";
 import { testFileLabel } from "../run-log.js";
 import { formatCheck } from "../state/check-name.js";
 import { FLAKY_INPUTS_TEXT, flakyText } from "../state/flaky.js";
@@ -292,7 +292,7 @@ function resultLines(
   const noLog = importId === null ? "run record pruned" : "none, an imported result has no run log";
   const lines = [
     `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
-    `${INDENT}run ${p.runId}${remote === undefined ? "" : `, remote ${remote}`}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why, result) ? ", replaced the result behind this worktree's known state" : ""}`,
+    `${INDENT}run ${p.runId}${remote === undefined ? "" : `, ${ranWhereText(remote, "remote")}`}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why, result) ? ", replaced the result behind this worktree's known state" : ""}`,
     `${INDENT}log: ${logDir ?? noLog}`,
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);

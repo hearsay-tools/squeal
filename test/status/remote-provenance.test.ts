@@ -88,6 +88,26 @@ describe("squeal why: a remote's failure names it (row 026-28)", () => {
   });
 });
 
+/*
+ * Spec 027 D7.3 (review 0.1.644 N2): a failure a managed container produced
+ * keeps `container <target>` as its remote and reads `in container <target>`.
+ */
+describe("a managed container's failure names it (review 0.1.644 N2)", () => {
+  it("reads in container <target> in status and why", () => {
+    const { repo, store, testFile } = seededFailure();
+    recordRunRemote(store, "run-1", testFile, "container backend");
+    expect(statusText(repo.main)).toContain(
+      "        recorded just now in container backend in this worktree at revision 4, load per CPU then not recorded; no retry asked at these inputs\n",
+    );
+    const text = formatWhy(reportOf(readWhy(repo.main, NAME)), "squeal", { now: NOW });
+    expect(text).toContain(
+      "\n  Recorded just now in container backend in this worktree at revision 4,",
+    );
+    expect(text).toContain("\n        run run-1, in container backend, ");
+    expect(text).not.toContain("remote");
+  });
+});
+
 /** Worktree `b`, whose own failure gives way to main's identical one it inherits. */
 function inheritingWorktree(
   repo: ReturnType<typeof seededFailure>["repo"],

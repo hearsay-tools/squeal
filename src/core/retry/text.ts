@@ -270,9 +270,19 @@ export function recordedText(
 }
 
 /**
+ * Spec 027 D7.3 (review 0.1.644 N2): where a kept remote says its run ran.
+ * A managed container's runs keep `container <target>` and read `in
+ * container <target>`; a remote machine reads `<label> <remote>`.
+ */
+export function ranWhereText(remote: string, label: string): string {
+  return remote.startsWith("container ") ? `in ${remote}` : `${label} ${remote}`;
+}
+
+/**
  * "recorded 3 min ago in this worktree at revision 4, load 2.00 per CPU when
  * it ran"; "recorded 3 min ago on remote vm-1 in this worktree …" for a
- * failure a remote produced.
+ * failure a remote produced, "… in container backend in this worktree …"
+ * for one a managed container produced.
  */
 export function recordedWhereText(facts: RecordedFacts, here: WorktreeId, now: EpochMs): string {
   const where =
@@ -281,7 +291,7 @@ export function recordedWhereText(facts: RecordedFacts, here: WorktreeId, now: E
       : (facts.worktreeRoot ?? `worktree ${facts.worktreeId}`);
   const ago = facts.recordedAt === undefined ? "" : ` ${agoText(now - facts.recordedAt)}`;
   // Row 026-28 (spec 026 D12): a remote's failure names it; one run here reads as before.
-  const remote = facts.remote === undefined ? "" : ` on remote ${facts.remote}`;
+  const remote = facts.remote === undefined ? "" : ` ${ranWhereText(facts.remote, "on remote")}`;
   return `recorded${ago}${remote} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
 }
 
