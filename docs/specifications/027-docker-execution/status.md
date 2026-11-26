@@ -1,6 +1,6 @@
 # 027 Docker execution: status
 
-Stage: draft (awaiting human review of `spec.md`, 2026-11-26)
+Stage: approved (2026-11-26, the human: approved to build, parallel with Spec 028 Wave 0)
 Started: 2026-11-26
 
 ## Decisions so far
@@ -16,7 +16,8 @@ Started: 2026-11-26
   - Recommendation: (A) host + services + slot/env templating now for `saas-boilerplate`, (C) later as the general container mode, not (B). Awaiting human decisions before writing `spec.md`.
 - 2026-11-26, the human: approved staging slot isolation + env templating (A) first then container runner-host (C) over `docker exec -i`; rejected mounting host Node binaries ("Node 20 is EOL; require Node 22.19+ in the image"); asked how CI result sharing works under container keying; asked to draft both Spec 027 and Spec 028.
 - 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `027-02` to `027-07`), including `keyMode: "build-content" | "image-id"` (D7).
-- 2026-11-26, the human: set `"build-content"` as the default `keyMode` so CI sharing works out of the box across separate `docker build` runs (`"image-id"` stays opt-in), and asked whether Spec 027 composes with Agent37 VMs later (not in scope now; recorded as follow-up). Folded into `spec.md`. Awaiting approval to move to `approved` and dispatch waves.
+- 2026-11-26, the human: set `"build-content"` as the default `keyMode` so CI sharing works out of the box across separate `docker build` runs (`"image-id"` stays opt-in), and asked whether Spec 027 composes with Agent37 VMs later (not in scope now; recorded as follow-up).
+- 2026-11-26, the human: approved both Spec 027 and Spec 028 to start building, in parallel (`027 Wave 1 + 028 Wave 0`). Coordinator briefed `tasks/wave-1.md` (`027-02`, `027-03`) and dispatched Wave 1.
 
 ## Open questions
 

@@ -1,6 +1,6 @@
 # 028 Jest runner: status
 
-Stage: draft (awaiting human review of `spec.md`, 2026-11-26)
+Stage: approved (2026-11-26, the human: approved to build, parallel with Spec 027 Wave 1)
 Started: 2026-11-26
 
 ## Decisions so far
@@ -16,7 +16,8 @@ Started: 2026-11-26
   - Streaming custom reporter (`onTestFileResult`) passes Kit K8 on 29 and 30, `--testLocationInResults` disambiguates duplicates, and `--coverage --coverageProvider=v8` exposes raw V8 coverage per file (+0.3 s, +75 MB). Loading all 17 projects in one host adds 0.2 s and 16 MB. `RunnerAdapter` fits unchanged.
   - Recommendation: list Jest projects by config path in `squeal.config.json`; ship subprocess-per-batch first, then add recycled warm host. Awaiting human decisions before writing `spec.md`.
 - 2026-11-26, the human: approved Jest 29 + 30 in the kit, subprocess-per-batch first then recycled warm host, plain-Jest-only opt-in `denyWhenCurrent` (no Nx interception, no command rewriting), and drafting both Spec 027 and Spec 028.
-- 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `028-02` to `028-08`). Awaiting human review before landing spec on `main` or dispatching waves.
+- 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `028-02` to `028-08`).
+- 2026-11-26, the human: approved both Spec 027 and Spec 028 to start building, in parallel (`027 Wave 1 + 028 Wave 0`). Coordinator briefed `tasks/wave-0.md` (`028-02`) and dispatched Wave 0.
 
 ## Open questions
 
