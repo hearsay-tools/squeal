@@ -86,7 +86,8 @@ var WORKTREE_META_ROWS = {
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
   importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
   sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" },
-  remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" }
+  remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" },
+  containerSummary: { prefix: "container-summary:", owner: "status/container-status" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -454,6 +455,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
+  jest: [],
   containers: {},
   vitest: { excludeProjects: [], exclude: [] },
   slow: {
@@ -646,14 +648,14 @@ function nodeTestProjects(value, path) {
 function withDefaults(entry2) {
   return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
 }
-function projectEntries(value, path, fields, required, withDefaults3, check) {
+function projectEntries(value, path, fields, required, withDefaults4, check) {
   if (!Array.isArray(value)) return "an array of projects";
   const kept3 = [];
   const problems = [];
   value.forEach((entry2, index) => {
     const at = `${path}[${index}]`;
     const problem = entryProblem(entry2, at, kept3, fields, required, check);
-    if (problem === null) kept3.push(withDefaults3(entry2));
+    if (problem === null) kept3.push(withDefaults4(entry2));
     else problems.push(problem);
   });
   return { kept: kept3, problems };
@@ -971,7 +973,7 @@ function containerTargets(value) {
   }
   return { kept: kept3, problems };
 }
-var RUNNER_LISTS = ["nodeTest", "pytest"];
+var RUNNER_LISTS = ["nodeTest", "pytest", "jest"];
 function settleContainers(policy) {
   const problems = [];
   let settled2 = policy;
@@ -994,6 +996,53 @@ function settleContainers(policy) {
 var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
 var GATE_SHAPE = { gate: { groups } };
 
+// src/core/daemon/policy-jest.ts
+import { posix as posix3 } from "node:path";
+var CONFIG_EXTENSIONS = [
+  ".js",
+  ".ts",
+  ".mjs",
+  ".cjs",
+  ".mts",
+  ".cts",
+  ".json"
+];
+var configPath = (v) => nonEmptyString(v) ?? insideRoot(v);
+var positiveInteger3 = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var FIELDS3 = {
+  name: nonEmptyString,
+  config: configPath,
+  cwd: insideRoot,
+  include: globs,
+  exclude: globs,
+  args: strings,
+  env: variables,
+  slow: boolean,
+  batchSize: positiveInteger3,
+  container: nonEmptyString
+};
+var REQUIRED2 = /* @__PURE__ */ new Set(["name", "config"]);
+function jestProjects(value, path) {
+  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, configFile);
+}
+function withDefaults2(entry2) {
+  return {
+    ...entry2,
+    include: entry2.include ?? [],
+    exclude: entry2.exclude ?? [],
+    args: entry2.args ?? [],
+    env: entry2.env ?? {}
+  };
+}
+var configFile = (entry2) => {
+  const config = posix3.basename(entry2.config.replaceAll("\\", "/"));
+  if (config === "package.json" || CONFIG_EXTENSIONS.includes(posix3.extname(config))) return null;
+  return {
+    key: "config",
+    problem: `must name a Jest config file (${CONFIG_EXTENSIONS.join(", ")}) or a package.json, got ${JSON.stringify(entry2.config)}`
+  };
+};
+
 // src/core/daemon/policy-lint.ts
 var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
@@ -1008,8 +1057,8 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute2, posix as posix3 } from "node:path";
-var FIELDS3 = {
+import { isAbsolute as isAbsolute2, posix as posix4 } from "node:path";
+var FIELDS4 = {
   name: nonEmptyString,
   cwd: insideRoot,
   python: nonEmptyString,
@@ -1018,32 +1067,32 @@ var FIELDS3 = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  batchSize: positiveInteger3,
+  batchSize: positiveInteger4,
   slots,
   container: nonEmptyString
 };
-var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
-function positiveInteger3(value) {
+var REQUIRED3 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger4(value) {
   return Number.isInteger(value) && value > 0 ? null : "a positive integer";
 }
 var SLOT_FIELDS = {
   toxParallelEnv: boolean,
-  max: positiveInteger3
+  max: positiveInteger4
 };
 function slots(value) {
   const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
   return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 function pytestProjects(value, path) {
-  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, pythonInsideRoot);
+  return projectEntries(value, path, FIELDS4, REQUIRED3, withDefaults3, pythonInsideRoot);
 }
-function withDefaults2(entry2) {
+function withDefaults3(entry2) {
   return { ...entry2, args: entry2.args ?? [], env: entry2.env ?? {} };
 }
 var pythonInsideRoot = (entry2) => {
   const python = entry2.python;
   if (python === void 0 || isAbsolute2(python)) return null;
-  const path = posix3.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
+  const path = posix4.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
     key: "python",
@@ -1180,6 +1229,8 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  // Spec 028 D1 (row 028-05).
+  jest: (v) => jestProjects(v, "jest"),
   // Spec 027 D4 (row 027-04).
   containers: containerTargets,
   vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
@@ -1219,16 +1270,30 @@ function loadPolicy(root) {
 }
 var lastPolicies = /* @__PURE__ */ new Map();
 function settle(loaded) {
-  const contained = settleContainers(loaded.value);
+  const named2 = settleJestNames(loaded.value);
+  const contained = settleContainers(named2.policy);
   const settled2 = settleChecks(contained.policy);
   return {
     policy: withExits(
       settled2.problems.length === 0 ? contained.policy : { ...contained.policy, checks: settled2.checks }
     ),
-    problems: [...loaded.problems, ...contained.problems, ...settled2.problems],
+    problems: [...loaded.problems, ...named2.problems, ...contained.problems, ...settled2.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
+}
+function settleJestNames(policy) {
+  if (policy.jest.length === 0) return { policy, problems: [] };
+  const taken = new Set([...policy.nodeTest, ...policy.pytest].map((project) => project.name));
+  const problems = [];
+  const jest = policy.jest.filter((project) => {
+    if (!taken.has(project.name)) return true;
+    problems.push(
+      `"jest" project ${JSON.stringify(project.name)} has the name of another project, and names are unique across runners; it is skipped`
+    );
+    return false;
+  });
+  return { policy: jest.length === policy.jest.length ? policy : { ...policy, jest }, problems };
 }
 var UNSET_EXITS = {
   ...DEFAULT_POLICY,
@@ -5594,7 +5659,7 @@ import { isAbsolute as isAbsolute5, join as join11, relative as relative3, resol
 
 // src/core/daemon/runner.ts
 import { readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
-import { join as join10, posix as posix4 } from "node:path";
+import { join as join10, posix as posix5 } from "node:path";
 
 // src/core/fs/git.ts
 import { spawn } from "node:child_process";
@@ -5682,7 +5747,7 @@ function vitestDetected(root) {
   return listsVitest(readManifest2(join10(root, "package.json")));
 }
 function runsVitest(root, policy) {
-  return policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root);
+  return policy.nodeTest.length + policy.pytest.length + (policy.jest?.length ?? 0) === 0 || vitestDetected(root);
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -8401,7 +8466,7 @@ function example(paths) {
 }
 
 // src/core/keys/packages.ts
-import { join as join19, posix as posix5 } from "node:path";
+import { join as join19, posix as posix6 } from "node:path";
 
 // src/core/keys/package-scans.ts
 import { readdirSync as readdirSync6, readFileSync as readFileSync10 } from "node:fs";
@@ -8604,7 +8669,7 @@ function absent(from, name2) {
   return `absent:${from}>${name2}`;
 }
 function parent(dir) {
-  const up = posix5.dirname(dir);
+  const up = posix6.dirname(dir);
   return up === "." ? "" : up;
 }
 function text(value) {
@@ -8637,7 +8702,7 @@ import { lstatSync as lstatSync4, readdirSync as readdirSync7, readFileSync as r
 import { join as join21 } from "node:path";
 
 // src/core/keys/pnpm-graph.ts
-import { join as join20, posix as posix6 } from "node:path";
+import { join as join20, posix as posix7 } from "node:path";
 
 // src/core/keys/pnpm-lockfile.ts
 import { createHash as createHash6 } from "node:crypto";
@@ -9018,7 +9083,7 @@ function childOf(name2, ref2) {
   return ref2.replace(/\(.*$/, "").indexOf("@", 1) > 0 ? ref2 : `${name2}@${ref2}`;
 }
 function workspace(dir, ref2) {
-  return `workspace:${posix6.normalize(posix6.join(dir, ref2.slice("link:".length)))}`;
+  return `workspace:${posix7.normalize(posix7.join(dir, ref2.slice("link:".length)))}`;
 }
 
 // src/core/keys/pnpm-install.ts
@@ -13107,7 +13172,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.643";
+  if (true) return "0.1.644";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
