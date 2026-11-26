@@ -180,6 +180,7 @@ test/daemon/step-down-lanes
 test/daemon/reload-projects
 test/daemon/reload-coverage
 test/daemon/observed-malformed
+test/daemon/container-guard
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test
