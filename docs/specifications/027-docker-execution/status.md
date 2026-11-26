@@ -15,9 +15,9 @@ Started: 2026-11-26
   - `compose run --pull never` still builds a missing image (`run` has no `--no-build`); root `dev:inode` proves a live bind mount against baked-in code; `--mount` refuses missing host paths where `-v` creates root-owned directories; `--no-cache` rebuilds produce new image IDs with identical packages.
   - Recommendation: (A) host + services + slot/env templating now for `saas-boilerplate`, (C) later as the general container mode, not (B). Awaiting human decisions before writing `spec.md`.
 - 2026-11-26, the human: approved staging slot isolation + env templating (A) first then container runner-host (C) over `docker exec -i`; rejected mounting host Node binaries ("Node 20 is EOL; require Node 22.19+ in the image"); asked how CI result sharing works under container keying; asked to draft both Spec 027 and Spec 028.
-- 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `027-02` to `027-07`), including `keyMode: "image-id" | "build-content"` (D7) so strict `image-id` keying is the safe default while opt-in `build-content` (hashing inside-container runner env + `dpkg`/`apk` manifest + `dockerfileInputs` bytes) enables Spec 018 CI export/import across separate `docker build` runs. Awaiting human review before landing spec on `main` or dispatching waves.
+- 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `027-02` to `027-07`), including `keyMode: "build-content" | "image-id"` (D7).
+- 2026-11-26, the human: set `"build-content"` as the default `keyMode` so CI sharing works out of the box across separate `docker build` runs (`"image-id"` stays opt-in), and asked whether Spec 027 composes with Agent37 VMs later (not in scope now; recorded as follow-up). Folded into `spec.md`. Awaiting approval to move to `approved` and dispatch waves.
 
 ## Open questions
 
-1. Keying default vs CI sharing (D7): keep `"image-id"` default with opt-in `"build-content"`, or default to `"build-content"` when `dockerfileInputs` is configured?
-2. Compose project/network binding: user-local `networkOverride` / `composeProject` in `~/.config/squeal/containers.json` only, or also read `COMPOSE_PROJECT_NAME` from the worktree's `.env`?
+1. Compose project/network binding: user-local `networkOverride` / `composeProject` in `~/.config/squeal/containers.json` only, or also read `COMPOSE_PROJECT_NAME` from the worktree's `.env`?

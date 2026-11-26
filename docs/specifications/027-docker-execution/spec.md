@@ -13,7 +13,7 @@ Projects such as `apptension/saas-boilerplate` run backend and worker test suite
 2. **Build-stage empty editables in container images do not block pytest (D3).** Squeal's pytest environment check still refuses any editable install pointing to real package source outside the worktree, while admitting build-stage metadata editables whose directory holds no package code (such as `saas-boilerplate`'s `/pkgs/.venv`).
 3. **Container runner-host execution runs at host speed across runners (D4, D5).** Squeal runs its `runner-host` inside one long-lived, Squeal-labelled container per worktree over `docker exec -i`, with the worktree bind-mounted at its exact host path (zero path mapping) and Node 22.19+ inside the image. On `saas-boilerplate`, all 71 sampled backend tests and 2 worker tests pass at host speed (~5.8 s for 1 file, ~9.0 s for 5 files).
 4. **Cancellation and daemon crashes leave zero orphan processes or containers (D5).** On cancel, stdin EOF, `docker exec` SIGKILL, or daemon SIGKILL, the in-container runner host reaps its entire test process group. Daemon exit and startup sweep remove Squeal-labelled managed containers.
-5. **Stale passes from baked code or rebuilt images are impossible (D6, D7).** Squeal verifies the live bind mount via root `dev:inode` before admitting results, detects image rebuilds via `docker image inspect`, and keys results in a container key space supporting both strict `image-id` keying (default) and opt-in `build-content` keying for CI sharing across separate `docker build` runs.
+5. **Stale passes from baked code or rebuilt images are impossible (D6, D7).** Squeal verifies the live bind mount via root `dev:inode` before admitting results, detects image rebuilds via `docker image inspect`, and keys results in a container key space using `build-content` keying by default (for CI sharing across separate `docker build` runs) with opt-in strict `image-id` keying.
 6. **Host security boundaries hold (D4, Vision principle 8).** Container execution requires explicit user-local opt-in consent (never auto-enabled by a committed repo file), never runs `docker build`, `docker pull`, `docker compose up/down`, or `privileged: true`, always uses `--mount` (never `-v`), and runs as the host user (`--user <uid>:<gid>`) so zero root-owned files enter the worktree.
 
 ## Non-goals
@@ -98,7 +98,7 @@ Container execution is governed by two separate files so a cloned repository can
          "image": "saas-boilerplate/backend",
          "network": "saas-boilerplate_default",
          "workdir": "/app",
-         "keyMode": "image-id",
+         "keyMode": "build-content",
          "dockerfileInputs": ["packages/backend/Dockerfile", "packages/backend/uv.lock", "packages/backend/pyproject.toml"],
          "dependencyServices": ["db", "redis", "stripemock"]
        }
@@ -118,7 +118,7 @@ Container execution is governed by two separate files so a cloned repository can
    ```
    - `image`: local image tag/name to launch (checked with `docker image inspect`, never built or pulled).
    - `network`: Docker network name (or `"compose:<project>"` / `"none"`). May use `{composeProject}` resolved from the user-local binding.
-   - `keyMode`: `"image-id"` (default) or `"build-content"` (D7).
+   - `keyMode`: `"build-content"` (default, decided 2026-11-26) or `"image-id"` (opt-in strict local image pinning) (D7).
    - `dockerfileInputs`: repo-relative paths hashed into the environment key under `"build-content"` (and optional audit metadata under `"image-id"`).
    - `dependencyServices`: optional Compose service names whose running container image IDs are inspected and folded into the key when available.
    - `env`: extra non-secret environment variables passed into the container (supports D2 slot templates when set on the project).
@@ -196,19 +196,18 @@ Reuses Squeal's existing local `runner-host` protocol (`src/core/runner-host/pro
 1. **Isolated container key space:**
    - Container results are keyed in their own environment key space (following Spec 026 D10's `remote-key` pattern, with zero `KEY_FORMAT_VERSION` raise required for non-container local runs). A container result never collides with a host result for the same worktree.
 2. **Two keying modes (`containers.<name>.keyMode`):**
-   - **`"image-id"` (default, maximum safety against stale passes):**
-     - Environment hash includes: exact container `imageId` (`sha256:...`), `repoDigest` (when image has a single registry `RepoDigests` entry and local/CI pulled that digest), inspected `dependencyServices` image IDs (when declared and reachable), container platform/arch, effective container `ENV` (non-slot vars), and the runner's own inside-container `environment()` hash.
-     - **Sharing:** Every worktree on the **same host** using the same local image shares stored results automatically. CI exports (`refs/squeal/<sha>`, Spec 018) match automatically whenever CI and local pull the **same registry image digest**.
-     - **Guarantee:** Any Dockerfile edit (even an untracked binary or `/etc/` file outside `dpkg`/`uv`) changes `imageId` and re-runs tests.
-   - **`"build-content"` (opt-in, enables CI sharing across separate `docker build` runs):**
-     - For repositories like `saas-boilerplate` where CI and developers each run `docker build` separately (producing different `imageId`s for identical Dockerfiles and packages):
-     - Instead of `imageId`, the container environment descriptor hashes:
+   - **`"build-content"` (default, decided 2026-11-26; enables CI sharing across separate `docker build` runs):**
+     - For repositories like `saas-boilerplate` where CI and developers each run `docker build` separately (producing different `imageId`s for identical Dockerfiles and packages), the container environment descriptor hashes:
        1. The inside-container runner environment (interpreter version, installed Python/Node packages, config files),
        2. The container's OS package inventory (`dpkg-query -W -f='${Package}=${Version}\n'` sorted, or `apk info -vv` sorted) + `platform/arch`,
        3. The git blob hashes of every path listed in `dockerfileInputs` (for example `Dockerfile`, `uv.lock`, `pyproject.toml`),
        4. Effective container `ENV` (non-slot vars) and dependency service image tags/digests (when declared).
-     - **CI sharing:** When CI runs `squeal ci record` / `squeal ci export` (Spec 018) inside the built container (with the same `keyMode: "build-content"` policy), the exported environment descriptor matches the developer's local container built from the same commit, so `squeal` imports and reuses CI passes cleanly via Spec 018 D10/D11.
+     - **CI sharing:** When CI runs `squeal ci record` / `squeal ci export` (Spec 018) inside the built container (with the same `keyMode: "build-content"` policy), the exported environment descriptor matches the developer's local container built from the same commit, so `squeal` imports and reuses CI passes cleanly via Spec 018 D10/D11. Two worktrees on the same host also share results automatically.
      - **Honest tradeoff:** Documented in `squeal status` (`container backend (build-content)`): misses only an unpinned non-packaged artifact fetched from an unchanged URL in a `Dockerfile` `RUN` step (every `Dockerfile` edit, `apt`/`apk` package change, and Python/Node package change re-keys cleanly).
+   - **`"image-id"` (opt-in, strictest against untracked Dockerfile side-effects):**
+     - Environment hash includes: exact container `imageId` (`sha256:...`), `repoDigest` (when image has a single registry `RepoDigests` entry and local/CI pulled that digest), inspected `dependencyServices` image IDs (when declared and reachable), container platform/arch, effective container `ENV` (non-slot vars), and the runner's own inside-container `environment()` hash.
+     - **Sharing:** Every worktree on the **same host** using the same local image shares stored results automatically. CI exports (`refs/squeal/<sha>`, Spec 018) match automatically whenever CI and local pull the **same registry image digest**, not across separate `docker build` runs.
+     - **Guarantee:** Any Dockerfile edit (even an untracked binary or `/etc/` file outside `dpkg`/`uv`) changes `imageId` and re-runs tests.
 3. **Observability (`squeal status` and `squeal ps`):**
    - `squeal status` displays container targets, their state (`ready`, `unconsented`, `image-missing`, `node-too-old`, `mount-mismatch`, `docker-unreachable`), key mode (`image-id` or `build-content`), and container provenance on failures (`in container <target>`).
    - `squeal ps` lists Squeal-labelled managed containers (`org.squeal.managed=true`) beside local daemons and remote machines.
@@ -221,7 +220,7 @@ Reuses Squeal's existing local `runner-host` protocol (`src/core/runner-host/pro
 | 027-03 | Wave 1 | D3 | Pytest D2 empty-build-stage editable refinement (`outsideEditables`) with strict fail-closed tests for real outside editables |
 | 027-04 | Wave 2 | D4 | Container policy schema (`containers` + project `container` ref), user-local `~/.config/squeal/containers.json` consent loader, and `squeal setup` container consent wording |
 | 027-05 | Wave 2 | D5, D6 | Container manager & `docker exec -i` runner-host channel (`src/core/runner-host/container/`), Node 22.19+ preflight, same-path `--mount`, `dev:inode` mount proof, image-ID rebuild check, and startup/exit label reaping |
-| 027-06 | Wave 3 | D7 | Container environment key space (`image-id` default + `build-content` opt-in with `dpkg`/`apk` + `dockerfileInputs` for Spec 018 CI export/import), plus `squeal status` and `squeal ps` container reporting |
+| 027-06 | Wave 3 | D7 | Container environment key space (`build-content` default with `dpkg`/`apk` + `dockerfileInputs` for Spec 018 CI export/import + opt-in `image-id`), plus `squeal status` and `squeal ps` container reporting |
 | 027-07 | Wave 4 | D8 | Automated E2E suite + dogfooding on a throwaway copy of `saas-boilerplate` (with Node 22+ Dockerfile, Postgres/Redis/stripemock Compose stack, parallel slot proof, CI export/import round-trip, and `lessons.md`) |
 
 ## Testing
@@ -242,8 +241,9 @@ Reuses Squeal's existing local `runner-host` protocol (`src/core/runner-host/pro
 
 ## Open questions
 
-1. **Keying default vs CI sharing (`D7`):** Should `"image-id"` be the default with opt-in `"build-content"` for CI sharing across separate `docker build`s (as drafted above), or should `"build-content"` be the default when `dockerfileInputs` is configured? (Owner: the human, at spec review.)
+1. ~~**Keying default vs CI sharing (`D7`)**~~ Decided 2026-11-26, the human: `"build-content"` is the default (enables CI sharing across separate `docker build` runs); `"image-id"` stays available opt-in.
 2. **Compose service port/network discovery:** For projects using per-worktree Compose stacks, is user-local `networkOverride` / `composeProject` in `~/.config/squeal/containers.json` sufficient, or should Squeal read `COMPOSE_PROJECT_NAME` from the worktree's `.env`? (Owner: the human, at spec review.)
+3. **Follow-up (out of scope for Spec 027):** Combining Spec 026 remote VMs (for example Agent37 EU `vm`) with Spec 027 containers by routing `docker exec -i` over the VM's SSH channel and mounting the VM's synced tree into the container. Both layers share `HostChannel` and `build-content` keys, so a future row can compose them without rewriting either spec.
 
 ## References
 
