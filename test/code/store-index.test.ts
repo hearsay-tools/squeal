@@ -180,7 +180,7 @@ function blobIndexes(path: string): string[] {
 }
 
 describe("the index of complexity states by blob (row 021-38)", () => {
-  it("replaces an older daemon's index of every state at a creating open, never at a reader's", () => {
+  it("is made beside an older daemon's index of every state, which no open drops", () => {
     const dir = commonDir();
     const path = codeStorePath(dir);
     const first = open(dir);
@@ -213,8 +213,9 @@ describe("the index of complexity states by blob (row 021-38)", () => {
     reader.close();
     expect(blobIndexes(path)).toEqual(["states_by_blob", "states_complexity_blob"]);
 
+    // Creating opens are frequent (a locked gate call, a coverage keep request): the prune drops it.
     const store = open(dir);
-    expect(blobIndexes(path)).toEqual(["states_complexity_blob"]);
+    expect(blobIndexes(path)).toEqual(["states_by_blob", "states_complexity_blob"]);
     expect(store.schemaVersion).toBe(1);
     expect(store.states.list("w1").map((s) => s.blob)).toEqual(["b2"]);
   });

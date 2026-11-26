@@ -12,6 +12,7 @@ import { vacuum } from "../../store/prune-vacuum.js";
 import type { EpochMs, WorktreeId } from "../../types/common.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { pruneParts } from "./parts.js";
+import { CODE_RETIRED_INDEXES } from "./schema.js";
 import { stagedId } from "./staged.js";
 import type { CodePruneCounts, CodePruneOptions, CodePruneReport } from "./types.js";
 
@@ -186,7 +187,24 @@ export function* pruneCodeSlices(
     });
   }
 
+  yield* dropRetired(conn);
   yield* vacuum(conn);
+}
+
+/**
+ * Row 021-38: drops each of `CODE_RETIRED_INDEXES` the file holds, in one
+ * slice, each looked for again under the write lock; the vacuum after it
+ * gives their pages back. A file that holds none takes no write lock.
+ */
+function* dropRetired(conn: Connection): Generator<PruneSlice, void, undefined> {
+  const held = () => CODE_RETIRED_INDEXES.filter((name) => hasIndexes(conn, name));
+  if (conn.read(held).length === 0) return;
+  yield () =>
+    conn.transaction(() => {
+      const names = held();
+      for (const name of names) conn.db.exec(`DROP INDEX ${name}`);
+      return names.length > 0;
+    });
 }
 
 /** Where a batch's deleted rows are counted. */

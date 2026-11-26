@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { COVERAGE_RECORD_VERSION as V } from "../../src/core/code/coverage/record.js";
 import { codeStorePath } from "../../src/core/code/store/open.js";
+import { CODE_INDEXES, CODE_TABLES } from "../../src/core/code/store/schema.js";
 import { worktreeIdsOf } from "../../src/core/store/prune-keyed.js";
 import type { CodeKnownState, CodeTransition } from "../../src/core/types/code.js";
 import { check, commonDir, count, file, open } from "./helpers.js";
@@ -95,6 +96,42 @@ describe("code store prune (015 D4, 011 C7)", () => {
     expect(report.countsRemoved).toBe(2);
     expect(store.counts.get("crap-only", "typescript", 1)).toBeNull();
     expect(store.counts.get("uncovered-only", "typescript", 1)).toBeNull();
+  });
+
+  it("drops an older daemon's index of every state, keeps every other index, then takes no lock for it (row 021-38)", () => {
+    const dir = commonDir();
+    const store = open(dir);
+    store.states.upsertMany([failing("w1", "Ledger.settle")]);
+    const db = new DatabaseSync(codeStorePath(dir));
+    const names = () =>
+      db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type IN ('index', 'table') AND sql IS NOT NULL",
+        )
+        .all()
+        .map((row) => String(row.name));
+    db.exec("CREATE INDEX states_by_blob ON states (blob)");
+    const before = names();
+    expect(before).toContain("states_by_blob");
+    const options = { now: NOW, retentionDays: 7, worktrees: ["w1"], consumers: [] };
+
+    store.prune(options);
+    const after = names();
+    expect(after).not.toContain("states_by_blob");
+    expect(after.sort()).toEqual(before.filter((n) => n !== "states_by_blob").sort());
+    for (const name of [...Object.keys(CODE_INDEXES), ...Object.keys(CODE_TABLES)]) {
+      expect(after).toContain(name);
+    }
+    expect(store.states.list("w1")).toHaveLength(1);
+
+    // With none left, the next prune's step reads and holds no lock: a held one changes nothing.
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      expect(() => store.prune(options)).not.toThrow();
+    } finally {
+      db.exec("ROLLBACK");
+      db.close();
+    }
   });
 
   it("drops a removed worktree's rows, and its counts once they are past the retention", () => {

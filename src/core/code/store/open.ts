@@ -12,13 +12,7 @@ import { storePaths } from "../../store/paths.js";
 import { migrate, userVersion } from "../../store/schema.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { Policy } from "../../types/policy.js";
-import {
-  CODE_INDEXES,
-  CODE_MIGRATIONS,
-  CODE_RETIRED_INDEXES,
-  CODE_SCHEMA_VERSION,
-  CODE_TABLES,
-} from "./schema.js";
+import { CODE_INDEXES, CODE_MIGRATIONS, CODE_SCHEMA_VERSION, CODE_TABLES } from "./schema.js";
 import { createCodeStore } from "./store.js";
 import type { CodeStore, CodeStoreOpenFailure } from "./types.js";
 
@@ -101,9 +95,9 @@ export function openCodeStore(
 }
 
 /**
- * Each of `CODE_TABLES`, then of `CODE_INDEXES`, the file lacks, and drops
- * each of `CODE_RETIRED_INDEXES` it holds, each looked for again under the
- * write lock (rows 015-44, 015-85, 021-38).
+ * Each of `CODE_TABLES`, then of `CODE_INDEXES`, the file lacks, looked for
+ * again under the write lock (rows 015-44, 015-85). `CODE_RETIRED_INDEXES`
+ * go in the prune, not here (row 021-38).
  */
 function makeIndexes(db: DatabaseSync): void {
   const found = db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?");
@@ -111,11 +105,9 @@ function makeIndexes(db: DatabaseSync): void {
     Object.entries({ ...CODE_TABLES, ...CODE_INDEXES }).filter(
       ([name]) => found.get(name) === undefined,
     );
-  const retired = () => CODE_RETIRED_INDEXES.filter((name) => found.get(name) !== undefined);
-  if (absent().length === 0 && retired().length === 0) return;
+  if (absent().length === 0) return;
   db.exec("BEGIN IMMEDIATE");
   try {
-    for (const name of retired()) db.exec(`DROP INDEX ${name}`);
     for (const [, sql] of absent()) db.exec(sql);
     db.exec("COMMIT");
   } catch (error) {

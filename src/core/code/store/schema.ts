@@ -164,13 +164,15 @@ export const CODE_INDEXES: Readonly<Record<string, string>> = {
 };
 
 /**
- * Indexes this Squeal no longer makes, dropped by an opener that may create
- * the file, under the same lock and second look as `CODE_INDEXES`; a reader
- * leaves them. `states_by_blob` (row 021-33) held every state, and its upkeep
- * took a recount's switch from 70 to 125 ms; `states_complexity_blob`
- * replaces it (row 021-38). A daemon of 0.1.570 or later makes it again at its
- * own creating open, and its prune needs it; without it that prune keeps
- * every count (`hasIndexes`).
+ * Indexes this Squeal no longer makes, dropped by the code-store prune, one
+ * slice under the write lock with a second look (`prune.ts`); no open drops
+ * one. `states_by_blob` (row 021-33) held every state, and its upkeep took a
+ * recount's switch from 70 to 125 ms; `states_complexity_blob` replaces it
+ * (row 021-38). A daemon of 0.1.570 or later makes it again at its own
+ * creating open, which is frequent (a locked gate call, a coverage keep
+ * request); the prune runs once per clone per interval (`prune:last-at`), so
+ * while both kinds run it is rebuilt at most about once an interval. Without
+ * it an older prune keeps every count (`hasIndexes`).
  */
 export const CODE_RETIRED_INDEXES: readonly string[] = ["states_by_blob"];
 
