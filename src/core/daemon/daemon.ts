@@ -470,7 +470,7 @@ class Daemon {
       this.#log(`could not clear the container summary: ${message(error)}`);
     }
     if (launch === undefined) return {};
-    const projects = [...this.#policy.nodeTest, ...this.#policy.pytest];
+    const projects = [...this.#policy.nodeTest, ...this.#policy.pytest, ...this.#policy.jest];
     const consented = projects.some(
       (p) => p.container !== undefined && consentFor(root, p.container, this.options.env) !== null,
     );
@@ -835,6 +835,7 @@ class Daemon {
         { vitestTraits },
         nodeTest,
         pytest,
+        jest,
         runnerModule,
         { daemonVitestOptions },
         { createCompositeRunner },
@@ -858,6 +859,7 @@ class Daemon {
         import("../../runners/vitest/traits.js"),
         import("./node-test-runners.js"),
         import("./pytest-runners.js"),
+        import("./jest-runners.js"),
         import("./runner.js"),
         import("./vitest-options.js"),
         import("./composite-runner.js"),
@@ -1072,6 +1074,19 @@ class Daemon {
         ...onRemote,
         ...inContainers,
       });
+      // Spec 028 D6.1 (row 028-05): Jest projects in local runner hosts (or managed containers).
+      const jestRunners = jest.createJestRunnerSet(() => this.#policy.jest, {
+        root,
+        host,
+        idleMs,
+        stateDir: storePaths(commonDir).dir,
+        tempDir: this.opened.scratch.tempDir,
+        childEnv: this.#children.env,
+        tierSize: () => this.#policy.runner.tierSize,
+        observe: () => this.#policy.observe.runtimeInputs,
+        note: (text, topic) => this.#note(text, undefined, undefined, topic),
+        ...inContainers,
+      });
       // Spec 026 D8.1: the runner's own lane sends its edit and background tiers; each slow or
       // group lane, and a tier beside a named wait's batch, gets a remote host of its own per
       // pass, started as a local instance of its lane would be.
@@ -1102,7 +1117,7 @@ class Daemon {
             withRemoteRelease(
               createCompositeRunner(
                 vitestRunner === null ? [] : [vitestLanes(vitestRunner)],
-                [nodeTestRunners, pytestRunners],
+                [nodeTestRunners, pytestRunners, jestRunners],
                 runnerGate,
               ),
               remote,
@@ -1124,7 +1139,7 @@ class Daemon {
           () => awaitsInstall(root),
           vitest.hosted ? null : vitestRunner,
           host,
-          [nodeTestRunners, pytestRunners],
+          [nodeTestRunners, pytestRunners, jestRunners],
           runnerGate.shut("vitest"),
         )),
         vitestBelowRoot,

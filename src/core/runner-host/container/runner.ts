@@ -48,7 +48,7 @@ import { type ContainerRefusal, type ContainerState, checkImage, proveMount } fr
 export type ContainerTargetState = "ready" | "unconsented" | ContainerState;
 
 export interface ContainerRunnerOptions {
-  readonly runner: Extract<HostRunner, "node-test" | "pytest">;
+  readonly runner: Extract<HostRunner, "node-test" | "pytest" | "jest">;
   readonly adapterVersion: string;
   readonly traits: RunnerTraits;
   readonly worktreeId: string;
