@@ -100,7 +100,7 @@ describe("the remote lane setting (row 021-13)", () => {
     const loaded = settings({
       repositories: {
         "/a": { target: "-oProxyCommand=evil" },
-        "/b": { target: "box", runner: "jest" },
+        "/b": { target: "box", runner: "mocha" },
         "/c": { target: "box", lanes: ["nightly"] },
         "/d": { target: "box", whenLost: "fail" },
         "/e": { target: "box", colour: "red" },
@@ -146,7 +146,7 @@ describe("remote.json under spec 026 D6.4 (row 026-10)", () => {
     expect(loaded.problems).toEqual([]);
     expect(loaded.repositories["/a"]?.runners).toEqual(["pytest"]);
     expect(loaded.repositories["/b"]).toMatchObject({
-      runners: ["vitest", "node-test", "pytest"],
+      runners: ["vitest", "node-test", "pytest", "jest"],
       lanes: ["background", "edit", "slow", "group"],
       // D6.4: an edit tier plans and maps coverage remotely by default.
       planning: "remote",

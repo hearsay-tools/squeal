@@ -97,7 +97,7 @@ describe("spec 026 Track 2 end to end (row 026-16)", { timeout: 600_000 }, () =>
     expect(settled.code, `${settled.out}\n${why()}`).toBe(0);
     // Row 026-20 (D12.1): plain status names the remote, its state, lanes, runners and proof.
     expect((await cli(repo, "status")).out, why()).toMatch(
-      /^Remote: command cmd:lan-1: awake; background, edit, slow and group runs of vitest, node-test, pytest; planning remote; environment match-local; proven at \d{4}-\d\d-\d\dT[\d:.]+Z$/m,
+      /^Remote: command cmd:lan-1: awake; background, edit, slow and group runs of vitest, node-test, pytest, jest; planning remote; environment match-local; proven at \d{4}-\d\d-\d\dT[\d:.]+Z$/m,
     );
     const full = await cli(repo, "status", "--full");
     expect(full.out, why()).toMatch(/Known failures: 0; all 6 test files current/);
@@ -405,7 +405,7 @@ function refusedHonestly(out: string, reason: string): void {
   expect(out).toContain("Full-suite checkpoint: none completed at any revision");
   expect(out).toMatch(
     new RegExp(
-      `^Remote: command cmd:lan-1: refused \\(${reason}\\); background, edit, slow and group runs of vitest, node-test, pytest; planning remote; environment match-local$`,
+      `^Remote: command cmd:lan-1: refused \\(${reason}\\); background, edit, slow and group runs of vitest, node-test, pytest, jest; planning remote; environment match-local$`,
       "m",
     ),
   );
