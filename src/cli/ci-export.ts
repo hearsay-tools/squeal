@@ -10,6 +10,7 @@ import {
   type UncertifiedFile,
 } from "../core/ci/export.js";
 import type { NamedPart } from "../core/ci/export-check.js";
+import { ownValue } from "../core/ci/own-map.js";
 import { readPartsIn } from "../core/ci/parts.js";
 import { coverageOn, coverageProvider } from "../core/code/coverage/runtime.js";
 import { readPolicy } from "../core/daemon/policy.js";
@@ -18,11 +19,18 @@ import { daemonVitestOptions } from "../core/daemon/vitest-options.js";
 import { readHead } from "../core/daemon-loop/head.js";
 import { findWorktreeRoot, worktreeIdFor } from "../core/fs/git-layout.js";
 import { KEY_FORMAT_VERSION } from "../core/keys/key-format.js";
+import {
+  type ContainerKey,
+  type ContainerProbe,
+  localContainerKey,
+  probeLocalContainer,
+  wrapContainerEnvironmentAdapter,
+} from "../core/runner-host/container/key.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { AbsolutePathError } from "../core/store/transfer.js";
 import { encodeBundle } from "../core/store/transfer-bundle.js";
 import type { AbsolutePath } from "../core/types/common.js";
-import type { Policy } from "../core/types/policy.js";
+import type { NodeTestProject, Policy } from "../core/types/policy.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { vitestResolves } from "../runners/vitest/ci-record.js";
@@ -84,7 +92,11 @@ export async function ciExportCommand(
       root,
       worktreeId: worktreeIdFor(root),
       store,
-      runners: () => daemonRunners(root, policy, temp, recorded),
+      runners: () =>
+        daemonRunners(root, policy, temp, recorded, {
+          squealVersion: header.squealVersion,
+          env: io.env ?? process.env,
+        }),
       policy,
       squealVersion: header.squealVersion,
       env: { ...(io.env ?? process.env) },
@@ -189,16 +201,23 @@ function parseExport(args: readonly string[]): ExportArgs | { readonly error: st
  * The adapters a daemon builds here for the runners the parts record:
  * Vitest's (`daemonVitest`), and one per `nodeTest` entry the daemon opens
  * (spec 018 D26; an entry with a `prepare` it does not open, 020 D15.6),
- * with coverage as the daemon keys it. Closes those it opened when one
- * rejects.
+ * with coverage as the daemon keys it. An entry with a `container` keys
+ * in that target's space, as this job inside its image shows it
+ * (`containerKeyOf`). Closes those it opened when one rejects.
  */
 async function daemonRunners(
   root: AbsolutePath,
   policy: Policy,
   temp: AbsolutePath,
   recorded: { readonly vitest: boolean; readonly nodeTest: boolean },
+  job: { readonly squealVersion: string; readonly env: NodeJS.ProcessEnv },
 ): Promise<RunnerAdapter[]> {
   const adapters: RunnerAdapter[] = [];
+  let probed: Promise<ContainerProbe> | undefined;
+  const probe = () => {
+    probed ??= probeLocalContainer();
+    return probed;
+  };
   try {
     if (recorded.vitest) adapters.push(await daemonVitest(root, policy, temp));
     if (!recorded.nodeTest) return adapters;
@@ -208,21 +227,42 @@ async function daemonRunners(
       collected: () => {},
     };
     for (const project of policy.nodeTest.filter((p) => p.prepare === undefined)) {
-      adapters.push(
-        await createNodeTestAdapter(project, {
-          root,
-          concurrency: () => policy.runner.tierSize,
-          inputs: () => policy.inputs,
-          tempDir: temp,
-          coverage,
-        }),
-      );
+      const key = await containerKeyOf(project, { root, policy, probe, ...job });
+      const adapter = await createNodeTestAdapter(project, {
+        root,
+        concurrency: () => policy.runner.tierSize,
+        inputs: () => policy.inputs,
+        tempDir: temp,
+        coverage,
+      });
+      adapters.push(key === null ? adapter : wrapContainerEnvironmentAdapter(adapter, key));
     }
     return adapters;
   } catch (error) {
     await Promise.allSettled(adapters.map((a) => a.close()));
     throw error;
   }
+}
+
+/**
+ * Spec 027 D7.2, review 0.1.644 B3: the key a job inside `project`'s
+ * container target gives its environments (`localContainerKey`), so its
+ * export matches a developer's managed run of the same build; `null` for a
+ * host entry, or one whose target the policy does not hold.
+ */
+async function containerKeyOf(
+  project: NodeTestProject,
+  here: {
+    readonly root: AbsolutePath;
+    readonly policy: Policy;
+    readonly probe: () => Promise<ContainerProbe>;
+    readonly squealVersion: string;
+    readonly env: NodeJS.ProcessEnv;
+  },
+): Promise<ContainerKey | null> {
+  if (project.container === undefined) return null;
+  const target = ownValue(here.policy.containers, project.container);
+  return target === undefined ? null : localContainerKey({ target, ...here });
 }
 
 /**
