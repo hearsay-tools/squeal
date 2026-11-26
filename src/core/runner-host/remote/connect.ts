@@ -11,6 +11,7 @@ import type { HostAdapterOptions, HostPolicy, HostRunner } from "../protocol.js"
 import { type HostDeadlines, type HostRequests, startHostProxy } from "../proxy.js";
 import type { AdmitAnswer, AdmitAsk } from "./admission.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
+import type { RemoteRunner } from "./settings.js";
 import { type SshTarget, shellQuote, spawnSsh, sshFailure, sshRun } from "./ssh.js";
 import { treeEntries, treePathsFor, writesFor } from "./tree.js";
 import { LOCKFILES } from "./tree-install.js";
@@ -99,7 +100,8 @@ export interface RemoteHostOptions {
   readonly version: string;
   /** The local worktree's root. */
   readonly root: AbsolutePath;
-  readonly runner: HostRunner;
+  /** Spec 026 D6.4: a remote serves `REMOTE_RUNNERS` only; Jest joins in spec 028 D7. */
+  readonly runner: RemoteRunner;
   readonly options: HostAdapterOptions;
   readonly policy: () => HostPolicy;
   readonly note?: (text: string) => void;
