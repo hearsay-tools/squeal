@@ -5,7 +5,7 @@ Throwaway probe scripts for row 025-18. They are not product code. They expect `
 ## Setup
 
 1. Build each tree's hook bundles into a scratch dist: `$W/node_modules/.bin/tsx $S/probe/build.ts <tree> <outdir>`. The script builds only the hook entries with the product's `bundleOptions`. Then it adds `globalThis.__sqLoaded = performance.now()` just before the final `await runMain(`. The marker does one assignment.
-2. Copy `../bundles/hook-runs.probe.ts` to `$S/probe/`, and replace its `../../../../../../../` imports with `$W/`. Add `if (process.env.PROBE_ARM === "1") ensureWriteMarkers(r.store);` after `seeded()`'s `r.apply`, so the store gets the states-marker triggers that a real daemon makes. Then write a `vitest.config.ts` with `root: $W`, as in `../bundles/vitest.probe.config.ts`.
+2. Copy `../bundles/hook-runs.probe.ts` to `$S/probe/`, and replace its `../../../../../../../` imports with `$W/`. After `seeded()`'s `r.apply`, add `if (process.env.PROBE_ARM === "1") { ensureWriteMarkers(r.store); ensureBirthMarks(r.store); }`. A real daemon makes both when it starts: the states-marker triggers and the birth marks. Without the birth marks, delivery reads every state in place of the relevant ones (`trustedMark`). Then write a `vitest.config.ts` with `root: $W`, as in `../bundles/vitest.probe.config.ts`.
 3. `run.sh <out> <runs> <case regex> base=<dist>,new=<dist>` runs the dists interleaved. It prints p50/p95 of the time after load, measured from the marker to process exit (`after.mjs`). Total times are in `<out>/runs.json`.
 4. `trace.sh <out> <case regex> name=<dist>` does one SQL and `fs` count run (`instrument.mjs`, with callers; set `PROBE_RAW=<regex>` to get full stacks) and one `--cpu-prof` run. Read the results with `show.mjs <trace.json> <min ms> [callers]` and `profall.mjs <profile dir> [n] [filter]`.
 
@@ -37,3 +37,26 @@ Base is `86160b189`; new is this row's two commits. Each cell is p50 / p95 in ms
 With the triggers in place (one batch, load 3.2–3.5): stop after load 27.2/37.3 → 25.8/29.4, silent 25.4/29.6 → 25.2/26.5.
 
 Total times include the probe's `--import` preload. Compare them only with each other, not with the 80 ms budget.
+
+## Armed store: what real stores spend (both marks, as a daemon leaves them)
+
+The latency fixture has neither the states-marker triggers (`ensureWriteMarkers`) nor the birth marks (`ensureBirthMarks`). On an armed store, one silent Stop runs 153 SQL calls in 3.9 ms. It lists the full states once, and the views are small. After-load time is about 21–25 ms p50 on this host. Most of it is a long tail of first calls, each 0.2–0.9 ms of self time, which includes V8's lazy compilation. Under the profiler, the largest items are:
+
+| Item | Mean inclusive ms | Note |
+|---|---:|---|
+| Status header (`readLiveHeader` in `decide`, `readHeader` in `endTurn`) | 3.8 | `worktreeStatesOf` was 1.7 of it for two counts of one list: now counted once (commit 3) |
+| Opening the store (`openContext` → `openStore` → `connect`) | 3.2 | `createStore` is 0.9 ms. It is in `store.ts`, a peer's file: not changed |
+| States list and decoding | 2.4 | Needed once |
+| Delivery `plan` (views, `planDelta`) | 2.1 | Done twice (deliver, then `endTurn`). Own writes come between, so a kept view cannot be trusted |
+| Lease request to the daemon (`acquire`) | 1.3 | Socket round trip. The fixture socket only accepts and closes |
+| GC after `runMain` | about 1.7 | Self time |
+
+SessionStart on the armed store: the registration transaction takes about 11.5 ms. `readLiveHeader` takes 4.5 ms (it counts all states in JS, with `worktreeStatesOf` at 1.3 ms). `statesToSeed` takes 2.6 ms (its SQL 1.5 ms). Opening the store takes 3.0 ms. Possible next cut: count the registration header in SQL (`readWorktreeStates`, row 025-11). It was not done here: it adds `status-reads.ts` to the SessionStart bundle, which row 025-17 is trimming, and its gain at 500 checks is unmeasured.
+
+Armed, interleaved, after load p50/p95 (three batches, load average 1.0–2.6), base → new:
+
+| Case | Batch 1 | Batch 2 | Batch 3 |
+|---|---|---|---|
+| stop | 24.5/26.7 → 22.8/25.1 | 31.9/52.4 → 29.4/53.9 | 25.4/27.8 → 23.0/26.5 |
+| stop (silent) | 21.2/23.9 → 20.7/22.5 | 24.6/32.7 → 25.1/29.7 | 22.5/24.4 → 21.9/24.3 |
+| session-start | 22.4/25.7 → 22.7/24.5 | 24.5/35.4 → 23.6/32.3 | 23.1/26.7 → 24.3/28.6 |
