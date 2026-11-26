@@ -263,10 +263,20 @@ describe("locks and listeners", () => {
     expect(createProcSource({ root, run: () => fallback }).unixListeners()).toBeNull();
   });
 
-  test("unixListeners is empty, not null, when only abstract sockets listen", () => {
+  test("unixListeners is null when a socket bound by a relative path has no file inode", () => {
+    const relative = [
+      SS_XLE.split("\n")[0],
+      "u_str LISTEN 0      0      probe.sock 3830            * 0",
+      "",
+    ].join("\n");
+    expect(createProcSource({ root, run: () => relative }).unixListeners()).toBeNull();
+  });
+
+  test("unixListeners is empty, not null, when only abstract or unbound sockets listen", () => {
     const abstract = [
       SS_XLE.split("\n")[0],
       "u_str LISTEN 0      4096   @/tmp/.X11-unix/X0 31337            * 0",
+      "u_str LISTEN 0      128    * 31338            * 0",
       "",
     ].join("\n");
     expect(createProcSource({ root, run: () => abstract }).unixListeners()).toEqual([]);
