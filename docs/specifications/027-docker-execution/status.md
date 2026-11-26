@@ -1,6 +1,6 @@
 # 027 Docker execution: status
 
-Stage: research
+Stage: draft (awaiting human review of `spec.md`, 2026-11-26)
 Started: 2026-11-26
 
 ## Decisions so far
@@ -14,11 +14,10 @@ Started: 2026-11-26
   - Parallel batches collide on Postgres (`test_backend` cold: 2/3 fail), Redis rate limits (4/6 fail + signup `Rate limit exceeded.`), and `workers_test` (6/9 fail); per-slot names (`TOX_PARALLEL_ENV`, per-slot Redis DB, per-slot workers DB) fix all three.
   - `compose run --pull never` still builds a missing image (`run` has no `--no-build`); root `dev:inode` proves a live bind mount against baked-in code; `--mount` refuses missing host paths where `-v` creates root-owned directories; `--no-cache` rebuilds produce new image IDs with identical packages.
   - Recommendation: (A) host + services + slot/env templating now for `saas-boilerplate`, (C) later as the general container mode, not (B). Awaiting human decisions before writing `spec.md`.
+- 2026-11-26, the human: approved staging slot isolation + env templating (A) first then container runner-host (C) over `docker exec -i`; rejected mounting host Node binaries ("Node 20 is EOL; require Node 22.19+ in the image"); asked how CI result sharing works under container keying; asked to draft both Spec 027 and Spec 028.
+- 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `027-02` to `027-07`), including `keyMode: "image-id" | "build-content"` (D7) so strict `image-id` keying is the safe default while opt-in `build-content` (hashing inside-container runner env + `dpkg`/`apk` manifest + `dockerfileInputs` bytes) enables Spec 018 CI export/import across separate `docker build` runs. Awaiting human review before landing spec on `main` or dispatching waves.
 
 ## Open questions
 
-1. Host runs vs container mode first: is host execution (A) acceptable now (with the 3 hardcoded `stripemock` tests noted, or fixed in `saas-boilerplate`), or should we build container runner-host (C) right away so the container network works untouched?
-2. Service lifecycle: does the developer start Compose services (Squeal reads ports/network), or may Squeal start labelled Compose services?
-3. Slot isolation (`007-60`): export `TOX_PARALLEL_ENV` directly beside `SQUEAL_SLOT` + env templating (`redis://.../{slot}`, JSON `dbname`), and should slots be unique per worktree?
-4. For (C): may Squeal mount a self-contained Node 22.19+ binary into containers, or require images to ship Node 22.19+?
-5. Container result keying: content-based keys (shareable across builds/CI, computed inside the container) or image-ID keys (exact, never shared across rebuilds/CI)?
+1. Keying default vs CI sharing (D7): keep `"image-id"` default with opt-in `"build-content"`, or default to `"build-content"` when `dockerfileInputs` is configured?
+2. Compose project/network binding: user-local `networkOverride` / `composeProject` in `~/.config/squeal/containers.json` only, or also read `COMPOSE_PROJECT_NAME` from the worktree's `.env`?

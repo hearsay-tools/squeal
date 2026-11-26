@@ -1,6 +1,6 @@
 # 028 Jest runner: status
 
-Stage: research
+Stage: draft (awaiting human review of `spec.md`, 2026-11-26)
 Started: 2026-11-26
 
 ## Decisions so far
@@ -15,10 +15,10 @@ Started: 2026-11-26
   - Execution: subprocess per batch ~2.0 s warm (+0.2 s/extra file, zero idle RAM); warm `createTestScheduler` host ~0.2 s/file after 1.3 s first file, but RSS grows ~18 MB/file (216 to 746 MB over 30 runs), requiring RSS recycling and context recreation on config/add/delete. `--watch` is not fit.
   - Streaming custom reporter (`onTestFileResult`) passes Kit K8 on 29 and 30, `--testLocationInResults` disambiguates duplicates, and `--coverage --coverageProvider=v8` exposes raw V8 coverage per file (+0.3 s, +75 MB). Loading all 17 projects in one host adds 0.2 s and 16 MB. `RunnerAdapter` fits unchanged.
   - Recommendation: list Jest projects by config path in `squeal.config.json`; ship subprocess-per-batch first, then add recycled warm host. Awaiting human decisions before writing `spec.md`.
+- 2026-11-26, the human: approved Jest 29 + 30 in the kit, subprocess-per-batch first then recycled warm host, plain-Jest-only opt-in `denyWhenCurrent` (no Nx interception, no command rewriting), and drafting both Spec 027 and Spec 028.
+- 2026-11-26, the coordinator (017fb3d3): drafted `spec.md` (D1 to D8, proposed rows `028-02` to `028-08`). Awaiting human review before landing spec on `main` or dispatching waves.
 
 ## Open questions
 
-1. Jest versions: support Jest 29 only first (`saas-boilerplate` pins `^29.7.0`), or Jest 29 and 30 together in the kit?
-2. Execution order: ship subprocess-per-batch first (~2 s/batch, zero idle RAM) and add the recycled warm host (~0.2 s/file, 300 to 750 MB RSS) in a later wave, or go straight to the warm host?
-3. Command interception: should Squeal intercept `pnpm nx run <p>:test` and `nx affected -t test`, or only plain `jest` / `pnpm exec jest` / `pnpm test` forms?
-4. `ts-jest` type inputs: accept `recorder.cjs`'s wide fs input set (311 paths for one `tools` test file) so `.d.ts` edits re-key accurately, or recommend `isolatedModules`?
+1. Wave 4 warm host priority: build immediately after Waves 1–3, or ship and dogfood Waves 1–3 (~2.0 s warm subprocess per batch) on `saas-boilerplate` first?
+2. Build order between Spec 027 and Spec 028: sequence (which first?) or parallel waves?
