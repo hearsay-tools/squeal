@@ -124,6 +124,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
     cacheDir,
     config,
     jestConfig: install.config,
+    ...(project.project === undefined ? {} : { project: project.project }),
     observeRuntimePath:
       options.observeRuntimePath === undefined
         ? (join(runtimeDir, "observe-runtime.cjs") as AbsolutePath)

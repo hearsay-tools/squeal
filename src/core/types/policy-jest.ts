@@ -10,6 +10,13 @@ export interface JestProject {
    * `--config`, or a `package.json` with a `jest` key.
    */
   readonly config: string;
+  /**
+   * One inline project object of `config`'s `projects` array (review
+   * 0.1.646 B2): its `displayName` when that is unique among the inline
+   * objects and does not start with `#`, else `#<index>`, 0-based among the
+   * inline objects only. Absent means `config` itself is the project.
+   */
+  readonly project?: string;
   /** Relative to the worktree root; absent means the config file's directory. Jest runs from here. */
   readonly cwd?: string;
   /** Test-file globs relative to `cwd` that narrow what Jest lists. Default `[]`: every file Jest lists. */

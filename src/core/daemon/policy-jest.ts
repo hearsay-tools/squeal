@@ -35,6 +35,7 @@ const positiveInteger: Field = (v) =>
 const FIELDS: Readonly<Record<keyof JestProject, Field>> = {
   name: nonEmptyString,
   config: configPath,
+  project: nonEmptyString,
   cwd: insideRoot,
   include: globs,
   exclude: globs,

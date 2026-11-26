@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -9,6 +10,7 @@ import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { JestProject } from "../../../src/core/types/policy-jest.js";
 import type { RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
 import { createJestAdapter } from "../../../src/runners/jest/index.js";
+import { resolveJest } from "../../../src/runners/jest/resolve.js";
 import { installJest, JEST_MAJORS, type JestMajor } from "../../helpers/jest-env.js";
 import { sourceHost } from "../../runner-host/process-helpers.js";
 
@@ -444,4 +446,126 @@ export default {
     writeFileSync(join(root, "src/sum.js"), "exports.sum = (a, b) => b + a;\n");
     expect(await adapter.invalidate(changed("src/sum.js"))).toEqual({ recreatedProjects: [] });
   });
+});
+
+/** Review 0.1.646 B2: a root config of a folder glob and inline project objects. */
+const INLINE: Readonly<Record<string, string>> = {
+  "package.json": `{ "name": "app", "private": true }\n`,
+  "jest.config.cjs": `const kinds = require("./tools/kinds.cjs");
+module.exports = {
+  projects: [
+    "<rootDir>/packages/*",
+    { displayName: "unit", testEnvironment: "node", testMatch: ["<rootDir>/unit/*.test.cjs"],
+      setupFiles: ["<rootDir>/setup/env.js"], globals: { KIND: kinds.unit } },
+    { displayName: "integration", rootDir: "integration", testEnvironment: "node",
+      testMatch: ["<rootDir>/*.test.cjs"], globals: { KIND: kinds.integration } },
+  ],
+};
+`,
+  "tools/kinds.cjs": `module.exports = { unit: "unit", integration: "integration" };\n`,
+  "setup/env.js": "globalThis.ready = true;\n",
+  "src/sum.js": "exports.sum = (a, b) => a + b;\n",
+  "unit/a.test.cjs": `const { sum } = require("../src/sum");
+test("unit", () => {
+  expect(KIND).toBe("unit");
+  expect(globalThis.ready).toBe(true);
+  expect(sum(1, 2)).toBe(3);
+});
+`,
+  "integration/b.test.cjs": `test("integration", () => {
+  expect(KIND).toBe("integration");
+  expect(globalThis.ready).toBeUndefined();
+});
+`,
+  "packages/p/jest.config.cjs": `module.exports = { testEnvironment: "node" };\n`,
+  "packages/p/p.test.js": `test("p", () => expect(typeof KIND).toBe("undefined"));\n`,
+};
+
+describe.each(JEST_MAJORS)("the Jest %i adapter on inline projects (B2)", (major) => {
+  function inlineTree(): AbsolutePath {
+    const root = join(scratch, `tree-${made++}`);
+    for (const [path, text] of Object.entries(INLINE)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), text);
+    }
+    mkdirSync(join(root, "node_modules"));
+    const installed = realpathSync(join(installJest(major), "node_modules/jest"));
+    symlinkSync(installed, join(root, "node_modules/jest"));
+    return root as AbsolutePath;
+  }
+  const project = (name: string, config: string, selector?: string): JestProject => ({
+    name,
+    config,
+    ...(selector === undefined ? {} : { project: selector }),
+    include: [],
+    exclude: [],
+    args: [],
+    env: {},
+  });
+  const PROJECTS = [
+    project("unit", "jest.config.cjs", "unit"),
+    project("integration", "jest.config.cjs", "integration"),
+    project("p", "packages/p/jest.config.cjs"),
+  ];
+
+  it(
+    "lists what jest --config lists, runs each with its options, keys each apart",
+    SLOW,
+    async () => {
+      const root = inlineTree();
+      const resolution = resolveJest("app", root, root);
+      if (!resolution.ok) throw new Error(resolution.note);
+      const jest = [resolution.install.bin, "--config", "jest.config.cjs", "--listTests", "--json"];
+      const out = execFileSync(process.execPath, jest, { cwd: root, encoding: "utf8" });
+      const listed = (JSON.parse(out) as string[]).map((path) => path.slice(root.length + 1));
+      const ours: string[] = [];
+      const keys = new Set<string>();
+      for (const [at, each] of PROJECTS.entries()) {
+        const adapter = await createJestAdapter(each, { root });
+        const files = await adapter.testFiles();
+        expect(files).toHaveLength(1);
+        ours.push(...files.map((f) => f.path));
+        const report = await adapter.run(files, {
+          runId: `inline-${at}`,
+          logDir: join(root, "..", `logs-${made}-inline-${at}`) as AbsolutePath,
+          timeoutMs: 120_000,
+        });
+        expect(report.end).toBe("completed");
+        expect(report.completedFiles).toEqual(files);
+        expect(report.results.map((r) => [r.check.fullName, r.outcome])).toEqual([
+          [each.name, "pass"],
+        ]);
+        const loaded = report.loaded?.[0]?.paths ?? [];
+        expect(loaded).toContain(files[0]?.path);
+        const [environment] = await adapter.environment();
+        keys.add(environment?.resolvedConfig ?? "");
+      }
+      expect(ours.sort()).toEqual(listed.sort());
+      expect(ours).toEqual(["integration/b.test.cjs", "packages/p/p.test.js", "unit/a.test.cjs"]);
+      expect(keys.size).toBe(PROJECTS.length);
+    },
+  );
+
+  it(
+    "recreates an inline project when a helper its root config imports changes",
+    SLOW,
+    async () => {
+      const root = inlineTree();
+      const unit = PROJECTS[0] as JestProject;
+      const adapter = await createJestAdapter(unit, { root });
+      const [before] = await adapter.environment();
+      expect(before?.files).toEqual(expect.arrayContaining(["jest.config.cjs", "tools/kinds.cjs"]));
+      writeFileSync(
+        join(root, "tools/kinds.cjs"),
+        `module.exports = { unit: "renamed", integration: "integration" };\n`,
+      );
+      const changed = [{ path: "tools/kinds.cjs", kind: "change" as const }];
+      expect(await adapter.invalidate(changed)).toEqual({ recreatedProjects: ["unit"] });
+      const [after] = await adapter.environment();
+      expect(after?.resolvedConfig).not.toBe(before?.resolvedConfig);
+      expect(after?.resolvedConfig).toContain(`"KIND":"renamed"`);
+      const fresh = await createJestAdapter(unit, { root });
+      expect(await fresh.environment()).toEqual([after]);
+    },
+  );
 });

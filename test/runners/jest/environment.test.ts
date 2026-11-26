@@ -317,3 +317,94 @@ module.exports = { testEnvironment: "node", testMatch: ["<rootDir>/test/**/*.tes
     expect(env.files.filter((path) => path.startsWith("config/"))).toEqual([]);
   });
 });
+
+/** Review 0.1.646 B2: a root config of a folder glob and inline project objects. */
+const INLINE: Readonly<Record<string, string>> = {
+  "jest.config.cjs": `const { kind } = require("./tools/kind.cjs");
+module.exports = {
+  projects: [
+    "<rootDir>/packages/*",
+    { displayName: "unit", testEnvironment: "node", testMatch: ["<rootDir>/unit/*.test.cjs"],
+      setupFiles: ["<rootDir>/setup/env.js"], globals: { KIND: kind } },
+    { displayName: { name: "integration", color: "blue" }, rootDir: "integration", testEnvironment: "node",
+      testMatch: ["<rootDir>/*.test.cjs"] },
+    { rootDir: ".", testEnvironment: "node", testMatch: ["<rootDir>/other/*.test.cjs"] },
+  ],
+};
+`,
+  "tools/kind.cjs": `exports.kind = "unit";\n`,
+  "unit/a.test.cjs": `test("unit", () => expect(KIND).toBe("unit"));\n`,
+  "integration/b.test.cjs": `test("integration", () => {});\n`,
+  "other/c.test.cjs": `test("other", () => {});\n`,
+  "packages/p/jest.config.cjs": `module.exports = { testEnvironment: "node" };\n`,
+  "packages/p/p.test.cjs": `test("p", () => {});\n`,
+};
+
+describe.each(JEST_MAJORS)("the Jest %i inline projects (review 0.1.646 B2)", (major) => {
+  const inline = (name: string, project?: string): JestProject => ({
+    ...PROJECT,
+    name,
+    config: "jest.config.cjs",
+    ...(project === undefined ? {} : { project }),
+  });
+  async function readOf(root: AbsolutePath, project: JestProject) {
+    const resolution = resolveJest(project.name, root, root);
+    if (!resolution.ok) throw new Error(resolution.note);
+    return readJestProject(root, project, resolution.install, SOURCE);
+  }
+  const ok = async (root: AbsolutePath, project: JestProject) => {
+    const read = await readOf(root, project);
+    if (!read.ok) throw new Error(read.error);
+    return read;
+  };
+  const local = (root: AbsolutePath, paths: readonly string[]) =>
+    paths.map((path) => path.slice(root.length + 1));
+
+  it(
+    "reads each inline object by its selector, rootDir from the config's folder",
+    SLOW,
+    async () => {
+      const root = worktree(major, INLINE);
+      expect((await ok(root, inline("root"))).inlineProjects).toEqual([
+        "unit",
+        "integration",
+        "#2",
+      ]);
+      const unit = await ok(root, inline("unit", "unit"));
+      expect(local(root, unit.testPaths)).toEqual(["unit/a.test.cjs"]);
+      expect(unit.project).toMatchObject({
+        rootDir: root,
+        globals: { KIND: "unit" },
+        setupFiles: [join(root, "setup/env.js")],
+      });
+      expect(unit.inlineProjects).toBeUndefined();
+      expect(local(root, unit.configDeps)).toEqual(["jest.config.cjs", "tools/kind.cjs"]);
+      const integration = await ok(root, inline("integration", "integration"));
+      expect(integration.project.rootDir).toBe(join(root, "integration"));
+      expect(local(root, integration.testPaths)).toEqual(["integration/b.test.cjs"]);
+      expect(local(root, (await ok(root, inline("other", "#2"))).testPaths)).toEqual([
+        "other/c.test.cjs",
+      ]);
+      for (const missing of ["#3", "e2e"]) {
+        const read = await readOf(root, inline("x", missing));
+        expect(read).toMatchObject({ ok: false, error: expect.stringContaining(missing) });
+        expect(read.configDeps?.map((path) => path.slice(root.length + 1))).toContain(
+          "tools/kind.cjs",
+        );
+      }
+    },
+  );
+
+  it("keys two inline projects of one config apart, alike across worktrees", SLOW, async () => {
+    const [a, b] = [worktree(major, INLINE), worktree(major, INLINE)];
+    const unit = await environmentOf(a, inline("unit", "unit"));
+    expect(await environmentOf(b, inline("unit", "unit"))).toEqual(unit);
+    const integration = await environmentOf(a, inline("integration", "integration"));
+    expect(integration.resolvedConfig).not.toBe(unit.resolvedConfig);
+    expect(unit.resolvedConfig).toContain(`"inlineProject":"unit"`);
+    expect(unit.resolvedConfig).not.toContain(scratch);
+    expect(unit.files).toEqual(
+      expect.arrayContaining(["jest.config.cjs", "tools/kind.cjs", "setup/env.js"]),
+    );
+  });
+});

@@ -33,6 +33,7 @@ describe("jestProjects (spec 028 D1)", () => {
     const entry = {
       name: "web",
       config: "packages/web/package.json",
+      project: "unit",
       cwd: "packages/web",
       include: ["src/**/*.test.ts"],
       exclude: ["src/legacy/**"],
@@ -115,6 +116,23 @@ describe("jestProjects (spec 028 D1)", () => {
       '"jest[2].include" must be a non-empty array of strings, got []; project "c" is skipped',
       '"jest[3].container" must be a non-empty string, got ""; project "d" is skipped',
       '"jest[5].name" repeats "e" of an earlier project; it is skipped',
+    ]);
+  });
+
+  it("keeps an inline project selector and skips an empty one (review 0.1.646 B2)", () => {
+    const result = kept([
+      { name: "unit", config: "jest.config.cjs", project: "unit" },
+      { name: "first", config: "jest.config.cjs", project: "#0" },
+      { name: "empty", config: "jest.config.cjs", project: "" },
+      { name: "number", config: "jest.config.cjs", project: 0 },
+    ]);
+    expect(result.kept.map((p) => [p.name, p.project])).toEqual([
+      ["unit", "unit"],
+      ["first", "#0"],
+    ]);
+    expect(result.problems).toEqual([
+      '"jest[2].project" must be a non-empty string, got ""; project "empty" is skipped',
+      '"jest[3].project" must be a non-empty string, got 0; project "number" is skipped',
     ]);
   });
 });

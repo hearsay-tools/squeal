@@ -9,6 +9,7 @@ import type { JestProject } from "../../core/types/policy-jest.js";
 import type { RunnerEnvironment } from "../../core/types/runner.js";
 import { RECORDER_VERSION } from "../observe/runtime.js";
 import { type JestInstall, tsNodeHygiene } from "./resolve.js";
+import { INLINE_PROJECT_RULE } from "./run/wrapper-config.js";
 
 /*
  * Spec 028 D2.3: one Jest project's environment identity. The resolved
@@ -37,6 +38,12 @@ export type JestRead =
       readonly preset: AbsolutePath | null;
       /** Worktree files the config's evaluation loaded or read, outside `node_modules` and `.git`. */
       readonly configDeps: readonly AbsolutePath[];
+      /**
+       * Review 0.1.646 B2: the selector of each inline object of the
+       * config's `projects`, in order (`INLINE_PROJECT_RULE`); absent
+       * without one, and on a read of one inline project.
+       */
+      readonly inlineProjects?: readonly string[];
     }
   | {
       readonly ok: false;
@@ -53,7 +60,11 @@ const READ_TIMEOUT_MS = 60_000;
 /**
  * Reads `jest-config` at argv[1] on the config at argv[2], recording every
  * worktree file (argv[3]) the evaluation loads by `require` or `import`, or
- * reads with `fs` (review 0.1.644 B4), then walks `roots` (skipping
+ * reads with `fs` (review 0.1.644 B4). A non-empty argv[4] selects one
+ * inline object of the config's `projects` (`INLINE_PROJECT_RULE`): that
+ * object is the project, read as Jest's `readConfigs` reads it, the root
+ * config gives the global config, and what the root config loads is
+ * recorded all the same. It then walks `roots` (skipping
  * `node_modules` and `.git`) for the files Jest's SearchSource would select.
  * Its JSON is the last line it prints, with the recorded files on a failure
  * too. It names only files that exist: it never guesses what a missing path
@@ -65,7 +76,8 @@ const path = require("path");
 const fs = require("fs");
 const { createRequire, registerHooks } = require("module");
 const { fileURLToPath } = require("url");
-const [jestConfig, configPath, worktree] = process.argv.slice(1);
+const [jestConfig, configPath, worktree, selector = ""] = process.argv.slice(1);
+${INLINE_PROJECT_RULE}
 const print = (value) => process.stdout.write("\n" + JSON.stringify(value) + "\n");
 const roots = [worktree];
 try { roots.push(fs.realpathSync(worktree)); } catch {}
@@ -105,12 +117,23 @@ const configDeps = (cached) => {
   wrapped.forEach(([owner, name], i) => {
     owner[name] = function (target, ...rest) { record(target); return originals[i].call(this, target, ...rest); };
   });
-  let projectConfig, globalConfig, preset = null, deps;
+  let projectConfig, globalConfig, preset = null, deps, inline = [];
+  const argv = { $0: "jest", _: [], ci: true };
   recording = true;
   try {
-    ({ projectConfig, globalConfig } = await readConfig({ $0: "jest", _: [], ci: true }, configPath));
+    ({ projectConfig, globalConfig } = await readConfig(argv, configPath));
+    let raw = null;
+    if (selector !== "") {
+      const configDir = path.dirname(configPath);
+      const root = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
+      raw = inlineOptions(selectInline(root.projects, selector), configDir);
+      ({ projectConfig } = await readConfig(argv, { ...raw }, true, configDir));
+    }
     try {
-      const raw = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
+      if (raw === null) {
+        raw = (await readInitialOptions(configPath, { skipMultipleConfigError: true })).config;
+        inline = inlineSelectors(raw.projects);
+      }
       if (typeof raw.preset === "string") {
         const from = createRequire(path.join(projectConfig.rootDir, "package.json"));
         const named = raw.preset.startsWith(".") ? path.resolve(projectConfig.rootDir, raw.preset) : raw.preset;
@@ -148,7 +171,10 @@ const configDeps = (cached) => {
     }
   };
   for (const root of projectConfig.roots) walk(root);
-  print({ ok: true, project: projectConfig, global: globalConfig, testPaths: [...found].sort(), preset, configDeps: deps });
+  print({
+    ok: true, project: projectConfig, global: globalConfig, testPaths: [...found].sort(), preset, configDeps: deps,
+    ...(inline.length > 0 ? { inlineProjects: inline } : {}),
+  });
 })().catch((error) => print({
   ok: false,
   error: String((error && error.message) || error),
@@ -190,7 +216,8 @@ export function readJestProject(
   source: NodeJS.ProcessEnv,
 ): Promise<JestRead> {
   const env = projectProcessEnv(root, project, install, source);
-  const args = ["-e", READER, install.config, toAbsolute(root, project.config), root];
+  const config = toAbsolute(root, project.config);
+  const args = ["-e", READER, install.config, config, root, project.project ?? ""];
   return new Promise((done) => {
     execFile(
       process.execPath,
@@ -284,6 +311,8 @@ export function jestEnvironment(input: JestEnvironmentInput): RunnerEnvironment 
   );
   const config = {
     config: project.config,
+    // Not `project`: that key holds Jest's resolved project config below.
+    ...(project.project === undefined ? {} : { inlineProject: project.project }),
     cwd,
     include: project.include,
     exclude: project.exclude,
@@ -327,7 +356,12 @@ export function unavailableEnvironment(
   configDeps: readonly AbsolutePath[] = [],
 ): RunnerEnvironment {
   const cwd = slashes(relative(root, jestCwd(root, project)));
-  const config = { config: project.config, state: "unavailable", note };
+  const config = {
+    config: project.config,
+    ...(project.project === undefined ? {} : { inlineProject: project.project }),
+    state: "unavailable",
+    note,
+  };
   return {
     project: project.name,
     ...(cwd === "" ? {} : { root: cwd }),
