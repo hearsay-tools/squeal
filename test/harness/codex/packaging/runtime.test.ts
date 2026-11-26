@@ -107,9 +107,10 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     // the input evidence it takes in every process of the command (018-17, 018-23),
     // Squeal's coverage provider in that run (020-08a) or its reading of the project's V8
     // provider (020-26ab), the watch of node:inspector loads (020-26ab R1), and the clock of
-    // its own time (018-29).
+    // its own time (018-29). dist/jest/ holds Jest's streaming reporter and observing runtime,
+    // which the project's Jest loads by path (spec 028 D3, D5).
     const verbatim = (f: string) =>
-      ["node-test/", "observe/", "coverage/", "ci/"].some((d) => f.startsWith(d));
+      ["node-test/", "observe/", "coverage/", "ci/", "jest/"].some((d) => f.startsWith(d));
     const runtime = files.filter(verbatim).sort();
     expect(runtime).toEqual([
       "ci/children.cjs",
@@ -129,6 +130,8 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
       "ci/shared.cjs",
       "ci/vitest-ci.cjs",
       "coverage/provider.mjs",
+      "jest/observe-runtime.cjs",
+      "jest/squeal-reporter.cjs",
       "node-test/recorder.cjs",
       "node-test/reporter.mjs",
       "observe/fs.cjs",
