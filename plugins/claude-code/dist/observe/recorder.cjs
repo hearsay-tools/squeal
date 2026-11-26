@@ -21,8 +21,10 @@
 // Settings, `SQUEAL_OBSERVE`, JSON: `out` the directory written to, `root` the
 // worktree, `skip` absolute prefixes never recorded (Squeal's and Vitest's temp
 // directories), `file` the test file a child or thread works for, `started` true
-// in a process the test file started and in its threads and descendants. A Vitest
-// worker attributes by `__vitest_worker__.filepath` instead, a `SHARE_ENV` thread by
+// in a process the test file started and in its threads and descendants. A runner
+// that runs several files in one process names the current one in
+// `globalThis[Symbol.for("squeal.currentTestFile")]`, read first (spec 028 D3.2); a
+// Vitest worker attributes by `__vitest_worker__.filepath`, a `SHARE_ENV` thread by
 // its environment data. Kept only: paths under `root`, outside `node_modules`
 // and `.git`, outside `skip`, while a test file is known.
 //
@@ -56,6 +58,11 @@ const { threadFile, wrapChildren } = require("./spawn.cjs");
 const VARIABLE = "SQUEAL_OBSERVE";
 const SELF = __filename;
 const KINDS = ["f", "l", "r", "w", "d", "m"];
+/**
+ * Spec 028 D3.2: the test file a runner's in-process sandbox works for now, set by that runner's
+ * own code around each file (one process runs several files in turn), and read before any other.
+ */
+const CURRENT_FILE = Symbol.for("squeal.currentTestFile");
 
 /**
  * Row 024-04 (spec 024 D4.4, review 0.1.600 B1): resolves a path's symlink target once per
@@ -131,7 +138,9 @@ function install(settings) {
   const pending = new Map();
   let scheduled = false;
 
-  const current = () => globalThis.__vitest_worker__?.filepath ?? settings.file ?? threadFile();
+  /** The file a Vitest worker, this process or this thread works for. */
+  const ownFile = () => globalThis.__vitest_worker__?.filepath ?? settings.file ?? threadFile();
+  const current = () => globalThis[CURRENT_FILE] ?? ownFile();
 
   const toPath = (p) => {
     if (typeof p === "string") return path.resolve(p);

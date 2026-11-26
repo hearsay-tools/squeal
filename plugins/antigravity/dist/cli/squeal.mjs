@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.642";
+  if (true) return "0.1.643";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -696,19 +696,19 @@ function addCommandHold(store, worktreeId, entry4) {
     () => writeCommandHolds(store, worktreeId, [...readCommandHolds(store, worktreeId), entry4])
   );
 }
-function setCommandHoldChild(store, worktreeId, token, child) {
+function setCommandHoldChild(store, worktreeId, token2, child) {
   return store.transaction(() => {
     const entries3 = readCommandHolds(store, worktreeId);
-    if (!entries3.some((e) => e.token === token)) return false;
-    const next = entries3.map((e) => e.token === token ? { ...e, child } : e);
+    if (!entries3.some((e) => e.token === token2)) return false;
+    const next = entries3.map((e) => e.token === token2 ? { ...e, child } : e);
     writeCommandHolds(store, worktreeId, next);
     return true;
   });
 }
-function removeCommandHold(store, worktreeId, token) {
+function removeCommandHold(store, worktreeId, token2) {
   return store.transaction(() => {
     const entries3 = readCommandHolds(store, worktreeId);
-    const left = entries3.filter((e) => e.token !== token);
+    const left = entries3.filter((e) => e.token !== token2);
     if (left.length === entries3.length) return null;
     writeCommandHolds(store, worktreeId, left);
     return left;
@@ -737,8 +737,8 @@ function pruneCommandHolds(store, worktreeId, ends) {
 }
 function isCommandHold(entry4) {
   if (!isRecord(entry4)) return false;
-  const { token, since, until, command, wrapper, child } = entry4;
-  return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
+  const { token: token2, since, until, command, wrapper, child } = entry4;
+  return typeof token2 === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
 }
 var MERGE_HOLD_PATHS;
 var init_hold_rows = __esm({
@@ -2164,10 +2164,10 @@ function createWorktreeRepo(conn) {
     if (raw === null) return void 0;
     try {
       const value = JSON.parse(str(raw, "value"));
-      const token = toDaemonToken(value, startedAt, version2);
-      if (token === null || token === void 0) return void 0;
+      const token2 = toDaemonToken(value, startedAt, version2);
+      if (token2 === null || token2 === void 0) return void 0;
       const executable3 = isRecord(value) ? value.executable : void 0;
-      return typeof executable3 === "string" ? { token, executable: executable3 } : { token };
+      return typeof executable3 === "string" ? { token: token2, executable: executable3 } : { token: token2 };
     } catch {
       return void 0;
     }
@@ -2193,8 +2193,8 @@ function createWorktreeRepo(conn) {
   const toRecord2 = (row2) => {
     const record2 = fromRow(row2);
     const d = record2.daemon;
-    const token = d === null ? void 0 : tokenRowOf(record2.id, d.startedAt, d.squealVersion);
-    return token === void 0 || d === null ? record2 : { ...record2, daemon: { ...d, ...token } };
+    const token2 = d === null ? void 0 : tokenRowOf(record2.id, d.startedAt, d.squealVersion);
+    return token2 === void 0 || d === null ? record2 : { ...record2, daemon: { ...d, ...token2 } };
   };
   return {
     get: (id) => {
@@ -2262,8 +2262,8 @@ function createWorktreeRepo(conn) {
       const startedAt = row2 === null ? null : numOrNull(row2, "daemon_started_at");
       if (row2 === null || startedAt === null) return null;
       const squealVersion2 = strOrNull(row2, "daemon_version");
-      const token = tokenOf4(id, startedAt, squealVersion2);
-      return { startedAt, squealVersion: squealVersion2, ...token === void 0 ? {} : { token } };
+      const token2 = tokenOf4(id, startedAt, squealVersion2);
+      return { startedAt, squealVersion: squealVersion2, ...token2 === void 0 ? {} : { token: token2 } };
     },
     remove: (id) => {
       conn.transaction(() => {
@@ -4491,6 +4491,7 @@ var init_policy = __esm({
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
       nodeTest: [],
       pytest: [],
+      containers: {},
       vitest: { excludeProjects: [], exclude: [] },
       slow: {
         include: [],
@@ -4737,7 +4738,8 @@ var init_policy_node_test = __esm({
       include: globs,
       exclude: globs,
       slow: boolean,
-      prepare
+      prepare,
+      container: nonEmptyString
     };
     REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
   }
@@ -4969,6 +4971,134 @@ var init_policy_code = __esm({
   }
 });
 
+// src/core/types/policy-containers.ts
+var CONTAINER_TARGET_DEFAULTS;
+var init_policy_containers = __esm({
+  "src/core/types/policy-containers.ts"() {
+    "use strict";
+    CONTAINER_TARGET_DEFAULTS = {
+      keyMode: "build-content",
+      dockerfileInputs: [],
+      dependencyServices: [],
+      env: {}
+    };
+  }
+});
+
+// src/core/daemon/policy-remote.ts
+function commandName(entry4) {
+  return /^[^-\s/\\][^\s/\\]*$/.test(entry4) && !new RegExp("\\p{Cc}", "u").test(entry4);
+}
+var boolean3, kept, commands, needsRepository, REMOTE_SHAPE;
+var init_policy_remote = __esm({
+  "src/core/daemon/policy-remote.ts"() {
+    "use strict";
+    init_policy_node_test();
+    boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+    kept = (key3, bad2) => (value) => {
+      if (!Array.isArray(value) || !value.every((entry4) => typeof entry4 === "string")) {
+        return "an array of strings";
+      }
+      const good = [];
+      const problems = [];
+      value.forEach((entry4, index) => {
+        const why2 = bad2(entry4);
+        if (why2 === null) good.push(entry4);
+        else problems.push(`"${key3}[${index}]" ${why2}; it is left out`);
+      });
+      return { kept: good, problems };
+    };
+    commands = kept(
+      "requires.commands",
+      (entry4) => commandName(entry4) ? null : `must be a command name such as "git", got ${JSON.stringify(entry4)}`
+    );
+    needsRepository = kept("remote.needsRepository", (glob2) => compiles([glob2])?.problem ?? null);
+    REMOTE_SHAPE = {
+      requires: { commands },
+      remote: { allowed: boolean3, needsRepository }
+    };
+  }
+});
+
+// src/core/daemon/policy-containers.ts
+function dockerToken(value) {
+  return typeof value === "string" && /^[^-\s]\S*$/.test(value) && !new RegExp("\\p{Cc}", "u").test(value);
+}
+function targetProblem(entry4) {
+  if (!isRecord(entry4)) return `must be an object, got ${JSON.stringify(entry4)}`;
+  const unknown5 = Object.keys(entry4).find((key3) => !Object.hasOwn(FIELDS2, key3));
+  if (unknown5 !== void 0) return `has unknown key "${unknown5}"`;
+  if (entry4.image === void 0) return 'has no "image"';
+  for (const [key3, field] of Object.entries(FIELDS2)) {
+    const given2 = entry4[key3];
+    if (given2 === void 0) continue;
+    const expected = field(given2);
+    if (expected !== null) {
+      const why2 = typeof expected === "object" ? expected.problem : `must be ${expected}`;
+      return `"${key3}" ${why2}, got ${JSON.stringify(given2)}`;
+    }
+  }
+  return null;
+}
+function containerTargets(value) {
+  if (!isRecord(value)) return "an object from target name to a container target";
+  const kept6 = {};
+  const problems = [];
+  for (const [name3, entry4] of Object.entries(value)) {
+    const problem = commandName(name3) ? targetProblem(entry4) : 'has a name with a space, "/", "\\", control character or leading "-"';
+    if (problem === null) {
+      kept6[name3] = {
+        ...CONTAINER_TARGET_DEFAULTS,
+        ...entry4
+      };
+    } else problems.push(`"containers.${name3}" ${problem}; it is left out`);
+  }
+  return { kept: kept6, problems };
+}
+function settleContainers(policy) {
+  const problems = [];
+  let settled2 = policy;
+  for (const list3 of RUNNER_LISTS) {
+    const projects2 = policy[list3];
+    const kept6 = projects2.filter((project) => {
+      const { container } = project;
+      if (container === void 0 || Object.hasOwn(policy.containers, container)) return true;
+      problems.push(
+        `"${list3}" project ${JSON.stringify(project.name)} names container ${JSON.stringify(container)}, which "containers" does not declare; it is skipped`
+      );
+      return false;
+    });
+    if (kept6.length !== projects2.length) settled2 = { ...settled2, [list3]: kept6 };
+  }
+  return { policy: settled2, problems };
+}
+var token, KEY_MODES, keyMode, workdir, listOf, repositoryPath, FIELDS2, RUNNER_LISTS;
+var init_policy_containers2 = __esm({
+  "src/core/daemon/policy-containers.ts"() {
+    "use strict";
+    init_json();
+    init_policy_containers();
+    init_policy_node_test();
+    init_policy_remote();
+    token = (what) => (v) => dockerToken(v) ? null : `${what} with no space, control character or leading "-"`;
+    KEY_MODES = ["build-content", "image-id"];
+    keyMode = (v) => KEY_MODES.includes(v) ? null : '"build-content" or "image-id"';
+    workdir = (v) => typeof v === "string" && v.startsWith("/") && !new RegExp("\\p{Cc}", "u").test(v) ? null : "an absolute POSIX path such as /app";
+    listOf = (what, each) => (v) => Array.isArray(v) && v.every(each) ? null : `an array of ${what}`;
+    repositoryPath = (v) => typeof v === "string" && v !== "" && !v.startsWith("\\") && insideRoot(v) === null;
+    FIELDS2 = {
+      image: token("an image name"),
+      network: token("a network name"),
+      workdir,
+      keyMode,
+      dockerfileInputs: listOf("repository-relative paths", repositoryPath),
+      dependencyServices: listOf("service names", dockerToken),
+      env: variables
+    };
+    RUNNER_LISTS = ["nodeTest", "pytest"];
+  }
+});
+
 // src/core/daemon/policy-gate.ts
 var groups, GATE_SHAPE;
 var init_policy_gate = __esm({
@@ -4980,17 +5110,17 @@ var init_policy_gate = __esm({
 });
 
 // src/core/daemon/policy-lint.ts
-var boolean3, globs3, TOOL_NAMES, tools, LINT_SHAPE;
+var boolean4, globs3, TOOL_NAMES, tools, LINT_SHAPE;
 var init_policy_lint = __esm({
   "src/core/daemon/policy-lint.ts"() {
     "use strict";
     init_policy_node_test();
-    boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+    boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
     globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
     TOOL_NAMES = ["eslint", "oxlint"];
     tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
     LINT_SHAPE = {
-      lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
+      lint: { enabled: boolean4, include: globs3, exclude: globs3, blocking: boolean4, tools }
     };
   }
 });
@@ -5015,18 +5145,18 @@ function slots(value) {
   return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 function pytestProjects(value, path) {
-  return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
+  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, pythonInsideRoot);
 }
 function withDefaults2(entry4) {
   return { ...entry4, args: entry4.args ?? [], env: entry4.env ?? {} };
 }
-var FIELDS2, REQUIRED2, SLOT_FIELDS, pythonInsideRoot;
+var FIELDS3, REQUIRED2, SLOT_FIELDS, pythonInsideRoot;
 var init_policy_pytest = __esm({
   "src/core/daemon/policy-pytest.ts"() {
     "use strict";
     init_json();
     init_policy_node_test();
-    FIELDS2 = {
+    FIELDS3 = {
       name: nonEmptyString,
       cwd: insideRoot,
       python: nonEmptyString,
@@ -5036,7 +5166,8 @@ var init_policy_pytest = __esm({
       exclude: globs,
       slow: boolean,
       batchSize: positiveInteger3,
-      slots
+      slots,
+      container: nonEmptyString
     };
     REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
     SLOT_FIELDS = {
@@ -5052,41 +5183,6 @@ var init_policy_pytest = __esm({
         key: "python",
         problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
       };
-    };
-  }
-});
-
-// src/core/daemon/policy-remote.ts
-function commandName(entry4) {
-  return /^[^-\s/\\][^\s/\\]*$/.test(entry4) && !new RegExp("\\p{Cc}", "u").test(entry4);
-}
-var boolean4, kept, commands, needsRepository, REMOTE_SHAPE;
-var init_policy_remote = __esm({
-  "src/core/daemon/policy-remote.ts"() {
-    "use strict";
-    init_policy_node_test();
-    boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
-    kept = (key3, bad2) => (value) => {
-      if (!Array.isArray(value) || !value.every((entry4) => typeof entry4 === "string")) {
-        return "an array of strings";
-      }
-      const good = [];
-      const problems = [];
-      value.forEach((entry4, index) => {
-        const why2 = bad2(entry4);
-        if (why2 === null) good.push(entry4);
-        else problems.push(`"${key3}[${index}]" ${why2}; it is left out`);
-      });
-      return { kept: good, problems };
-    };
-    commands = kept(
-      "requires.commands",
-      (entry4) => commandName(entry4) ? null : `must be a command name such as "git", got ${JSON.stringify(entry4)}`
-    );
-    needsRepository = kept("remote.needsRepository", (glob2) => compiles([glob2])?.problem ?? null);
-    REMOTE_SHAPE = {
-      requires: { commands },
-      remote: { allowed: boolean4, needsRepository }
     };
   }
 });
@@ -5723,12 +5819,13 @@ function loadPolicy(root) {
   return policy;
 }
 function settle(loaded) {
-  const settled2 = settleChecks(loaded.value);
+  const contained = settleContainers(loaded.value);
+  const settled2 = settleChecks(contained.policy);
   return {
     policy: withExits(
-      settled2.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled2.checks }
+      settled2.problems.length === 0 ? contained.policy : { ...contained.policy, checks: settled2.checks }
     ),
-    problems: [...loaded.problems, ...settled2.problems],
+    problems: [...loaded.problems, ...contained.problems, ...settled2.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
@@ -5776,6 +5873,7 @@ var init_policy2 = __esm({
     init_policy_checks();
     init_policy_checks_settle();
     init_policy_code();
+    init_policy_containers2();
     init_policy_gate();
     init_policy_lint();
     init_policy_node();
@@ -5831,6 +5929,8 @@ var init_policy2 = __esm({
       },
       nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
       pytest: (v) => pytestProjects(v, "pytest"),
+      // Spec 027 D4 (row 027-04).
+      containers: containerTargets,
       vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
       slow: {
         include: slowInclude,
@@ -6486,8 +6586,8 @@ function offeredTokens(text3) {
   }
   return tokens;
 }
-function add(tokens, token) {
-  if (token !== void 0 && token !== "") tokens.add(token);
+function add(tokens, token2) {
+  if (token2 !== void 0 && token2 !== "") tokens.add(token2);
 }
 function matchSide(text3) {
   const words = /* @__PURE__ */ new Set();
@@ -6499,14 +6599,14 @@ function matchSide(text3) {
   }
   return { words: [...words], phrases: [...phrases] };
 }
-function matches(token, words, phrases) {
-  if (!token.includes(" ")) return words.has(token);
-  return phrases.some((phrase2) => bounded(phrase2, token));
+function matches(token2, words, phrases) {
+  if (!token2.includes(" ")) return words.has(token2);
+  return phrases.some((phrase2) => bounded(phrase2, token2));
 }
-function bounded(hay, token) {
-  for (let at2 = hay.indexOf(token); at2 !== -1; at2 = hay.indexOf(token, at2 + 1)) {
+function bounded(hay, token2) {
+  for (let at2 = hay.indexOf(token2); at2 !== -1; at2 = hay.indexOf(token2, at2 + 1)) {
     const before5 = hay[at2 - 1];
-    const after3 = hay[at2 + token.length];
+    const after3 = hay[at2 + token2.length];
     if (!continues(before5) && !continues(after3)) return true;
   }
   return false;
@@ -6609,10 +6709,10 @@ var init_rank = __esm({
         if (offered.size === 0) return /* @__PURE__ */ new Map();
         const sides = slow.map((path) => [path, this.#side(path)]);
         const out2 = /* @__PURE__ */ new Map();
-        for (const token of offered) {
-          const hits = sides.filter(([, side]) => matches(token, side.words, side.phrases));
+        for (const token2 of offered) {
+          const hits = sides.filter(([, side]) => matches(token2, side.words, side.phrases));
           if (hits.length === 0 || hits.length > COMMON_TOKEN_FILES) continue;
-          for (const [path] of hits) out2.set(path, [...out2.get(path) ?? [], token]);
+          for (const [path] of hits) out2.set(path, [...out2.get(path) ?? [], token2]);
         }
         return out2;
       }
@@ -6628,7 +6728,7 @@ var init_rank = __esm({
           if (texts2.has(path)) return texts2.get(path) ?? null;
           const text3 = this.source.read(path);
           texts2.set(path, text3);
-          if (text3 !== null) for (const token of offeredTokens(text3)) tokens.add(token);
+          if (text3 !== null) for (const token2 of offeredTokens(text3)) tokens.add(token2);
           return text3;
         };
         for (const path of new Set(paths)) {
@@ -13546,8 +13646,8 @@ function holdsRequire(value) {
 function asyncLoaders(tokens) {
   const loaders = [];
   for (let i3 = 0; i3 < tokens.length; i3++) {
-    const token = tokens[i3];
-    const [name3, value] = splitFlag(token);
+    const token2 = tokens[i3];
+    const [name3, value] = splitFlag(token2);
     if (name3 !== "--loader" && name3 !== "--experimental-loader") continue;
     const loader = value ?? tokens[++i3];
     if (loader !== void 0) loaders.push(loader);
@@ -13564,9 +13664,9 @@ function preloadSpecifiers(tokens) {
   }
   return preloads;
 }
-function splitFlag(token) {
-  const equals = token.indexOf("=");
-  return equals === -1 ? [token, void 0] : [token.slice(0, equals), token.slice(equals + 1)];
+function splitFlag(token2) {
+  const equals = token2.indexOf("=");
+  return equals === -1 ? [token2, void 0] : [token2.slice(0, equals), token2.slice(equals + 1)];
 }
 var init_node_options = __esm({
   "src/runners/process/node-options.ts"() {
@@ -13591,16 +13691,16 @@ function isSquealRecorder(specifier) {
 function withoutSquealRecorders(tokens) {
   const kept6 = [];
   for (let i3 = 0; i3 < tokens.length; i3++) {
-    const token = tokens[i3];
-    const equals = token.indexOf("=");
-    const flag3 = equals === -1 ? token : token.slice(0, equals);
+    const token2 = tokens[i3];
+    const equals = token2.indexOf("=");
+    const flag3 = equals === -1 ? token2 : token2.slice(0, equals);
     if (!PRELOAD_FLAGS.has(flag3)) {
-      kept6.push(token);
+      kept6.push(token2);
       continue;
     }
-    const value = equals === -1 ? tokens[i3 + 1] : token.slice(equals + 1);
+    const value = equals === -1 ? tokens[i3 + 1] : token2.slice(equals + 1);
     if (value === void 0 || !isSquealRecorder(value)) {
-      kept6.push(token);
+      kept6.push(token2);
     } else if (equals === -1) {
       i3++;
     }
@@ -13614,8 +13714,8 @@ function ownNodeOptions(options) {
   if (kept6.length === 0 && tokens.length > 0) return void 0;
   return kept6.length < tokens.length ? kept6.map(asWritten).join(" ") : options;
 }
-function asWritten(token) {
-  return /[ "]/.test(token) ? quoteNodeOption(token) : token;
+function asWritten(token2) {
+  return /[ "]/.test(token2) ? quoteNodeOption(token2) : token2;
 }
 var RECORDERS, REMOTE_RECORDER, UNOBSERVED, PRELOAD_FLAGS;
 var init_recorders = __esm({
@@ -14063,9 +14163,9 @@ var init_escaped = __esm({
       #orphanMarks = /* @__PURE__ */ new Map();
       /** What the group's members are read with (`#orphans`). */
       #source;
-      constructor(token = randomUUID2(), self = process.pid, source2 = PROC3) {
-        this.env = { [CHILD_VARIABLE]: token };
-        this.#needle = `\0${CHILD_VARIABLE}=${token}`;
+      constructor(token2 = randomUUID2(), self = process.pid, source2 = PROC3) {
+        this.env = { [CHILD_VARIABLE]: token2 };
+        this.#needle = `\0${CHILD_VARIABLE}=${token2}`;
         this.#self = self;
         this.#source = source2;
         this.#born = this.mark();
@@ -28824,8 +28924,8 @@ function withoutInjected(env, injected) {
   return out2;
 }
 function leading(options) {
-  const token = options.match(/^--(?:import|require) "[^"]*"/)?.[0];
-  return token === void 0 || options[token.length] !== " " ? null : { token, rest: options.slice(token.length + 1) };
+  const token2 = options.match(/^--(?:import|require) "[^"]*"/)?.[0];
+  return token2 === void 0 || options[token2.length] !== " " ? null : { token: token2, rest: options.slice(token2.length + 1) };
 }
 function recorderOf(options) {
   const value = options?.match(/^--(?:import|require) "([^"]*)"/)?.[1];
@@ -31379,11 +31479,11 @@ function reads(graph, listed13, path) {
 function sharesProcess(argv) {
   let shared2 = false;
   for (let i3 = 0; i3 < argv.length; i3++) {
-    const token = argv[i3] ?? "";
-    const equals = token.indexOf("=");
-    const name3 = equals === -1 ? token : token.slice(0, equals);
+    const token2 = argv[i3] ?? "";
+    const equals = token2.indexOf("=");
+    const name3 = equals === -1 ? token2 : token2.slice(0, equals);
     if (!ISOLATION.has(name3)) continue;
-    const value = equals === -1 ? argv[++i3] : token.slice(equals + 1);
+    const value = equals === -1 ? argv[++i3] : token2.slice(equals + 1);
     shared2 = value === "none";
   }
   return shared2;
@@ -31594,8 +31694,8 @@ function getOptions(opts) {
   }
   if (isArray(options.onToken)) {
     var tokens = options.onToken;
-    options.onToken = function(token) {
-      return tokens.push(token);
+    options.onToken = function(token2) {
+      return tokens.push(token2);
     };
   }
   if (isArray(options.onComment)) {
@@ -33718,8 +33818,8 @@ var init_acorn = __esm({
           this.checkLValPattern(expr, bindingType, checkClashes);
       }
     };
-    TokContext = function TokContext2(token, isExpr, preserveSpace, override, generator) {
-      this.token = token;
+    TokContext = function TokContext2(token2, isExpr, preserveSpace, override, generator) {
+      this.token = token2;
       this.isExpr = !!isExpr;
       this.preserveSpace = !!preserveSpace;
       this.override = override;
@@ -36369,10 +36469,10 @@ var init_acorn = __esm({
         var this$1$1 = this;
         return {
           next: function() {
-            var token = this$1$1.getToken();
+            var token2 = this$1$1.getToken();
             return {
-              done: token.type === types$1.eof,
-              value: token
+              done: token2.type === types$1.eof,
+              value: token2
             };
           }
         };
@@ -39077,9 +39177,9 @@ var require_CachedInputFileSystem = __commonJS({
         const stat11 = this._statBackend.provide;
         this.stat = /** @type {FileSystem["stat"]} */
         stat11;
-        const statSync49 = this._statBackend.provideSync;
+        const statSync50 = this._statBackend.provideSync;
         this.statSync = /** @type {SyncFileSystem["statSync"]} */
-        statSync49;
+        statSync50;
         this._readdirBackend = createBackend(
           duration2,
           this.fileSystem.readdir,
@@ -47907,11 +48007,11 @@ function makeLogDir(dir2) {
 function markLogDir(dir2) {
   if (!makeLogDir(dir2)) return null;
   const mark = join71(dir2, MARK2);
-  const token = randomUUID7();
-  writeFileSync8(mark, token);
+  const token2 = randomUUID7();
+  writeFileSync8(mark, token2);
   return () => {
     try {
-      return readFileSync43(mark, "utf8") === token;
+      return readFileSync43(mark, "utf8") === token2;
     } catch {
       return false;
     }
@@ -60496,11 +60596,11 @@ function unresolvedHere(context2) {
     return list3.some((path) => path !== snapshot3 && absent4(path));
   };
 }
-function provenWalks(files6, walkedAt, listOf, unresolved) {
+function provenWalks(files6, walkedAt, listOf2, unresolved) {
   const proven2 = [];
   const unproven2 = [];
   for (const file of files6) {
-    const list3 = listOf(file.ref);
+    const list3 = listOf2(file.ref);
     const isProven = file.key !== null && list3 !== void 0 && !unresolved(file.ref, list3) && walkedAt(file.ref, file.key);
     (isProven ? proven2 : unproven2).push(file);
   }
@@ -71313,8 +71413,8 @@ function inheritedArgs(config, env) {
 function refusedFlags(inherited2, project) {
   const found4 = [];
   const scan2 = (tokens, source2) => {
-    for (const token of tokens) {
-      const flag3 = REFUSED2[token.split("=")[0]];
+    for (const token2 of tokens) {
+      const flag3 = REFUSED2[token2.split("=")[0]];
       if (flag3 !== void 0 && !found4.some((f) => f.flag === flag3 && f.source === source2)) {
         found4.push({ flag: flag3, source: source2 });
       }
@@ -71357,9 +71457,9 @@ function loads(inputs2, distribution) {
   ];
   const named4 = /* @__PURE__ */ new Set();
   for (let i3 = 0; i3 < tokens.length; i3++) {
-    const token = tokens[i3];
-    if (token === "-p") named4.add(tokens[++i3] ?? "");
-    else if (token.startsWith("-p")) named4.add(token.slice(2));
+    const token2 = tokens[i3];
+    if (token2 === "-p") named4.add(tokens[++i3] ?? "");
+    else if (token2.startsWith("-p")) named4.add(token2.slice(2));
   }
   for (const name3 of (inputs2.env.PYTEST_PLUGINS ?? "").split(",")) named4.add(name3.trim());
   if (own.some((p) => named4.has(`no:${p.name}`))) return false;
@@ -72755,8 +72855,8 @@ function sameSettings(a, b) {
 function importMode(tokens) {
   let mode = "prepend";
   for (let i3 = 0; i3 < tokens.length; i3++) {
-    const token = tokens[i3];
-    const value = token === "--import-mode" ? tokens[++i3] : token.startsWith("--import-mode=") ? token.slice("--import-mode=".length) : void 0;
+    const token2 = tokens[i3];
+    const value = token2 === "--import-mode" ? tokens[++i3] : token2.startsWith("--import-mode=") ? token2.slice("--import-mode=".length) : void 0;
     if (value !== void 0 && IMPORT_MODES.has(value)) mode = value;
   }
   return mode;
@@ -72764,8 +72864,8 @@ function importMode(tokens) {
 function pluginModules(tokens) {
   const named4 = [];
   for (let i3 = 0; i3 < tokens.length; i3++) {
-    const token = tokens[i3];
-    const name3 = token === "-p" ? tokens[++i3] : token.startsWith("-p") ? token.slice(2) : void 0;
+    const token2 = tokens[i3];
+    const name3 = token2 === "-p" ? tokens[++i3] : token2.startsWith("-p") ? token2.slice(2) : void 0;
     if (name3 !== void 0 && name3 !== "" && !name3.startsWith("no:")) named4.push(name3);
   }
   return [...new Set(named4)];
@@ -81397,9 +81497,9 @@ function createHostAdmission(open8, holdMs = ADMITTED_HOLD_MS) {
     held4.set(key3, { lease, timer });
   };
   return {
-    admit({ want, least, token }) {
-      const key3 = token ?? DEFAULT_KEY;
-      if (want < 1 && token === void 0) dropAll();
+    admit({ want, least, token: token2 }) {
+      const key3 = token2 ?? DEFAULT_KEY;
+      if (want < 1 && token2 === void 0) dropAll();
       else drop2(key3);
       if (want < 1) return { grant: 0 };
       refusal4 = void 0;
@@ -81417,8 +81517,8 @@ function createHostAdmission(open8, holdMs = ADMITTED_HOLD_MS) {
       hold(key3, widthLease(lease, want));
       return { grant: lease.grant };
     },
-    claim(token) {
-      if (token !== void 0) return take(token);
+    claim(token2) {
+      if (token2 !== void 0) return take(token2);
       if (held4.has(DEFAULT_KEY)) return take(DEFAULT_KEY);
       const oldest = held4.keys().next();
       return oldest.done === true ? null : take(oldest.value);
@@ -82619,9 +82719,9 @@ function withRemoteLane(options) {
   };
   const admittedRun = async (host, testFiles3, run9, inputs2) => {
     for (let late = 1; ; late++) {
-      const token = `${run9.runId}:${++attempts}`;
+      const token2 = `${run9.runId}:${++attempts}`;
       const grant = await admitRun((ask2) => host.admit(ask2), testFiles3, run9, {
-        token,
+        token: token2,
         tierWidth: (file, grant2) => local3.traits.tierWidth(file, grant2),
         everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
         log: (line) => options.log(`remote ${target}: ${line}`),
@@ -82640,7 +82740,7 @@ function withRemoteLane(options) {
           workers: grant,
           expected,
           admitted: true,
-          admitToken: token
+          admitToken: token2
         })
       ).finally(end);
       if (reply.unadmitted !== true) return reply;
@@ -94357,11 +94457,11 @@ var VALUED = /* @__PURE__ */ new Set([
 function flags2(execArgv) {
   const out2 = [];
   for (let i3 = 0; i3 < execArgv.length; i3++) {
-    const token = execArgv[i3];
-    const equals = token.indexOf("=");
-    if (equals !== -1) out2.push({ flag: token.slice(0, equals), value: token.slice(equals + 1) });
-    else if (VALUED.has(token)) out2.push({ flag: token, value: execArgv[++i3] ?? null });
-    else out2.push({ flag: token, value: null });
+    const token2 = execArgv[i3];
+    const equals = token2.indexOf("=");
+    if (equals !== -1) out2.push({ flag: token2.slice(0, equals), value: token2.slice(equals + 1) });
+    else if (VALUED.has(token2)) out2.push({ flag: token2, value: execArgv[++i3] ?? null });
+    else out2.push({ flag: token2, value: null });
   }
   return out2;
 }
@@ -94394,15 +94494,15 @@ function projectNodeOptions(raw, hooks) {
   const own = new Set(hooks);
   const kept6 = [];
   for (let i3 = 0; i3 < tokens.length; i3++) {
-    const token = tokens[i3];
-    const equals = token.indexOf("=");
-    const flag3 = equals === -1 ? token : token.slice(0, equals);
-    const value = equals === -1 ? tokens[i3 + 1] : token.slice(equals + 1);
+    const token2 = tokens[i3];
+    const equals = token2.indexOf("=");
+    const flag3 = equals === -1 ? token2 : token2.slice(0, equals);
+    const value = equals === -1 ? tokens[i3 + 1] : token2.slice(equals + 1);
     if (PRELOADS.has(flag3) && value !== void 0 && own.has(pathOf(value))) {
       if (equals === -1) i3++;
       continue;
     }
-    kept6.push(token);
+    kept6.push(token2);
   }
   return withoutSquealRecorders(kept6);
 }
@@ -96554,18 +96654,18 @@ var DaemonWriter = class {
   async send(batch, release3) {
     const socket = this.#socketPath();
     if (socket === null) return "not-taken";
-    const token = this.#token;
+    const token2 = this.#token;
     if (release3) this.#token = null;
     const request = {
       type: "write",
       worktreeId: this.#options.worktreeId,
       storeSchema: this.#options.storeSchema,
-      token,
+      token: token2,
       release: release3,
       batch: encodeBatch(batch)
     };
     const answer4 = await this.#ask(socket, request);
-    if (!isWrite(answer4)) return this.#notTaken("not-taken", socket, token);
+    if (!isWrite(answer4)) return this.#notTaken("not-taken", socket, token2);
     const deadline = Date.now() + this.#options.boundMs;
     let state = answer4;
     for (let attempt2 = 0; state.written === null; attempt2++) {
@@ -96581,15 +96681,15 @@ var DaemonWriter = class {
       state = next;
     }
     if (state.written) return "written";
-    return this.#notTaken("not-taken", socket, release3 ? null : token);
+    return this.#notTaken("not-taken", socket, release3 ? null : token2);
   }
   async release() {
-    const token = this.#token;
+    const token2 = this.#token;
     const socket = this.#socket;
     this.#token = null;
-    if (token === null || socket === null || socket === void 0) return;
+    if (token2 === null || socket === null || socket === void 0) return;
     const { worktreeId } = this.#options;
-    await this.#ask(socket, { type: "release", worktreeId, token });
+    await this.#ask(socket, { type: "release", worktreeId, token: token2 });
   }
   #socketPath() {
     if (this.#off) return null;
@@ -96619,12 +96719,12 @@ var DaemonWriter = class {
    * holds there (`token`) is ended first: its process lives on, and would
    * keep it (review 0.1.442 B3).
    */
-  async #notTaken(answer4, socket, token) {
+  async #notTaken(answer4, socket, token2) {
     this.#off = true;
     this.#token = null;
-    if (socket !== void 0 && token !== void 0 && token !== null) {
+    if (socket !== void 0 && token2 !== void 0 && token2 !== null) {
       const { worktreeId } = this.#options;
-      await this.#ask(socket, { type: "release", worktreeId, token }).catch(() => null);
+      await this.#ask(socket, { type: "release", worktreeId, token: token2 }).catch(() => null);
     }
     return answer4;
   }
@@ -96634,8 +96734,8 @@ var DaemonWriter = class {
 };
 function isLease(answer4) {
   if (answer4 === null || !answer4.ok || answer4.type !== "lease") return false;
-  const { token, holder } = answer4;
-  return (token === null || typeof token === "string") && holder !== void 0;
+  const { token: token2, holder } = answer4;
+  return (token2 === null || typeof token2 === "string") && holder !== void 0;
 }
 function isWrite(answer4) {
   if (answer4 === null || !answer4.ok || answer4.type !== "write") return false;
@@ -98271,10 +98371,10 @@ function parseWriteQuery(request) {
   return { type: "write-cancel", worktreeId: request.worktreeId, seq: request.seq };
 }
 function parseWrite(request) {
-  const { worktreeId, storeSchema, token, release: release3 } = request;
+  const { worktreeId, storeSchema, token: token2, release: release3 } = request;
   if (!isText3(worktreeId)) return '"worktreeId" must be a non-empty string';
   if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
-  if (token !== null && !isText3(token)) return '"token" must be a non-empty string or null';
+  if (token2 !== null && !isText3(token2)) return '"token" must be a non-empty string or null';
   if (typeof release3 !== "boolean") return '"release" must be true or false';
   const batch = parseBatch(request.batch);
   if (typeof batch === "string") return batch;
@@ -98284,7 +98384,7 @@ function parseWrite(request) {
     type: "write",
     worktreeId,
     storeSchema,
-    token,
+    token: token2,
     release: release3,
     batch,
     ...queued
@@ -112213,17 +112313,17 @@ var WriteDesk = class {
     if (other !== null) return other;
     const current2 = this.#current();
     if (current2 !== null) return this.#leaseAnswer(null, current2.holder);
-    const token = randomUUID13();
+    const token2 = randomUUID13();
     this.#lease = {
-      token,
+      token: token2,
       holder: request.holder,
       process: request.process,
       until: this.#now() + LEASE_TTL_MS,
       pending: 0,
       releasing: false
     };
-    remember2(this.#issued, token);
-    return this.#leaseAnswer(token, null);
+    remember2(this.#issued, token2);
+    return this.#leaseAnswer(token2, null);
   }
   /** Spec 021 D22.2 (row 021-36): whether a client holds the lease now, its process alive. */
   get leased() {
@@ -112309,15 +112409,15 @@ var WriteDesk = class {
       `this daemon serves worktree ${this.#context.worktreeId}, not ${worktreeId}`
     );
   }
-  #unknownToken(token) {
-    return this.#issued.has(token) ? null : errorResponse("unknown lease token");
+  #unknownToken(token2) {
+    return this.#issued.has(token2) ? null : errorResponse("unknown lease token");
   }
-  #leaseAnswer(token, holder) {
+  #leaseAnswer(token2, holder) {
     return {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
       ok: true,
       type: "lease",
-      token,
+      token: token2,
       ttlMs: LEASE_TTL_MS,
       holder
     };
@@ -114907,9 +115007,9 @@ function readRuns(file) {
   if (!isRecord(value) || value.v !== RECORD_VERSION || !Array.isArray(value.runs)) return [];
   return value.runs.flatMap((run9) => {
     if (!isRecord(run9)) return [];
-    const { token, runId, groups: groups3 } = run9;
-    if (typeof token !== "string" || token.length < 16 || typeof runId !== "string") return [];
-    return [{ token, runId, groups: Array.isArray(groups3) ? groups3.flatMap(groupOf3) : [] }];
+    const { token: token2, runId, groups: groups3 } = run9;
+    if (typeof token2 !== "string" || token2.length < 16 || typeof runId !== "string") return [];
+    return [{ token: token2, runId, groups: Array.isArray(groups3) ? groups3.flatMap(groupOf3) : [] }];
   });
 }
 function groupOf3(value) {
@@ -114940,13 +115040,13 @@ var RunRecord = class {
     return this.#runs;
   }
   add(run9) {
-    if (this.#runs.some(({ token }) => token === run9.token)) return;
+    if (this.#runs.some(({ token: token2 }) => token2 === run9.token)) return;
     this.#runs = [...this.#runs, run9];
     this.#write();
   }
   /** Adds `groups` to the run of `token`, those it lacks. */
-  saw(token, groups3) {
-    const run9 = this.#runs.find((known4) => known4.token === token);
+  saw(token2, groups3) {
+    const run9 = this.#runs.find((known4) => known4.token === token2);
     if (run9 === void 0) return;
     const fresh2 = groups3.filter((group) => !run9.groups.some((known4) => sameGroup(known4, group)));
     if (fresh2.length === 0) return;
@@ -114955,7 +115055,7 @@ var RunRecord = class {
     this.#write();
   }
   remove(tokens) {
-    const kept6 = this.#runs.filter(({ token }) => !tokens.includes(token));
+    const kept6 = this.#runs.filter(({ token: token2 }) => !tokens.includes(token2));
     if (kept6.length === this.#runs.length) return;
     this.#runs = kept6;
     this.#write();
@@ -114986,7 +115086,7 @@ async function stopRuns(runs2, worker = () => false, table = PROC_RUNS) {
   try {
     for (let round2 = 0; round2 < ROUNDS2; round2++) {
       const look = targets2(byToken, table.list(), table, worker);
-      for (const [token, led] of look.groups) groups3.set(token, merged(groups3.get(token), led));
+      for (const [token2, led] of look.groups) groups3.set(token2, merged(groups3.get(token2), led));
       if (round2 === 0) spared = look.spared;
       const found4 = look.found.filter(({ entry: entry4 }) => !seen2.has(`${entry4.pid}:${entry4.start}`));
       if (found4.length === 0) break;
@@ -115013,8 +115113,8 @@ function targets2(byToken, entries3, table, worker) {
   const others = entries3.filter(({ pid }) => pid !== self);
   const runOf5 = /* @__PURE__ */ new Map();
   for (const entry4 of others) {
-    const token = table.token(entry4.pid);
-    const run9 = token === null ? void 0 : byToken.get(token);
+    const token2 = table.token(entry4.pid);
+    const run9 = token2 === null ? void 0 : byToken.get(token2);
     if (run9 !== void 0 && !worker(entry4, table)) runOf5.set(entry4.pid, run9);
   }
   const leaders = /* @__PURE__ */ new Map();
@@ -116467,7 +116567,7 @@ var Daemon = class {
         if (stop2 !== null) this.#note(stop2.text, stop2.stopped);
         const left = this.#runGroups.list();
         const ended2 = runStopNote(await stopRuns(left));
-        this.#runGroups.remove(left.map(({ token }) => token));
+        this.#runGroups.remove(left.map(({ token: token2 }) => token2));
         if (ended2 !== null) this.#note(ended2.text, ended2.stopped);
       });
       await this.#step("temp dir removal", async () => {
@@ -119391,7 +119491,7 @@ function dirExists(root, dir2) {
 }
 
 // src/cli/setup/build-outputs.ts
-var FIELDS3 = ["bin", "main", "module", "exports", "files"];
+var FIELDS4 = ["bin", "main", "module", "exports", "files"];
 async function buildOutputCandidates(facts, dir2, files6) {
   const manifest = nearestManifest(facts, dir2);
   const found4 = [...fieldCandidates(manifest), ...buildCandidates(facts, manifest)];
@@ -119424,7 +119524,7 @@ function evidencedFiles(candidates) {
 function fieldCandidates(manifest) {
   const where3 = `${manifest.dir || "."}/package.json`;
   const found4 = [];
-  for (const rule3 of FIELDS3) {
+  for (const rule3 of FIELDS4) {
     for (const value of strings7(manifest.value[rule3])) {
       const clean = value.replace(/^\.\//, "").replace(/\/+$/, "");
       const parts3 = clean.split("/");
@@ -125345,10 +125445,10 @@ init_client();
 init_escaped();
 init_terminate();
 import { readdirSync as readdirSync50, readFileSync as readFileSync90 } from "node:fs";
-function marksOf2(pid, token) {
+function marksOf2(pid, token2) {
   const group = statOf(pid)?.pgrp === pid ? pid : null;
   if (group === null || process.platform !== "linux")
-    return { pid, token, group, foreign: /* @__PURE__ */ new Set() };
+    return { pid, token: token2, group, foreign: /* @__PURE__ */ new Set() };
   const entries3 = processes2();
   const byPid = new Map(entries3.map((entry4) => [entry4.pid, entry4]));
   const descends = (entry4) => {
@@ -125361,7 +125461,7 @@ function marksOf2(pid, token) {
   const foreign2 = entries3.filter(
     (entry4) => entry4.pgrp === group && entry4.pid !== pid && !descends(entry4)
   );
-  return { pid, token, group, foreign: new Set(foreign2.map(identity3)) };
+  return { pid, token: token2, group, foreign: new Set(foreign2.map(identity3)) };
 }
 function processes2() {
   return readdirSync50("/proc").flatMap((name3) => {
@@ -128738,8 +128838,8 @@ function orphanTestProcesses(c) {
       c.name("flag orphan-test-process", why2);
       continue;
     }
-    const token = mark.split(":")[0];
-    found4.push({ pid, reason: `its mark's token ${token} names no live daemon, on both samples` });
+    const token2 = mark.split(":")[0];
+    found4.push({ pid, reason: `its mark's token ${token2} names no live daemon, on both samples` });
   }
   return found4;
 }
@@ -130075,8 +130175,8 @@ function readOne(db, d, runsOf2, table, namespace2, ownStart, unknown5) {
       "work",
       `its row is a predecessor's: its record, token and last use are ${UNKNOWN4} until it registers`
     );
-  const token = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version2), null);
-  const record2 = row2 === null || theirs ? null : recordOf4(row2, token);
+  const token2 = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version2), null);
+  const record2 = row2 === null || theirs ? null : recordOf4(row2, token2);
   const counts = new Map(
     all(db, PENDING5, id).map((r) => [str2(r, "pending"), num2(r, "n")])
   );
@@ -130144,7 +130244,7 @@ ${agentId}`;
   return {
     record: record2,
     recordedStartedAt: startedAt,
-    token,
+    token: token2,
     pending: counts.get("queued") ?? 0,
     running: counts.get("running") ?? 0,
     tiers,
@@ -130165,7 +130265,7 @@ var OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
 var CONSUMERS = `SELECT session_id, agent_id FROM consumers
   WHERE worktree_id = ? ORDER BY session_id, agent_id`;
 var UNKNOWN4 = "has a format this release does not know";
-function recordOf4(row2, token) {
+function recordOf4(row2, token2) {
   const socketPath = strOrNull2(row2, "daemon_socket");
   if (socketPath === null) return null;
   return {
@@ -130174,7 +130274,7 @@ function recordOf4(row2, token) {
     heartbeatAt: num2(row2, "daemon_heartbeat_at"),
     heartbeatIntervalMs: num2(row2, "daemon_heartbeat_interval_ms"),
     squealVersion: str2(row2, "daemon_version"),
-    ...token === null ? {} : { token }
+    ...token2 === null ? {} : { token: token2 }
   };
 }
 var NO_SLOW = { waits: false, running: [] };
@@ -133189,7 +133289,7 @@ function joinedText(joined2) {
 
 // src/cli/runner-host.ts
 init_version();
-import { mkdirSync as mkdirSync35, realpathSync as realpathSync39 } from "node:fs";
+import { mkdirSync as mkdirSync35, realpathSync as realpathSync39, statSync as statSync48 } from "node:fs";
 import { resolve as resolve55 } from "node:path";
 
 // src/core/runner-host/host.ts
@@ -133284,6 +133384,7 @@ async function serveRunnerHost(options) {
     building = null;
     const values = valuesOf(built);
     sent = JSON.stringify(values);
+    const rootStat = options.rootStat?.();
     return {
       protocol: RUNNER_HOST_PROTOCOL,
       version: options.version,
@@ -133303,7 +133404,8 @@ async function serveRunnerHost(options) {
           ...built.globalSetups === void 0 ? [] : ["globalSetups"]
         ]
       },
-      values
+      values,
+      ...rootStat === void 0 ? {} : { rootStat }
     };
   };
   const run9 = async (id, args2) => {
@@ -134090,6 +134192,7 @@ async function runnerHostCommand(args2, io, options = {}) {
     },
     version: squealVersion(),
     around: hostWorkers(),
+    rootStat: () => rootStatOf(root),
     ...parsed3.tree ? {
       tree: createTreeHost(root, (text3) => process.stderr.write(text3)),
       // Spec 021 D18 (row 021-21; request 66d23a73): its machine's own ceiling admits its runs.
@@ -134099,6 +134202,14 @@ async function runnerHostCommand(args2, io, options = {}) {
   });
   if (owned) setTimeout(() => process.exit(0), 500).unref();
   return 0;
+}
+function rootStatOf(root) {
+  try {
+    const stat11 = statSync48(root);
+    return { dev: stat11.dev, ino: stat11.ino };
+  } catch {
+    return void 0;
+  }
 }
 function inRootWhileAnswering(root, away) {
   let inFlight = 0;
@@ -134875,7 +134986,7 @@ init_paths5();
 init_open2();
 init_lock();
 init_paths4();
-import { existsSync as existsSync95, statSync as statSync48 } from "node:fs";
+import { existsSync as existsSync95, statSync as statSync49 } from "node:fs";
 import { DatabaseSync as DatabaseSync15 } from "node:sqlite";
 init_test_pause();
 init_version();
@@ -135412,7 +135523,7 @@ async function runOne2(writer, item, remove2, { log, now, ended: ended2 }) {
 }
 function statKey2(path) {
   try {
-    const { dev, ino, mtimeMs, size } = statSync48(path);
+    const { dev, ino, mtimeMs, size } = statSync49(path);
     return `${dev}:${ino}:${mtimeMs}:${size}`;
   } catch {
     return null;
