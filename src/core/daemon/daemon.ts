@@ -1101,7 +1101,7 @@ class Daemon {
         ...onRemote,
         ...inContainers,
       });
-      // Spec 028 D6.1 (row 028-05): Jest projects in local runner hosts (or managed containers).
+      // Spec 028 D6.1 (rows 028-05, 028-06b): Jest projects in local runner hosts (or managed containers).
       const jestRunners = jest.createJestRunnerSet(() => this.#policy.jest, {
         root,
         host,
@@ -1112,6 +1112,11 @@ class Daemon {
         tierSize: () => this.#policy.runner.tierSize,
         observe: () => this.#policy.observe.runtimeInputs,
         note: (text, topic) => this.#note(text, undefined, undefined, topic),
+        coverage: {
+          enabled: () => coverage.coverageOn(this.#policy),
+          children: () => this.#policy.coverage.children,
+          collected: (run) => this.#coverage?.collected(run),
+        },
         ...inContainers,
       });
       // Spec 026 D8.1: the runner's own lane sends its edit and background tiers; each slow or
