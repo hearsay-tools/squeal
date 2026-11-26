@@ -3,8 +3,11 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterEach, expect } from "vitest";
+import { ensureWriteMarkers } from "../../src/core/store/write-markers.js";
 import { PLUGIN_DIR, PLUGIN_DIST } from "../../src/harness/claude-code/build.js";
+import { check, result } from "../state/helpers.js";
 import { tempDir } from "../store/helpers.js";
+import { type SquealRepo, squealRepo } from "./helpers.js";
 
 export interface BundleRun {
   readonly stdout: string;
@@ -38,6 +41,8 @@ export function runBundle(
  * `hooks/run node --disable-warning=... <bundle>`, with Node's compile cache in
  * `cacheHome` (`XDG_CACHE_HOME`), which `hooks/run` fills. The node path is this
  * process's, so it ends in `/node` as the launcher requires. Row 025-19.
+ * `launcher` is the command before the node path: Claude Code's `hooks/run` by
+ * default; Antigravity's, with `--if-squeal` where its hooks.json has it (row 025-21).
  */
 export function runLaunched(
   name: string,
@@ -45,16 +50,59 @@ export function runLaunched(
   cacheHome: string,
   env: Readonly<Record<string, string>> = {},
   dist: string = DIST,
+  launcher: readonly [string, ...string[]] = [join(PLUGIN_DIR, "hooks/run")],
 ): Promise<BundleRun> {
+  const [command, ...flags] = launcher;
   const args = [
+    ...flags,
     process.execPath,
     "--disable-warning=ExperimentalWarning",
     join(dist, `${name}.mjs`),
   ];
-  return runTimed(join(PLUGIN_DIR, "hooks/run"), args, stdin, {
+  return runTimed(command, args, stdin, {
     ...env,
     XDG_CACHE_HOME: cacheHome,
   });
+}
+
+/**
+ * The latency tests' store, the size of a small project: 50 test files of 10
+ * checks, every check passing, and the write markers a daemon arms at its
+ * start (row 025-18), without which hooks take a slower path users never take.
+ */
+export function latencyStore(files = 50, checksPerFile = 10): SquealRepo {
+  const r = squealRepo();
+  const results = [];
+  for (let f = 0; f < files; f++) {
+    const file = { project: "", path: `src/m${f}.test.ts` };
+    r.store.testFileKeys.upsertMany([
+      { worktreeId: r.worktreeId, testFile: file, key: `k${f}`, revision: 1, pending: null },
+    ]);
+    for (let c = 0; c < checksPerFile; c++) {
+      results.push(
+        result(check(`m${f} > case ${c}`, file), "pass", {
+          key: `k${f}`,
+          worktreeId: r.worktreeId,
+        }),
+      );
+    }
+  }
+  r.apply(r.pass(), ...results);
+  ensureWriteMarkers(r.store);
+  return r;
+}
+
+/**
+ * The environment Codex's adapter gives the runtime bundle it loads (spec 025
+ * D7.2, `enableOwnCompileCache`): Node's compile cache in Squeal's directory
+ * under `cacheHome`, marked as Squeal's own. Node fills it on the first run.
+ * Row 025-21.
+ */
+export function adapterCompileCache(cacheHome: string): Record<string, string> {
+  return {
+    NODE_COMPILE_CACHE: join(cacheHome, "squeal", "compile-cache"),
+    SQUEAL_OWN_COMPILE_CACHE: "1",
+  };
 }
 
 /** Runs `node <args>` in `cwd` with a minimal environment plus `env`, stdin piped, timed. */
