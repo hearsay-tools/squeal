@@ -78,15 +78,17 @@ describe.skipIf(!linux)("the Linux source on this host", () => {
 
   test.skipIf(runCommand("ss", ["-V"]) === null)(
     "ss -xle ties a listening socket file to its inode",
-    async () => {
+    async (context) => {
       const path = join(dir, "listen.sock");
       const server: Server = createServer();
       await new Promise<void>((resolve) => server.listen(path, resolve));
       cleanups.push(() => server.close());
       const inode = statSync(path).ino;
-      expect(source.unixListeners()?.filter((l) => l.fileInode === inode)).toEqual([
-        { fileInode: inode },
-      ]);
+      const listeners = source.unixListeners();
+      // A kernel without the unix_diag module gives ss no file inodes: the source says it
+      // cannot read, which this host cannot check further (#294).
+      if (listeners === null) context.skip();
+      expect(listeners?.filter((l) => l.fileInode === inode)).toEqual([{ fileInode: inode }]);
     },
   );
 });

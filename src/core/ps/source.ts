@@ -140,7 +140,7 @@ export interface PsSource {
   locks(): readonly LockEntry[] | null;
   /** The key `locks` names `path` by; `null` when it is missing or the platform has no locks. */
   fileKey(path: string): string | null;
-  /** Every listening unix socket; `null` without `ss` (D2 step 4). */
+  /** Every listening unix socket; `null` without `ss` or without its file inodes (no `unix_diag`; D2 step 4). */
   unixListeners(): readonly UnixListener[] | null;
   /** The PID namespace pids mean something in, as a consumer's harness process records it; `null` without one. */
   pidNamespace(): string | null;
