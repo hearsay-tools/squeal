@@ -1,0 +1,8 @@
+== drun ONE/FIVE with a persistent bytecode dir mounted at /tmp/pycache, load 3.81
+ONE 11169  2 passed in 1.81s 
+ONE 6762  2 passed in 1.46s 
+ONE 6268  2 passed in 1.40s 
+ONE 6630  2 passed in 1.48s 
+FIVE 10157  18 passed in 5.08s 
+FIVE 9692  18 passed in 4.75s 
+FIVE 9990  18 passed in 4.75s 

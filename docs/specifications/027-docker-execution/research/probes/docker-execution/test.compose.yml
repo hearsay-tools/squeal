@@ -1,0 +1,31 @@
+# Throwaway probe test services (spec 027). Used with deps.compose.yml in the
+# same project; SB is the scratch copy of saas-boilerplate, RT Squeal's runtime.
+services:
+  backend:
+    image: squeal-probe-027/backend:a
+    init: true
+    labels: {org.squeal.probe: "027"}
+    working_dir: /app
+    volumes:
+      - ${SB}/packages/backend:/app
+      - ${RT}:/squeal:ro
+      - ${EV}:/ev
+    environment:
+      HOME: /tmp
+      PYTHONPYCACHEPREFIX: /tmp/pycache
+      PYTHONPATH: /pkgs/.venv/lib/python3.11/site-packages:/squeal
+      SQUEAL_PYTEST_ROOT: /app
+  workers:
+    image: squeal-probe-027/workers:a
+    init: true
+    labels: {org.squeal.probe: "027"}
+    working_dir: /app/packages/workers
+    volumes:
+      - ${SB}/packages/workers:/app/packages/workers
+      - ${RT}:/squeal:ro
+      - ${EV}:/ev
+    environment:
+      HOME: /tmp
+      PYTHONPYCACHEPREFIX: /tmp/pycache
+      PYTHONPATH: /pkgs/.venv/lib/python3.11/site-packages:/squeal
+      SQUEAL_PYTEST_ROOT: /app/packages/workers

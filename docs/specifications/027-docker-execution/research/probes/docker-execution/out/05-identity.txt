@@ -1,0 +1,19 @@
+== 1. break a test in the worktree copy, then run it with and without the source mount
+-- with the worktree mounted at /app:
+========================= 1 failed, 1 passed in 1.57s ==========================
+-- without a mount (image's COPY . /app, as base docker-compose.yml runs backend):
+============================== 2 passed in 1.54s ===============================
+== 2. dev:inode of the root, outside and inside
+host:              66306:215291
+mounted:           66306:215291
+other dir mounted: 66306:1618762511
+baked (no mount):  56:2901237
+== 3. costs, 10 runs each (load 2.02)
+15 ms rc=0 16 ms rc=0 17 ms rc=0  <- docker image inspect (min, median, max)
+61 ms rc=0 65 ms rc=0 112 ms rc=0  <- compose config --hash backend
+62 ms rc=0 67 ms rc=0 71 ms rc=0  <- compose config --format json (mounts resolved)
+16 ms rc=0 17 ms rc=0 20 ms rc=0  <- docker inspect container mounts + image
+== 4. docker events during a rebuild of a tag, and the running container's image
+tag :c before d1dd33a1e372 after 74d694ff81f9
+tag 74d694ff81f9 squeal-probe-027/backend:c
+create 74d694ff81f9 74d694ff81f9

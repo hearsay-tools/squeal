@@ -1,0 +1,4 @@
+=== driver (daemon stand-in) SIGKILL after 5 s; docker exec client left alive
+(the driver was killed; `pgrep -af "docker exec -i sq027-host"` matched only the probe's own shell wrapper lines, removed here: no docker exec client remained)
+--- left in container 4 s later:
+(nothing but the container's own sleep)

@@ -1,0 +1,25 @@
+== runner host in sq027-host (image backend:c), two runs per connection; load 2.34
+-- ONE
+  1675 ms start {"pid":143,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+ 10104 ms run reply {"end":"completed","durationMs":8415,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"}],
+ 15969 ms second run {"end":"completed","durationMs":5852,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"}],
+-- ONE
+  1659 ms start {"pid":169,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+  7316 ms run reply {"end":"completed","durationMs":5640,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"}],
+ 12920 ms second run {"end":"completed","durationMs":5592,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"}],
+-- ONE
+  1649 ms start {"pid":195,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+  7423 ms run reply {"end":"completed","durationMs":5759,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"}],
+ 13228 ms second run {"end":"completed","durationMs":5791,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"}],
+-- FIVE
+  1684 ms start {"pid":221,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+ 10688 ms run reply {"end":"completed","durationMs":8988,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"},{"project":"p","path":"common/tests/test_emails.py"},{"project":"p",
+ 19666 ms second run {"end":"completed","durationMs":8966,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"},{"project":"p","path":"common/tests/test_emails.
+-- FIVE
+  1668 ms start {"pid":267,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+ 10915 ms run reply {"end":"completed","durationMs":9230,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"},{"project":"p","path":"common/tests/test_emails.py"},{"project":"p",
+ 20011 ms second run {"end":"completed","durationMs":9081,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"},{"project":"p","path":"common/tests/test_emails.
+-- FIVE
+  1669 ms start {"pid":313,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+ 10661 ms run reply {"end":"completed","durationMs":8975,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"},{"project":"p","path":"common/tests/test_emails.py"},{"project":"p",
+ 19848 ms second run {"end":"completed","durationMs":9172,"completedFiles":[{"project":"p","path":"apps/users/tests/test_models.py"},{"project":"p","path":"common/tests/test_emails.

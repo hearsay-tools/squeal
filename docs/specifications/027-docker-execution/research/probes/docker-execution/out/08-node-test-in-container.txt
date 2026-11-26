@@ -1,0 +1,4 @@
+   230 ms start {"pid":359,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+   329 ms event {"ev":"note","text":"node-test project \"p\": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; d
+   329 ms run reply {"end":"completed","durationMs":95,"completedFiles":[{"project":"p","path":"a.test.mjs"}],"results":[{"check":{"kind":"test","project":"p","testPath":"a.test.mjs","fullName":"adds"},"outcome":"pass","durationMs":0.616952,…"outcome":"fail","durationMs":0.634935,"location":{"path":"a.test.mjs","line":4,"column":1},"errors":[{"name":"AssertionError","message":"2 == 3","stack":"AssertionError [ERR_A
+   341 ms client exit 0 null

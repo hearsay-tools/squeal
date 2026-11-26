@@ -1,0 +1,82 @@
+== 1. backend, shared test_backend, cold (dropped), 3 batches at once
+  (load 3.26)
+DROP DATABASE
+  c1 4174 ms:  8 errors in 0.18s  | UniqueViolation: duplicate key value violates unique constraint "pg_database_datname_index"
+  b1 4411 ms:  12 errors in 0.44s  | already exists
+  a1 22458 ms:  10 passed in 18.44s  | 
+== 2. backend, shared test_backend, warm, 4 batches at once, 3 rounds
+  (load 2.80)
+  c21 10311 ms:  8 passed in 6.24s  | 
+  a21 12648 ms:  10 passed in 8.38s  | 
+  b21 13716 ms:  12 passed in 9.59s  | 
+  d21 19360 ms:  42 passed in 15.04s  | 
+  c22 10932 ms:  8 passed in 6.66s  | 
+  a22 13850 ms:  10 passed in 9.63s  | 
+  b22 14839 ms:  12 passed in 10.63s  | 
+  d22 19342 ms:  42 passed in 15.03s  | 
+  a23 11189 ms:  10 passed in 7.00s  | 
+  c23 11671 ms:  8 passed in 7.43s  | 
+  b23 13805 ms:  12 passed in 9.77s  | 
+  d23 18136 ms:  42 passed in 13.96s  | 
+== 3. backend, one slot each (TOX_PARALLEL_ENV=sN), cold, 4 batches at once
+  (load 2.83)
+DROP DATABASE
+NOTICE:  database "test_backend_s1" does not exist, skipping
+DROP DATABASE
+NOTICE:  database "test_backend_s2" does not exist, skipping
+DROP DATABASE
+NOTICE:  database "test_backend_s3" does not exist, skipping
+DROP DATABASE
+NOTICE:  database "test_backend_s4" does not exist, skipping
+  a3 25086 ms:  10 passed in 20.85s  | 
+  b3 25930 ms:  12 passed in 21.68s  | 
+  c3 26073 ms:  8 passed in 21.78s  | 
+  d3 29942 ms:  5 failed, 37 passed in 25.72s  | does not exist.
+test_backend test_backend_s1 test_backend_s2 test_backend_s3 test_backend_s4
+== 4. same slots, warm (databases kept by --reuse-db)
+  (load 3.40)
+  a4 8546 ms:  10 passed in 4.11s  | 
+  b4 8632 ms:  12 passed in 4.35s  | 
+  c4 8728 ms:  8 passed in 4.31s  | 
+  d4 13261 ms:  42 passed in 9.08s  | 
+== 5. backend rate-limit tests (cache.clear() on Redis), 3 batches at once, shared Redis db 0, 2 rounds
+  (load 3.70)
+  r21 7304 ms:  1 failed, 39 passed in 3.20s  | 
+  r11 7321 ms:  40 passed in 3.19s  | 
+  r31 7376 ms:  2 failed, 38 passed in 3.21s  | 
+  r12 7273 ms:  40 passed in 3.19s  | 
+  r32 7323 ms:  1 failed, 39 passed in 3.21s  | 
+  r22 7360 ms:  2 failed, 38 passed in 3.21s  | 
+== 6. same, one Redis database number per slot (REDIS_CONNECTION=.../N), 2 rounds
+  (load 3.55)
+  r51 7398 ms:  40 passed in 3.26s  | 
+  r61 7400 ms:  40 passed in 3.29s  | 
+  r41 7440 ms:  40 passed in 3.30s  | 
+  r42 7446 ms:  40 passed in 3.25s  | 
+  r52 7466 ms:  40 passed in 3.24s  | 
+  r62 7494 ms:  40 passed in 3.26s  | 
+== 7. workers, one database workers_test, 3 batches at once, 3 rounds
+  (load 3.50)
+  w11 2082 ms: 1 failed, 2 errors in 0.11s | UniqueViolation: duplicate key value violates unique constraint "pg_class_relname_nsp_index"
+  w21 2110 ms: 1 passed, 2 errors in 0.13s | UniqueViolation: duplicate key value violates unique constraint "pg_class_relname_nsp_index"
+  w31 2150 ms: 2 passed in 0.17s | 
+  w32 967 ms: 1 passed, 2 errors in 0.10s | UniqueViolation: duplicate key value violates unique constraint "pg_class_relname_nsp_index"
+  w22 976 ms: 1 failed, 2 errors in 0.09s | UniqueViolation: duplicate key value violates unique constraint "pg_class_relname_nsp_index"
+  w12 1021 ms: 2 passed in 0.16s | 
+  w23 886 ms: 1 failed, 2 errors in 0.07s | UniqueViolation: duplicate key value violates unique constraint "pg_class_relname_nsp_index"
+  w13 917 ms: 1 passed, 2 errors in 0.10s | UniqueViolation: duplicate key value violates unique constraint "pg_class_relname_nsp_index"
+  w33 948 ms: 2 passed in 0.14s | 
+== 8. workers, one database per slot, 3 batches at once, 3 rounds
+  (load 3.54)
+NOTICE:  database "workers_test_s1" does not exist, skipping
+NOTICE:  database "workers_test_s2" does not exist, skipping
+NOTICE:  database "workers_test_s3" does not exist, skipping
+  w41 946 ms: 2 passed in 0.15s | 
+  w61 970 ms: 2 passed in 0.15s | 
+  w51 971 ms: 2 passed in 0.15s | 
+  w52 990 ms: 2 passed in 0.15s | 
+  w62 997 ms: 2 passed in 0.15s | 
+  w42 1001 ms: 2 passed in 0.15s | 
+  w43 1030 ms: 2 passed in 0.15s | 
+  w63 1030 ms: 2 passed in 0.16s | 
+  w53 1040 ms: 2 passed in 0.16s | 

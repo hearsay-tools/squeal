@@ -1,0 +1,58 @@
+== host ONE load 3.61
+9851 rc=0  2 passed in 1.65s 
+5942 rc=0  2 passed in 1.47s 
+6033 rc=0  2 passed in 1.49s 
+5952 rc=0  2 passed in 1.44s 
+6408 rc=0  2 passed in 1.63s 
+== host FIVE load 3.95
+9946 rc=0  18 passed in 5.18s 
+9603 rc=0  18 passed in 5.13s 
+9719 rc=0  18 passed in 5.11s 
+9945 rc=0  18 passed in 5.14s 
+9907 rc=0  18 passed in 5.07s 
+== drun ONE load 4.14
+11219 rc=0  2 passed in 1.63s 
+11319 rc=0  2 passed in 1.69s 
+11472 rc=0  2 passed in 1.71s 
+11662 rc=0  2 passed in 1.69s 
+11317 rc=0  2 passed in 1.66s 
+== drun FIVE load 4.16
+15299 rc=0  18 passed in 5.41s 
+15350 rc=0  18 passed in 5.38s 
+15669 rc=0  18 passed in 5.48s 
+15132 rc=0  18 passed in 5.38s 
+15068 rc=0  18 passed in 5.38s 
+== crun ONE load 4.89
+11299 rc=0  2 passed in 1.68s 
+12123 rc=0  2 passed in 1.66s 
+10832 rc=0  2 passed in 1.55s 
+10576 rc=0  2 passed in 1.60s 
+11265 rc=0  2 passed in 1.67s 
+== crun FIVE load 4.14
+14290 rc=0  18 passed in 4.96s 
+13990 rc=0  18 passed in 5.10s 
+14503 rc=0  18 passed in 5.00s 
+15748 rc=0  18 passed in 5.47s 
+16186 rc=0  18 passed in 5.73s 
+== dexec ONE load 5.56
+10673 rc=0  2 passed in 1.60s 
+5745 rc=0  2 passed in 1.39s 
+5827 rc=0  2 passed in 1.38s 
+5689 rc=0  2 passed in 1.38s 
+5824 rc=0  2 passed in 1.41s 
+== dexec FIVE load 3.97
+9514 rc=0  18 passed in 4.89s 
+9602 rc=0  18 passed in 4.88s 
+9741 rc=0  18 passed in 4.91s 
+10016 rc=0  18 passed in 4.99s 
+9699 rc=0  18 passed in 4.88s 
+== overhead alone (true), load 4.18
+361 rc=0 
+336 rc=0 
+343 rc=0 
+436 rc=0  Container squeal-probe-027-deps-backend-run-d6e972b6415c Created 
+415 rc=0  Container squeal-probe-027-deps-backend-run-b11e8297e06d Created 
+411 rc=0  Container squeal-probe-027-deps-backend-run-78fa16b7d05d Created 
+52 rc=0 
+63 rc=0 
+54 rc=0 

@@ -1,0 +1,36 @@
+=== wait-start
+(processes 4 s into the run, nothing ended)
+PID                 PGID                COMMAND
+1881880             1881880             /opt/sqnode/node --disable-warning=ExperimentalWarning /sq/cli/squeal.mjs runner-host /hang --runner pytest
+1882111             1882111             /pkgs/.venv/bin/python -m pytest -c /tmp/sqcache/no-config/pytest.ini --rootdir=/hang --confcutdir=/hang -p squeal_pytest --continue-on-collection-errors --maxfail=0 --no-cov -o cache_dir=/tmp/sqcache/pytest-cache --basetemp=/tmp/sqcache/basetemp-runs/run-0iyPwq/0 test_hang.py
+1882511             1882111             sleep 300
+  1297 ms start {"pid":16,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+  6302 ms ending: kill
+  6306 ms client exit null SIGKILL
+--- left in container 4 s later:
+(nothing but the container's own sleep)
+=== cancel
+  1282 ms start {"pid":40,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+  6284 ms ending: cancel
+  6285 ms event {"id":3,"r":true}
+  6298 ms run reply {"end":"completed","durationMs":5005,"completedFiles":[],"results":[],"fileErrors":[],"failure":null,"fileDurations":[]}
+  6312 ms client exit 0 null
+--- left in container 4 s later:
+(nothing but the container's own sleep)
+=== eof
+  1258 ms start {"pid":64,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+  6263 ms ending: eof
+  6277 ms run reply {"end":"completed","durationMs":5008,"completedFiles":[],"results":[],"fileErrors":[],"failure":null,"fileDurations":[]}
+  6292 ms client exit 0 null
+--- left in container 4 s later:
+(nothing but the container's own sleep)
+=== kill
+  1276 ms start {"pid":88,"nodeVersion":"v26.13.0","platform":"linux","arch":"x64"}
+  6281 ms ending: kill
+  6285 ms client exit null SIGKILL
+--- left in container 4 s later:
+(nothing but the container's own sleep)
+=== control: docker exec -i python -m pytest, client SIGKILL after 5 s
+--- left in container 4 s later:
+1889585             1889585             python -m pytest -q -p no:cacheprovider test_hang.py
+1889998             1889585             sleep 300

@@ -1,0 +1,25 @@
+Backend sample, 8 files, 71 tests (pytest summaries copied from the probe session, 2026-11-26 ~14:56-14:58 UTC+1, load 1.5 to 2.8):
+  files: apps/users/tests/test_models.py common/tests/test_emails.py apps/users/tests/test_schema.py
+         apps/users/tests/test_services.py apps/finances/tests/test_webhooks.py apps/backup/tests/test_tasks.py
+         common/tests/test_tasks.py apps/multitenancy/tests/test_tasks.py
+
+host .venv, DATABASE_URL only (cold: creates test_backend, migrations):
+  14 failed, 57 passed in 37.43s (wall 46.3 s)
+  10 in test_schema.py: 6 x redis.exceptions.ConnectionError "Error -3 connecting to redis:6379", 1 AssertionError carrying
+     that message, 3 x TypeError 'NoneType' (signup returned no data); REDIS_CONNECTION from .test.env wins
+  3 x stripe APIError "bad gateway" (stripemock:12111 sent to the inherited HTTP proxy)
+  1 x redis.asyncio ConnectionError (multitenancy export task)
+
+host .venv, DATABASE_URL + REDIS_CONNECTION + -o env_override_existing_values=0, proxy variables unset:
+  3 failed, 68 passed in 14.12s (wall 18.2 s)
+  3 x stripe.error.APIConnectionError: test_webhooks.py (fixture sets stripe.api_base = "http://stripemock:12111")
+
+container, image from packages/backend/Dockerfile, run-1-backend-container.sh, probe network with db, redis, stripemock:
+  71 passed in 14.51s (wall 24.1 s)
+  events: start 1, collect 49, collected 1, item 71, phase 213, import 1235, session 1; absolute paths only under /app
+
+workers, content/tests/test_sync.py (2 tests):
+  host, before the database exists: 2 errors (database "workers_test" does not exist);
+        `python setup.py create_db`: could not translate host name "db" (setup.py loads .env.test with override=True)
+  host, database created by hand: 2 passed, 981 to 1047 ms wall x5
+  container (workers image, docker run --rm, bytecode dir mounted): 2 passed, 3367 ms first, then 1466 to 1600 ms x4

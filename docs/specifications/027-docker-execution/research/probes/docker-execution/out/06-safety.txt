@@ -1,0 +1,20 @@
+== 1. socket and groups
+srw-rw---- root:docker /var/run/docker.sock
+docker
+rootless=[name=apparmor
+== 2. files written into the mount: default user against --user uid:gid
+default user:
+  root <dir>/src/tests/__pycache__/__init__.cpython-311.pyc
+--user 1001:1001:
+  agent <dir>/src/tests/__pycache__/__init__.cpython-311.pyc
+== 3. a missing bind source: -v against --mount
+  -v rc=0
+  created: root directory
+  docker: Error response from daemon: invalid mount config for type "bind": bind source path does not exist: <dir>/missing-m
+  
+  Run 'docker run --help' for more information
+  --mount: not created
+== 4. docker run --rm --init client SIGKILLed during a 120 s command
+./run-6-safety.sh: line 23: 1995136 Killed                  docker run --rm --init -l org.squeal.probe=027 -l org.squeal.run=s4 squeal-probe-027/workers:a sleep 120 > /dev/null 2>&1
+  containers labelled org.squeal.run=s4 3 s later: 1
+  after docker rm -f by label: 0
