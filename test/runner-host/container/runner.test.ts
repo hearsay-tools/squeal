@@ -277,7 +277,8 @@ describe("a completed container run, through the scheduler (review 0.1.644 B2)",
   it("is stored and current at the container key when the container's Node is not this one", {
     timeout: 60_000,
   }, async () => {
-    const node = process.version === "v22.19.0" ? "v24.0.0" : "v22.19.0";
+    // A Node no host runs, so the container's machine is never this one.
+    const node = "v22.19.0-container";
     const { main } = claimRepo(1);
     const local = side(main, { count: 1, policy: RUN_MISSING });
     const [inner] = await local.runner.environment();
@@ -295,7 +296,7 @@ describe("a completed container run, through the scheduler (review 0.1.644 B2)",
               name: "pytest",
               environment: async () => [inner],
               testFiles: async () => local.runner.testFiles(),
-              run: async (files, options) => runHere(files, options),
+              run: async (files) => runHere(files),
             }),
           VERSION,
           { rootStat: () => rootStatOf(main) },

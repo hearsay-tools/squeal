@@ -33,7 +33,10 @@ import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
  * consent and the daemon's container wiring, it runs in its managed
  * container (`runner-host/container/runner.ts`); consent without the
  * wiring still runs nothing. Consent is read again at each batch, and a
- * change of it starts the other route at the next call.
+ * change of it starts the other route at the next call. A live container
+ * route reads the declared target and consent at each batch and run too
+ * (review 0.1.644 B5): it replaces its container when the target changed
+ * and stops, with this note, when consent is withdrawn.
  */
 
 /** A project's host adapter start in its container, from its mounted work directories. */
@@ -161,7 +164,7 @@ export function createContainerGuardRunner(options: ContainerGuardOptions): Reco
         return adapter;
       }
       state = "";
-      const { containers, target } = route;
+      const { containers } = route;
       paths ??= containerPaths(containers, options.root);
       return createContainerRunner({
         runner,
@@ -170,8 +173,11 @@ export function createContainerGuardRunner(options: ContainerGuardOptions): Reco
         worktreeId: containers.worktreeId,
         project: project.name,
         targetName: project.container,
-        target,
+        // Review 0.1.644 B5: the live target and consent, read before each batch and run.
+        target: () => containers.containers()[project.container],
         consent: () => consentFor(options.root, project.container, options.env),
+        unconsentedNote: () =>
+          containerGuardNote(options.root, project.name, project.container, options.env),
         paths,
         squealCliPath: containers.squealCliPath,
         version: containers.version,

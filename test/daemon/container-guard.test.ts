@@ -326,3 +326,158 @@ describe("a consented container project with the daemon's container route (row 0
     expect(await node[0]?.testFiles()).toEqual([fake.current?.inside("blocked")]);
   });
 });
+
+/*
+ * Review 0.1.644 B5 (spec 027 D4.2, D5.1, N3): the review's probe through
+ * the guard. A live container route reads the declared target and consent
+ * at each batch, before any Docker command: a changed target replaces the
+ * container and re-keys; withdrawn consent stops it with no Docker command.
+ */
+describe("a live container route when its target or consent changes (review 0.1.644 B5)", () => {
+  /** A fake Docker that names each image by its reference and records each start's image and env. */
+  function liveWiring(root: AbsolutePath) {
+    const f = fakeWiring(root);
+    const inspected: string[] = [];
+    const started: { image: string; env: Record<string, string>; network?: string }[] = [];
+    const target = {
+      current: {
+        image: "old",
+        keyMode: "build-content" as "build-content" | "image-id",
+        dockerfileInputs: [] as string[],
+        dependencyServices: [] as string[],
+        env: { MODE: "old" } as Record<string, string>,
+        network: undefined as string | undefined,
+      },
+    };
+    const base = f.wiring();
+    const cli = base.manager?.cli as DockerCli;
+    const wiring: ContainerWiring = {
+      ...base,
+      containers: () => {
+        const { network, ...rest } = target.current;
+        return { blocked: network === undefined ? rest : { ...rest, network } };
+      },
+      manager: {
+        ...base.manager,
+        cli: {
+          ...cli,
+          imageInspect: async (ref) => {
+            inspected.push(ref);
+            const id = ref.startsWith("sha256:") ? ref : `sha256:${ref}`;
+            return { id, repoDigests: [], env: [], architecture: "amd64", os: "linux" };
+          },
+          runIdle: async (spec) => {
+            started.push({
+              image: spec.imageId,
+              env: { MODE: spec.env.MODE ?? "" },
+              ...(spec.network === undefined ? {} : { network: spec.network }),
+            });
+            return cli.runIdle(spec);
+          },
+        },
+      },
+    };
+    return { ...f, wiring, inspected, started, target };
+  }
+
+  function consent(root: string, enabled: boolean): void {
+    const config = process.env.XDG_CONFIG_HOME as string;
+    writeFileSync(
+      join(config, "squeal", "containers.json"),
+      JSON.stringify({ allow: { [root]: { enabled, targets: ["blocked"] } } }),
+    );
+  }
+
+  function open() {
+    const fake = { current: null as ReturnType<typeof liveWiring> | null };
+    const made = setup(
+      (r) => ({ allow: { [r]: { enabled: true, targets: ["blocked"] } } }),
+      (r) => {
+        fake.current = liveWiring(r);
+        return fake.current.wiring;
+      },
+    );
+    const runner = made.node[0];
+    if (runner === undefined || fake.current === null) throw new Error("no runner");
+    return { ...made, runner, f: fake.current };
+  }
+
+  const RUN = () => ({
+    runId: "r1",
+    logDir: temp("squeal-container-guard-log-"),
+    timeoutMs: 10_000,
+  });
+
+  /** The container `ENV` the environment keys. */
+  async function keyedEnv(runner: RecoveringRunner) {
+    const [environment] = await runner.environment();
+    return JSON.parse(environment?.resolvedConfig ?? "{}").container?.env;
+  }
+
+  it("replaces the container and re-keys when the declared target changes", async () => {
+    const { runner, f } = open();
+    expect(await runner.testFiles()).toEqual([f.inside("blocked")]);
+    expect(f.started).toEqual([{ image: "sha256:old", env: { MODE: "old" } }]);
+    expect(await keyedEnv(runner)).toEqual([["MODE", "old"]]);
+    f.target.current = {
+      ...f.target.current,
+      image: "new",
+      env: { MODE: "new" },
+      network: "squeal-net",
+      keyMode: "image-id",
+    };
+    expect(await runner.invalidate([])).toEqual({ recreatedProjects: ["blocked"] });
+    expect(f.inspected).toContain("new");
+    expect(f.started.at(-1)).toEqual({
+      image: "sha256:new",
+      env: { MODE: "new" },
+      network: "squeal-net",
+    });
+    expect(f.calls.filter((c) => c.startsWith("rm "))).toHaveLength(1);
+    const [environment] = await runner.environment();
+    expect(JSON.parse(environment?.resolvedConfig ?? "{}").container).toMatchObject({
+      keyMode: "image-id",
+      imageId: "sha256:new",
+      env: [["MODE", "new"]],
+    });
+    expect(f.states.at(-1)).toMatchObject({ state: "ready", keyMode: "image-id" });
+    // Unchanged since: the next batch keeps the container.
+    expect(await runner.invalidate([])).toEqual({ recreatedProjects: [] });
+    expect((await runner.run([f.inside("blocked")], RUN())).completedFiles).toEqual([
+      f.inside("blocked"),
+    ]);
+  });
+
+  it("stops with no Docker command when consent is withdrawn, and recovers when given again", async () => {
+    const { root, runner, f, notes } = open();
+    expect(await runner.testFiles()).toEqual([f.inside("blocked")]);
+    const inspections = f.inspected.length;
+    const starts = f.started.length;
+    consent(root, false);
+    expect(await runner.invalidate([])).toEqual({ recreatedProjects: ["blocked"] });
+    expect(f.calls.filter((c) => c.startsWith("rm "))).toHaveLength(1);
+    expect(f.states.at(-1)?.state).toBe("unconsented");
+    expect(notes.at(-1)).toMatch(/has not allowed/);
+    expect(notes.at(-1)).toMatch(/squeal setup/);
+    const [environment] = await runner.environment();
+    expect(environment?.runnerVersion).toBe("unavailable");
+    expect(await runner.testFiles()).toEqual([]);
+    const report = await runner.run([f.inside("blocked")], RUN());
+    expect(report.completedFiles).toEqual([]);
+    expect(report.failure).toMatch(/has not allowed/);
+    expect(await runner.invalidate([])).toEqual({ recreatedProjects: [] });
+    expect(await runner.recheck?.()).toEqual({ recreatedProjects: [] });
+    // No Docker command since the withdrawal.
+    expect(f.inspected).toHaveLength(inspections);
+    expect(f.started).toHaveLength(starts);
+    expect(existsSync(join(root, "blocked", "HOST_RAN"))).toBe(false);
+
+    consent(root, true);
+    expect(await runner.invalidate([])).toEqual({ recreatedProjects: ["blocked"] });
+    expect(f.states.at(-1)?.state).toBe("ready");
+    expect(f.started).toHaveLength(starts + 1);
+    expect((await runner.run([f.inside("blocked")], RUN())).completedFiles).toEqual([
+      f.inside("blocked"),
+    ]);
+  });
+});
