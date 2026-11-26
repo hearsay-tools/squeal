@@ -4,8 +4,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { compare } from "../../fs/compare.js";
 import type { CoreEnvironmentInputs } from "../../types/keys.js";
-import type { ContainerKeyMode } from "../../types/policy-containers.js";
-import type { RunnerEnvironment } from "../../types/runner.js";
+import type { ContainerTarget } from "../../types/policy-containers.js";
+import type { RunnerAdapter, RunnerEnvironment } from "../../types/runner.js";
 import { type DockerCli, guarded, type ImageInfo } from "./docker.js";
 
 /*
@@ -20,9 +20,12 @@ import { type DockerCli, guarded, type ImageInfo } from "./docker.js";
  *
  * `"build-content"`, the default, keys what a separate `docker build` of
  * the same inputs reproduces: the OS packages, the `dockerfileInputs`, the
- * image's and the target's env and the dependency services' image tags. So
- * a CI run of `squeal ci export` inside its own build matches a developer's.
- * `"image-id"` keys the exact local image ID and its single registry digest.
+ * target's env and the dependency services' image tags. The image's own
+ * `ENV` is not read: its build is keyed by those inputs, and a CI job inside
+ * the image has no Docker to inspect it with. So `squeal ci export` inside
+ * its own build (`localContainerKey`) matches a developer's managed run
+ * (review 0.1.644 B3). `"image-id"` keys the exact local image ID, its
+ * single registry digest and the image's env.
  */
 
 /** D1.4: runtime isolation only, never a key input. */
@@ -56,10 +59,7 @@ export interface ServiceImage {
   readonly repoDigests?: readonly string[];
 }
 
-/** Everything a container target's key is made from. */
-export interface ContainerKeyInputs {
-  readonly keyMode: ContainerKeyMode;
-  readonly image: ImageInfo;
+interface KeyInputsBase {
   readonly probe: ContainerProbe;
   /** Each `dockerfileInputs` path with its content's SHA-256, or `missing`. */
   readonly dockerfileInputs: readonly (readonly [string, string])[];
@@ -67,6 +67,11 @@ export interface ContainerKeyInputs {
   readonly targetEnv: Readonly<Record<string, string>>;
   readonly services: readonly ServiceImage[];
 }
+
+/** Everything a container target's key is made from; `build-content` reads no image. */
+export type ContainerKeyInputs =
+  | (KeyInputsBase & { readonly keyMode: "build-content"; readonly image?: ImageInfo })
+  | (KeyInputsBase & { readonly keyMode: "image-id"; readonly image: ImageInfo });
 
 /** The `container` field of a container environment's resolved config. */
 export type ContainerKeyDescriptor =
@@ -102,7 +107,6 @@ export function keyedEnv(
 
 /** The descriptor of `inputs` under its key mode. */
 export function containerKeyDescriptor(inputs: ContainerKeyInputs): ContainerKeyDescriptor {
-  const env = keyedEnv(inputs.image.env, inputs.targetEnv);
   const services = [...inputs.services].sort((a, b) => compare(a.service, b.service));
   if (inputs.keyMode === "image-id") {
     const digests = inputs.image.repoDigests;
@@ -110,7 +114,7 @@ export function containerKeyDescriptor(inputs: ContainerKeyInputs): ContainerKey
       keyMode: "image-id",
       imageId: inputs.image.id,
       repoDigest: digests.length === 1 ? (digests[0] ?? null) : null,
-      env,
+      env: keyedEnv(inputs.image.env, inputs.targetEnv),
       services: services.map((s) => [s.service, s.id ?? "not-running"]),
     };
   }
@@ -121,7 +125,7 @@ export function containerKeyDescriptor(inputs: ContainerKeyInputs): ContainerKey
       hash: sha256(inputs.probe.packages.join("\n")),
     },
     dockerfileInputs: [...inputs.dockerfileInputs].sort(([a], [b]) => compare(a, b)),
-    env,
+    env: keyedEnv([], inputs.targetEnv),
     services: services.map((s) => [
       s.service,
       s.image ?? "not-running",
@@ -208,6 +212,18 @@ export async function probeContainer(cli: DockerCli, containerId: string): Promi
   return { nodeVersion, platform, arch, ...parsePackages(listed.stdout) };
 }
 
+/**
+ * This machine as `probeContainer` reads a container, with no Docker: what
+ * a CI job running inside the target's image shows of itself (D7.2).
+ */
+export async function probeLocalContainer(): Promise<ContainerProbe> {
+  const listed = await commandText("sh", ["-c", PACKAGES]).catch((error: Error) => {
+    throw new Error(`this machine's packages could not be listed: ${error.message}`);
+  });
+  const { version: nodeVersion, platform, arch } = process;
+  return { nodeVersion, platform, arch, ...parsePackages(listed) };
+}
+
 /** The probe's package output: the manager's name on the first line, then its lines. */
 export function parsePackages(text: string): Pick<ContainerProbe, "packageManager" | "packages"> {
   const [first = "none", ...rest] = text.split("\n");
@@ -229,7 +245,7 @@ export async function inspectServices(
   cli: Pick<DockerCli, "imageInspect">,
   services: readonly string[],
   composeProject: string | undefined,
-  listImage: (args: readonly string[]) => Promise<string> = dockerText,
+  listImage: (args: readonly string[]) => Promise<string> = (args) => commandText("docker", args),
 ): Promise<ServiceImage[]> {
   const found: ServiceImage[] = [];
   for (const service of services) {
@@ -255,11 +271,101 @@ export async function inspectServices(
   return found;
 }
 
-function dockerText(args: readonly string[]): Promise<string> {
+function commandText(command: string, args: readonly string[]): Promise<string> {
+  const options = { timeout: PROBE_MS, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 } as const;
   return new Promise((resolve, reject) => {
-    execFile("docker", args, { timeout: PROBE_MS, encoding: "utf8" }, (error, stdout) =>
+    execFile(command, args, options, (error, stdout) =>
       error === null ? resolve(stdout) : reject(error),
     );
+  });
+}
+
+const SLOT_PLACEHOLDER = /\{(slot|slot0|worktreeSlot)\}/;
+
+/**
+ * A target's `env` as a CI job inside its image keys it: a value with a slot
+ * placeholder stays the template, as a managed run keys it; any other takes
+ * the job's own value, and is left out when the job does not set it. So a
+ * job run with another value, or without one, never matches a developer's
+ * key. Slot and launch variables key nothing.
+ */
+export function ciContainerTargetEnv(
+  targetEnv: Readonly<Record<string, string>>,
+  ciEnv: NodeJS.ProcessEnv,
+): Record<string, string> {
+  const skipped = new Set([...SLOT_VARIABLES, ...LAUNCH_VARIABLES]);
+  const resolved: [string, string][] = [];
+  for (const [name, value] of Object.entries(targetEnv)) {
+    if (skipped.has(name)) continue;
+    const here = SLOT_PLACEHOLDER.test(value)
+      ? value
+      : Object.hasOwn(ciEnv, name)
+        ? ciEnv[name]
+        : undefined;
+    if (here !== undefined) resolved.push([name, here]);
+  }
+  return Object.fromEntries(resolved);
+}
+
+/** A container key: the `container` descriptor and the machine core. */
+export interface ContainerKey {
+  readonly descriptor: ContainerKeyDescriptor;
+  readonly core: CoreEnvironmentInputs;
+}
+
+/**
+ * D7.2, review 0.1.644 B3: the key a CI job running inside `target`'s image
+ * gives its environments, with no Docker to ask: this machine's packages,
+ * the `dockerfileInputs` here, the job's values of the target's `env`, and
+ * each dependency service as not running. Under `build-content` it equals a
+ * developer's managed key of the same inputs. An `image-id` target cannot
+ * be read from inside, so it keys an image no inspection names, apart from
+ * every host and managed key.
+ */
+export async function localContainerKey(options: {
+  readonly target: ContainerTarget;
+  readonly root: string;
+  readonly squealVersion: string;
+  readonly env: NodeJS.ProcessEnv;
+  readonly probe?: () => Promise<ContainerProbe>;
+}): Promise<ContainerKey> {
+  const { target } = options;
+  const probe = await (options.probe ?? probeLocalContainer)();
+  const common = {
+    probe,
+    dockerfileInputs: hashInputs(options.root, target.dockerfileInputs),
+    targetEnv: ciContainerTargetEnv(target.env, options.env),
+    services: target.dependencyServices.map((service) => ({ service })),
+  };
+  const descriptor =
+    target.keyMode === "build-content"
+      ? containerKeyDescriptor({ ...common, keyMode: "build-content" })
+      : containerKeyDescriptor({ ...common, keyMode: "image-id", image: UNINSPECTED });
+  return { descriptor, core: containerCore(probe, options.squealVersion) };
+}
+
+/** The image an `image-id` key names when no Docker inspected it: no image's ID. */
+const UNINSPECTED: ImageInfo = {
+  id: "ci-uninspected",
+  repoDigests: [],
+  env: [],
+  architecture: "",
+  os: "",
+};
+
+/** `adapter` with its environments keyed under `key` (`applyContainerEnvironment`); all else unchanged. */
+export function wrapContainerEnvironmentAdapter(
+  adapter: RunnerAdapter,
+  key: ContainerKey,
+): RunnerAdapter {
+  const environment = async () =>
+    applyContainerEnvironment(await adapter.environment(), key.descriptor, key.core);
+  return new Proxy(adapter, {
+    get(target, property) {
+      if (property === "environment") return environment;
+      const value: unknown = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
   });
 }
 
