@@ -5,6 +5,7 @@ import {
 import type { NodeTestCoverage } from "../../runners/node-test/coverage.js";
 import { nodeTestTraits } from "../../runners/node-test/traits.js";
 import { NODE_TEST_ADAPTER_VERSION } from "../../runners/node-test/version.js";
+import type { ContainerWiring } from "../runner-host/container/index.js";
 import { createHostedNodeTest, type ProcessHost } from "../runner-host/process-host.js";
 import type { HostPolicy } from "../runner-host/protocol.js";
 import { runnerHostGone } from "../runner-host/proxy.js";
@@ -48,6 +49,8 @@ export interface NodeTestRunnersOptions {
    * remote lane (`DaemonRemote.wrap`); absent, every run is here.
    */
   readonly remote?: RemoteWrap;
+  /** Spec 027 D5 (row 027-06): the route of a consented container project; absent, it stays unknown. */
+  readonly containers?: ContainerWiring;
 }
 
 /** `DaemonRemote.wrap`: a runner with its remote tiers on the shared machine (spec 026 D8). */
@@ -113,6 +116,16 @@ function nodeTestRunner(
       project: { name: project.name, container: project.container },
       traits: nodeTestTraits({ tierSize: options.tierSize }),
       note: options.note,
+      ...(options.containers === undefined ? {} : { containers: options.containers }),
+      // Coverage stays off in a container, as on a remote (021 D12).
+      start: ({ tempDir }) => ({
+        options: { childEnv: options.childEnv ?? {}, process: { project, tempDir } },
+        policy: () => ({
+          ...NO_VITEST_POLICY,
+          tierSize: options.tierSize(),
+          ...(options.inputs === undefined ? {} : { inputs: options.inputs() }),
+        }),
+      }),
     });
   }
   const adapterOptions: NodeTestAdapterOptions = {

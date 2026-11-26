@@ -190,8 +190,10 @@ export function hashInputs(root: string, paths: readonly string[]): [string, str
 const PROBE_MS = 15_000;
 const NODE_PROBE =
   "process.stdout.write([process.version,process.platform,process.arch].join(' '))";
+/** dpkg's format, `${Package}=${Version}`, built so no JS placeholder is read in it. */
+const DPKG_FORMAT = ["$", "{Package}=", "$", "{Version}\\n"].join("");
 const PACKAGES =
-  "if command -v dpkg-query >/dev/null 2>&1; then echo dpkg; dpkg-query -W -f='${Package}=${Version}\\n'; " +
+  `if command -v dpkg-query >/dev/null 2>&1; then echo dpkg; dpkg-query -W -f='${DPKG_FORMAT}'; ` +
   "elif command -v apk >/dev/null 2>&1; then echo apk; apk info -vv 2>/dev/null; else echo none; fi";
 
 /** Reads the container's Node and its OS package inventory; throws when Node does not answer. */

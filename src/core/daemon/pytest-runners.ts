@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { createPytestAdapter } from "../../runners/pytest/adapter.js";
 import { pytestTraits } from "../../runners/pytest/traits.js";
 import { PYTEST_ADAPTER_VERSION } from "../../runners/pytest/version.js";
+import type { ContainerWiring } from "../runner-host/container/index.js";
 import {
   createHostedPytest,
   type ProcessHost,
@@ -50,6 +51,8 @@ export interface PytestRunnersOptions {
   readonly idleMs?: () => number;
   /** Spec 026 D8.2 (row 026-11): puts a project's runner on the remote lane; absent, every run is here. */
   readonly remote?: RemoteWrap;
+  /** Spec 027 D5 (row 027-06): the route of a consented container project; absent, it stays unknown. */
+  readonly containers?: ContainerWiring;
 }
 
 /**
@@ -85,6 +88,24 @@ function pytestRunner(project: PytestProject, options: PytestRunnersOptions): Re
       project: { name: project.name, container: project.container },
       traits: pytestTraits({ tierSize: options.tierSize, batchSize: () => batchSize }),
       note: options.note,
+      ...(options.containers === undefined ? {} : { containers: options.containers }),
+      // As a local host's start, with the temp and cache directories in the mounted cache.
+      start: ({ tempDir, cacheDir }) => {
+        const topic = pytestEnvironmentTopic(project);
+        const latest = options.latestNote?.(topic);
+        return {
+          options: {
+            childEnv: options.childEnv ?? {},
+            process: {
+              project,
+              tempDir,
+              cacheDir,
+              ...(latest === undefined ? {} : { latestNotes: { [topic]: latest } }),
+            },
+          },
+          policy: () => ({ ...NO_VITEST_POLICY, tierSize: options.tierSize() }),
+        };
+      },
     });
   }
   // A host reads the files per batch from the project, as here (`HostedPytestOptions`).
