@@ -3024,6 +3024,26 @@ Spec folder `specifications/026-tiered-and-cloud-execution/` (stage: approved, h
 | 026-q4 reuse `runInGroup` in `remote/providers/hook.ts` | proposed (`/quality` scan `8880743e`, 2026-11-24; awaits human approval) | Move `runInGroup` from `lint/provider/oxlint/spawn.ts` to a shared process module and reuse in `remote/providers/hook.ts` (~55 lines saved) | Both callers share one group spawner; hook + oxlint tests pass |
 | 026-q5 share `nodeTestStart` / `pytestStart` from `process-host.ts` | proposed (`/quality` scan `8880743e`, 2026-11-24; awaits human approval) | Export start-option builders from `runner-host/process-host.ts` and drop duplicate copies (`NO_VITEST_POLICY`, etc.) in `daemon/{node-test,pytest}-runners.ts` (~35 lines saved) | Single builder per runner; daemon runner tests pass |
 
+## Feature 027: Docker execution
+
+Spec folder `specifications/027-docker-execution/` (stage: research, human 2026-11-26: research all Docker execution options for `saas-boilerplate` and general containerized suites). Coordinator `017fb3d3`.
+
+### Wave 0: research (`specifications/027-docker-execution/research/README.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 027-01 research: Docker execution architectures and `saas-boilerplate` Python suites | running (2026-11-26, `claude` `opus` `high`) | Topic `docker-execution`: host `uv` + Compose DB vs per-batch `compose run` vs `docker exec` runner-host (Spec 021/026 seam); live probes on temp copies of `saas-boilerplate` `backend` and `workers`; parallel DB/worktree isolation; image/mount keying; safety and consent | `research/docker-execution.md` and probes committed; zero probe containers/volumes/files left |
+
+## Feature 028: Jest runner
+
+Spec folder `specifications/028-jest-runner/` (stage: research, human 2026-11-26: research Jest runner adapter for `saas-boilerplate`'s 17 Jest 29 projects and general Jest 29/30 suites). Coordinator `017fb3d3`.
+
+### Wave 0: research (`specifications/028-jest-runner/research/README.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 028-01 research: Jest runner adapter and multi-project monorepos | running (2026-11-26, `claude` `opus` `high`) | Topic `jest-runner`: `saas-boilerplate` 17-project `@nx/jest` anatomy; subprocess vs warm `@jest/core` host vs `--watch`; closure and module observation inside `jest-runtime` VM sandbox; streaming custom reporter, identity, coverage; env keying and Spec 016 seams | `research/jest-runner.md` and probes committed; `~/projects/saas-boilerplate` untouched |
+
 ## Later
 
 - Main CI timing sighting (coordinator 3d192245, 2026-11-14): `test/cli/wait-stale-start.test.ts` "with a spawn mark alone: named and pathless read as with no mark" timed out at its 5 s limit on Node 26 (3/3), main CI 43621729125 attempt 1 on `e4a8d981a` (0.1.496); attempt 2 passed, and it passed locally 6/6 at load 7.4. The test runs several `status --wait 1500` commands in sequence, close to the limit. No row yet.
