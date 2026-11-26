@@ -70,8 +70,8 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  * (`syncGit`) brings `.git` to the worktree's Git state, so it waits for
  * the runs' leases as `refreshGit` does.
  *
- * Row 026-30: once the exit began (`exitSignal`), no Git refresh nor
- * write starts, and one waiting for the runs' leases is refused at once,
+ * Row 026-30: once the exit began (`exitSignal`), a Git refresh only
+ * reads the worktree's Git state here and no write starts, and one waiting for the runs' leases is refused at once,
  * so a lane that no longer runs anything holds the exit up no more.
  */
 
@@ -484,7 +484,8 @@ export function shareMachine(options: ShareOptions): MachineShare {
     },
     async refreshGit(signal) {
       const m = machine;
-      if (m?.syncGit === undefined || exited()) return;
+      if (m?.syncGit === undefined) return;
+      // Row 026-30: after the exit began only this read runs, so `gitCurrent` stays true to it.
       // No SSH while the worktree's Git state is the one last found there; the read here always.
       if (await m.syncGit(null, signal)) return;
       if (!awake || exited() || signal?.aborted === true) return;

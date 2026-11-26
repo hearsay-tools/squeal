@@ -91,13 +91,14 @@ async function reached() {
 }
 
 describe("a machine's Git work at the daemon's exit (row 026-30)", () => {
-  it("aborts exitSignal at beginExit, and a refresh after it reaches nothing", async () => {
+  it("aborts exitSignal at beginExit, and a refresh after it only reads the Git state here", async () => {
     const share = await reached();
     expect(share.exitSignal.aborted).toBe(false);
     share.beginExit();
     expect(share.exitSignal.aborted).toBe(true);
     await share.refreshGit();
-    expect(syncs).toEqual([]);
+    // Only the read here, with no ssh: nothing reaches the machine.
+    expect(syncs).toEqual([null]);
   });
 
   it("refuses at once a refresh waiting for a run's Git lease, and releases while the run holds it", async () => {
