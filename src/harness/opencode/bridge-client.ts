@@ -39,9 +39,29 @@ const CARRIED_SWITCH = "SQUEAL_CARRIED_NODE_USE_ENV_PROXY";
 /** Run after Node's start, before the entry: puts the switch back for what the bridge spawns. */
 const RESTORE_SWITCH = `data:text/javascript,process.env.${PROXY_SWITCH}=process.env.${CARRIED_SWITCH};delete process.env.${CARRIED_SWITCH}`;
 
+/** Node's compile cache directory switch, and the mark that says Squeal set it (spec 025 D7.2). */
+const CACHE_SWITCH = "NODE_COMPILE_CACHE";
+const OWN_CACHE_MARK = "SQUEAL_OWN_COMPILE_CACHE";
+
 /**
- * The bridge's arguments and environment: `env` itself, or, when it sets
- * `NODE_USE_ENV_PROXY`, `env` with the switch carried past Node's start and
+ * Row 025-20: `env` with Node's compile cache in Squeal's own directory,
+ * `$XDG_CACHE_HOME/squeal/compile-cache` or `$HOME/.cache/squeal/compile-cache`,
+ * marked `SQUEAL_OWN_COMPILE_CACHE=1`, as `plugins/claude-code/hooks/run` sets
+ * it, so the daemon a bridge starts leaves it out of test processes. `env`
+ * itself when it sets a cache, even an empty one (the user's), or names no
+ * absolute base. Node makes the directory; where it cannot, it runs uncached.
+ */
+function withOwnCompileCache(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  if (env[CACHE_SWITCH] !== undefined) return env;
+  const base = env.XDG_CACHE_HOME || (env.HOME ? `${env.HOME}/.cache` : "");
+  if (!base.startsWith("/")) return env;
+  return { ...env, [CACHE_SWITCH]: `${base}/squeal/compile-cache`, [OWN_CACHE_MARK]: "1" };
+}
+
+/**
+ * The bridge's arguments and environment: `env` with Squeal's own compile
+ * cache when it sets none (`withOwnCompileCache`), and, when it sets
+ * `NODE_USE_ENV_PROXY`, with the switch carried past Node's start and
  * restored by a preload. The bridge makes no HTTP request, so it skips the
  * proxy setup; the daemon it may spawn, and so the tests that daemon runs,
  * still inherit the switch, as spec 001 D11 has the hook's environment
@@ -49,9 +69,10 @@ const RESTORE_SWITCH = `data:text/javascript,process.env.${PROXY_SWITCH}=process
  */
 export function bridgeStart(
   entry: string,
-  env: NodeJS.ProcessEnv,
+  userEnv: NodeJS.ProcessEnv,
 ): { args: string[]; env: NodeJS.ProcessEnv } {
   const flags = ["--disable-warning=ExperimentalWarning"];
+  const env = withOwnCompileCache(userEnv);
   const value = env[PROXY_SWITCH];
   if (value === undefined) return { args: [...flags, entry], env };
   const { [PROXY_SWITCH]: _switch, ...rest } = env;
