@@ -19,7 +19,9 @@ repository root unless a probe says otherwise.
 | `profile.mjs`, `profile-main.txt` | `--cpu-prof` profiles split into Node start, top-level evaluation and hook work |
 | `builtins.mjs`, `builtins-host.txt` | Start cost of each `node:` builtin, alone and at the margin |
 | `parse-size.mjs` | Read-and-compile cost of the bundles of several releases |
-| `boat.sh` | The quiet-host run on a boat.dev sandbox |
+| `boat.sh`, `remote.sh`, `boat/run1/` | The quiet-host run on a boat.dev sandbox (9950X): parity, builtins, phases, variants, parse size |
+| `rounds.sh`, `summarize-rounds.mjs`, `boat/rounds/` | Four interleaved rounds of the main variants on a second sandbox (9700X), pooled |
+| `host/` | Development-host phases and variants (load 2.1 to 3.3), raw samples and summaries |
 
 Run a probe test: `timeout 600 pnpm exec vitest run --config docs/specifications/025-performance/research/probes/hook-latency/bundles/vitest.probe.config.ts`
 with the `PROBE_*` variables its header lists.
