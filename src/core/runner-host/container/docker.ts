@@ -108,8 +108,11 @@ export function guarded(
     if (FORBIDDEN.has(flag) || FORBIDDEN_COMMANDS.has(option) || /^-v./.test(option)) {
       throw new Error(`squeal never runs docker ${command} with ${option}`);
     }
-    if (flag === "--mount" && !option.includes("type=bind,")) {
+    if (flag === "--mount" && !option.startsWith("--mount=type=bind,")) {
       throw new Error(`squeal mounts only with --mount type=bind, not ${option}`);
+    }
+    if (flag === "--pull" && option !== "--pull=never") {
+      throw new Error(`squeal never runs docker ${command} with ${option}`);
     }
   }
   if (command === "run") {
