@@ -17,7 +17,7 @@ import { clearRecord, markExit, recordRegistration } from "../presence/events.js
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import type { RunnerHostLaunch } from "../runner-host/channel.js";
-import type { ContainerWiring } from "../runner-host/container/index.js";
+import { bundleRootFor, type ContainerWiring } from "../runner-host/container/index.js";
 import type { DaemonRemote } from "../runner-host/remote/daemon-lane.js";
 import { REMOTE_SUMMARY_TOPIC } from "../runner-host/remote/summary.js";
 import { hostClock } from "../scheduler/clock.js";
@@ -482,11 +482,19 @@ class Daemon {
         })
         .catch((error: unknown) => this.#log(`container sweep skipped: ${message(error)}`));
     }
+    // Review 0.1.644 B1: the whole bundle is mounted, so the host finds its runtime files.
+    const bundleDir = bundleRootFor(launch.cli);
+    if (bundleDir === null) {
+      this.#log(
+        `containers: no container route: ${launch.cli} is not inside a complete Squeal bundle (its observe/, jest/ and pytest/ runtime files are missing)`,
+      );
+      return {};
+    }
     const summaries = containerSummaries();
     const containers: ContainerWiring = {
       containers: () => this.#policy.containers,
       worktreeId,
-      bundleDir: dirname(launch.cli),
+      bundleDir,
       squealCliPath: launch.cli,
       stateDir,
       logRoot,
