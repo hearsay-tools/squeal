@@ -96,7 +96,7 @@ export function containerTargets(value: unknown): string | Kept {
 }
 
 /** The runner lists whose projects may name a `container`. */
-const RUNNER_LISTS = ["nodeTest", "pytest"] as const;
+const RUNNER_LISTS = ["nodeTest", "pytest", "jest"] as const;
 
 /**
  * D4: each project that names a `container` `containers` does not hold is

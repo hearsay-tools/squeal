@@ -2,6 +2,7 @@ import type { CheckGroup } from "./check-groups.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import type { LintTool } from "./lint.js";
 import type { ContainerTarget } from "./policy-containers.js";
+import type { JestProject } from "./policy-jest.js";
 
 /**
  * Project policy from `squeal.config.json` at the repository root.
@@ -118,6 +119,13 @@ export interface Policy {
    * skipped (001 D11). Default `[]`.
    */
   readonly pytest: readonly PytestProject[];
+  /**
+   * Spec 028 D1: Jest projects, by config file, validated beside the other
+   * runners' projects. A bad entry, or one whose name another project of
+   * any runner holds, is a problem with that project skipped (001 D11).
+   * Default `[]`.
+   */
+  readonly jest: readonly JestProject[];
   /**
    * Spec 027 D4: named container targets, which a project names with its
    * `container` key. A bad target is a problem and is left out (001 D11);
@@ -483,6 +491,7 @@ export const DEFAULT_POLICY: Policy = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
+  jest: [],
   containers: {},
   vitest: { excludeProjects: [], exclude: [] },
   slow: {

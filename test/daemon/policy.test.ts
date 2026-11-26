@@ -75,6 +75,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null, hostIdleMinutes: 0 },
       nodeTest: [],
       pytest: [],
+      jest: [],
       // Spec 027 D4 (row 027-04); its own tests are test/daemon/policy-containers.test.ts.
       containers: DEFAULT_POLICY.containers,
       vitest: { excludeProjects: [], exclude: [] },
@@ -297,4 +298,55 @@ describe("loadPolicy pytest slots (spec 027 D2.3)", () => {
       ]);
     },
   );
+});
+
+describe("loadPolicy jest (spec 028 D1)", () => {
+  const entry = (name: string) => ({ name, config: `${name}/jest.config.js` });
+
+  it("loads a jest entry with its defaults", () => {
+    const { policy, problems } = loadPolicy(rootWith(JSON.stringify({ jest: [entry("web")] })));
+    expect(problems).toEqual([]);
+    expect(policy.jest).toEqual([{ ...entry("web"), include: [], exclude: [], args: [], env: {} }]);
+  });
+
+  it("skips a jest entry whose name another project of any runner holds", () => {
+    const { policy, problems } = loadPolicy(
+      rootWith(
+        JSON.stringify({
+          nodeTest: [{ name: "tool", include: ["test/*.mjs"] }],
+          pytest: [{ name: "api", include: ["tests/*.py"] }],
+          jest: [entry("tool"), entry("api"), entry("web"), entry("web")],
+        }),
+      ),
+    );
+    expect(policy.jest.map((p) => p.name)).toEqual(["web"]);
+    expect(policy.nodeTest.map((p) => p.name)).toEqual(["tool"]);
+    expect(policy.pytest.map((p) => p.name)).toEqual(["api"]);
+    expect(problems).toEqual([
+      // The list's own rule (`projectEntries`) comes first.
+      '"jest[3].name" repeats "web" of an earlier project; it is skipped',
+      ...["tool", "api"].map(
+        (name) =>
+          `"jest" project "${name}" has the name of another project, and names are unique across runners; it is skipped`,
+      ),
+    ]);
+  });
+
+  it("skips a jest entry naming a container no target declares (spec 027 D4)", () => {
+    const { policy, problems } = loadPolicy(
+      rootWith(
+        JSON.stringify({
+          containers: { web: { image: "sb/web" } },
+          jest: [
+            { ...entry("in"), container: "web" },
+            { ...entry("out"), container: "missing" },
+          ],
+        }),
+      ),
+    );
+    expect(policy.jest.map((p) => [p.name, p.container])).toEqual([["in", "web"]]);
+    expect(problems).toEqual([
+      `"jest" project "out" names container "missing", which "containers" does not declare; it is skipped`,
+    ]);
+  });
 });
