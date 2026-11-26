@@ -140,13 +140,23 @@ describe("runner traits: each runner kind's statement", () => {
     const vitest = vitestTraits({ widths: () => table, omitted: () => 0 });
     const processKind = nodeTestTraits({ tierSize: () => tierSize });
     const pytest = pytestTraits({ tierSize: () => tierSize });
-    expect([vitest.tierWidth(A, 8), processKind.tierWidth(A, 8), pytest.tierWidth(A, 1)]).toEqual([
+    expect([vitest.tierWidth(A, 8), processKind.tierWidth(A, 8), pytest.tierWidth(A, 8)]).toEqual([
       8, 4, 4,
     ]);
     table = VITEST_TABLE;
     tierSize = 6;
-    expect([vitest.tierWidth(A, 8), processKind.tierWidth(A, 8), pytest.tierWidth(A, 1)]).toEqual([
+    expect([vitest.tierWidth(A, 8), processKind.tierWidth(A, 8), pytest.tierWidth(A, 8)]).toEqual([
       2, 6, 6,
+    ]);
+  });
+
+  // Row 026-33 (#292): a run of node:test or pytest starts no more processes than its grant.
+  it.each([
+    ["node:test", nodeTestTraits({ tierSize: () => 4 })],
+    ["pytest", pytestTraits({ tierSize: () => 4 })],
+  ])("%s runs runner.tierSize wide at a larger grant and the grant wide at a smaller one", (_, traits) => {
+    expect([8, 4, 3, 2, 1, 0].map((grant) => traits.tierWidth(A, grant))).toEqual([
+      4, 4, 3, 2, 1, 1,
     ]);
   });
 });

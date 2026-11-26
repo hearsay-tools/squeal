@@ -68,7 +68,7 @@ export async function runProject(
     logDir: join(runOptions.logDir, "pytest", encodeURIComponent(project.name)),
     timeoutMs: runOptions.timeoutMs,
     // A group's tier starts every file it holds, each alone (004 D2, 007 D6, 019 D3).
-    ...(options.concurrency === undefined || inGroup ? {} : { concurrency: options.concurrency() }),
+    ...concurrencyOf(inGroup, options.concurrency?.(), runOptions.workers),
     ...(options.batchSize === undefined ? {} : { batchSize: options.batchSize() }),
     ...(inGroup ? { alone: () => true } : {}),
     ...(options.cacheDir === undefined ? {} : { cacheDir: options.cacheDir }),
@@ -92,6 +92,22 @@ export async function runProject(
           skippedFiles: run.skippedFiles,
         };
   return { kind: "ran", run, report };
+}
+
+/**
+ * The processes a run starts at once (row 026-33, #292): the project's
+ * concurrency, no more than the tier's grant, `workers`, at least 1; none
+ * stated in a group's run, which starts every file alone, or with neither.
+ */
+function concurrencyOf(
+  inGroup: boolean,
+  size: number | undefined,
+  workers: number | undefined,
+): { concurrency?: number } {
+  if (inGroup) return {};
+  if (workers === undefined) return size === undefined ? {} : { concurrency: size };
+  const granted = Math.max(1, Math.floor(workers));
+  return { concurrency: size === undefined ? granted : Math.min(size, granted) };
 }
 
 /**
