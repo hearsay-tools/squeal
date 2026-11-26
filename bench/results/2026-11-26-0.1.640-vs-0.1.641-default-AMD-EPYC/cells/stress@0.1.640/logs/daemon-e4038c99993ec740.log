@@ -1,0 +1,28 @@
+2026-11-26T18:56:47.228Z [99328] squeal daemon: vitest could not start: Failed to load custom CoverageProviderModule from /home/user/plugin-0/dist/coverage/provider.mjs; every check of this worktree is unknown until the config loads
+2026-11-26T18:56:48.142Z [99328] squeal daemon: serving /home/user/results/cells/stress@0.1.640/work/wt0 on /home/user/results/cells/stress@0.1.640/work/run/squeal-e4038c99993ec740.sock
+2026-11-26T18:56:48.856Z [99328] squeal daemon: full integrity check: ok
+2026-11-26T18:57:46.195Z [99328] squeal daemon: code store: last minute: 46 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T18:57:51.326Z [99328] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 218 to 176 MiB in a 75 ms pause
+2026-11-26T19:03:46.147Z [99328] squeal daemon: hook writes: 23 taken, queue wait p95 1 ms max 1 ms
+2026-11-26T19:03:46.196Z [99328] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:04:46.145Z [99328] squeal daemon: hook writes: 48 taken, queue wait p95 3 ms max 3 ms
+2026-11-26T19:04:46.195Z [99328] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:05:46.145Z [99328] squeal daemon: hook writes: 46 taken, queue wait p95 2 ms max 6 ms
+2026-11-26T19:05:46.196Z [99328] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:06:46.146Z [99328] squeal daemon: hook writes: 41 taken, queue wait p95 3 ms max 3 ms
+2026-11-26T19:06:46.197Z [99328] squeal daemon: code store: last minute: 8 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:07:46.149Z [99328] squeal daemon: hook writes: 48 taken, queue wait p95 2 ms max 42 ms
+2026-11-26T19:07:46.197Z [99328] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:08:46.152Z [99328] squeal daemon: hook writes: 35 taken, queue wait p95 2 ms max 4 ms
+2026-11-26T19:08:46.198Z [99328] squeal daemon: code store: last minute: 11 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:09:46.153Z [99328] squeal daemon: hook writes: 48 taken, queue wait p95 2 ms max 4 ms
+2026-11-26T19:09:46.200Z [99328] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:10:46.153Z [99328] squeal daemon: hook writes: 52 taken, queue wait p95 2 ms max 4 ms
+2026-11-26T19:11:46.154Z [99328] squeal daemon: hook writes: 38 taken, queue wait p95 4 ms max 5 ms
+2026-11-26T19:11:46.201Z [99328] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:12:46.156Z [99328] squeal daemon: hook writes: 51 taken, queue wait p95 3 ms max 3 ms
+2026-11-26T19:12:46.201Z [99328] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:13:46.160Z [99328] squeal daemon: hook writes: 32 taken, queue wait p95 2 ms max 3 ms
+2026-11-26T19:13:46.201Z [99328] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-26T19:13:49.397Z [99328] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-26T19:13:49.542Z [99328] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
