@@ -238,20 +238,15 @@ function install(settings) {
    * given.
    */
   globalThis[Symbol.for("squeal.observeReset")] = (nextOut, nextSkip) => {
-    try {
-      flush();
-      seen.clear();
-      if (typeof nextOut !== "string" || nextOut === "") return;
-      if (Array.isArray(nextSkip)) settings.skip = nextSkip.filter((s) => typeof s === "string");
-      settings.out = nextOut;
-      skip = [nextOut, ...settings.skip].map(withSep);
-      output = outputIn(nextOut);
-      // What a child inherits names the same folder: `spawn.cjs` leaves another folder's settings alone.
-      const inherited = JSON.parse(process.env[VARIABLE] ?? "{}");
-      process.env[VARIABLE] = JSON.stringify({ ...inherited, out: nextOut, skip: settings.skip });
-    } catch {
-      // never the test's failure
-    }
+    flush();
+    seen.clear();
+    if (typeof nextOut !== "string" || nextOut === "") return;
+    if (Array.isArray(nextSkip)) settings.skip = nextSkip.filter((s) => typeof s === "string");
+    settings.out = nextOut;
+    skip = [nextOut, ...settings.skip].map(withSep);
+    output = outputIn(nextOut);
+    // What a child inherits names the same folder: `spawn.cjs` leaves another folder's settings alone.
+    process.env[VARIABLE] = JSON.stringify(settings);
   };
 
   /** Records `p`, and the kept target of any symlink on its way; `real` when it is one already. */
