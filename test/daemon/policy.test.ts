@@ -75,6 +75,8 @@ describe("loadPolicy (spec 001 D11)", () => {
       runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null, hostIdleMinutes: 0 },
       nodeTest: [],
       pytest: [],
+      // Spec 027 D4 (row 027-04); its own tests are test/daemon/policy-containers.test.ts.
+      containers: DEFAULT_POLICY.containers,
       vitest: { excludeProjects: [], exclude: [] },
       slow: {
         include: [],
