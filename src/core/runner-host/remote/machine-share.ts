@@ -69,6 +69,10 @@ import { closeMaster, controlSocket, multiplexed, type SshTarget } from "./ssh.j
  * Review 0.1.620 N1: a wake of a machine that keeps `.git` current
  * (`syncGit`) brings `.git` to the worktree's Git state, so it waits for
  * the runs' leases as `refreshGit` does.
+ *
+ * Row 026-30: once the exit began (`exitSignal`), no Git refresh nor
+ * write starts, and one waiting for the runs' leases is refused at once,
+ * so a lane that no longer runs anything holds the exit up no more.
  */
 
 /** What the machine asks of each lane on it: whether it may sleep, and its sleep (`RemoteLaneRunner`). */
@@ -128,6 +132,11 @@ export interface MachineShare {
    * already, and its `release`, as they are.
    */
   beginExit(): void;
+  /**
+   * Row 026-30: aborted once the daemon's exit began (`beginExit`), so a
+   * lane's wait for remote permits ends then and no Git refresh starts.
+   */
+  readonly exitSignal: AbortSignal;
   /** The daemon's exit: the shared connection ended and the machine released (`daemon-exit`). */
   release(): Promise<void>;
 }
@@ -197,6 +206,8 @@ export function shareMachine(options: ShareOptions): MachineShare {
         ? exiting.signal
         : AbortSignal.any([request.signal, exiting.signal]),
   };
+  /** The exit began (`beginExit`), or `release` with it. */
+  const exited = () => released || exiting.signal.aborted;
 
   const track = (write: () => void) => {
     try {
@@ -311,7 +322,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
   /** N1: resolves once no remote run holds the Git lease, `signal` aborted or the exit began. */
   const leaseFree = (signal?: AbortSignal): Promise<void> =>
     new Promise((resolve) => {
-      if (leased === 0 || released || signal?.aborted === true) return resolve();
+      if (leased === 0 || exited() || signal?.aborted === true) return resolve();
       quiet.push(resolve);
       signal?.addEventListener("abort", () => resolve(), { once: true });
     });
@@ -327,7 +338,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
     });
     try {
       await leaseFree(signal);
-      if (released) throw refused();
+      if (exited()) throw refused();
       return await write();
     } finally {
       gitWriting = null;
@@ -337,7 +348,7 @@ export function shareMachine(options: ShareOptions): MachineShare {
 
   /** N1: `m`'s `.git` brought to the worktree's Git state once no run holds the lease. */
   const writeGit = async (m: RemoteMachine, signal?: AbortSignal) => {
-    if (!awake || machine !== m) return;
+    if (!awake || machine !== m || exited()) return;
     await asWriter(async () => {
       if (awake && machine === m && signal?.aborted !== true) await m.syncGit?.(target(m), signal);
     }, signal);
@@ -418,15 +429,19 @@ export function shareMachine(options: ShareOptions): MachineShare {
     throw new FreshMachine(text);
   };
 
-  /** Every work in flight on the machine ended, then the connection closed and the machine released. */
-  const releaseOnce = async (): Promise<void> => {
-    released = true;
+  /** The exit began: the acquire in flight aborts, and a refresh or wake waiting for the leases writes nothing. */
+  const beginExit = () => {
     exiting.abort();
-    disarm();
-    // N1: a refresh or wake waiting for the runs' leases writes nothing now.
     const waiting = quiet;
     quiet = [];
     for (const resolve of waiting) resolve();
+  };
+
+  /** Every work in flight on the machine ended, then the connection closed and the machine released. */
+  const releaseOnce = async (): Promise<void> => {
+    released = true;
+    beginExit();
+    disarm();
     // A queued work, refused at its turn, still waits for those before it.
     await queue;
     await reaching?.catch(() => {});
@@ -469,10 +484,10 @@ export function shareMachine(options: ShareOptions): MachineShare {
     },
     async refreshGit(signal) {
       const m = machine;
-      if (m?.syncGit === undefined) return;
+      if (m?.syncGit === undefined || exited()) return;
       // No SSH while the worktree's Git state is the one last found there; the read here always.
       if (await m.syncGit(null, signal)) return;
-      if (!awake || released || signal?.aborted === true) return;
+      if (!awake || exited() || signal?.aborted === true) return;
       await serial(() => writeGit(m, signal), signal);
     },
     async gitLease() {
@@ -521,7 +536,8 @@ export function shareMachine(options: ShareOptions): MachineShare {
         ? { kind: "slept", ...named }
         : { kind: "busy", ...named, reason: slept.busy };
     },
-    beginExit: () => exiting.abort(),
+    beginExit,
+    exitSignal: exiting.signal,
     release() {
       releasing ??= releaseOnce();
       return releasing;
