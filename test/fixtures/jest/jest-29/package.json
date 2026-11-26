@@ -1,0 +1,7 @@
+{
+  "name": "squeal-jest-29-fixture",
+  "private": true,
+  "devDependencies": {
+    "jest": "29.7.0"
+  }
+}
