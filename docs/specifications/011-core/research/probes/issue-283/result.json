@@ -1,0 +1,62 @@
+[
+  {
+    "phase": "held",
+    "heldMethod": "invalidate",
+    "requested": null,
+    "holder": {
+      "kind": "listing",
+      "revision": 1,
+      "step": null
+    },
+    "text": "it waits while Squeal lists revision 1",
+    "extraTargetRuns": 0,
+    "extraListingCalls": 0
+  },
+  {
+    "phase": "released",
+    "heldMethod": "invalidate",
+    "requested": {
+      "revision": 1,
+      "queued": 1,
+      "coveredId": "9412605a-ca0a-4d2e-b5ec-8315f955f0f2"
+    },
+    "selected": [
+      {
+        "project": "",
+        "path": "test/target.test.ts"
+      }
+    ],
+    "targetCurrent": true,
+    "extraTargetRuns": 1
+  },
+  {
+    "phase": "held",
+    "heldMethod": "testFiles",
+    "requested": null,
+    "holder": {
+      "kind": "listing",
+      "revision": 1,
+      "step": null
+    },
+    "text": "it waits while Squeal lists revision 1",
+    "extraTargetRuns": 0,
+    "extraListingCalls": 1
+  },
+  {
+    "phase": "released",
+    "heldMethod": "testFiles",
+    "requested": {
+      "revision": 1,
+      "queued": 1,
+      "coveredId": "0cb79005-ad76-400f-bcdb-c868e3f0de9a"
+    },
+    "selected": [
+      {
+        "project": "",
+        "path": "test/target.test.ts"
+      }
+    ],
+    "targetCurrent": true,
+    "extraTargetRuns": 1
+  }
+]
