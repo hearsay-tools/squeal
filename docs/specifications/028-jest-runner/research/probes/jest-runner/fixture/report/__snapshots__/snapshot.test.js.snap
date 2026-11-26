@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`snap mismatch 1`] = `
+{
+  "v": 1,
+}
+`;
+
+exports[`snap obsolete 1`] = `"gone"`;
