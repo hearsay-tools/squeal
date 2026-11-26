@@ -12,6 +12,7 @@ import { slowCandidates } from "./candidates.js";
 import { type CodexRuntimeFact, codexRuntimeOutdated, readCodexRuntime } from "./codex-runtime.js";
 import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, type HarnessId, readHarnesses } from "./harnesses.js";
+import { type JestRunner, jestRunners } from "./jest.js";
 import { type PytestRunner, pytestRunners } from "./pytest.js";
 import { otherWorktrees, readJson, readRepoFacts } from "./repo.js";
 import { nodeTestProjects, readRunners, warmupOf } from "./runners.js";
@@ -78,6 +79,10 @@ export interface Runners {
   readonly pytest?: readonly PytestRunner[];
   /** Row 005-80: each pair of `pytest` projects that select the same test files. Absent from older plans. */
   readonly pytestOverlaps?: readonly PytestOverlap[];
+  /** Spec 028 D1.2: `config` when `squeal.config.json` lists `jest` projects; else what setup would seed. */
+  readonly jest?: readonly JestRunner[];
+  /** Spec 028 D1.2: the seed's notes on Jest configs it does not seed itself. Absent from older plans. */
+  readonly jestNotes?: readonly string[];
 }
 
 /**
@@ -109,7 +114,7 @@ export interface ConfigFact {
   /** What `loadPolicy` reports: unknown keys, wrong types, unreadable JSON. */
   readonly problems: readonly string[];
   /** Keys specs 002 to 005 added that the repository's evidence calls for and the file lacks. */
-  readonly missingKeys: readonly ("nodeTest" | "slow" | "pytest" | "vitest.exclude")[];
+  readonly missingKeys: readonly ("nodeTest" | "slow" | "pytest" | "jest" | "vitest.exclude")[];
 }
 
 export interface InstructionFile {
@@ -244,7 +249,8 @@ export async function readPlan(
   const nodeTest = nodeTestProjects(facts, policy, raw);
   const { projects } = nodeTest;
   const pytest = pytestRunners(facts, policy, raw, options.env);
-  const runners = readRunners(facts, nodeTest, pytest);
+  const jest = await jestRunners(facts, policy, raw, options.env);
+  const runners = readRunners(facts, nodeTest, pytest, jest);
   const exists = existsSync(join(root, POLICY_FILE));
   const slow = await slowCandidates(facts, policy, runners);
   const config: ConfigFact = {
@@ -262,10 +268,7 @@ export async function readPlan(
       slow.groups.some((g) => g.defaultSlow && (g.exclude?.kept.length ?? 1) > 0)
         ? ["slow" as const]
         : []),
-      // Spec 007 D1: only an absent key; init's default `pytest: []` is seeded over, not reported.
-      ...(exists && !(isRecord(raw) && "pytest" in raw) && pytest.some((p) => p.source === "seed")
-        ? ["pytest" as const]
-        : []),
+      ...(exists ? seededKeys(raw, runners) : []),
       // Row 005-70: an exclude candidate for Vitest not kept slow, and no `vitest.exclude`.
       ...(exists &&
       !(isRecord(raw) && isRecord(raw.vitest) && "exclude" in raw.vitest) &&
@@ -309,6 +312,20 @@ export async function readPlan(
     ],
   };
   return { plan, testFiles: universe };
+}
+
+/**
+ * Spec 007 D1 and 028 D1.2: the key of each runner setup would seed, when
+ * the config lacks it; init's default `pytest: []` is seeded over, not reported.
+ */
+function seededKeys(raw: unknown, runners: Runners): ("pytest" | "jest")[] {
+  const absent = (key: string) => !(isRecord(raw) && key in raw);
+  const seeds = (list: readonly { readonly source: string }[] = []) =>
+    list.some((p) => p.source === "seed");
+  return [
+    ...(absent("pytest") && seeds(runners.pytest) ? ["pytest" as const] : []),
+    ...(absent("jest") && seeds(runners.jest) ? ["jest" as const] : []),
+  ];
 }
 
 async function codexTrust(

@@ -8,6 +8,7 @@ import { blockText, resolved, unfindableBlock, withBlock, writeBlockFile } from 
 import { editConfig, readConfig, readOrEmpty } from "./config-edit.js";
 import { addExcludes } from "./exclude.js";
 import { rewordGates } from "./gates.js";
+import { writeJestSeed } from "./jest.js";
 import { readPlan, type SetupPlan } from "./plan.js";
 import { writePytestSeed } from "./pytest.js";
 import { asDirectoryGlob, directoryIn, holdsTestFile, selectsAny } from "./test-globs.js";
@@ -282,5 +283,6 @@ function applyChoices(
       ),
     );
   lines.push(...writePytestSeed(root, plan));
+  lines.push(...writeJestSeed(root, plan));
   return lines;
 }

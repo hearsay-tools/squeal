@@ -4,6 +4,7 @@ import { vitestBelowRoot, vitestDetected } from "../../core/daemon/runner.js";
 import { isRecord } from "../../core/fs/json.js";
 import type { NodeTestProject, Policy } from "../../core/types/policy.js";
 import { type NodeTestSeed, seedNodeTest } from "../node-test-seed.js";
+import type { JestRunners } from "./jest.js";
 import type { NodeTestLeftOut, PytestOverlap, Runners, Warmup } from "./plan.js";
 import type { PytestRunner } from "./pytest.js";
 import type { RepoFacts } from "./repo.js";
@@ -81,6 +82,7 @@ export function readRunners(
   facts: RepoFacts,
   nodeTest: ReturnType<typeof nodeTestProjects>,
   pytest: readonly PytestRunner[],
+  jest: JestRunners = { projects: [], notes: [] },
 ): Runners {
   return {
     vitest: vitestDetected(facts.root),
@@ -94,6 +96,8 @@ export function readRunners(
     nodeTestLeftOut: nodeTest.leftOut,
     pytest,
     pytestOverlaps: pytestOverlaps(facts, pytest),
+    jest: jest.projects,
+    jestNotes: jest.notes,
   };
 }
 

@@ -9,18 +9,7 @@ import type { CodexTrust, Runners, SetupPlan, Warmup } from "./plan.js";
 export function formatPlan(plan: SetupPlan): string {
   const lines = [`Squeal setup plan for ${plan.root}`, "", "Harnesses:"];
   for (const h of plan.harnesses) lines.push(...harnessLines(h));
-  const nodeTest = plan.runners.nodeTest.map(
-    (p) => `${p.name}${p.source === "seed" ? " (squeal init would seed it)" : ""}`,
-  );
-  const pytest = (plan.runners.pytest ?? []).map(
-    (p) => `pytest ${p.name}${p.source === "seed" ? " (squeal setup would seed it)" : ""}`,
-  );
-  lines.push(
-    "",
-    `Runners: ${[plan.runners.vitest ? "Vitest" : null, ...nodeTest.map((n) => `node:test ${n}`), ...pytest].filter((r) => r !== null).join(", ") || "none found"}`,
-    ...(plan.runners.pytest ?? []).flatMap((p) => p.notes.map((n) => `  note: ${n}`)),
-    ...gapLines(plan.runners),
-  );
+  lines.push("", ...runnerLines(plan.runners));
   const config = plan.config;
   lines.push(
     `Config: ${config.path} ${
@@ -124,6 +113,26 @@ function harnessLines(h: HarnessFact): string[] {
     // Spec 024 D6: Antigravity runs no hook of a plugin its config.json disables.
     ...(h.plugin?.disabled === true ? [`    disabled: ${ANTIGRAVITY_DISABLED}`] : []),
     ...(h.onPath && h.plugin === null ? h.installCommands.map((c) => `    install: ${c}`) : []),
+  ];
+}
+
+/** The runners found, each seeded project's notes, then what the config leaves out or runs twice. */
+function runnerLines(runners: Runners): string[] {
+  const seeds = (by: string) => (p: { name: string; source: "config" | "seed" }) =>
+    `${p.name}${p.source === "seed" ? ` (squeal ${by} would seed it)` : ""}`;
+  const pytest = runners.pytest ?? [];
+  const jest = runners.jest ?? [];
+  const found = [
+    ...(runners.vitest ? ["Vitest"] : []),
+    ...runners.nodeTest.map((p) => `node:test ${seeds("init")(p)}`),
+    ...pytest.map((p) => `pytest ${seeds("setup")(p)}`),
+    ...jest.map((p) => `Jest ${seeds("setup")(p)}`),
+  ];
+  return [
+    `Runners: ${found.join(", ") || "none found"}`,
+    ...[...pytest, ...jest].flatMap((p) => p.notes.map((n) => `  note: ${n}`)),
+    ...(runners.jestNotes ?? []).map((n) => `  note: ${n}`),
+    ...gapLines(runners),
   ];
 }
 
