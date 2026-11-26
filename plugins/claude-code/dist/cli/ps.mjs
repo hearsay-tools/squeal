@@ -229,6 +229,115 @@ function defaultHostSlots(cpus3 = availableParallelism()) {
 }
 var backgroundShare = (v) => isBackgroundShare(v) ? null : "a number from 0 to 1";
 
+// src/core/ps/containers.ts
+import { execFile } from "node:child_process";
+
+// src/core/runner-host/container/docker.ts
+var MANAGED_LABEL = "org.squeal.managed";
+var FORBIDDEN = /* @__PURE__ */ new Set(["--privileged", "-v", "--volume", "--volumes-from"]);
+var FORBIDDEN_COMMANDS = /* @__PURE__ */ new Set(["build", "buildx", "builder", "pull", "push", "compose"]);
+function guarded(command2, options, operands) {
+  const words = command2.split(" ");
+  for (const option of options) {
+    const flag3 = option.split("=")[0] ?? option;
+    if (FORBIDDEN.has(flag3) || FORBIDDEN_COMMANDS.has(option) || /^-v./.test(option)) {
+      throw new Error(`squeal never runs docker ${command2} with ${option}`);
+    }
+    if (flag3 === "--mount" && !option.startsWith("--mount=type=bind,")) {
+      throw new Error(`squeal mounts only with --mount type=bind, not ${option}`);
+    }
+    if (flag3 === "--pull" && option !== "--pull=never") {
+      throw new Error(`squeal never runs docker ${command2} with ${option}`);
+    }
+  }
+  if (command2 === "run") {
+    for (const needed of ["--init", "--pull=never", "--user"]) {
+      if (!options.some((option) => option === needed || option.startsWith(`${needed}=`))) {
+        throw new Error(`squeal never runs docker run without ${needed}`);
+      }
+    }
+  }
+  return [...words, ...options, ...operands];
+}
+var PS_FORMAT = [
+  "{{.ID}}",
+  "{{.Names}}",
+  "{{.State}}",
+  '{{.Label "org.squeal.worktree"}}',
+  '{{.Label "org.squeal.target"}}',
+  '{{.Label "org.squeal.image"}}',
+  '{{.Label "org.squeal.pid"}}'
+].join("	");
+function psArgs(filter) {
+  const labels = { [MANAGED_LABEL]: "true", ...filter.labels };
+  return guarded(
+    "ps",
+    [
+      "--all",
+      "--no-trunc",
+      ...Object.entries(labels).map(([key, value]) => `--filter=label=${key}=${value}`),
+      ...filter.id === void 0 ? [] : [`--filter=id=${filter.id}`],
+      `--format=${PS_FORMAT}`
+    ],
+    []
+  );
+}
+function parsePs(text2) {
+  return text2.split("\n").filter((line) => line.trim() !== "").map((line) => {
+    const [id = "", name2 = "", state = "", worktree = "", target = "", image = "", pid = ""] = line.split("	");
+    return { id, name: name2, state, worktree, target, image, pid };
+  });
+}
+
+// src/core/runner-host/container/manager.ts
+function pidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== "ESRCH";
+  }
+}
+
+// src/core/ps/containers.ts
+var PS_MS = 3e3;
+function listManagedContainers(run2 = dockerPs, alive = pidAlive) {
+  return run2(psArgs({})).then((text2) => parsePs(text2).map((listing) => psContainer(listing, alive))).catch(() => []);
+}
+function psContainer(listing, alive) {
+  const pid = /^\d+$/.test(listing.pid) ? Number(listing.pid) : null;
+  return {
+    id: listing.id.slice(0, 12),
+    name: listing.name,
+    state: listing.state,
+    worktree: listing.worktree,
+    target: listing.target,
+    image: listing.image,
+    pid,
+    ownerAlive: pid !== null && pid > 0 && alive(pid)
+  };
+}
+function containerBlock(containers) {
+  if (containers.length === 0) return [];
+  const lines = ["", "Squeal containers"];
+  for (const c of containers) {
+    const owner = c.pid === null ? "no owning daemon" : c.ownerAlive ? `daemon ${c.pid}` : `daemon ${c.pid} gone, removed at the next start`;
+    lines.push(`  ${c.id}  ${c.name}  ${c.state}  target ${c.target} \xB7 ${owner}`);
+  }
+  return lines;
+}
+function dockerPs(args) {
+  return new Promise((resolve5, reject) => {
+    execFile(
+      "docker",
+      args,
+      { timeout: PS_MS, encoding: "utf8" },
+      (error, stdout) => error === null ? resolve5(stdout) : reject(error)
+    );
+  });
+}
+
 // src/core/ps/darwin.ts
 import { availableParallelism as availableParallelism2, cpus, loadavg, totalmem, uptime } from "node:os";
 import { basename as basename3 } from "node:path";
@@ -900,7 +1009,8 @@ var WORKTREE_META_ROWS = {
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
   importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
   sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" },
-  remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" }
+  remoteSummary: { prefix: "remote-summary:", owner: "status/remote-status" },
+  containerSummary: { prefix: "container-summary:", owner: "status/container-status" }
 };
 function worktreeMetaKey(row2, worktreeId) {
   return `${WORKTREE_META_ROWS[row2].prefix}${worktreeId}`;
@@ -1826,7 +1936,7 @@ import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join16 } from "node:path";
 
 // src/core/daemon/outlived.ts
-import { execFile } from "node:child_process";
+import { execFile as execFile2 } from "node:child_process";
 import { readdirSync as readdirSync6, readFileSync as readFileSync9 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { promisify } from "node:util";
@@ -1887,7 +1997,7 @@ var PROC = {
   }),
   command: commandLine
 };
-var run = promisify(execFile);
+var run = promisify(execFile2);
 var COMMAND_CHARS2 = 120;
 var PS_TIMEOUT_MS = 2e3;
 var PS_MAX_BYTES = 16 * 1024 * 1024;
@@ -2327,6 +2437,7 @@ var render = (snapshot, { full }) => {
     for (const file of snapshot.files) lines.push(...fileLines2(file));
   }
   lines.push(...storeProcessLines(snapshot.storeProcesses ?? []));
+  lines.push(...containerBlock(snapshot.containers ?? []));
   const checkouts = snapshot.checkouts ?? [];
   if (checkouts.length > 0) {
     lines.push("", "Temporary checkouts");
@@ -3824,6 +3935,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
+  jest: [],
   containers: {},
   vitest: { excludeProjects: [], exclude: [] },
   slow: {
@@ -3926,14 +4038,14 @@ function nodeTestProjects(value, path) {
 function withDefaults(entry) {
   return { ...entry, argv: entry.argv ?? [], env: entry.env ?? {} };
 }
-function projectEntries(value, path, fields, required, withDefaults3, check) {
+function projectEntries(value, path, fields, required, withDefaults4, check) {
   if (!Array.isArray(value)) return "an array of projects";
   const kept2 = [];
   const problems = [];
   value.forEach((entry, index) => {
     const at = `${path}[${index}]`;
     const problem = entryProblem(entry, at, kept2, fields, required, check);
-    if (problem === null) kept2.push(withDefaults3(entry));
+    if (problem === null) kept2.push(withDefaults4(entry));
     else problems.push(problem);
   });
   return { kept: kept2, problems };
@@ -4251,7 +4363,7 @@ function containerTargets(value) {
   }
   return { kept: kept2, problems };
 }
-var RUNNER_LISTS = ["nodeTest", "pytest"];
+var RUNNER_LISTS = ["nodeTest", "pytest", "jest"];
 function settleContainers(policy) {
   const problems = [];
   let settled = policy;
@@ -4274,6 +4386,53 @@ function settleContainers(policy) {
 var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
 var GATE_SHAPE = { gate: { groups } };
 
+// src/core/daemon/policy-jest.ts
+import { posix as posix2 } from "node:path";
+var CONFIG_EXTENSIONS = [
+  ".js",
+  ".ts",
+  ".mjs",
+  ".cjs",
+  ".mts",
+  ".cts",
+  ".json"
+];
+var configPath = (v) => nonEmptyString(v) ?? insideRoot(v);
+var positiveInteger3 = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var FIELDS3 = {
+  name: nonEmptyString,
+  config: configPath,
+  cwd: insideRoot,
+  include: globs,
+  exclude: globs,
+  args: strings,
+  env: variables,
+  slow: boolean,
+  batchSize: positiveInteger3,
+  container: nonEmptyString
+};
+var REQUIRED2 = /* @__PURE__ */ new Set(["name", "config"]);
+function jestProjects(value, path) {
+  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, configFile);
+}
+function withDefaults2(entry) {
+  return {
+    ...entry,
+    include: entry.include ?? [],
+    exclude: entry.exclude ?? [],
+    args: entry.args ?? [],
+    env: entry.env ?? {}
+  };
+}
+var configFile = (entry) => {
+  const config = posix2.basename(entry.config.replaceAll("\\", "/"));
+  if (config === "package.json" || CONFIG_EXTENSIONS.includes(posix2.extname(config))) return null;
+  return {
+    key: "config",
+    problem: `must name a Jest config file (${CONFIG_EXTENSIONS.join(", ")}) or a package.json, got ${JSON.stringify(entry.config)}`
+  };
+};
+
 // src/core/daemon/policy-lint.ts
 var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
@@ -4288,8 +4447,8 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute10, posix as posix2 } from "node:path";
-var FIELDS3 = {
+import { isAbsolute as isAbsolute10, posix as posix3 } from "node:path";
+var FIELDS4 = {
   name: nonEmptyString,
   cwd: insideRoot,
   python: nonEmptyString,
@@ -4298,32 +4457,32 @@ var FIELDS3 = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  batchSize: positiveInteger3,
+  batchSize: positiveInteger4,
   slots,
   container: nonEmptyString
 };
-var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
-function positiveInteger3(value) {
+var REQUIRED3 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger4(value) {
   return Number.isInteger(value) && value > 0 ? null : "a positive integer";
 }
 var SLOT_FIELDS = {
   toxParallelEnv: boolean,
-  max: positiveInteger3
+  max: positiveInteger4
 };
 function slots(value) {
   const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
   return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 function pytestProjects(value, path) {
-  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, pythonInsideRoot);
+  return projectEntries(value, path, FIELDS4, REQUIRED3, withDefaults3, pythonInsideRoot);
 }
-function withDefaults2(entry) {
+function withDefaults3(entry) {
   return { ...entry, args: entry.args ?? [], env: entry.env ?? {} };
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
   if (python === void 0 || isAbsolute10(python)) return null;
-  const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
+  const path = posix3.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
     key: "python",
@@ -4460,6 +4619,8 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  // Spec 028 D1 (row 028-05).
+  jest: (v) => jestProjects(v, "jest"),
   // Spec 027 D4 (row 027-04).
   containers: containerTargets,
   vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
@@ -4499,16 +4660,30 @@ function loadPolicy(root) {
 }
 var lastPolicies = /* @__PURE__ */ new Map();
 function settle(loaded) {
-  const contained = settleContainers(loaded.value);
+  const named2 = settleJestNames(loaded.value);
+  const contained = settleContainers(named2.policy);
   const settled = settleChecks(contained.policy);
   return {
     policy: withExits(
       settled.problems.length === 0 ? contained.policy : { ...contained.policy, checks: settled.checks }
     ),
-    problems: [...loaded.problems, ...contained.problems, ...settled.problems],
+    problems: [...loaded.problems, ...named2.problems, ...contained.problems, ...settled.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
+}
+function settleJestNames(policy) {
+  if (policy.jest.length === 0) return { policy, problems: [] };
+  const taken = new Set([...policy.nodeTest, ...policy.pytest].map((project) => project.name));
+  const problems = [];
+  const jest = policy.jest.filter((project) => {
+    if (!taken.has(project.name)) return true;
+    problems.push(
+      `"jest" project ${JSON.stringify(project.name)} has the name of another project, and names are unique across runners; it is skipped`
+    );
+    return false;
+  });
+  return { policy: jest.length === policy.jest.length ? policy : { ...policy, jest }, problems };
 }
 var UNSET_EXITS = {
   ...DEFAULT_POLICY,
@@ -4856,6 +5031,7 @@ function message(error) {
 // src/core/ps/snapshot.ts
 var SAMPLE_MS = 2e3;
 async function takeSnapshot(options) {
+  const listed = options.containers?.().catch(() => []);
   const read = await readWindow(options);
   const shape = shapeOf2(read, options.flag(read.model), options);
   let checkouts = [];
@@ -4868,7 +5044,15 @@ async function takeSnapshot(options) {
   }
   const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
   const storeProcesses = read.model.discovery.storeProcesses ?? [];
-  return { ...shape, checkouts, storeProcesses, flags: shape.flags + flags, unknown };
+  const containers = listed === void 0 ? {} : { containers: await listed };
+  return {
+    ...shape,
+    checkouts,
+    storeProcesses,
+    ...containers,
+    flags: shape.flags + flags,
+    unknown
+  };
 }
 async function readWindow(o) {
   const { source, places } = o;
@@ -4996,7 +5180,8 @@ ${USAGE}`);
       repo: parsed2.repo,
       sampleMs: SAMPLE_MS,
       now: io.now ?? Date.now,
-      wait: options.wait ?? ((ms) => sleep(ms))
+      wait: options.wait ?? ((ms) => sleep(ms)),
+      ...containerLister(options)
     });
   } catch (error) {
     io.stderr(
@@ -5068,6 +5253,10 @@ function placesOf(env, commonDir, options) {
     // Spec 026 D12.2 (row 026-20): names a remote runner host's machine.
     remoteMachines: machinesPath(env)
   };
+}
+function containerLister(options) {
+  const lister = options.containers ?? (options.sourceFor === void 0 ? listManagedContainers : void 0);
+  return lister === void 0 ? {} : { containers: lister };
 }
 
 // src/cli/ps-index.ts

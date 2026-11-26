@@ -137,6 +137,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
+  jest: [],
   containers: {},
   vitest: { excludeProjects: [], exclude: [] },
   slow: {
@@ -252,14 +253,14 @@ function nodeTestProjects(value, path) {
 function withDefaults(entry) {
   return { ...entry, argv: entry.argv ?? [], env: entry.env ?? {} };
 }
-function projectEntries(value, path, fields, required, withDefaults3, check) {
+function projectEntries(value, path, fields, required, withDefaults4, check) {
   if (!Array.isArray(value)) return "an array of projects";
   const kept2 = [];
   const problems = [];
   value.forEach((entry, index) => {
     const at = `${path}[${index}]`;
     const problem = entryProblem(entry, at, kept2, fields, required, check);
-    if (problem === null) kept2.push(withDefaults3(entry));
+    if (problem === null) kept2.push(withDefaults4(entry));
     else problems.push(problem);
   });
   return { kept: kept2, problems };
@@ -515,6 +516,53 @@ function containerTargets(value) {
 var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
 var GATE_SHAPE = { gate: { groups } };
 
+// src/core/daemon/policy-jest.ts
+import { posix as posix2 } from "node:path";
+var CONFIG_EXTENSIONS = [
+  ".js",
+  ".ts",
+  ".mjs",
+  ".cjs",
+  ".mts",
+  ".cts",
+  ".json"
+];
+var configPath = (v) => nonEmptyString(v) ?? insideRoot(v);
+var positiveInteger3 = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var FIELDS3 = {
+  name: nonEmptyString,
+  config: configPath,
+  cwd: insideRoot,
+  include: globs,
+  exclude: globs,
+  args: strings,
+  env: variables,
+  slow: boolean,
+  batchSize: positiveInteger3,
+  container: nonEmptyString
+};
+var REQUIRED2 = /* @__PURE__ */ new Set(["name", "config"]);
+function jestProjects(value, path) {
+  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, configFile);
+}
+function withDefaults2(entry) {
+  return {
+    ...entry,
+    include: entry.include ?? [],
+    exclude: entry.exclude ?? [],
+    args: entry.args ?? [],
+    env: entry.env ?? {}
+  };
+}
+var configFile = (entry) => {
+  const config = posix2.basename(entry.config.replaceAll("\\", "/"));
+  if (config === "package.json" || CONFIG_EXTENSIONS.includes(posix2.extname(config))) return null;
+  return {
+    key: "config",
+    problem: `must name a Jest config file (${CONFIG_EXTENSIONS.join(", ")}) or a package.json, got ${JSON.stringify(entry.config)}`
+  };
+};
+
 // src/core/daemon/policy-lint.ts
 var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
@@ -529,8 +577,8 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute2, posix as posix2 } from "node:path";
-var FIELDS3 = {
+import { isAbsolute as isAbsolute2, posix as posix3 } from "node:path";
+var FIELDS4 = {
   name: nonEmptyString,
   cwd: insideRoot,
   python: nonEmptyString,
@@ -539,32 +587,32 @@ var FIELDS3 = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  batchSize: positiveInteger3,
+  batchSize: positiveInteger4,
   slots,
   container: nonEmptyString
 };
-var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
-function positiveInteger3(value) {
+var REQUIRED3 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger4(value) {
   return Number.isInteger(value) && value > 0 ? null : "a positive integer";
 }
 var SLOT_FIELDS = {
   toxParallelEnv: boolean,
-  max: positiveInteger3
+  max: positiveInteger4
 };
 function slots(value) {
   const valid = isRecord(value) && Object.entries(value).every(([k, v]) => SLOT_FIELDS[k]?.(v) === null);
   return valid ? null : "{ toxParallelEnv?: true or false, max?: a positive integer }";
 }
 function pytestProjects(value, path) {
-  return projectEntries(value, path, FIELDS3, REQUIRED2, withDefaults2, pythonInsideRoot);
+  return projectEntries(value, path, FIELDS4, REQUIRED3, withDefaults3, pythonInsideRoot);
 }
-function withDefaults2(entry) {
+function withDefaults3(entry) {
   return { ...entry, args: entry.args ?? [], env: entry.env ?? {} };
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
   if (python === void 0 || isAbsolute2(python)) return null;
-  const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
+  const path = posix3.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
     key: "python",
@@ -700,6 +748,8 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  // Spec 028 D1 (row 028-05).
+  jest: (v) => jestProjects(v, "jest"),
   // Spec 027 D4 (row 027-04).
   containers: containerTargets,
   vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
@@ -1331,7 +1381,7 @@ import { isAbsolute as isAbsolute5, join as join5, relative as relative3, resolv
 
 // src/core/daemon/runner.ts
 import { readdirSync as readdirSync2, readFileSync as readFileSync2 } from "node:fs";
-import { join as join4, posix as posix3 } from "node:path";
+import { join as join4, posix as posix4 } from "node:path";
 
 // src/core/types/runner-traits.ts
 function declareTraits(stated = {}) {
