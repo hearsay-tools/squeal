@@ -45,7 +45,13 @@ const FILES = ["a", "b", "c", "d"].map((name) => {
   return { project: "p", path: `test/${name}.test.mjs` };
 });
 
-const project = { name: "p", node: process.execPath, argv: [], env: {}, include: ["test/*.test.mjs"] };
+const project = {
+  name: "p",
+  node: process.execPath,
+  argv: [],
+  env: {},
+  include: ["test/*.test.mjs"],
+};
 const sized = await createNodeTestAdapter(project, { root, concurrency: () => 4 });
 const unsized = await createNodeTestAdapter(project, { root });
 afterAll(async () => {
@@ -54,10 +60,7 @@ afterAll(async () => {
 });
 
 /** The concurrency `runNodeTest` was given for a 4-file run; `null` for none. */
-async function given(
-  adapter: typeof sized,
-  extra: Partial<RunOptions>,
-): Promise<number | null> {
+async function given(adapter: typeof sized, extra: Partial<RunOptions>): Promise<number | null> {
   calls.length = 0;
   await adapter.run(FILES, { runId: "r", logDir: join(root, "logs"), timeoutMs: null, ...extra });
   return calls[0] ?? null;
