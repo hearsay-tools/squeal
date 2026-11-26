@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { rootStatOf } from "../../../src/cli/runner-host.js";
+import { testFileId } from "../../../src/core/keys/reverse-index.js";
+import { readRunRemotes } from "../../../src/core/retry/remote.js";
 import type { ContainerConsent } from "../../../src/core/runner-host/container/consent.js";
 import type { DockerCli, ImageInfo } from "../../../src/core/runner-host/container/docker.js";
 import type { ContainerPaths } from "../../../src/core/runner-host/container/manager.js";
@@ -13,6 +15,12 @@ import {
   createContainerRunner,
 } from "../../../src/core/runner-host/container/runner.js";
 import { readOtherMachineKeys } from "../../../src/core/scheduler/other-machine-keys.js";
+import { formatCheck } from "../../../src/core/state/check-name.js";
+import { describeFailure } from "../../../src/core/state/fingerprint.js";
+import { fingerprintOf } from "../../../src/core/state/shown-result.js";
+import { formatWhy } from "../../../src/core/status/format-why.js";
+import { readWhy } from "../../../src/core/status/why.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerEnvironment, RunOptions } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
@@ -331,6 +339,80 @@ describe("a completed container run, through the scheduler (review 0.1.644 B2)",
       // No host-machine variant: the container key is the only key with results.
       expect([...readOtherMachineKeys(local.store, local.worktreeId)]).toEqual([]);
       expect(local.store.results.keysSince(0).map((k) => k.key)).toEqual([key]);
+    } finally {
+      await runner.close();
+    }
+  });
+});
+
+/*
+ * Review 0.1.644 N2 (spec 027 D7.3): an ordinary assertion failure in a
+ * managed container (a completed run, `failure: null`, the failure in its
+ * results) keeps the check's name and its error fingerprint as the host
+ * reports them, and `squeal why` reads where it ran: `in container backend`.
+ */
+describe("an ordinary failing check in a container (review 0.1.644 N2)", () => {
+  it("keeps its identity and fingerprint and names the container", {
+    timeout: 60_000,
+  }, async () => {
+    const { main } = claimRepo(1);
+    const local = side(main, { count: 1, policy: RUN_MISSING });
+    const F0 = fileName(0);
+    const file = { project: "", path: F0 };
+    local.runner.failing.add(F0);
+    const [inner] = await local.runner.environment();
+    if (inner === undefined) throw new Error("the fake runner has an environment");
+    const runHere = local.runner.run.bind(local.runner);
+    // The host's own report of the same failure: what the container must keep.
+    const host = await runHere([file]);
+    const [hostResult] = host.results;
+    if (hostResult === undefined || hostResult.outcome !== "fail") throw new Error("a failure");
+    const { cli } = fakeDocker({ image: image("sha256:one"), probe: "v22.19.0-ct linux x64" });
+    const made = make(cli, {
+      project: "",
+      paths: { ...paths, worktreeRoot: main },
+      rootAt: main,
+      openChannel: () =>
+        inProcessHost(
+          async () =>
+            fakeAdapter({
+              name: "pytest",
+              environment: async () => [inner],
+              testFiles: async () => local.runner.testFiles(),
+              run: async (files) => runHere(files),
+            }),
+          VERSION,
+          { rootStat: () => rootStatOf(main) },
+        ).channel,
+    });
+    const runner = await createContainerRunner(made.options);
+    try {
+      const report = await runner.run([file], RUN);
+      expect(report.failure).toBeNull();
+      expect(report.remote).toBe("container backend");
+      expect(report.results).toEqual(host.results);
+      Object.assign(local.runner, {
+        environment: () => runner.environment(),
+        run: (files: readonly TestFileRef[], options: RunOptions) => runner.run(files, options),
+      });
+      await local.scheduler.start();
+      await local.quiet();
+      const key = local.keyOf(F0);
+      if (key === null || key === undefined) throw new Error("F0 is keyed");
+      const stored = local.store.results.byKey(key, 0).find((r) => r.check.kind === "test");
+      if (stored === undefined) throw new Error("its test result is stored");
+      expect(stored.outcome).toBe("fail");
+      expect(stored.check).toEqual(hostResult.check);
+      expect(fingerprintOf(stored)).toBe(
+        describeFailure(hostResult.errors, hostResult.location).fingerprint,
+      );
+      const kept = readRunRemotes(local.store).get(stored.provenance.runId);
+      expect(kept?.[testFileId(file)]).toBe("container backend");
+      const why = readWhy(main as AbsolutePath, formatCheck(stored.check));
+      if (!why.available || !why.found) throw new Error(`no why: ${JSON.stringify(why)}`);
+      const text = formatWhy(why, "squeal", { now: Date.now() });
+      expect(text).toContain(`run ${stored.provenance.runId}, in container backend, `);
+      expect(text).not.toContain("on remote");
     } finally {
       await runner.close();
     }

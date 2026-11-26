@@ -108,6 +108,14 @@ export function managedName(targetName: string, runner: string, project: string)
   return `${targetName}.${runner}.${project}`;
 }
 
+/**
+ * The run remote a container's run keeps (spec 027 D7.3), which `squeal
+ * status` and `squeal why` read as `in container <target>` (`ranWhereText`).
+ */
+export function containerRemote(targetName: string): string {
+  return `container ${targetName}`;
+}
+
 /** The note topic of a container project's state. */
 export function containerTopic(runner: string, project: string): string {
   return `container:${runner}:${project}`;
@@ -402,10 +410,16 @@ export class ContainerAdapter implements RunnerAdapter {
     }
     const { live } = this.#opened;
     // Review 0.1.644 B2: the run happened on the container's machine, which the scheduler stores it for.
-    const report = tagReportCore(await live.proxy.run(testFiles, options), live.core);
+    const { fileRemotes: _, ...report } = tagReportCore(
+      await live.proxy.run(testFiles, options),
+      live.core,
+    );
+    // Review 0.1.644 N2 (D7.3): each failure it stores names the container, as a remote's does;
+    // its checks, errors and so their fingerprints stay the host's own.
+    const remote = containerRemote(this.#options.targetName);
     return report.failure === null
-      ? report
-      : { ...report, failure: `${report.failure} (${where})` };
+      ? { ...report, remote }
+      : { ...report, remote, failure: `${report.failure} (${where})` };
   }
 
   async close(): Promise<void> {
