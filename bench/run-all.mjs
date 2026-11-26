@@ -12,7 +12,7 @@ import { cpus, freemem, totalmem } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { timed } from "./lib.mjs";
+import { installedVersions, timed } from "./lib.mjs";
 
 export const CELLS = [
   { name: "ref", files: 500, worktrees: 1, load: 0 },
@@ -221,6 +221,9 @@ async function main() {
     }
     templates.set(key, dir);
   }
+  // What each template installed (BENCH_DEPS pins them; this records that the pin held).
+  meta.deps = Object.fromEntries([...templates].map(([key, dir]) => [key, installedVersions(dir)]));
+  writeFileSync(join(out, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
 
   for (const c of cells) {
     log(`cell ${c.name}: ${c.files} files, ${c.worktrees} worktrees, ${c.load}% load`);

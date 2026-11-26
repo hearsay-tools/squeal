@@ -861,7 +861,7 @@ function headerLines({
   const lines = [];
   lines.push(`# Squeal performance scorecard`, "");
   lines.push(
-    `Squeal ${meta.squealVersion} · Node ${meta.node} · ${meta.cpuModel} · ${meta.vcpus} vCPU · ${meta.memGiB} GiB · SHA-256 ${Math.round(Math.max(...meta.sha256MiBPerS))} MiB/s · ${meta.startedAt}`,
+    `Squeal ${meta.squealVersion} · Node ${meta.node}${depsText(meta)} · ${meta.cpuModel} · ${meta.vcpus} vCPU · ${meta.memGiB} GiB · SHA-256 ${Math.round(Math.max(...meta.sha256MiBPerS))} MiB/s · ${meta.startedAt}`,
     "",
   );
   lines.push(
@@ -897,6 +897,20 @@ function headerLines({
  * baseline did not settle in time (what it still waited for), or a store process that did not go
  * quiet; and whether the CLI ran through the plugin's bin/squeal. Empty for a cell from before.
  */
+/**
+ * The installed test dependencies for the header line (row 025-24): ` · Vitest 5.0.3 · Vite 8.4.0 ·
+ * coverage-v8 5.0.3`. Templates that installed different versions show each set, split by ` / `.
+ * Empty for runs recorded before meta.json kept them.
+ */
+export function depsText(meta) {
+  const sets = Object.values(meta.deps ?? {}).map(
+    (d) =>
+      `Vitest ${d.vitest ?? "?"} · Vite ${d.vite ?? "?"} · coverage-v8 ${d["@vitest/coverage-v8"] ?? "?"}`,
+  );
+  const distinct = [...new Set(sets)];
+  return distinct.length === 0 ? "" : ` · ${distinct.join(" / ")}`;
+}
+
 export function idleSettleIssues(cell) {
   const issues = [];
   for (const [i, s] of (cell.phases?.startOthers ?? []).entries()) {

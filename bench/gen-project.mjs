@@ -12,6 +12,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { BENCH_DEPS } from "./lib.mjs";
 
 const {
   values: opt,
@@ -52,7 +53,7 @@ writeFileSync(
       private: true,
       type: "module",
       scripts: { test: "vitest run" },
-      devDependencies: { vitest: "5.0.3", "@vitest/coverage-v8": "5.0.3" },
+      devDependencies: BENCH_DEPS,
     },
     null,
     2,

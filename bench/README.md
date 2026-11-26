@@ -78,6 +78,8 @@ The boat.dev $20 plan (`box_20`) offers three sizes:
 
 `gen-project.mjs <dir> <files> --cases N --functions M` changes the shape: N cases per test file (default 6), and a module `src/h<i>.ts` with M one-line exported functions next to each `src/m<i>.ts` (default none). The test file imports `h<i>_0` and its first case checks it; the session never edits `src/h<i>.ts`. `run-all.mjs` builds one template per shape (`p2000`, `p2000-c10-f30`).
 
+The project pins its test dependencies exactly: `vitest` 5.0.3, `vite` 8.4.0 and `@vitest/coverage-v8` 5.0.3 (`BENCH_DEPS` in `lib.mjs`). Vite is a peer of Vitest, so without its own pin a fresh install takes the newest Vite, and an upstream release changes the benchmark between two runs of the same refs: Vite 8.4.0, out on 2026-11-26, made Squeal 0.1.641 and older fail correctness (`research/bench-provider.md` in spec 025). Those versions still fail on the pin, as they should. `meta.json` records what each template installed under `deps`, and the scorecard's header line prints it. Change the pin on purpose, in its own commit, and compare runs across it only with that in mind.
+
 The project uses Squeal's shipped defaults (`squeal.config.json` is `{}`), so coverage and complexity are on and `baseline.onStart` is `lookup-only`.
 
 ## The cells

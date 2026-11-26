@@ -25,6 +25,24 @@ export function timed(cmd, args, { input, env, cwd, timeoutMs = 900_000 } = {}) 
   });
 }
 
+/**
+ * The bench project's test dependencies, pinned exactly. Vite is a peer of Vitest; without its
+ * own pin a fresh install takes the newest one, so an upstream release changed the benchmark
+ * between two runs of the same refs (Vite 8.4.0, 2026-11-26, research/bench-provider.md).
+ * Squeal 0.1.641 and older fail correctness on Vite 8.4.0, as they should.
+ */
+export const BENCH_DEPS = { vitest: "5.0.3", vite: "8.4.0", "@vitest/coverage-v8": "5.0.3" };
+
+/** The versions of BENCH_DEPS a project installed, read from its node_modules; null when missing. */
+export function installedVersions(dir) {
+  return Object.fromEntries(
+    Object.keys(BENCH_DEPS).map((name) => {
+      const file = join(dir, "node_modules", name, "package.json");
+      return [name, existsSync(file) ? JSON.parse(readFileSync(file, "utf8")).version : null];
+    }),
+  );
+}
+
 /** Starts a detached background process; returns the ChildProcess. */
 export function background(cmd, args, opts = {}) {
   return spawn(cmd, args, { stdio: "ignore", ...opts });
