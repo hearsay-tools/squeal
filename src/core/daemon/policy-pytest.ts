@@ -26,6 +26,7 @@ const FIELDS: Readonly<Record<keyof PytestProject, Field>> = {
   slow: boolean,
   batchSize: positiveInteger,
   slots,
+  container: nonEmptyString,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
 

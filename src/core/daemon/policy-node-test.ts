@@ -81,6 +81,7 @@ const FIELDS: Readonly<Record<keyof NodeTestProject, Field>> = {
   exclude: globs,
   slow: boolean,
   prepare,
+  container: nonEmptyString,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
 
