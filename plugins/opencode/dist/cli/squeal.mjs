@@ -81064,8 +81064,7 @@ var init_environment4 = __esm({
     READER = String.raw`
 const path = require("path");
 const fs = require("fs");
-const Module = require("module");
-const { createRequire, registerHooks } = Module;
+const { createRequire, registerHooks } = require("module");
 const { fileURLToPath } = require("url");
 const [jestConfig, configPath, worktree] = process.argv.slice(1);
 const print = (value) => process.stdout.write("\n" + JSON.stringify(value) + "\n");
@@ -81082,30 +81081,16 @@ const record = (target) => {
     else if (Buffer.isBuffer(target)) seen.add(path.resolve(target.toString()));
   } catch {}
 };
-const local = (file) => {
-  const root = roots.find((r) => file.startsWith(r + path.sep));
-  return root === undefined ? null : worktree + file.slice(root.length);
-};
-const isPath = (request) =>
-  typeof request === "string" && (request.startsWith("./") || request.startsWith("../") || path.isAbsolute(request));
-const EXTS = [".js", ".cjs", ".mjs", ".ts", ".cts", ".mts", ".json"];
-// A missing file a worktree module asked for: creating it may repair the config (review 0.1.644-r2 B4).
-const missed = (base) => {
-  record(base);
-  if (path.extname(base) === "") for (const ext of EXTS) record(base + ext);
-};
-const configDeps = (cached, failed) => {
+const configDeps = (cached) => {
   for (const file of Object.keys(require.cache)) if (!cached.has(file)) seen.add(file);
   const out = new Set();
   for (const file of seen) {
-    const at = local(file);
-    if (at === null) continue;
-    const parts = at.slice(worktree.length + 1).split(path.sep);
+    const root = roots.find((r) => file.startsWith(r + path.sep));
+    if (root === undefined) continue;
+    const local = worktree + file.slice(root.length);
+    const parts = local.slice(worktree.length + 1).split(path.sep);
     if (parts.includes("node_modules") || parts.includes(".git")) continue;
-    // A healthy read keys what exists; a failed one also watches what was missing.
-    let stat = null;
-    try { stat = fs.statSync(at); } catch {}
-    if (stat !== null ? stat.isFile() : failed) out.add(at);
+    try { if (fs.statSync(local).isFile()) out.add(local); } catch {}
   }
   return [...out].sort();
 };
@@ -81114,37 +81099,8 @@ const configDeps = (cached, failed) => {
   const cached = new Set(Object.keys(require.cache));
   let hooks = null;
   try {
-    hooks = registerHooks({
-      resolve(specifier, context, next) {
-        try {
-          const resolved = next(specifier, context);
-          record(resolved.url);
-          return resolved;
-        } catch (error) {
-          const parent = context.parentURL;
-          if (recording && typeof parent === "string" && parent.startsWith("file:")
-            && (isPath(specifier) || specifier.startsWith("file:"))) {
-            try { const at = fileURLToPath(new URL(specifier, parent)); if (local(at) !== null) record(at); } catch {}
-          }
-          throw error;
-        }
-      },
-      load(url, context, next) { record(url); return next(url, context); },
-    });
+    hooks = registerHooks({ load(url, context, next) { record(url); return next(url, context); } });
   } catch {}
-  const resolveFilename = Module._resolveFilename;
-  Module._resolveFilename = function (request, parent, ...rest) {
-    const from = parent && typeof parent.filename === "string" && local(parent.filename) !== null
-      && isPath(request) ? parent.filename : null;
-    try {
-      const resolved = resolveFilename.call(this, request, parent, ...rest);
-      if (from !== null) record(resolved);
-      return resolved;
-    } catch (error) {
-      if (from !== null) missed(path.resolve(path.dirname(from), request));
-      throw error;
-    }
-  };
   const wrapped = [[fs, "readFileSync"], [fs, "readFile"], [fs.promises, "readFile"]];
   const originals = wrapped.map(([owner, name]) => owner[name]);
   wrapped.forEach(([owner, name], i) => {
@@ -81165,14 +81121,13 @@ const configDeps = (cached, failed) => {
       }
     } catch {}
   } catch (error) {
-    throw Object.assign(new Error(String((error && error.message) || error)), { deps: configDeps(cached, true) });
+    throw Object.assign(new Error(String((error && error.message) || error)), { deps: configDeps(cached) });
   } finally {
     recording = false;
-    Module._resolveFilename = resolveFilename;
     wrapped.forEach(([owner, name], i) => { owner[name] = originals[i]; });
     try { if (hooks !== null) hooks.deregister(); } catch {}
   }
-  deps = configDeps(cached, false);
+  deps = configDeps(cached);
   const util = require(createRequire(path.join(jestConfig, "package.json")).resolve("jest-util"));
   const exts = new Set(projectConfig.moduleFileExtensions.map((e) => "." + e));
   const match = projectConfig.testMatch.length > 0 ? util.globsToMatcher(projectConfig.testMatch) : null;
@@ -81494,11 +81449,9 @@ async function createJestAdapter(project, options) {
   if (!state.ok) note(state.note);
   const reopen = async () => {
     const before5 = state.ok ? null : state.note;
-    const previous = watched2;
     state = await open8();
     observed3 = observing();
-    const fresh2 = watchedOf(root, project, state, source2);
-    watched2 = state.ok ? fresh2 : /* @__PURE__ */ new Set([...previous, ...fresh2]);
+    watched2 = watchedOf(root, project, state, source2);
     if (!state.ok && state.note !== before5) note(state.note);
     else if (state.ok && before5 !== null) note(`it reads again (jest ${state.install.version})`);
   };
@@ -81511,11 +81464,14 @@ async function createJestAdapter(project, options) {
     }),
     async invalidate(changed2) {
       const current2 = state;
-      const recreate = !current2.ok && current2.install === null || observed3 !== observing() || changed2.some((p) => watched2.has(p.path));
-      if (recreate || !current2.ok) {
-        if (!recreate) return { recreatedProjects: [] };
+      if (!current2.ok) {
+        if (current2.install !== null && changed2.length === 0) return { recreatedProjects: [] };
         await reopen();
-        return { recreatedProjects: current2.ok || state.ok ? [project.name] : [] };
+        return { recreatedProjects: state.ok ? [project.name] : [] };
+      }
+      if (observed3 !== observing() || changed2.some((p) => watched2.has(p.path))) {
+        await reopen();
+        return { recreatedProjects: [project.name] };
       }
       current2.graph.invalidate(changed2);
       if (changed2.some((p) => p.kind === "add" || p.kind === "delete")) {
@@ -81539,8 +81495,8 @@ async function createJestAdapter(project, options) {
     testFiles: async () => state.ok ? state.files.map(ref3) : [],
     async environment() {
       if (!state.ok) {
-        const files6 = [...watched2].map((path) => toAbsolute(root, path));
-        return [unavailableEnvironment(root, project, state.note, JEST_ADAPTER_VERSION, files6)];
+        const { note: note2, configDeps } = state;
+        return [unavailableEnvironment(root, project, note2, JEST_ADAPTER_VERSION, configDeps)];
       }
       const { install, read: read7 } = state;
       const environment = jestEnvironment({
