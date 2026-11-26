@@ -1,5 +1,6 @@
 import type { EpochMs } from "../types/common.js";
 import { readCheckouts } from "./checkouts.js";
+import type { PsContainer } from "./containers.js";
 import { discover, lockedAgain } from "./discover.js";
 import { hostTotals, readPool } from "./host.js";
 import { below, measure, takeSample } from "./measure.js";
@@ -52,9 +53,16 @@ export interface SnapshotOptions {
   readonly now: () => EpochMs;
   /** Waits out the rest of the window. */
   readonly wait: (ms: number) => Promise<void>;
+  /**
+   * Spec 027 D7.3 (row 027-06): lists Squeal's managed containers
+   * (`listManagedContainers`); absent, the snapshot lists none.
+   */
+  readonly containers?: () => Promise<readonly PsContainer[]>;
 }
 
 export async function takeSnapshot(options: SnapshotOptions): Promise<PsSnapshot> {
+  // Inside the window: Docker answers while the sample waits; a failed list is empty.
+  const listed = options.containers?.().catch(() => []);
   const read = await readWindow(options);
   const shape = shapeOf(read, options.flag(read.model), options);
   let checkouts: PsCheckout[] = [];
@@ -68,7 +76,15 @@ export async function takeSnapshot(options: SnapshotOptions): Promise<PsSnapshot
   }
   const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
   const storeProcesses = read.model.discovery.storeProcesses ?? [];
-  return { ...shape, checkouts, storeProcesses, flags: shape.flags + flags, unknown };
+  const containers = listed === undefined ? {} : { containers: await listed };
+  return {
+    ...shape,
+    checkouts,
+    storeProcesses,
+    ...containers,
+    flags: shape.flags + flags,
+    unknown,
+  };
 }
 
 async function readWindow(o: SnapshotOptions): Promise<WindowRead> {

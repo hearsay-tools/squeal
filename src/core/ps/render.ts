@@ -1,3 +1,4 @@
+import { containerBlock } from "./containers.js";
 import type { Render } from "./model.js";
 import {
   age,
@@ -60,6 +61,8 @@ export const render: Render = (snapshot, { full }) => {
     for (const file of snapshot.files) lines.push(...fileLines(file));
   }
   lines.push(...storeProcessLines(snapshot.storeProcesses ?? []));
+  // Spec 027 D7.3 (row 027-06): the containers Squeal manages, with their owners.
+  lines.push(...containerBlock(snapshot.containers ?? []));
   const checkouts = snapshot.checkouts ?? [];
   if (checkouts.length > 0) {
     lines.push("", "Temporary checkouts");
