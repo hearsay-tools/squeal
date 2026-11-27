@@ -1,12 +1,20 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, onTestFinished } from "vitest";
 import { squealVersion } from "../../../src/core/daemon/version.js";
+import { missingThere } from "../../../src/core/runner-host/remote/commands-there.js";
 import {
-  missingThere,
   type RemoteHost,
   type RemoteHostOptions,
   RemoteRefusal,
@@ -208,5 +216,58 @@ describe("the commands the tests need, on the remote at connect (row 021-23, D19
     const lost = missingThere(login(ssh), { ...places, node: "/no/such/node" }, ["sh"], 30_000);
     await expect(lost).rejects.toThrow(/^could not look for sh on build-box: /);
     await expect(lost).rejects.not.toThrow(RemoteRefusal);
+  });
+});
+
+describe("per-file commands on the remote at connect (row 026-36, D13.2)", SLOW, () => {
+  /** A command `name` in `dir` that prints `line` for `--version`. */
+  const tool = (dir: string, name: string, line: string) => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, name), `#!/bin/sh\necho "${line}"\n`);
+    chmodSync(join(dir, name), 0o755);
+  };
+
+  it("connects, and answers the globs whose command is missing there or of another version", async () => {
+    const root = fixture();
+    const { home, ssh } = remote();
+    tool(join(home, "tools"), "squeal-fake-chrome", "Fake Chrome 120");
+    tool(join(home, "tools"), "squeal-fake-ffmpeg", "ffmpeg 7");
+    const here = join(home, "here-tools");
+    tool(here, "squeal-fake-chrome", "Fake Chrome 131");
+    tool(here, "squeal-fake-ffmpeg", "ffmpeg 7");
+    const path = process.env.PATH;
+    process.env.PATH = `${here}:${path ?? ""}`;
+    onTestFinished(() => {
+      process.env.PATH = path;
+    });
+    const target = {
+      destination: "build-box",
+      ssh,
+      env: { ...process.env, PATH: `${join(home, "tools")}:/usr/bin:/bin` },
+    };
+    const version = (command: string) => ({ command, version: "--version" });
+    await connect(root, ssh, [], {
+      target,
+      commands: {
+        "*": ["sh"],
+        "test/web/**": [version("squeal-fake-chrome"), version("squeal-fake-ffmpeg")],
+        "test/py/**": ["squeal-absent-tool"],
+      },
+    });
+    expect(started.at(-1)?.commands).toEqual({
+      checked: ["sh", "squeal-fake-chrome", "squeal-fake-ffmpeg", "squeal-absent-tool"],
+      files: [
+        {
+          glob: "test/web/**",
+          missing: [],
+          differing: [
+            { command: "squeal-fake-chrome", here: "Fake Chrome 131", there: "Fake Chrome 120" },
+          ],
+        },
+        { glob: "test/py/**", missing: ["squeal-absent-tool"], differing: [] },
+      ],
+    });
+    // The tree went there: nothing refused the remote.
+    expect(existsSync(join(home, treeDir(places, root), "root/src/math.ts"))).toBe(true);
   });
 });

@@ -62,6 +62,11 @@ describe("policy remote.allowed (021 D9)", () => {
     expect(reference).toContain("| `requires.commands` | `[]` |");
     expect(reference).toContain("| `remote.needsRepository` | `[]` |");
     expect(reference).toContain("| `remote.alwaysLocal` | `[]` |");
+    // Rows 026-35, 026-36 (spec 026 D13).
+    expect(reference).toContain("| `remote.setup` | `null` |");
+    expect(reference).toContain(
+      "lacks google-chrome for packages/web/e2e/*.e2e.ts; these files run here",
+    );
   });
 });
 
@@ -109,7 +114,7 @@ describe("policy requires.commands and remote.needsRepository (021 D19)", () => 
     expect(wrong.policy.requires.commands).toEqual([]);
     expect(wrong.policy.remote.needsRepository).toEqual([]);
     expect(wrong.problems).toEqual([
-      '"requires.commands" must be an array of strings, got "git"',
+      '"requires.commands" must be an array of command names, or an object of test-file globs to lists of them, got "git"',
       '"remote.needsRepository" must be an array of strings, got [1]',
     ]);
     expect(load({ requires: { repository: true } }).problems).toEqual([
@@ -160,5 +165,54 @@ describe("policy remote.setup (row 026-35, spec 026 D13.1)", () => {
         `"remote.setup" must be ${expected}, got ${JSON.stringify(value)}`,
       ]);
     }
+  });
+});
+
+describe("policy requires.commands per test file (row 026-36, spec 026 D13.2)", () => {
+  it("keeps the array form as it was", () => {
+    const { policy, problems } = load({ requires: { commands: ["git"] } });
+    expect(problems).toEqual([]);
+    expect(policy.requires.commands).toEqual(["git"]);
+  });
+
+  it("takes test-file globs, and * for every file, to names and version checks", () => {
+    const commands = {
+      "packages/web/e2e/*.e2e.ts": ["google-chrome", { command: "ffmpeg", version: "-version" }],
+      "*": ["git", { command: "node" }],
+    };
+    const { policy, problems } = load({ requires: { commands } });
+    expect(problems).toEqual([]);
+    expect(policy.requires.commands).toEqual(commands);
+  });
+
+  it("leaves out a bad glob, a value that is no list and a bad entry, each named, and keeps the rest", () => {
+    const { policy, problems } = load({
+      requires: {
+        commands: {
+          "!e2e/**": ["google-chrome"],
+          "e2e/**": "google-chrome",
+          "web/**": [
+            "google-chrome",
+            "/usr/bin/chromium",
+            { command: "ffmpeg", version: "" },
+            { command: "ffmpeg", args: "-v" },
+            { name: "ffmpeg" },
+            3,
+          ],
+        },
+      },
+    });
+    expect(policy.requires.commands).toEqual({ "web/**": ["google-chrome"] });
+    const entry = (i: number, got: string) =>
+      `"requires.commands.web/**[${i}]" must be a command name or { "command": "<name>", "version": "<argument>" }, got ${got}; it is left out`;
+    expect(problems).toEqual([
+      '"requires.commands.!e2e/**" has a glob Squeal cannot use: squeal: negated input glob is not supported: !e2e/**; it is left out',
+      '"requires.commands.e2e/**" must be an array of commands, got "google-chrome"; it is left out',
+      '"requires.commands.web/**[1]" must be a command name such as "git", got "/usr/bin/chromium"; it is left out',
+      entry(2, '{"command":"ffmpeg","version":""}'),
+      entry(3, '{"command":"ffmpeg","args":"-v"}'),
+      entry(4, '{"name":"ffmpeg"}'),
+      entry(5, "3"),
+    ]);
   });
 });

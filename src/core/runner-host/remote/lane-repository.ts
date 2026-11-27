@@ -54,20 +54,25 @@ export interface RepositoryRoute {
  * tree is a Git repository (`remoteHasRepository`), the setting keeps no
  * file here; the guard's remembered files stay here still. Row 021-40
  * (#294): the files `alwaysLocal` matches stay here with or without `.git`
- * there, since they read this machine itself.
+ * there, since they read this machine itself. Spec 026 D13.2 (row 026-36):
+ * so do the files of `commandsHere`, the globs whose commands the remote
+ * lacks (`lane-commands.ts`); the list is a new array only when it changes.
  */
 export function repositoryRoute(
   needsRepository: () => readonly string[],
   named: (text: string) => void,
   remoteHasRepository: () => boolean = () => false,
   alwaysLocal: () => readonly string[] = () => [],
+  commandsHere: () => readonly string[] = () => [],
 ): RepositoryRoute {
   const failed = new Map<string, TestFileRef>();
   const needs = globMatcher(needsRepository);
   const always = globMatcher(alwaysLocal);
+  const lacking = globMatcher(commandsHere);
   const here = (file: TestFileRef) =>
     failed.has(testFileId(file)) ||
     always(file.path) ||
+    lacking(file.path) ||
     (!remoteHasRepository() && needs(file.path));
   return {
     split(testFiles) {

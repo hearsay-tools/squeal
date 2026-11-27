@@ -281,9 +281,12 @@ export interface Policy {
     /**
      * Commands the tests need on `PATH`, such as `["git", "python3"]`. One
      * missing here is named in status and the tests still run; one missing
-     * on a remote refuses that remote. Default `[]`.
+     * on a remote refuses that remote. Spec 026 D13.2 (row 026-36): or test-file
+     * globs to the commands those files need, `"*"` for every file; a
+     * glob's command missing on a remote, or of another version there,
+     * keeps only its files here. Default `[]`.
      */
-    readonly commands: readonly string[];
+    readonly commands: RequiredCommands;
   };
   /** Spec 021 D9: remote runner hosts, which each user names in their own `remote.json`. */
   readonly remote: {
@@ -311,6 +314,24 @@ export interface Policy {
     readonly setup: string | null;
   };
 }
+
+/**
+ * Spec 026 D13.2 (row 026-36): a command a test needs, with `version`, the
+ * argument whose first output line must be equal on this machine and the
+ * remote, as `{ "command": "google-chrome", "version": "--version" }`.
+ */
+export interface CommandNeed {
+  readonly command: string;
+  readonly version?: string;
+}
+
+/**
+ * `requires.commands`: names every test needs (spec 021 D19.1), or test-file
+ * globs, `"*"` for every file, to names or `CommandNeed`s (026 D13.2).
+ */
+export type RequiredCommands =
+  | readonly string[]
+  | Readonly<Record<string, readonly (string | CommandNeed)[]>>;
 
 /**
  * Policy `inputs`: input globs for every test file, or test-file glob to the

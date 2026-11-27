@@ -2,15 +2,16 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { MISSING_SCRIPT, missingText } from "../../daemon/required-commands.js";
 import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
+import type { RequiredCommands } from "../../types/policy.js";
 import type { RunnerAdapter, RunReport } from "../../types/runner.js";
 import { channelOf, type HostChannel, type RunnerHostLaunch } from "../channel.js";
 import type { HostAdapterOptions, HostPolicy, HostRunner } from "../protocol.js";
 import { type HostDeadlines, type HostRequests, startHostProxy } from "../proxy.js";
 import type { AdmitAnswer, AdmitAsk } from "./admission.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
+import { type CommandsThere, commandsThere, sshLook } from "./commands-there.js";
 import { SETUP_MS, type SetupAnswer, setupRefusal } from "./remote-setup.js";
 import type { RemoteRunner } from "./settings.js";
 import { type SshTarget, shellQuote, spawnSsh, sshFailure, sshRun } from "./ssh.js";
@@ -38,7 +39,9 @@ import {
  * Spec 021 D19.1 (row 021-23): before the host starts, the commands the
  * project's tests need are looked for on the remote's `PATH`, which the
  * host's runs get; a missing one refuses the remote, named, before its tree
- * is sent.
+ * is sent. Spec 026 D13.2 (row 026-36): a command only a glob's files need
+ * refuses nothing; the host answers which globs' files stay here
+ * (`commands-there.ts`).
  *
  * Spec 026 D8.2 (row 026-11): node:test's and pytest's temp and cache
  * directories are this machine's paths; a remote host gets directories of
@@ -104,6 +107,8 @@ export interface RemoteHost {
    * `null`: no Git there; absent: not reported (a host over a test channel).
    */
   readonly gitVersion?: string | null;
+  /** Spec 026 D13.2: the per-file commands the connect looked for, and the globs that stay here. Absent: none looked for. */
+  readonly commands?: CommandsThere;
 }
 
 export interface RemoteHostOptions {
@@ -123,8 +128,8 @@ export interface RemoteHostOptions {
   /** One line per step of the first connect, for the daemon's log. */
   readonly log?: (text: string) => void;
   readonly deadlines?: Partial<HostDeadlines & RemoteDeadlines>;
-  /** Spec 021 D19.1: `requires.commands`, looked for on the remote at each connect. Absent: none. */
-  readonly commands?: readonly string[];
+  /** Spec 021 D19.1, 026 D13.2: `requires.commands`, looked for on the remote at each connect. Absent: none. */
+  readonly commands?: RequiredCommands;
   /** Spec 026 D13.1: `remote.setup`, the repository-relative script run before the install. Absent: none. */
   readonly setup?: string | null;
   /**
@@ -194,8 +199,11 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
     `${target.destination}: Node ${ensured.check.node}; Squeal ${options.version} ${ensured.copied ? "copied" : "present"}`,
   );
   await options.diskCheck?.();
-  const missing = await missingThere(target, places, options.commands ?? [], deadlines.sshMs);
-  if (missing.length > 0) throw new RemoteRefusal(missingText(missing, "there"));
+  const looked = await commandsThere(
+    options.commands ?? [],
+    sshLook(target, places, deadlines.sshMs),
+  );
+  if ("refusal" in looked) throw new RemoteRefusal(looked.refusal);
   const tree = treeDir(places, root);
   const command = hostCommand(places, options.version, bundle.cli, tree, options.runner);
   const mapped = options.coverage === "remote" && options.options.coverage !== undefined;
@@ -212,7 +220,7 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
     options: adapterOptions,
   });
   const git = ensured.check.git;
-  return git === undefined ? host : { ...host, gitVersion: git };
+  return { ...host, ...(git === undefined ? {} : { gitVersion: git }), commands: looked };
 }
 
 /**
@@ -272,27 +280,6 @@ function withoutCoverage(options: HostAdapterOptions): HostAdapterOptions {
   if (data === undefined) return rest;
   const { coverage: _none, ...kept } = data;
   return { ...rest, process: kept };
-}
-
-/** Of `commands`, those the remote's `PATH` lacks, by `MISSING_SCRIPT` under its Node. Throws when it cannot look. */
-export async function missingThere(
-  target: SshTarget,
-  places: RemotePlaces,
-  commands: readonly string[],
-  deadlineMs: number,
-): Promise<string[]> {
-  if (commands.length === 0) return [];
-  const command = [places.node, "-e", MISSING_SCRIPT, ...commands].map(shellQuote).join(" ");
-  const looked = await sshRun(target, command, { deadlineMs });
-  const what = `could not look for ${commands.join(", ")} on ${target.destination}`;
-  if (looked.code !== 0) throw new Error(sshFailure(what, looked));
-  try {
-    const missing: unknown = JSON.parse(looked.stdout);
-    if (Array.isArray(missing) && missing.every((name) => commands.includes(name))) return missing;
-  } catch {
-    // Below.
-  }
-  throw new Error(`${what}: its Node printed ${JSON.stringify(looked.stdout.slice(0, 200))}`);
 }
 
 /**

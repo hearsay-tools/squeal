@@ -1,3 +1,4 @@
+import { isRecord } from "../fs/json.js";
 import { insideRoot } from "../runner-host/remote/tree-wire.js";
 import type { Leaf, Shape } from "./config-file.js";
 import { compiles } from "./policy-node-test.js";
@@ -26,6 +27,13 @@ import { compiles } from "./policy-node-test.js";
  * to the project's script that prepares each remote machine, or `null`. A
  * path that leaves the repository, or names its `.git`, is one problem and
  * the default, none, applies.
+ *
+ * Spec 026 D13.2 (row 026-36): `requires.commands` also takes an object,
+ * test-file globs, `"*"` for every file, to lists of command names or
+ * `{ "command": <name>, "version": <argument> }`. The array form is as
+ * before. A glob Squeal cannot use, or one whose value is not a list, is
+ * left out with one problem; a bad entry in a list is left out with one
+ * problem, its glob and index named; the others are kept.
  */
 
 const boolean: Leaf = (v) => (typeof v === "boolean" ? null : "true or false");
@@ -55,9 +63,53 @@ export function commandName(entry: string): boolean {
   return /^[^-\s/\\][^\s/\\]*$/.test(entry) && !/\p{Cc}/u.test(entry);
 }
 
-const commands = kept("requires.commands", (entry) =>
-  commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`,
-);
+const nameProblem = (entry: string) =>
+  commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`;
+
+const commandList = kept("requires.commands", nameProblem);
+
+/** D13.2: why `entry` of a glob's list cannot be used; `null` when it can. */
+function needProblem(entry: unknown): string | null {
+  if (typeof entry === "string") return nameProblem(entry);
+  const expected = `must be a command name or { "command": "<name>", "version": "<argument>" }, got ${JSON.stringify(entry)}`;
+  if (
+    !isRecord(entry) ||
+    Object.keys(entry).some((key) => key !== "command" && key !== "version")
+  ) {
+    return expected;
+  }
+  const { command, version } = entry;
+  if (typeof command !== "string" || !commandName(command)) return expected;
+  const argument = typeof version === "string" && version !== "" && !/\p{Cc}/u.test(version);
+  return version === undefined || argument ? null : expected;
+}
+
+/** D19.1's array form, or D13.2's object form of test-file globs to command lists. */
+const commands: Leaf = (value) => {
+  if (Array.isArray(value)) return commandList(value);
+  if (!isRecord(value))
+    return "an array of command names, or an object of test-file globs to lists of them";
+  const good: Record<string, unknown[]> = {};
+  const problems: string[] = [];
+  for (const [glob, entries] of Object.entries(value)) {
+    const at = `"requires.commands.${glob}"`;
+    const bad = glob === "*" ? null : (compiles([glob])?.problem ?? null);
+    if (bad !== null) problems.push(`${at} ${bad}; it is left out`);
+    else if (!Array.isArray(entries)) {
+      problems.push(
+        `${at} must be an array of commands, got ${JSON.stringify(entries)}; it is left out`,
+      );
+    } else {
+      good[glob] = entries.filter((entry: unknown, index) => {
+        const why = needProblem(entry);
+        if (why !== null)
+          problems.push(`"requires.commands.${glob}[${index}]" ${why}; it is left out`);
+        return why === null;
+      });
+    }
+  }
+  return { kept: good, problems };
+};
 
 const needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
 

@@ -4,6 +4,7 @@ import { coreEnvironmentInputs } from "../../keys/environment.js";
 import { testFileId } from "../../keys/reverse-index.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { CoreEnvironmentInputs, TestFileRef } from "../../types/keys.js";
+import type { RequiredCommands } from "../../types/policy.js";
 import type {
   InvalidatedPath,
   InvalidateResult,
@@ -14,8 +15,10 @@ import type {
 import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelledFirst, cancelOf, notStarted } from "./admission.js";
 import { createBlobCache, createInstalledFingerprintCache } from "./blob-cache.js";
+import type { CommandsThere } from "./commands-there.js";
 import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { recordsWithout } from "./coverage.js";
+import { memoCommandRoute } from "./lane-commands.js";
 import { compareRemoteEnvironment } from "./lane-compare.js";
 import { type Planning, remotePlanning } from "./lane-planning.js";
 import {
@@ -94,6 +97,10 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * planning call or a run falls back to it. D8.4: on a machine whose tree is
  * a Git repository, `needsRepository` files go there too; D19.2's guard stays.
  * Row 021-40 (#294): `alwaysLocal` files never go there; they read this machine.
+ * Spec 026 D13.2 (row 026-36): nor do the files of a `requires.commands`
+ * glob whose command the connected remote lacks or has at another version
+ * (`lane-commands.ts`); status names them. A tier that waits for a connect
+ * waits before its split, so the connect's answer routes it.
  * Review 0.1.619 B3: before a tier that may go remote is split, the lane
  * asks `refreshRepository`, so `hasGitRepository` answers for the
  * worktree's Git state now; the call is busy for a sleep, like a planning call.
@@ -191,6 +198,10 @@ export interface RemoteLaneOptions {
   readonly needsRepository?: () => readonly string[];
   /** Row 021-40 (#294): test-file globs that always run here, also with `.git` there. Absent: none. */
   readonly alwaysLocal?: () => readonly string[];
+  /** Spec 026 D13.2: `requires.commands`, whose per-file globs the connect's answer routes. Absent: none. */
+  readonly requiredCommands?: () => RequiredCommands;
+  /** Spec 026 D13.2: the line that names the files kept here for a command the remote lacks. Absent: `status`. */
+  readonly commands?: (text: string) => void;
   /** The line that names the files a remote failed as not a Git repository. Absent: `status`. */
   readonly repository?: (text: string) => void;
   /** The lane's one status line, which replaces the last (D17); `report` changed with it. */
@@ -358,11 +369,31 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   };
   /** D9: a proven remote report's coverage records, until its tier keeps them. */
   const coverageOf = new WeakMap<RunReport, readonly RemoteRecord[]>();
+  /** D13.2: the per-file commands the last ready host's connect looked for; `null` before one. */
+  let commandsKnown: CommandsThere | null = null;
+  let commandsSaid: string | null = null;
+  const commandRoute = memoCommandRoute(
+    options.requiredCommands ?? (() => []),
+    () => commandsKnown,
+    target,
+  );
+  /** D13.2: the globs kept here now, their line said once it changes. */
+  const commandsHere = () => {
+    const { globs, text } = commandRoute();
+    if (text !== commandsSaid && (text !== null || commandsSaid !== null)) {
+      commandsSaid = text;
+      (options.commands ?? options.status)(
+        text ?? `${target} has every command requires.commands names for its test files`,
+      );
+    }
+    return globs;
+  };
   const route = repositoryRoute(
     options.needsRepository ?? (() => []),
     options.repository ?? options.status,
     options.hasGitRepository ?? (() => false),
     options.alwaysLocal ?? (() => []),
+    commandsHere,
   );
 
   /**
@@ -442,6 +473,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     else if (unequal.length > 0) down(unequal.join("; "), true, host);
     else {
       state = { kind: "ready", host, proven: false };
+      commandsKnown = host.commands ?? null;
+      commandsHere();
       options.status(
         remoteKey && remoteCore !== null
           ? remoteKeyStatusLine(target, remoteCore)
@@ -1226,6 +1259,11 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       // Review 0.1.619 B4: a run here opens the runner here, which gets each later invalidation.
       if (!goesRemote(run, tiers)) return runDirect(testFiles, run);
       await refreshRepository();
+      // D13.2: a tier that waits for a connect waits before its split, so its answer routes the tier.
+      const waits = options.awaitConnect === true || options.whenLost === "not-run";
+      if (waits && state.kind !== "ready" && commandRoute().globs.length > 0) {
+        await ready(true, cancelOf(run));
+      }
       const split = route.split(testFiles);
       const { there } = split;
       if (there.length === 0) return runDirect(testFiles, run);

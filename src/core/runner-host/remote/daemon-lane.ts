@@ -95,6 +95,9 @@ export const REMOTE_TOPIC = "remote-lane";
 export const REMOTE_SETTINGS_TOPIC = "remote-settings";
 /** The note topic of the files a remote failed as not a Git repository (D19.2). */
 export const REMOTE_REPOSITORY_TOPIC = "remote-lane:repository";
+
+/** The note topic of the files a remote lacks a command for (spec 026 D13.2). */
+export const REMOTE_COMMANDS_TOPIC = "remote-lane:commands";
 /** Spec 026 D11: the note topic of the machine's degraded disk. */
 export const REMOTE_DISK_TOPIC = "remote-lane:disk";
 
@@ -301,6 +304,7 @@ export function createDaemonRemote(options: DaemonRemoteOptions): DaemonRemote |
           if (counted) summarize();
         },
         repository: (text) => say(`remote ${target}: ${text}`, REMOTE_REPOSITORY_TOPIC),
+        commands: (text) => say(text, REMOTE_COMMANDS_TOPIC),
         options,
       });
       if (counted) {
@@ -355,6 +359,8 @@ interface LaneContext {
   readonly eager: boolean;
   readonly status: (text: string) => void;
   readonly repository: (text: string) => void;
+  /** Spec 026 D13.2: the files kept here for a command the remote lacks. */
+  readonly commands: (text: string) => void;
   readonly options: DaemonRemoteOptions;
 }
 
@@ -438,6 +444,8 @@ function laneOver<R extends RunnerAdapter>(
     allowlist: () => options.policy().env.allowlist,
     needsRepository: () => options.policy().remote.needsRepository,
     alwaysLocal: () => options.policy().remote.alwaysLocal,
+    requiredCommands: () => options.policy().requires.commands,
+    commands: context.commands,
     repository: context.repository,
     status: context.status,
     log: options.log,

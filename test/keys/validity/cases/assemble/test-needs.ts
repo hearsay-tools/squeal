@@ -59,6 +59,20 @@ const setups: readonly [string, unknown][] = [
   ["a path that leaves the repository", { setup: "../setup.sh" }],
 ];
 
+const PER_FILE_WHY =
+  "026-36: requires.commands per test file decides where a file runs, never its key, so the keys equal the last release's, which reads the object form as a wrong value";
+
+const perFile: readonly [string, unknown][] = [
+  [
+    "test-file globs to names and version checks",
+    { [GIT]: ["git", { command: "git", version: "--version" }], "*": ["sh"] },
+  ],
+  [
+    "a glob that does not compile, a value that is no list and a bad entry among them",
+    { "!test/app.test.ts": ["git"], [TEST]: "git", [GIT]: ["/usr/bin/git", { name: "git" }] },
+  ],
+];
+
 export const TEST_NEEDS: readonly Case[] = [
   ...values.map(
     ([what, requires, remote]): Case => ({
@@ -74,6 +88,14 @@ export const TEST_NEEDS: readonly Case[] = [
       name: `a repository whose remote.setup is ${what}`,
       why: SETUP_WHY,
       input: { files: files({ commands: ["git"] }, remote), closures },
+    }),
+  ),
+  ...perFile.map(
+    ([what, commands]): Case => ({
+      kind: "assemble",
+      name: `a repository whose requires.commands holds ${what}`,
+      why: PER_FILE_WHY,
+      input: { files: files({ commands }, {}), closures },
     }),
   ),
 ];

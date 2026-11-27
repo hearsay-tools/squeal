@@ -8,6 +8,7 @@ import { afterAll, onTestFinished } from "vitest";
 import type { HostedAdapter } from "../../../src/core/runner-host/host.js";
 import type { HostDeadlines } from "../../../src/core/runner-host/proxy.js";
 import type { HostAdmission } from "../../../src/core/runner-host/remote/admission.js";
+import type { CommandsThere } from "../../../src/core/runner-host/remote/commands-there.js";
 import {
   type RemoteHost,
   RemoteRefusal,
@@ -18,6 +19,7 @@ import type { RemoteTier, WhenLost } from "../../../src/core/runner-host/remote/
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
 import type { RemoteRecord } from "../../../src/core/runner-host/remote/tree-wire.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { RequiredCommands } from "../../../src/core/types/policy.js";
 import type {
   RunnerAdapter,
   RunnerEnvironment,
@@ -93,6 +95,9 @@ export interface Setup {
   readonly gitLease?: () => Promise<() => void>;
   readonly exitSignal?: AbortSignal;
   readonly onRecovered?: () => void;
+  /** Row 026-36: the policy's `requires.commands`, and what each connect found of them there. */
+  readonly requiredCommands?: RequiredCommands;
+  readonly commandsThere?: CommandsThere;
 }
 
 let n = 0;
@@ -121,6 +126,8 @@ export async function setup({
   gitLease,
   exitSignal,
   onRecovered,
+  requiredCommands,
+  commandsThere,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -232,7 +239,7 @@ export async function setup({
       events.push("close");
       await close();
     };
-    return remoteHost;
+    return withCommands(remoteHost, commandsThere);
   };
   let localCloses = 0;
   const local: RunnerAdapter = {
@@ -253,6 +260,7 @@ export async function setup({
   const statuses: string[] = [];
   const logs: string[] = [];
   const repository: string[] = [];
+  const commandLines: string[] = [];
   /** Spec 026 D9: the records each proven run handed on (row 026-24). */
   const coverage: { runId: string; records: RemoteRecord[] }[] = [];
   let clock = 1_000_000;
@@ -269,6 +277,8 @@ export async function setup({
     ...(needsRepository === undefined ? {} : { needsRepository: () => needsRepository }),
     ...(alwaysLocal === undefined ? {} : { alwaysLocal: () => alwaysLocal }),
     repository: (text) => repository.push(text),
+    ...commandOptions(requiredCommands),
+    commands: (text) => commandLines.push(text),
     remoteCoverage: (runId, records) => coverage.push({ runId, records: [...records] }),
     now: () => clock,
     backoffMs: [60_000],
@@ -300,6 +310,7 @@ export async function setup({
     statuses,
     logs,
     repository,
+    commandLines,
     coverage,
     connects,
     events,
@@ -311,6 +322,16 @@ export async function setup({
       clock += ms;
     },
   };
+}
+
+/** Row 026-36: the lane's `requiredCommands`, when the setup names them. */
+function commandOptions(required: RequiredCommands | undefined) {
+  return required === undefined ? {} : { requiredCommands: () => required };
+}
+
+/** Row 026-36: `host` with `commands`, what its connect found of the per-file commands. */
+function withCommands(host: RemoteHost, commands: CommandsThere | undefined): RemoteHost {
+  return commands === undefined ? host : { ...host, commands };
 }
 
 export async function until(done: () => boolean, ms = 10_000): Promise<void> {
