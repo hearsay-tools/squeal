@@ -1,5 +1,7 @@
 import { setTimeout as turn } from "node:timers/promises";
 import { expect } from "vitest";
+import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import { isBesideLane } from "../../src/core/types/runner.js";
@@ -63,9 +65,15 @@ const SETTLE_LIMIT_MS = 20_000;
 /**
  * `side`'s runner calls (row 011-378): a run or runner-part call that
  * starts or ends changes it, a run a test routes past `CatchUpRunner.runs`
- * (a remote lane's) included.
+ * (a remote lane's) included. Row 011-430: and its published `yields` row,
+ * so a quiet point comes after the row write a run's end or a cut makes,
+ * not only after the runner call.
  */
-const runsMark = (side: CatchUpSide) => side.calls.mark();
+const runsMark = (side: CatchUpSide) => `${side.calls.mark()} ${yieldsRow(side)}`;
+
+/** `side`'s `yields` row as stored; empty without one, or for a stand-in side with no store. */
+const yieldsRow = (side: Partial<Pick<CatchUpSide, "store" | "worktreeId">>) =>
+  side.store?.meta.get(yieldsMetaKey(side.worktreeId as WorktreeId)) ?? "";
 
 /**
  * Row 011-363: the quiet point of `sides` on their virtual clocks. Each

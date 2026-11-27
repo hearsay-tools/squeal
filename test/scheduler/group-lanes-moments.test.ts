@@ -108,7 +108,10 @@ describe("group moments (spec 019 D1, row 019-10)", { timeout: 60_000 }, () => {
     await side.rest();
     expect(ranPaths(side)).not.toContain(D);
     expect(await side.scheduler.requestGroup("nodes")).toMatchObject({ queued: 1 });
-    await expect.poll(() => ranPaths(side), { timeout: 20_000 }).toContain(D);
+    // Row 011-430: the run's results stored, not its runner call only; before they are, the
+    // slow tier's request still finds `D` to run and queues it.
+    await expect.poll(() => side.current(D), { timeout: 20_000 }).toBe(true);
+    expect(ranPaths(side)).toContain(D);
     // `run --slow` is the default `slow` group's request, unchanged.
     expect(await side.scheduler.requestSlowSuite()).toMatchObject({ queued: 0 });
   });

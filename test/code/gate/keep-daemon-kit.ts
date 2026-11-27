@@ -151,7 +151,7 @@ export interface Served {
   /** The keep requests the daemon ran. */
   readonly keeps: KeepRequest[];
   /** Holds the store's write lock from another connection until the returned release. */
-  hold(): { readonly holder: string; release(): void };
+  hold(): Promise<{ readonly holder: string; release(): void }>;
 }
 
 export interface ServedOptions {
