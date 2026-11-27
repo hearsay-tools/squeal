@@ -1,0 +1,12 @@
+2026-11-27T10:15:49.298Z [56891] store process: serving /home/user/results/cells/wt-3@0.1.645-r2/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/wt-3@0.1.645-r2/work/run/squeal-code-b899d9ed0f611280.sock
+2026-11-27T10:16:49.300Z [56891] store process: last minute: edit: 119 written, 0 failed, queue wait p50 0 ms max 48 ms, busy 517 ms; record: 67 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 764 ms
+2026-11-27T10:18:21.969Z [56891] store process: long write: code.sqlite write lock held 568 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 5 rows written
+2026-11-27T10:18:22.734Z [56891] store process: long write: code.sqlite write lock held 621 ms by CheckpointingWriter.write < CheckpointingWriter.write < runJob; 3 rows written
+2026-11-27T10:18:49.300Z [56891] store process: last minute: edit: 48 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1472 ms; record: 155 written, 0 failed, queue wait p50 0 ms max 2 ms, busy 3853 ms
+2026-11-27T10:19:49.301Z [56891] store process: last minute: edit: 57 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 172 ms; record: 212 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1198 ms
+2026-11-27T10:20:49.300Z [56891] store process: last minute: edit: 51 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 169 ms; record: 188 written, 0 failed, queue wait p50 0 ms max 5 ms, busy 860 ms
+2026-11-27T10:21:49.300Z [56891] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 69 ms; record: 42 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 285 ms
+2026-11-27T10:22:49.301Z [56891] store process: last minute: record: 56 written, 0 failed, queue wait p50 0 ms max 6 ms, busy 602 ms
+2026-11-27T10:23:49.301Z [56891] store process: last minute: record: 53 written, 0 failed, queue wait p50 0 ms max 11 ms, busy 454 ms
+2026-11-27T10:23:49.938Z [56891] store process: stopping (stopped): no batches since the last line
+2026-11-27T10:23:49.971Z [56891] store process: ended (stopped)

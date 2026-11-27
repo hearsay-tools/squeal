@@ -1,0 +1,18 @@
+2026-11-27T10:25:05.833Z [85123] squeal daemon: serving /home/user/results/cells/wt-3@0.1.640-r2/work/wt1 on /home/user/results/cells/wt-3@0.1.640-r2/work/run/squeal-ad4b4c5a0bdf1d96.sock
+2026-11-27T10:25:59.130Z [85123] squeal daemon: code store: last minute: 46 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T10:26:09.174Z [85123] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 246 to 171 MiB in a 42 ms pause
+2026-11-27T10:26:59.097Z [85123] squeal daemon: hook writes: 14 taken, queue wait p95 17 ms max 17 ms
+2026-11-27T10:26:59.131Z [85123] squeal daemon: code store: last minute: 42 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T10:27:32.236Z [85123] squeal daemon: busy, heap in use 49 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 213 to 170 MiB in a 138 ms pause; 28 MiB of heap in use after it
+2026-11-27T10:27:59.132Z [85123] squeal daemon: hook writes: 12 taken, queue wait p95 5 ms max 5 ms
+2026-11-27T10:27:59.132Z [85123] squeal daemon: code store: last minute: 111 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T10:28:59.149Z [85123] squeal daemon: hook writes: 18 taken, queue wait p95 58 ms max 58 ms
+2026-11-27T10:28:59.149Z [85123] squeal daemon: code store: last minute: 114 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T10:29:59.149Z [85123] squeal daemon: hook writes: 4 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T10:29:59.151Z [85123] squeal daemon: code store: last minute: 32 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T10:30:34.488Z [85123] squeal daemon: long write: store.sqlite write lock held 251 ms by #write < #record; 4603 rows written
+2026-11-27T10:30:59.151Z [85123] squeal daemon: code store: last minute: 13 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T10:31:12.235Z [85123] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-27T10:31:12.246Z [85123] squeal daemon: code store: last minute: 9 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T10:31:12.340Z [85123] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T10:31:12.346Z [85123] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

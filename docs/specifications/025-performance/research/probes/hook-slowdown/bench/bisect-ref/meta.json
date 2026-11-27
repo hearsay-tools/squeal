@@ -1,0 +1,183 @@
+{
+  "startedAt": "2026-11-27T08:24:31.110Z",
+  "squealVersion": "0.1.640 vs 0.1.641 vs 0.1.644 vs 0.1.645 vs 0.1.653",
+  "plugins": [
+    {
+      "version": "0.1.640",
+      "label": "0.1.640"
+    },
+    {
+      "version": "0.1.641",
+      "label": "0.1.641"
+    },
+    {
+      "version": "0.1.644",
+      "label": "0.1.644"
+    },
+    {
+      "version": "0.1.645",
+      "label": "0.1.645"
+    },
+    {
+      "version": "0.1.653",
+      "label": "0.1.653"
+    }
+  ],
+  "repeat": 3,
+  "node": "v24.22.1",
+  "cpuModel": "AMD EPYC",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    2348.3333333333335,
+    2423,
+    2430.6666666666665
+  ],
+  "loadavgAtStart": "0.39 0.16 0.07 4/488 7213",
+  "cells": [
+    {
+      "name": "ref@0.1.640-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.640",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.641-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.641",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.644-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.644",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.645-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.645",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.653-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.653",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.653-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.653",
+      "rep": 2
+    },
+    {
+      "name": "ref@0.1.645-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.645",
+      "rep": 2
+    },
+    {
+      "name": "ref@0.1.644-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.644",
+      "rep": 2
+    },
+    {
+      "name": "ref@0.1.641-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.641",
+      "rep": 2
+    },
+    {
+      "name": "ref@0.1.640-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.640",
+      "rep": 2
+    },
+    {
+      "name": "ref@0.1.640-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.640",
+      "rep": 3
+    },
+    {
+      "name": "ref@0.1.641-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.641",
+      "rep": 3
+    },
+    {
+      "name": "ref@0.1.644-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.644",
+      "rep": 3
+    },
+    {
+      "name": "ref@0.1.645-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.645",
+      "rep": 3
+    },
+    {
+      "name": "ref@0.1.653-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.653",
+      "rep": 3
+    }
+  ],
+  "deps": {
+    "p500": {
+      "vitest": "5.0.3",
+      "vite": "8.3.8",
+      "@vitest/coverage-v8": "5.0.3"
+    }
+  },
+  "endedAt": "2026-11-27T09:55:07.818Z"
+}

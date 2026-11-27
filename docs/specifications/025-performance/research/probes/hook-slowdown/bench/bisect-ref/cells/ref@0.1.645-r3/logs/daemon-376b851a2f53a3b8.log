@@ -1,0 +1,19 @@
+2026-11-27T09:44:07.881Z [212889] squeal daemon: serving /home/user/results/cells/ref@0.1.645-r3/work/wt0 on /home/user/results/cells/ref@0.1.645-r3/work/run/squeal-376b851a2f53a3b8.sock
+2026-11-27T09:44:07.927Z [212889] squeal daemon: full integrity check: ok
+2026-11-27T09:45:05.842Z [212889] squeal daemon: code store: last minute: 98 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:45:45.879Z [212889] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 322 to 245 MiB in a 27 ms pause
+2026-11-27T09:46:05.826Z [212889] squeal daemon: hook writes: 6 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T09:46:05.841Z [212889] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:46:49.971Z [212889] squeal daemon: coverage: no result of run 516f2b11-7779-453c-8a3d-172b09021e1f for test/m258.test.ts
+2026-11-27T09:46:49.971Z [212889] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 no-result (its run's result was not found at its key); the last: test/m258.test.ts: its run's result was not found at its key
+2026-11-27T09:47:05.826Z [212889] squeal daemon: hook writes: 16 taken, queue wait p95 2 ms max 2 ms
+2026-11-27T09:47:05.843Z [212889] squeal daemon: code store: last minute: 108 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:47:22.710Z [212889] squeal daemon: busy, heap in use 56 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 279 to 227 MiB in a 45 ms pause; 29 MiB of heap in use after it
+2026-11-27T09:48:05.827Z [212889] squeal daemon: hook writes: 17 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T09:48:05.843Z [212889] squeal daemon: code store: last minute: 96 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:49:05.828Z [212889] squeal daemon: hook writes: 9 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T09:49:05.863Z [212889] squeal daemon: code store: last minute: 66 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:49:10.355Z [212889] squeal daemon: daemon stopped: squeal stop
+2026-11-27T09:49:10.359Z [212889] squeal daemon: code store: last minute: 7 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:49:10.426Z [212889] squeal daemon: hook writes: 2 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T09:49:10.427Z [212889] squeal daemon: daemon stopped: squeal stop

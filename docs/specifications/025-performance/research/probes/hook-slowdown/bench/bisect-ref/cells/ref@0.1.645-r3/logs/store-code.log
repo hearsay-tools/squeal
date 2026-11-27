@@ -1,0 +1,8 @@
+2026-11-27T09:44:07.994Z [212981] store process: serving /home/user/results/cells/ref@0.1.645-r3/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/ref@0.1.645-r3/work/run/squeal-code-513007420b2ce57b.sock
+2026-11-27T09:45:07.995Z [212981] store process: last minute: edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 161 ms; record: 55 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 287 ms
+2026-11-27T09:46:07.993Z [212981] store process: last minute: edit: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 21 ms; record: 10 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 8 ms
+2026-11-27T09:47:07.994Z [212981] store process: last minute: edit: 21 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 57 ms; record: 90 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 254 ms
+2026-11-27T09:48:07.994Z [212981] store process: last minute: edit: 21 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 59 ms; record: 79 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 195 ms
+2026-11-27T09:49:07.993Z [212981] store process: last minute: edit: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 22 ms; record: 50 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 201 ms
+2026-11-27T09:49:10.357Z [212981] store process: stopping (stopped): record: 7 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 32 ms
+2026-11-27T09:49:10.376Z [212981] store process: ended (stopped)

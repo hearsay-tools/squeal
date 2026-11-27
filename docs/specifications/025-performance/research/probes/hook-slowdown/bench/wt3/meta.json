@@ -1,0 +1,90 @@
+{
+  "startedAt": "2026-11-27T09:57:07.820Z",
+  "squealVersion": "0.1.640 vs 0.1.645",
+  "plugins": [
+    {
+      "version": "0.1.640",
+      "label": "0.1.640"
+    },
+    {
+      "version": "0.1.645",
+      "label": "0.1.645"
+    }
+  ],
+  "repeat": 3,
+  "node": "v24.22.1",
+  "cpuModel": "AMD EPYC",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 6.9,
+  "sha256MiBPerS": [
+    1931,
+    1933.6666666666667,
+    1958.6666666666667
+  ],
+  "loadavgAtStart": "0.66 0.33 0.12 1/388 6627",
+  "cells": [
+    {
+      "name": "wt-3@0.1.640-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.640",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.645-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.645",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.645-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.645",
+      "rep": 2
+    },
+    {
+      "name": "wt-3@0.1.640-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.640",
+      "rep": 2
+    },
+    {
+      "name": "wt-3@0.1.640-r3",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.640",
+      "rep": 3
+    },
+    {
+      "name": "wt-3@0.1.645-r3",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.645",
+      "rep": 3
+    }
+  ],
+  "deps": {
+    "p500": {
+      "vitest": "5.0.3",
+      "vite": "8.3.8",
+      "@vitest/coverage-v8": "5.0.3"
+    }
+  },
+  "endedAt": "2026-11-27T10:47:51.184Z"
+}

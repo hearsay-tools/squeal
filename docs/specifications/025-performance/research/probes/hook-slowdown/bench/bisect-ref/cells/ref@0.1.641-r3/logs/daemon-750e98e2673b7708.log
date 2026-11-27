@@ -1,0 +1,16 @@
+2026-11-27T09:32:05.427Z [181873] squeal daemon: serving /home/user/results/cells/ref@0.1.641-r3/work/wt0 on /home/user/results/cells/ref@0.1.641-r3/work/run/squeal-750e98e2673b7708.sock
+2026-11-27T09:32:05.464Z [181873] squeal daemon: full integrity check: ok
+2026-11-27T09:33:02.918Z [181873] squeal daemon: code store: last minute: 98 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:33:48.158Z [181873] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 347 to 269 MiB in a 44 ms pause
+2026-11-27T09:34:02.900Z [181873] squeal daemon: hook writes: 4 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T09:34:02.918Z [181873] squeal daemon: code store: last minute: 8 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:35:02.902Z [181873] squeal daemon: hook writes: 15 taken, queue wait p95 2 ms max 2 ms
+2026-11-27T09:35:02.918Z [181873] squeal daemon: code store: last minute: 100 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:36:02.903Z [181873] squeal daemon: hook writes: 15 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T09:36:02.923Z [181873] squeal daemon: code store: last minute: 88 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:37:02.902Z [181873] squeal daemon: hook writes: 14 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T09:37:02.940Z [181873] squeal daemon: code store: last minute: 61 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:37:32.114Z [181873] squeal daemon: daemon stopped: squeal stop
+2026-11-27T09:37:32.120Z [181873] squeal daemon: code store: last minute: 34 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T09:37:32.225Z [181873] squeal daemon: hook writes: 2 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T09:37:32.227Z [181873] squeal daemon: daemon stopped: squeal stop
