@@ -233,3 +233,131 @@ describe.each(JEST_MAJORS)("observe-runtime.cjs on Jest %i", (major) => {
     }
   });
 });
+
+/*
+ * Review 0.1.653 B2 and B3 on a stand-in `jest-runtime` in a child process,
+ * whose `fs` the runtime wraps: the pause is the transform or resolver
+ * call's async context, and what the call reads with success through a
+ * descriptor, a FileHandle or a stream is kept for its test file.
+ */
+const PROBE = String.raw`
+const fs = require("fs");
+const path = require("path");
+const { promisify } = require("util");
+const CURRENT = Symbol.for("squeal.currentTestFile");
+const READS = Symbol.for("squeal.jestReads");
+const at = (name) => path.join(process.cwd(), name);
+const Runtime = require(process.argv[1]);
+const marks = {};
+const mark = (name) => { marks[name] = globalThis[CURRENT] ?? null; };
+let release;
+const barrier = new Promise((done) => (release = done));
+// Opened once the runtime is loaded, before any pause: a read through it in one is kept.
+const early = fs.openSync(at("early.txt"), "r");
+const transformer = {
+  transform(file) {
+    mark("sync");
+    const fd = fs.openSync(at("fd-sync.txt"), "r");
+    fs.readFileSync(fd, "utf8");
+    fs.closeSync(fd);
+    fs.readSync(early, Buffer.alloc(4), 0, 4, 0);
+    try { fs.openSync(at("absent.txt"), "r"); } catch {}
+    fs.closeSync(fs.openSync(at("written.txt"), "w"));
+    resolver.getModulePath("x");
+    mark("afterNested");
+    if (file === "throw") throw new Error("sync");
+    return "code";
+  },
+  async transformAsync(file) {
+    mark("asyncStart");
+    await barrier;
+    mark("asyncEnd");
+    const handle = await fs.promises.open(at("handle.txt"));
+    await handle.readFile("utf8");
+    await handle.close();
+    await new Promise((done, fail) => fs.open(at("fd-callback.txt"), (err, fd) => {
+      if (err) return fail(err);
+      fs.readFile(fd, () => fs.close(fd, done));
+    }));
+    await new Promise((done, fail) => {
+      const stream = fs.createReadStream(at("stream.txt"));
+      stream.on("error", fail).on("end", done).resume();
+    });
+    await new Promise((done) => {
+      fs.createReadStream(at("absent-stream.txt")).on("error", () => done());
+    });
+    if (file === "reject") throw new Error("async");
+    return "code";
+  },
+  transformJson() { return "{}"; },
+};
+const resolver = { getModulePath() { mark("nested"); return "x"; } };
+globalThis[CURRENT] = "/outer.test.js";
+const runtime = new Runtime({}, {}, resolver, transformer, {}, {}, "/t/a.test.js");
+(async () => {
+  mark("constructed");
+  transformer.transform("ok");
+  mark("afterSync");
+  try { transformer.transform("throw"); } catch {}
+  mark("afterThrow");
+  const pending = transformer.transformAsync("ok");
+  await new Promise((done) => setImmediate(done));
+  mark("userDuringAsync");
+  release();
+  await pending;
+  mark("afterAsync");
+  await transformer.transformAsync("reject").catch(() => {});
+  mark("afterReject");
+  const read = await promisify(fs.read)(early, Buffer.alloc(2), 0, 2, 0);
+  runtime.teardown();
+  mark("afterTeardown");
+  const reads = [...(globalThis[READS].get("/t/a.test.js") ?? [])].map((p) => path.basename(p));
+  console.log(JSON.stringify({ marks, reads: reads.sort(), promisified: Object.keys(read).sort() }));
+})();
+`;
+
+describe("observe-runtime.cjs's pause and reads", () => {
+  it("unsets the mark for the call's async context only, and keeps descriptor, handle and stream reads", () => {
+    const dir = join(scratch, "probe");
+    const fake = join(dir, "jest-runtime");
+    mkdirSync(fake, { recursive: true });
+    writeFileSync(join(fake, "package.json"), `{ "name": "jest-runtime", "main": "index.js" }\n`);
+    writeFileSync(
+      join(fake, "index.js"),
+      "module.exports = class Runtime { teardown() {} unstable_shouldLoadAsEsm() { return false; } };\n",
+    );
+    for (const name of ["early", "fd-sync", "handle", "fd-callback", "stream"]) {
+      writeFileSync(join(dir, `${name}.txt`), `${name}\n`);
+    }
+    const out = execFileSync(process.execPath, ["-e", PROBE, OBSERVE_RUNTIME], {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: 30_000,
+      env: { ...process.env, SQUEAL_JEST_RUNTIME: fake },
+    });
+    const { marks, reads, promisified } = JSON.parse(out.trim().split("\n").at(-1) ?? "{}");
+    const test = "/t/a.test.js";
+    expect(marks).toEqual({
+      constructed: test,
+      sync: null,
+      nested: null,
+      afterNested: null,
+      afterSync: test,
+      afterThrow: test,
+      asyncStart: null,
+      userDuringAsync: test,
+      asyncEnd: null,
+      afterAsync: test,
+      afterReject: test,
+      afterTeardown: "/outer.test.js",
+    });
+    expect(reads).toEqual([
+      "early.txt",
+      "fd-callback.txt",
+      "fd-sync.txt",
+      "handle.txt",
+      "stream.txt",
+    ]);
+    expect(promisified).toEqual(["buffer", "bytesRead"]);
+  });
+});

@@ -64,11 +64,12 @@ const FILES: Readonly<Record<string, string>> = {
 };
 
 /**
- * An ES module test file whose transform reads `types/esm.d.ts` and
- * `types/also.d.ts` and fails to read the absent `types/absent.d.ts`, as a
- * type checker may. Jest 29 transforms it with `processAsync`, which reads
- * with `fs.promises.readFile` and `fs.readFile`'s callback; Jest 30 on a Node
- * that evaluates ES modules synchronously, with `process`.
+ * An ES module test file whose transform reads `types/*.d.ts` and fails to
+ * read the absent `types/absent.d.ts`, as a type checker may. Jest 29
+ * transforms it with `processAsync`, which reads with `fs.promises.readFile`,
+ * `fs.readFile`'s callback, a FileHandle, a descriptor `fs.open` gave and a
+ * stream; Jest 30 on a Node that evaluates ES modules synchronously, with
+ * `process`, through descriptors (review 0.1.653 B2).
  */
 const ESM_FILES: Readonly<Record<string, string>> = {
   "package.json": FILES["package.json"] as string,
@@ -88,10 +89,13 @@ const ESM_FILES: Readonly<Record<string, string>> = {
     "};",
     "module.exports = {",
     "  process(sourceText, sourcePath) {",
-    '    for (const tag of ["types", "also", "maybe"]) {',
+    '    for (const tag of ["types", "also", "maybe", "handle", "callback", "stream"]) {',
     "      const file = named(sourceText, tag, sourcePath);",
     "      try {",
-    "        if (file !== null) fs.readFileSync(file);",
+    "        if (file === null) continue;",
+    '        const fd = fs.openSync(file, "r");',
+    "        fs.readSync(fd, Buffer.alloc(8), 0, 8, 0);",
+    "        fs.closeSync(fd);",
     "      } catch {}",
     "    }",
     "    return { code: sourceText };",
@@ -107,17 +111,41 @@ const ESM_FILES: Readonly<Record<string, string>> = {
     "    }",
     '    const maybe = named(sourceText, "maybe", sourcePath);',
     "    if (maybe !== null) await fs.promises.readFile(maybe).catch(() => null);",
+    '    const handle = named(sourceText, "handle", sourcePath);',
+    "    if (handle !== null) {",
+    "      const opened = await fs.promises.open(handle);",
+    '      await opened.readFile("utf8");',
+    "      await opened.close();",
+    "    }",
+    '    const callback = named(sourceText, "callback", sourcePath);',
+    "    if (callback !== null) {",
+    "      await new Promise((done, fail) =>",
+    "        fs.open(callback, (err, fd) => (err ? fail(err) : fs.readFile(fd, () => fs.close(fd, done)))),",
+    "      );",
+    "    }",
+    '    const stream = named(sourceText, "stream", sourcePath);',
+    "    if (stream !== null) {",
+    "      await new Promise((done, fail) =>",
+    '        fs.createReadStream(stream).on("error", fail).on("end", done).resume(),',
+    "      );",
+    "    }",
     "    return { code: sourceText };",
     "  },",
     "};",
   ),
   "types/esm.d.ts": "export declare const esm: number;\n",
   "types/also.d.ts": "export declare const also: number;\n",
+  "types/handle.d.ts": "export declare const handle: number;\n",
+  "types/callback.d.ts": "export declare const callback: number;\n",
+  "types/stream.d.ts": "export declare const stream: number;\n",
   "src/add.mjs": "export const add = (a, b) => a + b;\n",
   "test/esm.test.mjs": lines(
     "// @types ../types/esm.d.ts",
     "// @also ../types/also.d.ts",
     "// @maybe ../types/absent.d.ts",
+    "// @handle ../types/handle.d.ts",
+    "// @callback ../types/callback.d.ts",
+    "// @stream ../types/stream.d.ts",
     'import { add } from "../src/add.mjs";',
     'test("esm", () => expect(add(2, 2)).toBe(4));',
   ),
@@ -239,7 +267,16 @@ describe.each(JEST_MAJORS)("an async transform's reads on a cold Jest %i run", (
     const { report, growth } = await coldRun(open, root, [esm]);
     expect(report.results.map((r) => [r.check.fullName, r.outcome])).toEqual([["esm", "pass"]]);
     const observed = observedOf(report, esm);
-    expect(observed).toEqual(expect.arrayContaining(["types/esm.d.ts", "types/also.d.ts"]));
+    // Review 0.1.653 B2: through a FileHandle, a descriptor's callback and a stream too.
+    expect(observed).toEqual(
+      expect.arrayContaining([
+        "types/esm.d.ts",
+        "types/also.d.ts",
+        "types/handle.d.ts",
+        "types/callback.d.ts",
+        "types/stream.d.ts",
+      ]),
+    );
     expect(observed).not.toContain("types/absent.d.ts");
     expect(byPath(growth, esm)?.firstSeen ?? []).toEqual([]);
   });

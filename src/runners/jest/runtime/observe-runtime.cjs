@@ -448,6 +448,9 @@ function flush(testPath) {
   }
 }
 
+// Wrapped as Jest loads the runtime: a descriptor opened from here on names its file.
+wrapReads();
+
 class SquealObservingRuntime extends Runtime {
   constructor(...args) {
     const testPath = args[TEST_PATH_ARG];
@@ -456,7 +459,6 @@ class SquealObservingRuntime extends Runtime {
     if (observing) {
       loadedMap().set(testPath, new Set());
       readsMap().set(testPath, new Set());
-      wrapReads();
       retarget(args[TRANSFORMER_ARG], testPath, TRANSFORMS, transformHook);
       retarget(args[RESOLVER_ARG], testPath, RESOLVES, resolveHook);
     }
