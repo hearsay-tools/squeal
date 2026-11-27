@@ -21,7 +21,7 @@ import { fake, refOf, servedHosts, VERSION } from "./share-fixture.js";
  * runner here gets no call across the connect, planning, edits and runs.
  * A machine that says `hasGitRepository` takes `needsRepository` files.
  * Once the daemon's exit began, a planning call starts nothing here.
- * Row 021-40 (#294): a `remote.runHere` file runs here on that machine too.
+ * Row 021-40 (#294): an `remote.alwaysLocal` file runs here on that machine too.
  */
 
 const scratch = mkdtempSync(join(tmpdir(), "squeal-daemon-planning-"));
@@ -41,7 +41,7 @@ const run = (extra: Partial<RunOptions> = {}): RunOptions => ({
 function daemon(
   entry: Record<string, unknown>,
   hasGitRepository: boolean,
-  runHere: readonly string[] = [],
+  alwaysLocal: readonly string[] = [],
 ) {
   const dir = join(scratch, `p${++n}`);
   const root = join(dir, "repo");
@@ -92,7 +92,7 @@ function daemon(
   const remoteRuns: string[] = [];
   const policy: Policy = {
     ...DEFAULT_POLICY,
-    remote: { ...DEFAULT_POLICY.remote, needsRepository: ["test/git.*"], runHere },
+    remote: { ...DEFAULT_POLICY.remote, needsRepository: ["test/git.*"], alwaysLocal },
   };
   const notes: [string, string][] = [];
   const remote = createDaemonRemote({
@@ -159,7 +159,7 @@ describe("the daemon's lane that plans on its machine (026 D8.3, D8.4)", () => {
     expect(d.localCalls).toEqual([]);
   });
 
-  it("runs a remote.runHere file here although the machine plans and has .git (021-40)", async () => {
+  it("runs a remote.alwaysLocal file here although the machine plans and has .git (021-40)", async () => {
     const d = daemon({ lanes: ["edit", "background"] }, true, ["test/git.*"]);
     await d.connected();
     await d.lane.run([REF, GIT], run());

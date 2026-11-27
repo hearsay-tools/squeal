@@ -69,8 +69,8 @@ export interface Setup {
   readonly before?: (root: string) => void;
   /** Spec 021 D19.2: the lane's `needsRepository` globs. */
   readonly needsRepository?: readonly string[];
-  /** Row 021-40: the lane's `runHere` globs. */
-  readonly runHere?: readonly string[];
+  /** Row 021-40: the lane's `alwaysLocal` globs. */
+  readonly alwaysLocal?: readonly string[];
   /** Spec 021 D19.1: each connect is refused with this text, as for a missing command. */
   readonly refusal?: string;
   /** The local adapter's run; absent, each file completes with no result. */
@@ -108,7 +108,7 @@ export async function setup({
   admitEveryMs,
   before,
   needsRepository,
-  runHere,
+  alwaysLocal,
   refusal,
   localRun,
   eager,
@@ -267,7 +267,7 @@ export async function setup({
     status: (text) => statuses.push(text),
     log: (text) => logs.push(text),
     ...(needsRepository === undefined ? {} : { needsRepository: () => needsRepository }),
-    ...(runHere === undefined ? {} : { runHere: () => runHere }),
+    ...(alwaysLocal === undefined ? {} : { alwaysLocal: () => alwaysLocal }),
     repository: (text) => repository.push(text),
     remoteCoverage: (runId, records) => coverage.push({ runId, records: [...records] }),
     now: () => clock,
