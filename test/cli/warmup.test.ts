@@ -219,7 +219,10 @@ describe(
       // Fast files may finish while the slow one waits: each change of count is a new line.
       expect(waiting?.length ?? 0, out).toBeGreaterThanOrEqual(1);
       const progress = out.match(/^squeal warmup: \d+ of \d+ test files done.*$/gm) ?? [];
-      expect(new Set(progress).size, out).toBe(progress.length);
+      // Row 011-429: a line only when it changed, so no two in a row are the same; a count may
+      // come back, as "5 of 6" before the wait, with it, and once the held file runs.
+      const repeated = progress.filter((line, i) => i > 0 && line === progress[i - 1]);
+      expect(repeated, out).toEqual([]);
       // The held file runs 3 s once the bound passes: the wait is no longer claimed.
       expect(progress.at(-1), out).toMatch(/^squeal warmup: \d+ of \d+ test files done$/);
       everyFileCurrent(repo);

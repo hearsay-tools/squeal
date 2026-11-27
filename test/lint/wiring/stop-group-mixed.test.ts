@@ -3,6 +3,7 @@ import { readPolicy } from "../../../src/core/daemon/policy.js";
 import { readStopHolds } from "../../../src/core/delivery/turn.js";
 import { releaseLintGroup } from "../../../src/core/lint/pass/commit-entry.js";
 import { recordRefinedApplied } from "../../../src/core/scheduler/refined.js";
+import { STOP_SLOW_WAIT_CAP_MS } from "../../../src/core/slow/stop-wait.js";
 import { ADDS, FILE, type SquealRepo } from "../../harness/helpers.js";
 import {
   HARNESSES,
@@ -24,6 +25,10 @@ import { hookedRepo } from "./rig.js";
  * one `stop.maxHolds` budget. The 2 s entry never spends a hold on the lint
  * failure while a required test is not settled. Claude Code and Codex;
  * with the waiting entry known, and without it (the 2 s entry decides alone).
+ * Row 011-429: the waiting entry's bound is one it never reaches, so only
+ * the run it asks for or the runner part's apply ends its wait; a case runs
+ * a real repository, lint and several Stops, past Vitest's 5 s on a loaded
+ * runner.
  */
 
 const AT_STOP = { name: "lint", lint: true, at: "stop" };
@@ -73,7 +78,7 @@ const refine = (r: SquealRepo) => recordRefinedApplied(r.store, r.worktreeId, la
  * session before. A daemon whose `run-group` runs the unit test to a pass.
  */
 async function mixed(harness: Harness, open: Open, maxHolds: number, known: boolean) {
-  const policy = { checks: [AT_STOP, UNIT], stop: { slowWaitMs: 5_000, maxHolds } };
+  const policy = { checks: [AT_STOP, UNIT], stop: { slowWaitMs: STOP_SLOW_WAIT_CAP_MS, maxHolds } };
   const hooked = await hookedRepo(
     { "src/a.js": "ok\n" },
     { enabled: true, blocking: true },
@@ -139,6 +144,7 @@ async function stopsUntilSilent(
 
 describe.each(HARNESSES)(
   "a lint failure beside an unsettled test group, $name (review 0.1.406-r2 B2-R1)",
+  { timeout: 60_000 },
   (harness) => {
     const cases = (["queued", "lookup-only", "runner part"] as const).flatMap((open) =>
       [1, 2].flatMap((maxHolds) => [true, false].map((known) => ({ open, maxHolds, known }))),
