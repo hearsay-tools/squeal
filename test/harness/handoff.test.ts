@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import { clearHandoff } from "../../src/core/presence/events.js";
+import { claimHandoff, clearHandoff } from "../../src/core/presence/events.js";
 import {
   daemonExitMetaKey,
   HANDOFF_BOUND_MS,
@@ -225,10 +225,17 @@ describe("one successor per handoff (row 011-32)", () => {
     expect(stepDowns(asked)).toBe(2);
   });
 
-  it("spawns as before on a store too busy to take the claim", async () => {
+  /*
+   * Row 011-434 (census G6): a hook whose claim write threw said `claimed`
+   * and spawned a successor with the lock wait, while no claim was stored,
+   * so `squeal start` claimed too and spawned a second one beside it
+   * (`handover-tier`, CI 42229025101). Now a hook says `claimed` only once
+   * its claim is stored; else it ensures as before, with no lock wait.
+   */
+  it("spawns no lock wait on a store too busy to take the claim, and leaves the claim to the next", async () => {
     const r = squealRepo();
     const asked = await stepping(r, () => Date.now());
-    const { successors, deps } = recording(() => Date.now());
+    const { calls, successors, deps } = recording(() => Date.now());
     const location = { root: r.root, commonDir: r.repo.commonDir } as never;
     const holder = new DatabaseSync(storePaths(r.repo.commonDir as never).database);
     cleanups.push(() => holder.close());
@@ -237,15 +244,46 @@ describe("one successor per handoff (row 011-32)", () => {
       const context = openContext({ session_id: session }, location, { busyTimeoutMs: 50 });
       if (context === null) throw new Error("no store");
       try {
-        expect(await ensure(location, deps, context)).toBe("spawned");
+        expect(await ensure(location, deps, context)).toBe("alive");
       } finally {
         context.close();
       }
     }
     holder.exec("ROLLBACK");
-    expect(successors()).toHaveLength(2);
+    expect(successors()).toEqual([]);
+    expect(calls).toHaveLength(2);
     expect(stepDowns(asked)).toBe(2);
     expect(r.store.meta.get(handoffMetaKey(r.worktreeId))).toBeNull();
+    // `squeal start`'s claim (`claims` in `cli/start.ts`) is then the only one written: one successor.
+    const claim = { from: `${OLD}@1#t`, to: "0.1.32", at: Date.now() as EpochMs };
+    expect(claimHandoff(r.store, r.worktreeId, claim)).not.toBeNull();
+  });
+
+  it("spawns the successor when the claim was stored but its write threw after", async () => {
+    const r = squealRepo();
+    const asked = await stepping(r, () => Date.now());
+    const { successors, deps } = recording(() => Date.now());
+    const location = { root: r.root, commonDir: r.repo.commonDir } as never;
+    const opened = openContext({ session_id: "s1" }, location);
+    if (opened === null) throw new Error("no store");
+    // The daemon wrote the claim and its answer was lost.
+    const context = {
+      ...opened,
+      write: async <T>(work: () => T | Promise<T>): Promise<T> => {
+        await opened.write(work);
+        throw new Error("the connection closed");
+      },
+    };
+    try {
+      expect(await ensure(location, deps, context)).toBe("spawned");
+    } finally {
+      opened.close();
+    }
+    expect(successors()).toEqual([
+      expect.objectContaining({ awaitLockMs: SUCCESSOR_LOCK_WAIT_MS }),
+    ]);
+    expect(stepDowns(asked)).toBe(1);
+    expect(readHandoff(r.store, r.worktreeId)).toMatchObject({ from: `${OLD}@1#t`, to: HOOK });
   });
 
   it("asks nothing and reads the daemon alive at a boundary that finds a live claim", async () => {

@@ -9,7 +9,12 @@ import { spawnStartCurrent } from "../../core/presence/findings.js";
 import { heartbeatFresh, lastHeartbeat } from "../../core/presence/heartbeat.js";
 import { markSpawn } from "../../core/presence/lock-events.js";
 import { readHookHandoff, readHookStop } from "../../core/presence/narrow.js";
-import { handoffFrom, SUCCESSOR_LOCK_WAIT_MS } from "../../core/presence/stored.js";
+import {
+  type HandoffClaim,
+  handoffFrom,
+  readHandoff,
+  SUCCESSOR_LOCK_WAIT_MS,
+} from "../../core/presence/stored.js";
 import { lockFileFor } from "../../core/store/paths.js";
 import { readTransaction } from "../../core/store/store.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../core/types/common.js";
@@ -149,8 +154,8 @@ export async function ensureIfStale(
  * claims only when the daemon already steps down (`steppingDown`), so the
  * next boundary after the bound or a timed-out lock wait spawns again
  * (review 0.1.259, B1). A store that stays busy past the hook's timeout
- * takes no claim, and the hook spawns as before (`claimed`): the lock's
- * winner serves and the rest exit. Row 011-140: a daemon that registered
+ * takes no claim, and the hook ensures as before (`none`, row 011-434): it
+ * says `claimed` only for a claim the store holds (`stored`). Row 011-140: a daemon that registered
  * older than the claim it ended (`readShortHandoff`) is asked nothing again;
  * `squeal start` replaces it. Review 0.1.277, B1: the record, the claim and
  * the mark are read in one read transaction, as the successor writes them in
@@ -186,18 +191,42 @@ async function handOver(
   } else if (!read.stepping) {
     return "none";
   }
+  let tried: EpochMs | null = null;
   try {
     // Spec 021 D15: with a daemon serving, under the worktree's write lease.
     const claim = await context.write(() =>
       store.transaction(() => {
         if (!stillRecorded(store, id, read.from)) return undefined;
-        return claimHandoff(store, id, { from: read.from, to: version, at: now() });
+        tried = now();
+        return claimHandoff(store, id, { from: read.from, to: version, at: tried });
       }),
     );
     if (claim === undefined) return "none";
     return claim === null ? "joined" : "claimed";
   } catch {
-    return "claimed";
+    return tried !== null && stored(store, id, { from: read.from, to: version, at: tried })
+      ? "claimed"
+      : "none";
+  }
+}
+
+/**
+ * Row 011-434 (census G6): whether the claim a throwing write tried is
+ * stored, such as one the daemon wrote before its answer was lost. A hook
+ * said `claimed` for a claim the busy store never took, and `squeal start`,
+ * finding none, claimed too: two successors waited for the lock. A store
+ * that cannot be read counts as not stored.
+ */
+function stored(
+  store: Store,
+  worktreeId: WorktreeId,
+  claim: Pick<HandoffClaim, "from" | "to" | "at">,
+): boolean {
+  try {
+    const found = readHandoff(store, worktreeId);
+    return found?.from === claim.from && found.to === claim.to && found.at === claim.at;
+  } catch {
+    return false;
   }
 }
 
