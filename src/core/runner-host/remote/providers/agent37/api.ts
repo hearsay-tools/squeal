@@ -178,7 +178,7 @@ export class Agent37Api {
     const host = base.hostname.replace(/^\[|\]$/g, "");
     const { env, keyEnv } = this.#options;
     const key = apiKeyFor(keyEnv, tls && proxyFor(host, port, env) !== null, env);
-    const opened = await openEndpoint({ host, port, tls }, env, timeoutMs);
+    const opened = await openEndpoint({ host, port, tls }, env, timeoutMs, signal);
     if (signal?.aborted === true) {
       opened.socket.destroy();
       signal.throwIfAborted();

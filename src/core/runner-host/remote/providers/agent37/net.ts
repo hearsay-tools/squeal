@@ -119,12 +119,30 @@ export function apiKeyFor(keyEnv: string, proxied: boolean, env: NodeJS.ProcessE
   throw new LocalError(`no Agent37 API key: set ${keyEnv}, or HTTPS_PROXY to a proxy that adds it`);
 }
 
+/**
+ * Review 0.1.659-r2 B1: `signal` ends a connection being opened. Its abort
+ * runs `cancel`, which destroys the operation's own request and socket;
+ * the operation's own error then settles it. The returned function stops
+ * listening once the operation has settled.
+ */
+function cancelling(signal: AbortSignal | undefined, cancel: () => void): () => void {
+  if (signal === undefined) return () => {};
+  signal.addEventListener("abort", cancel, { once: true });
+  return () => signal.removeEventListener("abort", cancel);
+}
+
+/** The error of a connection `signal` ended. */
+function stopped(what: string): LocalError {
+  return new LocalError(`${what}: stopped`);
+}
+
 /** A socket to `proxy` that has answered `CONNECT` to `target` with 200. */
 function connectThrough(
   proxy: URL,
   target: Endpoint,
   env: NodeJS.ProcessEnv,
   timeoutMs: number,
+  signal: AbortSignal | undefined,
 ): Promise<Socket> {
   const authority = `${target.host.includes(":") ? `[${target.host}]` : target.host}:${target.port}`;
   const headers: Record<string, string> = { Host: authority };
@@ -134,6 +152,7 @@ function connectThrough(
   }
   const host = proxy.hostname.replace(/^\[|\]$/g, "");
   const port = proxyPort(proxy);
+  let raw: Socket | undefined;
   const options = {
     host,
     port,
@@ -142,10 +161,13 @@ function connectThrough(
     headers,
     // Always our own socket, never an Agent: Node 26's Agent reads the process's own
     // proxy settings (NODE_USE_ENV_PROXY), which are not this call's `env`.
-    createConnection: () =>
-      proxy.protocol === "https:"
-        ? tlsConnect({ host, port, ca: trustedCa(env) })
-        : netConnect({ host, port }),
+    createConnection: () => {
+      raw =
+        proxy.protocol === "https:"
+          ? tlsConnect({ host, port, ca: trustedCa(env) })
+          : netConnect({ host, port });
+      return raw;
+    },
   };
   return new Promise((resolve, reject) => {
     const asked = httpRequest(options);
@@ -154,12 +176,25 @@ function connectThrough(
         new LocalError(`proxy ${proxyName(proxy)} did not answer within ${timeoutMs} ms`),
       );
     }, timeoutMs);
-    asked.on("error", (error) => {
+    const detach = cancelling(signal, () => {
+      asked.destroy(stopped(`proxy ${proxyName(proxy)}`));
+      raw?.destroy();
+    });
+    const settle = () => {
       clearTimeout(timer);
-      reject(new LocalError(`proxy ${proxyName(proxy)}: ${safeReason(error)}`));
+      detach();
+    };
+    asked.on("error", (error) => {
+      settle();
+      raw?.destroy();
+      reject(
+        error instanceof LocalError
+          ? error
+          : new LocalError(`proxy ${proxyName(proxy)}: ${safeReason(error)}`),
+      );
     });
     asked.on("connect", (response, socket) => {
-      clearTimeout(timer);
+      settle();
       if (response.statusCode !== 200) {
         socket.destroy();
         // The status as a number: the proxy's reason phrase and body stay unread.
@@ -172,30 +207,39 @@ function connectThrough(
       }
       resolve(socket);
     });
-    asked.end();
+    if (signal?.aborted === true) asked.destroy(stopped(`proxy ${proxyName(proxy)}`));
+    else asked.end();
   });
 }
 
-/** Resolves once `socket` is connected (or TLS-secured), rejecting on its first error. */
+/** Resolves once `socket` is connected (or TLS-secured), rejecting on its first error or at `signal`. */
 function ready<T extends Socket>(
   socket: T,
   event: string,
   timeoutMs: number,
   what: string,
+  signal: AbortSignal | undefined,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
+    const fail = (error: LocalError) => {
+      settle();
       socket.destroy();
-      reject(new LocalError(`${what}: no connection within ${timeoutMs} ms`));
+      reject(error);
+    };
+    const timer = setTimeout(() => {
+      fail(new LocalError(`${what}: no connection within ${timeoutMs} ms`));
     }, timeoutMs);
-    socket.once("error", (error) => {
+    const detach = cancelling(signal, () => fail(stopped(what)));
+    const settle = () => {
       clearTimeout(timer);
-      reject(new LocalError(`${what}: ${safeReason(error)}`));
-    });
+      detach();
+    };
+    socket.once("error", (error) => fail(new LocalError(`${what}: ${safeReason(error)}`)));
     socket.once(event, () => {
-      clearTimeout(timer);
+      settle();
       resolve(socket);
     });
+    if (signal?.aborted === true) fail(stopped(what));
   });
 }
 
@@ -208,19 +252,24 @@ export interface Opened {
 /**
  * Opens `target`: through the proxy `proxyFor` names for a TLS endpoint,
  * else directly; TLS is verified against `trustedCa`. ALPN asks for HTTP/1.1.
+ * `signal` ends the opening wherever it stands (review 0.1.659-r2 B1):
+ * the proxy's `CONNECT`, the connection or the TLS handshake.
  */
 export async function openEndpoint(
   target: Endpoint,
   env: NodeJS.ProcessEnv,
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<Opened> {
   const what = `${target.host}:${target.port}`;
   const proxy = target.tls ? proxyFor(target.host, target.port, env) : null;
+  if (signal?.aborted === true) throw stopped(what);
   if (!target.tls) {
     const socket = netConnect({ host: target.host, port: target.port });
-    return { socket: await ready(socket, "connect", timeoutMs, what), proxied: false };
+    return { socket: await ready(socket, "connect", timeoutMs, what, signal), proxied: false };
   }
-  const tunnel = proxy === null ? undefined : await connectThrough(proxy, target, env, timeoutMs);
+  const tunnel =
+    proxy === null ? undefined : await connectThrough(proxy, target, env, timeoutMs, signal);
   const secure = tlsConnect({
     ...(tunnel === undefined ? { host: target.host, port: target.port } : { socket: tunnel }),
     // SNI names a host, never an address.
@@ -228,5 +277,13 @@ export async function openEndpoint(
     ca: trustedCa(env),
     ALPNProtocols: ["http/1.1"],
   });
-  return { socket: await ready(secure, "secureConnect", timeoutMs, what), proxied: proxy !== null };
+  try {
+    return {
+      socket: await ready(secure, "secureConnect", timeoutMs, what, signal),
+      proxied: proxy !== null,
+    };
+  } catch (error) {
+    tunnel?.destroy();
+    throw error;
+  }
 }

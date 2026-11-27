@@ -8,10 +8,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createServer, type Server } from "node:http";
-import type { AddressInfo, Socket } from "node:net";
+import { type AddressInfo, createServer as createTcpServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import {
   readMachines,
   recordMachine,
@@ -91,6 +91,73 @@ async function silentServer() {
   };
 }
 
+/**
+ * Review 0.1.659-r2 B1: a loopback proxy that reads each `CONNECT` and
+ * either never answers it, or answers 200 and then never speaks, so the
+ * TLS handshake through the tunnel stays pending. It counts open sockets.
+ */
+async function stalledProxy(answer: "never" | "then-silent") {
+  const sockets = new Set<Socket>();
+  const connects: string[] = [];
+  let after = 0;
+  const server = createTcpServer((socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+    socket.on("error", () => {});
+    let head = "";
+    socket.on("data", (chunk: Buffer) => {
+      if (head.includes("\r\n\r\n")) {
+        after += chunk.length;
+        return;
+      }
+      head += chunk.toString("latin1");
+      if (!head.includes("\r\n\r\n")) return;
+      connects.push(head.split("\r\n")[0] ?? "");
+      if (answer === "then-silent") socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  onTestFinished(async () => {
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  });
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${port}`,
+    connects,
+    /** Bytes the client sent after its `CONNECT`: its TLS hello, once the tunnel is open. */
+    after: () => after,
+    open: () => sockets.size,
+  };
+}
+
+/** From now on, the timers set and neither fired nor cleared yet. */
+function liveTimers(): Set<unknown> {
+  const live = new Set<unknown>();
+  const set = globalThis.setTimeout;
+  const clear = globalThis.clearTimeout;
+  vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+    run: (...args: unknown[]) => void,
+    ms?: number,
+    ...args: unknown[]
+  ) => {
+    const timer = set(() => {
+      live.delete(timer);
+      run(...args);
+    }, ms);
+    live.add(timer);
+    return timer;
+  }) as typeof setTimeout);
+  vi.spyOn(globalThis, "clearTimeout").mockImplementation((timer) => {
+    live.delete(timer);
+    clear(timer);
+  });
+  onTestFinished(() => {
+    vi.restoreAllMocks();
+  });
+  return live;
+}
+
 async function waitFor(check: () => boolean, timeoutMs: number, what: string): Promise<void> {
   const started = Date.now();
   while (!check()) {
@@ -163,4 +230,33 @@ describe("the prune's abort ends the provider's release (review 0.1.658 B1)", ()
     await waitFor(() => !alive(pid), 5_000, "the hook killed");
     expect(readMachines(u.env).machines.map((m) => m.id)).toEqual(["cmd:hook"]);
   });
+
+  for (const answer of ["never", "then-silent"] as const) {
+    const phase = answer === "never" ? "a proxy CONNECT" : "a TLS handshake through the proxy";
+    it(`closes ${phase} left pending, clears its deadline and keeps the record (review 0.1.659-r2 B1)`, async () => {
+      const proxy = await stalledProxy(answer);
+      const u = user(
+        { provider: "agent37", providerConfig: { apiBaseUrl: "https://api.agent37.invalid" } },
+        {
+          provider: "agent37",
+          id: "agent37:eu:vm:inst0proxy",
+          state: { instanceId: "inst0proxy", region: "eu", type: "vm", bootstrap: "git-bundle" },
+        },
+      );
+      u.env.HTTPS_PROXY = proxy.url;
+      const live = liveTimers();
+      const stop = new AbortController();
+      const pruning = pruneRemovedWorktrees({ env: u.env, signal: stop.signal });
+      await waitFor(() => proxy.connects.length === 1, 10_000, "the CONNECT sent");
+      expect(proxy.connects).toEqual(["CONNECT api.agent37.invalid:443 HTTP/1.1"]);
+      if (answer === "then-silent") {
+        await waitFor(() => proxy.after() > 0, 5_000, "the TLS hello through the tunnel");
+      }
+      stop.abort();
+      expect(await pruning).toMatchObject({ gone: 1, outcomes: [], aborted: true });
+      await waitFor(() => proxy.open() === 0, 3_000, "the proxy's socket closed");
+      expect(live.size).toBe(0);
+      expect(readMachines(u.env).machines.map((m) => m.id)).toEqual(["agent37:eu:vm:inst0proxy"]);
+    }, 20_000);
+  }
 });
