@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { coverageMarker } from "../../core/code/coverage/record.js";
 import { compare } from "../../core/fs/compare.js";
@@ -44,6 +44,12 @@ export type JestRead =
        * without one, and on a read of one inline project.
        */
       readonly inlineProjects?: readonly string[];
+      /**
+       * Review 0.1.653 B1: every existing file under `roots` named as a
+       * Babel or Browserslist config ({@link TRANSFORM_CONFIG_NAMES}),
+       * sorted; absent from a reader that predates it.
+       */
+      readonly transformConfigs?: readonly AbsolutePath[];
     }
   | {
       readonly ok: false;
@@ -58,6 +64,39 @@ export type JestRead =
 const READ_TIMEOUT_MS = 60_000;
 
 /**
+ * The file names Babel and Browserslist look for beside a source file and
+ * above it (D2.3; Babel 7.21+ adds `babel.config.ts` and `.mts`). The
+ * transform runs with the recorder paused (row 028-08), so none of its
+ * probes is observed: the existing ones under the project are keyed as
+ * environment files instead, and the add or delete of one reads the project
+ * again (review 0.1.653 B1).
+ */
+export const TRANSFORM_CONFIG_NAMES: ReadonlySet<string> = new Set([
+  "babel.config.js",
+  "babel.config.cjs",
+  "babel.config.mjs",
+  "babel.config.cts",
+  "babel.config.json",
+  "babel.config.ts",
+  "babel.config.mts",
+  ".babelrc",
+  ".babelrc.js",
+  ".babelrc.cjs",
+  ".babelrc.mjs",
+  ".babelrc.cts",
+  ".babelrc.json",
+  ".babelignore",
+  ".browserslistrc",
+  "browserslist",
+  ".browserlistrc",
+]);
+
+/** Whether `path`, a file of any folder, is named as a Babel or Browserslist config. */
+export function isTransformConfig(path: string): boolean {
+  return TRANSFORM_CONFIG_NAMES.has(path.slice(path.lastIndexOf("/") + 1));
+}
+
+/**
  * Reads `jest-config` at argv[1] on the config at argv[2], recording every
  * worktree file (argv[3]) the evaluation loads by `require` or `import`, or
  * reads with `fs` (review 0.1.644 B4). A non-empty argv[4] selects one
@@ -65,7 +104,8 @@ const READ_TIMEOUT_MS = 60_000;
  * object is the project, read as Jest's `readConfigs` reads it, the root
  * config gives the global config, and what the root config loads is
  * recorded all the same. It then walks `roots` (skipping
- * `node_modules` and `.git`) for the files Jest's SearchSource would select.
+ * `node_modules` and `.git`) for the files Jest's SearchSource would select,
+ * and for the existing Babel and Browserslist configs (review 0.1.653 B1).
  * Its JSON is the last line it prints, with the recorded files on a failure
  * too. It names only files that exist: it never guesses what a missing path
  * would resolve to. A project whose config fails to read retries on any edit
@@ -77,6 +117,7 @@ const fs = require("fs");
 const { createRequire, registerHooks } = require("module");
 const { fileURLToPath } = require("url");
 const [jestConfig, configPath, worktree, selector = ""] = process.argv.slice(1);
+const CONFIG_NAMES = new Set(${JSON.stringify([...TRANSFORM_CONFIG_NAMES])});
 ${INLINE_PROJECT_RULE}
 const print = (value) => process.stdout.write("\n" + JSON.stringify(value) + "\n");
 const roots = [worktree];
@@ -157,6 +198,7 @@ const configDeps = (cached) => {
   const ignored = projectConfig.testPathIgnorePatterns.length > 0
     ? new RegExp(projectConfig.testPathIgnorePatterns.join("|")) : null;
   const found = new Set();
+  const transformConfigs = new Set();
   const walk = (dir) => {
     let entries;
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -164,7 +206,8 @@ const configDeps = (cached) => {
       if (entry.name === "node_modules" || entry.name === ".git") continue;
       const file = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(file);
-      else if (entry.isFile() && exts.has(path.extname(file))) {
+      else if (entry.isFile() && CONFIG_NAMES.has(entry.name)) transformConfigs.add(file);
+      if (entry.isFile() && exts.has(path.extname(file))) {
         if (ignored !== null && ignored.test(file)) continue;
         if (match !== null ? match(file) : regex.some((r) => r.test(file))) found.add(file);
       }
@@ -173,6 +216,7 @@ const configDeps = (cached) => {
   for (const root of projectConfig.roots) walk(root);
   print({
     ok: true, project: projectConfig, global: globalConfig, testPaths: [...found].sort(), preset, configDeps: deps,
+    transformConfigs: [...transformConfigs].sort(),
     ...(inline.length > 0 ? { inlineProjects: inline } : {}),
   });
 })().catch((error) => print({
@@ -254,6 +298,12 @@ export interface JestEnvironmentInput {
    * without coverage.
    */
   readonly covering?: boolean;
+  /**
+   * Review 0.1.653 B1: folders of the project's modules outside `roots`,
+   * whose existing Babel and Browserslist configs, and their parents' up to
+   * the worktree root, are keyed too.
+   */
+  readonly extraConfigDirs?: Iterable<string>;
 }
 
 /** Projects config fields that change per run, machine or worktree and never an outcome. */
@@ -277,26 +327,7 @@ const PACKAGES = [
   "@babel/core",
   "typescript",
 ] as const;
-const BABEL = [
-  "babel.config.js",
-  "babel.config.cjs",
-  "babel.config.mjs",
-  "babel.config.cts",
-  "babel.config.json",
-  ".babelrc",
-  ".babelrc.js",
-  ".babelrc.cjs",
-  ".babelrc.mjs",
-  ".babelrc.cts",
-  ".babelrc.json",
-  // Row 028-08: Babel 7.21+ and Browserslist look for these too; the transform's probes key none.
-  "babel.config.ts",
-  "babel.config.mts",
-  ".babelignore",
-  ".browserslistrc",
-  "browserslist",
-  ".browserlistrc",
-];
+const BABEL = [...TRANSFORM_CONFIG_NAMES];
 const TSCONFIGS = ["tsconfig.spec.json", "tsconfig.json", "tsconfig.base.json"];
 
 /** D2.3: the runner-side environment inputs of one Jest project. */
@@ -344,7 +375,7 @@ export function jestEnvironment(input: JestEnvironmentInput): RunnerEnvironment 
     runnerVersion: read.ok ? install.version : JEST_UNAVAILABLE,
     adapterVersion: input.adapterVersion,
     resolvedConfig: portable(JSON.stringify(sorted(config))),
-    files: configFiles(root, project, read, env),
+    files: configFiles(root, project, read, env, input.extraConfigDirs),
     // Spec 016 D4: its runs report module loads, which key whatever `observe.runtimeInputs` says.
     observedLoads: true,
   };
@@ -386,14 +417,17 @@ export function unavailableEnvironment(
  * configs from the project's `rootDir` up to the worktree root, the nearest
  * `package.json` and tsconfig with its `extends` chain, ts-node's pinned
  * project, and every project file the resolved config names (setup files,
- * a local transformer, environment or resolver), and every worktree file
- * the config's evaluation loaded or read. Worktree-relative, sorted.
+ * a local transformer, environment or resolver), every worktree file the
+ * config's evaluation loaded or read, and each existing Babel or
+ * Browserslist config under `roots` or in `extraDirs` and their parents
+ * (review 0.1.653 B1). Worktree-relative, sorted.
  */
 export function configFiles(
   root: AbsolutePath,
   project: JestProject,
   read: JestRead,
   env: NodeJS.ProcessEnv,
+  extraDirs: Iterable<string> = [],
 ): RelativePath[] {
   const config = toAbsolute(root, project.config);
   const files: string[] = [config];
@@ -408,6 +442,8 @@ export function configFiles(
   }
   // Review 0.1.644 B4: what the config imported or read, on a read that failed too.
   files.push(...(read.configDeps ?? []));
+  if (read.ok) files.push(...(read.transformConfigs ?? []));
+  files.push(...transformConfigsIn(root, extraDirs));
   if (read.ok) {
     if (read.preset !== null) files.push(read.preset);
     const globalHooks = [read.global.globalSetup, read.global.globalTeardown].filter(
@@ -420,6 +456,37 @@ export function configFiles(
     }
   }
   return inside(root, files);
+}
+
+/**
+ * The existing Babel and Browserslist configs in each of `dirs` inside
+ * `root` and in its parents up to `root`, none under `node_modules` or
+ * `.git`. Existing ones only: an absent name keys nothing, and the add of
+ * one reads the project again (the adapter's `invalidate`).
+ */
+function transformConfigsIn(root: AbsolutePath, dirs: Iterable<string>): string[] {
+  const found: string[] = [];
+  const visited = new Set<string>();
+  for (const from of dirs) {
+    if (!from.startsWith(root + sep)) continue;
+    for (const dir of upTo(from, root)) {
+      if (visited.has(dir)) break;
+      visited.add(dir);
+      const parts = dir.slice(root.length + 1).split(sep);
+      if (parts.includes("node_modules") || parts.includes(".git")) continue;
+      let names: string[];
+      try {
+        names = readdirSync(dir);
+      } catch {
+        continue;
+      }
+      for (const name of names) {
+        if (TRANSFORM_CONFIG_NAMES.has(name) && isFile(join(dir, name)))
+          found.push(join(dir, name));
+      }
+    }
+  }
+  return found;
 }
 
 /** A tsconfig and each file its relative `extends` names, existing ones only. */

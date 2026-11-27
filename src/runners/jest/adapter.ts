@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { extname, join, relative, sep } from "node:path";
+import { dirname, extname, join, relative, sep } from "node:path";
 import { compare, sameList } from "../../core/fs/compare.js";
 import { toAbsolute } from "../../core/fs/paths.js";
 import { WorktreePaths } from "../../core/fs/worktree-paths.js";
@@ -24,6 +24,7 @@ import { type JestCoverage, ProjectCoverage } from "./coverage.js";
 import { enumerate } from "./enumerate.js";
 import {
   configFiles,
+  isTransformConfig,
   type JestRead,
   jestCwd,
   jestEnvironment,
@@ -141,9 +142,18 @@ export async function createJestAdapter(
     }
   };
 
+  /**
+   * Review 0.1.653 B1: folders of the worktree files runs observed, whose
+   * Babel and Browserslist configs are keyed with the environment. Kept
+   * across a new read of the project.
+   */
+  const loadedDirs = new Set<string>();
+  /** Folders whose existing transform configs key the environment: the static graph's and the runs'. */
+  const configDirs = (current: Opened): string[] => [...graphDirs(root, current), ...loadedDirs];
+
   let state = await open();
   let observed = observing();
-  let watched = watchedOf(root, project, state, source);
+  let watched = watchedOf(root, project, state, source, configDirs(state));
   if (!state.ok) note(state.note);
 
   /**
@@ -155,7 +165,7 @@ export async function createJestAdapter(
     const before = state.ok ? null : state.note;
     state = await open();
     observed = observing();
-    watched = watchedOf(root, project, state, source);
+    watched = watchedOf(root, project, state, source, configDirs(state));
     if (!state.ok && state.note !== before) note(state.note);
     else if (state.ok && before !== null) note(`it reads again (jest ${state.install.version})`);
   };
@@ -182,8 +192,11 @@ export async function createJestAdapter(
         // A project that stays unavailable keys as it did: nothing to recreate.
         return { recreatedProjects: state.ok ? [project.name] : [] };
       }
-      // Healthy: only its config chain or the recorder setting reads it again.
-      if (observed !== observing() || changed.some((p) => watched.has(p.path))) {
+      // Healthy: only its config chain, a transform config added or deleted (review 0.1.653
+      // B1), or the recorder setting reads it again.
+      const configChanged = (p: InvalidatedPath) =>
+        watched.has(p.path) || (p.kind !== "change" && isTransformConfig(p.path));
+      if (observed !== observing() || changed.some(configChanged)) {
         await reopen();
         return { recreatedProjects: [project.name] };
       }
@@ -228,6 +241,7 @@ export async function createJestAdapter(
         adapterVersion: JEST_ADAPTER_VERSION,
         observing: observed,
         covering: coverage.key(),
+        extraConfigDirs: configDirs(state),
       });
       return [environment];
     },
@@ -294,6 +308,7 @@ export async function createJestAdapter(
     );
     const withTransform = withReads(recorded, ran.transformReads ?? [], paths, observe.skip);
     const seen = withHostModules(withTransform, ran.hostObserved ?? [], paths, observe.skip);
+    addDirs(loadedDirs, root, seen);
     return seen.length === 0 ? report : { ...report, observed: seen };
   }
 }
@@ -432,19 +447,42 @@ function graphOf(
   });
 }
 
+/** Adds the folder of each path `observed` names to `dirs`. */
+function addDirs(dirs: Set<string>, root: AbsolutePath, observed: readonly ObservedInputs[]): void {
+  for (const o of observed) for (const path of o.paths) dirs.add(dirname(toAbsolute(root, path)));
+}
+
+/**
+ * Review 0.1.653 B1: the folders of every module in the project's static
+ * closures, whose transform configs Babel reads as it transforms them.
+ */
+function graphDirs(root: AbsolutePath, state: Opened): Set<string> {
+  const dirs = new Set<string>();
+  if (!state.ok) return dirs;
+  for (const file of state.files) {
+    try {
+      for (const path of state.graph.closure(file).paths) dirs.add(dirname(toAbsolute(root, path)));
+    } catch {
+      // a file the graph no longer lists
+    }
+  }
+  return dirs;
+}
+
 /** The config chain's files: a change of one reads the project again (D2.3). */
 function watchedOf(
   root: AbsolutePath,
   project: JestProject,
   state: Opened,
   source: NodeJS.ProcessEnv,
+  extraDirs: Iterable<string>,
 ): ReadonlySet<RelativePath> {
   const read: JestRead = state.ok
     ? state.read
     : { ok: false, error: "", configDeps: state.configDeps };
   const env =
     state.install === null ? source : projectProcessEnv(root, project, state.install, source);
-  return new Set(configFiles(root, project, read, env));
+  return new Set(configFiles(root, project, read, env, extraDirs));
 }
 
 /** An add or delete that can be a test file: under a root of the project, of an extension it runs. */
