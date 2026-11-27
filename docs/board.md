@@ -1883,7 +1883,7 @@ Row 011-321 (Run evidence, above) joins this lane (the human, 2026-11-14) and ru
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 011-428 group the intermittent CI failures by cause and name one repair per group that does not only raise a timeout | planned (the human, 2026-11-27; one /researcher, claude opus high) | The 28 `proposed` Triage rows keyed `ci-*`, `flake-*`, `local-*` (listed in the brief), plus a census of failed `ci.yml` runs over the last 30 days; goal: fewer CI re-runs before a release | `specifications/011-core/research/ci-flake-census.md`: per group the rows in it, failures per 100 runs, re-runs forced before releases, cause with its tag, repair and cost; every covered row in one group or named unexplained; then a decision card to the human before any repair row |
+| 011-428 group the intermittent CI failures by cause and name one repair per group that does not only raise a timeout | running (researcher 46ec1285, claude opus high, from `5fca81f09`; the human, 2026-11-27) | The 28 `proposed` Triage rows keyed `ci-*`, `flake-*`, `local-*` (listed in the brief), plus a census of failed `ci.yml` runs over the last 30 days; goal: fewer CI re-runs before a release | `specifications/011-core/research/ci-flake-census.md`: per group the rows in it, failures per 100 runs, re-runs forced before releases, cause with its tag, repair and cost; every covered row in one group or named unexplained; then a decision card to the human before any repair row |
 
 ## Feature 012: Claude Code adapter
 
