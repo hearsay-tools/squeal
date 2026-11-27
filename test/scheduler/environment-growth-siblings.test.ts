@@ -10,7 +10,7 @@ import { statCandidates } from "../../src/core/revision/reconcile.js";
 import { createScheduler } from "../../src/core/scheduler/scheduler.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/policy.js";
-import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
@@ -29,6 +29,13 @@ import { captureSync, HARNESS_DAEMON, HARNESS_INCARNATION } from "./store-wait.j
  * discharged and ended quiet while both were pending. A result now clears
  * `keyedAt`, so the growth gives them revision 2; b's own result, landed
  * before the wait, holds nothing.
+ *
+ * Row 011-429: D5's shortest-first order, which runs b's re-run before the
+ * held siblings, came from durations the host measured (a and c slept
+ * 700 ms); a loaded runner measured b slower and ran a sibling first, so
+ * b's re-run waited behind it (CI 45839381817, 45913169134). The runner now
+ * reports fixed durations, so the order is the test's own; and the wait is
+ * checked over a count of its reads, not a sleep.
  */
 
 const A = "nt/test/a.test.mjs";
@@ -36,9 +43,25 @@ const B = "nt/test/b.test.mjs";
 const C = "nt/test/c.test.mjs";
 
 const PASSING = 'import { test } from "node:test";\ntest("passes", () => {});\n';
-/** Slower than b, so D5's shortest-first order runs b's re-run before them. */
-const SLOWER =
-  'import { test } from "node:test";\ntest("passes", () => new Promise((done) => setTimeout(done, 700)));\n';
+
+/** What each file's run reports it took: a and c longer than b, so D5's shortest-first order runs b's re-run before them. */
+const reportedMs = (path: string) => (path === B ? 1 : 1_000);
+
+/** `report` with every duration in it as `reportedMs` says, whatever the host took. */
+function withReportedDurations(report: RunReport): RunReport {
+  return {
+    ...report,
+    results: report.results.map((r) => ({ ...r, durationMs: reportedMs(r.check.testPath) })),
+    ...(report.fileDurations === undefined
+      ? {}
+      : {
+          fileDurations: report.fileDurations.map((d) => ({
+            ...d,
+            durationMs: reportedMs(d.testFile.path),
+          })),
+        }),
+  };
+}
 
 describe(
   "status --wait over a growth that re-keyed files with results (task 001-194)",
@@ -58,8 +81,7 @@ describe(
       );
       for (const n of [0, 1])
         writeFileSync(join(root, `nt/src/p${n}.cjs`), "module.exports = 1;\n");
-      for (const path of [A, C]) writeFileSync(join(root, path), SLOWER);
-      writeFileSync(join(root, B), PASSING);
+      for (const path of [A, B, C]) writeFileSync(join(root, path), PASSING);
       git(root, ["add", "-A"]);
       git(root, ["commit", "-qm", "nt"]);
       const store = openRepoStore(repo.commonDir);
@@ -99,7 +121,7 @@ describe(
         async run(files, options) {
           if (holdSiblings && files.some((file) => file.path !== B)) await siblings;
           if (files.some((file) => file.path === B)) runsOfB += 1;
-          return adapter.run(files, options);
+          return withReportedDurations(await adapter.run(files, options));
         },
       };
       const calls = new RunnerCalls();
@@ -157,7 +179,19 @@ describe(
       // The wait's sync captures revision 2, as the daemon's does.
       const captured = scheduler.status().revision;
       expect(captured).toBe(2);
-      const sync = captureSync(() => captured);
+      const capture = captureSync(() => captured);
+      // Each of the wait's reads asks the sync where it stands: they are counted.
+      let reads = 0;
+      const sync = () => {
+        const daemon = capture();
+        return {
+          ...daemon,
+          current: () => {
+            reads += 1;
+            return daemon.current();
+          },
+        };
+      };
       let ended = null as StatusWait | null;
       const wait = waitForStatus(root, { timeoutMs: 60_000, pollMs: 50, settleMs: 0, sync }).then(
         (result) => {
@@ -165,8 +199,8 @@ describe(
           return result;
         },
       );
-      // Ten of the wait's reads with a and c held.
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Ten of the wait's reads with a and c held, or its end, whichever comes first.
+      await expect.poll(() => ended !== null || reads >= 10, { timeout: 60_000 }).toBe(true);
 
       expect(ended).toBeNull();
       release();

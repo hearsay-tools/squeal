@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { Keeper } from "../../../src/core/code/gate/keep.js";
+import type { Pause } from "../../../src/core/code/gate/keep-queue.js";
 import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { CheckKey, TestFileRef } from "../../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
@@ -32,15 +33,52 @@ afterEach(removeStores);
 /** How long a case waits for an early pass to land a write. */
 const LANDS_MS = 5_000;
 
-function keeperAt(at: { root: string; commonDir: string }, notes: string[], busyBoundMs = 600) {
+function keeperAt(at: { root: string; commonDir: string }, notes: string[], pause?: Pause) {
   return new Keeper({
     root: at.root,
     commonDir: at.commonDir,
     policy: { ...DEFAULT_POLICY, complexity: { ...DEFAULT_POLICY.complexity, enabled: true } },
     head: async () => ({ head: "a".repeat(40), dirty: false }),
     note: (text) => notes.push(text),
-    busyBoundMs,
+    busyBoundMs: 600,
+    ...(pause === undefined ? {} : { pause }),
   });
+}
+
+/**
+ * Pauses between early passes that only the case or `stop` ends (row
+ * 020-64's seam): `asked` lists each pause's length, `cancelled` counts
+ * the pauses `stop` ended, `end` ends the one under way.
+ */
+function heldPauses() {
+  const asked: number[] = [];
+  let cancelled = 0;
+  let then: (() => void) | null = null;
+  let onAsk: (() => void) | null = null;
+  const pause: Pause = (ms, next) => {
+    asked.push(ms);
+    then = next;
+    onAsk?.();
+    return () => {
+      then = null;
+      cancelled += 1;
+    };
+  };
+  /** Resolves once `n` pauses were asked for: each follows a pass the busy store refused. */
+  const askedFor = (n: number) =>
+    new Promise<void>((resolve) => {
+      onAsk = () => {
+        if (asked.length >= n) resolve();
+      };
+      onAsk();
+    });
+  const end = () => {
+    const next = then;
+    if (next === null) throw new Error("no pause under way");
+    then = null;
+    next();
+  };
+  return { pause, asked, askedFor, end, cancelled: () => cancelled };
 }
 
 /** One run of `ref`, which completed with a record. */
@@ -81,7 +119,8 @@ describe("the keeper writes while the runs go on (row 020-59)", () => {
     const at = freeStore();
     const notes: string[] = [];
     const moving = inputs();
-    const keep = keeperAt(at, notes);
+    const pauses = heldPauses();
+    const keep = keeperAt(at, notes, pauses.pause);
     keep.expect("vitest", moving.keys, moving.hasher, new Map([[A, KEY_A]]));
     keep.expect("vitest", moving.keys, moving.hasher, new Map([[B, KEY_B]]));
 
@@ -90,12 +129,17 @@ describe("the keeper writes while the runs go on (row 020-59)", () => {
     const held = await holdStore(at.commonDir);
     try {
       await keep.ran(ranOf(B));
-      // Passes on the held store while the runs go on tell nothing.
-      await sleep(300);
+      // Two passes the held store refused while the runs went on, each followed by a pause: they tell nothing.
+      await pauses.askedFor(1);
+      pauses.end();
+      await pauses.askedFor(2);
       expect(notes).toEqual([]);
-      const started = Date.now();
       await keep.flush();
-      expect(Date.now() - started).toBeLessThan(600 + 2_000);
+      // Row 011-429: `flush` ended the pause under way rather than waiting it out, and no
+      // early pass started after it; the last pass's wait is the bound alone, as its
+      // lines below say (at most 0.6 s in all, stopped with no write for 0.6 s).
+      expect(pauses.asked).toEqual([250, 500]);
+      expect(pauses.cancelled()).toBe(1);
     } finally {
       held.release();
     }

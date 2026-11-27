@@ -26,16 +26,15 @@ import type { TimedRun } from "./timed-runner.js";
  * calls, not the files' processes. A loaded host stretches each process's
  * start and exit, which neither bound is about; what the scheduler does when
  * a slot's run returns stays in this process and is bounded loosely.
+ *
+ * Row 011-429: no case bounds that step in milliseconds any more. A loaded
+ * runner stretched it to 4 s (CI 45710459569) and let two other slots free
+ * meanwhile (CI 41207574795, 42882566785). Test 1 counts the refills that
+ * came while a slot of the earlier wave still ran, which a tier's barrier
+ * never does; test 4 checks that no slot the holder started while the waiter
+ * waited ran to its end first. How fast the scheduler refills is speed, logged.
  */
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * From a slot's run returning to the scheduler's next `run` call, or a
- * waiter's grant: the pump's checks, the lock and the waiter's look, in
- * this process. Loose for a loaded runner; one slot's file of 1 to 5 s is
- * longer.
- */
-const REACT_MS = 1_000;
 
 /**
  * How long after a slot returns its permit the waiter of test 4 looks, and
@@ -56,15 +55,25 @@ const spansOf = (runs: readonly TimedRun[]): Span[] =>
  * Each start of `width` slots, in order, and the place it took: the first
  * `width` the places free at the first start, each later one the place the
  * runs' (k − `width`)-th end freed. `idleMs` is how long that place stayed
- * free while files were queued, `passed` how many other places freed in it.
+ * free while files were queued, `passed` how many other places freed in it,
+ * and `ahead` how many runs already in flight when it freed still ran when
+ * it was refilled: a barrier that waits for every slot of a tier leaves none.
  */
-function refills(runs: readonly Span[], width: number): { idleMs: number; passed: number }[] {
-  const starts = runs.map((r) => r.start).sort((a, b) => a - b);
+function refills(
+  runs: readonly Span[],
+  width: number,
+): { idleMs: number; passed: number; ahead: number }[] {
+  const sorted = [...runs].sort((a, b) => a.start - b.start);
   const ends = runs.map((r) => r.end).sort((a, b) => a - b);
-  const freed = [...starts.slice(0, width).map(() => starts[0] ?? 0), ...ends];
-  return starts.map((start, k) => {
+  const freed = [...sorted.slice(0, width).map(() => sorted[0]?.start ?? 0), ...ends];
+  return sorted.map((run, k) => {
     const at = freed[k] ?? Number.NaN;
-    return { idleMs: start - at, passed: ends.filter((e) => e > at && e < start).length };
+    const ahead = sorted.filter((o) => o !== run && o.start < at && o.end > run.start).length;
+    return {
+      idleMs: run.start - at,
+      passed: ends.filter((e) => e > at && e < run.start).length,
+      ahead,
+    };
   });
 }
 
@@ -110,14 +119,14 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
     const gaps = refills(slots, 4);
     const idle = Math.max(...gaps.map((g) => g.idleMs));
     console.log(
-      `011-21 slots: 16 files in ${Math.round(actual)} ms against list scheduling's ${Math.round(list)} ms (${((actual / list - 1) * 100).toFixed(1)} %), ${steps.size} progress steps; slots idled ${gaps.map((g) => Math.round(g.idleMs)).join(" ")} ms (at most ${Math.round(idle)}), other slots freeing meanwhile ${gaps.map((g) => g.passed).join(" ")}`,
+      `011-21 slots: 16 files in ${Math.round(actual)} ms against list scheduling's ${Math.round(list)} ms (${((actual / list - 1) * 100).toFixed(1)} %), ${steps.size} progress steps; slots idled ${gaps.map((g) => Math.round(g.idleMs)).join(" ")} ms (at most ${Math.round(idle)}), other slots freeing meanwhile ${gaps.map((g) => g.passed).join(" ")}, earlier slots still running ${gaps.map((g) => g.ahead).join(" ")}`,
     );
-    // No slot idled while files were queued (within 5 % of list scheduling on a quiet host:
-    // 2.2 % and 3.6 % measured). A slot is refilled before two other slots free; a barrier
-    // that waits for every slot of a tier lets three free first.
-    expect(gaps.filter((g) => g.passed > 1)).toEqual([]);
-    // Nor is its next run held behind anything slow: the refill is this process's own step.
-    expect(idle).toBeLessThanOrEqual(REACT_MS);
+    // No slot waits for the rest of its wave while files are queued (within 5 % of list
+    // scheduling on a quiet host: 2.2 % and 3.6 % measured). A barrier that waits for every
+    // slot of a tier refills none while an earlier slot runs; slots refill most that way. A
+    // stall of this process can let a wave end before one refill, so not every one is asked.
+    const refilled = gaps.slice(4);
+    expect(refilled.filter((g) => g.ahead > 0).length).toBeGreaterThan(refilled.length / 2);
     // W slots at once, never more.
     expect(widest(slots)).toBe(4);
     // Checkpoint progress moves per file, not per tier.
@@ -205,8 +214,13 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
     // Granted at the next slot release, not one tier later. When several slots end before the
     // waiter looks, the holder refills up to its share of 2; above it, it took the waiter's permit.
     expect(refilled.filter((r) => r.held > 2).map((r) => `${r.path} to ${r.held}`)).toEqual([]);
-    // The share came on the waiter's first look after that release.
-    expect(grantedAt - released).toBeLessThanOrEqual(REACT_MS);
+    // Within one slot's file: no slot the holder started while the waiter waited ran to its
+    // end before the share came, as one would when the waiter waits for the holder's next tier.
+    expect(
+      runs
+        .filter((r) => r.start > waitedFrom && r.end !== null && r.end <= grantedAt)
+        .map((r) => r.files[0]?.path),
+    ).toEqual([]);
 
     other.close();
     // The holder takes the waiter's permits back at its pool's next look (a pump wake).
