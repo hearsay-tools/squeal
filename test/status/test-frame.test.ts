@@ -64,6 +64,26 @@ describe("testFileFrame on V8 stacks (011-76 tests 1 to 3)", () => {
     });
   });
 
+  it("names an async test-file frame, named or not, as Vite 8.4.0 and V8 print it (row 025-30)", () => {
+    const below = (frame: string) =>
+      [
+        "Error: boom",
+        "    at helper (test/helpers/ready.ts:3:9)",
+        "    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+        frame,
+      ].join("\n");
+    const errors = (frame: string) => [
+      error(below(frame), { path: "test/helpers/ready.ts", line: 3, column: 9 }),
+    ];
+    // An anonymous async test callback: no function name, so no parentheses.
+    expect(
+      testFileFrame(check("test/a.test.ts"), errors("    at async test/a.test.ts:5:9")),
+    ).toEqual({ path: "test/a.test.ts", line: 5, column: 9 });
+    expect(
+      testFileFrame(check("test/a.test.ts"), errors("    at async named (test/a.test.ts:8:28)")),
+    ).toEqual({ path: "test/a.test.ts", line: 8, column: 28 });
+  });
+
   it("reads a path with parentheses, as a route group's", () => {
     const stack = [
       "Error: boom",
