@@ -21,7 +21,7 @@ import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { hookText } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { antigravityEnvironment } from "./antigravity-plugin.js";
-import { ROLLDOWN_VERSION, VITE_8_3, VITE_VERSION } from "./install.js";
+import { ROLLDOWN_VERSION, VITE_VERSION } from "./install.js";
 import { ALL_PLUGINS, codexEnvironment, copyPlugin, type HookName } from "./plugins.js";
 
 /*
@@ -123,10 +123,6 @@ describe.each(SHIPPED)(
     }
 
     beforeAll(() => {
-      // The retained Codex seed (0.1.368, `seed/runtime.json`) runs on the Vite it supports;
-      // every current runtime on the repository's own (review 025-wave6 B2).
-      const vite =
-        runtime === "seed" ? VITE_8_3 : { vite: VITE_VERSION, rolldown: ROLLDOWN_VERSION };
       // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
       base = realpathSync(mkdtempSync("/tmp/squeal-ship-"));
       plugin = join(base, "plugin");
@@ -156,9 +152,9 @@ describe.each(SHIPPED)(
           // npm 10.9.9's arborist crashes on vitest 5's peer set: Vite named, peers unresolved (install.ts).
           "--legacy-peer-deps",
           `vitest@${VITEST_VERSION}`,
-          `vite@${vite.vite}`,
+          `vite@${VITE_VERSION}`,
           // A stale cached binding packument would leave Vite without its native binding (install.ts).
-          `rolldown@${vite.rolldown}`,
+          `rolldown@${ROLLDOWN_VERSION}`,
         ],
         { cwd: project, stdio: "pipe" },
       );
