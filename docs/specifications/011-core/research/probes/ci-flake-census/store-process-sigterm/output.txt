@@ -1,0 +1,10 @@
+# 2026-11-27T19:50:40Z load: 1.00 1.86 1.52; commit 5fca81f09
+{"case":"hold","node":"v26.13.0","stoppingLine":false,"lines":["store process: serving ~/projects/squeal/.ai/squaw"]}
+{"case":"late","node":"v26.13.0","stoppingLine":true,"lines":["store process: serving ~/projects/squeal/.ai/squaw","store process: stopping (stopped): no batches since the last","store process: ended (stopped)"]}
+{"case":"at-once","node":"v26.13.0","stoppingLine":true,"lines":["store process: serving ~/projects/squeal/.ai/squaw","store process: stopping (stopped): no batches since the last","store process: ended (stopped)"]}
+(node:450950) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"case":"hold","node":"v22.19.0","stoppingLine":false,"lines":["store process: serving ~/projects/squeal/.ai/squaw"]}
+(node:451138) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"case":"late","node":"v22.19.0","stoppingLine":true,"lines":["store process: serving ~/projects/squeal/.ai/squaw","store process: stopping (stopped): no batches since the last","store process: ended (stopped)"]}

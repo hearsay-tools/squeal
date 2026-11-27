@@ -1,0 +1,119 @@
+completed runs 1156; main push runs 575; runs left out as broken: ['40544767011', '43074952519', '43080446339', '43482303375', '43501095627', '44002470567', '44092143277', '44531139206', '44535386860', '44565867794', '44831011705', '44831856491', '44836120947', '45070829138', '45079542590', '45288076087', '45365340373', '45450608303', '45453406366', '45499767330', '45687219757', '45813103996', '45989127633']
+
+G1: 69 runs (6.0 per 100 runs), 74 failed jobs, 36 runs with a same-commit pass, 20 main runs re-run to green, node {'24': 10, '22': 51, '26': 24}, last 2026-11-27
+    19 test/code/coverage/writer-turns.test.ts
+    10 test/cli/warmup.test.ts
+     8 test/scheduler/backlog-slots.test.ts
+     7 test/cli/status-at-now-daemon.test.ts
+     6 test/runners/node-test/graph-cost.test.ts
+     3 test/lint/provider/program-build.test.ts
+     3 test/retry/records.test.ts
+     3 test/scheduler/backlog-tiers.test.ts
+     3 test/lint/wiring/stop-group-mixed.test.ts
+     2 test/cli/wait-reads.test.ts
+     2 test/code/crap/chain-load.test.ts
+     2 test/harness/stop-slow-wait.test.ts
+     2 test/scheduler/environment-growth-siblings.test.ts
+     1 test/cli/wait-stale-start.test.ts
+     1 test/code/gate/lanes-stored-rerun.test.ts
+     1 test/status/why-unknown-standing.test.ts
+     1 test/daemon/lifecycle.test.ts
+     1 test/cli/status-wait-paused.test.ts
+     1 test/runners/vitest/ci-map-client-clock.test.ts
+     1 test/cli/run-group.test.ts
+     1 test/code/coverage/writer-pace.test.ts
+     1 test/status/not-current.test.ts
+     1 test/code/gate/keep-early.test.ts
+     1 test/daemon/busy-requests.test.ts
+     1 test/daemon/departure.test.ts
+     1 test/store/prune-vacuum.test.ts
+     1 test/cli/status-paths.test.ts
+     1 test/daemon/helpers.ts
+
+G2: 71 runs (6.1 per 100 runs), 72 failed jobs, 44 runs with a same-commit pass, 19 main runs re-run to green, node {'22': 45, '24': 1, '26': 26}, last 2026-11-27
+    16 test/scheduler/handover-batches.test.ts
+     9 test/scheduler/tier-yields-overrun.test.ts
+     6 test/scheduler/tier-yields-kept.test.ts
+     6 test/code/crap/seed-failed.test.ts
+     4 test/daemon/low-priority.test.ts
+     3 test/daemon/scratch-identity.test.ts
+     3 test/code/store.test.ts
+     3 test/runner-host/daemon-host.test.ts
+     3 test/cli/ci-record.test.ts
+     3 test/integration/optimizer-start.test.ts
+     3 test/store-process/logs.test.ts
+     2 test/runners/pytest/run/run.test.ts
+     2 test/scheduler/group-lanes-moments.test.ts
+     2 test/cli/stop-at.test.ts
+     1 test/keys/validity/compare.test.ts
+     1 test/daemon/handover.test.ts
+     1 test/code/gate/keep-busy.test.ts
+     1 test/code/gate/keep-daemon.test.ts
+     1 test/daemon/scratch-children.test.ts
+     1 test/harness/hand-off.test.ts
+     1 test/cli/proof-copy.test.ts
+
+G3: 26 runs (2.2 per 100 runs), 27 failed jobs, 10 runs with a same-commit pass, 5 main runs re-run to green, node {'22': 28, '26': 5}, last 2026-11-27
+     8 test/daemon/died.test.ts
+     6 test/harness/opencode-dispose.test.ts
+     6 test/runners/node-test/run.test.ts
+     6 (outside a test)
+     6 test/harness/bundle-helpers.ts
+     1 test/harness/codex/bundles.test.ts
+
+G4: 15 runs (1.3 per 100 runs), 15 failed jobs, 7 runs with a same-commit pass, 6 main runs re-run to green, node {'22': 4, '24': 2, '26': 9}, last 2026-11-27
+    13 test/runners/node-test/run.test.ts
+     2 test/runners/node-test/fixtures.test.ts
+
+G5: 20 runs (1.7 per 100 runs), 23 failed jobs, 11 runs with a same-commit pass, 5 main runs re-run to green, node {'22': 13, '26': 8, '24': 2}, last 2026-11-27
+    12 test/e2e/pi.test.ts
+     5 test/integration/node-test.test.ts
+     2 test/helpers/pi-wake-trace.test.ts
+     1 test/integration/pi-events.test.ts
+     1 test/harness/opencode-dispose.test.ts
+     1 test/integration/pi-wake.test.ts
+     1 test/harness/opencode-wake.test.ts
+
+G6: 5 runs (0.4 per 100 runs), 5 failed jobs, 3 runs with a same-commit pass, 2 main runs re-run to green, node {'22': 3, '26': 2}, last 2026-11-20
+     5 test/daemon/handover-tier.test.ts
+
+G7: 2 runs (0.2 per 100 runs), 2 failed jobs, 2 runs with a same-commit pass, 2 main runs re-run to green, node {'22': 5, '26': 10}, last 2026-11-17
+     6 test/e2e/lifecycle.test.ts
+     5 test/e2e/pi.test.ts
+     3 test/e2e/pytest.test.ts
+     1 test/e2e/ps.test.ts
+
+G8: 2 runs (0.2 per 100 runs), 2 failed jobs, 1 runs with a same-commit pass, 0 main runs re-run to green, node {'22': 4}, last 2026-10-31
+     4 test/scheduler/runs.test.ts
+
+intermittent but in no group:
+   40689314833 test/e2e/slow-node-test.test.ts | slow node:test e2e end to end, claude-code > reports the fast tests first, runs  | AssertionError: expected Set{ …(3) } to deeply equal Set{ …(2) }
+   40691635003 test/e2e/pytest.test.ts | pytest end to end, claude-code > on Python 3.13 > seeds both projects and delive | Error: unable to open database file
+   40691635003 test/e2e/pytest.test.ts | pytest end to end, claude-code > on Python 3.10 > seeds both projects and delive | Error: unable to open database file
+   42726516283 test/evals/retry-knobs.test.ts | the service knob's rates service > starts in the background on a port of its own | AssertionError: expected 'rates service listening on 127.0.0.1:…' to match /^rat
+   43026358907 test/evals/retry-knobs.test.ts | the service knob's rates service > starts in the background on a port of its own | AssertionError: expected 'rates service listening on 127.0.0.1:…' to match /^rat
+   44119022223 test/e2e/slow-node-test.test.ts | slow node:test e2e end to end, claude-code > reports the fast tests first, runs  | AssertionError: expected Set{ …(2) } to deeply equal Set{ 'packages/demo/test/un
+   44918357826 test/e2e/slow-node-test.test.ts | slow node:test e2e end to end, claude-code > reports the fast tests first, runs  | AssertionError: expected Set{ …(2) } to deeply equal Set{ 'packages/demo/test/un
+   44919328587 test/e2e/slow-node-test.test.ts | slow node:test e2e end to end, claude-code > reports the fast tests first, runs  | AssertionError: expected Set{ …(2) } to deeply equal Set{ 'packages/demo/test/un
+   44921954183 test/e2e/slow-node-test.test.ts | slow node:test e2e end to end, claude-code > reports the fast tests first, runs  | AssertionError: expected Set{ …(2) } to deeply equal Set{ 'packages/demo/test/un
+   44922112197 test/e2e/slow-node-test.test.ts | slow node:test e2e end to end, claude-code > reports the fast tests first, runs  | AssertionError: expected Set{ …(2) } to deeply equal Set{ 'packages/demo/test/un
+   44925509519 test/e2e/slow-node-test.test.ts | slow node:test e2e end to end, claude-code > reports the fast tests first, runs  | AssertionError: expected Set{ …(2) } to deeply equal Set{ 'packages/demo/test/un
+
+since 2026-11-20: 309 completed runs
+  G1: 21 runs (6.8 per 100), files [('test/cli/status-at-now-daemon.test.ts', 7), ('test/runners/node-test/graph-cost.test.ts', 3), ('test/lint/wiring/stop-group-mixed.test.ts', 3), ('test/retry/records.test.ts', 2), ('test/cli/warmup.test.ts', 2), ('test/code/crap/chain-load.test.ts', 2), ('test/scheduler/backlog-slots.test.ts', 2), ('test/harness/stop-slow-wait.test.ts', 2), ('test/scheduler/environment-growth-siblings.test.ts', 2), ('test/code/gate/keep-early.test.ts', 1), ('test/daemon/busy-requests.test.ts', 1), ('test/daemon/departure.test.ts', 1), ('test/store/prune-vacuum.test.ts', 1), ('test/cli/status-paths.test.ts', 1), ('test/daemon/helpers.ts', 1)]
+  G2: 19 runs (6.1 per 100), files [('test/code/crap/seed-failed.test.ts', 6), ('test/scheduler/group-lanes-moments.test.ts', 2), ('test/store-process/logs.test.ts', 2), ('test/cli/stop-at.test.ts', 2), ('test/integration/optimizer-start.test.ts', 2), ('test/runner-host/daemon-host.test.ts', 1), ('test/daemon/scratch-children.test.ts', 1), ('test/code/store.test.ts', 1), ('test/harness/hand-off.test.ts', 1), ('test/cli/proof-copy.test.ts', 1)]
+  G3: 6 runs (1.9 per 100), files [('test/harness/bundle-helpers.ts', 6)]
+  G4: 9 runs (2.9 per 100), files [('test/runners/node-test/run.test.ts', 9)]
+  G5: 6 runs (1.9 per 100), files [('test/integration/node-test.test.ts', 4), ('test/e2e/pi.test.ts', 1), ('test/harness/opencode-wake.test.ts', 1)]
+  G6: 1 runs (0.3 per 100), files [('test/daemon/handover-tier.test.ts', 1)]
+  G7: 0 runs (0.0 per 100), files []
+  G8: 0 runs (0.0 per 100), files []
+
+G1 jobs with two or more files failing together:
+   ('44551153805', '1', 'Node 22 (3/3)') ['test/code/coverage/writer-pace.test.ts', 'test/status/not-current.test.ts']
+   ('44970928476', '1', 'Node 26 (3/3)') ['test/cli/status-at-now-daemon.test.ts', 'test/retry/records.test.ts']
+   ('45584636617', '1', 'Node 22 (3/6)') ['test/cli/status-at-now-daemon.test.ts', 'test/code/crap/chain-load.test.ts']
+   ('45710459569', '1', 'Node 22 (3/6)') ['test/daemon/helpers.ts', 'test/harness/stop-slow-wait.test.ts', 'test/lint/wiring/stop-group-mixed.test.ts', 'test/scheduler/backlog-slots.test.ts']
+
+runs with an intermittent sighting: 189; in G1 or G2: 132
+main runs green after a re-run: 55; by groups of attempt 1: {'none': 3, 'G1': 16, 'G6': 2, 'G4': 5, 'G2': 13, 'G3': 5, 'G2+G5': 1, 'G1+G2': 4, 'G2+G4': 1, 'G5': 3, 'G7': 2}
