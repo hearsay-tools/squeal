@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { StatusResult } from "../../src/core/types/status.js";
 import { observeBuildInputs } from "../helpers/build-inputs.js";
 
 /*
@@ -90,4 +91,15 @@ export function listed(table: Readonly<Record<string, number>>): string {
     .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
     .map(([key, n]) => `  ${n} × ${key}`)
     .join("\n");
+}
+
+/**
+ * Review 025-wave6 S1: `squeal status --json` shows the complexity count
+ * ended: the daemon answered, every included file is counted
+ * (`code.pending` 0), and at least `files` are included. A store with no
+ * count yet reads as 0 files of 0, so the floor keeps it from passing.
+ */
+export function countEnded(status: StatusResult, files: number): boolean {
+  if (!status.available || status.code === undefined) return false;
+  return status.code.pending === 0 && status.code.files >= files;
 }

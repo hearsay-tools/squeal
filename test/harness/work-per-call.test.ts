@@ -1,6 +1,7 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import type { StatusResult } from "../../src/core/types/status.js";
 import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
 import {
@@ -16,7 +17,13 @@ import { testBuildDir } from "../daemon/strays.js";
 import { TEST_VERSION } from "../fixed-version.js";
 import { observeMetafile } from "../helpers/build-inputs.js";
 import { recorded } from "./helpers.js";
-import { type CountedRun, listed, runCounted, type Work } from "./work-per-call-helpers.js";
+import {
+  type CountedRun,
+  countEnded,
+  listed,
+  runCounted,
+  type Work,
+} from "./work-per-call-helpers.js";
 
 /*
  * Row 025-28 (`research/hook-slowdown.md`, 3): the work of each Claude Code
@@ -110,9 +117,9 @@ describe("work per hook and status call against a real daemon", () => {
       await waitFor(
         async () => {
           const shown = cli(["status", "--json"]);
-          await shown.exited;
-          const code = (JSON.parse(shown.stdout()) as { code?: { counting?: unknown } }).code;
-          return code !== undefined && code.counting === undefined;
+          expect((await shown.exited).code, shown.stderr()).toBe(0);
+          // The generated files at least: the fixture's few are admitted in the same scan.
+          return countEnded(JSON.parse(shown.stdout()) as StatusResult, FILES);
         },
         60_000,
         "the complexity count",
