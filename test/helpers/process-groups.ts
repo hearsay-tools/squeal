@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
+import { sleep } from "./remove-tree.js";
 
 /*
  * Row 011-336: a test that removes a folder first waits for the processes
@@ -90,7 +91,7 @@ function leader(pid: number, argv: readonly string[]): ProcessInfo | null {
 }
 
 /** A `/proc` file of NUL-separated strings, or null when it cannot be read. */
-function nulSeparated(path: string): string[] | null {
+export function nulSeparated(path: string): string[] | null {
   try {
     const text = readFileSync(path, "utf8");
     return text === "" ? [] : text.replace(/\0$/, "").split("\0");
@@ -150,12 +151,32 @@ export interface GroupsEnd {
  * `detachedLeaders` identified.
  */
 export async function awaitGroups(groups: Iterable<number>, wait: GroupWait): Promise<GroupsEnd> {
+  const steps = settling([...groups], wait);
+  for (let step = steps.next(); ; step = steps.next()) {
+    if (step.done === true) return step.value;
+    await delay(step.value);
+  }
+}
+
+/**
+ * `awaitGroups` for a synchronous cleanup (row 011-431): it blocks this
+ * thread between its looks, as `removeTree` does between its attempts.
+ */
+export function awaitGroupsSync(groups: Iterable<number>, wait: GroupWait): GroupsEnd {
+  const steps = settling([...groups], wait);
+  for (let step = steps.next(); ; step = steps.next()) {
+    if (step.done === true) return step.value;
+    sleep(step.value);
+  }
+}
+
+/** The wait of `awaitGroups`; yields each pause, in ms, for its driver to take. */
+function* settling(waited: readonly number[], wait: GroupWait): Generator<number, GroupsEnd> {
   const { graceMs, killedMs = KILLED_MS, signal = signalGroup } = wait;
-  const waited = [...groups];
   const deadline = Date.now() + graceMs;
   let left = membersOf(waited);
   while (left.length > 0 && Date.now() < deadline) {
-    await delay(POLL_MS);
+    yield POLL_MS;
     left = membersOf(waited);
   }
   if (left.length === 0) return { killed: [], alive: [] };
@@ -163,7 +184,7 @@ export async function awaitGroups(groups: Iterable<number>, wait: GroupWait): Pr
   const killedBy = Date.now() + killedMs;
   let alive = membersOf(waited);
   while (alive.length > 0 && Date.now() < killedBy) {
-    await delay(POLL_MS);
+    yield POLL_MS;
     alive = membersOf(waited);
   }
   return { killed: left, alive };
@@ -189,7 +210,7 @@ export class StillAlive extends Error {
 }
 
 /** Sends `name` to the group `group`; false when no process of it is there. */
-function signalGroup(group: number, name: NodeJS.Signals | 0): boolean {
+export function signalGroup(group: number, name: NodeJS.Signals | 0): boolean {
   try {
     process.kill(-group, name);
     return true;
