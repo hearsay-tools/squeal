@@ -63,10 +63,10 @@ async function ready(): Promise<{ repo: FixtureRepo; stop: () => Promise<unknown
 /**
  * A holder of `database`'s write lock that lets go only when `release`
  * is called, on this thread's event loop; ended with the test. Its
- * worker gives up after `ceilingMs` only so a stopped loop fails the case
- * instead of hanging it.
+ * worker lets go after `ceilingMs`, the case's own timeout, which only
+ * ends a hang.
  */
-function loopReleasedHolder(database: string, ceilingMs = 60_000) {
+function loopReleasedHolder(database: string, ceilingMs = SLOW.timeout) {
   const flags = new Int32Array(new SharedArrayBuffer(16));
   const worker = new Worker(
     `

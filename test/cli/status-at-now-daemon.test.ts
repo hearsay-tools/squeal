@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { commitAllowlist, environmentOf, REPORT_RESERVE_MS } from "../../src/cli/status-at-call.js";
+import { commitAllowlist, environmentOf } from "../../src/cli/status-at-call.js";
 import { type AtDaemons, realDaemons } from "../../src/cli/status-at-daemons.js";
 import { RUN_WAIT_MS } from "../../src/cli/status-at-report-queued.js";
 import { installCommitWorktree } from "../../src/core/checkout/commit-setup.js";
@@ -49,8 +49,8 @@ const P = ref("test/p.test.ts");
 const RUN = { allMissing: false };
 /** The default wait of these calls, in place of `RUN_WAIT_MS` (row 010-37). */
 const DEFAULT_WAIT_MS = 3_000;
-/** How long a daemon may take to reach the hook: a ceiling on a hang, not a measure. */
-const ENTER_MS = 120_000;
+/** How long a daemon may take to reach the hook: the case's own timeout, so it only ends a hang. */
+const ENTER_MS = SLOW.timeout;
 
 /** A test that reads tracked `payload.json` at run time, which no static walk sees. */
 const reads = [
@@ -185,15 +185,13 @@ describe("status --at --run asks the working tree's daemon (review wave-23-third
     await waitFor(() => inHook(entered, tree), ENTER_MS, "the commit daemon in the hook");
 
     // The default wait (`DEFAULT_WAIT_MS` here): no `waitMs`.
-    const began = Date.now();
+    // It ran on that wait, not the production default (`RUN_WAIT_MS`): the report's `waitMs` says so
+    // below. Row 011-429: no wall-time bound on the call; the case's timeout ends a hang.
     const first = await run(
       f,
       { commit: a, paths, run: RUN, json: true },
       { ...options, defaultWaitMs: DEFAULT_WAIT_MS },
     );
-    const ms = Date.now() - began;
-    // Returned by its own wait: the production default's could not have ended yet.
-    expect(ms, first.err).toBeLessThan(RUN_WAIT_MS - REPORT_RESERVE_MS);
     expect(commitStarts, "the call asked the commit daemon it found").toEqual([tree]);
     expect(worktreeStarts).toEqual([f.root]);
     await waitFor(() => inHook(entered, f.root), ENTER_MS, "the worktree's daemon in the hook");
