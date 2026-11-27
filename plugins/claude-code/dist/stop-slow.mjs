@@ -1385,7 +1385,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.663";
+  if (true) return "0.1.664";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4604,10 +4604,11 @@ function readHandoff(store, worktreeId) {
   try {
     const claim = JSON.parse(text2);
     if (!isRecord(claim)) return null;
-    const { from, to, at, boundAt } = claim;
+    const { from, to, at, boundAt, attempt } = claim;
     if (typeof from !== "string" || typeof to !== "string") return null;
     if (typeof at !== "number" || typeof boundAt !== "number") return null;
-    return { from, to, at, boundAt };
+    const read5 = { from, to, at, boundAt };
+    return typeof attempt === "string" ? { ...read5, attempt } : read5;
   } catch {
     return null;
   }

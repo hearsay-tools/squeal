@@ -7691,10 +7691,11 @@ function readHandoff(store, worktreeId) {
   try {
     const claim = JSON.parse(text2);
     if (!isRecord(claim)) return null;
-    const { from, to, at, boundAt } = claim;
+    const { from, to, at, boundAt, attempt } = claim;
     if (typeof from !== "string" || typeof to !== "string") return null;
     if (typeof at !== "number" || typeof boundAt !== "number") return null;
-    return { from, to, at, boundAt };
+    const read4 = { from, to, at, boundAt };
+    return typeof attempt === "string" ? { ...read4, attempt } : read4;
   } catch {
     return null;
   }
@@ -11334,8 +11335,8 @@ function testFileFrames(store, worktreeId) {
     if (key === void 0 || location2 === null) return void 0;
     if (!rows.has(key)) rows.set(key, store.results.byKey(key, 0));
     const row = rows.get(key)?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity3);
-    const thrown = row?.errors[0]?.location ?? null;
-    if (row === void 0 || thrown === null || !samePosition(thrown, location2)) return void 0;
+    const thrown2 = row?.errors[0]?.location ?? null;
+    if (row === void 0 || thrown2 === null || !samePosition(thrown2, location2)) return void 0;
     return testFileFrame(check, row.errors) ?? void 0;
   };
 }
@@ -13460,7 +13461,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.663";
+  if (true) return "0.1.664";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -15127,6 +15128,9 @@ function open(location2, worktreeId, options, busyTimeoutMs, now) {
   return sent.reason === "corrupt" ? "corrupt" : null;
 }
 
+// src/harness/shared/ensure.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
 import { closeSync as closeSync2, existsSync as existsSync11, mkdirSync as mkdirSync9 } from "node:fs";
@@ -15698,17 +15702,27 @@ async function handOver(context, deps) {
   } else if (!read4.stepping) {
     return "none";
   }
+  const attempt = randomUUID2();
+  let ran = null;
   try {
-    const claim = await context.write(
+    return await context.write(
       () => store.transaction(() => {
-        if (!stillRecorded(store, id, read4.from)) return void 0;
-        return claimHandoff(store, id, { from: read4.from, to: version, at: now() });
+        const claim = stillRecorded(store, id, read4.from) ? claimHandoff(store, id, { from: read4.from, to: version, at: now(), attempt }) : void 0;
+        const result = claim === void 0 ? "none" : claim === null ? "joined" : "claimed";
+        ran = result;
+        return result;
       })
     );
-    if (claim === void 0) return "none";
-    return claim === null ? "joined" : "claimed";
   } catch {
-    return "claimed";
+    return thrown(ran, store, id, attempt);
+  }
+}
+function thrown(ran, store, worktreeId, attempt) {
+  if (ran === "joined" || ran === "none") return ran;
+  try {
+    return readHandoff(store, worktreeId)?.attempt === attempt ? "claimed" : "none";
+  } catch {
+    return "none";
   }
 }
 function stillRecorded(store, worktreeId, from) {
