@@ -261,3 +261,45 @@ export interface LintStopEvidence {
     readonly unknown: number;
   };
 }
+
+/**
+ * Row 017-37 (gh-238): why a named path's check has no lint verdict yet.
+ * `linting`: the pass lints it as an edit's part, outside the background
+ * limit. `backlog`: it waits in a first or config keying's backlog, under
+ * the background lease. `held`: a lint group holds it for a commit, the
+ * agent's pause or `squeal run <group>`. `stale`: a whole-program file that
+ * lints again once the agent is idle (D5). A named wait waits for `linting`
+ * and `backlog` checks only: nothing lints the others during the wait.
+ */
+export type NamedLintWait = "linting" | "backlog" | "held" | "stale";
+
+/** Row 017-37: one named path's check of one tool, as the lint store has it. */
+export interface NamedLintFile {
+  readonly path: RelativePath;
+  readonly tool: LintTool;
+  /** A stale check reads `pending`: its outcome is an old one (review 0.1.398 B1). */
+  readonly outcome: "pass" | "fail" | "pending" | "unknown";
+  /** Why it has no verdict: with `pending` (its wait in words) and `unknown` (D9's reason). */
+  readonly reason?: string;
+  /** With `pending`: what it waits for. */
+  readonly waits?: NamedLintWait;
+  /** With `waits: "backlog"`: the pool refuses the backlog's lease (rows 017-33, 017-37). */
+  readonly cpuWait?: LintCpuWait;
+  /** With `fail`: its findings; absent when the result is no longer stored. */
+  readonly findings?: number;
+}
+
+/**
+ * Row 017-37 (gh-238): the lint of the paths a named wait names (`squeal
+ * status --wait <ms> <path>...`), apart from the repository's count. Each
+ * count is of checks, a path per tool: `done` have a verdict, of which
+ * `failing` fail; `pending` wait to lint; `unknown` cannot be linted (D9).
+ */
+export interface NamedLint {
+  readonly done: number;
+  readonly pending: number;
+  readonly failing: number;
+  readonly unknown: number;
+  /** Each named path's checks, by path then tool. */
+  readonly files: readonly NamedLintFile[];
+}

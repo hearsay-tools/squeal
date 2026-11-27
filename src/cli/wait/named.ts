@@ -38,6 +38,7 @@ import {
 } from "../verdict.js";
 import { type DaemonWatch, lockedOf } from "../wait-liveness.js";
 import { decideStatusWait } from "./decide.js";
+import { lintDecided, lintField, namedLintReads } from "./named-lint.js";
 import type { NamedWaitEnded, NamedWaitOptions } from "./named-types.js";
 import { judgeWait } from "./presence.js";
 import { watchOf } from "./socket.js";
@@ -94,6 +95,8 @@ export function namedPoll(
   const paused = new Set<string>();
   // Row 011-44: the stored closures, read again only after a closure was written.
   const stored = new StoredClosures();
+  // Row 017-37 (gh-238): the named paths' lint, read once the test files are decided.
+  const lintOf = namedLintReads(cwd, paths, deadline, options.now);
   return {
     name: "named",
     sync: () => sync,
@@ -159,7 +162,10 @@ export function namedPoll(
       const focus =
         whole === undefined ? undefined : focusOf(store, id, own, checks, whole, reply, record);
       // Row 011-146 (C15): with `--check`, the focused answers decide too.
-      const decided: Decided | null = focusOutcome(named, focus, reply);
+      const tested: Decided | null = focusOutcome(named, focus, reply);
+      // Row 017-37: a decided read waits on while the pass lints a named path, until the deadline.
+      const readLint = () => lintOf(root, commonDir);
+      const { decided, lint } = lintDecided(tested, final, daemon.state === "alive", readLint);
       const read: StatusRecord = {
         store: "read",
         late: final,
@@ -246,6 +252,7 @@ export function namedPoll(
           ...(lapse === null ? {} : { lapse }),
           ...(hold === null ? {} : { hold }),
           ...(focus === undefined ? {} : { focus }),
+          ...lintField(lint, readLint),
           ...asks.ends(store, id),
         },
       };

@@ -28,6 +28,7 @@ import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.j
 import { askedLines } from "./status-wait-ask-lines.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
 import { groupsQuietText, leftForGroups, leftGroupText } from "./status-wait-groups.js";
+import { namedLintLines } from "./status-wait-lint.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
 import { nothingRunsLine } from "./status-wait-settled.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
@@ -420,6 +421,8 @@ export function namedText(
     // Row 011-146 (C15): the focused block, before the classes it leaves pending.
     ...focusLines(wait.focus, wait.selection.base),
     ...namedClassLines(wait, command),
+    // Row 017-37 (gh-238): the named paths' lint, apart from the repository's.
+    ...namedLintLines(wait.lint, command, wait.selection.base),
     namedLine(wait, command),
   ];
   const head =
