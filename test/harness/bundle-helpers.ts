@@ -8,6 +8,7 @@ import { PLUGIN_DIR, PLUGIN_DIST } from "../../src/harness/claude-code/build.js"
 import { check, result } from "../state/helpers.js";
 import { tempDir } from "../store/helpers.js";
 import { type SquealRepo, squealRepo } from "./helpers.js";
+import { testUserDirs } from "./user-dirs.js";
 
 export interface BundleRun {
   readonly stdout: string;
@@ -105,6 +106,16 @@ export function adapterCompileCache(cacheHome: string): Record<string, string> {
   };
 }
 
+/**
+ * The minimal environment `runNode` gives: PATH, the real HOME, then `env`.
+ * Review 0.1.658 B5: private `XDG_CONFIG_HOME` and `XDG_STATE_HOME` unless
+ * `env` names its own, so a CLI daemon started so never reads or prunes the
+ * user's remote machines.
+ */
+export function testProcessEnv(env: Readonly<Record<string, string>> = {}): Record<string, string> {
+  return { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...testUserDirs(), ...env };
+}
+
 /** Runs `node <args>` in `cwd` with a minimal environment plus `env`, stdin piped, timed. */
 export function runNode(
   args: readonly string[],
@@ -125,7 +136,7 @@ function runTimed(
   return new Promise((resolve, reject) => {
     const started = performance.now();
     const child = spawn(command, args, {
-      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
+      env: testProcessEnv(env),
       ...(cwd === undefined ? {} : { cwd }),
     });
     const out: Buffer[] = [];

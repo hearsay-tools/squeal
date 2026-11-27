@@ -44,7 +44,8 @@ import { metric, type RunRow, readRuns, registeredSessions, until } from "./supp
  * `plugins/<name>` under /tmp, no `node_modules` above it), a fixture
  * repository with its own Vitest, hook bundles driven by recorded hook JSON,
  * daemons spawned by those bundles from the shipped CLI, and no `SQUEAL_CLI`
- * anywhere: the hooks get PATH, HOME and a private XDG_RUNTIME_DIR only.
+ * anywhere: the hooks get PATH, HOME and private XDG runtime, config and
+ * state directories only (review 0.1.658 B5).
  * The worktree's tracked files are what runs, not HEAD's (002-24): Squeal
  * keys these files by worktree content, so a result always belongs to what
  * ran; untracked files still do not ship, as a marketplace install would not
@@ -179,6 +180,9 @@ export class E2E {
     this.main = join(base, "repo");
     this.#env = {
       XDG_RUNTIME_DIR: runtime,
+      // Review 0.1.658 B5: the fixture's daemons never read the user's remote config or registry.
+      XDG_CONFIG_HOME: join(base, "user", "config"),
+      XDG_STATE_HOME: join(base, "user", "state"),
       ...(kind.name === "codex" ? codexEnvironment(this.plugin) : {}),
       ...(kind.name === "antigravity" ? antigravityEnvironment(this.plugin) : {}),
     };

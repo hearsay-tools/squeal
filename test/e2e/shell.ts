@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import type { BundleRun } from "../harness/bundle-helpers.js";
+import { testUserDirs } from "../harness/user-dirs.js";
 
 /**
  * `<shell> -c <command>` in `cwd` with HOME and `env` only, stdin piped,
@@ -17,7 +18,8 @@ export function runShell(
     const started = performance.now();
     const child = spawn(shell, ["-c", command], {
       cwd,
-      env: { HOME: process.env.HOME ?? "", ...env },
+      // Review 0.1.658 B5: never the user's remote config or machine registry.
+      env: { HOME: process.env.HOME ?? "", ...testUserDirs(), ...env },
     });
     const out: Buffer[] = [];
     const err: Buffer[] = [];

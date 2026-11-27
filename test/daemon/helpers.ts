@@ -194,6 +194,8 @@ export function childEnv(runtimeDir: string): NodeJS.ProcessEnv {
   env.XDG_RUNTIME_DIR = runtimeDir;
   // The user-level config of D11 Capacity: a path in the test's own runtime dir, never the real one.
   env.XDG_CONFIG_HOME = join(runtimeDir, "config");
+  // Review 0.1.658 B5: nor the user's remote machine registry, which a CLI daemon prunes at start.
+  env.XDG_STATE_HOME = join(runtimeDir, "state");
   return env;
 }
 

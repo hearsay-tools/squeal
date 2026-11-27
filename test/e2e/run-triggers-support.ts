@@ -7,6 +7,7 @@ import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { REPO_ROOT } from "../../src/harness/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
+import { testUserDirs } from "../harness/user-dirs.js";
 import type { E2E, Hooked } from "./harness.js";
 import { codexEnvironment, copyPlugin, selectCodexRuntime } from "./plugins.js";
 import { until } from "./support.js";
@@ -107,7 +108,8 @@ function shell(
     const started = performance.now();
     const child = spawn("bash", ["-c", command], {
       cwd,
-      env: { HOME: process.env.HOME ?? "", ...env },
+      // Review 0.1.658 B5: never the user's remote config or machine registry.
+      env: { HOME: process.env.HOME ?? "", ...testUserDirs(), ...env },
     });
     const out: Buffer[] = [];
     const err: Buffer[] = [];
