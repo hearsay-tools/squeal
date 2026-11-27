@@ -1,10 +1,7 @@
 import { readPolicy } from "../daemon/policy.js";
-import { readAll, slot } from "../delivery/slots.js";
-import { isRecord } from "../fs/json.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { groupView } from "../scheduler/slow.js";
 import { slowFiles, slowGlobs } from "../slow/classify.js";
-import { readGroupActivity } from "../slow/state.js";
 import { stopSlowWaitMs } from "../slow/stop-wait.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
@@ -12,9 +9,10 @@ import type { Policy } from "../types/policy.js";
 import { SLOW_GROUP } from "../types/scheduler.js";
 import type { KnownState } from "../types/state.js";
 import type { SlowTierActivity, SlowTierState } from "../types/status.js";
-import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { Store } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { type WorktreeStates, worktreeStatesOf } from "./file-class.js";
+import { type LaneReads, laneReads } from "./lane-reads.js";
 import { slotNow } from "./slot-now.js";
 
 /*
@@ -214,7 +212,8 @@ export function laneCounts(
  * in a turn, is a wait for the fast files pending, or for nothing (lessons
  * defect 11): the daemon publishes again only when it next looks at its slow
  * files, which fast tiers can put off for minutes. A slot wait reads its
- * slot's permits now (`slotNow`). `null` when nothing is true of it.
+ * slot's permits now (`slotNow`). `null` when nothing is true of it. A
+ * header read passes its `reads` (row 011-427).
  */
 export function liveActivity(
   store: Store,
@@ -222,17 +221,18 @@ export function liveActivity(
   keys: readonly TestFileKeyRecord[],
   inLane: (testFile: TestFileRef) => boolean,
   group: string,
+  reads: LaneReads = laneReads(store, worktreeId),
 ): SlowTierActivity | null {
-  const activity = readGroupActivity(store, worktreeId, group);
+  const activity = reads.activity(group);
   if (activity?.kind === "waiting") {
     // Review 0.1.621 B2: a slot wait says what the slot's permits read now.
     if (activity.for === "slot") return slotNow(activity, group);
-    if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
+    if (activity.for !== "idle" || reads.inTurn()) return activity;
     const fast = keys.some((row) => row.pending !== null && !inLane(row.testFile));
     return fast ? { kind: "waiting", for: "fast" } : null;
   }
   if (activity === null) return null;
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  const daemon = reads.daemon();
   if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
     keys
@@ -244,19 +244,4 @@ export function liveActivity(
   const { since, lastDurationMs } = activity;
   const paths = rest.length === 0 ? {} : { paths: [path, ...rest] };
   return { kind: "running", path, ...paths, since, lastDurationMs };
-}
-
-/**
- * Whether a registered consumer of the worktree is in a turn (001 D9), from
- * the turn row `delivery/turn.ts` keeps, read here by its registry key since
- * that module reads the header. Unlike the slow tier's trigger
- * (`consumersIdle`) it has no clock, so a consumer the daemon has not yet
- * expired still counts.
- */
-function consumerInTurn(store: Store, worktreeId: WorktreeId): boolean {
-  const turns = readAll(store, worktreeMetaKey("turn", worktreeId));
-  return store.consumers.list(worktreeId).some((record) => {
-    const turn = turns[slot(record.consumer)];
-    return isRecord(turn) && turn.turn === "in-turn";
-  });
 }
