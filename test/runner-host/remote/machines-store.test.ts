@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
   forgetMachine,
+  forgetting,
   machinesPath,
   readMachines,
   recordMachine,
@@ -70,6 +71,20 @@ describe("the remote machines file (row 026-10)", () => {
     expect(readMachines(env).machines.map((m) => m.worktreeId)).toEqual(["w1"]);
     expect(statSync(machinesPath(env)).mode & 0o777).toBe(0o600);
     expect(JSON.parse(readFileSync(machinesPath(env), "utf8")).v).toBe(1);
+  });
+
+  it("forgets only the record of that id and, with scopeOf, that scope (review 0.1.659-r2 N1)", () => {
+    const key = { provider: "command", worktreeId: "w1" };
+    const mine = machineRecord({ id: "cmd:1", scope: "host-a mnt:[1]" });
+    const none = machineRecord({ id: "cmd:1" });
+    const other = machineRecord({ id: "cmd:2", scope: "host-a mnt:[1]" });
+    const ids = (records: readonly MachineRecord[]) => records.map((m) => [m.id, m.scope]);
+    expect(forgetting(key, { id: "cmd:1", scopeOf: mine })([mine])).toEqual([]);
+    expect(forgetting(key, { id: "cmd:1", scopeOf: none })([mine])).toEqual([mine]);
+    expect(forgetting(key, { id: "cmd:1", scopeOf: none })([none])).toEqual([]);
+    expect(ids(forgetting(key, { id: "cmd:1", scopeOf: mine })([other]))).toEqual(ids([other]));
+    expect(forgetting(key, { id: "cmd:1" })([mine])).toEqual([]);
+    expect(forgetting(key)([other])).toEqual([]);
   });
 
   it("names a file that is not its shape, and tracks none from it", () => {

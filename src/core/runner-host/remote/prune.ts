@@ -23,7 +23,9 @@ import { loadRemoteSettings } from "./settings.js";
  * further release starts, and the uncertain record stays for the next
  * prune. N1: with `scope`, as the daemon's start gives it, only records
  * of that scope or of none are acted on; a record without one whose
- * worktree is here gets `scope` written into it.
+ * worktree is here gets `scope` written into it. Review 0.1.659-r2 N1:
+ * the scope is checked again on the record read just before its release,
+ * and the record is forgotten only while its id and scope are unchanged.
  */
 
 /** One machine of a removed worktree: released, would be (a dry run), kept and why, or failed. */
@@ -113,43 +115,56 @@ function sorted(
   return { gone, claim };
 }
 
-/** Releases and forgets `record` if it still stands; its outcome, `null` when another prune took it. */
+/** Releases and forgets `record` if it still stands; its outcome, `null` when it is no longer this prune's. */
 async function releaseOne(
   record: MachineRecord,
   options: PruneOptions,
 ): Promise<PruneOutcome | "aborted" | null> {
   const { env, signal } = options;
-  // B3: the record as it is now, its machine and its path, not as the prune first read it.
-  const why = stale(record, env);
-  if (why === "forgotten") return null;
-  if (why !== null) return { kind: "kept", record, reason: why };
+  // B3, 0.1.659-r2 N1: the record as it is now, its machine, path and scope, not as first read.
+  const now = current(record, env, options.scope);
+  if (now === null) return null;
+  if (typeof now === "string") return { kind: "kept", record, reason: now };
   let released = false;
   try {
-    const machine = reattach(record, env, options.providerOf ?? providerOf);
+    const machine = reattach(now, env, options.providerOf ?? providerOf);
     if (typeof machine === "string") throw new Error(machine);
     if (!(await until(machine.release("worktree-removed", signal), signal))) return "aborted";
     released = true;
-    await changeMachinesSoon(env, forgetting(record, { id: record.id }), signal);
-    return { kind: "released", record };
+    await changeMachinesSoon(env, forgetting(now, { id: now.id, scopeOf: now }), signal);
+    return { kind: "released", record: now };
   } catch (error) {
     if (signal?.aborted === true) return "aborted";
     const text = message(error);
-    return { kind: "failed", record, error: released ? `released, not forgotten: ${text}` : text };
+    return {
+      kind: "failed",
+      record: now,
+      error: released ? `released, not forgotten: ${text}` : text,
+    };
   }
 }
 
 const UNKNOWN = "its worktree could not be checked";
 
-/** Why `record` is no longer to be released now, `"forgotten"` when no prune need say; else `null`. */
-function stale(record: MachineRecord, env: NodeJS.ProcessEnv): string | null {
+/**
+ * `record` as the registry has it now, when it is still to be released;
+ * else why it is kept, or `null` when it is gone or (with `scope`, the
+ * automatic prune) now another scope's, which no prune of this one need say.
+ */
+function current(
+  record: MachineRecord,
+  env: NodeJS.ProcessEnv,
+  scope: string | undefined,
+): MachineRecord | string | null {
   const now = readMachines(env).machines.find(
     (m) => m.provider === record.provider && m.worktreeId === record.worktreeId,
   );
-  if (now === undefined) return "forgotten";
+  if (now === undefined) return null;
+  if (scope !== undefined && (now.scope ?? scope) !== scope) return null;
   if (now.id !== record.id) return `replaced by machine ${now.id}`;
-  const presence = worktreePresence(record.worktreeRoot);
+  const presence = worktreePresence(now.worktreeRoot);
   if (presence === "present") return "its worktree is there again";
-  return presence === "unknown" ? UNKNOWN : null;
+  return presence === "unknown" ? UNKNOWN : now;
 }
 
 /** N1: the edit writing `scope` into each of `records` still without one. */

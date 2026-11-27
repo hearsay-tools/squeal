@@ -89,13 +89,20 @@ export function forgetMachine(
   change(env, forgetting(key, only));
 }
 
-/** The edit that drops `key`'s record, or only its record of machine `only.id`. */
+/**
+ * The edit that drops `key`'s record, or only its record of machine
+ * `only.id`. Review 0.1.659-r2 N1: with `only.scopeOf`, only while that
+ * record's scope is still the one `scopeOf` has (none included), so a
+ * record another scope wrote meanwhile stays.
+ */
 export function forgetting(
   key: Pick<MachineRecord, "provider" | "worktreeId">,
-  only?: { readonly id: string },
+  only?: { readonly id: string; readonly scopeOf?: Pick<MachineRecord, "scope"> },
 ): (machines: readonly MachineRecord[]) => readonly MachineRecord[] {
-  return (machines) =>
-    machines.filter((m) => !same(m, key) || (only !== undefined && m.id !== only.id));
+  const still = (m: MachineRecord) =>
+    only === undefined ||
+    (m.id === only.id && (only.scopeOf === undefined || m.scope === only.scopeOf.scope));
+  return (machines) => machines.filter((m) => !same(m, key) || !still(m));
 }
 
 /**

@@ -172,6 +172,51 @@ describe("the automatic prune trusts paths of its own scope (review 0.1.658 N1)"
     ]);
   });
 
+  it("keeps a queued record that moved to another scope before its turn (review 0.1.659-r2 N1)", async () => {
+    const a = gate();
+    const u = pruneUser((id) => (id === "cmd:a" ? a.promise : "ok"));
+    const scope = "host-a mnt:[1]";
+    const b = u.gone("b");
+    u.track({ id: "cmd:a", worktreeRoot: u.gone("a"), scope });
+    u.track({ id: "cmd:b", worktreeRoot: b as never, worktreeId: "wb" as WorktreeId, scope });
+    const pruning = pruneRemovedWorktrees({ env: u.env, providerOf: u.providerOf, scope });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(u.released).toEqual([["cmd:a", "worktree-removed"]]);
+    // Another namespace records the same machine B, with its own scope.
+    const foreign = "host-b mnt:[2]";
+    u.track({
+      id: "cmd:b",
+      worktreeRoot: b as never,
+      worktreeId: "wb" as WorktreeId,
+      scope: foreign,
+    });
+    a.open();
+    const result = await pruning;
+    expect(result.outcomes.map((o) => [o.kind, o.record.id])).toEqual([["released", "cmd:a"]]);
+    expect(u.released).toEqual([["cmd:a", "worktree-removed"]]);
+    expect(readMachines(u.env).machines.map((m) => [m.id, m.scope])).toEqual([["cmd:b", foreign]]);
+  });
+
+  it("keeps the record whose scope changed while its release was in flight (review 0.1.659-r2 N1)", async () => {
+    const a = gate();
+    const u = pruneUser((id) => (id === "cmd:a" ? a.promise : "ok"));
+    const root = u.gone("a");
+    const scope = "host-a mnt:[1]";
+    u.track({ id: "cmd:a", worktreeRoot: root as never, worktreeId: "wa" as WorktreeId, scope });
+    const pruning = pruneRemovedWorktrees({ env: u.env, providerOf: u.providerOf, scope });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const foreign = "host-b mnt:[2]";
+    u.track({
+      id: "cmd:a",
+      worktreeRoot: root as never,
+      worktreeId: "wa" as WorktreeId,
+      scope: foreign,
+    });
+    a.open();
+    expect((await pruning).outcomes.map((o) => o.kind)).toEqual(["released"]);
+    expect(readMachines(u.env).machines.map((m) => [m.id, m.scope])).toEqual([["cmd:a", foreign]]);
+  });
+
   it("the manual prune acts on every record", async () => {
     const u = pruneUser();
     u.track({ id: "cmd:foreign", worktreeRoot: u.gone(), scope: "container mnt:[1]" });
