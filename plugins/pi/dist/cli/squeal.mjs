@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.653";
+  if (true) return "0.1.654";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4529,7 +4529,7 @@ var init_policy = __esm({
       shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
       node: "project",
       requires: { commands: [] },
-      remote: { allowed: true, needsRepository: [], runHere: [] }
+      remote: { allowed: true, needsRepository: [], alwaysLocal: [] }
     };
   }
 });
@@ -4991,7 +4991,7 @@ var init_policy_containers = __esm({
 function commandName(entry4) {
   return /^[^-\s/\\][^\s/\\]*$/.test(entry4) && !new RegExp("\\p{Cc}", "u").test(entry4);
 }
-var boolean3, kept, commands, needsRepository, runHere, REMOTE_SHAPE;
+var boolean3, kept, commands, needsRepository, alwaysLocal, REMOTE_SHAPE;
 var init_policy_remote = __esm({
   "src/core/daemon/policy-remote.ts"() {
     "use strict";
@@ -5015,10 +5015,10 @@ var init_policy_remote = __esm({
       (entry4) => commandName(entry4) ? null : `must be a command name such as "git", got ${JSON.stringify(entry4)}`
     );
     needsRepository = kept("remote.needsRepository", (glob2) => compiles([glob2])?.problem ?? null);
-    runHere = kept("remote.runHere", (glob2) => compiles([glob2])?.problem ?? null);
+    alwaysLocal = kept("remote.alwaysLocal", (glob2) => compiles([glob2])?.problem ?? null);
     REMOTE_SHAPE = {
       requires: { commands },
-      remote: { allowed: boolean3, needsRepository, runHere }
+      remote: { allowed: boolean3, needsRepository, alwaysLocal }
     };
   }
 });
@@ -88590,10 +88590,10 @@ function missingRepository(error) {
   const texts2 = [error.message, ...(error.causes ?? []).map((cause) => cause.message)];
   return texts2.some((text3) => MISSING_REPOSITORY.test(text3));
 }
-function repositoryRoute(needsRepository2, named4, remoteHasRepository = () => false, runHere2 = () => []) {
+function repositoryRoute(needsRepository2, named4, remoteHasRepository = () => false, alwaysLocal2 = () => []) {
   const failed7 = /* @__PURE__ */ new Map();
   const needs = globMatcher(needsRepository2);
-  const always = globMatcher(runHere2);
+  const always = globMatcher(alwaysLocal2);
   const here = (file) => failed7.has(testFileId(file)) || always(file.path) || !remoteHasRepository() && needs(file.path);
   return {
     split(testFiles3) {
@@ -88854,7 +88854,7 @@ function withRemoteLane(options) {
     options.needsRepository ?? (() => []),
     options.repository ?? options.status,
     options.hasGitRepository ?? (() => false),
-    options.runHere ?? (() => [])
+    options.alwaysLocal ?? (() => [])
   );
   const down = (reason2, refused, host) => {
     void host?.adapter.close().catch(() => {
@@ -89185,7 +89185,7 @@ function withRemoteLane(options) {
       remoteKey && remoteCore !== null ? `${remoteKeyStatusLine(target, remoteCore)}; proven at ${at2} (blob ids equal before and after)` : `remote ${target}: ${tiersName} runs of ${local3.name} go there; proven at ${at2} (blob ids equal before and after)`
     );
   };
-  const runHere2 = async (testFiles3, run9, dir2) => {
+  const runHere = async (testFiles3, run9, dir2) => {
     const { permits, ...rest2 } = run9;
     opened3 = true;
     const workers = permits === void 0 ? run9.workers : await permits.back(cancelOf(run9));
@@ -89203,7 +89203,7 @@ function withRemoteLane(options) {
     return remoteKey ? tagReportCore(report5, localCore()) : report5;
   };
   const instead = async (testFiles3, run9, refusal4) => {
-    if (options.whenLost === "local") return runHere2(testFiles3, run9, "here");
+    if (options.whenLost === "local") return runHere(testFiles3, run9, "here");
     leftNotRun(testFiles3.length);
     tell();
     const reason2 = refusal4 ?? (state.kind === "down" && state.refused ? why2 : null);
@@ -89279,7 +89279,7 @@ function withRemoteLane(options) {
     const again2 = local4 ? [...failed7, ...refusedFiles] : failed7;
     const ran = again2.length === 0 ? proven3 : merge4([
       { adapter: { name: `remote ${target}` }, report: proven3 },
-      { adapter: { name: "here" }, report: await runHere2(again2, run9, "here") }
+      { adapter: { name: "here" }, report: await runHere(again2, run9, "here") }
     ]);
     if (refused === void 0 || local4) return ran;
     leftNotRun(refusedFiles.length);
@@ -89402,7 +89402,7 @@ function withRemoteLane(options) {
       const { there } = split6;
       if (there.length === 0) return runDirect(testFiles3, run9);
       if (split6.here.length === 0) return remoteTier(there, run9);
-      const own = await runHere2(split6.here, run9, "repository");
+      const own = await runHere(split6.here, run9, "repository");
       if (run9.stop?.aborted === true) return own;
       if (own.startupFailure !== void 0) return deferredTo(own, there);
       return merge4([
@@ -90067,7 +90067,7 @@ function laneOver(share2, spec, tiers, context2) {
     }, signal3),
     allowlist: () => options.policy().env.allowlist,
     needsRepository: () => options.policy().remote.needsRepository,
-    runHere: () => options.policy().remote.runHere,
+    alwaysLocal: () => options.policy().remote.alwaysLocal,
     repository: context2.repository,
     status: context2.status,
     log: options.log,
