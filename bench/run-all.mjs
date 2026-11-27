@@ -5,14 +5,14 @@
 // runs on any Linux machine with Node >= 22.19, pnpm, git and sqlite3.
 //
 // Usage: node run-all.mjs --plugin <squeal claude-code plugin dir> --out <dir>
-//          [--cells ref,size-s,...] [--steps 24]
-import { createHash } from "node:crypto";
+//          [--cells ref,size-s,...] [--steps 24] [--repeat N]
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cpus, freemem, totalmem } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { installedVersions, timed } from "./lib.mjs";
+import { calibrate, machineAfter, machineBefore, machineRecord, machineText } from "./machine.mjs";
 
 export const CELLS = [
   { name: "ref", files: 500, worktrees: 1, load: 0 },
@@ -108,6 +108,22 @@ export function selectCells(spec) {
   }
   return CELLS.filter((c) => names.has(c.name));
 }
+/** Runs per cell and version when --repeat is not given: 3 for a paired run (row 025-27), else 1. */
+export function defaultRepeat(versions) {
+  return versions > 1 ? 3 : 1;
+}
+
+/** Adds the machine speed around the cell to its cell.json (row 025-27); returns the record. */
+export function recordMachine(cellDir, before, after) {
+  const machine = machineRecord(before, after);
+  const file = join(cellDir, "cell.json");
+  if (existsSync(file)) {
+    const cell = JSON.parse(readFileSync(file, "utf8"));
+    writeFileSync(file, `${JSON.stringify({ ...cell, machine }, null, 2)}\n`);
+  }
+  return machine;
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
 
 /** The whole run: machine facts, templates, every chosen cell, the scorecard. */
@@ -121,7 +137,8 @@ async function main() {
       cells: { type: "string" },
       steps: { type: "string", default: "24" },
       // Run each cell (and each version of it) this many times, to see run-to-run noise.
-      repeat: { type: "string", default: "1" },
+      // Default 3 for a paired run, so the comparison can tell a change from the spread; 1 otherwise.
+      repeat: { type: "string" },
     },
   });
   const HERE = import.meta.dirname;
@@ -130,17 +147,6 @@ async function main() {
   const chosen = selectCells(o.cells);
   const log = (m) => console.log(`[${new Date().toISOString()}] ${m}`);
 
-  // Machine facts and a single-thread calibration: SHA-256 over 1 MiB for 3 s.
-  function calibrate() {
-    const buf = Buffer.alloc(1 << 20, 7);
-    const end = performance.now() + 3000;
-    let n = 0;
-    while (performance.now() < end) {
-      createHash("sha256").update(buf).digest();
-      n++;
-    }
-    return n / 3;
-  }
   const plugins = o.plugin.map((dir) => {
     const version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
     return { dir, version, label: version };
@@ -151,7 +157,7 @@ async function main() {
   }
   const paired = plugins.length > 1;
   // One run per cell and plugin. A paired run's name is `<cell>@<label>`.
-  const repeat = Number(o.repeat);
+  const repeat = o.repeat === undefined ? defaultRepeat(plugins.length) : Number(o.repeat);
   // Names: `<cell>`, `<cell>@<version>` when paired, `-r<n>` added when repeated. Never `#`:
   // the name is a folder in the project's path, and Vite cuts a path at `#` (2026-11-20: every test failed to load).
   const cells = chosen.flatMap((c, i) =>
@@ -166,6 +172,7 @@ async function main() {
       }));
     }).flat(),
   );
+  // Machine facts and a single-thread calibration (SHA-256 over 1 MiB for 3 s), three times.
   const meta = {
     startedAt: new Date().toISOString(),
     squealVersion: plugins.map((p) => p.version).join(" vs "),
@@ -227,6 +234,7 @@ async function main() {
 
   for (const c of cells) {
     log(`cell ${c.name}: ${c.files} files, ${c.worktrees} worktrees, ${c.load}% load`);
+    const before = machineBefore();
     const r = await timed(
       process.execPath,
       [
@@ -262,7 +270,10 @@ async function main() {
       { timeoutMs: 7_200_000 },
     );
     writeFileSync(join(out, `cell-${c.name}.log`), r.stdout + r.stderr);
-    log(`cell ${c.name} exit ${r.code} in ${(r.ms / 60000).toFixed(1)} min`);
+    const machine = recordMachine(join(out, "cells", c.name), before, machineAfter());
+    log(
+      `cell ${c.name} exit ${r.code} in ${(r.ms / 60000).toFixed(1)} min, ${machineText(machine)}`,
+    );
   }
 
   meta.endedAt = new Date().toISOString();
