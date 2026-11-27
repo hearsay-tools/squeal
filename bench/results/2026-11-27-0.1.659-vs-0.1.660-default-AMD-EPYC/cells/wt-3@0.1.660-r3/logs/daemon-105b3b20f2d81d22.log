@@ -1,0 +1,23 @@
+2026-11-27T21:17:33.901Z [200077] squeal daemon: serving /home/user/results/cells/wt-3@0.1.660-r3/work/wt2 on /home/user/results/cells/wt-3@0.1.660-r3/work/run/squeal-105b3b20f2d81d22.sock
+2026-11-27T21:18:31.786Z [200077] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:18:36.897Z [200077] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 264 to 183 MiB in a 18 ms pause
+2026-11-27T21:19:32.053Z [200077] squeal daemon: hook writes: 12 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T21:19:32.054Z [200077] squeal daemon: code store: last minute: 45 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:19:57.381Z [200077] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-27T21:19:58.151Z [200077] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-27T21:20:18.320Z [200077] squeal daemon: long write: store.sqlite write lock held 941 ms by beat < squeal.mjs:119965 < AsyncLocalStorage.run; 2 rows written
+2026-11-27T21:20:32.441Z [200077] squeal daemon: hook writes: 14 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T21:20:32.442Z [200077] squeal daemon: code store: last minute: 48 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:20:48.037Z [200077] squeal daemon: long write: store.sqlite write lock held 397 ms by beat < squeal.mjs:119965 < AsyncLocalStorage.run; 2 rows written
+2026-11-27T21:21:03.126Z [200077] squeal daemon: long write: store.sqlite write lock held 522 ms by writeBatch < squeal.mjs:121553 < retryWhileBusy.sliceMs; 1 row written
+2026-11-27T21:21:32.441Z [200077] squeal daemon: hook writes: 12 taken, queue wait p95 122 ms max 122 ms
+2026-11-27T21:21:32.442Z [200077] squeal daemon: code store: last minute: 43 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:21:36.818Z [200077] squeal daemon: long write wait: hook write waited 3540 ms for the daemon main thread
+2026-11-27T21:22:02.259Z [200077] squeal daemon: the store was busy for 0.2 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-27T21:22:32.441Z [200077] squeal daemon: hook writes: 10 taken, queue wait p95 3540 ms max 3540 ms
+2026-11-27T21:22:32.441Z [200077] squeal daemon: code store: last minute: 39 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:23:32.443Z [200077] squeal daemon: code store: last minute: 26 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:23:54.972Z [200077] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-27T21:23:54.981Z [200077] squeal daemon: code store: last minute: 8 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:23:55.050Z [200077] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T21:23:55.142Z [200077] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

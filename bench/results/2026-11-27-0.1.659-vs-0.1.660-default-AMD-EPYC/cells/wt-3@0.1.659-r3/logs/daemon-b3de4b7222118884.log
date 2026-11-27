@@ -1,0 +1,19 @@
+2026-11-27T21:25:14.852Z [223857] squeal daemon: serving /home/user/results/cells/wt-3@0.1.659-r3/work/wt2 on /home/user/results/cells/wt-3@0.1.659-r3/work/run/squeal-b3de4b7222118884.sock
+2026-11-27T21:26:12.934Z [223857] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:26:18.099Z [223857] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 264 to 185 MiB in a 22 ms pause
+2026-11-27T21:26:33.358Z [223857] squeal daemon: coverage: test/m398.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/9183f708ca6c8330/coverage-n6b9aj/.tmp/coverage-f480cbe6-0ba6-4577-9b02-d659aceae986.json'
+2026-11-27T21:26:33.358Z [223857] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 map-error (its payload did not map); the last: test/m398.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/9183f708ca6c8330/coverage-n6b9aj/.tmp/coverage-f480cbe6-0ba6-4577-9b02-d659aceae986.json'
+2026-11-27T21:27:12.934Z [223857] squeal daemon: hook writes: 12 taken, queue wait p95 217 ms max 217 ms
+2026-11-27T21:27:12.934Z [223857] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:28:12.934Z [223857] squeal daemon: hook writes: 17 taken, queue wait p95 93 ms max 93 ms
+2026-11-27T21:28:12.934Z [223857] squeal daemon: code store: last minute: 65 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:28:47.468Z [223857] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-27T21:28:48.533Z [223857] squeal daemon: the pool granted the vitest lane's tier after 1 s of waiting for CPU
+2026-11-27T21:29:12.944Z [223857] squeal daemon: hook writes: 15 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T21:29:12.944Z [223857] squeal daemon: code store: last minute: 68 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:30:12.954Z [223857] squeal daemon: hook writes: 4 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T21:30:12.954Z [223857] squeal daemon: code store: last minute: 29 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:31:07.328Z [223857] squeal daemon: daemon stopped: squeal stop
+2026-11-27T21:31:07.332Z [223857] squeal daemon: code store: last minute: 21 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:31:07.497Z [223857] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T21:31:07.581Z [223857] squeal daemon: daemon stopped: squeal stop

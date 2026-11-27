@@ -1,0 +1,14 @@
+2026-11-27T22:01:59.368Z [296640] store process: serving /home/user/results/cells/stress@0.1.660-r2/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/stress@0.1.660-r2/work/run/squeal-code-b2ebc531c2eb9a7d.sock
+2026-11-27T22:02:59.369Z [296640] store process: last minute: edit: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 131 ms; record: 2 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 249 ms
+2026-11-27T22:03:59.368Z [296640] store process: last minute: record: 45 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 448 ms
+2026-11-27T22:04:59.369Z [296640] store process: last minute: edit: 190 written, 0 failed, queue wait p50 0 ms max 132 ms, busy 1283 ms; record: 46 written, 0 failed, queue wait p50 0 ms max 200 ms, busy 1341 ms
+2026-11-27T22:05:59.371Z [296640] store process: last minute: edit: 24 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 886 ms; record: 46 written, 0 failed, queue wait p50 0 ms max 30 ms, busy 1177 ms
+2026-11-27T22:06:59.372Z [296640] store process: last minute: edit: 72 written, 0 failed, queue wait p50 0 ms max 125 ms, busy 1263 ms; record: 262 written, 0 failed, queue wait p50 0 ms max 124 ms, busy 7958 ms
+2026-11-27T22:07:59.372Z [296640] store process: last minute: edit: 83 written, 0 failed, queue wait p50 0 ms max 128 ms, busy 1848 ms; record: 259 written, 0 failed, queue wait p50 0 ms max 133 ms, busy 5850 ms
+2026-11-27T22:08:59.372Z [296640] store process: last minute: edit: 82 written, 0 failed, queue wait p50 0 ms max 32 ms, busy 1448 ms; record: 296 written, 0 failed, queue wait p50 0 ms max 143 ms, busy 6323 ms
+2026-11-27T22:09:59.372Z [296640] store process: last minute: edit: 56 written, 0 failed, queue wait p50 0 ms max 57 ms, busy 1106 ms; record: 213 written, 0 failed, queue wait p50 0 ms max 109 ms, busy 5658 ms
+2026-11-27T22:10:59.373Z [296640] store process: last minute: edit: 21 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 916 ms; record: 66 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 2662 ms
+2026-11-27T22:11:59.373Z [296640] store process: last minute: record: 11 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 499 ms
+2026-11-27T22:13:59.372Z [296640] store process: last minute: record: 9 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 257 ms
+2026-11-27T22:15:58.168Z [296640] store process: stopping (stopped): no batches since the last line
+2026-11-27T22:15:58.614Z [296640] store process: ended (stopped)

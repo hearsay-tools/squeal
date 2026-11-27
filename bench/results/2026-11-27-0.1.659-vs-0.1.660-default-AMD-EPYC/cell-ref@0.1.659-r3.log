@@ -1,0 +1,7 @@
+[2026-11-27T20:36:55.231Z] ref@0.1.659-r3: plain vitest run
+[2026-11-27T20:37:24.518Z] ref@0.1.659-r3: squeal start + run --all
+[2026-11-27T20:38:04.733Z] ref@0.1.659-r3: wait for the store process to go quiet
+[2026-11-27T20:38:06.733Z] ref@0.1.659-r3: idle
+[2026-11-27T20:39:06.736Z] ref@0.1.659-r3: sessions
+[2026-11-27T20:42:46.978Z] ref@0.1.659-r3: collect
+[2026-11-27T20:42:50.880Z] ref@0.1.659-r3: done

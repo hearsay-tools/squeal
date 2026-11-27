@@ -1,0 +1,29 @@
+2026-11-27T22:18:49.690Z [326736] squeal daemon: serving /home/user/results/cells/stress@0.1.659-r2/work/wt4 on /home/user/results/cells/stress@0.1.659-r2/work/run/squeal-ce2d20a9ad1ba0c3.sock
+2026-11-27T22:19:44.506Z [326736] squeal daemon: code store: last minute: 44 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:19:54.736Z [326736] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 277 to 172 MiB in a 61 ms pause
+2026-11-27T22:20:44.533Z [326736] squeal daemon: hook writes: 6 taken, queue wait p95 2 ms max 2 ms
+2026-11-27T22:20:44.534Z [326736] squeal daemon: code store: last minute: 40 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:21:44.576Z [326736] squeal daemon: hook writes: 10 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T22:21:44.577Z [326736] squeal daemon: code store: last minute: 54 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:22:31.472Z [326736] squeal daemon: long write wait: hook write waited 700 ms for the daemon main thread
+2026-11-27T22:22:44.573Z [326736] squeal daemon: hook writes: 12 taken, queue wait p95 700 ms max 700 ms
+2026-11-27T22:22:44.577Z [326736] squeal daemon: code store: last minute: 49 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:23:36.686Z [326736] squeal daemon: long write wait: hook write waited 358 ms for the daemon main thread
+2026-11-27T22:23:44.574Z [326736] squeal daemon: hook writes: 8 taken, queue wait p95 358 ms max 358 ms
+2026-11-27T22:23:44.577Z [326736] squeal daemon: code store: last minute: 45 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:24:44.574Z [326736] squeal daemon: hook writes: 13 taken, queue wait p95 8 ms max 8 ms
+2026-11-27T22:24:44.578Z [326736] squeal daemon: code store: last minute: 49 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:25:44.574Z [326736] squeal daemon: hook writes: 7 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T22:25:44.577Z [326736] squeal daemon: code store: last minute: 53 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:25:54.662Z [326736] squeal daemon: long write: store.sqlite write lock held 263 ms by reconcileBatch < #pass < withBusySlice; 8005 rows written
+2026-11-27T22:25:54.672Z [326736] squeal daemon: long write wait: hook write waited 266 ms for the daemon main thread
+2026-11-27T22:25:58.098Z [326736] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-27T22:26:35.129Z [326736] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-27T22:26:44.575Z [326736] squeal daemon: hook writes: 4 taken, queue wait p95 266 ms max 266 ms
+2026-11-27T22:26:44.577Z [326736] squeal daemon: code store: last minute: 16 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T22:27:01.936Z [326736] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 212 to 149 MiB in a 77 ms pause
+2026-11-27T22:30:57.504Z [326736] squeal daemon: the background ceiling let a backlog tier start after 262 s and 132 refused looks
+2026-11-27T22:30:57.505Z [326736] squeal daemon: the pool granted the vitest lane's tier after 299 s of waiting for CPU
+2026-11-27T22:30:57.587Z [326736] squeal daemon: daemon stopped: squeal stop
+2026-11-27T22:30:59.503Z [326736] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T22:30:59.639Z [326736] squeal daemon: daemon stopped: squeal stop

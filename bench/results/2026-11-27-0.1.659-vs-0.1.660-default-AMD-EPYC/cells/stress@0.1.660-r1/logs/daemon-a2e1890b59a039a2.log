@@ -1,0 +1,26 @@
+2026-11-27T21:48:42.483Z [274775] squeal daemon: serving /home/user/results/cells/stress@0.1.660-r1/work/wt4 on /home/user/results/cells/stress@0.1.660-r1/work/run/squeal-a2e1890b59a039a2.sock
+2026-11-27T21:49:35.479Z [274775] squeal daemon: code store: last minute: 46 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:49:45.705Z [274775] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 282 to 158 MiB in a 62 ms pause
+2026-11-27T21:50:35.396Z [274775] squeal daemon: hook writes: 6 taken, queue wait p95 2 ms max 2 ms
+2026-11-27T21:50:35.479Z [274775] squeal daemon: code store: last minute: 30 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:51:35.396Z [274775] squeal daemon: hook writes: 5 taken, queue wait p95 3 ms max 3 ms
+2026-11-27T21:51:35.479Z [274775] squeal daemon: code store: last minute: 44 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:52:35.396Z [274775] squeal daemon: hook writes: 16 taken, queue wait p95 28 ms max 28 ms
+2026-11-27T21:52:35.479Z [274775] squeal daemon: code store: last minute: 60 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:53:24.521Z [274775] squeal daemon: long write wait: hook write waited 293 ms for the daemon main thread
+2026-11-27T21:53:35.396Z [274775] squeal daemon: hook writes: 10 taken, queue wait p95 293 ms max 293 ms
+2026-11-27T21:53:35.480Z [274775] squeal daemon: code store: last minute: 52 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:54:01.602Z [274775] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-27T21:54:35.397Z [274775] squeal daemon: hook writes: 13 taken, queue wait p95 9 ms max 9 ms
+2026-11-27T21:54:35.483Z [274775] squeal daemon: code store: last minute: 57 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:55:10.886Z [274775] squeal daemon: busy, heap in use 53 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 228 to 164 MiB in a 86 ms pause; 29 MiB of heap in use after it
+2026-11-27T21:55:17.474Z [274775] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 1 of 3 test slots); the daemon asks again every 2 s
+2026-11-27T21:55:35.397Z [274775] squeal daemon: hook writes: 6 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T21:55:35.483Z [274775] squeal daemon: code store: last minute: 50 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:55:45.486Z [274775] squeal daemon: the background ceiling refused a backlog tier: 4 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-27T21:56:17.637Z [274775] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 184 to 147 MiB in a 58 ms pause
+2026-11-27T22:00:17.910Z [274775] squeal daemon: the background ceiling let a backlog tier start after 272 s and 137 refused looks
+2026-11-27T22:00:17.911Z [274775] squeal daemon: the pool granted the vitest lane's tier after 300 s of waiting for CPU
+2026-11-27T22:00:18.000Z [274775] squeal daemon: daemon stopped: squeal stop
+2026-11-27T22:00:20.145Z [274775] squeal daemon: stopped 3 processes a test still running when squeal stop cancelled its tier: 294926 /home/user/.nvm/versions/node/v24.22.1/bin/node --experimental-import-meta-resolve --require /home/user/results/cells... (parent 294901 /home/user/.nvm/versions/node/v24.22.1/bin/node --disable-warning=ExperimentalWarning /home/user/plugin-1/dist/cli/sq..., 0.8 s old, SIGTERM); 294996 /home/user/.nvm/versions/node/v24.22.1/bin/node --experimental-import-meta-resolve --require /home/user/results/cells... (parent 294901 /home/user/.nvm/versions/node/v24.22.1/bin/node --disable-warning=ExperimentalWarning /home/user/plugin-1/dist/cli/sq..., 0.0 s old, SIGTERM); 295002 /home/user/.nvm/versions/node/v24.22.1/bin/node --experimental-import-meta-resolve --require /home/user/results/cells... (parent 294901 /home/user/.nvm/versions/node/v24.22.1/bin/node --disable-warning=ExperimentalWarning /home/user/plugin-1/dist/cli/sq..., 0.0 s old, SIGTERM)
+2026-11-27T22:00:35.400Z [274775] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms

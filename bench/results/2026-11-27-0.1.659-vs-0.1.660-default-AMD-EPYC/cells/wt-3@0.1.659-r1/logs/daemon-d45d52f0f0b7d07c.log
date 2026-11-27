@@ -1,0 +1,19 @@
+2026-11-27T20:56:45.019Z [128296] squeal daemon: serving /home/user/results/cells/wt-3@0.1.659-r1/work/wt2 on /home/user/results/cells/wt-3@0.1.659-r1/work/run/squeal-d45d52f0f0b7d07c.sock
+2026-11-27T20:57:43.093Z [128296] squeal daemon: code store: last minute: 41 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:57:48.164Z [128296] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 283 to 189 MiB in a 34 ms pause
+2026-11-27T20:58:04.258Z [128296] squeal daemon: coverage: test/m387.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/b5c18d3e42695dae/coverage-zWMf6A/.tmp/coverage-c98695cd-12f8-4ee6-8600-cc9f61b0aa15.json'
+2026-11-27T20:58:04.258Z [128296] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 map-error (its payload did not map); the last: test/m387.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/b5c18d3e42695dae/coverage-zWMf6A/.tmp/coverage-c98695cd-12f8-4ee6-8600-cc9f61b0aa15.json'
+2026-11-27T20:58:43.076Z [128296] squeal daemon: hook writes: 12 taken, queue wait p95 211 ms max 211 ms
+2026-11-27T20:58:43.153Z [128296] squeal daemon: code store: last minute: 44 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:59:05.973Z [128296] squeal daemon: long write wait: hook write waited 427 ms for the daemon main thread
+2026-11-27T20:59:42.277Z [128296] squeal daemon: long write wait: hook write waited 699 ms for the daemon main thread
+2026-11-27T20:59:43.076Z [128296] squeal daemon: hook writes: 17 taken, queue wait p95 699 ms max 699 ms
+2026-11-27T20:59:43.236Z [128296] squeal daemon: code store: last minute: 60 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:00:43.076Z [128296] squeal daemon: hook writes: 15 taken, queue wait p95 47 ms max 47 ms
+2026-11-27T21:00:43.237Z [128296] squeal daemon: code store: last minute: 67 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:01:43.077Z [128296] squeal daemon: hook writes: 4 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T21:01:43.267Z [128296] squeal daemon: code store: last minute: 28 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:02:17.903Z [128296] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-27T21:02:17.909Z [128296] squeal daemon: code store: last minute: 23 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T21:02:17.952Z [128296] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T21:02:18.020Z [128296] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
