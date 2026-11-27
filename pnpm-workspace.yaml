@@ -16,3 +16,6 @@ allowBuilds:
   msgpackr-extract: false
   opencode-ai: false
   protobufjs: false
+
+minimumReleaseAgeExclude:
+  - vite@8.4.0

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RunnableDevEnvironment } from "vite";
+import type { RunnableDevEnvironment } from "vite-8.4";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Vitest } from "vitest/node";
 import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
@@ -15,10 +15,10 @@ import { SLOW } from "./helpers.js";
  * wrapper that dropped the second argument got `null` back for a file no
  * plugin loads, and Vite threw "Cannot read properties of null (reading
  * 'code')", so Vitest could not start. Each case runs a real Vite dev server
- * of one version through the wrapper: 8.4.0 is the repository's `vite`,
- * which Vitest runs on, and 8.3.8 the `vite-8.3` alias, which calls
- * `load(id)` alone. Row 025-25 moved the repository to 8.4.0 once the
- * installed Squeal had this fix (0.1.645).
+ * of one version through the wrapper: 8.4.0 is the `vite-8.4` alias, 8.3.2
+ * the repository's `vite`, which Vitest runs on and which calls `load(id)`
+ * alone. The repository stays on 8.3 until a release with this fix is
+ * installed, since an installed Squeal without it gives no result on 8.4.0.
  */
 
 // Vite 8.4.0's overloaded `load` is a `Load`, and a `Load` takes its second argument.
@@ -39,8 +39,8 @@ const VERSIONS: readonly (readonly [
   string,
   () => Promise<{ createServer: unknown; version: string }>,
 ])[] = [
-  ["8.4.0", () => import("vite")],
-  ["8.3.8", () => import("vite-8.3")],
+  ["8.4.0", () => import("vite-8.4")],
+  ["8.3.2", () => import("vite")],
 ];
 
 describe("vitest adapter: the load wrapper on each Vite version (025-23)", SLOW, () => {
