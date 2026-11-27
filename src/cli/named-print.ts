@@ -1,6 +1,7 @@
 import { formatStatus } from "../core/status/format-status.js";
 import type { EpochMs } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import type { NamedLint } from "../core/types/lint-delivery.js";
 import type { CliIo } from "./main.js";
 import { fileEntry, type NamedFileEntry } from "./named-file-lines.js";
 import { namedPathLines } from "./named-path-lines.js";
@@ -72,6 +73,12 @@ export interface NamedWaitPayload {
   readonly focused?: FocusedPayload;
   /** Row 011-207: the runs the wait asked, its stored requests only (011 C15, additive); absent with none. */
   readonly asked?: readonly AskedPayload[];
+  /**
+   * Row 017-37 (gh-238, additive): the named paths' lint, apart from the
+   * snapshot's repository-wide `lint.linting`; absent when lint is off or
+   * includes no named path.
+   */
+  readonly lint?: NamedLint;
 }
 
 /** How a named wait or snapshot prints (`printNamed`). */
@@ -153,6 +160,7 @@ export async function printNamed(
     verdict: wait.verdict,
     ...(wait.focus === undefined ? {} : { focused: focusPayload(wait.focus) }),
     ...withAsked(askedPayload(wait.asked)),
+    ...(wait.lint === undefined ? {} : { lint: wait.lint }),
   };
   const field = wait.snapshot === true ? "named" : "wait";
   const json = { ...wait.result, [field]: payload, selection: payload };
