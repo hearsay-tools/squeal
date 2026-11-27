@@ -7,6 +7,7 @@ import { Readable } from "node:stream";
 import { promisify } from "node:util";
 import { type SshTarget, shellQuote, sshFailure, sshRun } from "../../ssh.js";
 import { createGitBundle, sharedFullBundle } from "./bundle-cache.js";
+import { INDEX_HASH, INDEX_SCRIPT, stagedIndex } from "./git-index.js";
 
 /*
  * Spec 026 D7.3.3 (row 026-15): what a fresh Agent37 instance needs before
@@ -24,6 +25,9 @@ import { createGitBundle, sharedFullBundle } from "./bundle-cache.js";
  * is `present` only when its HEAD, branch and tags equal the worktree's
  * now; else it is brought there, with a bundle of the commits it lacks
  * when its HEAD is a commit here, of the whole history when not.
+ *
+ * Row 026-39 (#303): and its index the worktree's staged index, which a
+ * `git mv` changes with HEAD unchanged (`git-index.ts`).
  */
 
 const run = promisify(execFile);
@@ -108,12 +112,15 @@ export async function ensureNode(
 
 /**
  * The Git state of the directory it runs in: HEAD's branch (an empty line
- * when detached), a `.` line, then HEAD's commit and each tag
- * (`git show-ref --head --tags`). The same text here and there.
+ * when detached), a `.` line, HEAD's commit and each tag (`git show-ref
+ * --head --tags`), a `.` line, then the index's hash (row 026-39). The
+ * same text here and there.
  */
 const STATE = `git symbolic-ref -q HEAD || true
 echo .
-git show-ref --head --tags || true`;
+git show-ref --head --tags || true
+echo .
+${INDEX_HASH}`;
 
 /** Prints `missing` when `$1/root` has no `.git`, else its Git state. */
 const LOOK_SCRIPT = `cd "$1/root" 2>/dev/null && [ -d .git ] || { echo missing; exit 0; }
@@ -150,7 +157,7 @@ if [ -n "$S" ]; then git symbolic-ref HEAD "$S"; else git update-ref --no-deref 
 git read-tree --reset HEAD
 ${STATE}`;
 
-/** A tree's Git state: HEAD's commit, and `key`, equal when HEAD, its branch and the tags are. */
+/** A tree's Git state: HEAD's commit, and `key`, equal when HEAD, its branch, the tags and the index are. */
 export interface GitState {
   readonly head: string;
   readonly key: string;
@@ -164,7 +171,10 @@ export function gitStateOf(text: string): GitState | null {
   const dot = lines.indexOf(".");
   if (dot < 0) return null;
   const ref = lines.slice(0, dot).find((line) => line !== "") ?? "";
-  const shown = lines.slice(dot + 1).map((line) => line.split(" "));
+  const end = lines.indexOf(".", dot + 1);
+  if (end < 0) return null;
+  const shown = lines.slice(dot + 1, end).map((line) => line.split(" "));
+  const index = lines.slice(end + 1).find((line) => line !== "") ?? "";
   const head = shown.find(([, name]) => name === "HEAD")?.[0];
   if (head === undefined || !/^[0-9a-f]{40,64}$/.test(head)) return null;
   const tags = shown
@@ -172,7 +182,7 @@ export function gitStateOf(text: string): GitState | null {
     .map(([object, name]) => `tag ${object} ${name}`)
     .sort();
   const refs = [`head ${head}`, ...(ref === "" ? [] : [`ref ${ref}`]), ...tags].join("\n");
-  return { head, key: refs, refs };
+  return { head, key: `${refs}\nindex ${index}`, refs };
 }
 
 /** The worktree's Git state now, read here; `null` when HEAD has no commit yet. */
@@ -233,15 +243,23 @@ export async function ensureGitTree(
   if (local === null) return { kind: "none", why: "the worktree has no commit yet" };
   const remote = await remoteGitState(target, tree, deadlines, signal);
   if (remote?.key === local.key) return { kind: "present", commit: local.head, state: remote };
-  const base = remote !== null && (await knownHere(root, remote.head)) ? remote.head : null;
   const dir = await mkdtemp(join(tmpdir(), "squeal-agent37-bundle-"));
   try {
-    const send = (since: string | null) =>
-      sendGit(target, tree, root, { local, base: since, dir, deadlines, signal });
-    let sent = await send(base);
-    // Its objects did not reach that far back (gc'd, or another history): the whole history.
-    if (sent === "missing" && base !== null) sent = await send(null);
-    if (sent === "missing") return { kind: "none", why: "the git bundle lacked objects there" };
+    let sent: GitState | null | "missing" = remote;
+    if (remote?.refs !== local.refs) {
+      const base = remote !== null && (await knownHere(root, remote.head)) ? remote.head : null;
+      const send = (since: string | null) =>
+        sendGit(target, tree, root, { local, base: since, dir, deadlines, signal });
+      sent = await send(base);
+      // Its objects did not reach that far back (gc'd, or another history): the whole history.
+      if (sent === "missing" && base !== null) sent = await send(null);
+      if (sent === "missing") return { kind: "none", why: "the git bundle lacked objects there" };
+    }
+    // Row 026-39: HEAD there, its index reset to HEAD's tree; the staged index here differs.
+    if (sent !== null && sent.key !== local.key) {
+      sent = await sendIndex(target, tree, root, { dir, deadlines, signal });
+      if (sent === "missing") return { kind: "none", why: "the staged index did not apply there" };
+    }
     return { kind: "sent", commit: local.head, state: sent };
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -307,6 +325,39 @@ async function sendGit(
   if (sent.code === 3) return "missing";
   if (sent.code !== 0) {
     throw new Error(sshFailure(`could not unpack the git bundle on ${target.destination}`, sent));
+  }
+  return gitStateOf(sent.stdout);
+}
+
+/** The staged index here, applied there (`INDEX_SCRIPT`); the state it reached, or `missing`. */
+async function sendIndex(
+  target: SshTarget,
+  tree: string,
+  root: string,
+  send: {
+    readonly dir: string;
+    readonly deadlines: BootstrapDeadlines;
+    readonly signal: AbortSignal | undefined;
+  },
+): Promise<GitState | null | "missing"> {
+  const { dir, deadlines, signal } = send;
+  const staged = await stagedIndex(root, dir);
+  signal?.throwIfAborted();
+  const input = Readable.from(
+    (async function* () {
+      yield Buffer.from(`${staged.lines}.\n`);
+      if (staged.pack !== null) yield* createReadStream(staged.pack);
+    })(),
+  );
+  const sent = await sshRun(target, scriptCommand(`${INDEX_SCRIPT}${STATE}`, [tree]), {
+    input,
+    deadlineMs: deadlines.bundleMs,
+    ...(signal === undefined ? {} : { signal }),
+  });
+  signal?.throwIfAborted();
+  if (sent.code === 3) return "missing";
+  if (sent.code !== 0) {
+    throw new Error(sshFailure(`could not set the git index on ${target.destination}`, sent));
   }
   return gitStateOf(sent.stdout);
 }
