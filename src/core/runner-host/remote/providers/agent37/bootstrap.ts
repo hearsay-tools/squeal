@@ -345,7 +345,7 @@ async function sendIndex(
   signal?.throwIfAborted();
   const input = Readable.from(
     (async function* () {
-      yield Buffer.from(`${staged.lines}.\n`);
+      yield Buffer.from(`${staged.lines}.\n${staged.intent}.\n`);
       if (staged.pack !== null) yield* createReadStream(staged.pack);
     })(),
   );

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -51,12 +51,15 @@ function setup(files: Readonly<Record<string, string>>) {
     { tree: TREE, root, deadlines: BOOTSTRAP_DEADLINES, log: () => {} },
     null,
   );
-  /** Whether Git there lists what Git here lists, stages and object names too. */
+  /** Whether Git there lists and stages what Git here does: stages, object names, intent-to-add. */
   const sameIndex = () => {
     expect(there("ls-files", "-s")).toBe(git("ls-files", "-s"));
     expect(there("ls-files", "--cached")).toBe(git("ls-files", "--cached"));
+    expect(there("diff", "--cached", "--name-status")).toBe(
+      git("diff", "--cached", "--name-status"),
+    );
   };
-  return { root, write, git, ssh, target, there, keeper, sameIndex };
+  return { root, write, git, ssh, target, remote, there, keeper, sameIndex };
 }
 
 const FILES = { "src/old.ts": "export const old = 1;\n", "src/keep.ts": "export const k = 1;\n" };
@@ -109,6 +112,52 @@ describe("the remote index follows the staged index (row 026-39)", () => {
     s.git("reset", "-q");
     expect(await s.keeper.sync(s.target)).toBe(true);
     s.sameIndex();
+  });
+
+  it("keeps intent-to-add apart from a staged empty file, both ways (review 0.1.662 B2)", async () => {
+    const s = setup(FILES);
+    await s.keeper.sync(s.target);
+    s.write("src/later.ts", "export const later = 1;\n");
+    s.git("add", "-N", "--", "src/later.ts");
+    expect(await s.keeper.sync(s.target)).toBe(true);
+    s.sameIndex();
+    expect(s.there("diff", "--cached", "--name-only")).toBe("");
+    // The flag is the index's: the working-tree file there stays the tree host's to write.
+    expect(existsSync(join(s.remote, "src/later.ts"))).toBe(false);
+    // To a staged empty file: the same `ls-files -s` line, another staged diff.
+    s.git("rm", "-q", "--cached", "--", "src/later.ts");
+    s.write("src/later.ts", "");
+    s.git("add", "--", "src/later.ts");
+    expect(await s.keeper.sync(null)).toBe(false);
+    expect(await s.keeper.sync(s.target)).toBe(true);
+    s.sameIndex();
+    expect(s.there("diff", "--cached", "--name-status")).toBe("A\tsrc/later.ts\n");
+    // And back to intent-to-add.
+    s.git("rm", "-q", "--cached", "--", "src/later.ts");
+    s.git("add", "-N", "--", "src/later.ts");
+    expect(await s.keeper.sync(null)).toBe(false);
+    expect(await s.keeper.sync(s.target)).toBe(true);
+    s.sameIndex();
+    const before = s.ssh.argv().length;
+    expect(await s.keeper.sync(s.target)).toBe(true);
+    expect(s.ssh.argv().length).toBe(before);
+  });
+
+  it("carries odd paths, intent-to-add ones too, as names and never as shell", async () => {
+    const s = setup(FILES);
+    await s.keeper.sync(s.target);
+    const odd = 'src/q"t\tn\nl $(touch pwned) é.ts';
+    s.write(odd, "odd\n");
+    s.git("add", "--", odd);
+    const oddIntent = 'src/i"t\t$(touch pwned2).ts';
+    s.write(oddIntent, "intent\n");
+    s.git("add", "-N", "--", oddIntent);
+    expect(await s.keeper.sync(s.target)).toBe(true);
+    s.sameIndex();
+    expect(s.there("ls-files", "-z")).toBe(s.git("ls-files", "-z"));
+    expect(s.there("show", `:${odd}`)).toBe("odd\n");
+    expect(existsSync(join(s.remote, "pwned"))).toBe(false);
+    expect(existsSync(join(s.remote, "pwned2"))).toBe(false);
   });
 
   it("carries a commit and a staged rename in one sync", async () => {
