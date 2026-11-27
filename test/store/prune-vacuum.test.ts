@@ -68,17 +68,22 @@ describe("the prune's vacuum slices (row 022-08)", () => {
     expect(freePages(conn)).toBe(start);
   });
 
-  it("frees every page of a real store, each slice's transaction short", () => {
+  // Row 011-429 (G1): a slice is judged by the steps it ran on a clock the test moves, not by
+  // the wall time it held, which failed on CI at 505 ms against 300 on a shared runner. How long
+  // a step holds the lock on a large store is the `bench/` churn cell's `store.longWrite.maxMs`.
+  it("frees every page of a real store, each slice a budget's steps", () => {
     const conn = storeWithFreePages(4000);
     expect(freePages(conn)).toBeGreaterThan(3000);
-    const held: number[] = [];
-    for (const slice of vacuum(conn)) {
-      const t = performance.now();
+    // Each reading is a tenth of the budget later: a slice runs ten steps.
+    let now = 0;
+    const clock = () => (now += VACUUM_SLICE_MS / 10);
+    const freed: number[] = [];
+    for (const slice of vacuum(conn, clock)) {
+      const before = freePages(conn);
       slice();
-      held.push(performance.now() - t);
+      freed.push(before - freePages(conn));
     }
     expect(freePages(conn)).toBe(0);
-    // Generous for a loaded CI host: the budget plus a few steps' pages.
-    expect(Math.max(...held)).toBeLessThan(300);
+    expect(Math.max(...freed)).toBe(10 * VACUUM_PAGES);
   });
 });

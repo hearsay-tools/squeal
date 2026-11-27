@@ -1,78 +1,70 @@
-import { readFileSync } from "node:fs";
-import { loadavg } from "node:os";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { MapWorker } from "../../../src/core/code/coverage/mapper.js";
 import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { commonDir, ON } from "../helpers.js";
 import { type PayloadSet, payloads, TS_WORKER } from "./payloads.js";
-import { type Turns, threadCpuMs, watchTurns } from "./turns.js";
 
 /*
  * Row 015-42 (011-197): the records' writer parses and maps a payload off
  * the main thread, so a large one holds no turn of the daemon's event loop
  * for long. 011-197 saw turns of about 8 s.
  *
- * Row 011-376: a turn is judged by the main thread's CPU time in it, not by
- * its wall time. On CI a turn of 232 ms held little of the thread's own work:
- * the store write waiting on the disk, or the runner not scheduling the
- * thread. The bound is this run's own cost of parsing the same payload on the
- * main thread, so it follows the machine: the writer's longest turn must hold
- * less than `PARSE_SHARE` of it. Measured: the writer's longest turn about
- * 25 ms, the parse 190 to 290 ms, the parse and map 640 to 1,030 ms.
+ * Row 011-429 (G1): the test counts the work the main thread does, not the
+ * time it takes. The payload's parse is the turn 011-197 saw; with the
+ * worker, the main thread never parses a text the payload's size. A turn's
+ * CPU time against this run's own parse (row 011-376) failed on CI at 103
+ * to 320 ms against a bound of 100: the collector's garbage and a
+ * shared runner's other workers land inside the window. Without the worker
+ * the same count is one, so the check tells the two apart. The writer's
+ * speed is the `bench/` coverage cells' figure.
  */
-
-const PARSE_SHARE = 0.5;
 
 let set: PayloadSet | null = null;
 afterEach(() => {
   set?.cleanup();
   set = null;
+  vi.restoreAllMocks();
 });
 
-/** The main thread's CPU time, in ms, to parse `path` as the writer would without its worker. */
-function parseCpuMs(path: string): number {
-  const began = threadCpuMs();
-  JSON.parse(readFileSync(path, "utf8"));
-  return threadCpuMs() - began;
+/** Stores one payload through a writer with `worker`; the main thread's parses of a text half its size or more, and the log. */
+async function store(worker: MapWorker | null) {
+  const own = payloads(100, 300);
+  set = own;
+  const parse = vi.spyOn(JSON, "parse");
+  const logged: string[] = [];
+  let stored = 0;
+  const writer = createCoverageWriter({
+    commonDir: commonDir(),
+    format: "sha1",
+    policy: () => ON,
+    resultKey: (_run, testFile) => `key-${testFile.path}`,
+    log: (line) => logged.push(line),
+    onStored: () => stored++,
+    worker,
+  });
+  try {
+    writer.collected({ runId: "run-1", files: [own.file("test/a.test.ts")] });
+    await writer.idle();
+  } finally {
+    await writer.close();
+  }
+  const large = parse.mock.calls.filter(
+    ([text]) => typeof text === "string" && text.length >= own.bytes / 2,
+  ).length;
+  return { stored, large, logged };
 }
 
 describe("the records' writer's turns (row 015-42)", () => {
-  it("keeps the main thread's longest turn short while a large payload is stored", async () => {
-    const own = payloads(300, 600);
-    set = own;
-    const parseMs = parseCpuMs(own.file("test/parse.test.ts").payload);
-    let stored = 0;
-    const writer = createCoverageWriter({
-      commonDir: commonDir(),
-      format: "sha1",
-      policy: () => ON,
-      resultKey: (_run, testFile) => `key-${testFile.path}`,
-      log: () => {},
-      onStored: () => stored++,
-      worker: TS_WORKER,
-    });
-    const turns = watchTurns();
-    let longest: ReturnType<Turns["stop"]>;
-    let took: number;
-    try {
-      // The probe times a turn from its tick before it.
-      await new Promise((resolve) => setTimeout(resolve, 30));
-      const began = performance.now();
-      writer.collected({ runId: "run-1", files: [own.file("test/a.test.ts")] });
-      await writer.idle();
-      took = Math.round(performance.now() - began);
-      // The probe counts a turn once it ticks after it.
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    } finally {
-      // An early error leaves no probe interval or writer behind (review 011-376 S1).
-      longest = turns.stop();
-      await writer.close();
-    }
+  it("parses a large payload in its worker, never on the main thread", async () => {
+    const { stored, large, logged } = await store(TS_WORKER);
     expect(stored).toBe(1);
+    expect(logged.filter((line) => line.includes("mapping on the main thread"))).toEqual([]);
+    expect(large).toBe(0);
+  }, 60_000);
 
-    const load = loadavg()[0] ?? 0;
-    console.log(
-      `coverage writer: a ${(own.bytes / 2 ** 20).toFixed(1)} MiB payload stored in ${took} ms; longest turn ${Math.round(longest.cpuMs)} ms of CPU, ${Math.round(longest.wallMs)} ms by the clock; its parse on this thread ${Math.round(parseMs)} ms of CPU; load average ${load.toFixed(1)}`,
-    );
-    expect(longest.cpuMs).toBeLessThan(parseMs * PARSE_SHARE);
-  }, 120_000);
+  it("parses it on the main thread without a worker, so the count above tells the two apart", async () => {
+    const { stored, large } = await store(null);
+    expect(stored).toBe(1);
+    expect(large).toBe(1);
+  }, 60_000);
 });
