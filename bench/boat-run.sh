@@ -9,6 +9,9 @@
 # `.` is this worktree's plugins/claude-code, the default without --ref. Give
 # --ref twice or more to compare versions: one sandbox runs every cell once per
 # version, alternating the order, so the versions always share the machine.
+# --repeat N runs each cell (and each version of it) N times; without it a
+# paired run repeats 3 times, so the scorecard can tell a change from the
+# run-to-run spread, and a single version runs once.
 # The harness is always this worktree's bench/.
 #
 # --attach <id>: wait for and fetch a run already started on that sandbox. If
@@ -26,7 +29,7 @@ TYPE=default
 CPU=""
 CELLS=""
 STEPS=24
-REPEAT=1
+REPEAT=""
 KEEP=0
 REFS=()
 ATTACH=""
@@ -110,7 +113,7 @@ done
 
 # A push right after `boat new` has been lost once (2026-11-20), so push until the files are there.
 CHECK="test -f /home/user/bench/run-all.mjs"
-ARGS="--out /home/user/results --steps $STEPS --repeat $REPEAT"
+ARGS="--out /home/user/results --steps $STEPS${REPEAT:+ --repeat $REPEAT}"
 for i in "${!PLUGINS[@]}"; do
   CHECK="$CHECK && test -f /home/user/plugin-$i/dist/cli/squeal.mjs"
   ARGS="$ARGS --plugin /home/user/plugin-$i"

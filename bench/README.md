@@ -8,8 +8,8 @@ This benchmark measures what an agent feels when Squeal runs beside it: hook lat
 bench/boat-run.sh                                            # all cells on this worktree's plugin; about 4 h
 bench/boat-run.sh --cells ref --steps 12                       # a quick check of the reference cell
 bench/boat-run.sh --ref squeal--v0.1.572                       # the plugin as released at that tag
-bench/boat-run.sh --ref squeal--v0.1.572 --ref origin/main --cells ref,wt-6   # two versions on one machine
-bench/boat-run.sh --ref squeal--v0.1.572 --ref origin/main --cells ref --repeat 3   # three runs of each, for noise
+bench/boat-run.sh --ref squeal--v0.1.572 --ref origin/main --cells ref,wt-6   # two versions on one machine, three runs of each
+bench/boat-run.sh --ref squeal--v0.1.572 --ref origin/main --cells ref --repeat 1   # one run of each, a rough first look
 ```
 
 `boat-run.sh` creates a boat.dev sandbox and pushes `plugins/claude-code` (the committed plugin bundle, which is what users install) and `bench/` to it. It runs `run-all.mjs` there and copies the results to `bench/results/<date>-<version>-<type>-<cpu>/`. The sandbox is created with `--no-env`, so it holds none of the account's secrets. It is deleted at the end unless `--keep` is given.
@@ -27,7 +27,7 @@ Do not run it on a shared development host. Each cell starts real daemons, and t
 `--cells` takes cell names and named groups, mixed: `--cells @worktrees,churn`. For performance work, run the group a change is likely to move, as a pair with the release it starts from, and run every cell only when that group shows a change:
 
 ```sh
-bench/boat-run.sh --ref squeal--v0.1.579 --ref . --cells @contention   # stage 1: the likely cells, about 1.5 h
+bench/boat-run.sh --ref squeal--v0.1.579 --ref . --cells @contention   # stage 1: the likely cells, three runs each
 bench/boat-run.sh --ref squeal--v0.1.579 --ref .                       # stage 2: every cell, only if stage 1 moved
 ```
 
@@ -44,7 +44,7 @@ bench/boat-run.sh --ref squeal--v0.1.579 --ref .                       # stage 2
 | `@scale` | size-l, scale-real | `status` and store reads at a real repository's check and function counts (opt-in) |
 | `@all` | every cell except the opt-in `scale-real` | the default |
 
-A paired cell takes about 35 minutes (about 45 with an aged store). `--steps 12` halves the sessions for a rough first look; `--repeat 3` shows whether a difference is larger than run-to-run noise. The groups live in `run-all.mjs` (`GROUPS`).
+A paired run repeats each cell 3 times per version unless `--repeat` says otherwise (row 025-27): one run per version cannot tell a change from run-to-run noise. On 2026-11-27 three `wt-3` runs of 0.1.640 in one sandbox gave a PreToolUse p95 of 116 to 157 ms and a longest hook write wait of 9 to 194 ms (`research/probes/hook-slowdown/bench/wt3/` in spec 025). A paired cell takes about 35 minutes per run and version (about 45 with an aged store), so the default three runs take three times as long as one. "Moved" means a change the comparison does not mark **noise** (see "The comparison" below). `--steps 12` halves the sessions for a rough first look; `--repeat 1` keeps one run per version. The groups live in `run-all.mjs` (`GROUPS`).
 
 ## The machine
 
@@ -60,7 +60,7 @@ The boat.dev $20 plan (`box_20`) offers three sizes:
 
 **Reference: `default`, 4 vCPU, 8 GB.** It is close to a developer laptop, which is where Squeal runs. With 4 vCPUs, extra worktrees and ambient load show their effect early. `large` is the second machine, used to show whether a problem comes from Squeal's design or from too few CPUs: `bench/boat-run.sh --type large`.
 
-**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike, and on 2026-11-20 twelve starts in a row gave a Ryzen 7 9700X. Hunting for one model wastes the plan's start limits (12 a minute, 60 an hour, 200 a day), so **compare versions in one sandbox**: give `--ref` once per version. Every cell then runs once per version, alternating which goes first, and the scorecard adds a table of the differences: mean scores, and the raw numbers behind them (hook and status times, lock holds, CPU, memory, `squeal impact`), since a change of a few hundred milliseconds rarely moves a score band. `--repeat N` runs each cell N times per version and shows each mean with its range, which is the run-to-run noise. `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s); `TREND.md` groups runs by CPU model, and only runs on the same model compare across sandboxes. `--cpu "<model>"` still retries starts until that model comes up.
+**The CPU model is not fixed by the type.** In 15 sandboxes on 2026-11-19 we saw a Ryzen 9 9950X, a Ryzen 7 9700X, an EPYC 9455, an EPYC 4585PX and an EPYC 8224P, for default and large alike, and on 2026-11-20 twelve starts in a row gave a Ryzen 7 9700X. Hunting for one model wastes the plan's start limits (12 a minute, 60 an hour, 200 a day), so **compare versions in one sandbox**: give `--ref` once per version. Every cell then runs once per version, alternating which goes first, and the scorecard adds a table of the differences: mean scores, and the raw numbers behind them (hook and status times, lock holds, CPU, memory, `squeal impact`), since a change of a few hundred milliseconds rarely moves a score band. `--repeat N` runs each cell N times per version (3 by default when paired) and shows each mean with its range, which is the run-to-run noise. `meta.json` records the CPU model and a single-thread score (SHA-256 MiB/s); each cell's `cell.json` records the machine speed around it (see "The comparison"); `TREND.md` groups runs by CPU model, and only runs on the same model compare across sandboxes. `--cpu "<model>"` still retries starts until that model comes up.
 
 ## The project
 
@@ -143,6 +143,12 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 
 ## Metrics
 
+### The comparison
+
+A paired or repeated run's scorecard has a comparison section (`compare.mjs`). For each cell and version it shows the mean score with its range, and the mean of each raw number (hook p50 and p95, status, lock holds, CPU, memory, `squeal impact`) with its range across runs, `135 ms (116–157)`. Δ% is the change of the mean against the first version, one column per later version. A change is marked **noise** when the two versions ran at least twice each and their ranges overlap: some run of the first version is then already as far off as the other version's mean. Only an unmarked change counts as a move. With one run per version nothing is marked, because there is no spread to compare with.
+
+Each cell also records the machine speed around it in `cell.json` under `machine` (`machine.mjs`): the single-thread SHA-256 calibration just before and just after the cell (`sha256Before`, `sha256After`, MiB/s over 3 s) and the share of CPU time the hypervisor took during it (`stealPct`, from the `steal` column of `/proc/stat`). The scorecard lists it per cell under "Machine speed per cell", and `run.log` prints it with each cell's exit line. A cell whose calibration dropped or whose steal rose ran on a slower machine moment; read its numbers with that in mind. Runs from before row 025-27 show "No cell recorded its machine speed".
+
 ### Score
 
 **Correctness is a gate.** A wrong verdict, a missed push (failure or recovery), a false alarm, a notice that names the wrong test or reaches the wrong session, a hook call over its 2 s timeout or a session that crashed, in any cell, marks the whole run **FAILED**, whatever its points. These metrics have no partial credit: Squeal's promise is "PASS → FAIL: notify", and a fast wrong answer is worse than a slow right one.
@@ -152,6 +158,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | Metric | Healthy | Warn | Why this limit |
 |---|---|---|---|
 | **Hooks** (every tool call pays for these) | | | |
+| `hook.preToolUse.p50`, `hook.postToolBatch.p50` | report | | The median call, beside each p95: a slower tail and a slower typical call read apart |
 | `hook.preToolUse.p95` | ≤ 80 ms | ≤ 200 ms | Spec 001/012 budget for per-tool hooks: 80 ms p95, of which about 50 ms is Node start |
 | `hook.postToolBatch.p95` | ≤ 80 ms | ≤ 200 ms | Same budget |
 | `hook.preToolUse.p99`, `.max`, `hook.postToolBatch.p99`, `.max` | report | | The tails behind the p95s: the slowest 1% and the slowest call |
@@ -223,6 +230,8 @@ Agreed with the human on 2026-11-20 (paired runs the same day); `docs/process.md
 | `age-store.mjs` | Adds a week of history to a store, for the store cells |
 | `load.mjs` | Ambient CPU load |
 | `summarize.mjs` | `scorecard.md` and `scores.json` from a results directory; the limits and the score live here |
+| `compare.mjs` | The scorecard's comparison of paired or repeated runs: ranges and the noise mark |
+| `machine.mjs` | The SHA-256 calibration and CPU steal around each cell |
 | `trend.mjs` | `results/TREND.md`, every committed run by CPU model; `boat-run.sh` runs it |
 | `lib.mjs` | Timing, `/proc` reading, the seeded random generator, the settle wait and the daemon-log parsers |
 | `results/` | Committed scorecards and raw data of past runs |

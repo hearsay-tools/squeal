@@ -15,16 +15,31 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { AREAS, comparison, fmt } from "./compare.mjs";
 import { hookWriteWaitLog, longWriteHolds, quantile } from "./lib.mjs";
+import { machineText } from "./machine.mjs";
 
 /** lower is better unless `higher`. */
 export const METRICS = [
+  // Row 025-27: the median beside each p95, so a slower tail and a slower typical call read apart.
+  {
+    id: "hook.preToolUse.p50",
+    what: "Hook before each tool call (median)",
+    unit: "ms",
+    group: "Hooks",
+  },
   {
     id: "hook.preToolUse.p95",
     what: "Hook before each tool call (slowest 5%)",
     unit: "ms",
     healthy: 80,
     warn: 200,
+    group: "Hooks",
+  },
+  {
+    id: "hook.postToolBatch.p50",
+    what: "Hook after each batch of tool calls (median)",
+    unit: "ms",
     group: "Hooks",
   },
   {
@@ -576,9 +591,11 @@ function judgeNotice(n, breaks, counts) {
 export function hookValues(rows) {
   const hooks = (name) => rows.filter((r) => r.kind === "hook" && r.hook === name).map((r) => r.ms);
   return {
+    "hook.preToolUse.p50": quantile(hooks("pre-tool-use"), 0.5),
     "hook.preToolUse.p95": quantile(hooks("pre-tool-use"), 0.95),
     "hook.preToolUse.p99": quantile(hooks("pre-tool-use"), 0.99),
     "hook.preToolUse.max": maxOrNull(hooks("pre-tool-use")),
+    "hook.postToolBatch.p50": quantile(hooks("post-tool-batch"), 0.5),
     "hook.postToolBatch.p95": quantile(hooks("post-tool-batch"), 0.95),
     "hook.postToolBatch.p99": quantile(hooks("post-tool-batch"), 0.99),
     "hook.postToolBatch.max": maxOrNull(hooks("post-tool-batch")),
@@ -735,42 +752,7 @@ export function grade(m, x) {
   if (m.higher) return x >= m.healthy ? 1 : x >= m.warn ? 0.5 : 0;
   return x <= m.healthy ? 1 : x <= m.warn ? 0.5 : 0;
 }
-const fmt = (m, x) => {
-  if (x === null || x === undefined || Number.isNaN(x)) return "n/a";
-  if (x === Number.POSITIVE_INFINITY) return "late";
-  const d = m.unit === "x" ? 2 : Math.abs(x) < 10 && !Number.isInteger(x) ? 1 : 0;
-  return `${x.toFixed(d)}${m.unit && m.unit !== "rows" ? ` ${m.unit}` : ""}`;
-};
 const mark = (g) => (g === null ? "" : g === 1 ? " ✅" : g === 0.5 ? " ⚠️" : " ❌");
-
-/** Raw numbers the comparison shows for each cell: the ones a change to the store or the hooks moves. */
-const RAW = [
-  "hook.preToolUse.p95",
-  "hook.postToolBatch.p95",
-  "hook.preToolUse.p99",
-  "hook.postToolBatch.p99",
-  "hook.writeWait.max",
-  "hook.longWriteWaits",
-  "hook.sessionStart.max",
-  "cmd.status.p95",
-  "ff.queued",
-  "ff.drainS",
-  "ff.lateNotices",
-  "ff.editVerdict.p50",
-  "session.pushFail.p50",
-  "session.verdict.within60s",
-  "res.idleCpu.maxPct",
-  "res.cpuPerEdit",
-  "res.daemonRss.max",
-  "res.treeRss.max",
-  "res.storeProcess.rss",
-  "store.longWrites",
-  "store.longWrite.maxMs",
-  "store.longWrite.totalS",
-  "cmd.impact.s",
-  "res.impact.rss",
-];
-const AREAS = ["Hooks", "Commands", "Verdicts", "Resources", "Store"];
 
 /** Writes scores.json into `dir`; returns the scorecard's Markdown and the scores. */
 export function summarize(dir) {
@@ -782,8 +764,13 @@ export function summarize(dir) {
     `${JSON.stringify({ meta, correctness: failed.length === 0 ? "pass" : "failed", gateFails, overall, runAreas, scores, areaScores, values }, null, 2)}\n`,
   );
   const lines = [...headerLines(run)];
-  if (run.pluginOrder.length > 1 || (meta.repeat ?? 1) > 1) lines.push(...comparison(run));
-  lines.push(...unhealthyLines(run), ...settleLines(run), ...metricLines(run));
+  if (run.pluginOrder.length > 1 || (meta.repeat ?? 1) > 1) lines.push(...comparison(run, METRICS));
+  lines.push(
+    ...unhealthyLines(run),
+    ...settleLines(run),
+    ...machineLines(run),
+    ...metricLines(run),
+  );
   return { scorecard: lines.join("\n"), overall, scores, areaScores, gateFails, values };
 }
 
@@ -935,6 +922,23 @@ function settleLines({ names, results }) {
   return lines;
 }
 
+/**
+ * Row 025-27: each cell's machine speed, the SHA-256 calibration before and after it and the
+ * CPU steal during it, so a cell on a slower machine moment reads as such, not as Squeal.
+ */
+function machineLines({ names, results }) {
+  const lines = ["", "## Machine speed per cell", ""];
+  const rows = names.map((n) => ({ n, text: machineText(results[n].cell.machine) }));
+  if (rows.every((r) => r.text === null))
+    return [...lines, "No cell recorded its machine speed (a run from before row 025-27)."];
+  lines.push(
+    "Single-thread SHA-256 before→after the cell, and the CPU time the hypervisor took (steal) during it.",
+    "",
+  );
+  for (const r of rows) lines.push(`- ${r.n}: ${r.text ?? "not recorded"}`);
+  return lines;
+}
+
 function unhealthyLines({ names, results }) {
   const unhealthy = METRICS.filter((m) => !m.gate && m.healthy !== undefined)
     .map((m) => ({
@@ -982,94 +986,6 @@ function metricLines({ names, results }) {
     );
   }
   return lines;
-}
-
-/**
- * Paired or repeated runs: per cell and version, the mean score (with its
- * range when repeated), the change of the mean against the first version, and
- * the mean of the raw numbers in `RAW`, so a change too small to move a score
- * band still shows.
- */
-function comparison(run) {
-  const { meta, pluginOrder } = run;
-  const labels = pluginOrder.length ? pluginOrder : [undefined];
-  const bases = [...new Set(meta.cells.map((c) => c.base ?? c.name))];
-  const title =
-    labels.length > 1
-      ? `${labels[0]} compared with ${labels.slice(1).join(", ")} (same machine, cells alternated)`
-      : "Repeats";
-  const out = ["", `## ${title}`, ""];
-  out.push(
-    `| Cell | Version | Runs | Correct | Score (range) | Δ | ${AREAS.map((a) => `${a} Δ`).join(" | ")} |`,
-  );
-  out.push(`|---|---|---:|---|---:|---:|${AREAS.map(() => "---:").join("|")}|`);
-  const raw = ["", "Raw numbers, mean per cell and version (Δ% against the first version):", ""];
-  raw.push(
-    `| Cell | Metric | ${labels.map((l) => l ?? "value").join(" | ")}${labels.length > 1 ? " | Δ%" : ""} |`,
-  );
-  raw.push(`|---|---|${labels.map(() => "---:").join("|")}${labels.length > 1 ? "|---:" : ""}|`);
-  for (const base of bases) {
-    if (runsOf(run, base, labels[0]).length === 0) continue;
-    for (const label of labels) {
-      const row = scoreRow(run, base, label, labels[0]);
-      if (row) out.push(row);
-    }
-    raw.push(...rawRows(run, base, labels));
-  }
-  return [...out, ...raw];
-}
-
-function runsOf({ meta, results }, base, label) {
-  return meta.cells
-    .filter((c) => (c.base ?? c.name) === base && c.plugin === label && results[c.name])
-    .map((c) => c.name);
-}
-
-function meanOf(xs) {
-  const v = xs.filter((x) => typeof x === "number" && Number.isFinite(x));
-  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
-}
-
-function signed(d) {
-  return `${d >= 0 ? "+" : ""}${d.toFixed(0)}`;
-}
-
-function scoreRow(run, base, label, first) {
-  const { scores, areaScores, gateFails } = run;
-  const ns = runsOf(run, base, label);
-  if (ns.length === 0) return null;
-  const firstRuns = runsOf(run, base, first);
-  const sc = ns.map((n) => scores[n]).filter((x) => x !== null);
-  const m = meanOf(sc);
-  const firstScore = meanOf(firstRuns.map((n) => scores[n]));
-  const range =
-    sc.length > 1 ? ` (${Math.min(...sc).toFixed(0)}–${Math.max(...sc).toFixed(0)})` : "";
-  const isFirst = label === first;
-  const d = isFirst || m === null || firstScore === null ? "" : signed(m - firstScore);
-  const areas = AREAS.map((a) => {
-    const x = meanOf(ns.map((n) => areaScores[n][a]));
-    const f = meanOf(firstRuns.map((n) => areaScores[n][a]));
-    return isFirst || x === null || f === null ? "" : signed(100 * (x - f));
-  });
-  const correct = ns.every((n) => gateFails[n].length === 0) ? "✅" : "❌";
-  return `| ${base} | ${label ?? ""} | ${ns.length} | ${correct} | ${m?.toFixed(0) ?? "n/a"}${range} | ${d} | ${areas.join(" | ")} |`;
-}
-
-function rawRows(run, base, labels) {
-  const rows = [];
-  for (const id of RAW) {
-    const m = METRICS.find((x) => x.id === id);
-    const vals = labels.map((l) => meanOf(runsOf(run, base, l).map((n) => run.results[n].v[id])));
-    if (vals.every((x) => x === null)) continue;
-    let pct = "";
-    if (labels.length > 1)
-      pct =
-        vals[0] && vals[1] !== null
-          ? ` | ${signed((100 * (vals[1] - vals[0])) / vals[0])}%`
-          : " | ";
-    rows.push(`| ${base} | ${m.what} | ${vals.map((x) => fmt(m, x)).join(" | ")}${pct} |`);
-  }
-  return rows;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
