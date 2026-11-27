@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -11,6 +11,10 @@ import { fill, run, temp } from "./ci-evidence-kit.js";
  * the process's clock (`clock.cjs`) when it closes the worker. The worker's
  * own clock is in that busy time, so the cost counts it once (review of
  * 0.1.428, B2).
+ *
+ * Row 011-429 (G1): "once" is read from each thread's clock, not from the
+ * sum's wall time: the worker's own clock reads 0. A sum under 1.4 times
+ * the job failed on a shared CI runner at 462 ms against 420.
  */
 
 const load = createRequire(import.meta.url);
@@ -24,6 +28,20 @@ const { startMapper } = load(mapClient) as {
     failed: (error: unknown) => void,
   ): { map(job: object): Promise<unknown>; close(): Promise<void> };
 };
+
+/** Each evidence file's last clock reading, one per process and thread, in ascending order. */
+function clocks(evidence: string): number[] {
+  return readdirSync(evidence)
+    .map((name) =>
+      Math.max(
+        ...readFileSync(join(evidence, name), "utf8")
+          .split("\n")
+          .filter((line) => line !== "")
+          .map((line) => (JSON.parse(line) as { o?: number }).o ?? 0),
+      ),
+    )
+    .sort((a, b) => a - b);
+}
 
 /** A worker that is busy for `ms` on each job, calling `call` all along, then answers an empty record. */
 const BUSY = (ms: number, call = "") => `import { parentPort } from "node:worker_threads";
@@ -72,7 +90,9 @@ await mapper.close();
     // The process and its worker, each with a clock.
     expect(hooks.threads).toBe(2);
     expect(hooks.ms).toBeGreaterThanOrEqual(WORK_MS);
-    // Counted twice, it is near twice the job: the worker's clock and its busy time.
-    expect(hooks.ms).toBeLessThan(1.4 * WORK_MS);
+    // Counted twice, the worker's own clock would hold its evidence calls, most of the job.
+    const [worker, main] = clocks(evidence);
+    expect(worker).toBe(0);
+    expect(main).toBe(hooks.ms);
   });
 });
