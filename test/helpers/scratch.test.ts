@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -90,5 +90,22 @@ describe.skipIf(process.platform !== "linux")("scratch folders (row 011-431)", (
     expect(membersOf([stranger]).map(({ pid }) => pid)).toEqual([stranger]);
     expect(membersOf([mine])).toEqual([]);
     expect(existsSync(dir)).toBe(false);
+  });
+
+  // Review of cand/0.1.663: a path that holds the folder's path inside a longer one is another tree.
+  it("leaves a process whose working directory embeds the folder's path in another tree", async () => {
+    const scratch = scratchDir(join(tmpdir(), "squeal-scratch-"));
+    const outside = mkdtempSync(join(tmpdir(), "squeal-scratch-outside-"));
+    try {
+      const embedded = join(outside, scratch.dir, "child");
+      mkdirSync(embedded, { recursive: true });
+      const stranger = detached(SLEEPER, [], embedded);
+      await until(() => membersOf([stranger]).length > 0, "the process's start");
+      scratch.remove();
+      expect(membersOf([stranger]).map(({ pid }) => pid)).toEqual([stranger]);
+      expect(existsSync(scratch.dir)).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
