@@ -408,3 +408,65 @@ describe.each(JEST_MAJORS)("the Jest %i inline projects (review 0.1.646 B2)", (m
     );
   });
 });
+
+/**
+ * Review 0.1.653 B1: the transform runs with the recorder paused, so the
+ * Babel and Browserslist configs beside the project's modules key its
+ * environment: the existing ones under `roots`, and in the folders of the
+ * modules it imports from another package and their parents. An absent one
+ * keys nothing; its add reads the project again.
+ */
+const NESTED: Readonly<Record<string, string>> = {
+  "jest.config.js": `module.exports = {
+  testEnvironment: "node",
+  roots: ["<rootDir>/app"],
+  testMatch: ["<rootDir>/app/test/**/*.test.js"],
+};
+`,
+  "app/src/.babelrc": "{}\n",
+  "app/src/value.js": `module.exports = require("../../packages/core/src/core.js");\n`,
+  "app/test/value.test.js": `test("v", () => expect(require("../src/value")).toBe(1));\n`,
+  "packages/core/.browserslistrc": "defaults\n",
+  "packages/core/src/.babelrc.json": "{}\n",
+  "packages/core/src/core.js": `const name = ["dy", "n"].join("");\nmodule.exports = require("../../" + name + "/value.js");\n`,
+  "packages/dyn/.babelrc": "{}\n",
+  "packages/dyn/value.js": "module.exports = 1;\n",
+  "packages/core/node_modules/dep/.babelrc": "{}\n",
+  "packages/other/.babelrc": "{}\n",
+};
+
+describe.each(JEST_MAJORS)("the Jest %i environment's nested transform configs", (major) => {
+  it(
+    "keys the existing ones beside the project's modules; an add reads it again",
+    SLOW,
+    async () => {
+      const root = worktree(major, NESTED);
+      const adapter = await createJestAdapter(PROJECT, { root, source: SOURCE, warm: false });
+      try {
+        const nested = async () =>
+          ((await adapter.environment())[0]?.files ?? []).filter(
+            (f) => f.includes("/") && /babel|browserslist/.test(f),
+          );
+        expect(await nested()).toEqual([
+          "app/src/.babelrc",
+          "packages/core/.browserslistrc",
+          "packages/core/src/.babelrc.json",
+        ]);
+        // A module only a run sees, loaded by a computed `require`: its folder's config after it.
+        const run = await adapter.run([{ project: "app", path: "app/test/value.test.js" }], {
+          runId: "r1",
+          logDir: join(root, "..", `logs-${made++}`) as AbsolutePath,
+          timeoutMs: 120_000,
+        });
+        expect(run.results.map((r) => r.outcome)).toEqual(["pass"]);
+        expect(await nested()).toContain("packages/dyn/.babelrc");
+        writeFileSync(join(root, "packages/core/src/.babelignore"), "\n");
+        const added = [{ path: "packages/core/src/.babelignore", kind: "add" as const }];
+        expect(await adapter.invalidate(added)).toEqual({ recreatedProjects: ["app"] });
+        expect(await nested()).toContain("packages/core/src/.babelignore");
+      } finally {
+        await adapter.close();
+      }
+    },
+  );
+});
