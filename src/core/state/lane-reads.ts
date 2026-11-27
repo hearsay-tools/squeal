@@ -1,8 +1,9 @@
 import { readAll, slot } from "../delivery/slots.js";
 import { isRecord } from "../fs/json.js";
 import { type LaneRequests, publishedLaneRequests } from "../scheduler/narrow-asks-row.js";
-import { readGroupActivity } from "../slow/state.js";
+import { readGroupActivities, readSlowActivity } from "../slow/state.js";
 import type { WorktreeId } from "../types/common.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
 import type { SlowTierActivity } from "../types/status.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { DaemonRecord, WorktreeRecord } from "../types/store-records.js";
@@ -22,7 +23,11 @@ export interface LaneReads {
   readonly daemon: () => DaemonRecord | null;
   /** The live daemon's published lane requests (`publishedLaneRequests`); none without a daemon. */
   readonly requests: () => LaneRequests;
-  /** `group`'s published lane activity (`readGroupActivity`). */
+  /**
+   * `group`'s published lane activity (`readGroupActivity`): the configured
+   * groups' row read once for all of them (`readGroupActivities`), the
+   * default `slow` group's own row once.
+   */
   readonly activity: (group: string) => SlowTierActivity | null;
   /** Whether a registered consumer of the worktree is in a turn (`consumerInTurn`). */
   readonly inTurn: () => boolean;
@@ -34,7 +39,8 @@ const NO_REQUESTS: LaneRequests = { narrow: new Map(), commit: new Map(), reques
 export function laneReads(store: Store, worktreeId: WorktreeId): LaneReads {
   const worktree = once(() => store.worktrees.get(worktreeId) ?? undefined);
   const daemon = () => worktree()?.daemon ?? null;
-  const activities = new Map<string, SlowTierActivity | null>();
+  const slowActivity = once(() => readSlowActivity(store, worktreeId));
+  const groupActivities = once(() => readGroupActivities(store, worktreeId));
   return {
     worktree,
     daemon,
@@ -42,11 +48,7 @@ export function laneReads(store: Store, worktreeId: WorktreeId): LaneReads {
       const live = daemon();
       return live === null ? NO_REQUESTS : publishedLaneRequests(store, worktreeId, live.startedAt);
     }),
-    activity: (group) => {
-      if (!activities.has(group))
-        activities.set(group, readGroupActivity(store, worktreeId, group));
-      return activities.get(group) ?? null;
-    },
+    activity: (group) => (group === SLOW_GROUP ? slowActivity() : groupActivities()(group)),
     inTurn: once(() => consumerInTurn(store, worktreeId)),
   };
 }

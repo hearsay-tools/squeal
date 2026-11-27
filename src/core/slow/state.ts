@@ -82,10 +82,21 @@ export function readGroupActivity(
   group: string,
 ): SlowTierActivity | null {
   if (group === SLOW_GROUP) return readSlowActivity(store, worktreeId);
-  return (
-    toSlowActivity(groupEntries(store.meta.get(groupTiersMetaKey(worktreeId)))[group] ?? null) ??
-    null
-  );
+  return readGroupActivities(store, worktreeId)(group);
+}
+
+/**
+ * Row 011-427 (review 0.1.660 B1): the configured groups' activity row,
+ * read and parsed once now; the function gives each group's entry from
+ * it, as `readGroupActivity` reads it. Not the default `slow` group, whose
+ * row is its own (`readSlowActivity`).
+ */
+export function readGroupActivities(
+  store: Store,
+  worktreeId: WorktreeId,
+): (group: string) => SlowTierActivity | null {
+  const entries = groupEntries(store.meta.get(groupTiersMetaKey(worktreeId)));
+  return (group) => toSlowActivity(entries[group] ?? null) ?? null;
 }
 
 /** The configured groups' row by name; empty when absent or in a format this release does not know. */
