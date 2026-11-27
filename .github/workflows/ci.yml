@@ -89,12 +89,16 @@ jobs:
       - name: Pythons for the pytest fixtures
         run: uv python install 3.10 3.13
       # Row 010-35: the e2e fixtures' npm installs (`test/e2e/install.ts`), keyed there by Node
-      # major and the pinned Vitest, Vite and tsx; here by the lockfile and workspace manifests.
+      # major and the pinned Vitest, Vite and tsx; here by the lockfile, that file and the
+      # workspace manifests. Row 011-432: one key holds every recipe, so each job fills all four
+      # kinds before its tests; the shard that saves the cache first no longer saves only its own.
       - name: Cache the e2e fixture installs
         uses: actions/cache@v4
         with:
           path: /tmp/squeal-e2e-cache
-          key: ${{ runner.os }}-squeal-e2e-node-22-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+          key: ${{ runner.os }}-squeal-e2e-node-22-${{ hashFiles('pnpm-lock.yaml', 'test/e2e/install.ts', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+      - name: Fill the e2e fixture installs
+        run: node --import tsx --input-type=module -e 'await (await import("./test/e2e/install.ts")).fillInstalls()'
       - name: Test
         id: test
         run: node scripts/ci-shard.mjs --shard ${{ matrix.shard }}/6 $SHARD_ARGS
@@ -145,7 +149,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/squeal-e2e-cache
-          key: ${{ runner.os }}-squeal-e2e-node-24-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+          key: ${{ runner.os }}-squeal-e2e-node-24-${{ hashFiles('pnpm-lock.yaml', 'test/e2e/install.ts', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+      - name: Fill the e2e fixture installs
+        run: node --import tsx --input-type=module -e 'await (await import("./test/e2e/install.ts")).fillInstalls()'
       - name: Lint and format
         run: pnpm exec biome check .
       - name: Typecheck
@@ -187,7 +193,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/squeal-e2e-cache
-          key: ${{ runner.os }}-squeal-e2e-node-26-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+          key: ${{ runner.os }}-squeal-e2e-node-26-${{ hashFiles('pnpm-lock.yaml', 'test/e2e/install.ts', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+      - name: Fill the e2e fixture installs
+        run: node --import tsx --input-type=module -e 'await (await import("./test/e2e/install.ts")).fillInstalls()'
       - name: Test the version-sensitive files
         run: pnpm exec vitest run $(grep -Ev '^[[:space:]]*(#|$)' test/version-sensitive.txt)
 
@@ -224,7 +232,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/squeal-e2e-cache
-          key: ${{ runner.os }}-squeal-e2e-node-${{ matrix.node-version }}-${{ hashFiles('pnpm-lock.yaml', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+          key: ${{ runner.os }}-squeal-e2e-node-${{ matrix.node-version }}-${{ hashFiles('pnpm-lock.yaml', 'test/e2e/install.ts', 'test/fixtures/e2e/node-test/packages/*/package.json') }}
+      - name: Fill the e2e fixture installs
+        run: node --import tsx --input-type=module -e 'await (await import("./test/e2e/install.ts")).fillInstalls()'
       - name: Test
         id: test
         run: node scripts/ci-shard.mjs --shard ${{ matrix.shard }}/3 $SHARD_ARGS
