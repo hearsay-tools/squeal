@@ -2,6 +2,39 @@
 
 Recommendation: fold the setup-log evidence into #173; keep the worktree-versus-proof browser launch difference unverified. Preserving Squeal's available error cannot recover Chrome stderr that the application's bootstrap discarded. This is documentation-only triage, not implementation authorization.
 
+## Cause found, 2026-11-27
+
+**Read in the daemon log** of the reporting worktree (Squawk task `d93d664a`, log
+`<commonDir>/squeal/logs/daemon-d1fbb4b2dfad58f6.log`): the user's remote lane for
+Squawk (provider agent37, `lanes: "all"`, `runners: "all"`) took group runs of
+Vitest: `remote agent37: group runs and planning of vitest go there` at
+2026-11-26T14:34:35Z, and again at 21:38:45Z after a daemon restart. The browser
+check (`at: "manual"`, Vitest project `e2e`) runs as a group run, so
+`squeal run browser <file>` ran on the remote VM. The application's bootstrap
+then ran there and found no Chrome that launches. The follow-up report
+from Squawk to coordinator task `2da658d7` (2026-11-27) says the same: "Chrome on the
+Squeal remote worker failed to launch".
+
+**Inferred:** this explains the worktree-versus-proof difference above. A proof
+checkout runs its own local runner, not the daemon's remote lane, so it
+launched this host's Chrome.
+
+The fix needs no new Squeal code:
+
+1. Release 0.1.654 (row 021-40, `remote.alwaysLocal`; main CI green on
+   `503cc5e85`). Then Squawk lists `packages/web/e2e/*.e2e.ts` in
+   `remote.alwaysLocal` in its `squeal.config.json`: these tests read this
+   machine (its Chrome, its test servers). The split covers every remote tier,
+   group runs included (`src/core/runner-host/remote/lane.ts`, `run`).
+2. Until then, the user's `remote.json` entry for Squawk can list
+   `"lanes": ["background", "edit"]`. Squawk's slow tier is the e2e files and its
+   only Vitest group check is `browser`, so for Vitest only they move back here;
+   group runs of its node:test projects, if any are started by name, also run
+   here.
+
+The setup-evidence gap (no run log for a failed global setup) is unchanged and
+stays with gh-173.
+
 ## Scope and verdict
 
 Examined 2026-11-26: reported installed Squeal **0.1.641**, release
