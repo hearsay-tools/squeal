@@ -174,7 +174,7 @@ var DEFAULT_POLICY = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [], runHere: [] }
+  remote: { allowed: true, needsRepository: [], alwaysLocal: [] }
 };
 
 // src/core/fs/errors.ts
@@ -456,10 +456,10 @@ var commands = kept(
   (entry) => commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`
 );
 var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
-var runHere = kept("remote.runHere", (glob) => compiles([glob])?.problem ?? null);
+var alwaysLocal = kept("remote.alwaysLocal", (glob) => compiles([glob])?.problem ?? null);
 var REMOTE_SHAPE = {
   requires: { commands },
-  remote: { allowed: boolean3, needsRepository, runHere }
+  remote: { allowed: boolean3, needsRepository, alwaysLocal }
 };
 
 // src/core/daemon/policy-containers.ts
