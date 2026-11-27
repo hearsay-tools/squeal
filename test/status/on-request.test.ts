@@ -138,17 +138,42 @@ describe("an on-request group's pending files read on request (row 011-426, gh-2
     expect(read(s).json.testFilesByPhase).toEqual({ running: 1, queued: 1, onRequest: 96 });
   });
 
-  it("counts every held file queued while the lane runs a request for the whole group", () => {
-    // `squeal run browser`: the lane runs, and no narrow ask names a file of it.
+  it("counts every held file queued while the lane has a published whole-group request", () => {
+    // `squeal run browser`: the scheduler publishes the lane's open request.
+    const s = held();
+    const [first = ""] = FILES;
+    keys(s.store, s.repo, { [first]: "running" });
+    publishNarrowAsks(s.store, s.repo.mainId, [], NOW as EpochMs, { requested: ["browser"] });
+    const { text, json } = read(s);
+    expect(json.testFilesByPhase).toEqual({ running: 1, queued: 97 });
+    expect(json.pendingTestFiles?.onRequest).toBeUndefined();
+    expect(text).not.toContain("on request,");
+  });
+
+  it("keeps held files on request while the lane runs with no published request (review 0.1.650 B1)", () => {
+    // The lane's activity is no evidence of a request: only the published request row is.
     const s = held();
     const [first = ""] = FILES;
     keys(s.store, s.repo, { [first]: "running" });
     const running = { kind: "running", path: first, since: NOW - 1_000, lastDurationMs: null };
     publishGroupActivity(s.store, s.repo.mainId, "browser", running as never);
-    const { text, json } = read(s);
-    expect(json.testFilesByPhase).toEqual({ running: 1, queued: 97 });
-    expect(json.pendingTestFiles?.onRequest).toBeUndefined();
-    expect(text).not.toContain("on request,");
+    expect(read(s).json.testFilesByPhase).toEqual({ running: 1, queued: 0, onRequest: 97 });
+  });
+
+  it("keeps a held file a commit asked for at its key queued", () => {
+    const s = held("commit");
+    const [first = ""] = FILES;
+    const commit = [[id(first), `key-${first}`] as const];
+    publishNarrowAsks(s.store, s.repo.mainId, [], NOW as EpochMs, { commit });
+    expect(read(s).json.testFilesByPhase).toEqual({ running: 0, queued: 1, onRequest: 97 });
+  });
+
+  it("reads no request from a row an earlier daemon wrote", () => {
+    const s = held();
+    publishNarrowAsks(s.store, s.repo.mainId, [], (NOW - 120_000) as EpochMs, {
+      requested: ["browser"],
+    });
+    expect(read(s).json.testFilesByPhase).toEqual({ running: 0, queued: 0, onRequest: 98 });
   });
 
   it("counts every held file queued while a `run --all` checkpoint is owed", () => {

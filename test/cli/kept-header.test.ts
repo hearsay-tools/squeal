@@ -5,12 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readHeld, startView } from "../../src/cli/status-wait-held.js";
 import { type Every, keptAtStart, readEvery } from "../../src/cli/wait/every-state.js";
 import { writeCommitReports } from "../../src/core/commit/store.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { endInstallWait, recordInstallWait } from "../../src/core/scheduler/install-wait.js";
+import { publishNarrowAsks } from "../../src/core/scheduler/narrow-asks-row.js";
 import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { publishGroupActivity } from "../../src/core/slow/state.js";
 import { readHeader } from "../../src/core/state/header.js";
 import { recordOptimizerOff } from "../../src/core/state/optimizer-note.js";
-import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
 import { SLOW_GROUP } from "../../src/core/types/scheduler.js";
 import type { StatusHeader } from "../../src/core/types/status.js";
 import {
@@ -178,5 +180,46 @@ describe.each([
     expect(poll()).toBe("made");
     expect(header()).not.toHaveProperty(grouped ? "groupTiers" : "slowTier");
     expect(poll()).toBe("kept");
+  });
+});
+
+/*
+ * Row 011-426, review 0.1.650 B1: a held group's queued file is on request
+ * until the scheduler publishes a request that runs it. Publishing one is no
+ * states write, so the kept part must be made again when the request state
+ * changes while the states and the keys stay as they were.
+ */
+describe("the kept header part with a held group (row 011-426)", () => {
+  const HELD = {
+    checks: [{ name: "browser", runner: "vitest", tests: ["test/e2e/**"], at: "manual" }],
+  };
+
+  it("is made again when a request starts or ends, with the keys unchanged", () => {
+    const s = seed(HELD, { revisions: 2 });
+    const { repo, store } = s;
+    const id = repo.mainId;
+    keys(store, repo, { [SLOW_A]: "queued", [SLOW_B]: "queued" });
+    recordRefinedApplied(store, id, 2 as RevisionNumber);
+    const { poll, header } = waiting(s);
+    expect(poll()).toBe("made");
+    expect(poll()).toBe("kept");
+    expect(header().testFilesByPhase).toEqual({ running: 0, queued: 0, onRequest: 2 });
+
+    // `squeal run browser`: the whole group is asked.
+    publishNarrowAsks(store, id, [], NOW as EpochMs, { requested: ["browser"] });
+    expect(poll()).toBe("made");
+    expect(header().testFilesByPhase).toEqual({ running: 0, queued: 2 });
+    expect(poll()).toBe("kept");
+
+    // The request ends; a narrow ask for one file stays.
+    const a = store.testFileKeys.list(id).find((row) => row.testFile.path === SLOW_A);
+    publishNarrowAsks(
+      store,
+      id,
+      [[testFileId(a?.testFile ?? { project: "", path: SLOW_A }), String(a?.key)]],
+      NOW as EpochMs,
+    );
+    expect(poll()).toBe("made");
+    expect(header().testFilesByPhase).toEqual({ running: 0, queued: 1, onRequest: 1 });
   });
 });

@@ -14,8 +14,8 @@ import { pendingRetriesOf } from "../retry/pending.js";
 import { withRecorded } from "../retry/recorded.js";
 import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
 import { phasesOf, type WorktreeStates } from "../state/file-class.js";
-import { onRequestFiles } from "../state/groups.js";
-import { readHeaderOf } from "../state/header.js";
+import { headerWith } from "../state/header.js";
+import { headerPartOf } from "../state/header-part.js";
 import { META_STORE_RECOVERED } from "../store/open.js";
 import { importCountsByFile, readWorktreeStates } from "../store/status-reads.js";
 import { readTransaction } from "../store/store.js";
@@ -167,14 +167,13 @@ function snapshot(
   const held = openFiles(runs);
   // Row 011-73 (C6, C9): the holds on its validation, which the queued files wait for.
   const holds = readHolds(store, worktree, daemon, now);
-  const header = readHeaderOf(store, worktreeId, states, keys, held);
-  // Row 011-426: the files the header counts on request, listed and broken down apart.
-  const onRequest = onRequestFiles(
-    store,
-    worktreeId,
-    keys,
-    worktree === null ? null : readPolicy(worktree.root),
-  );
+  // Row 011-426: the files the header counts on request, listed and broken down apart. Review
+  // 0.1.650 S1: read once, as the header reads them (`headerWith`), and kept for the lists.
+  let onRequest: ReadonlySet<string> = new Set();
+  const header = headerWith(store, worktreeId, keys, (policy, asked) => {
+    onRequest = asked;
+    return headerPartOf(states, keys, policy, undefined, held, asked);
+  });
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withTestFileFrames(
     store,

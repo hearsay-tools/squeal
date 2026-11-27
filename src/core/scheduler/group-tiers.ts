@@ -70,6 +70,18 @@ export class GroupTiers {
     return this.#all().flatMap((lane) => [...lane.narrow.entries()]);
   }
 
+  /** Row 011-426: every lane's commit asks, each file's `testFileId` and asked key. */
+  commitAsks(): [string, CheckKey][] {
+    return this.#all().flatMap((lane) => [...lane.asks.entries()]);
+  }
+
+  /** Row 011-426: the groups whose lane has an open request (`SlowTier.requested`). */
+  requestedGroups(): string[] {
+    return this.#all()
+      .filter((lane) => lane.requested)
+      .map((lane) => lane.group);
+  }
+
   /** Drops each lane's narrow asks that can no longer run (`CommitAsks.prune`). */
   pruneNarrow(ledger: Ledger): void {
     for (const lane of this.#all()) lane.narrow.prune(ledger);

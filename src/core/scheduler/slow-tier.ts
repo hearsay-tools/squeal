@@ -61,8 +61,12 @@ export interface LaneLoop {
   pump(): void;
   readonly store: Store;
   readonly worktreeId: WorktreeId;
-  /** Review 0.1.610 B1: a lane's narrow asks changed, so the scheduler publishes them again. */
-  narrowChanged?(): void;
+  /**
+   * Review 0.1.610 B1: a lane's narrow asks changed, so the scheduler
+   * publishes them again; row 011-426 (review 0.1.650 B1): or its commit
+   * asks, or whether it has an open request (`requested`).
+   */
+  requestsChanged?(): void;
 }
 
 /** What a lane reads of its scheduler, passed with each call that needs it. */
@@ -154,14 +158,14 @@ export class SlowTier {
   /** A `run --slow` request is open until no slow file is pending. */
   #requested = false;
   /** Spec 019 D5 step 1 (row 019-22): the files a commit asked a `commit` group's lane to run. */
-  readonly asks = new CommitAsks();
+  readonly asks = new CommitAsks(() => this.loop.requestsChanged?.());
   /**
    * Spec 019 D6 "Narrow run" (row 019-49): the files `squeal run <group>
    * <path>...` asked to run, each at its key then. They run whatever the
    * group's moment, past the load guard and without a pool grant, as an
    * open request does; the group's other files keep waiting.
    */
-  readonly narrow = new CommitAsks(() => this.loop.narrowChanged?.(), true);
+  readonly narrow = new CommitAsks(() => this.loop.requestsChanged?.(), true);
   /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
   #budgetMs: number | null = null;
   #slotMissedSince: EpochMs | null = null;
@@ -266,8 +270,15 @@ export class SlowTier {
    * load guard wait in progress gives way, so the pump plans again without it.
    */
   request(): void {
-    this.#requested = true;
+    this.#setRequested(true);
     this.preempt();
+  }
+
+  /** Row 011-426: an open request starts or ends; status reads it published (`requestsChanged`). */
+  #setRequested(on: boolean): void {
+    if (this.#requested === on) return;
+    this.#requested = on;
+    this.loop.requestsChanged?.();
   }
 
   /**
@@ -510,7 +521,7 @@ export class SlowTier {
     this.asks.prune(ledger);
     this.narrow.prune(ledger);
     if (queued.length === 0 || group === null) {
-      this.#requested = false;
+      this.#setRequested(false);
       this.#budgetMs = null;
       this.#publish(null);
       return [];
@@ -830,6 +841,8 @@ export class SlowTier {
   retire(): void {
     const { store, worktreeId } = this.loop;
     this.narrow.clear();
+    this.asks.clear();
+    this.#setRequested(false);
     this.#unmark(this.#slotDir(), worktreeId);
     const now = readGroupActivity(store, worktreeId, this.group);
     if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);

@@ -4,7 +4,11 @@ import { heldUntilAsked } from "../daemon/check-groups.js";
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
-import { publishedNarrowAsks } from "../scheduler/narrow-asks-row.js";
+import {
+  type LaneRequests,
+  publishedLaneRequests,
+  publishedNarrowAsks,
+} from "../scheduler/narrow-asks-row.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
 import type { CheckMoment } from "../types/check-groups.js";
@@ -181,14 +185,17 @@ const NONE_ON_REQUEST: ReadonlySet<string> = new Set();
 /**
  * Row 011-426 (gh-293; 011 C6): the queued test files, by `testFileId`, that
  * wait for a request and so never run by themselves: each file of a group
- * at `commit` or `manual` (`heldUntilAsked`) whose key row is queued and
- * that no narrow request asked for at its key (`askedAtKey`). None while
- * a `run --all` checkpoint is open, which runs every held file; and none of
- * a group whose lane runs while no narrow ask names a file of it: that lane
- * runs a request for the whole group (`squeal run <group>`, or a commit's
- * ask, which the daemon does not publish). A held file not asked stays on
- * request while its lane runs a narrow request for other files. The one
- * set the header's counts, status's file lists and `status --wait` read.
+ * at `commit` or `manual` (`heldUntilAsked`) whose key row is queued, that
+ * no narrow request and no commit asked for at its key, and whose lane has
+ * no open request for the whole group (`squeal run <group>`). None while a
+ * `run --all` checkpoint is open or owed, which runs every held file.
+ * Review 0.1.650 B1: each request is read as the live daemon's scheduler
+ * publishes it (`publishedLaneRequests`), the same triggers its lanes run a
+ * held file by, never inferred from a lane's activity: a narrow ask for one
+ * file and a whole-group request run side by side. A held file not asked
+ * stays on request while its lane runs a narrow request for other files.
+ * The one set the header's counts, status's file lists and `status --wait`
+ * read.
  */
 export function onRequestFiles(
   store: Store,
@@ -202,18 +209,27 @@ export function onRequestFiles(
     (group) => group.index !== null && group.select.kind === "tests" && heldUntilAsked(group.at),
   );
   if (held.length === 0 || runAllOpen(store, worktreeId)) return NONE_ON_REQUEST;
-  const isAsked = askedAtKey(store, worktreeId);
+  const { narrow, commit, requested } = laneRequestsOf(store, worktreeId);
+  const waiting = new Set(held.filter((group) => !requested.has(group.name)));
+  if (waiting.size === 0) return NONE_ON_REQUEST;
+  const atKey = (asks: ReadonlyMap<string, string>, id: string, key: string | null) =>
+    key !== null && asks.get(id) === key;
   const out = new Set<string>();
-  for (const group of held) {
-    const inLane = (ref: TestFileRef) => view.of(ref) === group;
-    const lane = keys.filter((row) => row.pending !== null && inLane(row.testFile));
-    const queued = lane.filter((row) => row.pending === "queued" && !isAsked(row));
-    if (queued.length === 0) continue;
-    const narrow = lane.some(isAsked);
-    if (!narrow && liveActivity(store, worktreeId, keys, inLane, group.name) !== null) continue;
-    for (const row of queued) out.add(testFileId(row.testFile));
+  for (const row of keys) {
+    if (row.pending !== "queued" || !waiting.has(view.of(row.testFile))) continue;
+    const id = testFileId(row.testFile);
+    if (atKey(narrow, id, row.key) || atKey(commit, id, row.key)) continue;
+    out.add(id);
   }
   return out;
+}
+
+/** The live daemon's published lane requests; none without a daemon record. */
+function laneRequestsOf(store: Store, worktreeId: WorktreeId): LaneRequests {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  return daemon === null
+    ? { narrow: new Map(), commit: new Map(), requested: new Set() }
+    : publishedLaneRequests(store, worktreeId, daemon.startedAt);
 }
 
 /** Whether a `run --all` checkpoint is open or owed (`readCheckpointProgress`). */

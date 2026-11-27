@@ -351,14 +351,16 @@ class TierScheduler implements Scheduler {
       pump: () => this.#pump(),
       store: options.store,
       worktreeId: options.worktreeId,
-      // Review 0.1.610 B1: status reads which held files a narrow run asked for.
-      narrowChanged: () => {
+      // Review 0.1.610 B1: status reads which held files a narrow run asked for; row 011-426
+      // (review 0.1.650 B1): and the commit asks and open whole-group requests.
+      requestsChanged: () => {
         const at = this.#now();
         publishNarrowAsks(
           options.store,
           options.worktreeId,
           this.#groups.narrowAsks(),
           this.#steps.stamp(at),
+          { commit: this.#groups.commitAsks(), requested: this.#groups.requestedGroups() },
         );
       },
     };
