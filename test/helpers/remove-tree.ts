@@ -78,6 +78,6 @@ function left(dir: string): string {
 }
 
 /** Blocks this thread for `ms` without using the CPU; the removal is synchronous too. */
-function sleep(ms: number): void {
+export function sleep(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
