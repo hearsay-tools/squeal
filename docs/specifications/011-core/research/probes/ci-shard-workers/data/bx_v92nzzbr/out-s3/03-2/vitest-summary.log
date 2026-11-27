@@ -1,0 +1,17 @@
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > a host busy at the slots refuses a backlog acquire beside another daemon's and leaves a checkpoint's as today
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > where the host cannot be read, a backlog tier keeps the marks' gate
+ FAIL  |isolated| test/cli/code-gate-children.test.ts > squeal code --base with coverage.children (spec 020 D12) > passes a script only a child runs, and a function only a child calls
+ FAIL  |isolated| test/cli/proof-copy.test.ts > squeal proof copies and storing (row 023-08, D5.2) > copies a test-side helper at the test version: a helper-only fix is a test case, proven
+ FAIL  |isolated| test/cli/proof-kept-key.test.ts > squeal proof reads each run side at its stored key (row 023-18 D1) > says both sides are stored on the first call, and reads them on the second
+ FAIL  |isolated| test/cli/proof-not-kept.test.ts > a run file the gate does not keep names the gate's reason (row 023-18 D2) > squeal proof
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: workers from the grant (001-378) > runs each granted tier at its grant on one warm instance
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: workers from the grant (001-378) > holds a project's ceiling of 1, runs an isolated project at a grant of 1, and floors isolate: false at 2
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: workers from the grant (001-378) > holds each project's own ceiling, inherited from the root or its own
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: workers from the grant (001-378) > holds the ceiling for an instance created with a width of its own (the slow tier's)
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: the slow width it reports (review 001-394 B2) > is the project's own maxWorkers, 1 included, and every file without one
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: the slow width it reports (review 001-394 B2) > starts that many at once on the slow tier's instance
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: the slow width it reports (review 001-394 B2) > stops at a project of another group, and holds each project's own ceiling
+ FAIL  |isolated| test/runners/vitest/width.test.ts > vitest adapter: the backlog tier's width it reports (001-366) > is the offer under the project's ceiling, at least 2 for isolate: false, and a ceiling of 1 kept
+ Test Files  6 failed | 383 passed | 3 skipped (392)
+      Tests  14 failed | 3332 passed | 2 expected fail | 11 skipped (3359)
+   Duration  1238.90s (tests 98%, import 1%)

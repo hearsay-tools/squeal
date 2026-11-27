@@ -1,0 +1,9 @@
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > a host busy at the slots refuses a backlog acquire beside another daemon's and leaves a checkpoint's as today
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > where the host cannot be read, a backlog tier keeps the marks' gate
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > on a host where Squeal is the load, a tier of its own that ended counts no more
+ FAIL  |unit| test/retry/records.test.ts > askRetry > past the limit drops the oldest pending request at a key no worktree holds
+ FAIL  |isolated| test/cli/proof-kept-key.test.ts > squeal proof reads each run side at its stored key (row 023-18 D1) > says both sides are stored on the first call, and reads them on the second
+ FAIL  |isolated| test/cli/proof-not-kept.test.ts > a run file the gate does not keep names the gate's reason (row 023-18 D2) > squeal proof
+ Test Files  4 failed | 385 passed | 3 skipped (392)
+      Tests  6 failed | 3340 passed | 2 expected fail | 11 skipped (3359)
+   Duration  956.50s (tests 98%, import 1%)

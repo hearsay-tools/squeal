@@ -1,0 +1,13 @@
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > a busy host leaves a backlog acquire and offer the floor's one permit, a checkpoint's its share
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > a host busy at the slots refuses a backlog acquire beside another daemon's and leaves a checkpoint's as today
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > where the host cannot be read, a backlog tier keeps the marks' gate
+ FAIL  |unit| test/capacity/host-gate.test.ts > the pool's gate on a busy host (row 011-182) > on a host where Squeal is the load, a tier of its own that ended counts no more
+ FAIL  |unit| test/retry/records.test.ts > askRetry > past the limit drops the oldest pending request at a key no worktree holds
+ FAIL  |isolated| test/cli/proof-copy.test.ts > squeal proof copies and storing (row 023-08, D5.2) > copies a test-side helper at the test version: a helper-only fix is a test case, proven
+ FAIL  |isolated| test/cli/proof-kept-key.test.ts > squeal proof reads each run side at its stored key (row 023-18 D1) > says both sides are stored on the first call, and reads them on the second
+ FAIL  |isolated| test/cli/proof-not-kept.test.ts > a run file the gate does not keep names the gate's reason (row 023-18 D2) > squeal proof
+ FAIL  |isolated| test/e2e/run-triggers-control.test.ts > a repository with no checks key, codex (019 Goal 2) > tells the agent what 0.1.393 told it, and Stop decides as it did
+ FAIL  |isolated| test/harness/opencode/bridge-client.test.ts > callBridge > under Bun, OpenCode's runtime, kills the stalled bridge's group at its deadline
+ Test Files  7 failed | 382 passed | 3 skipped (392)
+      Tests  10 failed | 3336 passed | 2 expected fail | 11 skipped (3359)
+   Duration  1128.79s (tests 98%, import 1%)
