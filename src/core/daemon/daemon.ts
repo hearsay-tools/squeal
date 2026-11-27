@@ -1097,8 +1097,9 @@ class Daemon {
         // Spec 026 D9 (row 026-13): a proven remote run's records, mapped there, stored as ours.
         remoteCoverage: (runId, testFile, record) =>
           this.#coverage?.recordMapped(runId, testFile, record),
-        // Row 026-38 (#304): a remote run's proof weighs only the observed paths its keys keep.
-        effectiveObserved: (ref, raw) => this.#loop?.scheduler.effectiveObserved?.(ref, raw) ?? raw,
+        // Row 026-38 (#304; review 0.1.662 B1): a remote run's proof weighs what its keys keep.
+        provenObserved: async (observed) =>
+          (await this.#loop?.scheduler.provenObserved?.(observed)) ?? observed.paths,
         // Wave 12 (rows 026-30 + 026-32): once a remote recovers from an outage, re-queue the
         // files left unknown by that outage so they heal automatically.
         onRecovered: () => {

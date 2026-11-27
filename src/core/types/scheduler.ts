@@ -1,7 +1,7 @@
 import type { CommitSha, EpochMs, ProjectName, RelativePath, RevisionNumber } from "./common.js";
 import type { SyncAnswer } from "./daemon.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
-import { type CancelCause, SLOW_LANE_PREFIX } from "./runner.js";
+import { type CancelCause, type ObservedInputs, SLOW_LANE_PREFIX } from "./runner.js";
 import type { CheckpointKind, CheckpointLane, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
@@ -455,10 +455,11 @@ export interface Scheduler {
    */
   requeueUnknown?(match: (reason: string) => boolean): Promise<number>;
   /**
-   * Row 026-38 (#304): the observed paths among `raw` that key `ref`, which
-   * a remote run's proof weighs. Absent: a scheduler before it.
+   * Row 026-38 (#304; review 0.1.662 B1): the paths of a remote run's
+   * observation that its reader's key keeps, which the run's proof weighs.
+   * Absent: a scheduler before it.
    */
-  effectiveObserved?(ref: TestFileRef, raw: readonly RelativePath[]): readonly RelativePath[];
+  provenObserved?(observed: ObservedInputs): Promise<readonly RelativePath[]>;
   /**
    * Row 011-356: tells `listener` each scheduler step as it ends, until the
    * returned function is called (the model test's per-step checks).

@@ -17,7 +17,7 @@ import type { EpochMs, ProjectName, RelativePath, RevisionNumber } from "../type
 import { daemonIncarnation, type SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import { BESIDE_LANE_PREFIX, isBesideLane } from "../types/runner.js";
+import { BESIDE_LANE_PREFIX, isBesideLane, type ObservedInputs } from "../types/runner.js";
 import {
   type ClosureIndex,
   type FullSuiteCheckpoint,
@@ -82,6 +82,7 @@ import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
 import { publishNarrowAsks } from "./narrow-asks-row.js";
 import { narrowRequest, REINSTALLED_REASON } from "./narrow-run.js";
+import { provenObserved } from "./observed.js";
 import type { SchedulerOptions } from "./options.js";
 import { PoolWaits, poolWaitsPublish } from "./pool-wait.js";
 import { priorityOf } from "./queue.js";
@@ -1352,12 +1353,14 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Row 026-38 (#304): the observed paths among `raw` that key `ref`
-   * (`WorktreeKeys.effectiveObserved`), which a remote run's proof weighs;
-   * `raw` itself before the scheduler starts.
+   * Row 026-38 (#304; review 0.1.662 B1): the paths of a remote run's
+   * observation that its reader's key keeps (`provenObserved`), which the
+   * run's proof weighs; all of them before the scheduler starts.
    */
-  effectiveObserved(ref: TestFileRef, raw: readonly RelativePath[]): readonly RelativePath[] {
-    return this.#context?.keys.effectiveObserved(ref, raw) ?? raw;
+  async provenObserved(observed: ObservedInputs): Promise<readonly RelativePath[]> {
+    const context = this.#context;
+    if (context === null) return observed.paths;
+    return provenObserved(context.keys, context.root, observed);
   }
 
   /**

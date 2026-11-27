@@ -13,7 +13,6 @@ import type {
   RunOptions,
   RunReport,
 } from "../../types/runner.js";
-import { checkIgnored } from "../../watcher/git.js";
 import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelledFirst, cancelOf, notStarted } from "./admission.js";
 import { createBlobCache, createInstalledFingerprintCache } from "./blob-cache.js";
@@ -25,11 +24,11 @@ import { compareRemoteEnvironment } from "./lane-compare.js";
 import { type Planning, remotePlanning } from "./lane-planning.js";
 import {
   classify,
-  type EffectiveObserved,
   inputsFor,
   joinParts,
   keptObservations,
   type ProofSplit,
+  type ProvenObserved,
   type ProvenPart,
   provenPart,
   type RunInputs,
@@ -132,7 +131,8 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * policy runs only them here, or leaves only them not run.
  *
  * Row 026-38 (#304): the proof weighs an observed path only when its
- * file's key keeps it (`effectiveObserved`, the written-directory bound),
+ * file's key keeps it (`provenObserved`: what the key holds, less fresh
+ * scratch below a written directory and applied runtime files),
  * and refuses at once a path deleted here that exists on the remote though
  * no sync wrote it, naming `runtimeFiles` and `remote.alwaysLocal`.
  *
@@ -209,11 +209,11 @@ export interface RemoteLaneOptions {
   /** Row 021-40 (#294): test-file globs that always run here, also with `.git` there. Absent: none. */
   readonly alwaysLocal?: () => readonly string[];
   /**
-   * Row 026-38 (#304): the observed paths of a test file its key keeps
-   * (`WorktreeKeys.effectiveObserved`), which the proof weighs. Absent:
-   * every observed path, as before.
+   * Row 026-38 (#304; review 0.1.662 B1): the paths of a remote run's
+   * observation that its reader's key keeps (`provenObserved`), which the
+   * proof weighs. Absent: every observed path, as before.
    */
-  readonly effectiveObserved?: EffectiveObserved;
+  readonly provenObserved?: ProvenObserved;
   /** Spec 026 D13.2: `requires.commands`, whose per-file globs the connect's answer routes. Absent: none. */
   readonly requiredCommands?: () => RequiredCommands;
   /** Spec 026 D13.2: the line that names the files kept here for a command the remote lacks. Absent: `status`. */
@@ -817,12 +817,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     if (raw.length === 0 || reply.observed === undefined) {
       return { differ: raw, observed: reply.observed };
     }
-    const observed = await keptObservations(
-      reply.observed,
-      raw,
-      (paths) => checkIgnored(options.root, paths),
-      options.effectiveObserved,
-    );
+    const observed = await keptObservations(reply.observed, raw, options.provenObserved);
     const kept = new Set([...expected, ...observed.flatMap((o) => o.paths)]);
     return { differ: raw.filter((path) => kept.has(path)), observed };
   };

@@ -105,36 +105,24 @@ describe("a path only the remote has (row 026-38)", () => {
 });
 
 describe("the observed paths a proof weighs: those the key keeps (row 026-38)", () => {
-  const ignoredOf =
-    (ignored: readonly string[], asked: string[][]) => async (paths: readonly string[]) => {
-      asked.push([...paths]);
-      return new Set(paths.filter((path) => ignored.includes(path)));
-    };
-
-  it("drops an ignored path below a directory the same run wrote, and keeps a tracked one", async () => {
+  it("asks the key's owner for each observation's differing paths alone", async () => {
     const asked: string[][] = [];
     const kept = await keptObservations(
-      [
-        { ...seen(A, ["out/shot.png", "out/tracked.txt", "src/x.ts"]), written: ["out"] },
-        seen(B, ["out/shot.png"]),
-      ],
-      ["out/shot.png", "out/tracked.txt", "src/x.ts"],
-      ignoredOf(["out/shot.png"], asked),
+      [seen(A, [".ai/env.json", "src/x.ts", "same.ts"]), seen(B, ["same.ts"])],
+      [".ai/env.json", "src/x.ts"],
+      async (o) => {
+        asked.push([...o.paths]);
+        return o.paths.filter((path) => path !== ".ai/env.json");
+      },
     );
-    expect(kept.map((o) => o.paths)).toEqual([["out/tracked.txt", "src/x.ts"], ["out/shot.png"]]);
-    expect(asked).toEqual([["out/shot.png", "out/tracked.txt", "src/x.ts"]]);
+    expect(kept.map((o) => o.paths)).toEqual([["src/x.ts"], []]);
+    // An observation with no differing path asks nothing.
+    expect(asked).toEqual([[".ai/env.json", "src/x.ts"]]);
   });
 
-  it("weighs only differing paths, asks Git nothing when no run wrote a directory, and applies the key's runtime files", async () => {
-    const asked: string[][] = [];
-    const kept = await keptObservations(
-      [seen(A, [".ai/env.json", "src/x.ts", "same.ts"]), seen(B, [".ai/env.json"])],
-      [".ai/env.json", "src/x.ts"],
-      ignoredOf([], asked),
-      (ref, raw) => (ref.path === A.path ? raw.filter((path) => path !== ".ai/env.json") : raw),
-    );
-    expect(kept.map((o) => o.paths)).toEqual([["src/x.ts"], [".ai/env.json"]]);
-    expect(asked).toEqual([]);
+  it("weighs every differing observed path without an owner, as before row 026-38", async () => {
+    const kept = await keptObservations([seen(A, ["out/shot.png", "same.ts"])], ["out/shot.png"]);
+    expect(kept.map((o) => o.paths)).toEqual([["out/shot.png"]]);
   });
 });
 

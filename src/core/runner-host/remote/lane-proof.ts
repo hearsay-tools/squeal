@@ -1,6 +1,5 @@
 import { merge } from "../../daemon/composite-runner.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { scratchOf } from "../../scheduler/observed.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { ObservedInputs, RunReport } from "../../types/runner.js";
@@ -17,10 +16,11 @@ import type { RemoteRecord } from "./tree-wire.js";
  * that exists here but is git-ignored is never sent (D10): a retry cannot
  * repair it, so its files are refused at once, never run again there.
  *
- * Row 026-38 (#304; 011 C4/D4): the proof weighs an observed path only when
- * the file's key keeps it (`keptObservations`): not a path below a
- * directory the same run wrote that Git ignores (`scratchOf`), nor one of
- * the file's applied `runtimeFiles` (`WorktreeKeys.effectiveObserved`). A
+ * Row 026-38 (#304; 011 C4/D4; review 0.1.662 B1): the proof weighs an
+ * observed path only when the file's key keeps it (`keptObservations`, as
+ * `provenObserved` decides): a path the key already holds stays; a new one
+ * goes when it is the run's own scratch below a directory it wrote, or one
+ * of the file's applied `runtimeFiles`. A
  * path deleted here that exists on the remote though no sync wrote it
  * there (`RemoteRunReply.unsynced`), such as a file the run made, is
  * refused at once too: a resend removes only what a sync wrote.
@@ -98,37 +98,32 @@ export function classify(
   return remoteOnly.length === 0 ? { syncable, unsyncable } : { syncable, unsyncable, remoteOnly };
 }
 
-/** The observed paths of `ref` its key keeps (`WorktreeKeys.effectiveObserved`). */
-export type EffectiveObserved = (
-  ref: TestFileRef,
-  raw: readonly RelativePath[],
-) => readonly RelativePath[];
+/**
+ * Row 026-38 (review 0.1.662 B1): the paths of one remote run's observation
+ * that its reader's key keeps (`provenObserved` in `scheduler/observed.ts`,
+ * the one owner of that decision).
+ */
+export type ProvenObserved = (observed: ObservedInputs) => Promise<readonly RelativePath[]>;
 
 /**
  * Row 026-38 (#304): each observation's paths among `differ` that its
- * file's key keeps, so the proof drops exactly what the key drops: the
- * written-directory bound first (`scratchOf` over `ignored`, as
- * `inputsOfReads` applies it), then the file's applied runtime files
- * (`effective`; absent, none are dropped). `ignored` is asked only when an
- * observation wrote a directory.
+ * reader's key keeps (`kept`), so the proof drops exactly what the key
+ * drops. Absent `kept`: every path, as before row 026-38.
  */
 export async function keptObservations(
   observed: readonly ObservedInputs[],
   differ: readonly string[],
-  ignored: (paths: readonly RelativePath[]) => Promise<ReadonlySet<RelativePath>>,
-  effective?: EffectiveObserved,
+  kept?: ProvenObserved,
 ): Promise<ObservedInputs[]> {
   const differs = new Set(differ);
-  const among = observed.map((o) => o.paths.filter((path) => differs.has(path)));
-  const wrote = observed.flatMap((o, at) =>
-    (o.written ?? []).length === 0 ? [] : (among[at] ?? []),
+  return Promise.all(
+    observed.map(async (o) => {
+      const among = o.paths.filter((path) => differs.has(path));
+      const paths =
+        kept === undefined || among.length === 0 ? among : await kept({ ...o, paths: among });
+      return { ...o, paths: [...paths] };
+    }),
   );
-  const marked = wrote.length === 0 ? new Set<RelativePath>() : await ignored([...new Set(wrote)]);
-  return observed.map((o, at) => {
-    const scratch = scratchOf(o.written ?? [], marked);
-    const raw = (among[at] ?? []).filter((path) => !scratch(path));
-    return { ...o, paths: [...(effective?.(o.testFile, raw) ?? raw)] };
-  });
 }
 
 /** `remaining` split by what taints each file: nothing, an unsyncable path, or syncable paths only. */

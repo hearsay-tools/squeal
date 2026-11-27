@@ -15,7 +15,7 @@ import {
   remoteHostOver,
 } from "../../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
-import type { EffectiveObserved } from "../../../src/core/runner-host/remote/lane-proof.js";
+import type { ProvenObserved } from "../../../src/core/runner-host/remote/lane-proof.js";
 import type { RemoteTier, WhenLost } from "../../../src/core/runner-host/remote/settings.js";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
 import type { RemoteRecord } from "../../../src/core/runner-host/remote/tree-wire.js";
@@ -99,8 +99,8 @@ export interface Setup {
   /** Row 026-36: the policy's `requires.commands`, and what each connect found of them there. */
   readonly requiredCommands?: RequiredCommands | (() => RequiredCommands);
   readonly commandsThere?: CommandsThere | (() => CommandsThere);
-  /** Row 026-38: the observed paths of a file its key keeps; absent, all. */
-  readonly effectiveObserved?: EffectiveObserved;
+  /** Row 026-38: the paths of an observation its reader's key keeps; absent, all. */
+  readonly provenObserved?: ProvenObserved;
   /** Row 026-40: the runner here's environment; absent, `ENV`. */
   readonly localEnv?: RunnerEnvironment;
 }
@@ -133,7 +133,7 @@ export async function setup({
   onRecovered,
   requiredCommands,
   commandsThere,
-  effectiveObserved,
+  provenObserved,
   localEnv,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
@@ -298,7 +298,7 @@ export async function setup({
     ...(hasGitRepository === undefined ? {} : { hasGitRepository }),
     ...(gitLease === undefined ? {} : { gitLease }),
     ...(exitSignal === undefined ? {} : { exitSignal }),
-    ...given({ onRecovered, effectiveObserved }),
+    ...given({ onRecovered, provenObserved }),
     activity: () => activity.push(clock),
   });
   onTestFinished(() => lane.close());

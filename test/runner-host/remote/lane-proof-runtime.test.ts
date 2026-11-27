@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { RuntimeFiles } from "../../../src/core/keys/runtime-files.js";
+import type { ProvenObserved } from "../../../src/core/runner-host/remote/lane-proof.js";
 import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
-import type { TestFileRef } from "../../../src/core/types/keys.js";
+import { provenObserved } from "../../../src/core/scheduler/observed.js";
 import type { RunReport } from "../../../src/core/types/runner.js";
 import { REPORT } from "../fake-channel.js";
 import { background, REF, setup } from "./lane-fixture.js";
@@ -25,6 +26,9 @@ const TIER = [A, B];
 const ENV_FILE = ".ai/qa/test-env.json";
 const SHOT = ".ai/qa/artifacts/screen.png";
 const BUILT = ".ai/qa/build/dist/activity.js";
+/** Review 0.1.662 B1: an ignored input the key retains, and the output its run writes beside it. */
+const INPUT = ".ai/qa/state/input.json";
+const OUTPUT = ".ai/qa/state/out.json";
 const POLICIES: readonly WhenLost[] = ["not-run", "local"];
 
 const put = (root: string, path: string, text: string) => {
@@ -81,19 +85,35 @@ async function lane(
   return { s, exists };
 }
 
-/** `WorktreeKeys.effectiveObserved`'s runtime step: `rules` applied, closure paths protected. */
-function runtimeKeys(rules: readonly string[], root: () => string, closure: readonly string[]) {
-  return (ref: TestFileRef, raw: readonly string[]) => {
-    const runtime = new RuntimeFiles(
-      [{ project: "", tests: [A.path], paths: [...rules] }],
-      [],
+/**
+ * The key's owner over a reader `a` whose keyed closure adds `closure`,
+ * which retains `retained` from earlier runs, and whose runtime step applies
+ * `rules` with closure paths protected (`provenObserved`, `RuntimeFiles`).
+ */
+function keysOf(
+  root: () => string,
+  { rules = [], closure = [], retained = [] }: Partial<Record<string, readonly string[]>> = {},
+): ProvenObserved {
+  return (observed) =>
+    provenObserved(
+      {
+        index: { closure: (ref) => ({ paths: ref.path === A.path ? [A.path, ...closure] : [] }) },
+        observedOf: (ref) => (ref.path === A.path ? retained : []),
+        effectiveObserved: (ref, raw) => {
+          const runtime = new RuntimeFiles(
+            [{ project: "", tests: [A.path], paths: [...rules] }],
+            [],
+            root(),
+          );
+          const applied = runtime.classify(ref, (path) =>
+            closure.includes(path) ? "runner import, snapshot or unresolved candidate" : undefined,
+          );
+          return runtime.effective(raw, applied);
+        },
+      },
       root(),
+      observed,
     );
-    const applied = runtime.classify(ref, (path) =>
-      closure.includes(path) ? "runner import, snapshot or unresolved candidate" : undefined,
-    );
-    return runtime.effective(raw, applied);
-  };
 }
 
 describe.each(POLICIES)("a remote run's proof under whenLost %s (row 026-38)", (whenLost) => {
@@ -102,7 +122,7 @@ describe.each(POLICIES)("a remote run's proof under whenLost %s (row 026-38)", (
     const { s } = await lane(
       whenLost,
       { make: { [ENV_FILE]: "remote\n" }, seen: [ENV_FILE] },
-      { effectiveObserved: runtimeKeys([ENV_FILE], () => root, []) },
+      { provenObserved: keysOf(() => root, { rules: [ENV_FILE] }) },
     );
     root = s.root;
     const report = await s.lane.run(TIER, background());
@@ -114,11 +134,13 @@ describe.each(POLICIES)("a remote run's proof under whenLost %s (row 026-38)", (
   });
 
   it("keeps a result that read a git-ignored screenshot below a directory the same run wrote", async () => {
-    const { s } = await lane(whenLost, {
-      make: { [SHOT]: "png\n" },
-      seen: [SHOT],
-      written: [".ai/qa/artifacts"],
-    });
+    let root = "";
+    const { s } = await lane(
+      whenLost,
+      { make: { [SHOT]: "png\n" }, seen: [SHOT], written: [".ai/qa/artifacts"] },
+      { provenObserved: keysOf(() => root) },
+    );
+    root = s.root;
     const report = await s.lane.run(TIER, background());
     expect(s.remoteRuns).toHaveLength(1);
     expect(resends(s.logs)).toEqual([]);
@@ -202,7 +224,10 @@ describe.each(POLICIES)("a remote run's proof under whenLost %s (row 026-38)", (
       whenLost,
       { seen: ["src/a.ts"] },
       {
-        effectiveObserved: runtimeKeys(["src/a.ts", "vitest.config.ts"], () => root, ["src/a.ts"]),
+        provenObserved: keysOf(() => root, {
+          rules: ["src/a.ts", "vitest.config.ts"],
+          closure: ["src/a.ts"],
+        }),
         remoteRun: async (remoteRoot) => {
           // The run moves both on the remote, each time.
           put(remoteRoot, "src/a.ts", `moved ${++moves}\n`);
@@ -226,12 +251,65 @@ describe.each(POLICIES)("a remote run's proof under whenLost %s (row 026-38)", (
     const report = await s.lane.run(TIER, background());
     expect(s.remoteRuns).toHaveLength(2);
     expect(resends(s.logs)).toHaveLength(2);
-    expect(s.logs).toContain(
-      "remote box: tree differs at vitest.config.ts, src/a.ts; sending again",
-    );
+    expect(
+      s.logs.filter(
+        (line) => /tree differs at .*src\/a\.ts/.test(line) && line.includes("vitest.config.ts"),
+      ),
+    ).toHaveLength(2);
     if (whenLost === "not-run") {
       expect(report.completedFiles).toEqual([]);
-      expect(report.failure).toMatch(/its tree stayed different at vitest\.config\.ts, src\/a\.ts/);
+      // Both paths, in whichever order the attempt's proof listed them.
+      expect(report.failure).toMatch(
+        /its tree stayed different at (?=[^)]*src\/a\.ts)(?=[^)]*vitest\.config\.ts)/,
+      );
     } else expect(s.localFiles).toEqual([`${A.path},${B.path}`]);
+  });
+
+  it("still refuses a retained ignored input whose bytes differ, though the run wrote its directory (review 0.1.662 B1)", async () => {
+    let root = "";
+    const { s } = await lane(
+      whenLost,
+      // The remote's input differs from here; the run writes a sibling into the same directory.
+      {
+        make: { [INPUT]: "remote\n", [OUTPUT]: "out\n" },
+        seen: [INPUT],
+        written: [".ai/qa/state"],
+      },
+      {
+        before: (at) => put(at, INPUT, "local\n"),
+        provenObserved: keysOf(() => root, { retained: [INPUT] }),
+      },
+    );
+    root = s.root;
+    const report = await s.lane.run(TIER, background());
+    expect(s.remoteRuns).toHaveLength(1);
+    expect(resends(s.logs)).toEqual([]);
+    const reason = `git-ignored input ${INPUT} exists locally and is not synced to remote`;
+    expect(s.logs).toContain(`remote box: ${reason}; refused ${A.path}`);
+    if (whenLost === "not-run") {
+      expect(s.localRuns).toHaveLength(0);
+      expect(paths(report)).toEqual([B.path]);
+    } else {
+      expect(s.localFiles).toEqual([A.path]);
+      expect(paths(report)).toEqual([A.path, B.path]);
+    }
+  });
+
+  it("keeps the result of a retained ignored input whose bytes are equal, though the run wrote its directory", async () => {
+    let root = "";
+    const { s } = await lane(
+      whenLost,
+      { make: { [INPUT]: "local\n", [OUTPUT]: "out\n" }, seen: [INPUT], written: [".ai/qa/state"] },
+      {
+        before: (at) => put(at, INPUT, "local\n"),
+        provenObserved: keysOf(() => root, { retained: [INPUT] }),
+      },
+    );
+    root = s.root;
+    const report = await s.lane.run(TIER, background());
+    expect(s.remoteRuns).toHaveLength(1);
+    expect(s.localRuns).toHaveLength(0);
+    expect(report.failure).toBeNull();
+    expect(paths(report)).toEqual([A.path, B.path]);
   });
 });
