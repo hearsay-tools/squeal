@@ -38,7 +38,7 @@ export interface Alarm {
   readonly versions: { readonly baseline: string; readonly candidate: string };
   /** Its entries' emitted code, its text files or its packages' lock lines differ. */
   readonly fired: boolean;
-  /** Each tree's lock lines of the packages its entries import, and the bundler's, when they differ. */
+  /** Each tree's lock lines of the packages its entries import or run on, and the bundler's, when they differ. */
   readonly dependencies: { readonly baseline: string[]; readonly candidate: string[] } | null;
   /** Its changed lines no case ran, `source:line (side file:line)`. */
   readonly uncovered: readonly string[];
@@ -92,9 +92,10 @@ async function alarmOf(
     baseline: textsOf(baseline, component.texts),
     candidate: textsOf(candidate, component.texts, overlay),
   };
+  const runsOn = component.runsOn ?? [];
   const deps = {
-    baseline: dependencyLines(baseline, bundles.baseline.packages),
-    candidate: dependencyLines(candidate, bundles.candidate.packages, overlay),
+    baseline: dependencyLines(baseline, [...bundles.baseline.packages, ...runsOn]),
+    candidate: dependencyLines(candidate, [...bundles.candidate.packages, ...runsOn], overlay),
   };
   const dependencies = same(deps.baseline, deps.candidate) ? null : deps;
   const fired =
