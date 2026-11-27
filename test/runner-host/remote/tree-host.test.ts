@@ -110,6 +110,16 @@ describe("a remote host's tree (row 021-13)", () => {
     expect(existsSync(join(root, "keep"))).toBe(false);
   });
 
+  it("names the paths no sync wrote, by its own record and the one a host beside it saved (row 026-38)", async () => {
+    const { root, tree } = host();
+    await tree.write(await write([file("synced", "1")]));
+    writeFileSync(join(root, "made"), "by a run");
+    // A host beside it, on the same tree, writes a file this host never saw.
+    const beside = createTreeHost(root, () => {});
+    await beside.write(await write([file("theirs", "2")]));
+    expect(tree.unsynced(["synced", "made", "theirs"])).toEqual(["made"]);
+  });
+
   it("installs from the lockfile once per lockfile blob", async () => {
     const bin = join(scratch, "fake-npm");
     mkdirSync(bin, { recursive: true });

@@ -15,6 +15,7 @@ import {
   remoteHostOver,
 } from "../../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
+import type { EffectiveObserved } from "../../../src/core/runner-host/remote/lane-proof.js";
 import type { RemoteTier, WhenLost } from "../../../src/core/runner-host/remote/settings.js";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
 import type { RemoteRecord } from "../../../src/core/runner-host/remote/tree-wire.js";
@@ -98,6 +99,8 @@ export interface Setup {
   /** Row 026-36: the policy's `requires.commands`, and what each connect found of them there. */
   readonly requiredCommands?: RequiredCommands | (() => RequiredCommands);
   readonly commandsThere?: CommandsThere | (() => CommandsThere);
+  /** Row 026-38: the observed paths of a file its key keeps; absent, all. */
+  readonly effectiveObserved?: EffectiveObserved;
 }
 
 let n = 0;
@@ -128,6 +131,7 @@ export async function setup({
   onRecovered,
   requiredCommands,
   commandsThere,
+  effectiveObserved,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -291,7 +295,7 @@ export async function setup({
     ...(hasGitRepository === undefined ? {} : { hasGitRepository }),
     ...(gitLease === undefined ? {} : { gitLease }),
     ...(exitSignal === undefined ? {} : { exitSignal }),
-    ...(onRecovered === undefined ? {} : { onRecovered }),
+    ...given({ onRecovered, effectiveObserved }),
     activity: () => activity.push(clock),
   });
   onTestFinished(() => lane.close());
@@ -322,6 +326,13 @@ export async function setup({
       clock += ms;
     },
   };
+}
+
+/** The entries of `options` that are defined, so an absent one stays absent. */
+function given<T extends object>(options: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(options).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
 }
 
 /** Row 026-36: the lane's `requiredCommands`, when the setup names them; a getter is the live policy. */

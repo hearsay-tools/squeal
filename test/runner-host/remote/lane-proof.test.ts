@@ -4,10 +4,12 @@ import {
   ignoredReason,
   inputsFor,
   joinParts,
+  keptObservations,
   provenPart,
   runInputsOf,
   splitProof,
   stayedReason,
+  unsyncableReason,
 } from "../../../src/core/runner-host/remote/lane-proof.js";
 import type { RemoteRecord } from "../../../src/core/runner-host/remote/tree-wire.js";
 import type { ObservedInputs, RunReport } from "../../../src/core/types/runner.js";
@@ -77,6 +79,62 @@ describe("a differing path by the sync boundary (021 D10)", () => {
       syncable: ["src/a.ts", "src/gone.ts"],
       unsyncable: ["dist/index.html"],
     });
+  });
+});
+
+describe("a path only the remote has (row 026-38)", () => {
+  it("is unsyncable when it is deleted here and no sync wrote it there; synced, a resend repairs it", () => {
+    const kinds = classify(
+      ["made.json", "gone.json", "src/a.ts"],
+      new Set(["src/a.ts"]),
+      { "made.json": null, "gone.json": null, "src/a.ts": "b2" },
+      new Set(["made.json"]),
+    );
+    expect(kinds).toEqual({
+      syncable: ["gone.json", "src/a.ts"],
+      unsyncable: ["made.json"],
+      remoteOnly: ["made.json"],
+    });
+  });
+
+  it("names each kind with its own way out", () => {
+    expect(unsyncableReason(["dist/x", "made.json"], new Set(["made.json"]))).toBe(
+      "git-ignored input dist/x exists locally and is not synced to remote; input made.json exists only on the remote, where no sync wrote it, so a resend cannot remove it; declare it in runtimeFiles when it is runtime state, or list its test files in remote.alwaysLocal",
+    );
+  });
+});
+
+describe("the observed paths a proof weighs: those the key keeps (row 026-38)", () => {
+  const ignoredOf =
+    (ignored: readonly string[], asked: string[][]) => async (paths: readonly string[]) => {
+      asked.push([...paths]);
+      return new Set(paths.filter((path) => ignored.includes(path)));
+    };
+
+  it("drops an ignored path below a directory the same run wrote, and keeps a tracked one", async () => {
+    const asked: string[][] = [];
+    const kept = await keptObservations(
+      [
+        { ...seen(A, ["out/shot.png", "out/tracked.txt", "src/x.ts"]), written: ["out"] },
+        seen(B, ["out/shot.png"]),
+      ],
+      ["out/shot.png", "out/tracked.txt", "src/x.ts"],
+      ignoredOf(["out/shot.png"], asked),
+    );
+    expect(kept.map((o) => o.paths)).toEqual([["out/tracked.txt", "src/x.ts"], ["out/shot.png"]]);
+    expect(asked).toEqual([["out/shot.png", "out/tracked.txt", "src/x.ts"]]);
+  });
+
+  it("weighs only differing paths, asks Git nothing when no run wrote a directory, and applies the key's runtime files", async () => {
+    const asked: string[][] = [];
+    const kept = await keptObservations(
+      [seen(A, [".ai/env.json", "src/x.ts", "same.ts"]), seen(B, [".ai/env.json"])],
+      [".ai/env.json", "src/x.ts"],
+      ignoredOf([], asked),
+      (ref, raw) => (ref.path === A.path ? raw.filter((path) => path !== ".ai/env.json") : raw),
+    );
+    expect(kept.map((o) => o.paths)).toEqual([["src/x.ts"], [".ai/env.json"]]);
+    expect(asked).toEqual([]);
   });
 });
 

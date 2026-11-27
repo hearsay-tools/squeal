@@ -109,6 +109,12 @@ export interface RemoteRunReply {
   readonly logs?: readonly WireLog[];
   /** Spec 026 D9: the records of the run's covered files, asked for by `coverageFormat`. */
   readonly coverage?: readonly RemoteRecord[];
+  /**
+   * Row 026-38 (#304): the paths of `proof` or `refused` that exist on the
+   * remote though no sync wrote them there, such as a file its run made. A
+   * resend cannot remove them. Absent: none, or a host older than the field.
+   */
+  readonly unsynced?: readonly string[];
 }
 
 /** The host's own environment inputs (spec 021 D11): what the key holds of a process. */

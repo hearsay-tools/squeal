@@ -1,5 +1,7 @@
 import { merge } from "../../daemon/composite-runner.js";
 import { testFileId } from "../../keys/reverse-index.js";
+import { scratchOf } from "../../scheduler/observed.js";
+import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { ObservedInputs, RunReport } from "../../types/runner.js";
 import { recordsWithout } from "./coverage.js";
@@ -14,6 +16,14 @@ import type { RemoteRecord } from "./tree-wire.js";
  * differing path taints is proven, and its result is kept. A differing path
  * that exists here but is git-ignored is never sent (D10): a retry cannot
  * repair it, so its files are refused at once, never run again there.
+ *
+ * Row 026-38 (#304; 011 C4/D4): the proof weighs an observed path only when
+ * the file's key keeps it (`keptObservations`): not a path below a
+ * directory the same run wrote that Git ignores (`scratchOf`), nor one of
+ * the file's applied `runtimeFiles` (`WorktreeKeys.effectiveObserved`). A
+ * path deleted here that exists on the remote though no sync wrote it
+ * there (`RemoteRunReply.unsynced`), such as a file the run made, is
+ * refused at once too: a resend removes only what a sync wrote.
  */
 
 /** The paths a run's proof covers: the configs every file shares, each file's closure, all. */
@@ -49,29 +59,76 @@ export function inputsFor(inputs: RunInputs, files: readonly TestFileRef[]): str
   return [...paths];
 }
 
-/** Differing paths: those a resend repairs, and those that exist here but Git ignores. */
+/**
+ * Differing paths: those a resend repairs, and those it cannot: a path that
+ * exists here but Git ignores, or one that exists only on the remote.
+ */
 export interface Differing {
   readonly syncable: readonly string[];
   readonly unsyncable: readonly string[];
+  /** Row 026-38: the paths of `unsyncable` that exist only on the remote; absent, none. */
+  readonly remoteOnly?: readonly string[];
 }
 
 /**
  * `differ` split by the sync boundary (D10): a path here that is not in the
- * tree (`inTree`, tracked or not ignored) is never sent; any other, or one
- * deleted here (`null` blob), a resend repairs.
+ * tree (`inTree`, tracked or not ignored) is never sent; a path deleted here
+ * (`null` blob) that no sync wrote there (`unsynced`, row 026-38) a resend
+ * cannot remove; any other, or one deleted here that a sync wrote there, a
+ * resend repairs.
  */
 export function classify(
   differ: readonly string[],
   inTree: ReadonlySet<string>,
   localBlobs: Readonly<Record<string, string | null>>,
+  unsynced: ReadonlySet<string> = new Set(),
 ): Differing {
   const syncable: string[] = [];
   const unsyncable: string[] = [];
+  const remoteOnly: string[] = [];
   for (const path of differ) {
     const here = localBlobs[path];
-    (here !== null && here !== undefined && !inTree.has(path) ? unsyncable : syncable).push(path);
+    if (here === null && unsynced.has(path)) {
+      unsyncable.push(path);
+      remoteOnly.push(path);
+    } else {
+      (here !== null && here !== undefined && !inTree.has(path) ? unsyncable : syncable).push(path);
+    }
   }
-  return { syncable, unsyncable };
+  return remoteOnly.length === 0 ? { syncable, unsyncable } : { syncable, unsyncable, remoteOnly };
+}
+
+/** The observed paths of `ref` its key keeps (`WorktreeKeys.effectiveObserved`). */
+export type EffectiveObserved = (
+  ref: TestFileRef,
+  raw: readonly RelativePath[],
+) => readonly RelativePath[];
+
+/**
+ * Row 026-38 (#304): each observation's paths among `differ` that its
+ * file's key keeps, so the proof drops exactly what the key drops: the
+ * written-directory bound first (`scratchOf` over `ignored`, as
+ * `inputsOfReads` applies it), then the file's applied runtime files
+ * (`effective`; absent, none are dropped). `ignored` is asked only when an
+ * observation wrote a directory.
+ */
+export async function keptObservations(
+  observed: readonly ObservedInputs[],
+  differ: readonly string[],
+  ignored: (paths: readonly RelativePath[]) => Promise<ReadonlySet<RelativePath>>,
+  effective?: EffectiveObserved,
+): Promise<ObservedInputs[]> {
+  const differs = new Set(differ);
+  const among = observed.map((o) => o.paths.filter((path) => differs.has(path)));
+  const wrote = observed.flatMap((o, at) =>
+    (o.written ?? []).length === 0 ? [] : (among[at] ?? []),
+  );
+  const marked = wrote.length === 0 ? new Set<RelativePath>() : await ignored([...new Set(wrote)]);
+  return observed.map((o, at) => {
+    const scratch = scratchOf(o.written ?? [], marked);
+    const raw = (among[at] ?? []).filter((path) => !scratch(path));
+    return { ...o, paths: [...(effective?.(o.testFile, raw) ?? raw)] };
+  });
 }
 
 /** `remaining` split by what taints each file: nothing, an unsyncable path, or syncable paths only. */
@@ -136,6 +193,27 @@ export function shown(paths: readonly string[]): string {
 /** Why the remote refused files whose git-ignored inputs differ (D17: what to do follows from it). */
 export function ignoredReason(paths: readonly string[]): string {
   return `git-ignored input ${shown(paths)} exists locally and is not synced to remote`;
+}
+
+/**
+ * Row 026-38 (#304): why the remote refused files whose inputs exist only
+ * there, and the two ways out (D17: what to do follows from it).
+ */
+export function remoteOnlyReason(paths: readonly string[]): string {
+  return `input ${shown(paths)} exists only on the remote, where no sync wrote it, so a resend cannot remove it; declare it in runtimeFiles when it is runtime state, or list its test files in remote.alwaysLocal`;
+}
+
+/** Why the remote refused files whose inputs a resend cannot repair: `remoteOnly` ones and git-ignored ones. */
+export function unsyncableReason(
+  paths: readonly string[],
+  remoteOnly: ReadonlySet<string>,
+): string {
+  const only = paths.filter((path) => remoteOnly.has(path));
+  const ignored = paths.filter((path) => !remoteOnly.has(path));
+  return [
+    ...(ignored.length > 0 ? [ignoredReason(ignored)] : []),
+    ...(only.length > 0 ? [remoteOnlyReason(only)] : []),
+  ].join("; ");
 }
 
 /** Why the remote refused files whose tree a resend did not repair. */

@@ -18,6 +18,7 @@ import { startRemoteHost } from "./connect.js";
 import { sharedOf } from "./coverage.js";
 import { probeDisk } from "./disk-check.js";
 import { type RemoteLaneRunner, withRemoteLane } from "./lane.js";
+import type { EffectiveObserved } from "./lane-proof.js";
 import { tiersText } from "./lane-tiers.js";
 import { FreshMachine, MachineEnding, type MachineShare, shareMachine } from "./machine-share.js";
 import { tagReportCore } from "./remote-key.js";
@@ -127,6 +128,12 @@ export interface DaemonRemoteOptions {
    * run (`RemoteLaneOptions.onRecovered`). Absent: none.
    */
   readonly onRecovered?: () => void;
+  /**
+   * Row 026-38 (#304): the observed paths of a test file its key keeps,
+   * which a remote run's proof weighs (`RemoteLaneOptions.effectiveObserved`).
+   * Absent: every observed path.
+   */
+  readonly effectiveObserved?: EffectiveObserved;
 }
 
 export interface DaemonLaneOptions extends DaemonRemoteOptions {
@@ -392,6 +399,9 @@ function laneOver<R extends RunnerAdapter>(
     // Row 026-30: the exit ends a wait for remote permits and starts no reconnect.
     exitSignal: share.exitSignal,
     ...(options.onRecovered === undefined ? {} : { onRecovered: options.onRecovered }),
+    ...(options.effectiveObserved === undefined
+      ? {}
+      : { effectiveObserved: options.effectiveObserved }),
     remoteCoverage: (runId, records) => {
       for (const remote of records) {
         const record = sharedOf(remote);

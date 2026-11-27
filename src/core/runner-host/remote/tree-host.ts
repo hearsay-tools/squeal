@@ -77,6 +77,11 @@ export interface TreeHost {
   runDir(runId: string): Promise<string>;
   /** The files of a run's `runDir`, to send back with its report. */
   logs(dir: string): Promise<WireLog[]>;
+  /**
+   * Row 026-38 (#304): the paths of `paths` that no sync wrote here, by
+   * this host's record and the one on disk, which a host beside it writes too.
+   */
+  unsynced(paths: readonly string[]): string[];
   /** The paths of `expected` whose blob id here differs (spec 021 D11). */
   differing(expected: Readonly<Record<string, string | null>>): Promise<string[]>;
   /** This process's environment inputs, the variables of `allowlist` among them (D11). */
@@ -227,6 +232,10 @@ export function createTreeHost(
         throw error;
       });
       return dir;
+    },
+    unsynced(paths) {
+      const saved = readJson(recordPath) ?? {};
+      return paths.filter((path) => files[path] === undefined && saved[path] === undefined);
     },
     async differing(expected) {
       const differ: string[] = [];

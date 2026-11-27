@@ -36,6 +36,11 @@ import type { RunAround } from "./workers.js";
  * payloads instead of sending their paths, which are of its own machine;
  * a run asked for its records (`coverageFormat`) gets them on its reply,
  * mapped here, and every payload of a run is deleted once it ends.
+ *
+ * Row 026-38 (#304): a remote run's reply also names the paths it proves,
+ * or refuses before the run, that exist on the remote though no sync wrote
+ * them (`unsynced`). The proof itself stays raw: the daemon drops what its
+ * keys drop (`lane-proof.ts`).
  */
 
 /** An adapter a host serves: a Vitest adapter also tells its widths. */
@@ -261,7 +266,9 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
     let left = files.length;
     // Spec 021 D11: a remote host runs only over the tree the daemon expects.
     const refused = expected === undefined ? [] : await treeOf().differing(expected);
-    if (refused.length > 0) return { refused } as RemoteRunReply as RunReport;
+    if (refused.length > 0) {
+      return { refused, ...unsyncedOf(refused) } as RemoteRunReply as RunReport;
+    }
     // A remote host logs in a directory of its own: the daemon's `logDir` is on another machine.
     const logDir = await options.tree?.runDir(data.runId);
     const signal = new AbortController();
@@ -299,9 +306,13 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       const proven = [...new Set([...Object.keys(expected ?? {}), ...observed])];
       const coverage =
         kept === null || coverageFormat === undefined ? [] : kept.take(data.runId, coverageFormat);
+      // The logs first, as soon as the run ends: hosts of one process id sweep each other's runs.
+      const logs = await options.tree.logs(logDir);
+      const proof = expected === undefined ? undefined : await options.tree.blobs(proven);
+      const present = Object.keys(proof ?? {}).filter((path) => proof?.[path] !== null);
       const reply: RemoteRunReply = {
-        logs: await options.tree.logs(logDir),
-        ...(expected === undefined ? {} : { proof: await options.tree.blobs(proven) }),
+        logs,
+        ...(proof === undefined ? {} : { proof, ...unsyncedOf(present) }),
         ...(coverage.length === 0 ? {} : { coverage }),
       };
       return { ...report, ...reply } as RunReport;
@@ -364,6 +375,12 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
   const treeOf = (): TreeHost => {
     if (options.tree === undefined) throw new Error("runner host: this host keeps no tree");
     return options.tree;
+  };
+
+  /** Row 026-38 (#304): `RemoteRunReply.unsynced` of `paths`, when any. */
+  const unsyncedOf = (paths: readonly string[]): Pick<RemoteRunReply, "unsynced"> => {
+    const unsynced = treeOf().unsynced(paths);
+    return unsynced.length === 0 ? {} : { unsynced };
   };
 
   const handle = (message: DaemonMessage) => {

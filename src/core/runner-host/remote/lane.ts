@@ -8,10 +8,12 @@ import type { RequiredCommands } from "../../types/policy.js";
 import type {
   InvalidatedPath,
   InvalidateResult,
+  ObservedInputs,
   RunnerAdapter,
   RunOptions,
   RunReport,
 } from "../../types/runner.js";
+import { checkIgnored } from "../../watcher/git.js";
 import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelledFirst, cancelOf, notStarted } from "./admission.js";
 import { createBlobCache, createInstalledFingerprintCache } from "./blob-cache.js";
@@ -23,9 +25,10 @@ import { compareRemoteEnvironment } from "./lane-compare.js";
 import { type Planning, remotePlanning } from "./lane-planning.js";
 import {
   classify,
-  ignoredReason,
+  type EffectiveObserved,
   inputsFor,
   joinParts,
+  keptObservations,
   type ProofSplit,
   type ProvenPart,
   provenPart,
@@ -34,6 +37,7 @@ import {
   shown,
   splitProof,
   stayedReason,
+  unsyncableReason,
 } from "./lane-proof.js";
 import { deferredTo, repositoryRoute, withoutFiles } from "./lane-repository.js";
 import { DEFAULT_TIERS, goesRemote, tiersText } from "./lane-tiers.js";
@@ -126,6 +130,11 @@ import type { RemoteRecord, RemoteRunReply } from "./tree-wire.js";
  * never sent (021 D10), so its files are refused at once, not retried; the
  * policy runs only them here, or leaves only them not run.
  *
+ * Row 026-38 (#304): the proof weighs an observed path only when its
+ * file's key keeps it (`effectiveObserved`, the written-directory bound),
+ * and refuses at once a path deleted here that exists on the remote though
+ * no sync wrote it, naming `runtimeFiles` and `remote.alwaysLocal`.
+ *
  * Review 0.1.634 B1: a report holds one setup failure (review 0.1.457 B3),
  * so an attempt whose proven part failed to start ends the tier's remote
  * run. No retry and no run here starts after it; its syncable differences
@@ -198,6 +207,12 @@ export interface RemoteLaneOptions {
   readonly needsRepository?: () => readonly string[];
   /** Row 021-40 (#294): test-file globs that always run here, also with `.git` there. Absent: none. */
   readonly alwaysLocal?: () => readonly string[];
+  /**
+   * Row 026-38 (#304): the observed paths of a test file its key keeps
+   * (`WorktreeKeys.effectiveObserved`), which the proof weighs. Absent:
+   * every observed path, as before.
+   */
+  readonly effectiveObserved?: EffectiveObserved;
   /** Spec 026 D13.2: `requires.commands`, whose per-file globs the connect's answer routes. Absent: none. */
   readonly requiredCommands?: () => RequiredCommands;
   /** Spec 026 D13.2: the line that names the files kept here for a command the remote lacks. Absent: `status`. */
@@ -292,6 +307,8 @@ interface Attempt {
   readonly ran: boolean;
   readonly split: ProofSplit | null;
   readonly syncable: readonly string[];
+  /** Row 026-38: the unsyncable paths that exist only on the remote. */
+  readonly remoteOnly: readonly string[];
   readonly part: ProvenPart | null;
 }
 
@@ -300,6 +317,8 @@ interface Tally {
   readonly parts: ProvenPart[];
   readonly ignoredFiles: TestFileRef[];
   readonly ignored: Set<string>;
+  /** Row 026-38: the paths of `ignored` that exist only on the remote. */
+  readonly remoteOnly: Set<string>;
   /** The syncable paths of the last attempt that differed. */
   stayed: readonly string[];
 }
@@ -608,7 +627,13 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     run: RunOptions,
     inputs: RunInputs,
   ): Promise<RemoteOutcome> => {
-    const tally: Tally = { parts: [], ignoredFiles: [], ignored: new Set(), stayed: [] };
+    const tally: Tally = {
+      parts: [],
+      ignoredFiles: [],
+      ignored: new Set(),
+      remoteOnly: new Set(),
+      stayed: [],
+    };
     let remaining = testFiles;
     let counted = 0;
     do {
@@ -670,11 +695,12 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
   const next = (
     tally: Tally,
     files: readonly TestFileRef[],
-    { ran, split, syncable }: Attempt,
+    { ran, split, syncable, remoteOnly }: Attempt,
   ): { readonly again: readonly TestFileRef[]; readonly spent: boolean } => {
     if (split === null) return { again: [], spent: true };
     tally.ignoredFiles.push(...split.unsyncable);
     for (const path of split.ignored) tally.ignored.add(path);
+    for (const path of remoteOnly) tally.remoteOnly.add(path);
     if (syncable.length > 0) {
       tally.stayed = syncable;
       options.log(`remote ${target}: tree differs at ${shown(syncable)}; sending again`);
@@ -682,7 +708,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     }
     if (split.unsyncable.length > 0) {
       options.log(
-        `remote ${target}: ${ignoredReason(split.ignored)}; refused ${split.unsyncable.map((f) => f.path).join(", ")}`,
+        `remote ${target}: ${unsyncableReason(split.ignored, tally.remoteOnly)}; refused ${split.unsyncable.map((f) => f.path).join(", ")}`,
       );
     }
     const spent = ran || syncable.length > 0 || split.unsyncable.length === 0;
@@ -704,15 +730,18 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       if (joined.coverage.length > 0) coverageOf.set(joined.report, joined.coverage);
     }
     const reasons = [
-      ...(tally.ignored.size > 0 ? [ignoredReason([...tally.ignored])] : []),
+      ...(tally.ignored.size > 0 ? [unsyncableReason([...tally.ignored], tally.remoteOnly)] : []),
       ...(stayed.length > 0 ? [stayedReason(tally.stayed)] : []),
     ];
     const then = options.whenLost === "local" ? "ran it here" : "not run";
     if (stayed.length > 0) {
       options.status(`remote ${target}: refused a run whose tree stayed different; ${then}`);
     } else if (tally.ignoredFiles.length > 0) {
+      const kind = [...tally.ignored].every((path) => tally.remoteOnly.has(path))
+        ? "inputs exist only on the remote"
+        : "git-ignored inputs are not synced";
       options.status(
-        `remote ${target}: refused ${tally.ignoredFiles.length} files whose git-ignored inputs are not synced; ${then}`,
+        `remote ${target}: refused ${tally.ignoredFiles.length} files whose ${kind}; ${then}`,
       );
     }
     const files = [...tally.ignoredFiles, ...stayed];
@@ -749,24 +778,46 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     if ("lost" in reply || "cancelled" in reply) return reply;
     if (runnerHostGone(host.adapter)) return { lost: cutShort(host, reply, files) };
     const ran = reply.refused === undefined;
-    const differ = reply.refused ?? (await differing(reply));
+    const { differ, observed } = ran
+      ? await differing(reply, inputsFor(inputs, files))
+      : { differ: reply.refused ?? [], observed: undefined };
     // Row 026-28: every file of a remote report ran there; a failure of one names it.
     const raw = { ...stripped(reply), remote: options.remoteLabel?.() ?? target };
     const report = remoteKey && runCore !== null ? tagReportCore(raw, runCore) : raw;
     if (ran && differ.length === 0) {
-      return { ran, split: null, syncable: [], part: provenPart(report, reply.coverage, []) };
+      const part = provenPart(report, reply.coverage, []);
+      return { ran, split: null, syncable: [], remoteOnly: [], part };
     }
-    const { syncable, split } = await splitBy(files, inputs, reply, differ);
+    const { syncable, remoteOnly, split } = await splitBy(files, inputs, reply, differ, observed);
     const unproved = files.filter((file) => !split.proven.includes(file));
     const part =
       ran && split.proven.length > 0 ? provenPart(report, reply.coverage, unproved) : null;
-    return { ran, split, syncable, part };
+    return { ran, split, syncable, remoteOnly, part };
   };
 
-  /** The paths whose blob ids after a run differ from this worktree's. */
-  const differing = async (reply: RemoteRunReply): Promise<string[]> => {
+  /**
+   * The paths whose blob ids after a run differ from this worktree's, of
+   * those the files' keys keep (row 026-38): every `expected` path, and an
+   * observed one only when its file's key keeps it (`keptObservations`),
+   * with those observations.
+   */
+  const differing = async (
+    reply: RunReport & RemoteRunReply,
+    expected: readonly string[],
+  ): Promise<{ differ: string[]; observed: readonly ObservedInputs[] | undefined }> => {
     const after = await blobsHere(Object.keys(reply.proof ?? {}));
-    return Object.keys(after).filter((path) => after[path] !== reply.proof?.[path]);
+    const raw = Object.keys(after).filter((path) => after[path] !== reply.proof?.[path]);
+    if (raw.length === 0 || reply.observed === undefined) {
+      return { differ: raw, observed: reply.observed };
+    }
+    const observed = await keptObservations(
+      reply.observed,
+      raw,
+      (paths) => checkIgnored(options.root, paths),
+      options.effectiveObserved,
+    );
+    const kept = new Set([...expected, ...observed.flatMap((o) => o.paths)]);
+    return { differ: raw.filter((path) => kept.has(path)), observed };
   };
 
   /**
@@ -779,15 +830,19 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     inputs: RunInputs,
     reply: RunReport & RemoteRunReply,
     differ: readonly string[],
+    observed: readonly ObservedInputs[] | undefined,
   ) => {
     blobCache.evict(differ);
     const [inTree, here] = await Promise.all([
       treePathsFor(options.root, differ).catch(() => new Set(differ)),
       blobsHere(differ),
     ]);
-    const kinds = classify(differ, inTree, here);
-    const observed = reply.refused === undefined ? reply.observed : undefined;
-    return { syncable: kinds.syncable, split: splitProof(files, inputs, observed, kinds) };
+    const kinds = classify(differ, inTree, here, new Set(reply.unsynced ?? []));
+    return {
+      syncable: kinds.syncable,
+      remoteOnly: kinds.remoteOnly ?? [],
+      split: splitProof(files, inputs, observed, kinds),
+    };
   };
 
   /**

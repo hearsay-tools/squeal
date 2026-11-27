@@ -455,6 +455,11 @@ export interface Scheduler {
    */
   requeueUnknown?(match: (reason: string) => boolean): Promise<number>;
   /**
+   * Row 026-38 (#304): the observed paths among `raw` that key `ref`, which
+   * a remote run's proof weighs. Absent: a scheduler before it.
+   */
+  effectiveObserved?(ref: TestFileRef, raw: readonly RelativePath[]): readonly RelativePath[];
+  /**
    * Row 011-356: tells `listener` each scheduler step as it ends, until the
    * returned function is called (the model test's per-step checks).
    * Absent: the scheduler tells no step.

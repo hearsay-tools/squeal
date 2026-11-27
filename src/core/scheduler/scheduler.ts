@@ -1352,6 +1352,15 @@ class TierScheduler implements Scheduler {
   }
 
   /**
+   * Row 026-38 (#304): the observed paths among `raw` that key `ref`
+   * (`WorktreeKeys.effectiveObserved`), which a remote run's proof weighs;
+   * `raw` itself before the scheduler starts.
+   */
+  effectiveObserved(ref: TestFileRef, raw: readonly RelativePath[]): readonly RelativePath[] {
+    return this.#context?.keys.effectiveObserved(ref, raw) ?? raw;
+  }
+
+  /**
    * Spec 015 D9 (review 0.1.297 B3): this worktree's own closures and keys;
    * `null` before it starts. Row 015-75: with each project's runner and
    * environment files.
