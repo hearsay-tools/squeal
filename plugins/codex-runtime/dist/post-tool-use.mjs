@@ -492,7 +492,7 @@ var DEFAULT_POLICY = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [], alwaysLocal: [] }
+  remote: { allowed: true, needsRepository: [], alwaysLocal: [], setup: null }
 };
 
 // src/core/daemon/config-file.ts
@@ -895,6 +895,25 @@ var CONTAINER_TARGET_DEFAULTS = {
   env: {}
 };
 
+// src/core/runner-host/remote/tree-wire.ts
+import { promisify } from "node:util";
+import { gunzip, gzip } from "node:zlib";
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+// src/core/runner-host/remote/tree-wire.ts
+var LOG_BYTES = 2 * 1024 * 1024;
+function insideRoot2(path) {
+  if (path === "" || path.startsWith("/") || path.includes("\0")) return false;
+  const parts = path.split("/");
+  if (parts[0] === ".git") return false;
+  return parts.every((part) => part !== "" && part !== "." && part !== "..");
+}
+var zip = promisify(gzip);
+var unzip = promisify(gunzip);
+
 // src/core/daemon/policy-remote.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var kept = (key, bad) => (value) => {
@@ -913,15 +932,50 @@ var kept = (key, bad) => (value) => {
 function commandName(entry2) {
   return /^[^-\s/\\][^\s/\\]*$/.test(entry2) && !new RegExp("\\p{Cc}", "u").test(entry2);
 }
-var commands = kept(
-  "requires.commands",
-  (entry2) => commandName(entry2) ? null : `must be a command name such as "git", got ${JSON.stringify(entry2)}`
-);
+var nameProblem2 = (entry2) => commandName(entry2) ? null : `must be a command name such as "git", got ${JSON.stringify(entry2)}`;
+var commandList = kept("requires.commands", nameProblem2);
+function needProblem(entry2) {
+  if (typeof entry2 === "string") return nameProblem2(entry2);
+  const expected = `must be a command name or { "command": "<name>", "version": "<argument>" }, got ${JSON.stringify(entry2)}`;
+  if (!isRecord(entry2) || Object.keys(entry2).some((key) => key !== "command" && key !== "version")) {
+    return expected;
+  }
+  const { command, version } = entry2;
+  if (typeof command !== "string" || !commandName(command)) return expected;
+  const argument = typeof version === "string" && version !== "" && !new RegExp("\\p{Cc}", "u").test(version);
+  return version === void 0 || argument ? null : expected;
+}
+var commands = (value) => {
+  if (Array.isArray(value)) return commandList(value);
+  if (!isRecord(value))
+    return "an array of command names, or an object of test-file globs to lists of them";
+  const good = {};
+  const problems = [];
+  for (const [glob, entries] of Object.entries(value)) {
+    const at = `"requires.commands.${glob}"`;
+    const bad = glob === "*" ? null : compiles([glob])?.problem ?? null;
+    if (bad !== null) problems.push(`${at} ${bad}; it is left out`);
+    else if (!Array.isArray(entries)) {
+      problems.push(
+        `${at} must be an array of commands, got ${JSON.stringify(entries)}; it is left out`
+      );
+    } else {
+      good[glob] = entries.filter((entry2, index) => {
+        const why = needProblem(entry2);
+        if (why !== null)
+          problems.push(`"requires.commands.${glob}[${index}]" ${why}; it is left out`);
+        return why === null;
+      });
+    }
+  }
+  return { kept: good, problems };
+};
 var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
 var alwaysLocal = kept("remote.alwaysLocal", (glob) => compiles([glob])?.problem ?? null);
+var setup = (value) => value === null || typeof value === "string" && insideRoot2(value) ? null : 'null or a repository-relative path to a script, such as ".squeal/remote-setup.sh"';
 var REMOTE_SHAPE = {
   requires: { commands },
-  remote: { allowed: boolean3, needsRepository, alwaysLocal }
+  remote: { allowed: boolean3, needsRepository, alwaysLocal, setup }
 };
 
 // src/core/daemon/policy-containers.ts
@@ -4475,8 +4529,8 @@ function toFile(row) {
 }
 
 // src/core/code/coverage/parts.ts
-import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
-var SYNC = { finishFlush: constants.Z_SYNC_FLUSH };
+import { constants as constants2, deflateRawSync, inflateRawSync } from "node:zlib";
+var SYNC = { finishFlush: constants2.Z_SYNC_FLUSH };
 var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
 var RECORD_HEAD = stored('{"v":1,"sources":[');
 var COMMA = stored(",");
@@ -4745,10 +4799,6 @@ function createCoverageRepo(conn, sent) {
     putPartsBatch
   };
 }
-
-// src/core/hash/blob.ts
-import { constants as constants2 } from "node:fs";
-var OPEN_FLAGS = constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK;
 
 // src/core/code/coverage/sourcemap.ts
 var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -12691,7 +12741,7 @@ function loadRetryText(loadPerCpu, words, fresh2) {
 import { execFile } from "node:child_process";
 import { readdirSync as readdirSync8, readFileSync as readFileSync16 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
-import { promisify } from "node:util";
+import { promisify as promisify2 } from "node:util";
 
 // src/runners/process/recorders.ts
 var UNOBSERVED = JSON.stringify({ out: "" });
@@ -12749,7 +12799,7 @@ var PROC = {
   }),
   command: commandLine
 };
-var run = promisify(execFile);
+var run = promisify2(execFile);
 var COMMAND_CHARS2 = 120;
 var PS_TIMEOUT_MS = 2e3;
 var PS_MAX_BYTES = 16 * 1024 * 1024;
@@ -13403,7 +13453,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.655";
+  if (true) return "0.1.656";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

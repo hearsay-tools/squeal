@@ -3976,7 +3976,7 @@ var DEFAULT_POLICY = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [], alwaysLocal: [] }
+  remote: { allowed: true, needsRepository: [], alwaysLocal: [], setup: null }
 };
 
 // src/core/daemon/policy-node-test.ts
@@ -4289,6 +4289,25 @@ var CONTAINER_TARGET_DEFAULTS = {
   env: {}
 };
 
+// src/core/runner-host/remote/tree-wire.ts
+import { promisify as promisify2 } from "node:util";
+import { gunzip, gzip } from "node:zlib";
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+// src/core/runner-host/remote/tree-wire.ts
+var LOG_BYTES = 2 * 1024 * 1024;
+function insideRoot2(path) {
+  if (path === "" || path.startsWith("/") || path.includes("\0")) return false;
+  const parts = path.split("/");
+  if (parts[0] === ".git") return false;
+  return parts.every((part) => part !== "" && part !== "." && part !== "..");
+}
+var zip = promisify2(gzip);
+var unzip = promisify2(gunzip);
+
 // src/core/daemon/policy-remote.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var kept = (key, bad) => (value) => {
@@ -4307,15 +4326,50 @@ var kept = (key, bad) => (value) => {
 function commandName(entry) {
   return /^[^-\s/\\][^\s/\\]*$/.test(entry) && !new RegExp("\\p{Cc}", "u").test(entry);
 }
-var commands = kept(
-  "requires.commands",
-  (entry) => commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`
-);
+var nameProblem2 = (entry) => commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`;
+var commandList = kept("requires.commands", nameProblem2);
+function needProblem(entry) {
+  if (typeof entry === "string") return nameProblem2(entry);
+  const expected = `must be a command name or { "command": "<name>", "version": "<argument>" }, got ${JSON.stringify(entry)}`;
+  if (!isRecord(entry) || Object.keys(entry).some((key) => key !== "command" && key !== "version")) {
+    return expected;
+  }
+  const { command: command2, version } = entry;
+  if (typeof command2 !== "string" || !commandName(command2)) return expected;
+  const argument = typeof version === "string" && version !== "" && !new RegExp("\\p{Cc}", "u").test(version);
+  return version === void 0 || argument ? null : expected;
+}
+var commands = (value) => {
+  if (Array.isArray(value)) return commandList(value);
+  if (!isRecord(value))
+    return "an array of command names, or an object of test-file globs to lists of them";
+  const good = {};
+  const problems = [];
+  for (const [glob, entries] of Object.entries(value)) {
+    const at = `"requires.commands.${glob}"`;
+    const bad = glob === "*" ? null : compiles([glob])?.problem ?? null;
+    if (bad !== null) problems.push(`${at} ${bad}; it is left out`);
+    else if (!Array.isArray(entries)) {
+      problems.push(
+        `${at} must be an array of commands, got ${JSON.stringify(entries)}; it is left out`
+      );
+    } else {
+      good[glob] = entries.filter((entry, index) => {
+        const why = needProblem(entry);
+        if (why !== null)
+          problems.push(`"requires.commands.${glob}[${index}]" ${why}; it is left out`);
+        return why === null;
+      });
+    }
+  }
+  return { kept: good, problems };
+};
 var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
 var alwaysLocal = kept("remote.alwaysLocal", (glob) => compiles([glob])?.problem ?? null);
+var setup = (value) => value === null || typeof value === "string" && insideRoot2(value) ? null : 'null or a repository-relative path to a script, such as ".squeal/remote-setup.sh"';
 var REMOTE_SHAPE = {
   requires: { commands },
-  remote: { allowed: boolean3, needsRepository, alwaysLocal }
+  remote: { allowed: boolean3, needsRepository, alwaysLocal, setup }
 };
 
 // src/core/daemon/policy-containers.ts
