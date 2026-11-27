@@ -16,6 +16,16 @@ export const SHUTDOWN_DEADLINE_MS = 3_000;
 export const SETTLE_DEADLINE_MS = 2_000;
 /** The deadline of `agent_settled`'s end of a turn: one store write, as a tool boundary. */
 export const END_TURN_DEADLINE_MS = EVENT_DEADLINE_MS;
+/**
+ * Row 011-433: how often one settle's wake is armed again after its wait
+ * ended empty, not cancelled, before `WAIT_BOUND_MS`: the worker died, the
+ * store did not open, or another connection held the waiter lock.
+ */
+export const WAKE_REARMS = 3;
+/** The pause before a re-arm: a discarded worker's lock goes with its thread. */
+export const REARM_DELAY_MS = 1_000;
+/** The worker's own bound on a wait (`IDLE_WAIT_MS` in `run.ts`): a wait that lasted it expired, and stays ended. */
+export const WAIT_BOUND_MS = 3_540_000;
 
 /** D3: every entry Squeal adds is a displayed custom message of this type. */
 export const CUSTOM_TYPE = "squeal";
@@ -83,7 +93,9 @@ type About<K extends PiRequest["kind"]> = Omit<Extract<PiRequest, { kind: K }>, 
  * - `agent_settled` ends the turn when no settle did: an abort, an error,
  *   a missed deadline, or the end of Squeal's continuation. Then, in `tui`
  *   and `rpc`, it arms the idle wake (D5): the idle delta, once there is
- *   one, starts a run as a follow-up. Under `-p` and `json` Pi exits.
+ *   one, starts a run as a follow-up. Under `-p` and `json` Pi exits. A
+ *   wait that ends empty before its bound, not cancelled, is armed again
+ *   after `rearmDelayMs`, at most `WAKE_REARMS` times per settle (row 011-433).
  * - `session_shutdown` cancels the wake and unregisters the outgoing
  *   session, except on `reload`, whose next instance takes it over, then
  *   stops the host. After it every event of the instance is silent.
@@ -92,6 +104,7 @@ type About<K extends PiRequest["kind"]> = Omit<Extract<PiRequest, { kind: K }>, 
  */
 export function squealExtension(
   start: (verdicts: SharedArrayBuffer) => Worker,
+  rearmDelayMs = REARM_DELAY_MS,
 ): (pi: PiApi) => void {
   return (pi) => {
     let host: DeliveryHost | null = null;
@@ -103,7 +116,8 @@ export function squealExtension(
     let lastPrimer: string | null = null;
     // Review 0.1.556: whether this run's system prompt has the primer (set at its start).
     let primed = false;
-    let waiting: PendingWait | null = null;
+    // The wait in flight, or the pause before its re-arm.
+    let waiting: Pick<PendingWait, "cancel"> | null = null;
 
     /** Asks the worker about `ctx`'s session; `null` after shutdown, before a start, or on a miss. */
     const ask = async <K extends PiRequest["kind"]>(
@@ -132,8 +146,12 @@ export function squealExtension(
       ended = false;
     };
 
-    /** D5: in a mode that stays open, waits for the idle delta and wakes the agent with it. */
-    const armWait = (ctx: PiContext) => {
+    /**
+     * D5: in a mode that stays open, waits for the idle delta and wakes the
+     * agent with it. Row 011-433: a wait that ends empty before its bound,
+     * not cancelled, is armed again after a pause, `left` more times.
+     */
+    const armWait = (ctx: PiContext, left = WAKE_REARMS) => {
       cancelWait();
       let mode: string;
       try {
@@ -143,18 +161,35 @@ export function squealExtension(
       }
       const session = sessionOf(ctx);
       if (shutDown || host === null || session === null || !WAKE_MODES.has(mode)) return;
+      const since = performance.now();
       const wait = host.wait({ kind: "wait", ...session });
       waiting = wait;
       void wait.answer.then((text) => {
         if (waiting !== wait) return;
         waiting = null;
-        if (text === null || shutDown) return;
+        if (shutDown) return;
+        if (text === null) {
+          if (left > 0 && performance.now() - since < WAIT_BOUND_MS) pause(ctx, left - 1);
+          return;
+        }
         try {
           pi.sendMessage(message(text), { triggerTurn: true, deliverAs: "followUp" });
         } catch {
           // D4: silence; the news waits for the next prompt.
         }
       });
+    };
+
+    /** Arms the wake again after `rearmDelayMs`, unless a cancel comes first; holds no process open. */
+    const pause = (ctx: PiContext, left: number) => {
+      const timer = setTimeout(() => {
+        if (waiting !== paused) return;
+        waiting = null;
+        armWait(ctx, left);
+      }, rearmDelayMs);
+      timer.unref();
+      const paused = { cancel: () => clearTimeout(timer) };
+      waiting = paused;
     };
 
     pi.on("session_start", async (event, ctx) => {
