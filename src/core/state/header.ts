@@ -13,6 +13,7 @@ import type { CheckpointRecord, TestFileKeyRecord } from "../types/store-records
 import type { WorktreeStates } from "./file-class.js";
 import { groupTiersOf, onRequestFiles, readCommitLine } from "./groups.js";
 import { type HeaderPart, headerPart, headerPartOf } from "./header-part.js";
+import { type LaneReads, laneReads } from "./lane-reads.js";
 import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
 import { liveActivity, slowTierOf } from "./slow.js";
@@ -92,6 +93,9 @@ export function readHeaderOf(
  * policy and the on-request files may give the part it made from them. Row
  * 011-426: the on-request files (`onRequestFiles`) are read now, after the
  * policy, since a request or a lane's run changes them with no state write.
+ * Row 011-427: the worktree row, the lanes' requests and their activity are
+ * read once for this header (`laneReads`), shared by the on-request files
+ * and the lane lines, and again by the next header read.
  */
 export function headerWith(
   store: Store,
@@ -99,6 +103,7 @@ export function headerWith(
   keys: readonly TestFileKeyRecord[],
   partOf: (policy: Policy | null, onRequest: ReadonlySet<string>) => HeaderPart,
 ): StatusHeader {
+  const reads = laneReads(store, worktreeId);
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
@@ -107,9 +112,9 @@ export function headerWith(
   const awaiting = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
-  const root = store.worktrees.get(worktreeId)?.root;
+  const root = reads.worktree()?.root;
   const policy = root === undefined ? null : readPolicy(root);
-  const part = partOf(policy, onRequestFiles(store, worktreeId, keys, policy));
+  const part = partOf(policy, onRequestFiles(store, worktreeId, keys, policy, reads));
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } =
     part.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
@@ -134,8 +139,8 @@ export function headerWith(
     runnerPartPending,
     ...listingRunnersField(runnerPartPending, root, policy),
     ...(part.slowPending === undefined ? {} : { slowPending: part.slowPending }),
-    ...slowTierField(store, worktreeId, keys, part),
-    ...groupFields(store, worktreeId, keys, part),
+    ...slowTierField(store, worktreeId, keys, part, reads),
+    ...groupFields(store, worktreeId, keys, part, reads),
     ...installFields(wait),
     ...(optimizerOff === undefined ? {} : { optimizerOff }),
   };
@@ -166,9 +171,10 @@ function slowTierField(
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   { view, slowLane }: HeaderPart,
+  reads: LaneReads,
 ): Pick<StatusHeader, "slowTier"> {
   if (view === null || slowLane === undefined) return {};
-  const activity = liveActivity(store, worktreeId, keys, view.isSlow, SLOW_GROUP);
+  const activity = liveActivity(store, worktreeId, keys, view.isSlow, SLOW_GROUP, reads);
   return { slowTier: slowTierOf({ ...slowLane, activity }, view) };
 }
 
@@ -182,11 +188,12 @@ function groupFields(
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   { groups }: HeaderPart,
+  reads: LaneReads,
 ): Pick<StatusHeader, "groupTiers" | "lanePending" | "noTestsAtEdit" | "commitLine"> {
   if (groups === undefined) return {};
   const commitLine = readCommitLine(store, worktreeId);
   return {
-    groupTiers: groupTiersOf(store, worktreeId, keys, groups.lanes),
+    groupTiers: groupTiersOf(store, worktreeId, keys, groups.lanes, reads),
     lanePending: groups.lanePending,
     ...(groups.testsAtEdit ? {} : { noTestsAtEdit: true as const }),
     ...(commitLine === undefined ? {} : { commitLine }),

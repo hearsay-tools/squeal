@@ -4,11 +4,6 @@ import { heldUntilAsked } from "../daemon/check-groups.js";
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
-import {
-  type LaneRequests,
-  publishedLaneRequests,
-  publishedNarrowAsks,
-} from "../scheduler/narrow-asks-row.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
 import type { CheckMoment } from "../types/check-groups.js";
@@ -21,6 +16,7 @@ import type { CommitLine, GroupTierState } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { classOf, type WorktreeStates, worktreeStatesOf } from "./file-class.js";
+import { type LaneReads, laneReads } from "./lane-reads.js";
 import { type LaneFiles, laneCounts, liveActivity, slowPolicyView } from "./slow.js";
 
 /*
@@ -120,21 +116,25 @@ export function groupLaneCounts(
   });
 }
 
-/** Each group's tier state from its kept lane (`groupLaneCounts`) and its activity read now. */
+/**
+ * Each group's tier state from its kept lane (`groupLaneCounts`) and its
+ * activity and requests read now, once for every lane (`reads`, row 011-427).
+ */
 export function groupTiersOf(
   store: Store,
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   lanes: readonly GroupLaneCounts[],
+  reads: LaneReads = laneReads(store, worktreeId),
 ): readonly GroupTierState[] {
-  const requested = requestedOf(store, worktreeId, keys, lanes);
+  const requested = requestedOf(keys, lanes, reads);
   return lanes.map(({ name, inLane, head, stopWaitMs }) => {
     const { asked, outside } = requested(head.at, inLane);
     // Row 023-79 (Z3): a request-only group's few files left outside a request are named.
     const few = head.at === "manual" && outside.length > 0 && outside.length <= NAMED_OUTSIDE;
     return {
       ...head,
-      activity: liveActivity(store, worktreeId, keys, inLane, name),
+      activity: liveActivity(store, worktreeId, keys, inLane, name, reads),
       ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
       ...(asked === 0 ? {} : { requested: asked }),
       ...(few ? { pendingOutside: outside.map((ref) => ref.path) } : {}),
@@ -155,14 +155,15 @@ export function groupTiersOf(
  * file, so batch membership is not counted.
  */
 function requestedOf(
-  store: Store,
-  worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   lanes: readonly GroupLaneCounts[],
+  reads: LaneReads,
 ): (at: CheckMoment, inLane: (ref: TestFileRef) => boolean) => Requested {
   const none: Requested = { asked: 0, outside: [] };
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => none;
-  const isAsked = askedAtKey(store, worktreeId);
+  const asked = reads.requests().narrow;
+  const isAsked = (row: TestFileKeyRecord) =>
+    row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
   const pending = keys.filter((row) => row.pending !== null);
   return (at, inLane) => {
     if (!heldUntilAsked(at)) return none;
@@ -170,14 +171,6 @@ function requestedOf(
     const outside = lane.filter((row) => !isAsked(row)).map((row) => row.testFile);
     return { asked: lane.length - outside.length, outside };
   };
-}
-
-/** Whether the live daemon published a narrow ask for the row's file at its key now (row 023-67). */
-function askedAtKey(store: Store, worktreeId: WorktreeId): (row: TestFileKeyRecord) => boolean {
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  const asked =
-    daemon === null ? new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
-  return (row) => row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
 }
 
 const NONE_ON_REQUEST: ReadonlySet<string> = new Set();
@@ -195,13 +188,15 @@ const NONE_ON_REQUEST: ReadonlySet<string> = new Set();
  * file and a whole-group request run side by side. A held file not asked
  * stays on request while its lane runs a narrow request for other files.
  * The one set the header's counts, status's file lists and `status --wait`
- * read.
+ * read. A header read passes its `reads`, which its lane lines share (row
+ * 011-427).
  */
 export function onRequestFiles(
   store: Store,
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   policy: Policy | null,
+  reads: LaneReads = laneReads(store, worktreeId),
 ): ReadonlySet<string> {
   if (policy === null || !groupTextsShown(policy)) return NONE_ON_REQUEST;
   const view = groupView(policy);
@@ -209,7 +204,7 @@ export function onRequestFiles(
     (group) => group.index !== null && group.select.kind === "tests" && heldUntilAsked(group.at),
   );
   if (held.length === 0 || runAllOpen(store, worktreeId)) return NONE_ON_REQUEST;
-  const { narrow, commit, requested } = laneRequestsOf(store, worktreeId);
+  const { narrow, commit, requested } = reads.requests();
   const waiting = new Set(held.filter((group) => !requested.has(group.name)));
   if (waiting.size === 0) return NONE_ON_REQUEST;
   const atKey = (asks: ReadonlyMap<string, string>, id: string, key: string | null) =>
@@ -222,14 +217,6 @@ export function onRequestFiles(
     out.add(id);
   }
   return out;
-}
-
-/** The live daemon's published lane requests; none without a daemon record. */
-function laneRequestsOf(store: Store, worktreeId: WorktreeId): LaneRequests {
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  return daemon === null
-    ? { narrow: new Map(), commit: new Map(), requested: new Set() }
-    : publishedLaneRequests(store, worktreeId, daemon.startedAt);
 }
 
 /** Whether a `run --all` checkpoint is open or owed (`readCheckpointProgress`). */
