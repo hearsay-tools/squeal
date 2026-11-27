@@ -6,7 +6,7 @@
 // completes; with SQUEAL_TEST_SLOW_MS=<ms> it records it and completes that much later.
 // The daemon is reported alive and never spawned. The test gives it a private
 // HOME and XDG_RUNTIME_DIR.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { HOOKS, type HookName } from "../../../src/harness/claude-code/hooks.js";
 import { runMain } from "../../../src/harness/claude-code/main.js";
 import { CODEX_HOOKS, type CodexHookName } from "../../../src/harness/codex/hooks.js";
@@ -15,18 +15,27 @@ import { runHookInput } from "../../../src/harness/codex/main.js";
 const [harness, name, marker] = process.argv.slice(2);
 const deps = { env: {}, ensureDaemon: async () => "alive" as const };
 
+/**
+ * Row 011-430: the test acts once the marker exists, so it appears whole, by temp file
+ * and rename; `writeFileSync` alone creates it empty before it writes the text.
+ */
+const record = (path: string, text: string) => {
+  writeFileSync(`${path}.tmp`, text);
+  renameSync(`${path}.tmp`, path);
+};
+
 const slowMs = Number(process.env.SQUEAL_TEST_SLOW_MS ?? "0");
 if (process.env.SQUEAL_TEST_STALL === "1" && marker !== undefined) {
   // The text reached the write, so the report was prepared; its write never reports done.
   process.stdout.write = ((text: string) => {
-    writeFileSync(marker, text);
+    record(marker, text);
     return false;
   }) as typeof process.stdout.write;
 } else if (slowMs > 0 && marker !== undefined) {
   // A normal hand-off that takes `slowMs`: the report stays held that long, then commits.
   const write = process.stdout.write.bind(process.stdout);
   process.stdout.write = ((text: string, done: (error?: Error | null) => void) => {
-    writeFileSync(marker, text);
+    record(marker, text);
     setTimeout(() => write(text, done), slowMs);
     return true;
   }) as typeof process.stdout.write;

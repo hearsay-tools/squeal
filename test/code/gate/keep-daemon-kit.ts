@@ -21,7 +21,6 @@ import { StatCache } from "../../../src/core/hash/stat-cache.js";
 import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
 import { BusyWaits } from "../../../src/core/store/busy.js";
-import { describeHolders, lockHolders } from "../../../src/core/store/lock-holders.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 import { lockFileFor, storePaths } from "../../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../../src/core/types/common.js";
@@ -30,6 +29,7 @@ import type { KeepRequest } from "../../../src/core/types/daemon-writes.js";
 import type { CheckKey, TestFileRef } from "../../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import type { CheckRunResult, RunReport } from "../../../src/core/types/runner.js";
+import { visibleHolder } from "./keep-busy-kit.js";
 
 /*
  * Spec 021 D15 (row 021-20, part two): the kit of the keeper-through-daemon
@@ -232,7 +232,8 @@ export async function served(options: ServedOptions = {}): Promise<Served> {
     store.close();
     rmSync(root, { recursive: true, force: true });
   });
-  const hold = () => {
+  // Row 011-430: the holder is read until `/proc/locks` shows it, since one read can miss it.
+  const hold = async () => {
     const holder = new DatabaseSync(storePaths(commonDir).database);
     holder.exec("BEGIN IMMEDIATE");
     const release = () => {
@@ -241,7 +242,7 @@ export async function served(options: ServedOptions = {}): Promise<Served> {
       holder.close();
     };
     onTestFinished(release);
-    return { holder: describeHolders(lockHolders(storePaths(commonDir).database)), release };
+    return { holder: await visibleHolder(storePaths(commonDir).database), release };
   };
   const { schemaVersion: storeSchema } = store;
   return { root, commonDir, worktreeId, storeSchema, socketPath, keeps, hold };
