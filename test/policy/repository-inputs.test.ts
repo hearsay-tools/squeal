@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,6 +23,7 @@ import { buildWatchSpec } from "../../src/core/watcher/watch-spec.js";
 import { REPO_ROOT } from "../../src/harness/build.js";
 import { git } from "../hash/git-repo.js";
 import { observeBuildInputs, TSRS, TSRS_ARGS } from "../helpers/build-inputs.js";
+import { removeScratch } from "../helpers/scratch.js";
 
 /*
  * Review wave 7, input 4: `test/harness/plugin.test.ts` reads the committed
@@ -106,9 +107,8 @@ beforeAll(async () => {
 
 afterAll(() => {
   store?.close();
-  // `git` children of the run can still be writing under `.git` (CI, Node 22): retry the removal.
-  if (root !== undefined)
-    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  // `git` children of the run can still be writing under `.git` (CI, Node 22): end them first.
+  if (root !== undefined) removeScratch(root);
 });
 
 describe("policy: this repository's squeal.config.json", () => {

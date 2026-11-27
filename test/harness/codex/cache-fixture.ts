@@ -28,6 +28,7 @@ import {
   noteCodexCommand,
 } from "../../../src/harness/codex/build.js";
 import { observeMetafile } from "../../helpers/build-inputs.js";
+import { scratchDir } from "../../helpers/scratch.js";
 
 /*
  * Codex's plugin cache in a temporary directory (`research/plugin-cache-cleanup.md`
@@ -197,7 +198,7 @@ async function endProcesses(pids: readonly number[], home: string): Promise<void
 }
 
 export function codexMachine(built: Built): CodexMachine {
-  const dir = mkdtempSync("/tmp/sq-vc-");
+  const { dir, remove } = scratchDir("/tmp/sq-vc-");
   const home = join(dir, "home");
   const codex = join(home, ".codex", "plugins");
   const cache = join(codex, "cache", "hearsay", "squeal");
@@ -206,9 +207,9 @@ export function codexMachine(built: Built): CodexMachine {
   symlinkSync(process.execPath, join(bin, "node"));
   const path = `${bin}:/usr/bin:/bin`;
   const rootOf = (version: string) => join(cache, version);
-  // Node 22 CI: a process still writing under HOME (its compile cache) made rmdir fail ENOTEMPTY.
-  const cleanup = () =>
-    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  // Node 22 CI: a process still writing under HOME (its compile cache) made rmdir fail ENOTEMPTY;
+  // the removal waits for it now (row 011-431).
+  const cleanup = remove;
   return {
     dir,
     home,

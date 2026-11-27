@@ -20,6 +20,7 @@ import { REPO_ROOT } from "../../src/harness/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { RUN_MISSING, runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
+import { removeScratch } from "../helpers/scratch.js";
 import { quietPoint } from "./agree.js";
 import {
   type AntigravityHook,
@@ -532,8 +533,9 @@ export class E2E {
       await Promise.all(roots.map((root) => this.cli(root, ["stop"]).catch(() => null)));
       this.#killDaemons();
     } finally {
-      if (!this.#kept) rmSync(this.base, { recursive: true, force: true, maxRetries: 3 });
-      rmSync(this.runtime, { recursive: true, force: true, maxRetries: 3 });
+      // Each once what still writes there has ended (row 011-431).
+      if (!this.#kept) removeScratch(this.base);
+      removeScratch(this.runtime);
       this.#killDaemons();
     }
   }

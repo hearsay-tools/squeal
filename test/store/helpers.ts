@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -10,6 +10,7 @@ import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { ResultRecord, WorktreeRecord } from "../../src/core/types/store-records.js";
+import { scratchDir } from "../helpers/scratch.js";
 import { deferCleanup } from "../unit-cleanup.js";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,15 +22,16 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
  */
 
 /**
- * A fresh temporary directory, removed after the test. The removal retries:
- * a detached stand-in CLI that a hook spawned (`quietCli`) can still write
- * its marker after the hook returned, so a single pass can meet
- * `ENOTEMPTY` under load (001 `reviews/wave-10d.md` N4, and its Codex twin).
+ * A fresh temporary directory, removed after the test once what writes there
+ * has ended (`scratchDir`, row 011-431): a detached stand-in CLI that a hook
+ * spawned (`quietCli`) can still write its marker after the hook returned
+ * (001 `reviews/wave-10d.md` N4, and its Codex twin), and a daemon's store
+ * process for its grace (findings G3).
  */
 export function tempDir(prefix = "squeal-store-"): string {
-  const dir = mkdtempSync(join(tmpdir(), prefix));
-  deferCleanup(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
-  return dir;
+  const scratch = scratchDir(join(tmpdir(), prefix));
+  deferCleanup(scratch.remove);
+  return scratch.dir;
 }
 
 /** A fake git common dir: a directory with `HEAD`, like `.git`. */
