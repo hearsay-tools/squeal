@@ -63,7 +63,7 @@ describe("lint status names its wait for CPU (row 017-33)", () => {
     expect(status?.linting).toEqual({
       done: 0,
       total: 2,
-      cpuWait: { since: expect.any(Number), busy: 21.4, limit: 18 },
+      cpuWait: { since: expect.any(Number), busy: 21.4, limit: 18, cause: "ceiling" },
     });
     expect(JSON.parse(JSON.stringify(status)).linting.cpuWait).toMatchObject({
       busy: 21.4,
@@ -119,6 +119,7 @@ describe("lint status names its wait for CPU (row 017-33)", () => {
       since: 1_000,
       busy: 21,
       limit: 18,
+      cause: "ceiling",
     });
     refusedCpu(store.meta, scope, { busy: null, limit: 18 }, at(1_000 + CPU_WAIT_REFRESH_MS));
     const at2 = 1_000 + CPU_WAIT_REFRESH_MS;
@@ -126,6 +127,7 @@ describe("lint status names its wait for CPU (row 017-33)", () => {
       since: 1_000,
       busy: null,
       limit: 18,
+      cause: "ceiling",
     });
     expect(readCpuWait(store.meta, scope, at(at2 + SLOT_WAITER_FRESH_MS + 1))).toBeNull();
     // A pool that read no gate records nothing.

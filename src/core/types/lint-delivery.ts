@@ -69,12 +69,24 @@ export interface LintProgress {
  * Row 017-33: lint's wait for the background CPU limit (spec 021 D18), as
  * the pool read it at the last refusal: since when, the busy CPUs it
  * counted (`null` when it read none) and the limit they must fall below.
+ * Row 017-37: `cause` says what refused it; only `ceiling` is a wait for
+ * CPU, and only then do surfaces tell the busy CPUs and the limit.
  */
 export interface LintCpuWait {
   readonly since: EpochMs;
   readonly busy: number | null;
   readonly limit: number;
+  readonly cause: LintWaitCause;
 }
+
+/**
+ * Row 017-37 (gh-238, research/lint-gate-stall.md F3): what refused lint's
+ * background lease. `ceiling`: the busy CPUs reached the limit. `share`:
+ * this worktree's share of the worker pool is taken, by its own background
+ * tests or by other worktrees. `queue`: the pool's free workers are held or
+ * kept for worktrees that waited longer.
+ */
+export type LintWaitCause = "ceiling" | "share" | "queue";
 
 /** Why the surfaces cannot say more; each absent when it does not hold. */
 export interface LintReasons {

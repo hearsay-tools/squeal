@@ -1,7 +1,8 @@
 import { SLOT_WAITER_FRESH_MS } from "../../slow/slot-files.js";
 import type { EpochMs } from "../../types/common.js";
-import type { LintCpuWait } from "../../types/lint-delivery.js";
+import type { LintCpuWait, LintWaitCause } from "../../types/lint-delivery.js";
 import type { LintMetaRepo } from "../store/types.js";
+import type { LintGate } from "./types.js";
 
 /*
  * Row 017-33 (gh-238, spec 017 D7, D9): while the pool refuses a lint
@@ -11,19 +12,23 @@ import type { LintMetaRepo } from "../store/types.js";
  * refusal and again at most every `CPU_WAIT_REFRESH_MS` while refusals go
  * on, and dropped at a grant. A record older than a waiter's freshness
  * (`SLOT_WAITER_FRESH_MS`, as the pool forgets a waiter that stops looking)
- * is a pass that stopped looking, and reads as no wait.
+ * is a pass that stopped looking, and reads as no wait. Row 017-37: the
+ * record keeps what refused the lease (`LintWaitCause`); one written before
+ * it, with none, reads as the ceiling's.
  */
 
 /** How often a wait that goes on writes its record again, with the pool's latest reading. */
 export const CPU_WAIT_REFRESH_MS = 10_000;
 
-/** `meta` key of a tool's scope's wait for CPU: `{ since, at, busy, limit }`. */
+/** `meta` key of a tool's scope's wait for CPU: `{ since, at, busy, limit, cause }`. */
 export const cpuWaitKey = (scope: string) => `lint-cpu-wait:${scope}`;
 
 interface CpuWaitRecord extends LintCpuWait {
   /** When the record was last written. */
   readonly at: EpochMs;
 }
+
+const CAUSES: readonly LintWaitCause[] = ["ceiling", "share", "queue"];
 
 function readRecord(meta: LintMetaRepo, scope: string): CpuWaitRecord | null {
   const raw = meta.get(cpuWaitKey(scope));
@@ -38,7 +43,8 @@ function readRecord(meta: LintMetaRepo, scope: string): CpuWaitRecord | null {
       (busy !== null && typeof busy !== "number")
     )
       return null;
-    return { since: r.since as EpochMs, at: r.at as EpochMs, busy, limit: r.limit };
+    const cause = CAUSES.find((c) => c === r.cause) ?? "ceiling";
+    return { since: r.since as EpochMs, at: r.at as EpochMs, busy, limit: r.limit, cause };
   } catch {
     return null;
   }
@@ -47,23 +53,25 @@ function readRecord(meta: LintMetaRepo, scope: string): CpuWaitRecord | null {
 /**
  * The pool refused the scope's part at `now`, its gate as read (`null`
  * when the pool gave none): the wait starts, or goes on with the latest
- * numbers once the refresh is due.
+ * numbers once the refresh is due or at once when its cause changed.
  */
 export function refusedCpu(
   meta: LintMetaRepo,
   scope: string,
-  gate: { readonly busy: number | null; readonly limit: number } | null,
+  gate: LintGate | null,
   now: EpochMs,
 ): void {
   if (gate === null) return;
+  const cause = gate.refusal ?? "ceiling";
   const last = readRecord(meta, scope);
   const live = last !== null && now - last.at <= SLOT_WAITER_FRESH_MS && now >= last.at;
-  if (live && now - last.at < CPU_WAIT_REFRESH_MS) return;
+  if (live && last.cause === cause && now - last.at < CPU_WAIT_REFRESH_MS) return;
   const record: CpuWaitRecord = {
     since: live ? last.since : now,
     at: now,
     busy: gate.busy,
     limit: gate.limit,
+    cause,
   };
   meta.set(cpuWaitKey(scope), JSON.stringify(record));
 }
@@ -77,5 +85,5 @@ export function grantedCpu(meta: LintMetaRepo, scope: string): void {
 export function readCpuWait(meta: LintMetaRepo, scope: string, now: EpochMs): LintCpuWait | null {
   const r = readRecord(meta, scope);
   if (r === null || now - r.at > SLOT_WAITER_FRESH_MS) return null;
-  return { since: r.since, busy: r.busy, limit: r.limit };
+  return { since: r.since, busy: r.busy, limit: r.limit, cause: r.cause };
 }
