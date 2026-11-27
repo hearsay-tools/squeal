@@ -84,7 +84,24 @@ const INSTALL_TIMEOUT_MS = 180_000;
  * Vitest. `vitest-8.3` is Vitest alone on `VITE_8_3`, for a fixture that runs a retained
  * release from before 0.1.645 (row 025-25); every other kind is on the repository's Vite.
  */
-export type InstallKind = "vitest" | "vitest-8.3" | "node-test" | "pytest";
+export const INSTALL_KINDS = ["vitest", "vitest-8.3", "node-test", "pytest"] as const;
+export type InstallKind = (typeof INSTALL_KINDS)[number];
+
+/**
+ * Every kind's install, as CI makes them before its tests (row 011-432): one cache key holds
+ * them all, so the shard that saves it first must not save only the kinds its own files used.
+ * Exits 1 when a kind cannot install, so a failed job saves no cache.
+ */
+export async function fillInstalls(): Promise<void> {
+  let failed = false;
+  // one at a time: `vitest` and `pytest` share a recipe, so at once they would install it twice
+  for (const kind of INSTALL_KINDS) {
+    const made = await fixtureInstall(kind);
+    console.log(`${kind}: ${made.ok ? made.dir : made.reason}`);
+    failed ||= !made.ok;
+  }
+  if (failed) process.exit(1);
+}
 
 /** The workspace packages of `test/fixtures/e2e/node-test`, whose manifests npm links. */
 const WORKSPACE = join(REPO_ROOT, "test/fixtures/e2e/node-test/packages");
