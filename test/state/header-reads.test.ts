@@ -7,6 +7,7 @@ import { publishNarrowAsks } from "../../src/core/scheduler/narrow-asks-row.js";
 import { groupTiersMetaKey, publishGroupActivity } from "../../src/core/slow/state.js";
 import { readHeader } from "../../src/core/state/header.js";
 import type { EpochMs } from "../../src/core/types/common.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { inTurn, keys, NOW, type Seeded, seed, states } from "../status/slow-tier-seed.js";
 
@@ -33,14 +34,24 @@ const POLICY = {
 };
 const FILES = ["test/browser/a.test.ts", "test/browser/b.test.ts", "test/browser/c.test.ts"];
 
-function held(): Seeded {
-  const s = seed(POLICY, { revisions: 2 });
-  keys(s.store, s.repo, Object.fromEntries(FILES.map((path) => [path, "queued" as const])));
+/** Review 0.1.660 B1: two configured groups share one activity row. */
+const TWO_GROUPS = {
+  checks: [
+    ...POLICY.checks,
+    { name: "e2e", runner: "vitest", tests: ["test/e2e/**"], at: "manual" },
+  ],
+};
+const E2E = ["test/e2e/x.test.ts", "test/e2e/y.test.ts"];
+
+/** `files` queued with a pending test each, under `policy`. */
+function held(policy: object = POLICY, files: readonly string[] = FILES): Seeded {
+  const s = seed(policy, { revisions: 2 });
+  keys(s.store, s.repo, Object.fromEntries(files.map((path) => [path, "queued" as const])));
   states(
     s.store,
     s.repo,
-    FILES.map(() => ({ validity: "pending" as const })),
-    FILES,
+    files.map(() => ({ validity: "pending" as const })),
+    [...files],
   );
   inTurn(s);
   return s;
@@ -103,4 +114,47 @@ describe("one request and activity read per header read (row 011-427)", () => {
     expect(second.groupTiers?.[0]?.requested).toBe(2);
     expect(second.testFilesByPhase?.onRequest).toBe(1);
   });
+
+  it("reads the groups' activity row once for two configured groups (review 0.1.660 B1)", () => {
+    const s = held(TWO_GROUPS, [...FILES, ...E2E]);
+    const id = s.repo.mainId;
+    running(s, "browser", FILES[0] as string);
+    running(s, "e2e", E2E[0] as string);
+    const { value, reads } = counted(s, () => readHeader(s.store, id));
+    expect(reads(groupTiersMetaKey(id))).toBe(1);
+    expect(reads(worktreeMetaKey("narrowAsks", id))).toBe(1);
+    expect(activityOf(value, "browser")).toBe(FILES[0]);
+    expect(activityOf(value, "e2e")).toBe(E2E[0]);
+  });
+
+  it("reads the groups' activity fresh on the next header read: a changed activity shows", () => {
+    const s = held(TWO_GROUPS, [...FILES, ...E2E]);
+    const id = s.repo.mainId;
+    running(s, "browser", FILES[0] as string);
+    const first = readHeader(s.store, id);
+    expect(activityOf(first, "browser")).toBe(FILES[0]);
+    expect(activityOf(first, "e2e")).toBeUndefined();
+    running(s, "e2e", E2E[1] as string);
+    publishGroupActivity(s.store, id, "browser", null);
+    const second = readHeader(s.store, id);
+    expect(activityOf(second, "browser")).toBeUndefined();
+    expect(activityOf(second, "e2e")).toBe(E2E[1]);
+  });
 });
+
+/** Publishes `group`'s lane running `path`, and marks its key row running. */
+function running({ store, repo }: Seeded, group: string, path: string): void {
+  publishGroupActivity(store, repo.mainId, group, {
+    kind: "running",
+    path,
+    since: NOW - 500,
+    lastDurationMs: null,
+  });
+  keys(store, repo, { [path]: "running" });
+}
+
+/** The path `group`'s line says its lane runs; `undefined` when it runs nothing. */
+function activityOf(header: StatusHeader, group: string): string | undefined {
+  const activity = header.groupTiers?.find((tier) => tier.name === group)?.activity;
+  return activity?.kind === "running" ? activity.path : undefined;
+}
