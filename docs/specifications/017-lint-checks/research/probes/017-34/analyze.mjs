@@ -1,0 +1,33 @@
+import { readFileSync } from "node:fs";
+const a = JSON.parse(readFileSync(process.argv[2]));
+const REL = Date.parse("2026-11-19T18:38:45Z"), FIRSTNEW = Date.parse("2026-11-19T21:07:41Z");
+const iso = (t) => t ? new Date(t).toISOString().slice(5, 16) : "-";
+const q = (xs, p) => { if (!xs.length) return null; const s = [...xs].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+const fmt = (xs) => xs.length ? `n=${xs.length} p50=${Math.round(q(xs,.5))} p90=${Math.round(q(xs,.9))} max=${Math.round(Math.max(...xs))}` : "n=0";
+const withLog = a.filter((r) => r.log && r.keying.at >= r.log.start - 60_000 && r.keying.at <= r.log.end + 60_000);
+console.log("keyings", a.length, "inside their log window", withLog.length);
+const era = (r) => r.keying.at < REL ? "pre" : r.keying.at >= FIRSTNEW ? "post" : "edge";
+const full = withLog.filter((r) => r.files > 1000 && r.misses >= 0.5 * r.files);
+const partial = withLog.filter((r) => !(r.files > 1000 && r.misses >= 0.5 * r.files));
+console.log("full re-lints", full.length, "by era", Object.entries(Object.groupBy(full, era)).map(([k,v])=>k+":"+v.length).join(" "));
+console.log("other keyings (mostly hits)", partial.length, fmt(partial.map(r=>r.misses)));
+for (const e of ["pre", "post"]) {
+  const f = full.filter((r) => era(r) === e);
+  const done = f.filter((r) => r.pending === 0 && r.lastPart);
+  const open = f.filter((r) => r.pending > 0);
+  console.log(`\n== ${e}: full re-lints ${f.length}; completed ${done.length}; left pending ${open.length}`);
+  console.log(" files", fmt(f.map(r=>r.files)));
+  console.log(" completed: keying->last part s", fmt(done.map(r => (r.lastPart - r.keying.at)/1000)));
+  console.log(" completed: over 120 s", done.filter(r => r.lastPart - r.keying.at > 120e3).length);
+  console.log(" keying->first part s (all with a part)", fmt(f.filter(r=>r.firstPart).map(r => (r.firstPart - r.keying.at)/1000)));
+  const g = f.flatMap(r => r.gaps);
+  const up = g.filter(x => x.daemonUp);
+  console.log(" waits >=10 s while daemon up:", fmt(up.map(x=>x.s)), "sum s", Math.round(up.reduce((s,x)=>s+x.s,0)));
+  console.log("   with a logged ceiling refusal:", fmt(up.filter(x=>x.ceilingLogged).map(x=>x.s)), "sum s", Math.round(up.filter(x=>x.ceilingLogged).reduce((s,x)=>s+x.s,0)));
+  console.log("   without one:", fmt(up.filter(x=>!x.ceilingLogged).map(x=>x.s)), "sum s", Math.round(up.filter(x=>!x.ceilingLogged).reduce((s,x)=>s+x.s,0)));
+  console.log("   old-format looks below ceiling (slots capped) in logged waits:", up.reduce((n,x)=>n+x.belowCeilingLooks,0));
+  console.log(" waits spanning a daemon stop:", g.filter(x=>!x.daemonUp).length);
+  console.log(" share of completed span spent in waits >=10 s:", (()=>{let w=0,s=0;for(const r of done){s+=(r.lastPart-r.keying.at)/1000;w+=r.gaps.filter(x=>x.daemonUp).reduce((t,x)=>t+x.s,0)}return (w/s*100).toFixed(0)+"% of "+Math.round(s)+" s"})());
+  const causes = Object.entries(Object.groupBy(f, r => r.cause.cause)).map(([k,v])=>[v.length,k]).sort((x,y)=>y[0]-x[0]);
+  console.log(" causes:"); for (const [n,k] of causes) console.log("  ", n, k);
+}
