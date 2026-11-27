@@ -26,10 +26,40 @@ post-commit stale `ENOENT`. Findings: [issue-303.md](issue-303.md).
   Gitlinks are never packed. The empty blob is written on the remote by
   `hash-object -w`, because it can be absent from the local object store.
 
-Cost: each `gitKeeper.sync(null)` (`refreshGit` before a tier split) now
-also runs `git ls-files -s -z | git hash-object --stdin` locally. That is a
-linear read of the index (milliseconds for tens of thousands of entries).
-Not measured on a large repository.
+Review 0.1.662 B2 (repair R2): `ls-files -s` and `--index-info` drop the
+intent-to-add flag (`git add -N`). The index hash now also covers `git diff
+--cached --name-status -z`, which omits an intent-to-add path and lists a
+staged empty file. Options fix renames, colour, external diff and
+submodules against user config. `stagedIndex` reads the flag from `git
+ls-files --debug` (`CE_INTENT_TO_ADD`, `0x20000000`). `INDEX_SCRIPT` takes
+those paths in a second section and marks them with `git reset -q -N HEAD
+--pathspec-from-file`, with literal pathspecs. That command changes only
+the index: no working-tree file is written. Known limit: an intent-to-add
+path that is also in HEAD (`git rm --cached p; git add -N p`) comes back as
+HEAD's entry there. The hashes then differ, so the machine stays not
+current: it never claims a wrong index as current. A remote Git whose
+`diff --cached` treats intent-to-add differently from the local Git gives
+the same safe result.
+
+## Cost of the freshness read (measured, R2)
+
+`localGitState` runs at every `gitKeeper.sync`, including `sync(null)` in
+`refreshGit` before each lane tier split, and at wake. Median of 21 calls
+on 2026-11-27, on this host (16 CPUs, load average 3.3 to 4.0, not a quiet
+host), Git 2.43.0, Node 26.13.0, script `/tmp/ed28-measure.mts` (not kept):
+
+| Index | Refs only (before 026-39) | + `ls-files -s` hash (first round) | `localGitState` now (+ staged diff names) |
+| --- | --- | --- | --- |
+| this repository, 20,435 entries | 8.2 ms | 25.8 ms | 34.0 ms |
+| synthetic, 100,000 entries, clean | 5.2 ms | 52.6 ms | 63.2 ms |
+| synthetic, 99,671 entries, about 330 staged changes and one intent-to-add | 4.6 ms | 49.9 ms | 62.2 ms |
+
+The added cost grows with index entries: the listing adds about 0.5 to
+0.9 ms per 1,000 entries, the staged diff 0.1 to 0.4 ms per 1,000 (it uses
+the cache tree). This is local CPU time per tier split, with no SSH. No
+paired boat.dev benchmark ran: the wave brief names no benchmark cells.
+The review asks for one under process step 6c; that is the coordinator's
+call.
 
 ## Other providers
 
