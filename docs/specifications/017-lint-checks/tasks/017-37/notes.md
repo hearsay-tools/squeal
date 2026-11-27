@@ -13,7 +13,7 @@ Worker b07b500e, 2026-11-28. Brief: `tasks/wave-9.md`. Evidence: `research/lint-
 ## JSON changes (all additive)
 
 - `squeal status --json`: `lint.linting.cpuWait.cause`: `"ceiling" | "share" | "queue"`. `busy` and `limit` stay in JSON for every cause; only the text drops them for `share` and `queue`.
-- `squeal status --json --wait <ms> <path>...`: `selection.lint` and `wait.lint` (also `named.lint` for `status --json <path>...`), present only when lint is on and includes a named path:
+- `squeal status --json --wait <ms> <path>...`: `selection.lint` and `wait.lint`, present only when lint is on and includes a named path. The snapshot form without `--wait` (`status --json <path>...`, `src/cli/wait/snapshot.ts`) does not read lint yet:
   - `done`, `pending`, `failing`, `unknown`: counts of checks (a path per tool). `failing` is part of `done`.
   - `files[]`: `{ path, tool, outcome: "pass" | "fail" | "pending" | "unknown", reason?, waits?: "linting" | "backlog" | "held" | "stale", cpuWait?, findings? }`. A stale check reads `pending` with `waits: "stale"`.
 - The repository-wide `linting` count is unchanged.
