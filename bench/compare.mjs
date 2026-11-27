@@ -59,8 +59,8 @@ export function spread(xs) {
 
 /**
  * A change is noise when both versions ran at least twice and their ranges
- * overlap: then some run of the first version is as far from its own mean as
- * the other version's mean is.
+ * overlap. This is an agreed, conservative rule (row 025-27), not a test of
+ * statistical significance.
  */
 export function isNoise(a, b) {
   if (!a || !b || a.n < 2 || b.n < 2) return false;
