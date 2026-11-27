@@ -18,6 +18,7 @@ import { type EslintMessage, eslintFindings } from "../../../src/core/lint/eslin
 import type { LintFileResult, LintProvider } from "../../../src/core/lint/pass/provider.js";
 import type { EslintProviderOptions } from "../../../src/core/lint/provider/eslint-provider.js";
 import { eslintProvider } from "../../../src/core/lint/provider/eslint-provider.js";
+import { scratchDir } from "../../helpers/scratch.js";
 
 const REPO = join(import.meta.dirname, "../../..");
 const TOOLCHAIN = join(REPO, "test/fixtures/lint/toolchain/node_modules");
@@ -62,8 +63,9 @@ export type Major = 9 | 10;
  * test, with its tools installed.
  */
 export function project(name: string, major: Major = 10): string {
-  const root = mkdtempSync(join(tmpdir(), `squeal-lint-${name}-`));
-  cleanups.push(() => rmSync(root, { recursive: true, force: true, maxRetries: 10 }));
+  // Removed once what writes there has ended (row 011-431).
+  const { dir: root, remove } = scratchDir(join(tmpdir(), `squeal-lint-${name}-`));
+  cleanups.push(remove);
   for (const path of sources(name)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     cpSync(join(FIXTURES, name, path), join(root, path));

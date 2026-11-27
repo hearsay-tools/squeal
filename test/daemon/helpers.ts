@@ -4,14 +4,13 @@ import {
   copyFileSync,
   cpSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   realpathSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { loadavg } from "node:os";
+import { availableParallelism, loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
@@ -26,6 +25,7 @@ import { TEST_VERSION } from "../fixed-version.js";
 import { git } from "../hash/git-repo.js";
 import { compileObserved, compilerSources, sharedBuild } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";
+import { scratchAt, scratchDir as scratchFolder } from "../helpers/scratch.js";
 import {
   findProcesses,
   isAlive,
@@ -44,8 +44,15 @@ const scratchDir = resolve(repoRoot, "test/fixtures/scheduler/.tmp");
 /** Real daemons running real Vitest; a loaded machine needs headroom. */
 export const SLOW = { timeout: 180_000 } as const;
 
+/**
+ * The load per CPU above which timing assertions are skipped: 8 of the 24 CPUs
+ * the gate was set on. A fixed 8 skipped on a 4-CPU CI runner only at twice
+ * its saturation (row 011-431, findings G1).
+ */
+const LOADED_PER_CPU = 8 / 24;
+
 /** Timing assertions are skipped on a machine this loaded, like the other timing tests. */
-export const LOADED = loadavg()[0] !== undefined && (loadavg()[0] ?? 0) > 8;
+export const LOADED = (loadavg()[0] ?? 0) / availableParallelism() > LOADED_PER_CPU;
 
 export interface BuiltCli {
   /** `dist/cli/index.js` of a fresh build of `src`. */
@@ -147,8 +154,8 @@ export interface FixtureOptions {
 /** A committed copy of the scheduler fixture, five test files, plus `files`. */
 export function createFixtureRepo(options: FixtureOptions = {}): FixtureRepo {
   mkdirSync(scratchDir, { recursive: true });
-  const dir = join(scratchDir, randomUUID());
-  const main = join(dir, "main");
+  const fixtureDir = scratchAt(join(scratchDir, randomUUID()));
+  const main = join(fixtureDir.dir, "main");
   cpSync(fixture, main, { recursive: true });
   renameSync(join(main, "_gitignore"), join(main, ".gitignore"));
   // Row 015-64: the code features default on; a test not about code keeps them off.
@@ -163,7 +170,8 @@ export function createFixtureRepo(options: FixtureOptions = {}): FixtureRepo {
   const root = realpathSync(main);
   const worktreeId = worktreeIdFor(root);
   // Short, so the socket path stays far below the 104-byte macOS limit.
-  const runtimeDir = realpathSync(mkdtempSync("/tmp/sq-"));
+  const runtime = scratchFolder("/tmp/sq-");
+  const runtimeDir = realpathSync(runtime.dir);
   return {
     root,
     commonDir: realpathSync(join(main, ".git")),
@@ -171,9 +179,10 @@ export function createFixtureRepo(options: FixtureOptions = {}): FixtureRepo {
     runtimeDir,
     socketPath: socketPathFor(worktreeId, { XDG_RUNTIME_DIR: runtimeDir }),
     env: childEnv(runtimeDir),
+    // Each once the processes still writing there have ended (row 011-431).
     cleanup: () => {
-      rmSync(dir, { recursive: true, force: true });
-      rmSync(runtimeDir, { recursive: true, force: true });
+      fixtureDir.remove();
+      runtime.remove();
     },
   };
 }

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach } from "vitest";
@@ -7,6 +7,7 @@ import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store
 import type { LintStore } from "../../src/core/lint/store/types.js";
 import type { LintCheckId, LintFinding } from "../../src/core/types/lint.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import { scratchDir } from "../helpers/scratch.js";
 
 const cleanups: (() => void)[] = [];
 
@@ -24,10 +25,9 @@ export const LINT_ON: Policy = {
 
 /** A fresh git common dir, removed after the test. */
 export function commonDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "squeal-lint-"));
-  cleanups.push(() =>
-    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }),
-  );
+  // Removed once what writes there has ended (row 011-431).
+  const { dir, remove } = scratchDir(join(tmpdir(), "squeal-lint-"));
+  cleanups.push(remove);
   const git = join(dir, ".git");
   mkdirSync(git);
   return git;

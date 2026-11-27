@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +11,7 @@ import type { CodeStore } from "../../src/core/code/store/types.js";
 import { CodeRelay, type CodeRelayOptions } from "../../src/core/store-process/relay.js";
 import type { StoreProcessLaunch } from "../../src/core/store-process/spawn.js";
 import type { Policy } from "../../src/core/types/policy.js";
+import { scratchDir } from "../helpers/scratch.js";
 
 /* Row 021-36: a clone, its store process and its daemons' relays, all in a temporary directory. */
 
@@ -53,7 +54,7 @@ export interface Clone {
 }
 
 export function clone(): Clone {
-  const dir = mkdtempSync(join(tmpdir(), "sq-store-"));
+  const { dir, remove } = scratchDir(join(tmpdir(), "sq-store-"));
   const commonDir = join(dir, ".git");
   mkdirSync(commonDir);
   const runtime = join(dir, "run");
@@ -65,7 +66,8 @@ export function clone(): Clone {
     later: (cleanup) => cleanups.push(cleanup),
     cleanup: async () => {
       for (const cleanup of cleanups.reverse()) await cleanup();
-      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      // A store process the test left is ended before the removal (row 011-431).
+      remove();
     },
   };
 }
