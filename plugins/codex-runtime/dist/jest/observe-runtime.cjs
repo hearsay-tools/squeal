@@ -14,9 +14,17 @@
 //
 // From construction to teardown, `globalThis[Symbol.for("squeal.currentTestFile")]` names the
 // test file, so Squeal's recorder (`recorder.cjs`) attributes `fs` reads, listings and spawned
-// processes to it, `ts-jest`'s `.d.ts` reads too, though `--runInBand` runs several files in
-// one process. Paths under `node_modules` are not kept: the installed-package fingerprint keys
-// them.
+// processes to it, though `--runInBand` runs several files in one process. Paths under
+// `node_modules` are not kept: the installed-package fingerprint keys them.
+//
+// Row 028-08 (F1): Jest's own transform and resolver probe many absent files as a module loads
+// (`babel.config.ts`, `<dir>/.babelrc`, `.browserslistrc`, `src/add.ts`, `src/package.json`),
+// none the test's input, each first seen by a cold run's record, which then ran the file again.
+// While a `ScriptTransformer` or `Resolver` method or Jest's ESM check runs, the mark is unset and what the call reads
+// with success, `ts-jest`'s `.d.ts` reads among them, goes to
+// `globalThis[Symbol.for("squeal.jestReads")]`, a `Map` of the test file to a `Set` of absolute
+// paths, which the reporter takes as `loaded` is taken; with each file the transform got. A probe
+// that finds nothing is kept by neither. The test's own code runs with the mark set.
 //
 // The project's own `jest-runtime`: `SQUEAL_JEST_RUNTIME` names its folder, since pnpm hoists
 // none of Jest's packages. Without it, the one the running Jest reaches. CommonJS, Node
@@ -25,15 +33,38 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createRequire } = require("node:module");
+const url = require("node:url");
 
 const CURRENT_FILE = Symbol.for("squeal.currentTestFile");
 const LOADED = Symbol.for("squeal.jestLoaded");
-/** Where a wrapped transformer keeps the test file it records for. */
+const READS = Symbol.for("squeal.jestReads");
+/** Where a wrapped transformer or resolver keeps the test file it records for. */
 const TARGET = Symbol("squeal.jestTarget");
+/** Set on `fs` once its reads are wrapped. */
+const WRAPPED = Symbol.for("squeal.jestReadsWrapped");
 const NODE_MODULES = `${path.sep}node_modules${path.sep}`;
 /** The `ScriptTransformer` methods every module source passes through, on Jest 29 and 30. */
 const TRANSFORMS = ["transform", "transformAsync", "transformJson"];
+/** The `Resolver` methods `jest-runtime` 29 and 30 call; each may probe absent files. */
+const RESOLVES = [
+  "resolveModuleFromDirIfExists",
+  "resolveModuleFromDirIfExistsAsync",
+  "resolveModule",
+  "resolveModuleAsync",
+  "resolveStubModuleName",
+  "resolveStubModuleNameAsync",
+  "getModule",
+  "getModulePath",
+  "getPackage",
+  "getMockModule",
+  "getMockModuleAsync",
+  "getModulePaths",
+  "getGlobalPaths",
+  "getModuleID",
+  "getModuleIDAsync",
+];
 /** `Runtime`'s constructor arguments, the same on Jest 29 and 30. */
+const RESOLVER_ARG = 2;
 const TRANSFORMER_ARG = 3;
 const TEST_PATH_ARG = 6;
 
@@ -82,21 +113,25 @@ function runtimeFolder() {
 const loaded = require(runtimeFolder());
 const Runtime = loaded.default ?? loaded;
 
-/** The test files' loads, shared with the reporter in this process. */
-function loadedMap() {
-  let map = globalThis[LOADED];
+/** The `Map` at `key` on `globalThis`, shared with the reporter in this process. */
+function shared(key) {
+  let map = globalThis[key];
   if (!(map instanceof Map)) {
     map = new Map();
-    globalThis[LOADED] = map;
+    globalThis[key] = map;
   }
   return map;
 }
 
-/** Records `file` and its real path under `testPath`, outside `node_modules`. */
-function record(testPath, file) {
+/** The test files' loads. */
+const loadedMap = () => shared(LOADED);
+/** What Jest's transform and resolver read for each test file with the mark unset. */
+const readsMap = () => shared(READS);
+
+/** Adds `file` and its real path to `testPath`'s set in `map`, outside `node_modules`. */
+function add(map, testPath, file) {
   try {
     if (typeof file !== "string" || !path.isAbsolute(file)) return;
-    const map = loadedMap();
     let paths = map.get(testPath);
     if (paths === undefined) {
       paths = new Set();
@@ -115,28 +150,165 @@ function record(testPath, file) {
   }
 }
 
+/** Records `file` and its real path under `testPath`, outside `node_modules`. */
+const record = (testPath, file) => add(loadedMap(), testPath, file);
+
 /**
- * Points `transformer`'s source hooks at `testPath`. They are wrapped once per transformer, on
- * the instance; a transformer reused for a later file then records for that file alone.
+ * The pause of the mark: how many transform or resolver calls run, the mark they unset, and
+ * the test file their successful reads go to. Process-wide, as the mark is.
  */
-function observe(transformer, testPath) {
-  if (transformer === null || typeof transformer !== "object") return;
-  const target = transformer[TARGET];
+const pause = { depth: 0, saved: undefined, target: null };
+
+/** The mark as the test's own code sees it: the saved one during a pause. */
+const currentMark = () => (pause.depth > 0 ? pause.saved : globalThis[CURRENT_FILE]);
+
+function setMark(value) {
+  if (pause.depth > 0) pause.saved = value;
+  else globalThis[CURRENT_FILE] = value;
+}
+
+/** Runs `call` with the mark unset and successful reads kept for `testPath`, sync or async. */
+function paused(testPath, call) {
+  if (pause.depth === 0) {
+    pause.saved = globalThis[CURRENT_FILE];
+    pause.target = testPath;
+    globalThis[CURRENT_FILE] = undefined;
+  }
+  pause.depth += 1;
+  let done = false;
+  const leave = () => {
+    if (done) return;
+    done = true;
+    pause.depth -= 1;
+    if (pause.depth > 0) return;
+    globalThis[CURRENT_FILE] = pause.saved;
+    pause.saved = undefined;
+    pause.target = null;
+  };
+  let result;
+  try {
+    result = call();
+  } catch (error) {
+    leave();
+    throw error;
+  }
+  if (result !== null && typeof result === "object" && typeof result.then === "function") {
+    return Promise.resolve(result).finally(leave);
+  }
+  leave();
+  return result;
+}
+
+/** A path argument of a read as an absolute path; `null` for a descriptor or anything else. */
+function readPath(p) {
+  try {
+    if (typeof p === "string") return path.resolve(p);
+    if (Buffer.isBuffer(p)) return path.resolve(p.toString());
+    if (p instanceof URL && p.protocol === "file:") return url.fileURLToPath(p);
+  } catch {
+    // not a path
+  }
+  return null;
+}
+
+/** Keeps a successful read of `p` for `target`, the test file of the pause it started in. */
+function kept(target, p) {
+  if (target === null) return;
+  const abs = readPath(p);
+  if (abs !== null) add(readsMap(), target, abs);
+}
+
+/** Replaces `object[name]` by `make(original)`, its descriptor otherwise kept. */
+function replace(object, name, make) {
+  const descriptor = Object.getOwnPropertyDescriptor(object, name);
+  if (descriptor === undefined || typeof descriptor.value !== "function") return;
+  Object.defineProperties(object, { [name]: { ...descriptor, value: make(descriptor.value) } });
+}
+
+/** Wraps `fs`'s file reads once: during a pause, each that succeeds is kept for its target. */
+function wrapReads() {
+  if (fs[WRAPPED] === true) return;
+  Object.defineProperty(fs, WRAPPED, { value: true });
+  replace(
+    fs,
+    "readFileSync",
+    (original) =>
+      function readFileSync(p, ...rest) {
+        const result = original.call(this, p, ...rest);
+        if (pause.depth > 0) kept(pause.target, p);
+        return result;
+      },
+  );
+  replace(
+    fs,
+    "readFile",
+    (original) =>
+      function readFile(p, ...rest) {
+        const target = pause.depth > 0 ? pause.target : null;
+        const last = rest.length - 1;
+        if (target !== null && last >= 0 && typeof rest[last] === "function") {
+          const callback = rest[last];
+          rest[last] = function (err, ...data) {
+            if (!err) kept(target, p);
+            return callback.call(this, err, ...data);
+          };
+        }
+        return original.call(this, p, ...rest);
+      },
+  );
+  replace(
+    fs.promises,
+    "readFile",
+    (original) =>
+      function readFile(p, ...rest) {
+        const target = pause.depth > 0 ? pause.target : null;
+        const result = original.call(this, p, ...rest);
+        if (target === null) return result;
+        return result.then((data) => {
+          kept(target, p);
+          return data;
+        });
+      },
+  );
+}
+
+/**
+ * Points `object`'s methods `names` at `testPath`, each run by `wrap(holder, original)`. They
+ * are wrapped once per instance; an instance reused for a later file then serves that file.
+ */
+function retarget(object, testPath, names, wrap) {
+  if (object === null || typeof object !== "object") return;
+  const target = object[TARGET];
   if (target !== undefined) {
     target.testPath = testPath;
     return;
   }
   const holder = { testPath };
-  transformer[TARGET] = holder;
-  for (const name of TRANSFORMS) {
-    const original = transformer[name];
-    if (typeof original !== "function") continue;
-    transformer[name] = function (filename, ...rest) {
-      record(holder.testPath, filename);
-      return original.call(this, filename, ...rest);
-    };
+  object[TARGET] = holder;
+  for (const name of names) {
+    const original = object[name];
+    if (typeof original === "function") object[name] = wrap(holder, original);
   }
 }
+
+/** A transform: records the file, then transforms it with the mark paused. */
+const transformHook = (holder, original) =>
+  function (filename, ...rest) {
+    record(holder.testPath, filename);
+    if (typeof holder.testPath !== "string") return original.call(this, filename, ...rest);
+    // The file Jest transforms is the test's input even when its transform cache answers.
+    if (typeof filename === "string" && fs.existsSync(filename)) {
+      add(readsMap(), holder.testPath, filename);
+    }
+    return paused(holder.testPath, () => original.call(this, filename, ...rest));
+  };
+
+/** A resolution: run with the mark paused. */
+const resolveHook = (holder, original) =>
+  function (...args) {
+    if (typeof holder.testPath !== "string") return original.apply(this, args);
+    return paused(holder.testPath, () => original.apply(this, args));
+  };
 
 /** Appends `testPath`'s loads to `SQUEAL_JEST_LOADED_OUT`, when set. */
 function flush(testPath) {
@@ -157,12 +329,27 @@ class SquealObservingRuntime extends Runtime {
     // Before `super`: Jest 30 hands the transformer to helpers its constructor builds.
     if (observing) {
       loadedMap().set(testPath, new Set());
-      observe(args[TRANSFORMER_ARG], testPath);
+      readsMap().set(testPath, new Set());
+      wrapReads();
+      retarget(args[TRANSFORMER_ARG], testPath, TRANSFORMS, transformHook);
+      retarget(args[RESOLVER_ARG], testPath, RESOLVES, resolveHook);
     }
     super(...args);
+    // Jest 30's per-runtime `Resolution` asks `jest-resolve`'s ESM check itself.
+    if (observing) retarget(this._resolution, testPath, ["shouldLoadAsEsm"], resolveHook);
     this.__squealTestPath = observing ? testPath : null;
-    this.__squealPrevious = globalThis[CURRENT_FILE];
-    if (observing) globalThis[CURRENT_FILE] = testPath;
+    this.__squealPrevious = currentMark();
+    if (observing) setMark(testPath);
+  }
+
+  /**
+   * Jest's ESM check, `jest-resolve`'s static `unstable_shouldLoadAsEsm` on Jest 29 and 30: with
+   * `--experimental-vm-modules` it looks for `package.json` above each module, as resolution does.
+   */
+  unstable_shouldLoadAsEsm(...args) {
+    const testPath = this.__squealTestPath;
+    if (typeof testPath !== "string") return super.unstable_shouldLoadAsEsm(...args);
+    return paused(testPath, () => super.unstable_shouldLoadAsEsm(...args));
   }
 
   teardown(...args) {
@@ -171,9 +358,7 @@ class SquealObservingRuntime extends Runtime {
     } finally {
       if (this.__squealTestPath !== null) {
         flush(this.__squealTestPath);
-        if (globalThis[CURRENT_FILE] === this.__squealTestPath) {
-          globalThis[CURRENT_FILE] = this.__squealPrevious;
-        }
+        if (currentMark() === this.__squealTestPath) setMark(this.__squealPrevious);
         this.__squealTestPath = null;
       }
     }

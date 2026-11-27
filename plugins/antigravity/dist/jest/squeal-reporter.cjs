@@ -11,6 +11,8 @@
  * for that test file in `globalThis[Symbol.for("squeal.jestLoaded")]`, a
  * `Map` of test path to a `Set` of absolute paths; the entry is taken, so
  * the map does not grow over a batch. `[]` without the runtime observer.
+ * `reads`, from `Symbol.for("squeal.jestReads")` alike, is what Jest's
+ * transform and resolver read with success for the file (row 028-08).
  *
  * Spec 028 D5.3 (row 028-06b): with `SQUEAL_JEST_COVERAGE_DIR` set (a batch
  * run with `--coverage --coverageProvider=v8`), each file's
@@ -27,6 +29,7 @@ const path = require("node:path");
 const { fileURLToPath, pathToFileURL } = require("node:url");
 
 const LOADED = Symbol.for("squeal.jestLoaded");
+const READS = Symbol.for("squeal.jestReads");
 
 /** `value` as JSON, or `null` when it cannot be written (a cycle, a BigInt). */
 function safe(value) {
@@ -64,8 +67,9 @@ function testCase(result) {
   };
 }
 
-function loadedOf(testFilePath) {
-  const map = globalThis[LOADED];
+/** The sorted paths `observe-runtime.cjs` kept for the file under `key`; the entry is taken. */
+function taken(key, testFilePath) {
+  const map = globalThis[key];
   if (!(map instanceof Map)) return [];
   const paths = map.get(testFilePath);
   map.delete(testFilePath);
@@ -183,7 +187,8 @@ class SquealReporter {
         unmatched: snapshot.unmatched ?? 0,
         updated: snapshot.updated ?? 0,
       },
-      loaded: loadedOf(result.testFilePath ?? test.path),
+      loaded: taken(LOADED, result.testFilePath ?? test.path),
+      reads: taken(READS, result.testFilePath ?? test.path),
       ...this.coverage(result),
     });
   }

@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
@@ -176,10 +177,8 @@ describe.each(JEST_MAJORS)(
       const repo = monorepo(major);
 
       // D1.2: setup seeds both package projects and skips the empty root catch-all.
-      const setup = await cli(repo, ["setup", "--yes", "--no-warmup"], {
-        ...repo.env,
-        PATH: gitOnlyPath(repo),
-      });
+      const setupEnv = { ...repo.env, PATH: gitOnlyPath(repo) };
+      const setup = await cli(repo, ["setup", "--yes", "--no-warmup"], setupEnv);
       expect(setup.code, setup.out).toBe(0);
       const config = JSON.parse(readFileSync(join(repo.root, "squeal.config.json"), "utf8"));
       expect(config.jest).toEqual([
@@ -189,12 +188,19 @@ describe.each(JEST_MAJORS)(
       expect(setup.out).toContain(
         "skipped Jest config jest.config.mjs: it lists no projects and sits above packages/app/jest.config.js, packages/core/jest.config.js",
       );
+      // F3: the setup instruction block names Jest, not Vitest.
+      const init = await cli(repo, ["init", "--block", "AGENTS.md"], setupEnv);
+      expect(init.code, init.out).toBe(0);
+      const agentsBlock = readFileSync(join(repo.root, "AGENTS.md"), "utf8");
+      expect(agentsBlock).toContain("Squeal runs the Jest tests after each edit.");
+      expect(agentsBlock).toContain("run the Jest projects yourself instead.");
+      expect(agentsBlock).not.toContain("Vitest");
       config.testCommand = { ...config.testCommand, denyWhenCurrent: true };
       writeFileSync(join(repo.root, "squeal.config.json"), `${JSON.stringify(config, null, 2)}\n`);
-      git(repo.root, ["add", "squeal.config.json"]);
+      git(repo.root, ["add", "squeal.config.json", "AGENTS.md"]);
       git(repo.root, ["commit", "-qm", "squeal setup"]);
 
-      // A foreground full run: every file passes and is current.
+      // A foreground full run: every file passes, runs exactly once (F1), and records coverage (F2).
       const daemon = suite.daemon(repo);
       await waitReady(repo, daemon);
       const all = await cli(repo, ["run", "--all", "--wait"]);
@@ -203,6 +209,39 @@ describe.each(JEST_MAJORS)(
       const base = readStatus(repo.root as never);
       expect(base.available && base.knownFailures).toEqual([]);
       expect(base.available && base.breakdown.currentByOutcome.pass).toBe(6);
+      const db = new DatabaseSync(join(repo.commonDir, "squeal", "store.sqlite"), {
+        readOnly: true,
+      });
+      try {
+        const rows = db.prepare("SELECT test_files FROM runs WHERE revision = 0").all() as {
+          test_files: string;
+        }[];
+        const fileRuns = rows.reduce(
+          (sum, row) => sum + (JSON.parse(row.test_files) as unknown[]).length,
+          0,
+        );
+        expect(fileRuns).toBe(3);
+      } finally {
+        db.close();
+      }
+      // F2: Jest coverage records are measured, never reported as "Jest gives no coverage".
+      let codeOut = "";
+      await waitFor(
+        async () => {
+          const res = await cli(repo, ["code", HELPER]);
+          codeOut = res.out;
+          return (
+            res.code === 0 &&
+            codeOut.includes("double") &&
+            !codeOut.includes("not judged") &&
+            !codeOut.includes("counting")
+          );
+        },
+        20_000,
+        `squeal code measures ${HELPER}`,
+      );
+      expect(codeOut).not.toContain("Jest gives no coverage");
+      expect(codeOut).not.toContain("not measured");
 
       // D3: the core helper's edit selects its own test and the app test that imports it by name.
       writeFileSync(join(repo.root, HELPER), helper(3));
@@ -230,6 +269,7 @@ describe.each(JEST_MAJORS)(
         source: "startup",
       });
       expect(JSON.stringify(started)).toContain("SQUEAL · registered at revision");
+      expect(JSON.stringify(started)).not.toContain("read not measured");
       const bash = (command: string) =>
         hook(repo, "pre-tool-use", {
           session_id: SESSION,
