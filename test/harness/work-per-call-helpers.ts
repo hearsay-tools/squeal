@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { StatusResult } from "../../src/core/types/status.js";
 import { observeBuildInputs } from "../helpers/build-inputs.js";
@@ -38,35 +38,43 @@ const HANG_MS = 30_000;
  * Runs `node <args>` in `cwd` with exactly `env` plus the counter, stdin
  * piped, and sums the counts of every process that wrote them.
  */
-export function runCounted(
+export async function runCounted(
   args: readonly string[],
   stdin: string,
   env: Readonly<Record<string, string>>,
   cwd: string,
 ): Promise<CountedRun> {
+  // Review 025-wave6 S2: removed after its counts are read, on success and on error.
   const dir = mkdtempSync("/tmp/sq-work-");
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, args, {
-      cwd,
-      env: { ...env, NODE_OPTIONS: `--import=${COUNTER}`, SQUEAL_WORK_COUNTS: dir },
-    });
-    const timer = setTimeout(() => child.kill("SIGKILL"), HANG_MS);
-    const out: Buffer[] = [];
-    const err: Buffer[] = [];
-    child.stdout.on("data", (b: Buffer) => out.push(b));
-    child.stderr.on("data", (b: Buffer) => err.push(b));
-    child.on("error", reject);
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({
-        stdout: Buffer.concat(out).toString("utf8"),
-        stderr: Buffer.concat(err).toString("utf8"),
-        code,
-        work: readWork(dir),
+  try {
+    const ended = await new Promise<Omit<CountedRun, "work">>((resolve, reject) => {
+      const child = spawn(process.execPath, args, {
+        cwd,
+        env: { ...env, NODE_OPTIONS: `--import=${COUNTER}`, SQUEAL_WORK_COUNTS: dir },
       });
+      const timer = setTimeout(() => child.kill("SIGKILL"), HANG_MS);
+      const out: Buffer[] = [];
+      const err: Buffer[] = [];
+      child.stdout.on("data", (b: Buffer) => out.push(b));
+      child.stderr.on("data", (b: Buffer) => err.push(b));
+      child.on("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        resolve({
+          stdout: Buffer.concat(out).toString("utf8"),
+          stderr: Buffer.concat(err).toString("utf8"),
+          code,
+        });
+      });
+      child.stdin.end(stdin);
     });
-    child.stdin.end(stdin);
-  });
+    return { ...ended, work: readWork(dir) };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function readWork(dir: string): Work {
