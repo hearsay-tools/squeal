@@ -53,18 +53,18 @@ export interface RepositoryRoute {
  * applies to the next tier. Spec 026 D8.4 (row 026-12): while the remote's
  * tree is a Git repository (`remoteHasRepository`), the setting keeps no
  * file here; the guard's remembered files stay here still. Row 021-40
- * (#294): the files `runHere` matches stay here with or without `.git`
+ * (#294): the files `alwaysLocal` matches stay here with or without `.git`
  * there, since they read this machine itself.
  */
 export function repositoryRoute(
   needsRepository: () => readonly string[],
   named: (text: string) => void,
   remoteHasRepository: () => boolean = () => false,
-  runHere: () => readonly string[] = () => [],
+  alwaysLocal: () => readonly string[] = () => [],
 ): RepositoryRoute {
   const failed = new Map<string, TestFileRef>();
   const needs = globMatcher(needsRepository);
-  const always = globMatcher(runHere);
+  const always = globMatcher(alwaysLocal);
   const here = (file: TestFileRef) =>
     failed.has(testFileId(file)) ||
     always(file.path) ||

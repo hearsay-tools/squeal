@@ -158,12 +158,12 @@ describe("a machine whose tree is a Git repository (026 D8.4)", () => {
   });
 });
 
-describe("remote.runHere (row 021-40, #294)", () => {
+describe("remote.alwaysLocal (row 021-40, #294)", () => {
   for (const planning of ["local", "remote"] as const) {
     for (const git of [false, true]) {
-      it(`runs a runHere file here, planning ${planning}, ${git ? "with" : "without"} .git there`, async () => {
+      it(`runs an alwaysLocal file here, planning ${planning}, ${git ? "with" : "without"} .git there`, async () => {
         const s = await setup({
-          runHere: ["test/git.*"],
+          alwaysLocal: ["test/git.*"],
           files: FILES,
           planning,
           hasGitRepository: () => git,
@@ -177,7 +177,7 @@ describe("remote.runHere (row 021-40, #294)", () => {
   }
 
   it("changes no routing by default: the tier goes there whole", async () => {
-    const s = await setup({ runHere: [], files: FILES });
+    const s = await setup({ alwaysLocal: [], files: FILES });
     await s.lane.run([REF, GIT], background());
     expect(s.remoteRuns).toEqual([`${REF.path},${GIT.path}`]);
     expect(s.localFiles).toEqual([]);

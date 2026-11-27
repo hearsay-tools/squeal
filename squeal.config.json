@@ -10,7 +10,7 @@
     "exclude": ["test/**", "src/runners/node-test/runtime/**", "src/runners/vitest/ci-runtime/**"]
   },
   "remote": {
-    "runHere": ["test/ps/proc-live.test.ts"]
+    "alwaysLocal": ["test/ps/proc-live.test.ts", "test/harness/**/latency.test.ts"]
   },
   "complexity": {
     "enabled": true,

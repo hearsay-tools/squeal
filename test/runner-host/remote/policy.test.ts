@@ -9,7 +9,7 @@ import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
  * Spec 021 D9 (row 021-13): `remote.allowed`, a repository's veto on the
  * remote lanes its users name in their own `remote.json`. Spec 021 D19 (row
  * 021-23): `requires.commands` and `remote.needsRepository`, two settings.
- * Row 021-40 (#294): `remote.runHere`, test files that never go remote.
+ * Row 021-40 (#294): `remote.alwaysLocal`, test files that never go remote.
  */
 
 const dirs: string[] = [];
@@ -26,7 +26,7 @@ function load(file: unknown) {
 
 describe("policy remote.allowed (021 D9)", () => {
   it("is true by default: the user's own setting decides", () => {
-    expect(DEFAULT_POLICY.remote).toEqual({ allowed: true, needsRepository: [], runHere: [] });
+    expect(DEFAULT_POLICY.remote).toEqual({ allowed: true, needsRepository: [], alwaysLocal: [] });
     const { policy, problems } = load({});
     expect(problems).toEqual([]);
     expect(policy.remote.allowed).toBe(true);
@@ -56,7 +56,7 @@ describe("policy remote.allowed (021 D9)", () => {
     expect(reference).toContain("| `remote.allowed` | `true` |");
     expect(reference).toContain("| `requires.commands` | `[]` |");
     expect(reference).toContain("| `remote.needsRepository` | `[]` |");
-    expect(reference).toContain("| `remote.runHere` | `[]` |");
+    expect(reference).toContain("| `remote.alwaysLocal` | `[]` |");
   });
 });
 
@@ -79,7 +79,7 @@ describe("policy requires.commands and remote.needsRepository (021 D19)", () => 
     expect(policy.remote).toEqual({
       allowed: true,
       needsRepository: ["test/git/**", "test/commit.test.ts"],
-      runHere: [],
+      alwaysLocal: [],
     });
   });
 
@@ -113,24 +113,24 @@ describe("policy requires.commands and remote.needsRepository (021 D19)", () => 
   });
 });
 
-describe("policy remote.runHere (row 021-40, #294)", () => {
+describe("policy remote.alwaysLocal (row 021-40, #294)", () => {
   it("is empty by default and takes a list of test-file globs", () => {
-    expect(load({}).policy.remote.runHere).toEqual([]);
-    const { policy, problems } = load({ remote: { runHere: ["test/ps/proc-live.test.ts"] } });
+    expect(load({}).policy.remote.alwaysLocal).toEqual([]);
+    const { policy, problems } = load({ remote: { alwaysLocal: ["test/ps/proc-live.test.ts"] } });
     expect(problems).toEqual([]);
-    expect(policy.remote.runHere).toEqual(["test/ps/proc-live.test.ts"]);
+    expect(policy.remote.alwaysLocal).toEqual(["test/ps/proc-live.test.ts"]);
   });
 
   it("leaves out a glob it cannot use, with the key named, and keeps the others", () => {
-    const { policy, problems } = load({ remote: { runHere: ["test/ps/**", "!test/x.ts"] } });
-    expect(policy.remote.runHere).toEqual(["test/ps/**"]);
+    const { policy, problems } = load({ remote: { alwaysLocal: ["test/ps/**", "!test/x.ts"] } });
+    expect(policy.remote.alwaysLocal).toEqual(["test/ps/**"]);
     expect(problems).toEqual([
-      '"remote.runHere[1]" has a glob Squeal cannot use: squeal: negated input glob is not supported: !test/x.ts; it is left out',
+      '"remote.alwaysLocal[1]" has a glob Squeal cannot use: squeal: negated input glob is not supported: !test/x.ts; it is left out',
     ]);
-    const wrong = load({ remote: { runHere: "test/ps/**" } });
-    expect(wrong.policy.remote.runHere).toEqual([]);
+    const wrong = load({ remote: { alwaysLocal: "test/ps/**" } });
+    expect(wrong.policy.remote.alwaysLocal).toEqual([]);
     expect(wrong.problems).toEqual([
-      '"remote.runHere" must be an array of strings, got "test/ps/**"',
+      '"remote.alwaysLocal" must be an array of strings, got "test/ps/**"',
     ]);
   });
 });

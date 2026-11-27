@@ -301,7 +301,7 @@ export interface Policy {
      * here, also on a remote whose tree is a Git repository. Unlike
      * `needsRepository`, no condition sends them remote. Default `[]`.
      */
-    readonly runHere: readonly string[];
+    readonly alwaysLocal: readonly string[];
   };
 }
 
@@ -535,7 +535,7 @@ export const DEFAULT_POLICY: Policy = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [], runHere: [] },
+  remote: { allowed: true, needsRepository: [], alwaysLocal: [] },
 };
 
 /** Spec 026 D2.2: the daemon's exit bounds, as `daemonExits` resolves them. */
