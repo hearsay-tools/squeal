@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterEach, expect } from "vitest";
 import { ensureWriteMarkers } from "../../src/core/store/write-markers.js";
 import { PLUGIN_DIR, PLUGIN_DIST } from "../../src/harness/claude-code/build.js";
+import { scratchDir } from "../helpers/scratch.js";
 import { check, result } from "../state/helpers.js";
 import { tempDir } from "../store/helpers.js";
 import { type SquealRepo, squealRepo } from "./helpers.js";
@@ -161,11 +162,16 @@ afterEach(() => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
 });
 
-/** A short runtime dir for daemon sockets; socket paths are limited to 108 bytes. */
+/**
+ * A short runtime dir for daemon sockets; socket paths are limited to 108 bytes.
+ * Removed after the test once the daemons and store processes that run with it
+ * have ended (`scratchDir`, row 011-431): the removal met a store process's
+ * late write (ENOTEMPTY, findings G3).
+ */
 export function runtimeDir(): string {
-  const dir = mkdtempSync("/tmp/sq-");
-  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
-  return dir;
+  const scratch = scratchDir("/tmp/sq-");
+  cleanups.push(scratch.remove);
+  return scratch.dir;
 }
 
 /**

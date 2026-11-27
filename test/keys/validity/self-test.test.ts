@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
+import { removeScratch } from "../../helpers/scratch.js";
 import type { Bundle } from "./bundle.js";
 import { comparisons, REMOVAL } from "./self-test.js";
 
@@ -81,7 +81,7 @@ function watched(): Watch {
       (error: unknown) => String(error),
     );
     const left = existsSync(watch.parent);
-    await rm(watch.parent, { recursive: true, force: true, maxRetries: 3 });
+    removeScratch(watch.parent);
     expect(outputs, "the hook removed a driver's paths while it ran").toEqual(
       drivers.map(() => ({ present: true })),
     );

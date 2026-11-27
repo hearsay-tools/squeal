@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach } from "vitest";
@@ -6,6 +6,7 @@ import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store
 import type { CodeStore } from "../../src/core/code/store/types.js";
 import type { CodeCheckId, CodeFile, FileCount } from "../../src/core/types/code.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import { scratchDir } from "../helpers/scratch.js";
 
 const cleanups: (() => void)[] = [];
 
@@ -22,10 +23,9 @@ export const ON: Policy = {
 
 /** A fresh git common dir, removed after the test. */
 export function commonDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "squeal-code-"));
-  cleanups.push(() =>
-    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }),
-  );
+  // Removed once what writes there has ended (row 011-431).
+  const { dir, remove } = scratchDir(join(tmpdir(), "squeal-code-"));
+  cleanups.push(remove);
   const git = join(dir, ".git");
   mkdirSync(git);
   return git;

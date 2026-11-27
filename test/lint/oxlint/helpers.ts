@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
@@ -8,6 +8,7 @@ import {
   oxlintProvider,
 } from "../../../src/core/lint/provider/oxlint/provider.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
+import { scratchDir } from "../../helpers/scratch.js";
 
 /*
  * Spec 017 D11 tests: scratch projects under the system temp folder, with
@@ -25,8 +26,9 @@ afterEach(async () => {
 
 /** A temp folder removed after the test. */
 export function scratch(prefix = "squeal-oxlint-test-"): AbsolutePath {
-  const dir = mkdtempSync(join(tmpdir(), prefix)) as AbsolutePath;
-  cleanups.push(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10 }));
+  // Removed once what writes there has ended (row 011-431).
+  const { dir, remove } = scratchDir(join(tmpdir(), prefix));
+  cleanups.push(remove);
   return dir;
 }
 
