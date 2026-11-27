@@ -8,6 +8,7 @@ import type {
 } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { LintTool } from "../../types/lint.js";
+import type { LintWaitCause } from "../../types/lint-delivery.js";
 import type { Policy } from "../../types/policy.js";
 import type { SharedCapacity } from "../../types/scheduler.js";
 import type { LintProvider } from "./provider.js";
@@ -44,9 +45,17 @@ export type LintCapacity = SharedCapacity & {
   /**
    * Row 017-33: what the last look read against the background ceiling
    * (`TierCapacity.backgroundGate`), so a refused part's wait is told.
+   * Row 017-37: with why the pool refused it; absent or `null`, the ceiling.
    */
-  backgroundGate?(): { readonly busy: number | null; readonly limit: number } | null;
+  backgroundGate?(): LintGate | null;
 };
+
+/** What a refused part's wait records (`LintCapacity.backgroundGate`). */
+export interface LintGate {
+  readonly busy: number | null;
+  readonly limit: number;
+  readonly refusal?: LintWaitCause | null;
+}
 
 export interface LintPassOptions {
   readonly worktreeId: WorktreeId;
