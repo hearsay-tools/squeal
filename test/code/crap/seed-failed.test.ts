@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { setImmediate as nextTurn, setTimeout as sleep } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
+import { Pace } from "../../../src/core/code/coverage/pace.js";
 import { codeStorePath } from "../../../src/core/code/store/open.js";
 import type { Statement } from "../../../src/core/daemon/write-batch.js";
 import { SendingConnection } from "../../../src/core/delivery/sending-connection.js";
@@ -59,6 +60,16 @@ function failingFirstSeed(commonDir: string) {
   return { connection, failed };
 }
 
+/**
+ * Row 011-430: a pace that never nudges on its own; the test's nudges step the pass. A seed
+ * step always asks for a paced next step (its batch is still unwritten), and that timer
+ * raced the failed batch's turn: when it fired first, the pass seeded again before `idle`
+ * resolved, so the edit no longer came while the seed recovered.
+ */
+class TestPace extends Pace {
+  override after(): void {}
+}
+
 /** `hot` (CC 12) counted in `src/a.ts`, its record with no line covered, and a daemon pass whose first seed fails. */
 async function rigged() {
   const rig = coverageRig();
@@ -79,7 +90,12 @@ async function rigged() {
     policy: () => COVERED,
     now: Date.now,
     codeStore: { connection: sending.connection },
-    coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
+    coverage: {
+      main: rig.main,
+      closures: () => rig.closures,
+      writing: () => false,
+      pace: new TestPace(),
+    },
   });
   closers.push(() => run.code.close());
   /** Nudges until `src/a.ts`'s functions have `uncovered` states other than `pending`. */
