@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.663";
+  if (true) return "0.1.664";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3647,10 +3647,11 @@ function readHandoff(store, worktreeId) {
   try {
     const claim = JSON.parse(text3);
     if (!isRecord(claim)) return null;
-    const { from, to, at: at2, boundAt } = claim;
+    const { from, to, at: at2, boundAt, attempt: attempt2 } = claim;
     if (typeof from !== "string" || typeof to !== "string") return null;
     if (typeof at2 !== "number" || typeof boundAt !== "number") return null;
-    return { from, to, at: at2, boundAt };
+    const read7 = { from, to, at: at2, boundAt };
+    return typeof attempt2 === "string" ? { ...read7, attempt: attempt2 } : read7;
   } catch {
     return null;
   }

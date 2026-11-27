@@ -242,7 +242,10 @@ function sessions(client) {
 
 // src/harness/opencode/turns.ts
 var PROMPT_DEADLINE_MS = 2e3;
-var WAIT_DEADLINE_MS = 36e5;
+var WAIT_BOUND_MS = 354e4;
+var WAIT_DEADLINE_MS = WAIT_BOUND_MS + 6e4;
+var WAKE_REARMS = 3;
+var REARM_DELAY_MS = 1e3;
 var REPORT_OPENING = "SQUEAL \xB7 ";
 var textOf = (part) => {
   const p = part;
@@ -251,7 +254,7 @@ var textOf = (part) => {
 var storedBySqueal = (parts) => parts.length > 0 && parts.every(
   (part) => part?.synthetic === true && textOf(part)?.startsWith(REPORT_OPENING) === true
 );
-function turns(client, ask) {
+function turns(client, ask, rearmDelayMs = REARM_DELAY_MS) {
   const all = /* @__PURE__ */ new Map();
   let stopped = null;
   const turnOf = (id) => {
@@ -315,20 +318,35 @@ function turns(client, ask) {
     turn.held.push(text);
     return false;
   };
-  const armWait = (consumer, turn) => {
+  const armWait = (consumer, turn, left = WAKE_REARMS) => {
     cancelWait(turn);
     if (stopped) return;
     const waiter = new AbortController();
     turn.waiter = waiter;
     const options = { signal: waiter.signal, background: true };
+    const since = performance.now();
     void ask("wait", { consumer }, deadlineIn(WAIT_DEADLINE_MS), options).then(async (answer) => {
       if (turn.waiter !== waiter) return;
       turn.waiter = null;
-      if (answer?.text == null || stopped !== null) return;
+      if (stopped !== null) return;
+      if (answer?.text == null) {
+        if (left > 0 && performance.now() - since < WAIT_BOUND_MS)
+          pause(consumer, turn, left - 1);
+        return;
+      }
       const deadline = deadlineIn(PROMPT_DEADLINE_MS);
       await say(consumer.sessionId, turn, answer.text, deadline, turn.epoch);
     }).catch(() => {
     });
+  };
+  const pause = (consumer, turn, left) => {
+    const paused = new AbortController();
+    turn.waiter = paused;
+    const timer = setTimeout(() => {
+      if (turn.waiter === paused) armWait(consumer, turn, left);
+    }, rearmDelayMs);
+    timer.unref?.();
+    paused.signal.addEventListener("abort", () => clearTimeout(timer));
   };
   return {
     message(id, messageId, parts) {
