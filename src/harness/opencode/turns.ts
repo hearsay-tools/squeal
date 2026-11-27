@@ -12,8 +12,18 @@ import type { OcAnswers, OcConsumer, OcKind, OcRequest } from "./protocol.js";
 
 /** D4: how long `promptAsync` may take to accept a wake (D5); a continuation has what is left of idle's deadline. */
 export const PROMPT_DEADLINE_MS = 2_000;
-/** D5: the waiter's own bound (`IDLE_WAIT_MS`, 59 minutes) and a minute; it exits first. */
-export const WAIT_DEADLINE_MS = 3_600_000;
+/** D5: the waiter's own bound (`IDLE_WAIT_MS` in `bridge-turn.ts`): a wait that lasted it expired. */
+export const WAIT_BOUND_MS = 3_540_000;
+/** D5: the waiter's own bound and a minute; it exits first. */
+export const WAIT_DEADLINE_MS = WAIT_BOUND_MS + 60_000;
+/**
+ * Row 011-433: how often one idle's wait is armed again after it ended
+ * empty, not cancelled, before `WAIT_BOUND_MS`: the bridge died or missed,
+ * the store did not open, or another waiter held the lock.
+ */
+export const WAKE_REARMS = 3;
+/** The pause before a re-arm: a killed waiter's lock goes with its process. */
+export const REARM_DELAY_MS = 1_000;
 /** How every Squeal report opens. */
 const REPORT_OPENING = "SQUEAL · ";
 
@@ -61,6 +71,7 @@ interface Turn {
    * result instead (`take`).
    */
   held: string[];
+  /** The idle wait in flight, or the pause before its re-arm; aborting it ends either. */
   waiter: AbortController | null;
 }
 
@@ -111,7 +122,7 @@ export const storedBySqueal = (parts: readonly unknown[]): boolean =>
       textOf(part)?.startsWith(REPORT_OPENING) === true,
   );
 
-export function turns(client: OcClient, ask: Ask): Turns {
+export function turns(client: OcClient, ask: Ask, rearmDelayMs = REARM_DELAY_MS): Turns {
   const all = new Map<string, Turn>();
   /** `dispose`'s deadline, once it came: what an idle in flight has to store its news. */
   let stopped: Deadline | null = null;
@@ -217,22 +228,43 @@ export function turns(client: OcClient, ask: Ask): Turns {
     return false;
   };
 
-  /** D5: waits for the idle delta and wakes the agent with it, once. */
-  const armWait = (consumer: OcConsumer, turn: Turn) => {
+  /**
+   * D5: waits for the idle delta and wakes the agent with it, once. Row
+   * 011-433: a wait that ends empty before its bound, not cancelled, is
+   * armed again after a pause, `left` more times.
+   */
+  const armWait = (consumer: OcConsumer, turn: Turn, left = WAKE_REARMS) => {
     cancelWait(turn);
     if (stopped) return;
     const waiter = new AbortController();
     turn.waiter = waiter;
     const options = { signal: waiter.signal, background: true };
+    const since = performance.now();
     void ask("wait", { consumer }, deadlineIn(WAIT_DEADLINE_MS), options)
       .then(async (answer) => {
         if (turn.waiter !== waiter) return;
         turn.waiter = null;
-        if (answer?.text == null || stopped !== null) return;
+        if (stopped !== null) return;
+        if (answer?.text == null) {
+          if (left > 0 && performance.now() - since < WAIT_BOUND_MS)
+            pause(consumer, turn, left - 1);
+          return;
+        }
         const deadline = deadlineIn(PROMPT_DEADLINE_MS);
         await say(consumer.sessionId, turn, answer.text, deadline, turn.epoch);
       })
       .catch(() => {});
+  };
+
+  /** Arms the wait again after `rearmDelayMs`, unless `cancelWait` comes first; holds no process open. */
+  const pause = (consumer: OcConsumer, turn: Turn, left: number) => {
+    const paused = new AbortController();
+    turn.waiter = paused;
+    const timer = setTimeout(() => {
+      if (turn.waiter === paused) armWait(consumer, turn, left);
+    }, rearmDelayMs);
+    timer.unref?.();
+    paused.signal.addEventListener("abort", () => clearTimeout(timer));
   };
 
   return {
