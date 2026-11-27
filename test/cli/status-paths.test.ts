@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { readNamedSnapshot } from "../../src/cli/status-paths.js";
+import { namedSnapshotCommand, readNamedSnapshot } from "../../src/cli/status-paths.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "../../src/cli/status-wait.js";
 import { namedLine } from "../../src/cli/status-wait-lines.js";
@@ -19,6 +19,9 @@ import { A, ADDS, B, C, fail, INCARNATION, NOW, ref, repoWith } from "./status-w
  * the named wait's lines, after one sync of at most 750 ms, promotes
  * nothing, words its last line as a snapshot, and exits as D1 for the
  * selected files: 0, 1 with a known failure among them, 3 without a verdict.
+ * Row 011-429: a case whose outcome turns on the settle time gives the
+ * snapshot's sync itself, so the host's speed does not decide which side
+ * of the 750 ms the daemon's answer lands.
  */
 
 const saved = { ...process.env };
@@ -52,6 +55,30 @@ async function run(argv: string[], cwd: string) {
   const code = await main(argv, io);
   return { code, stdout, stderr, ms: performance.now() - started };
 }
+
+/** `status <path>...` past `main`'s parsing, with the snapshot's sync given (row 011-429). */
+async function snapshotCommand(paths: string[], cwd: string, sync: () => DaemonSync) {
+  let stdout = "";
+  const io: CliIo = {
+    stdout: (text) => {
+      stdout += text;
+    },
+    stderr: () => {},
+    cwd,
+    now: () => NOW,
+    env: {},
+  };
+  const started = performance.now();
+  const code = await namedSnapshotCommand(paths, { json: false }, io, { now: () => NOW, sync });
+  return { code, stdout, ms: performance.now() - started };
+}
+
+/** A sync the daemon never answers: its pass is still not stored when the snapshot reads. */
+const neverAnswers = (): DaemonSync => ({
+  current: () => ({ state: "pending" }),
+  answered: new Promise(() => {}),
+  stop: () => {},
+});
 
 /** The daemon's answer to `sync`: its pass stored at `revision`, or not yet (`null`). */
 const synced = (revision: number | null): Answer => ({
@@ -124,7 +151,6 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
     ]);
     expect(seen).toContain("sync");
     expect(seen).not.toContain("promote");
-    expect(result.ms).toBeLessThan(STATUS_WAIT_SETTLE_MS);
   });
 
   it("exits 1 with a known failure among the selected files, listed in full", async () => {
@@ -150,7 +176,8 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
     const { repo } = repoWith([], [A]);
     const seen = await daemon(repo.mainId, null);
 
-    const result = await run(["status", A], repo.main);
+    // Row 011-429: a real sync's answer and its 750 ms raced on a loaded host.
+    const result = await snapshotCommand([A], repo.main, neverAnswers);
 
     expect(result.code).toBe(3);
     expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
@@ -158,7 +185,6 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
     );
     expect(result.stdout).not.toContain("each with a current result");
     expect(result.ms).toBeGreaterThanOrEqual(STATUS_WAIT_SETTLE_MS - 5);
-    expect(result.ms).toBeLessThan(STATUS_WAIT_SETTLE_MS + 1_000);
     expect(seen).not.toContain("promote");
   });
 
@@ -280,8 +306,15 @@ function answersAfter(answerMs: number, revision = 4) {
   };
 }
 
-async function snapshotOf(root: string, paths: string[], sync: () => DaemonSync) {
-  const read = await readNamedSnapshot(root as never, paths, { now: () => NOW, sync });
+/** `settleMs` `Infinity`: a read that comes back did not wait for the settle time. */
+async function snapshotOf(
+  root: string,
+  paths: string[],
+  sync: () => DaemonSync,
+  settleMs?: number,
+) {
+  const settle = settleMs === undefined ? {} : { settleMs };
+  const read = await readNamedSnapshot(root as never, paths, { now: () => NOW, sync, ...settle });
   if (read.outcome === "unavailable") throw new Error("unavailable");
   return { read, line: namedLine(read), code: namedCode(read) };
 }
@@ -289,13 +322,26 @@ async function snapshotOf(root: string, paths: string[], sync: () => DaemonSync)
 describe("readNamedSnapshot (row 011-28)", () => {
   it("gives no verdict when the daemon's pass lands after 750 ms, and does not wait for it", async () => {
     const { repo } = repoWith([], [A]);
-    const { read, line, code } = await snapshotOf(repo.main, [A], answersAfter(1_500));
+    // Row 011-429: a pass that never lands; a read that came back did not wait for it.
+    const { read, line, code } = await snapshotOf(repo.main, [A], neverAnswers);
     expect(code).toBe(3);
     expect(line).toMatch(
       /^Named test files have no verdict: 1 test file passed at revision 4; the daemon has not stored its pass over the latest edits, so this result may not cover them\. /,
     );
     expect(read.waitedMs).toBeGreaterThanOrEqual(STATUS_WAIT_SETTLE_MS - 5);
-    expect(read.waitedMs).toBeLessThan(1_500);
+    expect(read.sync).toEqual({ state: "pending" });
+  });
+
+  it("reads once the daemon's pass is stored, not at the settle time", async () => {
+    const { repo } = repoWith([], [A]);
+    const { line, code } = await snapshotOf(
+      repo.main,
+      [A],
+      answersAfter(0),
+      Number.POSITIVE_INFINITY,
+    );
+    expect(code).toBe(0);
+    expect(line).toMatch(/^Named test files at revision 4: no known failures; /);
   });
 
   it("gives no verdict when the stored pass is past the revision it read", async () => {
@@ -309,9 +355,13 @@ describe("readNamedSnapshot (row 011-28)", () => {
 
   it("answers at once with a selected file pending, naming no deadline", async () => {
     const { repo } = repoWith([B], [A]);
-    const { read, line, code } = await snapshotOf(repo.main, [A, B], answersAfter(0));
+    const { line, code } = await snapshotOf(
+      repo.main,
+      [A, B],
+      answersAfter(0),
+      Number.POSITIVE_INFINITY,
+    );
     expect(code).toBe(3);
-    expect(read.waitedMs).toBeLessThan(STATUS_WAIT_SETTLE_MS);
     expect(line).toMatch(
       /^Named test files have no verdict: 1 test file still pending at revision 4: /,
     );

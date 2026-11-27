@@ -1,11 +1,12 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { GROUP_NOT_SUPPORTED } from "../../src/core/daemon/run-group.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
 import { REINSTALLED_REASON } from "../../src/core/scheduler/narrow-run.js";
+import { STATUS_BUSY_TIMEOUT_MS } from "../../src/core/status/open.js";
 import { squealRepo } from "../harness/helpers.js";
 import { closeFakeDaemons, fakeDaemon, lockStore, received } from "./fake-daemon.js";
 
@@ -22,6 +23,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   closeFakeDaemons();
   rmSync(runtimeDir, { recursive: true, force: true });
   process.env = { ...saved };
@@ -76,6 +78,19 @@ async function run(argv: string[], cwd: string) {
 }
 
 const sent = () => received.filter((request) => request.type !== "ping");
+
+/** The `--wait` of the calls whose deadline the test passes (`clockBehind`). */
+const WAIT_MS = 60_000;
+
+/**
+ * Row 011-429: a `--wait` deadline the test passes, not the host's speed (a
+ * 300 ms wait ran out before an answer on a loaded runner). The CLI's
+ * `Date` stands still `2 * WAIT_MS` behind, so `--wait ${WAIT_MS}` cannot
+ * pass while it asks; `passDeadline`, at the request after which the wait
+ * ends, gives the real clock back, `WAIT_MS` past the deadline.
+ */
+const clockBehind = () => vi.useFakeTimers({ toFake: ["Date"], now: Date.now() - 2 * WAIT_MS });
+const passDeadline = () => vi.useRealTimers();
 
 describe("squeal run <group> (spec 019 D6)", () => {
   it("sends run-group and prints what the scheduler queued once it took the request", async () => {
@@ -187,7 +202,9 @@ describe("squeal run <group> (spec 019 D6)", () => {
         stderr: `squeal: ${GROUP_NOT_SUPPORTED}\n`,
       });
     }
-    expect(await run(["run", "e2e", "--wait", "500"], r.root)).toEqual({
+    // An answer decides it: the deadline never passes (row 011-429).
+    clockBehind();
+    expect(await run(["run", "e2e", "--wait", String(WAIT_MS)], r.root)).toEqual({
       code: 3,
       stdout: `No verdict: ${GROUP_NOT_SUPPORTED}\n`,
       stderr: "",
@@ -230,11 +247,18 @@ describe("squeal run <group> (spec 019 D6)", () => {
       heldMs: 48_000,
       step: null,
     };
-    await fakeDaemon(socketPathFor(r.worktreeId), {
-      "run-group": [group("e2e", null)],
-      "run-group-status": [{ ...group("e2e", null), holder }],
-    });
-    expect(await run(["run", "e2e", "--wait", "300"], r.root)).toEqual({
+    await fakeDaemon(
+      socketPathFor(r.worktreeId),
+      {
+        "run-group": [group("e2e", null)],
+        "run-group-status": [{ ...group("e2e", null), holder }],
+      },
+      (type) => {
+        if (type === "run-group-status") passDeadline();
+      },
+    );
+    clockBehind();
+    expect(await run(["run", "e2e", "--wait", String(WAIT_MS)], r.root)).toEqual({
       code: 3,
       stdout:
         "Group e2e has no verdict: the deadline passed before the daemon took request g1; it waits for the scheduler, which has been applying revision 412 for 48 s. The request stays pending: wait again with squeal run e2e --wait.\n",
@@ -245,6 +269,7 @@ describe("squeal run <group> (spec 019 D6)", () => {
   // Review 0.1.409 B1: a store no one can read drops the heartbeat detail; row 011-334 says so in its place.
   it("has no verdict, in time and naming the holder, while the store is locked", async () => {
     const r = repo();
+    clockBehind();
     r.daemon("stale", Date.now() - 111_000);
     const holder = { kind: "startup", heldMs: 5_000, step: null };
     await fakeDaemon(
@@ -259,12 +284,14 @@ describe("squeal run <group> (spec 019 D6)", () => {
           r.store.close();
           lockStore(r.repo.commonDir);
         }
+        if (type === "run-group-status") passDeadline();
       },
     );
-    const started = performance.now();
-    const result = await run(["run", "e2e", "--wait", "300"], r.root);
-    expect(performance.now() - started).toBeLessThan(1_500);
+    const result = await run(["run", "e2e", "--wait", String(WAIT_MS)], r.root);
     expect({ ...result, stdout: "" }).toEqual({ code: 3, stdout: "", stderr: "" });
+    // In time: the heartbeat read gave up at its own bound, not at the status reads' busy timeout.
+    const waited = /store busy, waited (\d+) ms/.exec(result.stdout);
+    expect(Number(waited?.[1]), result.stdout).toBeLessThan(STATUS_BUSY_TIMEOUT_MS);
     expect(result.stdout).toMatch(
       /^Group e2e has no verdict: the deadline passed before the daemon took request g1; the daemon's heartbeat was not read \(store busy, waited \d+ ms: another process holds the store's lock; run the command again once it is released\); it waits for the daemon's startup, which has run for 5 s\. The request stays pending: wait again with squeal run e2e --wait\.\n$/,
     );
