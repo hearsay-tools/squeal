@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { RuntimeFiles } from "../../../src/core/keys/runtime-files.js";
 import type { ProvenObserved } from "../../../src/core/runner-host/remote/lane-proof.js";
 import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
-import { provenObserved } from "../../../src/core/scheduler/observed.js";
+import { provenObserved } from "../../../src/core/scheduler/proven-observed.js";
 import type { RunReport } from "../../../src/core/types/runner.js";
 import { REPORT } from "../fake-channel.js";
 import { background, REF, setup } from "./lane-fixture.js";

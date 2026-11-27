@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { type ProofKeys, provenObserved } from "../../src/core/scheduler/observed.js";
+import { type ProofKeys, provenObserved } from "../../src/core/scheduler/proven-observed.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { ObservedInputs } from "../../src/core/types/runner.js";
 

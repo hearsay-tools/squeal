@@ -100,7 +100,7 @@ export function classify(
 
 /**
  * Row 026-38 (review 0.1.662 B1): the paths of one remote run's observation
- * that its reader's key keeps (`provenObserved` in `scheduler/observed.ts`,
+ * that its reader's key keeps (`provenObserved` in `scheduler/proven-observed.ts`,
  * the one owner of that decision).
  */
 export type ProvenObserved = (observed: ObservedInputs) => Promise<readonly RelativePath[]>;
