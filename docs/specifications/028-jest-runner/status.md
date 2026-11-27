@@ -1,6 +1,6 @@
 # 028 Jest runner: status
 
-Stage: approved (2026-11-26, the human: approved to build, parallel with Spec 027 Wave 1)
+Stage: shipped (2026-11-27; Waves 0–3 released in 0.1.645/0.1.647, Waves 4–5 landed on main in 0.1.651/0.1.653)
 Started: 2026-11-26
 
 ## Decisions so far
@@ -21,8 +21,8 @@ Started: 2026-11-26
 - 2026-11-26, waves 0 to 2 landed on `main` (`0.1.642` to `0.1.644`, released in `squeal--v0.1.645`). Candidate `0.1.646` (Wave 3 `028-06` + Spec 027 Wave 4 `027-07`) received FAIL (`reviews/0.1.646.md`) on B1 (plain Jest recognition config proof), B2 (inline `projects` objects dropped in `seedJest`), B3 (`install.sh` version sync), and N1 (`ts-jest-dts.test.ts` affected-only selection). Folded D5.3 coverage flags (`--coverageReporters=none --coverageThreshold={}`) and D1.1 optional `project` selector for inline `projects` entries into `spec.md`; dispatched Wave 3.5 repairs.
 - 2026-11-27, Wave 3 (`028-06`) landed on `main` in `0.1.646` (human approved single-owner inline wrapper `{ ...root, rootDir, projects: [{ ...selected, runtime }] }` after r2 FAIL; r4 review `reviews/0.1.646-r4.md` PASS at `e1d92c55e`). Proceeding to Wave 4 (`028-07`, warm host + remote lane) and Wave 5 (`028-08`, E2E + `saas-boilerplate` dogfooding).
 - 2026-11-27, Wave 4 (`028-07`: recycled warm `@jest/core` `createTestScheduler` worker pool with RSS/invalidation/native-module recycling and idle exit, runner-neutral `recorder.cjs` per-batch reset with `RECORDER_VERSION` unchanged at `7`, and Spec 026 remote lane integration) landed on `main` in `0.1.651` (reviews `0.1.648.md` FAIL B1, `0.1.651-r2.md` PASS at `ceb904883`). Dispatched Wave 5 (`028-08`, E2E suite + `saas-boilerplate` dogfooding).
+- 2026-11-27, Wave 5 (`028-08`: Jest 29.7.0 & 30.5.2 E2E suite `test/e2e/spec-028-jest.test.ts` + live 17-project / 202-file `saas-boilerplate` dogfooding in `lessons.md`) surfaced three product findings (F1/F5 cold-baseline double-run and revert probe drift, F2 Jest missing from `RECORDING_RUNNERS`, F3 Jest missing from setup `BlockRunners`), all fixed and pinned in `0.1.653` (reviews `0.1.653.md` FAIL B1-B3, `0.1.653-r2.md` PASS at `70bf95d17` after `AsyncLocalStorage` pause isolation, fd/handle/stream read tracking, and nested `TRANSFORM_CONFIG_NAMES` environment/invalidation coverage). Landed on `main` in `0.1.653`; spec moved to `shipped`.
 
 ## Open questions
 
-1. Wave 4 warm host priority: build immediately after Waves 1–3, or ship and dogfood Waves 1–3 (~2.0 s warm subprocess per batch) on `saas-boilerplate` first?
-2. Build order between Spec 027 and Spec 028: sequence (which first?) or parallel waves?
+None. Follow-up observation recorded in `lessons.md`: F4 (peak memory of concurrent warm Jest workers across 17 projects on smaller hosts).
