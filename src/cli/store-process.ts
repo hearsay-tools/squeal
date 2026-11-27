@@ -38,19 +38,32 @@ export async function storeProcessCommand(args: readonly string[], io: CliIo): P
   // Spec 021 D22.6: its own bounded log, `logs/store-code.log`, when a daemon started it.
   const sink = logSinkAt(storeProcessLogPath(commonDir, "code"));
   const log = sink ?? ((line: string) => io.stderr(`${daemonLogLine(line)}\n`));
-  const started = await startStoreProcess({
-    commonDir,
-    log,
-    writer: writerScript(),
-    ...(io.env === undefined ? {} : { env: io.env as NodeJS.ProcessEnv }),
-  });
-  if (typeof started === "string") return started === "lost-lock" ? 0 : 1;
-  const stop = () => void started.stop();
+  // Row 011-430: the handlers come before the start, since `serving` is written inside it; a
+  // SIGTERM right after that line would otherwise end the process by the default action, with
+  // no `stopping` line. A signal during the start stops the process once it serves.
+  let stopNow: (() => void) | null = null;
+  let signalled = false;
+  const stop = () => {
+    signalled = true;
+    stopNow?.();
+  };
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
-  const end = await started.ended;
-  process.off("SIGTERM", stop);
-  process.off("SIGINT", stop);
-  log(`store process: ended (${end})`);
-  return 0;
+  try {
+    const started = await startStoreProcess({
+      commonDir,
+      log,
+      writer: writerScript(),
+      ...(io.env === undefined ? {} : { env: io.env as NodeJS.ProcessEnv }),
+    });
+    if (typeof started === "string") return started === "lost-lock" ? 0 : 1;
+    stopNow = () => void started.stop();
+    if (signalled) stopNow();
+    const end = await started.ended;
+    log(`store process: ended (${end})`);
+    return 0;
+  } finally {
+    process.off("SIGTERM", stop);
+    process.off("SIGINT", stop);
+  }
 }
