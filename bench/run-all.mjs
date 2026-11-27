@@ -32,18 +32,11 @@ export const CELLS = [
   // and the marks of the last prune and integrity check cleared: the restart checks
   // the whole file and the first prune deletes a day of history, as after a day away.
   { name: "churn", files: 500, worktrees: 1, load: 0, ageRounds: 326, spanDays: 8, churn: true },
-  // The lists' share (feedback of 2026-11-20): an aged store with 3 active worktrees, where lock
-  // time lands on the other worktrees, with and without module lists, and with one day of them.
+  // An aged store with 3 active worktrees, where lock time lands on the other worktrees.
   { name: "store-7g-wt3", files: 500, worktrees: 3, load: 0, ageRounds: 326 },
-  {
-    name: "store-7g-wt3-nolists",
-    files: 500,
-    worktrees: 3,
-    load: 0,
-    ageRounds: 326,
-    lists: "none",
-  },
-  { name: "store-7g-lists1d", files: 500, worktrees: 1, load: 0, ageRounds: 326, lists: "1d" },
+  // Row 022-10: the upgrade from 0.1.586 or older. As store-7g-wt3, but every aged key has a
+  // module list (loaded_modules), which a release from 0.1.591 deletes once, in prune slices.
+  { name: "store-7g-upgrade", files: 500, worktrees: 3, load: 0, ageRounds: 326, lists: "7d" },
   // Issue 261: mid-session, the worktree brings in a commit that changes 125 of 500 modules.
   // ff: nobody ran that commit; ff-known: another worktree ran it first (as a base branch's CI
   // would), so the shared store holds its results; ff-load50: cold on a half-busy machine;
@@ -82,7 +75,7 @@ export const GROUPS = {
   worktrees: ["ref", "wt-3", "wt-6"],
   load: ["ref", "load-50", "load-100"],
   store: ["ref", "store-1.7g", "store-7g", "churn"],
-  lists: ["store-7g", "store-7g-wt3", "store-7g-wt3-nolists", "store-7g-lists1d"],
+  lists: ["store-7g", "store-7g-wt3", "store-7g-upgrade"],
   ff: ["ff", "ff-known", "ff-ci", "ff-load50", "ff-rebase"],
   // Areas: where a change of that kind shows first.
   quick: ["ref", "wt-3"],
@@ -260,7 +253,7 @@ async function main() {
         "--age-span-days",
         String(c.spanDays ?? 7),
         "--age-lists",
-        c.lists ?? "7d",
+        c.lists ?? "none",
         "--ff",
         c.ff ?? "none",
         "--ff-mode",

@@ -385,6 +385,9 @@ export const METRICS = [
     group: "Store",
   },
   { id: "store.prune.s", what: "Time the prune spent deleting", unit: "s", group: "Store" },
+  // Row 022-10: an aged store's module lists, which a release from 0.1.591 deletes once.
+  { id: "store.lists.aged", what: "Module lists the aged store held", unit: "", group: "Store" },
+  { id: "store.lists.left", what: "Module lists left at the cell's end", unit: "", group: "Store" },
   {
     id: "store.fullCheck.s",
     what: "Restart until the integrity check passed",
@@ -412,7 +415,7 @@ export const METRICS = [
   { id: "store.process.stops", what: "Store process: times it stopped", unit: "", group: "Store" },
   {
     id: "cmd.impact.s",
-    what: "`squeal impact` (reads every stored module list)",
+    what: "`squeal impact` (store history read, no daemon; read module lists before 0.1.591)",
     unit: "s",
     group: "Commands",
   },
@@ -727,6 +730,8 @@ function storeValues(cell, cellDir) {
     "store.prune.doneMin": churn ? (doneS === null ? INF : doneS / 60) : null,
     "store.prune.s": churn?.pruneS ?? null,
     "store.fullCheck.s": churn?.fullCheckS ?? null,
+    "store.lists.aged": cell.phases.age?.listsAdded ?? null,
+    "store.lists.left": st.listsLeft ?? null,
     "store.longWrite.maxMs": holds ? maxOrNull(holds) : null,
     "store.longWrite.totalS": holds ? holds.reduce((a, b) => a + b, 0) / 1000 : null,
     "cmd.impact.s": impact ? impact.ms / 1000 : null,

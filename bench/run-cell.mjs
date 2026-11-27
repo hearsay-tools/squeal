@@ -62,7 +62,8 @@ const { values: o } = parseArgs({
     seed: { type: "string", default: "1" },
     "age-rounds": { type: "string", default: "0" },
     "age-span-days": { type: "string", default: "7" },
-    "age-lists": { type: "string", default: "7d" },
+    // Row 022-10: lists only in the upgrade cell; no release from 0.1.591 stores them.
+    "age-lists": { type: "string", default: "none" },
     // Issue 261, a big fast-forward: none | cold (nobody ran the incoming commit) | known (another
     // worktree ran it first, so the shared store holds its results) | ci (CI ran it: `squeal ci
     // record` and `ci export` in the upstream checkout, then `squeal import` here). --ff-mode merge | rebase.
@@ -340,7 +341,8 @@ cell.phases.sessionDaemonCpuS = [...cpu1].map(([root, s]) => {
 cell.phases.edits = edits.length;
 cell.phases.sessionStoreProcessCpuS = storeMeter.cpuS() - sessionStore0;
 
-// 7b. `squeal impact`: reads every stored module list (loaded_modules) with no daemon; the store's worst size cost.
+// 7b. `squeal impact`: a read of the store's history with no daemon. Releases 0.1.496 to
+// 0.1.586 also read every stored module list in it; from 0.1.591 none is read (spec 022 D4, row 022-10).
 // A release before `impact` (spec 015 D11, 2026-11-22) exits 2 on it as an unknown command: run `reach` there.
 {
   const opts = { env, cwd: main, timeoutMs: 600_000 };
@@ -380,6 +382,9 @@ cell.store.rows = Object.fromEntries(
     .map((l) => l.split("|"))
     .map(([k, v]) => [k, Number(v)]),
 );
+// Row 022-10: the module lists left at the end. From 0.1.591 the prune deletes them, so an aged store with
+// lists (age `listsAdded` > 0) shows the upgrade's cleanup here; null when the store has no such table.
+cell.store.listsLeft = await countLists(join(store, "store.sqlite"));
 cell.daemonRss = {
   maxDaemonBytes: Math.max(0, ...samples.map((s) => s.maxDaemonRss)),
   maxTreeBytes: Math.max(0, ...samples.map((s) => s.treeRss)),
@@ -440,6 +445,14 @@ function meanBusy(fromSample) {
 }
 
 export { quantile };
+
+/** Rows in `loaded_modules`, or null when the store has no such table (sqlite3 then fails). */
+async function countLists(file) {
+  const r = await timed("sqlite3", ["-readonly", file, "select count(*) from loaded_modules;"], {
+    env,
+  });
+  return r.code === 0 ? Number(r.stdout.trim()) : null;
+}
 
 /**
  * Churn cells: every 5 s, from a read-only connection, the results older than

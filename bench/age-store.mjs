@@ -7,8 +7,10 @@
 //
 // Each round gives every test file a new content key and adds, at that key:
 //   - one `results` row per check of the file, copied from the file's newest result;
-//   - one `loaded_modules` row whose list holds about 46 KB of JSON, the
-//     average row in Squeal's own store (2026-11-20: 510 modules, 46 KB);
+//   - with --lists 7d or 1d only: one `loaded_modules` row whose list holds about
+//     46 KB of JSON, the average row in Squeal's own store (2026-11-20: 510 modules,
+//     46 KB). No release from 0.1.591 stores lists (spec 022 D3); such a store is
+//     what an upgrade from 0.1.586 or older leaves (row 022-10);
 //   - one `runs` row per 8 test files (the real store's ratio).
 // Timestamps fall between 7 days and 2 hours ago, older than every real row,
 // so a "newest result" or "newest list" read still finds the real one.
@@ -38,9 +40,10 @@ const flag = (name) => {
   return value;
 };
 const spanDays = Number(flag("--span-days") ?? 7);
-// --lists 7d (default) | 1d | none: which aged keys get a loaded_modules list. 1d keeps only the
-// newest day's, none adds no list, so a store's size and its lists' share can be told apart.
-const lists = flag("--lists") ?? "7d";
+// --lists none (default) | 7d | 1d: which aged keys get a loaded_modules list. none adds no list,
+// as every release from 0.1.591 writes none; 7d gives every aged key one, the store an upgrade
+// from 0.1.586 or older leaves; 1d keeps only the newest day's (row 022-10).
+const lists = flag("--lists") ?? "none";
 if (!["7d", "1d", "none"].includes(lists))
   throw new Error(`--lists must be 7d, 1d or none, not ${lists}`);
 const churn = args.includes("--churn");
@@ -48,7 +51,7 @@ if (churn) args.splice(args.indexOf("--churn"), 1);
 const [store, roundsArg, root] = args;
 if (!store || !roundsArg || !root) {
   console.error(
-    "usage: age-store.mjs <store.sqlite> <rounds> <project root> [--span-days N] [--churn]",
+    "usage: age-store.mjs <store.sqlite> <rounds> <project root> [--span-days N] [--lists none|7d|1d] [--churn]",
   );
   process.exit(2);
 }
