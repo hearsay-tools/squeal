@@ -1,0 +1,64 @@
+[
+  {
+    "scenario": "config-drift",
+    "end": "crashed",
+    "failure": "remote synthetic refused (config and setup files differ: e2e/describe-error.ts); not run here (whenLost \"not-run\")",
+    "remoteRunRequests": 0,
+    "localRuns": 0,
+    "sends": [],
+    "logs": [
+      "remote synthetic: config and setup files differ: e2e/describe-error.ts"
+    ],
+    "status": "remote synthetic refused: config and setup files differ: e2e/describe-error.ts; 1 files not run"
+  },
+  {
+    "scenario": "persistent-proof-drift",
+    "end": "crashed",
+    "failure": "remote synthetic refused (its tree stayed different at fixtures/golden.json); not run here (whenLost \"not-run\")",
+    "remoteRunRequests": 2,
+    "localRuns": 0,
+    "sends": [
+      [
+        "fixtures/golden.json"
+      ]
+    ],
+    "logs": [
+      "remote synthetic: tree differs at fixtures/golden.json; sending again",
+      "remote synthetic: tree differs at fixtures/golden.json; sending again"
+    ],
+    "status": "remote synthetic: refused a run whose tree stayed different; not run"
+  },
+  {
+    "scenario": "repaired-proof-drift",
+    "end": "completed",
+    "failure": null,
+    "remoteRunRequests": 2,
+    "localRuns": 0,
+    "sends": [
+      [
+        "fixtures/golden.json"
+      ]
+    ],
+    "logs": [
+      "remote synthetic: tree differs at fixtures/golden.json; sending again",
+      "remote synthetic: run proven over 2 paths"
+    ],
+    "status": "remote synthetic: background runs of vitest go there; proven at 2026-11-27T11:57:34.630Z (blob ids equal before and after)"
+  },
+  {
+    "scenario": "added-helper",
+    "end": "completed",
+    "failure": null,
+    "remoteRunRequests": 1,
+    "localRuns": 0,
+    "sends": [
+      [
+        "e2e/describe-error.ts"
+      ]
+    ],
+    "logs": [
+      "remote synthetic: run proven over 3 paths"
+    ],
+    "status": "remote synthetic: background runs of vitest go there; proven at 2026-11-27T11:57:34.639Z (blob ids equal before and after)"
+  }
+]
