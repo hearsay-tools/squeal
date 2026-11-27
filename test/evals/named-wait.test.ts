@@ -11,6 +11,7 @@ import {
   squealEvidence,
 } from "../../evals/lib/index.mjs";
 import { type EndedNamed, namedText } from "../../src/cli/status-wait-lines.js";
+import type { NamedLint } from "../../src/core/types/lint-delivery.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import {
   CLAIM,
@@ -59,7 +60,7 @@ const unsynced = (results: number, pass: number, files: string[]): Step => ({
  * Row 011-28 (gh-44): the named wait as `namedText` prints it, the revision line, the selection
  * and last its verdict, `pending` checks of one other test file queued.
  */
-const short = (rev: number, files: string[], pending = 0): Step => {
+const short = (rev: number, files: string[], pending = 0, lint?: NamedLint): Step => {
   const other = pending > 0 ? 1 : 0;
   const result: StatusSnapshot = {
     ...settled,
@@ -89,6 +90,7 @@ const short = (rev: number, files: string[], pending = 0): Step => {
     files: refs.map((testFile) => ({ testFile, state: "current", verdict: "pass" })),
     sync: { state: "synced", revision: rev, incarnation: null },
     result,
+    ...(lint === undefined ? {} : { lint }),
   } as unknown as EndedNamed;
   return { cmd: `squeal status --wait 60000 ${files.join(" ")}`, out: namedText(wait, 0 as never) };
 };
@@ -171,7 +173,36 @@ for (const harness of ["codex", "claude"] as const)
       const g = t1([short(1, [MONEY]), CLAIM("pass")], harness);
       expect(Object.entries(g ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
     });
+
+    it("grades a named wait with its paths' lint lines as one without (row 017-37)", () => {
+      const out = (short(1, [MONEY], 0, NAMED_LINT) as { out: string }).out;
+      expect(out).toContain("Lint of the named files: 2 checks, 1 linted, 1 with findings");
+      const g = t1([short(1, [MONEY], 0, NAMED_LINT), CLAIM("pass")], harness);
+      expect(g).toEqual(t1([short(1, [MONEY]), CLAIM("pass")], harness));
+      expect(squealEvidence(out, "pull")).toEqual(
+        squealEvidence((short(1, [MONEY]) as { out: string }).out, "pull"),
+      );
+    });
   });
+
+/** Row 017-37: a named file that fails lint and one that waits in a re-lint's backlog. */
+const NAMED_LINT: NamedLint = {
+  done: 1,
+  pending: 1,
+  failing: 1,
+  unknown: 0,
+  files: [
+    { path: MONEY as never, tool: "eslint", outcome: "fail", findings: 2 },
+    {
+      path: "src/money.ts" as never,
+      tool: "eslint",
+      outcome: "pending",
+      waits: "backlog",
+      reason:
+        "waits in the backlog of a full re-lint, waiting for this worktree's share of the worker pool",
+    },
+  ],
+};
 
 describe("a named wait's evidence", () => {
   const text = (s: Step) => (s as { out: string }).out;

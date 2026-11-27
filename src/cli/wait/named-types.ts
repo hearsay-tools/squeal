@@ -2,6 +2,7 @@ import type { DownReason } from "../../core/presence/wait.js";
 import type { NamedFile } from "../../core/status/standing.js";
 import type { AbsolutePath, EpochMs, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
+import type { NamedLint } from "../../core/types/lint-delivery.js";
 import type { StatusHold } from "../../core/types/standing.js";
 import type { StatusSnapshot } from "../../core/types/status.js";
 import type { NamedSelection } from "../named-selection.js";
@@ -67,6 +68,11 @@ export interface NamedWaitEnded {
    * refused, as its last read found them, for its lines; absent with none.
    */
   readonly asked?: readonly AskedEnd[];
+  /**
+   * Row 017-37 (gh-238): the named paths' lint, apart from the repository's
+   * count; absent when lint is off or includes no named path.
+   */
+  readonly lint?: NamedLint;
 }
 
 export type NamedWait =

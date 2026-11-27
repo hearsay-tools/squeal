@@ -133,7 +133,7 @@ const lintingWords = ({ done, total, cpuWait }: LintProgress) =>
  * `waiting for CPU (21 busy, limit 18)`; without the busy CPUs when the pool
  * read none. Row 017-37: a refusal the CPUs did not cause names its cause.
  */
-function cpuWaitWords({ busy, limit, cause }: LintCpuWait): string {
+export function cpuWaitWords({ busy, limit, cause }: LintCpuWait): string {
   if (cause === "share") return "waiting for this worktree's share of the worker pool";
   if (cause === "queue") return "waiting in line for a free worker of the pool";
   const busyWords = busy === null ? "" : `${Math.round(busy)} busy, `;
