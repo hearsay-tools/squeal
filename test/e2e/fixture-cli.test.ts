@@ -10,6 +10,8 @@ import { CODEX_SESSION, PLUGINS, type Plugin } from "./plugins.js";
 import { cliProcess, cliWith, daemonProcesses, soon } from "./restart-evidence.js";
 
 const fixture = e2eSuite();
+/** The seed (`SEED`) is a release from before 0.1.645: it runs on the Vite it supports (row 025-25). */
+const retained = e2eSuite("vitest-8.3");
 
 const versionIn = (path: string) =>
   (JSON.parse(readFileSync(join(REPO_ROOT, path), "utf8")) as { version: string }).version;
@@ -55,7 +57,7 @@ describe.runIf(process.platform === "linux").each(PLUGINS)("fixture CLI, $name",
 
   for (const { seed, version } of runtimes(plugin)) {
     it(`runs ${version}${seed ? ", the frozen seed," : ""} through its hooks, finds the actual daemon and leaves none after cleanup`, async (ctx) => {
-      const e = fixture(ctx, plugin, { tmpfs: true, codexSeed: seed });
+      const e = (seed ? retained : fixture)(ctx, plugin, { tmpfs: true, codexSeed: seed });
       await e.hook("session-start", e.main);
       const daemon = await e.daemonReady(e.main);
       // Row 019-31: the hooks run the release under test, unless a test asks for the seed.

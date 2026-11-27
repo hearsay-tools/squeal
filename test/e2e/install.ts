@@ -79,8 +79,12 @@ const CACHE_ROOT = "/tmp/squeal-e2e-cache";
 const PLATFORM = `node${process.versions.node.split(".")[0]}-${process.platform}-${process.arch}`;
 const INSTALL_TIMEOUT_MS = 180_000;
 
-/** Which fixture the install is for: Vitest alone, the node:test workspace, or pytest beside Vitest. */
-export type InstallKind = "vitest" | "node-test" | "pytest";
+/**
+ * Which fixture the install is for: Vitest alone, the node:test workspace, or pytest beside
+ * Vitest. `vitest-8.3` is Vitest alone on `VITE_8_3`, for a fixture that runs a retained
+ * release from before 0.1.645 (row 025-25); every other kind is on the repository's Vite.
+ */
+export type InstallKind = "vitest" | "vitest-8.3" | "node-test" | "pytest";
 
 /** The workspace packages of `test/fixtures/e2e/node-test`, whose manifests npm links. */
 const WORKSPACE = join(REPO_ROOT, "test/fixtures/e2e/node-test/packages");
@@ -96,6 +100,13 @@ interface Recipe {
 function recipe(kind: InstallKind): Recipe {
   const vitest = `vitest@${VITEST_VERSION}`;
   const vite = `vite@${VITE_VERSION}`;
+  if (kind === "vitest-8.3")
+    return {
+      key: `vitest-${VITEST_VERSION}-vite-${VITE_8_3.vite}-${PLATFORM}`,
+      // Rolldown named, as `shipped-plugin.test.ts` names it: the cache's newest is 8.4's.
+      packages: [vitest, `vite@${VITE_8_3.vite}`, `rolldown@${VITE_8_3.rolldown}`],
+      root: {},
+    };
   if (kind === "vitest" || kind === "pytest")
     return {
       key: `vitest-${VITEST_VERSION}-vite-${VITE_VERSION}-${PLATFORM}`,

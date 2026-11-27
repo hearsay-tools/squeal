@@ -31,6 +31,12 @@ import {
  */
 
 const fixture = e2eSuite();
+/**
+ * 0.1.393's session runs on the Vite it supports, 8.3: its `load` wrapper drops the second
+ * argument Vite 8.4.0 passes, and no test file loads (row 025-25). This worktree's on the
+ * repository's Vite.
+ */
+const retained = e2eSuite("vitest-8.3");
 
 /** The reviewed candidate of 0.1.393 (board, row 010-34). */
 const V0_1_393 = "a753102e4";
@@ -294,7 +300,7 @@ function sharedImports(text: string): string {
 describe.each(PLUGINS)("a repository with no checks key, $name (019 Goal 2)", (plugin) => {
   it("tells the agent what 0.1.393 told it, and Stop decides as it did", async (ctx) => {
     const options = triggersFixture(false);
-    const before = await session(fixture(ctx, plugin, options), V0_1_393);
+    const before = await session(retained(ctx, plugin, options), V0_1_393);
     const now = await session(fixture(ctx, plugin, options));
     expect(before.ran).toEqual([
       `baseline: ${[...E2E_FILES, ...UNIT_FILES].sort()}`,
