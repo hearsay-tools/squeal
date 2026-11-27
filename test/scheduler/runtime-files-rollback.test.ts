@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { BusyWaits } from "../../src/core/store/busy.js";
+import { inMethod } from "../helpers/stack-frame.js";
 import { SLOW } from "./cleanup.js";
 import { openRepoStore } from "./repo.js";
 import { A, B, DATA, fixture, scoped } from "./runtime-files-fixture.js";
@@ -18,7 +19,7 @@ it(
     let rolledBack = false;
     let rawAfterRollback: string | null | undefined;
     store.transaction = ((fn: () => unknown) => {
-      const record = depth === 0 && new Error().stack?.includes("TierRecords.#write");
+      const record = depth === 0 && inMethod(new Error().stack, "#write", "scheduler/record.ts");
       depth += 1;
       try {
         return real(() => {
