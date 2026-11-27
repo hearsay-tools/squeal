@@ -2,13 +2,10 @@ import { randomBytes } from "node:crypto";
 import { loadavg } from "node:os";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { describe, expect, it } from "vitest";
-import { Pace } from "../../../src/core/code/coverage/pace.js";
 import { readSummary } from "../../../src/core/code/crap/summary.js";
-import type { Counter } from "../../../src/core/code/pass/types.js";
 import { compare } from "../../../src/core/fs/compare.js";
 import { WT } from "../../state/helpers.js";
 import { daemonPass, fakeCounter, policyOn } from "../pass/helpers.js";
-import { TurnLog } from "../pass/turns.js";
 import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
 
 /*
@@ -19,7 +16,7 @@ import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
  * each record holds most of them. Row 015-45 reads the first loader map,
  * of a size 011-197's stores held, in slices, and row 015-47 their seed at
  * a recount, and row 015-48 the recount's complexity write and coverage's
- * start. Row 015-56: the log names each long turn's phase.
+ * start.
  *
  * Row 011-429 (G1): the tests assert that the chain judges every source at
  * 011-197's scale, not how long its turns are. A bound on the longest
@@ -29,7 +26,7 @@ import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
  * short is asserted by counted units on a fake clock: the loader map a test
  * file at a time (`sliced.test.ts`), the seed's count reads in units
  * (`seed-budget.test.ts`), a step's successor no sooner than it took
- * (`chain.test.ts`). The turn lengths stay in the log; their figure is the
+ * (`chain.test.ts`). The longest turn stays in the log; their figure is the
  * `bench/` store cells' `hook.writeWait.max` and `hook.longWriteWaits`.
  */
 
@@ -62,35 +59,9 @@ interface Chain {
   readonly note: () => string;
 }
 
-/** Row 015-56: a counter, coverage pace and pass report that mark a chain's phases in `turns`. */
-function marked(turns: TurnLog, counter: Counter) {
-  class MarkedPace extends Pace {
-    override measure<T>(work: () => T): T {
-      turns.mark("a coverage step");
-      try {
-        return super.measure(work);
-      } finally {
-        turns.mark("between coverage steps");
-      }
-    }
-  }
-  return {
-    counter: () =>
-      Promise.resolve({
-        version: counter.version,
-        count: (text: string, language: Parameters<Counter["count"]>[1]) => {
-          turns.mark("counting");
-          return counter.count(text, language);
-        },
-      }),
-    pace: new MarkedPace(Date.now),
-    onPass: () => turns.mark("after the pass"),
-  };
-}
-
 /**
  * Runs the chain `soon()` starts until `expected` files are judged, or
- * `chain` is over, and logs its time and its longest turns.
+ * `chain` is over, and logs its time and its longest turn.
  */
 async function judgedAll(
   rig: ReturnType<typeof coverageRig>,
@@ -98,12 +69,10 @@ async function judgedAll(
   expected: number,
   label: string,
   chain?: Chain,
-  turns = new TurnLog(),
 ): Promise<void> {
   const delay = monitorEventLoopDelay({ resolution: 10 });
   const began = performance.now();
   delay.enable();
-  turns.start("the pass");
   if (chain === undefined) run.code.soon();
   else chain.start();
   const done = chain?.done ?? (() => judged(rig) === expected);
@@ -111,13 +80,12 @@ async function judgedAll(
     await expect.poll(done, { timeout: 120_000, interval: 50 }).toBe(true);
   } finally {
     delay.disable();
-    turns.stop();
     await run.code.close();
   }
   const took = Math.round(performance.now() - began);
   const load = loadavg()[0] ?? 0;
   console.log(
-    `coverage chain: ${label} judged in ${took} ms; longest turn ${Math.round(delay.max / 1e6)} ms, most work in a turn ${turns.longestWork()} ms${chain?.note() ?? ""}; load average ${load.toFixed(1)}; ${turns.summary()}`,
+    `coverage chain: ${label} judged in ${took} ms; longest turn ${Math.round(delay.max / 1e6)} ms${chain?.note() ?? ""}; load average ${load.toFixed(1)}`,
   );
 }
 
@@ -189,14 +157,12 @@ describe("the coverage chain after a run (row 015-42)", () => {
       { length: FUNCTIONS / 2 },
       (_, f) => [`f${f}`, [`g${f}`, 0]] as const,
     );
-    const turns = new TurnLog();
-    const { counter, pace, onPass } = marked(turns, counterV2(Object.fromEntries(renamed)));
+    const counter = () => Promise.resolve(counterV2(Object.fromEntries(renamed)));
     const recount = daemonPass(rig.tree, {
       policy: () => COVERED,
       now: Date.now,
       counter,
-      onPass,
-      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false, pace },
+      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
     });
     // The last file judged: its renamed function's state is judged once the chain is over.
     const last = [...paths].sort(compare).at(-1) ?? "";
@@ -206,7 +172,7 @@ describe("the coverage chain after a run (row 015-42)", () => {
         .some((s) => s.check.qualifiedName === "g0" && s.outcome !== "pending");
     const label = `a recount of ${RECOUNT_SOURCES} sources`;
     const chain = { start: () => recount.code.nudge(), done, note: () => "" };
-    await judgedAll(rig, recount, 0, label, chain, turns);
+    await judgedAll(rig, recount, 0, label, chain);
   }, 300_000);
 
   // Row 015-48: coverage switched on over 011-197's counted files. Its first-count check read every
@@ -218,14 +184,12 @@ describe("the coverage chain after a run (row 015-42)", () => {
     for (let t = 0; t < RECOUNT_TEST_FILES; t++) {
       rig.loader(`test/t${t}.test.ts`, { closure: paths, record: [] });
     }
-    const turns = new TurnLog();
-    const { counter, pace, onPass } = marked(turns, fakeCounter());
+    const counter = () => Promise.resolve(fakeCounter());
     const start = daemonPass(rig.tree, {
       policy: () => COVERED,
       now: Date.now,
       counter,
-      onPass,
-      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false, pace },
+      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
     });
     const label = `coverage's start on ${RECOUNT_SOURCES} sources`;
     const chain = {
@@ -233,6 +197,6 @@ describe("the coverage chain after a run (row 015-42)", () => {
       done: () => judged(rig) === RECOUNT_SOURCES,
       note: () => "",
     };
-    await judgedAll(rig, start, 0, label, chain, turns);
+    await judgedAll(rig, start, 0, label, chain);
   }, 300_000);
 });
