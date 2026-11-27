@@ -3282,17 +3282,7 @@ function compare(a, b) {
 }
 
 // src/core/runner-host/remote/machines-store.ts
-import {
-  closeSync,
-  linkSync as linkSync2,
-  mkdirSync as mkdirSync2,
-  openSync,
-  readFileSync as readFileSync14,
-  renameSync as renameSync3,
-  statSync as statSync3,
-  unlinkSync,
-  writeFileSync as writeFileSync3
-} from "node:fs";
+import { mkdirSync as mkdirSync2, readFileSync as readFileSync14, renameSync as renameSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
 import { dirname as dirname12, isAbsolute as isAbsolute8, join as join23 } from "node:path";
 var MACHINES_FILE = "remote-machines.json";
@@ -3632,7 +3622,7 @@ function machineOf(records, target, worktreeId) {
 }
 
 // src/core/ps/work.ts
-import { existsSync as existsSync6, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync6, statSync as statSync3 } from "node:fs";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/daemon/last-use.ts
@@ -4874,8 +4864,8 @@ function byStore(daemons) {
 function openReadOnly(path) {
   let db;
   try {
-    const file = statSync4(path, { bigint: true });
-    const wal = statSync4(`${path}-wal`, { throwIfNoEntry: false });
+    const file = statSync3(path, { bigint: true });
+    const wal = statSync3(`${path}-wal`, { throwIfNoEntry: false });
     const held = wal !== void 0 && existsSync6(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
@@ -4892,7 +4882,7 @@ function openReadOnly(path) {
 }
 function changed(path, before) {
   try {
-    const after = statSync4(path, { bigint: true });
+    const after = statSync3(path, { bigint: true });
     return after.ino !== before.ino || after.size !== before.size || after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs;
   } catch {
     return true;
