@@ -64,6 +64,11 @@ export interface RemoteLane {
   readonly environmentMode: "match-local" | "remote-key";
   /** Absent: the machine's default (`idleSleepMinutesOf`). */
   readonly idleSleepMinutes?: number;
+  /**
+   * Row 026-43: the hours a kept machine may go with no daemon before the
+   * prune deletes it; `0` never. A loaded lane has it; absent: 24.
+   */
+  readonly deleteUnusedHours?: number;
   readonly diskCheck: DiskCheck;
   readonly whenLost: WhenLost;
   /** The user's Node on the remote: `node` on the login's `PATH`, or a path. */
@@ -87,11 +92,17 @@ export const LANE_DEFAULTS = {
   whenLost: "local",
   node: "node",
   cache: ".squeal-remote",
+  deleteUnusedHours: 24,
 } as const satisfies Partial<RemoteLane>;
 
 /** D6.4: `idleSleepMinutes`, else 10 for a machine that sleeps on idle, 0 for one that does not. */
 export function idleSleepMinutesOf(lane: RemoteLane, sleepOnIdle: boolean): number {
   return lane.idleSleepMinutes ?? (sleepOnIdle ? 10 : 0);
+}
+
+/** Row 026-43: the lane's `deleteUnusedHours`, else 24; `0` never deletes. */
+export function deleteUnusedHoursOf(lane: RemoteLane): number {
+  return lane.deleteUnusedHours ?? LANE_DEFAULTS.deleteUnusedHours;
 }
 
 /** A display name for the lane's notes before a machine is acquired: the target, else the provider. */
@@ -177,6 +188,7 @@ const ENTRY_KEYS = [
   "coverage",
   "environmentMode",
   "idleSleepMinutes",
+  "deleteUnusedHours",
   "diskCheck",
   "whenLost",
   "node",
@@ -286,10 +298,14 @@ function tiersOf(
 function lifecycleOf(
   entry: Entry,
   provider: string,
-): Made<Pick<RemoteLane, "idleSleepMinutes" | "diskCheck" | "whenLost">> {
+): Made<Pick<RemoteLane, "idleSleepMinutes" | "deleteUnusedHours" | "diskCheck" | "whenLost">> {
   const idle = entry.idleSleepMinutes;
-  if (idle !== undefined && !(typeof idle === "number" && Number.isFinite(idle) && idle >= 0)) {
+  if (idle !== undefined && !nonNegative(idle)) {
     return { problem: '"idleSleepMinutes" must be a number of 0 or more' };
+  }
+  const unused = entry.deleteUnusedHours;
+  if (unused !== undefined && !nonNegative(unused)) {
+    return { problem: '"deleteUnusedHours" must be a number of 0 or more (0: never delete)' };
   }
   const diskCheck = diskCheckOf(entry.diskCheck, provider);
   if (typeof diskCheck === "string") return { problem: diskCheck };
@@ -297,9 +313,14 @@ function lifecycleOf(
   if (whenLost === null) return { problem: '"whenLost" must be "local" or "not-run"' };
   return {
     ...(idle === undefined ? {} : { idleSleepMinutes: idle as number }),
+    deleteUnusedHours: (unused as number | undefined) ?? LANE_DEFAULTS.deleteUnusedHours,
     diskCheck,
     whenLost,
   };
+}
+
+function nonNegative(value: unknown): boolean {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
 /**

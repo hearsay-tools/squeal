@@ -634,7 +634,8 @@ class Daemon {
   /**
    * Row 026-37 (#301, spec 026 D12.5): once the lock is held, the tracked
    * remote machines of removed worktrees, any repository's, are released
-   * and forgotten in the background, as `squeal remote prune` does. It
+   * and forgotten in the background, as `squeal remote prune` does; since
+   * row 026-43 so are those no daemon used for `deleteUnusedHours`. It
    * delays neither the start nor a run, never throws, logs each machine,
    * and ends at the exit.
    */
@@ -646,8 +647,9 @@ class Daemon {
     void Promise.all([
       import("../runner-host/remote/prune.js"),
       import("../runner-host/remote/presence.js"),
+      import("../runner-host/remote/prune-unused.js"),
     ])
-      .then(([{ pruneRemovedWorktrees }, { machineScope }]) =>
+      .then(([{ pruneRemovedWorktrees }, { machineScope }, { causeText }]) =>
         pruneRemovedWorktrees({
           ...prune,
           env,
@@ -656,8 +658,12 @@ class Daemon {
           scope: machineScope(),
           report: (outcome) => {
             const { id, provider, worktreeRoot } = outcome.record;
-            const of = outcome.kind === "kept" ? "worktree" : "removed worktree";
-            const what = `remote machine ${id} (${provider}) of ${of} ${worktreeRoot}`;
+            // Row 026-43: a machine of a removed worktree, or one no daemon used for `deleteUnusedHours`.
+            const of =
+              outcome.kind === "kept"
+                ? `of worktree ${worktreeRoot}`
+                : causeText(outcome.cause, worktreeRoot);
+            const what = `remote machine ${id} (${provider}) ${of}`;
             this.#log(
               outcome.kind === "failed"
                 ? `${what} not released, still tracked: ${outcome.error}`

@@ -70,7 +70,7 @@ export function recordMachine(record: MachineRecord, env: NodeJS.ProcessEnv = pr
 /** Changes the record of `provider` and `worktreeId`, when there is one. */
 export function updateMachine(
   key: Pick<MachineRecord, "provider" | "worktreeId">,
-  patch: Partial<Pick<MachineRecord, "status" | "lastUsedAt">>,
+  patch: Partial<Pick<MachineRecord, "status" | "lastUsedAt" | "detachedAt">>,
   env: NodeJS.ProcessEnv = process.env,
 ): void {
   change(env, (machines) => machines.map((m) => (same(m, key) ? { ...m, ...patch } : m)));

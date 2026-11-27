@@ -8,6 +8,12 @@ import {
 import { machineScope, worktreePresence } from "../core/runner-host/remote/presence.js";
 import type { MachineRecord } from "../core/runner-host/remote/provider.js";
 import { pruneRemovedWorktrees, reattach } from "../core/runner-host/remote/prune.js";
+import {
+  causeText,
+  detachedSince,
+  durationText,
+  type PruneCause,
+} from "../core/runner-host/remote/prune-unused.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { DaemonRequest, DaemonResponse, RemoteSleepOutcome } from "../core/types/daemon.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
@@ -18,7 +24,9 @@ import type { CliIo } from "./main.js";
  * acquired, as `$XDG_STATE_HOME/squeal/remote-machines.json` records them.
  * `list` shows them; `sleep` asks a worktree's machine to sleep now; `prune`
  * releases (`worktree-removed`) each machine whose worktree is gone, which
- * stops a cloud machine's disk charges. None needs a daemon. A machine's
+ * stops a cloud machine's disk charges, and since row 026-43 (`unused`)
+ * each one no daemon used for its lane's `deleteUnusedHours`. None needs
+ * a daemon. A machine's
  * hooks come from the user's `remote.json` entry it was acquired under.
  *
  * Review 0.1.616 B7 (D12.4): `sleep` asks the worktree's running daemon
@@ -74,7 +82,13 @@ function list(io: CliIo, env: NodeJS.ProcessEnv, json: boolean): number {
   const read = machinesOf(io, env);
   if (read === null) return FAILED;
   const presence = new Map(read.machines.map((m) => [m, worktreePresence(m.worktreeRoot)]));
-  const rows = read.machines.map((m) => ({ ...m, worktreeExists: presence.get(m) === "present" }));
+  const at = Date.now();
+  // Row 026-43: how long each detached machine has had no daemon.
+  const rows = read.machines.map((m) => ({
+    ...m,
+    worktreeExists: presence.get(m) === "present",
+    ...(m.status === "detached" ? { noDaemonForMs: Math.max(0, at - detachedSince(m)) } : {}),
+  }));
   if (json) {
     io.stdout(`${JSON.stringify({ path: read.path, machines: rows }, null, 2)}\n`);
     return 0;
@@ -85,7 +99,7 @@ function list(io: CliIo, env: NodeJS.ProcessEnv, json: boolean): number {
   }
   const lines = rows.map(
     (m) =>
-      `${m.id}  ${m.provider}  ${m.status}  ${m.worktreeRoot}${m.worktreeExists ? "" : " (worktree removed)"}  last used ${new Date(m.lastUsedAt).toISOString()}`,
+      `${m.id}  ${m.provider}  ${m.status}  ${m.worktreeRoot}${m.worktreeExists ? "" : " (worktree removed)"}  last used ${new Date(m.lastUsedAt).toISOString()}${m.noDaemonForMs === undefined ? "" : `  no daemon for ${durationText(m.noDaemonForMs)}`}`,
   );
   // Row 026-37 (#301): machines of removed worktrees bill until released.
   // Review 0.1.658 B2: only a path confirmed missing counts, as the prune counts it.
@@ -200,14 +214,16 @@ function foreign(record: MachineRecord): string {
 }
 
 async function prune(io: CliIo, env: NodeJS.ProcessEnv, dryRun: boolean): Promise<number> {
-  const what = (r: MachineRecord) =>
-    `${r.id} (${r.provider}) of removed worktree ${r.worktreeRoot}`;
+  const what = (r: MachineRecord, cause: PruneCause) =>
+    `${r.id} (${r.provider}) ${causeText(cause, r.worktreeRoot)}`;
   const result = await pruneRemovedWorktrees({
     env,
     dryRun,
     report: (outcome) => {
       if (outcome.kind === "failed") {
-        io.stderr(`${what(outcome.record)}: not released, still tracked: ${outcome.error}\n`);
+        io.stderr(
+          `${what(outcome.record, outcome.cause)}: not released, still tracked: ${outcome.error}\n`,
+        );
       } else if (outcome.kind === "kept") {
         const r = outcome.record;
         io.stdout(
@@ -215,7 +231,7 @@ async function prune(io: CliIo, env: NodeJS.ProcessEnv, dryRun: boolean): Promis
         );
       } else {
         const verb = outcome.kind === "released" ? "released" : "would release";
-        io.stdout(`${verb} ${what(outcome.record)}${foreign(outcome.record)}\n`);
+        io.stdout(`${verb} ${what(outcome.record, outcome.cause)}${foreign(outcome.record)}\n`);
       }
     },
   });
@@ -223,8 +239,8 @@ async function prune(io: CliIo, env: NodeJS.ProcessEnv, dryRun: boolean): Promis
     io.stderr(`squeal remote: ${result.problem.path} ${result.problem.text}\n`);
     return FAILED;
   }
-  if (result.gone === 0) {
-    io.stdout("No tracked remote machine has a removed worktree.\n");
+  if (result.gone === 0 && result.unused === 0) {
+    io.stdout("No tracked remote machine has a removed worktree or is unused.\n");
     return 0;
   }
   return result.outcomes.some((o) => o.kind === "failed") ? FAILED : 0;

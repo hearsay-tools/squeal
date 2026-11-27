@@ -348,9 +348,14 @@ describe("one machine for every runner (row 026-11)", () => {
     const m = machine();
     await connectAll(m);
     await Promise.all(m.lanes.map((lane) => lane.close()));
+    const before = Date.now();
     await m.remote.release();
     expect(m.calls()).toEqual(["acquire", "release"]);
-    expect(readMachines(m.env).machines[0]?.status).toBe("detached");
+    const [record] = readMachines(m.env).machines;
+    expect(record?.status).toBe("detached");
+    // Row 026-43: when it lost its daemon, for the prune of unused machines.
+    expect(record?.detachedAt).toBeGreaterThanOrEqual(before);
+    expect(record?.detachedAt).toBeLessThanOrEqual(Date.now());
   });
 
   it("deletes the machine at the exit when its worktree is already gone, and forgets it (row 026-37)", async () => {

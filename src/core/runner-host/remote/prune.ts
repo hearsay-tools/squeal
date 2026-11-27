@@ -1,7 +1,16 @@
+import { liveDaemonRecorded } from "../../daemon/ensure.js";
+import type { AbsolutePath } from "../../types/common.js";
 import { changeMachinesSoon, forgetting, readMachines } from "./machines-store.js";
-import { worktreePresence } from "./presence.js";
+import { machineScope, worktreePresence } from "./presence.js";
 import type { MachineRecord, RemoteMachine, RemoteMachineProvider } from "./provider.js";
 import { providerOf } from "./providers/index.js";
+import {
+  type PruneCause,
+  stillUnused,
+  type UnusedContext,
+  unusedCause,
+  WORKTREE_REMOVED,
+} from "./prune-unused.js";
 import { loadRemoteSettings } from "./settings.js";
 
 /*
@@ -26,13 +35,34 @@ import { loadRemoteSettings } from "./settings.js";
  * worktree is here gets `scope` written into it. Review 0.1.659-r2 N1:
  * the scope is checked again on the record read just before its release,
  * and the record is forgotten only while its id and scope are unchanged.
+ *
+ * Row 026-43: the same prune releases `unused` and forgets a machine whose
+ * worktree is there but which no daemon has used for its lane's
+ * `deleteUnusedHours` (`prune-unused.ts`). Read again just before its
+ * release, it is kept when its status or timestamps moved, its id
+ * changed, or a daemon of its worktree is live.
  */
 
-/** One machine of a removed worktree: released, would be (a dry run), kept and why, or failed. */
+/** One machine of a removed worktree or unused: released, would be (a dry run), kept and why, or failed. */
 export type PruneOutcome =
-  | { readonly kind: "released" | "would-release"; readonly record: MachineRecord }
+  | {
+      readonly kind: "released" | "would-release";
+      readonly record: MachineRecord;
+      readonly cause: PruneCause;
+    }
   | { readonly kind: "kept"; readonly record: MachineRecord; readonly reason: string }
-  | { readonly kind: "failed"; readonly record: MachineRecord; readonly error: string };
+  | {
+      readonly kind: "failed";
+      readonly record: MachineRecord;
+      readonly error: string;
+      readonly cause: PruneCause;
+    };
+
+/** A machine to release, and why. */
+interface Target {
+  readonly record: MachineRecord;
+  readonly cause: PruneCause;
+}
 
 export interface PruneOptions {
   readonly env: NodeJS.ProcessEnv;
@@ -45,6 +75,10 @@ export interface PruneOptions {
   readonly providerOf?: (kind: string) => RemoteMachineProvider | null;
   /** N1: act only on records of this scope or of none. Absent: on every record (the manual prune). */
   readonly scope?: string;
+  /** Row 026-43: whether a daemon of the worktree at `root` is live. Default `liveDaemonRecorded`. */
+  readonly daemonLive?: (root: AbsolutePath) => boolean;
+  /** The clock unused machines are timed by. Default `Date.now`. */
+  readonly now?: () => number;
 }
 
 export interface PruneResult {
@@ -52,12 +86,14 @@ export interface PruneResult {
   readonly problem?: { readonly path: string; readonly text: string };
   /** The machines of removed worktrees found. */
   readonly gone: number;
+  /** Row 026-43: the unused machines found. */
+  readonly unused: number;
   readonly outcomes: readonly PruneOutcome[];
   /** `signal` ended the prune before every machine was released. */
   readonly aborted: boolean;
 }
 
-/** Releases (`worktree-removed`) and forgets each tracked machine whose worktree is gone. */
+/** Releases and forgets each tracked machine whose worktree is gone (`worktree-removed`) or that is unused (`unused`). */
 export async function pruneRemovedWorktrees(options: PruneOptions): Promise<PruneResult> {
   const { env, signal, scope } = options;
   const read = readMachines(env);
@@ -65,6 +101,7 @@ export async function pruneRemovedWorktrees(options: PruneOptions): Promise<Prun
     return {
       problem: { path: read.path, text: read.problem },
       gone: 0,
+      unused: 0,
       outcomes: [],
       aborted: false,
     };
@@ -74,8 +111,10 @@ export async function pruneRemovedWorktrees(options: PruneOptions): Promise<Prun
     outcomes.push(outcome);
     options.report?.(outcome);
   };
-  const { gone, claim } = sorted(read.machines, scope, note);
-  const aborted = () => ({ gone: gone.length, outcomes, aborted: true });
+  const context = unusedContext(options);
+  const { targets, gone, claim } = sorted(read.machines, scope, context, note);
+  const counts = { gone, unused: targets.length - gone };
+  const aborted = () => ({ ...counts, outcomes, aborted: true });
   if (claim.length > 0 && options.dryRun !== true) {
     try {
       await changeMachinesSoon(env, claiming(claim, scope as string), signal);
@@ -84,55 +123,79 @@ export async function pruneRemovedWorktrees(options: PruneOptions): Promise<Prun
       if (signal?.aborted === true) return aborted();
     }
   }
-  for (const record of gone) {
+  for (const { record, cause } of targets) {
     if (signal?.aborted === true) return aborted();
     if (options.dryRun === true) {
-      note({ kind: "would-release", record });
+      note({ kind: "would-release", record, cause });
       continue;
     }
-    const outcome = await releaseOne(record, options);
+    const outcome = await releaseOne({ record, cause }, options, context);
     if (outcome === "aborted") return aborted();
     if (outcome !== null) note(outcome);
   }
-  return { gone: gone.length, outcomes, aborted: false };
+  return { ...counts, outcomes, aborted: false };
 }
 
-/** The records whose worktree is gone, and those of no scope to claim; one that cannot be checked is noted kept. */
+/** Row 026-43: what judges a machine unused in this prune. */
+function unusedContext(options: PruneOptions): UnusedContext {
+  return {
+    now: (options.now ?? Date.now)(),
+    lanes: loadRemoteSettings(options.env).repositories,
+    here: options.scope ?? machineScope(),
+    automatic: options.scope !== undefined,
+    daemonLive: options.daemonLive ?? ((root) => liveDaemonRecorded(root)),
+  };
+}
+
+/**
+ * The machines to release, those of removed worktrees (`gone` of them)
+ * first, then the unused; and those of no scope to claim. One whose
+ * worktree cannot be checked is noted kept.
+ */
 function sorted(
   machines: readonly MachineRecord[],
   scope: string | undefined,
+  context: UnusedContext,
   note: (outcome: PruneOutcome) => void,
-): { gone: MachineRecord[]; claim: MachineRecord[] } {
-  const gone: MachineRecord[] = [];
+): { targets: Target[]; gone: number; claim: MachineRecord[] } {
+  const gone: Target[] = [];
+  const unused: Target[] = [];
   const claim: MachineRecord[] = [];
   for (const record of machines) {
     if (scope !== undefined && (record.scope ?? scope) !== scope) continue;
     const presence = worktreePresence(record.worktreeRoot);
-    if (presence === "gone") gone.push(record);
+    if (presence === "gone") gone.push({ record, cause: WORKTREE_REMOVED });
     else if (presence === "unknown") note({ kind: "kept", record, reason: UNKNOWN });
-    else if (scope !== undefined && record.scope === undefined) claim.push(record);
+    else {
+      if (scope !== undefined && record.scope === undefined) claim.push(record);
+      const cause = unusedCause(record, context);
+      if (cause !== null) unused.push({ record, cause });
+    }
   }
-  return { gone, claim };
+  return { targets: [...gone, ...unused], gone: gone.length, claim };
 }
 
-/** Releases and forgets `record` if it still stands; its outcome, `null` when it is no longer this prune's. */
+/** Releases and forgets `target`'s record if it still stands; its outcome, `null` when it is no longer this prune's. */
 async function releaseOne(
-  record: MachineRecord,
+  target: Target,
   options: PruneOptions,
+  context: UnusedContext,
 ): Promise<PruneOutcome | "aborted" | null> {
   const { env, signal } = options;
+  const { record, cause } = target;
   // B3, 0.1.659-r2 N1: the record as it is now, its machine, path and scope, not as first read.
-  const now = current(record, env, options.scope);
+  const now = current(target, env, options.scope, context);
   if (now === null) return null;
   if (typeof now === "string") return { kind: "kept", record, reason: now };
   let released = false;
   try {
     const machine = reattach(now, env, options.providerOf ?? providerOf);
     if (typeof machine === "string") throw new Error(machine);
-    if (!(await until(machine.release("worktree-removed", signal), signal))) return "aborted";
+    const reason = cause.kind === "unused" ? "unused" : "worktree-removed";
+    if (!(await until(machine.release(reason, signal), signal))) return "aborted";
     released = true;
     await changeMachinesSoon(env, forgetting(now, { id: now.id, scopeOf: now }), signal);
-    return { kind: "released", record: now };
+    return { kind: "released", record: now, cause };
   } catch (error) {
     if (signal?.aborted === true) return "aborted";
     const text = message(error);
@@ -140,6 +203,7 @@ async function releaseOne(
       kind: "failed",
       record: now,
       error: released ? `released, not forgotten: ${text}` : text,
+      cause,
     };
   }
 }
@@ -147,14 +211,16 @@ async function releaseOne(
 const UNKNOWN = "its worktree could not be checked";
 
 /**
- * `record` as the registry has it now, when it is still to be released;
- * else why it is kept, or `null` when it is gone or (with `scope`, the
- * automatic prune) now another scope's, which no prune of this one need say.
+ * `target`'s record as the registry has it now, when it is still to be
+ * released; else why it is kept, or `null` when it is gone or (with
+ * `scope`, the automatic prune) now another scope's, which no prune of
+ * this one need say. Row 026-43: an unused one must still be unused.
  */
 function current(
-  record: MachineRecord,
+  { record, cause }: Target,
   env: NodeJS.ProcessEnv,
   scope: string | undefined,
+  context: UnusedContext,
 ): MachineRecord | string | null {
   const now = readMachines(env).machines.find(
     (m) => m.provider === record.provider && m.worktreeId === record.worktreeId,
@@ -162,6 +228,7 @@ function current(
   if (now === undefined) return null;
   if (scope !== undefined && (now.scope ?? scope) !== scope) return null;
   if (now.id !== record.id) return `replaced by machine ${now.id}`;
+  if (cause.kind === "unused") return stillUnused(record, now, context) ?? now;
   const presence = worktreePresence(now.worktreeRoot);
   if (presence === "present") return "its worktree is there again";
   return presence === "unknown" ? UNKNOWN : now;

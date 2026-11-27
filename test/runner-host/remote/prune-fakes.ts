@@ -23,7 +23,11 @@ import type { AbsolutePath, WorktreeId } from "../../../src/core/types/common.js
 /** A release resolves, rejects, never settles, or settles as the given promise does. */
 export type ReleaseBehaviour = "ok" | "fail" | "hang" | Promise<void>;
 
-export function pruneUser(behaviour: (id: string) => ReleaseBehaviour = () => "ok") {
+/** `lane`: more keys of the `/repo` lane, such as row 026-43's `deleteUnusedHours`. */
+export function pruneUser(
+  behaviour: (id: string) => ReleaseBehaviour = () => "ok",
+  lane: Record<string, unknown> = {},
+) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "squeal-prune-")));
   onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
   const env: NodeJS.ProcessEnv = {
@@ -40,6 +44,7 @@ export function pruneUser(behaviour: (id: string) => ReleaseBehaviour = () => "o
         "/repo": {
           provider: "command",
           providerConfig: { acquire: ["unused"], release: ["unused"] },
+          ...lane,
         },
       },
     }),
@@ -90,8 +95,9 @@ export function pruneUser(behaviour: (id: string) => ReleaseBehaviour = () => "o
           places: { node: "node", cache: "c" },
           capabilities: { hasGitRepository: false, sleepOnIdle: true, ephemeralHostKey: false },
           status: "detached",
-          createdAt: Date.UTC(2026, 10, 24, 8),
-          lastUsedAt: Date.UTC(2026, 10, 24, 9),
+          // Row 026-43: used a minute ago, so no record is unused unless a test makes it so.
+          createdAt: Date.now() - 3_600_000,
+          lastUsedAt: Date.now() - 60_000,
           ...over,
         } as MachineRecord,
         env,

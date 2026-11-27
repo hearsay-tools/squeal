@@ -174,6 +174,7 @@ function commandMachine(
     wake: (signal) => call("wake", machineEnv(), signal),
     sleep: () => call("sleep", machineEnv()),
     // Review 0.1.658 B1: an abort kills the release hook's process group.
+    // Row 026-43: `SQUEAL_RELEASE_REASON` is `unused` for a machine no daemon used for a day.
     release: (reason: ReleaseReason, signal?: AbortSignal) =>
       call("release", machineEnv({ SQUEAL_RELEASE_REASON: reason }), signal),
   };

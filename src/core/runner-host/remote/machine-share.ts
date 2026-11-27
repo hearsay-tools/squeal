@@ -475,7 +475,8 @@ export function shareMachine(options: ShareOptions): MachineShare {
     track(() =>
       gone
         ? forgetMachine(key, env, { id: m.id })
-        : updateMachine(key, { status: "detached" }, env),
+        : // Row 026-43: from now the machine has no daemon; the prune deletes it after `deleteUnusedHours`.
+          updateMachine(key, { status: "detached", detachedAt: now() }, env),
     );
   };
 

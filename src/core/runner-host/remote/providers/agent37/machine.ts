@@ -215,7 +215,8 @@ export function agent37Machine(parts: MachineParts): RemoteMachine {
     },
     sleep,
     release: async (reason: ReleaseReason, signal?: AbortSignal) => {
-      if (reason === "worktree-removed") {
+      // Row 026-43: a machine no daemon used for `deleteUnusedHours` is deleted too.
+      if (reason === "worktree-removed" || reason === "unused") {
         await api.remove(id, signal);
         return;
       }

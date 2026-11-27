@@ -177,6 +177,33 @@ describe("squeal remote list (row 026-10)", () => {
     ]);
   });
 
+  it("shows how long each detached machine has had no daemon, in text and JSON (row 026-43)", async () => {
+    const { env, worktree } = user();
+    const detachedAt = Date.now() - (3 * 60 + 10) * 60_000 - 30_000;
+    track(env, { worktreeId: "a", worktreeRoot: worktree, status: "detached", detachedAt });
+    track(env, { worktreeId: "b", worktreeRoot: worktree, id: "cmd:on" });
+    const text = await remote(["list"], env);
+    expect(text.stdout.split("\n").slice(1, 3)).toEqual([
+      `  cmd:lan  command  detached  ${worktree}  last used 2026-11-24T09:00:00.000Z  no daemon for 3 h 10 min`,
+      `  cmd:on  command  awake  ${worktree}  last used 2026-11-24T09:00:00.000Z`,
+    ]);
+    const json = JSON.parse((await remote(["list", "--json"], env)).stdout);
+    const [lan, on] = json.machines;
+    expect(lan.noDaemonForMs).toBeGreaterThanOrEqual((3 * 60 + 10) * 60_000 + 30_000);
+    expect(lan.noDaemonForMs).toBeLessThan((3 * 60 + 11) * 60_000);
+    expect(on).not.toHaveProperty("noDaemonForMs");
+  });
+
+  it("times an older detached record without detachedAt by lastUsedAt (row 026-43)", async () => {
+    const { env, worktree } = user();
+    track(env, {
+      worktreeRoot: worktree,
+      status: "detached",
+      lastUsedAt: Date.now() - 40 * 60_000,
+    });
+    expect((await remote(["list"], env)).stdout).toContain("  no daemon for 40 min\n");
+  });
+
   it("names no prune when every tracked worktree exists (row 026-37)", async () => {
     const { env, worktree } = user();
     track(env, { worktreeId: "a", worktreeRoot: worktree });
@@ -396,7 +423,7 @@ describe("squeal remote prune (row 026-10)", () => {
     expect(u.calls()).toEqual(["release old worktree-removed"]);
     expect(readMachines(u.env).machines.map((m) => m.id)).toEqual(["cmd:lan"]);
     expect((await remote(["prune"], u.env)).stdout).toBe(
-      "No tracked remote machine has a removed worktree.\n",
+      "No tracked remote machine has a removed worktree or is unused.\n",
     );
   });
 
@@ -410,6 +437,32 @@ describe("squeal remote prune (row 026-10)", () => {
     expect(out.stderr).toContain("not released, still tracked: the release hook");
     expect(out.stderr).toContain("remote.json names no command lane for /nope");
     expect(readMachines(u.env).machines).toHaveLength(2);
+  });
+
+  it("--dry-run names an unused machine and why; the prune releases it unused (row 026-43)", async () => {
+    const u = user();
+    const detachedAt = Date.now() - 25 * 3_600_000 - 5 * 60_000;
+    track(u.env, { worktreeId: "a", worktreeRoot: u.worktree, status: "detached", detachedAt });
+    track(u.env, {
+      worktreeId: "b",
+      worktreeRoot: u.worktree,
+      id: "cmd:fresh",
+      status: "detached",
+      detachedAt: Date.now() - 60_000,
+    });
+    const dry = await remote(["prune", "--dry-run"], u.env);
+    expect(dry).toEqual({
+      code: 0,
+      stdout: `would release cmd:lan (command) of worktree ${u.worktree}, no daemon for 25 h 5 min\n`,
+      stderr: "",
+    });
+    expect(u.calls()).toEqual([]);
+    const out = await remote(["prune"], u.env);
+    expect(out.stdout).toBe(
+      `released cmd:lan (command) of worktree ${u.worktree}, no daemon for 25 h 5 min\n`,
+    );
+    expect(u.calls()).toEqual(["release lan unused"]);
+    expect(readMachines(u.env).machines.map((m) => m.id)).toEqual(["cmd:fresh"]);
   });
 
   it("names the scope of another host's record it releases (review 0.1.658 N1)", async () => {
@@ -435,7 +488,7 @@ describe("squeal remote prune (row 026-10)", () => {
     chmodSync(parent, 0o700);
     expect(out).toEqual({
       code: 0,
-      stdout: `kept cmd:hid (command) of worktree ${live}: its worktree could not be checked\nNo tracked remote machine has a removed worktree.\n`,
+      stdout: `kept cmd:hid (command) of worktree ${live}: its worktree could not be checked\nNo tracked remote machine has a removed worktree or is unused.\n`,
       stderr: "",
     });
     expect(u.calls()).toEqual([]);

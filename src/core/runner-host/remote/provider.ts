@@ -49,8 +49,12 @@ export interface MachineRequest {
   readonly signal?: AbortSignal;
 }
 
-/** Why a machine is released: `idle` sleeps, `daemon-exit` sleeps or detaches, `worktree-removed` destroys. */
-export type ReleaseReason = "idle" | "daemon-exit" | "worktree-removed";
+/**
+ * Why a machine is released: `idle` sleeps, `daemon-exit` sleeps or
+ * detaches, `worktree-removed` destroys. Row 026-43: `unused`, no daemon
+ * used it for the lane's `deleteUnusedHours`, destroys as `worktree-removed` does.
+ */
+export type ReleaseReason = "idle" | "daemon-exit" | "worktree-removed" | "unused";
 
 export interface RemoteMachine {
   /** Stable display id for status and logs, e.g. `build-box`, `agent37:eu:vm:c0myhlo00m`, `cmd:lan-1`. */
@@ -66,7 +70,7 @@ export interface RemoteMachine {
   /** Notifies the provider after the daemon closes idle SSH channels so compute may sleep. */
   sleep(): Promise<void>;
   /**
-   * Lifecycle release: `idle` sleeps, `daemon-exit` sleeps or detaches, `worktree-removed` destroys.
+   * Lifecycle release: `idle` sleeps, `daemon-exit` sleeps or detaches, `worktree-removed` and `unused` destroy.
    * Review 0.1.658 B1: `signal` ends the provider's own work (its HTTP call, its hook process)
    * where it stands; the release then rejects, and the machine's fate is unknown.
    */
@@ -116,6 +120,12 @@ export interface MachineRecord {
   readonly status: MachineStatus;
   readonly createdAt: EpochMs;
   readonly lastUsedAt: EpochMs;
+  /**
+   * Row 026-43: when the daemon's exit marked it `detached`, the start of
+   * its time with no daemon. Absent: written before the field, or never
+   * detached; a stale one on a record awake again is not read.
+   */
+  readonly detachedAt?: EpochMs;
 }
 
 export interface RemoteMachineProvider {

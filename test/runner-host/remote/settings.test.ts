@@ -177,6 +177,25 @@ describe("remote.json under spec 026 D6.4 (row 026-10)", () => {
     });
   });
 
+  it("reads deleteUnusedHours, 24 by default and 0 for never; leaves out a bad one (row 026-43)", () => {
+    const loaded = settings({
+      repositories: {
+        "/default": { target: "box" },
+        "/short": { target: "box", deleteUnusedHours: 2.5 },
+        "/never": { target: "box", deleteUnusedHours: 0 },
+        "/negative": { target: "box", deleteUnusedHours: -1 },
+        "/text": { target: "box", deleteUnusedHours: "24" },
+      },
+    });
+    const hours = (key: string) => loaded.repositories[key]?.deleteUnusedHours;
+    expect([hours("/default"), hours("/short"), hours("/never")]).toEqual([24, 2.5, 0]);
+    expect(Object.keys(loaded.repositories)).toEqual(["/default", "/short", "/never"]);
+    expect(loaded.problems).toEqual([
+      '"repositories[/negative]" "deleteUnusedHours" must be a number of 0 or more (0: never delete); it is left out',
+      '"repositories[/text]" "deleteUnusedHours" must be a number of 0 or more (0: never delete); it is left out',
+    ]);
+  });
+
   it("defaults onSlowDisk to warn for ssh and command, refuse for agent37, and keeps an explicit one (D11.2)", () => {
     const loaded = settings({
       repositories: {
