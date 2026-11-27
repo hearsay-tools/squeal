@@ -79,7 +79,7 @@ const VISIBLE_MS = 5_000;
  * `lockHolders` sees this process hold it; where it names no holder at all
  * (no `/proc`), what it says then.
  */
-async function visibleHolder(database: string): Promise<string> {
+export async function visibleHolder(database: string): Promise<string> {
   const until = Date.now() + VISIBLE_MS;
   for (;;) {
     const holders = lockHolders(database);
