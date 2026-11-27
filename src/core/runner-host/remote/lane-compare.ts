@@ -10,7 +10,7 @@ import type { RemoteHost } from "./connect.js";
 import { environmentDifferences } from "./environment.js";
 import { gitVersionRefusal, localGitVersion } from "./git-version.js";
 import { type EnvironmentMode, sameMachine } from "./remote-key.js";
-import { readEntry } from "./tree.js";
+import { readEntry, treePathsFor } from "./tree.js";
 import { insideRoot } from "./tree-wire.js";
 
 /*
@@ -27,6 +27,12 @@ import { insideRoot } from "./tree-wire.js";
  * Row 026-27: a remote whose results go under this machine's keys (under
  * `match-local`, or `remote-key` on the same machine) must have a Git at
  * least as new as this one's, by `major.minor` (`git-version.ts`).
+ *
+ * Row 026-40 (#300; spec 026 D8, D12; 021 D11, D13): config and setup files
+ * whose blob ids differ are sent again once (`resend`) and compared again,
+ * as a proof difference is. One that Git ignores here is never sent (021
+ * D10), and one that stays different after the resend is refused; each
+ * refusal names its paths and the way out.
  */
 
 export interface CompareOptions {
@@ -51,6 +57,11 @@ export interface CompareOptions {
   readonly installedCache?: InstalledFingerprintCache;
   /** Row 026-27: `git --version` here; absent: read once (`localGitVersion`). */
   readonly localGitVersion?: string | null;
+  /**
+   * Row 026-40: sends `paths` as they are here and waits until they reached
+   * the host. Absent: a config file difference is refused at once.
+   */
+  readonly resend?: (paths: readonly string[]) => Promise<void>;
 }
 
 /** The differences of the remote's install that an install there may mend. */
@@ -59,11 +70,16 @@ const INSTALL_DIFFERS = [
   "no installed dependencies on the remote",
 ];
 
+/** Row 026-40: how many times a comparison sends differing config files again, new ones each time. */
+const RESEND_ROUNDS = 2;
+
 /** What a comparison found: what differs, one text each (`[]`: equal), and the remote's core it read. */
 export interface RemoteComparison {
   readonly differences: string[];
   /** `null` when the remote could not be read. */
   readonly remoteCore: CoreEnvironmentInputs | null;
+  /** Row 026-40: the config and setup files whose blob ids differ; absent, none. */
+  readonly files?: readonly string[];
 }
 
 /**
@@ -82,7 +98,15 @@ export async function compareRemoteEnvironment(
   host: RemoteHost,
   options: CompareOptions,
 ): Promise<RemoteComparison> {
-  const first = await compared(host, options);
+  return resent(host, options, await reinstalled(host, options, await compared(host, options)));
+}
+
+/** `first`, or after an install there when its difference is the remote's install. */
+async function reinstalled(
+  host: RemoteHost,
+  options: CompareOptions,
+  first: RemoteComparison,
+): Promise<RemoteComparison> {
   const unequal = first.differences;
   if (!unequal.some((text) => INSTALL_DIFFERS.includes(text))) return first;
   const done = await host.install().catch((error: Error) => error);
@@ -92,6 +116,65 @@ export async function compareRemoteEnvironment(
     `remote ${options.target}: ${unequal.join("; ")}; installed again with ${done.command}`,
   );
   return compared(host, options);
+}
+
+/**
+ * Row 026-40: `found`, or after its differing config and setup files were
+ * sent again and compared again. Each file goes again at most once; a
+ * second round sends only the files the first round's comparison newly
+ * named, such as a helper a resent setup file now imports. A file Git
+ * ignores here is never sent, and a file still different after its resend
+ * stays refused: the refusal names them and the way out.
+ */
+async function resent(
+  host: RemoteHost,
+  options: CompareOptions,
+  found: RemoteComparison,
+): Promise<RemoteComparison> {
+  const sent = new Set<string>();
+  let now = found;
+  for (let round = 0; round < RESEND_ROUNDS; round++) {
+    const files = (now.files ?? []).filter((path) => !sent.has(path));
+    if (files.length === 0 || options.resend === undefined) break;
+    const ignored = await ignoredHere(options.root, files);
+    if (ignored.length > 0) {
+      return { ...now, differences: [...now.differences, ignoredConfigReason(ignored)] };
+    }
+    options.log(
+      `remote ${options.target}: config and setup files differ at ${listed(files)}; sending again`,
+    );
+    for (const path of files) sent.add(path);
+    options.blobCache?.evict(files);
+    await options.resend(files);
+    now = await compared(host, options);
+  }
+  const stayed = (now.files ?? []).filter((path) => sent.has(path));
+  if (stayed.length === 0) return now;
+  return { ...now, differences: [...now.differences, stayedConfigReason(stayed)] };
+}
+
+/** Of `paths`, those that exist here though Git ignores them: no resend reaches the remote. */
+async function ignoredHere(root: AbsolutePath, paths: readonly string[]): Promise<string[]> {
+  const [inTree, here] = await Promise.all([
+    treePathsFor(root, paths).catch(() => new Set(paths)),
+    blobsAt(root, paths),
+  ]);
+  return paths.filter((path) => here[path] !== null && !inTree.has(path));
+}
+
+/** Up to five paths, as each refusal names them. */
+function listed(paths: readonly string[]): string {
+  return paths.slice(0, 5).join(", ");
+}
+
+/** Row 026-40: why config files Git ignores here refuse the remote, and the way out. */
+export function ignoredConfigReason(paths: readonly string[]): string {
+  return `config and setup files ${listed(paths)} are git-ignored here and never synced to remote; stop ignoring them, or list the test files that need them in remote.alwaysLocal`;
+}
+
+/** Row 026-40: why config files still different after one resend refuse the remote, and the way out. */
+export function stayedConfigReason(paths: readonly string[]): string {
+  return `config and setup files stayed different after one resend at ${listed(paths)}; something on the remote rewrites them: list the test files that need them in remote.alwaysLocal`;
 }
 
 async function compared(host: RemoteHost, options: CompareOptions): Promise<RemoteComparison> {
@@ -125,6 +208,7 @@ async function differences(host: RemoteHost, options: CompareOptions): Promise<R
     allowlist,
   });
   const remoteCore = { ...remoteOwn, squealVersion: options.version };
+  const differ = files.filter((path) => (remoteBlobs[path] ?? null) !== (localBlobs[path] ?? null));
   const found = environmentDifferences(
     { core: remoteCore, runners: remoteRunners, blob: (p) => remoteBlobs[p] ?? null },
     { core, runners: localRunners, blob: (p) => localBlobs[p] ?? null },
@@ -137,7 +221,7 @@ async function differences(host: RemoteHost, options: CompareOptions): Promise<R
     const refusal = gitVersionRefusal(host.gitVersion, local);
     if (refusal !== null) found.push(refusal);
   }
-  return { differences: found, remoteCore };
+  return { differences: found, remoteCore, ...(differ.length === 0 ? {} : { files: differ }) };
 }
 
 /**

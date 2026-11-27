@@ -221,6 +221,14 @@ export function stayedReason(paths: readonly string[]): string {
   return `its tree stayed different at ${shown(paths)}`;
 }
 
+/**
+ * Row 026-40 (#300): the status of a run whose tree stayed different after
+ * its one resend: the paths, and the way out.
+ */
+export function stayedStatus(paths: readonly string[]): string {
+  return `refused a run whose tree stayed different at ${shown(paths)} after one resend; something on the remote rewrites them: list the test files that read them in remote.alwaysLocal`;
+}
+
 /** A proven part of a remote run: its report, of the proven files alone, and their coverage records. */
 export interface ProvenPart {
   readonly report: RunReport;

@@ -49,7 +49,7 @@ describe("a remote lane (row 021-14)", () => {
     expect(s.remoteRuns).toHaveLength(2);
     expect(s.localRuns).toHaveLength(1);
     expect(s.statuses.at(-1)).toBe(
-      "remote box: refused a run whose tree stayed different; ran it here",
+      "remote box: refused a run whose tree stayed different at src/a.ts after one resend; something on the remote rewrites them: list the test files that read them in remote.alwaysLocal; ran it here",
     );
   });
 
@@ -365,7 +365,7 @@ describe("a remote lane's proof, file by file (row 026-24)", () => {
       'remote box refused (its tree stayed different at src/b.ts); not run here (whenLost "not-run")',
     );
     expect(s.statuses.at(-1)).toBe(
-      "remote box: refused a run whose tree stayed different; not run",
+      "remote box: refused a run whose tree stayed different at src/b.ts after one resend; something on the remote rewrites them: list the test files that read them in remote.alwaysLocal; not run",
     );
   });
 

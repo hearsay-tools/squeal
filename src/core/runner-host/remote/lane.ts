@@ -37,6 +37,7 @@ import {
   shown,
   splitProof,
   stayedReason,
+  stayedStatus,
   unsyncableReason,
 } from "./lane-proof.js";
 import { deferredTo, repositoryRoute, withoutFiles } from "./lane-repository.js";
@@ -585,6 +586,11 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       ...options,
       blobCache,
       installedCache,
+      // Row 026-40: a config or setup file difference is sent again once, as a proof difference.
+      resend: async (paths) => {
+        queue(paths.map((path) => ({ path, kind: "change" as const })));
+        await sendPending(host);
+      },
     });
     if (remoteKey && result.differences.length === 0 && result.remoteCore !== null) {
       remoteCore = result.remoteCore;
@@ -735,7 +741,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
     ];
     const then = options.whenLost === "local" ? "ran it here" : "not run";
     if (stayed.length > 0) {
-      options.status(`remote ${target}: refused a run whose tree stayed different; ${then}`);
+      // Row 026-40: the status names the paths and the way out.
+      options.status(`remote ${target}: ${stayedStatus(tally.stayed)}; ${then}`);
     } else if (tally.ignoredFiles.length > 0) {
       const kind = [...tally.ignored].every((path) => tally.remoteOnly.has(path))
         ? "inputs exist only on the remote"

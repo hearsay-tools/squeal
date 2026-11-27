@@ -101,6 +101,8 @@ export interface Setup {
   readonly commandsThere?: CommandsThere | (() => CommandsThere);
   /** Row 026-38: the observed paths of a file its key keeps; absent, all. */
   readonly effectiveObserved?: EffectiveObserved;
+  /** Row 026-40: the runner here's environment; absent, `ENV`. */
+  readonly localEnv?: RunnerEnvironment;
 }
 
 let n = 0;
@@ -132,6 +134,7 @@ export async function setup({
   requiredCommands,
   commandsThere,
   effectiveObserved,
+  localEnv,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -248,7 +251,7 @@ export async function setup({
   let localCloses = 0;
   const local: RunnerAdapter = {
     ...fake(
-      () => ENV,
+      () => localEnv ?? ENV,
       async (files, options) => {
         localRuns.push(options);
         localFiles.push(files.map((f) => f.path).join(","));
