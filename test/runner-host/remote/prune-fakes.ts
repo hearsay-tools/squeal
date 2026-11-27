@@ -16,10 +16,12 @@ import type { AbsolutePath, WorktreeId } from "../../../src/core/types/common.js
  * Row 026-37 (#301): a user whose `remote.json` names a `command` lane for
  * `/repo`, its machines reached through a fake provider of that kind that
  * records each release. `releases` decides each release: resolve, reject
- * or never settle. Nothing runs a hook or reads the real home.
+ * or never settle, or a promise the test settles. Nothing runs a hook or
+ * reads the real home.
  */
 
-export type ReleaseBehaviour = "ok" | "fail" | "hang";
+/** A release resolves, rejects, never settles, or settles as the given promise does. */
+export type ReleaseBehaviour = "ok" | "fail" | "hang" | Promise<void>;
 
 export function pruneUser(behaviour: (id: string) => ReleaseBehaviour = () => "ok") {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "squeal-prune-")));
@@ -56,6 +58,7 @@ export function pruneUser(behaviour: (id: string) => ReleaseBehaviour = () => "o
     release: (reason) => {
       released.push([record.id, reason]);
       const how = behaviour(record.id);
+      if (typeof how !== "string") return how;
       if (how === "hang") return new Promise<void>(() => {});
       if (how === "fail") return Promise.reject(new Error("HTTP 503 Service Unavailable"));
       return Promise.resolve();

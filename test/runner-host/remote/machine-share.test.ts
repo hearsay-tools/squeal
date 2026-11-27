@@ -1,7 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
 import {
   type RemoteHostOptions,
@@ -118,7 +126,8 @@ if (count <= ${extra.releaseFails ?? 0}) {
 
 function machine(entry: Record<string, unknown> = {}, extra: MachineExtra = {}) {
   const dir = join(scratch, `m${++n}`);
-  const root = join(dir, "repo");
+  // One directory deeper, so a test can deny search on the worktree's parent (review 0.1.658 B2).
+  const root = join(dir, "outer", "repo");
   const remoteRoot = join(dir, "remote", "root");
   mkdirSync(join(root, "src"), { recursive: true });
   mkdirSync(join(root, "test"), { recursive: true });
@@ -352,6 +361,19 @@ describe("one machine for every runner (row 026-11)", () => {
     await m.remote.release();
     expect(m.reasons()).toEqual(["worktree-removed"]);
     expect(readMachines(m.env).machines).toEqual([]);
+  });
+
+  it("keeps the machine at the exit when its worktree cannot be checked (review 0.1.658 B2)", async () => {
+    const m = machine();
+    await connectAll(m);
+    await Promise.all(m.lanes.map((lane) => lane.close()));
+    const parent = dirname(m.root);
+    chmodSync(parent, 0o000);
+    onTestFinished(() => chmodSync(parent, 0o700));
+    await m.remote.release();
+    chmodSync(parent, 0o700);
+    expect(m.reasons()).toEqual(["daemon-exit"]);
+    expect(readMachines(m.env).machines.map((r) => r.status)).toEqual(["detached"]);
   });
 });
 

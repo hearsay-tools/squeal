@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
@@ -402,6 +410,35 @@ describe("squeal remote prune (row 026-10)", () => {
     expect(out.stderr).toContain("not released, still tracked: the release hook");
     expect(out.stderr).toContain("remote.json names no command lane for /nope");
     expect(readMachines(u.env).machines).toHaveLength(2);
+  });
+
+  it("names the scope of another host's record it releases (review 0.1.658 N1)", async () => {
+    const u = user();
+    track(u.env, { worktreeId: "b", worktreeRoot: u.gone, id: "cmd:old", scope: "box mnt:[7]" });
+    const out = await remote(["prune"], u.env);
+    expect(out).toEqual({
+      code: 0,
+      stdout: `released cmd:old (command) of removed worktree ${u.gone} (recorded in box mnt:[7])\n`,
+      stderr: "",
+    });
+  });
+
+  it("keeps a machine whose worktree cannot be checked, and says so (review 0.1.658 B2)", async () => {
+    const u = user();
+    const parent = join(u.gone, "locked");
+    const live = join(parent, "live");
+    mkdirSync(live, { recursive: true });
+    track(u.env, { worktreeId: "b", worktreeRoot: live as AbsolutePath, id: "cmd:hid" });
+    chmodSync(parent, 0o000);
+    onTestFinished(() => chmodSync(parent, 0o700));
+    const out = await remote(["prune"], u.env);
+    chmodSync(parent, 0o700);
+    expect(out).toEqual({
+      code: 0,
+      stdout: `kept cmd:hid (command) of worktree ${live}: its worktree could not be checked\nNo tracked remote machine has a removed worktree.\n`,
+      stderr: "",
+    });
+    expect(u.calls()).toEqual([]);
   });
 });
 
