@@ -8,21 +8,33 @@ A test file is **on request** when all hold:
 
 - its group is a configured test group at `commit` or `manual` (`heldUntilAsked`);
 - its key row is `queued` (a `running` row stays running);
-- no narrow request asked for it at its current key (`publishedNarrowAsks`, the live daemon's);
-- no `run --all` checkpoint is open or owed (`readCheckpointProgress`, kind `run-all`);
-- its lane is not running a request for the whole group: the lane publishes activity
-  (`liveActivity`) while no published narrow ask names a file of the group. That case is
-  `squeal run <group>` or a commit's ask (the daemon does not publish commit asks, so a commit
-  group's unasked files read queued while its commit tier runs; accepted, coordinator reply
-  2026-11-27).
+- no narrow request asked for it at its current key;
+- no commit asked for it at its current key;
+- its lane has no open request for the whole group (`squeal run <group>`);
+- no `run --all` checkpoint is open or owed (`readCheckpointProgress`, kind `run-all`).
 
+Every request is read as the live daemon's scheduler publishes it, the same triggers its lane
+runs a held file by (`SlowTier.#trigger`): one `meta` row, `narrowAsks:<worktree>`, written by
+`publishNarrowAsks` (`src/core/scheduler/narrow-asks-row.ts`) on each change, holds `asks`
+(narrow asks, `SlowTier.narrow`), `commit` (commit asks, `SlowTier.asks`) and `requested` (the
+groups whose lane has an open request, `SlowTier.requested`, set by `request()` and cleared when
+the lane has nothing queued or retires). `publishedLaneRequests` reads it, none from a row older
+than the live daemon's start. The lanes tell the scheduler through `LaneLoop.requestsChanged`.
+
+Review 0.1.650 B1 (repair 2026-11-27): the first version inferred a whole-group request from a
+lane that ran while no narrow ask named its files. A `squeal run browser` that overlapped a narrow
+ask for A left queued B "on request" though B then ran by itself. Lane activity is no longer read.
 A held file not asked stays on request while its lane runs a narrow request for other files.
 
 Readers of the set: the header (`headerWith` computes it after the policy and passes it to the
-part; `notCurrentOf` splits `testFilesByPhase`/`testsByPhase`), status (`snapshot.ts`:
-`pendingTestFiles.onRequest`, `breakdown.pendingByPhase.onRequest`), the wait's kept header part
-(`src/cli/wait/every-state.ts` keeps the part only while the set is equal: asks and lane activity
-move it without a state write), and the edit wait (`onRequestGroupsOf`).
+part; `notCurrentOf` splits `testFilesByPhase`/`testsByPhase`), status (`snapshot.ts` takes the
+set the header computed, once per snapshot: review 0.1.650 S1, and uses it for
+`pendingTestFiles.onRequest` and `breakdown.pendingByPhase.onRequest`), the wait's kept header part
+(`src/cli/wait/every-state.ts` keeps the part only while the set is equal: a published request
+moves it without a state write), and the edit wait (`onRequestGroupsOf`).
+
+Not done from S1: `groupTiersOf` (the group lines) still reads the narrow asks and lane activity
+again on each header read. One shared read context would remove that.
 
 ## Text
 
