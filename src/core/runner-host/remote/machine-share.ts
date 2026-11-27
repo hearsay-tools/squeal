@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import type { RemoteSleepOutcome } from "../../types/daemon.js";
 import { RemoteRefusal } from "./connect.js";
 import { type DiskProbe, judgeDisk } from "./disk-check.js";
@@ -453,7 +454,8 @@ export function shareMachine(options: ShareOptions): MachineShare {
     const at = socket(m);
     if (at !== null) await closeMaster(m.ssh, at);
     // B2: a slow machine whose removal failed is removed now, and forgotten once it is.
-    const removed = unremoved === m;
+    // Row 026-37 (#301): so is one whose worktree is already gone, as `squeal remote prune` would.
+    const removed = unremoved === m || !existsSync(request.worktreeRoot);
     let gone = false;
     try {
       await m.release(removed ? "worktree-removed" : "daemon-exit");

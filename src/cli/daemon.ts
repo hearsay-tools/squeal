@@ -51,6 +51,8 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
         eslint: (projectRoot) => eslintProvider({ root: projectRoot }),
         oxlint: (projectRoot) => oxlintProvider({ root: projectRoot }),
       },
+      // Row 026-37 (#301): the remote machines of removed worktrees are released at each start.
+      remotePrune: {},
       ...(awaitLockMs === undefined ? {} : { awaitLockMs }),
       ...testTimings(process.env),
       // Spec 021 D8: Vitest runs in a runner host, this script under this Node and its arguments.

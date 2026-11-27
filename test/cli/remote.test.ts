@@ -155,6 +155,7 @@ describe("squeal remote list (row 026-10)", () => {
         `Remote machines (${machinesPath(env)}):`,
         `  cmd:lan  command  awake  ${worktree}  last used 2026-11-24T09:00:00.000Z`,
         `  cmd:old  command  sleeping  ${gone} (worktree removed)  last used 2026-11-24T09:00:00.000Z`,
+        "1 machine of removed worktrees; `squeal remote prune` releases it.",
         "",
       ].join("\n"),
     );
@@ -166,6 +167,13 @@ describe("squeal remote list (row 026-10)", () => {
       ["cmd:lan", true],
       ["cmd:old", false],
     ]);
+  });
+
+  it("names no prune when every tracked worktree exists (row 026-37)", async () => {
+    const { env, worktree } = user();
+    track(env, { worktreeId: "a", worktreeRoot: worktree });
+    const text = await remote(["list"], env);
+    expect(text.stdout).not.toContain("squeal remote prune");
   });
 
   it("exits 1 naming a file it cannot read", async () => {

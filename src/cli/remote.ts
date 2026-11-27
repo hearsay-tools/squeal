@@ -1,14 +1,12 @@
 import { existsSync, realpathSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import {
-  forgetMachine,
   type Machines,
   readMachines,
   updateMachine,
 } from "../core/runner-host/remote/machines-store.js";
-import type { MachineRecord, RemoteMachine } from "../core/runner-host/remote/provider.js";
-import { providerOf } from "../core/runner-host/remote/providers/index.js";
-import { loadRemoteSettings } from "../core/runner-host/remote/settings.js";
+import type { MachineRecord } from "../core/runner-host/remote/provider.js";
+import { pruneRemovedWorktrees, reattach } from "../core/runner-host/remote/prune.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { DaemonRequest, DaemonResponse, RemoteSleepOutcome } from "../core/types/daemon.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
@@ -87,19 +85,14 @@ function list(io: CliIo, env: NodeJS.ProcessEnv, json: boolean): number {
     (m) =>
       `${m.id}  ${m.provider}  ${m.status}  ${m.worktreeRoot}${m.worktreeExists ? "" : " (worktree removed)"}  last used ${new Date(m.lastUsedAt).toISOString()}`,
   );
-  io.stdout(`Remote machines (${read.path}):\n${lines.map((l) => `  ${l}\n`).join("")}`);
+  // Row 026-37 (#301): machines of removed worktrees bill until released.
+  const orphans = rows.filter((m) => !m.worktreeExists).length;
+  const tail =
+    orphans === 0
+      ? ""
+      : `${orphans} machine${orphans === 1 ? "" : "s"} of removed worktrees; \`squeal remote prune\` releases ${orphans === 1 ? "it" : "them"}.\n`;
+  io.stdout(`Remote machines (${read.path}):\n${lines.map((l) => `  ${l}\n`).join("")}${tail}`);
   return 0;
-}
-
-/** The machine of `record`, reached again with its `remote.json` entry's config; else why not. */
-function reattach(record: MachineRecord, env: NodeJS.ProcessEnv): RemoteMachine | string {
-  const provider = providerOf(record.provider);
-  if (provider === null) return `no remote provider "${record.provider}" in this Squeal`;
-  const lane = loadRemoteSettings(env).repositories[record.repositoryKey];
-  if (lane === undefined || lane.provider !== record.provider) {
-    return `remote.json names no ${record.provider} lane for ${record.repositoryKey}`;
-  }
-  return provider.reattach(record, lane.providerConfig, env);
 }
 
 /** The records of the worktree at `path` or holding it: the longest root wins. */
@@ -197,30 +190,27 @@ async function daemonSleep(
 }
 
 async function prune(io: CliIo, env: NodeJS.ProcessEnv, dryRun: boolean): Promise<number> {
-  const read = machinesOf(io, env);
-  if (read === null) return FAILED;
-  const gone = read.machines.filter((m) => !existsSync(m.worktreeRoot));
-  if (gone.length === 0) {
+  const what = (r: MachineRecord) =>
+    `${r.id} (${r.provider}) of removed worktree ${r.worktreeRoot}`;
+  const result = await pruneRemovedWorktrees({
+    env,
+    dryRun,
+    report: (outcome) => {
+      if (outcome.kind === "failed") {
+        io.stderr(`${what(outcome.record)}: not released, still tracked: ${outcome.error}\n`);
+      } else {
+        const verb = outcome.kind === "released" ? "released" : "would release";
+        io.stdout(`${verb} ${what(outcome.record)}\n`);
+      }
+    },
+  });
+  if (result.problem !== undefined) {
+    io.stderr(`squeal remote: ${result.problem.path} ${result.problem.text}\n`);
+    return FAILED;
+  }
+  if (result.gone === 0) {
     io.stdout("No tracked remote machine has a removed worktree.\n");
     return 0;
   }
-  let code = 0;
-  for (const record of gone) {
-    const what = `${record.id} (${record.provider}) of removed worktree ${record.worktreeRoot}`;
-    if (dryRun) {
-      io.stdout(`would release ${what}\n`);
-      continue;
-    }
-    const machine = reattach(record, env);
-    try {
-      if (typeof machine === "string") throw new Error(machine);
-      await machine.release("worktree-removed");
-      forgetMachine(record, env);
-      io.stdout(`released ${what}\n`);
-    } catch (error) {
-      io.stderr(`${what}: not released, still tracked: ${(error as Error).message}\n`);
-      code = FAILED;
-    }
-  }
-  return code;
+  return result.outcomes.some((o) => o.kind === "failed") ? FAILED : 0;
 }

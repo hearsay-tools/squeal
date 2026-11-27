@@ -19,6 +19,7 @@ import { clearStartMark } from "../presence/lock-events.js";
 import type { RunnerHostLaunch } from "../runner-host/channel.js";
 import { bundleRootFor, type ContainerWiring } from "../runner-host/container/index.js";
 import type { DaemonRemote } from "../runner-host/remote/daemon-lane.js";
+import type { PruneOptions } from "../runner-host/remote/prune.js";
 import { REMOTE_SUMMARY_TOPIC } from "../runner-host/remote/summary.js";
 import { hostClock } from "../scheduler/clock.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
@@ -191,6 +192,12 @@ export interface DaemonOptions extends CommitModeOptions {
    * (`SlowTierOptions.recheckMs`), at most its default `SLOW_RECHECK_MS`. For tests.
    */
   readonly slowRecheckMs?: number;
+  /**
+   * Row 026-37 (#301): the start releases the tracked remote machines of
+   * removed worktrees in the background. The `squeal daemon` command gives
+   * it; absent, as in a daemon a test starts, nothing is pruned.
+   */
+  readonly remotePrune?: Pick<PruneOptions, "providerOf">;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -294,6 +301,8 @@ class Daemon {
    * puts to sleep. Review 0.1.623 B1: the exit's start aborts its acquire.
    */
   #remoteLane: DaemonRemote | null = null;
+  /** Row 026-37: aborts the start's prune of removed worktrees' machines at the exit. */
+  readonly #pruning = new AbortController();
   /** Review 0.1.644 N1: drops retired container projects from the status line at a reload. */
   #reconcileContainers: (policy: Policy) => void = () => {};
   #loop: DaemonLoop | null = null;
@@ -559,6 +568,7 @@ class Daemon {
       return this.#startFailed(error, `could not start serving: ${message(error)}`);
     }
     this.#claimCommitWorktree();
+    this.#pruneRemoteMachines();
     try {
       const { policy, problems } = loadPolicy(root);
       this.#policy = this.#modePolicy(policy);
@@ -619,6 +629,43 @@ class Daemon {
           files.map(([path]) => path),
         ),
     };
+  }
+
+  /**
+   * Row 026-37 (#301, spec 026 D12.5): once the lock is held, the tracked
+   * remote machines of removed worktrees, any repository's, are released
+   * and forgotten in the background, as `squeal remote prune` does. It
+   * delays neither the start nor a run, never throws, logs each machine,
+   * and ends at the exit.
+   */
+  #pruneRemoteMachines(): void {
+    const prune = this.options.remotePrune;
+    if (prune === undefined) return;
+    const signal = this.#pruning.signal;
+    const env = this.options.env ?? process.env;
+    void import("../runner-host/remote/prune.js")
+      .then(({ pruneRemovedWorktrees }) =>
+        pruneRemovedWorktrees({
+          ...prune,
+          env,
+          signal,
+          report: (outcome) => {
+            const { id, provider, worktreeRoot } = outcome.record;
+            const what = `remote machine ${id} (${provider}) of removed worktree ${worktreeRoot}`;
+            this.#log(
+              outcome.kind === "failed"
+                ? `${what} not released, still tracked: ${outcome.error}`
+                : `${what} released`,
+            );
+          },
+        }),
+      )
+      .then((result) => {
+        if (result.problem !== undefined) {
+          this.#log(`remote prune skipped: ${result.problem.path} ${result.problem.text}`);
+        }
+      })
+      .catch((error: unknown) => this.#log(`remote prune failed: ${message(error)}`));
   }
 
   /** Spec 023 D7.2: a commit daemon's lock is held; its marker names it, for the sweep. */
@@ -1717,6 +1764,8 @@ class Daemon {
     this.#exit ??= (async () => {
       // Review 0.1.623 B1: before the waits below, so a remote acquire in flight holds none of them.
       this.#remoteLane?.beginExit();
+      // Row 026-37: the start's prune ends here; the exit waits for none of its releases.
+      this.#pruning.abort();
       this.#setPhase("stopping");
       this.#stopTimers();
       this.#shared?.close();

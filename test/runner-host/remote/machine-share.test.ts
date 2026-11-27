@@ -259,7 +259,9 @@ function machine(entry: Record<string, unknown> = {}, extra: MachineExtra = {}) 
       });
       return release;
     },
+    root: real,
     calls: hooks.calls,
+    reasons: hooks.reasons,
     callAt: hooks.callAt,
     /** Waits until each of the three lanes says its runs go there. */
     connected: () =>
@@ -340,6 +342,16 @@ describe("one machine for every runner (row 026-11)", () => {
     await m.remote.release();
     expect(m.calls()).toEqual(["acquire", "release"]);
     expect(readMachines(m.env).machines[0]?.status).toBe("detached");
+  });
+
+  it("deletes the machine at the exit when its worktree is already gone, and forgets it (row 026-37)", async () => {
+    const m = machine();
+    await connectAll(m);
+    await Promise.all(m.lanes.map((lane) => lane.close()));
+    rmSync(m.root, { recursive: true, force: true });
+    await m.remote.release();
+    expect(m.reasons()).toEqual(["worktree-removed"]);
+    expect(readMachines(m.env).machines).toEqual([]);
   });
 });
 
