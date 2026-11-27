@@ -9396,9 +9396,9 @@ function readSlowActivity(store, worktreeId) {
 function groupTiersMetaKey(worktreeId) {
   return worktreeMetaKey("groupTiers", worktreeId);
 }
-function readGroupActivity(store, worktreeId, group) {
-  if (group === SLOW_GROUP) return readSlowActivity(store, worktreeId);
-  return toSlowActivity(groupEntries(store.meta.get(groupTiersMetaKey(worktreeId)))[group] ?? null) ?? null;
+function readGroupActivities(store, worktreeId) {
+  const entries = groupEntries(store.meta.get(groupTiersMetaKey(worktreeId)));
+  return (group) => toSlowActivity(entries[group] ?? null) ?? null;
 }
 function groupEntries(raw) {
   if (raw === null) return {};
@@ -9744,43 +9744,6 @@ function readCheckpointProgress(store, worktreeId) {
   }
 }
 
-// src/core/scheduler/narrow-asks-row.ts
-function narrowAsksMetaKey(worktreeId) {
-  return worktreeMetaKey("narrowAsks", worktreeId);
-}
-var NO_REQUESTS = { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() };
-function publishedNarrowAsks(store, worktreeId, daemonStartedAt) {
-  return publishedLaneRequests(store, worktreeId, daemonStartedAt).narrow;
-}
-function publishedLaneRequests(store, worktreeId, daemonStartedAt) {
-  const raw = store.meta.get(narrowAsksMetaKey(worktreeId));
-  if (raw === null) return NO_REQUESTS;
-  try {
-    const row = JSON.parse(raw);
-    if (typeof row.at !== "number" || row.at < daemonStartedAt || !Array.isArray(row.asks)) {
-      return NO_REQUESTS;
-    }
-    const names3 = Array.isArray(row.requested) ? row.requested : [];
-    return {
-      narrow: entriesOf5(row.asks),
-      commit: entriesOf5(row.commit),
-      requested: new Set(names3.filter((name2) => typeof name2 === "string"))
-    };
-  } catch {
-    return NO_REQUESTS;
-  }
-}
-function entriesOf5(value) {
-  const out = /* @__PURE__ */ new Map();
-  if (!Array.isArray(value)) return out;
-  for (const entry2 of value) {
-    if (!Array.isArray(entry2)) continue;
-    const [id, key] = entry2;
-    if (typeof id === "string" && typeof key === "string") out.set(id, key);
-  }
-  return out;
-}
-
 // src/core/daemon/client.ts
 import { statSync as statSync6 } from "node:fs";
 import { createConnection } from "node:net";
@@ -10012,6 +9975,77 @@ function withoutZero({ onRequest, ...phases }) {
   return onRequest === 0 ? phases : { ...phases, onRequest };
 }
 
+// src/core/scheduler/narrow-asks-row.ts
+function narrowAsksMetaKey(worktreeId) {
+  return worktreeMetaKey("narrowAsks", worktreeId);
+}
+var NO_REQUESTS = { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() };
+function publishedLaneRequests(store, worktreeId, daemonStartedAt) {
+  const raw = store.meta.get(narrowAsksMetaKey(worktreeId));
+  if (raw === null) return NO_REQUESTS;
+  try {
+    const row = JSON.parse(raw);
+    if (typeof row.at !== "number" || row.at < daemonStartedAt || !Array.isArray(row.asks)) {
+      return NO_REQUESTS;
+    }
+    const names3 = Array.isArray(row.requested) ? row.requested : [];
+    return {
+      narrow: entriesOf5(row.asks),
+      commit: entriesOf5(row.commit),
+      requested: new Set(names3.filter((name2) => typeof name2 === "string"))
+    };
+  } catch {
+    return NO_REQUESTS;
+  }
+}
+function entriesOf5(value) {
+  const out = /* @__PURE__ */ new Map();
+  if (!Array.isArray(value)) return out;
+  for (const entry2 of value) {
+    if (!Array.isArray(entry2)) continue;
+    const [id, key] = entry2;
+    if (typeof id === "string" && typeof key === "string") out.set(id, key);
+  }
+  return out;
+}
+
+// src/core/state/lane-reads.ts
+var NO_REQUESTS2 = { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() };
+function laneReads(store, worktreeId) {
+  const worktree = once2(() => store.worktrees.get(worktreeId) ?? void 0);
+  const daemon = () => worktree()?.daemon ?? null;
+  const slowActivity = once2(() => readSlowActivity(store, worktreeId));
+  const groupActivities = once2(() => readGroupActivities(store, worktreeId));
+  return {
+    worktree,
+    daemon,
+    requests: once2(() => {
+      const live = daemon();
+      return live === null ? NO_REQUESTS2 : publishedLaneRequests(store, worktreeId, live.startedAt);
+    }),
+    activity: (group) => group === SLOW_GROUP ? slowActivity() : groupActivities()(group),
+    inTurn: once2(() => consumerInTurn(store, worktreeId))
+  };
+}
+function once2(read4) {
+  let done = false;
+  let value;
+  return () => {
+    if (!done) {
+      value = read4();
+      done = true;
+    }
+    return value;
+  };
+}
+function consumerInTurn(store, worktreeId) {
+  const turns = readAll(store, worktreeMetaKey("turn", worktreeId));
+  return store.consumers.list(worktreeId).some((record) => {
+    const turn = turns[slot(record.consumer)];
+    return isRecord(turn) && turn.turn === "in-turn";
+  });
+}
+
 // src/core/slow/slot.ts
 import { existsSync as existsSync8 } from "node:fs";
 import { dirname as dirname7, isAbsolute as isAbsolute8, join as join23 } from "node:path";
@@ -10189,16 +10223,16 @@ function laneCounts(states, keys, inLane, classify2 = classifySlowFilesOf) {
     ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {}
   };
 }
-function liveActivity(store, worktreeId, keys, inLane, group) {
-  const activity = readGroupActivity(store, worktreeId, group);
+function liveActivity(store, worktreeId, keys, inLane, group, reads = laneReads(store, worktreeId)) {
+  const activity = reads.activity(group);
   if (activity?.kind === "waiting") {
     if (activity.for === "slot") return slotNow(activity, group);
-    if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
+    if (activity.for !== "idle" || reads.inTurn()) return activity;
     const fast = keys.some((row) => row.pending !== null && !inLane(row.testFile));
     return fast ? { kind: "waiting", for: "fast" } : null;
   }
   if (activity === null) return null;
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  const daemon = reads.daemon();
   if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
     keys.filter((row) => row.pending === "running" && inLane(row.testFile)).map((row) => row.testFile.path)
@@ -10208,13 +10242,6 @@ function liveActivity(store, worktreeId, keys, inLane, group) {
   const { since, lastDurationMs } = activity;
   const paths = rest.length === 0 ? {} : { paths: [path, ...rest] };
   return { kind: "running", path, ...paths, since, lastDurationMs };
-}
-function consumerInTurn(store, worktreeId) {
-  const turns = readAll(store, worktreeMetaKey("turn", worktreeId));
-  return store.consumers.list(worktreeId).some((record) => {
-    const turn = turns[slot(record.consumer)];
-    return isRecord(turn) && turn.turn === "in-turn";
-  });
 }
 
 // src/core/state/groups.ts
@@ -10250,24 +10277,25 @@ function groupLaneCounts(states, keys, policy) {
     ];
   });
 }
-function groupTiersOf(store, worktreeId, keys, lanes) {
-  const requested = requestedOf(store, worktreeId, keys, lanes);
+function groupTiersOf(store, worktreeId, keys, lanes, reads = laneReads(store, worktreeId)) {
+  const requested = requestedOf(keys, lanes, reads);
   return lanes.map(({ name: name2, inLane, head, stopWaitMs }) => {
     const { asked, outside } = requested(head.at, inLane);
     const few = head.at === "manual" && outside.length > 0 && outside.length <= NAMED_OUTSIDE;
     return {
       ...head,
-      activity: liveActivity(store, worktreeId, keys, inLane, name2),
+      activity: liveActivity(store, worktreeId, keys, inLane, name2, reads),
       ...stopWaitMs === void 0 ? {} : { stopWaitMs },
       ...asked === 0 ? {} : { requested: asked },
       ...few ? { pendingOutside: outside.map((ref2) => ref2.path) } : {}
     };
   });
 }
-function requestedOf(store, worktreeId, keys, lanes) {
+function requestedOf(keys, lanes, reads) {
   const none3 = { asked: 0, outside: [] };
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => none3;
-  const isAsked = askedAtKey(store, worktreeId);
+  const asked = reads.requests().narrow;
+  const isAsked = (row) => row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
   const pending = keys.filter((row) => row.pending !== null);
   return (at, inLane) => {
     if (!heldUntilAsked(at)) return none3;
@@ -10276,20 +10304,15 @@ function requestedOf(store, worktreeId, keys, lanes) {
     return { asked: lane.length - outside.length, outside };
   };
 }
-function askedAtKey(store, worktreeId) {
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  const asked = daemon === null ? /* @__PURE__ */ new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
-  return (row) => row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
-}
 var NONE_ON_REQUEST = /* @__PURE__ */ new Set();
-function onRequestFiles(store, worktreeId, keys, policy) {
+function onRequestFiles(store, worktreeId, keys, policy, reads = laneReads(store, worktreeId)) {
   if (policy === null || !groupTextsShown(policy)) return NONE_ON_REQUEST;
   const view = groupView(policy);
   const held = view.groups.filter(
     (group) => group.index !== null && group.select.kind === "tests" && heldUntilAsked(group.at)
   );
   if (held.length === 0 || runAllOpen(store, worktreeId)) return NONE_ON_REQUEST;
-  const { narrow, commit, requested } = laneRequestsOf(store, worktreeId);
+  const { narrow, commit, requested } = reads.requests();
   const waiting = new Set(held.filter((group) => !requested.has(group.name)));
   if (waiting.size === 0) return NONE_ON_REQUEST;
   const atKey2 = (asks, id, key) => key !== null && asks.get(id) === key;
@@ -10301,10 +10324,6 @@ function onRequestFiles(store, worktreeId, keys, policy) {
     out.add(id);
   }
   return out;
-}
-function laneRequestsOf(store, worktreeId) {
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  return daemon === null ? { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() } : publishedLaneRequests(store, worktreeId, daemon.startedAt);
 }
 function runAllOpen(store, worktreeId) {
   const progress = readCheckpointProgress(store, worktreeId);
@@ -10479,6 +10498,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   );
 }
 function headerWith(store, worktreeId, keys, partOf) {
+  const reads = laneReads(store, worktreeId);
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
@@ -10487,9 +10507,9 @@ function headerWith(store, worktreeId, keys, partOf) {
   const awaiting = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
-  const root = store.worktrees.get(worktreeId)?.root;
+  const root = reads.worktree()?.root;
   const policy = root === void 0 ? null : readPolicy(root);
-  const part = partOf(policy, onRequestFiles(store, worktreeId, keys, policy));
+  const part = partOf(policy, onRequestFiles(store, worktreeId, keys, policy, reads));
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = part.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
@@ -10513,8 +10533,8 @@ function headerWith(store, worktreeId, keys, partOf) {
     runnerPartPending,
     ...listingRunnersField(runnerPartPending, root, policy),
     ...part.slowPending === void 0 ? {} : { slowPending: part.slowPending },
-    ...slowTierField(store, worktreeId, keys, part),
-    ...groupFields(store, worktreeId, keys, part),
+    ...slowTierField(store, worktreeId, keys, part, reads),
+    ...groupFields(store, worktreeId, keys, part, reads),
     ...installFields(wait),
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
@@ -10528,16 +10548,16 @@ function installFields(wait) {
     ...wait.command === null ? {} : { installCommand: wait.command }
   };
 }
-function slowTierField(store, worktreeId, keys, { view, slowLane }) {
+function slowTierField(store, worktreeId, keys, { view, slowLane }, reads) {
   if (view === null || slowLane === void 0) return {};
-  const activity = liveActivity(store, worktreeId, keys, view.isSlow, SLOW_GROUP);
+  const activity = liveActivity(store, worktreeId, keys, view.isSlow, SLOW_GROUP, reads);
   return { slowTier: slowTierOf({ ...slowLane, activity }, view) };
 }
-function groupFields(store, worktreeId, keys, { groups: groups2 }) {
+function groupFields(store, worktreeId, keys, { groups: groups2 }, reads) {
   if (groups2 === void 0) return {};
   const commitLine2 = readCommitLine(store, worktreeId);
   return {
-    groupTiers: groupTiersOf(store, worktreeId, keys, groups2.lanes),
+    groupTiers: groupTiersOf(store, worktreeId, keys, groups2.lanes, reads),
     lanePending: groups2.lanePending,
     ...groups2.testsAtEdit ? {} : { noTestsAtEdit: true },
     ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
@@ -11571,7 +11591,7 @@ var isCoverage = (entry2) => entry2.measure !== "complexity";
 function codeReads(store, worktreeId) {
   const failing = /* @__PURE__ */ new Map();
   const edits = /* @__PURE__ */ new Map();
-  const once2 = (cache, read4) => (measures) => measures.flatMap((measure2) => {
+  const once3 = (cache, read4) => (measures) => measures.flatMap((measure2) => {
     const known = cache.get(measure2);
     if (known !== void 0) return known;
     const states = read4(measure2);
@@ -11579,11 +11599,11 @@ function codeReads(store, worktreeId) {
     return states;
   });
   return {
-    failing: once2(
+    failing: once3(
       failing,
       (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" })
     ),
-    edits: once2(edits, (measure2) => store.states.edits(worktreeId, measure2))
+    edits: once3(edits, (measure2) => store.states.edits(worktreeId, measure2))
   };
 }
 
@@ -13309,7 +13329,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.659";
+  if (true) return "0.1.660";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
