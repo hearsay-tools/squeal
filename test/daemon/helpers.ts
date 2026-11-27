@@ -10,7 +10,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { availableParallelism, loadavg } from "node:os";
+import { loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
@@ -44,15 +44,8 @@ const scratchDir = resolve(repoRoot, "test/fixtures/scheduler/.tmp");
 /** Real daemons running real Vitest; a loaded machine needs headroom. */
 export const SLOW = { timeout: 180_000 } as const;
 
-/**
- * The load per CPU above which timing assertions are skipped: 8 of the 24 CPUs
- * the gate was set on. A fixed 8 skipped on a 4-CPU CI runner only at twice
- * its saturation (row 011-431, findings G1).
- */
-const LOADED_PER_CPU = 8 / 24;
-
 /** Timing assertions are skipped on a machine this loaded, like the other timing tests. */
-export const LOADED = (loadavg()[0] ?? 0) / availableParallelism() > LOADED_PER_CPU;
+export const LOADED = loadavg()[0] !== undefined && (loadavg()[0] ?? 0) > 8;
 
 export interface BuiltCli {
   /** `dist/cli/index.js` of a fresh build of `src`. */
