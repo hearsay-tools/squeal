@@ -13,6 +13,7 @@ import {
   RETRIES_META_KEY,
   readRetries,
   releaseRetries,
+  writeRetries,
 } from "../../src/core/retry/records.js";
 import { FILE, freshStore, OTHER, WT } from "../state/helpers.js";
 
@@ -126,7 +127,17 @@ describe("askRetry", () => {
 
   it("past the limit drops the oldest pending request at a key no worktree holds", () => {
     const store = freshStore();
-    for (let i = 0; i <= RETRIES_KEPT; i++) askRetry(store, ask(`s${i}`));
+    // Row 011-429 (G1): the full list is written once, not by 1,024 asks that each rewrite it,
+    // which outran Vitest's 5 s on a shared CI runner.
+    const first = askRetry(store, ask("s0"));
+    if (first.kind !== "queued") throw new Error("the first ask is queued");
+    const full = Array.from({ length: RETRIES_KEPT }, (_, i) => ({
+      ...first.record,
+      id: `request-${i}`,
+      session: `s${i}`,
+    }));
+    store.transaction(() => writeRetries(store, full));
+    askRetry(store, ask(`s${RETRIES_KEPT}`));
     const kept = readRetries(store);
     expect(kept).toHaveLength(RETRIES_KEPT);
     expect(kept[0]?.session).toBe("s1");
