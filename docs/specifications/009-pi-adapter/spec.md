@@ -66,6 +66,8 @@ Amended 2026-10-31 (row 011-288, 011 C8): the worker commits a report only on th
 
 After `agent_settled`, in modes `tui` and `rpc` only, the extension arms `waitForDelta` (001 D9 as amended by 001-85: only entries of the test files pending when the turn ended). On a delta it calls `pi.sendMessage(<custom squeal>, { triggerTurn: true, deliverAs: "followUp" })`, which starts one run while the session is idle; a prompt from the user first cancels the wait. Under `-p` and `json` Pi exits after its run, and no wake is armed (research, packaging 1).
 
+Amended 2026-11-27 (the human, row 011-433, `../011-core/research/ci-flake-census.md` G5; row 009-30 step 2): a wait that ends with no news while it is still the current wait, and before the waiter's own bound (`IDLE_WAIT_MS`, 59 minutes), arms again after a 1 s pause, at most 3 times per settle. A prompt, a new settle or shutdown cancels the pause and the wait; a wait that ran to its bound stays ended. A wait lost on a slow machine (`research/idle-wake-not-armed.md`) no longer drops the news until the next prompt.
+
 The rule follows Pi, not a launcher: any RPC client gets a run it did not request, as Claude Code's waiter wakes any interactive session (001 D9). Cezar is one such client (human, 2026-10-14: the adapter is not bound to how Cezar works); a Cezar session that ends 250 ms after settling simply loses a later wake, and its news waits for the next prompt.
 
 ### D6. Shared code and bundles
