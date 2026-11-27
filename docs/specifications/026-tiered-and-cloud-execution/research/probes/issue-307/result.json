@@ -1,0 +1,158 @@
+{
+  "version": "0.1.665",
+  "commit": "8bda23d41341f9d98c892f8fb6ddf70542185f4b",
+  "node": "v26.13.0",
+  "load": [
+    1.37,
+    1.68,
+    2.52
+  ],
+  "cpus": 16,
+  "results": [
+    {
+      "mode": "transform-error-omits-target",
+      "beforeDelivery": {
+        "requests": 2,
+        "sends": [
+          [
+            "src/view.ts"
+          ]
+        ],
+        "firstErrors": 1,
+        "retryErrors": 1,
+        "firstEnd": "completed",
+        "retryEnd": "completed",
+        "firstCompleted": 1,
+        "retryCompleted": 1
+      },
+      "recoveryErrors": 0,
+      "localRuns": 0,
+      "sends": [
+        [
+          "src/view.ts"
+        ],
+        [
+          "src/components/page-shell/index.ts"
+        ]
+      ],
+      "evidence": [
+        {
+          "request": 1,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/view.ts"
+          ],
+          "missingOnRemote": true,
+          "refused": []
+        },
+        {
+          "request": 2,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/view.ts"
+          ],
+          "missingOnRemote": true,
+          "refused": []
+        },
+        {
+          "request": 3,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/view.ts",
+            "src/components/page-shell/index.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        }
+      ],
+      "logs": [
+        "remote synthetic: run proven over 2 paths",
+        "remote synthetic: run proven over 2 paths",
+        "remote synthetic: run proven over 3 paths"
+      ]
+    },
+    {
+      "mode": "candidate-in-proof-control",
+      "beforeDelivery": {
+        "requests": 3,
+        "sends": [
+          [
+            "src/view.ts"
+          ],
+          [
+            "src/components/page-shell/index.ts"
+          ]
+        ],
+        "firstErrors": 0,
+        "retryErrors": 0,
+        "firstEnd": "completed",
+        "retryEnd": "completed",
+        "firstCompleted": 1,
+        "retryCompleted": 1
+      },
+      "recoveryErrors": 0,
+      "localRuns": 0,
+      "sends": [
+        [
+          "src/view.ts"
+        ],
+        [
+          "src/components/page-shell/index.ts"
+        ],
+        [
+          "src/components/page-shell/index.ts"
+        ]
+      ],
+      "evidence": [
+        {
+          "request": 1,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/view.ts",
+            "src/components/page-shell/index.ts"
+          ],
+          "missingOnRemote": true,
+          "refused": [
+            "src/components/page-shell/index.ts"
+          ]
+        },
+        {
+          "request": 2,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/components/page-shell/index.ts",
+            "src/view.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        },
+        {
+          "request": 3,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/components/page-shell/index.ts",
+            "src/view.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        },
+        {
+          "request": 4,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/components/page-shell/index.ts",
+            "src/view.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        }
+      ],
+      "logs": [
+        "remote synthetic: tree differs at src/components/page-shell/index.ts; sending again",
+        "remote synthetic: run proven over 3 paths",
+        "remote synthetic: run proven over 3 paths",
+        "remote synthetic: run proven over 3 paths"
+      ]
+    }
+  ]
+}
