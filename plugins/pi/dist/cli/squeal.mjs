@@ -39194,7 +39194,7 @@ var require_CachedInputFileSystem = __commonJS({
   "node_modules/.pnpm/enhanced-resolve@5.26.0/node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module2) {
     "use strict";
     var { nextTick } = __require("process");
-    var dirname91 = (path) => {
+    var dirname92 = (path) => {
       let idx = path.length - 1;
       while (idx >= 0) {
         const char = path.charCodeAt(idx);
@@ -39619,12 +39619,12 @@ var require_CachedInputFileSystem = __commonJS({
           this.purge();
         } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
           const strWhat = typeof what !== "string" ? what.toString() : what;
-          this.purge(dirname91(strWhat));
+          this.purge(dirname92(strWhat));
         } else {
           const set = /* @__PURE__ */ new Set();
           for (const item of what) {
             const strItem = typeof item !== "string" ? item.toString() : item;
-            set.add(dirname91(strItem));
+            set.add(dirname92(strItem));
           }
           this.purge(set);
         }
@@ -39755,9 +39755,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readdir13 = this._readdirBackend.provide;
         this.readdir = /** @type {FileSystem["readdir"]} */
         readdir13;
-        const readdirSync55 = this._readdirBackend.provideSync;
+        const readdirSync56 = this._readdirBackend.provideSync;
         this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */
-        readdirSync55;
+        readdirSync56;
         this._readFileBackend = createBackend(
           duration2,
           this.fileSystem.readFile,
@@ -41102,7 +41102,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(rootPath);
     };
-    var dirname91 = (maybePath) => {
+    var dirname92 = (maybePath) => {
       switch (getType(maybePath)) {
         case PathType.AbsoluteWin:
           return path.win32.dirname(maybePath);
@@ -41131,7 +41131,7 @@ var require_path = __commonJS({
       const fn = (maybePath) => {
         const cacheEntry = cache2.get(maybePath);
         if (cacheEntry !== void 0) return cacheEntry;
-        const result = dirname91(maybePath);
+        const result = dirname92(maybePath);
         cache2.set(maybePath, result);
         return result;
       };
@@ -41228,7 +41228,7 @@ var require_path = __commonJS({
     module2.exports.createCachedDirname = createCachedDirname;
     module2.exports.createCachedJoin = createCachedJoin;
     module2.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
-    module2.exports.dirname = dirname91;
+    module2.exports.dirname = dirname92;
     module2.exports.getType = getType;
     module2.exports.invalidSegmentRegEx = invalidSegmentRegEx;
     module2.exports.isFileURL = isFileURL;
@@ -76470,9 +76470,9 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname91 = sp.dirname(file);
+        const dirname92 = sp.dirname(file);
         const basename48 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname91);
+        const parent2 = this.fsw._getWatchedDir(dirname92);
         let prevStats = stats;
         if (parent2.has(basename48))
           return;
@@ -76499,7 +76499,7 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname91, basename48);
+              this.fsw._remove(dirname92, basename48);
             }
           } else if (parent2.has(basename48)) {
             const at2 = newStats.atimeMs;
@@ -81671,8 +81671,11 @@ var init_enumerate3 = __esm({
 
 // src/runners/jest/environment.ts
 import { execFile as execFile11 } from "node:child_process";
-import { existsSync as existsSync65, readFileSync as readFileSync79, realpathSync as realpathSync33, statSync as statSync47 } from "node:fs";
+import { existsSync as existsSync65, readdirSync as readdirSync48, readFileSync as readFileSync79, realpathSync as realpathSync33, statSync as statSync47 } from "node:fs";
 import { dirname as dirname76, join as join181, relative as relative31, resolve as resolve47, sep as sep35 } from "node:path";
+function isTransformConfig(path) {
+  return TRANSFORM_CONFIG_NAMES.has(path.slice(path.lastIndexOf("/") + 1));
+}
 function projectProcessEnv(root, project, install, source2) {
   const env = { ...source2, ...project.env };
   return {
@@ -81741,7 +81744,7 @@ function jestEnvironment(input) {
     runnerVersion: read7.ok ? install.version : JEST_UNAVAILABLE,
     adapterVersion: input.adapterVersion,
     resolvedConfig: portable(JSON.stringify(sorted4(config))),
-    files: configFiles2(root, project, read7, env),
+    files: configFiles2(root, project, read7, env, input.extraConfigDirs),
     // Spec 016 D4: its runs report module loads, which key whatever `observe.runtimeInputs` says.
     observedLoads: true
   };
@@ -81765,7 +81768,7 @@ function unavailableEnvironment(root, project, note, adapterVersion2, configDeps
     observedLoads: true
   };
 }
-function configFiles2(root, project, read7, env) {
+function configFiles2(root, project, read7, env, extraDirs = []) {
   const config = toAbsolute(root, project.config);
   const files6 = [config];
   const rootDir = read7.ok ? String(read7.project.rootDir) : dirname76(config);
@@ -81778,6 +81781,8 @@ function configFiles2(root, project, read7, env) {
     if (path !== void 0) files6.push(...extendsChain(resolve47(jestCwd(root, project), path)));
   }
   files6.push(...read7.configDeps ?? []);
+  if (read7.ok) files6.push(...read7.transformConfigs ?? []);
+  files6.push(...transformConfigsIn(root, extraDirs));
   if (read7.ok) {
     if (read7.preset !== null) files6.push(read7.preset);
     const globalHooks = [read7.global.globalSetup, read7.global.globalTeardown].filter(
@@ -81790,6 +81795,30 @@ function configFiles2(root, project, read7, env) {
     }
   }
   return inside(root, files6);
+}
+function transformConfigsIn(root, dirs) {
+  const found4 = [];
+  const visited = /* @__PURE__ */ new Set();
+  for (const from of dirs) {
+    if (!from.startsWith(root + sep35)) continue;
+    for (const dir2 of upTo(from, root)) {
+      if (visited.has(dir2)) break;
+      visited.add(dir2);
+      const parts3 = dir2.slice(root.length + 1).split(sep35);
+      if (parts3.includes("node_modules") || parts3.includes(".git")) continue;
+      let names9;
+      try {
+        names9 = readdirSync48(dir2);
+      } catch {
+        continue;
+      }
+      for (const name3 of names9) {
+        if (TRANSFORM_CONFIG_NAMES.has(name3) && isFile5(join181(dir2, name3)))
+          found4.push(join181(dir2, name3));
+      }
+    }
+  }
+  return found4;
 }
 function extendsChain(path) {
   const chain = [];
@@ -81893,7 +81922,7 @@ function isFile5(path) {
 function slashes5(path) {
   return path.split(sep35).join("/");
 }
-var JEST_UNAVAILABLE, READ_TIMEOUT_MS, READER, VOLATILE_PROJECT, VOLATILE_GLOBAL, PACKAGES2, BABEL, TSCONFIGS2;
+var JEST_UNAVAILABLE, READ_TIMEOUT_MS, TRANSFORM_CONFIG_NAMES, READER, VOLATILE_PROJECT, VOLATILE_GLOBAL, PACKAGES2, BABEL, TSCONFIGS2;
 var init_environment4 = __esm({
   "src/runners/jest/environment.ts"() {
     "use strict";
@@ -81905,12 +81934,32 @@ var init_environment4 = __esm({
     init_wrapper_config();
     JEST_UNAVAILABLE = "unavailable";
     READ_TIMEOUT_MS = 6e4;
+    TRANSFORM_CONFIG_NAMES = /* @__PURE__ */ new Set([
+      "babel.config.js",
+      "babel.config.cjs",
+      "babel.config.mjs",
+      "babel.config.cts",
+      "babel.config.json",
+      "babel.config.ts",
+      "babel.config.mts",
+      ".babelrc",
+      ".babelrc.js",
+      ".babelrc.cjs",
+      ".babelrc.mjs",
+      ".babelrc.cts",
+      ".babelrc.json",
+      ".babelignore",
+      ".browserslistrc",
+      "browserslist",
+      ".browserlistrc"
+    ]);
     READER = String.raw`
 const path = require("path");
 const fs = require("fs");
 const { createRequire, registerHooks } = require("module");
 const { fileURLToPath } = require("url");
 const [jestConfig, configPath, worktree, selector = ""] = process.argv.slice(1);
+const CONFIG_NAMES = new Set(${JSON.stringify([...TRANSFORM_CONFIG_NAMES])});
 ${INLINE_PROJECT_RULE}
 const print = (value) => process.stdout.write("\n" + JSON.stringify(value) + "\n");
 const roots = [worktree];
@@ -81991,6 +82040,7 @@ const configDeps = (cached) => {
   const ignored = projectConfig.testPathIgnorePatterns.length > 0
     ? new RegExp(projectConfig.testPathIgnorePatterns.join("|")) : null;
   const found = new Set();
+  const transformConfigs = new Set();
   const walk = (dir) => {
     let entries;
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -81998,7 +82048,8 @@ const configDeps = (cached) => {
       if (entry.name === "node_modules" || entry.name === ".git") continue;
       const file = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(file);
-      else if (entry.isFile() && exts.has(path.extname(file))) {
+      else if (entry.isFile() && CONFIG_NAMES.has(entry.name)) transformConfigs.add(file);
+      if (entry.isFile() && exts.has(path.extname(file))) {
         if (ignored !== null && ignored.test(file)) continue;
         if (match !== null ? match(file) : regex.some((r) => r.test(file))) found.add(file);
       }
@@ -82007,6 +82058,7 @@ const configDeps = (cached) => {
   for (const root of projectConfig.roots) walk(root);
   print({
     ok: true, project: projectConfig, global: globalConfig, testPaths: [...found].sort(), preset, configDeps: deps,
+    transformConfigs: [...transformConfigs].sort(),
     ...(inline.length > 0 ? { inlineProjects: inline } : {}),
   });
 })().catch((error) => print({
@@ -82034,26 +82086,7 @@ const configDeps = (cached) => {
       "@babel/core",
       "typescript"
     ];
-    BABEL = [
-      "babel.config.js",
-      "babel.config.cjs",
-      "babel.config.mjs",
-      "babel.config.cts",
-      "babel.config.json",
-      ".babelrc",
-      ".babelrc.js",
-      ".babelrc.cjs",
-      ".babelrc.mjs",
-      ".babelrc.cts",
-      ".babelrc.json",
-      // Row 028-08: Babel 7.21+ and Browserslist look for these too; the transform's probes key none.
-      "babel.config.ts",
-      "babel.config.mts",
-      ".babelignore",
-      ".browserslistrc",
-      "browserslist",
-      ".browserlistrc"
-    ];
+    BABEL = [...TRANSFORM_CONFIG_NAMES];
     TSCONFIGS2 = ["tsconfig.spec.json", "tsconfig.json", "tsconfig.base.json"];
   }
 });
@@ -82281,7 +82314,7 @@ var init_version5 = __esm({
 // src/runners/jest/adapter.ts
 import { existsSync as existsSync67, realpathSync as realpathSync35 } from "node:fs";
 import { tmpdir as tmpdir15 } from "node:os";
-import { extname as extname12, join as join184, relative as relative32, sep as sep37 } from "node:path";
+import { dirname as dirname79, extname as extname12, join as join184, relative as relative32, sep as sep37 } from "node:path";
 async function createJestAdapter(project, options) {
   const root = realpathSync35(options.root);
   const paths = new WorktreePaths(root);
@@ -82315,16 +82348,18 @@ async function createJestAdapter(project, options) {
       return { ok: false, note: note2, install, configDeps: read7.configDeps };
     }
   };
+  const loadedDirs = /* @__PURE__ */ new Set();
+  const configDirs = (current2) => [...graphDirs(root, current2), ...loadedDirs];
   let state = await open8();
   let observed3 = observing();
-  let watched2 = watchedOf(root, project, state, source2);
+  let watched2 = watchedOf(root, project, state, source2, configDirs(state));
   if (!state.ok) note(state.note);
   const reopen = async () => {
     await warmPool?.recycle();
     const before5 = state.ok ? null : state.note;
     state = await open8();
     observed3 = observing();
-    watched2 = watchedOf(root, project, state, source2);
+    watched2 = watchedOf(root, project, state, source2, configDirs(state));
     if (!state.ok && state.note !== before5) note(state.note);
     else if (state.ok && before5 !== null) note(`it reads again (jest ${state.install.version})`);
   };
@@ -82342,7 +82377,8 @@ async function createJestAdapter(project, options) {
         await reopen();
         return { recreatedProjects: state.ok ? [project.name] : [] };
       }
-      if (observed3 !== observing() || changed2.some((p) => watched2.has(p.path))) {
+      const configChanged = (p) => watched2.has(p.path) || p.kind !== "change" && isTransformConfig(p.path);
+      if (observed3 !== observing() || changed2.some(configChanged)) {
         await reopen();
         return { recreatedProjects: [project.name] };
       }
@@ -82383,7 +82419,8 @@ async function createJestAdapter(project, options) {
         source: source2,
         adapterVersion: JEST_ADAPTER_VERSION,
         observing: observed3,
-        covering: coverage.key()
+        covering: coverage.key(),
+        extraConfigDirs: configDirs(state)
       });
       return [environment];
     },
@@ -82438,6 +82475,7 @@ async function createJestAdapter(project, options) {
     );
     const withTransform = withReads(recorded2, ran.transformReads ?? [], paths, observe.skip);
     const seen2 = withHostModules(withTransform, ran.hostObserved ?? [], paths, observe.skip);
+    addDirs(loadedDirs, root, seen2);
     return seen2.length === 0 ? report4 : { ...report4, observed: seen2 };
   }
 }
@@ -82518,10 +82556,24 @@ function graphOf(root, project, read7, files6) {
     tsconfigPath: project.env.TS_NODE_PROJECT
   });
 }
-function watchedOf(root, project, state, source2) {
+function addDirs(dirs, root, observed3) {
+  for (const o of observed3) for (const path of o.paths) dirs.add(dirname79(toAbsolute(root, path)));
+}
+function graphDirs(root, state) {
+  const dirs = /* @__PURE__ */ new Set();
+  if (!state.ok) return dirs;
+  for (const file of state.files) {
+    try {
+      for (const path of state.graph.closure(file).paths) dirs.add(dirname79(toAbsolute(root, path)));
+    } catch {
+    }
+  }
+  return dirs;
+}
+function watchedOf(root, project, state, source2, extraDirs) {
   const read7 = state.ok ? state.read : { ok: false, error: "", configDeps: state.configDeps };
   const env = state.install === null ? source2 : projectProcessEnv(root, project, state.install, source2);
-  return new Set(configFiles2(root, project, read7, env));
+  return new Set(configFiles2(root, project, read7, env, extraDirs));
 }
 function mayList2(read7, changed2) {
   const extensions = new Set(
@@ -86531,8 +86583,8 @@ var init_install2 = __esm({
 });
 
 // src/core/lint/provider/oxlint/configs.ts
-import { existsSync as existsSync70, readdirSync as readdirSync48, readFileSync as readFileSync81 } from "node:fs";
-import { basename as basename38, dirname as dirname79, join as join190, posix as posix19, relative as relative33, sep as sep38 } from "node:path";
+import { existsSync as existsSync70, readdirSync as readdirSync49, readFileSync as readFileSync81 } from "node:fs";
+import { basename as basename38, dirname as dirname80, join as join190, posix as posix19, relative as relative33, sep as sep38 } from "node:path";
 function isOxlintConfigInput(path) {
   const name3 = basename38(path);
   return CONFIG_NAMES2.includes(name3) || ROOT_INPUTS.includes(path);
@@ -86549,7 +86601,7 @@ async function findConfigs(root, timeoutMs) {
   const walk8 = (dir2) => {
     let entries3;
     try {
-      entries3 = readdirSync48(join190(root, dir2), { withFileTypes: true });
+      entries3 = readdirSync49(join190(root, dir2), { withFileTypes: true });
     } catch {
       return;
     }
@@ -86689,11 +86741,11 @@ function chainOf(root, file, folders) {
   }
 }
 function configAbove(root) {
-  for (let dir2 = dirname79(root); ; dir2 = dirname79(dir2)) {
+  for (let dir2 = dirname80(root); ; dir2 = dirname80(dir2)) {
     for (const name3 of CONFIG_NAMES2) {
       if (existsSync70(join190(dir2, name3))) return toRelative2(relative33(root, join190(dir2, name3)));
     }
-    if (dirname79(dir2) === dir2) return null;
+    if (dirname80(dir2) === dir2) return null;
   }
 }
 function toRelative2(path) {
@@ -87311,7 +87363,7 @@ var init_session = __esm({
 
 // src/core/lint/pass/state.ts
 import {
-  readdirSync as readdirSync49,
+  readdirSync as readdirSync50,
   readFileSync as readFileSync82,
   readlinkSync as readlinkSync6,
   statSync as statSync48
@@ -87327,7 +87379,7 @@ function written(stat11) {
 function folderEntries(path) {
   let entries3;
   try {
-    entries3 = readdirSync49(path, { withFileTypes: true });
+    entries3 = readdirSync50(path, { withFileTypes: true });
   } catch {
     return null;
   }
@@ -114530,7 +114582,7 @@ init_git_layout();
 init_notes();
 init_events2();
 import { randomUUID as randomUUID19 } from "node:crypto";
-import { dirname as dirname80 } from "node:path";
+import { dirname as dirname81 } from "node:path";
 import { setTimeout as sleep24 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath23 } from "node:url";
 
@@ -119714,7 +119766,7 @@ var WriteWaitStats = class {
 };
 
 // src/core/daemon/daemon.ts
-var RUNTIME_DIR = dirname80(fileURLToPath23(import.meta.url));
+var RUNTIME_DIR = dirname81(fileURLToPath23(import.meta.url));
 var CANCEL_GRACE_MS = 2e3;
 var WRITE_WAIT_REPORT_MS = 6e4;
 async function startDaemon(options) {
@@ -121990,7 +122042,7 @@ function printedConfig(stdout) {
 
 // src/core/lint/provider/oxlint/discover.ts
 import { existsSync as existsSync74, readFileSync as readFileSync86, realpathSync as realpathSync37 } from "node:fs";
-import { dirname as dirname81, join as join199 } from "node:path";
+import { dirname as dirname82, join as join199 } from "node:path";
 var MIN_VERSION = [1, 65];
 function discoverOxlint(root) {
   const manifest = findManifest(root);
@@ -122003,15 +122055,15 @@ function discoverOxlint(root) {
   }
   const version2 = typeof parsed3.version === "string" ? parsed3.version : "";
   if (!atLeast(version2, MIN_VERSION)) return { off: "oxlint 1.65 or later is needed" };
-  const packageDir = realpathSync37(dirname81(manifest));
+  const packageDir = realpathSync37(dirname82(manifest));
   const bin = binOf2(parsed3.bin);
   return { version: version2, packageDir, bin: join199(packageDir, bin) };
 }
 function findManifest(root) {
-  for (let dir2 = root; ; dir2 = dirname81(dir2)) {
+  for (let dir2 = root; ; dir2 = dirname82(dir2)) {
     const manifest = join199(dir2, "node_modules", "oxlint", "package.json");
     if (existsSync74(manifest)) return manifest;
-    if (dirname81(dir2) === dir2) return null;
+    if (dirname82(dir2) === dir2) return null;
   }
 }
 function binOf2(bin) {
@@ -123241,7 +123293,7 @@ import {
   rmSync as rmSync41,
   writeFileSync as writeFileSync27
 } from "node:fs";
-import { basename as basename41, dirname as dirname82, join as join203, relative as relative36 } from "node:path";
+import { basename as basename41, dirname as dirname83, join as join203, relative as relative36 } from "node:path";
 var BLOCK_VERSION = 1;
 var BEGIN = /^<!-- squeal:begin v(\d+)\b.*-->\s*$/;
 var END3 = /^<!-- squeal:end -->\s*$/;
@@ -123349,9 +123401,9 @@ function claudeReadsAgents(root) {
     (file) => /(^|\s)@(\.\/)?AGENTS\.md\b/m.test(readOrNull2(join203(root, file)) ?? "")
   );
   if (imports2) return true;
-  for (let dir2 = root; ; dir2 = dirname82(dir2)) {
+  for (let dir2 = root; ; dir2 = dirname83(dir2)) {
     if (CLAUDE_FILES.some((file) => existsSync77(join203(dir2, file)))) return false;
-    if (dirname82(dir2) === dir2) return true;
+    if (dirname83(dir2) === dir2) return true;
   }
 }
 function resolved(root, path) {
@@ -123361,8 +123413,8 @@ function resolved(root, path) {
   } catch {
     const link2 = lstatSync11(absolute, { throwIfNoEntry: false });
     if (link2?.isSymbolicLink() !== true)
-      return join203(realpathSync39(dirname82(absolute)), basename41(absolute));
-    return join203(realpathSync39(dirname82(absolute)), readlinkSync7(absolute));
+      return join203(realpathSync39(dirname83(absolute)), basename41(absolute));
+    return join203(realpathSync39(dirname83(absolute)), readlinkSync7(absolute));
   }
 }
 function realName(root, real4, fallback2) {
@@ -123813,7 +123865,7 @@ function rewordGates(root, tracked, ids, options) {
 init_policy2();
 init_json();
 import { readFileSync as readFileSync93, writeFileSync as writeFileSync30 } from "node:fs";
-import { dirname as dirname83, join as join206 } from "node:path";
+import { dirname as dirname84, join as join206 } from "node:path";
 
 // src/cli/jest-seed.ts
 init_compare();
@@ -124076,7 +124128,7 @@ function writeJestSeed(root, plan2) {
   ];
 }
 function dirOf2(file) {
-  const dir2 = dirname83(file);
+  const dir2 = dirname84(file);
   return dir2 === "." ? "" : dir2;
 }
 
@@ -127551,7 +127603,7 @@ init_compare();
 init_reverse_index();
 
 // src/core/proof/own-home.ts
-import { constants as constants15, copyFileSync as copyFileSync5, lstatSync as lstatSync12, mkdirSync as mkdirSync36, readdirSync as readdirSync50 } from "node:fs";
+import { constants as constants15, copyFileSync as copyFileSync5, lstatSync as lstatSync12, mkdirSync as mkdirSync36, readdirSync as readdirSync51 } from "node:fs";
 import { isAbsolute as isAbsolute35, join as join216, relative as relative40, resolve as resolve53, sep as sep43 } from "node:path";
 var OutOfBudget = class extends Error {
   constructor() {
@@ -127594,7 +127646,7 @@ function linkBelow(home, path, hidden, deadline) {
   if (stats === void 0) return void 0;
   if (stats.isSymbolicLink()) return path;
   if (!stats.isDirectory()) return null;
-  for (const name3 of readdirSync50(join216(home, path))) {
+  for (const name3 of readdirSync51(join216(home, path))) {
     const found4 = linkBelow(home, path === "" ? name3 : `${path}/${name3}`, hidden, deadline);
     if (found4 !== null && found4 !== void 0) return found4;
   }
@@ -127624,7 +127676,7 @@ function copyTree(home, into, path, hidden, deadline) {
   if (stats.isSymbolicLink()) throw new Error(`~/${path} is a link; a kept path must hold none`);
   if (stats.isDirectory()) {
     if (path !== "") mkdirSync36(join216(into, path), { recursive: true });
-    for (const name3 of readdirSync50(from))
+    for (const name3 of readdirSync51(from))
       copyTree(home, into, path === "" ? name3 : `${path}/${name3}`, hidden, deadline);
   } else if (stats.isFile()) {
     copyFileSync5(from, join216(into, path), constants15.COPYFILE_EXCL);
@@ -130138,7 +130190,7 @@ import { createHash as createHash61 } from "node:crypto";
 init_git();
 init_git_layout();
 init_events2();
-import { dirname as dirname84, join as join222 } from "node:path";
+import { dirname as dirname85, join as join222 } from "node:path";
 init_marks();
 init_stored();
 init_git_head();
@@ -130188,7 +130240,7 @@ init_client();
 // src/core/daemon/leftovers.ts
 init_escaped();
 init_terminate();
-import { readdirSync as readdirSync51, readFileSync as readFileSync98 } from "node:fs";
+import { readdirSync as readdirSync52, readFileSync as readFileSync98 } from "node:fs";
 function marksOf2(pid, token2) {
   const group = statOf(pid)?.pgrp === pid ? pid : null;
   if (group === null || process.platform !== "linux")
@@ -130208,7 +130260,7 @@ function marksOf2(pid, token2) {
   return { pid, token: token2, group, foreign: new Set(foreign2.map(identity3)) };
 }
 function processes2() {
-  return readdirSync51("/proc").flatMap((name3) => {
+  return readdirSync52("/proc").flatMap((name3) => {
     const entry4 = /^\d+$/.test(name3) ? statOf(Number(name3)) : null;
     return entry4 === null ? [] : [entry4];
   });
@@ -130446,7 +130498,7 @@ async function gone4(daemon, ms2) {
 
 // src/cli/stop-removed.ts
 import { realpathSync as realpathSync40 } from "node:fs";
-import { basename as basename42, dirname as dirname85, join as join223 } from "node:path";
+import { basename as basename42, dirname as dirname86, join as join223 } from "node:path";
 import { setTimeout as sleep31 } from "node:timers/promises";
 init_paths4();
 init_terminate();
@@ -130578,7 +130630,7 @@ function formerRoot(named4) {
   let at2 = named4;
   while (lstatOrNull(at2) === null) {
     below3.unshift(basename42(at2));
-    at2 = dirname85(at2);
+    at2 = dirname86(at2);
   }
   const ancestor = realpathSync40(at2);
   return { root: join223(ancestor, ...below3), ancestor };
@@ -132490,7 +132542,7 @@ import {
   writeFileSync as writeFileSync35
 } from "node:fs";
 import { tmpdir as tmpdir18 } from "node:os";
-import { dirname as dirname86, join as join227, relative as relative42 } from "node:path";
+import { dirname as dirname87, join as join227, relative as relative42 } from "node:path";
 init_reverse_index();
 init_tree();
 async function sideKeys(options) {
@@ -132585,7 +132637,7 @@ async function testSource(root, tests2, paths) {
       maxBuffer: MAX_BLOB_BYTES,
       timeout: LS_TREE_TIMEOUT_MS
     });
-    mkdirSync37(dirname86(join227(from, path)), { recursive: true });
+    mkdirSync37(dirname87(join227(from, path)), { recursive: true });
     writeFileSync35(join227(from, path), bytes2);
     written2.push(path);
     if (entry4.mode === "100755") chmodSync6(join227(from, path), 493);
@@ -133088,7 +133140,7 @@ function cpuTime2(cpus3) {
 
 // src/core/ps/flags.ts
 import { existsSync as existsSync96 } from "node:fs";
-import { dirname as dirname87, join as join233 } from "node:path";
+import { dirname as dirname88, join as join233 } from "node:path";
 
 // src/core/daemon/codex-runtime-version.ts
 import { existsSync as existsSync95 } from "node:fs";
@@ -133127,12 +133179,12 @@ init_paths();
 
 // src/core/ps/reads.ts
 init_slot();
-import { lstatSync as lstatSync14, readdirSync as readdirSync52 } from "node:fs";
+import { lstatSync as lstatSync14, readdirSync as readdirSync53 } from "node:fs";
 import { join as join230 } from "node:path";
 var NODE_COMMS = /* @__PURE__ */ new Set(["node-MainThread", "MainThread", "node"]);
 function names8(dir2) {
   try {
-    return readdirSync52(dir2).sort();
+    return readdirSync53(dir2).sort();
   } catch {
     return [];
   }
@@ -133794,7 +133846,7 @@ function olderOf(c, d, work) {
 function installedOf(d) {
   const antigravity = antigravityInstalled(d.script);
   if (antigravity !== null)
-    return { newest: antigravity.version, where: dirname87(antigravity.manifest) };
+    return { newest: antigravity.version, where: dirname88(antigravity.manifest) };
   const { plugins, marketplace } = d;
   if (plugins === null || marketplace === null) return null;
   const newest = d.harness === "claude" ? claudeLoaded(plugins, marketplace, d.root)?.version ?? null : codexRuntimeVersion(plugins, marketplace);
@@ -134254,7 +134306,7 @@ function clip(text3, width) {
 }
 
 // src/core/ps/checkouts.ts
-import { basename as basename44, dirname as dirname88 } from "node:path";
+import { basename as basename44, dirname as dirname89 } from "node:path";
 init_text();
 function readCheckouts(places, repo) {
   const cacheRoot = places.checkoutsRoot ?? cacheCheckoutsRoot({ HOME: places.home, XDG_CACHE_HOME: process.env.XDG_CACHE_HOME });
@@ -134283,7 +134335,7 @@ function deadFlag(listed14, marker2) {
     return { flag: "dead-checkout", reason: reason2, command: removal(marker2.commonDir, listed14) };
   if (commitIdentity(listed14.tree) === null)
     return { flag: "dead-checkout", reason: `${reason2}; ${IDENTITY_FAILED}`, command: null };
-  const repo = basename44(marker2.commonDir) === ".git" ? dirname88(marker2.commonDir) : listed14.tree;
+  const repo = basename44(marker2.commonDir) === ".git" ? dirname89(marker2.commonDir) : listed14.tree;
   const command = `cd ${shellWord(repo)} && squeal stop --at ${marker2.commit}`;
   return { flag: "dead-checkout", reason: reason2, command };
 }
@@ -137295,8 +137347,8 @@ async function remoteTunnelCommand(args2, io, stdio = { stdin: process.stdin, st
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync101, lstatSync as lstatSync15, readdirSync as readdirSync53, readFileSync as readFileSync101, rmSync as rmSync46 } from "node:fs";
-import { basename as basename46, dirname as dirname89, join as join237 } from "node:path";
+import { existsSync as existsSync101, lstatSync as lstatSync15, readdirSync as readdirSync54, readFileSync as readFileSync101, rmSync as rmSync46 } from "node:fs";
+import { basename as basename46, dirname as dirname90, join as join237 } from "node:path";
 import { setTimeout as sleep37 } from "node:timers/promises";
 init_lock();
 init_paths4();
@@ -137496,12 +137548,12 @@ function tempDirs(commonDir, worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key3 = basename46(scratch.tempDir);
     if (isPrivate(scratch.userDir, uid)) {
-      const tmp = dirname89(scratch.tempDir);
+      const tmp = dirname90(scratch.tempDir);
       dirs.push(...entries2(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
       if (existsSync101(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback2 = `${userTmpDir(uid)}-${key3}-`;
-    dirs.push(...entries2(dirname89(fallback2)).filter((path) => isOwnDir(path, uid, fallback2)));
+    dirs.push(...entries2(dirname90(fallback2)).filter((path) => isOwnDir(path, uid, fallback2)));
   }
   return dirs;
 }
@@ -137523,7 +137575,7 @@ function entries2(dir2) {
 }
 function safeList2(dir2) {
   try {
-    return readdirSync53(dir2);
+    return readdirSync54(dir2);
   } catch {
     return [];
   }
@@ -138427,7 +138479,7 @@ import {
   symlink,
   writeFile as writeFile3
 } from "node:fs/promises";
-import { basename as basename47, dirname as dirname90, join as join239 } from "node:path";
+import { basename as basename47, dirname as dirname91, join as join239 } from "node:path";
 
 // src/core/runner-host/remote/tree-git.ts
 init_tree_wire();
@@ -138542,7 +138594,7 @@ async function materializeFromGit(root, entries3, writeEntry) {
 init_tree_install();
 init_tree_wire();
 function createTreeHost(root, output, env = process.env, tools2) {
-  const state = dirname90(root);
+  const state = dirname91(root);
   const recordPath = join239(state, "files.json");
   const installedPath = join239(state, "installed.json");
   const files6 = readJson6(recordPath) ?? {};
@@ -138559,9 +138611,9 @@ function createTreeHost(root, output, env = process.env, tools2) {
     if (!insideRoot3(path))
       throw new Error(`runner host: the path ${JSON.stringify(path)} leaves the root`);
     const at2 = join239(root, path);
-    await mkdir5(dirname90(at2), { recursive: true });
+    await mkdir5(dirname91(at2), { recursive: true });
     const realRoot = await realpath7(root);
-    const parent2 = await realpath7(dirname90(at2));
+    const parent2 = await realpath7(dirname91(at2));
     if (parent2 !== realRoot && !parent2.startsWith(`${realRoot}/`)) {
       throw new Error(`runner host: the path ${path} leads outside the root through a link`);
     }
@@ -138577,7 +138629,7 @@ function createTreeHost(root, output, env = process.env, tools2) {
     await rm7(at2, { force: true, recursive: true });
     if (file.mode === "link") await symlink(bytes2.toString("utf8"), at2);
     else {
-      const next = part2(join239(dirname90(at2), `.${basename47(at2)}`));
+      const next = part2(join239(dirname91(at2), `.${basename47(at2)}`));
       await writeFile3(next, bytes2);
       await chmod(next, file.mode === "x" ? 493 : 420);
       await rename4(next, at2);
@@ -140420,7 +140472,7 @@ import {
   copyFileSync as copyFileSync6,
   existsSync as existsSync106,
   mkdtempSync as mkdtempSync16,
-  readdirSync as readdirSync54,
+  readdirSync as readdirSync55,
   readFileSync as readFileSync104,
   rmSync as rmSync48
 } from "node:fs";
@@ -140758,14 +140810,14 @@ function pluginDirs(env) {
     if (installPath !== null) dirs.push(installPath);
   const cache2 = codexCache(env);
   if (existsSync106(cache2)) {
-    for (const version2 of readdirSync54(cache2))
+    for (const version2 of readdirSync55(cache2))
       if (!isAdapterRoot(join242(cache2, version2))) dirs.push(join242(cache2, version2));
   }
   const runtime = codexLauncherDir(env);
   if (runtime !== null) dirs.push(runtime);
   for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
     if (existsSync106(packages))
-      for (const version2 of readdirSync54(packages)) dirs.push(join242(packages, version2));
+      for (const version2 of readdirSync55(packages)) dirs.push(join242(packages, version2));
   }
   if (existsSync106(antigravityPluginDir(env))) dirs.push(antigravityPluginDir(env));
   return dirs;

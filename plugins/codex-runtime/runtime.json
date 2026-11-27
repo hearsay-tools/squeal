@@ -92,7 +92,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "879df5b31dcab7b316d730ddd882ca3caf501736203d8d64c4d7c84bb8115414",
+      "sha256": "cee3dc27a1685c8d901e5aed861e788743714015ac618f9fab2ee0b2e4b27bc6",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {
@@ -116,7 +116,7 @@
       "mode": 420
     },
     "dist/jest/observe-runtime.cjs": {
-      "sha256": "3808ae574c208b14ab805135ac74ee13e7fb65ac3c135bc1f5c1f821279f5f6b",
+      "sha256": "a95524c10a189f447a169c532f00478163a95d26aa27d316f0e8ac4ba10e0331",
       "mode": 420
     },
     "dist/jest/squeal-reporter.cjs": {

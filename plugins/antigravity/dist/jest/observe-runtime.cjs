@@ -20,11 +20,13 @@
 // Row 028-08 (F1): Jest's own transform and resolver probe many absent files as a module loads
 // (`babel.config.ts`, `<dir>/.babelrc`, `.browserslistrc`, `src/add.ts`, `src/package.json`),
 // none the test's input, each first seen by a cold run's record, which then ran the file again.
-// While a `ScriptTransformer` or `Resolver` method or Jest's ESM check runs, the mark is unset and what the call reads
-// with success, `ts-jest`'s `.d.ts` reads among them, goes to
-// `globalThis[Symbol.for("squeal.jestReads")]`, a `Map` of the test file to a `Set` of absolute
-// paths, which the reporter takes as `loaded` is taken; with each file the transform got. A probe
-// that finds nothing is kept by neither. The test's own code runs with the mark set.
+// While a `ScriptTransformer` or `Resolver` method or Jest's ESM check runs, the mark is unset
+// and what the call reads with success, `ts-jest`'s `.d.ts` reads among them, by path, descriptor,
+// FileHandle or stream (review 0.1.653 B2), goes to `globalThis[Symbol.for("squeal.jestReads")]`,
+// a `Map` of the test file to a `Set` of absolute paths, which the reporter takes as `loaded` is
+// taken; with each file the transform got. A probe that finds nothing is kept by neither. The
+// pause is the call's async context (B3): the test's own code runs with the mark set, while an
+// async transform waits too.
 //
 // The project's own `jest-runtime`: `SQUEAL_JEST_RUNTIME` names its folder, since pnpm hoists
 // none of Jest's packages. Without it, the one the running Jest reaches. CommonJS, Node
@@ -32,6 +34,7 @@
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
+const { AsyncLocalStorage } = require("node:async_hooks");
 const { createRequire } = require("node:module");
 const url = require("node:url");
 
@@ -40,6 +43,8 @@ const LOADED = Symbol.for("squeal.jestLoaded");
 const READS = Symbol.for("squeal.jestReads");
 /** Where a wrapped transformer or resolver keeps the test file it records for. */
 const TARGET = Symbol("squeal.jestTarget");
+/** The pause of the mark, once per process (review 0.1.653 B3). */
+const PAUSE = Symbol.for("squeal.jestPauseState");
 /** Set on `fs` once its reads are wrapped. */
 const WRAPPED = Symbol.for("squeal.jestReadsWrapped");
 const NODE_MODULES = `${path.sep}node_modules${path.sep}`;
@@ -154,57 +159,57 @@ function add(map, testPath, file) {
 const record = (testPath, file) => add(loadedMap(), testPath, file);
 
 /**
- * The pause of the mark: how many transform or resolver calls run, the mark they unset, and
- * the test file their successful reads go to. Process-wide, as the mark is.
+ * Review 0.1.653 B3: the pause of the mark belongs to the async context of the transform or
+ * resolver call, not to the process. The mark becomes an accessor on `globalThis`: inside a
+ * call `paused` runs, and every continuation it starts, it reads `undefined`; the test's own
+ * code, a continuation that runs while an async transform waits among it, reads the test file.
+ * Installed once per process; `state.mark` is the mark as the test's own code sees it.
  */
-const pause = { depth: 0, saved: undefined, target: null };
+function pauseState() {
+  const existing = globalThis[PAUSE];
+  if (existing !== undefined) return existing;
+  const state = { store: new AsyncLocalStorage(), mark: globalThis[CURRENT_FILE] };
+  Object.defineProperty(globalThis, PAUSE, { value: state, configurable: true });
+  Object.defineProperty(globalThis, CURRENT_FILE, {
+    configurable: true,
+    enumerable: false,
+    get() {
+      return state.store.getStore() !== undefined ? undefined : state.mark;
+    },
+    set(value) {
+      state.mark = value;
+    },
+  });
+  return state;
+}
 
-/** The mark as the test's own code sees it: the saved one during a pause. */
-const currentMark = () => (pause.depth > 0 ? pause.saved : globalThis[CURRENT_FILE]);
+const state = pauseState();
+
+/** The mark as the test's own code sees it, inside a pause too. */
+const currentMark = () => state.mark;
 
 function setMark(value) {
-  if (pause.depth > 0) pause.saved = value;
-  else globalThis[CURRENT_FILE] = value;
+  state.mark = value;
 }
 
 /** Runs `call` with the mark unset and successful reads kept for `testPath`, sync or async. */
-function paused(testPath, call) {
-  if (pause.depth === 0) {
-    pause.saved = globalThis[CURRENT_FILE];
-    pause.target = testPath;
-    globalThis[CURRENT_FILE] = undefined;
-  }
-  pause.depth += 1;
-  let done = false;
-  const leave = () => {
-    if (done) return;
-    done = true;
-    pause.depth -= 1;
-    if (pause.depth > 0) return;
-    globalThis[CURRENT_FILE] = pause.saved;
-    pause.saved = undefined;
-    pause.target = null;
-  };
-  let result;
-  try {
-    result = call();
-  } catch (error) {
-    leave();
-    throw error;
-  }
-  if (result !== null && typeof result === "object" && typeof result.then === "function") {
-    return Promise.resolve(result).finally(leave);
-  }
-  leave();
-  return result;
-}
+const paused = (testPath, call) => state.store.run(testPath, call);
 
-/** A path argument of a read as an absolute path; `null` for a descriptor or anything else. */
+/** The test file the current pause keeps reads for; `null` outside a pause. */
+const pausedFor = () => state.store.getStore() ?? null;
+
+/** Descriptors and FileHandles opened on a path, so a read through one names its file (B2). */
+const fds = new Map();
+const handles = new WeakMap();
+
+/** A read's target as an absolute path: a path, a descriptor or a FileHandle; else `null`. */
 function readPath(p) {
   try {
+    if (typeof p === "number") return fds.get(p) ?? null;
     if (typeof p === "string") return path.resolve(p);
     if (Buffer.isBuffer(p)) return path.resolve(p.toString());
-    if (p instanceof URL && p.protocol === "file:") return url.fileURLToPath(p);
+    if (p instanceof URL) return p.protocol === "file:" ? url.fileURLToPath(p) : null;
+    if (p !== null && typeof p === "object") return handles.get(p) ?? null;
   } catch {
     // not a path
   }
@@ -218,56 +223,177 @@ function kept(target, p) {
   if (abs !== null) add(readsMap(), target, abs);
 }
 
-/** Replaces `object[name]` by `make(original)`, its descriptor otherwise kept. */
-function replace(object, name, make) {
-  const descriptor = Object.getOwnPropertyDescriptor(object, name);
-  if (descriptor === undefined || typeof descriptor.value !== "function") return;
-  Object.defineProperties(object, { [name]: { ...descriptor, value: make(descriptor.value) } });
+const { O_WRONLY } = fs.constants;
+const O_ACCMODE = 3;
+
+/** Whether an open with `flags` can read, as `recorder.cjs`'s `fs` wrappers classify it. */
+function readable(flags) {
+  if (flags == null || typeof flags === "function") return true;
+  if (typeof flags === "number") return (flags & O_ACCMODE) !== O_WRONLY;
+  return typeof flags === "string" && /[r+]/.test(flags);
 }
 
-/** Wraps `fs`'s file reads once: during a pause, each that succeeds is kept for its target. */
+/** Names `opened`, a descriptor or a FileHandle, by `p`; a readable open in a pause is kept. */
+function track(opened, p, flags, target) {
+  try {
+    const abs = readPath(p);
+    if (abs === null) return;
+    if (typeof opened === "number") fds.set(opened, abs);
+    else if (opened !== null && typeof opened === "object") handles.set(opened, abs);
+    else return;
+    if (target !== null && readable(flags)) add(readsMap(), target, abs);
+  } catch {
+    // never the test's failure
+  }
+}
+
+/**
+ * Replaces `object[name]` by `make(original)`: its descriptor and the original's own
+ * properties (`util.promisify.custom`, Node's promisify arguments) kept.
+ */
+function replace(object, name, make) {
+  const descriptor = object == null ? undefined : Object.getOwnPropertyDescriptor(object, name);
+  if (descriptor === undefined || typeof descriptor.value !== "function") return;
+  const wrapped = make(descriptor.value);
+  Object.defineProperties(wrapped, Object.getOwnPropertyDescriptors(descriptor.value));
+  Object.defineProperties(object, { [name]: { ...descriptor, value: wrapped } });
+}
+
+/** `rest` with its callback, the last argument, wrapped by `wrap`; unchanged without one. */
+function withCallback(rest, wrap) {
+  const last = rest.length - 1;
+  if (last >= 0 && typeof rest[last] === "function") rest[last] = wrap(rest[last]);
+  return rest;
+}
+
+/** A read's call: kept for the pause it started in when it succeeds, by path or descriptor. */
+const syncRead = (original) =>
+  function (p, ...rest) {
+    const result = original.call(this, p, ...rest);
+    kept(pausedFor(), p);
+    return result;
+  };
+
+const callbackRead = (original) =>
+  function (p, ...rest) {
+    const target = pausedFor();
+    if (target === null) return original.call(this, p, ...rest);
+    const args = withCallback(
+      rest,
+      (callback) =>
+        function (err, ...data) {
+          if (!err) kept(target, p);
+          return callback.call(this, err, ...data);
+        },
+    );
+    return original.call(this, p, ...args);
+  };
+
+const promiseRead = (original) =>
+  function (p, ...rest) {
+    const target = pausedFor();
+    const result = original.call(this, p, ...rest);
+    if (target === null) return result;
+    return result.then((data) => {
+      kept(target, p);
+      return data;
+    });
+  };
+
+/** A close forgets its descriptor, so a reused number names no earlier file. */
+const forget = (original) =>
+  function (fd, ...rest) {
+    if (typeof fd === "number") fds.delete(fd);
+    return original.call(this, fd, ...rest);
+  };
+
+/**
+ * Wraps `fs`'s reads once: during a pause, each that succeeds is kept for its target, by path,
+ * descriptor (`openSync`, `open`, `readSync`, `read`), FileHandle (`promises.open`, its `read`
+ * and `readFile`) or stream (`createReadStream`, once it opens). A probe that finds nothing
+ * keeps nothing.
+ */
 function wrapReads() {
   if (fs[WRAPPED] === true) return;
   Object.defineProperty(fs, WRAPPED, { value: true });
+  for (const name of ["readFileSync", "readSync"]) replace(fs, name, syncRead);
+  for (const name of ["readFile", "read"]) replace(fs, name, callbackRead);
+  replace(fs.promises, "readFile", promiseRead);
+  for (const name of ["closeSync", "close"]) replace(fs, name, forget);
   replace(
     fs,
-    "readFileSync",
+    "openSync",
     (original) =>
-      function readFileSync(p, ...rest) {
-        const result = original.call(this, p, ...rest);
-        if (pause.depth > 0) kept(pause.target, p);
-        return result;
+      function (p, ...rest) {
+        const fd = original.call(this, p, ...rest);
+        track(fd, p, rest[0], pausedFor());
+        return fd;
       },
   );
   replace(
     fs,
-    "readFile",
+    "open",
     (original) =>
-      function readFile(p, ...rest) {
-        const target = pause.depth > 0 ? pause.target : null;
-        const last = rest.length - 1;
-        if (target !== null && last >= 0 && typeof rest[last] === "function") {
-          const callback = rest[last];
-          rest[last] = function (err, ...data) {
-            if (!err) kept(target, p);
-            return callback.call(this, err, ...data);
-          };
-        }
-        return original.call(this, p, ...rest);
+      function (p, ...rest) {
+        const target = pausedFor();
+        const flags = rest.length >= 2 ? rest[0] : undefined;
+        const args = withCallback(
+          rest,
+          (callback) =>
+            function (err, fd, ...more) {
+              if (!err) track(fd, p, flags, target);
+              return callback.call(this, err, fd, ...more);
+            },
+        );
+        return original.call(this, p, ...args);
       },
   );
+  let handlesWrapped = false;
   replace(
     fs.promises,
-    "readFile",
+    "open",
     (original) =>
-      function readFile(p, ...rest) {
-        const target = pause.depth > 0 ? pause.target : null;
-        const result = original.call(this, p, ...rest);
-        if (target === null) return result;
-        return result.then((data) => {
-          kept(target, p);
-          return data;
+      function (p, ...rest) {
+        const target = pausedFor();
+        return original.call(this, p, ...rest).then((handle) => {
+          track(handle, p, rest[0], target);
+          if (!handlesWrapped && handle !== null && typeof handle === "object") {
+            handlesWrapped = true;
+            const proto = Object.getPrototypeOf(handle);
+            for (const name of ["readFile", "read"]) {
+              replace(
+                proto,
+                name,
+                (read) =>
+                  function (...args) {
+                    const at = pausedFor();
+                    const result = read.apply(this, args);
+                    if (at === null) return result;
+                    return result.then((data) => {
+                      kept(at, this);
+                      return data;
+                    });
+                  },
+              );
+            }
+          }
+          return handle;
         });
+      },
+  );
+  replace(
+    fs,
+    "createReadStream",
+    (original) =>
+      function (p, ...rest) {
+        const target = pausedFor();
+        const stream = original.call(this, p, ...rest);
+        if (target === null || typeof stream?.once !== "function") return stream;
+        // A stream given an open descriptor or FileHandle reads it; one given a path, once open.
+        const fd = rest[0] !== null && typeof rest[0] === "object" ? rest[0].fd : undefined;
+        if (fd != null) kept(target, fd);
+        else stream.once("open", () => kept(target, p));
+        return stream;
       },
   );
 }
@@ -322,6 +448,9 @@ function flush(testPath) {
   }
 }
 
+// Wrapped as Jest loads the runtime: a descriptor opened from here on names its file.
+wrapReads();
+
 class SquealObservingRuntime extends Runtime {
   constructor(...args) {
     const testPath = args[TEST_PATH_ARG];
@@ -330,7 +459,6 @@ class SquealObservingRuntime extends Runtime {
     if (observing) {
       loadedMap().set(testPath, new Set());
       readsMap().set(testPath, new Set());
-      wrapReads();
       retarget(args[TRANSFORMER_ARG], testPath, TRANSFORMS, transformHook);
       retarget(args[RESOLVER_ARG], testPath, RESOLVES, resolveHook);
     }
