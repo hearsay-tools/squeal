@@ -11,13 +11,14 @@ import { consumer, coverageRig, sourceOf } from "./rig.js";
  * hears once, at the session start, that functions only a runner without
  * coverage runs read not measured, and no later hook message names or
  * counts such a source. pytest is that runner; node:test gives records
- * from row 015-86. `squeal code` prints `not measured: <runner> gives
+ * from row 015-86, Jest from spec 028 D5.3. `squeal code` prints `not measured: <runner> gives
  * no coverage` for each of its functions, and no CRAP value.
  */
 
 const S1 = consumer("s1");
+const JEST = [{ name: "j", config: "jest.config.js" }];
 const SENTENCE = (runners: string) =>
-  `Coverage comes from Vitest and node:test runs only; functions that only ${runners} tests run read not measured.`;
+  `Coverage comes from Vitest, node:test and Jest runs only; functions that only ${runners} tests run read not measured.`;
 
 /** The registration's code line: the one that starts `Complexity:`. */
 const codeLine = (lines: readonly string[]) => lines.filter((l) => l.startsWith("Complexity:"));
@@ -44,6 +45,8 @@ describe("the session start's sentence on runners without coverage (row 015-75)"
     ["no other runner is configured", [], {}],
     ["every configured runner records", ["node-test"], {}],
     ["coverage is off", ["pytest"], { coverage: { enabled: false } }],
+    // Spec 028 D5.3: Jest runs give records.
+    ["Jest alone is configured", [], { jest: JEST }],
   ] as const)("is absent when %s", async (_, configured, more) => {
     const rig = coverageRig();
     rig.configure(configured, more);
@@ -157,5 +160,43 @@ describe("a source a Vitest and a pytest test file both load (review 0.1.354 B1)
     const all = read(rig, null);
     expect(all.coverage).not.toHaveProperty("notMeasured");
     expect(formatCodeReport(all)).not.toContain("not measured");
+  });
+});
+
+describe("a source only a Jest test file loads (spec 028 D5.3)", () => {
+  it("is measured from its Jest record: a CRAP value and an uncovered verdict, not not measured", async () => {
+    const rig = coverageRig();
+    rig.configure([], { jest: JEST });
+    rig.closures.setEnvironment({ runner: "jest", files: [] }, "j");
+    await rig.edit({ "src/a.ts": "hot 12 h1\n" });
+    rig.loader("test/a.test.js", { closure: ["src/a.ts"], project: "j", record: [] });
+    rig.step();
+    expect(rig.states("crap")).toEqual(["hot fail 156"]);
+    const blob = rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
+    rig.loader("test/a.test.js", {
+      closure: ["src/a.ts"],
+      project: "j",
+      key: "key-2",
+      record: [sourceOf("src/a.ts", blob, 1, [1])],
+    });
+    rig.step();
+    expect(rig.states("crap")).toEqual(["hot pass 12"]);
+
+    const read = (paths: string[] | null) =>
+      readCodeReport(
+        rig.main,
+        rig.store,
+        WT,
+        { threshold: 20, maxFileBytes: 524_288 },
+        { paths, changed: false, shell: null },
+      );
+    const one = read(["src/a.ts"]);
+    const [hot] = one.functions.map((f) => f.coverage);
+    expect(hot).toMatchObject({ crap: { outcome: "pass", value: 12 }, uncovered: "pass" });
+    expect(hot).not.toHaveProperty("notMeasured");
+    expect(formatCodeReport(one)).not.toContain("not measured");
+    const all = read(null);
+    expect(all.coverage).not.toHaveProperty("notMeasured");
+    expect(formatCodeReport(all)).not.toContain("Jest gives no coverage");
   });
 });

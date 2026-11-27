@@ -40,9 +40,10 @@ export const PROVIDER_MISSING_NOTE =
  * Row 015-75: the runners whose runs give coverage records (D8), by the name
  * their environment gives (`RunnerEnvironment.runnerName`). A test file of
  * any other runner gives none, so the sources it loads read `unknown` at
- * once. The one place that decides it; node:test from row 015-86.
+ * once. The one place that decides it; node:test from row 015-86, Jest
+ * from spec 028 D5.3 (its V8 records are stored as Vitest's are).
  */
-export const RECORDING_RUNNERS: ReadonlySet<string> = new Set(["vitest", "node-test"]);
+export const RECORDING_RUNNERS: ReadonlySet<string> = new Set(["vitest", "node-test", "jest"]);
 
 /**
  * Rows 015-75 and 015-86: the runners whose environment files run in each

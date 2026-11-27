@@ -325,6 +325,10 @@ describe("squeal impact", () => {
     expect(r.stdout).toContain(
       'Proposal: set `"coverage": { "enabled": true }` in squeal.config.json, then run squeal warmup',
     );
+    // Spec 028 D5.3: Jest runs give coverage records too, so their files re-run as well.
+    expect(r.stdout).toContain(
+      "Cost: every Vitest, node:test and Jest file runs once more, because turning coverage on changes their keys",
+    );
   });
 
   it("gives the no-record share with coverage on and no records", async () => {

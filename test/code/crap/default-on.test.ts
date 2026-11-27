@@ -72,7 +72,7 @@ describe("coverage on by default", () => {
       expect(run.measures).toEqual(["complexity", "crap", "uncovered"]);
       expect(run.summary).not.toBeNull();
       expect(await codeLine(config)).toEqual([
-        "Complexity: 0 functions over 20; squeal code lists them. Coverage comes from Vitest and node:test runs only; functions that only pytest tests run read not measured.",
+        "Complexity: 0 functions over 20; squeal code lists them. Coverage comes from Vitest, node:test and Jest runs only; functions that only pytest tests run read not measured.",
       ]);
     },
   );
