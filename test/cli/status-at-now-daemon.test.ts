@@ -1,15 +1,22 @@
-import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { commitAllowlist, environmentOf, REPORT_RESERVE_MS } from "../../src/cli/status-at-call.js";
 import { type AtDaemons, realDaemons } from "../../src/cli/status-at-daemons.js";
-import { RECORD_WAIT_MS } from "../../src/cli/status-at-queue.js";
 import { RUN_WAIT_MS } from "../../src/cli/status-at-report-queued.js";
 import { installCommitWorktree } from "../../src/core/checkout/commit-setup.js";
 import { COMMIT_WORKTREES } from "../../src/core/daemon/commit-mode.js";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
-import { childEnv, SLOW } from "../daemon/helpers.js";
+import { childEnv, SLOW, waitFor } from "../daemon/helpers.js";
 import { run, testOf } from "./status-at-kit.js";
 
 /*
@@ -31,6 +38,10 @@ import { run, testOf } from "./status-at-kit.js";
  * path and its bound run in seconds; the production default stays 100 s.
  * The asks keep their floor of `RECORD_WAIT_MS` past the start, so a call
  * whose daemons never answer returns by the later of the two.
+ * Row 011-429: the commit daemon is started, and seen held in the hook,
+ * before the call, which finds it serving; the call's few seconds raced its
+ * install on a loaded runner, and read the setup as "install". The call
+ * still starts the worktree's daemon, which is seen entering the hook after.
  */
 
 const A = ref("test/a.test.ts");
@@ -38,8 +49,8 @@ const P = ref("test/p.test.ts");
 const RUN = { allMissing: false };
 /** The default wait of these calls, in place of `RUN_WAIT_MS` (row 010-37). */
 const DEFAULT_WAIT_MS = 3_000;
-/** What a call may take past its wait: the report, a socket's last read, a busy host. */
-const ALLOWANCE_MS = 6_000;
+/** How long a daemon may take to reach the hook: a ceiling on a hang, not a measure. */
+const ENTER_MS = 120_000;
 
 /** A test that reads tracked `payload.json` at run time, which no static walk sees. */
 const reads = [
@@ -50,15 +61,18 @@ const reads = [
   "",
 ].join("\n");
 
-/** The reviewer's plugin: its `configResolved` waits until `release` exists; `entered` says it began. */
+/**
+ * The reviewer's plugin: its `configResolved` waits until `release` exists;
+ * `entered` gets a line with each project root that began it.
+ */
 const slowConfig = (entered: string, release: string) =>
   [
     'import { appendFileSync, existsSync } from "node:fs";',
     "export default {",
     "  plugins: [{",
     '    name: "slow-project-start",',
-    "    async configResolved() {",
-    `      appendFileSync(${JSON.stringify(entered)}, "entered\\n");`,
+    "    async configResolved(config) {",
+    `      appendFileSync(${JSON.stringify(entered)}, \`\${config.root}\\n\`);`,
     `      while (!existsSync(${JSON.stringify(release)})) await new Promise((r) => setTimeout(r, 50));`,
     "    },",
     "  }],",
@@ -67,10 +81,25 @@ const slowConfig = (entered: string, release: string) =>
     "",
   ].join("\n");
 
+/** Whether the daemon of `root` is held in the hook: `entered` names it. */
+function inHook(entered: string, root: string): boolean {
+  if (!existsSync(entered)) return false;
+  const roots = readFileSync(entered, "utf8")
+    .split("\n")
+    .filter((line) => line !== "");
+  const own = realpathSync(root);
+  return roots.some((line) => existsSync(line) && realpathSync(line) === own);
+}
+
 /** Both real daemons, in this process: the commit daemon with the fixture's install, and the worktree's. */
-function bothDaemons(release: string): { daemons: AtDaemons; worktreeStarts: string[] } {
+function bothDaemons(release: string): {
+  daemons: AtDaemons;
+  commitStarts: string[];
+  worktreeStarts: string[];
+} {
   const runtime = realpathSync(mkdtempSync("/tmp/sq-at-"));
   const running: RunningDaemon[] = [];
+  const commitStarts: string[] = [];
   const worktreeStarts: string[] = [];
   onTestFinished(async () => {
     // A daemon held in the hook stops once the hook ends.
@@ -82,6 +111,7 @@ function bothDaemons(release: string): { daemons: AtDaemons; worktreeStarts: str
     installCommitWorktree(tree, { install: linkInstall().install });
   const daemons = realDaemons({
     start: async (tree) => {
+      commitStarts.push(tree);
       const daemon = await startDaemon({
         root: tree,
         env: childEnv(runtime),
@@ -104,7 +134,7 @@ function bothDaemons(release: string): { daemons: AtDaemons; worktreeStarts: str
       return null;
     },
   });
-  return { daemons, worktreeStarts };
+  return { daemons, commitStarts, worktreeStarts };
 }
 
 type Side = { state: string; pending?: string; origin?: { kind: string } };
@@ -138,9 +168,21 @@ describe("status --at --run asks the working tree's daemon (review wave-23-third
       [A.path]: testOf("a", 2),
       "payload.json": '{ "ok": true, "v": 2 }\n',
     });
-    const { daemons, worktreeStarts } = bothDaemons(release);
+    const { daemons, commitStarts, worktreeStarts } = bothDaemons(release);
     const options = { cacheRoot: f.cacheRoot, daemons };
     const paths = [A.path, P.path];
+
+    // The commit daemon the call will ask, held in the hook: its setup is "starting" until the release.
+    const environment = environmentOf(await commitAllowlist(f.root, a), process.env);
+    const tree = await daemons.commit({
+      root: f.root,
+      commit: a,
+      environment,
+      cacheRoot: f.cacheRoot,
+      note: () => {},
+    });
+    if (typeof tree !== "string") throw new Error(tree.problem);
+    await waitFor(() => inHook(entered, tree), ENTER_MS, "the commit daemon in the hook");
 
     // The default wait (`DEFAULT_WAIT_MS` here): no `waitMs`.
     const began = Date.now();
@@ -150,9 +192,11 @@ describe("status --at --run asks the working tree's daemon (review wave-23-third
       { ...options, defaultWaitMs: DEFAULT_WAIT_MS },
     );
     const ms = Date.now() - began;
-    expect(ms, first.err).toBeLessThan(Math.max(DEFAULT_WAIT_MS, RECORD_WAIT_MS) + ALLOWANCE_MS);
-    expect(existsSync(entered)).toBe(true);
+    // Returned by its own wait: the production default's could not have ended yet.
+    expect(ms, first.err).toBeLessThan(RUN_WAIT_MS - REPORT_RESERVE_MS);
+    expect(commitStarts, "the call asked the commit daemon it found").toEqual([tree]);
     expect(worktreeStarts).toEqual([f.root]);
+    await waitFor(() => inHook(entered, f.root), ENTER_MS, "the worktree's daemon in the hook");
     const report = JSON.parse(first.out);
     expect(report.now).toEqual({ kind: "setting up" });
     // Neither daemon answered: the call knows no file to queue in the working tree, and says why.

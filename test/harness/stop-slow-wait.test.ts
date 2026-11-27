@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { recordStopWait, stopWaitRuns } from "../../src/core/slow/stop-wait.js";
+import {
+  recordStopWait,
+  STOP_SLOW_WAIT_CAP_MS,
+  stopWaitRuns,
+} from "../../src/core/slow/stop-wait.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { STOP_SLOW_HANDOFF_MS } from "../../src/harness/shared/stop-slow.js";
@@ -27,6 +31,10 @@ import {
  * block at the bound naming the files and `run --slow --wait`. Off, with
  * the turn's holds used (019 D4.3), or after the 2 s entry spoke, it says
  * nothing.
+ * Row 011-429: a wait the test ends by an event has a bound it cannot reach
+ * (`STOP_SLOW_WAIT_CAP_MS`), or one that counts only once the event is done
+ * (`heldBound`); the cases run past Vitest's 5 s, as the waiting entry gives
+ * a 2 s entry that blocked its whole 3 s handoff.
  */
 
 const OTHER_SESSION = "0b9a7c1e-5d2f-4e8a-9c3b-1f6d2e7a8b90";
@@ -35,207 +43,243 @@ const OTHER_SESSION = "0b9a7c1e-5d2f-4e8a-9c3b-1f6d2e7a8b90";
 const AT = 1_791_909_041_203;
 const atDeps: HookDeps = { ...deps, now: () => AT };
 
+/**
+ * The waiting entry's elapsed clock (`monotonicNow`), standing at 0 until
+ * `release`: its bound passes only after what the test does while it waits.
+ */
+function heldBound(): { deps: HookDeps; release: () => void } {
+  let from: number | null = null;
+  return {
+    deps: { ...deps, monotonicNow: () => (from === null ? 0 : performance.now() - from) },
+    release: () => {
+      from = performance.now();
+    },
+  };
+}
+
 /** Until the clock has moved on, so a registration now has a later `registeredAt`. */
 async function nextMs(): Promise<void> {
   const start = Date.now();
   while (Date.now() === start) await new Promise((resolve) => setTimeout(resolve, 1));
 }
 
-describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended)", (harness) => {
-  it("on: waits for a running slow file and ends the turn silently when it passes", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    const out = await stopBoth(harness, r, () => landSlow(r, "pass"));
-    expect(out.quick).toEqual({});
-    expect(out.waiting).toEqual({});
-    expect(out.ms).toBeGreaterThanOrEqual(290);
-    expect(turnOf(r)).toBe("idle");
-  });
-
-  it("on: blocks once on a slow failure, naming it, and takes the turn", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    const out = await stopBoth(harness, r, () => landSlow(r, "fail"));
-    expect(out.quick).toEqual({});
-    expect(out.waiting.decision).toBe("block");
-    expect(out.waiting.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and the slow tier ran at revision 1: 1 check fails: test\/e2e\/slow.test.ts > ledger > posts\.\n\n/,
-    );
-    expect(out.waiting.reason).toContain("expected 1 to be 2");
-    expect(turnOf(r)).toBe("in-turn");
-  });
-
-  it("on: blocks once at the bound, naming the file still running and run --slow --wait", async () => {
-    const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 400 });
-    const out = await stopBoth(harness, r);
-    expect(out.quick).toEqual({});
-    expect(out.waiting.decision).toBe("block");
-    expect(out.waiting.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and after 0.4 s 1 slow test file is still not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` waits for their results.\n\n/,
-    );
-    expect(out.ms).toBeGreaterThanOrEqual(400);
-    expect(turnOf(r)).toBe("in-turn");
-  });
-
-  it("waits too for a slow file a later revision queues while it waits", async () => {
-    const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 600 });
-    const out = await stopBoth(harness, r, () => {
-      landSlow(r, "pass");
-      r.queue("k2");
+describe.each(HARNESSES)(
+  "Stop waits for its slow tier, $name (004 D9 as amended)",
+  {
+    timeout: 60_000,
+  },
+  (harness) => {
+    it("on: waits for a running slow file and ends the turn silently when it passes", async () => {
+      const r = await repo(harness, { requireSlowSuite: true });
+      let landed = false;
+      const out = await stopBoth(harness, r, () => {
+        landSlow(r, "pass");
+        landed = true;
+      });
+      expect(out.quick).toEqual({});
+      expect(out.waiting).toEqual({});
+      // Row 011-429: it ended after the file landed (`stopBoth` drops a landing still to come).
+      expect(landed).toBe(true);
+      expect(turnOf(r)).toBe("idle");
     });
-    expect(out.waiting.decision).toBe("block");
-    expect(out.waiting.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and after 0.6 s 1 slow test file is still not current at revision 2: src\/math.test.ts\./,
-    );
-  });
 
-  it("unmarked: the 2 s entry blocks at once as before, and the waiting entry stays silent and marks", async () => {
-    const r = await repo(harness, { requireSlowSuite: true }, false);
-    const quick = decision(await harness.stop(r));
-    expect(quick.decision).toBe("block");
-    expect(quick.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them/,
-    );
-    const timer = setTimeout(() => landSlow(r, "fail"), 200);
-    try {
-      expect(decision(await harness.stopSlow(r))).toEqual({});
-    } finally {
-      clearTimeout(timer);
+    it("on: blocks once on a slow failure, naming it, and takes the turn", async () => {
+      const r = await repo(harness, { requireSlowSuite: true });
+      const out = await stopBoth(harness, r, () => landSlow(r, "fail"));
+      expect(out.quick).toEqual({});
+      expect(out.waiting.decision).toBe("block");
+      expect(out.waiting.reason).toMatch(
+        /^Squeal policy stop.requireSlowSuite is on and the slow tier ran at revision 1: 1 check fails: test\/e2e\/slow.test.ts > ledger > posts\.\n\n/,
+      );
+      expect(out.waiting.reason).toContain("expected 1 to be 2");
+      expect(turnOf(r)).toBe("in-turn");
+    });
+
+    it("on: blocks once at the bound, naming the file still running and run --slow --wait", async () => {
+      const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 400 });
+      const out = await stopBoth(harness, r);
+      expect(out.quick).toEqual({});
+      expect(out.waiting.decision).toBe("block");
+      expect(out.waiting.reason).toMatch(
+        /^Squeal policy stop.requireSlowSuite is on and after 0.4 s 1 slow test file is still not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` waits for their results.\n\n/,
+      );
+      expect(out.ms).toBeGreaterThanOrEqual(400);
+      expect(turnOf(r)).toBe("in-turn");
+    });
+
+    it("waits too for a slow file a later revision queues while it waits", async () => {
+      const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 600 });
+      // Row 011-429: its 0.6 s count from the new revision, so the bound cannot pass before it.
+      const held = heldBound();
+      const timer = setTimeout(() => {
+        landSlow(r, "pass");
+        r.queue("k2");
+        held.release();
+      }, 300);
+      const [, slow] = await Promise.all([
+        harness.stop(r),
+        harness.stopSlow(r, {}, held.deps),
+      ]).finally(() => clearTimeout(timer));
+      const waiting = decision(slow);
+      expect(waiting.decision).toBe("block");
+      expect(waiting.reason).toMatch(
+        /^Squeal policy stop.requireSlowSuite is on and after 0.6 s 1 slow test file is still not current at revision 2: src\/math.test.ts\./,
+      );
+    });
+
+    it("unmarked: the 2 s entry blocks at once as before, and the waiting entry stays silent and marks", async () => {
+      const r = await repo(harness, { requireSlowSuite: true }, false);
+      const quick = decision(await harness.stop(r));
+      expect(quick.decision).toBe("block");
+      expect(quick.reason).toMatch(
+        /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them/,
+      );
+      const timer = setTimeout(() => landSlow(r, "fail"), 200);
+      try {
+        expect(decision(await harness.stopSlow(r))).toEqual({});
+      } finally {
+        clearTimeout(timer);
+      }
+      expect(stopWaitRuns(r.store, mainConsumer(r), harness.name, squealVersion())).toBe(true);
+    });
+
+    it("marked by another harness or version: the 2 s entry still blocks at once", async () => {
+      const r = await repo(harness, { requireSlowSuite: true }, false);
+      const other = harness.name === "codex" ? "claude-code" : "codex";
+      recordStopWait(r.store, mainConsumer(r), other, squealVersion());
+      recordStopWait(r.store, mainConsumer(r), harness.name, "0.0.1-older");
+      expect(decision(await harness.stop(r)).decision).toBe("block");
+    });
+
+    it("another session in the worktree without the waiting entry keeps the old block (001-297)", async () => {
+      const r = await repo(harness, { requireSlowSuite: true });
+      const marked = mainConsumer(r);
+      const other = { session_id: OTHER_SESSION, transcript_path: `/t/${OTHER_SESSION}.jsonl` };
+      await harness.startTurn(r, other);
+      edit(r);
+      const quick = decision(await harness.stop(r, other));
+      expect(quick.decision).toBe("block");
+      expect(quick.reason).toMatch(
+        /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 2: test\/e2e\/slow.test.ts\./,
+      );
+      expect(decision(await harness.stop(r))).toEqual({});
+      const sessions = r.store.consumers.list(r.worktreeId).map((c) => c.consumer);
+      const unmarked = sessions.find((c) => c.sessionId === OTHER_SESSION);
+      expect(unmarked && stopWaitRuns(r.store, unmarked, harness.name, squealVersion())).toBe(
+        false,
+      );
+      expect(stopWaitRuns(r.store, marked, harness.name, squealVersion())).toBe(true);
+    });
+
+    it("a consumer registered again starts unmarked; its waiting entry marks it again (001-322)", async () => {
+      const r = await repo(harness, { requireSlowSuite: true });
+      r.store.consumers.unregister(mainConsumer(r));
+      await nextMs();
+      await harness.startTurn(r, { source: "resume" });
+      edit(r);
+      expect(decision(await harness.stop(r)).decision).toBe("block");
+      markStopWait(r, harness.name);
+      expect(decision(await harness.stop(r))).toEqual({});
+    });
+
+    it("a resume of the same session without its end starts unmarked too (001-322)", async () => {
+      const r = await repo(harness, { requireSlowSuite: true });
+      await nextMs();
+      await harness.startTurn(r, { source: "resume" });
+      expect(decision(await harness.stop(r)).decision).toBe("block");
+    });
+
+    it("compaction in the running session keeps its mark (001-322)", async () => {
+      const r = await repo(harness, { requireSlowSuite: true });
+      await nextMs();
+      await harness.startTurn(r, { source: "compact" });
+      expect(decision(await harness.stop(r))).toEqual({});
+    });
+
+    /** A session started at `AT`, then marked, so its next registration can land in the same ms. */
+    async function markedAt(): Promise<SquealRepo> {
+      const r = await repo(harness, { requireSlowSuite: true }, false);
+      await harness.startTurn(r, { source: "resume" }, atDeps);
+      markStopWait(r, harness.name);
+      expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
+      expect(decision(await harness.stop(r))).toEqual({});
+      return r;
     }
-    expect(stopWaitRuns(r.store, mainConsumer(r), harness.name, squealVersion())).toBe(true);
-  });
 
-  it("marked by another harness or version: the 2 s entry still blocks at once", async () => {
-    const r = await repo(harness, { requireSlowSuite: true }, false);
-    const other = harness.name === "codex" ? "claude-code" : "codex";
-    recordStopWait(r.store, mainConsumer(r), other, squealVersion());
-    recordStopWait(r.store, mainConsumer(r), harness.name, "0.0.1-older");
-    expect(decision(await harness.stop(r)).decision).toBe("block");
-  });
+    it("registered again in the same millisecond, it starts unmarked (001-328)", async () => {
+      const r = await markedAt();
+      r.store.consumers.unregister(mainConsumer(r));
+      await harness.startTurn(r, { source: "resume" }, atDeps);
+      expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
+      edit(r);
+      expect(decision(await harness.stop(r)).decision).toBe("block");
+      markStopWait(r, harness.name);
+      expect(decision(await harness.stop(r))).toEqual({});
+    });
 
-  it("another session in the worktree without the waiting entry keeps the old block (001-297)", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    const marked = mainConsumer(r);
-    const other = { session_id: OTHER_SESSION, transcript_path: `/t/${OTHER_SESSION}.jsonl` };
-    await harness.startTurn(r, other);
-    edit(r);
-    const quick = decision(await harness.stop(r, other));
-    expect(quick.decision).toBe("block");
-    expect(quick.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 2: test\/e2e\/slow.test.ts\./,
+    it("resumed without its end in the same millisecond, it starts unmarked (001-328)", async () => {
+      const r = await markedAt();
+      await harness.startTurn(r, { source: "resume" }, atDeps);
+      expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
+      expect(decision(await harness.stop(r)).decision).toBe("block");
+    });
+
+    it("compaction in the same millisecond keeps its mark (001-328)", async () => {
+      const r = await markedAt();
+      await harness.startTurn(r, { source: "compact" }, atDeps);
+      expect(decision(await harness.stop(r))).toEqual({});
+    });
+
+    it("off: returns at once without waiting, and the turn ends as today", async () => {
+      const r = await repo(harness, { requireSlowSuite: false }, false);
+      const out = await stopBoth(harness, r);
+      expect(out).toMatchObject({ quick: {}, waiting: {} });
+      // Row 011-429: it returned before it marked the session, which comes before any wait.
+      expect(stopWaitRuns(r.store, mainConsumer(r), harness.name, squealVersion())).toBe(false);
+      expect(turnOf(r)).toBe("idle");
+    });
+
+    it.each([true, false])(
+      "returns at once once the turn's hold is used, stop_hook_active %s (019 D4.3)",
+      async (active) => {
+        const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 300 });
+        expect((await stopBoth(harness, r)).waiting.decision).toBe("block");
+        const started = performance.now();
+        const out = await harness.stopSlow(r, { stop_hook_active: active });
+        expect(out.stdout).toBe("");
+        expect(performance.now() - started).toBeLessThan(STOP_SLOW_HANDOFF_MS / 2);
+      },
     );
-    expect(decision(await harness.stop(r))).toEqual({});
-    const sessions = r.store.consumers.list(r.worktreeId).map((c) => c.consumer);
-    const unmarked = sessions.find((c) => c.sessionId === OTHER_SESSION);
-    expect(unmarked && stopWaitRuns(r.store, unmarked, harness.name, squealVersion())).toBe(false);
-    expect(stopWaitRuns(r.store, marked, harness.name, squealVersion())).toBe(true);
-  });
 
-  it("a consumer registered again starts unmarked; its waiting entry marks it again (001-322)", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    r.store.consumers.unregister(mainConsumer(r));
-    await nextMs();
-    await harness.startTurn(r, { source: "resume" });
-    edit(r);
-    expect(decision(await harness.stop(r)).decision).toBe("block");
-    markStopWait(r, harness.name);
-    expect(decision(await harness.stop(r))).toEqual({});
-  });
+    it("says nothing when the 2 s entry blocked: the two never both block", async () => {
+      const r = await repo(harness, { requireSlowSuite: true, blockOnKnownFailures: true });
+      r.apply(r.fail());
+      slowKey(r, "queued");
+      const out = await stopBoth(harness, r, () => landSlow(r, "fail"));
+      expect(out.quick.decision).toBe("block");
+      expect(out.quick.reason).toMatch(/^Squeal policy stop.blockOnKnownFailures is on/);
+      expect(out.waiting).toEqual({});
+    });
 
-  it("a resume of the same session without its end starts unmarked too (001-322)", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    await nextMs();
-    await harness.startTurn(r, { source: "resume" });
-    expect(decision(await harness.stop(r)).decision).toBe("block");
-  });
+    it("says nothing when the turn starts again while it waits (a prompt or the waiter's wake)", async () => {
+      // Row 011-429: a bound it never reaches, so only the new turn ends the wait.
+      const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: STOP_SLOW_WAIT_CAP_MS });
+      const out = await stopBoth(harness, r, () => void harness.startTurn(r));
+      expect(out.waiting).toEqual({});
+    });
 
-  it("compaction in the running session keeps its mark (001-322)", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    await nextMs();
-    await harness.startTurn(r, { source: "compact" });
-    expect(decision(await harness.stop(r))).toEqual({});
-  });
-
-  /** A session started at `AT`, then marked, so its next registration can land in the same ms. */
-  async function markedAt(): Promise<SquealRepo> {
-    const r = await repo(harness, { requireSlowSuite: true }, false);
-    await harness.startTurn(r, { source: "resume" }, atDeps);
-    markStopWait(r, harness.name);
-    expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
-    expect(decision(await harness.stop(r))).toEqual({});
-    return r;
-  }
-
-  it("registered again in the same millisecond, it starts unmarked (001-328)", async () => {
-    const r = await markedAt();
-    r.store.consumers.unregister(mainConsumer(r));
-    await harness.startTurn(r, { source: "resume" }, atDeps);
-    expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
-    edit(r);
-    expect(decision(await harness.stop(r)).decision).toBe("block");
-    markStopWait(r, harness.name);
-    expect(decision(await harness.stop(r))).toEqual({});
-  });
-
-  it("resumed without its end in the same millisecond, it starts unmarked (001-328)", async () => {
-    const r = await markedAt();
-    await harness.startTurn(r, { source: "resume" }, atDeps);
-    expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
-    expect(decision(await harness.stop(r)).decision).toBe("block");
-  });
-
-  it("compaction in the same millisecond keeps its mark (001-328)", async () => {
-    const r = await markedAt();
-    await harness.startTurn(r, { source: "compact" }, atDeps);
-    expect(decision(await harness.stop(r))).toEqual({});
-  });
-
-  it("off: returns at once without waiting, and the turn ends as today", async () => {
-    const r = await repo(harness, { requireSlowSuite: false });
-    const out = await stopBoth(harness, r);
-    expect(out).toMatchObject({ quick: {}, waiting: {} });
-    expect(out.ms).toBeLessThan(STOP_SLOW_HANDOFF_MS / 2);
-    expect(turnOf(r)).toBe("idle");
-  });
-
-  it.each([true, false])(
-    "returns at once once the turn's hold is used, stop_hook_active %s (019 D4.3)",
-    async (active) => {
-      const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 300 });
-      expect((await stopBoth(harness, r)).waiting.decision).toBe("block");
-      const started = performance.now();
-      const out = await harness.stopSlow(r, { stop_hook_active: active });
-      expect(out.stdout).toBe("");
-      expect(performance.now() - started).toBeLessThan(STOP_SLOW_HANDOFF_MS / 2);
-    },
-  );
-
-  it("says nothing when the 2 s entry blocked: the two never both block", async () => {
-    const r = await repo(harness, { requireSlowSuite: true, blockOnKnownFailures: true });
-    r.apply(r.fail());
-    slowKey(r, "queued");
-    const out = await stopBoth(harness, r, () => landSlow(r, "fail"));
-    expect(out.quick.decision).toBe("block");
-    expect(out.quick.reason).toMatch(/^Squeal policy stop.blockOnKnownFailures is on/);
-    expect(out.waiting).toEqual({});
-  });
-
-  it("says nothing when the turn starts again while it waits (a prompt or the waiter's wake)", async () => {
-    const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 2_000 });
-    const out = await stopBoth(harness, r, () => void harness.startTurn(r));
-    expect(out.waiting).toEqual({});
-    expect(out.ms).toBeLessThan(1_500);
-  });
-
-  it("decides after a 2 s entry that finished before it started", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    expect(decision(await harness.stop(r))).toEqual({});
-    const timer = setTimeout(() => landSlow(r, "fail"), 200);
-    try {
-      expect(decision(await harness.stopSlow(r)).decision).toBe("block");
-    } finally {
-      clearTimeout(timer);
-    }
-  });
-});
+    it("decides after a 2 s entry that finished before it started", async () => {
+      const r = await repo(harness, { requireSlowSuite: true });
+      expect(decision(await harness.stop(r))).toEqual({});
+      const timer = setTimeout(() => landSlow(r, "fail"), 200);
+      try {
+        expect(decision(await harness.stopSlow(r)).decision).toBe("block");
+      } finally {
+        clearTimeout(timer);
+      }
+    });
+  },
+);
 
 it("a SubagentStop never waits (claude-code)", async () => {
   const [harness] = HARNESSES;
