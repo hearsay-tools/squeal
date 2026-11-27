@@ -10,9 +10,9 @@
 export function inMethod(stack: string | undefined, method: string, file: string): boolean {
   if (stack === undefined) return false;
   const frame = new RegExp(
-    `\\bat (?:async )?(?:[\\w$]+\\.)?${escape(method)} \\((?:file://)?[^\\n]*/${escape(file)}:\\d`,
+    `\\bat (?:async )?(?:[\\w$]+\\.)?${literal(method)} \\((?:file://)?[^\\n]*/${literal(file)}:\\d`,
   );
   return frame.test(stack.replaceAll("\\", "/"));
 }
 
-const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
