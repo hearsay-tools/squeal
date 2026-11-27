@@ -240,7 +240,7 @@ describe.each(JEST_MAJORS)("observe-runtime.cjs on Jest %i", (major) => {
  * call's async context, and what the call reads with success through a
  * descriptor, a FileHandle or a stream is kept for its test file.
  */
-const PROBE = String.raw`
+const PROBE = `
 const fs = require("fs");
 const path = require("path");
 const { promisify } = require("util");
