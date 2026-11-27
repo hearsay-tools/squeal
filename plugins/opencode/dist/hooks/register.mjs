@@ -3234,9 +3234,9 @@ function storedKind(origin) {
   return origin === null || origin.kind === "imported" ? null : origin.kind;
 }
 function toOrigin(row) {
-  const stored3 = strOrNull(row, "origin_kind");
-  const kind = stored3 === "own" || stored3 === "inherited" ? stored3 : null;
-  if (stored3 !== null && kind === null) return null;
+  const stored4 = strOrNull(row, "origin_kind");
+  const kind = stored4 === "own" || stored4 === "inherited" ? stored4 : null;
+  if (stored4 !== null && kind === null) return null;
   if (kind === null) {
     const marked2 = strOrNull(row, "origin_worktree");
     const importId = marked2 === null ? null : importIdOf(marked2);
@@ -3504,19 +3504,19 @@ function createRevisionRepo(conn) {
         "SELECT coalesce(max(number), 0) AS n FROM revisions WHERE worktree_id = ?",
         revision.worktreeId
       );
-      const stored3 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
+      const stored4 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
       conn.run(
         `INSERT INTO revisions (worktree_id, number, created_at, head, dirty, trigger, changes)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        stored3.worktreeId,
-        stored3.number,
-        stored3.createdAt,
-        stored3.head,
-        flag(stored3.dirty),
-        stored3.trigger,
-        JSON.stringify(stored3.changes)
+        stored4.worktreeId,
+        stored4.number,
+        stored4.createdAt,
+        stored4.head,
+        flag(stored4.dirty),
+        stored4.trigger,
+        JSON.stringify(stored4.changes)
       );
-      return stored3;
+      return stored4;
     }),
     latest: (worktreeId) => {
       const row = conn.get(
@@ -4721,7 +4721,7 @@ function createCoverageRepo(conn, sent) {
   };
   const writeParts = ({ key, record, at }) => {
     const before = storedAt2(key);
-    const stored3 = before === null ? at : Math.max(at, before + 1);
+    const stored4 = before === null ? at : Math.max(at, before + 1);
     const known = /* @__PURE__ */ new Map();
     for (const row of conn.all(
       `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
@@ -4731,28 +4731,28 @@ function createCoverageRepo(conn, sent) {
     }
     for (const part of record.parts) {
       if (known.has(part.hash)) continue;
-      known.set(part.hash, stored3);
+      known.set(part.hash, stored4);
       conn.run(
         `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
          ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
         part.hash,
         part.bytes,
-        stored3
+        stored4
       );
     }
-    const stale = [...known].filter(([, usedAt]) => usedAt < stored3 - PART_REFRESH_MS);
+    const stale = [...known].filter(([, usedAt]) => usedAt < stored4 - PART_REFRESH_MS);
     if (stale.length > 0) {
       conn.run(
         `UPDATE coverage_parts SET used_at = ?
          WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
-        stored3,
+        stored4,
         JSON.stringify(stale.map(([hash2]) => hash2)),
-        stored3 - PART_REFRESH_MS
+        stored4 - PART_REFRESH_MS
       );
     }
-    return stored3;
+    return stored4;
   };
-  const writeManifest = ({ key, record }, stored3) => {
+  const writeManifest = ({ key, record }, stored4) => {
     const ids = /* @__PURE__ */ new Map();
     for (const row of conn.all(
       `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
@@ -4769,16 +4769,16 @@ function createCoverageRepo(conn, sent) {
       key.resultKey,
       key.providerVersion,
       manifestBytes(record, listed2),
-      stored3
+      stored4
     );
   };
   const putPartsBatch = async (items) => {
     if (items.length === 0) return;
-    const stored3 = conn.transaction(() => items.map(writeParts));
+    const stored4 = conn.transaction(() => items.map(writeParts));
     if (sent !== void 0) await sent();
     conn.transaction(() => {
       items.forEach((item, i) => {
-        writeManifest(item, stored3[i] ?? item.at);
+        writeManifest(item, stored4[i] ?? item.at);
       });
     });
     if (sent !== void 0) await sent();
@@ -13308,7 +13308,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.659";
+  if (true) return "0.1.661";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -13470,10 +13470,10 @@ function changedGroups(store, consumer, groups2) {
   const told = toldKinds(readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer));
   return groups2.filter((g) => told.get(g.name) !== groupKind(g)).map((g) => g.name);
 }
-function toldKinds(stored3) {
-  if (typeof stored3 !== "string") return /* @__PURE__ */ new Map();
+function toldKinds(stored4) {
+  if (typeof stored4 !== "string") return /* @__PURE__ */ new Map();
   try {
-    const value = JSON.parse(stored3);
+    const value = JSON.parse(stored4);
     if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
     return new Map(
       value.flatMap(
@@ -15466,17 +15466,27 @@ async function handOver(context, deps) {
   } else if (!read4.stepping) {
     return "none";
   }
+  let tried = null;
   try {
     const claim = await context.write(
       () => store.transaction(() => {
         if (!stillRecorded(store, id, read4.from)) return void 0;
-        return claimHandoff(store, id, { from: read4.from, to: version, at: now() });
+        tried = now();
+        return claimHandoff(store, id, { from: read4.from, to: version, at: tried });
       })
     );
     if (claim === void 0) return "none";
     return claim === null ? "joined" : "claimed";
   } catch {
-    return "claimed";
+    return tried !== null && stored3(store, id, { from: read4.from, to: version, at: tried }) ? "claimed" : "none";
+  }
+}
+function stored3(store, worktreeId, claim) {
+  try {
+    const found2 = readHandoff(store, worktreeId);
+    return found2?.from === claim.from && found2.to === claim.to && found2.at === claim.at;
+  } catch {
+    return false;
   }
 }
 function stillRecorded(store, worktreeId, from) {

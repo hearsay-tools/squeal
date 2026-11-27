@@ -128,6 +128,9 @@ var EVENT_DEADLINE_MS = 2e3;
 var SHUTDOWN_DEADLINE_MS = 3e3;
 var SETTLE_DEADLINE_MS = 2e3;
 var END_TURN_DEADLINE_MS = EVENT_DEADLINE_MS;
+var WAKE_REARMS = 3;
+var REARM_DELAY_MS = 1e3;
+var WAIT_BOUND_MS = 354e4;
 var CUSTOM_TYPE = "squeal";
 var PRIMER_SECTION = "squeal";
 var PRIMER_SECTION_CAP_CHARS = 8e3;
@@ -150,7 +153,7 @@ var entry = (content) => ({
   type: "custom_message",
   ...message(content)
 });
-function squealExtension(start) {
+function squealExtension(start, rearmDelayMs = REARM_DELAY_MS) {
   return (pi) => {
     let host = null;
     let shutDown = false;
@@ -179,7 +182,7 @@ function squealExtension(start) {
       continued = false;
       ended = false;
     };
-    const armWait = (ctx) => {
+    const armWait = (ctx, left = WAKE_REARMS) => {
       cancelWait();
       let mode;
       try {
@@ -189,17 +192,32 @@ function squealExtension(start) {
       }
       const session = sessionOf(ctx);
       if (shutDown || host === null || session === null || !WAKE_MODES.has(mode)) return;
+      const since = performance.now();
       const wait = host.wait({ kind: "wait", ...session });
       waiting2 = wait;
       void wait.answer.then((text) => {
         if (waiting2 !== wait) return;
         waiting2 = null;
-        if (text === null || shutDown) return;
+        if (shutDown) return;
+        if (text === null) {
+          if (left > 0 && performance.now() - since < WAIT_BOUND_MS) pause(ctx, left - 1);
+          return;
+        }
         try {
           pi.sendMessage(message(text), { triggerTurn: true, deliverAs: "followUp" });
         } catch {
         }
       });
+    };
+    const pause = (ctx, left) => {
+      const timer = setTimeout(() => {
+        if (waiting2 !== paused) return;
+        waiting2 = null;
+        armWait(ctx, left);
+      }, rearmDelayMs);
+      timer.unref();
+      const paused = { cancel: () => clearTimeout(timer) };
+      waiting2 = paused;
     };
     pi.on("session_start", async (event, ctx) => {
       try {
