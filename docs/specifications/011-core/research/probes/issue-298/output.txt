@@ -1,0 +1,219 @@
+load1: 1.21484375 cpus: 16
+
+argv: ["~/.codex/plugins/data/squeal-hearsay/bin/squeal", "--version"]
+exit: 0
+0.1.654
+
+
+argv: ["~/.codex/plugins/data/squeal-hearsay/bin/squeal", "status", "--json", "test/bench/deps.test.ts"]
+exit: 3
+{
+  "revision": 0,
+  "selection": {
+    "outcome": "snapshot",
+    "waitedMs": 866,
+    "code": 3,
+    "result": "none",
+    "reason": "unsynced",
+    "testFiles": [
+      {
+        "project": "isolated",
+        "path": "test/bench/deps.test.ts",
+        "state": "current",
+        "verdict": "pass"
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "test/bench/deps.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "complete": true,
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 1,
+      "byClass": {
+        "current": 1,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  }
+}
+
+argv: ["~/.codex/plugins/data/squeal-hearsay/bin/squeal", "why", "--json", "test/bench/deps.test.ts"]
+exit: 1
+{
+  "found": false,
+  "candidates": [
+    {
+      "kind": "file",
+      "project": "isolated",
+      "testPath": "test/bench/deps.test.ts"
+    },
+    {
+      "kind": "test",
+      "project": "isolated",
+      "testPath": "test/bench/deps.test.ts",
+      "fullName": "the bench project's pinned dependencies > pins vite exactly beside vitest and @vitest/coverage-v8"
+    },
+    {
+      "kind": "test",
+      "project": "isolated",
+      "testPath": "test/bench/deps.test.ts",
+      "fullName": "the bench project's pinned dependencies > reads the installed versions from node_modules, null for a missing one"
+    },
+    {
+      "kind": "test",
+      "project": "isolated",
+      "testPath": "test/bench/deps.test.ts",
+      "fullName": "the scorecard header names the installed versions > prints one set, each distinct set, and nothing for an older run"
+    },
+    {
+      "kind": "test",
+      "project": "isolated",
+      "testPath": "test/bench/deps.test.ts",
+      "fullName": "the scorecard header names the installed versions > puts them after Node in a stored run's header line"
+    }
+  ],
+  "candidateDurations": [
+    {
+      "results": 3,
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "minMs": 88.13113200000001,
+      "medianMs": 89.916145,
+      "p95Ms": 119.370455,
+      "maxMs": 119.370455
+    },
+    {
+      "results": 3,
+      "pass": 2,
+      "fail": 1,
+      "skip": 0,
+      "minMs": 31.983965999999995,
+      "medianMs": 32.310143,
+      "p95Ms": 46.247641999999985,
+      "maxMs": 46.247641999999985
+    },
+    {
+      "results": 3,
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "minMs": 0.5578509999999994,
+      "medianMs": 0.5752200000000016,
+      "p95Ms": 0.6697119999999757,
+      "maxMs": 0.6697119999999757
+    },
+    {
+      "results": 3,
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "minMs": 0.3859949999999799,
+      "medianMs": 0.40797299999999836,
+      "p95Ms": 0.45528300000000854,
+      "maxMs": 0.45528300000000854
+    },
+    {
+      "results": 3,
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "minMs": 16.609538000000015,
+      "medianMs": 16.995323000000013,
+      "p95Ms": 22.656855000000007,
+      "maxMs": 22.656855000000007
+    }
+  ]
+}
+
+argv: ["~/.codex/plugins/data/squeal-hearsay/bin/squeal", "why", "--json", "[isolated] test/bench/deps.test.ts"]
+exit: 0
+{
+  "found": true,
+  "check": {
+    "kind": "file",
+    "project": "isolated",
+    "testPath": "test/bench/deps.test.ts"
+  },
+  "durations": {
+    "results": 3,
+    "pass": 3,
+    "fail": 0,
+    "skip": 0,
+    "minMs": 88.13113200000001,
+    "medianMs": 89.916145,
+    "p95Ms": 119.370455,
+    "maxMs": 119.370455
+  },
+  "firstResult": {
+    "check": {
+      "kind": "file",
+      "project": "isolated",
+      "testPath": "test/bench/deps.test.ts"
+    },
+    "outcome": "pass",
+    "durationMs": 88.13113200000001,
+    "provenance": {
+      "worktreeId": "5dbfa4ce83e7fc7c",
+      "revision": 10,
+      "commit": "e5b251a7ce4ee7e59eab6f00956fb4bf5952bc3c",
+      "dirty": true,
+      "runId": "7bee8962-bb94-473f-a787-5f449cf64f67",
+      "recordedAt": 1795773490066
+    }
+  }
+}
+
+argv: ["~/.codex/plugins/data/squeal-hearsay/bin/squeal", "why", "--json", "[isolated] test/bench/deps.test.ts > the bench project's pinned dependencies > pins vite exactly beside vitest and @vitest/coverage-v8"]
+exit: 0
+{
+  "found": true,
+  "check": {
+    "kind": "test",
+    "project": "isolated",
+    "testPath": "test/bench/deps.test.ts",
+    "fullName": "the bench project's pinned dependencies > pins vite exactly beside vitest and @vitest/coverage-v8"
+  },
+  "durations": {
+    "results": 3,
+    "pass": 2,
+    "fail": 1,
+    "skip": 0,
+    "minMs": 31.983965999999995,
+    "medianMs": 32.310143,
+    "p95Ms": 46.247641999999985,
+    "maxMs": 46.247641999999985
+  },
+  "firstResult": {
+    "check": {
+      "kind": "test",
+      "project": "isolated",
+      "testPath": "test/bench/deps.test.ts",
+      "fullName": "the bench project's pinned dependencies > pins vite exactly beside vitest and @vitest/coverage-v8"
+    },
+    "outcome": "fail",
+    "durationMs": 32.310143,
+    "provenance": {
+      "worktreeId": "5dbfa4ce83e7fc7c",
+      "revision": 10,
+      "commit": "e5b251a7ce4ee7e59eab6f00956fb4bf5952bc3c",
+      "dirty": true,
+      "runId": "7bee8962-bb94-473f-a787-5f449cf64f67",
+      "recordedAt": 1795773490066
+    }
+  }
+}
