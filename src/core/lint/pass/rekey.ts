@@ -25,9 +25,11 @@ import {
   type LintProgram,
   lintScope,
   readCursor,
+  readEdited,
   readProgram,
   readQuiet,
   writeCursor,
+  writeEdited,
   writeInputs,
   writeKeying,
   writeProgram,
@@ -298,7 +300,11 @@ class Writes {
   readonly used: [LintCheckId, CheckKey][] = [];
   hits = 0;
 
-  constructor(readonly quiet: Set<RelativePath>) {}
+  constructor(
+    readonly quiet: Set<RelativePath>,
+    /** Row 017-37: the quiet paths an edit changed since their keying. */
+    readonly edited: Set<RelativePath>,
+  ) {}
 
   commit(ctx: RekeyContext, at: JudgeAt): void {
     const { store, worktreeId } = ctx;
@@ -306,7 +312,9 @@ class Writes {
     store.states.upsertMany(this.states);
     store.transitions.append(this.transitions);
     for (const [check, key] of this.used) store.results.use(check, key, at.now);
-    writeQuiet(store.meta, lintScope(worktreeId, ctx.tool), this.quiet);
+    const scope = lintScope(worktreeId, ctx.tool);
+    writeQuiet(store.meta, scope, this.quiet);
+    writeEdited(store.meta, scope, this.edited);
   }
 }
 
@@ -314,6 +322,8 @@ class Writes {
  * Each candidate's next state: removed when ESLint no longer lints it or it
  * is gone, judged on a hit, `pending` on a miss. A first or config keying's
  * misses join the quiet set, and so record no transition when they lint.
+ * A quiet miss the revisions since the cursor changed is also edited (row
+ * 017-37): it lints as an edit's part, still quiet.
  */
 async function judgeAll(
   ctx: RekeyContext,
@@ -322,8 +332,10 @@ async function judgeAll(
 ): Promise<Writes> {
   const { store, worktreeId } = ctx;
   const edit = plan.mode === "edit";
+  const scope = lintScope(worktreeId, ctx.tool);
   const writes = new Writes(
-    edit ? readQuiet(store.meta, lintScope(worktreeId, ctx.tool)) : new Set(),
+    edit ? readQuiet(store.meta, scope) : new Set(),
+    edit ? readEdited(store.meta, scope) : new Set(),
   );
   let count = 0;
   for (const path of plan.candidates) {
@@ -354,6 +366,8 @@ async function judgeAll(
     writes.quiet.delete(path);
     writes.hits++;
   }
+  for (const path of plan.changed) if (writes.quiet.has(path)) writes.edited.add(path);
+  for (const path of writes.edited) if (!writes.quiet.has(path)) writes.edited.delete(path);
   return writes;
 }
 
