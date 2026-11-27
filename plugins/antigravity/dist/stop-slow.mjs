@@ -10933,7 +10933,7 @@ function beforeEditsFor(store, worktreeId, slot2, since) {
 }
 
 // src/core/status/test-frame.ts
-var V8_FRAME = /^\s*at (.+?)\s*$/;
+var V8_FRAME = /^\s*at (?:async )?(.+?)\s*$/;
 var V8_POSITION = /^(.+):(\d+):(\d+)$/;
 var PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
 var NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
@@ -13447,7 +13447,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.656";
+  if (true) return "0.1.657";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
