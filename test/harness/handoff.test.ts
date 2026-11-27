@@ -149,6 +149,7 @@ describe("one successor per handoff (row 011-32)", () => {
       to: HOOK,
       at,
       boundAt: at + 130_000,
+      attempt: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
   });
 
@@ -179,6 +180,7 @@ describe("one successor per handoff (row 011-32)", () => {
         to: HOOK,
         at: now,
         boundAt: now + HANDOFF_BOUND_MS,
+        attempt: expect.any(String),
       });
     },
   );
@@ -284,6 +286,72 @@ describe("one successor per handoff (row 011-32)", () => {
     ]);
     expect(stepDowns(asked)).toBe(1);
     expect(readHandoff(r.store, r.worktreeId)).toMatchObject({ from: `${OLD}@1#t`, to: HOOK });
+  });
+
+  it("stays joined when its write threw after another hook's claim of the same millisecond", async () => {
+    const r = squealRepo();
+    const at = Date.now();
+    const asked = await stepping(r, () => at);
+    const { successors, deps } = recording(() => at);
+    const location = { root: r.root, commonDir: r.repo.commonDir } as never;
+    const first = openContext({ session_id: "s1" }, location);
+    const second = openContext({ session_id: "s2" }, location);
+    if (first === null || second === null) throw new Error("no store");
+    // B read no claim; A claims and spawns before B's write, which joins A's, then its answer is lost.
+    const context = {
+      ...second,
+      write: async <T>(work: () => T | Promise<T>): Promise<T> => {
+        expect(await ensure(location, deps, first)).toBe("spawned");
+        await second.write(work);
+        throw new Error("the connection closed");
+      },
+    };
+    try {
+      expect(await ensure(location, deps, context)).toBe("alive");
+    } finally {
+      first.close();
+      second.close();
+    }
+    expect(successors()).toEqual([
+      expect.objectContaining({ awaitLockMs: SUCCESSOR_LOCK_WAIT_MS }),
+    ]);
+    expect(stepDowns(asked)).toBe(2);
+  });
+
+  it("reads no other hook's claim of the same millisecond as its own after its own rolled back", async () => {
+    const r = squealRepo();
+    const at = Date.now();
+    const asked = await stepping(r, () => at);
+    const { successors, deps } = recording(() => at);
+    const location = { root: r.root, commonDir: r.repo.commonDir } as never;
+    const first = openContext({ session_id: "s1" }, location);
+    const second = openContext({ session_id: "s2" }, location);
+    if (first === null || second === null) throw new Error("no store");
+    // B claims in a transaction that rolls back; A claims and spawns; B's write is rejected.
+    const context = {
+      ...second,
+      write: async <T>(work: () => T | Promise<T>): Promise<T> => {
+        expect(() =>
+          second.store.transaction(() => {
+            void work();
+            throw new Error("rolled back");
+          }),
+        ).toThrow("rolled back");
+        expect(readHandoff(r.store, r.worktreeId)).toBeNull();
+        expect(await ensure(location, deps, first)).toBe("spawned");
+        throw new Error("the write was rejected");
+      },
+    };
+    try {
+      expect(await ensure(location, deps, context)).toBe("alive");
+    } finally {
+      first.close();
+      second.close();
+    }
+    expect(successors()).toEqual([
+      expect.objectContaining({ awaitLockMs: SUCCESSOR_LOCK_WAIT_MS }),
+    ]);
+    expect(stepDowns(asked)).toBe(2);
   });
 
   it("asks nothing and reads the daemon alive at a boundary that finds a live claim", async () => {

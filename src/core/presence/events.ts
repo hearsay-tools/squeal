@@ -178,12 +178,13 @@ export function clearStopped(store: Store, worktreeId: WorktreeId): void {
  * Handoff claimed: from `from` to version `to` at `at`, in one write
  * transaction that reads the claim first: the claim written, or `null` when
  * a live claim for `from` was already there. Throws when the store stays
- * busy past its timeout; the hook then spawns as before (C9).
+ * busy past its timeout; the hook then spawns as before (C9). A hook's
+ * claim carries its `attempt` id (row 011-434).
  */
 export function claimHandoff(
   store: Store,
   worktreeId: WorktreeId,
-  claim: Pick<HandoffClaim, "from" | "to" | "at">,
+  claim: Pick<HandoffClaim, "from" | "to" | "at" | "attempt">,
 ): HandoffClaim | null {
   return store.transaction(() => {
     if (liveHandoff(store, worktreeId, claim.from, claim.at) !== null) return null;
