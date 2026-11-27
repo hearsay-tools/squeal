@@ -119,6 +119,12 @@ export interface HandoffClaim {
   readonly at: EpochMs;
   /** `at` plus `HANDOFF_BOUND_MS`: from then on the claim holds nothing. */
   readonly boundAt: EpochMs;
+  /**
+   * Row 011-434: the claiming attempt's own id, so a hook whose write threw
+   * tells its claim from another's of the same time and version. Absent in
+   * claims from before it; readers that predate it ignore the field.
+   */
+  readonly attempt?: string;
 }
 
 /** `meta` key of the worktree's handoff claim. */
@@ -142,10 +148,11 @@ export function readHandoff(store: Store, worktreeId: WorktreeId): HandoffClaim 
   try {
     const claim: unknown = JSON.parse(text);
     if (!isRecord(claim)) return null;
-    const { from, to, at, boundAt } = claim;
+    const { from, to, at, boundAt, attempt } = claim;
     if (typeof from !== "string" || typeof to !== "string") return null;
     if (typeof at !== "number" || typeof boundAt !== "number") return null;
-    return { from, to, at: at as EpochMs, boundAt: boundAt as EpochMs };
+    const read = { from, to, at: at as EpochMs, boundAt: boundAt as EpochMs };
+    return typeof attempt === "string" ? { ...read, attempt } : read;
   } catch {
     return null;
   }

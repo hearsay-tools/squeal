@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { pinDaemon, requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
@@ -9,12 +10,7 @@ import { spawnStartCurrent } from "../../core/presence/findings.js";
 import { heartbeatFresh, lastHeartbeat } from "../../core/presence/heartbeat.js";
 import { markSpawn } from "../../core/presence/lock-events.js";
 import { readHookHandoff, readHookStop } from "../../core/presence/narrow.js";
-import {
-  type HandoffClaim,
-  handoffFrom,
-  readHandoff,
-  SUCCESSOR_LOCK_WAIT_MS,
-} from "../../core/presence/stored.js";
+import { handoffFrom, readHandoff, SUCCESSOR_LOCK_WAIT_MS } from "../../core/presence/stored.js";
 import { lockFileFor } from "../../core/store/paths.js";
 import { readTransaction } from "../../core/store/store.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../core/types/common.js";
@@ -155,7 +151,7 @@ export async function ensureIfStale(
  * next boundary after the bound or a timed-out lock wait spawns again
  * (review 0.1.259, B1). A store that stays busy past the hook's timeout
  * takes no claim, and the hook ensures as before (`none`, row 011-434): it
- * says `claimed` only for a claim the store holds (`stored`). Row 011-140: a daemon that registered
+ * says `claimed` only for a claim the store holds (`thrown`). Row 011-140: a daemon that registered
  * older than the claim it ended (`readShortHandoff`) is asked nothing again;
  * `squeal start` replaces it. Review 0.1.277, B1: the record, the claim and
  * the mark are read in one read transaction, as the successor writes them in
@@ -191,42 +187,50 @@ async function handOver(
   } else if (!read.stepping) {
     return "none";
   }
-  let tried: EpochMs | null = null;
+  // Row 011-434: this attempt's id in its claim, and what its transaction gave before any answer.
+  const attempt = randomUUID();
+  let ran: HandOver | null = null;
   try {
     // Spec 021 D15: with a daemon serving, under the worktree's write lease.
-    const claim = await context.write(() =>
+    return await context.write(() =>
       store.transaction(() => {
-        if (!stillRecorded(store, id, read.from)) return undefined;
-        tried = now();
-        return claimHandoff(store, id, { from: read.from, to: version, at: tried });
+        const claim = stillRecorded(store, id, read.from)
+          ? claimHandoff(store, id, { from: read.from, to: version, at: now(), attempt })
+          : undefined;
+        const result = claim === undefined ? "none" : claim === null ? "joined" : "claimed";
+        ran = result;
+        return result;
       }),
     );
-    if (claim === undefined) return "none";
-    return claim === null ? "joined" : "claimed";
   } catch {
-    return tried !== null && stored(store, id, { from: read.from, to: version, at: tried })
-      ? "claimed"
-      : "none";
+    return thrown(ran, store, id, attempt);
   }
 }
 
+type HandOver = "none" | "joined" | "claimed";
+
 /**
- * Row 011-434 (census G6): whether the claim a throwing write tried is
- * stored, such as one the daemon wrote before its answer was lost. A hook
+ * Row 011-434 (census G6): what a hook whose claim write threw says. It
  * said `claimed` for a claim the busy store never took, and `squeal start`,
- * finding none, claimed too: two successors waited for the lock. A store
- * that cannot be read counts as not stored.
+ * finding none, claimed too: two successors waited for the lock. A
+ * transaction that joined another's claim or found another daemon keeps
+ * its answer: it wrote no claim. Otherwise the hook says `claimed` only
+ * when the stored claim carries its `attempt` id, such as one the daemon
+ * wrote before its answer was lost; never for another hook's claim of the
+ * same time and version, after its own rolled back (review of 0.1.661). A
+ * store that cannot be read counts as no claim of its own.
  */
-function stored(
+function thrown(
+  ran: HandOver | null,
   store: Store,
   worktreeId: WorktreeId,
-  claim: Pick<HandoffClaim, "from" | "to" | "at">,
-): boolean {
+  attempt: string,
+): HandOver {
+  if (ran === "joined" || ran === "none") return ran;
   try {
-    const found = readHandoff(store, worktreeId);
-    return found?.from === claim.from && found.to === claim.to && found.at === claim.at;
+    return readHandoff(store, worktreeId)?.attempt === attempt ? "claimed" : "none";
   } catch {
-    return false;
+    return "none";
   }
 }
 
