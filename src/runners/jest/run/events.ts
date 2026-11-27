@@ -67,6 +67,12 @@ export interface FileResultEvent {
   readonly snapshot: JestSnapshot;
   /** Absolute paths `observe-runtime.cjs` saw the file load; `[]` without it. */
   readonly loaded: readonly string[];
+  /**
+   * Row 028-08: absolute paths Jest's transform and resolver read with success
+   * for the file, while `recorder.cjs` saw none of their probes; absent from
+   * an older reporter.
+   */
+  readonly reads?: readonly string[];
   /** Spec 028 D5.3: the file's V8 payload, written before this line; absent without coverage. */
   readonly coverageFile?: string;
   /** With `coverageFile`: what Jest's transform ran of each script, by absolute path. */

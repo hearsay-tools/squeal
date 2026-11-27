@@ -22,6 +22,8 @@ export interface JestFileReport {
   readonly durationMs: number;
   /** Project modules `observe-runtime.cjs` saw the file load, the file among them; `[]` without it. */
   readonly loaded: readonly RelativePath[];
+  /** Row 028-08: what Jest's transform and resolver read with success for it; absolute. */
+  readonly reads: readonly AbsolutePath[];
 }
 
 /** Spec 028 D5.2: Jest's statuses; `skipped` and `disabled` are the legacy runner's. */
@@ -102,6 +104,7 @@ function fileReport(
       loaded.length === 0 || loaded.includes(testFile.path)
         ? loaded
         : [testFile.path, ...loaded].sort(),
+    reads: (event.reads ?? []) as readonly AbsolutePath[],
   };
 }
 

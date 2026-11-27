@@ -289,6 +289,13 @@ const BABEL = [
   ".babelrc.mjs",
   ".babelrc.cts",
   ".babelrc.json",
+  // Row 028-08: Babel 7.21+ and Browserslist look for these too; the transform's probes key none.
+  "babel.config.ts",
+  "babel.config.mts",
+  ".babelignore",
+  ".browserslistrc",
+  "browserslist",
+  ".browserlistrc",
 ];
 const TSCONFIGS = ["tsconfig.spec.json", "tsconfig.json", "tsconfig.base.json"];
 

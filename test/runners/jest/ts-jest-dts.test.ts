@@ -4,8 +4,10 @@ import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
 import { readHead } from "../../../src/core/daemon-loop/head.js";
 import { createFsHasher } from "../../../src/core/hash/hasher.js";
+import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import { statCandidates } from "../../../src/core/revision/reconcile.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
+import { observedGrowth } from "../../../src/core/scheduler/observed.js";
 import { recordsForFile } from "../../../src/core/scheduler/records.js";
 import { describeFailure } from "../../../src/core/state/fingerprint.js";
 import type {
@@ -115,19 +117,31 @@ function worktree(major: JestMajor): { root: AbsolutePath; common: AbsolutePath 
   };
 }
 
-/** `files` in one batch, recorded as the core records a tier. */
+/**
+ * `files` in one batch, recorded as the core records a tier. `firstRun`: the
+ * worktree's first, whose record's first-seen paths, by test file, it fills.
+ */
 function runFiles(
   open: OpenWorktree,
-  root: string,
+  root: AbsolutePath,
   files: readonly TestFileRef[],
+  firstRun?: Map<string, readonly RelativePath[]>,
 ): Promise<RunReport> {
-  return open.record(files, () =>
-    open.adapter.run(files, {
+  return open.record(files, async () => {
+    const report = await open.adapter.run(files, {
       runId: `run-${made}`,
       logDir: join(root, "..", `logs-${made++}`) as AbsolutePath,
       timeoutMs: 120_000,
-    }),
-  );
+    });
+    if (firstRun !== undefined) {
+      // The worktree's first `beginRun` is run 1.
+      const growth = await observedGrowth({ root, keys: core(open).keys }, report, 1);
+      for (const o of report.observed ?? []) {
+        firstRun.set(o.testFile.path, growth.get(testFileId(o.testFile))?.firstSeen ?? []);
+      }
+    }
+    return report;
+  });
 }
 
 /**
@@ -183,9 +197,12 @@ describe.each(JEST_MAJORS)("a type-checking transform's .d.ts reads on Jest %i",
     );
     onTestFinished(() => open.close());
 
-    const first = await runFiles(open, root, [A, B]);
+    const firstSeen = new Map<string, readonly RelativePath[]>();
+    const first = await runFiles(open, root, [A, B], firstSeen);
     expect(first.end).toBe("completed");
     expect(outcomes(first)).toEqual({ a: "pass", b: "pass" });
+    // Row 028-08: no probe of Jest's own is a first-seen path; the run's results stand.
+    expect(Object.fromEntries(firstSeen)).toEqual({ [A.path]: [], [B.path]: [] });
     // One batch ran both files: attribution is per test file, not per process.
     expect(first.observed?.find((o) => o.testFile.path === A.path)?.paths).toContain(
       "types/a.d.ts",

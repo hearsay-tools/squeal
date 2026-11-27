@@ -1,4 +1,4 @@
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join, relative, sep } from "node:path";
 import { compare, sameList } from "../../core/fs/compare.js";
@@ -288,10 +288,68 @@ export async function createJestAdapter(
     const { report } = ran;
     if (covered !== undefined) coverage.collect(runOptions.runId, ran.coverage, paths);
     if (observe === null) return report;
-    const recorded = observedInputs(takeRecorded(out), report.completedFiles, paths);
-    const seen = withHostModules(recorded, ran.hostObserved ?? [], paths, observe.skip);
+    const recorded = withoutBuiltinProbes(
+      observedInputs(takeRecorded(out), report.completedFiles, paths),
+      paths,
+    );
+    const withTransform = withReads(recorded, ran.transformReads ?? [], paths, observe.skip);
+    const seen = withHostModules(withTransform, ran.hostObserved ?? [], paths, observe.skip);
     return seen.length === 0 ? report : { ...report, observed: seen };
   }
+}
+
+/**
+ * Row 028-08 (F5): `source-map-support` asks `fs.existsSync` about a stack
+ * frame's `node:internal/...` name, which the recorder resolves under the
+ * working directory. No such file is the test's input: one that is not on
+ * disk is dropped.
+ */
+function withoutBuiltinProbes(
+  observed: readonly ObservedInputs[],
+  paths: WorktreePaths,
+): ObservedInputs[] {
+  const builtin = (path: RelativePath) => BUILTIN.test(path) && !existsSync(paths.toAbsolute(path));
+  return observed.map((o) =>
+    o.paths.some(builtin) ? { ...o, paths: o.paths.filter((p) => !builtin(p)) } : o,
+  );
+}
+
+const BUILTIN = /(?:^|\/)node:/;
+
+/**
+ * Row 028-08 (F1): each file's observations with what Jest's transform and
+ * resolver read with success for it (`transformReads`), as paths: the
+ * recorder sees none of their reads, so their probes of absent files are no
+ * input. A path outside the project or below `skip` stays out.
+ */
+function withReads(
+  observed: readonly ObservedInputs[],
+  reads: readonly HostObserved[],
+  paths: WorktreePaths,
+  skip: readonly AbsolutePath[],
+): ObservedInputs[] {
+  if (reads.length === 0) return [...observed];
+  const out = new Map(observed.map((o) => [o.testFile.path, o]));
+  for (const { testFile, paths: read } of reads) {
+    const kept = inProject(read, paths, skip);
+    if (kept.length === 0) continue;
+    const entry = out.get(testFile.path) ?? { testFile, paths: [], directories: [] };
+    out.set(testFile.path, { ...entry, paths: merged(entry.paths, kept) });
+  }
+  return [...out.values()];
+}
+
+/** The project paths of `abs`, relative, none below `skip`. */
+function inProject(
+  abs: readonly AbsolutePath[],
+  paths: WorktreePaths,
+  skip: readonly AbsolutePath[],
+): RelativePath[] {
+  return abs.flatMap((file) => {
+    if (!paths.isProjectFile(file) || skip.some((s) => file.startsWith(`${s}${sep}`))) return [];
+    const path = paths.toRelative(file);
+    return path === null ? [] : [path];
+  });
 }
 
 /**
@@ -309,11 +367,7 @@ function withHostModules(
   if (host.length === 0) return [...observed];
   const out = new Map(observed.map((o) => [o.testFile.path, o]));
   for (const { testFile, paths: modules } of host) {
-    const kept = modules.flatMap((abs) => {
-      if (!paths.isProjectFile(abs) || skip.some((s) => abs.startsWith(`${s}${sep}`))) return [];
-      const path = paths.toRelative(abs);
-      return path === null ? [] : [path];
-    });
+    const kept = inProject(modules, paths, skip);
     if (kept.length === 0) continue;
     const entry = out.get(testFile.path) ?? { testFile, paths: [], directories: [] };
     out.set(testFile.path, {

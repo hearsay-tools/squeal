@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -214,5 +215,21 @@ describe.each(JEST_MAJORS)("observe-runtime.cjs on Jest %i", (major) => {
     expect(b).toEqual(expect.arrayContaining(["data/b-top.txt", "data/b.txt", "data/child-b.js"]));
     expect(a.filter((p) => p.startsWith("data/b") || p === "data/child-b.js")).toEqual([]);
     expect(b.filter((p) => p.startsWith("data/a") || p === "data/child-a.js")).toEqual([]);
+  });
+
+  it("gives the recorder none of the absent files Jest's transform and resolver probe", () => {
+    // Row 028-08 (F1): `babel-jest`, Browserslist and `jest-resolve` look for these as modules load.
+    const absent = (p: string) =>
+      /(?:^|\/)(?:\.babelrc[^/]*|\.babelignore|babel\.config\.[cm]?ts|\.browserl?i?s?t?s?rc|browserl?i?s?t?)$/.test(
+        p,
+      ) ||
+      /(?:^|\/)package\.json$/.test(p) ||
+      /^src\/(?:a|b|dyn|mocked|data)$/.test(p);
+    for (const file of ["test/a.test.js", "test/b.test.js", "test/c.test.mjs"]) {
+      const paths = [...(observed.recorded.get(join(root, file) as AbsolutePath)?.paths ?? [])]
+        .map((p) => rel(root, p))
+        .filter((p) => !existsSync(join(root, p)));
+      expect(paths.filter(absent)).toEqual([]);
+    }
   });
 });

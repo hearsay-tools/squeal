@@ -100,6 +100,11 @@ export interface JestRun {
    * read by each, though a cached module is never read again. Absent: none.
    */
   readonly hostObserved?: readonly HostObserved[];
+  /**
+   * Row 028-08: of the completed files, what Jest's transform and resolver
+   * read with success for each, outside the recorder's view. Absent: none.
+   */
+  readonly transformReads?: readonly HostObserved[];
 }
 
 /** A completed test file and the worktree modules its warm worker's Node used for it; absolute. */
@@ -320,6 +325,9 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
           .filter((f) => completed.has(f))
           .map((testFile) => ({ testFile, paths: b.hostModules })),
   );
+  const transformReads = done.flatMap((f) =>
+    f.reads.length === 0 ? [] : [{ testFile: f.testFile, paths: f.reads }],
+  );
   const covered = batches.flatMap((b) => b.payloads).filter((p) => completed.has(p.testFile));
   const dirs = batches.flatMap((b) => (b.coverage === null ? [] : [b.coverage]));
   // Row 018-38: a log folder removed, or made again, while the batches ran took their records.
@@ -336,7 +344,12 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
     cut: b.cut,
   }));
   writeFileSync(join(options.logDir, "run.json"), runLogJson({ cwd, batches: log }, report));
-  return { report, coverage: covered, ...(hostObserved.length === 0 ? {} : { hostObserved }) };
+  return {
+    report,
+    coverage: covered,
+    ...(hostObserved.length === 0 ? {} : { hostObserved }),
+    ...(transformReads.length === 0 ? {} : { transformReads }),
+  };
 }
 
 /** Splits `options.files` into coverage-grouped Jest batches with CLI args and log paths. */
