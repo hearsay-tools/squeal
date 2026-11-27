@@ -40,3 +40,19 @@ helper. Done when: the test passes at main, fails when one extra statement is ad
 in under a minute; it is added to `remote.alwaysLocal` only if it reads this machine.
 
 Use /worker.
+
+## Wave 6.5: Squeal's Vitest path has a second Vite 8.4.0 break (row 025-30; repair; opus high)
+
+Moving the repository to Vite 8.4.0 (025-25, candidate `cand/025-wave6` at `93a5faeb5`) turns three tests red that
+pass on main with Vite 8.3.2, every run: `test/scheduler/busy-merge.test.ts` (both cases: "expected null not to be
+null" at lines 66 and 117) and `test/scheduler/runtime-files-rollback.test.ts` (the result transaction never runs,
+`rolledBack` stays false). These tests run Squeal's own source, which already has the 0.1.645 `load` fix, so a
+second Vite 8.4.0 change breaks Squeal's runs (observed runtime reads, held keys): users on Vite 8.4.0 lose results
+there today. Find every Vite 8.4.0 incompatibility in `src/runners/vitest/` and what it calls (the harness errors,
+`h.errors`, and Vite 8.3.8 vs 8.4.0 `dist/node` diffs of the APIs Squeal touches: plugin container, module graph,
+environments, `fetchModule`, transform hooks), fix each so both 8.3 and 8.4 work, and add a test per break that
+fails on 8.4.0 without the fix (the `vite-8.3` alias keeps 8.3 covered). Then run every test file under
+`test/runners/vitest/`, `test/scheduler/` and `test/daemon/` on this tree (Vite 8.4.0) and list any other failure
+that passes on main. Owns `src/runners/vitest/`, `src/core/runner-host/` if the break is there, and their tests;
+ask before touching other `src/` files. Done when: the three tests pass on 8.4.0; the new tests fail without the fix;
+typecheck and the Vitest adapter tests pass. Use /worker.
