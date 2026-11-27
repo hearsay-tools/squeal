@@ -1,6 +1,5 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { insideRoot } from "./tree-wire.js";
@@ -9,13 +8,16 @@ import { insideRoot } from "./tree-wire.js";
  * Spec 026 D13.1 (row 026-35): `remote.setup`, the project's script that
  * prepares each remote machine. The host runs it in its tree's root, as the
  * remote login user, after the tree arrives and before the install, bounded
- * to `SETUP_MS`. A mark per machine, under the remote cache, names the
- * SHA-256 of each script content that ran there and ended with exit code 0:
- * an equal mark is ready, an absent one runs the script, so an edit sets the
- * machine up again. Marks are one file per content, so two projects or two
- * worktrees on one machine with different scripts do not run each other's
- * again. A failure leaves no mark; its exit code and the end of its output
- * come back in the answer, and the daemon refuses the remote with them.
+ * to `SETUP_MS`. One mark per machine, under the remote cache, holds the
+ * SHA-256 of the script content that last ran there and ended with exit
+ * code 0: an equal mark is ready, a different or absent one runs the
+ * script, so an edit, and a revert after it, sets the machine up again
+ * (review 0.1.656 B2: a mark per content said only that a content once ran,
+ * not what prepared the machine last). Two worktrees with equal content
+ * share it. The comparison, the run and the replacement hold one lock, and
+ * the mark is replaced by a rename only after exit code 0. A failure leaves
+ * the mark as it was; its exit code and the end of its output come back in
+ * the answer, and the daemon refuses the remote with them.
  *
  * The script is never part of a result key: the daemon passes it to the
  * connect only, never to a policy or an environment the keys read.
@@ -29,7 +31,7 @@ const OUTPUT_TAIL = 8_000;
 
 /** `setup`'s answer: whether the script ran, and how it ended. */
 export interface SetupAnswer {
-  /** `false`: a mark for this content was there; the script did not run. */
+  /** `false`: the machine's mark held this content; the script did not run. */
   readonly ran: boolean;
   /** The SHA-256 of the script's content, hex; `null` when it could not be read. */
   readonly sha256: string | null;
@@ -45,7 +47,7 @@ export interface SetupPlace {
   readonly root: string;
   /** The script, repository-relative. */
   readonly path: string;
-  /** The machine's directory of marks: `<remote cache>/squeal/setup`. */
+  /** The machine's directory of its mark: `<remote cache>/squeal/setup`. */
   readonly marks: string;
   readonly env: NodeJS.ProcessEnv;
   /** Takes each piece of output as it comes. */
@@ -55,7 +57,10 @@ export interface SetupPlace {
   readonly locked: <T>(lock: string, work: () => Promise<T>) => Promise<T>;
 }
 
-/** Runs `place.path` unless its content's mark is there; marks it after exit code 0. */
+/** The mark's file in `marks`: the SHA-256 of the last content that ran with exit code 0, and its path. */
+export const SETUP_MARK = "last-success";
+
+/** Runs `place.path` unless the machine's mark holds its content; marks it after exit code 0. */
 export async function runSetup(place: SetupPlace): Promise<SetupAnswer> {
   if (!insideRoot(place.path)) {
     return { ran: false, sha256: null, failed: "a path that leaves the tree", output: "" };
@@ -68,21 +73,29 @@ export async function runSetup(place: SetupPlace): Promise<SetupAnswer> {
     return { ran: false, sha256: null, failed: "no such file in the tree", output: "" };
   }
   const sha256 = createHash("sha256").update(bytes).digest("hex");
-  const mark = join(place.marks, sha256);
-  if (existsSync(mark)) return { ran: false, sha256, output: "" };
+  const mark = join(place.marks, SETUP_MARK);
   await mkdir(place.marks, { recursive: true });
   return place.locked(`${mark}.lock`, async () => {
-    // Another host on the machine ran it while this one waited.
-    if (existsSync(mark)) return { ran: false, sha256, output: "" };
+    // Under the lock: another host on the machine may have run it while this one waited.
+    if ((await markOf(mark)) === sha256) return { ran: false, sha256, output: "" };
     const ended = await runScript(script, place);
     if (ended.failed === undefined) {
       const part = `${mark}.${process.pid}.part`;
-      await writeFile(part, `${place.path}\n`);
+      await writeFile(part, `${sha256}\n${place.path}\n`);
       await rename(part, mark);
     }
     const failed = ended.failed === undefined ? {} : { failed: ended.failed };
     return { ran: true, sha256, output: ended.output, ...failed };
   });
+}
+
+/** The SHA-256 the mark at `mark` holds; `null` when it is absent or unreadable. */
+async function markOf(mark: string): Promise<string | null> {
+  try {
+    return (await readFile(mark, "utf8")).split("\n")[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function runScript(

@@ -19,6 +19,7 @@ import {
   startRemoteHost,
   treeDir,
 } from "../../../src/core/runner-host/remote/connect.js";
+import { SETUP_MARK } from "../../../src/core/runner-host/remote/remote-setup.js";
 import { SLOW } from "../../daemon/helpers.js";
 import { buildBundle, fakeSsh, gitFixture, scratchDir } from "./helpers.js";
 
@@ -113,7 +114,7 @@ describe("remote.setup at connect (row 026-35, D13.1)", SLOW, () => {
       `build-box: remote.setup ${SCRIPT} ran (exit code 0):\nchrome installed`,
     );
     expect(ran).toBeGreaterThan(first.lines.findIndex((line) => line.includes(": tree of ")));
-    expect(readdirSync(join(home, ".cache/squeal/setup"))).toHaveLength(1);
+    expect(readdirSync(join(home, ".cache/squeal/setup"))).toEqual([SETUP_MARK]);
     await first.host.adapter.close();
 
     const again = await connect(root, ssh);
@@ -130,7 +131,8 @@ describe("remote.setup at connect (row 026-35, D13.1)", SLOW, () => {
     expect(edited.lines).toContain(
       `build-box: remote.setup ${SCRIPT} ran (exit code 0):\nchrome 2 installed`,
     );
-    expect(readdirSync(join(home, ".cache/squeal/setup"))).toHaveLength(2);
+    // One mark per machine, replaced (review 0.1.656 B2).
+    expect(readdirSync(join(home, ".cache/squeal/setup"))).toEqual([SETUP_MARK]);
   });
 
   it("refuses the remote on a failure, its exit code and last lines named, and tries again next connect", async () => {
@@ -162,5 +164,43 @@ describe("remote.setup at connect (row 026-35, D13.1)", SLOW, () => {
     expect(runsOf(runs)).toEqual([]);
     expect(lines.some((line) => line.includes("remote.setup"))).toBe(false);
     expect(existsSync(join(home, ".cache/squeal/setup"))).toBe(false);
+  });
+});
+
+describe("the commands setup installs, looked for after it (review 0.1.656 B1)", SLOW, () => {
+  const TOOL = "squeal-setup-tool";
+  /** A remote login whose `PATH` starts with `<home>/bin`, which setup fills when `installs`. */
+  const login = (home: string, ssh: string) => ({
+    destination: "build-box",
+    ssh,
+    env: { ...process.env, PATH: `${join(home, "bin")}:/usr/bin:/bin` },
+  });
+  const installing = (home: string) => {
+    const at = JSON.stringify(join(home, "bin", TOOL));
+    return `mkdir -p ${JSON.stringify(join(home, "bin"))}\nprintf '#!/bin/sh\\necho tool 1\\n' > ${at}\nchmod +x ${at}`;
+  };
+
+  it("finds the command on a fresh machine for the array form, *, and a glob", async () => {
+    const forms = [[TOOL], { "*": [TOOL] }, { "test/*.test.ts": [TOOL] }];
+    for (const commands of forms) {
+      const { home, ssh } = remote();
+      const runs = join(home, "runs.txt");
+      const { root } = fixture(runs, installing(home));
+      const { host } = await connect(root, ssh, { target: login(home, ssh), commands });
+      expect(runsOf(runs)).toHaveLength(1);
+      expect(host.commands).toEqual({ checked: [TOOL], missing: [], versions: [] });
+      await host.adapter.close();
+    }
+  });
+
+  it("still refuses, after setup and before the install, when setup does not supply it", async () => {
+    const { home, ssh } = remote();
+    const runs = join(home, "runs.txt");
+    const { root } = fixture(runs, "echo nothing");
+    const refused = connect(root, ssh, { target: login(home, ssh), commands: [TOOL] });
+    await expect(refused).rejects.toThrow(RemoteRefusal);
+    await expect(refused).rejects.toThrow(`tests need ${TOOL}; not found on PATH there`);
+    expect(runsOf(runs)).toHaveLength(1);
+    expect(existsSync(join(home, treeDir(places, root), "installed.json"))).toBe(false);
   });
 });

@@ -40,8 +40,10 @@ import {
  * project's tests need are looked for on the remote's `PATH`, which the
  * host's runs get; a missing one refuses the remote, named, before its tree
  * is sent. Spec 026 D13.2 (row 026-36): a command only a glob's files need
- * refuses nothing; the host answers which globs' files stay here
- * (`commands-there.ts`).
+ * refuses nothing; the host answers what it found of each command, and the
+ * lane routes from that (`commands-there.ts`, `lane-commands.ts`). Review
+ * 0.1.656 B1: with `remote.setup`, the look waits for the script, which
+ * may install them: tree, setup, look, install, host.
  *
  * Spec 026 D8.2 (row 026-11): node:test's and pytest's temp and cache
  * directories are this machine's paths; a remote host gets directories of
@@ -107,7 +109,7 @@ export interface RemoteHost {
    * `null`: no Git there; absent: not reported (a host over a test channel).
    */
   readonly gitVersion?: string | null;
-  /** Spec 026 D13.2: the per-file commands the connect looked for, and the globs that stay here. Absent: none looked for. */
+  /** Spec 026 D13.2: what the connect found of each command `requires.commands` names. Absent: none looked for. */
   readonly commands?: CommandsThere;
 }
 
@@ -199,11 +201,18 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
     `${target.destination}: Node ${ensured.check.node}; Squeal ${options.version} ${ensured.copied ? "copied" : "present"}`,
   );
   await options.diskCheck?.();
-  const looked = await commandsThere(
-    options.commands ?? [],
-    sshLook(target, places, deadlines.sshMs),
-  );
-  if ("refusal" in looked) throw new RemoteRefusal(looked.refusal);
+  let looked: CommandsThere | undefined;
+  const look = async () => {
+    const answer = await commandsThere(
+      options.commands ?? [],
+      sshLook(target, places, deadlines.sshMs),
+    );
+    if ("refusal" in answer) throw new RemoteRefusal(answer.refusal);
+    looked = answer;
+  };
+  // Review 0.1.656 B1: with `setup`, the commands are looked for on the machine it prepared.
+  const setup = options.setup ?? null;
+  if (setup === null) await look();
   const tree = treeDir(places, root);
   const command = hostCommand(places, options.version, bundle.cli, tree, options.runner);
   const mapped = options.coverage === "remote" && options.options.coverage !== undefined;
@@ -215,12 +224,18 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
           await remoteTreeDir(target, tree, deadlines.sshMs),
           options.coverage,
         );
-  const host = await remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
-    ...options,
-    options: adapterOptions,
-  });
+  const host = await remoteHostOver(
+    channelOf(spawnSsh(target, command)),
+    ensured.check.node,
+    { ...options, options: adapterOptions },
+    setup === null ? undefined : look,
+  );
   const git = ensured.check.git;
-  return { ...host, ...(git === undefined ? {} : { gitVersion: git }), commands: looked };
+  return {
+    ...host,
+    ...(git === undefined ? {} : { gitVersion: git }),
+    ...(looked === undefined ? {} : { commands: looked }),
+  };
 }
 
 /**
@@ -284,13 +299,16 @@ function withoutCoverage(options: HostAdapterOptions): HostAdapterOptions {
 
 /**
  * The remote host on `channel`: its tree brought to the worktree's, its
- * install, its start; then each revision's files on `invalidate`. Exported
- * for tests, which serve a host in their own process.
+ * install, its start; then each revision's files on `invalidate`.
+ * `prepared` runs after the setup and before the install (review 0.1.656
+ * B1); it rejects to refuse the remote. Exported for tests, which serve a
+ * host in their own process.
  */
 export async function remoteHostOver(
   channel: HostChannel,
   node: string,
   options: Omit<RemoteHostOptions, "places" | "launch">,
+  prepared?: () => Promise<void>,
 ): Promise<RemoteHost> {
   const hostDeadlines = { ...REMOTE_HOST_DEADLINES, ...options.deadlines };
   const deadlines = { ...REMOTE_DEADLINES, ...hostDeadlines };
@@ -350,6 +368,7 @@ export async function remoteHostOver(
         `${target.destination}: tree of ${entries.length} files, ${missing.length} sent (${mib(bytes)}, ${mib(wire)} on the wire)`,
       );
       if (options.setup != null) await setup(on, options.setup);
+      await prepared?.();
       await install(on);
     },
     invalidateWith: async (paths) => {

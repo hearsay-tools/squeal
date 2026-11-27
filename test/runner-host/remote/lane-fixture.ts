@@ -96,8 +96,8 @@ export interface Setup {
   readonly exitSignal?: AbortSignal;
   readonly onRecovered?: () => void;
   /** Row 026-36: the policy's `requires.commands`, and what each connect found of them there. */
-  readonly requiredCommands?: RequiredCommands;
-  readonly commandsThere?: CommandsThere;
+  readonly requiredCommands?: RequiredCommands | (() => RequiredCommands);
+  readonly commandsThere?: CommandsThere | (() => CommandsThere);
 }
 
 let n = 0;
@@ -324,14 +324,19 @@ export async function setup({
   };
 }
 
-/** Row 026-36: the lane's `requiredCommands`, when the setup names them. */
-function commandOptions(required: RequiredCommands | undefined) {
-  return required === undefined ? {} : { requiredCommands: () => required };
+/** Row 026-36: the lane's `requiredCommands`, when the setup names them; a getter is the live policy. */
+function commandOptions(required: RequiredCommands | (() => RequiredCommands) | undefined) {
+  if (required === undefined) return {};
+  return { requiredCommands: typeof required === "function" ? required : () => required };
 }
 
-/** Row 026-36: `host` with `commands`, what its connect found of the per-file commands. */
-function withCommands(host: RemoteHost, commands: CommandsThere | undefined): RemoteHost {
-  return commands === undefined ? host : { ...host, commands };
+/** Row 026-36: `host` with `commands`, what its connect found of the per-file commands; a getter answers each connect anew. */
+function withCommands(
+  host: RemoteHost,
+  commands: CommandsThere | (() => CommandsThere) | undefined,
+): RemoteHost {
+  if (commands === undefined) return host;
+  return { ...host, commands: typeof commands === "function" ? commands() : commands };
 }
 
 export async function until(done: () => boolean, ms = 10_000): Promise<void> {

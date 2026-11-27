@@ -256,15 +256,20 @@ describe("per-file commands on the remote at connect (row 026-36, D13.2)", SLOW,
     });
     expect(started.at(-1)?.commands).toEqual({
       checked: ["sh", "squeal-fake-chrome", "squeal-fake-ffmpeg", "squeal-absent-tool"],
-      files: [
+      missing: ["squeal-absent-tool"],
+      versions: [
         {
-          glob: "test/web/**",
-          missing: [],
-          differing: [
-            { command: "squeal-fake-chrome", here: "Fake Chrome 131", there: "Fake Chrome 120" },
-          ],
+          command: "squeal-fake-chrome",
+          version: "--version",
+          here: "Fake Chrome 131",
+          there: "Fake Chrome 120",
         },
-        { glob: "test/py/**", missing: ["squeal-absent-tool"], differing: [] },
+        {
+          command: "squeal-fake-ffmpeg",
+          version: "--version",
+          here: "ffmpeg 7",
+          there: "ffmpeg 7",
+        },
       ],
     });
     // The tree went there: nothing refused the remote.

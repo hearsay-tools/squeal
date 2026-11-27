@@ -1261,8 +1261,13 @@ export function withRemoteLane(options: RemoteLaneOptions): RemoteLaneRunner {
       await refreshRepository();
       // D13.2: a tier that waits for a connect waits before its split, so its answer routes the tier.
       const waits = options.awaitConnect === true || options.whenLost === "not-run";
-      if (waits && state.kind !== "ready" && commandRoute().globs.length > 0) {
+      const commands = state.kind === "ready" ? null : commandRoute();
+      if (waits && commands !== null && commands.globs.length > 0) {
         await ready(true, cancelOf(run));
+      } else if (commands?.provisional === true) {
+        // Review 0.1.656 B5: one that does not wait still starts it, past the backoff, though its
+        // files may all stay here meanwhile; else a lazy or sleeping lane would never connect.
+        await reach(false);
       }
       const split = route.split(testFiles);
       const { there } = split;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { CommandsThere } from "../../../src/core/runner-host/remote/commands-there.js";
+import type { RequiredCommands } from "../../../src/core/types/policy.js";
 import type { RunReport } from "../../../src/core/types/runner.js";
-import { background, REF, setup } from "./lane-fixture.js";
+import { background, REF, setup, until } from "./lane-fixture.js";
 
 /*
  * Spec 026 D13.2 (row 026-36): per-file `requires.commands` on a lane over a
@@ -23,7 +25,8 @@ describe("per-file requires.commands on a remote lane (row 026-36)", () => {
       requiredCommands: { [GLOB]: ["google-chrome"], "*": ["git"] },
       commandsThere: {
         checked: ["google-chrome", "git"],
-        files: [{ glob: GLOB, missing: ["google-chrome"], differing: [] }],
+        missing: ["google-chrome"],
+        versions: [],
       },
     });
     expect(s.commandLines).toEqual([
@@ -42,11 +45,13 @@ describe("per-file requires.commands on a remote lane (row 026-36)", () => {
       requiredCommands: { [GLOB]: [{ command: "google-chrome", version: "--version" }] },
       commandsThere: {
         checked: ["google-chrome"],
-        files: [
+        missing: [],
+        versions: [
           {
-            glob: GLOB,
-            missing: [],
-            differing: [{ command: "google-chrome", here: "Chrome 131", there: "Chrome 120" }],
+            command: "google-chrome",
+            version: "--version",
+            here: "Chrome 131",
+            there: "Chrome 120",
           },
         ],
       },
@@ -63,7 +68,7 @@ describe("per-file requires.commands on a remote lane (row 026-36)", () => {
     const s = await setup({
       files: FILES,
       requiredCommands: { [GLOB]: ["google-chrome"] },
-      commandsThere: { checked: ["google-chrome"], files: [] },
+      commandsThere: { checked: ["google-chrome"], missing: [], versions: [] },
     });
     await s.lane.run([REF, E2E], background());
     expect(s.remoteRuns).toEqual([`${REF.path},${E2E.path}`]);
@@ -80,12 +85,86 @@ describe("per-file requires.commands on a remote lane (row 026-36)", () => {
         requiredCommands: { [GLOB]: ["google-chrome"] },
         commandsThere: {
           checked: ["google-chrome"],
-          files: lacks ? [{ glob: GLOB, missing: ["google-chrome"], differing: [] }] : [],
+          missing: lacks ? ["google-chrome"] : [],
+          versions: [],
         },
       });
       await s.lane.run([REF, E2E], background());
       expect(s.remoteRuns).toEqual(lacks ? [REF.path] : [`${REF.path},${E2E.path}`]);
       expect(s.localFiles).toEqual(lacks ? [E2E.path] : []);
     }
+  });
+
+  it("keeps a reloaded glob's files here by the connect's facts (review 0.1.656 B3)", async () => {
+    const reloads: readonly [RequiredCommands, RequiredCommands, CommandsThere][] = [
+      // The glob moves; the command the connect found missing stays missing.
+      [
+        { "test/old/**": ["chrome"] },
+        { [GLOB]: ["chrome"] },
+        { checked: ["chrome"], missing: ["chrome"], versions: [] },
+      ],
+      // The same glob asks for a version the connect never compared.
+      [
+        { [GLOB]: ["git"] },
+        { [GLOB]: [{ command: "git", version: "--version" }] },
+        { checked: ["git"], missing: [], versions: [] },
+      ],
+      // Another version argument than the one compared.
+      [
+        { [GLOB]: [{ command: "git", version: "--version" }] },
+        { [GLOB]: [{ command: "git", version: "-v" }] },
+        {
+          checked: ["git"],
+          missing: [],
+          versions: [{ command: "git", version: "--version", here: "a", there: "a" }],
+        },
+      ],
+    ];
+    for (const [before, after, there] of reloads) {
+      let policy = before;
+      const s = await setup({ files: FILES, requiredCommands: () => policy, commandsThere: there });
+      policy = after;
+      await s.lane.run([REF, E2E], background());
+      // Nothing of the e2e file went there, so no remote result of it can be stored.
+      expect(s.remoteRuns).toEqual([REF.path]);
+      expect(s.localFiles).toEqual([E2E.path]);
+      expect(s.commandLines.at(-1)).toContain(`for ${GLOB}`);
+    }
+  });
+
+  it("starts a lazy connect from runs whose files all stay here meanwhile (review 0.1.656 B5)", async () => {
+    const s = await setup({
+      files: FILES,
+      eager: false,
+      requiredCommands: { [GLOB]: ["google-chrome"] },
+      commandsThere: { checked: ["google-chrome"], missing: [], versions: [] },
+    });
+    // Under `whenLost: "local"` the first run goes here at once; the connect starts.
+    await s.lane.run([E2E], background());
+    expect(s.localFiles).toEqual([E2E.path]);
+    expect(s.connects).toHaveLength(1);
+    await until(() => s.lane.report().state === "ready");
+    await s.lane.run([E2E], background());
+    expect(s.remoteRuns).toEqual([E2E.path]);
+    expect(s.connects).toHaveLength(1);
+  });
+
+  it("wakes a sleeping lane when a reload names a command its last connect did not look for", async () => {
+    let policy: RequiredCommands = { "test/other/**": ["git"] };
+    let there: CommandsThere = { checked: ["git"], missing: [], versions: [] };
+    const s = await setup({
+      files: FILES,
+      requiredCommands: () => policy,
+      commandsThere: () => there,
+    });
+    expect(await s.lane.sleep(async () => {})).toBe("slept");
+    policy = { [GLOB]: ["google-chrome"] };
+    there = { checked: ["google-chrome"], missing: [], versions: [] };
+    await s.lane.run([E2E], background());
+    expect(s.localFiles).toEqual([E2E.path]);
+    expect(s.connects).toHaveLength(2);
+    await until(() => s.lane.report().state === "ready");
+    await s.lane.run([E2E], background());
+    expect(s.remoteRuns).toEqual([E2E.path]);
   });
 });
