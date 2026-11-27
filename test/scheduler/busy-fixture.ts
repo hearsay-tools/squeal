@@ -1,5 +1,6 @@
 import { BusyWaits } from "../../src/core/store/busy.js";
 import type { Store } from "../../src/core/types/store.js";
+import { inMethod } from "../helpers/stack-frame.js";
 
 /** The daemon's busy waits, as the scheduler's options take them (row 011-126). */
 export const busyWaits = () => new BusyWaits({ now: Date.now, note: () => {} });
@@ -14,7 +15,7 @@ export function busyWrite(store: Store, during: () => void, nth = 1): () => void
   let left = nth;
   let depth = 0;
   store.transaction = ((fn: () => unknown) => {
-    if (left > 0 && depth === 0 && new Error().stack?.includes("TierRecords.#write")) {
+    if (left > 0 && depth === 0 && inMethod(new Error().stack, "#write", "scheduler/record.ts")) {
       left -= 1;
       if (left === 0) {
         during();

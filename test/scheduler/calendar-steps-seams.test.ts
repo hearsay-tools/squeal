@@ -23,6 +23,7 @@ import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
+import { inMethod } from "../helpers/stack-frame.js";
 import { type VirtualClock, virtualClock } from "../helpers/virtual-clock.js";
 import { freshStore, WT } from "../state/helpers.js";
 
@@ -193,13 +194,18 @@ describe("B2: a step between a wait's decision and its wake's delay adds nothing
 
 /**
  * `virtual` under `steps`, whose calendar steps `shift` once, on the first
- * reading taken inside a frame named `frame` after `trigger()`.
+ * reading taken inside `frame`, a method and its file (`inMethod`), after `trigger()`.
  */
-function stepInside(virtual: VirtualClock, steps: CalendarSteps, frame: string, shift: number) {
+function stepInside(
+  virtual: VirtualClock,
+  steps: CalendarSteps,
+  frame: readonly [method: string, file: string],
+  shift: number,
+) {
   let waiting = false;
   const inner: Clock = {
     now: () => {
-      if (waiting && (new Error().stack ?? "").includes(frame)) {
+      if (waiting && inMethod(new Error().stack, ...frame)) {
         waiting = false;
         virtual.shiftCalendar(shift);
       }
@@ -219,7 +225,12 @@ describe("B2: a step between the yield check and its bound's wake adds nothing",
     ({ shift }) => {
       const virtual = virtualClock(10_000_000);
       const steps = new CalendarSteps();
-      const { clock, trigger, stepped } = stepInside(virtual, steps, "TierYields.#arm", shift);
+      const { clock, trigger, stepped } = stepInside(
+        virtual,
+        steps,
+        ["#arm", "scheduler/yields.ts"],
+        shift,
+      );
       const wakes = new Wakes(clock);
       const store = freshStore();
       const context = {
