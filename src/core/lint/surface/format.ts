@@ -122,14 +122,20 @@ export function lintTitleWords(news: LintNews): string | null {
 
 /**
  * `Lint: linting, 340 of 600 files.`, or that it has not started; row
- * 017-33: `; waiting for CPU (21 busy, limit 18)` while the pool refuses it.
+ * 017-33: `; waiting for CPU (21 busy, limit 18)` while the pool refuses it,
+ * row 017-37: or the share's or the queue's words, with no CPU numbers.
  */
 const lintingWords = ({ done, total, cpuWait }: LintProgress) =>
   (total === 0 ? "linting has not started" : `linting, ${done} of ${plural(total, "file")}`) +
   (cpuWait === undefined ? "" : `; ${cpuWaitWords(cpuWait)}`);
 
-/** `waiting for CPU (21 busy, limit 18)`; without the busy CPUs when the pool read none. */
-function cpuWaitWords({ busy, limit }: LintCpuWait): string {
+/**
+ * `waiting for CPU (21 busy, limit 18)`; without the busy CPUs when the pool
+ * read none. Row 017-37: a refusal the CPUs did not cause names its cause.
+ */
+function cpuWaitWords({ busy, limit, cause }: LintCpuWait): string {
+  if (cause === "share") return "waiting for this worktree's share of the worker pool";
+  if (cause === "queue") return "waiting in line for a free worker of the pool";
   const busyWords = busy === null ? "" : `${Math.round(busy)} busy, `;
   return `waiting for CPU (${busyWords}limit ${Math.round(limit * 100) / 100})`;
 }
