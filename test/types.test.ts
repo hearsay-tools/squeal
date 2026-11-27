@@ -67,7 +67,7 @@ describe("core types", () => {
       node: "project",
       // Spec 021 D9, D19 (rows 021-13, 021-23); the keys' own tests are test/runner-host/remote/policy.test.ts.
       requires: { commands: [] },
-      remote: { allowed: true, needsRepository: [], alwaysLocal: [] },
+      remote: { allowed: true, needsRepository: [], alwaysLocal: [], setup: null },
     });
   });
 });

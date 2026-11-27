@@ -420,6 +420,7 @@ function laneOver<R extends RunnerAdapter>(
             ...(spec.start.note === undefined ? {} : { note: spec.start.note }),
             log: options.log,
             commands: options.policy().requires.commands,
+            setup: options.policy().remote.setup,
             diskCheck: () => share.checkDisk(machine, () => probe(ssh, machine.places)),
             coverage: context.lane.coverage,
             ...(mapped ? { coverageFormat: await readObjectFormat(root) } : {}),

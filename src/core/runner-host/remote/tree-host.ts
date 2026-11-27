@@ -25,6 +25,7 @@ import {
 import { basename, dirname, join } from "node:path";
 import { installedDependenciesFingerprint } from "../../keys/environment.js";
 import type { ManagerTools } from "./package-manager.js";
+import { runSetup, type SetupAnswer } from "./remote-setup.js";
 import { materializeFromGit } from "./tree-git.js";
 import { installTree, LOCKFILES } from "./tree-install.js";
 import {
@@ -67,6 +68,11 @@ export interface TreeHost {
   write(write: TreeWrite): Promise<void>;
   blobs(paths: readonly string[]): Promise<Record<string, string | null>>;
   install(): Promise<InstallAnswer>;
+  /**
+   * Spec 026 D13.1 (row 026-35): the tree's script at `path`, run unless its
+   * content's mark is in the machine's `<remote cache>/squeal/setup`.
+   */
+  setup(path: string): Promise<SetupAnswer>;
   /** A directory of this host for run `runId`'s logs (spec 021 D6: the host makes its own). */
   runDir(runId: string): Promise<string>;
   /** The files of a run's `runDir`, to send back with its report. */
@@ -199,6 +205,11 @@ export function createTreeHost(
           },
         }),
       );
+    },
+    setup(path) {
+      // The root is `<cache>/squeal/trees/<key>/root`: the marks are the machine's, beside the trees.
+      const marks = join(dirname(dirname(state)), "setup");
+      return runSetup({ root, path, marks, env, output, locked });
     },
     async runDir(runId) {
       const runs = join(state, "runs");

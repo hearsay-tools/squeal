@@ -42,6 +42,8 @@ export type HostMethod =
   | "write"
   | "blobs"
   | "install"
+  // Spec 026 D13.1 (row 026-35): the project's `remote.setup` script, before `install` (`remote/remote-setup.ts`).
+  | "setup"
   // Spec 021 D11 (row 021-14): the host's own Node, platform, install and allow-listed variables.
   | "coreEnvironment"
   // Spec 021 D18 (row 021-21): a look at the remote machine's permit pool (`remote/admission.ts`).

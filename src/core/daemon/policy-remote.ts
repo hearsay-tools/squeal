@@ -1,3 +1,4 @@
+import { insideRoot } from "../runner-host/remote/tree-wire.js";
 import type { Leaf, Shape } from "./config-file.js";
 import { compiles } from "./policy-node-test.js";
 
@@ -20,6 +21,11 @@ import { compiles } from "./policy-node-test.js";
  * machine itself (its kernel, processes or tools). They run here always,
  * also when the remote's tree is a Git repository; a bad glob is left out
  * as for `needsRepository`.
+ *
+ * Spec 026 D13.1 (row 026-35): `remote.setup`, a repository-relative path
+ * to the project's script that prepares each remote machine, or `null`. A
+ * path that leaves the repository, or names its `.git`, is one problem and
+ * the default, none, applies.
  */
 
 const boolean: Leaf = (v) => (typeof v === "boolean" ? null : "true or false");
@@ -58,8 +64,14 @@ const needsRepository = kept("remote.needsRepository", (glob) => compiles([glob]
 /** Row 021-40 (#294): the test files that read this machine itself; they never go remote. */
 const alwaysLocal = kept("remote.alwaysLocal", (glob) => compiles([glob])?.problem ?? null);
 
-/** The keys of D9 and D19, spread into the loader's shape. */
+/** D13.1: `null`, or a path inside the repository, as the remote tree holds it. */
+const setup: Leaf = (value) =>
+  value === null || (typeof value === "string" && insideRoot(value))
+    ? null
+    : 'null or a repository-relative path to a script, such as ".squeal/remote-setup.sh"';
+
+/** The keys of D9, D19 and 026 D13, spread into the loader's shape. */
 export const REMOTE_SHAPE: Shape = {
   requires: { commands },
-  remote: { allowed: boolean, needsRepository, alwaysLocal },
+  remote: { allowed: boolean, needsRepository, alwaysLocal, setup },
 };

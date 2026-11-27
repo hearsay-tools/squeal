@@ -302,6 +302,13 @@ export interface Policy {
      * `needsRepository`, no condition sends them remote. Default `[]`.
      */
     readonly alwaysLocal: readonly string[];
+    /**
+     * Spec 026 D13.1 (row 026-35): a repository-relative path to an
+     * executable script that prepares each remote machine, run there before
+     * the install and again when its content changes; a failure refuses that
+     * remote. Never part of a result key. Default `null`: none.
+     */
+    readonly setup: string | null;
   };
 }
 
@@ -535,7 +542,7 @@ export const DEFAULT_POLICY: Policy = {
   shared: { ref: null, lookAgain: { everySeconds: 30, forSeconds: 600 } },
   node: "project",
   requires: { commands: [] },
-  remote: { allowed: true, needsRepository: [], alwaysLocal: [] },
+  remote: { allowed: true, needsRepository: [], alwaysLocal: [], setup: null },
 };
 
 /** Spec 026 D2.2: the daemon's exit bounds, as `daemonExits` resolves them. */

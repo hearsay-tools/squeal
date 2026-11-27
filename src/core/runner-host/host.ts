@@ -343,6 +343,8 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         return treeOf().blobs(args[0] as readonly string[]);
       case "install":
         return treeOf().install();
+      case "setup":
+        return treeOf().setup(args[0] as string);
       case "coreEnvironment":
         return treeOf().coreEnvironment(args[0] as readonly string[]);
       case "admit": {

@@ -26,7 +26,12 @@ function load(file: unknown) {
 
 describe("policy remote.allowed (021 D9)", () => {
   it("is true by default: the user's own setting decides", () => {
-    expect(DEFAULT_POLICY.remote).toEqual({ allowed: true, needsRepository: [], alwaysLocal: [] });
+    expect(DEFAULT_POLICY.remote).toEqual({
+      allowed: true,
+      needsRepository: [],
+      alwaysLocal: [],
+      setup: null,
+    });
     const { policy, problems } = load({});
     expect(problems).toEqual([]);
     expect(policy.remote.allowed).toBe(true);
@@ -80,6 +85,7 @@ describe("policy requires.commands and remote.needsRepository (021 D19)", () => 
       allowed: true,
       needsRepository: ["test/git/**", "test/commit.test.ts"],
       alwaysLocal: [],
+      setup: null,
     });
   });
 
@@ -132,5 +138,27 @@ describe("policy remote.alwaysLocal (row 021-40, #294)", () => {
     expect(wrong.problems).toEqual([
       '"remote.alwaysLocal" must be an array of strings, got "test/ps/**"',
     ]);
+  });
+});
+
+describe("policy remote.setup (row 026-35, spec 026 D13.1)", () => {
+  it("is none by default and takes a repository-relative path, or null", () => {
+    expect(DEFAULT_POLICY.remote.setup).toBeNull();
+    const { policy, problems } = load({ remote: { setup: ".squeal/remote-setup.sh" } });
+    expect(problems).toEqual([]);
+    expect(policy.remote.setup).toBe(".squeal/remote-setup.sh");
+    expect(load({ remote: { setup: null } }).policy.remote.setup).toBeNull();
+  });
+
+  it("refuses a path outside the repository, into its .git, or not a string, with the key named", () => {
+    const expected =
+      'null or a repository-relative path to a script, such as ".squeal/remote-setup.sh"';
+    for (const value of ["/usr/local/bin/setup.sh", "../setup.sh", ".git/hooks/x", "", "a//b", 3]) {
+      const { policy, problems } = load({ remote: { setup: value } });
+      expect(policy.remote.setup).toBeNull();
+      expect(problems).toEqual([
+        `"remote.setup" must be ${expected}, got ${JSON.stringify(value)}`,
+      ]);
+    }
   });
 });

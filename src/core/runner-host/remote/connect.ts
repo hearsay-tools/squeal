@@ -11,6 +11,7 @@ import type { HostAdapterOptions, HostPolicy, HostRunner } from "../protocol.js"
 import { type HostDeadlines, type HostRequests, startHostProxy } from "../proxy.js";
 import type { AdmitAnswer, AdmitAsk } from "./admission.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
+import { SETUP_MS, type SetupAnswer, setupRefusal } from "./remote-setup.js";
 import type { RemoteRunner } from "./settings.js";
 import { type SshTarget, shellQuote, spawnSsh, sshFailure, sshRun } from "./ssh.js";
 import { treeEntries, treePathsFor, writesFor } from "./tree.js";
@@ -50,6 +51,13 @@ import {
  * each run asks for its records in the worktree's object format, and its
  * reply carries them to the lane, which keeps them only once the run is
  * proven. Under `"off"`, 021 D12 stands: coverage is stripped.
+ *
+ * Spec 026 D13.1 (row 026-35): with `setup`, the project's `remote.setup`,
+ * the host runs that script of its tree once the tree has arrived and
+ * before the install, unless the machine's mark says this content already
+ * ran there. A failure refuses the remote with its exit code and the last
+ * lines of its output. The script is in no key: it reaches the host here,
+ * never through the policy or the environment.
  */
 
 /** How long each remote step may take beyond the host's own deadlines. */
@@ -58,9 +66,15 @@ export interface RemoteDeadlines {
   readonly sshMs: number;
   /** An install from the lockfile. */
   readonly installMs: number;
+  /** The `setup` request: the script's own bound, `SETUP_MS`, and a minute for the reply. */
+  readonly setupMs: number;
 }
 
-export const REMOTE_DEADLINES: RemoteDeadlines = { sshMs: 120_000, installMs: 1_800_000 };
+export const REMOTE_DEADLINES: RemoteDeadlines = {
+  sshMs: 120_000,
+  installMs: 1_800_000,
+  setupMs: SETUP_MS + 60_000,
+};
 
 /**
  * A remote host's own deadlines beside `HOST_DEADLINES` (spec 021 D13):
@@ -111,6 +125,8 @@ export interface RemoteHostOptions {
   readonly deadlines?: Partial<HostDeadlines & RemoteDeadlines>;
   /** Spec 021 D19.1: `requires.commands`, looked for on the remote at each connect. Absent: none. */
   readonly commands?: readonly string[];
+  /** Spec 026 D13.1: `remote.setup`, the repository-relative script run before the install. Absent: none. */
+  readonly setup?: string | null;
   /**
    * Spec 026 D11: the machine's disk check, after the Node check and before
    * the host starts; rejects to refuse the machine. Absent: none.
@@ -304,6 +320,19 @@ export async function remoteHostOver(
     } else if (done.ran) log(`${target.destination}: installed with ${done.command}`);
     return done;
   };
+  // D13.1: a failing script refuses the remote; its output goes to the daemon's log either way.
+  const setup = async (on: HostRequests, path: string) => {
+    const done = (await on.request("setup", [path], deadlines.setupMs)) as SetupAnswer;
+    const output = done.output.trimEnd();
+    if (done.ran || done.failed !== undefined) {
+      const how = done.failed ?? "exit code 0";
+      log(
+        `${target.destination}: remote.setup ${path} ran (${how})${output === "" ? "" : `:\n${output}`}`,
+      );
+    }
+    if (done.failed !== undefined)
+      throw new RemoteRefusal(setupRefusal(path, target.destination, done));
+  };
   // Spec 021 D12: coverage stays off on a remote lane, unless D9 maps it there.
   const mapped = options.coverage === "remote";
   const adapterOptions = mapped ? options.options : withoutCoverage(options.options);
@@ -333,6 +362,7 @@ export async function remoteHostOver(
       log(
         `${target.destination}: tree of ${entries.length} files, ${missing.length} sent (${mib(bytes)}, ${mib(wire)} on the wire)`,
       );
+      if (options.setup != null) await setup(on, options.setup);
       await install(on);
     },
     invalidateWith: async (paths) => {
