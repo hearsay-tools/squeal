@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "version": "0.1.654",
+  "version": "0.1.655",
   "nodeFloor": "22.19.0",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "96f433aef1fbdd0b06a9f9d79e491e0e8262a8d802d3c268570dcb98530ea265",
+      "sha256": "e17ed63045ee7ea5b852ef7de6fe4d35fa15e377e38769252bfb8e077c415a9a",
       "mode": 420
     },
     "bin/squeal-launcher": {
@@ -92,7 +92,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "477bb7c44aa8b4e06a8d167f35a85679ee002a1119c4792537cee269e8b174f0",
+      "sha256": "b2a04dc39f19aa5813c700444e209c9309430d995acbc4af84456f9191b19f82",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {
@@ -112,7 +112,7 @@
       "mode": 420
     },
     "dist/interrupt.mjs": {
-      "sha256": "6f35e0a1b74e28ae98862075888002f5fc1c1a1195d0936f1dd8e9dc98b4e284",
+      "sha256": "acadc3c066be917da98f5a527f515bc682c9524d2042d80be967e88d6c4b18ad",
       "mode": 420
     },
     "dist/jest/observe-runtime.cjs": {
@@ -152,11 +152,11 @@
       "mode": 420
     },
     "dist/post-tool-use.mjs": {
-      "sha256": "04747801672e837364255ce82e72ed14a6e47b6259537083850bff9d3c4d9a0b",
+      "sha256": "55b4315a9b4008274119bcf8ab3625299e02a055122d00748a905d44a7c97ada",
       "mode": 420
     },
     "dist/pre-tool-use.mjs": {
-      "sha256": "a3612bcb48e1ae69e7f92836e1fe20cf9c8b6820f6dac358eacdeb74e5036d8c",
+      "sha256": "f6ab8d805b0933d470093ae4d84498e2944420d9122cceb24aa037b7b273d069",
       "mode": 420
     },
     "dist/pytest/sitecustomize.py": {
@@ -176,35 +176,35 @@
       "mode": 493
     },
     "dist/runtime.mjs": {
-      "sha256": "e5a9ed9b4c04375546ad43c56e69315ec6f61da3cd4900f10352f5c5dd467f8a",
+      "sha256": "71f9aeba62a0a111fb32259771ab9d71f6f7cb1831d9c4c8e6cdd0501147de38",
       "mode": 420
     },
     "dist/session-end.mjs": {
-      "sha256": "42414208941e211941287aea16447ad08eab7bce292cc3e3fc58ee4661f2518f",
+      "sha256": "1110ebbe8effa1d768ffb1b7ea8205d31f89103705a35e1ecc392108e6d900cf",
       "mode": 420
     },
     "dist/session-start.mjs": {
-      "sha256": "e15fd2d4e20655e0927ec3d648ca0d503b398fac28101085930857abd56e84c6",
+      "sha256": "8d6af6fb3175b1a1050ff08ee5e47e6c3b81f1c226b56d218c830018aafcb338",
       "mode": 420
     },
     "dist/stop-slow.mjs": {
-      "sha256": "ef3fc50c400b53f14eb96551b2fda0781e8ff4446434e19deff2d93eacc71564",
+      "sha256": "9f8f5feace6469168ca36d909c428ead679e3d2f28e1840c2154d76f83c9c3b9",
       "mode": 420
     },
     "dist/stop.mjs": {
-      "sha256": "653c427b99bf014a85b545f11952a4676105c32ce9e403f316a249c6fc84f4b8",
+      "sha256": "eb61dce79121f0e4cb4ec0878f677ce51262ea4afb6a0290baf5c0877616708c",
       "mode": 420
     },
     "dist/subagent-start.mjs": {
-      "sha256": "cd4b067a2e7cf304778d79d6dd45b12f04946ced1573d9511df264f227d706e9",
+      "sha256": "e3c0b016b41d26cba5ec0fd35bfdda2d750df7fd2927d4533731feedcbbd621d",
       "mode": 420
     },
     "dist/subagent-stop.mjs": {
-      "sha256": "830f9b047cc936115dbf3f4aec887c1e5faa0ad69f1dab2f34997e104aa90eed",
+      "sha256": "a08638135e8e662f7d03d4aeb8ba8d263cccae40f333f58e13941f4617b78351",
       "mode": 420
     },
     "dist/user-prompt-submit.mjs": {
-      "sha256": "d54c24cfb49180af9103e869263f05c12bbddc23cce13834a9747cb411612854",
+      "sha256": "67b5a9b68ff2c5aec681cbf0d2611aee4038eb98b774b3ea43eee03850536f74",
       "mode": 420
     },
     "skills/setup/SKILL.md": {
@@ -212,7 +212,7 @@
       "mode": 420
     },
     "skills/squeal/SKILL.md": {
-      "sha256": "848447b708fd0a35c44775c3c5380de013e38df1eb62b2411716ad99bd79f997",
+      "sha256": "70656c17fd20756c8fbd7409a3b1afbf76d68c93222f3a221a5673f85614798b",
       "mode": 420
     },
     "skills/squeal/references/commands.md": {
@@ -220,7 +220,7 @@
       "mode": 420
     },
     "skills/squeal/references/policy.md": {
-      "sha256": "3357b8b67fb809f6a1e481fbdd84fd30279037195aafd860a028bab375889da4",
+      "sha256": "44a11d2a2cf62370292e5e5aafea157457bf3d2a85b0adc4ac5063dc41b24afa",
       "mode": 420
     },
     "skills/squeal/references/reports.md": {
