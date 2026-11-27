@@ -70,6 +70,8 @@ Amended 2026-10-31 (row 011-288, 011 C8): every request carries `ack: { by }`; a
 
 After a root session's idle, the plugin starts the shared idle waiter (`src/harness/shared/waiter.ts`) as one more bridge process with no deadline but the waiter's own, which exits when `OPENCODE_PID` dies. It waits for `waitForDelta` (001 D9 as amended by 001-85: only entries of the test files pending when the turn ended). On a delta the plugin calls `client.session.promptAsync` with the report, which starts one turn on an idle session (research, sessions 2: busy 18 ms after the call under `serve`, 16 ms in the TUI). A user message first (`chat.message`) cancels the wait, and `dispose` kills it.
 
+Amended 2026-11-27 (the human, row 011-433, `../011-core/research/ci-flake-census.md` G5): a wait that ends with no news, or whose bridge fails, while it is still the current wait and before the waiter's own bound (`IDLE_WAIT_MS`, 59 minutes), arms again after a 1 s pause, at most 3 times per idle. A user message, `forget`, stop or `dispose` cancels the pause and the wait; a wait that ran to its bound stays ended.
+
 The rule follows OpenCode's process, not a launcher, as 009 D5 does for Pi (human, 2026-10-14: ship the wake). Under `opencode run` the process exits at idle and `dispose` kills the waiter; a continuation sent at that idle is stored in the session and read at its next resume. In Cezar, whose non-interactive steps end the server 250 ms after idle, a later wake dies with the server and its news waits for Continue; a woken turn is one Cezar did not start, which Cezar's transcript shows (research, sessions 2).
 
 ### D6. Shared code and bundles
