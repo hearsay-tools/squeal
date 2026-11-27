@@ -15,7 +15,7 @@ import type { LintStore } from "../store/types.js";
 import { grantedCpu, refusedCpu } from "./cpu-wait.js";
 import type { Keyer } from "./keyer.js";
 import { type LintedPart, lintFiles, type PartFile, unknownPart } from "./lint-part.js";
-import { lintScope, readProgram, readQuiet, writeQuiet } from "./records.js";
+import { lintScope, readEdited, readProgram, readQuiet, writeQuiet } from "./records.js";
 import type { ProviderSession } from "./session.js";
 import type { LintCapacity, LintSource } from "./types.js";
 
@@ -70,8 +70,9 @@ export interface PartsEnd extends LintedPart {
 /**
  * D7 step 4: the pending files in parts of at most `PART_FILES`. An edit's
  * changed program files come first, fed to the worker in its lint calls
- * (017-04's contract), then its other changed files, then a first or config
- * keying's files, then stale files once idle. Each part holds its slot only
+ * (017-04's contract), then its other changed files, also those a first or
+ * config keying left quiet (row 017-37, gh-238), then that keying's other
+ * files, then stale files once idle. Each part holds its slot only
  * while it reads, keys and lints (011 C10 as agreed): `running(1)` for an
  * edit's part, a backlog lease for the others. A refused lease ends the
  * pass with a wake at `CAPACITY_RECHECK_MS`, stale files that wait for idle
@@ -90,8 +91,9 @@ export async function lintParts(ctx: PartsContext, keyer: Keyer): Promise<PartsE
   const end = (wakeAt: EpochMs | null): PartsEnd => ({ ...done, wakeAt });
   const scope = lintScope(ctx.worktreeId, ctx.tool);
   const quiet = readQuiet(ctx.store.meta, scope);
+  const edited = readEdited(ctx.store.meta, scope);
   try {
-    return await partsOf(ctx, keyer, readQueue(ctx, quiet), done, end);
+    return await partsOf(ctx, keyer, readQueue(ctx, quiet, edited), done, end);
   } finally {
     writeQuiet(ctx.store.meta, scope, quiet);
   }
@@ -140,7 +142,7 @@ async function partsOf(
     ctx.recorded();
     if (done.off !== null || done.grew || ctx.interrupted()) return end(null);
     // A part fed before every changed program file left its misses pending: read them again.
-    queue = part.judged ? queue.without(part.paths) : readQueue(ctx, queue.quiet);
+    queue = part.judged ? queue.without(part.paths) : readQueue(ctx, queue.quiet, queue.edited);
     await nextTurn();
   }
 }
@@ -164,21 +166,29 @@ class Queue {
     readonly stale: readonly RelativePath[],
     /** The quiet set, kept in memory while the pass lints and written when it ends. */
     readonly quiet: Set<RelativePath>,
+    /** Row 017-37: quiet paths an edit changed, which lint as an edit's part. */
+    readonly edited: ReadonlySet<RelativePath>,
   ) {}
 
   without(paths: readonly RelativePath[]): Queue {
     const gone = new Set(paths);
     const keep = (list: readonly RelativePath[]) => list.filter((p) => !gone.has(p));
-    return new Queue(keep(this.edit), keep(this.backlog), keep(this.stale), this.quiet);
+    const lists = [keep(this.edit), keep(this.backlog), keep(this.stale)] as const;
+    return new Queue(...lists, this.quiet, this.edited);
   }
 }
 
 /**
  * The pending files, an edit's apart from a first or config keying's, and
- * the stale ones. The quiet set keeps only files still `pending` or
- * `unknown`: one a pass that ended early linted leaves it here.
+ * the stale ones. A quiet file an edit changed is an edit's (row 017-37).
+ * The quiet set keeps only files still `pending` or `unknown`: one a pass
+ * that ended early linted leaves it here.
  */
-function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
+function readQueue(
+  ctx: PartsContext,
+  quiet: Set<RelativePath>,
+  edited: ReadonlySet<RelativePath>,
+): Queue {
   const { store, worktreeId, tool } = ctx;
   const listed = (outcome: "pending" | "unknown") =>
     store.states.list(worktreeId, { outcome, tool }).map((s) => s.check.path);
@@ -199,17 +209,16 @@ function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
           .filter((s) => s.stale && s.outcome !== "pending")
           .map((s) => s.check.path)
           .filter(runs);
+  const backlog = (p: RelativePath) => quiet.has(p) && !edited.has(p);
   return new Queue(
     firstOf(
       ctx,
-      pending.filter((p) => !quiet.has(p)),
+      pending.filter((p) => !backlog(p)),
     ),
-    firstOf(
-      ctx,
-      pending.filter((p) => quiet.has(p)),
-    ),
+    firstOf(ctx, pending.filter(backlog)),
     firstOf(ctx, stale),
     quiet,
+    edited,
   );
 }
 

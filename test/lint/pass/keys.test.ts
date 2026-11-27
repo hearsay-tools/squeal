@@ -85,7 +85,8 @@ describe("each key part re-keys its file (spec 017 D5)", () => {
     rig.provider.off.add("no-undef");
     const calls = await revise(rig, (t) => t.write("src/eslint.config.js", "export default [];\n"));
     expect(rig.provider.refreshes.slice(-1)).toEqual(["instance"]);
-    expect(calls).toEqual([["src/eslint.config.js", "src/a.js", "src/b.js"]]);
+    // Row 017-37: the file the keying's revision changed lints as an edit's part, then the rest.
+    expect(calls).toEqual([["src/eslint.config.js"], ["src/a.js", "src/b.js"]]);
     expect(outcomes(storeOf(rig.tree), rig.tree)["src/a.js"]).toBe("pass");
     expect(history(storeOf(rig.tree), rig.tree, "src/a.js")).toEqual([]);
     await rig.pass.close();

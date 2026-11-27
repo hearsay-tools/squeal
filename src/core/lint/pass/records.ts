@@ -69,6 +69,13 @@ export const cursorKey = (worktreeId: WorktreeId) => `lint-cursor:${worktreeId}`
 export const keyingKey = (worktreeId: WorktreeId) => `lint-keying:${worktreeId}`;
 /** Paths a first or config keying left pending: linted with no transition (D2's last row). */
 export const quietKey = (worktreeId: WorktreeId) => `lint-quiet:${worktreeId}`;
+/**
+ * Row 017-37 (gh-238): quiet paths the revisions since their keying changed.
+ * They lint as an edit's part, outside the background ceiling, and still
+ * record no transition. Read with the quiet set: a path that left it is no
+ * longer one of them.
+ */
+export const editedKey = (worktreeId: WorktreeId) => `lint-edited:${worktreeId}`;
 export const programKey = (worktreeId: WorktreeId) => `lint-program:${worktreeId}`;
 export const inputsKey = (worktreeId: WorktreeId) => `lint-inputs:${worktreeId}`;
 /** Spec 019 D5 step 1 (row 019-22): paths a commit or request released for a tool held for a commit. */
@@ -209,8 +216,7 @@ export function writeCommitted(
 }
 
 export function readQuiet(meta: LintMetaRepo, worktreeId: WorktreeId): Set<RelativePath> {
-  const raw = parse(meta.get(quietKey(worktreeId)));
-  return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
+  return readPaths(meta, quietKey(worktreeId));
 }
 
 export function writeQuiet(
@@ -218,8 +224,27 @@ export function writeQuiet(
   worktreeId: WorktreeId,
   quiet: ReadonlySet<RelativePath>,
 ) {
-  if (quiet.size === 0) meta.delete(quietKey(worktreeId));
-  else meta.set(quietKey(worktreeId), JSON.stringify([...quiet].sort()));
+  writePaths(meta, quietKey(worktreeId), quiet);
+}
+
+/** Row 017-37: the quiet paths an edit changed (`editedKey`), those still quiet only. */
+export function readEdited(meta: LintMetaRepo, scope: string): Set<RelativePath> {
+  const quiet = readQuiet(meta, scope);
+  return new Set([...readPaths(meta, editedKey(scope))].filter((p) => quiet.has(p)));
+}
+
+export function writeEdited(meta: LintMetaRepo, scope: string, edited: ReadonlySet<RelativePath>) {
+  writePaths(meta, editedKey(scope), edited);
+}
+
+function readPaths(meta: LintMetaRepo, key: string): Set<RelativePath> {
+  const raw = parse(meta.get(key));
+  return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
+}
+
+function writePaths(meta: LintMetaRepo, key: string, paths: ReadonlySet<RelativePath>) {
+  if (paths.size === 0) meta.delete(key);
+  else meta.set(key, JSON.stringify([...paths].sort()));
 }
 
 export function readProgram(meta: LintMetaRepo, worktreeId: WorktreeId): LintProgram {
@@ -264,8 +289,8 @@ export function forgetCommitted(meta: LintMetaRepo, scope: string): void {
  * a first keying. The counts stay: a consumer's mark compares with them.
  */
 export function forgetRecords(meta: LintMetaRepo, scope: string): void {
-  const keys = [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey, releaseKey];
-  for (const key of [...keys, committedKey, heldKey]) meta.delete(key(scope));
+  const keys = [cursorKey, quietKey, editedKey, programKey, inputsKey, offKey, failedKey];
+  for (const key of [...keys, releaseKey, committedKey, heldKey]) meta.delete(key(scope));
 }
 
 /** D11: an off reason that says the tool is not installed (D3 step 1, D11 Discovery). */
