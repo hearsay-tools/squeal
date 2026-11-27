@@ -15,7 +15,6 @@ import {
   delay,
   diagnose,
   type FixtureRepo,
-  LOADED,
   ping,
   readNoteRecords,
   readNotes,
@@ -32,14 +31,19 @@ import {
  * a running tier finish and store, persists one note and exits, 3 s after;
  * a SessionStart within those 3 s keeps it. Hooks run in this process, so
  * each session names its harness process explicitly.
+ *
+ * Row 011-429: these cases check what the daemon did and in which order;
+ * how soon after the grace, the tier or the heartbeat it exits is the
+ * product's timer speed, which a loaded runner stretched past fixed bounds
+ * (CI 45070126199, 45070829138). The timers' own test drives those limits
+ * with a test clock (`departure-timers.test.ts`); here a ceiling only ends
+ * a daemon that never exits.
  */
 
 const suite = daemonSuite();
 const { fixture, daemon } = suite;
 const linux = process.platform === "linux";
 
-/** Heartbeat (5 s) plus the grace (3 s), with slack for the shutdown and a loaded host. */
-const HEARTBEAT_AND_GRACE_MS = 5_000 + 3_000;
 const GONE_NOTE = /daemon stopped: no session registered for 3 s after its last one ended/;
 
 const children: ChildProcess[] = [];
@@ -103,7 +107,7 @@ async function exitWithin(spawned: SpawnedProcess, ms: number, repo: FixtureRepo
 }
 
 describe("a daemon exits when its last session is gone (defect 24)", SLOW, () => {
-  it("within 3 s of the last SessionEnd when idle, with one note", async () => {
+  it("no sooner than 3 s after the last SessionEnd when idle, with one note", async () => {
     const repo = fixture({ "squeal.config.json": runMissingConfig() });
     const spawned = daemon(repo);
     await waitReady(repo, spawned);
@@ -126,8 +130,6 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
     const waited = decided - (left ?? Number.NaN);
     const why = `the shutdown then took ${exited - decided} ms`;
     expect(waited, why).toBeGreaterThanOrEqual(3_000);
-    // One 250 ms presence poll past the grace, with slack.
-    if (!LOADED) expect(waited, why).toBeLessThan(3_500);
     expect(withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon)).toBeNull();
     expect(existsSync(repo.socketPath)).toBe(false);
   });
@@ -177,8 +179,9 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
     const exitedAt = Date.now();
 
     const doneAt = Number(readFileSync(`${marker}.done`, "utf8"));
+    // The tier ended before the exit and its result is stored current; the one note is the
+    // departure's, so the daemon waited for no other work than that tier.
     expect(exitedAt).toBeGreaterThanOrEqual(doneAt);
-    if (!LOADED) expect(exitedAt - doneAt).toBeLessThan(3_000);
     const waits = withStore(repo, (store) =>
       store.knownStates
         .list(repo.worktreeId)
@@ -189,7 +192,7 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
   });
 
   it.runIf(linux)(
-    "drops a session whose harness is SIGKILLed (no SessionEnd) and exits within a heartbeat plus the grace",
+    "drops a session whose harness is SIGKILLed (no SessionEnd) and exits",
     async () => {
       const repo = fixture({ "squeal.config.json": runMissingConfig() });
       const spawned = daemon(repo);
@@ -203,10 +206,8 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
       await idle(repo, spawned);
       expect(sessions(repo)).toEqual(["s1"]);
 
-      const at = performance.now();
       killed.kill("SIGKILL");
       expect(await exitWithin(spawned, 30_000, repo)).toEqual({ code: 0, signal: null });
-      if (!LOADED) expect(performance.now() - at).toBeLessThan(HEARTBEAT_AND_GRACE_MS + 1_000);
       expect(sessions(repo)).toEqual([]);
     },
   );
