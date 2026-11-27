@@ -10,7 +10,8 @@
  *                            index, made inside the held transaction: the
  *                            open meets it as it makes the index (row 015-44)
  *
- * Prints `held` once the lock is taken and exits 0 after it commits.
+ * Prints `held` once the lock is taken and exits 0 after it commits; its commit waits
+ * up to 10 s for the open's read lock.
  */
 import { DatabaseSync } from "node:sqlite";
 import {
@@ -24,6 +25,9 @@ if (!path || (mode !== "rollback" && mode !== "migrate" && mode !== "index")) {
   throw new Error("usage: holder <path> rollback|migrate|index");
 }
 const db = new DatabaseSync(path);
+// Row 011-430: the open under test holds a read lock between its retries; in rollback mode
+// the commit needs it gone, and with no busy timeout it failed at once and the holder exited 1.
+db.exec("PRAGMA busy_timeout = 10000");
 if (mode === "rollback") {
   db.exec("CREATE TABLE holder (x)");
   db.exec("BEGIN IMMEDIATE");
