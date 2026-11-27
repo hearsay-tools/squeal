@@ -10,6 +10,7 @@ import type { TestFileRef } from "../../core/types/keys.js";
 import type { JestProject } from "../../core/types/policy-jest.js";
 import type {
   InvalidatedPath,
+  ObservedInputs,
   RunnerAdapter,
   RunOptions,
   RunReport,
@@ -32,7 +33,7 @@ import {
 } from "./environment.js";
 import { createJestGraph, type JestGraph, type ModuleNameMapper } from "./graph/index.js";
 import { type JestInstall, resolveJest } from "./resolve.js";
-import { runJest } from "./run/run.js";
+import { type HostObserved, runJest } from "./run/run.js";
 import { defaultWarmMemoryLimitBytes, JestWarmPool } from "./run/warm.js";
 import { jestTraits } from "./traits.js";
 import { JEST_ADAPTER_VERSION } from "./version.js";
@@ -194,6 +195,8 @@ export async function createJestAdapter(
       const toggled = coverage.changed();
       // D7.3: a warm worker's haste map knows no added or deleted file; a source edit it sees.
       if (toggled || changed.some((p) => p.kind !== "change")) await warmPool?.recycle();
+      // Review 0.1.648 B1: unless Node holds the edited file, a transform or a helper of one.
+      else await warmPool?.recycleFor(new Set(changed.map((p) => p.path)));
       return { recreatedProjects: toggled ? [project.name] : [] };
     },
     async affected(changed) {
@@ -285,9 +288,45 @@ export async function createJestAdapter(
     const { report } = ran;
     if (covered !== undefined) coverage.collect(runOptions.runId, ran.coverage, paths);
     if (observe === null) return report;
-    const seen = observedInputs(takeRecorded(out), report.completedFiles, paths);
+    const recorded = observedInputs(takeRecorded(out), report.completedFiles, paths);
+    const seen = withHostModules(recorded, ran.hostObserved ?? [], paths, observe.skip);
     return seen.length === 0 ? report : { ...report, observed: seen };
   }
+}
+
+/**
+ * Review 0.1.648 B1: each file's observations with the worktree modules its
+ * warm worker's Node used for it, as paths and module loads: a module Node
+ * serves from its cache is read by no batch after the first, yet it decides
+ * the result. A path outside the project or below `skip` stays out.
+ */
+function withHostModules(
+  observed: readonly ObservedInputs[],
+  host: readonly HostObserved[],
+  paths: WorktreePaths,
+  skip: readonly AbsolutePath[],
+): ObservedInputs[] {
+  if (host.length === 0) return [...observed];
+  const out = new Map(observed.map((o) => [o.testFile.path, o]));
+  for (const { testFile, paths: modules } of host) {
+    const kept = modules.flatMap((abs) => {
+      if (!paths.isProjectFile(abs) || skip.some((s) => abs.startsWith(`${s}${sep}`))) return [];
+      const path = paths.toRelative(abs);
+      return path === null ? [] : [path];
+    });
+    if (kept.length === 0) continue;
+    const entry = out.get(testFile.path) ?? { testFile, paths: [], directories: [] };
+    out.set(testFile.path, {
+      ...entry,
+      paths: merged(entry.paths, kept),
+      modules: merged(entry.modules ?? [], kept),
+    });
+  }
+  return [...out.values()];
+}
+
+function merged(a: readonly RelativePath[], b: readonly RelativePath[]): RelativePath[] {
+  return [...new Set([...a, ...b])].sort(compare);
 }
 
 /** A `globalSetup` or `globalTeardown`, global or the project's: only a Jest process runs them (D7). */

@@ -12,7 +12,8 @@ import { totalmem } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { lowerProcess } from "../../../core/daemon/low-priority.js";
-import type { AbsolutePath } from "../../../core/types/common.js";
+import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
 import { OBSERVE_VARIABLE } from "../../observe/runtime.js";
 import type { ProcessExit } from "../../process/group.js";
 import type { JestInstall } from "../resolve.js";
@@ -40,6 +41,8 @@ export function defaultWarmMemoryLimitBytes(total: number = totalmem()): number 
 /** What a warm worker starts with; a worker serves only batches of the same start. */
 export interface WarmStart {
   readonly workerPath: AbsolutePath;
+  /** The worktree root, a real path: the worker reports the worktree modules Node loads in it. */
+  readonly root: AbsolutePath;
   readonly install: JestInstall;
   /** Jest's working directory, absolute. */
   readonly cwd: AbsolutePath;
@@ -77,6 +80,12 @@ export interface WarmRun {
   readonly exited: Promise<ProcessExit>;
   /** Signals the worker's whole group; the worker is not used again. */
   kill(signal: NodeJS.Signals): void;
+  /**
+   * Review 0.1.648 B1: the worktree modules Node loaded in the worker for its
+   * batches, cached or not, so each of this batch's files read them; absolute,
+   * sorted. Empty when the batch did not end with `done`. Resolves with `exited`.
+   */
+  readonly runtimeHostModules: Promise<readonly AbsolutePath[]>;
 }
 
 export interface JestWarmPoolOptions {
@@ -89,9 +98,31 @@ export interface JestWarmPoolOptions {
 }
 
 type Reply =
-  | { readonly type: "ready"; readonly pid: number; readonly rssBytes: number }
-  | { readonly type: "done"; readonly id: number; readonly rssBytes: number }
-  | { readonly type: "error"; readonly id: number | null; readonly message: string };
+  | {
+      readonly type: "ready";
+      readonly pid: number;
+      readonly rssBytes: number;
+      readonly hostModules?: readonly string[];
+    }
+  | {
+      readonly type: "done";
+      readonly id: number;
+      readonly rssBytes: number;
+      readonly hostModules?: readonly string[];
+      readonly runtimeHostModules?: readonly string[];
+    }
+  | {
+      readonly type: "error";
+      readonly id: number | null;
+      readonly message: string;
+      readonly hostModules?: readonly string[];
+    };
+
+/** A batch's end: its exit, and the worktree modules its worker loaded for batches. */
+interface Ended {
+  readonly exit: ProcessExit;
+  readonly runtimeHostModules: readonly AbsolutePath[];
+}
 
 type State = "busy" | "idle" | "closing";
 
@@ -105,6 +136,14 @@ class WarmWorker {
   state: State = "busy";
   /** Not used again: a recycle came while it ran. */
   retired = false;
+  /**
+   * Review 0.1.648 B1: the worktree modules Node loaded in this worker, which
+   * it never reads again; a change of one retires it (`recycleFor`).
+   */
+  readonly hostModules = new Set<RelativePath>();
+  /** Paths changed while it ran: compared with `hostModules` once its batch reports them. */
+  readonly changedWhileBusy = new Set<RelativePath>();
+  readonly #paths: WorktreePaths;
   idleTimer: NodeJS.Timeout | null = null;
   usedAt = 0;
   #gone = false;
@@ -116,6 +155,7 @@ class WarmWorker {
     const out = openSync(`${base}.out.log`, "w");
     const err = openSync(this.stderrLog, "w");
     this.signature = signature;
+    this.#paths = new WorktreePaths(start.root);
     this.child = spawn(process.execPath, [start.workerPath], {
       cwd: start.cwd,
       env: start.env,
@@ -145,6 +185,7 @@ class WarmWorker {
     );
     this.send({
       type: "init",
+      root: start.root,
       cwd: start.cwd,
       wrapperPath: start.wrapperPath,
       cacheDir: start.jestCacheDir,
@@ -156,6 +197,7 @@ class WarmWorker {
     });
     this.ready = this.reply((m) => m.type === "ready" || m.type === "error").then((m) => {
       if (m === null) return "it exited while it started";
+      this.noteModules(m.hostModules);
       return m.type === "error" ? m.message : null;
     });
   }
@@ -166,6 +208,20 @@ class WarmWorker {
 
   get gone(): boolean {
     return this.#gone;
+  }
+
+  /** Adds a reply's absolute worktree modules to `hostModules`. */
+  noteModules(modules: readonly string[] | undefined): void {
+    for (const abs of modules ?? []) {
+      const path = this.#paths.toRelative(abs as AbsolutePath);
+      if (path !== null) this.hostModules.add(path);
+    }
+  }
+
+  /** Whether one of `changed` is a module Node keeps loaded here. */
+  loads(changed: Iterable<RelativePath>): boolean {
+    for (const path of changed) if (this.hostModules.has(path)) return true;
+    return false;
   }
 
   send(message: object): boolean {
@@ -225,6 +281,7 @@ function signatureOf(start: WarmStart): string {
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return JSON.stringify([
     start.workerPath,
+    start.root,
     start.install.core,
     start.cwd,
     start.wrapperPath,
@@ -285,11 +342,12 @@ export class JestWarmPool {
     else if (worker.idleTimer !== null) clearTimeout(worker.idleTimer);
     worker.state = "busy";
     worker.hold(true);
-    const exited = this.#runOn(worker, batch);
+    const ended = this.#runOn(worker, batch);
     const used = worker;
     return {
       pid: worker.pid,
-      exited,
+      exited: ended.then((e) => e.exit),
+      runtimeHostModules: ended.then((e) => e.runtimeHostModules),
       kill: (signal) => {
         used.retired = true;
         used.kill(signal);
@@ -303,6 +361,27 @@ export class JestWarmPool {
     for (const worker of this.#workers) {
       worker.retired = true;
       if (worker.state === "idle") closing.push(this.#shutdown(worker));
+    }
+    await Promise.all(closing);
+  }
+
+  /**
+   * Review 0.1.648 B1: a worker whose Node keeps one of `changed` loaded is
+   * not used again: idle, it exits now; busy, after its batch, which also
+   * reports the modules that batch loaded. The others keep serving: a source
+   * or manual-mock edit runs in Jest's sandbox, which reads it again.
+   */
+  async recycleFor(changed: ReadonlySet<RelativePath>): Promise<void> {
+    if (changed.size === 0) return;
+    const closing: Promise<ProcessExit>[] = [];
+    for (const worker of this.#workers) {
+      if (worker.state === "busy") {
+        if (worker.loads(changed)) worker.retired = true;
+        else for (const path of changed) worker.changedWhileBusy.add(path);
+      } else if (worker.state === "idle" && worker.loads(changed)) {
+        worker.retired = true;
+        closing.push(this.#shutdown(worker));
+      }
     }
     await Promise.all(closing);
   }
@@ -327,17 +406,22 @@ export class JestWarmPool {
     return worker;
   }
 
-  async #runOn(worker: WarmWorker, batch: WarmBatch): Promise<ProcessExit> {
+  async #runOn(worker: WarmWorker, batch: WarmBatch): Promise<Ended> {
     const failed = await worker.ready;
     const id = ++this.#batches;
     const reply = failed === null ? await this.#batch(worker, batch, id) : null;
     if (reply?.type === "done") {
+      worker.noteModules(reply.hostModules);
+      if (worker.loads(worker.changedWhileBusy)) worker.retired = true;
+      worker.changedWhileBusy.clear();
       const limit = this.#options.memoryLimitBytes?.() ?? defaultWarmMemoryLimitBytes();
       if (worker.retired || reply.rssBytes > limit) void this.#shutdown(worker);
       else this.#idle(worker);
-      return { code: 0, signal: null, error: null };
+      const runtimeHostModules = (reply.runtimeHostModules ?? []) as readonly AbsolutePath[];
+      return { exit: { code: 0, signal: null, error: null }, runtimeHostModules };
     }
-    return this.#ended(worker, batch, failed ?? (reply?.type === "error" ? reply.message : null));
+    const message = failed ?? (reply?.type === "error" ? reply.message : null);
+    return { exit: await this.#ended(worker, batch, message), runtimeHostModules: [] };
   }
 
   /** Sends the batch; its `done` or `error`, or `null` when the worker is gone first. */

@@ -166,6 +166,55 @@ function only(ran: Ran): number {
   return worker as number;
 }
 
+/*
+ * Review 0.1.648 B1: a transform Node loads natively, and a worktree helper it
+ * requires, stay in the worker's module cache; only a new worker reads them again.
+ */
+const A = ref("test/a.test.js");
+const HOST = ["helper.cjs", "transform.cjs"];
+const REJECTED = "edited helper rejects this source";
+const DYNAMIC_TRANSFORM = `module.exports = {
+  getCacheKey(text, file) {
+    return file + text + require("./helper.cjs").valid;
+  },
+  process(text) {
+    if (!require("./helper.cjs").valid) throw new Error("${REJECTED}");
+    return { code: text };
+  },
+};
+`;
+const MODULE_SCOPE_TRANSFORM = `const helper = require("./helper.cjs");
+module.exports = {
+  getCacheKey(text, file) {
+    return file + text + helper.valid;
+  },
+  process(text) {
+    if (!helper.valid) throw new Error("${REJECTED}");
+    return { code: text };
+  },
+};
+`;
+
+function helperTransform(transform: string): Record<string, string> {
+  return {
+    "jest.config.js": CONFIG(`\n  transform: { "\\\\.js$": "<rootDir>/transform.cjs" },`),
+    "transform.cjs": transform,
+    "helper.cjs": "exports.valid = true;\n",
+    [A.path]: `test("a", () => expect(1).toBe(1));\n`,
+  };
+}
+
+function observedOf(report: RunReport): readonly string[] {
+  return report.observed?.find((o) => o.testFile.path === A.path)?.paths ?? [];
+}
+
+/** What a fresh Jest process gives the edited helper: the file fails to transform, nothing passes. */
+function expectRejected(report: RunReport): void {
+  expect(report.results.filter((r) => r.outcome === "pass")).toEqual([]);
+  expect(report.fileErrors.map((e) => e.testFile)).toEqual([A]);
+  expect(JSON.stringify(report.fileErrors[0]?.errors)).toContain(REJECTED);
+}
+
 describe("defaultWarmMemoryLimitBytes (spec 028 D7.2)", () => {
   it("is 10% of the machine's memory, between 256 and 1024 MiB", () => {
     const mib = 1024 * 1024;
@@ -227,6 +276,72 @@ module.exports = {
     expect(only(second)).toBe(only(first));
     expect(second.report.fileErrors.map((e) => e.testFile)).toEqual([MOCK]);
   });
+
+  it(
+    "retires its worker when a helper a transform requires changes (review 0.1.648 B1)",
+    SLOW,
+    async () => {
+      const root = worktree(major, helperTransform(DYNAMIC_TRANSFORM));
+      const adapter = await open(root);
+      const first = await run(adapter, [A]);
+      expect(outcomes(first.report)).toEqual({ "test/a.test.js > a": "pass" });
+      expect(observedOf(first.report)).toEqual(expect.arrayContaining(HOST));
+      const pid = only(first);
+
+      // A test edit runs in Jest's sandbox: same worker, and the cached helper stays observed.
+      writeFileSync(join(root, A.path), `test("a", () => expect(2).toBe(2));\n`);
+      await adapter.invalidate([{ path: A.path, kind: "change" }]);
+      const second = await run(adapter, [A]);
+      expect(only(second)).toBe(pid);
+      expect(outcomes(second.report)).toEqual({ "test/a.test.js > a": "pass" });
+      expect(observedOf(second.report)).toEqual(expect.arrayContaining(HOST));
+
+      writeFileSync(join(root, "helper.cjs"), "exports.valid = false;\n");
+      await adapter.invalidate([{ path: "helper.cjs", kind: "change" }]);
+      expect(await gone(pid)).toBe(true);
+      const third = await run(adapter, [A]);
+      expect(only(third)).not.toBe(pid);
+      expectRejected(third.report);
+
+      writeFileSync(join(root, "helper.cjs"), "exports.valid = true;\n");
+      await adapter.invalidate([{ path: "helper.cjs", kind: "change" }]);
+      const fourth = await run(adapter, [A]);
+      expect(only(fourth)).not.toBe(only(third));
+      expect(outcomes(fourth.report)).toEqual({ "test/a.test.js > a": "pass" });
+      expect(observedOf(fourth.report)).toEqual(expect.arrayContaining(HOST));
+
+      // Without the recorder nothing is observed, the worker's modules neither.
+      const blind = await open(root, PROJECT, { observe: () => false });
+      const unobserved = await run(blind, [A]);
+      expect(outcomes(unobserved.report)).toEqual({ "test/a.test.js > a": "pass" });
+      expect(unobserved.report.observed).toBeUndefined();
+    },
+  );
+
+  it(
+    "retires its worker when a helper a transform imports at module scope changes",
+    SLOW,
+    async () => {
+      const root = worktree(major, helperTransform(MODULE_SCOPE_TRANSFORM));
+      const adapter = await open(root);
+      const first = await run(adapter, [A]);
+      expect(outcomes(first.report)).toEqual({ "test/a.test.js > a": "pass" });
+      expect(observedOf(first.report)).toEqual(expect.arrayContaining(HOST));
+
+      writeFileSync(join(root, "helper.cjs"), "exports.valid = false;\n");
+      await adapter.invalidate([{ path: "helper.cjs", kind: "change" }]);
+      const second = await run(adapter, [A]);
+      expect(only(second)).not.toBe(only(first));
+      expectRejected(second.report);
+
+      writeFileSync(join(root, "helper.cjs"), "exports.valid = true;\n");
+      await adapter.invalidate([{ path: "helper.cjs", kind: "change" }]);
+      const third = await run(adapter, [A]);
+      expect(only(third)).not.toBe(only(second));
+      expect(outcomes(third.report)).toEqual({ "test/a.test.js > a": "pass" });
+      expect(observedOf(third.report)).toEqual(expect.arrayContaining(HOST));
+    },
+  );
 
   it("replaces a worker above its memory limit after the batch", SLOW, async () => {
     const root = worktree(major);
@@ -343,6 +458,9 @@ test("hangs", async () => {
     for (const { report } of [first, second]) {
       expect(report.completedFiles).toEqual([SUM]);
       expect(seen(report)).toEqual(expect.arrayContaining(["data/input.txt", "data/child.txt"]));
+      // No local transform: the worker's Node adds no worktree module (B1); the child's own load stays.
+      expect(report.observed?.flatMap((o) => o.modules ?? [])).toEqual(["src/child.js"]);
+      expect(seen(report)).not.toContain("jest.config.js");
     }
   });
 

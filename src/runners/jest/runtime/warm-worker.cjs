@@ -8,10 +8,11 @@
  * in band through `createTestScheduler(...).scheduleTests(...)`: no Jest
  * process start and no config read per batch (research 028-01 F2.2).
  *
- * Messages in: `init` `{ cwd, wrapperPath, cacheDir, coreDir, configDir,
- * runtimeDir, reporterPath, coverage }`; `run` `{ id, files, eventsFile,
- * coverageDir, observeOut, observeSkip, env }`; `shutdown`. Out: `ready`
- * `{ pid, rssBytes }`, `done` `{ id, rssBytes }`, `error` `{ id, message }`
+ * Messages in: `init` `{ root, cwd, wrapperPath, cacheDir, coreDir,
+ * configDir, runtimeDir, reporterPath, coverage }`; `run` `{ id, files,
+ * eventsFile, coverageDir, observeOut, observeSkip, env }`; `shutdown`. Out:
+ * `ready` `{ pid, rssBytes, hostModules }`, `done` `{ id, rssBytes,
+ * hostModules, runtimeHostModules }`, `error` `{ id, message, hostModules }`
  * (then it exits 1).
  *
  * Each batch starts with the recorder's reset (`recorder.cjs`, when it is
@@ -27,13 +28,25 @@
  * file transforms, as a fresh Jest would. An added or deleted file, or a config change,
  * needs a new haste map: `warm.ts` starts a new worker then.
  *
+ * Node's own module cache is never cleared (review 0.1.648 B1): a local
+ * transformer, resolver or test environment, and every worktree file it
+ * requires or imports, stays as this process first loaded it. So every
+ * worktree module Node loads here (outside `node_modules` and `.git`) is in
+ * `hostModules`, and `warm.ts` retires the worker when one of them changes.
+ * `runtimeHostModules` are those loaded by a batch, not by `init`: a batch
+ * uses them, cached or not, so each of its test files is observed to read
+ * them. Test files and the sources they load run in Jest's sandbox, never
+ * through Node's loader, and are neither.
+ *
  * Without its parent (the channel closes) it kills its own group at once,
  * so no worker outlives the runner that started it. Node built-ins only.
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { createRequire } = require("node:module");
+const Module = require("node:module");
+const { fileURLToPath } = require("node:url");
 
+const { createRequire } = Module;
 const RESET = Symbol.for("squeal.observeReset");
 
 /** The project's Jest, loaded at `init`. */
@@ -43,6 +56,89 @@ let context = null;
 let firstRun = true;
 /** The keys a batch's `env` set, with what this process had before. */
 const before = new Map();
+
+/** The worktree, real, from `init`; until then nothing is recorded. */
+let root = null;
+/** What Node had loaded before `init`: Squeal's own files and the recorder. */
+const baseline = new Set(Object.keys(require.cache));
+/** Every worktree module Node loaded, and those a batch loaded; absolute paths. */
+const hostModules = new Set();
+const runtimeHostModules = new Set();
+/** The modules `init` loaded; set once it is done. */
+let initModules = null;
+let running = false;
+const realPaths = new Map();
+
+/** `file`, a path or a `file:` URL, and its real path, when inside the worktree; `runtime` when a batch loads it. */
+function recordNative(file, runtime = running) {
+  if (root === null || typeof file !== "string") return;
+  let abs = file;
+  if (abs.startsWith("file:")) {
+    try {
+      abs = fileURLToPath(abs);
+    } catch {
+      return;
+    }
+  }
+  if (!path.isAbsolute(abs)) return;
+  let real = realPaths.get(abs);
+  if (real === undefined) {
+    try {
+      real = fs.realpathSync(abs);
+    } catch {
+      real = abs;
+    }
+    realPaths.set(abs, real);
+  }
+  for (const candidate of real === abs ? [abs] : [abs, real]) {
+    if (!inWorktree(candidate)) continue;
+    hostModules.add(candidate);
+    if (runtime) runtimeHostModules.add(candidate);
+  }
+}
+
+function inWorktree(abs) {
+  const relative = path.relative(root, abs);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) return false;
+  const parts = relative.split(path.sep);
+  return !parts.includes("node_modules") && parts[0] !== ".git";
+}
+
+/** What Node holds now that it did not before `init`; a batch's own when `init` did not load it. */
+function scanCache() {
+  for (const file of Object.keys(require.cache)) {
+    if (baseline.has(file)) continue;
+    recordNative(file, running && initModules?.has(file) !== true);
+  }
+}
+
+function sorted(set) {
+  return [...set].sort();
+}
+
+// Resolved before the load, so a module that throws while it loads is recorded too.
+const originalLoad = Module._load;
+Module._load = function load(request, parent, isMain, ...rest) {
+  if (root !== null && typeof request === "string" && !Module.isBuiltin(request)) {
+    try {
+      recordNative(Module._resolveFilename(request, parent, isMain));
+    } catch {
+      // the original load reports it
+    }
+  }
+  return originalLoad.call(this, request, parent, isMain, ...rest);
+};
+// Native ESM, a transformer written as one: Node 22.15 and later.
+try {
+  Module.registerHooks?.({
+    load(url, context, next) {
+      recordNative(url);
+      return next(url, context);
+    },
+  });
+} catch {
+  // no synchronous hooks here: CommonJS loads are still recorded
+}
 
 function send(message, then) {
   if (typeof process.send === "function" && process.connected) process.send(message, then);
@@ -73,6 +169,7 @@ function load(dir) {
 }
 
 async function init(options) {
+  root = typeof options.root === "string" ? options.root : null;
   fs.mkdirSync(options.cacheDir, { recursive: true });
   core = require(options.coreDir);
   const { readConfigs } = require(options.configDir);
@@ -109,7 +206,9 @@ async function init(options) {
   });
   const { hasteFS, moduleMap } = await hasteMap.build();
   context = { Runtime, config, hasteFS, moduleMap, transforms: transformModules(config, options) };
-  send({ type: "ready", pid: process.pid, rssBytes: rss() });
+  scanCache();
+  initModules = new Set(hostModules);
+  send({ type: "ready", pid: process.pid, rssBytes: rss(), hostModules: sorted(hostModules) });
 }
 
 /**
@@ -163,6 +262,23 @@ function batchEnv(env) {
 }
 
 async function run(batch) {
+  running = true;
+  try {
+    await runBatch(batch);
+  } finally {
+    scanCache();
+    running = false;
+  }
+  send({
+    type: "done",
+    id: batch.id,
+    rssBytes: rss(),
+    hostModules: sorted(hostModules),
+    runtimeHostModules: sorted(runtimeHostModules),
+  });
+}
+
+async function runBatch(batch) {
   if (typeof batch.observeOut === "string" && batch.observeOut !== "") {
     globalThis[RESET]?.(batch.observeOut, batch.observeSkip);
   }
@@ -185,7 +301,6 @@ async function run(batch) {
     batch.files.map((path) => ({ context: testContext, path })),
     { isInterrupted: () => false, setState() {} },
   );
-  send({ type: "done", id: batch.id, rssBytes: rss() });
 }
 
 // The parent kills what is left of the group once this process exits.
@@ -198,6 +313,7 @@ process.on("message", (msg) => {
   const step = msg.type === "init" ? init(msg) : msg.type === "run" ? run(msg) : null;
   step?.catch((error) => {
     // Out once the message is sent: `process.send` is asynchronous.
-    send({ type: "error", id: msg.id ?? null, message: message(error) }, () => process.exit(1));
+    const reply = { type: "error", id: msg.id ?? null, message: message(error) };
+    send({ ...reply, hostModules: sorted(hostModules) }, () => process.exit(1));
   });
 });

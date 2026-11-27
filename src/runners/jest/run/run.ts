@@ -94,6 +94,18 @@ export interface JestRun {
   readonly report: RunReport;
   /** The payloads of the files the report completes; every other payload is deleted. */
   readonly coverage: readonly JestCoveragePayload[];
+  /**
+   * Review 0.1.648 B1: of the completed files a warm worker ran, the worktree
+   * modules Node loaded in it for its batches (`WarmRun.runtimeHostModules`):
+   * read by each, though a cached module is never read again. Absent: none.
+   */
+  readonly hostObserved?: readonly HostObserved[];
+}
+
+/** A completed test file and the worktree modules its warm worker's Node used for it; absolute. */
+export interface HostObserved {
+  readonly testFile: TestFileRef;
+  readonly paths: readonly AbsolutePath[];
 }
 
 export const DEFAULT_BATCH_SIZE = 5;
@@ -107,6 +119,8 @@ interface Batch extends BatchOutcome {
   payloads: readonly JestCoveragePayload[];
   /** D7: the warm worker's pid that ran it; `null` for a process of its own. */
   worker: number | null;
+  /** The worktree modules its warm worker's Node used (`WarmRun.runtimeHostModules`). */
+  hostModules: readonly AbsolutePath[];
 }
 
 /**
@@ -171,6 +185,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
       coverage: covered && coverage !== undefined ? batchCoverageDir(coverage.dir, index) : null,
       payloads: [],
       worker: null,
+      hostModules: [],
       exit: null,
       cut: null,
       reports: [],
@@ -213,6 +228,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
   const warm = warmPoolOf(options);
   const warmStart = (covered: boolean, env: NodeJS.ProcessEnv): WarmStart => ({
     workerPath: join(runtimeDir, "warm-worker.cjs") as AbsolutePath,
+    root,
     install,
     cwd,
     wrapperPath: wrapper,
@@ -236,6 +252,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
       batch.coverage !== null && makeLogDir(batch.coverage) ? batch.coverage : undefined;
     const stderr = join(options.logDir, `stderr-${batch.index}.log`);
     let group: Pick<WarmRun, "exited" | "kill">;
+    let hostModules: Promise<readonly AbsolutePath[]> | null = null;
     if (warm === undefined) {
       const env = {
         ...own,
@@ -273,11 +290,13 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
         },
       );
       batch.worker = run.pid ?? null;
+      hostModules = run.runtimeHostModules;
       group = run;
     }
     running.set(batch, group);
     batch.exit = await group.exited;
     running.delete(batch);
+    if (hostModules !== null) batch.hostModules = await hostModules;
     const events = parseJestEvents(readEvents(batch.events, batch.cut));
     batch.reports = readJestBatch(events, batch.files, paths);
     if (batch.coverage !== null) {
@@ -328,6 +347,13 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
       : { loaded: loaded.map((f) => ({ testFile: f.testFile, paths: f.loaded })) }),
   };
   const completed = new Set(report.completedFiles);
+  const hostObserved = batches.flatMap((b) =>
+    b.hostModules.length === 0
+      ? []
+      : b.files
+          .filter((f) => completed.has(f))
+          .map((testFile) => ({ testFile, paths: b.hostModules })),
+  );
   const covered = batches.flatMap((b) => b.payloads).filter((p) => completed.has(p.testFile));
   const dirs = batches.flatMap((b) => (b.coverage === null ? [] : [b.coverage]));
   // Row 018-38: a log folder removed, or made again, while the batches ran took their records.
@@ -344,7 +370,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
     cut: b.cut,
   }));
   writeFileSync(join(options.logDir, "run.json"), runLogJson({ cwd, batches: log }, report));
-  return { report, coverage: covered };
+  return { report, coverage: covered, ...(hostObserved.length === 0 ? {} : { hostObserved }) };
 }
 
 /**
