@@ -155,41 +155,7 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
         : options.observeRuntimePath,
   });
   const reporter = options.reporterPath ?? join(runtimeDir, "squeal-reporter.cjs");
-  const common = (covered: boolean) => [
-    install.bin,
-    "--config",
-    wrapper,
-    "--runInBand",
-    "--ci",
-    "--forceExit",
-    "--testLocationInResults",
-    "--cacheDirectory",
-    join(cacheDir, "jest"),
-    `--reporters=${reporter}`,
-    // Paths, not patterns: the same on 29 and 30, and no file name is read as a regex.
-    "--runTestsByPath",
-    ...project.args,
-    // After the project's own arguments, so its `--coverage=false` does not turn Squeal's off.
-    ...(covered ? JEST_COVERAGE_ARGS : []),
-    "--",
-  ];
-  const size = options.batchSize ?? project.batchSize ?? DEFAULT_BATCH_SIZE;
-  const { coverage } = options;
-  const batches: Batch[] = coverageGroups(options.files, coverage?.covered)
-    .flatMap(({ files, covered }) => split(files, size, options.alone).map((f) => ({ f, covered })))
-    .map(({ f: files, covered }, index) => ({
-      index,
-      files,
-      args: [...common(covered), ...files.map((f) => toAbsolute(root, f.path))],
-      events: join(options.logDir, `events-${index}.jsonl`),
-      coverage: covered && coverage !== undefined ? batchCoverageDir(coverage.dir, index) : null,
-      payloads: [],
-      worker: null,
-      hostModules: [],
-      exit: null,
-      cut: null,
-      reports: [],
-    }));
+  const batches = makeBatches(options, wrapper, cacheDir, reporter);
 
   const base = baseEnv(options, config);
   const running = new Map<Batch, { kill(signal: NodeJS.Signals): void }>();
@@ -371,6 +337,50 @@ export async function runJest(options: JestRunOptions): Promise<JestRun> {
   }));
   writeFileSync(join(options.logDir, "run.json"), runLogJson({ cwd, batches: log }, report));
   return { report, coverage: covered, ...(hostObserved.length === 0 ? {} : { hostObserved }) };
+}
+
+/** Splits `options.files` into coverage-grouped Jest batches with CLI args and log paths. */
+function makeBatches(
+  options: JestRunOptions,
+  wrapper: AbsolutePath,
+  cacheDir: AbsolutePath,
+  reporter: string,
+): Batch[] {
+  const { project, install, root, coverage } = options;
+  const common = (covered: boolean) => [
+    install.bin,
+    "--config",
+    wrapper,
+    "--runInBand",
+    "--ci",
+    "--forceExit",
+    "--testLocationInResults",
+    "--cacheDirectory",
+    join(cacheDir, "jest"),
+    `--reporters=${reporter}`,
+    // Paths, not patterns: the same on 29 and 30, and no file name is read as a regex.
+    "--runTestsByPath",
+    ...project.args,
+    // After the project's own arguments, so its `--coverage=false` does not turn Squeal's off.
+    ...(covered ? JEST_COVERAGE_ARGS : []),
+    "--",
+  ];
+  const size = options.batchSize ?? project.batchSize ?? DEFAULT_BATCH_SIZE;
+  return coverageGroups(options.files, coverage?.covered)
+    .flatMap(({ files, covered }) => split(files, size, options.alone).map((f) => ({ f, covered })))
+    .map(({ f: files, covered }, index) => ({
+      index,
+      files,
+      args: [...common(covered), ...files.map((f) => toAbsolute(root, f.path))],
+      events: join(options.logDir, `events-${index}.jsonl`),
+      coverage: covered && coverage !== undefined ? batchCoverageDir(coverage.dir, index) : null,
+      payloads: [],
+      worker: null,
+      hostModules: [],
+      exit: null,
+      cut: null,
+      reports: [],
+    }));
 }
 
 /**
