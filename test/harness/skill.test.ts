@@ -311,8 +311,9 @@ describe("the squeal skill", () => {
   // Row 005-128 raised it from 5,300: the human's steps 1, 4 and 8 and the new description, which
   // carry what the short start message no longer says, add about 1,500 characters.
   // Row 023-35 raised it from 7,000: step 8's tool timeout above `--timeout` (round 5, T6) adds 88.
+  // Row 026-34 raised it from 7,100: one line on failures only a remote run has.
   it("stays within its budget", () => {
-    expect(body.length).toBeLessThan(7_100);
+    expect(body.length).toBeLessThan(7_200);
   });
 
   // Row 005-128: the start message no longer defines a revision; the glossary does, once.
