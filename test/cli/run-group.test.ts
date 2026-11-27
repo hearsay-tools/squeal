@@ -1,5 +1,6 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
@@ -24,6 +25,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   closeFakeDaemons();
   rmSync(runtimeDir, { recursive: true, force: true });
   process.env = { ...saved };
@@ -272,6 +274,18 @@ describe("squeal run <group> (spec 019 D6)", () => {
     clockBehind();
     r.daemon("stale", Date.now() - 111_000);
     const holder = { kind: "startup", heldMs: 5_000, step: null };
+    // Row 011-429: the busy timeout each store read gave SQLite once the store was locked.
+    const timeouts: number[] = [];
+    let locked = false;
+    const exec = DatabaseSync.prototype.exec;
+    vi.spyOn(DatabaseSync.prototype, "exec").mockImplementation(function (
+      this: DatabaseSync,
+      sql: string,
+    ) {
+      const set = /^PRAGMA busy_timeout = (\d+)$/.exec(sql);
+      if (locked && set !== null) timeouts.push(Number(set[1]));
+      return exec.call(this, sql);
+    });
     await fakeDaemon(
       socketPathFor(r.worktreeId),
       {
@@ -283,15 +297,18 @@ describe("squeal run <group> (spec 019 D6)", () => {
         if (type === "run-group") {
           r.store.close();
           lockStore(r.repo.commonDir);
+          locked = true;
         }
         if (type === "run-group-status") passDeadline();
       },
     );
     const result = await run(["run", "e2e", "--wait", String(WAIT_MS)], r.root);
     expect({ ...result, stdout: "" }).toEqual({ code: 3, stdout: "", stderr: "" });
-    // In time: the heartbeat read gave up at its own bound, not at the status reads' busy timeout.
-    const waited = /store busy, waited (\d+) ms/.exec(result.stdout);
-    expect(Number(waited?.[1]), result.stdout).toBeLessThan(STATUS_BUSY_TIMEOUT_MS);
+    // In time: the heartbeat read asked SQLite to wait its own bound (`HEARTBEAT_BUSY_MS`, 100 ms),
+    // not the status reads' busy timeout. The bound it set is read, not the time it took, which a
+    // pause of the host stretches (review 0.1.663 B2: 1,201 ms after one pause of 1,100 ms).
+    expect(timeouts.length, result.stdout).toBeGreaterThan(0);
+    expect(Math.max(...timeouts), result.stdout).toBeLessThan(STATUS_BUSY_TIMEOUT_MS);
     expect(result.stdout).toMatch(
       /^Group e2e has no verdict: the deadline passed before the daemon took request g1; the daemon's heartbeat was not read \(store busy, waited \d+ ms: another process holds the store's lock; run the command again once it is released\); it waits for the daemon's startup, which has run for 5 s\. The request stays pending: wait again with squeal run e2e --wait\.\n$/,
     );

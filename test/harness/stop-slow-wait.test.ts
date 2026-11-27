@@ -7,7 +7,6 @@ import {
 } from "../../src/core/slow/stop-wait.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
-import { STOP_SLOW_HANDOFF_MS } from "../../src/harness/shared/stop-slow.js";
 import { recorded, type SquealRepo } from "./helpers.js";
 import {
   decision,
@@ -244,10 +243,16 @@ describe.each(HARNESSES)(
       async (active) => {
         const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 300 });
         expect((await stopBoth(harness, r)).waiting.decision).toBe("block");
-        const started = performance.now();
-        const out = await harness.stopSlow(r, { stop_hook_active: active });
+        // Row 011-429: the waiting entry's elapsed clock never moves, so a wait for the slow file,
+        // still open, would never end; only an entry that waits for nothing returns. The 2 s entry
+        // hands the turn over beside it, as a harness runs them. The case's 60 s timeout is the
+        // only ceiling, and it catches that hang.
+        const held = heldBound();
+        const [, out] = await Promise.all([
+          harness.stop(r, { stop_hook_active: active }),
+          harness.stopSlow(r, { stop_hook_active: active }, held.deps),
+        ]);
         expect(out.stdout).toBe("");
-        expect(performance.now() - started).toBeLessThan(STOP_SLOW_HANDOFF_MS / 2);
       },
     );
 
@@ -284,10 +289,13 @@ describe.each(HARNESSES)(
 it("a SubagentStop never waits (claude-code)", async () => {
   const [harness] = HARNESSES;
   if (harness === undefined) throw new Error("no harness");
-  const r = await repo(harness, { requireSlowSuite: true });
+  const r = await repo(harness, { requireSlowSuite: true }, false);
   await runHook("session-start", recorded("subagent-start", r.root), deps);
-  const started = performance.now();
   const out = await runHook("stop-slow", recorded("subagent-stop", r.root), deps);
   expect(out.stdout).toBe("");
-  expect(performance.now() - started).toBeLessThan(STOP_SLOW_HANDOFF_MS / 2);
+  // Row 011-429: it returned before it recorded a waiting entry, which comes before any wait.
+  const consumers = r.store.consumers.list(r.worktreeId).map((c) => c.consumer);
+  expect(consumers.length).toBeGreaterThan(0);
+  for (const consumer of consumers)
+    expect(stopWaitRuns(r.store, consumer, harness.name, squealVersion())).toBe(false);
 });

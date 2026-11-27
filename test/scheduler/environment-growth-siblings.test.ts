@@ -199,8 +199,9 @@ describe(
           return result;
         },
       );
-      // Ten of the wait's reads with a and c held, or its end, whichever comes first.
-      await expect.poll(() => ended !== null || reads >= 10, { timeout: 60_000 }).toBe(true);
+      // Ten of the wait's reads with a and c held, or its end, whichever comes first; the ceiling is
+      // the case's own timeout, so it only ends a hang.
+      await expect.poll(() => ended !== null || reads >= 10, SLOW).toBe(true);
 
       expect(ended).toBeNull();
       release();
