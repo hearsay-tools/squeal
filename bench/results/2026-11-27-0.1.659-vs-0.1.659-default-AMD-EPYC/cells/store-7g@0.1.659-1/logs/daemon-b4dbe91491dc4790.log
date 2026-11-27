@@ -1,0 +1,24 @@
+2026-11-27T19:39:39.051Z [11054] squeal daemon: serving /home/user/results/cells/store-7g@0.1.659-1/work/wt0 on /home/user/results/cells/store-7g@0.1.659-1/work/run/squeal-b4dbe91491dc4790.sock
+2026-11-27T19:39:39.083Z [11054] squeal daemon: full integrity check: ok
+2026-11-27T19:40:16.361Z [11054] squeal daemon: daemon stopped: squeal stop
+2026-11-27T19:40:16.608Z [11054] squeal daemon: coverage: 75 completed test files got no record since this daemon started: 75 closed (the writer closed first); the last: test/m80.test.ts: the writer closed first
+2026-11-27T19:40:16.611Z [11054] squeal daemon: code store: last minute: 93 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T19:40:17.454Z [11054] squeal daemon: daemon stopped: squeal stop
+2026-11-27T19:44:51.546Z [16841] squeal daemon: serving /home/user/results/cells/store-7g@0.1.659-1/work/wt0 on /home/user/results/cells/store-7g@0.1.659-1/work/run/squeal-b4dbe91491dc4790.sock
+2026-11-27T19:45:49.502Z [16841] squeal daemon: code store: last minute: 0 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T19:45:54.537Z [16841] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 298 to 132 MiB in a 27 ms pause
+2026-11-27T19:46:50.303Z [16841] squeal daemon: hook writes: 14 taken, queue wait p95 17 ms max 17 ms
+2026-11-27T19:46:50.304Z [16841] squeal daemon: code store: last minute: 76 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T19:47:50.305Z [16841] squeal daemon: hook writes: 10 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T19:47:50.305Z [16841] squeal daemon: code store: last minute: 74 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T19:48:47.353Z [16841] squeal daemon: busy, heap in use 50 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 240 to 174 MiB in a 30 ms pause; 28 MiB of heap in use after it
+2026-11-27T19:48:50.304Z [16841] squeal daemon: hook writes: 18 taken, queue wait p95 1 ms max 1 ms
+2026-11-27T19:48:50.306Z [16841] squeal daemon: code store: last minute: 91 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T19:49:34.247Z [16841] squeal daemon: long write: store.sqlite write lock held 392 ms by #write < #record; 4603 rows written
+2026-11-27T19:49:49.884Z [16841] squeal daemon: long write: store.sqlite write lock held 329 ms by #write < #record; 4603 rows written
+2026-11-27T19:49:50.635Z [16841] squeal daemon: hook writes: 6 taken, queue wait p95 44 ms max 44 ms
+2026-11-27T19:49:50.635Z [16841] squeal daemon: code store: last minute: 49 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T19:49:58.932Z [16841] squeal daemon: daemon stopped: squeal stop
+2026-11-27T19:49:58.936Z [16841] squeal daemon: code store: last minute: 33 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T19:49:59.284Z [16841] squeal daemon: hook writes: 2 taken, queue wait p95 0 ms max 0 ms
+2026-11-27T19:49:59.388Z [16841] squeal daemon: daemon stopped: squeal stop

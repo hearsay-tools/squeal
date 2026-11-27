@@ -1,0 +1,101 @@
+2026-11-27T20:16:12.955Z [71727] squeal daemon: serving /home/user/results/cells/store-7g-upgrade@0.1.659-1/work/wt0 on /home/user/results/cells/store-7g-upgrade@0.1.659-1/work/run/squeal-fa6364182c12179b.sock
+2026-11-27T20:16:12.978Z [71727] squeal daemon: full integrity check: ok
+2026-11-27T20:16:51.260Z [71727] squeal daemon: daemon stopped: squeal stop
+2026-11-27T20:16:51.263Z [71727] squeal daemon: code store: last minute: 101 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:16:51.732Z [71727] squeal daemon: daemon stopped: squeal stop
+2026-11-27T20:23:58.061Z [78144] squeal daemon: serving /home/user/results/cells/store-7g-upgrade@0.1.659-1/work/wt0 on /home/user/results/cells/store-7g-upgrade@0.1.659-1/work/run/squeal-fa6364182c12179b.sock
+2026-11-27T20:24:54.228Z [78144] squeal daemon: long write: store.sqlite write lock held 375 ms by squeal.mjs:2436 < AsyncLocalStorage.run < withBusySliceSync; 256 rows written
+2026-11-27T20:24:58.616Z [78144] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 167 to 96 MiB in a 26 ms pause
+2026-11-27T20:25:22.258Z [78144] squeal daemon: long write: store.sqlite write lock held 263 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:25:29.145Z [78144] squeal daemon: long write: store.sqlite write lock held 345 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:25:51.883Z [78144] squeal daemon: long write: store.sqlite write lock held 279 ms by #write < #record; 121 rows written
+2026-11-27T20:25:53.354Z [78144] squeal daemon: hook writes: 13 taken, queue wait p95 182 ms max 182 ms
+2026-11-27T20:25:53.354Z [78144] squeal daemon: code store: last minute: 43 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:25:59.833Z [78144] squeal daemon: long write: store.sqlite write lock held 297 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:02.060Z [78144] squeal daemon: long write: store.sqlite write lock held 266 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:04.297Z [78144] squeal daemon: long write: store.sqlite write lock held 389 ms by reconcileBatch < #pass < withBusySlice; 405 rows written
+2026-11-27T20:26:05.408Z [78144] squeal daemon: long write: store.sqlite write lock held 327 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:05.718Z [78144] squeal daemon: long write: store.sqlite write lock held 304 ms by #write < #record; 97 rows written
+2026-11-27T20:26:06.484Z [78144] squeal daemon: long write: store.sqlite write lock held 302 ms by #write < #record; 97 rows written
+2026-11-27T20:26:08.277Z [78144] squeal daemon: long write: store.sqlite write lock held 332 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:12.849Z [78144] squeal daemon: long write: store.sqlite write lock held 251 ms by #write < #record; 96 rows written
+2026-11-27T20:26:19.329Z [78144] squeal daemon: coverage: no result of run e70df119-63d2-444e-bcbe-aebf404b9309 for test/m268.test.ts
+2026-11-27T20:26:19.332Z [78144] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 no-result (its run's result was not found at its key); the last: test/m268.test.ts: its run's result was not found at its key
+2026-11-27T20:26:20.328Z [78144] squeal daemon: long write: store.sqlite write lock held 394 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:24.470Z [78144] squeal daemon: long write: store.sqlite write lock held 289 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:26.144Z [78144] squeal daemon: long write: store.sqlite write lock held 290 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:31.475Z [78144] squeal daemon: long write wait: hook write waited 335 ms for the daemon main thread
+2026-11-27T20:26:32.634Z [78144] squeal daemon: long write: store.sqlite write lock held 627 ms by #write < #record; 97 rows written
+2026-11-27T20:26:36.132Z [78144] squeal daemon: long write: store.sqlite write lock held 724 ms by #write < #record; 96 rows written
+2026-11-27T20:26:40.768Z [78144] squeal daemon: long write: store.sqlite write lock held 315 ms by #write < #record; 96 rows written
+2026-11-27T20:26:47.260Z [78144] squeal daemon: long write wait: hook write waited 742 ms for the daemon main thread
+2026-11-27T20:26:50.876Z [78144] squeal daemon: long write: store.sqlite write lock held 256 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:52.937Z [78144] squeal daemon: long write: store.sqlite write lock held 364 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:53.643Z [78144] squeal daemon: hook writes: 7 taken, queue wait p95 742 ms max 742 ms
+2026-11-27T20:26:53.643Z [78144] squeal daemon: code store: last minute: 60 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:26:55.745Z [78144] squeal daemon: long write: store.sqlite write lock held 514 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:26:58.008Z [78144] squeal daemon: long write: store.sqlite write lock held 257 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:04.276Z [78144] squeal daemon: long write: store.sqlite write lock held 255 ms by reconcileBatch < process.processTicksAndRejections < #pass; 406 rows written
+2026-11-27T20:27:05.918Z [78144] squeal daemon: long write: store.sqlite write lock held 546 ms by #write < #record; 95 rows written
+2026-11-27T20:27:11.394Z [78144] squeal daemon: long write: store.sqlite write lock held 457 ms by #write < #record; 96 rows written
+2026-11-27T20:27:14.003Z [78144] squeal daemon: long write: store.sqlite write lock held 297 ms by #write < #record; 96 rows written
+2026-11-27T20:27:15.705Z [78144] squeal daemon: long write: store.sqlite write lock held 282 ms by #write < #record; 96 rows written
+2026-11-27T20:27:20.201Z [78144] squeal daemon: long write: store.sqlite write lock held 252 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:23.693Z [78144] squeal daemon: long write: store.sqlite write lock held 390 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:39.068Z [78144] squeal daemon: long write: store.sqlite write lock held 293 ms by #write < #record; 96 rows written
+2026-11-27T20:27:41.122Z [78144] squeal daemon: long write: store.sqlite write lock held 506 ms by #write < #record; 96 rows written
+2026-11-27T20:27:42.672Z [78144] squeal daemon: long write: store.sqlite write lock held 485 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:44.110Z [78144] squeal daemon: long write: store.sqlite write lock held 469 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:46.066Z [78144] squeal daemon: long write: store.sqlite write lock held 346 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:46.106Z [78144] squeal daemon: busy, heap in use 50 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 217 to 170 MiB in a 34 ms pause; 28 MiB of heap in use after it
+2026-11-27T20:27:47.048Z [78144] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-27T20:27:48.744Z [78144] squeal daemon: long write: store.sqlite write lock held 261 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:49.538Z [78144] squeal daemon: the pool granted the vitest lane's tier after 2 s of waiting for CPU
+2026-11-27T20:27:51.054Z [78144] squeal daemon: long write: store.sqlite write lock held 446 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:27:53.672Z [78144] squeal daemon: hook writes: 11 taken, queue wait p95 240 ms max 240 ms
+2026-11-27T20:27:53.672Z [78144] squeal daemon: code store: last minute: 58 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:28:03.788Z [78144] squeal daemon: long write: store.sqlite write lock held 312 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:07.448Z [78144] squeal daemon: long write: store.sqlite write lock held 465 ms by #write < #record; 97 rows written
+2026-11-27T20:28:08.521Z [78144] squeal daemon: long write: store.sqlite write lock held 351 ms by #write < #record; 73 rows written
+2026-11-27T20:28:14.397Z [78144] squeal daemon: long write: store.sqlite write lock held 308 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:16.818Z [78144] squeal daemon: long write: store.sqlite write lock held 310 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:18.880Z [78144] squeal daemon: long write wait: hook write waited 387 ms for the daemon main thread
+2026-11-27T20:28:22.179Z [78144] squeal daemon: long write: store.sqlite write lock held 279 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:27.428Z [78144] squeal daemon: long write: store.sqlite write lock held 290 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:27.868Z [78144] squeal daemon: long write: store.sqlite write lock held 419 ms by #write < #record; 150 rows written
+2026-11-27T20:28:42.310Z [78144] squeal daemon: long write: store.sqlite write lock held 375 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:43.697Z [78144] squeal daemon: long write: store.sqlite write lock held 500 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:46.077Z [78144] squeal daemon: long write: store.sqlite write lock held 354 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:47.075Z [78144] squeal daemon: long write: store.sqlite write lock held 279 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:28:53.672Z [78144] squeal daemon: hook writes: 16 taken, queue wait p95 387 ms max 387 ms
+2026-11-27T20:28:53.672Z [78144] squeal daemon: code store: last minute: 59 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:29:07.910Z [78144] squeal daemon: coverage: no result of run 6ece43c1-2d09-4a1e-baf2-1824a1eeaa5c for test/m406.test.ts
+2026-11-27T20:29:07.910Z [78144] squeal daemon: coverage: 2 completed test files got no record since this daemon started: 2 no-result (its run's result was not found at its key); the last: test/m406.test.ts: its run's result was not found at its key
+2026-11-27T20:29:08.340Z [78144] squeal daemon: coverage: no result of run 6ece43c1-2d09-4a1e-baf2-1824a1eeaa5c for test/m412.test.ts
+2026-11-27T20:29:09.282Z [78144] squeal daemon: coverage: no result of run d73efce9-fe36-4bdc-87df-790bbbfac720 for test/m423.test.ts
+2026-11-27T20:29:09.282Z [78144] squeal daemon: coverage: 4 completed test files got no record since this daemon started: 4 no-result (its run's result was not found at its key); the last: test/m423.test.ts: its run's result was not found at its key
+2026-11-27T20:29:10.789Z [78144] squeal daemon: long write: store.sqlite write lock held 266 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:29:14.136Z [78144] squeal daemon: the background ceiling refused a backlog tier: 3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-27T20:29:14.138Z [78144] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-27T20:29:31.769Z [78144] squeal daemon: the background ceiling let a backlog tier start after 17 s and 8 refused looks
+2026-11-27T20:29:31.770Z [78144] squeal daemon: the pool granted the vitest lane's tier after 18 s of waiting for CPU
+2026-11-27T20:29:34.135Z [78144] squeal daemon: long write: store.sqlite write lock held 291 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:29:48.575Z [78144] squeal daemon: long write: store.sqlite write lock held 270 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:29:53.672Z [78144] squeal daemon: hook writes: 4 taken, queue wait p95 212 ms max 212 ms
+2026-11-27T20:29:53.673Z [78144] squeal daemon: code store: last minute: 17 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:30:05.718Z [78144] squeal daemon: long write: store.sqlite write lock held 324 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:30:13.116Z [78144] squeal daemon: long write: store.sqlite write lock held 574 ms by #write < #record; 4603 rows written
+2026-11-27T20:30:21.968Z [78144] squeal daemon: long write: store.sqlite write lock held 284 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:30:22.893Z [78144] squeal daemon: long write: store.sqlite write lock held 254 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:30:42.015Z [78144] squeal daemon: long write: store.sqlite write lock held 251 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:30:44.325Z [78144] squeal daemon: long write: store.sqlite write lock held 305 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:30:53.673Z [78144] squeal daemon: code store: last minute: 27 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:30:56.846Z [78144] squeal daemon: long write: store.sqlite write lock held 849 ms by #write < #record; 4603 rows written
+2026-11-27T20:31:01.176Z [78144] squeal daemon: long write: store.sqlite write lock held 299 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:31:02.613Z [78144] squeal daemon: long write: store.sqlite write lock held 252 ms by last < withoutAutoCheckpoint < squeal.mjs:1715; 32 rows written
+2026-11-27T20:31:07.527Z [78144] squeal daemon: long write: store.sqlite write lock held 285 ms by #write < #record; 2211 rows written
+2026-11-27T20:31:12.677Z [78144] squeal daemon: daemon stopped: squeal stop
+2026-11-27T20:31:12.681Z [78144] squeal daemon: code store: last minute: 38 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-27T20:31:12.933Z [78144] squeal daemon: the store was busy for 306.2 s (another connection held its write lock); ran once it was free: pruning, the results of 1 file, a hook's or command's writes, the heartbeat, the next tier
+2026-11-27T20:31:12.934Z [78144] squeal daemon: hook writes: 2 taken, queue wait p95 2 ms max 2 ms
+2026-11-27T20:31:13.302Z [78144] squeal daemon: daemon stopped: squeal stop

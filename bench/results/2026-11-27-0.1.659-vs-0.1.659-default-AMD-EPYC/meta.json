@@ -1,0 +1,78 @@
+{
+  "startedAt": "2026-11-27T19:38:48.502Z",
+  "squealVersion": "0.1.659 vs 0.1.659",
+  "plugins": [
+    {
+      "version": "0.1.659",
+      "label": "0.1.659-1"
+    },
+    {
+      "version": "0.1.659",
+      "label": "0.1.659-2"
+    }
+  ],
+  "repeat": 1,
+  "node": "v24.22.1",
+  "cpuModel": "AMD EPYC",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 7,
+  "sha256MiBPerS": [
+    2540.6666666666665,
+    2549,
+    2547.6666666666665
+  ],
+  "loadavgAtStart": "0.15 0.04 0.03 1/382 6912",
+  "cells": [
+    {
+      "name": "store-7g@0.1.659-1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.659-1",
+      "rep": 1
+    },
+    {
+      "name": "store-7g@0.1.659-2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "ageRounds": 326,
+      "base": "store-7g",
+      "plugin": "0.1.659-2",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-upgrade@0.1.659-2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "7d",
+      "base": "store-7g-upgrade",
+      "plugin": "0.1.659-2",
+      "rep": 1
+    },
+    {
+      "name": "store-7g-upgrade@0.1.659-1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "ageRounds": 326,
+      "lists": "7d",
+      "base": "store-7g-upgrade",
+      "plugin": "0.1.659-1",
+      "rep": 1
+    }
+  ],
+  "deps": {
+    "p500": {
+      "vitest": "5.0.3",
+      "vite": "8.4.0",
+      "@vitest/coverage-v8": "5.0.3"
+    }
+  },
+  "endedAt": "2026-11-27T20:31:20.979Z"
+}
