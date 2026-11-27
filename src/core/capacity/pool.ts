@@ -113,6 +113,14 @@ export function poolLaneOf(priority: CheckPriority): PoolLane {
  */
 export type PoolTierKind = "backlog" | "checkpoint";
 
+/**
+ * Why the pool refused a backlog tier (row 017-37, gh-238): `ceiling`, the
+ * busy CPUs reached the background ceiling (spec 021 D18); `share`, the
+ * fair share or the project's cap left it fewer than its fewest workers;
+ * `queue`, the permits it may take are held, or kept for older waiters.
+ */
+export type PoolRefusal = "ceiling" | "share" | "queue";
+
 export interface PermitPool {
   /**
    * The grant for a tier of `lane` that wants `want` workers and runs no
@@ -147,6 +155,11 @@ export interface PermitPool {
    */
   gate(): PoolGate | null;
   /**
+   * Row 017-37: why the last backlog look got nothing (`PoolRefusal`);
+   * `null` after a grant, and before the first backlog look.
+   */
+  refusal(): PoolRefusal | null;
+  /**
    * A lane's wait for quiet holds `files` backlog files and ends soon (spec
    * 011 C4 step 5 and C10 as amended, row 011-424): the mark states them as
    * demand with no grant, so the other daemons' fair shares count them as a
@@ -168,6 +181,17 @@ export const HOST_WINDOW_MIN_MS = 1_000;
 /** Permit `i` of the pool. The slow slot's files (`slow.lock`, `slow.<i>.lock`) are its own. */
 export function poolPermitFile(i: number): string {
   return `pool.${i}.lock`;
+}
+
+/**
+ * Row 017-37: the cause of a look that got nothing, in `#logRefusal`'s
+ * order: a share below the fewest workers is the share's, whatever the
+ * CPUs; else a gate below them is the ceiling's; else the permits were not
+ * free to take.
+ */
+function refusalOf(gated: number, fewest: number, target: number): PoolRefusal {
+  if (target < fewest) return "share";
+  return gated < fewest ? "ceiling" : "queue";
 }
 
 /** CPUs − 1, at least 1: run-mode Vitest's, Jest's and node:test's default (research/host-capacity.md 5). */
@@ -263,6 +287,8 @@ class LockFilePool implements PermitPool {
   #mark: PoolMark | null = null;
   /** What the last look read, for a refused tier's wait (row 011-309). */
   #gate: PoolGate | null = null;
+  /** Why the last backlog look got nothing (row 017-37). */
+  #refusal: PoolRefusal | null = null;
   readonly #cpus: number;
   readonly #backgroundShare: number;
   /** The busy CPUs below which a background tier takes a permit (D18). */
@@ -391,6 +417,10 @@ class LockFilePool implements PermitPool {
 
   gate(): PoolGate | null {
     return this.#gate;
+  }
+
+  refusal(): PoolRefusal | null {
+    return this.#refusal;
   }
 
   expectBacklog(files: number): void {
@@ -649,13 +679,16 @@ class LockFilePool implements PermitPool {
    * D18: a refusal of a backlog tier by the ceiling, with the busy CPUs the
    * gate read: the gate read the host and left the tier fewer than `fewest`
    * workers where its share, `target`, had them. The log has the first of
-   * each episode, and a grant ends it (row 011-404).
+   * each episode, and a grant ends it (row 011-404). Row 017-37: every
+   * backlog look keeps its cause, the share's and the queue's too, which
+   * the log leaves out.
    */
   #logRefusal(
     look: { gated: number; fewest: number; target: number; grant: number },
     now: number,
   ): void {
     const { gated, fewest, target, grant } = look;
+    this.#refusal = grant > 0 ? null : refusalOf(gated, fewest, target);
     if (grant > 0) this.#refusals?.granted(now);
     const gate = this.#gate;
     if (gated >= fewest || target < fewest || this.#refusals === null) return;
