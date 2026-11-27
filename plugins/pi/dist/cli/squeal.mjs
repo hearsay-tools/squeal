@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.656";
+  if (true) return "0.1.657";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -93382,7 +93382,7 @@ init_derive();
 init_text();
 
 // src/core/status/test-frame.ts
-var V8_FRAME = /^\s*at (.+?)\s*$/;
+var V8_FRAME = /^\s*at (?:async )?(.+?)\s*$/;
 var V8_POSITION = /^(.+):(\d+):(\d+)$/;
 var PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
 var NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
