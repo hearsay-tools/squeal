@@ -84,6 +84,51 @@ describe("testFileFrame on V8 stacks (011-76 tests 1 to 3)", () => {
     ).toEqual({ path: "test/a.test.ts", line: 8, column: 28 });
   });
 
+  it("keeps the frame of a synchronous function named `async` (row 025-31, review 0.1.657 S3)", () => {
+    const named = (helper: string, test: string) => [
+      error(["Error: boom", helper, test].join("\n"), {
+        path: "src/helper.ts",
+        line: 3,
+        column: 9,
+      }),
+    ];
+    // The review's reproducer: the helper is `function async()`.
+    expect(
+      testFileFrame(
+        check("test/a.test.ts"),
+        named("    at async (src/helper.ts:3:9)", "    at test/a.test.ts:8:4"),
+      ),
+    ).toEqual({ path: "test/a.test.ts", line: 8, column: 4 });
+    // The test-file frame is `function async()`.
+    expect(
+      testFileFrame(
+        check("test/a.test.ts"),
+        named("    at helper (src/helper.ts:3:9)", "    at async (test/a.test.ts:8:4)"),
+      ),
+    ).toEqual({ path: "test/a.test.ts", line: 8, column: 4 });
+    // An async function named `async`.
+    expect(
+      testFileFrame(
+        check("test/a.test.ts"),
+        named("    at helper (src/helper.ts:3:9)", "    at async async (test/a.test.ts:8:4)"),
+      ),
+    ).toEqual({ path: "test/a.test.ts", line: 8, column: 4 });
+  });
+
+  it("reads an anonymous async frame whose path begins with a parenthesis (row 025-31)", () => {
+    const stack = [
+      "Error: boom",
+      "    at signIn ((auth)/sign-in.ts:7:11)",
+      "    at async (auth)/login.test.ts:30:1",
+    ].join("\n");
+    const errors = [error(stack, { path: "(auth)/sign-in.ts", line: 7, column: 11 })];
+    expect(testFileFrame(check("(auth)/login.test.ts"), errors)).toEqual({
+      path: "(auth)/login.test.ts",
+      line: 30,
+      column: 1,
+    });
+  });
+
   it("reads a path with parentheses, as a route group's", () => {
     const stack = [
       "Error: boom",

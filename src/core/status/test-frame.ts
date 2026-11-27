@@ -13,8 +13,10 @@ import type { RelativePath, SourceLocation, TestFileFrame } from "../types/commo
  * A V8 frame: `at <function> (<position>)` or `at <position>`, either after
  * `async ` for an async frame, as V8 and Vite 8.4.0's module runner print it
  * (row 025-30): the test file's frame of an anonymous async test is `at async <position>`.
+ * `async ` is stripped only when a frame follows it, not `(<position>)`: `at async (<position>)`
+ * is a function named `async` (row 025-31, review 0.1.657 S3). A position never ends in `)`.
  */
-const V8_FRAME = /^\s*at (?:async )?(.+?)\s*$/;
+const V8_FRAME = /^\s*at (?:async (?!\(.*\)\s*$))?(.+?)\s*$/;
 
 /** A V8 position, `<path>:<line>:<column>`; the path may hold parentheses, as a route group's. */
 const V8_POSITION = /^(.+):(\d+):(\d+)$/;
