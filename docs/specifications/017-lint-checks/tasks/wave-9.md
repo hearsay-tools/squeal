@@ -23,3 +23,9 @@ The human, 2026-11-28 (task b468025e card: "Approve all three parts"). Coordinat
 - Commits on the worker branch; the final message lists the spec text D7 and D8 need and every JSON change.
 
 Use /worker.
+
+## Review of candidate 0.1.666 (reviewer; shape: review)
+
+Candidate `cand/0.1.666` at `ff4f449e6` (row 017-37 commits plus the 0.1.666 bundle commit), base `3e52a9fa9` (main when integrated). Read this brief, `research/lint-gate-stall.md` and `tasks/017-37/notes.md`. Check the three contract items and their tests; the two agreed edits outside the brief (`src/core/scheduler/capacity.ts` `backgroundGate().refusal`, `src/cli/named-print.ts` `lint` field) stay additive; an edited file still records no transition from an edit part of a first or config keying; `status --wait` exit code and verdict are unchanged at the deadline; JSON is additive and the evals parser round-trips the real formatter; backlog parts still wait while refused. Use Squeal results and CI run 46085330449; targeted checks only, no full suite, no bench (the bench has no lint cells; the coordinator runs the `@scheduler` pair for the pool change). Write `reviews/0.1.666.md`.
+
+Use /reviewer.
