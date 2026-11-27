@@ -23,7 +23,8 @@ import { removeTree } from "./remove-tree.js";
  * A group is taken when it leads a session of its own (`detached: true`
  * starts one so), its leader's id was not in use when the folder was made,
  * it is not this process's group, and one of its live members names the
- * folder: in its arguments, its working directory or an environment value.
+ * folder as a path prefix: its working directory, a whole argument, or a
+ * whole environment value or one of its `:`-separated elements.
  * The first two keep every group that existed before the folder out
  * (review 011-336 B1): only what started for it is signalled. Read from
  * `/proc` alone; where it is missing (not Linux) the folder is only removed.
@@ -107,23 +108,22 @@ function groupOf(pid: number): number | null {
   }
 }
 
-/** Whether `pid`'s arguments, working directory or environment name one of `names`. */
+/**
+ * Whether `pid`'s working directory, one of its whole arguments, or one of its
+ * whole environment values or their `:`-separated path-list elements is one of
+ * `names` or a path below it. Never a match inside a longer path: `<other>/<dir>/x`
+ * is another tree (review of cand/0.1.663).
+ */
 function namesFolder(pid: number, names: readonly string[]): boolean {
-  const texts = [
-    ...(nulSeparated(`/proc/${pid}/cmdline`) ?? []),
-    ...(nulSeparated(`/proc/${pid}/environ`) ?? []).flatMap((entry) =>
-      entry.slice(entry.indexOf("=") + 1).split(":"),
-    ),
-  ];
+  const paths = [...(nulSeparated(`/proc/${pid}/cmdline`) ?? [])];
+  for (const entry of nulSeparated(`/proc/${pid}/environ`) ?? []) {
+    const value = entry.slice(entry.indexOf("=") + 1);
+    paths.push(value, ...value.split(":"));
+  }
   try {
-    texts.push(readlinkSync(`/proc/${pid}/cwd`));
+    paths.push(readlinkSync(`/proc/${pid}/cwd`));
   } catch {
     // Another user's process, or gone.
   }
-  return texts.some((text) => names.some((name) => within(text, name)));
-}
-
-/** Whether `text` is the path `dir`, or names a path below it. */
-function within(text: string, dir: string): boolean {
-  return text === dir || text.endsWith(`=${dir}`) || text.includes(`${dir}/`);
+  return paths.some((path) => names.some((name) => path === name || path.startsWith(`${name}/`)));
 }
