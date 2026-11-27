@@ -123,15 +123,17 @@ function install(settings) {
   } catch {
     // a root that is gone records nothing anyway
   }
-  const skip = [settings.out, ...settings.skip].map((p) =>
-    p.endsWith(path.sep) ? p : p + path.sep,
-  );
+  const withSep = (p) => (p.endsWith(path.sep) ? p : p + path.sep);
+  let skip = [settings.out, ...settings.skip].map(withSep);
   const gitDir = `${root}.git${path.sep}`;
   const nodeModules = `${path.sep}node_modules${path.sep}`;
-  const output = path.join(
-    settings.out,
-    `${process.pid}-${workerThreads.threadId}-${Date.now().toString(36)}.ndjson`,
-  );
+  let outputs = 0;
+  const outputIn = (out) =>
+    path.join(
+      out,
+      `${process.pid}-${workerThreads.threadId}-${Date.now().toString(36)}-${outputs++}.ndjson`,
+    );
+  let output = outputIn(settings.out);
 
   /** test file -> { f, l, r, w, d }: every path seen, and the ones not written out yet. */
   const seen = new Map();
@@ -226,6 +228,25 @@ function install(settings) {
     } catch {
       // never the test's failure
     }
+  };
+
+  /**
+   * A long-lived process that runs several batches, each for its own run, starts each batch
+   * here: what is waiting goes to the batch before, every path is new again, and with `nextOut`
+   * the records go to that folder, and children get it in `SQUEAL_OBSERVE`, both the one
+   * `spawn.cjs` writes from `settings` and this process's own; `nextSkip` replaces `skip` when
+   * given.
+   */
+  globalThis[Symbol.for("squeal.observeReset")] = (nextOut, nextSkip) => {
+    flush();
+    seen.clear();
+    if (typeof nextOut !== "string" || nextOut === "") return;
+    if (Array.isArray(nextSkip)) settings.skip = nextSkip.filter((s) => typeof s === "string");
+    settings.out = nextOut;
+    skip = [nextOut, ...settings.skip].map(withSep);
+    output = outputIn(nextOut);
+    // What a child inherits names the same folder: `spawn.cjs` leaves another folder's settings alone.
+    process.env[VARIABLE] = JSON.stringify(settings);
   };
 
   /** Records `p`, and the kept target of any symlink on its way; `real` when it is one already. */

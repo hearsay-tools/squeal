@@ -1008,6 +1008,7 @@ var FIELDS3 = {
   env: variables,
   slow: boolean,
   batchSize: positiveInteger3,
+  warmMemoryLimitMb: positiveInteger3,
   container: nonEmptyString
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "config"]);
@@ -12654,7 +12655,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.649";
+  if (true) return "0.1.651";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

@@ -541,6 +541,7 @@ var FIELDS3 = {
   env: variables,
   slow: boolean,
   batchSize: positiveInteger3,
+  warmMemoryLimitMb: positiveInteger3,
   container: nonEmptyString
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "config"]);
