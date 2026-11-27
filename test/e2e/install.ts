@@ -47,6 +47,15 @@ export const VITE_VERSION = installedVersion("vitest", "vite");
  * (spec 014, `research/shipped-plugin-timeout.md`).
  */
 export const ROLLDOWN_VERSION = installedVersion("vitest", "vite", "rolldown");
+/**
+ * The Vite 8.3 the repository keeps beside its own (`vite-8.3`, row 025-25), and its rolldown:
+ * the Vite a retained release from before 0.1.645 supports. Its `load` wrapper drops the
+ * second argument Vite 8.4.0 passes, so on 8.4.0 no test file loads (025-22, review 025-wave6 B2).
+ */
+export const VITE_8_3 = {
+  vite: installedVersion("vite-8.3"),
+  rolldown: installedVersion("vite-8.3", "rolldown"),
+};
 
 /**
  * The version of the last package in `chain`, each found as Node finds it from the one before,
