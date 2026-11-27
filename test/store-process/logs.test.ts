@@ -35,6 +35,21 @@ const fresh = () => {
   return at;
 };
 
+/** A preload that holds the main thread 1.5 s, without CPU work, after the `serving` line. */
+const HOLD_AFTER_SERVING = `data:text/javascript,${encodeURIComponent(`
+import fs from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
+const original = fs.writeSync;
+fs.writeSync = function (fd, data, ...rest) {
+  const written = original.call(this, fd, data, ...rest);
+  if (typeof data === "string" && data.includes("store process: serving ")) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500);
+  }
+  return written;
+};
+syncBuiltinESMExports();
+`)}`;
+
 const STORE_LINE =
   /edit: \d+ written, 0 failed, queue wait p50 \d+ ms max \d+ ms, busy \d+ ms; record: \d+ written, 0 failed/;
 
@@ -112,9 +127,13 @@ describe("the store process's and the daemon's lines (row 021-36, D22.6)", {
     ]);
   }, 30_000);
 
+  // Row 011-430 (ci-46051074967): SIGTERM right after `serving` still gives the `stopping` line.
+  // The preload holds the main thread 1.5 s once that line is written, where a slow runner can
+  // deschedule it; before the fix the signal's default action ended the process there.
   it("writes the store process's lines to its own log file when a daemon starts it", async () => {
     const at = fresh();
-    const pid = spawnStoreProcess(at.commonDir, LAUNCH, at.env);
+    const launch = { ...LAUNCH, execArgv: [...LAUNCH.execArgv, "--import", HOLD_AFTER_SERVING] };
+    const pid = spawnStoreProcess(at.commonDir, launch, at.env);
     expect(pid).not.toBeNull();
     const log = storeProcessLogPath(at.commonDir, "code");
     const read = () => (existsSync(log) ? readFileSync(log, "utf8") : "");
