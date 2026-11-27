@@ -49,7 +49,7 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
   it("keeps the file once the lock is freed within the bound, and names the holder first", async () => {
     const at = await served();
     const notes: string[] = [];
-    const locked = at.hold();
+    const locked = await at.hold();
     // Row 020-59: freed after the busy note, as `keep-busy.test.ts` frees it; a timer started
     // before the gate could free it while an early pass waits, so the last pass never waits.
     let freed: NodeJS.Timeout | undefined;
@@ -80,7 +80,7 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
   it("keeps nothing while the lock outlasts the bound, and says who held it", async () => {
     const at = await served();
     const notes: string[] = [];
-    const locked = at.hold();
+    const locked = await at.hold();
     try {
       await kept(at, notes, { busyBoundMs: 600 });
     } finally {
@@ -97,7 +97,7 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
   it("does not keep a file whose input moved during the wait (review 0.1.444 B2)", async () => {
     const at = await served();
     const notes: string[] = [];
-    const locked = at.hold();
+    const locked = await at.hold();
     try {
       await kept(at, notes, {
         files: BOTH,

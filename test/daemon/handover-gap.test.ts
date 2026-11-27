@@ -41,9 +41,15 @@ async function stepDownIntoGap(repo: FixtureRepo): Promise<number> {
   try {
     expect(stopped, "the daemon stopped in its stop gap").toBe(true);
     expect(existsSync(repo.socketPath), "the socket went away").toBe(false);
-    expect(lockHolders(repo.root), "the stopping daemon holds its lock").toMatch(
-      new RegExp(`WRITE\\s+${first.pid}\\s`),
-    );
+    // Row 011-430: one read of `/proc/locks` can miss a lock while others come and go
+    // (`src/core/store/lock-holders.ts`); the stopped daemon's lock stays, so it is re-read.
+    const held = new RegExp(`WRITE\\s+${first.pid}\\s`);
+    let holders = "";
+    for (const until = Date.now() + 5_000; Date.now() < until; await delay(10)) {
+      holders = lockHolders(repo.root);
+      if (held.test(holders)) break;
+    }
+    expect(holders, "the stopping daemon holds its lock").toMatch(held);
   } catch (error) {
     resume(first.pid);
     throw error;

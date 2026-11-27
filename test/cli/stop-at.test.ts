@@ -46,15 +46,24 @@ const ensure = (commit: string) =>
     install: countingInstall([]),
   });
 
+/** The stand-in's child: its pid, whether the stop's kill was sent, and its exit once reaped. */
+interface StandIn {
+  readonly pid: number;
+  readonly killed: () => boolean;
+  readonly exited: Promise<void>;
+}
+
 /**
  * A stand-in commit daemon for `tree`: a child that claimed it, and a socket whose `stop` ends it.
  * With `slowExit`, the stop first closes the socket, then removes the tree as the real daemon's
  * exit does, slowly: its `.git` file first, so the marker no longer reads, the rest after
  * `slowExit` ms, and only then the process ends (review 0.1.596 B1).
  */
-function commitDaemon(tree: AbsolutePath, slowExit?: number): Promise<number> {
+function commitDaemon(tree: AbsolutePath, slowExit?: number): Promise<StandIn> {
   const child = spawn("sleep", ["60"], { stdio: "ignore" });
   const pid = child.pid as number;
+  const exited = new Promise<void>((done) => child.once("exit", () => done()));
+  const standIn = { pid, killed: () => child.killed, exited };
   const folder = join(tree, "..");
   const marker = readMarker(folder);
   if (marker === null) throw new Error("no marker");
@@ -74,7 +83,7 @@ function commitDaemon(tree: AbsolutePath, slowExit?: number): Promise<number> {
       });
     });
     servers.push(server);
-    server.listen(socketPathFor(worktreeIdFor(tree)), () => resolve(pid));
+    server.listen(socketPathFor(worktreeIdFor(tree)), () => resolve(standIn));
   });
 }
 
@@ -119,7 +128,7 @@ describe("squeal stop --at <commit> (row 023-38)", () => {
 
   it("waits for the daemon whose exit is still removing its worktree (review 0.1.596 B1)", async () => {
     const at = await ensure("HEAD~1");
-    const pid = await commitDaemon(at.tree, 1_000);
+    const daemon = await commitDaemon(at.tree, 1_000);
 
     expect(await stop(["--at", "HEAD~1"])).toEqual({
       code: 0,
@@ -127,7 +136,10 @@ describe("squeal stop --at <commit> (row 023-38)", () => {
       stderr: "",
     });
     expect(existsSync(at.folder)).toBe(false);
-    expect(() => process.kill(pid, 0)).toThrow();
+    // Row 011-430: the stand-in sends its kill only after the slow removal; a killed child
+    // lives on unreaped for a moment, so its kill is read here and its exit awaited.
+    expect(daemon.killed()).toBe(true);
+    await daemon.exited;
   });
 
   it("removes a worktree whose daemon is not running, and says when there is none", async () => {
@@ -156,7 +168,7 @@ describe("squeal stop --at <commit> (row 023-38)", () => {
 
   it("is never reached by plain squeal stop in the user's worktree", async () => {
     const at = await ensure("HEAD~1");
-    const pid = await commitDaemon(at.tree);
+    const { pid } = await commitDaemon(at.tree);
 
     const plain = await stop([]);
     expect(plain.code).toBe(0);

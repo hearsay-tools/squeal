@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
@@ -113,7 +114,22 @@ describe.runIf(hasReleases)(
   },
 );
 
-/** Every pid of a successor of `repo` (`--await-lock`) seen until `done` resolves, polled. */
+/** The parent pid of `pid` from `/proc/<pid>/stat`; `null` once it is gone. */
+function parentOf(pid: number): number | null {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    // `pid (comm) state ppid …`: the command name may hold spaces and parentheses.
+    return Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[1]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Every pid of a successor of `repo` (`--await-lock`) seen until `done` resolves, polled.
+ * Row 011-430: a child the successor forks shows its command line until it execs; one
+ * whose parent matches too is that child, not a second successor.
+ */
 async function successorsUntil(repo: FixtureRepo, done: Promise<unknown>): Promise<Set<number>> {
   const seen = new Set<number>();
   let finished = false;
@@ -121,7 +137,11 @@ async function successorsUntil(repo: FixtureRepo, done: Promise<unknown>): Promi
     finished = true;
   });
   while (!finished) {
-    for (const { pid } of findProcesses(`daemon ${repo.root}`, "--await-lock")) seen.add(pid);
+    const found = findProcesses(`daemon ${repo.root}`, "--await-lock").map(({ pid }) => pid);
+    for (const pid of found) {
+      const parent = parentOf(pid);
+      if (parent !== null && !found.includes(parent)) seen.add(pid);
+    }
     await delay(50);
   }
   return seen;
