@@ -11,6 +11,7 @@ import {
   type PermitPool,
   type PoolLane,
   type PoolLease,
+  type PoolRefusal,
   type PoolTierKind,
 } from "../capacity/pool.js";
 import type { WorktreeId } from "../types/common.js";
@@ -125,12 +126,18 @@ export class TierCapacity {
    * Row 017-33 (gh-238): what the last look read against the background
    * ceiling (spec 021 D18): the busy CPUs the gate counted, `null` when it
    * read none, and the ceiling, the CPUs a background tier stays below.
+   * Row 017-37: and why the last backlog look got nothing (`refusal`).
    * `null` before the first look.
    */
-  backgroundGate(): { readonly busy: number | null; readonly limit: number } | null {
+  backgroundGate(): {
+    readonly busy: number | null;
+    readonly limit: number;
+    readonly refusal: PoolRefusal | null;
+  } | null {
     const gate = this.#pool.gate();
     if (gate === null) return null;
-    return { busy: gate.busyCores, limit: backgroundCeiling(this.#backgroundShare, gate.cpus) };
+    const limit = backgroundCeiling(this.#backgroundShare, gate.cpus);
+    return { busy: gate.busyCores, limit, refusal: this.#pool.refusal() };
   }
 
   /**
