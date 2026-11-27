@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, onTestFinished } from "vitest";
@@ -58,6 +58,20 @@ function withoutCi(): NodeJS.ProcessEnv {
   );
 }
 
+/**
+ * A real `ssh` passes no local environment variable to the remote machine;
+ * the fake one runs the remote command here with this process's
+ * environment. Under CI, `CI` and `GITHUB_ACTIONS` would then reach the
+ * remote Vitest, whose run ends `crashed`, so the remote command runs without
+ * them, as it would over `ssh`.
+ */
+function withoutCiSsh(ssh: string): string {
+  const path = `${ssh}-without-ci`;
+  writeFileSync(path, `#!/bin/sh\nexec env -u CI -u GITHUB_ACTIONS ${JSON.stringify(ssh)} "$@"\n`);
+  chmodSync(path, 0o755);
+  return path;
+}
+
 async function lane(whenLost: WhenLost) {
   const root = gitFixture("basic", {
     ".gitignore": ".squeal-logs/\n",
@@ -80,7 +94,7 @@ async function lane(whenLost: WhenLost) {
   git("commit", "-qm", "fixture");
   const home = join(scratchDir, `remote-home-${randomUUID()}`);
   onTestFinished(() => rmSync(home, { recursive: true, force: true }));
-  const ssh = fakeSsh(join(home, ".bin"), home);
+  const ssh = withoutCiSsh(fakeSsh(join(home, ".bin"), home));
   const options = { childEnv: {} };
   const local = await startHostProxy({
     channel: spawnRunnerHost(
