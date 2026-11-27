@@ -1,0 +1,116 @@
+{
+  "node": "v26.13.0",
+  "load": [
+    11.18,
+    7.87,
+    6.01
+  ],
+  "cpus": 16,
+  "results": [
+    {
+      "mode": "settled-burst",
+      "edits": 8,
+      "firstEnd": "completed",
+      "firstFailure": null,
+      "firstRequests": 1,
+      "firstSends": 1,
+      "recoveryEnd": null,
+      "remoteRequests": 1,
+      "localRuns": 0,
+      "sends": [
+        [
+          "src/input.ts"
+        ]
+      ],
+      "evidence": [
+        {
+          "request": 1,
+          "expected": "89b9059e50630ab7a1430d9b998b0d279c49bf13",
+          "remote": "89b9059e50630ab7a1430d9b998b0d279c49bf13",
+          "localAfter": "89b9059e50630ab7a1430d9b998b0d279c49bf13"
+        }
+      ],
+      "logs": [
+        "remote synthetic: run proven over 2 paths"
+      ]
+    },
+    {
+      "mode": "one-racing-edit",
+      "edits": 1,
+      "firstEnd": "completed",
+      "firstFailure": null,
+      "firstRequests": 2,
+      "firstSends": 1,
+      "recoveryEnd": null,
+      "remoteRequests": 2,
+      "localRuns": 0,
+      "sends": [
+        [
+          "src/input.ts"
+        ]
+      ],
+      "evidence": [
+        {
+          "request": 1,
+          "expected": "231bf6f2626b7c7aa11b070c7fc6dd6d11d3e572",
+          "remote": "231bf6f2626b7c7aa11b070c7fc6dd6d11d3e572",
+          "localAfter": "280a8c33d3365907b7103cfd3f70225f9bea9dfd"
+        },
+        {
+          "request": 2,
+          "expected": "280a8c33d3365907b7103cfd3f70225f9bea9dfd",
+          "remote": "280a8c33d3365907b7103cfd3f70225f9bea9dfd",
+          "localAfter": "280a8c33d3365907b7103cfd3f70225f9bea9dfd"
+        }
+      ],
+      "logs": [
+        "remote synthetic: tree differs at src/input.ts; sending again",
+        "remote synthetic: run proven over 2 paths"
+      ]
+    },
+    {
+      "mode": "two-racing-edits",
+      "edits": 2,
+      "firstEnd": "crashed",
+      "firstFailure": "remote synthetic refused (its tree stayed different at src/input.ts); not run here (whenLost \"not-run\")",
+      "firstRequests": 2,
+      "firstSends": 1,
+      "recoveryEnd": "completed",
+      "remoteRequests": 3,
+      "localRuns": 0,
+      "sends": [
+        [
+          "src/input.ts"
+        ],
+        [
+          "src/input.ts"
+        ]
+      ],
+      "evidence": [
+        {
+          "request": 1,
+          "expected": "231bf6f2626b7c7aa11b070c7fc6dd6d11d3e572",
+          "remote": "231bf6f2626b7c7aa11b070c7fc6dd6d11d3e572",
+          "localAfter": "280a8c33d3365907b7103cfd3f70225f9bea9dfd"
+        },
+        {
+          "request": 2,
+          "expected": "280a8c33d3365907b7103cfd3f70225f9bea9dfd",
+          "remote": "280a8c33d3365907b7103cfd3f70225f9bea9dfd",
+          "localAfter": "f8996f14e876012767bf0c345c317a97ba56cc38"
+        },
+        {
+          "request": 3,
+          "expected": "f8996f14e876012767bf0c345c317a97ba56cc38",
+          "remote": "f8996f14e876012767bf0c345c317a97ba56cc38",
+          "localAfter": "f8996f14e876012767bf0c345c317a97ba56cc38"
+        }
+      ],
+      "logs": [
+        "remote synthetic: tree differs at src/input.ts; sending again",
+        "remote synthetic: tree differs at src/input.ts; sending again",
+        "remote synthetic: run proven over 2 paths"
+      ]
+    }
+  ]
+}
